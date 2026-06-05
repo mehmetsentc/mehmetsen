@@ -18,6 +18,8 @@ export interface Post {
   summary: string
   authorId: string
   authorUsername: string
+  authorDisplayName: string
+  authorPhotoURL: string | null
   categoryId: string
   tags: string[]
   mediaItems: MediaItem[]
