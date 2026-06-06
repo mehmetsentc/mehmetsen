@@ -10,6 +10,8 @@ export function MobileNav() {
   const pathname = usePathname()
   const { user } = useAuth()
 
+  if (pathname === ROUTES.FEED) return null
+
   const items = [
     { icon: Home,       href: ROUTES.FEED },
     { icon: Search,     href: ROUTES.SEARCH },

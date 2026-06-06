@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .video-feed-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .video-feed-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}

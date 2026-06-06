@@ -11,9 +11,11 @@ import {
   orderBy,
   limit,
   startAfter,
+  increment,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { db, Collections } from '@/lib/firebase/firestore'
+import { hasVideoContent } from '@/lib/postUtils'
 import type { Post } from '@/types/post'
 
 const PAGE_SIZE = 10
@@ -106,5 +108,39 @@ export const postService = {
 
   async delete(id: string) {
     await deleteDoc(doc(db, Collections.POSTS, id))
+  },
+
+  async getVideoFeed(lastDoc?: QueryDocumentSnapshot) {
+    try {
+      const constraints: Parameters<typeof query>[1][] = [
+        where('status', '==', 'published'),
+        where('visibility', '==', 'public'),
+        where('hasVideo', '==', true),
+        orderBy('publishedAt', 'desc'),
+        limit(PAGE_SIZE),
+      ]
+      if (lastDoc) constraints.push(startAfter(lastDoc))
+
+      const snap = await getDocs(query(collection(db, Collections.POSTS), ...constraints))
+      return {
+        posts: snap.docs.map(toPost),
+        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
+        hasMore: snap.docs.length === PAGE_SIZE,
+      }
+    } catch {
+      const result = await this.getFeed(lastDoc)
+      const videoPosts = result.posts.filter(hasVideoContent)
+      return {
+        posts: videoPosts,
+        lastDoc: result.lastDoc,
+        hasMore: result.hasMore,
+      }
+    }
+  },
+
+  async incrementViews(id: string) {
+    await updateDoc(doc(db, Collections.POSTS, id), {
+      viewsCount: increment(1),
+    })
   },
 }

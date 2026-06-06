@@ -1,12 +1,17 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Bell } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher'
 import { ROUTES } from '@/constants/routes'
 
 export function Navbar() {
   const { user } = useAuth()
+  const pathname = usePathname()
+
+  if (pathname === ROUTES.FEED) return null
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur-sm lg:hidden">
@@ -15,6 +20,7 @@ export function Navbar() {
           NaHaber
         </Link>
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <Link
             href={ROUTES.NOTIFICATIONS}
             className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
