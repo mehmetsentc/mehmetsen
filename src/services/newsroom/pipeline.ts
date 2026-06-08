@@ -123,13 +123,27 @@ export async function processNewsroomArticle(
   }
 
   try {
-    const rewritten = await aiNewsEditor.rewriteArticle({
-      sourceLabel: input.sourceLabel,
-      originalTitle: input.originalTitle,
-      originalSummary: input.originalSummary,
-      originalContent: input.originalContent,
-      sourceUrl: input.sourceUrl,
-    })
+    // Skip second AI rewrite for editors that already produced AI content (trend, influencer)
+    const rewritten = input.skipAiRewrite
+      ? {
+          title: input.originalTitle,
+          summary: input.originalSummary,
+          description: input.originalContent,
+          categoryId: input.forcedCategoryId ?? 'gundem',
+          categoryConfidence: 80,
+          isBreaking: input.isBreaking ?? false,
+          city: null,
+          district: null,
+          country: 'Türkiye',
+          tags: input.extraTags ?? [],
+        }
+      : await aiNewsEditor.rewriteArticle({
+          sourceLabel: input.sourceLabel,
+          originalTitle: input.originalTitle,
+          originalSummary: input.originalSummary,
+          originalContent: input.originalContent,
+          sourceUrl: input.sourceUrl,
+        })
 
     const factCheck = await factChecker.check({
       sourceLabel: input.sourceLabel,

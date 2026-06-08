@@ -1,12 +1,12 @@
 'use client'
 
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
-import { MobileNav } from '@/components/layout/MobileNav'
+import { Navbar } from '@/components/layout/Navbar'
 import { TrendingPanel } from '@/components/feed/TrendingPanel'
-import { ConsentBanner } from '@/components/consent/ConsentBanner'
+import { ConsentStrip } from '@/components/consent/ConsentStrip'
 import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
 import { NetworkProvider } from '@/store/networkContext'
 import { AppStateProvider } from '@/store/appStateContext'
@@ -53,9 +53,14 @@ const LayoutShell = memo(function LayoutShell({
   isMobile: boolean
   isDesktop: boolean
 }) {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]" data-platform={platform}>
-      <Sidebar />
+      <Sidebar
+        mobileOpen={drawerOpen}
+        onMobileClose={() => setDrawerOpen(false)}
+      />
 
       <div
         className={cn(
@@ -64,6 +69,8 @@ const LayoutShell = memo(function LayoutShell({
           isDesktop && 'app-shell-desktop'
         )}
       >
+        <Navbar onMenuClick={() => setDrawerOpen(true)} />
+
         <div
           className={cn(
             'content-stage',
@@ -84,8 +91,7 @@ const LayoutShell = memo(function LayoutShell({
         </div>
       </div>
 
-      <MobileNav />
-      <ConsentBanner />
+      <ConsentStrip />
     </div>
   )
 })

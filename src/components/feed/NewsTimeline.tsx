@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { AlertCircle, RefreshCw, Radio } from 'lucide-react'
 import { getCityCategoryName } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
-import { hasFeedGuestConsent, setFeedGuestConsent } from '@/lib/feedConsent'
+import { hasFeedGuestConsent } from '@/lib/feedConsent'
 import { useAppState } from '@/store/appStateContext'
 import type { FeedSource } from '@/lib/feedSource'
 import type { TimelinePost } from '@/types/post'
@@ -17,7 +17,6 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { TimelineItem } from './TimelineItem'
 import { FeedFilters } from './FeedFilters'
 import { FeedSourceTabs } from './FeedSourceTabs'
-import { FeedGuestPolicyModal } from './FeedGuestPolicyModal'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { rankFeedPosts, filterYerelHaberPosts, YEREL_HABER_CATEGORY } from '@/lib/feedRanking'
 import { useUserLocation } from '@/hooks/useUserLocation'
@@ -34,13 +33,11 @@ function timelineCacheKey(feedSource: FeedSource, categoryId: string | null): st
 }
 
 function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
-  const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+const { user, loading: authLoading } = useAuth()
   const { getCachedFeed, setCachedFeed } = useAppState()
   const [categoryId, setCategoryId] = useState<string | null>(categoryParam)
   const [feedSource, setFeedSource] = useState<FeedSource>('nahaber')
   const [guestConsentReady, setGuestConsentReady] = useState(false)
-  const [showPolicyModal, setShowPolicyModal] = useState(false)
 
   useEffect(() => {
     setCategoryId(categoryParam)
@@ -48,21 +45,16 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
 
   useEffect(() => {
     if (authLoading) return
-
-    if (user) {
-      setGuestConsentReady(true)
-      setShowPolicyModal(false)
-      return
-    }
-
-    if (hasFeedGuestConsent()) {
-      setGuestConsentReady(true)
-      setShowPolicyModal(false)
-    } else {
-      setGuestConsentReady(false)
-      setShowPolicyModal(true)
-    }
+    if (user) { setGuestConsentReady(true); return }
+    setGuestConsentReady(hasFeedGuestConsent())
   }, [user, authLoading])
+
+  // Re-check consent when it changes (ConsentStrip sets it)
+  useEffect(() => {
+    const handler = () => setGuestConsentReady(hasFeedGuestConsent())
+    window.addEventListener('feedConsentGranted', handler)
+    return () => window.removeEventListener('feedConsentGranted', handler)
+  }, [])
 
   const canViewFeed = Boolean(user) || guestConsentReady
 
@@ -154,15 +146,6 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
   const showItems = canViewFeed && rankedPosts.length > 0
   const showSkeleton = canViewFeed && loading && rankedPosts.length === 0
 
-  const handleAcceptPolicy = () => {
-    setFeedGuestConsent()
-    setGuestConsentReady(true)
-    setShowPolicyModal(false)
-  }
-
-  const handleDeclinePolicy = () => {
-    router.push(ROUTES.HOME)
-  }
 
   const emptyMessage =
     feedSource === 'nahaber'
@@ -171,12 +154,6 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
 
   return (
     <div className="w-full">
-      <FeedGuestPolicyModal
-        open={!authLoading && !user && showPolicyModal}
-        onAccept={handleAcceptPolicy}
-        onDecline={handleDeclinePolicy}
-      />
-
       <header className="timeline-header mb-0 py-3">
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-white">
@@ -210,7 +187,7 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
           </p>
           <button
             type="button"
-            onClick={() => setShowPolicyModal(true)}
+            onClick={() => window.dispatchEvent(new Event('openFeedPolicy'))}
             className="mt-4 inline-flex rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white"
           >
             Kuralları göster

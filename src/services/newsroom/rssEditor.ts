@@ -11,6 +11,64 @@ import type { EditorId, NewsroomArticleInput, NewsroomRunResult } from '@/servic
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { fetchArticleEnrichment, isThinContent } from '@/services/rss/articleFetcher'
 
+/**
+ * GPT fallback: when articleFetcher can't get real content (blocked site),
+ * ask OpenAI to write a proper Turkish news article from the headline alone.
+ */
+async function generateArticleFromTitle(
+  title: string,
+  sourceLabel: string
+): Promise<{ summary: string; content: string } | null> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  if (!apiKey) return null
+
+  const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
+Sana bir haber başlığı ve kaynak verilecek. Bu başlığa dayanarak gerçekçi, bilgilendirici bir haber içeriği yaz.
+
+KURALLARI:
+- Türkçe, akıcı gazetecilik dili kullan
+- summary: 1-2 cümle, başlığı açıklayan özet (max 150 karakter)
+- content: 3-5 paragraf (toplam 150-300 kelime), kaza/olay/konu hakkında detay ver
+- Bilinmeyen detayları mantıklı şekilde varsay (kayıp sayısı bilinmiyorsa "detaylar araştırılıyor" gibi)
+- Başlıkla çelişme, tutarlı ol
+- Sadece JSON döndür: {"summary":"...","content":"..."}`
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.5,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: `Başlık: "${title}"\nKaynak: ${sourceLabel}\n\nBu haberi yaz.`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!res.ok) return null
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    const raw = json.choices?.[0]?.message?.content?.trim()
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { summary?: string; content?: string }
+    const summary = parsed.summary?.trim() || ''
+    const content = parsed.content?.trim() || ''
+    if (content.length < 80) return null
+    return { summary, content }
+  } catch {
+    return null
+  }
+}
+
 export interface RssEditorOptions {
   sourceIds: readonly string[]
   editorId: EditorId
@@ -67,6 +125,7 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
       let enrichedSummary = item.summary
       let enrichedContent = item.content
       let enrichedImageUrl = item.imageUrl
+      let aiGenerated = false
 
       const needsEnrichment =
         isThinContent(item.summary, item.content) || !item.imageUrl
@@ -87,6 +146,20 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
         }
       }
 
+      // If content is still thin after fetching (site blocked scraper), use GPT to write article
+      if (isThinContent(enrichedSummary, enrichedContent)) {
+        try {
+          const generated = await generateArticleFromTitle(item.title, item.source.label)
+          if (generated) {
+            enrichedSummary = generated.summary || enrichedSummary
+            enrichedContent = generated.content
+            aiGenerated = true
+          }
+        } catch {
+          // non-blocking
+        }
+      }
+
       const input: NewsroomArticleInput = {
         editorId: options.editorId,
         editorType: options.editorType,
@@ -102,6 +175,8 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
         sourcePublishedAt: item.publishedAt,
         forcedCategoryId: options.forcedCategoryId,
         isBreaking: options.isBreaking,
+        // Skip second AI rewrite when we already generated article via GPT above
+        skipAiRewrite: aiGenerated || undefined,
         ...enriched,
       }
 

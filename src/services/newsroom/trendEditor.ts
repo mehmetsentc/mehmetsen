@@ -49,61 +49,76 @@ async function generateTrendArticle(topic: string): Promise<{
   const apiKey = process.env.OPENAI_API_KEY?.trim()
   const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
 
-  if (!apiKey) {
-    return {
-      title: `${topic} neden trend?`,
-      summary: `${topic} şu an gündemde. Detaylar gelişiyor.`,
-      content: `${topic} konusu Türkiye'de ve dünyada yoğun ilgi görüyor. Kullanıcılar arama motorlarında bu başlığı araştırıyor.`,
-    }
+  const fallback = {
+    title: `${topic} neden gündemde?`,
+    summary: `"${topic}" Türkiye'de en çok aranan konular arasına girdi. Peki bu isim ya da konu ne için öne çıkıyor?`,
+    content: `"${topic}" son saatlerde Türkiye'nin gündemine oturdu ve arama motorlarında üst sıralara taşındı.\n\nKullanıcıların yoğun ilgisi, konunun sosyal medyada da hızla yayılmasına neden oldu. Henüz resmi bir açıklama yapılmamış olsa da çeşitli platformlarda bu isim ya da başlıkla ilgili tartışmalar sürüyor.\n\nNaHaber, konuyla ilgili gelişmeleri takip etmeye devam edecek.`,
   }
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.6,
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: `Sen NaHaber trend editörüsün. Verilen konu için "Neden trend?" formatında kısa bir haber taslağı üret.
-JSON: {"title":"...","summary":"...","content":"..."}
-Başlık: "X neden trend?" veya benzeri. 2-3 paragraf, tarafsız Türkçe.`,
-        },
-        { role: 'user', content: `Trend konusu: ${topic}` },
-      ],
-    }),
-  })
+  if (!apiKey) return fallback
 
-  if (!res.ok) {
-    return {
-      title: `${topic} neden trend?`,
-      summary: `${topic} gündemde.`,
-      content: `${topic} hakkında kullanıcı ilgisi artıyor.`,
-    }
-  }
+  const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun trend editörüsün.
 
-  const json = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
-  }
-  const content = json.choices?.[0]?.message?.content?.trim()
-  if (!content) {
-    return { title: `${topic} neden trend?`, summary: topic, content: topic }
-  }
+Görevin: Verilen trend konusu hakkında, eğitim verilerine dayanarak kapsamlı bir "Neden trend?" haberi yazmak.
+
+YAZIM KURALLARI:
+- Bu kişi/konu kim/ne? Kısaca tanıt (sporcu, politikacı, dizi karakteri, teknoloji, olay vb.)
+- Neden ŞU AN gündemde olabilir? Bilinen son gelişmeler, yaklaşan etkinlikler, tartışmalar
+- Sosyal medyada ne konuşuluyor? Nasıl bir ilgi var?
+- Tarafsız, profesyonel Türkçe gazetecilik dili kullan
+- "gündemde" veya "trend" kelimelerini içerik başına koyma
+- content: 4-6 paragraf, her paragraf en az 2 cümle (toplam 200-400 kelime)
+- summary: 1 vurucu cümle, title'dan farklı, merak uyandıran (max 120 karakter)
+- title: "X Neden Gündemde?" yerine daha özgün bir başlık tercih et
+
+Yanıtı YALNIZCA geçerli JSON olarak ver:
+{"title":"...","summary":"...","content":"..."}`
 
   try {
-    const parsed = JSON.parse(content) as { title?: string; summary?: string; content?: string }
-    return {
-      title: parsed.title?.trim() || `${topic} neden trend?`,
-      summary: parsed.summary?.trim() || topic,
-      content: parsed.content?.trim() || parsed.summary?.trim() || topic,
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.65,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: `Trend konusu: "${topic}"\n\nBu konu hakkında bildiklerini kullanarak neden gündemde olduğunu açıklayan kapsamlı bir haber yaz. Bilmiyorsan tahmin et ve belirt.`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(25_000),
+    })
+
+    if (!res.ok) {
+      console.warn(`[trendEditor] OpenAI ${res.status} for topic: ${topic}`)
+      return fallback
     }
-  } catch {
-    return { title: `${topic} neden trend?`, summary: topic, content: topic }
+
+    const json = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>
+    }
+    const raw = json.choices?.[0]?.message?.content?.trim()
+    if (!raw) return fallback
+
+    const parsed = JSON.parse(raw) as { title?: string; summary?: string; content?: string }
+    const title = parsed.title?.trim() || `${topic} neden gündemde?`
+    const summary = parsed.summary?.trim() || fallback.summary
+    const content = parsed.content?.trim() || ''
+
+    // If content is too thin (AI returned minimal output), use fallback
+    if (content.length < 150) return { title, summary, content: fallback.content }
+
+    return { title, summary, content }
+  } catch (err) {
+    console.error('[trendEditor] generateTrendArticle failed:', err)
+    return fallback
   }
 }
 
@@ -141,6 +156,7 @@ export const trendEditor = {
         ingestionSourceId: 'google-trends',
         forcedCategoryId: 'trend',
         extraTags: ['trending', 'trend'],
+        skipAiRewrite: true,
       })
 
       if (outcome === 'published') {

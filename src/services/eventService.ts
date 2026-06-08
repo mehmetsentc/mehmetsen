@@ -53,7 +53,18 @@ function effectiveTimelineStatus(event: NaEvent, nowIso: string): EventTimelineS
 }
 
 function matchesTimeRange(event: NaEvent, timeRange: EventTimeRange, nowIso: string): boolean {
-  return effectiveTimelineStatus(event, nowIso) === timeRange
+  // Use startsAt as the primary date; fall back to endsAt if available
+  const eventDate = event.startsAt ?? ''
+  const endDate = event.endsAt ?? eventDate
+
+  if (timeRange === 'upcoming') {
+    // Upcoming: event hasn't ended yet (endDate >= now)
+    return endDate >= nowIso
+  } else {
+    // Past: event ended, but no older than 3 days
+    const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    return endDate < nowIso && eventDate >= threeDaysAgo
+  }
 }
 
 /** Client-side filter for live aggregate results and Firestore fallback scans. */
@@ -139,9 +150,18 @@ export const eventService = {
     devLog('eventService', 'getEvents', { citySlug, category, timeRange, hasCursor: !!cursor })
 
     try {
-      const constraints: Parameters<typeof query>[1][] = [
-        where('timelineStatus', '==', timeRange),
-      ]
+      const constraints: Parameters<typeof query>[1][] = []
+
+      if (timeRange === 'upcoming') {
+        // Only events that haven't ended yet
+        constraints.push(where('startsAt', '>=', nowIso))
+      } else {
+        // Past: ended, within last 3 days
+        const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+        constraints.push(where('startsAt', '<', nowIso))
+        constraints.push(where('startsAt', '>=', threeDaysAgo))
+      }
+
       if (citySlug) constraints.push(where('citySlug', '==', citySlug))
       if (category) constraints.push(where('category', '==', category))
       constraints.push(orderBy('startsAt', sortDir))
