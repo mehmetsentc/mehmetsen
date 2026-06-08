@@ -46,9 +46,7 @@ function isVisible(event: NaEvent): boolean {
 }
 
 function effectiveTimelineStatus(event: NaEvent, nowIso: string): EventTimelineStatus {
-  if (event.timelineStatus === 'upcoming' || event.timelineStatus === 'past') {
-    return event.timelineStatus
-  }
+  // Always derive from actual date — Firestore timelineStatus field can be stale
   return event.startsAt >= nowIso ? 'upcoming' : 'past'
 }
 
@@ -107,7 +105,18 @@ async function runOrderedFallback(
 
   devLog('eventService', 'ordered fallback', { reason, citySlug, category, timeRange })
 
-  const constraints: Parameters<typeof query>[1][] = [orderBy('startsAt', sortDir)]
+  const constraints: Parameters<typeof query>[1][] = []
+
+  // Add date filter so past events don't flood the upcoming list
+  if (timeRange === 'upcoming') {
+    constraints.push(where('startsAt', '>=', nowIso))
+  } else {
+    const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    constraints.push(where('startsAt', '<', nowIso))
+    constraints.push(where('startsAt', '>=', threeDaysAgo))
+  }
+
+  constraints.push(orderBy('startsAt', sortDir))
   if (cursor) constraints.push(startAfter(cursor))
   constraints.push(limit(FALLBACK_FETCH))
 
