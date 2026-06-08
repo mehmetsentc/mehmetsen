@@ -1,0 +1,11 @@
+import { createNewsroomCronHandler, newsroomCronConfig } from '@/app/api/cron/newsroom/_shared'
+import { processNewsQueue } from '@/services/newsroom/queue/queueProcessor'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 300
+
+const handler = createNewsroomCronHandler('process-queue', () => processNewsQueue())
+
+export const GET = handler.GET
+export const POST = handler.POST

@@ -32,3 +32,7 @@ export function generateFollowId(followerId: string, followingId: string): strin
 export function generateSaveId(userId: string, postId: string): string {
   return `${userId}_${postId}`
 }
+
+export function generateConversationId(uidA: string, uidB: string): string {
+  return [uidA, uidB].sort().join('_')
+}

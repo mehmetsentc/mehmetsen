@@ -72,8 +72,11 @@ export function VideoCommentSheet({
       await loadComments()
       onCommentAdded?.()
       toast.success('Yorum eklendi')
-    } catch {
-      toast.error('Yorum gönderilemedi')
+    } catch (error) {
+      console.error('[VideoCommentSheet] submit failed:', error)
+      const message =
+        error instanceof Error ? error.message : 'Yorum gönderilemedi'
+      toast.error(message)
     } finally {
       setSubmitting(false)
     }
@@ -90,15 +93,15 @@ export function VideoCommentSheet({
         aria-label="Kapat"
       />
 
-      <div className="relative flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-2xl bg-white sm:rounded-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <h3 className="font-semibold text-gray-900">
+      <div className="relative flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-2xl bg-[rgb(var(--color-card))] sm:rounded-2xl">
+        <div className="flex items-center justify-between border-b border-[rgb(var(--color-border))] px-4 py-3">
+          <h3 className="font-semibold text-[rgb(var(--color-text))]">
             Yorumlar ({formatCount(commentsCount)})
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+            className="rounded-full p-2 text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
             aria-label="Kapat"
           >
             <X className="h-5 w-5" />
@@ -108,25 +111,25 @@ export function VideoCommentSheet({
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-[rgb(var(--color-muted))]" />
             </div>
           ) : comments.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-400">
+            <p className="py-8 text-center text-sm text-[rgb(var(--color-muted))]">
               Henüz yorum yok. İlk yorumu sen yap!
             </p>
           ) : (
             <ul className="space-y-4">
               {comments.map((comment) => (
                 <li key={comment.id} className="flex gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400">
                     {comment.authorUsername[0]?.toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm">
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-[rgb(var(--color-text))]">
                         @{comment.authorUsername}
                       </span>{' '}
-                      <span className="text-gray-700">{comment.content}</span>
+                      <span className="text-[rgb(var(--color-muted))]">{comment.content}</span>
                     </p>
                   </div>
                 </li>
@@ -135,7 +138,7 @@ export function VideoCommentSheet({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="border-t border-gray-100 p-3">
+        <form onSubmit={handleSubmit} className="border-t border-[rgb(var(--color-border))] p-3">
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -143,7 +146,7 @@ export function VideoCommentSheet({
               onChange={(e) => setText(e.target.value)}
               placeholder="Yorum ekle..."
               maxLength={500}
-              className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             <button
               type="submit"

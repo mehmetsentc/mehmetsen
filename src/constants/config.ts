@@ -16,12 +16,16 @@ export const APP_CONFIG = {
 } as const
 
 export const DEFAULT_CATEGORIES = [
+  { id: 'son-dakika', name: 'Son Dakika', slug: 'son-dakika', iconName: 'zap', color: '#DC2626' },
+  { id: 'yerel-haber', name: 'Yerel Haber', slug: 'yerel-haber', iconName: 'map-pin', color: '#059669' },
   { id: 'gundem',    name: 'Gündem',    slug: 'gundem',    iconName: 'newspaper',  color: '#EF4444' },
+  { id: 'siyaset',   name: 'Siyaset',   slug: 'siyaset',   iconName: 'landmark',   color: '#7C3AED' },
   { id: 'teknoloji', name: 'Teknoloji', slug: 'teknoloji', iconName: 'cpu',        color: '#3B82F6' },
   { id: 'spor',      name: 'Spor',      slug: 'spor',      iconName: 'trophy',     color: '#10B981' },
   { id: 'ekonomi',   name: 'Ekonomi',   slug: 'ekonomi',   iconName: 'trending-up',color: '#F59E0B' },
   { id: 'kultur',    name: 'Kültür',    slug: 'kultur',    iconName: 'palette',    color: '#8B5CF6' },
   { id: 'saglik',    name: 'Sağlık',    slug: 'saglik',    iconName: 'heart',      color: '#EC4899' },
   { id: 'dunya',     name: 'Dünya',     slug: 'dunya',     iconName: 'globe',      color: '#6B7280' },
+  { id: 'magazin',   name: 'Magazin',   slug: 'magazin',   iconName: 'star',       color: '#F472B6' },
   { id: 'bilim',     name: 'Bilim',     slug: 'bilim',     iconName: 'flask',      color: '#14B8A6' },
 ] as const

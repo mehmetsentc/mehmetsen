@@ -1,14 +1,15 @@
 'use client'
 
-import Link from 'next/link'
+import Image from 'next/image'
 import { MessageCircle } from 'lucide-react'
 import { LikeButton } from '@/components/post/LikeButton'
 import { SaveButton } from '@/components/post/SaveButton'
 import { ShareButton } from '@/components/post/ShareButton'
+import { PostMoreButton } from '@/components/post/PostMoreMenu'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
-import { formatCount } from '@/lib/postUtils'
-import { ROUTES } from '@/constants/routes'
+import { formatCount, getPrimaryVideo } from '@/lib/postUtils'
+import { cn } from '@/lib/utils'
 import type { VideoFeedItem } from '@/hooks/useVideoFeed'
 
 interface VideoActionsProps {
@@ -16,6 +17,8 @@ interface VideoActionsProps {
   onCommentClick: () => void
   onLikeChange?: (liked: boolean, count: number) => void
   onSaveChange?: (saved: boolean, count: number) => void
+  onShareChange?: (count: number) => void
+  className?: string
 }
 
 export function VideoActions({
@@ -23,6 +26,8 @@ export function VideoActions({
   onCommentClick,
   onLikeChange,
   onSaveChange,
+  onShareChange,
+  className,
 }: VideoActionsProps) {
   const { liked, count: likesCount, toggle: toggleLike, loading: likeLoading } = useLike({
     postId: video.id,
@@ -35,6 +40,9 @@ export function VideoActions({
     initialSaved: video.isSaved,
     initialCount: video.savesCount,
   })
+
+  const media = getPrimaryVideo(video)
+  const thumbnail = media?.thumbnailUrl ?? video.coverImageUrl
 
   const handleLike = async () => {
     const prevLiked = liked
@@ -51,54 +59,63 @@ export function VideoActions({
   }
 
   return (
-    <div className="absolute bottom-24 right-3 z-20 flex flex-col items-center gap-4 sm:bottom-28 sm:right-4">
-      <Link
-        href={ROUTES.PROFILE(video.authorUsername)}
-        className="mb-1 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-blue-100 text-sm font-bold text-blue-600 shadow-lg"
-      >
-        {video.authorPhotoURL ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={video.authorPhotoURL}
-            alt={video.authorDisplayName}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          video.authorDisplayName[0]?.toUpperCase()
-        )}
-      </Link>
-
+    <div className={cn('reels-actions', className)}>
       <LikeButton
         liked={liked}
         count={likesCount}
         onToggle={handleLike}
         loading={likeLoading}
-        variant="overlay"
+        variant="reels"
       />
 
       <button
         type="button"
         onClick={onCommentClick}
         aria-label="Yorumlar"
-        className="flex flex-col items-center gap-1 text-white transition-transform active:scale-90"
+        className="flex flex-col items-center gap-1.5 text-white transition-transform active:scale-90"
       >
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm">
-          <MessageCircle className="h-6 w-6" />
-        </span>
+        <MessageCircle className="h-7 w-7" />
         <span className="text-xs font-semibold drop-shadow">
           {formatCount(video.commentsCount)}
         </span>
       </button>
 
-      <ShareButton postId={video.id} title={video.title} variant="overlay" />
+      <ShareButton
+        postId={video.id}
+        title={video.title}
+        variant="reels"
+        onShared={() => onShareChange?.((video.sharesCount ?? 0) + 1)}
+      />
 
       <SaveButton
         saved={saved}
         count={savesCount}
         onToggle={handleSave}
         loading={saveLoading}
-        variant="overlay"
+        variant="reels"
       />
+
+      <PostMoreButton
+        post={{
+          id: video.id,
+          title: video.title,
+          authorUsername: video.authorUsername,
+          isVideo: true,
+          viewsCount: video.viewsCount,
+          likesCount,
+          commentsCount: video.commentsCount,
+          savesCount,
+        }}
+        variant="reels"
+        saved={saved}
+        onToggleSave={handleSave}
+      />
+
+      {thumbnail && (
+        <div className="relative mt-1 h-9 w-9 overflow-hidden rounded-md border border-white/30">
+          <Image src={thumbnail} alt="" fill className="object-cover" sizes="36px" />
+        </div>
+      )}
     </div>
   )
 }

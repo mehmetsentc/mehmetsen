@@ -2,65 +2,96 @@
 
 import { useState } from 'react'
 import { Share2 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
-import { ROUTES } from '@/constants/routes'
+import { buildPostShareUrl } from '@/lib/shareUtils'
+import { ShareMenu } from '@/components/post/ShareMenu'
 
 interface ShareButtonProps {
   postId: string
+  /** Canonical slug for `/news/[slug]` share URLs when available. */
+  slug?: string
   title: string
-  variant?: 'default' | 'overlay'
+  /** Optional body excerpt; combined with title for copy / native / social share text. */
+  text?: string
+  variant?: 'default' | 'overlay' | 'inline' | 'reels'
+  onShared?: () => void
 }
 
-export function ShareButton({ postId, title, variant = 'overlay' }: ShareButtonProps) {
-  const [sharing, setSharing] = useState(false)
+export function ShareButton({
+  postId,
+  slug,
+  title,
+  text,
+  variant = 'overlay',
+  onShared,
+}: ShareButtonProps) {
+  const [menuOpen, setMenuOpen] = useState(false)
   const isOverlay = variant === 'overlay'
-  const url = typeof window !== 'undefined'
-    ? `${window.location.origin}${ROUTES.POST_DETAIL(postId)}`
-    : ROUTES.POST_DETAIL(postId)
+  const isInline = variant === 'inline'
+  const isReels = variant === 'reels'
 
-  const handleShare = async () => {
-    if (sharing) return
-    setSharing(true)
-
-    try {
-      if (navigator.share) {
-        await navigator.share({ title, text: title, url })
-      } else {
-        await navigator.clipboard.writeText(url)
-        toast.success('Bağlantı kopyalandı')
-      }
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        toast.error('Paylaşım başarısız oldu')
-      }
-    } finally {
-      setSharing(false)
-    }
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setMenuOpen(true)
   }
 
+  const shareUrl = buildPostShareUrl(slug ? { id: postId, slug } : postId)
+
   return (
-    <button
-      type="button"
-      onClick={handleShare}
-      disabled={sharing}
-      aria-label="Paylaş"
-      className={cn(
-        'flex flex-col items-center gap-1 transition-transform active:scale-90 disabled:opacity-60',
-        isOverlay ? 'text-white' : 'text-gray-500 hover:text-blue-500'
-      )}
-    >
-      <span
+    <>
+      <button
+        type="button"
+        onClick={handleShare}
+        aria-label="Paylaş"
+        aria-haspopup="dialog"
+        aria-expanded={menuOpen}
         className={cn(
-          'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm',
-          isOverlay ? 'bg-black/30' : 'bg-gray-100'
+          'transition-transform active:scale-90',
+          isInline && 'timeline-action',
+          !isInline && 'flex flex-col items-center gap-1',
+          isReels || isOverlay
+            ? 'text-white'
+            : !isInline && 'text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400'
         )}
       >
-        <Share2 className="h-6 w-6" />
-      </span>
-      <span className={cn('text-xs font-semibold', isOverlay ? 'text-white drop-shadow' : '')}>
-        Paylaş
-      </span>
-    </button>
+        {isInline ? (
+          <>
+            <Share2 className="h-4 w-4" />
+            <span>Paylaş</span>
+          </>
+        ) : isReels ? (
+          <Share2 className="h-7 w-7" />
+        ) : (
+          <>
+            <span
+              className={cn(
+                'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm',
+                isOverlay ? 'bg-black/30' : 'bg-gray-100 dark:bg-gray-800'
+              )}
+            >
+              <Share2 className="h-6 w-6" />
+            </span>
+            <span
+              className={cn(
+                'text-xs font-semibold',
+                isOverlay ? 'text-white drop-shadow' : 'text-gray-600 dark:text-gray-400'
+              )}
+            >
+              Paylaş
+            </span>
+          </>
+        )}
+      </button>
+
+      <ShareMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title={title}
+        text={text}
+        url={shareUrl}
+        postId={postId}
+        onShared={onShared}
+      />
+    </>
   )
 }

@@ -1,0 +1,94 @@
+import { BREAKING_NEWS_SOURCE_IDS, MAX_AI_CALLS_PER_EDITOR } from '@/services/newsroom/config'
+import { runRssEditor } from '@/services/newsroom/rssEditor'
+import type { NewsroomRunResult } from '@/services/newsroom/types'
+
+const URGENCY_KEYWORDS = [
+  'son dakika',
+  'flaş',
+  'flash',
+  'breaking',
+  'acil',
+  'deprem',
+  'patlama',
+  'çatışma',
+  'catisma',
+  'ölüm',
+  'olum',
+  'can kaybı',
+  'can kaybi',
+  'saldırı',
+  'saldiri',
+  'yangın',
+  'yangin',
+] as const
+
+const SPOR_SIGNAL_KEYWORDS = [
+  'maç',
+  'mac',
+  'gol',
+  'lig',
+  'transfer',
+  'fifa',
+  'uefa',
+  'derbi',
+  'futbol',
+  'basketbol',
+] as const
+
+export interface BreakingSignals {
+  isBreaking: boolean
+  priorityScore: number
+}
+
+function textHasSportsSignals(text: string): boolean {
+  const lower = text.toLocaleLowerCase('tr-TR')
+  return SPOR_SIGNAL_KEYWORDS.some((kw) => lower.includes(kw))
+}
+
+/** Score RSS headline/summary for son-dakika urgency before AI rewrite. */
+export function analyzeBreakingSignals(
+  title: string,
+  summary: string,
+  sourcePublishedAt?: number | null
+): BreakingSignals {
+  const text = `${title} ${summary}`.toLocaleLowerCase('tr-TR')
+  let score = 45
+
+  for (const kw of URGENCY_KEYWORDS) {
+    if (text.includes(kw)) score += 14
+  }
+
+  if (sourcePublishedAt) {
+    const ageMin = (Date.now() - sourcePublishedAt) / 60_000
+    if (ageMin < 15) score += 25
+    else if (ageMin < 45) score += 15
+    else if (ageMin < 120) score += 8
+  }
+
+  const priorityScore = Math.min(100, Math.max(1, score))
+  const hasUrgencyKeyword = URGENCY_KEYWORDS.some((kw) => text.includes(kw))
+  const isBreaking = !textHasSportsSignals(text) && (priorityScore >= 55 || hasUrgencyKeyword)
+
+  return { isBreaking, priorityScore }
+}
+
+/** Son dakika editörü — CNN, BBC, Reuters, TRT, NTV, Habertürk. */
+export const breakingNewsEditor = {
+  sourceIds: BREAKING_NEWS_SOURCE_IDS,
+
+  async run(maxAiCalls = MAX_AI_CALLS_PER_EDITOR): Promise<NewsroomRunResult> {
+    return runRssEditor({
+      sourceIds: BREAKING_NEWS_SOURCE_IDS,
+      editorId: 'breaking-news',
+      editorType: 'breaking',
+      maxAiCalls,
+      enrichInput: (item) => {
+        const signals = analyzeBreakingSignals(item.title, item.summary, item.publishedAt)
+        return {
+          priorityScore: signals.priorityScore,
+          isBreaking: signals.isBreaking,
+        }
+      },
+    })
+  },
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { saveService } from '@/services/saveService'
 import { useAuth } from '@/hooks/useAuth'
@@ -16,6 +16,17 @@ export function useSave({ postId, initialSaved = false, initialCount = 0 }: UseS
   const [saved, setSaved] = useState(initialSaved)
   const [count, setCount] = useState(initialCount)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!user?.uid || !postId) return
+    let cancelled = false
+    saveService.isSaved(user.uid, postId).then((isSaved) => {
+      if (!cancelled) setSaved(isSaved)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.uid, postId])
 
   const toggle = useCallback(async () => {
     if (!user) {

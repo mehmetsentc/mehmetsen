@@ -1,0 +1,364 @@
+import { DEFAULT_CATEGORIES } from '@/constants/config'
+import {
+  buildFeedTeaser,
+  cleanupNewsBody,
+  cleanupNewsSummary,
+  cleanupNewsTitle,
+  MAX_FEED_TEASER_LENGTH,
+} from '@/lib/newsContentCleanup'
+import { slugifyCity } from '@/lib/location'
+
+/** AI-assigned news categories (slug → display name). */
+export const AI_NEWS_CATEGORIES: Record<string, string> = {
+  'son-dakika': 'Son Dakika',
+  'yerel-haber': 'Yerel Haber',
+  gundem: 'Gündem',
+  siyaset: 'Siyaset',
+  ekonomi: 'Ekonomi',
+  spor: 'Spor',
+  dunya: 'Dünya',
+  teknoloji: 'Teknoloji',
+  saglik: 'Sağlık',
+  kultur: 'Kültür',
+  magazin: 'Magazin',
+  bilim: 'Bilim',
+  trend: 'Trend',
+  influencer: 'Influencer',
+}
+
+/** Spec / English aliases → canonical Turkish slug ids. */
+const CATEGORY_ALIASES: Record<string, string> = {
+  'breaking-news': 'son-dakika',
+  breaking: 'son-dakika',
+  politics: 'siyaset',
+  economy: 'ekonomi',
+  sports: 'spor',
+  world: 'dunya',
+  technology: 'teknoloji',
+  tech: 'teknoloji',
+  health: 'saglik',
+  culture: 'kultur',
+  'kultur-sanat': 'kultur',
+  science: 'bilim',
+  general: 'gundem',
+  local: 'yerel-haber',
+  'local-news': 'yerel-haber',
+  yerel: 'yerel-haber',
+  'yerel-haber': 'yerel-haber',
+  magazin: 'magazin',
+  dedikodu: 'magazin',
+  entertainment: 'magazin',
+}
+
+const CATEGORY_IDS = new Set([
+  ...Object.keys(AI_NEWS_CATEGORIES),
+  ...DEFAULT_CATEGORIES.map((c) => c.id),
+])
+
+export interface AiRewriteInput {
+  sourceLabel: string
+  originalTitle: string
+  originalSummary: string
+  originalContent: string
+  sourceUrl: string
+  /** Lighter rewrite for historical archive backfill. */
+  mode?: 'feed' | 'archive'
+}
+
+export interface AiRewriteResult {
+  title: string
+  /** Short feed teaser — distinct from title, max 120 chars. */
+  summary: string
+  description: string
+  categoryId: string
+  /** 0–100 — AI confidence in category assignment. */
+  categoryConfidence: number
+  /** True only for nationwide urgent events (see classification rules). */
+  isBreaking: boolean
+  city: string | null
+  district: string | null
+  country: string
+  tags: string[]
+}
+
+interface OpenAiJsonPayload {
+  title?: string
+  summary?: string
+  description?: string
+  content?: string
+  category?: string
+  categoryConfidence?: number
+  isBreaking?: boolean
+  city?: string | null
+  district?: string | null
+  country?: string | null
+  tags?: string[]
+}
+
+export interface AiArchiveRewriteResult extends AiRewriteResult {
+  summary: string
+}
+
+function getOpenAiConfig(): { apiKey: string; model: string } | null {
+  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  if (!apiKey) return null
+  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  return { apiKey, model }
+}
+
+function normalizeCategoryId(raw?: string): string {
+  const value = raw?.trim().toLowerCase() ?? ''
+  const slug = value
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+
+  if (CATEGORY_ALIASES[slug]) return CATEGORY_ALIASES[slug]
+  if (CATEGORY_IDS.has(slug)) return slug
+
+  const byName = Object.entries(AI_NEWS_CATEGORIES).find(
+    ([, name]) => name.toLowerCase() === value || name.toLowerCase() === raw?.trim().toLowerCase()
+  )
+  if (byName) return byName[0]
+
+  return 'gundem'
+}
+
+function appendSourceAttribution(body: string, sourceLabel: string): string {
+  const trimmed = body.trim()
+  const marker = `Kaynak: ${sourceLabel}`
+  if (trimmed.toLowerCase().includes('kaynak:')) return trimmed
+  return `${trimmed}\n\n${marker}`
+}
+
+const CATEGORY_CLASSIFICATION_RULES = `Kategori ve son dakika kuralları (category, categoryConfidence 0-100, isBreaking):
+- son-dakika: YALNIZCA deprem, büyük afet, darbe, suikast, ülke çapında acil durum, tüm Türkiye'yi ilgilendiren büyük siyasi kriz. ASLA spor, magazin, yerel trafik, dizi/fragman.
+- spor: maç, gol, lig, transfer, FIFA/UEFA, milli takım, derbi, sporcu. ASLA kultur veya son-dakika (istisna: milli takım Dünya Kupası finali şampiyonluğu).
+- kultur: sinema, tiyatro, sergi, müzik, edebiyat, sanat. ASLA spor haberi.
+- gundem: ulusal siyaset, geniş ekonomi gelişmeleri, kamuoyunu ilgilendiren Türkiye gündemi.
+- yerel-haber: belirli bir il/ilçeyi ilgilendiren olaylar.
+- magazin: ünlü, dizi fragmanı, dedikodu — isBreaking=false.
+- isBreaking: category=son-dakika ile aynı sıkı kriter; spor/magazin/kultur için her zaman false.
+- categoryConfidence: net eşleşmede 85+, belirsizde 50-70.`
+
+const EDITORIAL_RULES = `- ÇIKTI DİLİ: Her zaman ve yalnızca TÜRKÇE yaz. Kaynak İngilizce, Arapça veya başka bir dilde olsa bile title, summary ve content TÜRKÇE olacak.
+- Profesyonel gazete dili kullan; kaynak metindeki SEO/tıklama tuzağı kalıplarını ASLA kopyalama.
+- Yasak ifadeler: "merak edildi", "merak ediliyor", "İşte ayrıntılar", "Peki,", "araştırılıyor", "izleme linki", "tıklayın", "haberin devamı", "flaş", "son dakika" (başlıkta).
+- Aynı soruyu veya cümleyi tekrarlama; her paragraf yeni bilgi eklemeli.
+- Başlıkta BÜYÜK HARF spam, "İZLE", kanal adı veya "| …" pipe ayraçları kullanma.
+- title, summary ve content birbirinden FARKLI olmalı — summary asla title'ın aynısını veya kopyasını yazma.
+- Paragraflar arasında \\n\\n kullan; cümle ortasında satır kırma yapma (ör. "32. bölüm" tek satırda).
+- Dizi/TV haberlerinde: fragman, yayın tarihi, kanal gibi doğrulanabilir bilgileri aktar; spekülasyon ve soru bombardımanı yok.`
+
+const HEADLINE_RULES = `- title (manşet): gazete manşeti gibi vurucu, duygusal kanca, en fazla 65 karakter, cümle biçimi (yalnızca ilk harf büyük). Okuyucuyu durduran ama yanıltmayan.
+- summary (feed özeti): title'dan TAMAMEN farklı tek cümle, en fazla 120 karakter, merak uyandıran detay veya bağlam ekle (ör. "Savcılık 4 şüpheli için tutuklama istedi — aralarında tetikçi de var"). title'ı tekrarlama veya genişletme.
+- content (makale gövdesi): 3–6 paragraf (150–450 kelime); lead paragraf + bağlam + olgular + arka plan.`
+
+function buildSystemPrompt(mode: 'feed' | 'archive' = 'feed'): string {
+  const categories = Object.entries(AI_NEWS_CATEGORIES)
+    .map(([id, name]) => `${id} (${name})`)
+    .join(', ')
+
+  if (mode === 'archive') {
+    return `Sen NaHaber adlı Türkçe haber platformunun arşiv editörüsün.
+Görevin: verilen kaynak haberi özgün bir dille kısa özetlemek (arşiv kaydı, canlı feed değil).
+${EDITORIAL_RULES}
+${HEADLINE_RULES}
+- content: 2–4 paragraf (80–200 kelime); giriş + bağlam + olgular.
+- Magazin/dizi haberlerinde de aynı gazete standardını koru.
+${CATEGORY_CLASSIFICATION_RULES}
+- Kategori seç: ${categories}
+- Türkiye'deki il geçiyorsa city, ilçe geçiyorsa district (yoksa null).
+- country: varsayılan "Türkiye".
+- tags: 2–4 küçük harf anahtar kelime.
+- Yanıtı YALNIZCA geçerli JSON:
+{"title":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
+  }
+
+  return `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
+Görevin: verilen kaynak haberi TAMAMEN özgün bir dille yeniden yazmak. Asla cümle cümle kopyalama veya alıntılama.
+${EDITORIAL_RULES}
+${HEADLINE_RULES}
+- Magazin, spor, dizi/TV haberlerinde tıklama tuzağı yerine olgusal özet yaz.
+${CATEGORY_CLASSIFICATION_RULES}
+- Kategori seç: ${categories}
+- Türkiye'deki il geçiyorsa city, ilçe geçiyorsa district alanına yaz (yoksa null).
+- country: varsayılan "Türkiye"; yurt dışı haberlerde ülke adı.
+- tags: 2-5 küçük harf anahtar kelime.
+- Yanıtı YALNIZCA geçerli JSON olarak ver:
+{"title":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
+}
+
+function buildUserPrompt(input: AiRewriteInput): string {
+  const excerpt = input.originalContent.slice(0, 3500) || input.originalSummary
+  return `Kaynak: ${input.sourceLabel}
+Orijinal URL: ${input.sourceUrl}
+Orijinal başlık: ${input.originalTitle}
+Özet/içerik:
+${excerpt}`
+}
+
+async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
+  const config = getOpenAiConfig()
+  if (!config) {
+    throw new Error('OPENAI_API_KEY is not configured')
+  }
+
+  const mode = input.mode ?? 'feed'
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: config.model,
+      temperature: mode === 'archive' ? 0.45 : 0.55,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: buildSystemPrompt(mode) },
+        { role: 'user', content: buildUserPrompt(input) },
+      ],
+    }),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw new Error(`OpenAI API error ${res.status}: ${errText.slice(0, 200)}`)
+  }
+
+  const json = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>
+  }
+  const content = json.choices?.[0]?.message?.content?.trim()
+  if (!content) throw new Error('OpenAI returned empty content')
+
+  let parsed: OpenAiJsonPayload
+  try {
+    parsed = JSON.parse(content) as OpenAiJsonPayload
+  } catch {
+    throw new Error('OpenAI returned invalid JSON')
+  }
+
+  const title = cleanupNewsTitle(parsed.title?.trim() || input.originalTitle)
+  const bodyRaw = cleanupNewsBody(
+    parsed.content?.trim() || parsed.description?.trim() || input.originalSummary,
+    { preserveSourceLine: false }
+  )
+  const description = appendSourceAttribution(bodyRaw, input.sourceLabel)
+  const summaryCandidate = cleanupNewsSummary(
+    parsed.summary?.trim() ||
+      bodyRaw.split(/[.!?]\s+/).slice(1, 2).join('. ').slice(0, MAX_FEED_TEASER_LENGTH)
+  )
+  const summary =
+    buildFeedTeaser(title, summaryCandidate, bodyRaw) ||
+    buildFeedTeaser(title, bodyRaw.split(/[.!?]\s+/).slice(0, 1).join('. '), bodyRaw)
+  const categoryId = normalizeCategoryId(parsed.category)
+  const categoryConfidence = Math.min(
+    100,
+    Math.max(0, typeof parsed.categoryConfidence === 'number' ? parsed.categoryConfidence : 75)
+  )
+  const isBreaking = parsed.isBreaking === true
+  const cityRaw = parsed.city?.trim()
+  const city = cityRaw && cityRaw.toLowerCase() !== 'null' ? cityRaw : null
+  const districtRaw = parsed.district?.trim()
+  const district = districtRaw && districtRaw.toLowerCase() !== 'null' ? districtRaw : null
+  const countryRaw = parsed.country?.trim()
+  const country = countryRaw && countryRaw.toLowerCase() !== 'null' ? countryRaw : 'Türkiye'
+  const tags = Array.isArray(parsed.tags)
+    ? parsed.tags.map((t) => String(t).trim().toLowerCase()).filter(Boolean).slice(0, 6)
+    : []
+
+  if (city && !tags.includes(slugifyCity(city))) {
+    tags.unshift(slugifyCity(city))
+  }
+  if (district) {
+    const d = district.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')
+    if (!tags.includes(d)) tags.push(d)
+  }
+
+  const base = {
+    title,
+    summary,
+    description,
+    categoryId,
+    categoryConfidence,
+    isBreaking,
+    city,
+    district,
+    country,
+    tags,
+  }
+
+  if (mode === 'archive') {
+    return { ...base, summary: summary || cleanupNewsSummary(bodyRaw.slice(0, MAX_FEED_TEASER_LENGTH)) }
+  }
+
+  return base
+}
+
+/** Fallback when OpenAI is unavailable — still unique-ish summary + source line. */
+function fallbackRewrite(input: AiRewriteInput): AiRewriteResult | AiArchiveRewriteResult {
+  const rawBase = input.originalSummary || input.originalContent
+  // Cut at sentence boundary instead of mid-word
+  const base = (() => {
+    const limit = 800
+    if (rawBase.length <= limit) return rawBase
+    const cut = rawBase.slice(0, limit)
+    const lastSentence = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '))
+    return lastSentence > 200 ? cut.slice(0, lastSentence + 1) : cut
+  })()
+  const title = cleanupNewsTitle(input.originalTitle)
+  const bodyRaw = `${base}`
+  const description = appendSourceAttribution(
+    cleanupNewsBody(bodyRaw, {
+      preserveSourceLine: false,
+    }),
+    input.sourceLabel
+  )
+  const summary =
+    buildFeedTeaser(title, base.slice(0, MAX_FEED_TEASER_LENGTH), description) ||
+    cleanupNewsSummary(base.slice(0, MAX_FEED_TEASER_LENGTH))
+  const result = {
+    title,
+    summary,
+    description,
+    categoryId: 'gundem',
+    categoryConfidence: 50,
+    isBreaking: false,
+    city: null,
+    district: null,
+    country: 'Türkiye',
+    tags: [] as string[],
+  }
+  if (input.mode === 'archive') {
+    return { ...result, summary: summary || cleanupNewsSummary(base.slice(0, MAX_FEED_TEASER_LENGTH) || input.originalTitle) }
+  }
+  return result
+}
+
+export const aiNewsEditor = {
+  isConfigured(): boolean {
+    return Boolean(getOpenAiConfig())
+  },
+
+  async rewriteArticle(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
+    if (!getOpenAiConfig()) {
+      console.warn('[aiNewsEditor] OPENAI_API_KEY missing — using fallback rewrite')
+      return fallbackRewrite(input)
+    }
+
+    try {
+      return await callOpenAi(input)
+    } catch (error) {
+      console.error('[aiNewsEditor] rewrite failed, fallback:', error)
+      return fallbackRewrite(input)
+    }
+  },
+}

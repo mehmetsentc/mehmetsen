@@ -16,6 +16,13 @@ export interface User {
   followersCount: number
   followingCount: number
   postsCount: number
+  onboardingCompleted: boolean
+  /** User's home city slug for feed personalization */
+  citySlug?: string | null
+  /** Interest tags from onboarding (lowercase) */
+  interests?: string[]
+  /** Preferred news category ids */
+  favoriteCategories?: string[]
   createdAt: string
   updatedAt: string
 }

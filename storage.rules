@@ -1,0 +1,59 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isValidPostMedia() {
+      return request.resource.size < 50 * 1024 * 1024;
+    }
+
+    function isValidAvatar() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    function isValidEventImage() {
+      return request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // User post media — posts/{userId}/{postId}/...
+    match /posts/{userId}/{postId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidPostMedia();
+    }
+
+    // Event assets — events/{eventId}/... (includes events/images/...)
+    match /events/{eventId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidEventImage();
+    }
+
+    // Legacy user media paths (existing uploads)
+    match /news-images/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidPostMedia();
+    }
+
+    match /news-videos/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidPostMedia();
+    }
+
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidAvatar();
+    }
+  }
+}

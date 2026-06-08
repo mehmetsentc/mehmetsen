@@ -16,17 +16,17 @@ export function PostCard({ post }: PostCardProps) {
     : ''
 
   return (
-    <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+    <article className="news-card p-5">
       {/* Author */}
       <div className="mb-3 flex items-center gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
           {post.authorDisplayName?.[0]?.toUpperCase() ?? post.authorUsername[0].toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-gray-900">
+          <p className="text-sm font-medium text-[rgb(var(--color-text))]">
             {post.authorDisplayName ?? post.authorUsername}
           </p>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5 text-xs text-[rgb(var(--color-muted))]">
             <span>@{post.authorUsername}</span>
             {timeAgo && (
               <>
@@ -48,11 +48,11 @@ export function PostCard({ post }: PostCardProps) {
       <Link href={ROUTES.POST_DETAIL(post.id)} className="group block">
         <div className="flex gap-4">
           <div className="flex-1 min-w-0">
-            <h2 className="mb-1.5 line-clamp-2 text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+            <h2 className="mb-1.5 line-clamp-2 text-base font-semibold text-[rgb(var(--color-text))] transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400">
               {post.title}
             </h2>
             {post.summary && (
-              <p className="line-clamp-2 text-sm text-gray-500">{post.summary}</p>
+              <p className="line-clamp-2 text-sm text-[rgb(var(--color-muted))]">{post.summary}</p>
             )}
           </div>
           {post.coverImageUrl && (

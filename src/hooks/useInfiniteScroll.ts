@@ -44,9 +44,14 @@ export function useInfiniteScroll({
 interface UseActiveSnapItemOptions {
   onActiveChange?: (index: number) => void
   itemCount?: number
+  suspend?: boolean
 }
 
-export function useActiveSnapItem({ onActiveChange, itemCount = 0 }: UseActiveSnapItemOptions = {}) {
+export function useActiveSnapItem({
+  onActiveChange,
+  itemCount = 0,
+  suspend = false,
+}: UseActiveSnapItemOptions = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
@@ -56,6 +61,8 @@ export function useActiveSnapItem({ onActiveChange, itemCount = 0 }: UseActiveSn
   }, [])
 
   useEffect(() => {
+    if (suspend) return
+
     const container = containerRef.current
     if (!container) return
 
@@ -80,7 +87,14 @@ export function useActiveSnapItem({ onActiveChange, itemCount = 0 }: UseActiveSn
 
     itemRefs.current.forEach((el) => observer.observe(el))
     return () => observer.disconnect()
-  }, [onActiveChange, itemCount])
+  }, [onActiveChange, itemCount, suspend])
 
-  return { containerRef, setItemRef }
+  const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior = 'smooth') => {
+    const el = itemRefs.current.get(index)
+    if (!el) return false
+    el.scrollIntoView({ behavior, block: 'start' })
+    return true
+  }, [])
+
+  return { containerRef, setItemRef, scrollToIndex }
 }

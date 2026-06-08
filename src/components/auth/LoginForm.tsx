@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 import { loginSchema, type LoginFormData } from '@/lib/validators/auth'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
@@ -50,8 +51,11 @@ export function LoginForm() {
   return (
     <div className="w-full">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-900">NaHaber&apos;e Giriş Yap</h1>
-        <p className="mt-2 text-gray-500">Haberleri takip et, paylaş ve tartış</p>
+        <div className="mb-4 flex justify-center">
+          <BrandLogo size="lg" priority />
+        </div>
+        <h1 className="auth-title">NaHaber&apos;e Giriş Yap</h1>
+        <p className="auth-subtitle">Haberleri takip et, paylaş ve tartış</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -61,7 +65,7 @@ export function LoginForm() {
             {...register('email')}
             type="email"
             placeholder="ornek@email.com"
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
           />
           {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
         </div>
@@ -72,7 +76,7 @@ export function LoginForm() {
             {...register('password')}
             type="password"
             placeholder="••••••••"
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
           />
           {errors.password && (
             <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
@@ -82,7 +86,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-brand-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
         </button>
@@ -103,9 +107,9 @@ export function LoginForm() {
         {isGoogleLoading ? 'Yükleniyor...' : 'Google ile devam et'}
       </button>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-[rgb(var(--color-muted))]">
         Hesabın yok mu?{' '}
-        <Link href={ROUTES.REGISTER} className="font-medium text-blue-600 hover:underline">
+        <Link href={ROUTES.REGISTER} className="font-medium text-brand-600 hover:underline">
           Kayıt ol
         </Link>
       </p>

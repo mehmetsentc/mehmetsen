@@ -9,6 +9,7 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth } from '@/lib/firebase/auth'
 import { db, Collections } from '@/lib/firebase/firestore'
+import { userService } from '@/services/userService'
 import type { User } from '@/types/user'
 
 export const authService = {
@@ -18,12 +19,18 @@ export const authService = {
     username: string,
     displayName: string
   ): Promise<User> {
+    const normalizedUsername = userService.normalizeUsername(username)
+    const available = await userService.isUsernameAvailable(normalizedUsername)
+    if (!available) {
+      throw Object.assign(new Error('Bu kullanıcı adı zaten alınmış'), { code: 'auth/username-taken' })
+    }
+
     const credential = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(credential.user, { displayName })
 
     const userData: User = {
       uid: credential.user.uid,
-      username,
+      username: normalizedUsername,
       displayName,
       email,
       photoURL: null,
@@ -36,6 +43,7 @@ export const authService = {
       followersCount: 0,
       followingCount: 0,
       postsCount: 0,
+      onboardingCompleted: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -57,7 +65,10 @@ export const authService = {
 
     if (!userSnap.exists()) {
       const base = credential.user.email!.split('@')[0]
-      const username = base.replace(/[^a-z0-9_]/gi, '_').toLowerCase()
+      let username = base.replace(/[^a-z0-9_]/gi, '_').toLowerCase()
+      if (!(await userService.isUsernameAvailable(username))) {
+        username = `${username}_${credential.user.uid.slice(0, 6)}`
+      }
 
       const userData: User = {
         uid: credential.user.uid,
@@ -74,6 +85,7 @@ export const authService = {
         followersCount: 0,
         followingCount: 0,
         postsCount: 0,
+        onboardingCompleted: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -88,8 +100,6 @@ export const authService = {
   },
 
   async getUserProfile(uid: string): Promise<User | null> {
-    const snap = await getDoc(doc(db, Collections.USERS, uid))
-    if (!snap.exists()) return null
-    return snap.data() as User
+    return userService.getByUid(uid)
   },
 }

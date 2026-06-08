@@ -1,80 +1,192 @@
 'use client'
 
+import { memo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, Search, Bell, Bookmark, PlusSquare, LogOut } from 'lucide-react'
+import {
+  Home,
+  Clapperboard,
+  Search,
+  Bell,
+  Bookmark,
+  User,
+  Settings,
+  LogOut,
+  PlusSquare,
+  Menu,
+  MessageCircle,
+  CalendarDays,
+  Shield,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { isAdminUser } from '@/lib/admin'
+import { NavMessagesBadge } from '@/components/layout/NavMessagesBadge'
+import { logNavClick } from '@/lib/navDiagnostics'
 import { ROUTES } from '@/constants/routes'
+import { BrandLogo } from '@/components/brand/BrandLogo'
+import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
-const navItems = [
-  { icon: Home,      label: 'Ana Akış',    href: ROUTES.FEED },
-  { icon: Search,    label: 'Ara',         href: ROUTES.SEARCH },
-  { icon: Bell,      label: 'Bildirimler', href: ROUTES.NOTIFICATIONS },
-  { icon: Bookmark,  label: 'Kaydedilenler', href: ROUTES.SAVED },
-  { icon: PlusSquare, label: 'Haber Ekle', href: ROUTES.POST_CREATE },
+const navItems: Array<{
+  icon: LucideIcon
+  label: string
+  href: string
+  showBadge?: boolean
+}> = [
+  { icon: Home, label: 'Ana Sayfa', href: ROUTES.FEED },
+  { icon: CalendarDays, label: 'Etkinlikler', href: ROUTES.EVENTS },
+  { icon: Clapperboard, label: 'Teve', href: ROUTES.REELS },
+  { icon: Search, label: 'Keşfet', href: ROUTES.DISCOVER },
+  { icon: MessageCircle, label: 'Mesajlar', href: ROUTES.MESSAGES, showBadge: true },
+  { icon: Bell, label: 'Bildirimler', href: ROUTES.NOTIFICATIONS },
+  { icon: PlusSquare, label: 'Oluştur', href: ROUTES.POST_CREATE },
+  { icon: Bookmark, label: 'Kaydedilenler', href: ROUTES.SAVED },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  className?: string
+}
+
+function isActive(pathname: string, href: string): boolean {
+  if (href === ROUTES.FEED) return pathname === ROUTES.FEED
+  if (href === ROUTES.SETTINGS) return pathname.startsWith('/settings')
+  if (href === ROUTES.MESSAGES) return pathname.startsWith('/messages')
+  if (href.startsWith('/profile')) return pathname.startsWith('/profile')
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+interface SidebarLinkProps {
+  href: string
+  label: string
+  icon: LucideIcon
+  active: boolean
+  pathname: string
+  showBadge?: boolean
+}
+
+const SidebarLink = memo(function SidebarLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+  pathname,
+  showBadge,
+}: SidebarLinkProps) {
+  const handleClick = useCallback(() => {
+    logNavClick(href, pathname)
+  }, [href, pathname])
+
+  return (
+    <Link
+      href={href}
+      prefetch
+      title={label}
+      onClick={handleClick}
+      className={cn('sidebar-link nav-tap-target', active && 'sidebar-link-active')}
+    >
+      <span className="relative">
+        <Icon className={cn('sidebar-icon', active && 'sidebar-icon-active')} strokeWidth={active ? 2.5 : 2} />
+        {showBadge && <NavMessagesBadge size="md" />}
+      </span>
+      <span className="sidebar-label">{label}</span>
+    </Link>
+  )
+})
+
+function SidebarInner({ className }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuth()
+  const [hydrated, setHydrated] = useState(false)
 
-  const handleLogout = async () => {
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  const handleLogout = useCallback(async () => {
     await logout()
     toast.success('Çıkış yapıldı')
     router.push(ROUTES.LOGIN)
-  }
+  }, [logout, router])
+
+  const profileHref = hydrated && user ? ROUTES.PROFILE(user.username) : ROUTES.LOGIN
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col py-4 lg:flex">
-      <Link href={ROUTES.FEED} className="mb-6 px-3">
-        <span className="text-2xl font-black text-blue-600">NaHaber</span>
+    <aside className={cn('sidebar-rail app-nav-sidebar group/sidebar', className)}>
+      <Link
+        href={ROUTES.FEED}
+        prefetch
+        className="sidebar-brand nav-tap-target"
+        aria-label="NaHaber"
+        onClick={() => logNavClick(ROUTES.FEED, pathname)}
+      >
+        <BrandLogo size="md" className="sidebar-brand-logo" priority />
+        <span className="sidebar-brand-text">NaHaber</span>
       </Link>
 
-      <nav className="flex-1 space-y-1">
-        {navItems.map(({ icon: Icon, label, href }) => {
-          const active = pathname === href
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <Icon className="h-5 w-5" />
-              {label}
-            </Link>
-          )
-        })}
+      <nav className="sidebar-nav">
+        {navItems.map((item) => (
+          <SidebarLink
+            key={item.href}
+            href={item.href}
+            label={item.label}
+            icon={item.icon}
+            active={isActive(pathname, item.href)}
+            pathname={pathname}
+            showBadge={item.showBadge}
+          />
+        ))}
+
+        {hydrated && user && isAdminUser(user) && (
+          <SidebarLink
+            href={ROUTES.ADMIN.DASHBOARD}
+            label="Admin Panel"
+            icon={Shield}
+            active={pathname.startsWith('/admin')}
+            pathname={pathname}
+          />
+        )}
+
+        {hydrated && user && (
+          <SidebarLink
+            href={profileHref}
+            label="Profil"
+            icon={User}
+            active={pathname.startsWith('/profile')}
+            pathname={pathname}
+          />
+        )}
       </nav>
 
-      {user && (
-        <div className="space-y-1 border-t border-gray-100 pt-3">
-          <Link
-            href={ROUTES.PROFILE(user.username)}
-            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-gray-100"
-          >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
-              {user.displayName[0].toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-900">{user.displayName}</p>
-              <p className="truncate text-xs text-gray-500">@{user.username}</p>
-            </div>
-          </Link>
+      <div className="sidebar-footer">
+        <SidebarLink
+          href={ROUTES.SETTINGS}
+          label="Ayarlar"
+          icon={Settings}
+          active={pathname.startsWith('/settings')}
+          pathname={pathname}
+        />
+
+        {hydrated && user && (
           <button
+            type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-red-500"
+            title="Çıkış yap"
+            className="sidebar-link sidebar-link-danger nav-tap-target w-full"
           >
-            <LogOut className="h-4 w-4" />
-            Çıkış Yap
+            <LogOut className="sidebar-icon" />
+            <span className="sidebar-label">Çıkış Yap</span>
           </button>
-        </div>
-      )}
+        )}
+
+        <button type="button" className="sidebar-link w-full lg:hidden" aria-hidden>
+          <Menu className="sidebar-icon" />
+          <span className="sidebar-label">Daha fazla</span>
+        </button>
+      </div>
     </aside>
   )
 }
+
+export const Sidebar = memo(SidebarInner)

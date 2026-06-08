@@ -1,0 +1,220 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function hasUserDoc() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Mirrors NEXT_PUBLIC_ADMIN_UIDS until /api/admin/bootstrap promotes role in Firestore.
+    // Keep in sync with .env.local; remove UIDs here once users/{uid}.role is set.
+    function isBootstrapAdmin() {
+      return isSignedIn()
+        && request.auth.uid in [
+          'ap3scBglLIVwflfZN4qL8PKrM1A3',
+        ];
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && (
+          (hasUserDoc() && userDoc().data.role == 'admin')
+          || isBootstrapAdmin()
+        );
+    }
+
+    // likeService / saveService / commentService / postService increment these on `news`.
+    function newsEngagementCounterFields() {
+      return ['likesCount', 'savesCount', 'commentCount', 'commentsCount', 'viewsCount', 'sharesCount'];
+    }
+
+    function isNewsEngagementCounterUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(newsEngagementCounterFields());
+    }
+
+    // View counts are bumped for guests (NewsArticleClient, VideoFeedItem).
+    function isNewsViewCounterUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount']);
+    }
+
+    // eventService.recalculateEventRatings after eventReviews create/update.
+    function isEventRatingAggregateUpdate() {
+      return isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['averageRating', 'ratingCount', 'reviewCount']);
+    }
+
+    // Public profiles: anyone can `get` a single doc or `list`/query the
+    // collection (followService batches `documentId() in [...]`, search runs
+    // username range/limit queries). `read` covers both `get` and `list`.
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if false;
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isEventRatingAggregateUpdate();
+    }
+
+    match /eventReviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // Daily sync stats — admin dashboard only (written by Admin SDK cron).
+    match /meta/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.reporterId == request.auth.uid;
+      allow read, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /news/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isAdmin()
+        || (isSignedIn() && resource.data.get('authorId', '') == request.auth.uid)
+        || isNewsViewCounterUpdate()
+        || (isSignedIn() && isNewsEngagementCounterUpdate());
+      allow delete: if isAdmin()
+        || (isSignedIn() && resource.data.get('authorId', '') == request.auth.uid);
+    }
+
+    // AI-ingested drafts: admin-only read; writes via Admin SDK (cron) or admin client
+    match /newsDrafts/{draftId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Historical RSS archive — public read for search; NOT the live product path
+    match /newsArchive/{archiveId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Autonomous newsroom — Admin SDK only (workers, queue, fingerprints)
+    match /sourceFingerprints/{sourceId}/articles/{hash} {
+      allow read, write: if false;
+    }
+
+    match /newsQueue/{queueId} {
+      allow read, write: if false;
+    }
+
+    match /news/{docId}/editHistory/{entryId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /comments/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    match /likes/{likeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /saved/{saveId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.followerId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.followerId == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /notifications/{docId} {
+      allow read, update: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /posts/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    function isConversationParticipant(conversationId) {
+      return isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn()
+        && request.auth.uid in resource.data.participantIds;
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.participantIds
+        && request.resource.data.participantIds.size() == 2;
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.participantIds;
+
+      match /messages/{messageId} {
+        allow read: if isConversationParticipant(conversationId);
+        allow create: if isConversationParticipant(conversationId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.isDeleted == false;
+        allow update: if isConversationParticipant(conversationId)
+          && resource.data.senderId == request.auth.uid;
+      }
+    }
+  }
+}

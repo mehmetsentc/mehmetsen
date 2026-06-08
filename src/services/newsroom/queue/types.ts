@@ -1,0 +1,41 @@
+import type { NewsroomArticleInput } from '@/services/newsroom/types'
+import type { ArticleChangeType } from '@/services/newsroom/detection/changeDetector'
+
+export type QueueStatus = 'pending' | 'processing' | 'published' | 'failed' | 'dead_letter'
+
+export interface NewsQueueDocument {
+  status: QueueStatus
+  workerId: string
+  changeType: Exclude<ArticleChangeType, 'removed' | 'unchanged'>
+  input: NewsroomArticleInput
+  existingNewsId?: string | null
+  sourceId: string
+  fingerprintHash: string
+  attempts: number
+  maxAttempts: number
+  lastError?: string | null
+  publishedNewsId?: string | null
+  createdAt: number
+  scheduledAt: number
+  updatedAt: number
+}
+
+export interface QueueEnqueueInput {
+  workerId: string
+  changeType: Exclude<ArticleChangeType, 'removed' | 'unchanged'>
+  input: NewsroomArticleInput
+  sourceId: string
+  fingerprintHash: string
+  existingNewsId?: string | null
+}
+
+export interface QueueProcessStats {
+  picked: number
+  published: number
+  updated: number
+  drafted: number
+  failed: number
+  deadLetter: number
+  skipped: number
+  errors: string[]
+}

@@ -9,7 +9,7 @@ interface LikeButtonProps {
   count: number
   onToggle: () => void
   loading?: boolean
-  variant?: 'default' | 'overlay'
+  variant?: 'default' | 'overlay' | 'reels' | 'inline'
 }
 
 export function LikeButton({
@@ -19,7 +19,28 @@ export function LikeButton({
   loading = false,
   variant = 'default',
 }: LikeButtonProps) {
+  const safeCount = Math.max(0, count)
   const isOverlay = variant === 'overlay'
+  const isReels = variant === 'reels'
+  const isInline = variant === 'inline'
+
+  if (isInline) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={loading}
+        aria-label={liked ? 'Beğeniyi kaldır' : 'Beğen'}
+        className={cn(
+          'timeline-action disabled:opacity-60',
+          liked && 'text-red-600 dark:text-red-400'
+        )}
+      >
+        <Heart className={cn('h-4 w-4', liked && 'fill-current')} />
+        <span>{formatCount(safeCount)}</span>
+      </button>
+    )
+  }
 
   return (
     <button
@@ -28,21 +49,34 @@ export function LikeButton({
       disabled={loading}
       aria-label={liked ? 'Beğeniyi kaldır' : 'Beğen'}
       className={cn(
-        'flex flex-col items-center gap-1 transition-transform active:scale-90 disabled:opacity-60',
-        isOverlay ? 'text-white' : 'text-gray-500 hover:text-red-500'
+        'flex flex-col items-center gap-1.5 transition-transform active:scale-90 disabled:opacity-60',
+        isReels || isOverlay
+          ? 'text-white'
+          : 'text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400'
       )}
     >
+      {isReels ? (
+        <Heart className={cn('h-7 w-7', liked && 'fill-red-500 text-red-500')} />
+      ) : (
+        <span
+          className={cn(
+            'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm transition-colors',
+            isOverlay ? 'bg-black/30' : 'bg-gray-100 dark:bg-gray-800',
+            liked && 'text-red-500 dark:text-red-400'
+          )}
+        >
+          <Heart className={cn('h-6 w-6', liked && 'fill-current')} />
+        </span>
+      )}
       <span
         className={cn(
-          'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm transition-colors',
-          isOverlay ? 'bg-black/30' : 'bg-gray-100',
-          liked && 'text-red-500'
+          'text-xs font-semibold',
+          isOverlay || isReels
+            ? 'text-white drop-shadow'
+            : 'text-gray-600 dark:text-gray-400'
         )}
       >
-        <Heart className={cn('h-6 w-6', liked && 'fill-current')} />
-      </span>
-      <span className={cn('text-xs font-semibold', isOverlay ? 'text-white drop-shadow' : '')}>
-        {formatCount(count)}
+        {formatCount(safeCount)}
       </span>
     </button>
   )
