@@ -15,7 +15,9 @@ export function getPrimaryVideo(post: Post): MediaItem | null {
 export function hasVideoContent(post: Post): boolean {
   return Boolean(
     post.mediaItems?.some((m) => m.type === 'video' && m.url?.trim()) ||
-      getPrimaryVideo(post)?.url?.trim()
+      getPrimaryVideo(post)?.url?.trim() ||
+      // AI-generated audio articles (TTS): no video file but playable in Teve feed
+      post.audioUrl?.trim()
   )
 }
 
