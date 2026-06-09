@@ -16,6 +16,7 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { generateVideoScript, fallbackVideoScript, type VideoScript } from './videoScriptGenerator'
+import { generateTtsAudio } from './ttsGenerator'
 
 const BATCH_SIZE = 5  // Process up to 5 videos per cron run (avoids timeout)
 const MAX_DURATION_MS = 250_000  // 250s hard limit per run
@@ -99,6 +100,11 @@ export async function processVideoQueue(): Promise<VideoProcessorResult> {
 
       const now = Date.now()
 
+      // Generate TTS audio from voiceText (non-blocking — null if API key missing)
+      // We create the Firestore doc first with a placeholder, then update with audioUrl
+      const tempVideoId = `${item.newsId}_${now}`
+      const ttsResult = await generateTtsAudio(script.voiceText, tempVideoId)
+
       // Build video document for the videos collection (TikTok feed)
       const videoDoc = {
         newsId: item.newsId,
@@ -109,14 +115,19 @@ export async function processVideoQueue(): Promise<VideoProcessorResult> {
         thumbnailPrompt: script.thumbnailPrompt,
         hashtags: script.hashtags,
         durationSeconds: script.durationSeconds,
-        // These will be filled by a separate media generation step:
+        // Audio from Google TTS (populated when API key is set)
+        audioUrl: ttsResult?.audioUrl ?? '',
+        audioStoragePath: ttsResult?.storagePath ?? '',
+        // Video URL: empty until actual video generation step
         videoUrl: '',
         thumbnailUrl: item.coverImageUrl ?? '',
         coverImageUrl: item.coverImageUrl ?? '',
         // Metadata
         categoryId: item.categoryId,
-        status: 'draft',          // 'draft' until actual video file is generated
+        // 'audio_ready' when TTS succeeded, 'draft' otherwise
+        status: ttsResult ? 'audio_ready' : 'draft',
         scriptReady: true,
+        audioReady: Boolean(ttsResult),
         mediaReady: false,
         likes: 0,
         views: 0,
@@ -136,6 +147,7 @@ export async function processVideoQueue(): Promise<VideoProcessorResult> {
         videoScriptFull: JSON.stringify(script),
         videoTitle: script.videoTitle,
         videoId: videoRef.id,
+        audioUrl: ttsResult?.audioUrl ?? '',
         videoQueued: false,
         videoProcessedAt: now,
       })

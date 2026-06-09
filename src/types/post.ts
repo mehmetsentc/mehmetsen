@@ -75,6 +75,12 @@ export interface Post {
   videoId?: string
   /** True when article has been added to videoQueue */
   videoQueued?: boolean
+  /** Public URL for AI-generated TTS audio (MP3) stored in Firebase Storage */
+  audioUrl?: string
+  /** Firebase Storage path for the TTS MP3 */
+  audioStoragePath?: string
+  /** True when TTS audio has been generated successfully */
+  audioReady?: boolean
   publishedAt: string | null
   createdAt: string
   updatedAt: string

@@ -66,6 +66,11 @@ function VideoFeedItemInner({
     return getVideoUrl(video.id) ?? media.url
   }, [getVideoUrl, video.id, media?.url])
 
+  // Audio-only mode: AI-generated news audio without video file
+  const audioUrl = (video as VideoFeedItemType & { audioUrl?: string }).audioUrl
+  const isAudioMode = !stableSrc && Boolean(audioUrl)
+  const audioRef = useRef<HTMLAudioElement>(null)
+
   const wasLoadedBefore = isVideoLoaded(video.id) || Boolean(stableSrc && hasMediaBeenFetched(stableSrc))
 
   const preload = useMemo((): 'none' | 'metadata' | 'auto' => {
@@ -197,10 +202,130 @@ function VideoFeedItemInner({
     [togglePlay, triggerDoubleTapLike]
   )
 
+  // ── Audio-only card (AI-generated TTS, no video file) ─────────────────────
+  // Sync audio element play/pause/mute with isActive + paused + muted state
+  useEffect(() => {
+    const el = audioRef.current
+    if (!el || !isAudioMode) return
+    el.muted = muted
+    if (isActive && !paused) {
+      el.play().catch(() => setPaused(true))
+    } else {
+      el.pause()
+    }
+  }, [isActive, paused, muted, isAudioMode])
+
   if (!stableSrc) {
+    if (isAudioMode) {
+      const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl ?? null
+      return (
+        <div ref={refCallback} data-index={index} className="reels-slide">
+          <div
+            className="reels-video-card relative cursor-pointer select-none overflow-hidden bg-black"
+            onClick={() => {
+              if (paused) {
+                audioRef.current?.play().catch(() => {})
+                setPaused(false)
+              } else {
+                audioRef.current?.pause()
+                setPaused(true)
+              }
+            }}
+          >
+            {/* Cover image as background */}
+            {coverSrc && (
+              <img
+                src={coverSrc}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover opacity-80"
+                loading="lazy"
+              />
+            )}
+
+            {/* Dark gradient so text is readable */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+
+            {/* Audio element — hidden, driven by effects */}
+            <audio
+              ref={audioRef}
+              src={audioUrl}
+              loop
+              muted={muted}
+              preload="auto"
+              onLoadedData={() => setLoading(false)}
+              onWaiting={() => setLoading(true)}
+              onPlaying={() => setLoading(false)}
+            />
+
+            {/* Loading spinner */}
+            {loading && isActive && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
+                <Loader2 className="h-10 w-10 animate-spin text-white/80" />
+              </div>
+            )}
+
+            {/* Pause indicator */}
+            {paused && isActive && !loading && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+                  <Play className="h-8 w-8 fill-white text-white" />
+                </div>
+              </div>
+            )}
+
+            {/* "Audio News" badge */}
+            <div className="absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+              </svg>
+              Sesli Haber
+            </div>
+
+            {/* Heart burst on double-tap */}
+            {heartBurst && (
+              <div
+                key={heartBurst.key}
+                className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-1/2 animate-heart-burst"
+                style={{ left: heartBurst.x, top: heartBurst.y }}
+              >
+                <Heart className="h-20 w-20 fill-[rgb(var(--color-brand))] text-[rgb(var(--color-brand))] drop-shadow-lg" />
+              </div>
+            )}
+
+            <VideoActions
+              video={{ ...video, isLiked: liked, likesCount }}
+              onCommentClick={() => setCommentsOpen(true)}
+              onLikeChange={(likedVal, count) =>
+                onUpdate(video.id, { isLiked: likedVal, likesCount: count })
+              }
+              onSaveChange={(saved, count) =>
+                onUpdate(video.id, { isSaved: saved, savesCount: count })
+              }
+              onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+              muted={muted}
+              onToggleMuted={toggleMuted}
+            />
+
+            <VideoOverlay video={video} />
+
+            <VideoCommentSheet
+              postId={video.id}
+              open={commentsOpen}
+              onClose={() => setCommentsOpen(false)}
+              commentsCount={video.commentsCount}
+              onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+            />
+          </div>
+        </div>
+      )
+    }
+
+    // No video, no audio → spinner placeholder
     return (
       <div ref={refCallback} data-index={index} className="reels-slide">
-        <Loader2 className="h-8 w-8 animate-spin text-[rgb(var(--color-muted))]" />
+        <div className="flex h-full w-full items-center justify-center bg-black">
+          <Loader2 className="h-8 w-8 animate-spin text-[rgb(var(--color-muted))]" />
+        </div>
       </div>
     )
   }
