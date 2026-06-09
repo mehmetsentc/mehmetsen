@@ -51,8 +51,9 @@ function buildNewsTimelineQueryConstraints(
   options?: NewsTimelineOptions,
   watchLimit = PAGE_SIZE
 ): { constraints: Parameters<typeof query>[1][]; filterAuthorOnServer: boolean } {
-  const filterAuthorOnServer =
-    !options?.citySlug && !options?.categoryId && options?.feedSource === 'nahaber'
+  // Never filter author server-side — composite index (author+createdAt) may not exist.
+  // feedSource filter is always applied client-side via filterPostsByFeedSource.
+  const filterAuthorOnServer = false
 
   const constraints: Parameters<typeof query>[1][] = []
 
@@ -64,14 +65,10 @@ function buildNewsTimelineQueryConstraints(
   ) {
     constraints.push(where('citySlug', '==', options.preferredCitySlug.trim()))
   } else if (options?.categoryId === 'son-dakika') {
-    // Query by isBreaking==true to catch ALL breaking news regardless of stored categoryId
+    // isBreaking==true catches all breaking news regardless of stored categoryId
     constraints.push(where('isBreaking', '==', true))
   } else if (options?.categoryId) {
     constraints.push(where('categoryId', '==', options.categoryId))
-  }
-
-  if (filterAuthorOnServer) {
-    constraints.push(where('author', '==', 'nahaber'))
   }
 
   constraints.push(orderBy('createdAt', 'desc'))
