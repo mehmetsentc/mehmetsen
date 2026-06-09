@@ -43,8 +43,10 @@ export function NewsCard({ post }: NewsCardProps) {
   })
 
   const showBreaking = shouldShowBreakingBadge(post)
+  // Prefer spot (AI journalistic lead) → feedTeaser → summary fallback
   const feedTeaser =
-    post.feedTeaser ?? buildFeedTeaser(post.title, post.summary, post.content)
+    post.spot?.trim() ||
+    (post.feedTeaser ?? buildFeedTeaser(post.title, post.summary, post.content))
 
   return (
     <article className="news-card">
@@ -117,9 +119,20 @@ export function NewsCard({ post }: NewsCardProps) {
 
         <div className="space-y-2 px-4 py-3">
           {feedTeaser && (
-            <p className="timeline-summary">{feedTeaser}</p>
+            <p className="timeline-summary leading-relaxed">{feedTeaser}</p>
           )}
-          <p className="text-xs font-medium text-[rgb(var(--color-muted))]">Kaynak: {post.authorDisplayName}</p>
+          <div className="flex items-center gap-2 text-xs text-[rgb(var(--color-muted))]">
+            {post.readingTimeMinutes && (
+              <>
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {post.readingTimeMinutes} dk okuma
+                </span>
+                <span aria-hidden>·</span>
+              </>
+            )}
+            <span>{post.authorDisplayName}</span>
+          </div>
         </div>
       </Link>
 

@@ -5,17 +5,26 @@ import { VideoFeed } from '@/components/video/VideoFeed'
 
 function ReelsLoadingFallback() {
   return (
-    <div className="flex min-h-[min(72dvh,520px)] flex-col items-center justify-center gap-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-6 py-12 text-center">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-      <p className="text-sm text-[rgb(var(--color-muted))]">Videolar yükleniyor...</p>
+    <div className="flex min-h-[min(72dvh,520px)] flex-col items-center justify-center gap-3 bg-black px-6 py-12 text-center">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/40 border-t-white" />
+      <p className="text-sm text-white/60">Videolar yükleniyor...</p>
     </div>
   )
 }
 
+/**
+ * Teve page — forced dark mode, immersive full-screen video feed.
+ * Always renders in dark mode regardless of user system preference.
+ */
 export function ReelsPageClient() {
   return (
-    <Suspense fallback={<ReelsLoadingFallback />}>
-      <VideoFeed />
-    </Suspense>
+    // `dark` class forces Tailwind dark-mode variants for this entire subtree
+    <div className="dark" style={{ colorScheme: 'dark' }}>
+      <div className="min-h-screen bg-black">
+        <Suspense fallback={<ReelsLoadingFallback />}>
+          <VideoFeed />
+        </Suspense>
+      </div>
+    </div>
   )
 }

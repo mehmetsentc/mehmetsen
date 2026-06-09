@@ -1,7 +1,7 @@
 'use client'
 
 import { memo, useRef, useEffect, useState, useCallback, useMemo } from 'react'
-import { Heart, Loader2, Play, Volume2, VolumeX } from 'lucide-react'
+import { Heart, Loader2, Play } from 'lucide-react'
 import { getPrimaryVideo } from '@/lib/postUtils'
 import { markReelSeen } from '@/lib/reelsSeen'
 import { postService } from '@/services/postService'
@@ -248,16 +248,6 @@ function VideoFeedItemInner({
           </div>
         )}
 
-        {/* Mute toggle button */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); toggleMuted() }}
-          aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
-          className="absolute bottom-4 right-[4.5rem] z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70 sm:right-[4.75rem]"
-        >
-          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        </button>
-
         <VideoActions
           video={{ ...video, isLiked: liked, likesCount }}
           onCommentClick={() => setCommentsOpen(true)}
@@ -268,6 +258,8 @@ function VideoFeedItemInner({
             onUpdate(video.id, { isSaved: saved, savesCount: count })
           }
           onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+          muted={muted}
+          onToggleMuted={toggleMuted}
         />
 
         <VideoOverlay video={video} />

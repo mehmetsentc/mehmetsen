@@ -74,14 +74,17 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
   const readText = [post.summary, post.content].filter(Boolean).join(' ')
   const readMinutes = post.readingTimeMinutes ?? estimateReadMinutes(readText)
 
+  // Prefer AI spot (journalistic lead) → summary fallback
+  const spotText = post.spot?.trim() || ''
   const summaryText = cleanupNewsSummary(post.summary?.trim() || '')
+  const leadText = spotText || summaryText
   const bodyText = cleanupNewsBody(post.content?.trim() || '', { preserveSourceLine: false })
   const articleTitle = cleanupNewsTitle(post.title)
 
-  const showLead = Boolean(summaryText)
+  const showLead = Boolean(leadText)
   const showBody =
     Boolean(bodyText) &&
-    (!summaryText || normalizeForCompare(bodyText) !== normalizeForCompare(summaryText))
+    (!leadText || normalizeForCompare(bodyText) !== normalizeForCompare(leadText))
 
   // Prefer extracted HTML content; fallback to paragraphs
   const hasHtmlContent = Boolean(post.htmlContent?.trim())
@@ -215,11 +218,11 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
 
         {/* Article body */}
         <div className="px-4 py-6 sm:px-8 sm:py-8">
-          {/* Lead paragraph */}
+          {/* Spot / Lead paragraph — journalistic 5W+H intro */}
           {showLead && (
-            <p className="news-lead mb-8 border-l-4 border-[rgb(var(--color-brand))] bg-[rgb(var(--color-surface))] px-5 py-4 text-lg font-medium leading-relaxed text-[rgb(var(--color-text))] sm:text-xl">
-              {summaryText}
-            </p>
+            <blockquote className="news-lead mb-8 border-l-4 border-[rgb(var(--color-brand))] bg-[rgb(var(--color-surface))] px-5 py-4 text-lg font-medium leading-relaxed text-[rgb(var(--color-text))] sm:text-xl not-italic">
+              {leadText}
+            </blockquote>
           )}
 
           {/* Full HTML content (extracted from source) */}
@@ -308,7 +311,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
               postId={post.id}
               slug={post.slug}
               title={post.title}
-              text={summaryText || bodyText.slice(0, 200)}
+              text={leadText || bodyText.slice(0, 200)}
               variant="inline"
             />
             <SaveButton

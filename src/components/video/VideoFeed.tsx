@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { AlertCircle, Clapperboard, Loader2, RefreshCw } from 'lucide-react'
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { useVideoFeed } from '@/hooks/useVideoFeed'
@@ -142,18 +142,8 @@ export function VideoFeed() {
     <ReelsAudioProvider>
     <div className={cn('reels-page', showVideoFeed && 'reels-layout')}>
       <div className={cn('reels-feed w-full', showVideoFeed && 'reels-player-wrap')}>
-        <header className="reels-header">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-600 text-white">
-              <Clapperboard className="h-4 w-4" />
-            </span>
-            <div>
-              <h1 className="text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
-                Teve
-              </h1>
-              <p className="text-xs text-[rgb(var(--color-muted))]">Kısa video haberler</p>
-            </div>
-          </div>
+        {/* Immersive header: tabs only, no title/icon */}
+        <header className="reels-header bg-black/0 backdrop-blur-none">
           <ReelsFeedTabs active={feedTab} onChange={handleTabChange} />
         </header>
 

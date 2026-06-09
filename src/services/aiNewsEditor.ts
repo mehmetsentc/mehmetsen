@@ -67,9 +67,19 @@ export interface AiRewriteInput {
 
 export interface AiRewriteResult {
   title: string
+  /**
+   * SPOT — gazetecilik lideri / haber girişi.
+   * Kim / Ne / Nerede / Ne zaman / Neden / Nasıl cevaplar.
+   * 2-4 cümle, 60-120 kelime. Makale sayfasında öne çıkan bölüm.
+   */
+  spot: string
   /** Short feed teaser — distinct from title, max 120 chars. */
   summary: string
   description: string
+  /** SEO-optimized title for <title> tag and SERP (55-65 chars). */
+  seoTitle: string
+  /** SEO meta description for SERP snippet (145-160 chars). */
+  seoDescription: string
   categoryId: string
   /** 0–100 — AI confidence in category assignment. */
   categoryConfidence: number
@@ -83,9 +93,12 @@ export interface AiRewriteResult {
 
 interface OpenAiJsonPayload {
   title?: string
+  spot?: string
   summary?: string
   description?: string
   content?: string
+  seoTitle?: string
+  seoDescription?: string
   category?: string
   categoryConfidence?: number
   isBreaking?: boolean
@@ -155,9 +168,12 @@ const EDITORIAL_RULES = `- ÇIKTI DİLİ: Her zaman ve yalnızca TÜRKÇE yaz. K
 - Paragraflar arasında \\n\\n kullan; cümle ortasında satır kırma yapma (ör. "32. bölüm" tek satırda).
 - Dizi/TV haberlerinde: fragman, yayın tarihi, kanal gibi doğrulanabilir bilgileri aktar; spekülasyon ve soru bombardımanı yok.`
 
-const HEADLINE_RULES = `- title (manşet): gazete manşeti gibi vurucu, duygusal kanca, en fazla 65 karakter, cümle biçimi (yalnızca ilk harf büyük). Okuyucuyu durduran ama yanıltmayan.
-- summary (feed özeti): title'dan TAMAMEN farklı tek cümle, en fazla 120 karakter, merak uyandıran detay veya bağlam ekle (ör. "Savcılık 4 şüpheli için tutuklama istedi — aralarında tetikçi de var"). title'ı tekrarlama veya genişletme.
-- content (makale gövdesi): 3–6 paragraf (150–450 kelime); lead paragraf + bağlam + olgular + arka plan.`
+const HEADLINE_RULES = `- title (manşet/aiHeadline): gazete manşeti gibi vurucu, duygusal kanca, en fazla 65 karakter, cümle biçimi (yalnızca ilk harf büyük). Okuyucuyu durduran ama yanıltmayan.
+- spot (haber girişi/lider paragraf): Gazetecilik formatı. Kim, ne, nerede, ne zaman, neden, nasıl sorularını yanıtlar. 2-4 cümle, 60-120 kelime. Makale sayfasında öne çıkan kutuda gösterilir. title'dan FARKLI, daha derin bağlam içerir.
+- summary (feed teaser): title VE spot'tan TAMAMEN farklı tek cümle, en fazla 120 karakter, merak uyandıran detay. title veya spot'u kopyalama.
+- seoTitle: Google arama başlığı, 55-65 karakter, anahtar kelimeler öne. title'dan farklı olabilir, daha açıklayıcı.
+- seoDescription: SERP meta açıklaması, 145-160 karakter, değer önerisi + anahtar kelime + okuyucuyu tıklatacak kanca. summary'den farklı yaz.
+- content (makale gövdesi): 3–6 paragraf (200–500 kelime); spot'ı tekrarlama, bağlam + olgular + arka plan yaz. Hiçbir zaman RSS özeti kopyalanmaz.`
 
 function buildSystemPrompt(mode: 'feed' | 'archive' = 'feed'): string {
   const categories = Object.entries(AI_NEWS_CATEGORIES)
@@ -177,11 +193,12 @@ ${CATEGORY_CLASSIFICATION_RULES}
 - country: varsayılan "Türkiye".
 - tags: 2–4 küçük harf anahtar kelime.
 - Yanıtı YALNIZCA geçerli JSON:
-{"title":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
+{"title":"...","spot":"...2-4 cümle lider paragraf...","seoTitle":"...","seoDescription":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
   }
 
-  return `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
-Görevin: verilen kaynak haberi TAMAMEN özgün bir dille yeniden yazmak. Asla cümle cümle kopyalama veya alıntılama.
+  return `Sen NaHaber adlı Türkçe haber platformunun baş editörüsün.
+Görevin: verilen kaynak haberi TAMAMEN özgün, profesyonel gazete diliyle yeniden yazmak.
+ASLA kaynak metni cümle cümle kopyalama. Her zaman özgün, akıcı Türkçe yaz.
 ${EDITORIAL_RULES}
 ${HEADLINE_RULES}
 - Magazin, spor, dizi/TV haberlerinde tıklama tuzağı yerine olgusal özet yaz.
@@ -191,7 +208,7 @@ ${CATEGORY_CLASSIFICATION_RULES}
 - country: varsayılan "Türkiye"; yurt dışı haberlerde ülke adı.
 - tags: 2-5 küçük harf anahtar kelime.
 - Yanıtı YALNIZCA geçerli JSON olarak ver:
-{"title":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
+{"title":"...","spot":"...2-4 cümle lider paragraf...","seoTitle":"...","seoDescription":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
 }
 
 function buildUserPrompt(input: AiRewriteInput): string {
@@ -259,6 +276,14 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
   const summary =
     buildFeedTeaser(title, summaryCandidate, bodyRaw) ||
     buildFeedTeaser(title, bodyRaw.split(/[.!?]\s+/).slice(0, 1).join('. '), bodyRaw)
+
+  // Spot — journalistic lead paragraph
+  const spot = cleanupNewsSummary(parsed.spot?.trim() || summary).slice(0, 600)
+
+  // SEO fields — fallback to title/summary if AI didn't return them
+  const seoTitle = (parsed.seoTitle?.trim() || title).slice(0, 70)
+  const seoDescription = (parsed.seoDescription?.trim() || summary || bodyRaw.slice(0, 160)).slice(0, 165)
+
   const categoryId = normalizeCategoryId(parsed.category)
   const categoryConfidence = Math.min(
     100,
@@ -285,8 +310,11 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
 
   const base = {
     title,
+    spot,
     summary,
     description,
+    seoTitle,
+    seoDescription,
     categoryId,
     categoryConfidence,
     isBreaking,
@@ -327,8 +355,11 @@ function fallbackRewrite(input: AiRewriteInput): AiRewriteResult | AiArchiveRewr
     cleanupNewsSummary(base.slice(0, MAX_FEED_TEASER_LENGTH))
   const result = {
     title,
+    spot: summary.slice(0, 600),
     summary,
     description,
+    seoTitle: title.slice(0, 70),
+    seoDescription: (summary || base.slice(0, 160)).slice(0, 165),
     categoryId: 'gundem',
     categoryConfidence: 50,
     isBreaking: false,

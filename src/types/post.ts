@@ -56,6 +56,15 @@ export interface Post {
   readingTimeMinutes?: number
   /** Original source article URL */
   sourceUrl?: string
+  /**
+   * Journalistic lead paragraph — answers Who/What/Where/When/Why/How.
+   * 2-4 sentences, 60-120 words. Displayed prominently on article page.
+   */
+  spot?: string
+  /** SEO-optimized title for search engines (55-65 chars) */
+  seoTitle?: string
+  /** SEO meta description for SERP snippet (145-165 chars) */
+  seoDescription?: string
   publishedAt: string | null
   createdAt: string
   updatedAt: string
