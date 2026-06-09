@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Volume2, VolumeX } from 'lucide-react'
+import { Eye } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
 import { useFollow } from '@/hooks/useFollow'
-import { useReelsAudio } from '@/store/reelsAudioContext'
+import { formatCount } from '@/lib/postUtils'
 import type { VideoFeedItem } from '@/hooks/useVideoFeed'
 
 interface VideoOverlayProps {
@@ -33,7 +33,6 @@ function ReelsFollowLink({ targetUserId }: { targetUserId: string }) {
 
 export function VideoOverlay({ video }: VideoOverlayProps) {
   const { user } = useAuth()
-  const { muted, toggleMuted } = useReelsAudio()
   const isOwnProfile = user?.uid === video.authorId
   const caption = [video.summary, video.content]
     .map((text) => text?.trim())
@@ -99,20 +98,15 @@ export function VideoOverlay({ video }: VideoOverlayProps) {
               ))}
             </div>
           )}
+
+          {video.viewsCount > 0 && (
+            <div className="mt-2 flex items-center gap-1 text-white/70">
+              <Eye className="h-3.5 w-3.5" />
+              <span className="text-xs">{formatCount(video.viewsCount)} görüntülenme</span>
+            </div>
+          )}
         </div>
       </div>
-
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          toggleMuted()
-        }}
-        aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
-        className="absolute bottom-4 right-[4.5rem] z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70 sm:right-[4.75rem]"
-      >
-        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-      </button>
     </>
   )
 }
