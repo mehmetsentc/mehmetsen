@@ -174,11 +174,14 @@ export function buildNewsBreadcrumbJsonLd(post: Post): Record<string, unknown> {
 export function buildPostMetadata(post: Post): Metadata {
   const url = buildPostShareUrl(post)
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  const title = post.title.trim() || siteName
-  const description =
+  // Prefer AI-generated SEO fields when available
+  const title = (post.seoTitle?.trim() || post.title.trim() || siteName).slice(0, 70)
+  const description = (
+    post.seoDescription?.trim() ||
     post.summary?.trim() ||
     post.content?.trim().slice(0, 200) ||
     `${title} — ${siteName}'de oku.`
+  ).slice(0, 165)
   const image = getPostShareImage(post)
   const datePublished = post.publishedAt || post.createdAt
   const dateModified = post.updatedAt || datePublished

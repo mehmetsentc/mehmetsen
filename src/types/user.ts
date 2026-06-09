@@ -1,5 +1,12 @@
-// TODO: Implement in Phase 1
-export type UserRole = 'user' | 'moderator' | 'admin'
+export type UserRole =
+  | 'user'
+  | 'moderator'
+  | 'admin'
+  | 'super_admin'
+  | 'managing_editor'
+  | 'editor'
+  | 'author'
+  | 'video_editor'
 
 export interface User {
   uid: string
@@ -11,6 +18,8 @@ export interface User {
   website: string | null
   location: string | null
   role: UserRole
+  /** CMS department (editorial, video, tech) */
+  department?: string
   isVerified: boolean
   isBlocked: boolean
   followersCount: number

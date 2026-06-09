@@ -1,49 +1,48 @@
-import { NextResponse } from 'next/server'
-import { getBootstrapAdminUids } from '@/lib/eventSyncAuth'
-import { getAdminAuth, getAdminFirestore } from '@/lib/firebase/admin'
-
 /**
- * One-time promotion for UIDs listed in NEXT_PUBLIC_ADMIN_UIDS.
- * Requires Firebase Admin SDK credentials (FIREBASE_SERVICE_ACCOUNT_JSON or
- * FIREBASE_ADMIN_* env vars). Without them, set role: 'admin' in Firebase Console.
+ * POST /api/admin/bootstrap
+ * One-time: Sets super_admin role for the configured super admin email.
+ * Protected: only callable by the super admin themselves (must be authenticated).
+ * Idempotent: safe to call multiple times.
  */
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+import { NextResponse } from 'next/server'
+import { verifyCmsToken } from '@/lib/cmsAuth'
 
 export async function POST(request: Request) {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const token = authHeader.slice(7).trim()
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Only super admin can bootstrap
+  const auth = await verifyCmsToken(request)
+  if (!auth || auth.role !== 'super_admin') {
+    return NextResponse.json({ error: 'Forbidden: super_admin only' }, { status: 403 })
   }
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(token)
-    const bootstrapUids = getBootstrapAdminUids()
+    const { getAdminFirestore } = await import('@/lib/firebase/admin')
+    const adminDb = getAdminFirestore()
 
-    if (!bootstrapUids.includes(decoded.uid)) {
-      return NextResponse.json({ error: 'Not a bootstrap admin' }, { status: 403 })
+    const userSnap = await adminDb.collection('users').where('email', '==', auth.email).limit(1).get()
+
+    if (userSnap.empty) {
+      return NextResponse.json({ error: 'User document not found. Sign up first.' }, { status: 404 })
     }
 
-    const userRef = getAdminFirestore().collection('users').doc(decoded.uid)
-    const userDoc = await userRef.get()
+    const userDocRef = userSnap.docs[0].ref
+    const currentData = userSnap.docs[0].data()
 
-    if (userDoc.data()?.role === 'admin') {
-      return NextResponse.json({ ok: true, alreadyAdmin: true })
+    if (currentData.role === 'super_admin') {
+      return NextResponse.json({ message: 'Already super_admin', uid: auth.uid })
     }
 
-    await userRef.update({
-      role: 'admin',
+    await userDocRef.update({
+      role: 'super_admin',
       updatedAt: new Date().toISOString(),
     })
 
-    return NextResponse.json({ ok: true, promoted: true })
+    return NextResponse.json({
+      success: true,
+      message: `Role set to super_admin for ${auth.email}`,
+      uid: auth.uid,
+    })
   } catch (error) {
-    console.error('[admin/bootstrap] Failed:', error)
-    return NextResponse.json({ error: 'Bootstrap unavailable' }, { status: 503 })
+    console.error('[bootstrap]', error)
+    return NextResponse.json({ error: 'Bootstrap failed' }, { status: 500 })
   }
 }

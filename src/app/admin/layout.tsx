@@ -1,20 +1,27 @@
 'use client'
 
 import { AdminGuard } from '@/components/admin/AdminGuard'
+import { CMSSidebar } from '@/components/admin/CMSSidebar'
 import { AdminMobileNav } from '@/components/admin/AdminMobileNav'
-import { AdminSidebar } from '@/components/admin/AdminSidebar'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AdminGuard>
-      <div className="flex min-h-screen bg-[rgb(var(--color-bg))]">
-        <div className="hidden md:block">
-          <AdminSidebar />
+      <div className="flex h-screen overflow-hidden bg-[rgb(var(--color-bg))]">
+        {/* Enterprise CMS sidebar — desktop only */}
+        <div className="hidden lg:block">
+          <CMSSidebar />
         </div>
-        <main className="flex-1 overflow-auto">
-          <AdminMobileNav />
-          {children}
-        </main>
+
+        {/* Main area */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="lg:hidden">
+            <AdminMobileNav />
+          </div>
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
       </div>
     </AdminGuard>
   )

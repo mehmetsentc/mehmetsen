@@ -183,6 +183,70 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
 
+  // ── Eğlence / Magazin / Kültür / Spor ───────────────────────────────────
+  {
+    id: 'milliyet-magazin',
+    label: 'Milliyet Magazin',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/magazinRss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:milliyet.com.tr+magazin&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'sabah-magazin',
+    label: 'Sabah Magazin',
+    feedUrl: 'https://www.sabah.com.tr/rss/magazin.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:sabah.com.tr+magazin&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'posta-magazin',
+    label: 'Posta Magazin',
+    feedUrl: 'https://www.posta.com.tr/rss/magazin',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:posta.com.tr+magazin&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'ntv-spor',
+    label: 'NTV Spor',
+    feedUrl: 'https://www.ntvspor.net/rss/tum-haberler',
+    alternateFeedUrls: [
+      'https://www.ntvspor.net/rss',
+      'https://news.google.com/rss/search?q=site:ntvspor.net&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'hurriyet-spor',
+    label: 'Hürriyet Spor',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/spor',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'ntv-kultur',
+    label: 'NTV Kültür Sanat',
+    feedUrl: 'https://www.ntv.com.tr/kultur-sanat.rss',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'haberturk-spor',
+    label: 'Habertürk Spor',
+    feedUrl: 'https://www.haberturk.com/rss/kategori/spor.xml',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+
   // ── Kripto ───────────────────────────────────────────────────────────────
   {
     id: 'coindesk',

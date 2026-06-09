@@ -15,8 +15,12 @@ export type EditorId =
   | 'finans'
   | 'kripto'
   | 'video-queue'
+  | 'video-process'
+  | 'entertainment'
+  | 'seo-maintenance'
+  | 'weather'
 
-export type EditorSchedule = '2m' | '5m' | '10m' | '15m' | '30m' | '1h' | 'weekly' | 'daily' | 'pipeline'
+export type EditorSchedule = '1m' | '2m' | '5m' | '10m' | '15m' | '30m' | '1h' | '6h' | 'weekly' | 'daily' | 'pipeline'
 
 export interface EditorMetadata {
   id: EditorId

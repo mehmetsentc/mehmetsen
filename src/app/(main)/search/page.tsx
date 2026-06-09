@@ -24,6 +24,7 @@ import { getCategoryLabel } from '@/lib/newsMapper'
 import type { Post } from '@/types/post'
 import type { User } from '@/types/user'
 import type { SearchResults } from '@/services/searchService'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 
 const TRENDING = ['çanakkale', 'seçim', 'ekonomi', 'spor', 'teknoloji']
 
@@ -37,8 +38,7 @@ function PostResult({ post }: { post: Post }) {
     <Link href={href} className="flex gap-3 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))]">
       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-border))]">
         {post.coverImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={post.coverImageUrl} alt="" className="h-full w-full object-cover" />
+          <SafeNewsImage src={post.coverImageUrl} alt="" fill className="object-cover" loading="lazy" sizes="56px" />
         ) : (
           <div className="flex h-full items-center justify-center text-[rgb(var(--color-muted))]">
             {isVideo ? <Clapperboard className="h-5 w-5" /> : <Newspaper className="h-5 w-5" />}

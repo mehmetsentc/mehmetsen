@@ -99,6 +99,7 @@ export function NewsCard({ post }: NewsCardProps) {
                 src={cover}
                 alt={post.title}
                 fill
+                loading="lazy"
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                 sizes="(max-width: 768px) 100vw, 600px"
               />

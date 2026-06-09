@@ -13,7 +13,8 @@ import { YEREL_HABER_CATEGORY } from '@/lib/feedRanking'
 import { useAuth } from '@/hooks/useAuth'
 import type { TimelinePost } from '@/types/post'
 
-const LIVE_POLL_MS = 30_000
+// Longer poll interval on mobile to save battery & Firestore reads
+const LIVE_POLL_MS = typeof window !== 'undefined' && window.innerWidth < 768 ? 60_000 : 30_000
 
 function toFeedError(error: unknown): string {
   if (isFirestoreInternalError(error)) {
@@ -256,12 +257,23 @@ export function useTimelineFeed(
       )
     }
 
+    // Pause polling when tab is hidden (saves Firestore reads on mobile)
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+      } else if (!unsubscribe && !cancelled) {
+        startPolling()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
     // Defer live subscription so route transitions stay instant.
     deferTimer = setTimeout(startLive, 0)
 
     return () => {
       cancelled = true
       liveReadyRef.current = false
+      document.removeEventListener('visibilitychange', handleVisibility)
       if (deferTimer) clearTimeout(deferTimer)
       unsubscribe?.()
       if (pollTimer) clearInterval(pollTimer)

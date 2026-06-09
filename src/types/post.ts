@@ -65,6 +65,16 @@ export interface Post {
   seoTitle?: string
   /** SEO meta description for SERP snippet (145-165 chars) */
   seoDescription?: string
+  /** AI-generated 60s video voiceover script (first 500 chars) */
+  videoScript?: string
+  /** Full JSON-serialized VideoScript object */
+  videoScriptFull?: string
+  /** Short video title generated for TikTok/Reels feed */
+  videoTitle?: string
+  /** ID of the generated video document in videos collection */
+  videoId?: string
+  /** True when article has been added to videoQueue */
+  videoQueued?: boolean
   publishedAt: string | null
   createdAt: string
   updatedAt: string
