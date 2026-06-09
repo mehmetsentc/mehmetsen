@@ -1,13 +1,12 @@
 'use client'
 
-import { memo, useEffect, useState } from 'react'
+import { memo, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
-import { Navbar } from '@/components/layout/Navbar'
+import { MobileNav } from '@/components/layout/MobileNav'
 import { TrendingPanel } from '@/components/feed/TrendingPanel'
-import { ConsentStrip } from '@/components/consent/ConsentStrip'
-import { PullToRefresh } from '@/components/ui/PullToRefresh'
+import { ConsentBanner } from '@/components/consent/ConsentBanner'
 import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
 import { NetworkProvider } from '@/store/networkContext'
 import { AppStateProvider } from '@/store/appStateContext'
@@ -54,14 +53,9 @@ const LayoutShell = memo(function LayoutShell({
   isMobile: boolean
   isDesktop: boolean
 }) {
-  const [drawerOpen, setDrawerOpen] = useState(false)
-
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]" data-platform={platform}>
-      <Sidebar
-        mobileOpen={drawerOpen}
-        onMobileClose={() => setDrawerOpen(false)}
-      />
+      <Sidebar />
 
       <div
         className={cn(
@@ -70,31 +64,28 @@ const LayoutShell = memo(function LayoutShell({
           isDesktop && 'app-shell-desktop'
         )}
       >
-        <Navbar onMenuClick={() => setDrawerOpen(true)} />
-
-        <PullToRefresh>
-          <div
+        <div
+          className={cn(
+            'content-stage',
+            getStageClass(pathname, isFeed, isReels, variant)
+          )}
+        >
+          <main
             className={cn(
-              'content-stage',
-              getStageClass(pathname, isFeed, isReels, variant)
+              'content-main',
+              variant === 'wide' && 'content-main-wide',
+              variant === 'reels' && 'content-main-reels',
+              variant === 'messages' && 'content-main-messages'
             )}
           >
-            <main
-              className={cn(
-                'content-main',
-                variant === 'wide' && 'content-main-wide',
-                variant === 'reels' && 'content-main-reels',
-                variant === 'messages' && 'content-main-messages'
-              )}
-            >
-              {children}
-            </main>
-            {isFeed && <TrendingPanel />}
-          </div>
-        </PullToRefresh>
+            {children}
+          </main>
+          {isFeed && <TrendingPanel />}
+        </div>
       </div>
 
-      <ConsentStrip />
+      <MobileNav />
+      <ConsentBanner />
     </div>
   )
 })
