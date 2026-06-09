@@ -16,6 +16,7 @@ export const ROUTES = {
   BOOKMARKS: '/saved',
   SEARCH: '/search',
   DISCOVER: '/discover',
+  INFLUENCER: '/influencer',
   NOTIFICATIONS: '/notifications',
   MESSAGES: '/messages',
   MESSAGES_CONVERSATION: (conversationId: string) => `/messages/${conversationId}`,

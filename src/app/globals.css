@@ -146,7 +146,8 @@
   }
 
   html[data-platform='mobile'] .app-shell-mobile {
-    @apply pb-0 pl-0;
+    @apply pl-0;
+    padding-bottom: calc(3.5rem + var(--safe-bottom));
   }
 
   html[data-platform='desktop'] .app-shell-desktop {
@@ -1098,4 +1099,33 @@
 
 .animate-heart-burst {
   animation: heart-burst 0.9s ease-out forwards;
+}
+
+/* ── Timeline rail animation ── */
+@keyframes timeline-flow {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 0% 200%; }
+}
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--color-brand) / 0.7); }
+  50%       { box-shadow: 0 0 0 6px rgb(var(--color-brand) / 0); }
+}
+
+.timeline-connector {
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--color-brand)),
+    rgb(var(--color-brand) / 0.6) 40%,
+    rgb(var(--color-brand) / 0.2) 80%,
+    transparent
+  );
+  background-size: 1px 200%;
+  animation: timeline-flow 3s linear infinite;
+  box-shadow: 0 0 4px rgb(var(--color-brand) / 0.4);
+}
+
+.timeline-dot-breaking {
+  background-color: rgb(var(--color-brand));
+  animation: dot-pulse 1.4s ease-in-out infinite;
 }

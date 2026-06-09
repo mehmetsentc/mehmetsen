@@ -1,12 +1,14 @@
 'use client'
 
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useState, Suspense } from 'react'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { Navbar } from '@/components/layout/Navbar'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { TrendingPanel } from '@/components/feed/TrendingPanel'
-import { ConsentBanner } from '@/components/consent/ConsentBanner'
+import { ConsentStrip } from '@/components/consent/ConsentStrip'
+import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
 import { NetworkProvider } from '@/store/networkContext'
 import { AppStateProvider } from '@/store/appStateContext'
@@ -53,9 +55,14 @@ const LayoutShell = memo(function LayoutShell({
   isMobile: boolean
   isDesktop: boolean
 }) {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]" data-platform={platform}>
-      <Sidebar />
+      <Sidebar
+        mobileOpen={drawerOpen}
+        onMobileClose={() => setDrawerOpen(false)}
+      />
 
       <div
         className={cn(
@@ -64,28 +71,38 @@ const LayoutShell = memo(function LayoutShell({
           isDesktop && 'app-shell-desktop'
         )}
       >
-        <div
-          className={cn(
-            'content-stage',
-            getStageClass(pathname, isFeed, isReels, variant)
-          )}
-        >
-          <main
+        <Navbar onMenuClick={() => setDrawerOpen(true)} />
+
+        <PullToRefresh>
+          <div
             className={cn(
-              'content-main',
-              variant === 'wide' && 'content-main-wide',
-              variant === 'reels' && 'content-main-reels',
-              variant === 'messages' && 'content-main-messages'
+              'content-stage',
+              getStageClass(pathname, isFeed, isReels, variant)
             )}
           >
-            {children}
-          </main>
-          {isFeed && <TrendingPanel />}
-        </div>
+            <main
+              className={cn(
+                'content-main',
+                variant === 'wide' && 'content-main-wide',
+                variant === 'reels' && 'content-main-reels',
+                variant === 'messages' && 'content-main-messages'
+              )}
+            >
+              {children}
+            </main>
+            {isFeed && <TrendingPanel />}
+          </div>
+        </PullToRefresh>
       </div>
 
-      <MobileNav />
-      <ConsentBanner />
+      <ConsentStrip />
+
+      {/* Bottom navigation — mobile only, hidden on reels */}
+      {!isReels && (
+        <Suspense fallback={null}>
+          <MobileNav />
+        </Suspense>
+      )}
     </div>
   )
 })
