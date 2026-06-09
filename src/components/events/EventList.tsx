@@ -4,16 +4,13 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, CalendarDays, RefreshCw } from 'lucide-react'
 import { getCityCategoryName } from '@/constants/cities'
 import { getCurrentPosition, slugifyCity } from '@/lib/location'
-import type { UserCoords } from '@/lib/eventLocation'
+import { nearestProvinceSlug } from '@/constants/cities'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvents } from '@/hooks/useEvents'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
-import type { EventTimeRange } from '@/services/eventService'
 import type { EventCategory } from '@/types/event'
 import { EventCard, EventCardSkeleton } from './EventCard'
 import { EventFilters } from './EventFilters'
-
-const DEFAULT_CITY_SLUG = 'istanbul'
 
 export function EventList() {
   const { user, loading: authLoading } = useAuth()
@@ -22,54 +19,49 @@ export function EventList() {
   const userCitySlug = userCityName ? slugifyCity(userCityName) : null
 
   const [selectedCitySlug, setSelectedCitySlug] = useState<string | null>(null)
-  const [timeRange, setTimeRange] = useState<EventTimeRange>('upcoming')
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null)
-  const userPickedCityRef = useRef(false)
-
-  // "Yakınımdaki etkinlikler" — opt-in browser geolocation for distance sorting.
-  const [nearby, setNearby] = useState(false)
-  const [userCoords, setUserCoords] = useState<UserCoords | null>(null)
   const [geoLoading, setGeoLoading] = useState(false)
-  const [geoError, setGeoError] = useState<string | null>(null)
+  const userPickedCityRef = useRef(false)
+  const geoTriedRef = useRef(false)
 
-  // Default the city filter to the visitor's own city once auth resolves.
-  // Falls back to İstanbul when location is unknown.
+  // Auto-detect location once on mount (silent — no button needed)
   useEffect(() => {
-    if (authLoading || userPickedCityRef.current || selectedCitySlug) return
-    setSelectedCitySlug(userCitySlug ?? DEFAULT_CITY_SLUG)
-  }, [authLoading, userCitySlug, selectedCitySlug])
+    if (geoTriedRef.current || userPickedCityRef.current) return
+    geoTriedRef.current = true
+
+    // If user profile has a city, use it immediately
+    if (userCitySlug) {
+      setSelectedCitySlug(userCitySlug)
+      return
+    }
+
+    // Try browser geolocation silently
+    if (!navigator?.geolocation) return
+
+    setGeoLoading(true)
+    getCurrentPosition()
+      .then((pos) => {
+        const slug = nearestProvinceSlug(pos.coords.latitude, pos.coords.longitude)
+        if (slug && !userPickedCityRef.current) {
+          setSelectedCitySlug(slug)
+        }
+      })
+      .catch(() => {
+        // Permission denied or unavailable — show all events (null citySlug)
+      })
+      .finally(() => setGeoLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userCitySlug])
 
   const { events, loading, loadingMore, error, hasMore, loadMore, retry, dataSource } =
     useEvents({
       citySlug: selectedCitySlug,
       category: selectedCategory,
-      timeRange,
+      timeRange: 'upcoming',
       userCitySlug,
-      userCoords,
-      nearby,
+      userCoords: null,
+      nearby: false,
     })
-
-  const handleToggleNearby = async () => {
-    if (nearby) {
-      setNearby(false)
-      setGeoError(null)
-      return
-    }
-    setGeoLoading(true)
-    setGeoError(null)
-    try {
-      const position = await getCurrentPosition()
-      setUserCoords({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      })
-      setNearby(true)
-    } catch {
-      setGeoError('Konum alınamadı. Lütfen konum iznini kontrol edin.')
-    } finally {
-      setGeoLoading(false)
-    }
-  }
 
   const { sentinelRef } = useInfiniteScroll({
     onLoadMore: loadMore,
@@ -81,18 +73,15 @@ export function EventList() {
 
   const handleCityChange = (slug: string) => {
     userPickedCityRef.current = true
-    setNearby(false)
-    setGeoError(null)
     setSelectedCitySlug(slug)
   }
 
   const handleCityClear = () => {
     userPickedCityRef.current = false
-    setSelectedCitySlug(userCitySlug ?? DEFAULT_CITY_SLUG)
+    setSelectedCitySlug(userCitySlug ?? null)
   }
 
-  const initializing = authLoading || !selectedCitySlug
-  const showSkeletons = initializing || loading
+  const showSkeletons = authLoading || geoLoading || loading
   const showEmpty = !showSkeletons && !error && events.length === 0
   const showItems = !showSkeletons && events.length > 0
 
@@ -113,43 +102,23 @@ export function EventList() {
                   Canlı
                 </span>
               )}
-              {dataSource === 'firestore' && !showSkeletons && events.length > 0 && (
-                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                  Önbellek
-                </span>
-              )}
             </div>
             <p className="page-subtitle text-xs">
-              {nearby
-                ? 'Konumuna göre yakındaki etkinlikler'
-                : cityLabel
-                  ? timeRange === 'past'
-                    ? `${cityLabel} · Geçmiş etkinlikler`
-                    : `${cityLabel} · Yaklaşan etkinlikler`
-                  : timeRange === 'past'
-                    ? 'Geçmiş etkinlikler'
-                    : 'Şehrindeki yaklaşan etkinlikler'}
+              {cityLabel
+                ? `${cityLabel} · Yaklaşan etkinlikler`
+                : 'Tüm Türkiye · Yaklaşan etkinlikler'}
             </p>
           </div>
-
         </div>
 
         <EventFilters
           selectedCitySlug={selectedCitySlug}
           onCityChange={handleCityChange}
           onCityClear={handleCityClear}
-          nearby={nearby}
-          geoLoading={geoLoading}
-          onToggleNearby={handleToggleNearby}
-          timeRange={timeRange}
-          onTimeRangeChange={setTimeRange}
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
+          geoLoading={geoLoading}
         />
-
-        {geoError && (
-          <p className="mt-2 text-xs text-red-500">{geoError}</p>
-        )}
       </header>
 
       {error && !showSkeletons && (
@@ -173,27 +142,19 @@ export function EventList() {
             <CalendarDays className="h-7 w-7 text-blue-600 dark:text-blue-400" />
           </div>
           <p className="mt-3 text-lg font-semibold text-[rgb(var(--color-text))]">
-            {timeRange === 'past'
-              ? cityLabel
-                ? `${cityLabel} için geçmiş etkinlik bulunamadı`
-                : 'Seçilen şehirde geçmiş etkinlik bulunamadı'
-              : cityLabel
-                ? `${cityLabel} için yaklaşan etkinlik bulunamadı`
-                : 'Seçilen şehirde yaklaşan etkinlik bulunamadı'}
+            {cityLabel
+              ? `${cityLabel} için yaklaşan etkinlik bulunamadı`
+              : 'Yaklaşan etkinlik bulunamadı'}
           </p>
           <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-            {timeRange === 'upcoming'
-              ? 'Bu şehir ve filtreler için etkinlik bulunamadı. Farklı bir şehir veya kategori deneyebilirsiniz.'
-              : 'Farklı bir şehir veya kategori seçerek geçmiş etkinliklere göz atın.'}
+            Farklı bir şehir veya kategori deneyebilirsiniz.
           </p>
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 py-3 sm:grid-cols-2">
         {showSkeletons && [...Array(4)].map((_, i) => <EventCardSkeleton key={`sk-${i}`} />)}
-
         {showItems && events.map((event) => <EventCard key={event.id} event={event} />)}
-
         {loadingMore && <EventCardSkeleton key="sk-more" />}
       </div>
 

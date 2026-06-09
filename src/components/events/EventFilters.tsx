@@ -2,7 +2,6 @@
 
 import { cn } from '@/lib/utils'
 import { EVENT_CATEGORIES } from '@/lib/eventUtils'
-import type { EventTimeRange } from '@/services/eventService'
 import type { EventCategory } from '@/types/event'
 import { EventCitySearch } from './EventCitySearch'
 
@@ -10,26 +9,18 @@ interface EventFiltersProps {
   selectedCitySlug: string | null
   onCityChange: (citySlug: string) => void
   onCityClear: () => void
-  nearby?: boolean
-  geoLoading?: boolean
-  onToggleNearby?: () => void
-  timeRange: EventTimeRange
-  onTimeRangeChange: (range: EventTimeRange) => void
   selectedCategory: EventCategory | null
   onCategoryChange: (category: EventCategory | null) => void
+  geoLoading?: boolean
 }
 
 export function EventFilters({
   selectedCitySlug,
   onCityChange,
   onCityClear,
-  nearby,
-  geoLoading,
-  onToggleNearby,
-  timeRange,
-  onTimeRangeChange,
   selectedCategory,
   onCategoryChange,
+  geoLoading,
 }: EventFiltersProps) {
   return (
     <div className="space-y-3">
@@ -37,27 +28,9 @@ export function EventFilters({
         selectedCitySlug={selectedCitySlug}
         onCityChange={onCityChange}
         onClear={onCityClear}
-        nearby={nearby}
-        geoLoading={geoLoading}
-        onToggleNearby={onToggleNearby}
+        disabled={geoLoading}
+        placeholder={geoLoading ? 'Konum alınıyor...' : 'Şehir ara...'}
       />
-
-      <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-        <button
-          type="button"
-          onClick={() => onTimeRangeChange('upcoming')}
-          className={cn('filter-chip', timeRange === 'upcoming' && 'filter-chip-active')}
-        >
-          Yaklaşan
-        </button>
-        <button
-          type="button"
-          onClick={() => onTimeRangeChange('past')}
-          className={cn('filter-chip', timeRange === 'past' && 'filter-chip-active')}
-        >
-          Geçmiş
-        </button>
-      </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
         <button

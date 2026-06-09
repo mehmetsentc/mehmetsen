@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { LocateFixed, MapPin, Search, X } from 'lucide-react'
+import { MapPin, Search, X } from 'lucide-react'
 import {
   filterProvincesByQuery,
   fuzzyMatchProvinceSlug,
@@ -10,32 +10,23 @@ import {
 } from '@/constants/cities'
 import { cn } from '@/lib/utils'
 
-const QUICK_PICKS = [
-  { slug: 'istanbul', name: 'İstanbul' },
-  { slug: 'ankara', name: 'Ankara' },
-  { slug: 'izmir', name: 'İzmir' },
-] as const
-
-const DEBOUNCE_MS = 200
+const DEBOUNCE_MS = 150
+const MIN_QUERY_LEN = 3
 
 interface EventCitySearchProps {
   selectedCitySlug: string | null
   onCityChange: (citySlug: string) => void
   onClear: () => void
-  nearby?: boolean
-  geoLoading?: boolean
-  onToggleNearby?: () => void
   disabled?: boolean
+  placeholder?: string
 }
 
 export function EventCitySearch({
   selectedCitySlug,
   onCityChange,
   onClear,
-  nearby = false,
-  geoLoading = false,
-  onToggleNearby,
   disabled = false,
+  placeholder = 'Şehir ara...',
 }: EventCitySearchProps) {
   const listboxId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -54,7 +45,9 @@ export function EventCitySearch({
     return () => window.clearTimeout(timer)
   }, [query])
 
-  const suggestions = filterProvincesByQuery(debouncedQuery, 8)
+  // Only show suggestions after MIN_QUERY_LEN characters
+  const suggestions =
+    debouncedQuery.length >= MIN_QUERY_LEN ? filterProvincesByQuery(debouncedQuery, 8) : []
 
   useEffect(() => {
     setHighlightIndex(0)
@@ -92,10 +85,7 @@ export function EventCitySearch({
     const exact = suggestions.find(
       (s) => normalizeProvinceSearchTerm(s.name) === normalizeProvinceSearchTerm(trimmed)
     )
-    if (exact) {
-      selectCity(exact.slug)
-      return
-    }
+    if (exact) { selectCity(exact.slug); return }
 
     const fuzzy = fuzzyMatchProvinceSlug(trimmed)
     if (fuzzy) {
@@ -139,155 +129,110 @@ export function EventCitySearch({
     }
   }
 
-  const showClear = !!selectedCitySlug && !nearby && !disabled
+  const showDropdown = open && suggestions.length > 0 && !disabled
+  const showClear = !!selectedCitySlug && !open && !disabled
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div ref={containerRef} className="relative min-w-0 flex-1">
-          <label htmlFor={`${listboxId}-input`} className="sr-only">
-            Şehir ara
-          </label>
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--color-muted))]"
-              aria-hidden
-            />
-            <input
-              ref={inputRef}
-              id={`${listboxId}-input`}
-              type="search"
-              role="combobox"
-              aria-expanded={open}
-              aria-controls={`${listboxId}-listbox`}
-              aria-autocomplete="list"
-              aria-activedescendant={
-                open && suggestions[highlightIndex]
-                  ? `${listboxId}-option-${suggestions[highlightIndex].slug}`
-                  : undefined
-              }
-              autoComplete="off"
-              enterKeyHint="search"
-              disabled={disabled || nearby}
-              placeholder={nearby ? 'Yakınımdaki modu aktif' : 'Şehir ara...'}
-              value={open ? query : (selectedName ?? query)}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setFuzzyHint(null)
-                if (!open) setOpen(true)
-              }}
-              onFocus={() => {
-                setQuery(selectedName ?? '')
-                setOpen(true)
-              }}
-              onKeyDown={handleKeyDown}
-              className={cn(
-                'w-full rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2.5 pl-10 pr-10 text-sm text-[rgb(var(--color-text))] shadow-sm placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:cursor-not-allowed disabled:opacity-60'
-              )}
-            />
-            {showClear && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClear()
-                  setQuery('')
-                  setFuzzyHint(null)
-                  setOpen(false)
-                }}
-                aria-label="Şehir seçimini temizle"
-                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface-elevated))] hover:text-[rgb(var(--color-text))]"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+    <div ref={containerRef} className="relative w-full">
+      <label htmlFor={`${listboxId}-input`} className="sr-only">Şehir ara</label>
 
-          {open && !nearby && !disabled && suggestions.length > 0 && (
-            <ul
-              id={`${listboxId}-listbox`}
-              role="listbox"
-              className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-1 shadow-lg"
-            >
-              {suggestions.map((city, index) => (
-                <li
-                  key={city.slug}
-                  id={`${listboxId}-option-${city.slug}`}
-                  role="option"
-                  aria-selected={selectedCitySlug === city.slug}
-                >
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => selectCity(city.slug)}
-                    className={cn(
-                      'flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors',
-                      index === highlightIndex
-                        ? 'bg-brand-600/10 text-brand-700 dark:text-brand-300'
-                        : 'text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface-elevated))]',
-                      selectedCitySlug === city.slug && 'font-semibold'
-                    )}
-                  >
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--color-muted))]" />
-                    {city.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {onToggleNearby && (
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--color-muted))]"
+          aria-hidden
+        />
+        <input
+          ref={inputRef}
+          id={`${listboxId}-input`}
+          type="search"
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-controls={`${listboxId}-listbox`}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            showDropdown && suggestions[highlightIndex]
+              ? `${listboxId}-option-${suggestions[highlightIndex].slug}`
+              : undefined
+          }
+          autoComplete="off"
+          enterKeyHint="search"
+          disabled={disabled}
+          placeholder={placeholder}
+          value={open ? query : (selectedName ?? query)}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setFuzzyHint(null)
+            if (!open) setOpen(true)
+          }}
+          onFocus={() => {
+            setQuery(selectedName ?? '')
+            setOpen(true)
+          }}
+          onKeyDown={handleKeyDown}
+          className="w-full rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2.5 pl-10 pr-10 text-sm text-[rgb(var(--color-text))] shadow-sm placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:cursor-not-allowed disabled:opacity-60"
+        />
+        {showClear && (
           <button
             type="button"
-            onClick={onToggleNearby}
-            disabled={geoLoading}
-            aria-pressed={nearby}
-            className={cn(
-              'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-2xl border px-3 py-2.5 text-sm font-semibold transition-colors sm:w-auto',
-              nearby
-                ? 'border-brand-600 bg-brand-600 text-white'
-                : 'border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface-elevated))]',
-              geoLoading && 'opacity-60'
-            )}
+            onClick={() => {
+              onClear()
+              setQuery('')
+              setFuzzyHint(null)
+              setOpen(false)
+            }}
+            aria-label="Şehir seçimini temizle"
+            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface-elevated))] hover:text-[rgb(var(--color-text))]"
           >
-            <LocateFixed className={cn('h-4 w-4', geoLoading && 'animate-pulse')} />
-            Konum seç
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      {selectedName && !nearby && (
-        <p className="flex items-center gap-1.5 text-xs text-[rgb(var(--color-muted))]">
-          <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden />
-          <span>
-            Seçili: <span className="font-semibold text-[rgb(var(--color-text))]">{selectedName}</span>
-          </span>
-        </p>
+      {/* Autocomplete dropdown — shows after MIN_QUERY_LEN chars */}
+      {showDropdown && (
+        <ul
+          id={`${listboxId}-listbox`}
+          role="listbox"
+          className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-1 shadow-lg"
+        >
+          {suggestions.map((city, index) => (
+            <li
+              key={city.slug}
+              id={`${listboxId}-option-${city.slug}`}
+              role="option"
+              aria-selected={selectedCitySlug === city.slug}
+            >
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => selectCity(city.slug)}
+                className={cn(
+                  'flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors',
+                  index === highlightIndex
+                    ? 'bg-brand-600/10 text-brand-700 dark:text-brand-300'
+                    : 'text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface-elevated))]',
+                  selectedCitySlug === city.slug && 'font-semibold'
+                )}
+              >
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--color-muted))]" />
+                {city.name}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
+      {/* Hint below input */}
+      {!showDropdown && query.length > 0 && query.length < MIN_QUERY_LEN && (
+        <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+          En az {MIN_QUERY_LEN} harf gir
+        </p>
+      )}
       {fuzzyHint && (
-        <p className="text-xs text-[rgb(var(--color-muted))]" role="status">
+        <p className="mt-1 text-xs text-[rgb(var(--color-muted))]" role="status">
           {fuzzyHint}
         </p>
       )}
-
-      <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-        {QUICK_PICKS.map((city) => (
-          <button
-            key={city.slug}
-            type="button"
-            disabled={disabled || nearby}
-            onClick={() => selectCity(city.slug)}
-            className={cn(
-              'filter-chip',
-              selectedCitySlug === city.slug && !nearby && 'filter-chip-active',
-              (disabled || nearby) && 'opacity-60'
-            )}
-          >
-            {city.name}
-          </button>
-        ))}
-      </div>
     </div>
   )
 }
