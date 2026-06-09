@@ -109,12 +109,43 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
   },
   archive: {
     id: 'archive',
-    name: 'Archive Editor (deprecated primary)',
-    nameTr: 'Arşiv Editörü (ikincil)',
-    schedule: 'weekly',
-    description:
-      'DEPRECATED as product path — weekly search backfill to newsArchive only. Live feed uses workers + auto-publish.',
+    name: 'Archive Editor',
+    nameTr: 'Arşiv ve Temizlik',
+    schedule: 'daily',
+    description: '24 saatte bir eski haberleri arşivler, yinelenen taslakları temizler.',
     cronPath: '/api/cron/newsroom/archive',
+  },
+  'afad-deprem': {
+    id: 'afad-deprem',
+    name: 'AFAD Earthquake Worker',
+    nameTr: 'AFAD Deprem Worker',
+    schedule: '2m',
+    description: 'AFAD API\'den M4.0+ depremleri çeker, son-dakika olarak yayınlar.',
+    cronPath: '/api/cron/newsroom/afad',
+  },
+  finans: {
+    id: 'finans',
+    name: 'Finance Worker',
+    nameTr: 'Finans Worker',
+    schedule: '30m',
+    description: 'BloombergHT, Dünya, Ekonomim — finansal haberler; ekonomi kategorisi.',
+    cronPath: '/api/cron/newsroom/finans',
+  },
+  kripto: {
+    id: 'kripto',
+    name: 'Crypto Worker',
+    nameTr: 'Kripto Worker',
+    schedule: '30m',
+    description: 'CoinDesk, CoinTelegraph, Kriptokoin — kripto para haberleri.',
+    cronPath: '/api/cron/newsroom/kripto',
+  },
+  'video-queue': {
+    id: 'video-queue',
+    name: 'Video Queue Processor',
+    nameTr: 'Video Haber Üretim Kuyruğu',
+    schedule: '1h',
+    description: '6 saatte bir yeni haberleri video üretim kuyruğuna ekler.',
+    cronPath: '/api/cron/newsroom/video-queue',
   },
 }
 

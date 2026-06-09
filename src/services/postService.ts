@@ -63,6 +63,9 @@ function buildNewsTimelineQueryConstraints(
     options?.preferredCitySlug?.trim()
   ) {
     constraints.push(where('citySlug', '==', options.preferredCitySlug.trim()))
+  } else if (options?.categoryId === 'son-dakika') {
+    // Query by isBreaking==true to catch ALL breaking news regardless of stored categoryId
+    constraints.push(where('isBreaking', '==', true))
   } else if (options?.categoryId) {
     constraints.push(where('categoryId', '==', options.categoryId))
   }
@@ -260,6 +263,8 @@ export const postService = {
         options?.preferredCitySlug?.trim()
       ) {
         posts = posts.filter((p) => p.citySlug === options.preferredCitySlug?.trim())
+      } else if (options?.categoryId === 'son-dakika') {
+        posts = posts.filter((p) => p.isBreaking === true || p.categoryId === 'son-dakika')
       } else if (options?.categoryId) {
         posts = posts.filter((p) => p.categoryId === options.categoryId)
       }

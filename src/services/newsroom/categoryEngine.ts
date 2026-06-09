@@ -310,9 +310,12 @@ export function validateCategoryClassification(
     }
   }
 
+  // Breaking editor pre-scores urgency signals — trust them without requiring nationalScope
+  const isBreakingEditor = input.editorType === 'breaking'
+
   if (isBreaking) {
     const allowedBreaking =
-      worldCupFinal || nationalScope || categoryConfidence > 90 || categoryId === 'son-dakika'
+      isBreakingEditor || worldCupFinal || nationalScope || categoryConfidence > 90 || categoryId === 'son-dakika'
     if (!allowedBreaking) {
       overrides.push('isBreaking cleared — no national scope / low confidence')
       isBreaking = false
@@ -332,9 +335,12 @@ export function validateCategoryClassification(
     isBreaking = false
   }
 
-  if (isBreaking && categoryId !== 'son-dakika' && nationalScope) {
-    categoryId = 'son-dakika'
-    categoryConfidence = Math.max(categoryConfidence, 92)
+  if (isBreaking && categoryId !== 'son-dakika') {
+    if (nationalScope || isBreakingEditor) {
+      categoryId = 'son-dakika'
+      categoryConfidence = Math.max(categoryConfidence, 92)
+      overrides.push(`isBreaking → son-dakika (${isBreakingEditor ? 'breaking editor' : 'national scope'})`)
+    }
   }
 
   return {

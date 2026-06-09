@@ -136,6 +136,94 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     maxItemsPerRun: 3,
     enabled: true,
   },
+
+  // ── Finans ───────────────────────────────────────────────────────────────
+  {
+    id: 'bloomberght',
+    label: 'Bloomberg HT',
+    feedUrl: 'https://www.bloomberght.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:bloomberght.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'dunya-ekonomi',
+    label: 'Dünya Gazetesi',
+    feedUrl: 'https://www.dunya.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:dunya.com+ekonomi&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'ekonomim',
+    label: 'Ekonomim',
+    feedUrl: 'https://www.ekonomim.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:ekonomim.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'ntv-ekonomi',
+    label: 'NTV Ekonomi',
+    feedUrl: 'https://www.ntv.com.tr/ekonomi.rss',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'haberturk-ekonomi',
+    label: 'Habertürk Ekonomi',
+    feedUrl: 'https://www.haberturk.com/rss/kategori/ekonomi.xml',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+
+  // ── Kripto ───────────────────────────────────────────────────────────────
+  {
+    id: 'coindesk',
+    label: 'CoinDesk',
+    feedUrl: 'https://www.coindesk.com/arc/outboundfeeds/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:coindesk.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'cointelegraph',
+    label: 'CoinTelegraph',
+    feedUrl: 'https://cointelegraph.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:cointelegraph.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'kriptokoin',
+    label: 'Kriptokoin.com',
+    feedUrl: 'https://kriptokoin.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:kriptokoin.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'btchaber',
+    label: 'BtcHaber',
+    feedUrl: 'https://btchaber.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:btchaber.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
 ]
 
 function envFeedOverride(sourceId: string): string | undefined {

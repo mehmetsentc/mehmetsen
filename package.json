@@ -32,6 +32,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@extractus/article-extractor": "^8.1.0",
     "@hookform/resolvers": "^3.9.0",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",

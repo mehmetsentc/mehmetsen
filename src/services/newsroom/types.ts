@@ -11,6 +11,10 @@ export type EditorId =
   | 'category-engine'
   | 'geo-engine'
   | 'archive'
+  | 'afad-deprem'
+  | 'finans'
+  | 'kripto'
+  | 'video-queue'
 
 export type EditorSchedule = '2m' | '5m' | '10m' | '15m' | '30m' | '1h' | 'weekly' | 'daily' | 'pipeline'
 
