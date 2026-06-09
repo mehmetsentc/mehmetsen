@@ -134,7 +134,7 @@ function InfluencerContent() {
   useEffect(() => {
     let cancelled = false
     void postService
-      .getNewsTimeline('influencer', { feedSource: 'nahaber' })
+      .getNewsTimeline(undefined, { feedSource: 'nahaber', categoryId: 'influencer' })
       .then((result) => {
         if (!cancelled) setPosts(result.posts)
       })
