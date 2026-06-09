@@ -2,61 +2,53 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Search, Settings, Menu } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { Bell } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { useRouter } from 'next/navigation'
+import { useNotifications } from '@/hooks/useNotifications'
+import { BrandLogo } from '@/components/brand/BrandLogo'
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher'
 import { ROUTES } from '@/constants/routes'
 
-interface NavbarProps {
-  onMenuClick?: () => void
-}
-
-export function Navbar({ onMenuClick }: NavbarProps = {}) {
+export function Navbar() {
   const { user } = useAuth()
-  const router = useRouter()
+  const { unreadCount } = useNotifications()
+  const pathname = usePathname()
   const [hydrated, setHydrated] = useState(false)
 
-  useEffect(() => { setHydrated(true) }, [])
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  if (pathname === ROUTES.FEED) return null
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] lg:hidden">
-      <div className="flex h-14 items-center gap-3 px-4">
-        {/* Hamburger */}
-        <button
-          type="button"
-          onClick={onMenuClick}
-          className="text-[rgb(var(--color-text))]"
-          aria-label="Menü"
-        >
-          <Menu className="h-6 w-6" strokeWidth={2} />
-        </button>
-
-        {/* Logo — text style like haberler.com */}
-        <Link href={ROUTES.FEED} className="flex-1" aria-label="NaHaber">
-          <span className="text-[1.45rem] font-black leading-none tracking-tight">
-            <span className="text-[rgb(var(--color-brand))]">Na</span>
-            <span className="text-[rgb(var(--color-text))]">Haber</span>
-            <span className="text-[rgb(var(--color-muted))] text-base font-semibold">.com</span>
-          </span>
+    <header className="sticky top-0 z-40 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/90 backdrop-blur-sm lg:hidden">
+      <div className="flex h-14 items-center justify-between px-4">
+        <Link href={ROUTES.FEED} aria-label="NaHaber">
+          <BrandLogo size="md" />
         </Link>
-
-        {/* Right: Search + Settings */}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => router.push(ROUTES.DISCOVER)}
-            className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
-            aria-label="Ara"
-          >
-            <Search className="h-5 w-5" strokeWidth={2} />
-          </button>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <Link
-            href={hydrated && user ? ROUTES.SETTINGS : ROUTES.LOGIN}
-            className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
-            aria-label="Ayarlar"
+            href={ROUTES.NOTIFICATIONS}
+            className="relative rounded-full p-2 text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
+            aria-label="Bildirimler"
           >
-            <Settings className="h-5 w-5" strokeWidth={2} />
+            <Bell className="h-5 w-5" />
+            {hydrated && unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </Link>
+          {hydrated && user && (
+            <Link href={ROUTES.PROFILE(user.username)}>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600/15 text-sm font-semibold text-brand-600">
+                {user.displayName[0].toUpperCase()}
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </header>
