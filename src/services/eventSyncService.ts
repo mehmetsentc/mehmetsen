@@ -217,11 +217,12 @@ async function markPastEvents(db: Firestore): Promise<number> {
   const nowIso = new Date().toISOString()
   let markedPast = 0
 
-  // Query only by startsAt — no composite index needed.
-  // Skip docs already marked past to avoid unnecessary writes.
+  // Paginate through all still-upcoming docs whose start time has elapsed.
+  // Requires composite index: timelineStatus ASC, startsAt ASC.
   while (true) {
     const snap = await db
       .collection(Collections.EVENTS)
+      .where('timelineStatus', '==', 'upcoming')
       .where('startsAt', '<', nowIso)
       .limit(MARK_PAST_BATCH_SIZE)
       .get()
@@ -229,15 +230,14 @@ async function markPastEvents(db: Firestore): Promise<number> {
     if (snap.empty) break
 
     const batch = db.batch()
-    let batchHasOps = false
     for (const doc of snap.docs) {
-      if (doc.data().timelineStatus !== 'past') {
-        batch.update(doc.ref, { timelineStatus: 'past', syncedAt: nowIso })
-        markedPast += 1
-        batchHasOps = true
-      }
+      batch.update(doc.ref, {
+        timelineStatus: 'past',
+        syncedAt: nowIso,
+      })
     }
-    if (batchHasOps) await batch.commit()
+    await batch.commit()
+    markedPast += snap.size
 
     if (snap.size < MARK_PAST_BATCH_SIZE) break
   }

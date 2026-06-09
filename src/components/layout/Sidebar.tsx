@@ -13,7 +13,6 @@ import {
   Settings,
   LogOut,
   PlusSquare,
-  Menu,
   MessageCircle,
   CalendarDays,
   Shield,
@@ -46,6 +45,8 @@ const navItems: Array<{
 
 interface SidebarProps {
   className?: string
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 function isActive(pathname: string, href: string): boolean {
@@ -94,7 +95,7 @@ const SidebarLink = memo(function SidebarLink({
   )
 })
 
-function SidebarInner({ className }: SidebarProps) {
+function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuth()
@@ -113,7 +114,22 @@ function SidebarInner({ className }: SidebarProps) {
   const profileHref = hydrated && user ? ROUTES.PROFILE(user.username) : ROUTES.LOGIN
 
   return (
-    <aside className={cn('sidebar-rail app-nav-sidebar group/sidebar', className)}>
+    <>
+      {/* Mobile drawer backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-[199] bg-black/50 lg:hidden"
+          onClick={onMobileClose}
+          aria-hidden
+        />
+      )}
+    <aside className={cn(
+        'sidebar-rail app-nav-sidebar group/sidebar',
+        // Always fixed-position; translate-x controls visibility
+        'fixed inset-y-0 left-0 z-[200] transition-transform duration-300',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        className,
+      )}>
       <Link
         href={ROUTES.FEED}
         prefetch
@@ -179,13 +195,9 @@ function SidebarInner({ className }: SidebarProps) {
             <span className="sidebar-label">Çıkış Yap</span>
           </button>
         )}
-
-        <button type="button" className="sidebar-link w-full lg:hidden" aria-hidden>
-          <Menu className="sidebar-icon" />
-          <span className="sidebar-label">Daha fazla</span>
-        </button>
       </div>
     </aside>
+    </>
   )
 }
 

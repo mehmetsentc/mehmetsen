@@ -142,11 +142,11 @@
   }
 
   .app-shell {
-    @apply min-h-screen w-full pb-[calc(4rem+var(--safe-bottom))] lg:pb-0 lg:pl-[var(--sidebar-width-collapsed)];
+    @apply min-h-screen w-full pb-0 lg:pl-[var(--sidebar-width-collapsed)];
   }
 
   html[data-platform='mobile'] .app-shell-mobile {
-    @apply pb-[calc(4rem+var(--safe-bottom))] pl-0;
+    @apply pb-0 pl-0;
   }
 
   html[data-platform='desktop'] .app-shell-desktop {
@@ -287,7 +287,8 @@
   }
 
   .sidebar-rail {
-    @apply fixed left-0 top-0 z-[105] hidden h-screen w-[var(--sidebar-width-collapsed)] flex-col border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-4 transition-[width] duration-200 ease-out lg:flex;
+    /* Always flex — visibility handled by translate-x in the component (drawer on mobile, fixed on desktop) */
+    @apply flex h-screen w-[var(--sidebar-width-collapsed)] flex-col border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-4 transition-[width] duration-200 ease-out;
   }
 
   .nav-tap-target {
