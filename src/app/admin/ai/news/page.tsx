@@ -1,5 +1,6 @@
-import { auth } from '@/lib/firebase/auth'
 'use client'
+
+import { auth } from '@/lib/firebase/auth'
 
 import { useState, useRef, useCallback } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
