@@ -50,6 +50,12 @@ export interface Post {
   priorityScore?: number
   editorType?: string
   confidenceScore?: number
+  /** Full HTML article content from page extraction */
+  htmlContent?: string
+  /** Estimated reading time in minutes */
+  readingTimeMinutes?: number
+  /** Original source article URL */
+  sourceUrl?: string
   publishedAt: string | null
   createdAt: string
   updatedAt: string

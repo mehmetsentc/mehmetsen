@@ -123,13 +123,27 @@ export async function processNewsroomArticle(
   }
 
   try {
-    const rewritten = await aiNewsEditor.rewriteArticle({
-      sourceLabel: input.sourceLabel,
-      originalTitle: input.originalTitle,
-      originalSummary: input.originalSummary,
-      originalContent: input.originalContent,
-      sourceUrl: input.sourceUrl,
-    })
+    // Skip second AI rewrite for editors that already produced AI content (trend, influencer)
+    const rewritten = input.skipAiRewrite
+      ? {
+          title: input.originalTitle,
+          summary: input.originalSummary,
+          description: input.originalContent,
+          categoryId: input.forcedCategoryId ?? 'gundem',
+          categoryConfidence: 80,
+          isBreaking: input.isBreaking ?? false,
+          city: null,
+          district: null,
+          country: 'Türkiye',
+          tags: input.extraTags ?? [],
+        }
+      : await aiNewsEditor.rewriteArticle({
+          sourceLabel: input.sourceLabel,
+          originalTitle: input.originalTitle,
+          originalSummary: input.originalSummary,
+          originalContent: input.originalContent,
+          sourceUrl: input.sourceUrl,
+        })
 
     const factCheck = await factChecker.check({
       sourceLabel: input.sourceLabel,
@@ -221,13 +235,21 @@ export async function processNewsroomArticle(
       factCheckFailedBadly ||
       moderation.decision === 'review'
 
+    // Estimate reading time from content
+    const readingWords = (rewritten.description || '').trim().split(/\s+/).filter(Boolean).length
+    const readingTimeMinutes = input.readingTimeMinutes ?? Math.max(1, Math.ceil(readingWords / 200))
+
     const doc = {
       title: rewritten.title,
       summary: rewritten.summary,
       description: rewritten.description,
-      author: NAHABER_AUTHOR,
+      // Store full HTML content if available (for rich article rendering)
+      content: rewritten.description,
+      htmlContent: input.htmlContent ?? '',
+      author: input.extractedAuthor || NAHABER_AUTHOR,
       authorId: NAHABER_AUTHOR_ID,
       thumbnail: input.imageUrl ?? '',
+      coverImageUrl: input.imageUrl ?? '',
       videoUrl: '',
       category: resolvedCategory,
       categoryId: resolvedCategory,
@@ -239,12 +261,13 @@ export async function processNewsroomArticle(
       tags: geo.tags,
       type: 'news' as const,
       source: input.sourceLabel,
+      sourceUrl: input.sourceUrl,
+      readingTimeMinutes,
       draftStatus: 'pending_review' as const,
       moderationReasons: moderation.decision === 'review' ? moderation.reasons : [],
       aiGenerated: true,
       rssFingerprint: fingerprint,
       rssGuid: input.rssGuid ?? input.sourceUrl,
-      sourceUrl: input.sourceUrl,
       ingestionSourceId: input.ingestionSourceId ?? input.editorId,
       sourceLabel: input.sourceLabel,
       originalTitle: input.originalTitle,

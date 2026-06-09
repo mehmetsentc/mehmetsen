@@ -49,6 +49,17 @@ export interface NewsroomArticleInput {
   extraTags?: string[]
   isBreaking?: boolean
   priorityScore?: number
+  /** Full article HTML extracted from source page */
+  htmlContent?: string
+  /** Estimated reading time in minutes */
+  readingTimeMinutes?: number
+  /** Author extracted from article page */
+  extractedAuthor?: string
+  /**
+   * When true, skip the AI rewrite step — content is already AI-generated
+   * (e.g. trend editor, influencer editor). Preserves originalTitle/Summary/Content as-is.
+   */
+  skipAiRewrite?: boolean
 }
 
 /** Enriched article after fact-check, category, and geo engines. */

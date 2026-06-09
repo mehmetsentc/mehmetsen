@@ -11,6 +11,64 @@ import type { EditorId, NewsroomArticleInput, NewsroomRunResult } from '@/servic
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { fetchArticleEnrichment, isThinContent } from '@/services/rss/articleFetcher'
 
+/**
+ * GPT fallback: when articleFetcher can't get real content (blocked site),
+ * ask OpenAI to write a proper Turkish news article from the headline alone.
+ */
+async function generateArticleFromTitle(
+  title: string,
+  sourceLabel: string
+): Promise<{ summary: string; content: string } | null> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  if (!apiKey) return null
+
+  const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
+Sana bir haber başlığı ve kaynak verilecek. Bu başlığa dayanarak gerçekçi, bilgilendirici bir haber içeriği yaz.
+
+KURALLARI:
+- Türkçe, akıcı gazetecilik dili kullan
+- summary: 1-2 cümle, başlığı açıklayan özet (max 150 karakter)
+- content: 3-5 paragraf (toplam 150-300 kelime), kaza/olay/konu hakkında detay ver
+- Bilinmeyen detayları mantıklı şekilde varsay (kayıp sayısı bilinmiyorsa "detaylar araştırılıyor" gibi)
+- Başlıkla çelişme, tutarlı ol
+- Sadece JSON döndür: {"summary":"...","content":"..."}`
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.5,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: `Başlık: "${title}"\nKaynak: ${sourceLabel}\n\nBu haberi yaz.`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!res.ok) return null
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    const raw = json.choices?.[0]?.message?.content?.trim()
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { summary?: string; content?: string }
+    const summary = parsed.summary?.trim() || ''
+    const content = parsed.content?.trim() || ''
+    if (content.length < 80) return null
+    return { summary, content }
+  } catch {
+    return null
+  }
+}
+
 export interface RssEditorOptions {
   sourceIds: readonly string[]
   editorId: EditorId
@@ -63,27 +121,48 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
 
       const enriched = options.enrichInput?.(item) ?? {}
 
-      // Enrich thin-content or imageless items by fetching the actual article page
+      // Always fetch the full article page for every RSS item
       let enrichedSummary = item.summary
       let enrichedContent = item.content
       let enrichedImageUrl = item.imageUrl
+      let enrichedHtmlBody: string | undefined
+      let enrichedReadingTime: number | undefined
+      let enrichedAuthor: string | undefined
+      let aiGenerated = false
 
-      const needsEnrichment =
-        isThinContent(item.summary, item.content) || !item.imageUrl
-      if (needsEnrichment && item.link) {
+      if (item.link) {
         try {
-          const article = await fetchArticleEnrichment(item.link, 7000)
+          const article = await fetchArticleEnrichment(item.link, 10_000)
           if (article) {
-            if (!enrichedImageUrl && article.imageUrl) {
-              enrichedImageUrl = article.imageUrl
+            // Always prefer extracted image
+            if (article.imageUrl) enrichedImageUrl = article.imageUrl
+            // Always prefer extracted full content over RSS snippet
+            if (article.bodyText && article.bodyText.length > 150) {
+              enrichedContent = article.bodyText
             }
-            if (isThinContent(enrichedSummary, enrichedContent)) {
-              enrichedSummary = article.description ?? enrichedSummary
-              enrichedContent = article.bodyText ?? article.description ?? enrichedContent
+            if (article.description && (!enrichedSummary || enrichedSummary.length < 80)) {
+              enrichedSummary = article.description
             }
+            if (article.htmlBody) enrichedHtmlBody = article.htmlBody
+            if (article.readingTimeMinutes) enrichedReadingTime = article.readingTimeMinutes
+            if (article.author) enrichedAuthor = article.author
           }
         } catch {
           // non-blocking — proceed with whatever we have
+        }
+      }
+
+      // If content is still thin (site blocked scraper), use GPT to write article
+      if (isThinContent(enrichedSummary, enrichedContent)) {
+        try {
+          const generated = await generateArticleFromTitle(item.title, item.source.label)
+          if (generated) {
+            enrichedSummary = generated.summary || enrichedSummary
+            enrichedContent = generated.content
+            aiGenerated = true
+          }
+        } catch {
+          // non-blocking
         }
       }
 
@@ -95,6 +174,9 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
         originalTitle: item.title,
         originalSummary: enrichedSummary,
         originalContent: enrichedContent,
+        htmlContent: enrichedHtmlBody,
+        readingTimeMinutes: enrichedReadingTime,
+        extractedAuthor: enrichedAuthor,
         imageUrl: enrichedImageUrl ?? undefined,
         rssFingerprint: item.fingerprint,
         rssGuid: item.guid,
@@ -102,6 +184,8 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
         sourcePublishedAt: item.publishedAt,
         forcedCategoryId: options.forcedCategoryId,
         isBreaking: options.isBreaking,
+        // Skip second AI rewrite when we already generated article via GPT above
+        skipAiRewrite: aiGenerated || undefined,
         ...enriched,
       }
 
