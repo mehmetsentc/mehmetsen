@@ -5,7 +5,7 @@
  * Idempotent: safe to call multiple times.
  */
 import { NextResponse } from 'next/server'
-import { verifyCmsToken } from '@/lib/cmsAuth'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
 export async function POST(request: Request) {
   // Only super admin can bootstrap

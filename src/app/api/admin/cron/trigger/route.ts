@@ -3,7 +3,7 @@
  * Manually triggers a cron job. Logs the run to Firestore.
  */
 import { NextResponse } from 'next/server'
-import { verifyCmsToken } from '@/lib/cmsAuth'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
 const ALLOWED_JOBS = ['news-fetch', 'ai-rewrite', 'seo-generate', 'video-sync', 'trending-update', 'cleanup']
 

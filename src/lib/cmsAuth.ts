@@ -52,38 +52,4 @@ export function isAtLeast(user: User | null | undefined, minRole: CmsRole): bool
   return userLevel >= minLevel
 }
 
-/** Server-side: verify token + resolve role from Firestore */
-export async function verifyCmsToken(
-  request: Request,
-  requiredPermission?: CmsPermission
-): Promise<{ uid: string; role: CmsRole; email: string } | null> {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) return null
-  const token = authHeader.slice(7).trim()
-  if (!token) return null
-
-  try {
-    const { getAdminAuth, getAdminFirestore } = await import('@/lib/firebase/admin')
-    const decoded = await getAdminAuth().verifyIdToken(token)
-    const email = decoded.email ?? ''
-
-    // Super admin bypass
-    if (isSuperAdminEmail(email)) {
-      if (requiredPermission) {
-        if (!hasPermission('super_admin', requiredPermission)) return null
-      }
-      return { uid: decoded.uid, role: 'super_admin', email }
-    }
-
-    const userDoc = await getAdminFirestore().collection('users').doc(decoded.uid).get()
-    const userData = userDoc.data()
-    const role = (userData?.role as CmsRole) ?? 'user'
-
-    if (!CMS_STAFF_ROLES.includes(role)) return null
-    if (requiredPermission && !hasPermission(role, requiredPermission)) return null
-
-    return { uid: decoded.uid, role, email }
-  } catch {
-    return null
-  }
-}
+// verifyCmsToken (server-only) has moved to @/lib/cmsAuthServer

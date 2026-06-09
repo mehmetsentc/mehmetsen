@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyCmsToken } from '@/lib/cmsAuth'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
 type ScriptType = 'news_report' | 'breaking' | 'analysis' | 'interview' | 'social_short'
 type Tone = 'formal' | 'conversational' | 'urgent'

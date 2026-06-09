@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyCmsToken } from '@/lib/cmsAuth'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
 type AssistMode = 'create' | 'rewrite' | 'seo' | 'tags' | 'headline' | 'trends'
 
