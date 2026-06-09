@@ -11,8 +11,8 @@
     --color-text: 15 23 42;
     --color-muted: 100 116 139;
     --color-nav-hover: 241 245 249;
-    --sidebar-width-collapsed: 72px;
-    --sidebar-width-expanded: 244px;
+    --sidebar-width-collapsed: 256px;
+    --sidebar-width-expanded: 256px;
     --layout-gutter: 1.5rem;
     --layout-rail: 300px;
     --layout-feed: 720px;
@@ -142,11 +142,11 @@
   }
 
   .app-shell {
-    @apply min-h-screen w-full pb-[calc(4rem+var(--safe-bottom))] lg:pb-0 lg:pl-[var(--sidebar-width-collapsed)];
+    @apply min-h-screen w-full pb-0 lg:pl-[var(--sidebar-width-collapsed)];
   }
 
   html[data-platform='mobile'] .app-shell-mobile {
-    @apply pb-[calc(4rem+var(--safe-bottom))] pl-0;
+    @apply pb-0 pl-0;
   }
 
   html[data-platform='desktop'] .app-shell-desktop {
@@ -287,7 +287,8 @@
   }
 
   .sidebar-rail {
-    @apply fixed left-0 top-0 z-[105] hidden h-screen w-[var(--sidebar-width-collapsed)] flex-col border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-4 transition-[width] duration-200 ease-out lg:flex;
+    /* kept for any legacy references; new sidebar is inline-styled via Sidebar.tsx */
+    @apply flex h-screen w-[var(--sidebar-width-collapsed)] flex-col border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))];
   }
 
   .nav-tap-target {
@@ -298,66 +299,6 @@
   .app-nav-mobile,
   .app-nav-sidebar {
     isolation: isolate;
-  }
-
-  .sidebar-rail:hover {
-    width: var(--sidebar-width-expanded);
-  }
-
-  .sidebar-brand {
-    @apply mb-4 flex h-12 items-center overflow-hidden rounded-xl px-3 transition-colors hover:bg-[rgb(var(--color-nav-hover))];
-  }
-
-  .sidebar-brand-logo {
-    @apply h-8 w-8 shrink-0 rounded-lg object-contain;
-  }
-
-  .sidebar-brand-text {
-    @apply ml-4 whitespace-nowrap text-xl font-black tracking-tight text-[rgb(var(--color-text))] opacity-0 transition-opacity duration-200;
-  }
-
-  .sidebar-rail:hover .sidebar-brand-text {
-    @apply opacity-100;
-  }
-
-  .sidebar-nav {
-    @apply flex flex-1 flex-col gap-1;
-  }
-
-  .sidebar-footer {
-    @apply mt-auto flex flex-col gap-1 border-t border-[rgb(var(--color-border))] pt-3;
-  }
-
-  .sidebar-link {
-    @apply flex h-12 items-center overflow-hidden rounded-xl px-3 text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-nav-hover))];
-  }
-
-  .sidebar-link-active {
-    @apply font-semibold;
-  }
-
-  .sidebar-link-danger:hover {
-    @apply text-red-500;
-  }
-
-  .sidebar-icon {
-    @apply h-6 w-6 shrink-0 text-[rgb(var(--color-text))];
-  }
-
-  .sidebar-icon-active {
-    @apply text-[rgb(var(--color-text))];
-  }
-
-  .sidebar-label {
-    @apply ml-4 whitespace-nowrap text-[15px] font-normal opacity-0 transition-opacity duration-200;
-  }
-
-  .sidebar-rail:hover .sidebar-label {
-    @apply opacity-100;
-  }
-
-  .sidebar-link-active .sidebar-label {
-    @apply font-semibold;
   }
 
   .news-card {
