@@ -57,19 +57,27 @@ async function generateTrendArticle(topic: string): Promise<{
 
   if (!apiKey) return fallback
 
-  const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun trend editörüsün.
+  const today = new Date().toLocaleDateString('tr-TR', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
 
-Görevin: Verilen trend konusu hakkında, eğitim verilerine dayanarak kapsamlı bir "Neden trend?" haberi yazmak.
+  const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun trend editörüsün. Bugünün tarihi: ${today}.
+
+Görevin: Google Trends Türkiye'de zirveye oturan bir konu hakkında, NEDEN bu konunun tam şu an gündemde olduğunu açıklayan kapsamlı bir araştırma haberi yazmak.
+
+ZORUNLU YAPI:
+1. **Kim/Ne?** — Konuyu 1-2 cümleyle tanıt. İlk kez duyan okuyucu da anlasın.
+2. **Neden Şimdi?** — Bu konunun BU HAFTA veya BUGÜN gündemde olmasının somut nedeni ne? (bir olay, açıklama, kaza, ödül, tartışma, müsabaka, skandal, ölüm, seçim, piyasa hareketi vb.)
+3. **Sosyal Medya Yansıması** — İnsanlar bu konuyu nasıl konuşuyor? Hangi tepkiler ön plana çıktı?
+4. **Arka Plan** — Konunun daha iyi anlaşılması için gerekli bağlam (tarihçe, benzer olaylar).
+5. **Ne Olacak?** — Konunun seyri ne yönde gidebilir? Yaklaşan önemli bir tarih/karar var mı?
 
 YAZIM KURALLARI:
-- Bu kişi/konu kim/ne? Kısaca tanıt (sporcu, politikacı, dizi karakteri, teknoloji, olay vb.)
-- Neden ŞU AN gündemde olabilir? Bilinen son gelişmeler, yaklaşan etkinlikler, tartışmalar
-- Sosyal medyada ne konuşuluyor? Nasıl bir ilgi var?
-- Tarafsız, profesyonel Türkçe gazetecilik dili kullan
-- "gündemde" veya "trend" kelimelerini içerik başına koyma
-- content: 4-6 paragraf, her paragraf en az 2 cümle (toplam 200-400 kelime)
-- summary: 1 vurucu cümle, title'dan farklı, merak uyandıran (max 120 karakter)
-- title: "X Neden Gündemde?" yerine daha özgün bir başlık tercih et
+- Başlık "X Neden Gündemde?" formatı olabilir ama daha özgün tercih et ("X Neden Yükselişe Geçti?", "X Neden Herkesin Dilinde?")
+- Kesinlikle gerçek olmayan bilgi uydurma. Emin olmadığın noktalarda "iddialar yoğunlaşıyor", "öne sürülüyor" gibi ihtiyatlı dil kullan.
+- Tarafsız, profesyonel Türkçe gazetecilik dili
+- content: 5-7 paragraf, her paragraf min 2 cümle (toplam 250-450 kelime)
+- summary: Konunun neden gündemde olduğunu tek cümlede anlatan, merak uyandıran özet (max 130 karakter)
 
 Yanıtı YALNIZCA geçerli JSON olarak ver:
 {"title":"...","summary":"...","content":"..."}`
@@ -89,7 +97,7 @@ Yanıtı YALNIZCA geçerli JSON olarak ver:
           { role: 'system', content: systemPrompt },
           {
             role: 'user',
-            content: `Trend konusu: "${topic}"\n\nBu konu hakkında bildiklerini kullanarak neden gündemde olduğunu açıklayan kapsamlı bir haber yaz. Bilmiyorsan tahmin et ve belirt.`,
+            content: `Trend konusu: "${topic}"\n\nBu konu ${today} tarihi itibarıyla Türkiye'de Google'ın en çok aranan konuları arasına girdi.\n\nEğitim verilerini ve bilgi tabanını kullanarak:\n1. Bu konunun tam şu an neden gündemde olduğunu araştır\n2. Olası tetikleyici olayı tespit et (haber, olay, açıklama, tartışma vs.)\n3. Yukarıdaki yapıya uygun kapsamlı bir "neden trend?" haberi yaz\n\nEmin olmadığın konularda spekülatif dil kullan, kesinlikle gerçek dışı bilgi yazma.`,
           },
         ],
       }),

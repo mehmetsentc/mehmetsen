@@ -119,6 +119,74 @@ KURALLAR:
 const NAHABER_AUTHOR = 'nahaber'
 const NAHABER_AUTHOR_ID = 'nahaber'
 
+// ── LANGUAGE DETECTION + TRANSLATION ────────────────────────────────────────
+
+/**
+ * Heuristic: Turkish text typically has ≥0.8% Turkish-specific characters.
+ * English/other Latin text will have 0%.
+ */
+function looksLikeTurkish(text: string): boolean {
+  if (!text || text.length < 30) return true // assume Turkish for very short text
+  const letters = (text.match(/\p{L}/gu) ?? []).length
+  if (letters < 20) return true
+  const trChars = (text.match(/[ğüşıöçĞÜŞİÖÇ]/g) ?? []).length
+  return trChars / letters > 0.008
+}
+
+/**
+ * Translate non-Turkish title / summary / content to Turkish using GPT.
+ * Called only for skipAiRewrite articles (trend, influencer) and as a guard.
+ */
+async function translateToTurkish(fields: {
+  originalTitle: string
+  originalSummary?: string
+  originalContent?: string
+}): Promise<{ originalTitle: string; originalSummary: string; originalContent: string } | null> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  if (!apiKey) return null
+
+  const contentSnippet = (fields.originalContent ?? '').slice(0, 3000)
+  const summarySnippet = fields.originalSummary ?? ''
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `Sen profesyonel bir Türkçe çeviri editörüsün. Verilen İngilizce (ya da başka dildeki) haber içeriğini akıcı, doğal Türkçeye çevir. Gazetecilik dilini koru. Sadece JSON döndür: {"title":"...","summary":"...","content":"..."}`,
+          },
+          {
+            role: 'user',
+            content: `Başlık: ${fields.originalTitle}\nÖzet: ${summarySnippet}\nİçerik:\n${contentSnippet}\n\nTürkçeye çevir.`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(25_000),
+    })
+    if (!res.ok) return null
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    const raw = json.choices?.[0]?.message?.content?.trim()
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { title?: string; summary?: string; content?: string }
+    const title = parsed.title?.trim() || fields.originalTitle
+    const summary = parsed.summary?.trim() || summarySnippet
+    const content = parsed.content?.trim() || contentSnippet
+    if (content.length < 80) return null
+    console.log(`[newsroom/pipeline] translated to Turkish: ${title}`)
+    return { originalTitle: title, originalSummary: summary, originalContent: content }
+  } catch (err) {
+    console.warn('[newsroom/pipeline] translation failed:', err)
+    return null
+  }
+}
+
 export type PipelineOutcome = 'created' | 'published' | 'updated' | 'skipped' | 'failed'
 
 export interface PipelineStats {
@@ -283,6 +351,37 @@ export async function processNewsroomArticle(
         return { outcome: 'skipped' }
       }
       // If GPT failed but we have a non-truncated (just short) article, let it through
+    }
+
+    // ── TRANSLATION STAGE ────────────────────────────────────────────────────
+    // Detect non-Turkish content and translate before AI rewrite.
+    //
+    // TWO cases:
+    //   1. skipAiRewrite=true (trend, influencer): translate directly — no AI rewrite will run.
+    //   2. skipAiRewrite=false (RSS workers): clear htmlContent so the AI-rewritten Turkish
+    //      text is displayed instead of the raw English HTML from extraction.
+    const langSample = [workingInput.originalTitle, workingInput.originalSummary, workingInput.originalContent]
+      .filter(Boolean).join(' ').slice(0, 300)
+    const isNonTurkish = !looksLikeTurkish(langSample)
+
+    if (isNonTurkish) {
+      if (workingInput.skipAiRewrite) {
+        // No AI rewrite coming — must translate explicitly
+        const translated = await translateToTurkish({
+          originalTitle: workingInput.originalTitle,
+          originalSummary: workingInput.originalSummary,
+          originalContent: workingInput.originalContent,
+        })
+        if (translated) {
+          workingInput = { ...workingInput, ...translated }
+        }
+      } else {
+        // AI rewrite will translate — but drop English htmlContent so Turkish text shows
+        if (workingInput.htmlContent) {
+          workingInput = { ...workingInput, htmlContent: undefined }
+          console.log(`[newsroom/pipeline] cleared English htmlContent — AI rewrite will produce Turkish: ${workingInput.sourceUrl}`)
+        }
+      }
     }
 
     // Skip second AI rewrite for editors that already produced AI content (trend, influencer)

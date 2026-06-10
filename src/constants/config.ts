@@ -16,6 +16,7 @@ export const APP_CONFIG = {
 } as const
 
 export const DEFAULT_CATEGORIES = [
+  { id: 'trend',      name: 'Trending',   slug: 'trend',      iconName: 'flame',        color: '#FF6B35' },
   { id: 'yerel-haber', name: 'Yerel Haber', slug: 'yerel-haber', iconName: 'map-pin', color: '#059669' },
   { id: 'gundem',    name: 'Gündem',    slug: 'gundem',    iconName: 'newspaper',  color: '#EF4444' },
   { id: 'siyaset',   name: 'Siyaset',   slug: 'siyaset',   iconName: 'landmark',   color: '#7C3AED' },
