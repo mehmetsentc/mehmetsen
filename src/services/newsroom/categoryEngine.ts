@@ -328,8 +328,37 @@ export function validateCategoryClassification(
   const nationalScope = hasNationalScopeKeywords(text)
   const worldCupFinal = isWorldCupFinalNationalWin(text)
 
-  // ── Teknoloji override: strong tech signals always win over economic misclassification
-  if (tech && !sports && categoryId !== 'teknoloji') {
+  // ── Ulusal kriz / afet override — en yüksek öncelik (deprem, yangın, patlama vs.)
+  // Teknoloji/ekonomi/kültür gibi kategorilere yanlış düşen afet haberlerini gündem'e çek.
+  if (
+    nationalScope &&
+    !sports &&
+    !siyaset &&
+    ['teknoloji', 'ekonomi', 'kultur', 'magazin', 'bilim'].includes(categoryId)
+  ) {
+    overrides.push(`national-scope → gundem (was ${categoryId})`)
+    categoryId = 'gundem'
+    categoryConfidence = Math.max(categoryConfidence, 90)
+  }
+
+  // ── Teknoloji override: SADECE asıl sinyal teknoloji olduğunda uygula.
+  // Trend editörü sosyal medya bölümü yazar → teknoloji'ye çekilmesin.
+  // Ulusal kriz (deprem vb.) → teknoloji'ye çekilmesin.
+  // Siyaset / spor / yerel → teknoloji'ye çekilmesin.
+  if (
+    tech &&
+    !sports &&
+    !nationalScope &&
+    !siyaset &&
+    input.editorType !== 'trend' &&
+    input.editorType !== 'local' &&
+    categoryId !== 'teknoloji' &&
+    categoryId !== 'trend' &&
+    categoryId !== 'yerel-haber' &&
+    categoryId !== 'spor' &&
+    categoryId !== 'siyaset' &&
+    categoryId !== 'son-dakika'
+  ) {
     overrides.push(`tech-keywords → teknoloji (was ${categoryId})`)
     categoryId = 'teknoloji'
     categoryConfidence = Math.max(categoryConfidence, 85)
