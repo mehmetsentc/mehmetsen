@@ -6,12 +6,12 @@
  *
  * Auth: Bearer CRON_SECRET
  */
-import { createNewsroomCronHandler, newsroomCronConfig } from '@/app/api/cron/newsroom/_shared'
+import { createNewsroomCronHandler } from '@/app/api/cron/newsroom/_shared'
 import { processPipelineQueue } from '@/lib/ai/pipeline'
 
-export const runtime = newsroomCronConfig.runtime
-export const dynamic = newsroomCronConfig.dynamic
-export const maxDuration = newsroomCronConfig.maxDuration
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 const { GET, POST } = createNewsroomCronHandler('ai-pipeline', processPipelineQueue)
 export { GET, POST }
