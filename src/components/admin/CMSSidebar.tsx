@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Newspaper, Video, Users, UserCog, UserCheck,
   Bot, BarChart3, Search, Clock, Key, Settings, ChevronRight,
-  ArrowLeft, Zap, Shield, Radio, TrendingUp, FileText,
+  ArrowLeft, Zap, Shield, Radio, TrendingUp, FileText, Share2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
@@ -57,6 +57,12 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/editors', label: 'Editörler', icon: UserCog, requiredPermissions: ['editors:read'] },
       { href: '/admin/authors', label: 'Yazarlar', icon: UserCheck, requiredPermissions: ['authors:read'] },
       { href: '/admin/users', label: 'Kullanıcılar', icon: Users, requiredPermissions: ['users:read'] },
+    ],
+  },
+  {
+    label: 'Sosyal Medya',
+    items: [
+      { href: '/admin/social', label: 'Paylaşım Durumu', icon: Share2, requiredPermissions: ['news:read'] },
     ],
   },
   {
