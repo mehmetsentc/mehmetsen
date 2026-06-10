@@ -1,5 +1,24 @@
 const SOURCE_LINE_RE = /^kaynak:\s*.+$/i
 
+/**
+ * Returns true when a paragraph is a naked URL fragment left by the article extractor.
+ * e.g. extractor picks up "ais.osym.gov.tr/sonuc" from a breadcrumb/nav and splits
+ * it across lines: ["ais.", "osym.", "gov.", "tr ve sonuc."] → all should be dropped.
+ */
+function isUrlFragmentParagraph(para: string): boolean {
+  const t = para.trim()
+  if (!t || t.length > 60) return false
+
+  // Pure domain segment(s): "ais.", "osym.", "gov.", "com.tr", "www", "tr"
+  if (/^[a-z0-9-]{1,30}(?:\.[a-z0-9-]{0,20})*\.?\s*$/i.test(t)) return true
+
+  // Short token + Turkish conjunction + another short token: "tr ve sonuc.", "gov ve diger."
+  if (t.length <= 35 && /^[a-z0-9-]{1,10}\s+(ve|ile|ya da|veya)\s+[a-z0-9-]+\.?\s*$/i.test(t))
+    return true
+
+  return false
+}
+
 /** Tabloid / SEO filler phrases — whole sentences containing these are dropped. */
 const FILLER_SENTENCE_RE =
   /(?:merak edildi|merak ediliyor|işte ayrıntılar|işte detaylar|araştırılıyor|izleme linki|tıklayın|haberin devamı|detaylar için tıklayın|canlı izle|son gelişmeler merak|izlenme rekoru kır)/i
@@ -257,6 +276,9 @@ export function cleanupNewsBody(
   const cleanedParagraphs: string[] = []
 
   for (const paragraph of paragraphs) {
+    // Drop naked URL fragment lines picked up by the extractor from page navigation
+    if (isUrlFragmentParagraph(paragraph)) continue
+
     const merged = mergeBrokenLines(paragraph.replace(/\n+/g, ' ').trim())
     const sentences = dedupeSentences(
       splitSentences(merged).filter((s) => !isFillerSentence(s))

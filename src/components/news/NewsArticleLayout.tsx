@@ -122,7 +122,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
             <>
               <li>
                 <Link
-                  href={`${ROUTES.FEED}?category=${encodeURIComponent(post.categoryId)}`}
+                  href={ROUTES.CATEGORY(post.categoryId)}
                   className="hover:text-[rgb(var(--color-text))]"
                 >
                   {categoryLabel}
@@ -225,6 +225,24 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
             </blockquote>
           )}
 
+          {/* "Haberin Tamamı" — prominent source link */}
+          {post.sourceUrl && (
+            <div className="mb-8">
+              <a
+                href={post.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgb(var(--color-brand))] bg-[rgb(var(--color-brand))]/10 px-5 py-3.5 text-base font-bold text-[rgb(var(--color-brand))] transition-colors hover:bg-[rgb(var(--color-brand))]/20 sm:w-auto"
+              >
+                <ExternalLink className="h-4 w-4 shrink-0" />
+                Haberin Tamamını Oku
+              </a>
+              <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
+                Kaynak siteye yeni sekmede açılır. Sekmeyi kapattığınızda NaHaber'e dönersiniz.
+              </p>
+            </div>
+          )}
+
           {/* Full HTML content (extracted from source) */}
           {hasHtmlContent && sanitizedHtml && (
             <div
@@ -246,24 +264,12 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
             <p className="text-[rgb(var(--color-muted))]">Bu haber için içerik bulunamadı.</p>
           )}
 
-          {/* Source link */}
-          {(post.sourceUrl || sourceLabel) && (
+          {/* Source attribution */}
+          {sourceLabel && (
             <div className="mt-8 border-t border-[rgb(var(--color-border))] pt-5">
               <p className="text-sm text-[rgb(var(--color-muted))]">
                 Kaynak:{' '}
-                {post.sourceUrl ? (
-                  <a
-                    href={post.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                    className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-brand))] hover:underline"
-                  >
-                    {sourceLabel || 'Haberin kaynağını görüntüle'}
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                ) : (
-                  <span className="font-semibold text-[rgb(var(--color-text))]">{sourceLabel}</span>
-                )}
+                <span className="font-semibold text-[rgb(var(--color-text))]">{sourceLabel}</span>
               </p>
             </div>
           )}
