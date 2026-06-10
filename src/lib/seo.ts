@@ -97,6 +97,7 @@ function estimateWordCount(post: Post): number {
 /** schema.org NewsArticle JSON-LD for news detail pages. */
 export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const siteUrl = getSiteUrl()
   const url = buildPostShareUrl(post)
   const image = getPostShareImage(post)
   const datePublished = post.publishedAt || post.createdAt
@@ -106,6 +107,16 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
     post.content?.trim().slice(0, 300) ||
     `${post.title} — ${siteName}`
   const articleSection = getCategoryLabel(post.categoryId)
+
+  // Derive a plain-text articleBody (strip HTML tags, cap at 5000 chars)
+  const rawContent = post.content?.trim() || ''
+  const articleBody = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 5000)
+
+  // Author — use source if available, otherwise fall back to NaHaber as Person/Organization
+  const authorSource = post.source?.trim()
+  const author = authorSource
+    ? { '@type': 'Person', name: authorSource, url: post.sourceUrl || undefined }
+    : { '@type': 'Organization', name: siteName, url: siteUrl }
 
   return {
     '@context': 'https://schema.org',
@@ -120,19 +131,29 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
     isAccessibleForFree: true,
     wordCount: estimateWordCount(post),
     articleSection,
-    author: {
-      '@type': 'Organization',
-      name: post.source?.trim() || siteName,
-    },
+    ...(articleBody ? { articleBody } : {}),
+    author,
     publisher: {
-      '@type': 'Organization',
+      '@type': 'NewsMediaOrganization',
       name: siteName,
+      url: siteUrl,
       logo: {
         '@type': 'ImageObject',
-        url: `${getSiteUrl()}/brand/nahaber-logo.png`,
+        url: `${siteUrl}/brand/nahaber-logo.png`,
+        width: 512,
+        height: 512,
       },
     },
-    ...(image ? { image: [image] } : {}),
+    ...(image
+      ? {
+          image: {
+            '@type': 'ImageObject',
+            url: image,
+            width: 1200,
+            height: 630,
+          },
+        }
+      : {}),
     ...(post.tags?.length ? { keywords: post.tags.join(', ') } : {}),
     ...(post.city ? { contentLocation: { '@type': 'Place', name: post.city } } : {}),
   }
@@ -153,7 +174,7 @@ export function buildNewsBreadcrumbJsonLd(post: Post): Record<string, unknown> {
       '@type': 'ListItem',
       position: 3,
       name: getCategoryLabel(post.categoryId),
-      item: `${base}${ROUTES.FEED}?category=${encodeURIComponent(post.categoryId)}`,
+      item: `${base}${ROUTES.CATEGORY(post.categoryId)}`,
     })
   }
 
@@ -173,6 +194,7 @@ export function buildNewsBreadcrumbJsonLd(post: Post): Record<string, unknown> {
 
 export function buildPostMetadata(post: Post): Metadata {
   const url = buildPostShareUrl(post)
+  const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
   // Prefer AI-generated SEO fields when available
   const title = (post.seoTitle?.trim() || post.title.trim() || siteName).slice(0, 70)
@@ -182,11 +204,20 @@ export function buildPostMetadata(post: Post): Metadata {
     post.content?.trim().slice(0, 200) ||
     `${title} — ${siteName}'de oku.`
   ).slice(0, 165)
-  const image = getPostShareImage(post)
-  const datePublished = post.publishedAt || post.createdAt
-  const dateModified = post.updatedAt || datePublished
+  const coverImage = getPostShareImage(post)
   const section = getCategoryLabel(post.categoryId)
   const source = post.source?.trim()
+
+  // Build dynamic OG image URL — use cover if available, fallback to generated card
+  const ogParams = new URLSearchParams({ title: title.slice(0, 100) })
+  if (section) ogParams.set('category', section)
+  if (coverImage) ogParams.set('image', coverImage)
+  const generatedOgUrl = `${siteUrl}/api/og?${ogParams.toString()}`
+  // Prefer real cover image for OG (richer), generated card as guaranteed fallback
+  const image = coverImage || generatedOgUrl
+
+  const datePublished = post.publishedAt || post.createdAt
+  const dateModified = post.updatedAt || datePublished
 
   return {
     title,
