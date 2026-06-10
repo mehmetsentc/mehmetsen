@@ -81,7 +81,9 @@ export function EventList() {
     setSelectedCitySlug(userCitySlug ?? null)
   }
 
-  const showSkeletons = authLoading || geoLoading || loading
+  // geoLoading is intentionally excluded — we show all events immediately,
+  // then silently re-filter when geolocation resolves.
+  const showSkeletons = authLoading || loading
   const showEmpty = !showSkeletons && !error && events.length === 0
   const showItems = !showSkeletons && events.length > 0
 

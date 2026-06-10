@@ -55,7 +55,8 @@ export function useEvents({
   const [dataSource, setDataSource] = useState<EventsDataSource | null>(null)
 
   const effectiveCity = nearby ? null : (citySlug ?? null)
-  const ready = nearby || !!citySlug
+  // Always ready — null citySlug means "tüm şehirler" (fetch all events)
+  const ready = true
 
   const lastDocRef = useRef<QueryDocumentSnapshot | null>(null)
   const effectiveCityRef = useRef(effectiveCity)
