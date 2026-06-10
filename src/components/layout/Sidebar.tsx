@@ -3,12 +3,12 @@
 import { memo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin } from 'lucide-react'
+import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin, Flame } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
 import { BrandLogo } from '@/components/brand/BrandLogo'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, SIDEBAR_MAIN_CATEGORY_IDS } from '@/constants/config'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -19,12 +19,19 @@ interface SidebarProps {
 }
 
 const APP_NAV = [
-  { label: 'Etkinlikler', href: ROUTES.EVENTS, icon: CalendarDays },
-  { label: 'Teve', href: ROUTES.REELS, icon: Clapperboard },
-  { label: 'Influencer', href: ROUTES.INFLUENCER, icon: Star },
-  { label: 'Yerel', href: ROUTES.LOCAL, icon: MapPin },
-  { label: 'Hava Durumu', href: ROUTES.WEATHER, icon: Cloud },
+  { label: 'Etkinlikler', href: ROUTES.EVENTS,      icon: CalendarDays },
+  { label: 'Magazin',     href: '/kategori/magazin', icon: Star         },
+  { label: 'Trending',    href: '/kategori/trend',   icon: Flame        },
+  { label: 'Teve',        href: ROUTES.REELS,        icon: Clapperboard },
+  { label: 'Influencer',  href: ROUTES.INFLUENCER,   icon: Star         },
+  { label: 'Yerel',       href: ROUTES.LOCAL,        icon: MapPin       },
+  { label: 'Hava Durumu', href: ROUTES.WEATHER,      icon: Cloud        },
 ]
+
+/** Main categories shown in top nav (user-defined order, Trending/Magazin excluded). */
+const MAIN_CATEGORIES = SIDEBAR_MAIN_CATEGORY_IDS
+  .map((id) => DEFAULT_CATEGORIES.find((c) => c.id === id))
+  .filter(Boolean) as typeof DEFAULT_CATEGORIES[number][]
 
 function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
@@ -126,7 +133,7 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
             Tümü
           </Link>
 
-          {DEFAULT_CATEGORIES.map((cat) => {
+          {MAIN_CATEGORIES.map((cat) => {
             const href = ROUTES.CATEGORY(cat.slug)
             const isActive = pathname.startsWith(href)
             return (
