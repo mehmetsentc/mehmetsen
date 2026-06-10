@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Newspaper, Video, Users, UserCog, UserCheck,
   Bot, BarChart3, Search, Clock, Key, Settings, ChevronRight,
   ArrowLeft, Zap, Shield, Radio, TrendingUp, FileText, Share2,
+  BrainCircuit,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
@@ -47,6 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Yapay Zeka',
     items: [
+      { href: '/admin/newsroom', label: 'AI Newsroom', icon: BrainCircuit, requiredPermissions: ['ai:use'] },
       { href: '/admin/ai/news', label: 'AI Haber Asistanı', icon: Bot, requiredPermissions: ['ai:use'] },
       { href: '/admin/ai/video', label: 'AI Video Asistanı', icon: Zap, requiredPermissions: ['ai:use'] },
     ],

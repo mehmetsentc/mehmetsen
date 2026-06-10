@@ -19,6 +19,26 @@ export const Collections = {
   NOTIFICATIONS:   'notifications',
   CONVERSATIONS:   'conversations',
   MESSAGES:        'messages',
+
+  // ── AI Newsroom ────────────────────────────────────────────────────────────
+  /** Multi-agent pipeline processing queue */
+  AI_QUEUE:       'aiQueue',
+  /** AI agent operation logs */
+  AI_LOGS:        'aiLogs',
+  /** Scheduled / deferred news items */
+  SCHEDULED_NEWS: 'scheduledNews',
+  /** Fact-check records */
+  FACT_CHECKS:    'factChecks',
+  /** Duplicate detection records */
+  DUPLICATES:     'duplicates',
+  /** Social media post tracking */
+  SOCIAL_POSTS:   'socialPosts',
+  /** Multi-language article translations */
+  TRANSLATIONS:   'translations',
+  /** RSS feed source registry */
+  RSS_FEEDS:      'rssFeeds',
+  /** Ingestion source metadata */
+  SOURCES:        'sources',
 } as const
 
 /** Primary collection for the TikTok-style video feed */
