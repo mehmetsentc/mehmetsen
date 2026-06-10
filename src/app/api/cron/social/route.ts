@@ -20,6 +20,7 @@ import type {
   SocialCronItemResult,
   SocialCronResult,
   SocialPublishPayload,
+  SocialPublishResult,
 } from '@/lib/social/types'
 
 export const runtime = 'nodejs'
@@ -73,7 +74,7 @@ async function runSocialCron(): Promise<SocialCronResult> {
     }
 
     // ── Facebook ──────────────────────────────────────────────────────────
-    let fbResult = { success: false, error: 'not attempted' }
+    let fbResult: SocialPublishResult = { success: false, error: 'not attempted' }
     try {
       fbResult = await publishToFacebook(payload)
     } catch (err) {
@@ -87,7 +88,7 @@ async function runSocialCron(): Promise<SocialCronResult> {
     await new Promise((resolve) => setTimeout(resolve, INTER_ITEM_DELAY_MS))
 
     // ── Instagram ─────────────────────────────────────────────────────────
-    let igResult = { success: false, error: 'not attempted' }
+    let igResult: SocialPublishResult = { success: false, error: 'not attempted' }
     try {
       igResult = await publishToInstagram(payload)
     } catch (err) {
