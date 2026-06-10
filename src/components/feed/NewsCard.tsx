@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
-import { Heart, MessageCircle, Bookmark, Share2, Clock } from 'lucide-react'
+import { Heart, MessageCircle, Bookmark, Share2, Clock, MapPin } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { Post } from '@/types/post'
@@ -103,7 +103,15 @@ export function NewsCard({ post }: NewsCardProps) {
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                 sizes="(max-width: 768px) 100vw, 600px"
               />
+              {/* Category badge — top left */}
               <span className="feed-media-card-badge">{getCategoryLabel(post.categoryId)}</span>
+              {/* City badge — top right (only when city is detected) */}
+              {post.city && (
+                <span className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  {post.city}
+                </span>
+              )}
               <div className="feed-media-card-shade" aria-hidden />
               <div className="feed-media-card-overlay">
                 <h2 className="feed-media-headline">{post.title}</h2>

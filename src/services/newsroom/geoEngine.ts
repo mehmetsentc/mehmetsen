@@ -13,20 +13,63 @@ export interface GeoEnrichment {
   tags: string[]
 }
 
-const TURKISH_CITY_HINTS = [
-  'istanbul', 'ankara', 'izmir', 'bursa', 'antalya', 'adana', 'konya',
-  'gaziantep', 'şanlıurfa', 'sanliurfa', 'mersin', 'diyarbakır', 'diyarbakir',
-  'kayseri', 'eskişehir', 'eskisehir', 'samsun', 'denizli', 'trabzon',
+// All 81 Turkish provinces: [slug (ASCII), display name]
+const TURKISH_PROVINCES_ALL: [string, string][] = [
+  ['adana', 'Adana'], ['adiyaman', 'Adıyaman'], ['afyonkarahisar', 'Afyonkarahisar'],
+  ['agri', 'Ağrı'], ['aksaray', 'Aksaray'], ['amasya', 'Amasya'], ['ankara', 'Ankara'],
+  ['antalya', 'Antalya'], ['ardahan', 'Ardahan'], ['artvin', 'Artvin'],
+  ['aydin', 'Aydın'], ['balikesir', 'Balıkesir'], ['bartin', 'Bartın'],
+  ['batman', 'Batman'], ['bayburt', 'Bayburt'], ['bilecik', 'Bilecik'],
+  ['bingol', 'Bingöl'], ['bitlis', 'Bitlis'], ['bolu', 'Bolu'],
+  ['burdur', 'Burdur'], ['bursa', 'Bursa'], ['canakkale', 'Çanakkale'],
+  ['cankiri', 'Çankırı'], ['corum', 'Çorum'], ['denizli', 'Denizli'],
+  ['diyarbakir', 'Diyarbakır'], ['duzce', 'Düzce'], ['edirne', 'Edirne'],
+  ['elazig', 'Elazığ'], ['erzincan', 'Erzincan'], ['erzurum', 'Erzurum'],
+  ['eskisehir', 'Eskişehir'], ['gaziantep', 'Gaziantep'], ['giresun', 'Giresun'],
+  ['gumushane', 'Gümüşhane'], ['hakkari', 'Hakkari'], ['hatay', 'Hatay'],
+  ['igdir', 'Iğdır'], ['isparta', 'Isparta'], ['istanbul', 'İstanbul'],
+  ['izmir', 'İzmir'], ['kahramanmaras', 'Kahramanmaraş'], ['karabuk', 'Karabük'],
+  ['karaman', 'Karaman'], ['kars', 'Kars'], ['kastamonu', 'Kastamonu'],
+  ['kayseri', 'Kayseri'], ['kilis', 'Kilis'], ['kirikkale', 'Kırıkkale'],
+  ['kirklareli', 'Kırklareli'], ['kirsehir', 'Kırşehir'], ['kocaeli', 'Kocaeli'],
+  ['konya', 'Konya'], ['kutahya', 'Kütahya'], ['malatya', 'Malatya'],
+  ['manisa', 'Manisa'], ['mardin', 'Mardin'], ['mersin', 'Mersin'],
+  ['mugla', 'Muğla'], ['mus', 'Muş'], ['nevsehir', 'Nevşehir'],
+  ['nigde', 'Niğde'], ['ordu', 'Ordu'], ['osmaniye', 'Osmaniye'],
+  ['rize', 'Rize'], ['sakarya', 'Sakarya'], ['samsun', 'Samsun'],
+  ['sanliurfa', 'Şanlıurfa'], ['siirt', 'Siirt'], ['sinop', 'Sinop'],
+  ['sirnak', 'Şırnak'], ['sivas', 'Sivas'], ['tekirdag', 'Tekirdağ'],
+  ['tokat', 'Tokat'], ['trabzon', 'Trabzon'], ['tunceli', 'Tunceli'],
+  ['usak', 'Uşak'], ['van', 'Van'], ['yalova', 'Yalova'],
+  ['yozgat', 'Yozgat'], ['zonguldak', 'Zonguldak'],
 ]
 
+// Build lookup: ASCII slug → display name
+const CITY_DISPLAY: Map<string, string> = new Map(TURKISH_PROVINCES_ALL)
+
 function extractCityFromText(text: string): string | null {
-  const lower = text.toLocaleLowerCase('tr-TR')
-  for (const hint of TURKISH_CITY_HINTS) {
-    if (lower.includes(hint)) {
-      return hint.charAt(0).toUpperCase() + hint.slice(1)
+  // Normalize to ASCII-ish for matching
+  const lower = text
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+
+  for (const [slug] of TURKISH_PROVINCES_ALL) {
+    if (lower.includes(slug)) {
+      return CITY_DISPLAY.get(slug) ?? slug
     }
   }
   return null
+}
+
+/** Normalize an arbitrary city string to its canonical Turkish display name. */
+function normalizeDisplayCity(raw: string): string {
+  const slug = raw
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/\s+/g, '')
+  return CITY_DISPLAY.get(slug) ?? raw
 }
 
 export function enrichGeo(rewritten: AiRewriteResult, extraTags: string[] = []): GeoEnrichment {
@@ -34,7 +77,10 @@ export function enrichGeo(rewritten: AiRewriteResult, extraTags: string[] = []):
   let district = rewritten.district?.trim() || null
   const country = rewritten.country?.trim() || 'Türkiye'
 
-  if (!city) {
+  if (city) {
+    // Normalize to canonical display name (e.g. "diyarbakır" → "Diyarbakır")
+    city = normalizeDisplayCity(city)
+  } else {
     const haystack = `${rewritten.title} ${rewritten.description}`
     city = extractCityFromText(haystack)
   }
