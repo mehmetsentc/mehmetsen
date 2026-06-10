@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import type { Metadata } from 'next'
 import { redirect, notFound } from 'next/navigation'
 import { NewsArticleClient } from '@/components/news/NewsArticleClient'
@@ -9,6 +10,9 @@ import {
 import { getNewsBySlug } from '@/services/newsService.server'
 import { ROUTES } from '@/constants/routes'
 
+// Deduplicate: generateMetadata + page both need the post — fetch once per request
+const getCachedNews = cache((slug: string) => getNewsBySlug(slug))
+
 type PageProps = {
   params: Promise<{ slug: string }>
 }
@@ -17,7 +21,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params
 
   try {
-    const post = await getNewsBySlug(slug)
+    const post = await getCachedNews(slug)
     if (!post) {
       return {
         title: 'Haber bulunamadı',
@@ -39,7 +43,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
   let post = null
 
   try {
-    post = await getNewsBySlug(slug)
+    post = await getCachedNews(slug)
   } catch {
     // Client fallback
   }
@@ -65,7 +69,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <NewsArticleClient postId={post.id} />
+      <NewsArticleClient postId={post.id} initialPost={post} />
     </>
   )
 }

@@ -27,7 +27,7 @@ export interface ExtractedArticle {
   featuredImage: string | null
   readingTimeMinutes: number
   source: string | null
-  extractionMethod: 'article-extractor' | 'cheerio' | 'meta-only' | 'failed'
+  extractionMethod: 'article-extractor' | 'cheerio' | 'meta-only' | 'failed' | 'jina'
 }
 
 // ── Noise selectors to remove before extracting ──────────────────────────
@@ -262,15 +262,64 @@ async function fetchHtml(url: string): Promise<string | null> {
  * 2. Fallback: fetch HTML + cheerio
  * 3. Fallback: meta-only
  */
+/**
+ * Jina Reader fallback — wraps any URL via https://r.jina.ai/{url}
+ * Returns clean markdown text that GPT can process.
+ */
+async function fetchViaJina(url: string): Promise<string | null> {
+  try {
+    const jinaUrl = `https://r.jina.ai/${url}`
+    const res = await fetch(jinaUrl, {
+      headers: {
+        Accept: 'text/plain',
+        'X-Return-Format': 'text',
+        'X-Timeout': '15',
+      },
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!res.ok) return null
+    const text = await res.text()
+    // Jina returns markdown — strip markdown headers/links, keep prose
+    const clean = text
+      .replace(/^#+ .*/gm, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+    return clean.length > 200 ? clean.slice(0, 4000) : null
+  } catch {
+    return null
+  }
+}
+
 export async function extractFullArticle(url: string): Promise<ExtractedArticle> {
   // Primary: @extractus/article-extractor (if installed)
   const extracted = await tryArticleExtractor(url)
   if (extracted && extracted.content.length > 150) return extracted
 
-  // Fallback: fetch + cheerio
+  // Fallback 1: fetch + cheerio
   const html = await fetchHtml(url)
   if (html && html.length > 500) {
-    return extractWithCheerio(html, url)
+    const cheerioResult = extractWithCheerio(html, url)
+    if (cheerioResult.content.length > 200) return cheerioResult
+  }
+
+  // Fallback 2: Jina Reader — bypasses paywalls and JS-rendered sites
+  const jinaText = await fetchViaJina(url)
+  if (jinaText) {
+    const wordCount = jinaText.split(/\s+/).length
+    return {
+      title: null,
+      content: jinaText,
+      htmlContent: `<p>${jinaText.replace(/\n\n/g, '</p><p>')}</p>`,
+      summary: jinaText.slice(0, 200),
+      author: null,
+      publishedAt: null,
+      featuredImage: null,
+      readingTimeMinutes: Math.max(1, Math.round(wordCount / 200)),
+      source: url,
+      extractionMethod: 'jina',
+    }
   }
 
   return {

@@ -11,6 +11,7 @@ import type { Post } from '@/types/post'
 
 interface NewsArticleClientProps {
   postId: string
+  initialPost?: Post | null
 }
 
 interface CachedNewsDetail {
@@ -22,11 +23,22 @@ function newsDetailCacheKey(postId: string): string {
   return `news:${postId}`
 }
 
-export function NewsArticleClient({ postId }: NewsArticleClientProps) {
-  const [post, setPost] = useState<Post | null>(null)
+export function NewsArticleClient({ postId, initialPost }: NewsArticleClientProps) {
+  const [post, setPost] = useState<Post | null>(initialPost ?? null)
   const [suggested, setSuggested] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
+  // If we already have initialPost from the server, skip the loading spinner
+  const [loading, setLoading] = useState(!initialPost)
   const [error, setError] = useState<string | null>(null)
+
+  const loadSuggested = async (categoryId: string) => {
+    try {
+      const related = await postService.getSuggestedNews(postId, { categoryId, limit: 10 })
+      setSuggested(related)
+      return related
+    } catch {
+      return []
+    }
+  }
 
   const load = async ({ background = false }: { background?: boolean } = {}) => {
     if (!background) setLoading(true)
@@ -43,11 +55,7 @@ export function NewsArticleClient({ postId }: NewsArticleClientProps) {
       setPost(fetched)
       postService.incrementViews(postId).catch(() => {})
 
-      const related = await postService.getSuggestedNews(postId, {
-        categoryId: fetched.categoryId,
-        limit: 10,
-      })
-      setSuggested(related)
+      const related = await loadSuggested(fetched.categoryId ?? 'gundem')
       setCache<CachedNewsDetail>(
         newsDetailCacheKey(postId),
         { post: fetched, suggested: related },
@@ -64,14 +72,33 @@ export function NewsArticleClient({ postId }: NewsArticleClientProps) {
 
   useEffect(() => {
     const cached = getCache<CachedNewsDetail>(newsDetailCacheKey(postId))
+
     if (cached?.post) {
+      // Use cached data instantly
       setPost(cached.post)
       setSuggested(cached.suggested ?? [])
       setLoading(false)
-      void load({ background: true })
-    } else {
-      void load()
+      // Refresh post in background (don't refetch if initialPost was passed — server is source of truth)
+      if (!initialPost) void load({ background: true })
+      return
     }
+
+    if (initialPost) {
+      // Server already provided the post — just load suggested news in background
+      setLoading(false)
+      postService.incrementViews(postId).catch(() => {})
+      void loadSuggested(initialPost.categoryId ?? 'gundem').then((related) => {
+        setCache<CachedNewsDetail>(
+          newsDetailCacheKey(postId),
+          { post: initialPost, suggested: related },
+          CACHE_TTL.LONG
+        )
+      })
+      return
+    }
+
+    // No cache, no initialPost — full client fetch
+    void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId])
 
