@@ -20,21 +20,45 @@ export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
 
 /** Major Turkish national outlets — national worker (5 min). */
 export const NATIONAL_NEWS_SOURCE_IDS = [
-  'trt',
-  'ntv',
-  'haberturk',
-  'hurriyet',
-  'sozcu',
+  'trt', 'ntv', 'haberturk', 'hurriyet', 'sozcu',
+  'milliyet', 'sabah', 'cumhuriyet', 'yenisafak', 'karar',
+  'independent-tr', 'euronews-tr', 't24', 'gazeteduvar',
 ] as const
 
 /** International + urgent national — breaking worker (2 min). */
 export const BREAKING_NEWS_SOURCE_IDS = [
-  'cnn',
-  'bbc',
-  'reuters',
-  'trt',
-  'ntv',
-  'haberturk',
+  'cnn', 'bbc', 'reuters', 'reuters-world', 'ap-news',
+  'aljazeera', 'trt', 'ntv', 'haberturk', 'aa',
+] as const
+
+/** International world news — world worker (15 min). */
+export const WORLD_NEWS_SOURCE_IDS = [
+  'reuters-world', 'ap-news', 'aljazeera', 'guardian',
+  'dw-english', 'sky-news', 'euronews-tr', 'bbc',
+] as const
+
+/** Technology sources — tech worker (30 min). */
+export const TECH_NEWS_SOURCE_IDS = [
+  'techcrunch', 'theverge', 'wired', 'arstechnica',
+  'venturebeat', 'mit-tech', 'shiftdelete', 'webtekno',
+] as const
+
+/** Sports sources — sports worker (15 min). */
+export const SPORTS_NEWS_SOURCE_IDS = [
+  'fanatik', 'fotomac', 'sporx', 'ajansspor',
+  'ntv-spor', 'hurriyet-spor', 'haberturk-spor',
+  'goal-tr', 'f1-espn',
+] as const
+
+/** Health & science sources — health worker (1h). */
+export const HEALTH_NEWS_SOURCE_IDS = [
+  'who-news', 'nih-news', 'saglik-tr', 'nature-news', 'science-daily',
+] as const
+
+/** Economy & finance sources — expanded. */
+export const FINANS_SOURCE_IDS = [
+  'bloomberght', 'dunya-ekonomi', 'ekonomim',
+  'ntv-ekonomi', 'haberturk-ekonomi', 'bloomberg-int', 'cnbc-int',
 ] as const
 
 export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
@@ -178,6 +202,46 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     schedule: '15m',
     description: '15 dakikada bir büyük iller için hava durumu haberlerini günceller.',
     cronPath: '/api/cron/newsroom/weather',
+  },
+  'world-news': {
+    id: 'world-news',
+    name: 'World News Worker',
+    nameTr: 'Dünya Haberleri Worker',
+    schedule: '15m',
+    description: 'Reuters, AP, Al Jazeera, Guardian — uluslararası haberler, Türkçe yeniden yazma.',
+    cronPath: '/api/cron/newsroom/world',
+  },
+  'tech-news': {
+    id: 'tech-news',
+    name: 'Technology Worker',
+    nameTr: 'Teknoloji Worker',
+    schedule: '30m',
+    description: 'TechCrunch, The Verge, Wired, Ars Technica — teknoloji haberleri.',
+    cronPath: '/api/cron/newsroom/tech',
+  },
+  'sports-news': {
+    id: 'sports-news',
+    name: 'Sports Worker',
+    nameTr: 'Spor Worker',
+    schedule: '15m',
+    description: 'Fanatik, Fotomaç, Sporx, Ajansspor — spor ve futbol haberleri.',
+    cronPath: '/api/cron/newsroom/sports',
+  },
+  'health-news': {
+    id: 'health-news',
+    name: 'Health & Science Worker',
+    nameTr: 'Sağlık & Bilim Worker',
+    schedule: '1h',
+    description: 'WHO, NIH, Nature — sağlık ve bilim haberleri, Türkçe yeniden yazma.',
+    cronPath: '/api/cron/newsroom/health',
+  },
+  recategorize: {
+    id: 'recategorize',
+    name: 'Recategorize Worker',
+    nameTr: 'Yeniden Kategorileme',
+    schedule: 'daily',
+    description: 'Düşük güvenilirlikli kategorileri GPT + heuristic ile düzeltir.',
+    cronPath: '/api/admin/recategorize',
   },
 }
 

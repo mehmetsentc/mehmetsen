@@ -27,6 +27,7 @@ export interface RssSourceDefinition {
 }
 
 const DEFAULT_SOURCES: RssSourceDefinition[] = [
+  // ── Türk Haber Ajansları ─────────────────────────────────────────────────
   {
     id: 'aa',
     label: 'Anadolu Ajansı',
@@ -286,6 +287,391 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:btchaber.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Türk Ulusal Gazeteler (ek) ───────────────────────────────────────────
+  {
+    id: 'milliyet',
+    label: 'Milliyet',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/gundemRss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:milliyet.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'sabah',
+    label: 'Sabah',
+    feedUrl: 'https://www.sabah.com.tr/rss/gundem.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:sabah.com.tr+gündem&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'cumhuriyet',
+    label: 'Cumhuriyet',
+    feedUrl: 'https://www.cumhuriyet.com.tr/rss/son_dakika.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:cumhuriyet.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'yenisafak',
+    label: 'Yeni Şafak',
+    feedUrl: 'https://www.yenisafak.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:yenisafak.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'karar',
+    label: 'Karar',
+    feedUrl: 'https://www.karar.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:karar.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'independent-tr',
+    label: 'Independent Türkçe',
+    feedUrl: 'https://www.indyturk.com/rss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:indyturk.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'euronews-tr',
+    label: 'Euronews Türkçe',
+    feedUrl: 'https://tr.euronews.com/rss?format=mrss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:tr.euronews.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'medyascope',
+    label: 'Medyascope',
+    feedUrl: 'https://medyascope.tv/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:medyascope.tv&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'birgün',
+    label: 'BirGün',
+    feedUrl: 'https://www.birgun.net/feed/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:birgun.net&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+
+  // ── Uluslararası Kaynaklar ───────────────────────────────────────────────
+  {
+    id: 'reuters-world',
+    label: 'Reuters World',
+    feedUrl: 'https://feeds.reuters.com/reuters/worldNews',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=reuters+world+news&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'ap-news',
+    label: 'Associated Press',
+    feedUrl: 'https://feeds.apnews.com/rss/apf-topnews',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:apnews.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'aljazeera',
+    label: 'Al Jazeera English',
+    feedUrl: 'https://www.aljazeera.com/xml/rss/all.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:aljazeera.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'guardian',
+    label: 'The Guardian',
+    feedUrl: 'https://www.theguardian.com/world/rss',
+    alternateFeedUrls: [
+      'https://www.theguardian.com/international/rss',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'bloomberg-int',
+    label: 'Bloomberg Markets',
+    feedUrl: 'https://feeds.bloomberg.com/markets/news.rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:bloomberg.com+markets&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'cnbc-int',
+    label: 'CNBC Markets',
+    feedUrl: 'https://www.cnbc.com/id/10000664/device/rss/rss.html',
+    alternateFeedUrls: [
+      'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'dw-english',
+    label: 'DW English',
+    feedUrl: 'https://rss.dw.com/rdf/rss-en-all',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:dw.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'sky-news',
+    label: 'Sky News',
+    feedUrl: 'https://feeds.skynews.com/feeds/rss/world.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:news.sky.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Teknoloji ────────────────────────────────────────────────────────────
+  {
+    id: 'techcrunch',
+    label: 'TechCrunch',
+    feedUrl: 'https://techcrunch.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:techcrunch.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'theverge',
+    label: 'The Verge',
+    feedUrl: 'https://www.theverge.com/rss/index.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:theverge.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'wired',
+    label: 'Wired',
+    feedUrl: 'https://www.wired.com/feed/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:wired.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'arstechnica',
+    label: 'Ars Technica',
+    feedUrl: 'https://feeds.arstechnica.com/arstechnica/index',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:arstechnica.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'venturebeat',
+    label: 'VentureBeat',
+    feedUrl: 'https://venturebeat.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:venturebeat.com+AI&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'mit-tech',
+    label: 'MIT Technology Review',
+    feedUrl: 'https://www.technologyreview.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:technologyreview.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'shiftdelete',
+    label: 'ShiftDelete (TR)',
+    feedUrl: 'https://shiftdelete.net/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:shiftdelete.net&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'webtekno',
+    label: 'Webtekno (TR)',
+    feedUrl: 'https://www.webtekno.com/rss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:webtekno.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Spor (ek) ────────────────────────────────────────────────────────────
+  {
+    id: 'fanatik',
+    label: 'Fanatik',
+    feedUrl: 'https://www.fanatik.com.tr/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:fanatik.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'fotomac',
+    label: 'Fotomaç',
+    feedUrl: 'https://www.fotomac.com.tr/rss/tum-haberler.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:fotomac.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'sporx',
+    label: 'Sporx',
+    feedUrl: 'https://www.sporx.com/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:sporx.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'ajansspor',
+    label: 'Ajansspor',
+    feedUrl: 'https://www.ajansspor.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:ajansspor.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'goal-tr',
+    label: 'Goal.com Türkçe',
+    feedUrl: 'https://www.goal.com/feeds/tr/news',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:goal.com+türkiye&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'f1-espn',
+    label: 'ESPN F1',
+    feedUrl: 'https://www.espn.com/espn/rss/f1/news',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=Formula+1+F1+race&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Sağlık & Bilim ───────────────────────────────────────────────────────
+  {
+    id: 'who-news',
+    label: 'WHO News',
+    feedUrl: 'https://www.who.int/rss-feeds/news-english.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=WHO+health+news&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'nih-news',
+    label: 'NIH News',
+    feedUrl: 'https://www.nih.gov/news-events/feed.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:nih.gov+news&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'saglik-tr',
+    label: 'Sağlık Haberleri (TR)',
+    feedUrl: 'https://news.google.com/rss/search?q=sağlık+hastalık+tedavi+Türkiye&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'nature-news',
+    label: 'Nature News',
+    feedUrl: 'https://www.nature.com/nature.rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:nature.com+research&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'science-daily',
+    label: 'Science Daily',
+    feedUrl: 'https://www.sciencedaily.com/rss/all.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=scientific+discovery+research&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+
+  // ── Eğitim ───────────────────────────────────────────────────────────────
+  {
+    id: 'egitim-tr',
+    label: 'Eğitim Haberleri (TR)',
+    feedUrl: 'https://news.google.com/rss/search?q=eğitim+okul+üniversite+YKS+LGS+MEB&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Turizm & Çevre ───────────────────────────────────────────────────────
+  {
+    id: 'turizm-tr',
+    label: 'Turizm Haberleri (TR)',
+    feedUrl: 'https://news.google.com/rss/search?q=turizm+otel+tatil+sezon+Türkiye&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 2,
     enabled: true,
   },
 ]

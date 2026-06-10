@@ -4,6 +4,10 @@ export type EditorId =
   | 'local-news'
   | 'national-news'
   | 'breaking-news'
+  | 'world-news'
+  | 'tech-news'
+  | 'sports-news'
+  | 'health-news'
   | 'trend'
   | 'influencer'
   | 'event'
@@ -19,6 +23,7 @@ export type EditorId =
   | 'entertainment'
   | 'seo-maintenance'
   | 'weather'
+  | 'recategorize'
 
 export type EditorSchedule = '1m' | '2m' | '5m' | '10m' | '15m' | '30m' | '1h' | '6h' | 'weekly' | 'daily' | 'pipeline'
 

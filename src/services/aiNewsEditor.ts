@@ -149,15 +149,34 @@ function appendSourceAttribution(body: string, sourceLabel: string): string {
   return `${trimmed}\n\n${marker}`
 }
 
-const CATEGORY_CLASSIFICATION_RULES = `Kategori ve son dakika kuralları (category, categoryConfidence 0-100, isBreaking):
-- son-dakika: YALNIZCA deprem, büyük afet, darbe, suikast, ülke çapında acil durum, tüm Türkiye'yi ilgilendiren büyük siyasi kriz. ASLA spor, magazin, yerel trafik, dizi/fragman.
-- spor: maç, gol, lig, transfer, FIFA/UEFA, milli takım, derbi, sporcu. ASLA kultur veya son-dakika (istisna: milli takım Dünya Kupası finali şampiyonluğu).
-- kultur: sinema, tiyatro, sergi, müzik, edebiyat, sanat. ASLA spor haberi.
-- gundem: ulusal siyaset, geniş ekonomi gelişmeleri, kamuoyunu ilgilendiren Türkiye gündemi.
-- yerel-haber: belirli bir il/ilçeyi ilgilendiren olaylar.
-- magazin: ünlü, dizi fragmanı, dedikodu — isBreaking=false.
-- isBreaking: category=son-dakika ile aynı sıkı kriter; spor/magazin/kultur için her zaman false.
-- categoryConfidence: net eşleşmede 85+, belirsizde 50-70.`
+const CATEGORY_CLASSIFICATION_RULES = `KATEGORİ SINIFLANDIRMA KURALLARI (category, categoryConfidence 0-100, isBreaking):
+
+Her haber YALNIZCA aşağıdaki kategorilerden BİRİNE girmeli. En spesifik kategoriyi seç. Emin değilsen gundem kullan.
+
+- teknoloji: Apple, iPhone, Android, iOS, uygulama, yapay zeka, AI, yapay zekâ, chatgpt, robot, drone, güncelleme, yazılım, donanım, bilgisayar, internet, siber, Google, Microsoft, Meta, Tesla, sosyal medya, Twitter/X, Instagram, TikTok, YouTube, oyun, gaming, elektrikli araç, uzay, roket, uydu, NASA, SpaceX. KURAL: Teknoloji şirketleri/ürünleri/güncellemeleri → her zaman teknoloji.
+
+- siyaset: seçim, AKP, CHP, MHP, HDP, DEM, meclis, TBMM, cumhurbaşkanı, başbakan, parti, muhalefet, hükümet, bakan, milletvekili, belediye başkanı, vali, soruşturma (siyasi kişi hakkında), gözaltı (siyasetçi), ittifak, koalisyon, referandum, anayasa, siyasi kriz. KURAL: Siyasetçi hakkında haber → siyaset. Belediye/devlet kurumları haberleri → siyaset veya gundem.
+
+- ekonomi: borsa, döviz, euro, dolar, TL, faiz, enflasyon, TCMB, merkez bankası, bütçe, ihracat, ithalat, işsizlik, piyasa, kripto, bitcoin, hisse senedi, şirket kârı/zararı, vergi, GSYİH, büyüme oranı, işletme, yatırım, ticaret. KURAL: Finansal/ekonomik göstergeler ve işletme haberleri → ekonomi.
+
+- spor: maç, gol, lig, transfer, FIFA, UEFA, milli takım, derbi, sporcu, şampiyonluk, futbol, basketbol, tenis, voleybol, F1, olimpiyat, NTV Spor, TFF. ASLA kultur veya son-dakika olarak işaretleme (istisna: milli takım Dünya Kupası finali).
+
+- saglik: sağlık, hastalık, ilaç, aşı, hastane, doktor, kanser, ameliyat, pandemi, salgın, beslenme, diyet, obezite, sağlık bakanlığı, WHO, tedavi, tıp.
+
+- dunya: yurt dışı, dünya gündemi, ABD, AB, Avrupa, Rusya, Çin, Ortadoğu, savaş (Türkiye dışı), uluslararası kriz, NATO, BM, G20.
+
+- kultur: sinema, film, tiyatro, sergi, müzik albümü, edebiyat, kitap, opera, bale, sanat, müze, galeri, ödül töreni, kültür-sanat. ASLA spor.
+
+- magazin: ünlü, manken, oyuncu hayatı, dizi yayın tarihi, fragman, evlilik, ayrılık, dedikodu, paparazzi. isBreaking=false.
+
+- gundem: yukarıdaki kategorilere girmeyen Türkiye iç gündemi, kamusal olaylar, trafik kazası (çok ölümlü), genel haberler.
+
+- yerel-haber: yalnızca belirli bir il/ilçeyi kapsayan yerel olay.
+
+- son-dakika: YALNIZCA deprem, büyük afet, darbe girişimi, suikast, tüm Türkiye'yi etkileyen acil durum. ASLA spor/magazin/teknoloji/ekonomi.
+
+isBreaking: son-dakika ile aynı kriter; spor/magazin/kultur/teknoloji için her zaman false.
+categoryConfidence: kesin eşleşme 88+, iyi eşleşme 75-87, belirsiz 55-74.`
 
 const EDITORIAL_RULES = `- ÇIKTI DİLİ: Her zaman ve yalnızca TÜRKÇE yaz. Kaynak İngilizce, Arapça veya başka bir dilde olsa bile title, summary ve content TÜRKÇE olacak.
 - Profesyonel gazete dili kullan; kaynak metindeki SEO/tıklama tuzağı kalıplarını ASLA kopyalama.

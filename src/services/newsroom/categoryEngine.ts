@@ -37,6 +37,43 @@ export const NEWSROOM_CATEGORIES: Record<string, string> = {
 
 const VALID_IDS = new Set(Object.keys(NEWSROOM_CATEGORIES))
 
+const TEKNOLOJI_KEYWORDS = [
+  'iphone', 'android', 'ios ', 'ios1', 'ios2', 'ipad', 'macbook', 'apple',
+  'google', 'microsoft', 'meta ', 'tesla', 'samsung', 'xiaomi', 'huawei',
+  'yapay zeka', 'yapay zekâ', 'chatgpt', 'openai', 'gemini', 'claude',
+  'artificial intelligence', 'machine learning', 'deep learning',
+  'uygulama güncelleme', 'yazılım güncelleme', 'güncelleme alacak',
+  'sosyal medya', 'twitter', 'instagram', 'tiktok', 'youtube', 'whatsapp',
+  'siber saldırı', 'veri ihlali', 'hack', 'siber güvenlik',
+  'elektrikli araç', 'elektrikli otomobil', 'otonom araç',
+  'uzay roketi', 'spacex', 'nasa', 'starlink', 'uydu fırlatma',
+  'drone', 'robot', 'metaverse', 'blockchain', 'nft',
+  'oyun konsolu', 'playstation', 'xbox', 'nintendo',
+  'işlemci', 'grafik kartı', 'gpu', 'cpu', 'bilgisayar',
+] as const
+
+const SIYASET_KEYWORDS = [
+  'cumhurbaşkanı', 'cumhurbaskani', 'başbakan', 'basbakan',
+  'tbmm', 'meclis', 'milletvekili', 'bakan ',
+  'seçim', 'secim', 'oy oranı', 'sandık',
+  'akp', 'chp', 'mhp', 'hdp', 'dem parti', 'iyi parti',
+  'muhalefet', 'iktidar', 'hükümet', 'hukumet',
+  'koalisyon', 'referandum', 'anayasa değişikliği',
+  'belediye başkanı soruşturma', 'gözaltına alındı', 'tutuklandı',
+  'siyasi kriz', 'parti genel başkanı', 'genel başkan',
+  'vali atama', 'kabine değişikliği', 'bakan değişikliği',
+] as const
+
+const EKONOMI_KEYWORDS = [
+  'borsa', 'dolar kuru', 'euro kuru', 'döviz kuru', 'merkez bankası',
+  'tcmb', 'faiz oranı', 'enflasyon', 'tüfe', 'üfe',
+  'bütçe açığı', 'bütçe fazlası', 'ihracat rakamı', 'ithalat',
+  'işsizlik oranı', 'gsyih', 'büyüme oranı', 'resesyon',
+  'bitcoin', 'kripto para', 'borsa endeksi', 'bist',
+  'hisse senedi', 'şirket kârı', 'şirket zararı', 'halka arz',
+  'vergi düzenlemesi', 'sgk primi', 'asgari ücret',
+] as const
+
 const SPOR_KEYWORDS = [
   'maç',
   'mac',
@@ -179,6 +216,18 @@ function containsKeyword(text: string, keywords: readonly string[]): boolean {
   })
 }
 
+function hasTechKeywords(text: string): boolean {
+  return containsKeyword(text, TEKNOLOJI_KEYWORDS)
+}
+
+function hasSiyasetKeywords(text: string): boolean {
+  return containsKeyword(text, SIYASET_KEYWORDS)
+}
+
+function hasEkonomiKeywords(text: string): boolean {
+  return containsKeyword(text, EKONOMI_KEYWORDS)
+}
+
 function hasSportsKeywords(text: string): boolean {
   return containsKeyword(text, SPOR_KEYWORDS)
 }
@@ -273,8 +322,32 @@ export function validateCategoryClassification(
   const sports = hasSportsKeywords(text)
   const magazin = hasMagazinKeywords(text)
   const kultur = hasKulturKeywords(text)
+  const tech = hasTechKeywords(text)
+  const siyaset = hasSiyasetKeywords(text)
+  const ekonomi = hasEkonomiKeywords(text)
   const nationalScope = hasNationalScopeKeywords(text)
   const worldCupFinal = isWorldCupFinalNationalWin(text)
+
+  // ── Teknoloji override: strong tech signals always win over economic misclassification
+  if (tech && !sports && categoryId !== 'teknoloji') {
+    overrides.push(`tech-keywords → teknoloji (was ${categoryId})`)
+    categoryId = 'teknoloji'
+    categoryConfidence = Math.max(categoryConfidence, 85)
+  }
+
+  // ── Siyaset override: political figures/events wrongly bucketed as ekonomi/gundem
+  if (siyaset && !sports && !tech && categoryId === 'ekonomi') {
+    overrides.push(`siyaset-keywords → siyaset (was ekonomi)`)
+    categoryId = 'siyaset'
+    categoryConfidence = Math.max(categoryConfidence, 82)
+  }
+
+  // ── Ekonomi override: clear financial signal but AI picked gundem
+  if (ekonomi && !sports && !tech && !siyaset && categoryId === 'gundem') {
+    overrides.push(`ekonomi-keywords → ekonomi (was gundem)`)
+    categoryId = 'ekonomi'
+    categoryConfidence = Math.max(categoryConfidence, 80)
+  }
 
   if (sports) {
     if (categoryId !== 'spor') {
