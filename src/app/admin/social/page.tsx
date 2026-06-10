@@ -328,7 +328,9 @@ export default function SocialPage() {
                   {/* Instagram */}
                   <td className="px-4 py-3 text-center">
                     {row.instagramMediaId ? (
-                      <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" title={`IG Media: ${row.instagramMediaId}`} />
+                      <span title={`IG Media: ${row.instagramMediaId}`}>
+                        <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" />
+                      </span>
                     ) : (
                       <XCircle className="mx-auto h-4 w-4 text-slate-500" />
                     )}
