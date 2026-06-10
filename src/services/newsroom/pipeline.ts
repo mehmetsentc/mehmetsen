@@ -34,6 +34,39 @@ import type { NewsroomArticleInput } from '@/services/newsroom/types'
 const QUALITY_MIN_CHARS = 500
 
 /**
+ * Detects RSS content truncated mid-sentence.
+ *
+ * RSS feeds routinely clip articles at 200-500 chars without a sentence
+ * boundary — e.g. "Aziz Yıldırım ve yönetim k". We catch four patterns:
+ *   1. Trailing ellipsis:  "…" / "..."
+ *   2. Ends mid-word:      last char is a letter (Turkish or Latin)
+ *   3. Ends with comma:    ","
+ *   4. Ends with Turkish conjunctions hanging in air: " ve", " ile", " da", " de"
+ *
+ * When detected, the pipeline forces full-page extraction regardless of
+ * the 500-char quality gate.
+ */
+function isTruncated(text: string): boolean {
+  if (!text || text.length < 10) return false
+  const t = text.trimEnd()
+
+  // Pattern 1 — explicit ellipsis (HTML stripped) or soft truncation marker
+  if (t.endsWith('…') || t.endsWith('...') || t.endsWith('[…]') || t.endsWith('[...]')) return true
+
+  // Pattern 2 — ends mid-word (letter without following period/space/bracket)
+  const lastChar = t[t.length - 1]
+  if (lastChar && /[a-zA-ZğüşıöçĞÜŞİÖÇ0-9]/.test(lastChar)) return true
+
+  // Pattern 3 — dangling comma or semicolon
+  if (t.endsWith(',') || t.endsWith(';')) return true
+
+  // Pattern 4 — trailing Turkish coordinating conjunctions / postpositions
+  if (/\s(ve|ile|da|de|ya|ki|ama|fakat|lakin|ancak|çünkü|zira|hem|ne|veya|ya da)$/i.test(t)) return true
+
+  return false
+}
+
+/**
  * GPT fallback — when article extraction fails (blocked site),
  * generate a complete Turkish news article from headline alone.
  */
@@ -183,19 +216,27 @@ export async function processNewsroomArticle(
 
   try {
     // ── EXTRACTION STAGE ────────────────────────────────────────────────────
-    // baseWorker enqueues raw RSS items without full content.
-    // rssEditor already extracts before calling pipeline — skip for those.
-    // We detect thin content and fetch the full article here.
+    // Triggers when RSS content is thin (<500 chars) OR truncated mid-sentence.
+    // Truncation check catches RSS feeds that clip at character limits without
+    // a sentence boundary — e.g. "Aziz Yıldırım ve yönetim k".
     let workingInput = { ...input }
 
     const totalRaw = (workingInput.originalContent + ' ' + workingInput.originalSummary).trim()
-    const needsExtraction = !workingInput.skipAiRewrite && totalRaw.length < QUALITY_MIN_CHARS
+    const contentTruncated = isTruncated(workingInput.originalContent?.trimEnd() ?? '')
+    const needsExtraction =
+      !workingInput.skipAiRewrite &&
+      (totalRaw.length < QUALITY_MIN_CHARS || contentTruncated)
+
+    if (contentTruncated) {
+      console.log(`[newsroom/pipeline] truncated RSS content detected, fetching full article: ${workingInput.sourceUrl}`)
+    }
 
     if (needsExtraction && workingInput.sourceUrl) {
       try {
         const extracted = await fetchArticleEnrichment(workingInput.sourceUrl, 12_000)
         if (extracted) {
-          if (extracted.bodyText && extracted.bodyText.length > 200) {
+          // Only replace content if extracted text is substantially longer/cleaner
+          if (extracted.bodyText && extracted.bodyText.length > (workingInput.originalContent?.length ?? 0)) {
             workingInput = { ...workingInput, originalContent: extracted.bodyText }
           }
           if (extracted.htmlBody && !workingInput.htmlContent) {
@@ -212,15 +253,23 @@ export async function processNewsroomArticle(
           }
         }
       } catch {
-        // non-blocking — proceed with whatever we have
+        // non-blocking — proceed with GPT fallback below
       }
     }
 
     // ── QUALITY GATE ────────────────────────────────────────────────────────
-    // Reject articles that are still too thin after extraction.
-    // Try GPT fallback first; if that also fails, skip.
+    // After extraction, check again for thin OR still-truncated content.
+    // GPT generates a complete article from the headline when all else fails.
     const totalAfterExtract = (workingInput.originalContent + ' ' + workingInput.originalSummary).trim()
-    if (!workingInput.skipAiRewrite && totalAfterExtract.length < QUALITY_MIN_CHARS) {
+    const stillTruncated = isTruncated(workingInput.originalContent?.trimEnd() ?? '')
+    const needsGptFallback =
+      !workingInput.skipAiRewrite &&
+      (totalAfterExtract.length < QUALITY_MIN_CHARS || stillTruncated)
+
+    if (needsGptFallback) {
+      if (stillTruncated) {
+        console.log(`[newsroom/pipeline] content still truncated after extraction, using GPT fallback: ${workingInput.sourceUrl}`)
+      }
       const generated = await generateArticleFromHeadline(workingInput.originalTitle, workingInput.sourceLabel)
       if (generated) {
         workingInput = {
@@ -228,11 +277,12 @@ export async function processNewsroomArticle(
           originalContent: generated.content,
           originalSummary: generated.summary || workingInput.originalSummary,
         }
-        console.log(`[newsroom/pipeline] GPT fallback used for thin content: ${workingInput.sourceUrl}`)
-      } else {
+        console.log(`[newsroom/pipeline] GPT fallback applied: ${workingInput.sourceUrl}`)
+      } else if (totalAfterExtract.length < QUALITY_MIN_CHARS) {
         console.warn(`[newsroom/pipeline] quality gate: content too thin, skipping ${workingInput.sourceUrl}`)
         return { outcome: 'skipped' }
       }
+      // If GPT failed but we have a non-truncated (just short) article, let it through
     }
 
     // Skip second AI rewrite for editors that already produced AI content (trend, influencer)

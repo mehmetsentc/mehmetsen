@@ -32,18 +32,8 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
   const { user, logout } = useAuth()
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   useEffect(() => { setHydrated(true) }, [])
-
-  useEffect(() => {
-    if (pathname === ROUTES.FEED) {
-      const params = new URLSearchParams(window.location.search)
-      setActiveCategory(params.get('category'))
-    } else {
-      setActiveCategory(null)
-    }
-  }, [pathname])
 
   const handleLogout = useCallback(async () => {
     await logout()
@@ -63,7 +53,7 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
     [searchQuery, router, onMobileClose],
   )
 
-  const isFeed = pathname === ROUTES.FEED
+  const isFeedOnly = pathname === ROUTES.FEED
 
   return (
     <>
@@ -122,27 +112,28 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
         <nav className="flex-1 overflow-y-auto">
           <Link
             href={ROUTES.FEED}
-            onClick={() => { setActiveCategory(null); onMobileClose?.() }}
+            onClick={onMobileClose}
             className={cn(
               'relative flex items-center px-5 py-3 text-[15px] transition-colors',
-              isFeed && !activeCategory
+              isFeedOnly
                 ? 'font-bold text-[rgb(var(--color-text))]'
                 : 'font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
             )}
           >
-            {isFeed && !activeCategory && (
+            {isFeedOnly && (
               <span className="absolute left-0 top-0 h-full w-[3px] rounded-r-full bg-[rgb(var(--color-brand))]" />
             )}
             Tümü
           </Link>
 
           {DEFAULT_CATEGORIES.map((cat) => {
-            const isActive = isFeed && activeCategory === cat.id
+            const href = ROUTES.CATEGORY(cat.slug)
+            const isActive = pathname.startsWith(href)
             return (
               <Link
                 key={cat.id}
-                href={`${ROUTES.FEED}?category=${cat.id}`}
-                onClick={() => { setActiveCategory(cat.id); onMobileClose?.() }}
+                href={href}
+                onClick={onMobileClose}
                 className={cn(
                   'relative flex items-center px-5 py-3 text-[15px] transition-colors',
                   isActive

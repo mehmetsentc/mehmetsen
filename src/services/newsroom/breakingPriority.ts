@@ -71,14 +71,40 @@ export function resolveBreakingFlags(breakingScore: number): BreakingFlags {
   }
 }
 
-/** Stub — queue push for breakingScore > 90 (wired when FCM topic broadcast exists). */
+/** Send a web push notification for breaking news (score > 90). */
 export async function queueBreakingPushNotification(
   newsId: string,
   title: string,
   breakingScore: number
 ): Promise<void> {
   if (breakingScore <= 90) return
-  console.log(
-    `[newsroom/push-stub] breaking alert queued newsId=${newsId} score=${breakingScore} title="${title.slice(0, 80)}"`
-  )
+
+  try {
+    // Lazy server-only import — avoids client bundle issues
+    const { broadcastPush } = await import('@/lib/pushSender.server')
+
+    // Fetch the published article to get slug + image
+    const { getAdminFirestore } = await import('@/lib/firebase/admin')
+    const db = getAdminFirestore()
+    const doc = await db.collection('news').doc(newsId).get()
+    const data = doc.data()
+    const slug: string = data?.slug ?? newsId
+    const summary: string = (data?.spot ?? data?.summary ?? '').slice(0, 120)
+    const image: string | undefined = data?.coverImageUrl ?? data?.thumbnail ?? undefined
+
+    await broadcastPush({
+      title: `🔴 SON DAKİKA: ${title}`,
+      body: summary,
+      url: `https://www.nahaber.com/news/${slug}`,
+      image,
+      tag: `breaking-${newsId}`,
+      breaking: true,
+      postId: newsId,
+    })
+
+    console.log(`[newsroom/push] sent breaking push newsId=${newsId} score=${breakingScore}`)
+  } catch (err) {
+    // Push failure must NOT block article publishing
+    console.error(`[newsroom/push] failed newsId=${newsId}:`, err)
+  }
 }

@@ -31,28 +31,47 @@ export const BREAKING_NEWS_SOURCE_IDS = [
   'aljazeera', 'trt', 'ntv', 'haberturk', 'aa',
 ] as const
 
-/** International world news — world worker (15 min). */
+/** International world news — world worker (5 min). */
 export const WORLD_NEWS_SOURCE_IDS = [
   'reuters-world', 'ap-news', 'aljazeera', 'guardian',
   'dw-english', 'sky-news', 'euronews-tr', 'bbc',
+  'nyt-world', 'wapo-world', 'france24-en', 'bbc-world',
 ] as const
 
-/** Technology sources — tech worker (30 min). */
+/** Technology sources — technology worker (10 min). */
 export const TECH_NEWS_SOURCE_IDS = [
   'techcrunch', 'theverge', 'wired', 'arstechnica',
   'venturebeat', 'mit-tech', 'shiftdelete', 'webtekno',
+  'openai-blog', 'google-blog', 'microsoft-blog', 'apple-newsroom',
+  'donanimhaber', 'chip-tr',
 ] as const
 
-/** Sports sources — sports worker (15 min). */
+/** Sports sources — sports worker (5 min). */
 export const SPORTS_NEWS_SOURCE_IDS = [
   'fanatik', 'fotomac', 'sporx', 'ajansspor',
   'ntv-spor', 'hurriyet-spor', 'haberturk-spor',
-  'goal-tr', 'f1-espn',
+  'goal-tr', 'f1-espn', 'trt-spor', 'milliyet-spor',
+  'takvim-spor', 'bbc-sport', 'espn-soccer', 'transfermarkt-news', 'uefa-news',
 ] as const
 
-/** Health & science sources — health worker (1h). */
+/** Health & science sources — health worker (15 min). */
 export const HEALTH_NEWS_SOURCE_IDS = [
   'who-news', 'nih-news', 'saglik-tr', 'nature-news', 'science-daily',
+  'cdc-news', 'lancet', 'medimagazin', 'saglik-aktuel',
+] as const
+
+/** Politics / government sources — politics worker (5 min). */
+export const POLITICS_NEWS_SOURCE_IDS = [
+  'anka-haber', 'ntv-politika', 'haberturk-politika', 'trt-politika',
+  'aa-siyaset', 'milliyet-siyaset', 'hurriyet-siyaset',
+  'cumhuriyet', 'gazeteduvar', 't24', 'bbc', 'euronews-tr',
+] as const
+
+/** Magazine / entertainment sources — magazine worker (15 min). */
+export const MAGAZINE_NEWS_SOURCE_IDS = [
+  'milliyet-magazin', 'sabah-magazin', 'posta-magazin',
+  'hurriyet-magazin', 'takvim-magazin',
+  'variety', 'billboard', 'tmz-news', 'hollywood-reporter',
 ] as const
 
 /** Economy & finance sources — expanded. */
@@ -207,33 +226,49 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     id: 'world-news',
     name: 'World News Worker',
     nameTr: 'Dünya Haberleri Worker',
-    schedule: '15m',
-    description: 'Reuters, AP, Al Jazeera, Guardian — uluslararası haberler, Türkçe yeniden yazma.',
+    schedule: '5m',
+    description: 'Reuters, AP, Al Jazeera, Guardian, NYT, WaPo — uluslararası haberler, Türkçe yeniden yazma.',
     cronPath: '/api/cron/newsroom/world',
   },
   'tech-news': {
     id: 'tech-news',
     name: 'Technology Worker',
     nameTr: 'Teknoloji Worker',
-    schedule: '30m',
-    description: 'TechCrunch, The Verge, Wired, Ars Technica — teknoloji haberleri.',
-    cronPath: '/api/cron/newsroom/tech',
+    schedule: '10m',
+    description: 'TechCrunch, Verge, Wired, OpenAI, Google, Microsoft, Apple — teknoloji ve yapay zeka haberleri.',
+    cronPath: '/api/cron/newsroom/technology',
   },
   'sports-news': {
     id: 'sports-news',
     name: 'Sports Worker',
     nameTr: 'Spor Worker',
-    schedule: '15m',
-    description: 'Fanatik, Fotomaç, Sporx, Ajansspor — spor ve futbol haberleri.',
+    schedule: '5m',
+    description: 'Fanatik, Fotomaç, Sporx, TRT Spor, BBC Sport — futbol, basketbol, F1, transfer haberleri.',
     cronPath: '/api/cron/newsroom/sports',
   },
   'health-news': {
     id: 'health-news',
     name: 'Health & Science Worker',
     nameTr: 'Sağlık & Bilim Worker',
-    schedule: '1h',
-    description: 'WHO, NIH, Nature — sağlık ve bilim haberleri, Türkçe yeniden yazma.',
+    schedule: '15m',
+    description: 'WHO, CDC, NIH, The Lancet, Nature — sağlık ve bilim haberleri, Türkçe yeniden yazma.',
     cronPath: '/api/cron/newsroom/health',
+  },
+  'politics-news': {
+    id: 'politics-news',
+    name: 'Politics Worker',
+    nameTr: 'Siyaset Worker',
+    schedule: '5m',
+    description: 'ANKA, AA, NTV, Habertürk, Cumhuriyet — TBMM, hükümet, seçim, dış politika haberleri.',
+    cronPath: '/api/cron/newsroom/politics',
+  },
+  'magazine-news': {
+    id: 'magazine-news',
+    name: 'Magazine Worker',
+    nameTr: 'Magazin Worker',
+    schedule: '15m',
+    description: 'Milliyet Magazin, Posta, Variety, Billboard, TMZ — ünlüler, eğlence, müzik, sinema.',
+    cronPath: '/api/cron/newsroom/magazine',
   },
   recategorize: {
     id: 'recategorize',

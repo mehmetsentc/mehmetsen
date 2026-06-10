@@ -75,6 +75,16 @@ export interface Post {
   videoId?: string
   /** True when article has been added to videoQueue */
   videoQueued?: boolean
+  /** 30-second voice script for TikTok Shorts */
+  videoScript30s?: string
+  /** 90-second voice script for YouTube Shorts / longer Reels */
+  videoScript90s?: string
+  /** Twitter/X caption ≤280 chars with hashtags */
+  twitterCaption?: string
+  /** Instagram caption with hashtags */
+  instagramCaption?: string
+  /** WhatsApp shareable plain text */
+  whatsappCaption?: string
   /** Public URL for AI-generated TTS audio (MP3) stored in Firebase Storage */
   audioUrl?: string
   /** Firebase Storage path for the TTS MP3 */

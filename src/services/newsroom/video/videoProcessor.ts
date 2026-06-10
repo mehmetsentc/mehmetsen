@@ -15,7 +15,13 @@
 
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
-import { generateVideoScript, fallbackVideoScript, type VideoScript } from './videoScriptGenerator'
+import {
+  generateVideoScript,
+  fallbackVideoScript,
+  generateMultiLengthScripts,
+  generateSocialCaptions,
+  type VideoScript,
+} from './videoScriptGenerator'
 import { generateTtsAudio } from './ttsGenerator'
 
 const BATCH_SIZE = 5  // Process up to 5 videos per cron run (avoids timeout)
@@ -100,10 +106,13 @@ export async function processVideoQueue(): Promise<VideoProcessorResult> {
 
       const now = Date.now()
 
-      // Generate TTS audio from voiceText (non-blocking — null if API key missing)
-      // We create the Firestore doc first with a placeholder, then update with audioUrl
-      const tempVideoId = `${item.newsId}_${now}`
-      const ttsResult = await generateTtsAudio(script.voiceText, tempVideoId)
+      // Generate 30s/60s/90s scripts + social captions in parallel with TTS
+      const scriptInput = { title: item.title, spot, summary: item.summary, content, categoryId: item.categoryId }
+      const [multiScripts, socialCaptions, ttsResult] = await Promise.all([
+        generateMultiLengthScripts(scriptInput),
+        generateSocialCaptions(scriptInput),
+        generateTtsAudio(script.voiceText, `${item.newsId}_${now}`),
+      ])
 
       // Build video document for the videos collection (TikTok feed)
       const videoDoc = {
@@ -136,12 +145,19 @@ export async function processVideoQueue(): Promise<VideoProcessorResult> {
         createdAt: now,
         publishedAt: now,
         source: 'ai_factory',
+        // Multi-length voice scripts
+        voiceText30s: multiScripts?.script30s ?? '',
+        voiceText90s: multiScripts?.script90s ?? '',
+        // Social media captions
+        twitterCaption: socialCaptions?.twitter ?? '',
+        instagramCaption: socialCaptions?.instagram ?? '',
+        whatsappCaption: socialCaptions?.whatsapp ?? '',
       }
 
       // Write to videos collection
       const videoRef = await db.collection(Collections.VIDEOS).add(videoDoc)
 
-      // Update original news article with video script metadata
+      // Update original news article with video script + social captions
       await db.collection(Collections.NEWS).doc(item.newsId).update({
         videoScript: script.voiceText.slice(0, 500),
         videoScriptFull: JSON.stringify(script),
@@ -150,6 +166,13 @@ export async function processVideoQueue(): Promise<VideoProcessorResult> {
         audioUrl: ttsResult?.audioUrl ?? '',
         videoQueued: false,
         videoProcessedAt: now,
+        // Multi-length scripts
+        ...(multiScripts?.script30s && { videoScript30s: multiScripts.script30s }),
+        ...(multiScripts?.script90s && { videoScript90s: multiScripts.script90s }),
+        // Social captions
+        ...(socialCaptions?.twitter && { twitterCaption: socialCaptions.twitter }),
+        ...(socialCaptions?.instagram && { instagramCaption: socialCaptions.instagram }),
+        ...(socialCaptions?.whatsapp && { whatsappCaption: socialCaptions.whatsapp }),
       })
 
       // Mark queue item as done

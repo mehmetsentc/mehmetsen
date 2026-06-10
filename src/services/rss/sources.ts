@@ -674,6 +674,348 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     maxItemsPerRun: 2,
     enabled: true,
   },
+
+  // ── Spor (ek kaynaklar) ──────────────────────────────────────────────────
+  {
+    id: 'trt-spor',
+    label: 'TRT Spor',
+    feedUrl: 'https://www.trthaber.com/xml_mobile.php?tur=xml_genel&kategori=spor&adet=20',
+    feedFormat: 'trt-xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:trtspor.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-spor',
+    label: 'Milliyet Spor',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/spor',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:milliyet.com.tr+spor&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'takvim-spor',
+    label: 'Takvim Spor',
+    feedUrl: 'https://news.google.com/rss/search?q=site:takvim.com.tr+spor&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'bbc-sport',
+    label: 'BBC Sport',
+    feedUrl: 'https://feeds.bbci.co.uk/sport/rss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:bbc.com+sport&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'espn-soccer',
+    label: 'ESPN Soccer',
+    feedUrl: 'https://www.espn.com/espn/rss/soccer/news',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=soccer+football+Champions+League&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'transfermarkt-news',
+    label: 'Transfermarkt News',
+    feedUrl: 'https://news.google.com/rss/search?q=transfermarkt+transfer+futbol&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'uefa-news',
+    label: 'UEFA News',
+    feedUrl: 'https://news.google.com/rss/search?q=UEFA+Champions+League+Europa+League&hl=en&gl=US&ceid=US:en',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Dünya Haberleri (ek) ─────────────────────────────────────────────────
+  {
+    id: 'nyt-world',
+    label: 'New York Times World',
+    feedUrl: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:nytimes.com+world&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'wapo-world',
+    label: 'Washington Post World',
+    feedUrl: 'https://feeds.washingtonpost.com/rss/world',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:washingtonpost.com+world&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'france24-en',
+    label: 'France 24 English',
+    feedUrl: 'https://www.france24.com/en/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:france24.com+world&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'bbc-world',
+    label: 'BBC World News',
+    feedUrl: 'https://feeds.bbci.co.uk/news/world/rss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:bbc.com+world+news&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+
+  // ── Teknoloji (ek) ───────────────────────────────────────────────────────
+  {
+    id: 'openai-blog',
+    label: 'OpenAI Blog',
+    feedUrl: 'https://openai.com/news/rss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:openai.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'google-blog',
+    label: 'Google Blog',
+    feedUrl: 'https://blog.google/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:blog.google&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'microsoft-blog',
+    label: 'Microsoft Blog',
+    feedUrl: 'https://blogs.microsoft.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:blogs.microsoft.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'apple-newsroom',
+    label: 'Apple Newsroom',
+    feedUrl: 'https://www.apple.com/newsroom/rss-feed.rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:apple.com+newsroom&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'donanimhaber',
+    label: 'Donanım Haber (TR)',
+    feedUrl: 'https://www.donanimhaber.com/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:donanimhaber.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'chip-tr',
+    label: 'Chip Online TR',
+    feedUrl: 'https://news.google.com/rss/search?q=site:chip.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+
+  // ── Siyaset ──────────────────────────────────────────────────────────────
+  {
+    id: 'anka-haber',
+    label: 'ANKA Haber Ajansı',
+    feedUrl: 'https://www.ankahaber.net/rss/haber',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:ankahaber.net&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'ntv-politika',
+    label: 'NTV Politika',
+    feedUrl: 'https://www.ntv.com.tr/politika.rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:ntv.com.tr+siyaset&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'haberturk-politika',
+    label: 'Habertürk Siyaset',
+    feedUrl: 'https://www.haberturk.com/rss/kategori/siyaset.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:haberturk.com+siyaset&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'trt-politika',
+    label: 'TRT Haber Siyaset',
+    feedUrl: 'https://www.trthaber.com/xml_mobile.php?tur=xml_genel&kategori=siyaset&adet=20',
+    feedFormat: 'trt-xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:trthaber.com+siyaset&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'aa-siyaset',
+    label: 'Anadolu Ajansı Siyaset',
+    feedUrl: 'https://www.aa.com.tr/tr/rss/default?cat=siyaset',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:aa.com.tr+siyaset&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-siyaset',
+    label: 'Milliyet Siyaset',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/siyaset',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:milliyet.com.tr+siyaset&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'hurriyet-siyaset',
+    label: 'Hürriyet Siyaset',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/siyaset',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:hurriyet.com.tr+siyaset&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Sağlık (ek) ──────────────────────────────────────────────────────────
+  {
+    id: 'cdc-news',
+    label: 'CDC Newsroom',
+    feedUrl: 'https://tools.cdc.gov/api/v2/resources/media/132608.rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:cdc.gov+health+news&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'lancet',
+    label: 'The Lancet',
+    feedUrl: 'https://www.thelancet.com/rssfeed/lancet_online.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:thelancet.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'medimagazin',
+    label: 'Medimagazin (TR)',
+    feedUrl: 'https://medimagazin.com.tr/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:medimagazin.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'saglik-aktuel',
+    label: 'Sağlık Aktüel (TR)',
+    feedUrl: 'https://www.saglikaktuel.com/rss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=sağlık+tıp+ilaç+araştırma&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Magazin / Eğlence (ek) ───────────────────────────────────────────────
+  {
+    id: 'hurriyet-magazin',
+    label: 'Hürriyet Magazin',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/magazin',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:hurriyet.com.tr+magazin&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'takvim-magazin',
+    label: 'Takvim Magazin',
+    feedUrl: 'https://www.takvim.com.tr/rss/magazin.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:takvim.com.tr+magazin&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'variety',
+    label: 'Variety',
+    feedUrl: 'https://variety.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:variety.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'billboard',
+    label: 'Billboard',
+    feedUrl: 'https://www.billboard.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:billboard.com+music&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'tmz-news',
+    label: 'TMZ',
+    feedUrl: 'https://www.tmz.com/rss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:tmz.com+celebrity&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+  {
+    id: 'hollywood-reporter',
+    label: 'Hollywood Reporter',
+    feedUrl: 'https://www.hollywoodreporter.com/c/news/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:hollywoodreporter.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
 ]
 
 function envFeedOverride(sourceId: string): string | undefined {

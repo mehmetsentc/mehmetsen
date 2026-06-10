@@ -8,6 +8,8 @@ export type EditorId =
   | 'tech-news'
   | 'sports-news'
   | 'health-news'
+  | 'politics-news'
+  | 'magazine-news'
   | 'trend'
   | 'influencer'
   | 'event'

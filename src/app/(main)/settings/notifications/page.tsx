@@ -10,6 +10,7 @@ import {
   saveNotificationPreferences,
   type NotificationPreferences,
 } from '@/lib/userPreferences'
+import { PushToggle } from '@/components/notifications/PushToggle'
 
 const pushOptions: {
   key: keyof Pick<NotificationPreferences, 'likes' | 'comments' | 'follows' | 'mentions'>
@@ -81,6 +82,10 @@ export default function NotificationSettingsPage() {
         title="Bildirimler"
         description="Hangi etkileşimlerde bildirim almak istediğinizi seçin."
       />
+
+      <SettingsSection title="Son Dakika Bildirimleri">
+        <PushToggle />
+      </SettingsSection>
 
       <SettingsSection title="Uygulama içi">
         {prefs &&

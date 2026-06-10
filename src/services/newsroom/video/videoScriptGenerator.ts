@@ -96,6 +96,121 @@ export async function generateVideoScript(input: VideoScriptInput): Promise<Vide
   }
 }
 
+// ── Multi-length scripts ────────────────────────────────────────────────
+
+export interface MultiLengthScripts {
+  script30s: string   // Hook + core fact — 30 seconds (~65 words)
+  script60s: string   // Full voiceText above — 60 seconds (~140 words)
+  script90s: string   // Extended with context + CTA — 90 seconds (~210 words)
+}
+
+function buildMultiLengthSystemPrompt(): string {
+  return `Sen Türkiye'nin en iyi dijital haber stüdyosunun yapay zeka video editörüsün.
+Sana bir haber veriyorum. 3 farklı uzunlukta video spikerı metni oluştur.
+
+JSON formatında yanıt ver:
+{
+  "script30s": "30 saniyelik (~65 kelime) metin: çarpıcı hook + en önemli tek gerçek. TikTok Shorts formatı.",
+  "script60s": "60 saniyelik (~140 kelime) metin: hook + olayın özü (5W+1H) + bağlam + NaHaber CTA.",
+  "script90s": "90 saniyelik (~210 kelime) metin: hook + detaylı haber + arka plan + uzman bağlamı + CTA."
+}
+Tüm metinler akıcı, spikerın okuduğu gibi, noktalama dahil. Haber dilinde, canlı, enerjik Türkçe.`
+}
+
+/** Generate 30s/60s/90s voice scripts in one API call. */
+export async function generateMultiLengthScripts(
+  input: VideoScriptInput
+): Promise<MultiLengthScripts | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return null
+
+  const articleText = [
+    `Başlık: ${input.title}`,
+    input.spot ? `Spot: ${input.spot}` : '',
+    input.summary ? `Özet: ${input.summary}` : '',
+    input.content ? `İçerik: ${input.content.slice(0, 1000)}` : '',
+  ].filter(Boolean).join('\n\n')
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: buildMultiLengthSystemPrompt() },
+          { role: 'user', content: articleText },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.6,
+        max_tokens: 800,
+      }),
+    })
+    if (!res.ok) return null
+    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+    const raw = json.choices[0]?.message?.content
+    if (!raw) return null
+    return JSON.parse(raw) as MultiLengthScripts
+  } catch {
+    return null
+  }
+}
+
+// ── Social media captions ────────────────────────────────────────────────
+
+export interface SocialCaptions {
+  twitter: string      // ≤280 chars, punchy, with hashtags
+  instagram: string    // 150-200 chars + 5-8 hashtags
+  whatsapp: string     // Plain text, 1-2 sentences, no hashtags, shareable
+}
+
+function buildSocialCaptionSystemPrompt(): string {
+  return `Sen NaHaber'in sosyal medya editörüsün.
+Verilen haber için 3 farklı platform için Türkçe paylaşım metni oluştur.
+
+JSON formatında yanıt ver:
+{
+  "twitter": "Tweet metni ≤280 karakter, merak uyandıran, 2-3 hashtag, 🔴 veya emoji kullan, nahaber.com linki için yer bırak.",
+  "instagram": "Instagram açıklaması 150-200 karakter, duygusal/merak uyandıran dil, 5-8 Türkçe hashtag. Emoji kullan.",
+  "whatsapp": "WhatsApp için paylaşılabilir 1-2 cümle, sade dil, hashtag yok, insanın 'wow' diyeceği bir ifade."
+}
+Her platform için tonunu optimize et. Hepsinde haber doğruluğunu koru.`
+}
+
+/** Generate social media captions for Twitter, Instagram, and WhatsApp. */
+export async function generateSocialCaptions(
+  input: VideoScriptInput
+): Promise<SocialCaptions | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return null
+
+  const articleText = `Başlık: ${input.title}\n${input.spot ?? input.summary ?? ''}`
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: buildSocialCaptionSystemPrompt() },
+          { role: 'user', content: articleText },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.8,
+        max_tokens: 400,
+      }),
+    })
+    if (!res.ok) return null
+    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+    const raw = json.choices[0]?.message?.content
+    if (!raw) return null
+    return JSON.parse(raw) as SocialCaptions
+  } catch {
+    return null
+  }
+}
+
 /** Fallback: generate a basic script without AI for offline/test scenarios */
 export function fallbackVideoScript(input: VideoScriptInput): VideoScript {
   const words = (input.spot || input.summary || input.title).slice(0, 700)
