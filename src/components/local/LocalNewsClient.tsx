@@ -185,19 +185,36 @@ export function LocalNewsClient() {
     citySlugRef.current = citySlug
 
     try {
+      // Önce şehre özel haberler
       let result = await postService.getNewsTimeline(undefined, { feedSource: 'nahaber', citySlug })
       if (citySlugRef.current !== citySlug) return
 
+      // Şehre özel haber yoksa yerel-haber kategorisine düş
       if (result.posts.length === 0) {
         result = await postService.getNewsTimeline(undefined, { feedSource: 'nahaber', categoryId: 'yerel-haber' })
+        if (citySlugRef.current !== citySlug) return
+      }
+
+      // Hâlâ boşsa son haberleri göster (en kötü ihtimal)
+      if (result.posts.length === 0) {
+        result = await postService.getNewsTimeline(undefined, { feedSource: 'nahaber' })
         if (citySlugRef.current !== citySlug) return
       }
 
       setPosts(result.posts)
       setLastDoc(result.lastDoc ?? null)
       setHasMore(result.hasMore)
-    } catch {
-      setError('Haberler yüklenemedi')
+    } catch (err) {
+      console.error('[LocalNewsClient] fetch failed:', err)
+      // Hata olsa bile genel haberleri yükle
+      try {
+        const fallback = await postService.getNewsTimeline(undefined, { feedSource: 'nahaber' })
+        setPosts(fallback.posts)
+        setLastDoc(fallback.lastDoc ?? null)
+        setHasMore(fallback.hasMore)
+      } catch {
+        setError('Haberler yüklenemedi')
+      }
     } finally {
       setLoading(false)
     }

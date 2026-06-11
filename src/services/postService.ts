@@ -55,7 +55,10 @@ function buildNewsTimelineQueryConstraints(
   // feedSource filter is always applied client-side via filterPostsByFeedSource.
   const filterAuthorOnServer = false
 
-  const constraints: Parameters<typeof query>[1][] = []
+  // status filtresi her zaman ilk — composite index'ler (status, X, publishedAt) yapısında
+  const constraints: Parameters<typeof query>[1][] = [
+    where('status', '==', 'published'),
+  ]
 
   if (options?.citySlug) {
     constraints.push(where('citySlug', '==', options.citySlug))
@@ -71,7 +74,8 @@ function buildNewsTimelineQueryConstraints(
     constraints.push(where('categoryId', '==', options.categoryId))
   }
 
-  constraints.push(orderBy('createdAt', 'desc'))
+  // publishedAt kullan — tüm composite index'ler bu alanı referans alıyor
+  constraints.push(orderBy('publishedAt', 'desc'))
   constraints.push(limit(watchLimit))
 
   return { constraints, filterAuthorOnServer }
