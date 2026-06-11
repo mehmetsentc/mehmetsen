@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Search, Settings, Menu } from 'lucide-react'
+import { Search, Settings, Menu, Bell } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
@@ -40,7 +40,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           </span>
         </Link>
 
-        {/* Right: Search + Settings */}
+        {/* Right: Search + Bell + Settings */}
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -50,6 +50,13 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           >
             <Search className="h-5 w-5" strokeWidth={2} />
           </button>
+          <Link
+            href={ROUTES.NOTIFICATIONS}
+            className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
+            aria-label="Bildirimler"
+          >
+            <Bell className="h-5 w-5" strokeWidth={2} />
+          </Link>
           <Link
             href={hydrated && user ? ROUTES.SETTINGS : ROUTES.LOGIN}
             className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"

@@ -1,11 +1,10 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Bell, MapPin, User, Clapperboard } from 'lucide-react'
+import { Home, MapPin, CalendarDays, Trophy } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
@@ -14,14 +13,13 @@ interface MobileNavItem {
   icon: LucideIcon
   label: string
   href: string
-  center?: boolean
 }
 
 function isNavActive(pathname: string, item: MobileNavItem): boolean {
   if (item.href === ROUTES.FEED) return pathname === ROUTES.FEED
-  if (item.href === ROUTES.REELS) return pathname === ROUTES.REELS || pathname.startsWith('/reels')
   if (item.href === ROUTES.LOCAL) return pathname.startsWith('/local')
-  if (item.href.startsWith('/profile')) return pathname.startsWith('/profile')
+  if (item.href === ROUTES.EVENTS) return pathname.startsWith('/events')
+  if (item.href === ROUTES.SPOR) return pathname.startsWith('/kategori/spor')
   return pathname.startsWith(item.href)
 }
 
@@ -32,24 +30,11 @@ interface MobileNavLinkProps {
 }
 
 const MobileNavLink = memo(function MobileNavLink({ item, active, pathname }: MobileNavLinkProps) {
-  const { icon: Icon, label, href, center } = item
+  const { icon: Icon, label, href } = item
 
   const handleClick = useCallback(() => {
     logNavClick(href, pathname)
   }, [href, pathname])
-
-  if (center) {
-    return (
-      <Link
-        href={href}
-        aria-label={label}
-        onClick={handleClick}
-        className="relative -top-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] shadow-lg shadow-[rgb(var(--color-brand))]/40 transition-transform active:scale-95"
-      >
-        <Icon className="h-7 w-7 text-white" strokeWidth={1.75} />
-      </Link>
-    )
-  }
 
   return (
     <Link
@@ -75,22 +60,15 @@ const MobileNavLink = memo(function MobileNavLink({ item, active, pathname }: Mo
 
 function MobileNavInner() {
   const pathname = usePathname()
-  const { user } = useAuth()
-  const [hydrated, setHydrated] = useState(false)
-
-  useEffect(() => { setHydrated(true) }, [])
-
-  const profileHref = hydrated && user ? ROUTES.PROFILE(user.username) : ROUTES.LOGIN
 
   const items = useMemo<MobileNavItem[]>(
     () => [
       { icon: Home,        label: 'Ana Sayfa', href: ROUTES.FEED },
-      { icon: Bell,        label: 'Bildirim',  href: ROUTES.NOTIFICATIONS },
-      { icon: Clapperboard,label: 'Teve',      href: ROUTES.REELS, center: true },
+      { icon: Trophy,      label: 'Spor',      href: ROUTES.SPOR },
+      { icon: CalendarDays,label: 'Etkinlik',  href: ROUTES.EVENTS },
       { icon: MapPin,      label: 'Yerel',     href: ROUTES.LOCAL },
-      { icon: User,        label: 'Profil',    href: profileHref },
     ],
-    [profileHref]
+    []
   )
 
   return (

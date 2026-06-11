@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin, Flame } from 'lucide-react'
+import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin, Flame, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
@@ -205,6 +205,14 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
         <div className="shrink-0 space-y-1 border-t border-[rgb(var(--color-border))] p-3">
           {hydrated && user && (
             <>
+              <Link
+                href={ROUTES.PROFILE(user.username)}
+                onClick={onMobileClose}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
+              >
+                <User className="h-4 w-4 shrink-0" />
+                Profilim
+              </Link>
               <Link
                 href={ROUTES.SETTINGS}
                 onClick={onMobileClose}
