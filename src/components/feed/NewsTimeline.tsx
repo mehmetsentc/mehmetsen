@@ -180,12 +180,12 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
   )
 }
 
-function NewsTimelineWithSearchParams() {
+function NewsTimelineWithSearchParams({ defaultCategory }: { defaultCategory?: string }) {
   const searchParams = useSearchParams()
-  const categoryParam = searchParams.get('category')
+  const categoryParam = searchParams.get('category') ?? defaultCategory ?? null
   return <NewsTimelineContent categoryParam={categoryParam} />
 }
 
-export function NewsTimeline() {
-  return <NewsTimelineWithSearchParams />
+export function NewsTimeline({ defaultCategory }: { defaultCategory?: string } = {}) {
+  return <NewsTimelineWithSearchParams defaultCategory={defaultCategory} />
 }

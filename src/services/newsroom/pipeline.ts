@@ -67,16 +67,27 @@ function isTruncated(text: string): boolean {
 }
 
 /**
- * GPT fallback — when article extraction fails (blocked site),
+ * AI fallback — when article extraction fails (blocked site),
  * generate a complete Turkish news article from headline alone.
+ * Supports both OpenAI and DeepSeek (mirrors getActiveAiConfig logic).
  */
 async function generateArticleFromHeadline(
   title: string,
   sourceLabel: string
 ): Promise<{ summary: string; content: string } | null> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  // Unified key/endpoint — prefer OpenAI, fall back to DeepSeek
+  const openaiKey = process.env.OPENAI_API_KEY?.trim()
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  const apiKey = openaiKey || deepseekKey
   if (!apiKey) return null
+
+  const isDeepSeek = !openaiKey && Boolean(deepseekKey)
+  const model = isDeepSeek
+    ? (process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat')
+    : (process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini')
+  const baseUrl = isDeepSeek
+    ? 'https://api.deepseek.com/v1/chat/completions'
+    : 'https://api.openai.com/v1/chat/completions'
 
   const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
 Bir haber başlığı verilecek. Bu başlıktan yola çıkarak gerçekçi, bilgilendirici bir haber yaz.
@@ -88,7 +99,7 @@ KURALLAR:
 - Sadece JSON: {"summary":"...","content":"..."}`
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch(baseUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -100,7 +111,7 @@ KURALLAR:
           { role: 'user', content: `Başlık: "${title}"\nKaynak: ${sourceLabel}\n\nHaberi yaz.` },
         ],
       }),
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(25_000),
     })
     if (!res.ok) return null
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
@@ -110,6 +121,7 @@ KURALLAR:
     const summary = parsed.summary?.trim() || ''
     const content = parsed.content?.trim() || ''
     if (content.length < 100) return null
+    console.log(`[newsroom/pipeline] headline-to-article via ${isDeepSeek ? 'DeepSeek' : 'OpenAI'}: ${title.slice(0, 60)}`)
     return { summary, content }
   } catch {
     return null
@@ -142,15 +154,25 @@ async function translateToTurkish(fields: {
   originalSummary?: string
   originalContent?: string
 }): Promise<{ originalTitle: string; originalSummary: string; originalContent: string } | null> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  // Unified key/endpoint — prefer OpenAI, fall back to DeepSeek
+  const openaiKey = process.env.OPENAI_API_KEY?.trim()
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  const apiKey = openaiKey || deepseekKey
   if (!apiKey) return null
+
+  const isDeepSeek = !openaiKey && Boolean(deepseekKey)
+  const model = isDeepSeek
+    ? (process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat')
+    : (process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini')
+  const baseUrl = isDeepSeek
+    ? 'https://api.deepseek.com/v1/chat/completions'
+    : 'https://api.openai.com/v1/chat/completions'
 
   const contentSnippet = (fields.originalContent ?? '').slice(0, 3000)
   const summarySnippet = fields.originalSummary ?? ''
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch(baseUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -179,7 +201,7 @@ async function translateToTurkish(fields: {
     const summary = parsed.summary?.trim() || summarySnippet
     const content = parsed.content?.trim() || contentSnippet
     if (content.length < 80) return null
-    console.log(`[newsroom/pipeline] translated to Turkish: ${title}`)
+    console.log(`[newsroom/pipeline] translated to Turkish via ${isDeepSeek ? 'DeepSeek' : 'OpenAI'}: ${title.slice(0, 60)}`)
     return { originalTitle: title, originalSummary: summary, originalContent: content }
   } catch (err) {
     console.warn('[newsroom/pipeline] translation failed:', err)
@@ -390,12 +412,23 @@ export async function processNewsroomArticle(
         })
         if (translated) {
           workingInput = { ...workingInput, ...translated }
+        } else {
+          // No AI key AND no translation → skip non-Turkish content
+          console.warn(`[newsroom/pipeline] İngilizce içerik, çeviri yapılamadı → atlandı: ${workingInput.sourceUrl}`)
+          return { outcome: 'skipped' }
         }
       } else {
         // AI rewrite will translate — but drop English htmlContent so Turkish text shows
         if (workingInput.htmlContent) {
           workingInput = { ...workingInput, htmlContent: undefined }
           console.log(`[newsroom/pipeline] cleared English htmlContent — AI rewrite will produce Turkish: ${workingInput.sourceUrl}`)
+        }
+        // If no AI configured, translate now before fallback rewrite would publish English text
+        const openaiKey = process.env.OPENAI_API_KEY?.trim()
+        const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+        if (!openaiKey && !deepseekKey) {
+          console.warn(`[newsroom/pipeline] İngilizce içerik, AI key yok → atlandı: ${workingInput.sourceUrl}`)
+          return { outcome: 'skipped' }
         }
       }
     }

@@ -5,6 +5,8 @@ import { WorldCupStrip } from '@/components/sports/WorldCupStrip'
 import { MatchResults } from '@/components/sports/MatchResults'
 import { SuperLigTable } from '@/components/sports/SuperLigTable'
 import { TransferStrip } from '@/components/sports/TransferStrip'
+import { NewsSlider } from '@/components/widgets/NewsSlider'
+import { FinanceTicker } from '@/components/widgets/FinanceTicker'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 
 export const metadata: Metadata = {
@@ -21,18 +23,24 @@ export default function SporPage() {
     <div className="w-full">
       {/* Category header */}
       <div
-        className="mb-5 flex items-center gap-3 rounded-2xl px-4 py-3"
+        className="mb-3 flex items-center gap-3 rounded-2xl px-4 py-2.5"
         style={{ backgroundColor: '#10B98118', borderLeft: '4px solid #10B981' }}
       >
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[rgb(var(--color-text))]">
+          <h1 className="text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
             ⚽ Spor
           </h1>
-          <p className="text-xs text-[rgb(var(--color-muted))]">
+          <p className="text-[11px] text-[rgb(var(--color-muted))]">
             Son dakika spor haberleri ve maç sonuçları
           </p>
         </div>
       </div>
+
+      {/* 🖼️ Spor haber kaydırıcısı */}
+      <NewsSlider categoryId="spor" />
+
+      {/* 💱 Finance ticker */}
+      <FinanceTicker />
 
       {/* 🏆 Dünya Kupası yatay kaydırma şeridi */}
       <WorldCupStrip />
@@ -40,14 +48,14 @@ export default function SporPage() {
       {/* ⚽ Maç Sonuçları */}
       <MatchResults />
 
-      {/* 🇹🇷 Süper Lig Puan Tablosu — Transfermarkt */}
+      {/* 🇹🇷 Süper Lig Puan Tablosu */}
       <SuperLigTable />
 
-      {/* 💸 Son Transferler — Transfermarkt */}
+      {/* 💸 Son Transferler */}
       <TransferStrip />
 
       {/* Divider */}
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-3 flex items-center gap-3">
         <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
         <span className="text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--color-muted))]">
           Tüm Haberler
@@ -55,7 +63,6 @@ export default function SporPage() {
         <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
       </div>
 
-      {/* Regular sports news feed */}
       <Suspense
         fallback={
           <div className="space-y-4">

@@ -341,6 +341,7 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
         { role: 'user', content: buildUserPrompt(input) },
       ],
     }),
+    signal: AbortSignal.timeout(30_000),
   })
 
   if (!res.ok) {
@@ -478,13 +479,21 @@ function fallbackRewrite(input: AiRewriteInput): AiRewriteResult | AiArchiveRewr
 }
 
 /**
- * İngilizce (veya Türkçe olmayan) içerik tespiti.
- * Türkçeye özgü karakter yoksa ve yaygın İngilizce kelimeler varsa true döner.
+ * Karakter-oranı tabanlı Türkçe tespiti (daha güvenilir).
+ * Türkçeye özgü karakterlerin oranına bakarak dil tahmini yapar.
+ * "Three red cards shown" gibi sıradan İngilizce cümleleri de yakalar.
  */
 function isLikelyNonTurkish(text: string): boolean {
-  if (/[ğüşıöç]/i.test(text)) return false   // Türkçe karakter → Türkçe
-  const englishPattern = /\b(the|and|is|are|was|were|has|have|for|with|from|this|that|over|half|off|new|what|how|why|when|where|you|your|our|their|its|can|will|said|says|after|before|more|less|than|but|not|get|got|like|just|also|about|into|out|up|it)\b/i
-  return englishPattern.test(text)
+  if (!text || text.length < 15) return false
+  // Türkçe özel karakter varsa kesinlikle Türkçe
+  if (/[ğüşıöçĞÜŞİÖÇ]/.test(text)) return false
+  // Metin yeterince uzunsa karakter-oran kontrolü yap
+  const letters = (text.match(/\p{L}/gu) ?? []).length
+  if (letters < 15) return false
+  const trChars = (text.match(/[ğüşıöçĞÜŞİÖÇ]/g) ?? []).length
+  // Türkçe metinlerde genellikle %0.8'den fazla Türkçe-özel karakter bulunur
+  // İngilizce/Arapça/diğer → oran sıfır
+  return trChars / letters < 0.008
 }
 
 export const aiNewsEditor = {
