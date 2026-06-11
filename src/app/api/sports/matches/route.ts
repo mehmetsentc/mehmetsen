@@ -1,23 +1,15 @@
 /**
  * GET /api/sports/matches
- * TheSportsDB free API üzerinden son maç sonuçlarını çeker.
- * Konu: Süper Lig + Şampiyonlar Ligi + Dünya Kupası
+ * TheSportsDB free API — sadece bugünün futbol maçlarını döner.
+ * Bugün maç yoksa dün, o da yoksa boş döner.
  */
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// TheSportsDB league IDs
-const LEAGUES = [
-  { id: '4197', name: 'Süper Lig',          flag: '🇹🇷' },
-  { id: '4480', name: 'Şampiyonlar Ligi',    flag: '⭐' },
-  { id: '4429', name: 'Dünya Kupası',        flag: '🌍' },
-]
-
 interface SportsDBEvent {
   idEvent: string
-  strEvent: string
   strHomeTeam: string
   strAwayTeam: string
   strHomeTeamBadge?: string
@@ -27,8 +19,7 @@ interface SportsDBEvent {
   dateEvent: string
   strTime: string | null
   strLeague: string
-  strStatus?: string
-  strPostponed?: string
+  strSport?: string
 }
 
 export interface MatchResult {
@@ -42,37 +33,40 @@ export interface MatchResult {
   date: string
   time: string
   league: string
-  leagueFlag: string
-  status: 'finished' | 'live' | 'upcoming'
+  status: 'finished' | 'upcoming'
 }
 
-async function fetchLeagueMatches(leagueId: string, leagueFlag: string): Promise<MatchResult[]> {
+function toDateStr(d: Date): string {
+  return d.toISOString().slice(0, 10) // YYYY-MM-DD
+}
+
+function teamBadge(team: string, badge?: string): string {
+  if (badge) return `${badge}/preview`
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(team)}&size=40`
+}
+
+async function fetchDay(dateStr: string): Promise<MatchResult[]> {
   try {
     const res = await fetch(
-      `https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=${leagueId}`,
+      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${dateStr}&s=Soccer`,
       { next: { revalidate: 300 } }
     )
     if (!res.ok) return []
     const data = await res.json() as { events?: SportsDBEvent[] }
     if (!data.events) return []
 
-    return data.events.slice(-8).reverse().map((e) => ({
+    return data.events.map((e) => ({
       id: e.idEvent,
       homeTeam: e.strHomeTeam,
       awayTeam: e.strAwayTeam,
       homeScore: e.intHomeScore !== null ? parseInt(e.intHomeScore) : null,
       awayScore: e.intAwayScore !== null ? parseInt(e.intAwayScore) : null,
-      homeBadge: e.strHomeTeamBadge
-        ? `${e.strHomeTeamBadge}/preview`
-        : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(e.strHomeTeam)}&size=40`,
-      awayBadge: e.strAwayTeamBadge
-        ? `${e.strAwayTeamBadge}/preview`
-        : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(e.strAwayTeam)}&size=40`,
+      homeBadge: teamBadge(e.strHomeTeam, e.strHomeTeamBadge),
+      awayBadge: teamBadge(e.strAwayTeam, e.strAwayTeamBadge),
       date: e.dateEvent,
-      time: e.strTime ?? '',
+      time: e.strTime?.slice(0, 5) ?? '',   // "16:00" formatı
       league: e.strLeague,
-      leagueFlag,
-      status: 'finished',
+      status: e.intHomeScore !== null ? 'finished' : 'upcoming',
     }))
   } catch {
     return []
@@ -80,14 +74,21 @@ async function fetchLeagueMatches(leagueId: string, leagueFlag: string): Promise
 }
 
 export async function GET() {
-  const results = await Promise.all(
-    LEAGUES.map((l) => fetchLeagueMatches(l.id, l.flag))
-  )
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
 
-  const matches = results.flat().slice(0, 20)
+  // Önce bugün, yoksa dün
+  let matches = await fetchDay(toDateStr(today))
+  let dateLabel = 'Bugün'
+
+  if (matches.length === 0) {
+    matches = await fetchDay(toDateStr(yesterday))
+    dateLabel = 'Dün'
+  }
 
   return NextResponse.json(
-    { matches, updatedAt: Date.now() },
-    { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } }
+    { matches: matches.slice(0, 30), dateLabel, updatedAt: Date.now() },
+    { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } }
   )
 }

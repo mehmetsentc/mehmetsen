@@ -14,9 +14,11 @@ function ScoreCard({ match }: { match: MatchResult }) {
     <div className="flex min-w-[220px] flex-col gap-2 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3 shadow-sm">
       {/* League */}
       <div className="flex items-center gap-1.5">
-        <span className="text-sm">{match.leagueFlag}</span>
         <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--color-muted))]">
           {match.league}
+        </span>
+        <span className="ml-auto text-[10px] text-[rgb(var(--color-muted))]">
+          {match.status === 'finished' ? '✓' : match.time}
         </span>
       </div>
 
@@ -67,6 +69,7 @@ function ScoreCard({ match }: { match: MatchResult }) {
 
 export function MatchResults() {
   const [matches, setMatches] = useState<MatchResult[]>([])
+  const [dateLabel, setDateLabel] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
@@ -76,8 +79,9 @@ export function MatchResults() {
     try {
       const res = await fetch('/api/sports/matches')
       if (!res.ok) throw new Error('failed')
-      const data = await res.json() as { matches: MatchResult[] }
+      const data = await res.json() as { matches: MatchResult[]; dateLabel: string }
       setMatches(data.matches)
+      setDateLabel(data.dateLabel)
     } catch {
       setError(true)
     } finally {
@@ -91,7 +95,14 @@ export function MatchResults() {
     <section className="mb-5">
       <div className="mb-2 flex items-center gap-2 px-1">
         <span className="text-base">⚽</span>
-        <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">Maç Sonuçları</h2>
+        <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">
+          Maç Sonuçları
+          {dateLabel && (
+            <span className="ml-2 text-[11px] font-normal text-[rgb(var(--color-muted))]">
+              · {dateLabel}
+            </span>
+          )}
+        </h2>
         {!loading && (
           <button
             onClick={load}
