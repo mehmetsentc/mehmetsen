@@ -80,7 +80,9 @@ export function enrichGeo(rewritten: AiRewriteResult, extraTags: string[] = []):
   if (city) {
     // Normalize to canonical display name (e.g. "diyarbakır" → "Diyarbakır")
     city = normalizeDisplayCity(city)
-  } else {
+  } else if (country === 'Türkiye' || !country) {
+    // Yalnızca Türkiye haberleri için metinden şehir çıkar.
+    // Dünya haberleri (country !== 'Türkiye') metinde Türk şehri geçse bile tag ekleme.
     const haystack = `${rewritten.title} ${rewritten.description}`
     city = extractCityFromText(haystack)
   }

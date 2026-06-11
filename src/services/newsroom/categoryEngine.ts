@@ -388,6 +388,20 @@ export function validateCategoryClassification(
     }
   }
 
+  // ── Afet/Deprem özel override: siyaset kategorisine yanlış düşen doğal afet haberlerini kurtar.
+  // Sorun: "Deprem sonrası Erdoğan bölgeyi ziyaret etti" → AI siyaset seçiyor.
+  // Çözüm: içerikte somut afet kelimesi varsa VE seçim/parti gibi gerçek siyasi sinyal yoksa → gündem.
+  const DISASTER_TERMS = ['deprem', 'enkaz', 'arama kurtarma', 'afad', 'büyük yangın', 'sel felaketi', 'heyelan', 'toprak kayması', 'tsunami', 'can kaybı', 'hayatını kaybetti', 'yaralı sayısı', 'patlama', 'göçük']
+  const PARTISAN_TERMS = ['seçim', 'secim', 'sandık', 'oy oranı', 'akp', 'chp', 'mhp', 'hdp', 'dem parti', 'iyi parti', 'kurultay', 'referandum', 'muhalefet', 'iktidar koalisyon', 'parti genel başkanı']
+  const hasDisasterTerm = DISASTER_TERMS.some(t => text.toLocaleLowerCase('tr-TR').includes(t))
+  const hasPartisanTerm = PARTISAN_TERMS.some(t => text.toLocaleLowerCase('tr-TR').includes(t))
+
+  if (hasDisasterTerm && !hasPartisanTerm && categoryId === 'siyaset') {
+    overrides.push(`afet-keywords → gundem (was siyaset, no partisan signal)`)
+    categoryId = 'gundem'
+    categoryConfidence = Math.max(categoryConfidence, 92)
+  }
+
   // ── Ulusal kriz / afet override — en yüksek öncelik (deprem, yangın, patlama vs.)
   // Teknoloji/ekonomi/kültür gibi kategorilere yanlış düşen afet haberlerini gündem'e çek.
   if (

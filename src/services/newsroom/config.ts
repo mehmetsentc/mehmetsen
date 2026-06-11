@@ -48,7 +48,7 @@ export const TECH_NEWS_SOURCE_IDS = [
 
 /** Sports sources — sports worker (5 min). */
 export const SPORTS_NEWS_SOURCE_IDS = [
-  'fanatik', 'fotomac', 'sporx', 'ajansspor',
+  'fanatik', 'fotomac', 'ajansspor',
   'ntv-spor', 'hurriyet-spor', 'haberturk-spor',
   'goal-tr', 'f1-espn', 'trt-spor', 'milliyet-spor',
   'takvim-spor', 'bbc-sport', 'espn-soccer', 'transfermarkt-news', 'uefa-news',

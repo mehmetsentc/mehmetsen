@@ -575,7 +575,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:sporx.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false, // Çok fazla tanıtım/reklam içeriği — devre dışı
   },
   {
     id: 'ajansspor',
