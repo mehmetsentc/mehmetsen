@@ -108,45 +108,37 @@ export function LocalNewsClient() {
     citySlugRef.current = citySlug
 
     try {
-      // Önce şehre özel haberler
-      let result = await postService.getNewsTimeline(undefined, { citySlug })
-      if (citySlugRef.current !== citySlug) return
+      let result
 
-      // Şehre özel haber yoksa yerel-haber kategorisine düş
-      if (result.posts.length === 0) {
+      if (citySlug === '__all__') {
+        // Konum alınamadı — tüm yerel haberleri göster, şehir filtresi yok
         result = await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
-        if (citySlugRef.current !== citySlug) return
+      } else {
+        // Şehir belli — SADECE o şehrin haberleri, fallback yok
+        result = await postService.getNewsTimeline(undefined, { citySlug })
       }
 
-      // Hâlâ boşsa son haberleri göster (en kötü ihtimal)
-      if (result.posts.length === 0) {
-        result = await postService.getNewsTimeline(undefined, {})
-        if (citySlugRef.current !== citySlug) return
-      }
+      if (citySlugRef.current !== citySlug) return
 
       setPosts(result.posts as TimelinePost[])
       setLastDoc(result.lastDoc ?? null)
       setHasMore(result.hasMore)
     } catch (err) {
       console.error('[LocalNewsClient] fetch failed:', err)
-      try {
-        const fallback = await postService.getNewsTimeline(undefined, {})
-        setPosts(fallback.posts as TimelinePost[])
-        setLastDoc(fallback.lastDoc ?? null)
-        setHasMore(fallback.hasMore)
-      } catch {
-        setError('Haberler yüklenemedi')
-      }
+      setError('Haberler yüklenemedi')
     } finally {
       setLoading(false)
     }
   }, [])
 
   const loadMore = useCallback(async () => {
-    if (!city || !lastDoc || loadingMore || !hasMore) return
+    if (!lastDoc || loadingMore || !hasMore) return
     setLoadingMore(true)
     try {
-      const result = await postService.getNewsTimeline(lastDoc, { citySlug: city.slug })
+      const params = city
+        ? { citySlug: city.slug }
+        : { categoryId: 'yerel-haber' }
+      const result = await postService.getNewsTimeline(lastDoc, params)
       setPosts(prev => [...prev, ...result.posts as TimelinePost[]])
       setLastDoc(result.lastDoc ?? null)
       setHasMore(result.hasMore)
