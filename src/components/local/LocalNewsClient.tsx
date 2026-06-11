@@ -186,18 +186,18 @@ export function LocalNewsClient() {
 
     try {
       // Önce şehre özel haberler
-      let result = await postService.getNewsTimeline(undefined, { feedSource: 'nahaber', citySlug })
+      let result = await postService.getNewsTimeline(undefined, { citySlug })
       if (citySlugRef.current !== citySlug) return
 
       // Şehre özel haber yoksa yerel-haber kategorisine düş
       if (result.posts.length === 0) {
-        result = await postService.getNewsTimeline(undefined, { feedSource: 'nahaber', categoryId: 'yerel-haber' })
+        result = await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
         if (citySlugRef.current !== citySlug) return
       }
 
       // Hâlâ boşsa son haberleri göster (en kötü ihtimal)
       if (result.posts.length === 0) {
-        result = await postService.getNewsTimeline(undefined, { feedSource: 'nahaber' })
+        result = await postService.getNewsTimeline(undefined, {})
         if (citySlugRef.current !== citySlug) return
       }
 
@@ -208,7 +208,7 @@ export function LocalNewsClient() {
       console.error('[LocalNewsClient] fetch failed:', err)
       // Hata olsa bile genel haberleri yükle
       try {
-        const fallback = await postService.getNewsTimeline(undefined, { feedSource: 'nahaber' })
+        const fallback = await postService.getNewsTimeline(undefined, {})
         setPosts(fallback.posts)
         setLastDoc(fallback.lastDoc ?? null)
         setHasMore(fallback.hasMore)
@@ -224,7 +224,7 @@ export function LocalNewsClient() {
     if (!city || !lastDoc || loadingMore || !hasMore) return
     setLoadingMore(true)
     try {
-      const result = await postService.getNewsTimeline(lastDoc, { feedSource: 'nahaber', citySlug: city.slug })
+      const result = await postService.getNewsTimeline(lastDoc, { citySlug: city.slug })
       setPosts(prev => [...prev, ...result.posts])
       setLastDoc(result.lastDoc ?? null)
       setHasMore(result.hasMore)

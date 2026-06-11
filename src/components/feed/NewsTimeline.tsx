@@ -33,23 +33,11 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
   const { user, loading: authLoading } = useAuth()
   const { getCachedFeed, setCachedFeed } = useAppState()
   const [categoryId, setCategoryId] = useState<string | null>(categoryParam)
-  const [guestConsentReady, setGuestConsentReady] = useState(false)
 
   useEffect(() => { setCategoryId(categoryParam) }, [categoryParam])
 
-  useEffect(() => {
-    if (authLoading) return
-    if (user) { setGuestConsentReady(true); return }
-    setGuestConsentReady(hasFeedGuestConsent())
-  }, [user, authLoading])
-
-  useEffect(() => {
-    const handler = () => setGuestConsentReady(hasFeedGuestConsent())
-    window.addEventListener('feedConsentGranted', handler)
-    return () => window.removeEventListener('feedConsentGranted', handler)
-  }, [])
-
-  const canViewFeed = Boolean(user) || guestConsentReady
+  // Misafirler her zaman haberleri görebilir — onay engeli kaldırıldı.
+  const canViewFeed = true
 
   const { citySlug: detectedCitySlug, cityName: detectedCityName } = useUserLocation()
   const { cities, loading: citiesLoading, refresh: refreshCities } = useRecentCities()

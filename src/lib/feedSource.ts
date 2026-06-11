@@ -6,14 +6,23 @@ export type FeedSource = 'nahaber' | 'user'
 const EDITORIAL_AUTHORS = new Set(['nahaber', 'nahaber-editoryal'])
 
 export function isNaHaberEditorialPost(post: Post): boolean {
-  const author = post.authorUsername.trim().toLowerCase()
-  const source = post.source.trim().toLowerCase()
+  // Kullanıcının manuel oluşturduğu postlar editorial değil
+  if (post.postType === 'user_post') return false
+
+  const author = (post.authorUsername ?? '').trim().toLowerCase()
+  const source = (post.source ?? '').trim().toLowerCase()
   const editorialSource = DEFAULT_SOURCE.toLowerCase()
 
+  // Açıkça editorial olarak işaretlenmiş
   if (EDITORIAL_AUTHORS.has(author)) return true
   if (source === editorialSource || source === 'nahaber') return true
-  if (post.postType === 'user_post') return false
-  return author === editorialSource
+
+  // Newsroom RSS pipeline haberleri: postType 'news' veya undefined.
+  // source = RSS kaynağı adı ('Milliyet', 'Fanatik' vs.) olduğundan
+  // yukarıdaki kontrolleri geçemez, ama editorial içerik olduklarından true dön.
+  if (!post.postType || post.postType === 'news' || post.postType === 'video') return true
+
+  return false
 }
 
 export function isUserGeneratedPost(post: Post): boolean {
