@@ -14,11 +14,25 @@ import type { GeminiEditResult, GptQaResult } from './types'
 const DEFAULT_QA_MODEL = 'gpt-4o-mini'
 
 // ── Config ────────────────────────────────────────────────────────────────────
-function getConfig(): { apiKey: string; model: string } | null {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  if (!apiKey) return null
-  const model = process.env.OPENAI_QA_MODEL?.trim() || DEFAULT_QA_MODEL
-  return { apiKey, model }
+function getConfig(): { apiKey: string; model: string; baseUrl: string } | null {
+  // OpenAI önce, yoksa DeepSeek
+  const openaiKey = process.env.OPENAI_API_KEY?.trim()
+  if (openaiKey) {
+    return {
+      apiKey: openaiKey,
+      model: process.env.OPENAI_QA_MODEL?.trim() || DEFAULT_QA_MODEL,
+      baseUrl: 'https://api.openai.com/v1/chat/completions',
+    }
+  }
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (deepseekKey) {
+    return {
+      apiKey: deepseekKey,
+      model: process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat',
+      baseUrl: 'https://api.deepseek.com/v1/chat/completions',
+    }
+  }
+  return null
 }
 
 export function isGptConfigured(): boolean {
@@ -79,7 +93,7 @@ JSON formatında döndür:
   "pushBody": "string (100 karakter, bildirim metni)"
 }`
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(cfg.baseUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -171,9 +185,14 @@ export async function checkGptHealth(): Promise<{ ok: boolean; latencyMs: number
   const start = Date.now()
   try {
     const cfg = getConfig()
-    if (!cfg) return { ok: false, latencyMs: 0, error: 'OPENAI_API_KEY eksik' }
+    if (!cfg) return { ok: false, latencyMs: 0, error: 'AI API key eksik (OPENAI veya DEEPSEEK)' }
 
-    const res = await fetch('https://api.openai.com/v1/models', {
+    // DeepSeek için models endpoint yerine doğrudan ping
+    const modelsUrl = cfg.baseUrl.includes('deepseek')
+      ? 'https://api.deepseek.com/v1/models'
+      : 'https://api.openai.com/v1/models'
+
+    const res = await fetch(modelsUrl, {
       headers: { Authorization: `Bearer ${cfg.apiKey}` },
     })
     return { ok: res.ok, latencyMs: Date.now() - start }

@@ -112,11 +112,38 @@ export interface AiArchiveRewriteResult extends AiRewriteResult {
   summary: string
 }
 
-function getOpenAiConfig(): { apiKey: string; model: string } | null {
+interface AiProviderConfig {
+  apiKey: string
+  model: string
+  baseUrl: string
+  provider: 'openai' | 'deepseek'
+}
+
+function getOpenAiConfig(): AiProviderConfig | null {
   const apiKey = process.env.OPENAI_API_KEY?.trim()
   if (!apiKey) return null
-  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
-  return { apiKey, model }
+  return {
+    apiKey,
+    model: process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini',
+    baseUrl: 'https://api.openai.com/v1/chat/completions',
+    provider: 'openai',
+  }
+}
+
+function getDeepSeekConfig(): AiProviderConfig | null {
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (!apiKey) return null
+  return {
+    apiKey,
+    model: process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat',
+    baseUrl: 'https://api.deepseek.com/v1/chat/completions',
+    provider: 'deepseek',
+  }
+}
+
+/** OpenAI önce, DeepSeek fallback — hangisi yapılandırılmışsa onu kullan */
+function getActiveAiConfig(): AiProviderConfig | null {
+  return getOpenAiConfig() ?? getDeepSeekConfig()
 }
 
 function normalizeCategoryId(raw?: string): string {
@@ -241,14 +268,15 @@ ${excerpt}`
 }
 
 async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
-  const config = getOpenAiConfig()
+  const config = getActiveAiConfig()
   if (!config) {
-    throw new Error('OPENAI_API_KEY is not configured')
+    throw new Error('Hiçbir AI sağlayıcısı yapılandırılmamış (OPENAI_API_KEY veya DEEPSEEK_API_KEY gerekli)')
   }
 
   const mode = input.mode ?? 'feed'
+  console.log(`[aiNewsEditor] ${config.provider} kullanılıyor (${config.model})`)
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(config.baseUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -406,23 +434,23 @@ function isLikelyNonTurkish(text: string): boolean {
 
 export const aiNewsEditor = {
   isConfigured(): boolean {
-    return Boolean(getOpenAiConfig())
+    return Boolean(getActiveAiConfig())
   },
 
   async rewriteArticle(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
-    if (!getOpenAiConfig()) {
-      // AI olmadan İngilizce içerik yayınlama — yayını atla
+    if (!getActiveAiConfig()) {
+      // Hiçbir AI yokken İngilizce içerik yayınlama
       if (isLikelyNonTurkish(input.originalTitle)) {
         throw new Error(`[aiNewsEditor] İngilizce içerik, AI key eksik — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
       }
-      console.warn('[aiNewsEditor] OPENAI_API_KEY missing — using fallback rewrite')
+      console.warn('[aiNewsEditor] AI key eksik — ham metin fallback')
       return fallbackRewrite(input)
     }
 
     try {
       return await callOpenAi(input)
     } catch (error) {
-      // AI başarısız olursa İngilizce içeriği orijinal haliyle yayınlama
+      // AI başarısız + İngilizce içerik → yayınlama
       if (isLikelyNonTurkish(input.originalTitle)) {
         console.warn(`[aiNewsEditor] AI hatası + İngilizce içerik → yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
         throw error
