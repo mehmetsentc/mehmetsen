@@ -10,7 +10,7 @@
 
 import type { GeminiEditResult } from './types'
 
-const GEMINI_MODEL = 'gemini-2.0-flash'
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 // ── Config ────────────────────────────────────────────────────────────────────

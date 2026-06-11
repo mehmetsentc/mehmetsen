@@ -241,6 +241,22 @@ function toLocation(
   return out
 }
 
+/** Son 48 saatte yayınlanan haberlerin başlıklarını çeker (AI duplikat tespiti için). */
+async function fetchRecentTitles(db: Firestore): Promise<string[]> {
+  try {
+    const since = Date.now() - 48 * 60 * 60 * 1000
+    const snap = await db
+      .collection(Collections.NEWS)
+      .where('publishedAt', '>=', since)
+      .orderBy('publishedAt', 'desc')
+      .limit(80)
+      .get()
+    return snap.docs.map((d) => (d.data() as { title?: string }).title ?? '').filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 async function appendEditHistory(
   db: Firestore,
   newsId: string,
@@ -385,6 +401,7 @@ export async function processNewsroomArticle(
     }
 
     // Skip second AI rewrite for editors that already produced AI content (trend, influencer)
+    const recentTitles = workingInput.skipAiRewrite ? [] : await fetchRecentTitles(db)
     const rewritten = workingInput.skipAiRewrite
       ? {
           title: workingInput.originalTitle,
@@ -407,6 +424,7 @@ export async function processNewsroomArticle(
           originalSummary: workingInput.originalSummary,
           originalContent: workingInput.originalContent,
           sourceUrl: workingInput.sourceUrl,
+          recentTitles,
         })
 
     const factCheck = await factChecker.check({
@@ -618,6 +636,12 @@ export async function processNewsroomArticle(
     await db.collection(Collections.NEWS_DRAFTS).add(doc)
     return { outcome: 'created', lowConfidence }
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    // Duplikat veya İngilizce içerik skip → sessizce atla, hata değil
+    if (msg.includes('AI duplikat tespit etti') || msg.includes('yayın atlandı')) {
+      console.log(`[newsroom/pipeline] skipped: ${msg}`)
+      return { outcome: 'skipped' }
+    }
     console.error('[newsroom/pipeline] failed:', input.sourceUrl, error)
     return { outcome: 'failed' }
   }

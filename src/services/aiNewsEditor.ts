@@ -63,6 +63,8 @@ export interface AiRewriteInput {
   sourceUrl: string
   /** Lighter rewrite for historical archive backfill. */
   mode?: 'feed' | 'archive'
+  /** Son 48 saatte yayınlanan başlıklar — duplikasyon tespiti için */
+  recentTitles?: string[]
 }
 
 export interface AiRewriteResult {
@@ -102,6 +104,7 @@ interface OpenAiJsonPayload {
   category?: string
   categoryConfidence?: number
   isBreaking?: boolean
+  isDuplicate?: boolean
   city?: string | null
   district?: string | null
   country?: string | null
@@ -176,93 +179,140 @@ function appendSourceAttribution(body: string, sourceLabel: string): string {
   return `${trimmed}\n\n${marker}`
 }
 
-const CATEGORY_CLASSIFICATION_RULES = `KATEGORİ SINIFLANDIRMA KURALLARI (category, categoryConfidence 0-100, isBreaking):
+// ── Sabit prompt blokları ────────────────────────────────────────────────────
 
-Her haber YALNIZCA aşağıdaki kategorilerden BİRİNE girmeli. En spesifik kategoriyi seç. Emin değilsen gundem kullan.
+const TIMEZONE_RULES = `SAATLERİ TÜRK SAATİNE ÇEVİR (UTC+3):
+- İçerikte geçen TÜM saat ve tarih ifadelerini Türkiye saatine (UTC+3) çevir.
+- Orijinal kaynak hangi saat diliminde olursa olsun (ET, GMT, CET, UTC vb.) Türkiye saati ile yaz.
+- Format: "21:00 TSİ" veya "Türkiye saatiyle 21:00'da"
+- Örnekler: "3pm ET" → "23:00 TSİ" | "19:00 CET" → "21:00 TSİ" | "12:00 UTC" → "15:00 TSİ"
+- Futbol maçları, F1, basketbol, tenis, Dünya Kupası gibi tüm spor etkinlik saatlerinde bu kuralı MUTLAKA uygula.
+- Eğer saat dilimi belirsizse "yerel saatle" diye belirt, uydurma.`
 
-- teknoloji: Apple, iPhone, Android, iOS, uygulama, yapay zeka, AI, yapay zekâ, chatgpt, robot, drone, güncelleme, yazılım, donanım, bilgisayar, internet, siber, Google, Microsoft, Meta, Tesla, sosyal medya, Twitter/X, Instagram, TikTok, YouTube, oyun, gaming, elektrikli araç, uzay, roket, uydu, NASA, SpaceX. KURAL: Teknoloji şirketleri/ürünleri/güncellemeleri → her zaman teknoloji.
+const DUPLICATE_RULES = `TEKRAR YAYINLAMA ENGELİ:
+- Sana aşağıda son 48 saatte yayınlanan başlıklar verilecek (RECENT_TITLES bölümünde).
+- Bu haberle aynı olayı/konuyu anlatan başlık listede varsa → isDuplicate: true döndür.
+- "Aynı olay" kriterleri: aynı spor maç skoru, aynı siyasi karar, aynı kişi aynı eylem, aynı şirket aynı ürün lansmanı.
+- Farklı açıdan ele alınmış (ek bilgi, gelişme, röportaj) → isDuplicate: false.
+- isDuplicate: true olduğunda diğer alanları kısaca doldur, yayınlanmayacak.`
 
-- siyaset: seçim, AKP, CHP, MHP, HDP, DEM, meclis, TBMM, cumhurbaşkanı, başbakan, parti, muhalefet, hükümet, bakan, milletvekili, belediye başkanı, vali, soruşturma (siyasi kişi hakkında), gözaltı (siyasetçi), ittifak, koalisyon, referandum, anayasa, siyasi kriz. KURAL: Siyasetçi hakkında haber → siyaset. Belediye/devlet kurumları haberleri → siyaset veya gundem.
+const WRITING_STYLE_RULES = `HABER YAZIM TARZI — TÜRK GAZETECİLİK STANDARDI:
+YAPI (Ters Piramit):
+  1. Spot/giriş: En önemli bilgi ilk cümlede. Kim, ne, nerede, ne zaman.
+  2. Gelişme: Arka plan, bağlam, nedenler.
+  3. Detaylar: İkincil bilgiler, alıntılar, istatistikler.
+  4. Bağlam: Tarihsel arka plan, karşılaştırmalar.
 
-- ekonomi: borsa, döviz, euro, dolar, TL, faiz, enflasyon, TCMB, merkez bankası, bütçe, ihracat, ithalat, işsizlik, piyasa, kripto, bitcoin, hisse senedi, şirket kârı/zararı, vergi, GSYİH, büyüme oranı, işletme, yatırım, ticaret. KURAL: Finansal/ekonomik göstergeler ve işletme haberleri → ekonomi.
+DİL:
+  - Etken çatı tercih et: "Beşiktaş gol attı" → doğru | "Gol atıldı" → yanlış
+  - Kısa cümleler (15-20 kelime ideal). Uzun cümleleri ikiye böl.
+  - Belirsiz ifadeler yasak: "iddia edildiğine göre", "bazı çevreler"
+  - Rakamları yaz: "3" değil "üç" (10'dan küçük), "15" olduğu gibi (10+)
+  - Alıntı varsa tırnak içinde ver: Erdoğan, "Türkiye bu kararın yanında" dedi.
 
-- spor: maç, gol, lig, transfer, FIFA, UEFA, milli takım, derbi, sporcu, şampiyonluk, futbol, basketbol, tenis, voleybol, F1, olimpiyat, NTV Spor, TFF. ASLA kultur veya son-dakika olarak işaretleme (istisna: milli takım Dünya Kupası finali).
+YASAKLI İFADELER (HİÇBİR KOŞULDA KULLANMA):
+  merak edildi, merak ediliyor, işte o an, peki ne oldu, araştırılıyor,
+  flaş haber, son dakika (başlıkta), tıklayın, izleyin, haberin devamı,
+  dikkat çeken, dikkat çekti, viral oldu, sosyal medya yıkıldı,
+  İşte ayrıntılar, Peki,, gündem oldu (sebep belirtmeden)
 
-- saglik: sağlık, hastalık, ilaç, aşı, hastane, doktor, kanser, ameliyat, pandemi, salgın, beslenme, diyet, obezite, sağlık bakanlığı, WHO, tedavi, tıp.
+SPOR HABERLERI ÖZEL KURALLAR:
+  - Maç sonuçlarında kesin skor yaz: "Galatasaray 2-1 Fenerbahçe'yi yendi"
+  - Transfer haberlerinde rakam varsa yaz: "45 milyon euro bonservis"
+  - Maç saatini MUTLAKA Türkiye saati (TSİ) ile belirt
+  - Lig sıralaması değişmişse belirt: "Süper Lig'de liderliğe yükseldi"`
 
-- dunya: yurt dışı, dünya gündemi, ABD, AB, Avrupa, Rusya, Çin, Ortadoğu, savaş (Türkiye dışı), uluslararası kriz, NATO, BM, G20.
+const CATEGORY_CLASSIFICATION_RULES = `KATEGORİ SINIFLANDIRMA KURALLARI:
 
-- kultur: sinema, film, tiyatro, sergi, müzik albümü, edebiyat, kitap, opera, bale, sanat, müze, galeri, ödül töreni, kültür-sanat. ASLA spor.
+Her haber YALNIZCA aşağıdaki kategorilerden BİRİNE girmeli. En spesifik kategoriyi seç.
 
-- magazin: ünlü, manken, oyuncu hayatı, dizi yayın tarihi, fragman, evlilik, ayrılık, dedikodu, paparazzi. isBreaking=false.
+- teknoloji: Apple/Google/Microsoft/Meta/Tesla ürün veya hizmeti, yapay zeka, ChatGPT, yazılım güncelleme, siber saldırı, oyun konsolu, elektrikli araç teknolojisi, uzay/roket, drone, robot, sosyal medya platform değişikliği. KURAL: Ürün/servis → teknoloji. Şirketin ekonomik haberi → ekonomi.
 
-- gundem: yukarıdaki kategorilere girmeyen Türkiye iç gündemi, kamusal olaylar, trafik kazası (çok ölümlü), genel haberler.
+- siyaset: Cumhurbaşkanı/Başbakan/Bakan kararı veya açıklaması, seçim/sandık/oy, AKP/CHP/MHP/HDP/DEM parti haberleri, meclis/TBMM oturumu, koalisyon/referandum, siyasetçi yargılanması. KURAL: Afet sonrası "hükümet yardım gönderdi" → gundem (siyaset değil). Gerçek siyasi karar/tartışma → siyaset.
 
-- yerel-haber: yalnızca belirli bir il/ilçeyi kapsayan yerel olay.
+- ekonomi: Borsa/döviz/faiz/enflasyon rakamları, TCMB kararı, şirket bilançosu/halka arz, ihracat/ithalat istatistik, işsizlik oranı, kripto piyasa, vergi düzenlemesi, asgari ücret.
 
-- son-dakika: YALNIZCA deprem, büyük afet, darbe girişimi, suikast, tüm Türkiye'yi etkileyen acil durum. ASLA spor/magazin/teknoloji/ekonomi.
+- spor: Futbol/basketbol/tenis/voleybol/F1/olimpiyat/güreş — maç sonucu, transfer, sakatlık, teknik direktör değişikliği, turnuva haberi. ASLA son-dakika kategorisi (istisna: Dünya Kupası finali milli zafer).
 
-isBreaking: son-dakika ile aynı kriter; spor/magazin/kultur/teknoloji için her zaman false.
-categoryConfidence: kesin eşleşme 88+, iyi eşleşme 75-87, belirsiz 55-74.`
+- saglik: Hastalık/ilaç/aşı/tedavi/ameliyat, pandemi/salgın uyarısı, beslenme/diyet araştırması, WHO/sağlık bakanlığı açıklaması.
 
-const EDITORIAL_RULES = `- ÇIKTI DİLİ: Her zaman ve yalnızca TÜRKÇE yaz. Kaynak İngilizce, Arapça veya başka bir dilde olsa bile title, summary ve content TÜRKÇE olacak.
-- Profesyonel gazete dili kullan; kaynak metindeki SEO/tıklama tuzağı kalıplarını ASLA kopyalama.
-- Yasak ifadeler: "merak edildi", "merak ediliyor", "İşte ayrıntılar", "Peki,", "araştırılıyor", "izleme linki", "tıklayın", "haberin devamı", "flaş", "son dakika" (başlıkta).
-- Aynı soruyu veya cümleyi tekrarlama; her paragraf yeni bilgi eklemeli.
-- Başlıkta BÜYÜK HARF spam, "İZLE", kanal adı veya "| …" pipe ayraçları kullanma.
-- title, summary ve content birbirinden FARKLI olmalı — summary asla title'ın aynısını veya kopyasını yazma.
-- Paragraflar arasında \\n\\n kullan; cümle ortasında satır kırma yapma (ör. "32. bölüm" tek satırda).
-- Dizi/TV haberlerinde: fragman, yayın tarihi, kanal gibi doğrulanabilir bilgileri aktar; spekülasyon ve soru bombardımanı yok.`
+- dunya: Türkiye dışı coğrafyada gelişen olay — ABD/AB/Rusya/Çin/Ortadoğu haberleri, uluslararası savaş/kriz, NATO/BM/G20 kararları, yabancı lider açıklaması.
 
-const HEADLINE_RULES = `- title (manşet/aiHeadline): gazete manşeti gibi vurucu, duygusal kanca, en fazla 65 karakter, cümle biçimi (yalnızca ilk harf büyük). Okuyucuyu durduran ama yanıltmayan.
-- spot (haber girişi/lider paragraf): Gazetecilik formatı. Kim, ne, nerede, ne zaman, neden, nasıl sorularını yanıtlar. 2-4 cümle, 60-120 kelime. Makale sayfasında öne çıkan kutuda gösterilir. title'dan FARKLI, daha derin bağlam içerir.
-- summary (feed teaser): title VE spot'tan TAMAMEN farklı tek cümle, en fazla 120 karakter, merak uyandıran detay. title veya spot'u kopyalama.
-- seoTitle: Google arama başlığı, 55-65 karakter, anahtar kelimeler öne. title'dan farklı olabilir, daha açıklayıcı.
-- seoDescription: SERP meta açıklaması, 145-160 karakter, değer önerisi + anahtar kelime + okuyucuyu tıklatacak kanca. summary'den farklı yaz.
-- content (makale gövdesi): 3–6 paragraf (200–500 kelime); spot'ı tekrarlama, bağlam + olgular + arka plan yaz. Hiçbir zaman RSS özeti kopyalanmaz.`
+- kultur: Sinema/film/tiyatro/opera/bale/sergi/müze, edebiyat/kitap, müzik albümü çıkışı, ödül töreni (Oscar/Nobel vb.), kültür-sanat etkinliği. ASLA spor.
+
+- magazin: Ünlü/celebrity haberi, oyuncu/şarkıcı özel hayatı, dizi yayın tarihi/fragman, evlilik/boşanma/ayrılık, dedikodu. isBreaking=false.
+
+- gundem: Yukarıdakilere girmeyen Türkiye iç gündemi — trafik kazası (çok ölümlü), yangın, genel kamusal olay, hükümet açıklaması (politika değil).
+
+- yerel-haber: Yalnızca tek bir il/ilçeyi kapsayan yerel olay, belediye kararı, yerel seçim sonucu.
+
+- son-dakika: YALNIZCA şiddetli deprem (4.5+), büyük afet (onlarca ölü), darbe girişimi, suikast, Türkiye'yi doğrudan tehdit eden acil durum. ASLA spor/magazin/teknoloji/ekonomi.
+
+isBreaking: son-dakika kriterleriyle aynı; spor/magazin/kultur/teknoloji için her zaman false.
+categoryConfidence: kesin eşleşme 88-100, iyi eşleşme 75-87, belirsiz 55-74.`
+
+const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
+- ÇIKTI DİLİ: Her zaman Türkçe. Kaynak İngilizce/Arapça/başka dilde olsa bile TÜRKÇE çeviri + yeniden yazma yap.
+- ASLA kaynak metni kelimesi kelimesine kopyalama. Özgün Türkçe gazete dili.
+- title, spot, summary, content HEPSİ birbirinden farklı bilgi sunsun — kopyalama.
+- Paragraflar arası \\n\\n kullan. Cümle ortasında satır kırma yapma.`
+
+const HEADLINE_RULES = `ALAN TANIMLARI:
+- title: Gazete manşeti. Maks 65 karakter. Yalnızca ilk harf büyük. Vurucu ama yanıltmayan. Soru işareti ile bitirme.
+- spot: Lider paragraf (haber girişi). Kim+ne+nerede+ne zaman+neden. 2-4 cümle, 60-120 kelime. title'dan farklı bilgi ver.
+- summary: Feed teaser. Maks 120 karakter. title ve spot'tan TAMAMEN farklı ilgi çekici detay.
+- seoTitle: Google arama başlığı. 55-65 karakter. Anahtar kelimeler öne.
+- seoDescription: SERP açıklaması. 145-160 karakter. Değer önerisi + anahtar kelime.
+- content: Makale gövdesi. 3-6 paragraf (200-500 kelime). Spot'u tekrarlama. Bağlam+olgular+arka plan.`
 
 function buildSystemPrompt(mode: 'feed' | 'archive' = 'feed'): string {
   const categories = Object.entries(AI_NEWS_CATEGORIES)
     .map(([id, name]) => `${id} (${name})`)
     .join(', ')
 
+  const jsonSchema = `{"title":"...","spot":"...","seoTitle":"...","seoDescription":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"isDuplicate":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
+
   if (mode === 'archive') {
-    return `Sen NaHaber adlı Türkçe haber platformunun arşiv editörüsün.
-Görevin: verilen kaynak haberi özgün bir dille kısa özetlemek (arşiv kaydı, canlı feed değil).
+    return `Sen NaHaber'in arşiv editörüsün. Kaynak haberi kısaca özetle (arşiv kaydı).
 ${EDITORIAL_RULES}
 ${HEADLINE_RULES}
-- content: 2–4 paragraf (80–200 kelime); giriş + bağlam + olgular.
-- Magazin/dizi haberlerinde de aynı gazete standardını koru.
+- content: 2-4 paragraf (80-200 kelime).
+${TIMEZONE_RULES}
 ${CATEGORY_CLASSIFICATION_RULES}
-- Kategori seç: ${categories}
-- Türkiye'deki il geçiyorsa city, ilçe geçiyorsa district (yoksa null).
-- country: varsayılan "Türkiye".
-- tags: 2–4 küçük harf anahtar kelime.
-- Yanıtı YALNIZCA geçerli JSON:
-{"title":"...","spot":"...2-4 cümle lider paragraf...","seoTitle":"...","seoDescription":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
+- city: Türkiye'deki il adı (yoksa null). district: ilçe (yoksa null). country: varsayılan "Türkiye".
+- tags: 2-4 küçük harf etiket.
+Yanıt YALNIZCA geçerli JSON: ${jsonSchema}`
   }
 
-  return `Sen NaHaber adlı Türkçe haber platformunun baş editörüsün.
-Görevin: verilen kaynak haberi TAMAMEN özgün, profesyonel gazete diliyle yeniden yazmak.
-ASLA kaynak metni cümle cümle kopyalama. Kaynak İngilizce veya başka bir dilde olsa dahi MUTLAKA Türkçe yaz — çeviri + yeniden yazma yap.
-Her zaman özgün, akıcı Türkçe yaz.
+  return `Sen NaHaber'in baş editörüsün. Türkiye'nin önde gelen dijital haber platformu için profesyonel haberler üretiyorsun.
+
+${WRITING_STYLE_RULES}
+
+${TIMEZONE_RULES}
+
+${DUPLICATE_RULES}
+
 ${EDITORIAL_RULES}
+
 ${HEADLINE_RULES}
-- Magazin, spor, dizi/TV haberlerinde tıklama tuzağı yerine olgusal özet yaz.
+
 ${CATEGORY_CLASSIFICATION_RULES}
-- Kategori seç: ${categories}
-- Türkiye'deki il geçiyorsa city, ilçe geçiyorsa district alanına yaz (yoksa null).
-- country: varsayılan "Türkiye"; yurt dışı haberlerde ülke adı.
-- tags: 2-5 küçük harf anahtar kelime.
-- Yanıtı YALNIZCA geçerli JSON olarak ver:
-{"title":"...","spot":"...2-4 cümle lider paragraf...","seoTitle":"...","seoDescription":"...","summary":"...","content":"...","category":"gundem","categoryConfidence":85,"isBreaking":false,"city":null,"district":null,"country":"Türkiye","tags":["..."]}`
+
+- city: Türkiye'deki il adı (yoksa null). district: ilçe (yoksa null). country: varsayılan "Türkiye"; yurt dışı haberde ülke adı.
+- tags: 2-5 küçük harf, boşluksuz etiket (ör: "galatasaray", "deprem", "yapay-zeka").
+- isDuplicate: RECENT_TITLES listesindeki başlıkla %80+ aynı olaysa true, yoksa false.
+
+Yanıt YALNIZCA geçerli JSON: ${jsonSchema}`
 }
 
 function buildUserPrompt(input: AiRewriteInput): string {
   const excerpt = input.originalContent.slice(0, 3500) || input.originalSummary
+  const recentSection = input.recentTitles && input.recentTitles.length > 0
+    ? `\nRECENT_TITLES (son 48 saatte yayınlananlar — duplikasyon kontrolü için):\n${input.recentTitles.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n`
+    : ''
   return `Kaynak: ${input.sourceLabel}
 Orijinal URL: ${input.sourceUrl}
-Orijinal başlık: ${input.originalTitle}
+Orijinal başlık: ${input.originalTitle}${recentSection}
 Özet/içerik:
 ${excerpt}`
 }
@@ -309,6 +359,11 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
     parsed = JSON.parse(content) as OpenAiJsonPayload
   } catch {
     throw new Error('OpenAI returned invalid JSON')
+  }
+
+  // Duplikasyon tespiti — AI aynı haberi zaten yayınlandığı için işaretlediyse atla
+  if (parsed.isDuplicate === true) {
+    throw new Error(`[aiNewsEditor] AI duplikat tespit etti — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
   }
 
   const title = cleanupNewsTitle(parsed.title?.trim() || input.originalTitle)
@@ -450,6 +505,12 @@ export const aiNewsEditor = {
     try {
       return await callOpenAi(input)
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      // Duplikat tespit hatası → fallback'e düşürme, yayınlama
+      if (msg.includes('AI duplikat tespit etti')) {
+        console.warn(msg)
+        throw error
+      }
       // AI başarısız + İngilizce içerik → yayınlama
       if (isLikelyNonTurkish(input.originalTitle)) {
         console.warn(`[aiNewsEditor] AI hatası + İngilizce içerik → yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
