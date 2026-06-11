@@ -111,7 +111,9 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
           })
         }
 
-        if (!cancelled) setItems(docs)
+        // son-dakika sayfası yok — o categorydeki haberleri slider'dan çıkar
+        const filtered = docs.filter((item) => item.categoryId !== 'son-dakika')
+        if (!cancelled) setItems(filtered)
       } catch {
         // silently fail — slider just won't render
       } finally {

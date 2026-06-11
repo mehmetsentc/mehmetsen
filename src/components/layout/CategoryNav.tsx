@@ -17,6 +17,11 @@ const CATEGORIES: Category[] = [
     match: (p) => p === '/feed' || p === '/',
   },
   {
+    label: 'Son Dakika',
+    href: '/kategori/son-dakika',
+    match: (p) => p === '/kategori/son-dakika',
+  },
+  {
     label: 'Siyaset',
     href: '/kategori/siyaset',
     match: (p) => p === '/kategori/siyaset',
