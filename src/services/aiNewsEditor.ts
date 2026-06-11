@@ -394,6 +394,16 @@ function fallbackRewrite(input: AiRewriteInput): AiRewriteResult | AiArchiveRewr
   return result
 }
 
+/**
+ * İngilizce (veya Türkçe olmayan) içerik tespiti.
+ * Türkçeye özgü karakter yoksa ve yaygın İngilizce kelimeler varsa true döner.
+ */
+function isLikelyNonTurkish(text: string): boolean {
+  if (/[ğüşıöç]/i.test(text)) return false   // Türkçe karakter → Türkçe
+  const englishPattern = /\b(the|and|is|are|was|were|has|have|for|with|from|this|that|over|half|off|new|what|how|why|when|where|you|your|our|their|its|can|will|said|says|after|before|more|less|than|but|not|get|got|like|just|also|about|into|out|up|it)\b/i
+  return englishPattern.test(text)
+}
+
 export const aiNewsEditor = {
   isConfigured(): boolean {
     return Boolean(getOpenAiConfig())
@@ -401,6 +411,10 @@ export const aiNewsEditor = {
 
   async rewriteArticle(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
     if (!getOpenAiConfig()) {
+      // AI olmadan İngilizce içerik yayınlama — yayını atla
+      if (isLikelyNonTurkish(input.originalTitle)) {
+        throw new Error(`[aiNewsEditor] İngilizce içerik, AI key eksik — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
+      }
       console.warn('[aiNewsEditor] OPENAI_API_KEY missing — using fallback rewrite')
       return fallbackRewrite(input)
     }
@@ -408,6 +422,11 @@ export const aiNewsEditor = {
     try {
       return await callOpenAi(input)
     } catch (error) {
+      // AI başarısız olursa İngilizce içeriği orijinal haliyle yayınlama
+      if (isLikelyNonTurkish(input.originalTitle)) {
+        console.warn(`[aiNewsEditor] AI hatası + İngilizce içerik → yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
+        throw error
+      }
       console.error('[aiNewsEditor] rewrite failed, fallback:', error)
       return fallbackRewrite(input)
     }

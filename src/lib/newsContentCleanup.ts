@@ -154,8 +154,27 @@ function stripTrailingFillerLoops(text: string): string {
 }
 
 /** Clean news title for display and storage. */
+/** HTML entity decoder — &#8217; → ' , &amp; → & , &lt; → < vb. */
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lsquo;/g, '‘')
+    .replace(/&rsquo;/g, '’')
+    .replace(/&ldquo;/g, '“')
+    .replace(/&rdquo;/g, '”')
+    .replace(/&ndash;/g, '–')
+    .replace(/&mdash;/g, '—')
+}
+
 export function cleanupNewsTitle(title: string): string {
-  let result = title.trim()
+  let result = decodeHtmlEntities(title).trim()
   if (!result) return result
 
   result = result.replace(TITLE_PIPE_SPAM_RE, '')
