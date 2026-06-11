@@ -61,7 +61,9 @@ function ScoreCard({ match }: { match: MatchResult }) {
       {/* Date */}
       <p className="text-right text-[10px] text-[rgb(var(--color-muted))]">
         {match.date}
-        {match.time ? ` · ${match.time}` : ''}
+        {match.time ? (
+          <span className="ml-1 font-medium text-emerald-500">{match.time}</span>
+        ) : null}
       </p>
     </div>
   )
