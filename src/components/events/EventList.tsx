@@ -13,7 +13,7 @@ import { EventCard, EventCardSkeleton } from './EventCard'
 import { EventFilters } from './EventFilters'
 
 export function EventList() {
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
 
   const userCityName = user?.location?.trim() || null
   const userCitySlug = userCityName ? slugifyCity(userCityName) : null
@@ -83,7 +83,7 @@ export function EventList() {
 
   // geoLoading is intentionally excluded — we show all events immediately,
   // then silently re-filter when geolocation resolves.
-  const showSkeletons = authLoading || loading
+  const showSkeletons = loading
   const showEmpty = !showSkeletons && !error && events.length === 0
   const showItems = !showSkeletons && events.length > 0
 

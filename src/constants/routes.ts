@@ -64,10 +64,31 @@ export const ROUTES = {
   },
 } as const
 
-export const PUBLIC_ROUTES: Set<string> = new Set([ROUTES.FEED, ROUTES.EVENTS, ROUTES.REELS])
+export const PUBLIC_ROUTES: Set<string> = new Set([
+  ROUTES.FEED,
+  ROUTES.EVENTS,
+  ROUTES.REELS,
+  ROUTES.LOCAL,
+  ROUTES.SPOR,
+  ROUTES.TEKNOLOJI,
+  ROUTES.DUNYA,
+  ROUTES.SAGLIK,
+  ROUTES.EKONOMI,
+  ROUTES.SIYASET,
+])
 
+// Giriş yapmadan erişilebilen sayfalar.
+// Beğen/yorum/paylaş gibi aksiyonlarda useAuth devreye girer.
 export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
   if (pathname.startsWith('/profile/')) return true
+  if (pathname.startsWith('/kategori/')) return true
+  if (pathname.startsWith('/news/')) return true
+  if (pathname.startsWith('/local')) return true
+  if (pathname.startsWith('/events')) return true
+  if (pathname.startsWith('/weather')) return true
+  if (pathname.startsWith('/discover')) return true
+  if (pathname.startsWith('/search')) return true
+  if (pathname.startsWith('/influencer')) return true
   return false
 }
