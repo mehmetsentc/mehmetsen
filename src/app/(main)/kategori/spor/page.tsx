@@ -3,6 +3,8 @@ import { Suspense } from 'react'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import { WorldCupStrip } from '@/components/sports/WorldCupStrip'
 import { MatchResults } from '@/components/sports/MatchResults'
+import { SuperLigTable } from '@/components/sports/SuperLigTable'
+import { TransferStrip } from '@/components/sports/TransferStrip'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 
 export const metadata: Metadata = {
@@ -37,6 +39,12 @@ export default function SporPage() {
 
       {/* ⚽ Maç Sonuçları */}
       <MatchResults />
+
+      {/* 🇹🇷 Süper Lig Puan Tablosu — Transfermarkt */}
+      <SuperLigTable />
+
+      {/* 💸 Son Transferler — Transfermarkt */}
+      <TransferStrip />
 
       {/* Divider */}
       <div className="mb-4 flex items-center gap-3">
