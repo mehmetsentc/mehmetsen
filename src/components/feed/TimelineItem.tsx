@@ -89,8 +89,8 @@ export function TimelineItem({ post, featured = false, isLast = false }: Timelin
         </div>
 
         {/* Card: image with overlay */}
-        <Link href={detailHref} className="group block overflow-hidden rounded-xl">
-          <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: '16/9' }}>
+        <Link href={detailHref} className="group block overflow-hidden rounded-2xl shadow-md">
+          <div className="relative w-full overflow-hidden rounded-2xl" style={{ aspectRatio: '4/3' }}>
             {/* Image or fallback */}
             {isFallbackImage || !imageUrl ? (
               <div
@@ -102,7 +102,7 @@ export function TimelineItem({ post, featured = false, isLast = false }: Timelin
                   alt=""
                   width={80}
                   height={80}
-                  className="h-12 w-auto opacity-80 drop-shadow-lg"
+                  className="h-14 w-auto opacity-80 drop-shadow-lg"
                 />
               </div>
             ) : (
@@ -116,26 +116,26 @@ export function TimelineItem({ post, featured = false, isLast = false }: Timelin
               />
             )}
 
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            {/* Gradient overlay — stronger for readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
 
             {/* Category badge — top left */}
             {categoryLabel && (
-              <span className="absolute left-2.5 top-2.5 rounded bg-black/55 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+              <span className="absolute left-3 top-3 rounded-lg bg-black/60 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
                 {categoryLabel}
               </span>
             )}
 
             {/* Video badge */}
             {isVideo && (
-              <span className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-[rgb(var(--color-brand))]/90">
+              <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[rgb(var(--color-brand))]/90 shadow">
                 <Play className="h-4 w-4 fill-white text-white" />
               </span>
             )}
 
             {/* Headline */}
-            <div className="absolute bottom-0 left-0 right-0 p-2.5">
-              <h2 className="line-clamp-3 text-[0.9375rem] font-black leading-snug tracking-tight text-white drop-shadow sm:text-base">
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <h2 className="line-clamp-3 text-[1.05rem] font-black leading-tight tracking-tight text-white drop-shadow-lg sm:text-lg">
                 {post.title}
               </h2>
             </div>
