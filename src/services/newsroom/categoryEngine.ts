@@ -62,6 +62,28 @@ const SIYASET_KEYWORDS = [
   'belediye başkanı soruşturma', 'gözaltına alındı', 'tutuklandı',
   'siyasi kriz', 'parti genel başkanı', 'genel başkan',
   'vali atama', 'kabine değişikliği', 'bakan değişikliği',
+  'özgür özel', 'erdoğan', 'imamoğlu', 'yıldırım direnç',
+  'parti meclisi', 'kurultay', 'oy hakkı',
+] as const
+
+/** Dünya/uluslararası haber sinyalleri */
+const DUNYA_KEYWORDS = [
+  'abd ', 'abd\'', 'amerikan', 'pentagon', 'kongre ',
+  'putin ', 'kremlin', 'rusya ', 'ukrayna',
+  'çin ', 'çin,', 'pekin', 'beijing', 'şi jinping',
+  'nato ', 'avrupa birliği', 'ab ', 'brüksel',
+  'birleşmiş milletler', 'bm ', 'bm,',
+  'japonya', 'hindistan', 'pakistan', 'iran ', 'israil',
+  'filistin', 'gazze', 'lübnan', 'suriye',
+  'savunma bakanı', 'dışişleri bakanı',
+  'büyükelçi', 'büyükelçilik', 'konsolosluk',
+  'uluslararası', 'küresel ', 'dünya lideri',
+  'g7 ', 'g20 ', 'imf ', 'dünya bankası',
+  'yaptırım', 'ekonomik yaptırım', 'ticaret savaşı',
+  'füze denemesi', 'nükleer', 'savaş uçağı',
+  'filipinler', 'avustralya', 'almanya', 'fransa',
+  'ingiltere', 'kanada', 'brezilya', 'meksika',
+  'güney kore', 'kuzey kore', 'taiwan',
 ] as const
 
 const EKONOMI_KEYWORDS = [
@@ -228,6 +250,10 @@ function hasEkonomiKeywords(text: string): boolean {
   return containsKeyword(text, EKONOMI_KEYWORDS)
 }
 
+function hasDunyaKeywords(text: string): boolean {
+  return containsKeyword(text, DUNYA_KEYWORDS)
+}
+
 function hasSportsKeywords(text: string): boolean {
   return containsKeyword(text, SPOR_KEYWORDS)
 }
@@ -325,8 +351,42 @@ export function validateCategoryClassification(
   const tech = hasTechKeywords(text)
   const siyaset = hasSiyasetKeywords(text)
   const ekonomi = hasEkonomiKeywords(text)
+  const dunya = hasDunyaKeywords(text)
   const nationalScope = hasNationalScopeKeywords(text)
   const worldCupFinal = isWorldCupFinalNationalWin(text)
+
+  // ── EN YÜKSEK ÖNCELİK: "Spor kaynaklı ama spor haberi değil" kurtarma ──────
+  // Sorun: spor gazeteleri siyasi/dünya haberlerini de yayınlar.
+  // forcedCategoryId='spor' olsa bile içerik spor kelimesi taşımıyorsa
+  // gerçek kategoriye taşı.
+  if (categoryId === 'spor' && !sports) {
+    if (siyaset) {
+      overrides.push('spor-source ama siyaset-keywords → siyaset')
+      categoryId = 'siyaset'
+      categoryConfidence = Math.max(categoryConfidence, 90)
+    } else if (dunya) {
+      overrides.push('spor-source ama dunya-keywords → dunya')
+      categoryId = 'dunya'
+      categoryConfidence = Math.max(categoryConfidence, 88)
+    } else if (ekonomi) {
+      overrides.push('spor-source ama ekonomi-keywords → ekonomi')
+      categoryId = 'ekonomi'
+      categoryConfidence = Math.max(categoryConfidence, 85)
+    } else if (tech) {
+      overrides.push('spor-source ama tech-keywords → teknoloji')
+      categoryId = 'teknoloji'
+      categoryConfidence = Math.max(categoryConfidence, 83)
+    } else if (nationalScope) {
+      overrides.push('spor-source ama ulusal-kriz → gundem')
+      categoryId = 'gundem'
+      categoryConfidence = Math.max(categoryConfidence, 88)
+    } else {
+      // Spor kelimesi yok, başka sinyal de yok → gündem
+      overrides.push('spor-source ama içerikte spor yok → gundem')
+      categoryId = 'gundem'
+      categoryConfidence = Math.max(categoryConfidence, 70)
+    }
+  }
 
   // ── Ulusal kriz / afet override — en yüksek öncelik (deprem, yangın, patlama vs.)
   // Teknoloji/ekonomi/kültür gibi kategorilere yanlış düşen afet haberlerini gündem'e çek.
