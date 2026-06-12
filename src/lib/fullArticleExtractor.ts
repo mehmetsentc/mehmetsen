@@ -266,27 +266,39 @@ async function fetchHtml(url: string): Promise<string | null> {
  * Jina Reader fallback — wraps any URL via https://r.jina.ai/{url}
  * Returns clean markdown text that GPT can process.
  */
-async function fetchViaJina(url: string): Promise<string | null> {
+async function fetchViaJina(url: string): Promise<{ text: string; imageUrl: string | null } | null> {
   try {
     const jinaUrl = `https://r.jina.ai/${url}`
     const res = await fetch(jinaUrl, {
       headers: {
         Accept: 'text/plain',
-        'X-Return-Format': 'text',
+        'X-Return-Format': 'markdown',
         'X-Timeout': '15',
       },
       signal: AbortSignal.timeout(20_000),
     })
     if (!res.ok) return null
-    const text = await res.text()
-    // Jina returns markdown — strip markdown headers/links, keep prose
-    const clean = text
+    const raw = await res.text()
+
+    // Extract first real image URL from markdown: ![alt](https://...)
+    let imageUrl: string | null = null
+    const imgMatch = raw.match(/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/)
+    if (imgMatch?.[1]) {
+      const candidate = imgMatch[1]
+      // Skip tiny icons/logos (likely < 50px based on URL patterns)
+      if (!/icon|logo|sprite|placeholder|1x1|pixel/i.test(candidate)) {
+        imageUrl = candidate
+      }
+    }
+
+    // Strip markdown formatting, keep prose
+    const clean = raw
       .replace(/^#+ .*/gm, '')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
       .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim()
-    return clean.length > 200 ? clean.slice(0, 4000) : null
+    return clean.length > 200 ? { text: clean.slice(0, 4000), imageUrl } : null
   } catch {
     return null
   }
@@ -305,17 +317,17 @@ export async function extractFullArticle(url: string): Promise<ExtractedArticle>
   }
 
   // Fallback 2: Jina Reader — bypasses paywalls and JS-rendered sites
-  const jinaText = await fetchViaJina(url)
-  if (jinaText) {
-    const wordCount = jinaText.split(/\s+/).length
+  const jinaResult = await fetchViaJina(url)
+  if (jinaResult) {
+    const wordCount = jinaResult.text.split(/\s+/).length
     return {
       title: null,
-      content: jinaText,
-      htmlContent: `<p>${jinaText.replace(/\n\n/g, '</p><p>')}</p>`,
-      summary: jinaText.slice(0, 200),
+      content: jinaResult.text,
+      htmlContent: `<p>${jinaResult.text.replace(/\n\n/g, '</p><p>')}</p>`,
+      summary: jinaResult.text.slice(0, 200),
       author: null,
       publishedAt: null,
-      featuredImage: null,
+      featuredImage: jinaResult.imageUrl,
       readingTimeMinutes: Math.max(1, Math.round(wordCount / 200)),
       source: url,
       extractionMethod: 'jina',

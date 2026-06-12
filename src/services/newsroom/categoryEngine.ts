@@ -91,9 +91,15 @@ const EKONOMI_KEYWORDS = [
   'tcmb', 'faiz oranı', 'enflasyon', 'tüfe', 'üfe',
   'bütçe açığı', 'bütçe fazlası', 'ihracat rakamı', 'ithalat',
   'işsizlik oranı', 'gsyih', 'büyüme oranı', 'resesyon',
-  'bitcoin', 'kripto para', 'borsa endeksi', 'bist',
+  'bitcoin', 'kripto para', 'kripto ', 'kripto,', 'ethereum', 'altcoin',
+  'borsa endeksi', 'bist',
   'hisse senedi', 'şirket kârı', 'şirket zararı', 'halka arz',
   'vergi düzenlemesi', 'sgk primi', 'asgari ücret',
+  'menkul', 'menkul kıymet', 'menkul değer',
+  'yatırım fonu', 'portföy', 'vadeli işlem', 'fintech',
+  'şirket satın', 'satın aldı', 'birleşme', 'devralma',
+  'pay senedi', 'temettü', 'emisyon', 'tahvil', 'bono',
+  'altın fiyat', 'gümüş fiyat', 'petrol fiyat',
 ] as const
 
 const SPOR_KEYWORDS = [
@@ -154,6 +160,25 @@ const MAGAZIN_KEYWORDS = [
   'show haber',
   'sanatçı',
   'sanatci',
+  'yeni sezon',
+  'sezon final',
+  'final bölüm',
+  'bölüm yayın',
+  'netflix dizi',
+  'disney dizi',
+  'amazon dizi',
+  'dizide kim',
+  'dizi oyuncu',
+  'oyuncu kadro',
+  'tv yıldız',
+  'ekrana geliyor',
+  'ekranda başlıyor',
+  'yayına giriyor',
+  'çift ayrıldı',
+  'sevgilisi',
+  'nişanlandı',
+  'boşandı',
+  'hamile kaldı',
 ] as const
 
 const KULTUR_KEYWORDS = [
@@ -268,6 +293,54 @@ function hasKulturKeywords(text: string): boolean {
 
 function hasNationalScopeKeywords(text: string): boolean {
   return containsKeyword(text, NATIONAL_SCOPE_KEYWORDS)
+}
+// Yerel-haber sinyalleri: belediye servisleri, ulaşım, yerel etkinlik
+const YEREL_KEYWORDS = [
+  'belediye', 'buyuksehir belediye', 'ilce belediye',
+  'belediye baskani', 'belediye meclis', 'belediye otobus',
+  'ucretsiz ulasim', 'ucretsiz otobus', 'toplu tasima',
+  'eshot', 'ego otobus', 'su kesintisi', 'elektrik kesintisi',
+  'park ve bahce', 'asfalt calısma', 'trafik duzenleme',
+  'yerel secim', 'mahalle muhtarlık', 'kent donusum',
+  'zabita', 'belde', 'koy muhtari', 'ilce', 'mahalle',
+] as const
+
+function hasYerelKeywords(text: string): boolean {
+  const lower = text
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+  return YEREL_KEYWORDS.some(k => lower.includes(k))
+}
+
+const TURKISH_CITY_SLUGS = [
+  'adana','adiyaman','afyon','agri','aksaray','amasya','ankara','antalya',
+  'ardahan','artvin','aydin','balikesir','bartin','batman','bayburt','bilecik',
+  'bingol','bitlis','bolu','burdur','bursa','canakkale','cankiri','corum',
+  'denizli','diyarbakir','duzce','edirne','elazig','erzincan','erzurum',
+  'eskisehir','gaziantep','giresun','gumushane','hakkari','hatay','igdir',
+  'isparta','istanbul','izmir','kahramanmaras','karabuk','karaman','kars',
+  'kastamonu','kayseri','kilis','kirikkale','kirklareli','kirsehir','kocaeli',
+  'konya','kutahya','malatya','manisa','mardin','mersin','mugla','mus',
+  'nevsehir','nigde','ordu','osmaniye','rize','sakarya','samsun','sanliurfa',
+  'siirt','sinop','sirnak','sivas','tekirdag','tokat','trabzon','tunceli',
+  'usak','van','yalova','yozgat','zonguldak',
+] as const
+
+function mentionsSingleCity(text: string): boolean {
+  const lower = text
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+  let count = 0
+  for (const city of TURKISH_CITY_SLUGS) {
+    const re = new RegExp(`(?<![a-z])${city}(?![a-z])`)
+    if (re.test(lower)) {
+      count++
+      if (count >= 3) return false // 3+ il → ulusal haber
+    }
+  }
+  return count >= 1 && count <= 2
 }
 
 function isWorldCupFinalNationalWin(text: string): boolean {
@@ -450,6 +523,34 @@ export function validateCategoryClassification(
     overrides.push(`ekonomi-keywords → ekonomi (was gundem)`)
     categoryId = 'ekonomi'
     categoryConfidence = Math.max(categoryConfidence, 80)
+  }
+
+  // ── Magazin override: TV/celeb/dizi news classified as gundem by AI
+  if (
+    magazin &&
+    !sports &&
+    !nationalScope &&
+    !siyaset &&
+    !ekonomi &&
+    (categoryId === 'gundem' || categoryId === 'teknoloji')
+  ) {
+    overrides.push(`magazin-keywords → magazin (was ${categoryId})`)
+    categoryId = 'magazin'
+    categoryConfidence = Math.max(categoryConfidence, 82)
+  }
+
+  // ── Yerel-haber override: belediye/municipal keywords + single city → yerel-haber
+  // Prevents local municipal news from polluting the main gündem feed
+  if (
+    hasYerelKeywords(text) &&
+    mentionsSingleCity(text) &&
+    !nationalScope &&
+    !siyaset &&
+    (categoryId === 'gundem' || categoryId === 'spor')
+  ) {
+    overrides.push(`yerel-keywords + single-city → yerel-haber (was ${categoryId})`)
+    categoryId = 'yerel-haber'
+    categoryConfidence = Math.max(categoryConfidence, 85)
   }
 
   if (sports) {

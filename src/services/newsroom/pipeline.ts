@@ -114,7 +114,7 @@ KURALLAR:
     const summary = parsed.summary?.trim() || ''
     const content = parsed.content?.trim() || ''
     if (content.length < 100) return null
-    console.log(`[newsroom/pipeline] headline-to-article via ${isDeepSeek ? 'DeepSeek' : 'OpenAI'}: ${title.slice(0, 60)}`)
+    console.log(`[newsroom/pipeline] headline-to-article via DeepSeek: ${title.slice(0, 60)}`)
     return { summary, content }
   } catch {
     return null
@@ -186,7 +186,7 @@ async function translateToTurkish(fields: {
     const summary = parsed.summary?.trim() || summarySnippet
     const content = parsed.content?.trim() || contentSnippet
     if (content.length < 80) return null
-    console.log(`[newsroom/pipeline] translated to Turkish via ${isDeepSeek ? 'DeepSeek' : 'OpenAI'}: ${title.slice(0, 60)}`)
+    console.log(`[newsroom/pipeline] translated to Turkish via DeepSeek: ${title.slice(0, 60)}`)
     return { originalTitle: title, originalSummary: summary, originalContent: content }
   } catch (err) {
     console.warn('[newsroom/pipeline] translation failed:', err)
