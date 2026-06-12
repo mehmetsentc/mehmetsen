@@ -21,6 +21,7 @@ import {
   resolveBreakingFlags,
 } from '@/services/newsroom/breakingPriority'
 import { categoryEngine } from '@/services/newsroom/categoryEngine'
+import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
 import {
   NEWSROOM_AUTO_PUBLISH_THRESHOLD,
   NEWSROOM_LOW_CONFIDENCE_THRESHOLD,
@@ -555,6 +556,27 @@ export async function processNewsroomArticle(
       console.log(
         `[newsroom/category] ${workingInput.sourceUrl}: ${classification.overrides.join('; ')}`
       )
+    }
+
+    // ── AI Final Editor: category sanity check ──────────────────────────────
+    // Fast Gemini Flash call that reads actual content and can override rule-based
+    // classification. Catches cases like magazin-source → local/gündem articles.
+    try {
+      const aiCheck = await classifyArticleCategory(
+        rewritten.title,
+        rewritten.description ?? rewritten.summary ?? '',
+        classification.categoryId,
+      )
+      if (aiCheck && aiCheck.categoryId !== classification.categoryId) {
+        console.log(
+          `[newsroom/ai-editor] Kategori düzeltildi: ${classification.categoryId} → ${aiCheck.categoryId} ` +
+          `(güven: ${aiCheck.confidence}) — ${aiCheck.reason}`
+        )
+        classification.categoryId = aiCheck.categoryId
+        classification.categoryConfidence = aiCheck.confidence
+      }
+    } catch {
+      // Non-blocking — if AI check fails, keep the rule-based category
     }
 
     const moderationRaw = await moderateContent({

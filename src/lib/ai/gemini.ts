@@ -77,7 +77,7 @@ BAŞLIK: ${params.originalTitle}
 ÖZET: ${params.originalSummary}
 İÇERİK:
 ${content.slice(0, 4000)}
-${params.forcedCategoryId ? `\nZORUNLU KATEGORİ: ${params.forcedCategoryId}` : ''}
+${params.forcedCategoryId ? `\nÖNERİLEN KATEGORİ: ${params.forcedCategoryId} (içerik farklı bir kategoriye işaret ediyorsa doğru kategoriyi seç, bu sadece öneridir)` : ''}
 
 JSON şeması (tüm alanları doldur):
 {
