@@ -4,24 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-} from 'firebase/firestore'
-import { db, Collections } from '@/lib/firebase/firestore'
-
-interface SliderItem {
-  id: string
-  title: string
-  slug: string
-  imageUrl: string | null
-  categoryId: string
-  publishedAt: number
-}
+import type { TopNewsItem } from '@/app/api/news/top/route'
 
 interface NewsSliderProps {
   categoryId?: string
@@ -30,99 +13,23 @@ interface NewsSliderProps {
 const AUTOPLAY_MS = 5000
 
 export function NewsSlider({ categoryId }: NewsSliderProps) {
-  const [items, setItems] = useState<SliderItem[]>([])
+  const [items, setItems] = useState<TopNewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [current, setCurrent] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const touchStartX = useRef<number | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      try {
-        let docs: SliderItem[] = []
-
-        // Primary: status + categoryId + publishedAt (composite index required)
-        if (categoryId) {
-          try {
-            const q = query(
-              collection(db, Collections.NEWS),
-              where('status', '==', 'published'),
-              where('categoryId', '==', categoryId),
-              orderBy('publishedAt', 'desc'),
-              limit(20)
-            )
-            const snap = await getDocs(q)
-            docs = snap.docs.map((d) => {
-              const data = d.data() as Record<string, unknown>
-              return {
-                id: d.id,
-                title: String(data.title ?? ''),
-                slug: String(data.slug ?? d.id),
-                imageUrl: (data.coverImageUrl as string | null) ?? null,
-                categoryId: String(data.categoryId ?? ''),
-                publishedAt: Number(data.publishedAt ?? 0),
-              }
-            })
-          } catch {
-            // Fallback: query by status only, filter by category in memory
-            const q = query(
-              collection(db, Collections.NEWS),
-              where('status', '==', 'published'),
-              orderBy('publishedAt', 'desc'),
-              limit(60)
-            )
-            const snap = await getDocs(q)
-            docs = snap.docs
-              .map((d) => {
-                const data = d.data() as Record<string, unknown>
-                return {
-                  id: d.id,
-                  title: String(data.title ?? ''),
-                  slug: String(data.slug ?? d.id),
-                  imageUrl: (data.coverImageUrl as string | null) ?? null,
-                  categoryId: String(data.categoryId ?? ''),
-                  publishedAt: Number(data.publishedAt ?? 0),
-                }
-              })
-              .filter((item) => item.categoryId === categoryId)
-              .slice(0, 20)
-          }
-        } else {
-          // No category: top 20 latest published
-          const q = query(
-            collection(db, Collections.NEWS),
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(20)
-          )
-          const snap = await getDocs(q)
-          docs = snap.docs.map((d) => {
-            const data = d.data() as Record<string, unknown>
-            return {
-              id: d.id,
-              title: String(data.title ?? ''),
-              slug: String(data.slug ?? d.id),
-              imageUrl: (data.coverImageUrl as string | null) ?? null,
-              categoryId: String(data.categoryId ?? ''),
-              publishedAt: Number(data.publishedAt ?? 0),
-            }
-          })
-        }
-
-        // son-dakika sayfası yok — o categorydeki haberleri slider'dan çıkar
-        const filtered = docs.filter((item) => item.categoryId !== 'son-dakika')
-        if (!cancelled) setItems(filtered)
-      } catch {
-        // silently fail — slider just won't render
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
+    const url = categoryId
+      ? `/api/news/top?category=${encodeURIComponent(categoryId)}&limit=20`
+      : `/api/news/top?limit=20`
+    fetch(url)
+      .then((r) => r.json())
+      .then((d: { items?: TopNewsItem[] }) => {
+        if (d.items && d.items.length > 0) setItems(d.items)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [categoryId])
 
   const goTo = useCallback((idx: number) => {

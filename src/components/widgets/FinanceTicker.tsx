@@ -1,41 +1,50 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { TrendingUp, TrendingDown, ExternalLink } from 'lucide-react'
 import type { FinanceRates } from '@/app/api/finance/rates/route'
 
-function arrow(up: boolean) {
-  return (
-    <span
-      className={`inline-block text-[10px] font-bold ${up ? 'text-emerald-400' : 'text-red-400'}`}
-      aria-hidden
-    >
-      {up ? '▲' : '▼'}
-    </span>
-  )
+function formatValue(value: number, format: 'currency' | 'price'): string {
+  if (format === 'price') {
+    if (value >= 1000) {
+      return value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })
+    }
+    return value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })
+  }
+  if (value >= 10000) {
+    return value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })
+  }
+  return value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function fmt(n: number, decimals = 4) {
-  return n.toLocaleString('tr-TR', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })
-}
-
-interface CellProps {
+function RateCell({
+  label,
+  value,
+  unit,
+  change,
+  format,
+}: {
   label: string
-  value: string
+  value: number
+  unit: string
   change: number
-}
-
-function Cell({ label, value, change }: CellProps) {
+  format: 'currency' | 'price'
+}) {
   const up = change >= 0
   return (
-    <div className="flex flex-col items-start gap-0.5 px-3 py-2.5 border-r border-white/10 last:border-0">
-      <span className="text-[9px] font-bold uppercase tracking-widest text-white/50">{label}</span>
-      <span className="text-[13px] font-black tabular-nums leading-none text-white">{value}</span>
-      <div className={`flex items-center gap-0.5 text-[10px] font-semibold ${up ? 'text-emerald-400' : 'text-red-400'}`}>
-        {arrow(up)}
-        <span>% {Math.abs(change).toFixed(2)}</span>
+    <div className="flex flex-col gap-0.5 rounded-xl bg-[rgb(var(--color-surface))] p-2.5">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+        {label}
+      </span>
+      <span className="text-[14px] font-black tabular-nums text-[rgb(var(--color-text))]">
+        {unit}{formatValue(value, format)}
+      </span>
+      <div className={`flex items-center gap-0.5 text-[10px] font-semibold ${up ? 'text-emerald-500' : 'text-red-500'}`}>
+        {up
+          ? <TrendingUp className="h-3 w-3" />
+          : <TrendingDown className="h-3 w-3" />
+        }
+        <span>{up ? '+' : ''}{change.toFixed(2)}%</span>
       </div>
     </div>
   )
@@ -55,36 +64,46 @@ export function FinanceTicker() {
 
   if (loading) {
     return (
-      <div className="mb-3 h-14 w-full animate-pulse rounded-xl bg-[rgb(var(--color-surface))]" />
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-16 rounded-xl bg-[rgb(var(--color-surface))] animate-pulse" />
+        ))}
+      </div>
     )
   }
 
   if (!rates) return null
 
   return (
-    <div className="mb-3 overflow-hidden rounded-xl bg-[#111318]">
-      <div className="grid grid-cols-4 divide-x divide-white/10">
-        <Cell
-          label="DOLAR"
-          value={fmt(rates.usdTry.value, 4)}
-          change={rates.usdTry.change}
-        />
-        <Cell
-          label="EURO"
-          value={fmt(rates.eurTry.value, 4)}
-          change={rates.eurTry.change}
-        />
-        <Cell
-          label="BİTCOİN"
-          value={`$ ${rates.btcUsd.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`}
-          change={rates.btcUsd.change}
-        />
-        <Cell
-          label="GRAM ALTIN"
-          value={fmt(rates.goldTryGram.value, 3)}
-          change={rates.goldTryGram.change}
-        />
+    <div className="mb-3">
+      {/* Row 1: USD, EUR, Gold */}
+      <div className="grid grid-cols-3 gap-2">
+        <RateCell {...rates.usdTry} />
+        <RateCell {...rates.eurTry} />
+        <RateCell {...rates.goldTryGram} />
       </div>
+
+      {/* Row 2: BTC + BIST button */}
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <RateCell {...rates.btcUsd} />
+        <a
+          href="https://finance.yahoo.com/quote/XU100.IS/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[rgb(var(--color-brand))] p-2.5 text-white"
+        >
+          <span className="text-[10px] font-bold uppercase tracking-wide">BIST 100</span>
+          <div className="flex items-center gap-1 text-[12px] font-black">
+            Canlı Borsa
+            <ExternalLink className="h-3 w-3" />
+          </div>
+        </a>
+      </div>
+
+      {/* Updated time */}
+      <p className="mt-1 text-right text-[9px] text-[rgb(var(--color-muted))]">
+        Güncellendi: {new Date(rates.updatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+      </p>
     </div>
   )
 }
