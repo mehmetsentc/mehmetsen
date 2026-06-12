@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { cookies } from 'next/headers'
 import { Toaster } from 'react-hot-toast'
+
 import { Analytics } from '@vercel/analytics/react'
+
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { LanguageProvider } from '@/store/languageContext'
