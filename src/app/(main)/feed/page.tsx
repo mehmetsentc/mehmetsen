@@ -5,6 +5,8 @@ import { NewsSlider } from '@/components/widgets/NewsSlider'
 import { FinanceTicker } from '@/components/widgets/FinanceTicker'
 import { NewsCardSkeleton } from '@/components/ui/Skeleton'
 
+export const revalidate = 30
+
 export const metadata: Metadata = {
   title: 'Gündem | NaHaber',
   description: 'Türkiye gündeminden son dakika haberleri — NaHaber',

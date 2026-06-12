@@ -5,6 +5,8 @@ import { AlertCircle, CalendarDays, RefreshCw } from 'lucide-react'
 import { getCityCategoryName } from '@/constants/cities'
 import { getCurrentPosition, slugifyCity } from '@/lib/location'
 import { nearestProvinceSlug } from '@/constants/cities'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvents } from '@/hooks/useEvents'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
@@ -18,14 +20,27 @@ export function EventList() {
   const userCityName = user?.location?.trim() || null
   const userCitySlug = userCityName ? slugifyCity(userCityName) : null
 
-  const [selectedCitySlug, setSelectedCitySlug] = useState<string | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null)
+  const [userPickedCity, setUserPickedCity] = usePageState(
+    PAGE_STATE_KEYS.eventsUserPickedCity,
+    false
+  )
+  const [selectedCitySlug, setSelectedCitySlug] = usePageState<string | null>(
+    PAGE_STATE_KEYS.eventsCitySlug,
+    null
+  )
+  const [selectedCategory, setSelectedCategory] = usePageState<EventCategory | null>(
+    PAGE_STATE_KEYS.eventsCategory,
+    null
+  )
   const [geoLoading, setGeoLoading] = useState(false)
-  const userPickedCityRef = useRef(false)
+  const userPickedCityRef = useRef(userPickedCity)
   const geoTriedRef = useRef(false)
+
+  userPickedCityRef.current = userPickedCity
 
   // Auto-detect location once on mount (silent — no button needed)
   useEffect(() => {
+    if (userPickedCity && selectedCitySlug) return
     if (geoTriedRef.current || userPickedCityRef.current) return
     geoTriedRef.current = true
 
@@ -73,11 +88,13 @@ export function EventList() {
 
   const handleCityChange = (slug: string) => {
     userPickedCityRef.current = true
+    setUserPickedCity(true)
     setSelectedCitySlug(slug)
   }
 
   const handleCityClear = () => {
     userPickedCityRef.current = false
+    setUserPickedCity(false)
     setSelectedCitySlug(userCitySlug ?? null)
   }
 

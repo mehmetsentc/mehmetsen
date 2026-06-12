@@ -9,6 +9,8 @@ import { WeatherAlerts } from './WeatherAlerts'
 import { PopularCities } from './PopularCities'
 import type { WeatherData } from '@/types/weather'
 import { cn } from '@/lib/utils'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 
 // ── Fetch helper (client → /api/weather proxy) ─────────────────────────────
 async function fetchWeatherClient(city: string, days = 7): Promise<WeatherData> {
@@ -33,10 +35,10 @@ export function WeatherClient() {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [city, setCity] = useState<string | null>(null)
+  const [city, setCity] = usePageState<string | null>(PAGE_STATE_KEYS.weatherCity, null)
   const [locationDenied, setLocationDenied] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [showSearch, setShowSearch] = useState(false)
+  const [showSearch, setShowSearch] = usePageState(PAGE_STATE_KEYS.weatherSearchOpen, false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const geoRequestedRef = useRef(false)
@@ -82,13 +84,16 @@ export function WeatherClient() {
 
   // ── Mount: try stored city, then geo ────────────────────────────────
   useEffect(() => {
-    const stored = localStorage.getItem('weather_city')
+    if (weather) return
+    const stored =
+      city ??
+      (typeof window !== 'undefined' ? localStorage.getItem('weather_city') : null)
     if (stored) {
       void loadWeather(stored)
-    } else {
-      requestGeolocation()
+      return
     }
-  }, [loadWeather, requestGeolocation])
+    requestGeolocation()
+  }, [city, weather, loadWeather, requestGeolocation])
 
   // ── Auto-refresh every 15 minutes ────────────────────────────────────
   useEffect(() => {

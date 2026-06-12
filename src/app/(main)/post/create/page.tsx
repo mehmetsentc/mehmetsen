@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { Newspaper, Clapperboard, ImageIcon } from 'lucide-react'
 import { PostEditor } from '@/components/post/PostEditor'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { cn } from '@/lib/utils'
 
 type CreateType = 'news' | 'video' | 'photo'
@@ -14,7 +15,7 @@ const TABS: { id: CreateType; label: string; icon: typeof Newspaper; desc: strin
 ]
 
 export default function CreatePostPage() {
-  const [type, setType] = useState<CreateType>('news')
+  const [type, setType] = usePageState<CreateType>(PAGE_STATE_KEYS.createPostType, 'news')
 
   return (
     <div className="space-y-6">

@@ -2,7 +2,11 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense } from 'react'
+import { useCachedPageData } from '@/hooks/useCachedPageData'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_CACHE_KEYS } from '@/lib/pageCache'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { Loader2, Star, ExternalLink, Heart, MessageCircle } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { ROUTES } from '@/constants/routes'
@@ -127,24 +131,26 @@ function InfluencerCard({ post }: { post: Post }) {
 }
 
 function InfluencerContent() {
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activePlatform, setActivePlatform] = useState<Platform>('all')
-
-  useEffect(() => {
-    let cancelled = false
-    void postService
-      .getNewsTimeline(undefined, { feedSource: 'nahaber', categoryId: 'influencer' })
-      .then((result) => {
-        if (!cancelled) setPosts(result.posts)
+  const [activePlatform, setActivePlatform] = usePageState<Platform>(
+    PAGE_STATE_KEYS.influencerPlatform,
+    'all'
+  )
+  const { data, loading } = useCachedPageData<Post[]>(
+    PAGE_CACHE_KEYS.influencer,
+    async () => {
+      const result = await postService.getNewsTimeline(undefined, {
+        feedSource: 'nahaber',
+        categoryId: 'influencer',
       })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [])
+      return result.posts
+    }
+  )
 
-  const filtered = activePlatform === 'all'
-    ? posts
-    : posts.filter((p) => matchesPlatform(p, activePlatform))
+  const posts = data ?? []
+  const filtered =
+    activePlatform === 'all'
+      ? posts
+      : posts.filter((p) => matchesPlatform(p, activePlatform))
 
   return (
     <div className="space-y-4">

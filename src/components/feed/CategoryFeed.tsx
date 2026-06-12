@@ -1,15 +1,20 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { useTimelineFeed } from '@/hooks/useTimelineFeed'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import { useAppState } from '@/store/appStateContext'
+import { PAGE_CACHE_KEYS, PAGE_CACHE_TTL } from '@/lib/pageCache'
 import { TimelineItem } from './TimelineItem'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { rankFeedPosts } from '@/lib/feedRanking'
 import { useAuth } from '@/hooks/useAuth'
+import type { TimelinePost } from '@/types/post'
+
+const MAX_CACHED = 30
 
 interface CategoryFeedProps {
   categoryId: string
@@ -17,21 +22,37 @@ interface CategoryFeedProps {
 
 export function CategoryFeed({ categoryId }: CategoryFeedProps) {
   const { user } = useAuth()
+  const { getCachedFeed, setCachedFeed } = useAppState()
+  const cacheKey = PAGE_CACHE_KEYS.category(categoryId)
+
   const { posts, loading, loadingMore, error, hasMore, loadMore, retry } = useTimelineFeed(
     categoryId,
     'nahaber',
     undefined,
   )
 
+  const [seededPosts, setSeededPosts] = useState<TimelinePost[]>([])
+
+  useEffect(() => {
+    setSeededPosts(getCachedFeed<TimelinePost[]>(cacheKey) ?? [])
+  }, [cacheKey, getCachedFeed])
+
+  useEffect(() => {
+    if (loading || posts.length === 0) return
+    setCachedFeed(cacheKey, posts.slice(0, MAX_CACHED), PAGE_CACHE_TTL.category)
+  }, [posts, loading, cacheKey, setCachedFeed])
+
+  const rawPosts = posts.length > 0 ? posts : seededPosts
+
   const rankedPosts = useMemo(
     () =>
-      rankFeedPosts(posts, {
+      rankFeedPosts(rawPosts, {
         citySlug: user?.citySlug ?? null,
         favoriteCategories: user?.favoriteCategories,
         interests: user?.interests,
         followingUsernames: new Set(),
       }),
-    [posts, user],
+    [rawPosts, user],
   )
 
   const { sentinelRef } = useInfiniteScroll({
@@ -40,7 +61,9 @@ export function CategoryFeed({ categoryId }: CategoryFeedProps) {
     loading: loadingMore,
   })
 
-  if (error && !loading) {
+  const showSkeleton = loading && rankedPosts.length === 0
+
+  if (error && !loading && rankedPosts.length === 0) {
     return (
       <div className="surface-card p-8 text-center">
         <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-400" />
@@ -57,36 +80,25 @@ export function CategoryFeed({ categoryId }: CategoryFeedProps) {
     )
   }
 
-  if (!loading && rankedPosts.length === 0) {
-    return (
-      <div className="surface-card border-dashed py-16 text-center">
-        <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Haber bulunamadı</p>
-        <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-          Bu kategoride henüz haber yok.
-        </p>
-        <Link
-          href={ROUTES.FEED}
-          className="mt-4 inline-flex rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Tüm haberlere dön
-        </Link>
-      </div>
-    )
-  }
-
   return (
-    <div className="w-full">
-      <div className="timeline-list">
-        {loading && rankedPosts.length === 0 &&
-          [...Array(4)].map((_, i) => <TimelineItemSkeleton key={`sk-${i}`} />)}
+    <div className="timeline-list">
+      {showSkeleton &&
+        [...Array(4)].map((_, i) => <TimelineItemSkeleton key={`sk-${i}`} />)}
 
-        {rankedPosts.map((post, i) => (
-          <TimelineItem key={post.id} post={post} isLast={i === rankedPosts.length - 1} />
-        ))}
+      {rankedPosts.map((post, i) => (
+        <TimelineItem key={post.id} post={post} isLast={i === rankedPosts.length - 1} />
+      ))}
 
-        {loadingMore && <TimelineItemSkeleton key="sk-more" />}
-      </div>
+      {!loading && rankedPosts.length === 0 && (
+        <div className="surface-card border-dashed py-16 text-center">
+          <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Bu kategoride haber yok</p>
+          <Link href={ROUTES.FEED} className="mt-3 inline-block text-sm font-semibold text-red-600 hover:underline">
+            Gündeme dön
+          </Link>
+        </div>
+      )}
 
+      {loadingMore && <TimelineItemSkeleton key="sk-more" />}
       <div ref={sentinelRef} className="h-1" aria-hidden />
     </div>
   )

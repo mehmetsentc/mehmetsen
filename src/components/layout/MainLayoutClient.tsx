@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useState, Suspense } from 'react'
+import { memo, useEffect, Suspense } from 'react'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -10,9 +10,12 @@ import { TrendingPanel } from '@/components/feed/TrendingPanel'
 import { ConsentStrip } from '@/components/consent/ConsentStrip'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
+import { PageStateEffects } from '@/components/layout/PageStateEffects'
+import { UiEffects } from '@/components/layout/UiEffects'
 import { NetworkProvider } from '@/store/networkContext'
 import { AppStateProvider } from '@/store/appStateContext'
 import { UserLocationProvider } from '@/store/userLocationContext'
+import { useUiStore } from '@/store/uiStore'
 import { usePlatformLayout } from '@/hooks/usePlatformLayout'
 import { logRouteChange } from '@/lib/navDiagnostics'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
@@ -55,13 +58,14 @@ const LayoutShell = memo(function LayoutShell({
   isMobile: boolean
   isDesktop: boolean
 }) {
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const drawerOpen = useUiStore((s) => s.mobileDrawerOpen)
+  const setMobileDrawerOpen = useUiStore((s) => s.setMobileDrawerOpen)
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]" data-platform={platform}>
       <Sidebar
         mobileOpen={drawerOpen}
-        onMobileClose={() => setDrawerOpen(false)}
+        onMobileClose={() => setMobileDrawerOpen(false)}
       />
 
       <div
@@ -71,7 +75,7 @@ const LayoutShell = memo(function LayoutShell({
           isDesktop && 'app-shell-desktop'
         )}
       >
-        <Navbar onMenuClick={() => setDrawerOpen(true)} />
+        <Navbar onMenuClick={() => setMobileDrawerOpen(true)} />
 
         <PullToRefresh>
           <div
@@ -133,6 +137,8 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
           <NetworkProvider>
             <ReelsRouteTheme active={isReels} />
             <RouteEffects />
+            <PageStateEffects />
+            <UiEffects />
             <LayoutShell
               pathname={pathname}
               isFeed={isFeed}

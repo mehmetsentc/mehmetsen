@@ -8,6 +8,8 @@ import { getCityCategoryName } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { hasFeedGuestConsent } from '@/lib/feedConsent'
 import { useAppState } from '@/store/appStateContext'
+import { useFeedStore } from '@/store/feedStore'
+import { CACHE_KEYS } from '@/lib/stateKeys'
 import type { TimelinePost } from '@/types/post'
 import { useAuth } from '@/hooks/useAuth'
 import { useRecentCities } from '@/hooks/useRecentCities'
@@ -25,16 +27,18 @@ interface NewsTimelineContentProps {
 
 const MAX_CACHED_TIMELINE = 30
 
-function timelineCacheKey(categoryId: string | null): string {
-  return `timeline:nahaber:${categoryId ?? 'all'}`
-}
-
 function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
   const { user, loading: authLoading } = useAuth()
   const { getCachedFeed, setCachedFeed } = useAppState()
+  const feedSource = useFeedStore((s) => s.feedSource)
+  const setLastCategoryId = useFeedStore((s) => s.setLastCategoryId)
   const [categoryId, setCategoryId] = useState<string | null>(categoryParam)
 
   useEffect(() => { setCategoryId(categoryParam) }, [categoryParam])
+
+  useEffect(() => {
+    setLastCategoryId(categoryId)
+  }, [categoryId, setLastCategoryId])
 
   // Misafirler her zaman haberleri görebilir — onay engeli kaldırıldı.
   const canViewFeed = true
@@ -44,20 +48,20 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
 
   const { posts, loading, loadingMore, error, hasMore, loadMore, retry } = useTimelineFeed(
     categoryId ?? undefined,
-    'nahaber',
+    feedSource,
     detectedCitySlug
   )
 
   const [seededPosts, setSeededPosts] = useState<TimelinePost[]>([])
 
   useEffect(() => {
-    const cached = getCachedFeed<TimelinePost[]>(timelineCacheKey(categoryId))
+    const cached = getCachedFeed<TimelinePost[]>(CACHE_KEYS.timeline(categoryId))
     setSeededPosts(cached ?? [])
   }, [categoryId, getCachedFeed])
 
   useEffect(() => {
     if (loading || posts.length === 0) return
-    setCachedFeed<TimelinePost[]>(timelineCacheKey(categoryId), posts.slice(0, MAX_CACHED_TIMELINE))
+    setCachedFeed<TimelinePost[]>(CACHE_KEYS.timeline(categoryId), posts.slice(0, MAX_CACHED_TIMELINE))
   }, [posts, loading, categoryId, setCachedFeed])
 
   const rawPosts = posts.length > 0 ? posts : seededPosts

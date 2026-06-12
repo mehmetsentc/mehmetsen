@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useMemo } from 'react'
+import { useCachedPageData } from '@/hooks/useCachedPageData'
+import { PAGE_CACHE_KEYS } from '@/lib/pageCache'
 import {
   TrendingUp,
   TrendingDown,
@@ -182,29 +184,33 @@ const CATEGORY_META: Record<string, { icon: string; color: string }> = {
   'yerel-haber': { icon: '📍', color: 'bg-teal-600/10 text-teal-400 border-teal-600/20' },
 }
 
+interface DiscoverPayload {
+  news: Post[]
+  videos: Post[]
+  cities: Array<{ slug: string; name: string }>
+}
+
 function DiscoverContent() {
   const { topics, loading: topicsLoading } = useTrendingTopics()
-  const [trendingNews, setTrendingNews] = useState<Post[]>([])
-  const [trendingVideos, setTrendingVideos] = useState<Post[]>([])
-  const [cities, setCities] = useState<Array<{ slug: string; name: string }>>([])
-  const [loading, setLoading] = useState(true)
+  const { data, loading } = useCachedPageData<DiscoverPayload>(
+    PAGE_CACHE_KEYS.discover,
+    async () => {
+      const [newsResult, videoResult, cityList] = await Promise.all([
+        postService.getNewsTimeline(undefined, { feedSource: 'nahaber' }),
+        postService.getVideoFeed(),
+        postService.getRecentCities(12),
+      ])
+      return {
+        news: newsResult.posts.slice(0, 6),
+        videos: videoResult.posts.slice(0, 4),
+        cities: cityList.map((c) => ({ slug: c.slug, name: c.name })),
+      }
+    }
+  )
 
-  useEffect(() => {
-    let cancelled = false
-    void Promise.all([
-      postService.getNewsTimeline(undefined, { feedSource: 'nahaber' }),
-      postService.getVideoFeed(),
-      postService.getRecentCities(12),
-    ])
-      .then(([newsResult, videoResult, cityList]) => {
-        if (cancelled) return
-        setTrendingNews(newsResult.posts.slice(0, 6))
-        setTrendingVideos(videoResult.posts.slice(0, 4))
-        setCities(cityList.map((c) => ({ slug: c.slug, name: c.name })))
-      })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [])
+  const trendingNews = data?.news ?? []
+  const trendingVideos = data?.videos ?? []
+  const cities = data?.cities ?? []
 
   const maxCount = useMemo(
     () => Math.max(...topics.map((t) => t.count), 1),

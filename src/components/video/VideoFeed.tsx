@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
@@ -14,6 +14,8 @@ import { ReelsRecommendations } from './ReelsRecommendations'
 import { ReelsAudioProvider } from '@/store/reelsAudioContext'
 import { ROUTES } from '@/constants/routes'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 
 function ReelsStatePanel({
   children,
@@ -39,8 +41,15 @@ export function VideoFeed() {
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const targetVideoId = searchParams.get('v')
-  const [feedTab, setFeedTab] = useState<ReelsFeedTab>('for-you')
+  const [feedTab, setFeedTab] = usePageState<ReelsFeedTab>(
+    PAGE_STATE_KEYS.reelsFeedTab,
+    'for-you'
+  )
+  const [activeIndexByTab, setActiveIndexByTab] = usePageState<
+    Record<ReelsFeedTab, number>
+  >(PAGE_STATE_KEYS.reelsActiveIndexByTab, { 'for-you': 0, following: 0 })
   const hasScrolledToTargetRef = useRef(false)
+  const restoredScrollRef = useRef(false)
 
   const {
     videos,
@@ -65,8 +74,11 @@ export function VideoFeed() {
   })
 
   const handleActiveChange = useCallback(
-    (index: number) => setActiveIndex(index),
-    [setActiveIndex]
+    (index: number) => {
+      setActiveIndex(index)
+      setActiveIndexByTab((prev) => ({ ...prev, [feedTab]: index }))
+    },
+    [setActiveIndex, setActiveIndexByTab, feedTab]
   )
 
   const awaitingTarget = Boolean(targetVideoId && resolvingTarget)
@@ -79,7 +91,12 @@ export function VideoFeed() {
 
   useEffect(() => {
     hasScrolledToTargetRef.current = false
+    restoredScrollRef.current = false
   }, [targetVideoId])
+
+  useEffect(() => {
+    restoredScrollRef.current = false
+  }, [feedTab])
 
   useLayoutEffect(() => {
     if (awaitingTarget || targetIndex === null || hasScrolledToTargetRef.current) return
@@ -101,11 +118,38 @@ export function VideoFeed() {
     hasScrolledToTargetRef.current = true
   }, [awaitingTarget, targetIndex, containerRef, scrollToIndex])
 
-  const handleTabChange = useCallback((tab: ReelsFeedTab) => {
-    pauseAllPageVideos()
-    setFeedTab(tab)
-    hasScrolledToTargetRef.current = false
-  }, [])
+  // Restore vertical scroll position when returning to reels (per tab).
+  useLayoutEffect(() => {
+    if (targetVideoId || awaitingTarget || videos.length === 0 || restoredScrollRef.current) {
+      return
+    }
+
+    const savedIndex = activeIndexByTab[feedTab] ?? 0
+    const index = Math.min(Math.max(0, savedIndex), videos.length - 1)
+    if (index > 0) {
+      scrollToIndex(index, 'auto')
+      setActiveIndex(index)
+    }
+    restoredScrollRef.current = true
+  }, [
+    targetVideoId,
+    awaitingTarget,
+    videos.length,
+    feedTab,
+    activeIndexByTab,
+    scrollToIndex,
+    setActiveIndex,
+  ])
+
+  const handleTabChange = useCallback(
+    (tab: ReelsFeedTab) => {
+      pauseAllPageVideos()
+      setFeedTab(tab)
+      hasScrolledToTargetRef.current = false
+      restoredScrollRef.current = false
+    },
+    [setFeedTab]
+  )
 
   useEffect(() => {
     return () => {

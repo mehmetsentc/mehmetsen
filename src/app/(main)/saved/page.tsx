@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
+import { useCachedPageData } from '@/hooks/useCachedPageData'
+import { PAGE_CACHE_KEYS } from '@/lib/pageCache'
 import { Bookmark } from 'lucide-react'
 import Link from 'next/link'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -12,37 +14,32 @@ import type { Post } from '@/types/post'
 
 export default function SavedPage() {
   const { user, loading: authLoading } = useAuth()
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const cacheKey = user?.uid ? PAGE_CACHE_KEYS.saved(user.uid) : 'page:saved:guest'
+
+  const {
+    data: posts,
+    loading,
+    error,
+    refresh,
+  } = useCachedPageData<Post[]>(
+    cacheKey,
+    async () => {
+      if (!user?.uid) return []
+      return saveService.getSavedPosts(user.uid)
+    },
+    { enabled: Boolean(user?.uid) && !authLoading }
+  )
 
   const load = useCallback(async () => {
-    if (!user?.uid) {
-      setPosts([])
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    setError(false)
     try {
-      const saved = await saveService.getSavedPosts(user.uid)
-      setPosts(saved)
+      await refresh()
     } catch (err) {
       console.error('[SavedPage] load failed:', err)
-      setError(true)
-      setPosts([])
-    } finally {
-      setLoading(false)
     }
-  }, [user?.uid])
-
-  useEffect(() => {
-    if (authLoading) return
-    load()
-  }, [authLoading, load])
+  }, [refresh])
 
   const isLoading = authLoading || loading
+  const savedPosts = posts ?? []
 
   return (
     <div className="space-y-4">
@@ -59,7 +56,7 @@ export default function SavedPage() {
             <div key={i} className="skeleton h-40 rounded-2xl" />
           ))}
         </div>
-      ) : error ? (
+      ) : error && savedPosts.length === 0 ? (
         <div className="surface-card empty-state">
           <div className="empty-state-icon">
             <Bookmark className="h-7 w-7 text-blue-600 dark:text-blue-400" />
@@ -74,7 +71,7 @@ export default function SavedPage() {
             Tekrar dene
           </button>
         </div>
-      ) : posts.length === 0 ? (
+      ) : savedPosts.length === 0 ? (
         <div className="surface-card empty-state">
           <div className="empty-state-icon">
             <Bookmark className="h-7 w-7 text-blue-600 dark:text-blue-400" />
@@ -92,7 +89,7 @@ export default function SavedPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {posts.map((post) => (
+          {savedPosts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
         </div>

@@ -32,6 +32,9 @@ export function generateStaticParams() {
   return DEFAULT_CATEGORIES.map((cat) => ({ id: cat.slug }))
 }
 
+// ISR: Vercel CDN caches category shells; feed hydrates client-side.
+export const revalidate = 60
+
 export default async function CategoryPage({ params }: Props) {
   const { id } = await params
   const cat = getCategoryMeta(id)

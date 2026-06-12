@@ -18,6 +18,8 @@ import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { useSearch } from '@/hooks/useSearch'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { Avatar } from '@/components/ui/Avatar'
 import { hasVideoContent } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -176,7 +178,7 @@ function SearchPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialQ = searchParams.get('q') ?? ''
-  const [tab, setTab] = useState<SearchTab>('all')
+  const [tab, setTab] = usePageState<SearchTab>(PAGE_STATE_KEYS.searchTab, 'all')
   const { query, setQuery, results, loading, error, searched, submit } = useSearch(initialQ)
 
   useEffect(() => {

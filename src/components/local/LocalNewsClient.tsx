@@ -19,6 +19,8 @@ import { TimelineItem } from '@/components/feed/TimelineItem'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import type { TimelinePost } from '@/types/post'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 
 type LocationState = 'idle' | 'requesting' | 'granted' | 'denied' | 'stored'
 
@@ -95,7 +97,11 @@ export function LocalNewsClient() {
   const [loading, setLoading]         = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError]             = useState<string | null>(null)
-  const [showCitySheet, setShowCitySheet] = useState(false)
+  const [showCitySheet, setShowCitySheet] = usePageState(PAGE_STATE_KEYS.localCitySheetOpen, false)
+  const [storedCitySlug, setStoredCitySlug] = usePageState<string | null>(
+    PAGE_STATE_KEYS.localCitySlug,
+    null
+  )
   const requestedRef = useRef(false)
   const citySlugRef  = useRef<string | null>(null)
 
@@ -172,17 +178,18 @@ export function LocalNewsClient() {
   }, [fetchFirst])
 
   useEffect(() => {
-    const stored = readStoredUserLocation()
-    if (stored?.citySlug && stored.source !== 'fallback') {
-      const province = TURKISH_PROVINCES.find(p => p.slug === stored.citySlug)
+    const slug = storedCitySlug ?? readStoredUserLocation()?.citySlug
+    if (slug && slug !== '__all__') {
+      const province = TURKISH_PROVINCES.find((p) => p.slug === slug)
       if (province) {
         setCity({ slug: province.slug, name: province.name, lat: province.lat, lng: province.lng })
         setLocationState('stored')
+        requestedRef.current = true
         return
       }
     }
     void requestGeolocation()
-  }, [requestGeolocation])
+  }, [requestGeolocation, storedCitySlug])
 
   useEffect(() => {
     if (city) void fetchFirst(city.slug)
@@ -190,11 +197,12 @@ export function LocalNewsClient() {
 
   const handleSelectCity = useCallback((selected: LocalCity) => {
     setCity(selected)
+    setStoredCitySlug(selected.slug)
     setShowCitySheet(false)
     setLocationState('stored')
     writeStoredUserLocation({ citySlug: selected.slug, cityName: selected.name, lat: selected.lat, lng: selected.lng, source: 'geolocation', updatedAt: Date.now() })
     requestedRef.current = true
-  }, [])
+  }, [setShowCitySheet, setStoredCitySlug])
 
   return (
     <div className={cn('w-full pb-8')}>

@@ -61,6 +61,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on pages, skip static assets and Next internals.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.[\\w]+$).*)'],
+  // Pages only — skip API/cron routes (saves Edge invocations on Pro) and static assets.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.[\\w]+$).*)'],
 }

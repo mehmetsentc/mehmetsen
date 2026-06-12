@@ -1,6 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -45,7 +47,7 @@ export default function SettingsPage() {
   const { user, logout } = useAuth()
   const { language, t } = useLanguage()
   const { theme } = useTheme()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = usePageState(PAGE_STATE_KEYS.settingsQuery, '')
 
   const themeLabel =
     theme === 'light'

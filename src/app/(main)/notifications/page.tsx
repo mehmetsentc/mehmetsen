@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import Link from 'next/link'
 import {
   Heart,
@@ -149,7 +151,10 @@ function NotificationRow({ n }: { n: Notification }) {
 }
 
 export default function NotificationsPage() {
-  const [active, setActive] = useState<NotifCategory>('all')
+  const [active, setActive] = usePageState<NotifCategory>(
+    PAGE_STATE_KEYS.notifCategory,
+    'all'
+  )
   const { notifications, loading, error, unreadCount, markAllAsRead } = useNotifications()
 
   // Mark everything read once notifications are visible.

@@ -4,6 +4,7 @@ import { NEWS_IMAGE_REMOTE_PATTERNS } from './src/constants/imageHosts'
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+  productionBrowserSourceMaps: false,
 
   images: {
     // Cache optimized images for 7 days
@@ -58,6 +59,20 @@ const nextConfig: NextConfig = {
         source: '/sitemap(.*).xml',
         headers: [{ key: 'Cache-Control', value: 's-maxage=3600, stale-while-revalidate=600' }],
       },
+      // Brand assets & PWA icons: 1 year immutable (Vercel CDN)
+      {
+        source: '/brand/(.*)',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        source: '/(.*\\.(?:png|jpg|jpeg|webp|avif|ico|svg|woff2))',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      // Sports scores: 2 min CDN cache
+      {
+        source: '/api/sports/matches',
+        headers: [{ key: 'Cache-Control', value: 's-maxage=120, stale-while-revalidate=60' }],
+      },
       // Security headers
       {
         source: '/(.*)',
@@ -78,6 +93,11 @@ const nextConfig: NextConfig = {
       '@vercel/analytics',
       '@vercel/speed-insights',
     ],
+    // Client-side router cache — fewer full re-fetches on navigation (Next.js 15)
+    staleTimes: {
+      dynamic: 60,
+      static: 600,
+    },
   },
 }
 

@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { sortByEngagement } from '@/lib/engagementScore'
 import { hasVideoContent } from '@/lib/postUtils'
 import { CACHE_TTL } from '@/lib/clientCache'
+import { CACHE_KEYS } from '@/lib/stateKeys'
 import { useAppState } from '@/store/appStateContext'
 import { getSeenPostIds } from '@/lib/reelsSeen'
 import type { ReelsFeedTab } from '@/components/video/ReelsFeedTabs'
@@ -50,10 +51,6 @@ function dedupePostsById<T extends Post>(posts: T[]): T[] {
     result.push(post)
   }
   return result
-}
-
-function videoFeedCacheKey(feedMode: ReelsFeedTab, userId?: string): string {
-  return `videoFeed:${feedMode}:${userId ?? 'guest'}`
 }
 
 export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedTab = 'for-you') {
@@ -161,7 +158,7 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
           const next = partitionBySeen(merged, userId)
           // Persist the head of the (revalidated) feed for instant re-entry.
           setCachedFeed(
-            videoFeedCacheKey(mode, userId),
+            CACHE_KEYS.videoFeed(mode, userId),
             next.slice(0, MAX_CACHED_VIDEOS),
             CACHE_TTL.LONG
           )
@@ -218,7 +215,7 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
     // fetch fresh in the background. Skip seeding when targeting a deep-linked
     // video so the resolve flow can run unobstructed.
     const cached = !targetVideoId
-      ? getCachedFeed<VideoFeedItem[]>(videoFeedCacheKey(feedMode, user?.uid))
+      ? getCachedFeed<VideoFeedItem[]>(CACHE_KEYS.videoFeed(feedMode, user?.uid))
       : null
     if (cached && cached.length > 0) {
       setVideos(partitionBySeen(cached, user?.uid))

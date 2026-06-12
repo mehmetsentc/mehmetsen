@@ -18,7 +18,12 @@ import {
 } from '@/lib/i18n'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin', 'latin-ext'] })
+const inter = Inter({
+  subsets: ['latin', 'latin-ext'],
+  display: 'swap',
+  preload: true,
+  adjustFontFallback: true,
+})
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://nahaber.com'
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'

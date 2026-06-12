@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { EventList } from '@/components/events/EventList'
 
+export const revalidate = 60
+
 export const metadata: Metadata = {
   title: 'Etkinlikler',
   description:

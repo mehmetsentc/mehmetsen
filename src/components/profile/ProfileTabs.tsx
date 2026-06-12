@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { usePageState } from '@/hooks/usePageState'
+import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { Grid3X3, Clapperboard, Bookmark, Heart, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { postService } from '@/services/postService'
@@ -24,7 +26,7 @@ export function ProfileTabs({
   isOwnProfile,
   initialTab = 'posts',
 }: ProfileTabsProps) {
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+  const [activeTab, setActiveTab] = usePageState<Tab>(PAGE_STATE_KEYS.profileTab, initialTab)
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
 
