@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
-
+import { NewsSlider } from '@/components/widgets/NewsSlider'
+import { PageTopWidgets } from '@/components/widgets/PageTopWidgets'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 
 interface Props {
@@ -54,8 +55,20 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       </div>
 
+      {/* 🖼️ Haber kaydırıcısı — en yeni 20 haber */}
+      <NewsSlider categoryId={cat.id} />
 
+      {/* 📊 Widget bölümü — kur, maç, hava, burç */}
+      <PageTopWidgets />
 
+      {/* Divider */}
+      <div className="mb-3 flex items-center gap-3">
+        <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--color-muted))]">
+          Tüm Haberler
+        </span>
+        <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
+      </div>
 
       {/* News feed */}
       <Suspense

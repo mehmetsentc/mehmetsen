@@ -5,7 +5,8 @@ import { WorldCupStrip } from '@/components/sports/WorldCupStrip'
 import { MatchResults } from '@/components/sports/MatchResults'
 import { SuperLigTable } from '@/components/sports/SuperLigTable'
 import { TransferStrip } from '@/components/sports/TransferStrip'
-
+import { NewsSlider } from '@/components/widgets/NewsSlider'
+import { FinanceTicker } from '@/components/widgets/FinanceTicker'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 
 export const metadata: Metadata = {
@@ -35,8 +36,11 @@ export default function SporPage() {
         </div>
       </div>
 
+      {/* 🖼️ Spor haber kaydırıcısı */}
+      <NewsSlider categoryId="spor" />
 
-
+      {/* 💱 Finance ticker */}
+      <FinanceTicker />
 
       {/* 🏆 Dünya Kupası yatay kaydırma şeridi */}
       <WorldCupStrip />
