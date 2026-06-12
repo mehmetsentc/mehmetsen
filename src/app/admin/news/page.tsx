@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import {
   Plus, Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Eye, Loader2, ChevronDown, Filter,
-  Newspaper, BarChart3, Clock, Tag, Globe,
+  Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X, Save,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
@@ -17,6 +17,7 @@ import { formatDistanceToNow, format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
+import { DEFAULT_CATEGORIES } from '@/constants/config'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -179,6 +180,152 @@ function SeoPreview({ post }: { post: AdminNewsItem }) {
   )
 }
 
+// ── Edit Drawer ────────────────────────────────────────────────────────────
+function EditDrawer({
+  post,
+  onClose,
+  onSaved,
+}: {
+  post: AdminNewsItem
+  onClose: () => void
+  onSaved: (updated: Partial<AdminNewsItem>) => void
+}) {
+  const [title, setTitle] = useState(post.title ?? '')
+  const [summary, setSummary] = useState(post.summary ?? '')
+  const [content, setContent] = useState(post.content ?? '')
+  const [spot, setSpot] = useState(post.spot ?? '')
+  const [categoryId, setCategoryId] = useState(post.categoryId ?? '')
+  const [status, setStatus] = useState<string>(post.status ?? 'draft')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!title.trim()) { toast.error('Başlık boş olamaz'); return }
+    setSaving(true)
+    try {
+      const token = await auth.currentUser?.getIdToken()
+      const res = await fetch(`/api/admin/news/${post.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ title, summary, content, spot, categoryId, status }),
+      })
+      if (!res.ok) {
+        const err = await res.json() as { error?: string }
+        throw new Error(err.error ?? 'Kayıt başarısız')
+      }
+      toast.success('Haber güncellendi')
+      onSaved({ title, summary, content, spot, categoryId, status: status as AdminNewsItem['status'] })
+      onClose()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Hata oluştu')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={onClose}>
+      <div
+        className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-[rgb(var(--color-card))] shadow-2xl sm:rounded-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[rgb(var(--color-border))] px-5 py-4">
+          <div className="flex items-center gap-2">
+            <Pencil className="h-4 w-4 text-blue-500" />
+            <span className="text-sm font-bold text-[rgb(var(--color-text))]">Haberi Düzenle</span>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-[rgb(var(--color-surface))]">
+            <X className="h-4 w-4 text-[rgb(var(--color-muted))]" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 overflow-y-auto space-y-4 p-5">
+          {/* Başlık */}
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Başlık</label>
+            <input
+              type="text" value={title} onChange={e => setTitle(e.target.value)}
+              className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Haber başlığı..."
+            />
+          </div>
+
+          {/* Spot / girizgah */}
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Spot (girizgah)</label>
+            <textarea
+              value={spot} onChange={e => setSpot(e.target.value)} rows={2}
+              className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="2-4 cümlelik haber girişi..."
+            />
+          </div>
+
+          {/* Özet */}
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Özet</label>
+            <textarea
+              value={summary} onChange={e => setSummary(e.target.value)} rows={2}
+              className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Kısa özet..."
+            />
+          </div>
+
+          {/* İçerik */}
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">İçerik</label>
+            <textarea
+              value={content} onChange={e => setContent(e.target.value)} rows={10}
+              className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y font-mono"
+              placeholder="Haber metni..."
+            />
+          </div>
+
+          {/* Kategori + Durum */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Kategori</label>
+              <select
+                value={categoryId} onChange={e => setCategoryId(e.target.value)}
+                className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">— seçin —</option>
+                {DEFAULT_CATEGORIES.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Durum</label>
+              <select
+                value={status} onChange={e => setStatus(e.target.value)}
+                className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="draft">Taslak</option>
+                <option value="pending">Onay Bekliyor</option>
+                <option value="published">Yayında</option>
+                <option value="archived">Arşiv</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-[rgb(var(--color-border))] px-5 py-3">
+          <button onClick={onClose} className="rounded-xl border border-[rgb(var(--color-border))] px-4 py-2 text-sm font-semibold text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]">
+            İptal
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Kaydet
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── News Row ───────────────────────────────────────────────────────────────
 function NewsRow({
   post,
@@ -187,6 +334,7 @@ function NewsRow({
   onApprove,
   onReject,
   onRemove,
+  onEdit,
   actionLoading,
 }: {
   post: AdminNewsItem
@@ -195,6 +343,7 @@ function NewsRow({
   onApprove: (p: AdminNewsItem) => void
   onReject: (p: AdminNewsItem) => void
   onRemove: (id: string) => void
+  onEdit: (p: AdminNewsItem) => void
   actionLoading: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -266,6 +415,11 @@ function NewsRow({
                 showSeo ? 'border-blue-500 bg-blue-600 text-white' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]')}>
               <BarChart3 className="h-3 w-3" />SEO
             </button>
+            <button onClick={() => onEdit(post)}
+              className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-[11px] font-bold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]"
+              title="Düzenle">
+              <Pencil className="h-3 w-3" />
+            </button>
             <button onClick={() => onRemove(post.id)} disabled={busy}
               className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/20">
               <Trash2 className="h-3 w-3" />
@@ -294,6 +448,7 @@ export default function AdminNewsPage() {
   const [hasMore, setHasMore] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [editingPost, setEditingPost] = useState<AdminNewsItem | null>(null)
 
   const load = useCallback(async (reset = true) => {
     setLoading(true)
@@ -371,6 +526,12 @@ export default function AdminNewsPage() {
     setPosts(prev => prev.filter(p => !selected.has(p.id)))
     setSelected(new Set())
     setBulkLoading(false)
+  }
+
+  const handleEdit = (post: AdminNewsItem) => setEditingPost(post)
+
+  const handleSaved = (id: string, updated: Partial<AdminNewsItem>) => {
+    setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p))
   }
 
   const toggleSelect = (id: string) => {
@@ -485,6 +646,7 @@ export default function AdminNewsPage() {
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onRemove={handleRemove}
+                onEdit={handleEdit}
                 actionLoading={actionLoading}
               />
             ))
@@ -500,6 +662,14 @@ export default function AdminNewsPage() {
           </div>
         )}
       </div>
+
+      {editingPost && (
+        <EditDrawer
+          post={editingPost}
+          onClose={() => setEditingPost(null)}
+          onSaved={(updated) => { handleSaved(editingPost.id, updated) }}
+        />
+      )}
     </div>
   )
 }

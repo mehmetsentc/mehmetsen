@@ -47,15 +47,50 @@ const TURKISH_PROVINCES_ALL: [string, string][] = [
 // Build lookup: ASCII slug → display name
 const CITY_DISPLAY: Map<string, string> = new Map(TURKISH_PROVINCES_ALL)
 
+/**
+ * City slugs that are also very common Turkish words.
+ * These must NOT be auto-detected from text — only use when AI explicitly names the city.
+ * - agri  = "ağrı" (pain/ache) — appears in any medical or political text
+ * - van   = "van" (truck/cargo vehicle)
+ * - ordu  = "ordu" (army/military) — ubiquitous in political/military news
+ * - mus   = "muş" — less common but also a verb form
+ * - bolu  = "bolu" — also a common syllable
+ * - batman = also an English word
+ */
+const AMBIGUOUS_CITY_SLUGS = new Set(['agri', 'van', 'ordu', 'mus', 'bolu', 'batman'])
+
+/**
+ * National-scope keywords: if ANY of these appear in the text, this is
+ * a national/political story — skip text-based city extraction entirely.
+ */
+const NATIONAL_SCOPE_KEYWORDS = [
+  'cumhurbaskani', 'erdogan', 'tbmm', 'meclis', 'hukumet', 'basbakan',
+  'bakanligi', 'bakan ', 'savunma bakani', 'disisleri', 'icisleri',
+  'milletvekili', 'genel kurul', 'anayasa', 'cumhuriyet halk', 'akp', 'chp',
+  'mhp', 'iyip', 'kilicdaroglu', 'bahceli', 'imamoglu', 'yavaş',
+  'secim kampanyasi', 'parti genel',
+]
+
 function extractCityFromText(text: string): string | null {
-  // Normalize to ASCII-ish for matching
+  // Normalize Turkish chars to ASCII for matching
   const lower = text
     .toLocaleLowerCase('tr-TR')
     .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
     .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
 
+  // If this is a national/political story, don't auto-detect a city from text.
+  // These stories mention politicians & institutions that could be in any city.
+  const isNationalScope = NATIONAL_SCOPE_KEYWORDS.some(kw => lower.includes(kw))
+  if (isNationalScope) return null
+
   for (const [slug] of TURKISH_PROVINCES_ALL) {
-    if (lower.includes(slug)) {
+    // Skip ambiguous city names — they're too often common words
+    if (AMBIGUOUS_CITY_SLUGS.has(slug)) continue
+
+    // Word-boundary match: prevents "kars" matching inside "karsi" (=karşı),
+    // "van" inside "ivan/avantaj", "ordu" inside "orduyu" etc.
+    const re = new RegExp(`(?<![a-z])${slug}(?![a-z])`)
+    if (re.test(lower)) {
       return CITY_DISPLAY.get(slug) ?? slug
     }
   }

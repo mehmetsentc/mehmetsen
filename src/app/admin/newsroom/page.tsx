@@ -43,15 +43,11 @@ type TabId = 'overview' | 'queue' | 'logs' | 'pipeline'
 const AGENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   gemini: BrainCircuit,
   deepseek: Cpu,
-  gpt: Bot,
-  claude: Zap,
 }
 
 const AGENT_COLORS: Record<string, string> = {
   gemini: 'text-blue-400',
   deepseek: 'text-purple-400',
-  gpt: 'text-emerald-400',
-  claude: 'text-orange-400',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -253,11 +249,9 @@ export default function NewsroomPage() {
             {/* Agent cards */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {(loading.status ? [
-                { id: 'gemini', name: 'Gemini 2.5 Flash', role: 'Chief News Editor', configured: false, ok: false, latencyMs: 0 },
-                { id: 'deepseek', name: 'DeepSeek V3', role: 'News Generator', configured: false, ok: false, latencyMs: 0 },
-                { id: 'gpt', name: 'GPT-4o', role: 'Senior Editor', configured: false, ok: false, latencyMs: 0 },
-                { id: 'claude', name: 'Claude Haiku', role: 'Technical AI', configured: false, ok: false, latencyMs: 0 },
-              ] : agents).map(agent => {
+                { id: 'gemini', name: 'Gemini 2.5 Flash', role: 'Baş Editör (Birincil)', configured: false, ok: false, latencyMs: 0 },
+                { id: 'deepseek', name: 'DeepSeek V3', role: 'Haber Yazarı (Yedek)', configured: false, ok: false, latencyMs: 0 },
+              ] : agents.filter(a => a.id === 'gemini' || a.id === 'deepseek')).map(agent => {
                 const Icon = AGENT_ICONS[agent.id] ?? Bot
                 return (
                   <div key={agent.id} className={cn(
@@ -297,10 +291,9 @@ export default function NewsroomPage() {
               <div className="flex flex-wrap items-center gap-2">
                 {[
                   { label: 'Kaynak RSS', color: 'bg-slate-700' },
-                  { label: 'DeepSeek', sub: 'Collector', color: 'bg-purple-900/50 border-purple-500/40' },
-                  { label: 'Gemini', sub: 'Editor', color: 'bg-blue-900/50 border-blue-500/40' },
-                  { label: 'GPT-4o', sub: 'QA', color: 'bg-emerald-900/50 border-emerald-500/40' },
-                  { label: 'Firestore', sub: 'Publish', color: 'bg-orange-900/50 border-orange-500/40' },
+                  { label: 'Gemini', sub: 'Baş Editör', color: 'bg-blue-900/50 border-blue-500/40' },
+                  { label: 'DeepSeek', sub: 'Yedek Editör', color: 'bg-purple-900/50 border-purple-500/40' },
+                  { label: 'Firestore', sub: 'Yayınla', color: 'bg-orange-900/50 border-orange-500/40' },
                   { label: 'Sosyal Medya', color: 'bg-pink-900/50 border-pink-500/40' },
                 ].map((step, i, arr) => (
                   <div key={step.label} className="flex items-center gap-2">
@@ -362,7 +355,7 @@ export default function NewsroomPage() {
                       <th className="hidden px-4 py-3 text-left text-xs font-semibold text-[rgb(var(--color-muted))] sm:table-cell">Kaynak</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))]">Durum</th>
                       <th className="hidden px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))] md:table-cell">Gemini</th>
-                      <th className="hidden px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))] md:table-cell">GPT</th>
+                      <th className="hidden px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))] md:table-cell">Karar</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))]">İşlem</th>
                     </tr>
                   </thead>
@@ -488,7 +481,7 @@ export default function NewsroomPage() {
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[rgb(var(--color-muted))]">Otomatik Cron</p>
               <div className="space-y-2">
                 {[
-                  { path: '/api/cron/newsroom/ai-pipeline', schedule: 'Her 5 dakika', desc: 'Ana AI pipeline (DeepSeek → Gemini → GPT)' },
+                  { path: '/api/cron/newsroom/ai-pipeline', schedule: 'Her 5 dakika', desc: 'Ana AI pipeline (Gemini birincil → DeepSeek yedek)' },
                   { path: '/api/cron/social', schedule: 'Her 5 dakika', desc: 'Facebook + Instagram paylaşımı' },
                   { path: '/api/cron/newsroom/ingest', schedule: 'Her 10 dakika', desc: 'RSS kaynak toplama' },
                 ].map(cron => (
