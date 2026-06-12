@@ -25,25 +25,54 @@ JSON: {"headlines":["başlık1","başlık2","başlık3","başlık4","başlık5"]
 JSON: {"trends":[{"topic":"...","angle":"...","urgency":"high|medium|low"}]} — 5 trend.`,
 }
 
-async function callOpenAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) throw new Error('OPENAI_API_KEY not set')
+async function callAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
+  // 1. Gemini (primary)
+  const geminiKey = process.env.GEMINI_API_KEY?.trim()
+  if (geminiKey) {
+    try {
+      const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash-preview-05-20'
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] }],
+            generationConfig: { temperature: 0.7, responseMimeType: 'application/json' },
+          }),
+          signal: AbortSignal.timeout(20_000),
+        }
+      )
+      if (res.ok) {
+        const json = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+        const raw = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+        if (raw) return JSON.parse(raw) as Record<string, unknown>
+      }
+    } catch { /* fall through */ }
+  }
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-      max_tokens: 1500,
-    }),
-  })
+  // 2. DeepSeek (fallback)
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (deepseekKey) {
+    const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+        max_tokens: 1500,
+      }),
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!res.ok) throw new Error(`DeepSeek error ${res.status}`)
+    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+    return JSON.parse(json.choices[0]?.message?.content ?? '{}') as Record<string, unknown>
+  }
 
-  if (!res.ok) throw new Error(`OpenAI error ${res.status}`)
-  const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-  return JSON.parse(json.choices[0]?.message?.content ?? '{}') as Record<string, unknown>
+  throw new Error('No AI key configured (GEMINI_API_KEY or DEEPSEEK_API_KEY required)')
 }
 
 export async function POST(request: Request) {
@@ -60,7 +89,7 @@ export async function POST(request: Request) {
   const userMessage = mode === 'trends' ? 'Türkiye gündemini analiz et.' : input.trim() || 'Haber içeriği sağlanmadı.'
 
   try {
-    const parsed = await callOpenAi(SYSTEM_PROMPTS[mode], userMessage)
+    const parsed = await callAi(SYSTEM_PROMPTS[mode], userMessage)
     return NextResponse.json({ success: true, mode, ...parsed })
   } catch (error) {
     console.error('[ai-assist]', error)

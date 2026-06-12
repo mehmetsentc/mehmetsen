@@ -181,6 +181,22 @@ const MAGAZIN_KEYWORDS = [
   'hamile kaldı',
 ] as const
 
+const BILIM_KEYWORDS = [
+  'ufo', 'uzaylı', 'uzay ', 'uzay,', 'galaksi', 'asteroid', 'meteor',
+  'nasa', 'bilim insanı', 'araştırma bulgusu', 'keşfedildi', 'keşfetti',
+  'iklim değişikliği', 'sera gazı', 'ekoloji', 'çevre kirliliği',
+  'genetik', 'dna ', 'rna ', 'virüs araştırma', 'aşı araştırma',
+  'kuantum', 'yapay zeka araştırma', 'nörobilim', 'biyoteknoloji',
+  'fizik deneyi', 'kimyasal bileşik', 'fosil bulundu', 'evrim',
+  'uzay istasyonu', 'roket fırlatma', 'ay yüzey', 'mars görevi',
+  'teleskop görüntü', 'yıldız patlama', 'kara delik', 'güneş fırtına',
+  'gizemli nesne', 'tanımlanamayan', 'araştırmacılar', 'bilim dünyası',
+] as const
+
+function hasBilimKeywords(text: string): boolean {
+  return containsKeyword(text, BILIM_KEYWORDS)
+}
+
 const KULTUR_KEYWORDS = [
   'sinema',
   'tiyatro',
@@ -425,6 +441,7 @@ export function validateCategoryClassification(
   const siyaset = hasSiyasetKeywords(text)
   const ekonomi = hasEkonomiKeywords(text)
   const dunya = hasDunyaKeywords(text)
+  const bilim = hasBilimKeywords(text)
   const nationalScope = hasNationalScopeKeywords(text)
   const worldCupFinal = isWorldCupFinalNationalWin(text)
 
@@ -445,10 +462,18 @@ export function validateCategoryClassification(
       overrides.push('spor-source ama ekonomi-keywords → ekonomi')
       categoryId = 'ekonomi'
       categoryConfidence = Math.max(categoryConfidence, 85)
+    } else if (bilim) {
+      overrides.push('spor-source ama bilim-keywords → bilim')
+      categoryId = 'bilim'
+      categoryConfidence = Math.max(categoryConfidence, 85)
     } else if (tech) {
       overrides.push('spor-source ama tech-keywords → teknoloji')
       categoryId = 'teknoloji'
       categoryConfidence = Math.max(categoryConfidence, 83)
+    } else if (magazin) {
+      overrides.push('spor-source ama magazin-keywords → magazin')
+      categoryId = 'magazin'
+      categoryConfidence = Math.max(categoryConfidence, 82)
     } else if (nationalScope) {
       overrides.push('spor-source ama ulusal-kriz → gundem')
       categoryId = 'gundem'
@@ -523,6 +548,20 @@ export function validateCategoryClassification(
     overrides.push(`ekonomi-keywords → ekonomi (was gundem)`)
     categoryId = 'ekonomi'
     categoryConfidence = Math.max(categoryConfidence, 80)
+  }
+
+  // ── Bilim override: science/UFO/space content misclassified as gundem or spor
+  if (
+    bilim &&
+    !sports &&
+    !nationalScope &&
+    !siyaset &&
+    !ekonomi &&
+    (categoryId === 'gundem' || categoryId === 'spor')
+  ) {
+    overrides.push(`bilim-keywords → bilim (was ${categoryId})`)
+    categoryId = 'bilim'
+    categoryConfidence = Math.max(categoryConfidence, 83)
   }
 
   // ── Magazin override: TV/celeb/dizi news classified as gundem by AI

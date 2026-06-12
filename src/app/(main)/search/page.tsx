@@ -36,7 +36,7 @@ function PostResult({ post }: { post: Post }) {
 
   return (
     <Link href={href} className="flex gap-3 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))]">
-      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-border))]">
+      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-border))]">
         {post.coverImageUrl ? (
           <SafeNewsImage src={post.coverImageUrl} alt="" fill className="object-cover" loading="lazy" sizes="56px" />
         ) : (
