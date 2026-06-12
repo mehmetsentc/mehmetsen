@@ -29,11 +29,17 @@ interface NewsSliderProps {
 }
 
 const AUTOPLAY_MS = 5000
-const SLIDER_HEIGHT = '22rem'
+const SLIDER_HEIGHT = '32rem'
 
 function mapDoc(d: { id: string; data: () => Record<string, unknown> }): SliderItem {
   const data = d.data()
-  const raw = (data.coverImageUrl as string | null) ?? null
+  // Try multiple image fields in priority order
+  const raw =
+    (data.coverImageUrl as string | null) ??
+    (data.thumbnailUrl as string | null) ??
+    (data.image as string | null) ??
+    (data.imageUrl as string | null) ??
+    null
   return {
     id: d.id,
     title: String(data.title ?? ''),
@@ -229,18 +235,27 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
                 unoptimized
               />
             ) : (
-              <div className="h-full w-full bg-gradient-to-br from-[rgb(var(--color-brand))] to-red-900" />
+              /* Görsel yokken: blurlu koyu arka plan + büyük harf */
+              <div className="h-full w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900">
+                <div
+                  className="absolute inset-0 opacity-10"
+                  style={{
+                    backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)',
+                    backgroundSize: '20px 20px',
+                  }}
+                />
+              </div>
             )}
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+            {/* Gradient overlay — daha güçlü altta */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
             {/* Title area */}
-            <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-12">
+            <div className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-16">
               {it.categoryId && (
-                <span className="mb-2 inline-block rounded-sm bg-[rgb(var(--color-brand))] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">
-                  {it.categoryId}
+                <span className="mb-3 inline-block rounded-sm bg-[rgb(var(--color-brand))] px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-white">
+                  {it.categoryId.replace('-', ' ')}
                 </span>
               )}
-              <h2 className="line-clamp-3 text-[18px] font-black leading-snug text-white drop-shadow">
+              <h2 className="line-clamp-3 text-[22px] font-black leading-snug text-white drop-shadow-lg">
                 {it.title}
               </h2>
             </div>
@@ -253,18 +268,18 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
             <button
               type="button"
               onClick={handlePrev}
-              className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm"
+              className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm hover:bg-black/70 transition-colors"
               aria-label="Önceki"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-6 w-6" />
             </button>
             <button
               type="button"
               onClick={handleNext}
-              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm"
+              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm hover:bg-black/70 transition-colors"
               aria-label="Sonraki"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-6 w-6" />
             </button>
           </>
         )}
