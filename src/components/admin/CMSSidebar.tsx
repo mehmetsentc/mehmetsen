@@ -1,19 +1,38 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import {
   LayoutDashboard, Newspaper, Video, Users, UserCog, UserCheck,
   Bot, BarChart3, Search, Clock, Key, Settings, ChevronRight,
-  ArrowLeft, Zap, Shield, Radio, TrendingUp, FileText, Share2,
-  BrainCircuit,
+  ArrowLeft, Zap, Shield, Radio, TrendingUp, Share2,
+  BrainCircuit, ChevronDown, Flame, MapPin, Landmark, Globe,
+  Trophy, Cpu, TrendingUp as EkonomiIcon, Heart, FlaskConical,
+  Palette, Star, Tag,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
-import { BrandLogo } from '@/components/brand/BrandLogo'
 import type { CmsPermission } from '@/types/cms'
-import { CMS_ROLE_LABELS, CMS_ROLE_COLORS } from '@/types/cms'
+import { CMS_ROLE_COLORS } from '@/types/cms'
 
+// ── Category definitions ──────────────────────────────────────────────────
+const CATEGORIES = [
+  { id: 'gundem',      label: 'Gündem',       icon: Newspaper,    color: 'text-red-400' },
+  { id: 'siyaset',     label: 'Siyaset',      icon: Landmark,     color: 'text-purple-400' },
+  { id: 'yerel-haber', label: 'Yerel Haber',  icon: MapPin,       color: 'text-emerald-400' },
+  { id: 'dunya',       label: 'Dünya',        icon: Globe,        color: 'text-slate-400' },
+  { id: 'spor',        label: 'Spor',         icon: Trophy,       color: 'text-green-400' },
+  { id: 'teknoloji',   label: 'Teknoloji',    icon: Cpu,          color: 'text-blue-400' },
+  { id: 'ekonomi',     label: 'Ekonomi',      icon: EkonomiIcon,  color: 'text-yellow-400' },
+  { id: 'saglik',      label: 'Sağlık',       icon: Heart,        color: 'text-pink-400' },
+  { id: 'bilim',       label: 'Bilim',        icon: FlaskConical, color: 'text-teal-400' },
+  { id: 'kultur',      label: 'Kültür',       icon: Palette,      color: 'text-violet-400' },
+  { id: 'magazin',     label: 'Magazin',      icon: Star,         color: 'text-fuchsia-400' },
+  { id: 'trend',       label: 'Trend',        icon: Flame,        color: 'text-orange-400' },
+]
+
+// ── Nav types ─────────────────────────────────────────────────────────────
 interface NavItem {
   href: string
   label: string
@@ -26,7 +45,6 @@ interface NavItem {
 interface NavGroup {
   label: string
   items: NavItem[]
-  requiredPermissions?: CmsPermission[]
 }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -40,7 +58,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'İçerik Yönetimi',
     items: [
-      { href: '/admin/news', label: 'Haberler', icon: Newspaper, requiredPermissions: ['news:read'] },
+      { href: '/admin/news', label: 'Tüm Haberler', icon: Newspaper, requiredPermissions: ['news:read'] },
       { href: '/admin/videos', label: 'Videolar', icon: Video, requiredPermissions: ['video:read'] },
       { href: '/admin/seo', label: 'SEO Yönetimi', icon: Search, requiredPermissions: ['seo:read'] },
     ],
@@ -83,12 +101,7 @@ function isActive(pathname: string, href: string, exact = false): boolean {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-interface NavItemRowProps {
-  item: NavItem
-  pathname: string
-}
-
-function NavItemRow({ item, pathname }: NavItemRowProps) {
+function NavItemRow({ item, pathname }: { item: NavItem; pathname: string }) {
   const active = isActive(pathname, item.href, item.exact)
   const Icon = item.icon
 
@@ -97,23 +110,71 @@ function NavItemRow({ item, pathname }: NavItemRowProps) {
       href={item.href}
       className={cn(
         'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
-        active
-          ? 'bg-white/15 text-white shadow-sm'
-          : 'text-slate-300 hover:bg-white/8 hover:text-white'
+        active ? 'bg-white/15 text-white shadow-sm' : 'text-slate-300 hover:bg-white/8 hover:text-white'
       )}
     >
-      <Icon className={cn('h-4 w-4 shrink-0 transition-colors', active ? 'text-white' : 'text-slate-400 group-hover:text-white')} />
+      <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-slate-400 group-hover:text-white')} />
       <span className="flex-1 truncate">{item.label}</span>
       {item.badge && (
-        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-          {item.badge}
-        </span>
+        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{item.badge}</span>
       )}
       {active && <ChevronRight className="h-3 w-3 text-white/50" />}
     </Link>
   )
 }
 
+// ── Category submenu ──────────────────────────────────────────────────────
+function CategoryMenu({ pathname }: { pathname: string }) {
+  const searchParams = useSearchParams()
+  const activeCategory = searchParams.get('category')
+  const isNewsPage = pathname === '/admin/news'
+  const [open, setOpen] = useState(isNewsPage)
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
+          isNewsPage && !activeCategory
+            ? 'bg-white/15 text-white'
+            : 'text-slate-300 hover:bg-white/8 hover:text-white'
+        )}
+      >
+        <Tag className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-white" />
+        <span className="flex-1 truncate text-left">Kategoriler</span>
+        <ChevronDown className={cn('h-3.5 w-3.5 text-slate-500 transition-transform duration-200', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="ml-3 mt-0.5 space-y-px border-l border-white/10 pl-3">
+          {CATEGORIES.map(cat => {
+            const Icon = cat.icon
+            const active = isNewsPage && activeCategory === cat.id
+            return (
+              <Link
+                key={cat.id}
+                href={`/admin/news?category=${cat.id}`}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all',
+                  active
+                    ? 'bg-white/15 text-white'
+                    : 'text-slate-400 hover:bg-white/8 hover:text-slate-200'
+                )}
+              >
+                <Icon className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-white' : cat.color)} />
+                <span className="flex-1 truncate">{cat.label}</span>
+                {active && <ChevronRight className="h-2.5 w-2.5 text-white/50" />}
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main sidebar ──────────────────────────────────────────────────────────
 export function CMSSidebar() {
   const pathname = usePathname()
   const { user, role, roleLabel, can } = useCmsAuth()
@@ -159,6 +220,10 @@ export function CMSSidebar() {
               {group.items.map(item => (
                 <NavItemRow key={item.href} item={item} pathname={pathname} />
               ))}
+              {/* Category submenu injected under İçerik Yönetimi */}
+              {group.label === 'İçerik Yönetimi' && can('news:read') && (
+                <CategoryMenu pathname={pathname} />
+              )}
             </div>
           </div>
         ))}

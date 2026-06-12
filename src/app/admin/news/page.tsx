@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import {
@@ -439,6 +440,8 @@ function NewsRow({
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function AdminNewsPage() {
   const { can } = useCmsAuth()
+  const searchParams = useSearchParams()
+  const categoryParam = searchParams.get('category') ?? ''
   const [filter, setFilter] = useState<AdminNewsFilter>('all')
   const [search, setSearch] = useState('')
   const [posts, setPosts] = useState<AdminNewsItem[]>([])
@@ -547,17 +550,17 @@ export default function AdminNewsPage() {
     else setSelected(new Set(posts.map(p => p.id)))
   }
 
-  const filtered = search.trim()
-    ? posts.filter(p => p.title.toLowerCase().includes(search.toLowerCase()))
-    : posts
+  const filtered = posts
+    .filter(p => !categoryParam || p.categoryId === categoryParam)
+    .filter(p => !search.trim() || p.title.toLowerCase().includes(search.toLowerCase()))
 
   const pendingCount = posts.filter(p => p.status === 'pending').length
 
   return (
     <div className="flex flex-col">
       <CMSHeader
-        title="Haberler"
-        subtitle="İçerik editörü ve onay merkezi"
+        title={categoryParam ? `Haberler — ${categoryParam.charAt(0).toUpperCase() + categoryParam.slice(1).replace('-', ' ')}` : 'Haberler'}
+        subtitle={categoryParam ? `${categoryParam} kategorisi filtresi aktif` : 'İçerik editörü ve onay merkezi'}
         actions={
           <Link href={ROUTES.ADMIN.NEWS_CREATE}
             className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">

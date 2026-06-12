@@ -36,6 +36,7 @@ function mapDoc(d: { id: string; data: () => Record<string, unknown> }): SliderI
   // Try multiple image fields in priority order
   const raw =
     (data.coverImageUrl as string | null) ??
+    (data.thumbnail as string | null) ??        // pipeline primary field (no Url suffix)
     (data.thumbnailUrl as string | null) ??
     (data.image as string | null) ??
     (data.imageUrl as string | null) ??

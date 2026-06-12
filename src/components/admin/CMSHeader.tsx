@@ -11,6 +11,8 @@ import type { CmsNotification } from '@/types/cms'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 
+const SEEN_KEY = 'cms_notif_seen_at'
+
 const NOTIF_ICONS: Record<CmsNotification['type'], string> = {
   article_submitted: '📝',
   article_approved: '✅',
@@ -107,6 +109,15 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
   const { user, role, can } = useCmsAuth()
   const [notifOpen, setNotifOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
+  const [seenAt, setSeenAt] = useState<number>(0)
+
+  // Load seen timestamp from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SEEN_KEY)
+      if (stored) setSeenAt(Number(stored))
+    } catch {}
+  }, [])
 
   useEffect(() => {
     const q = query(
@@ -114,9 +125,25 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
       where('draftStatus', '==', 'pending_review'),
       limit(99)
     )
-    const unsub = onSnapshot(q, snap => setPendingCount(snap.size), () => {})
+    const unsub = onSnapshot(q, snap => {
+      // Only count items newer than last seen time
+      const unseen = snap.docs.filter(doc => {
+        const d = doc.data()
+        const createdAt = typeof d.createdAt === 'number' ? d.createdAt : 0
+        return createdAt > seenAt
+      })
+      setPendingCount(unseen.length)
+    }, () => {})
     return unsub
-  }, [])
+  }, [seenAt])
+
+  function openNotifications() {
+    const now = Date.now()
+    try { localStorage.setItem(SEEN_KEY, String(now)) } catch {}
+    setSeenAt(now)
+    setPendingCount(0)
+    setNotifOpen(o => !o)
+  }
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))]/95 px-6 py-4 backdrop-blur-sm">
@@ -148,7 +175,7 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
         <div className="relative">
           <button
             type="button"
-            onClick={() => setNotifOpen(o => !o)}
+            onClick={openNotifications}
             className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
           >
             <Bell className="h-4 w-4" />
