@@ -122,17 +122,6 @@ interface AiProviderConfig {
   provider: 'openai' | 'deepseek'
 }
 
-function getOpenAiConfig(): AiProviderConfig | null {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  if (!apiKey) return null
-  return {
-    apiKey,
-    model: process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini',
-    baseUrl: 'https://api.openai.com/v1/chat/completions',
-    provider: 'openai',
-  }
-}
-
 function getDeepSeekConfig(): AiProviderConfig | null {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
@@ -144,9 +133,9 @@ function getDeepSeekConfig(): AiProviderConfig | null {
   }
 }
 
-/** OpenAI önce, DeepSeek fallback — hangisi yapılandırılmışsa onu kullan */
+/** DeepSeek — aktif AI sağlayıcısı (Gemini pipeline'dan önce dener, burası yedek) */
 function getActiveAiConfig(): AiProviderConfig | null {
-  return getOpenAiConfig() ?? getDeepSeekConfig()
+  return getDeepSeekConfig()
 }
 
 function normalizeCategoryId(raw?: string): string {
@@ -346,20 +335,18 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
   const mode = input.mode ?? 'feed'
   const primary = getActiveAiConfig()
   if (!primary) {
-    throw new Error('Hiçbir AI sağlayıcısı yapılandırılmamış (OPENAI_API_KEY veya DEEPSEEK_API_KEY gerekli)')
+    throw new Error('AI sağlayıcısı yapılandırılmamış (DEEPSEEK_API_KEY gerekli)')
   }
 
   console.log(`[aiNewsEditor] ${primary.provider} kullanılıyor (${primary.model})`)
 
   let res = await callSingleProvider(primary, input)
 
-  // 429 rate-limit → otomatik olarak diğer sağlayıcıya geç
+  // 429 rate-limit → retry once after short wait
   if (res.status === 429) {
-    const fallbackConfig = primary.provider === 'openai' ? getDeepSeekConfig() : getOpenAiConfig()
-    if (fallbackConfig) {
-      console.warn(`[aiNewsEditor] ${primary.provider} 429, ${fallbackConfig.provider}'a geçiliyor`)
-      res = await callSingleProvider(fallbackConfig, input)
-    }
+    console.warn(`[aiNewsEditor] DeepSeek 429, 3s sonra tekrar deneniyor`)
+    await new Promise((r) => setTimeout(r, 3000))
+    res = await callSingleProvider(primary, input)
   }
 
   if (!res.ok) {
@@ -546,7 +533,7 @@ export const aiNewsEditor = {
       if (isLikelyNonTurkish(input.originalTitle)) {
         throw new Error(`[aiNewsEditor] İngilizce içerik, AI key eksik — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
       }
-      console.warn('[aiNewsEditor] AI key eksik — ham metin fallback')
+      console.warn('[aiNewsEditor] DEEPSEEK_API_KEY eksik — ham metin fallback')
       return fallbackRewrite(input)
     }
 

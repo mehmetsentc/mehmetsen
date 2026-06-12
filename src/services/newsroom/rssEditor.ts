@@ -33,18 +33,11 @@ async function generateArticleFromTitle(
   title: string,
   sourceLabel: string
 ): Promise<{ summary: string; content: string } | null> {
-  const openaiKey = process.env.OPENAI_API_KEY?.trim()
-  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
-  const apiKey = openaiKey || deepseekKey
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
-  const isDeepSeek = !openaiKey && Boolean(deepseekKey)
-  const model = isDeepSeek
-    ? (process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat')
-    : (process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini')
-  const baseUrl = isDeepSeek
-    ? 'https://api.deepseek.com/v1/chat/completions'
-    : 'https://api.openai.com/v1/chat/completions'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const baseUrl = 'https://api.deepseek.com/v1/chat/completions'
 
   const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
 Sana bir haber başlığı ve kaynak verilecek. Bu başlığa dayanarak gerçekçi, bilgilendirici bir haber içeriği yaz.
@@ -89,15 +82,12 @@ KURALLARI:
     }
   }
 
-  // Primary provider
+  // Try DeepSeek; on 429 wait 2s and retry once
   const result = await tryProvider(baseUrl, apiKey)
   if (result) return result
 
-  // Fallback: try the other provider on 429/failure
-  if (openaiKey && deepseekKey) {
-    return tryProvider('https://api.deepseek.com/v1/chat/completions', deepseekKey)
-  }
-  return null
+  await new Promise((r) => setTimeout(r, 2000))
+  return tryProvider(baseUrl, apiKey)
 }
 
 export interface RssEditorOptions {

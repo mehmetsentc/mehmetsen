@@ -12,6 +12,7 @@ import { cityCategoryId, slugifyCity, type PostLocation } from '@/lib/location'
 import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
 import { Collections } from '@/lib/firebase/admin'
 import { aiNewsEditor, type AiRewriteResult } from '@/services/aiNewsEditor'
+import { geminiEditArticle, isGeminiConfigured } from '@/lib/ai/gemini'
 import { moderateContent } from '@/services/moderationService'
 import { newsDraftService } from '@/services/newsDraftService'
 import {
@@ -75,19 +76,11 @@ async function generateArticleFromHeadline(
   title: string,
   sourceLabel: string
 ): Promise<{ summary: string; content: string } | null> {
-  // Unified key/endpoint — prefer OpenAI, fall back to DeepSeek
-  const openaiKey = process.env.OPENAI_API_KEY?.trim()
-  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
-  const apiKey = openaiKey || deepseekKey
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
-  const isDeepSeek = !openaiKey && Boolean(deepseekKey)
-  const model = isDeepSeek
-    ? (process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat')
-    : (process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini')
-  const baseUrl = isDeepSeek
-    ? 'https://api.deepseek.com/v1/chat/completions'
-    : 'https://api.openai.com/v1/chat/completions'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const baseUrl = 'https://api.deepseek.com/v1/chat/completions'
 
   const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
 Bir haber başlığı verilecek. Bu başlıktan yola çıkarak gerçekçi, bilgilendirici bir haber yaz.
@@ -154,19 +147,11 @@ async function translateToTurkish(fields: {
   originalSummary?: string
   originalContent?: string
 }): Promise<{ originalTitle: string; originalSummary: string; originalContent: string } | null> {
-  // Unified key/endpoint — prefer OpenAI, fall back to DeepSeek
-  const openaiKey = process.env.OPENAI_API_KEY?.trim()
-  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
-  const apiKey = openaiKey || deepseekKey
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
-  const isDeepSeek = !openaiKey && Boolean(deepseekKey)
-  const model = isDeepSeek
-    ? (process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat')
-    : (process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini')
-  const baseUrl = isDeepSeek
-    ? 'https://api.deepseek.com/v1/chat/completions'
-    : 'https://api.openai.com/v1/chat/completions'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const baseUrl = 'https://api.deepseek.com/v1/chat/completions'
 
   const contentSnippet = (fields.originalContent ?? '').slice(0, 3000)
   const summarySnippet = fields.originalSummary ?? ''
@@ -205,6 +190,55 @@ async function translateToTurkish(fields: {
     return { originalTitle: title, originalSummary: summary, originalContent: content }
   } catch (err) {
     console.warn('[newsroom/pipeline] translation failed:', err)
+    return null
+  }
+}
+
+/**
+ * Gemini rewrite → AiRewriteResult dönüşümü.
+ * Gemini daha zengin çıktı üretir (sosyal medya, SEO, quality score vb.)
+ * Pipeline'ın beklediği AiRewriteResult formatına map edilir.
+ */
+async function rewriteWithGemini(input: {
+  sourceLabel: string
+  originalTitle: string
+  originalSummary: string
+  originalContent: string
+  sourceUrl: string
+  forcedCategoryId?: string
+}): Promise<AiRewriteResult | null> {
+  try {
+    const result = await geminiEditArticle({
+      sourceLabel: input.sourceLabel,
+      originalTitle: input.originalTitle,
+      originalSummary: input.originalSummary,
+      originalContent: input.originalContent,
+      sourceUrl: input.sourceUrl,
+      enrichedContent: input.originalContent,
+      forcedCategoryId: input.forcedCategoryId,
+    })
+
+    // city → normalize Turkish city name
+    const cityRaw = result.location?.trim()
+    const city = cityRaw && cityRaw.toLowerCase() !== 'null' ? cityRaw : null
+
+    return {
+      title: result.title,
+      spot: result.spot || result.summary,
+      summary: result.summary,
+      description: result.content || result.description,
+      seoTitle: result.metaTitle || result.title,
+      seoDescription: result.metaDescription || result.summary,
+      categoryId: result.category || 'gundem',
+      categoryConfidence: result.aiConfidence ?? 80,
+      isBreaking: result.isBreaking ?? false,
+      city,
+      district: null,
+      country: result.country || 'Türkiye',
+      tags: result.tags ?? [],
+    }
+  } catch (err) {
+    console.warn('[pipeline] Gemini rewrite failed, falling back to OpenAI/DeepSeek:', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -423,10 +457,10 @@ export async function processNewsroomArticle(
           workingInput = { ...workingInput, htmlContent: undefined }
           console.log(`[newsroom/pipeline] cleared English htmlContent — AI rewrite will produce Turkish: ${workingInput.sourceUrl}`)
         }
-        // If no AI configured, translate now before fallback rewrite would publish English text
-        const openaiKey = process.env.OPENAI_API_KEY?.trim()
+        // If no AI configured, skip English content — don't publish untranslated
         const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
-        if (!openaiKey && !deepseekKey) {
+        const geminiKey = process.env.GEMINI_API_KEY?.trim()
+        if (!deepseekKey && !geminiKey) {
           console.warn(`[newsroom/pipeline] İngilizce içerik, AI key yok → atlandı: ${workingInput.sourceUrl}`)
           return { outcome: 'skipped' }
         }
@@ -451,14 +485,33 @@ export async function processNewsroomArticle(
           country: 'Türkiye',
           tags: workingInput.extraTags ?? [],
         }
-      : await aiNewsEditor.rewriteArticle({
-          sourceLabel: workingInput.sourceLabel,
-          originalTitle: workingInput.originalTitle,
-          originalSummary: workingInput.originalSummary,
-          originalContent: workingInput.originalContent,
-          sourceUrl: workingInput.sourceUrl,
-          recentTitles,
-        })
+      : await (async () => {
+          // Gemini birincil — daha zengin içerik + araştırma kalitesi
+          // OpenAI/DeepSeek yedek — Gemini key yoksa veya hata alırsa devreye girer
+          if (isGeminiConfigured()) {
+            const geminiResult = await rewriteWithGemini({
+              sourceLabel: workingInput.sourceLabel,
+              originalTitle: workingInput.originalTitle,
+              originalSummary: workingInput.originalSummary,
+              originalContent: workingInput.originalContent,
+              sourceUrl: workingInput.sourceUrl,
+              forcedCategoryId: workingInput.forcedCategoryId,
+            })
+            if (geminiResult) {
+              console.log(`[pipeline] Gemini ile yeniden yazıldı: ${workingInput.sourceUrl?.slice(0, 60)}`)
+              return geminiResult
+            }
+          }
+          // Yedek: OpenAI / DeepSeek
+          return aiNewsEditor.rewriteArticle({
+            sourceLabel: workingInput.sourceLabel,
+            originalTitle: workingInput.originalTitle,
+            originalSummary: workingInput.originalSummary,
+            originalContent: workingInput.originalContent,
+            sourceUrl: workingInput.sourceUrl,
+            recentTitles,
+          })
+        })()
 
     const factCheck = await factChecker.check({
       sourceLabel: workingInput.sourceLabel,
