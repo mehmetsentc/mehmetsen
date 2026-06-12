@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { cookies } from 'next/headers'
 import { Toaster } from 'react-hot-toast'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { LanguageProvider } from '@/store/languageContext'
 import { ThemeProvider } from '@/store/themeContext'
@@ -175,6 +177,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <AuthProvider>
               {children}
               <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+              <Analytics />
+              <SpeedInsights />
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
