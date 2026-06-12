@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { NewsTimeline } from '@/components/feed/NewsTimeline'
 import { NewsSlider } from '@/components/widgets/NewsSlider'
-import { FinanceTicker } from '@/components/widgets/FinanceTicker'
+import { PageTopWidgets } from '@/components/widgets/PageTopWidgets'
 import { NewsCardSkeleton } from '@/components/ui/Skeleton'
 
 export const metadata: Metadata = {
@@ -13,13 +13,20 @@ export const metadata: Metadata = {
 export default function FeedPage() {
   return (
     <div className="w-full">
-      {/* Kaydırmalı haber slider — tam genişlik */}
+      {/* 🖼️ Gündem haber kaydırıcısı */}
       <NewsSlider categoryId="gundem" />
 
-      {/* Kompakt döviz şeridi — sadece ana sayfada */}
-      <FinanceTicker />
+      {/* 📊 Widget bölümü */}
+      <PageTopWidgets />
 
-      <div className="mt-4" />
+      {/* Divider */}
+      <div className="mb-3 flex items-center gap-3">
+        <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--color-muted))]">
+          Son Haberler
+        </span>
+        <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
+      </div>
 
       <Suspense
         fallback={
