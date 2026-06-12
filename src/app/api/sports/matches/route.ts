@@ -56,12 +56,18 @@ interface EspnEvent {
   name: string
   date: string          // ISO 8601
   status: {
+    clock?: number
+    displayClock?: string  // "34:00" when live
+    period?: number
     type: {
-      name: string       // "STATUS_SCHEDULED" | "STATUS_IN_PROGRESS" | "STATUS_FINAL"
-      description: string
-      detail: string     // "Final" | "1st Half" | "HT" | "2nd Half" | "Extra Time"
+      id: string
+      name: string       // see LIVE_STATES below
+      state?: string     // "pre" | "in" | "post"
+      completed?: boolean
+      description?: string
+      detail?: string    // "34:00 - 1st Half" | "Half Time" | "Final"
+      shortDetail?: string
     }
-    displayClock?: string // "34'" when live
   }
   competitions: Array<{
     competitors: EspnCompetitor[]
@@ -70,6 +76,31 @@ interface EspnEvent {
 
 interface EspnResponse {
   events?: EspnEvent[]
+}
+
+// ESPN status types that mean the match is currently being played
+const LIVE_STATES = new Set([
+  'STATUS_IN_PROGRESS',
+  'STATUS_HALFTIME',
+  'STATUS_END_PERIOD',
+  'STATUS_OVERTIME',
+  'STATUS_SHOOTOUT',
+  'STATUS_EXTRA_TIME',
+])
+
+// ESPN status types that mean the match is finished
+const FINISHED_STATES = new Set([
+  'STATUS_FINAL',
+  'STATUS_FULL_TIME',
+  'STATUS_ABANDONED',
+  'STATUS_POSTPONED',
+  'STATUS_SUSPENDED',
+])
+
+function parseScore(s: string | undefined | null): number | null {
+  if (s == null || s === '') return null
+  const n = parseInt(s, 10)
+  return isNaN(n) ? null : n
 }
 
 function fallbackBadge(name: string): string {
@@ -93,8 +124,8 @@ async function fetchLeague(
   try {
     const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard`
     const res = await fetch(url, {
-      next: { revalidate: 60 },      // 60s cache — canlı skorlar için kısa
-      signal: AbortSignal.timeout(5000),
+      cache: 'no-store',             // her zaman taze veri — canlı skorlar
+      signal: AbortSignal.timeout(6000),
     })
     if (!res.ok) return []
     const data = await res.json() as EspnResponse
@@ -105,22 +136,23 @@ async function fetchLeague(
       const home = comp?.competitors.find(c => c.homeAway === 'home')
       const away = comp?.competitors.find(c => c.homeAway === 'away')
 
-      const typeName = ev.status.type.name   // STATUS_SCHEDULED | STATUS_IN_PROGRESS | STATUS_FINAL
-      const isLive     = typeName === 'STATUS_IN_PROGRESS'
-      const isFinished = typeName === 'STATUS_FINAL'
-      const isUpcoming = typeName === 'STATUS_SCHEDULED'
+      const typeName = ev.status.type.name
+      // Also check state field as fallback ("in" = live, "post" = finished)
+      const state    = ev.status.type.state ?? ''
+      const isLive     = LIVE_STATES.has(typeName)  || state === 'in'
+      const isFinished = FINISHED_STATES.has(typeName) || state === 'post' || (ev.status.type.completed === true)
 
-      const homeScore = isLive || isFinished ? (parseInt(home?.score ?? '') || 0) : null
-      const awayScore = isLive || isFinished ? (parseInt(away?.score ?? '') || 0) : null
+      // Scores: ESPN always has score field on competitors when match started
+      const homeScore = (isLive || isFinished) ? parseScore(home?.score) : null
+      const awayScore = (isLive || isFinished) ? parseScore(away?.score) : null
 
-      // Status detail string
+      // Status detail string — use ESPN's pre-built detail when available
       let statusDetail: string
       if (isFinished) {
-        statusDetail = 'MS'
+        statusDetail = ev.status.type.shortDetail ?? ev.status.type.detail ?? 'MS'
       } else if (isLive) {
-        const clock = ev.status.displayClock
-        const half  = ev.status.type.detail
-        statusDetail = clock ? `${half} ${clock}` : half
+        // e.g. "34:00 - 1st Half" or "Half Time"
+        statusDetail = ev.status.type.detail ?? ev.status.type.shortDetail ?? ''
       } else {
         statusDetail = utcToTurkey(ev.date)
       }
