@@ -52,32 +52,49 @@ export async function PUT(request: Request, context: RouteContext) {
 
   const db = getAdminFirestore()
 
-  // Check which collection this doc is in (news vs posts)
+  // 1. Try news collection (primary)
   const newsRef = db.collection(Collections.NEWS).doc(id)
   const newsSnap = await newsRef.get()
-
-  if (!newsSnap.exists) {
-    // Try posts collection
-    const postsRef = db.collection(Collections.POSTS).doc(id)
-    const postsSnap = await postsRef.get()
-    if (!postsSnap.exists) {
-      return NextResponse.json({ error: 'Article not found' }, { status: 404 })
+  if (newsSnap.exists) {
+    await newsRef.update(update)
+    // Sync to posts if published
+    const data = newsSnap.data()
+    if (data?.status === 'published' || body.status === 'published') {
+      const postsRef = db.collection(Collections.POSTS).doc(id)
+      const postsSnap = await postsRef.get()
+      if (postsSnap.exists) await postsRef.update(update)
     }
+    return NextResponse.json({ ok: true, collection: 'news' })
+  }
+
+  // 2. Try newsDrafts collection (pending queue articles)
+  const draftRef = db.collection(Collections.NEWS_DRAFTS).doc(id)
+  const draftSnap = await draftRef.get()
+  if (draftSnap.exists) {
+    // If being published, move to news collection instead of keeping as draft
+    if (body.status === 'published') {
+      const draftData = draftSnap.data() ?? {}
+      await db.collection(Collections.NEWS).doc(id).set({
+        ...draftData,
+        ...update,
+        status: 'published',
+        publishedAt: Date.now(),
+        draftStatus: 'approved',
+      })
+      await draftRef.update({ draftStatus: 'approved', ...update })
+    } else {
+      await draftRef.update(update)
+    }
+    return NextResponse.json({ ok: true, collection: 'newsDrafts' })
+  }
+
+  // 3. Try posts collection (fallback)
+  const postsRef = db.collection(Collections.POSTS).doc(id)
+  const postsSnap = await postsRef.get()
+  if (postsSnap.exists) {
     await postsRef.update(update)
     return NextResponse.json({ ok: true, collection: 'posts' })
   }
 
-  await newsRef.update(update)
-
-  // If the article is also published to the posts collection, sync it
-  const data = newsSnap.data()
-  if (data?.status === 'published' || body.status === 'published') {
-    const postsRef = db.collection(Collections.POSTS).doc(id)
-    const postsSnap = await postsRef.get()
-    if (postsSnap.exists) {
-      await postsRef.update(update)
-    }
-  }
-
-  return NextResponse.json({ ok: true, collection: 'news' })
+  return NextResponse.json({ error: 'Article not found' }, { status: 404 })
 }
