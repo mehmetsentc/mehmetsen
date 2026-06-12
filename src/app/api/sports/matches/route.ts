@@ -179,6 +179,12 @@ async function fetchLeague(
 }
 
 export async function GET() {
+  // Türkiye saatine göre bugün ve dün
+  const nowUTC  = Date.now()
+  const nowTR   = new Date(nowUTC + 3 * 3600_000)
+  const todayTR = nowTR.toISOString().slice(0, 10)          // "2026-06-13"
+  const yestTR  = new Date(nowUTC + 3 * 3600_000 - 86400_000).toISOString().slice(0, 10)
+
   // Tüm ligleri paralel çek
   const allResults = await Promise.all(
     LEAGUES.map(l => fetchLeague(l.slug, l.label, l.priority))
@@ -186,12 +192,16 @@ export async function GET() {
 
   const matches = allResults
     .flat()
-    // Önce canlı, sonra biten, en son programlananlar
+    // Sadece bugün veya dünkü maçlar — eski tarihleri kaldır
+    .filter(m => m.date === todayTR || m.date === yestTR)
+    // Önce canlı, sonra biten (bugün > dün), en son programlananlar
     .sort((a, b) => {
       const statusOrder = { live: 0, finished: 1, upcoming: 2 }
       const sA = statusOrder[a.status]
       const sB = statusOrder[b.status]
       if (sA !== sB) return sA - sB
+      // Aynı durumdaysa: bugünkü önce
+      if (a.date !== b.date) return a.date > b.date ? -1 : 1
       return a.priority - b.priority
     })
 
@@ -204,7 +214,6 @@ export async function GET() {
     { matches: matches.slice(0, 20), dateLabel, liveCount, updatedAt: Date.now() },
     {
       headers: {
-        // Canlı maç varsa 30s, yoksa 2 dakika cache
         'Cache-Control': liveCount > 0
           ? 'public, s-maxage=30, stale-while-revalidate=60'
           : 'public, s-maxage=120, stale-while-revalidate=300',
