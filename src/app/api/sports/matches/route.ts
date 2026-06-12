@@ -1,28 +1,32 @@
 /**
  * GET /api/sports/matches
- * TheSportsDB free API — bugünün futbol maçlarını döner.
- * Saatler UTC+3 Türkiye saatine çevrilir.
- * Öncelik: Dünya Kupası → Türk takımları → Avrupa ligleri
- * Amerikan ligleri (USL, MLS vb.) gösterilmez.
+ * ESPN public scoreboard API — canlı maç skorları + bugünün programı
+ * API key gerektirmez.
+ * Öncelik: Dünya Kupası → Türk takımlar → Avrupa ligleri
  */
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-interface SportsDBEvent {
-  idEvent: string
-  strHomeTeam: string
-  strAwayTeam: string
-  strHomeTeamBadge?: string
-  strAwayTeamBadge?: string
-  intHomeScore: string | null
-  intAwayScore: string | null
-  dateEvent: string      // "YYYY-MM-DD"
-  strTime: string | null // "16:00:00+00:00" veya "16:00" (UTC)
-  strLeague: string
-  strSport?: string
-}
+// ── ESPN lig slug listesi ──────────────────────────────────────────────────
+// priority = gösterim önceliği (düşük = üste)
+const LEAGUES: { slug: string; label: string; priority: number }[] = [
+  { slug: 'FIFA.World',           label: 'FIFA Dünya Kupası',    priority: 1 },
+  { slug: 'UEFA.EURO',            label: 'Avrupa Şampiyonası',   priority: 2 },
+  { slug: 'UEFA.NATIONS',         label: 'Uluslar Ligi',         priority: 3 },
+  { slug: 'UEFA.CHAMPIONS',       label: 'Şampiyonlar Ligi',     priority: 4 },
+  { slug: 'UEFA.EUROPA',          label: 'Avrupa Ligi',          priority: 5 },
+  { slug: 'UEFA.CONFERENCE',      label: 'Konferans Ligi',       priority: 6 },
+  { slug: 'TUR.1',                label: 'Süper Lig',            priority: 7 },
+  { slug: 'TUR.CUP',              label: 'Türkiye Kupası',       priority: 8 },
+  { slug: 'ENG.1',                label: 'Premier League',       priority: 9 },
+  { slug: 'ESP.1',                label: 'La Liga',              priority: 10 },
+  { slug: 'GER.1',                label: 'Bundesliga',           priority: 11 },
+  { slug: 'ITA.1',                label: 'Serie A',              priority: 12 },
+  { slug: 'FRA.1',                label: 'Ligue 1',              priority: 13 },
+  { slug: 'NED.1',                label: 'Eredivisie',           priority: 14 },
+]
 
 export interface MatchResult {
   id: string
@@ -33,167 +37,146 @@ export interface MatchResult {
   homeBadge: string
   awayBadge: string
   date: string
-  time: string    // Türkiye saati "HH:MM TSİ"
+  time: string
   league: string
-  status: 'finished' | 'upcoming'
+  status: 'live' | 'finished' | 'upcoming'
+  statusDetail: string   // "1st Half 34'", "FT", "16:00 TSİ" etc.
   priority: number
 }
 
-// ── Öncelik sıralaması ──────────────────────────────────────────────────────
-// Düşük sayı = daha önce göster
-const LEAGUE_PRIORITY: Array<{ pattern: RegExp; priority: number }> = [
-  { pattern: /world cup|dünya kupası|fifa world/i,      priority: 1 },
-  { pattern: /euro 20\d\d|avrupa şampiyonası/i,         priority: 2 },
-  { pattern: /nations league|uluslar ligi/i,            priority: 3 },
-  { pattern: /champions league|şampiyonlar ligi/i,      priority: 4 },
-  { pattern: /europa league|avrupa ligi/i,              priority: 5 },
-  { pattern: /conference league/i,                      priority: 6 },
-  { pattern: /süper lig|superlig|turkish/i,             priority: 7 },
-  { pattern: /premier league/i,                         priority: 8 },
-  { pattern: /la liga|laliga/i,                         priority: 9 },
-  { pattern: /bundesliga/i,                             priority: 10 },
-  { pattern: /serie a/i,                                priority: 11 },
-  { pattern: /ligue 1/i,                                priority: 12 },
-  { pattern: /eredivisie/i,                             priority: 13 },
-  { pattern: /primeira liga|liga nos/i,                 priority: 14 },
-]
-
-// Gösterilmeyecek ligler — Amerikan ve düşük öncelikli ligler
-const EXCLUDED_LEAGUES = [
-  /usl/i, /mls/i, /nwsl/i, /usoc/i,
-  /concacaf/i,  // Amerika kıtası kupası
-  /conmebol/i,  // Güney Amerika (Dünya Kupası dışında)
-  /caf /i,      // Afrika
-  /afc /i,      // Asya
-  /a-league/i,  // Avustralya
-  /j[1-3] league/i, // Japonya
-  /k league/i,  // Kore
-  /chinese super/i,
-  /indian super/i,
-  /saudi pro/i,
-  /süper kupa/i, // Community shield vb.
-]
-
-// Türk takım isimleri — bu takımlar içeren maçlar bonus öncelik alır
-const TURKISH_TEAMS = [
-  'galatasaray', 'fenerbahçe', 'fenerbahce', 'beşiktaş', 'besiktas',
-  'trabzonspor', 'başakşehir', 'basaksehir', 'türkiye', 'turkey',
-  'kasımpaşa', 'sivasspor', 'konyaspor', 'alanyaspor', 'adana demirspor',
-  'ankaragücü', 'gaziantep', 'hatayspor', 'kayserispor', 'rizespor',
-  'samsunspor', 'pendikspor', 'eyüpspor',
-]
-
-function hasTurkishTeam(home: string, away: string): boolean {
-  const combined = `${home} ${away}`.toLowerCase()
-  return TURKISH_TEAMS.some((t) => combined.includes(t))
+// ── ESPN tip dönüşümü ────────────────────────────────────────────────────────
+interface EspnCompetitor {
+  team: { displayName: string; logo?: string }
+  score?: string
+  homeAway: 'home' | 'away'
 }
 
-function getLeaguePriority(league: string): number {
-  for (const { pattern, priority } of LEAGUE_PRIORITY) {
-    if (pattern.test(league)) return priority
+interface EspnEvent {
+  id: string
+  name: string
+  date: string          // ISO 8601
+  status: {
+    type: {
+      name: string       // "STATUS_SCHEDULED" | "STATUS_IN_PROGRESS" | "STATUS_FINAL"
+      description: string
+      detail: string     // "Final" | "1st Half" | "HT" | "2nd Half" | "Extra Time"
+    }
+    displayClock?: string // "34'" when live
   }
-  return 50 // bilinmeyen lig — düşük öncelik
+  competitions: Array<{
+    competitors: EspnCompetitor[]
+  }>
 }
 
-function isExcluded(league: string): boolean {
-  return EXCLUDED_LEAGUES.some((re) => re.test(league))
+interface EspnResponse {
+  events?: EspnEvent[]
 }
 
-// ── UTC → Türkiye saati (UTC+3) ─────────────────────────────────────────────
-function utcTimeToTurkey(timeStr: string | null, dateStr: string): string {
-  if (!timeStr) return ''
+function fallbackBadge(name: string): string {
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&size=40`
+}
 
-  // "16:00:00+00:00", "16:00:00Z", "16:00" formatlarını destekle
-  const match = timeStr.match(/^(\d{2}):(\d{2})/)
-  if (!match) return ''
-
-  const utcHour = parseInt(match[1]!, 10)
-  const utcMin  = parseInt(match[2]!, 10)
-
-  // UTC+3 ekle
-  const trHour = (utcHour + 3) % 24
+function utcToTurkey(isoDate: string): string {
+  const d = new Date(isoDate)
+  // UTC+3
+  const trHour = (d.getUTCHours() + 3) % 24
   const hh = String(trHour).padStart(2, '0')
-  const mm = String(utcMin).padStart(2, '0')
-
+  const mm = String(d.getUTCMinutes()).padStart(2, '0')
   return `${hh}:${mm} TSİ`
 }
 
-function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
-function teamBadge(team: string, badge?: string): string {
-  if (badge) return `${badge}/preview`
-  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(team)}&size=40`
-}
-
-async function fetchDay(dateStr: string): Promise<MatchResult[]> {
+async function fetchLeague(
+  slug: string,
+  label: string,
+  priority: number
+): Promise<MatchResult[]> {
   try {
-    const res = await fetch(
-      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${dateStr}&s=Soccer`,
-      { next: { revalidate: 300 } }
-    )
+    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard`
+    const res = await fetch(url, {
+      next: { revalidate: 60 },      // 60s cache — canlı skorlar için kısa
+      signal: AbortSignal.timeout(5000),
+    })
     if (!res.ok) return []
-    const data = await res.json() as { events?: SportsDBEvent[] }
-    if (!data.events) return []
+    const data = await res.json() as EspnResponse
+    if (!data.events?.length) return []
 
-    const results: MatchResult[] = []
+    return data.events.map((ev): MatchResult => {
+      const comp = ev.competitions[0]
+      const home = comp?.competitors.find(c => c.homeAway === 'home')
+      const away = comp?.competitors.find(c => c.homeAway === 'away')
 
-    for (const e of data.events) {
-      // Amerikan ve diğer hariç tutulan ligler
-      if (isExcluded(e.strLeague)) continue
+      const typeName = ev.status.type.name   // STATUS_SCHEDULED | STATUS_IN_PROGRESS | STATUS_FINAL
+      const isLive     = typeName === 'STATUS_IN_PROGRESS'
+      const isFinished = typeName === 'STATUS_FINAL'
+      const isUpcoming = typeName === 'STATUS_SCHEDULED'
 
-      const priority = getLeaguePriority(e.strLeague)
+      const homeScore = isLive || isFinished ? (parseInt(home?.score ?? '') || 0) : null
+      const awayScore = isLive || isFinished ? (parseInt(away?.score ?? '') || 0) : null
 
-      // Bilinmeyen + Türk takımı yoksa filtrele (priority 50 ve Türk takım yok)
-      if (priority === 50 && !hasTurkishTeam(e.strHomeTeam, e.strAwayTeam)) continue
+      // Status detail string
+      let statusDetail: string
+      if (isFinished) {
+        statusDetail = 'MS'
+      } else if (isLive) {
+        const clock = ev.status.displayClock
+        const half  = ev.status.type.detail
+        statusDetail = clock ? `${half} ${clock}` : half
+      } else {
+        statusDetail = utcToTurkey(ev.date)
+      }
 
-      // Türk takımı içeren maçlar önce gelsin
-      const finalPriority = hasTurkishTeam(e.strHomeTeam, e.strAwayTeam)
-        ? Math.min(priority, 3)
-        : priority
-
-      results.push({
-        id: e.idEvent,
-        homeTeam: e.strHomeTeam,
-        awayTeam: e.strAwayTeam,
-        homeScore: e.intHomeScore !== null ? parseInt(e.intHomeScore) : null,
-        awayScore: e.intAwayScore !== null ? parseInt(e.intAwayScore) : null,
-        homeBadge: teamBadge(e.strHomeTeam, e.strHomeTeamBadge),
-        awayBadge: teamBadge(e.strAwayTeam, e.strAwayTeamBadge),
-        date: e.dateEvent,
-        time: utcTimeToTurkey(e.strTime, e.dateEvent),
-        league: e.strLeague,
-        status: e.intHomeScore !== null ? 'finished' : 'upcoming',
-        priority: finalPriority,
-      })
-    }
-
-    // Önceliğe göre sırala
-    results.sort((a, b) => a.priority - b.priority)
-    return results
+      return {
+        id: ev.id,
+        homeTeam: home?.team.displayName ?? 'Ev Sahibi',
+        awayTeam: away?.team.displayName ?? 'Deplasman',
+        homeScore,
+        awayScore,
+        homeBadge: home?.team.logo ?? fallbackBadge(home?.team.displayName ?? ''),
+        awayBadge: away?.team.logo ?? fallbackBadge(away?.team.displayName ?? ''),
+        date: ev.date.slice(0, 10),
+        time: utcToTurkey(ev.date),
+        league: label,
+        status: isLive ? 'live' : isFinished ? 'finished' : 'upcoming',
+        statusDetail,
+        priority,
+      }
+    })
   } catch {
     return []
   }
 }
 
 export async function GET() {
-  // Türkiye saatine göre "bugün"
-  const nowUTC = new Date()
-  const nowTR = new Date(nowUTC.getTime() + 3 * 60 * 60 * 1000)
-  const todayTR = toDateStr(nowTR)
-  const yesterdayTR = toDateStr(new Date(nowTR.getTime() - 24 * 60 * 60 * 1000))
+  // Tüm ligleri paralel çek
+  const allResults = await Promise.all(
+    LEAGUES.map(l => fetchLeague(l.slug, l.label, l.priority))
+  )
 
-  let matches = await fetchDay(todayTR)
-  let dateLabel = 'Bugün'
+  const matches = allResults
+    .flat()
+    // Önce canlı, sonra biten, en son programlananlar
+    .sort((a, b) => {
+      const statusOrder = { live: 0, finished: 1, upcoming: 2 }
+      const sA = statusOrder[a.status]
+      const sB = statusOrder[b.status]
+      if (sA !== sB) return sA - sB
+      return a.priority - b.priority
+    })
 
-  if (matches.length === 0) {
-    matches = await fetchDay(yesterdayTR)
-    dateLabel = 'Dün'
-  }
+  const liveCount = matches.filter(m => m.status === 'live').length
+  const dateLabel = liveCount > 0
+    ? `${liveCount} canlı maç`
+    : matches.some(m => m.status === 'finished') ? 'Bugün' : 'Program'
 
   return NextResponse.json(
-    { matches: matches.slice(0, 20), dateLabel, updatedAt: Date.now() },
-    { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } }
+    { matches: matches.slice(0, 20), dateLabel, liveCount, updatedAt: Date.now() },
+    {
+      headers: {
+        // Canlı maç varsa 30s, yoksa 2 dakika cache
+        'Cache-Control': liveCount > 0
+          ? 'public, s-maxage=30, stale-while-revalidate=60'
+          : 'public, s-maxage=120, stale-while-revalidate=300',
+      },
+    }
   )
 }

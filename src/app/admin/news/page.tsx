@@ -5,13 +5,14 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import {
-  Search, RefreshCw, CheckCircle2, XCircle, Trash2,
-  ExternalLink, Wand2, Loader2,
+  Plus, Search, RefreshCw, CheckCircle2, XCircle, Trash2,
+  ExternalLink, Wand2, Eye, Loader2, ChevronDown, Filter,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X, Save,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
+import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow, format } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -560,6 +561,12 @@ export default function AdminNewsPage() {
       <CMSHeader
         title={categoryParam ? `Haberler — ${categoryParam.charAt(0).toUpperCase() + categoryParam.slice(1).replace('-', ' ')}` : 'Haberler'}
         subtitle={categoryParam ? `${categoryParam} kategorisi filtresi aktif` : 'İçerik editörü ve onay merkezi'}
+        actions={
+          <Link href={ROUTES.ADMIN.NEWS_CREATE}
+            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+            <Plus className="h-4 w-4" />Yeni Haber
+          </Link>
+        }
       />
       <div className="p-6 space-y-4">
         {/* Filter tabs + search */}
