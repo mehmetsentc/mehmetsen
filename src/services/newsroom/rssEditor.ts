@@ -11,6 +11,20 @@ import type { EditorId, NewsroomArticleInput, NewsroomRunResult } from '@/servic
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { fetchArticleEnrichment, isThinContent } from '@/services/rss/articleFetcher'
 
+/** Strip Turkish RSS "read more" truncation artifacts */
+function sanitizeRss(text: string): string {
+  if (!text) return ''
+  return text
+    .replace(/\s*Devam[ıi]\s*(için|iç[^a-z]|oku[^y]|etmek).*$/i, '')
+    .replace(/\s*Haberin devam[ıi].*$/i, '')
+    .replace(/\s*Haberin?\s+tam[a-z]*\s+(için|metin).*$/i, '')
+    .replace(/\s*\[.*?devam.*?\]/gi, '')
+    .replace(/\s*\(devam[ıi].*?\)/gi, '')
+    .replace(/\s*…+$/, '')
+    .replace(/\s*\.{3,}$/, '')
+    .trim()
+}
+
 /**
  * GPT fallback: when articleFetcher can't get real content (blocked site),
  * ask OpenAI to write a proper Turkish news article from the headline alone.
@@ -19,9 +33,18 @@ async function generateArticleFromTitle(
   title: string,
   sourceLabel: string
 ): Promise<{ summary: string; content: string } | null> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  const openaiKey = process.env.OPENAI_API_KEY?.trim()
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  const apiKey = openaiKey || deepseekKey
   if (!apiKey) return null
+
+  const isDeepSeek = !openaiKey && Boolean(deepseekKey)
+  const model = isDeepSeek
+    ? (process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat')
+    : (process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini')
+  const baseUrl = isDeepSeek
+    ? 'https://api.deepseek.com/v1/chat/completions'
+    : 'https://api.openai.com/v1/chat/completions'
 
   const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
 Sana bir haber başlığı ve kaynak verilecek. Bu başlığa dayanarak gerçekçi, bilgilendirici bir haber içeriği yaz.
@@ -34,39 +57,47 @@ KURALLARI:
 - Başlıkla çelişme, tutarlı ol
 - Sadece JSON döndür: {"summary":"...","content":"..."}`
 
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.5,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: `Başlık: "${title}"\nKaynak: ${sourceLabel}\n\nBu haberi yaz.`,
-          },
-        ],
-      }),
-      signal: AbortSignal.timeout(20_000),
-    })
-    if (!res.ok) return null
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
-    const raw = json.choices?.[0]?.message?.content?.trim()
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as { summary?: string; content?: string }
-    const summary = parsed.summary?.trim() || ''
-    const content = parsed.content?.trim() || ''
-    if (content.length < 80) return null
-    return { summary, content }
-  } catch {
-    return null
+  const tryProvider = async (url: string, key: string): Promise<{ summary: string; content: string } | null> => {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          temperature: 0.5,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Başlık: "${title}"\nKaynak: ${sourceLabel}\n\nBu haberi yaz.` },
+          ],
+        }),
+        signal: AbortSignal.timeout(20_000),
+      })
+      // 429 rate-limit → try fallback provider
+      if (res.status === 429) return null
+      if (!res.ok) return null
+      const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+      const raw = json.choices?.[0]?.message?.content?.trim()
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as { summary?: string; content?: string }
+      const summary = parsed.summary?.trim() || ''
+      const content = parsed.content?.trim() || ''
+      if (content.length < 80) return null
+      return { summary, content }
+    } catch {
+      return null
+    }
   }
+
+  // Primary provider
+  const result = await tryProvider(baseUrl, apiKey)
+  if (result) return result
+
+  // Fallback: try the other provider on 429/failure
+  if (openaiKey && deepseekKey) {
+    return tryProvider('https://api.deepseek.com/v1/chat/completions', deepseekKey)
+  }
+  return null
 }
 
 export interface RssEditorOptions {
@@ -152,11 +183,15 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
         }
       }
 
+      // Strip RSS truncation artifacts before thin-content check
+      enrichedSummary = sanitizeRss(enrichedSummary)
+      enrichedContent = sanitizeRss(enrichedContent)
+
       // If content is still thin (site blocked scraper), use GPT to write article
       if (isThinContent(enrichedSummary, enrichedContent)) {
         try {
           const generated = await generateArticleFromTitle(item.title, item.source.label)
-          if (generated) {
+          if (generated && generated.content.length > 150) {
             enrichedSummary = generated.summary || enrichedSummary
             enrichedContent = generated.content
             aiGenerated = true
@@ -184,8 +219,8 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
         sourcePublishedAt: item.publishedAt,
         forcedCategoryId: options.forcedCategoryId,
         isBreaking: options.isBreaking,
-        // Skip second AI rewrite when we already generated article via GPT above
-        skipAiRewrite: aiGenerated || undefined,
+        // Always let pipeline do final AI rewrite for quality (Gemini/OpenAI/DeepSeek)
+        // skipAiRewrite intentionally not set — even GPT-pre-filled content benefits from pipeline rewrite
         ...enriched,
       }
 

@@ -317,16 +317,13 @@ Orijinal başlık: ${input.originalTitle}${recentSection}
 ${excerpt}`
 }
 
-async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
-  const config = getActiveAiConfig()
-  if (!config) {
-    throw new Error('Hiçbir AI sağlayıcısı yapılandırılmamış (OPENAI_API_KEY veya DEEPSEEK_API_KEY gerekli)')
-  }
-
+/** Single HTTP call to one provider. Throws on non-2xx. */
+async function callSingleProvider(
+  config: AiProviderConfig,
+  input: AiRewriteInput,
+): Promise<Response> {
   const mode = input.mode ?? 'feed'
-  console.log(`[aiNewsEditor] ${config.provider} kullanılıyor (${config.model})`)
-
-  const res = await fetch(config.baseUrl, {
+  return fetch(config.baseUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -341,12 +338,33 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
         { role: 'user', content: buildUserPrompt(input) },
       ],
     }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(35_000),
   })
+}
+
+async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
+  const mode = input.mode ?? 'feed'
+  const primary = getActiveAiConfig()
+  if (!primary) {
+    throw new Error('Hiçbir AI sağlayıcısı yapılandırılmamış (OPENAI_API_KEY veya DEEPSEEK_API_KEY gerekli)')
+  }
+
+  console.log(`[aiNewsEditor] ${primary.provider} kullanılıyor (${primary.model})`)
+
+  let res = await callSingleProvider(primary, input)
+
+  // 429 rate-limit → otomatik olarak diğer sağlayıcıya geç
+  if (res.status === 429) {
+    const fallbackConfig = primary.provider === 'openai' ? getDeepSeekConfig() : getOpenAiConfig()
+    if (fallbackConfig) {
+      console.warn(`[aiNewsEditor] ${primary.provider} 429, ${fallbackConfig.provider}'a geçiliyor`)
+      res = await callSingleProvider(fallbackConfig, input)
+    }
+  }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
-    throw new Error(`OpenAI API error ${res.status}: ${errText.slice(0, 200)}`)
+    throw new Error(`AI API error ${res.status}: ${errText.slice(0, 200)}`)
   }
 
   const json = (await res.json()) as {
@@ -436,8 +454,29 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
 }
 
 /** Fallback when OpenAI is unavailable — still unique-ish summary + source line. */
+/** Strip Turkish RSS "read more" truncation artifacts from content */
+function sanitizeRssContent(text: string): string {
+  return text
+    // "Devamı için tıklayın", "Devamı iç...", "Devamını oku", etc.
+    .replace(/\s*Devam[ıi]\s*(için|iç[^a-z]|oku[^y]|etmek).*$/i, '')
+    .replace(/\s*Haberin devam[ıi].*$/i, '')
+    .replace(/\s*Haber[i]n?\s+tam[a-z]*\s+(için|metin).*$/i, '')
+    .replace(/\s*\[.*?\]/g, '')          // [Devamı için tıklayın]
+    .replace(/\s*\(devam[ıi].*?\)/gi, '')
+    .replace(/\s*…+$/, '')              // trailing ellipsis
+    .replace(/\s*\.{3,}$/, '')          // trailing dots
+    .trim()
+}
+
 function fallbackRewrite(input: AiRewriteInput): AiRewriteResult | AiArchiveRewriteResult {
-  const rawBase = input.originalSummary || input.originalContent
+  const rawBase = sanitizeRssContent(input.originalContent || input.originalSummary || '')
+    || sanitizeRssContent(input.originalSummary || '')
+
+  // If content is still too short after sanitization, refuse to publish garbage
+  if (rawBase.trim().length < 80) {
+    throw new Error(`[aiNewsEditor] fallback içerik çok kısa (${rawBase.length} chars) — AI key eksik, yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
+  }
+
   // Cut at sentence boundary instead of mid-word
   const base = (() => {
     const limit = 800

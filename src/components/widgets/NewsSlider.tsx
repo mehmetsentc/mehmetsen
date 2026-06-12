@@ -4,155 +4,45 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-} from 'firebase/firestore'
-import { db, Collections } from '@/lib/firebase/firestore'
-
-interface SliderItem {
-  id: string
-  title: string
-  slug: string
-  imageUrl: string | null
-  categoryId: string
-  publishedAt: number
-  sourceUrl: string | null
-}
+import type { TopNewsItem } from '@/app/api/news/top/route'
 
 interface NewsSliderProps {
   categoryId?: string
 }
 
 const AUTOPLAY_MS = 5000
-const SLIDER_HEIGHT = '22rem'
-
-function mapDoc(d: { id: string; data: () => Record<string, unknown> }): SliderItem {
-  const data = d.data()
-  const raw = (data.coverImageUrl as string | null) ?? null
-  return {
-    id: d.id,
-    title: String(data.title ?? ''),
-    slug: String(data.slug ?? d.id),
-    imageUrl: raw && raw.length > 5 ? raw : null,
-    categoryId: String(data.categoryId ?? ''),
-    publishedAt: Number(data.publishedAt ?? 0),
-    sourceUrl: (data.sourceUrl as string | null) ?? null,
-  }
-}
-
-/** Lazily fetch og:image from article source URL if coverImageUrl is missing */
-async function fetchOgImage(sourceUrl: string): Promise<string | null> {
-  try {
-    const res = await fetch(`/api/og-image?url=${encodeURIComponent(sourceUrl)}`, {
-      signal: AbortSignal.timeout(15_000),
-    })
-    if (!res.ok) return null
-    const json = (await res.json()) as { imageUrl?: string | null }
-    return json.imageUrl ?? null
-  } catch {
-    return null
-  }
-}
 
 export function NewsSlider({ categoryId }: NewsSliderProps) {
-  const [items, setItems] = useState<SliderItem[]>([])
+  const [items, setItems] = useState<TopNewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [current, setCurrent] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const touchStartX = useRef<number | null>(null)
-  // Track which items had image fetched to avoid re-fetching
-  const fetchedRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      try {
-        let docs: SliderItem[] = []
-
-        if (categoryId) {
-          try {
-            const q = query(
-              collection(db, Collections.NEWS),
-              where('status', '==', 'published'),
-              where('categoryId', '==', categoryId),
-              orderBy('publishedAt', 'desc'),
-              limit(20)
-            )
-            const snap = await getDocs(q)
-            docs = snap.docs.map(mapDoc)
-          } catch {
-            const q = query(
-              collection(db, Collections.NEWS),
-              where('status', '==', 'published'),
-              orderBy('publishedAt', 'desc'),
-              limit(60)
-            )
-            const snap = await getDocs(q)
-            docs = snap.docs
-              .map(mapDoc)
-              .filter((item) => item.categoryId === categoryId)
-              .slice(0, 20)
-          }
-        } else {
-          const q = query(
-            collection(db, Collections.NEWS),
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(20)
-          )
-          const snap = await getDocs(q)
-          docs = snap.docs.map(mapDoc)
-        }
-
-        // son-dakika sayfası yok — slider'dan çıkar
-        const filtered = docs.filter((item) => item.categoryId !== 'son-dakika')
-        if (!cancelled) setItems(filtered)
-      } catch {
-        // silently fail
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
+    const url = categoryId
+      ? `/api/news/top?category=${encodeURIComponent(categoryId)}&limit=20`
+      : `/api/news/top?limit=20`
+    fetch(url)
+      .then((r) => r.json())
+      .then((d: { items?: TopNewsItem[] }) => {
+        if (d.items && d.items.length > 0) setItems(d.items)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [categoryId])
 
-  // Lazily fetch og:image for items missing imageUrl
-  useEffect(() => {
-    if (items.length === 0) return
-
-    // Fetch for current + next item proactively
-    const toFetch = [current, (current + 1) % items.length]
-
-    for (const idx of toFetch) {
-      const item = items[idx]
-      if (!item || item.imageUrl || !item.sourceUrl) continue
-      if (fetchedRef.current.has(item.id)) continue
-      fetchedRef.current.add(item.id)
-
-      fetchOgImage(item.sourceUrl).then((url) => {
-        if (!url) return
-        setItems((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, imageUrl: url } : it))
-        )
-      })
-    }
-  }, [items, current])
-
   const goTo = useCallback((idx: number) => {
-    setCurrent(() => (idx + items.length) % items.length)
+    setCurrent((c) => {
+      const next = (idx + items.length) % items.length
+      return next
+    })
   }, [items.length])
 
   const next = useCallback(() => goTo(current + 1), [current, goTo])
   const prev = useCallback(() => goTo(current - 1), [current, goTo])
 
+  // Autoplay
   useEffect(() => {
     if (items.length < 2) return
     timerRef.current = setInterval(next, AUTOPLAY_MS)
@@ -168,6 +58,7 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
   const handleNext = () => { next(); resetTimer() }
   const handleDot = (i: number) => { goTo(i); resetTimer() }
 
+  // Touch support
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null
   }
@@ -180,14 +71,7 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
 
   if (loading) {
     return (
-      <div
-        className="animate-pulse bg-[rgb(var(--color-surface))]"
-        style={{
-          margin: '0 calc(-1 * var(--layout-gutter))',
-          width: 'calc(100% + 2 * var(--layout-gutter))',
-          height: SLIDER_HEIGHT,
-        }}
-      />
+      <div className="relative mb-3 h-56 w-full overflow-hidden rounded-2xl bg-[rgb(var(--color-surface))] animate-pulse" />
     )
   }
 
@@ -196,25 +80,18 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
   const item = items[current]!
 
   return (
-    <div
-      style={{
-        margin: '0 calc(-1 * var(--layout-gutter))',
-        width: 'calc(100% + 2 * var(--layout-gutter))',
-      }}
-    >
+    <div className="mb-3 w-full">
       <div
-        className="relative select-none overflow-hidden"
-        style={{ height: SLIDER_HEIGHT }}
+        className="relative h-56 w-full overflow-hidden rounded-2xl select-none"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
+        {/* Slides */}
         {items.map((it, i) => (
           <Link
             key={it.id}
             href={`/news/${it.slug}`}
-            className={`absolute inset-0 transition-opacity duration-500 ${
-              i === current ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
+            className={`absolute inset-0 transition-opacity duration-500 ${i === current ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
             tabIndex={i === current ? 0 : -1}
             aria-hidden={i !== current}
           >
@@ -229,18 +106,18 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
                 unoptimized
               />
             ) : (
-              <div className="h-full w-full bg-gradient-to-br from-[rgb(var(--color-brand))] to-red-900" />
+              <div className="h-full w-full bg-gradient-to-br from-[rgb(var(--color-brand))] to-red-800" />
             )}
             {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
-            {/* Title area */}
-            <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-12">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+            {/* Title */}
+            <div className="absolute bottom-0 left-0 right-0 p-3">
               {it.categoryId && (
-                <span className="mb-2 inline-block rounded-sm bg-[rgb(var(--color-brand))] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">
+                <span className="mb-1 inline-block rounded-full bg-[rgb(var(--color-brand))] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                   {it.categoryId}
                 </span>
               )}
-              <h2 className="line-clamp-3 text-[18px] font-black leading-snug text-white drop-shadow">
+              <h2 className="line-clamp-2 text-[15px] font-bold leading-snug text-white">
                 {it.title}
               </h2>
             </div>
@@ -253,7 +130,7 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
             <button
               type="button"
               onClick={handlePrev}
-              className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm"
+              className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-1 text-white backdrop-blur-sm"
               aria-label="Önceki"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -261,33 +138,38 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
             <button
               type="button"
               onClick={handleNext}
-              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm"
+              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-1 text-white backdrop-blur-sm"
               aria-label="Sonraki"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </>
         )}
+
+        {/* Slide counter */}
+        <div className="absolute right-3 top-3 z-20 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white">
+          {current + 1}/{items.length}
+        </div>
       </div>
 
       {/* Dot indicators */}
       {items.length > 1 && (
-        <div className="flex items-center justify-center gap-1.5 py-2.5">
-          {items.slice(0, Math.min(items.length, 15)).map((_, i) => (
+        <div className="mt-2 flex items-center justify-center gap-1.5">
+          {items.slice(0, Math.min(items.length, 10)).map((_, i) => (
             <button
               key={i}
               type="button"
               onClick={() => handleDot(i)}
               aria-label={`Slayt ${i + 1}`}
-              className={`rounded-full transition-all duration-300 ${
+              className={`h-1.5 rounded-full transition-all ${
                 i === current
-                  ? 'h-2 w-5 bg-[rgb(var(--color-brand))]'
-                  : 'h-2 w-2 bg-[rgb(var(--color-border))]'
+                  ? 'w-4 bg-[rgb(var(--color-brand))]'
+                  : 'w-1.5 bg-[rgb(var(--color-border))]'
               }`}
             />
           ))}
-          {items.length > 15 && (
-            <span className="text-[10px] text-[rgb(var(--color-muted))]">+{items.length - 15}</span>
+          {items.length > 10 && (
+            <span className="text-[10px] text-[rgb(var(--color-muted))]">+{items.length - 10}</span>
           )}
         </div>
       )}
