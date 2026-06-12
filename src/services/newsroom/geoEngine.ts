@@ -48,14 +48,17 @@ const TURKISH_PROVINCES_ALL: [string, string][] = [
 const CITY_DISPLAY: Map<string, string> = new Map(TURKISH_PROVINCES_ALL)
 
 function extractCityFromText(text: string): string | null {
-  // Normalize to ASCII-ish for matching
+  // Normalize Turkish chars to ASCII for matching
   const lower = text
     .toLocaleLowerCase('tr-TR')
     .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
     .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
 
   for (const [slug] of TURKISH_PROVINCES_ALL) {
-    if (lower.includes(slug)) {
+    // Word-boundary match: prevents "kars" matching inside "karsi" (=karşı),
+    // "van" inside "ivan/avantaj", "ordu" inside "orduyu" etc.
+    const re = new RegExp(`(?<![a-z])${slug}(?![a-z])`)
+    if (re.test(lower)) {
       return CITY_DISPLAY.get(slug) ?? slug
     }
   }
