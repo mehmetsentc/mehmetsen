@@ -93,12 +93,13 @@ export async function publishToInstagram(
   payload: SocialPublishPayload
 ): Promise<SocialPublishResult> {
   const igBusinessId = process.env.INSTAGRAM_BUSINESS_ID?.trim()
-  const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim()
+  // Prefer Instagram-specific token; fall back to Facebook Page Access Token
+  const accessToken = (process.env.INSTAGRAM_ACCESS_TOKEN?.trim() || process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim())
 
   if (!igBusinessId || !accessToken) {
     return {
       success: false,
-      error: 'INSTAGRAM_BUSINESS_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik',
+      error: 'INSTAGRAM_BUSINESS_ID veya INSTAGRAM_ACCESS_TOKEN / FACEBOOK_PAGE_ACCESS_TOKEN eksik',
     }
   }
 

@@ -1,12 +1,11 @@
 /**
  * GET|POST /api/cron/social
  *
- * Cron job — runs every 5 minutes via cron-job.org.
- * Scans Firestore `news` collection for Çanakkale articles that have not
- * yet been published to social media, then publishes them to Facebook and
- * Instagram, finally marking each as done.
+ * Cron job — her 5 dakikada bir çalışır.
+ * Firestore `news` koleksiyonunda citySlug='canakkale' olan ve henüz
+ * sosyal medyaya yayınlanmamış haberleri Facebook ve Instagram'da paylaşır.
  *
- * Auth: Bearer CRON_SECRET  (same secret used by all newsroom crons)
+ * Auth: Bearer CRON_SECRET  veya ?secret=CRON_SECRET
  */
 import { NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
@@ -16,7 +15,6 @@ import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { publishToFacebook } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
 import type {
-  SocialNewsItem,
   SocialCronItemResult,
   SocialCronResult,
   SocialPublishPayload,
@@ -27,50 +25,115 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-/** Delay between each news item to respect API rate limits. */
 const INTER_ITEM_DELAY_MS = 2000
+const BATCH_LIMIT = 10
 
-/** Category filter — only publish articles from this category. */
-const TARGET_CATEGORY = 'canakkale'
-
-/** Max articles processed per cron run to avoid timeouts. */
-const BATCH_LIMIT = 20
-
-/** Base URL for article links (falls back gracefully). */
-function buildArticleUrl(item: SocialNewsItem): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://nahaber.com').replace(/\/$/, '')
-  return item.url?.trim() ? item.url.trim() : `${base}/news/${item.id}`
+/** Pipeline'ın yazdığı tüm görsel alanlarından ilk dolu olanı al */
+function extractImageUrl(data: Record<string, unknown>): string | undefined {
+  const candidates = [
+    data.thumbnail,       // pipeline birincil alan
+    data.coverImageUrl,   // pipeline ikincil alan
+    data.imageUrl,
+    data.featuredImage,
+    data.image,
+  ]
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim().length > 10) return c.trim()
+  }
+  return undefined
 }
 
-async function runSocialCron(): Promise<SocialCronResult> {
+function buildArticleUrl(id: string, data: Record<string, unknown>): string {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://nahaber.com').replace(/\/$/, '')
+  const url  = typeof data.url   === 'string' ? data.url.trim()  : ''
+  const slug = typeof data.slug  === 'string' ? data.slug.trim() : ''
+  if (url)  return url
+  if (slug) return `${base}/news/${slug}`
+  return `${base}/news/${id}`
+}
+
+// Çanakkale ve tüm ilçelerinin slug listesi
+const CANAKKALE_SLUGS = new Set([
+  'canakkale',
+  'biga', 'can', 'yenice', 'bayramic', 'ezine',
+  'ayvacik', 'gokceada', 'bozcaada', 'gelibolu', 'eceabat', 'lapseki',
+])
+
+/** Dokümanın Çanakkale veya ilçesi haberi olup olmadığını kontrol et */
+function isCanakkale(data: Record<string, unknown>): boolean {
+  const citySlug    = String(data.citySlug    ?? '').toLowerCase()
+  const districtSlug = String(data.districtSlug ?? data.district ?? '').toLowerCase()
+  const city        = String(data.city        ?? '').toLowerCase()
+  const category    = String(data.category   ?? '').toLowerCase()
+  const categoryId  = String(data.categoryId ?? '').toLowerCase()
+  return (
+    CANAKKALE_SLUGS.has(citySlug)  ||
+    CANAKKALE_SLUGS.has(districtSlug) ||
+    city.includes('çanakkale') ||
+    city.includes('canakkale') ||
+    city.includes('biga') ||
+    city.includes('gelibolu') ||
+    city.includes('gökçeada') ||
+    category   === 'canakkale' ||
+    categoryId === 'canakkale'
+  )
+}
+
+async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
+  // Token kontrolü — Vercel'de set edilmemişse erken çık
+  const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim()
+  if (!accessToken) {
+    const msg = 'FACEBOOK_PAGE_ACCESS_TOKEN eksik — Vercel > Settings > Environment Variables kontrol edin'
+    console.error('[cron/social]', msg)
+    return { processed: 0, succeeded: 0, failed: 0, items: [], error: msg }
+  }
+
   const db = getAdminFirestore()
 
-  // Query: category == canakkale AND (socialPublished missing OR false)
+  // ── Birincil sorgu: citySlug == 'canakkale' ────────────────────────────
+  // NOT: socialPublished != true yerine memory'de filtrele (composite index gerekmez)
   const snap = await db
     .collection(Collections.NEWS)
-    .where('category', '==', TARGET_CATEGORY)
-    .where('socialPublished', '!=', true)
-    .orderBy('socialPublished')   // required when using != filter
+    .where('citySlug', '==', 'canakkale')
+    .where('status', '==', 'published')
     .orderBy('createdAt', 'desc')
-    .limit(BATCH_LIMIT)
+    .limit(BATCH_LIMIT * 5)
     .get()
 
-  const items: SocialNewsItem[] = snap.docs.map((doc) => ({
-    id: doc.id,
-    ...(doc.data() as Omit<SocialNewsItem, 'id'>),
-  }))
+  let candidates = snap.docs.filter(doc => !doc.data().socialPublished)
 
+  // ── Yedek sorgu: son 100 haberi tara, Çanakkale olanları bul ──────────
+  if (candidates.length === 0) {
+    const snap2 = await db
+      .collection(Collections.NEWS)
+      .where('status', '==', 'published')
+      .orderBy('createdAt', 'desc')
+      .limit(100)
+      .get()
+    candidates = snap2.docs.filter(doc => {
+      const d = doc.data() as Record<string, unknown>
+      return isCanakkale(d) && !d.socialPublished
+    })
+  }
+
+  const finalDocs = candidates.slice(0, BATCH_LIMIT)
   const results: SocialCronItemResult[] = []
   let succeeded = 0
   let failed = 0
 
-  for (const item of items) {
+  for (const doc of finalDocs) {
+    const data  = doc.data() as Record<string, unknown>
+    const id    = doc.id
+    const title = typeof data.title === 'string' ? data.title : ''
+
     const payload: SocialPublishPayload = {
-      newsId: item.id,
-      title: item.title ?? '',
-      description: item.description?.trim() || undefined,
-      imageUrl: item.imageUrl?.trim() || undefined,
-      articleUrl: buildArticleUrl(item),
+      newsId: id,
+      title,
+      description:
+        typeof data.spot    === 'string' ? data.spot    :
+        typeof data.summary === 'string' ? data.summary : undefined,
+      imageUrl:   extractImageUrl(data),
+      articleUrl: buildArticleUrl(id, data),
     }
 
     // ── Facebook ──────────────────────────────────────────────────────────
@@ -78,77 +141,54 @@ async function runSocialCron(): Promise<SocialCronResult> {
     try {
       fbResult = await publishToFacebook(payload)
     } catch (err) {
-      fbResult = {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      }
+      fbResult = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
 
-    // Rate-limit pause between platforms
-    await new Promise((resolve) => setTimeout(resolve, INTER_ITEM_DELAY_MS))
+    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
 
     // ── Instagram ─────────────────────────────────────────────────────────
     let igResult: SocialPublishResult = { success: false, error: 'not attempted' }
     try {
       igResult = await publishToInstagram(payload)
     } catch (err) {
-      igResult = {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      }
+      igResult = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
 
-    // ── Mark done if at least Facebook succeeded ──────────────────────────
-    // We consider Facebook the primary platform. Instagram is best-effort
-    // (fails without image). If FB succeeded, we mark the article done so
-    // it is not retried endlessly.
-    const markedDone = fbResult.success
+    // ── Firestore güncelle (her iki platformdan biri başarılıysa yeter) ───
+    const markedDone = fbResult.success || igResult.success
 
     if (markedDone) {
       try {
         const update: Record<string, unknown> = {
-          socialPublished: true,
+          socialPublished:   true,
           socialPublishedAt: FieldValue.serverTimestamp(),
         }
-        if (fbResult.platformId) update.facebookPostId = fbResult.platformId
+        if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
         if (igResult.platformId) update.instagramMediaId = igResult.platformId
-
-        await db.collection(Collections.NEWS).doc(item.id).update(update)
+        await db.collection(Collections.NEWS).doc(id).update(update)
         succeeded++
       } catch (err) {
-        console.error(`[cron/social] Firestore update failed for ${item.id}:`, err)
+        console.error(`[cron/social] Firestore update failed for ${id}:`, err)
         failed++
       }
     } else {
       failed++
-      console.warn(`[cron/social] Facebook failed for ${item.id} — will retry next run`)
+      console.warn(`[cron/social] Her iki platform başarısız — ${id}`)
+      console.warn(`  FB: ${fbResult.error}`)
+      console.warn(`  IG: ${igResult.error}`)
     }
 
-    results.push({
-      newsId: item.id,
-      title: item.title ?? '',
-      facebook: fbResult,
-      instagram: igResult,
-      markedDone,
-    })
-
-    // Rate-limit pause before the next article
-    await new Promise((resolve) => setTimeout(resolve, INTER_ITEM_DELAY_MS))
+    results.push({ newsId: id, title, facebook: fbResult, instagram: igResult, markedDone })
+    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
   }
 
-  return {
-    processed: items.length,
-    succeeded,
-    failed,
-    items: results,
-  }
+  return { processed: finalDocs.length, succeeded, failed, items: results }
 }
 
 async function handleRequest(request: Request) {
   if (!(await isNewsroomAuthorized(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-
   try {
     const result = await runSocialCron()
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
@@ -159,5 +199,5 @@ async function handleRequest(request: Request) {
   }
 }
 
-export const GET = handleRequest
+export const GET  = handleRequest
 export const POST = handleRequest

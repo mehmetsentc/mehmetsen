@@ -213,6 +213,18 @@ export const DISTRICT_TO_PROVINCE_SLUG: Readonly<Record<string, string>> = {
   antakya: 'hatay',
   defne: 'hatay',
   safranbolu: 'karabuk',
+  // Çanakkale ilçeleri
+  biga: 'canakkale',
+  can: 'canakkale',
+  yenice: 'canakkale',
+  bayramic: 'canakkale',
+  ezine: 'canakkale',
+  ayvacik: 'canakkale',
+  gokceada: 'canakkale',
+  bozcaada: 'canakkale',
+  gelibolu: 'canakkale',
+  eceabat: 'canakkale',
+  lapseki: 'canakkale',
 }
 
 /** Map user district or province slug to province slug used on ingested news. */
