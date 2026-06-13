@@ -58,9 +58,12 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'reuters',
     label: 'Reuters',
-    feedUrl: 'https://feeds.bbci.co.uk/news/world/rss.xml',
-    maxItemsPerRun: 10,
-    enabled: true,
+    feedUrl: 'https://feeds.reuters.com/reuters/topNews',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:reuters.com&hl=en&gl=US&ceid=US:en',
+    ],
+    maxItemsPerRun: 5,
+    enabled: false, // reuters-world kullanılıyor, bu duplicate
   },
   {
     id: 'bbc',
@@ -369,7 +372,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:medyascope.tv&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false, // Küçük kitle, national worker overlap
   },
   {
     id: 'birgün',
@@ -379,7 +382,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:birgun.net&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false, // Küçük kitle, cumhuriyet/t24 overlap
   },
 
   // ── Uluslararası Kaynaklar ───────────────────────────────────────────────
@@ -663,7 +666,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'Eğitim Haberleri (TR)',
     feedUrl: 'https://news.google.com/rss/search?q=eğitim+okul+üniversite+YKS+LGS+MEB&hl=tr&gl=TR&ceid=TR:tr',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // Google News search → rate-limit riski, national worker zaten kapsar
   },
 
   // ── Turizm & Çevre ───────────────────────────────────────────────────────
@@ -672,7 +675,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'Turizm Haberleri (TR)',
     feedUrl: 'https://news.google.com/rss/search?q=turizm+otel+tatil+sezon+Türkiye&hl=tr&gl=TR&ceid=TR:tr',
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false, // Google News search → rate-limit riski
   },
 
   // ── Spor (ek kaynaklar) ──────────────────────────────────────────────────
@@ -702,7 +705,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'Takvim Spor',
     feedUrl: 'https://news.google.com/rss/search?q=site:takvim.com.tr+spor&hl=tr&gl=TR&ceid=TR:tr',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // Google News search, fanatik/fotomac overlap
   },
   {
     id: 'bbc-sport',
@@ -729,14 +732,14 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'Transfermarkt News',
     feedUrl: 'https://news.google.com/rss/search?q=transfermarkt+transfer+futbol&hl=tr&gl=TR&ceid=TR:tr',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // Google News search, fanatik/fotomac transfer haberleri zaten kapsar
   },
   {
     id: 'uefa-news',
     label: 'UEFA News',
     feedUrl: 'https://news.google.com/rss/search?q=UEFA+Champions+League+Europa+League&hl=en&gl=US&ceid=US:en',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // İngilizce, sports worker'daki Türkçe kaynaklar yeterli
   },
 
   // ── Dünya Haberleri (ek) ─────────────────────────────────────────────────
@@ -748,7 +751,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:nytimes.com+world&hl=en&gl=US&ceid=US:en',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // Paywall — RSS çalışmıyor, reuters-world/ap-news yeterli
   },
   {
     id: 'wapo-world',
@@ -758,7 +761,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:washingtonpost.com+world&hl=en&gl=US&ceid=US:en',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // Paywall — RSS çalışmıyor
   },
   {
     id: 'france24-en',
@@ -837,7 +840,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'Chip Online TR',
     feedUrl: 'https://news.google.com/rss/search?q=site:chip.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false, // Google News search, shiftdelete/webtekno yeterli
   },
 
   // ── Siyaset ──────────────────────────────────────────────────────────────
@@ -984,7 +987,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:variety.com&hl=en&gl=US&ceid=US:en',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // Amerikan eğlence → Türk okuyucuyla düşük alakası
   },
   {
     id: 'billboard',
@@ -994,7 +997,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:billboard.com+music&hl=en&gl=US&ceid=US:en',
     ],
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false, // Amerikan müzik listesi → Türk okuyucuyla düşük alakası
   },
   {
     id: 'tmz-news',
@@ -1004,7 +1007,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:tmz.com+celebrity&hl=en&gl=US&ceid=US:en',
     ],
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false, // Amerikan dedikodu → Türk magazin kitlesiyle alakasız
   },
   {
     id: 'hollywood-reporter',
@@ -1014,7 +1017,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:hollywoodreporter.com&hl=en&gl=US&ceid=US:en',
     ],
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false, // Hollywood odaklı → Türk magazin kitlesiyle alakasız
   },
 ]
 

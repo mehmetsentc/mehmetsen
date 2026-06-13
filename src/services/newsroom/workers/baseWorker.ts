@@ -81,13 +81,23 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
 
     result.itemsFetched += items.length
 
-    const stored = await loadSourceFingerprints(db, source.id)
+    let stored: Awaited<ReturnType<typeof loadSourceFingerprints>>
+    try {
+      stored = await loadSourceFingerprints(db, source.id)
+    } catch (fsErr) {
+      const code = (fsErr as { code?: number }).code
+      const msg = `[${options.workerId}:${source.id}] Firestore read failed${code === 8 ? ' (RESOURCE_EXHAUSTED)' : ''}: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`
+      console.warn(msg)
+      result.errors.push(msg)
+      continue
+    }
+
     const { changes, unchanged } = detectArticleChanges(items, stored)
     result.itemsSkipped += unchanged
 
     for (const change of changes) {
       if (change.type === 'removed') {
-        await markFingerprintRemoved(db, source.id, change.hash)
+        try { await markFingerprintRemoved(db, source.id, change.hash) } catch { /* non-critical */ }
         continue
       }
 
@@ -121,17 +131,26 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
         input.imageUrl = change.item.imageUrl
       }
 
-      await enqueueNewsItem(db, {
-        workerId: options.workerId,
-        changeType: change.type,
-        input,
-        sourceId: source.id,
-        fingerprintHash: change.hash,
-        existingNewsId: change.existingNewsId,
-      })
-
-      await upsertSourceFingerprint(db, source.id, change.fingerprint)
-      result.itemsNew += 1
+      try {
+        await enqueueNewsItem(db, {
+          workerId: options.workerId,
+          changeType: change.type,
+          input,
+          sourceId: source.id,
+          fingerprintHash: change.hash,
+          existingNewsId: change.existingNewsId,
+        })
+        await upsertSourceFingerprint(db, source.id, change.fingerprint)
+        result.itemsNew += 1
+      } catch (fsErr) {
+        const code = (fsErr as { code?: number }).code
+        const msg = `[${options.workerId}:${source.id}] enqueue failed${code === 8 ? ' (RESOURCE_EXHAUSTED)' : ''}: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`
+        console.warn(msg)
+        result.errors.push(msg)
+        result.itemsFailed += 1
+        // If quota exceeded, abort remaining items for this source
+        if (code === 8) break
+      }
     }
   }
 

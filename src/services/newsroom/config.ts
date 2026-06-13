@@ -10,74 +10,99 @@ export const NEWSROOM_LOW_CONFIDENCE_THRESHOLD = 50
 
 export const MAX_AI_CALLS_PER_EDITOR = Number(process.env.NEWS_INGEST_MAX_AI_CALLS ?? 12)
 
-/** Wire + regional Turkish sources — local worker (10 min). */
+/** Wire + regional Turkish sources — local worker. */
 export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'iha', 'dha'] as const
 
-/** Default province batch size per cron (full backfill uses 81). */
+/**
+ * Kaç il Google News feed'i çekilsin.
+ * Odak: Çanakkale + büyük şehirler → 5 yeterli.
+ * Tüm 81 ili taramak gereksiz Firestore fingerprint yazımı yaratır.
+ */
 export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
-  process.env.LOCAL_NEWS_MAX_PROVINCES ?? 20
+  process.env.LOCAL_NEWS_MAX_PROVINCES ?? 5
 )
 
-/** Major Turkish national outlets — national worker (5 min). */
+/**
+ * Türk ulusal kaynakları — 7 çekirdek kaynak (overlap temizlendi).
+ * Kaldırılanlar: milliyet/sabah/yenisafak/karar (hurriyet/sozcu'yla overlap),
+ * independent-tr/gazeteduvar (küçük kitle), euronews-tr (world worker'da var).
+ */
 export const NATIONAL_NEWS_SOURCE_IDS = [
-  'trt', 'ntv', 'haberturk', 'hurriyet', 'sozcu',
-  'milliyet', 'sabah', 'cumhuriyet', 'yenisafak', 'karar',
-  'independent-tr', 'euronews-tr', 't24', 'gazeteduvar',
+  'trt', 'ntv', 'haberturk', 'hurriyet', 'sozcu', 'cumhuriyet', 't24',
 ] as const
 
-/** International + urgent national — breaking worker (2 min). */
+/**
+ * Son dakika kaynakları — acil + güvenilir (10 kaynak → 6).
+ * Kaldırılanlar: ntv/haberturk (national'da var), aljazeera (world'de var),
+ * reuters (URL bug vardı, reuters-world yeterli).
+ */
 export const BREAKING_NEWS_SOURCE_IDS = [
-  'cnn', 'bbc', 'reuters', 'reuters-world', 'ap-news',
-  'aljazeera', 'trt', 'ntv', 'haberturk', 'aa',
+  'cnn', 'bbc', 'reuters-world', 'ap-news', 'trt', 'aa',
 ] as const
 
-/** International world news — world worker (5 min). */
+/**
+ * Uluslararası haberler — 5 kaynak (12'den).
+ * Kaldırılanlar: guardian/dw-english/sky-news (overlap), bbc (bbc-world'le aynı),
+ * nyt-world/wapo-world (paywall), france24-en (az çıkar).
+ */
 export const WORLD_NEWS_SOURCE_IDS = [
-  'reuters-world', 'ap-news', 'aljazeera', 'guardian',
-  'dw-english', 'sky-news', 'euronews-tr', 'bbc',
-  'nyt-world', 'wapo-world', 'france24-en', 'bbc-world',
+  'reuters-world', 'ap-news', 'aljazeera', 'bbc-world', 'euronews-tr',
 ] as const
 
-/** Technology sources — technology worker (10 min). */
+/**
+ * Teknoloji kaynakları — 5 çekirdek (14'ten).
+ * Kaldırılanlar: wired/arstechnica/venturebeat/mit-tech (nişe çok spesifik),
+ * openai/google/microsoft/apple blogları (pazarlama içeriği), chip-tr (Google News).
+ */
 export const TECH_NEWS_SOURCE_IDS = [
-  'techcrunch', 'theverge', 'wired', 'arstechnica',
-  'venturebeat', 'mit-tech', 'shiftdelete', 'webtekno',
-  'openai-blog', 'google-blog', 'microsoft-blog', 'apple-newsroom',
-  'donanimhaber', 'chip-tr',
+  'techcrunch', 'theverge', 'shiftdelete', 'webtekno', 'donanimhaber',
 ] as const
 
-/** Sports sources — sports worker (5 min). */
+/**
+ * Spor kaynakları — 5 Türk çekirdek (15'ten).
+ * Kaldırılanlar: hurriyet-spor/haberturk-spor/milliyet-spor (overlap),
+ * goal-tr/f1-espn/bbc-sport/espn-soccer/transfermarkt-news/uefa-news/takvim-spor
+ * (İngilizce veya Google News arama sorguları).
+ */
 export const SPORTS_NEWS_SOURCE_IDS = [
-  'fanatik', 'fotomac', 'ajansspor',
-  'ntv-spor', 'hurriyet-spor', 'haberturk-spor',
-  'goal-tr', 'f1-espn', 'trt-spor', 'milliyet-spor',
-  'takvim-spor', 'bbc-sport', 'espn-soccer', 'transfermarkt-news', 'uefa-news',
+  'fanatik', 'fotomac', 'ajansspor', 'ntv-spor', 'trt-spor',
 ] as const
 
-/** Health & science sources — health worker (15 min). */
+/**
+ * Sağlık kaynakları — 4 kaynak (9'dan).
+ * Kaldırılanlar: nih-news/nature-news/science-daily/lancet/cdc-news
+ * (akademik, Türk kitlesiyle düşük alakası).
+ */
 export const HEALTH_NEWS_SOURCE_IDS = [
-  'who-news', 'nih-news', 'saglik-tr', 'nature-news', 'science-daily',
-  'cdc-news', 'lancet', 'medimagazin', 'saglik-aktuel',
+  'who-news', 'saglik-tr', 'medimagazin', 'saglik-aktuel',
 ] as const
 
-/** Politics / government sources — politics worker (5 min). */
+/**
+ * Siyaset kaynakları — 4 kaynak (11'den, overlap temizlendi).
+ * Kaldırılanlar: haberturk-politika/trt-politika (national'daki haberturk/trt ile aynı),
+ * milliyet-siyaset/hurriyet-siyaset (national'dakilerin politika feed'i zaten benzer),
+ * cumhuriyet/gazeteduvar (national'da var), bbc/euronews-tr (world'de var).
+ */
 export const POLITICS_NEWS_SOURCE_IDS = [
-  'anka-haber', 'ntv-politika', 'haberturk-politika', 'trt-politika',
-  'aa-siyaset', 'milliyet-siyaset', 'hurriyet-siyaset',
-  'cumhuriyet', 'gazeteduvar', 't24', 'bbc', 'euronews-tr',
+  'anka-haber', 'ntv-politika', 'aa-siyaset', 't24',
 ] as const
 
-/** Magazine / entertainment sources — magazine worker (15 min). */
+/**
+ * Magazin kaynakları — 3 Türk kaynak (9'dan).
+ * Kaldırılanlar: hurriyet-magazin/takvim-magazin (overlap),
+ * variety/billboard/tmz-news/hollywood-reporter (Amerikan eğlence → Türk okuyucuyla alakasız).
+ */
 export const MAGAZINE_NEWS_SOURCE_IDS = [
   'milliyet-magazin', 'sabah-magazin', 'posta-magazin',
-  'hurriyet-magazin', 'takvim-magazin',
-  'variety', 'billboard', 'tmz-news', 'hollywood-reporter',
 ] as const
 
-/** Economy & finance sources — expanded. */
+/**
+ * Finans kaynakları — 3 Türk kaynak (7'den).
+ * Kaldırılanlar: ekonomim/haberturk-ekonomi (ntv-ekonomi ile overlap),
+ * bloomberg-int/cnbc-int (İngilizce, Türk finans kitlesi için düşük değer).
+ */
 export const FINANS_SOURCE_IDS = [
-  'bloomberght', 'dunya-ekonomi', 'ekonomim',
-  'ntv-ekonomi', 'haberturk-ekonomi', 'bloomberg-int', 'cnbc-int',
+  'bloomberght', 'dunya-ekonomi', 'ntv-ekonomi',
 ] as const
 
 export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {

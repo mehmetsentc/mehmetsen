@@ -141,7 +141,7 @@ async function callGemini(prompt: string, systemPrompt: string): Promise<string>
       temperature: 0.3,
       topP: 0.8,
       topK: 40,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 2048,
       responseMimeType: 'application/json',
     },
     safetySettings: [
