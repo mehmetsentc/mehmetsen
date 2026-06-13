@@ -17,8 +17,6 @@ import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { publishToFacebook } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
-import { createSocialImage } from '@/lib/social/imageOverlay'
-import { uploadSocialImage } from '@/lib/social/storageUploader'
 import { FieldValue } from 'firebase-admin/firestore'
 import type { SocialPublishPayload } from '@/lib/social/types'
 
@@ -127,24 +125,10 @@ async function handleRequest(request: Request) {
     steps.aiContent = socialContent
   }
 
-  // ── 3. Görsel overlay ─────────────────────────────────────────────────────
-  let socialImageUrl: string | undefined = originalImg
-  steps.overlayResult = 'atlandı (görsel yok)'
-
-  if (originalImg) {
-    const buf = await createSocialImage(originalImg, socialContent.headline)
-    if (buf) {
-      const uploaded = await uploadSocialImage(buf, `test-${docId}`)
-      if (uploaded) {
-        socialImageUrl = uploaded
-        steps.overlayResult = `yüklendi → ${uploaded}`
-      } else {
-        steps.overlayResult = 'Storage yükleme başarısız'
-      }
-    } else {
-      steps.overlayResult = 'Sharp overlay başarısız'
-    }
-  }
+  // ── 3. Onyedi Tivi markalı görsel — OG route URL (1080×1080, Edge cached) ──
+  const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://nahaber.com').replace(/\/$/, '')
+  const socialImageUrl: string = `${appBase}/api/og/social/${docId}`
+  steps.overlayResult = `OG route → ${socialImageUrl}`
 
   // ── 4. Sosyal medya paylaşımı ─────────────────────────────────────────────
   const hashtagStr = socialContent.hashtags.join(' ')

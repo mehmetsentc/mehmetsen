@@ -23,8 +23,7 @@ import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { publishToFacebook } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
-import { createSocialImage } from '@/lib/social/imageOverlay'
-import { uploadSocialImage } from '@/lib/social/storageUploader'
+
 import type {
   SocialCronItemResult,
   SocialCronResult,
@@ -187,19 +186,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
     }
 
-    // ── Görsel Overlay + Storage Upload ──────────────────────────────────
-    let socialImageUrl: string | undefined = originalImageUrl
-
-    if (originalImageUrl) {
-      const overlaidBuffer = await createSocialImage(originalImageUrl, socialContent.headline)
-      if (overlaidBuffer) {
-        const uploadedUrl = await uploadSocialImage(overlaidBuffer, id)
-        if (uploadedUrl) {
-          socialImageUrl = uploadedUrl
-          console.log(`[cron/social] Overlay görsel yüklendi — ${id}`)
-        }
-      }
-    }
+    // ── Onyedi Tivi markalı görsel — OG route (1080×1080, Edge cached) ───
+    const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://nahaber.com').replace(/\/$/, '')
+    const socialImageUrl: string = `${appBase}/api/og/social/${id}`
+    console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
     // ── Sosyal medya metni ────────────────────────────────────────────────
     const hashtagStr = socialContent.hashtags.join(' ')

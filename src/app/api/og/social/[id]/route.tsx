@@ -208,26 +208,25 @@ export async function GET(
             zIndex: 10,
           }}
         >
-          {/* 17 Logo circle */}
-          <div
-            style={{
-              width: 88,
-              height: 88,
-              borderRadius: '50%',
-              background:
-                'linear-gradient(145deg, #1e3a8a 0%, #1d4ed8 60%, #3b82f6 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 40,
-              fontWeight: 900,
-              color: 'white',
-              border: '3px solid rgba(255,255,255,0.2)',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
-              letterSpacing: -1,
-            }}
-          >
-            17
+          {/* Onyedi Tivi Logo — katmanlı mavi rozet */}
+          <div style={{ width: 100, height: 100, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* Arka katman 1 — açık mavi organik şekil */}
+            <svg width="100" height="100" viewBox="0 0 100 100" style={{ position: 'absolute', top: 0, left: 0 }}>
+              <path d="M50 5 C65 3, 80 12, 88 25 C96 38, 97 55, 90 68 C83 81, 68 90, 53 92 C38 94, 22 87, 14 75 C6 63, 5 46, 12 33 C19 20, 35 7, 50 5Z" fill="#60a5fa" opacity="0.7"/>
+            </svg>
+            {/* Orta katman — orta mavi */}
+            <svg width="100" height="100" viewBox="0 0 100 100" style={{ position: 'absolute', top: 0, left: 0 }}>
+              <path d="M50 10 C62 8, 76 16, 83 28 C90 40, 91 56, 85 68 C79 80, 65 88, 51 89 C37 90, 22 83, 16 72 C10 61, 10 45, 16 34 C22 23, 38 12, 50 10Z" fill="#2563eb" opacity="0.85"/>
+            </svg>
+            {/* Merkez daire — lacivert */}
+            <svg width="100" height="100" viewBox="0 0 100 100" style={{ position: 'absolute', top: 0, left: 0 }}>
+              <circle cx="50" cy="50" r="34" fill="#1e3a8a"/>
+            </svg>
+            {/* "1" beyaz, "7" açık mavi */}
+            <div style={{ position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
+              <span style={{ fontSize: 38, fontWeight: 900, color: 'white', lineHeight: 1, letterSpacing: -3 }}>1</span>
+              <span style={{ fontSize: 38, fontWeight: 900, color: '#7dd3fc', lineHeight: 1, letterSpacing: -3 }}>7</span>
+            </div>
           </div>
 
           {/* ONYEDİ TİVİ wordmark */}
