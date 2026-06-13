@@ -8,12 +8,13 @@ import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X, Save,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
-import { formatDistanceToNow, format } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
@@ -436,6 +437,77 @@ function NewsRow({
   )
 }
 
+// ── Pagination Bar ─────────────────────────────────────────────────────────
+function PaginationBar({
+  currentPage,
+  knownPages,
+  hasNext,
+  loading,
+  onPage,
+}: {
+  currentPage: number
+  knownPages: number
+  hasNext: boolean
+  loading: boolean
+  onPage: (p: number) => void
+}) {
+  const totalKnown = knownPages
+  // Build visible page numbers around currentPage
+  const pages: (number | '…')[] = []
+  if (totalKnown <= 7) {
+    for (let i = 0; i < totalKnown; i++) pages.push(i)
+  } else {
+    pages.push(0)
+    if (currentPage > 2) pages.push('…')
+    for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalKnown - 2, currentPage + 1); i++) {
+      pages.push(i)
+    }
+    if (currentPage < totalKnown - 3) pages.push('…')
+    pages.push(totalKnown - 1)
+  }
+  if (hasNext) pages.push('…')
+
+  return (
+    <div className="flex items-center justify-center gap-1 py-2">
+      <button
+        onClick={() => onPage(currentPage - 1)}
+        disabled={currentPage === 0 || loading}
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] disabled:opacity-40"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+
+      {pages.map((p, i) =>
+        p === '…' ? (
+          <span key={`ellipsis-${i}`} className="flex h-8 w-8 items-center justify-center text-sm text-[rgb(var(--color-muted))]">…</span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onPage(p as number)}
+            disabled={loading}
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold transition-all',
+              p === currentPage
+                ? 'bg-blue-600 text-white shadow'
+                : 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+            )}
+          >
+            {(p as number) + 1}
+          </button>
+        )
+      )}
+
+      <button
+        onClick={() => onPage(currentPage + 1)}
+        disabled={!hasNext || loading}
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] disabled:opacity-40"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function AdminNewsPage() {
   const { can } = useCmsAuth()
@@ -446,30 +518,44 @@ export default function AdminNewsPage() {
   const [posts, setPosts] = useState<AdminNewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
-  const [hasMore, setHasMore] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
   const [editingPost, setEditingPost] = useState<AdminNewsItem | null>(null)
 
-  const load = useCallback(async (reset = true) => {
+  // Pagination — cursor per page stored in a ref (no re-render on update)
+  const pageCursorsRef = useRef<(QueryDocumentSnapshot | null)[]>([null])
+  const [currentPage, setCurrentPage] = useState(0)
+  const [knownPages, setKnownPages] = useState(1)
+  const [hasNext, setHasNext] = useState(false)
+
+  const load = useCallback(async (page: number) => {
     setLoading(true)
     try {
-      const result = await adminNewsService.list(filter, reset ? undefined : lastDoc ?? undefined)
-      setPosts(prev => reset ? result.posts : [...prev, ...result.posts])
-      setLastDoc(result.lastDoc)
-      setHasMore(result.hasMore)
-      if (reset) setSelected(new Set())
+      const cursor = pageCursorsRef.current[page] ?? undefined
+      const result = await adminNewsService.list(filter, cursor)
+      setPosts(result.posts)
+      setCurrentPage(page)
+      setHasNext(result.hasMore)
+      // Store cursor for the next page if we haven't seen it yet
+      if (result.hasMore && result.lastDoc && !pageCursorsRef.current[page + 1]) {
+        pageCursorsRef.current[page + 1] = result.lastDoc
+        setKnownPages(prev => Math.max(prev, page + 2))
+      }
+      setSelected(new Set())
     } catch {
       toast.error('Haberler yüklenemedi')
     } finally {
       setLoading(false)
     }
-  }, [filter, lastDoc])
+  }, [filter])
 
   useEffect(() => {
-    setLastDoc(null)
-    void load(true)
+    // Reset pagination on filter change
+    pageCursorsRef.current = [null]
+    setCurrentPage(0)
+    setKnownPages(1)
+    setHasNext(false)
+    void load(0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter])
 
@@ -585,7 +671,7 @@ export default function AdminNewsPage() {
               placeholder="Başlıkta ara..."
               className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2 pl-8 pr-3 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <button onClick={() => load(true)}
+          <button onClick={() => load(currentPage)}
             className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]">
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
           </button>
@@ -616,7 +702,7 @@ export default function AdminNewsPage() {
             <input type="checkbox" checked={selected.size === posts.length && posts.length > 0}
               onChange={toggleAll} className="h-3.5 w-3.5 accent-blue-600" />
             <span className="text-xs font-bold text-[rgb(var(--color-muted))]">
-              {loading ? 'Yükleniyor…' : `${filtered.length} haber`}
+              {loading ? 'Yükleniyor…' : `${filtered.length} haber · Sayfa ${currentPage + 1}`}
             </span>
             <Newspaper className="ml-auto h-4 w-4 text-[rgb(var(--color-muted))]" />
           </div>
@@ -649,13 +735,14 @@ export default function AdminNewsPage() {
           )}
         </div>
 
-        {hasMore && !loading && (
-          <div className="text-center">
-            <button onClick={() => load(false)}
-              className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-6 py-2 text-sm font-semibold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]">
-              Daha Fazla Yükle
-            </button>
-          </div>
+        {(knownPages > 1 || hasNext) && (
+          <PaginationBar
+            currentPage={currentPage}
+            knownPages={knownPages}
+            hasNext={hasNext}
+            loading={loading}
+            onPage={(p) => { void load(p) }}
+          />
         )}
       </div>
 

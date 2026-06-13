@@ -21,7 +21,7 @@ import { mapNewsSnapshot, type NewsDocument } from '@/lib/newsMapper'
 import { postService } from '@/services/postService'
 import type { Post, PostStatus } from '@/types/post'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 50
 const QUERY_TIMEOUT_MS = 15_000
 
 export type AdminNewsFilter = 'all' | 'published' | 'pending' | 'draft' | 'removed'
