@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { NewsTimeline } from '@/components/feed/NewsTimeline'
 import { NewsSlider } from '@/components/widgets/NewsSlider'
+import { FeedSliderHero } from '@/components/widgets/FeedSliderHero'
 import { LazyFinanceTicker } from '@/components/widgets/LazyFinanceTicker'
 import { NewsCardSkeleton } from '@/components/ui/Skeleton'
 import { annotateTimelinePosts } from '@/lib/newsMapper'
@@ -23,10 +24,17 @@ export default async function FeedPage() {
   ])
 
   const initialPosts = annotateTimelinePosts(timelinePosts, new Set())
+  const lcpImage = sliderItems[0]?.imageUrl
 
   return (
     <div className="w-full">
-      <NewsSlider categoryId={FEED_CATEGORY} initialItems={sliderItems} />
+      {lcpImage ? (
+        <link rel="preload" as="image" href={lcpImage} fetchPriority="high" />
+      ) : null}
+
+      <NewsSlider categoryId={FEED_CATEGORY} initialItems={sliderItems}>
+        {sliderItems[0] ? <FeedSliderHero item={sliderItems[0]} /> : null}
+      </NewsSlider>
 
       <LazyFinanceTicker />
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { FinanceRates } from '@/app/api/finance/rates/route'
+import { TICKER_HEIGHT_CLASS } from '@/components/widgets/financeTickerConstants'
 
 function fmt(n: number, decimals = 4) {
   return n.toLocaleString('tr-TR', {
@@ -49,14 +50,34 @@ export function FinanceTicker() {
   }, [])
 
   if (loading) {
-    return <div className="h-16 w-full animate-pulse bg-[rgb(var(--color-surface))]" />
+    return (
+      <div
+        className={`${TICKER_HEIGHT_CLASS} w-full animate-pulse bg-[rgb(var(--color-surface))]`}
+        style={{
+          margin: '0 calc(-1 * var(--layout-gutter))',
+          width: 'calc(100% + 2 * var(--layout-gutter))',
+        }}
+        aria-hidden
+      />
+    )
   }
 
-  if (!rates) return null
+  if (!rates) {
+    return (
+      <div
+        className={TICKER_HEIGHT_CLASS}
+        style={{
+          margin: '0 calc(-1 * var(--layout-gutter))',
+          width: 'calc(100% + 2 * var(--layout-gutter))',
+        }}
+        aria-hidden
+      />
+    )
+  }
 
   return (
     <div
-      className="border-b border-t border-[rgb(var(--color-border))]"
+      className={`border-b border-t border-[rgb(var(--color-border))] ${TICKER_HEIGHT_CLASS}`}
       style={{
         margin: '0 calc(-1 * var(--layout-gutter))',
         width: 'calc(100% + 2 * var(--layout-gutter))',

@@ -1,35 +1,26 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-} from 'firebase/firestore'
-import { db, Collections } from '@/lib/firebase/firestore'
-
 import type { FeedSliderItem } from '@/types/feedSlider'
+import { SLIDER_HEIGHT_CLASS, SLIDER_OUTER_STYLE } from './sliderConstants'
+import { SliderImage } from './SliderImage'
 
 interface NewsSliderProps {
   categoryId?: string
   initialItems?: FeedSliderItem[]
+  /** Server-rendered hero — shown until client carousel is ready (LCP). */
+  children?: ReactNode
 }
 
 const AUTOPLAY_MS = 5000
-const SLIDER_HEIGHT = '32rem'
 
 function mapDoc(d: { id: string; data: () => Record<string, unknown> }): FeedSliderItem {
   const data = d.data()
-  // Try multiple image fields in priority order
   const raw =
     (data.coverImageUrl as string | null) ??
-    (data.thumbnail as string | null) ??        // pipeline primary field (no Url suffix)
+    (data.thumbnail as string | null) ??
     (data.thumbnailUrl as string | null) ??
     (data.image as string | null) ??
     (data.imageUrl as string | null) ??
@@ -45,7 +36,6 @@ function mapDoc(d: { id: string; data: () => Record<string, unknown> }): FeedSli
   }
 }
 
-/** Lazily fetch og:image from article source URL if coverImageUrl is missing */
 async function fetchOgImage(sourceUrl: string): Promise<string | null> {
   try {
     const res = await fetch(`/api/og-image?url=${encodeURIComponent(sourceUrl)}`, {
@@ -59,14 +49,67 @@ async function fetchOgImage(sourceUrl: string): Promise<string | null> {
   }
 }
 
-export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
+async function fetchSliderItems(categoryId?: string): Promise<FeedSliderItem[]> {
+  const [
+    { collection, query, where, orderBy, limit, getDocs },
+    { db, Collections },
+  ] = await Promise.all([
+    import('firebase/firestore'),
+    import('@/lib/firebase/firestore'),
+  ])
+
+  let docs: FeedSliderItem[] = []
+
+  if (categoryId) {
+    try {
+      const q = query(
+        collection(db, Collections.NEWS),
+        where('status', '==', 'published'),
+        where('categoryId', '==', categoryId),
+        orderBy('publishedAt', 'desc'),
+        limit(5)
+      )
+      const snap = await getDocs(q)
+      docs = snap.docs.map(mapDoc)
+    } catch {
+      const q = query(
+        collection(db, Collections.NEWS),
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+        limit(30)
+      )
+      const snap = await getDocs(q)
+      docs = snap.docs
+        .map(mapDoc)
+        .filter((item) => item.categoryId === categoryId)
+        .slice(0, 5)
+    }
+  } else {
+    const q = query(
+      collection(db, Collections.NEWS),
+      where('status', '==', 'published'),
+      orderBy('publishedAt', 'desc'),
+      limit(5)
+    )
+    const snap = await getDocs(q)
+    docs = snap.docs.map(mapDoc)
+  }
+
+  return docs.filter((item) => item.categoryId !== 'son-dakika')
+}
+
+export function NewsSlider({ categoryId, initialItems, children }: NewsSliderProps) {
+  const [interactive, setInteractive] = useState(false)
   const [items, setItems] = useState<FeedSliderItem[]>(initialItems ?? [])
   const [loading, setLoading] = useState(!initialItems?.length)
   const [current, setCurrent] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const touchStartX = useRef<number | null>(null)
-  // Track which items had image fetched to avoid re-fetching
   const fetchedRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    setInteractive(true)
+  }, [])
 
   useEffect(() => {
     if (initialItems?.length) return
@@ -75,45 +118,8 @@ export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
 
     async function load() {
       try {
-        let docs: FeedSliderItem[] = []
-
-        if (categoryId) {
-          try {
-            const q = query(
-              collection(db, Collections.NEWS),
-              where('status', '==', 'published'),
-              where('categoryId', '==', categoryId),
-              orderBy('publishedAt', 'desc'),
-              limit(5)
-            )
-            const snap = await getDocs(q)
-            docs = snap.docs.map(mapDoc)
-          } catch {
-            const q = query(
-              collection(db, Collections.NEWS),
-              where('status', '==', 'published'),
-              orderBy('publishedAt', 'desc'),
-              limit(30)
-            )
-            const snap = await getDocs(q)
-            docs = snap.docs
-              .map(mapDoc)
-              .filter((item) => item.categoryId === categoryId)
-              .slice(0, 5)
-          }
-        } else {
-          const q = query(
-            collection(db, Collections.NEWS),
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(5)
-          )
-          const snap = await getDocs(q)
-          docs = snap.docs.map(mapDoc)
-        }
-
-        const filtered = docs.filter((item) => item.categoryId !== 'son-dakika')
-        if (!cancelled) setItems(filtered)
+        const docs = await fetchSliderItems(categoryId)
+        if (!cancelled) setItems(docs)
       } catch {
         // silently fail
       } finally {
@@ -121,11 +127,12 @@ export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
       }
     }
 
-    load()
-    return () => { cancelled = true }
+    void load()
+    return () => {
+      cancelled = true
+    }
   }, [categoryId, initialItems])
 
-  // Defer og:image fetch until after LCP window
   useEffect(() => {
     if (items.length === 0) return
 
@@ -160,7 +167,9 @@ export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
   useEffect(() => {
     if (items.length < 2) return
     timerRef.current = setInterval(next, AUTOPLAY_MS)
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
   }, [items.length, next])
 
   const resetTimer = () => {
@@ -168,9 +177,18 @@ export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
     timerRef.current = setInterval(next, AUTOPLAY_MS)
   }
 
-  const handlePrev = () => { prev(); resetTimer() }
-  const handleNext = () => { next(); resetTimer() }
-  const handleDot = (i: number) => { goTo(i); resetTimer() }
+  const handlePrev = () => {
+    prev()
+    resetTimer()
+  }
+  const handleNext = () => {
+    next()
+    resetTimer()
+  }
+  const handleDot = (i: number) => {
+    goTo(i)
+    resetTimer()
+  }
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null
@@ -178,37 +196,32 @@ export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
   const onTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return
     const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current
-    if (Math.abs(dx) > 40) { dx < 0 ? handleNext() : handlePrev() }
+    if (Math.abs(dx) > 40) {
+      dx < 0 ? handleNext() : handlePrev()
+    }
     touchStartX.current = null
+  }
+
+  if (!interactive && children) {
+    return <>{children}</>
   }
 
   if (loading) {
     return (
       <div
-        className="animate-pulse bg-[rgb(var(--color-surface))]"
-        style={{
-          margin: '0 calc(-1 * var(--layout-gutter))',
-          width: 'calc(100% + 2 * var(--layout-gutter))',
-          height: SLIDER_HEIGHT,
-        }}
+        className={`animate-pulse bg-[rgb(var(--color-surface))] ${SLIDER_HEIGHT_CLASS}`}
+        style={SLIDER_OUTER_STYLE}
+        aria-hidden
       />
     )
   }
 
   if (items.length === 0) return null
 
-  const item = items[current]!
-
   return (
-    <div
-      style={{
-        margin: '0 calc(-1 * var(--layout-gutter))',
-        width: 'calc(100% + 2 * var(--layout-gutter))',
-      }}
-    >
+    <div style={SLIDER_OUTER_STYLE}>
       <div
-        className="relative select-none overflow-hidden"
-        style={{ height: SLIDER_HEIGHT }}
+        className={`relative select-none overflow-hidden ${SLIDER_HEIGHT_CLASS}`}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -223,31 +236,24 @@ export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
             aria-hidden={i !== current}
           >
             {it.imageUrl ? (
-              <Image
+              <SliderImage
                 src={it.imageUrl}
                 alt={it.title}
-                fill
-                className="object-cover"
-                sizes="100vw"
                 priority={i === 0}
-                fetchPriority={i === 0 ? 'high' : 'auto'}
-                unoptimized
               />
             ) : (
-              /* Görsel yokken: blurlu koyu arka plan + büyük harf */
               <div className="h-full w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900">
                 <div
                   className="absolute inset-0 opacity-10"
                   style={{
-                    backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)',
+                    backgroundImage:
+                      'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)',
                     backgroundSize: '20px 20px',
                   }}
                 />
               </div>
             )}
-            {/* Gradient overlay — daha güçlü altta */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
-            {/* Title area */}
             <div className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-16">
               {it.categoryId && (
                 <span className="mb-3 inline-block rounded-sm bg-[rgb(var(--color-brand))] px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-white">
@@ -261,7 +267,6 @@ export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
           </Link>
         ))}
 
-        {/* Arrows */}
         {items.length > 1 && (
           <>
             <button
@@ -284,7 +289,6 @@ export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
         )}
       </div>
 
-      {/* Dot indicators */}
       {items.length > 1 && (
         <div className="flex items-center justify-center gap-1.5 py-2.5">
           {items.slice(0, Math.min(items.length, 15)).map((_, i) => (

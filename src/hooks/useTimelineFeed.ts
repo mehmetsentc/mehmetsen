@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
-import { postService } from '@/services/postService'
-import { followService } from '@/services/followService'
 import { annotateTimelinePosts } from '@/lib/newsMapper'
 import { isFirestoreInternalError } from '@/lib/firestoreQueue'
 import type { FeedSource } from '@/lib/feedSource'
@@ -15,6 +13,14 @@ import type { TimelinePost } from '@/types/post'
 
 // Longer poll interval on mobile to save battery & Firestore reads
 const LIVE_POLL_MS = typeof window !== 'undefined' && window.innerWidth < 768 ? 60_000 : 30_000
+/** Defer Firestore live subscription until after LCP window. */
+const LIVE_SUBSCRIBE_DEFER_MS = 4_000
+
+let postServiceModule: Promise<typeof import('@/services/postService')> | null = null
+function loadPostService() {
+  postServiceModule ??= import('@/services/postService')
+  return postServiceModule.then((m) => m.postService)
+}
 
 function toFeedError(error: unknown): string {
   if (isFirestoreInternalError(error)) {
@@ -101,6 +107,7 @@ export function useTimelineFeed(
 
   const loadFollowing = useCallback(async (uid: string) => {
     try {
+      const { followService } = await import('@/services/followService')
       const following = await followService.getFollowingUsernames(uid)
       followingRef.current = following
       setPosts((prev) => annotateTimelinePosts(prev, following))
@@ -158,6 +165,7 @@ export function useTimelineFeed(
       const source = feedSourceRef.current
       const timelineOptions = toTimelineOptions(cat, source, userCityRef.current)
 
+      const postService = await loadPostService()
       const result = await postService.getNewsTimeline(cursor, timelineOptions)
 
       const annotated = annotateTimelinePosts(result.posts, followingRef.current)
@@ -258,8 +266,8 @@ export function useTimelineFeed(
     const startPolling = () => {
       if (pollTimer || cancelled) return
       pollTimer = setInterval(() => {
-        void postService
-          .getNewsTimeline(undefined, timelineOptions)
+        void loadPostService()
+          .then((postService) => postService.getNewsTimeline(undefined, timelineOptions))
           .then((result) => {
             if (result.posts.length > 0) {
               prependLivePosts(result.posts)
@@ -272,7 +280,9 @@ export function useTimelineFeed(
     const startLive = () => {
       if (cancelled) return
 
-      unsubscribe = postService.subscribeNewsTimeline(
+      void loadPostService().then((postService) => {
+        if (cancelled) return
+        unsubscribe = postService.subscribeNewsTimeline(
         timelineOptions,
         (livePosts) => {
           const notify = liveReadyRef.current
@@ -285,6 +295,7 @@ export function useTimelineFeed(
           startPolling()
         }
       )
+      })
     }
 
     // Pause polling when tab is hidden (saves Firestore reads on mobile)
@@ -298,7 +309,7 @@ export function useTimelineFeed(
     document.addEventListener('visibilitychange', handleVisibility)
 
     // Defer live subscription so route transitions stay instant.
-    deferTimer = setTimeout(startLive, 0)
+    deferTimer = setTimeout(startLive, LIVE_SUBSCRIBE_DEFER_MS)
 
     return () => {
       cancelled = true
