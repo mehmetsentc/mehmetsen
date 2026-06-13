@@ -1,12 +1,15 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Suspense } from 'react'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import { WorldCupStrip } from '@/components/sports/WorldCupStrip'
 import { MatchResults } from '@/components/sports/MatchResults'
 import { SuperLigTable } from '@/components/sports/SuperLigTable'
 import { TransferStrip } from '@/components/sports/TransferStrip'
-
+import { getSubcategories } from '@/constants/config'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
+
+const SPOR_SUBCATEGORIES = getSubcategories('spor')
 
 export const revalidate = 60
 
@@ -39,6 +42,26 @@ export default function SporPage() {
 
 
 
+
+      {/* Spor alt kategorileri */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Link
+          href="/kategori/spor"
+          className="rounded-full px-3 py-1 text-xs font-semibold"
+          style={{ backgroundColor: '#10B98120', color: '#10B981', border: '1px solid #10B98140' }}
+        >
+          Tümü
+        </Link>
+        {SPOR_SUBCATEGORIES.map((sub) => (
+          <Link
+            key={sub.id}
+            href={`/kategori/${sub.slug}`}
+            className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-xs font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] transition-colors"
+          >
+            {sub.name}
+          </Link>
+        ))}
+      </div>
 
       {/* 🏆 Dünya Kupası yatay kaydırma şeridi */}
       <WorldCupStrip />

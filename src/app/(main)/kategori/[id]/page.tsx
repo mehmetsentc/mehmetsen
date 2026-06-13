@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { Suspense } from 'react'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, getSubcategories } from '@/constants/config'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
 
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
@@ -40,6 +41,8 @@ export default async function CategoryPage({ params }: Props) {
   const cat = getCategoryMeta(id)
   if (!cat) notFound()
 
+  const subcategories = getSubcategories(cat.id)
+
   return (
     <div className="w-full">
       {/* Category header */}
@@ -57,8 +60,27 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       </div>
 
-
-
+      {/* Subcategory chips — shown only for parent categories */}
+      {subcategories.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Link
+            href={`/kategori/${cat.slug}`}
+            className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-xs font-semibold"
+            style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+          >
+            Tümü
+          </Link>
+          {subcategories.map((sub) => (
+            <Link
+              key={sub.id}
+              href={`/kategori/${sub.slug}`}
+              className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-xs font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] transition-colors"
+            >
+              {sub.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* News feed */}
       <Suspense

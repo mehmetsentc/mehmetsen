@@ -19,28 +19,52 @@ const CATEGORIES = [
   'dunya',
   'ekonomi',
   'spor',
+  'futbol',
+  'basketbol',
+  'voleybol',
+  'hentbol',
+  'atletizm',
+  'gures',
   'teknoloji',
   'saglik',
   'bilim',
   'magazin',
   'kultur',
+  'sinema',
+  'tiyatro',
+  'konser',
+  'festival',
+  'gastronomi',
+  'otomobil',
   'yerel-haber',
 ] as const
 
 export type NewsCategory = (typeof CATEGORIES)[number]
 
 const CATEGORY_DESCRIPTIONS: Record<NewsCategory, string> = {
-  gundem:       'Genel gündem, yerel yönetim, sosyal, turizm, çevre, belediye haberleri',
-  siyaset:      'Siyasi partiler, seçimler, meclis, hükümet, Erdoğan, CHP, AKP, MHP politikası',
-  dunya:        'Uluslararası haberler, yabancı ülkeler, savaş, diplomasi, NATO, AB',
-  ekonomi:      'Ekonomi, borsa, döviz, faiz, enflasyon, şirket haberleri, finans, kripto',
-  spor:         'Futbol, basketbol, atletizm, olimpiyat, transfer, maç sonuçları',
-  teknoloji:    'Teknoloji, yapay zeka, yazılım, internet, telefon, bilgisayar',
-  saglik:       'Sağlık, hastalık, ilaç, hastane, tıp, pandemi, beslenme',
-  bilim:        'Bilim, uzay, NASA, araştırma, keşif, iklim, çevre bilimi',
-  magazin:      'Ünlüler, dizi oyuncuları, film, müzik, moda, ilişki, skandal, magazin',
-  kultur:       'Kültür, sanat, müze, edebiyat, tiyatro, mimari, gelenek',
-  'yerel-haber':'Belirli bir şehir/ilçeye ait yerel haber (şehir adı geçiyor)',
+  gundem:        'Genel gündem, sosyal, turizm, çevre, belediye, yerel yönetim haberleri',
+  siyaset:       'Siyasi partiler, seçimler, meclis, hükümet, cumhurbaşkanı, CHP, AKP, MHP politikası',
+  dunya:         'Uluslararası haberler, yabancı ülkeler, savaş, diplomasi, NATO, AB, BM',
+  ekonomi:       'Ekonomi, borsa, döviz, faiz, enflasyon, şirket, finans, kripto para',
+  spor:          'Genel spor haberleri (branş belli değilse), olimpiyat açılış/kapanış gibi',
+  futbol:        'Futbol maçları, gol, lig, transfer, FIFA, UEFA, Süper Lig, Şampiyonlar Ligi',
+  basketbol:     'Basketbol haberleri, NBA, EuroLeague, FIBA, Türkiye basketbol ligi',
+  voleybol:      'Voleybol haberleri, CEV, FIVB, Türkiye voleybol ligi',
+  hentbol:       'Hentbol haberleri, EHF, Türkiye hentbol ligi',
+  atletizm:      'Atletizm, koşu, maraton, olimpiyat atletizm, dünya şampiyonası',
+  gures:         'Güreş haberleri, wrestling, dünya güreş şampiyonası',
+  teknoloji:     'Teknoloji, yapay zeka, yazılım, internet, telefon, bilgisayar, donanım',
+  saglik:        'Sağlık, hastalık, ilaç, hastane, tıp, pandemi, beslenme, diyet',
+  bilim:         'Bilim, uzay, NASA, araştırma, keşif, iklim, çevre bilimi, fizik, kimya',
+  magazin:       'Ünlüler, dizi/film oyuncuları, müzik yıldızları, moda, ilişki, skandal, dedikodu',
+  kultur:        'Genel kültür-sanat, müze, edebiyat, kitap, mimari, gelenek (branş belli değilse)',
+  sinema:        'Sinema filmleri, vizyon, oyuncu/yönetmen haberleri, film ödülleri (Oscar vb.)',
+  tiyatro:       'Tiyatro oyunları, sahne, piyes, opera, bale haberleri',
+  konser:        'Konser, müzik etkinlikleri, turne, albüm çıkışları, müzik festivallerine katılım',
+  festival:      'Kültür/sanat festivalleri, film festivali (Cannes, Berlin, İstanbul Film Festivali)',
+  gastronomi:    'Yemek, tarif, restoran haberleri, şef, Michelin yıldızı, mutfak kültürü, foodie',
+  otomobil:      'Araba, araç, otomobil, motosiklet, trafik, elektrikli araç, TOGG, yeni model tanıtımı',
+  'yerel-haber': 'Belirli bir şehir/ilçeye ait yerel haber (tek şehir adı geçiyor)',
 }
 
 export interface ClassifierResult {
@@ -73,17 +97,22 @@ export async function classifyArticleCategory(
 BAŞLIK: ${title}
 İÇERİK (ilk 300 kelime): ${content.slice(0, 1500)}
 
-MEVCUT KATEGORİ (kural-tabanlı sistem tarafından atandı): ${currentCategory}
+MEVCUT KATEGORİ (önceki sistem tarafından atandı, yanlış olabilir): ${currentCategory}
 
 KATEGORİ SEÇENEKLERİ:
 ${categoryList}
 
-KURALLAR:
-- Haberin GERÇEK içeriğine bak, kaynak adını (Milliyet Magazin, Sabah Spor vb.) göz önünde bulundurma
-- Eğer haber bir şehirde geçen turizm/yönetim/çevre/sosyal konuysa → gundem veya yerel-haber
-- Eğer haber ünlü kişi/dizi/film/ilişki hakkındaysa → magazin
-- Mevcut kategori doğruysa onu onayla
-- Sadece emin olduğunda farklı kategori öner (confidence ≥ 80)
+TEMEL KURALLAR (hepsini uygula):
+1. KAYNAK ADINI GÖRMEZDEN GEL — "Milliyet Magazin", "Sabah Spor", "Hürriyet Otomobil" gibi kaynak isimleri kategoriye etki ETMEMELİ. Haberin GERÇEK içeriği her şeyi belirler.
+2. Siyasi/meclis/seçim/hükümet içeriği → mutlaka "siyaset" (kaynak spor gazetesi bile olsa)
+3. Yabancı ülke/savaş/diplomasi haberi → mutlaka "dunya"
+4. Ekonomi/borsa/döviz/şirket haberi → mutlaka "ekonomi"
+5. Futbol maçı/gol/lig/transfer → "futbol" (genel "spor" değil)
+6. Yemek/restoran/şef/tarif haberi → "gastronomi"
+7. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil"
+8. Sinema filmi/vizyona girenler → "sinema", tiyatro oyunu → "tiyatro", konser haberi → "konser"
+9. Magazin = SADECE ünlülerin kişisel hayatı, ilişkisi, skandalı, dedikodu
+10. Mevcut kategori doğruysa onayla, yanlışsa düzelt
 
 JSON formatında yanıt ver:
 {"categoryId": "kategori-adı", "confidence": 85, "reason": "kısa açıklama"}`

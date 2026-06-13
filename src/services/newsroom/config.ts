@@ -105,6 +105,16 @@ export const FINANS_SOURCE_IDS = [
   'bloomberght', 'dunya-ekonomi', 'ntv-ekonomi',
 ] as const
 
+/** Gastronomi kaynakları — yemek, restoran, mutfak haberleri. */
+export const GASTRONOMI_SOURCE_IDS = [
+  'gastronomi-google-news', 'lezzet-com', 'yemek-com', 'milliyet-gastronomi', 'hurriyet-gastronomi',
+] as const
+
+/** Otomobil kaynakları — araç, araba, trafik, elektrikli araç haberleri. */
+export const OTOMOBIL_SOURCE_IDS = [
+  'otomobil-google-news', 'oto-com-tr', 'otomobilhaber', 'arabalar-com-tr', 'hurriyet-otomobil', 'milliyet-otomobil',
+] as const
+
 export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
   'local-news': {
     id: 'local-news',
@@ -302,6 +312,22 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     schedule: 'daily',
     description: 'Düşük güvenilirlikli kategorileri GPT + heuristic ile düzeltir.',
     cronPath: '/api/admin/recategorize',
+  },
+  'gastronomi-news': {
+    id: 'gastronomi-news',
+    name: 'Gastronomi Worker',
+    nameTr: 'Gastronomi Worker',
+    schedule: '30m',
+    description: 'Lezzet.com, Yemek.com, Milliyet/Hürriyet Gastronomi — yemek, restoran, mutfak haberleri.',
+    cronPath: '/api/cron/newsroom/gastronomi',
+  },
+  'otomobil-news': {
+    id: 'otomobil-news',
+    name: 'Otomobil Worker',
+    nameTr: 'Otomobil Worker',
+    schedule: '30m',
+    description: 'Oto.com.tr, OtomobilHaber, Arabalar.com.tr, Hürriyet/Milliyet Otomobil — araç ve trafik haberleri.',
+    cronPath: '/api/cron/newsroom/otomobil',
   },
 }
 

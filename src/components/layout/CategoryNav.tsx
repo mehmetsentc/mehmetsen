@@ -57,6 +57,16 @@ const CATEGORIES: Category[] = [
     match: (p) => p === '/kategori/kultur',
   },
   {
+    label: 'Gastronomi',
+    href: '/kategori/gastronomi',
+    match: (p) => p === '/kategori/gastronomi',
+  },
+  {
+    label: 'Otomobil',
+    href: '/kategori/otomobil',
+    match: (p) => p === '/kategori/otomobil',
+  },
+  {
     label: 'Bilim',
     href: '/kategori/bilim',
     match: (p) => p === '/kategori/bilim',

@@ -25,6 +25,33 @@ const CATEGORY_ALIASES: Record<string, string> = {
   'local-news': 'yerel-haber',
   yerel: 'yerel-haber',
   'yerel-haber': 'yerel-haber',
+  gastronomi: 'gastronomi',
+  yemek: 'gastronomi',
+  food: 'gastronomi',
+  otomobil: 'otomobil',
+  automobile: 'otomobil',
+  car: 'otomobil',
+  futbol: 'futbol',
+  football: 'futbol',
+  soccer: 'futbol',
+  basketbol: 'basketbol',
+  basketball: 'basketbol',
+  voleybol: 'voleybol',
+  volleyball: 'voleybol',
+  hentbol: 'hentbol',
+  atletizm: 'atletizm',
+  athletics: 'atletizm',
+  gures: 'gures',
+  wrestling: 'gures',
+  sinema: 'sinema',
+  cinema: 'sinema',
+  film: 'sinema',
+  tiyatro: 'tiyatro',
+  theatre: 'tiyatro',
+  theater: 'tiyatro',
+  konser: 'konser',
+  concert: 'konser',
+  festival: 'festival',
 }
 
 /** Extended categories beyond aiNewsEditor defaults. */
@@ -33,6 +60,18 @@ export const NEWSROOM_CATEGORIES: Record<string, string> = {
   trend: 'Trend',
   influencer: 'Influencer',
   'yerel-haber': 'Yerel Haber',
+  gastronomi: 'Gastronomi',
+  otomobil: 'Otomobil',
+  futbol: 'Futbol',
+  basketbol: 'Basketbol',
+  voleybol: 'Voleybol',
+  hentbol: 'Hentbol',
+  atletizm: 'Atletizm',
+  gures: 'Güreş',
+  sinema: 'Sinema',
+  tiyatro: 'Tiyatro',
+  konser: 'Konser',
+  festival: 'Festival',
 }
 
 const VALID_IDS = new Set(Object.keys(NEWSROOM_CATEGORIES))
@@ -389,20 +428,58 @@ export function normalizeNewsroomCategory(raw?: string): string {
   return 'gundem'
 }
 
+/**
+ * Resolves the final category for a news item.
+ *
+ * Priority:
+ * 1. Hard editor-type locks (local → yerel-haber, trend → trend, influencer → influencer)
+ * 2. If AI identified a specific non-generic category AND it differs from the
+ *    source-level hint, trust the AI (content-first principle).
+ * 3. Source-level forced category as hint (used when AI falls back to 'gundem').
+ *
+ * This prevents magazin/spor/gastronomi sources from forcing category on
+ * political, world, or economy articles that were correctly identified by AI.
+ */
 export function resolveCategoryForEditor(
   aiCategoryId: string,
   editorType: NewsroomEditorType,
   forcedCategoryId?: string
 ): string {
-  if (forcedCategoryId?.trim()) {
-    return normalizeNewsroomCategory(forcedCategoryId)
-  }
-
+  // Hard locks — editor type always wins for these
   if (editorType === 'local') return 'yerel-haber'
   if (editorType === 'trend') return 'trend'
   if (editorType === 'influencer') return 'influencer'
 
-  return normalizeNewsroomCategory(aiCategoryId)
+  const normalizedAi = normalizeNewsroomCategory(aiCategoryId)
+  const normalizedForced = forcedCategoryId?.trim()
+    ? normalizeNewsroomCategory(forcedCategoryId)
+    : null
+
+  if (!normalizedForced) return normalizedAi
+
+  // AI fell back to generic → apply source hint
+  if (normalizedAi === 'gundem') return normalizedForced
+
+  // AI agrees with source hint → use it (may be a subcategory the hint targets)
+  if (normalizedAi === normalizedForced) return normalizedForced
+
+  // AI found a specific non-generic category that differs from the source hint.
+  // Trust AI content analysis over the source-origin hint.
+  // Exception: forced subcategories that belong to the same parent as the AI category
+  // (e.g., AI says 'spor', forced says 'futbol' → prefer the more specific 'futbol').
+  const SPOR_SUBS = new Set(['futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures'])
+  const KULTUR_SUBS = new Set(['sinema', 'tiyatro', 'konser', 'festival'])
+  const isAiSpor = normalizedAi === 'spor' || SPOR_SUBS.has(normalizedAi)
+  const isForcedSpor = normalizedForced === 'spor' || SPOR_SUBS.has(normalizedForced)
+  const isAiKultur = normalizedAi === 'kultur' || KULTUR_SUBS.has(normalizedAi)
+  const isForcedKultur = normalizedForced === 'kultur' || KULTUR_SUBS.has(normalizedForced)
+
+  // Both in the same family → prefer the more specific forced subcategory
+  if (isAiSpor && isForcedSpor) return normalizedForced
+  if (isAiKultur && isForcedKultur) return normalizedForced
+
+  // AI and source disagree on different domains → trust AI
+  return normalizedAi
 }
 
 export interface CategoryValidationInput {

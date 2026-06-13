@@ -43,18 +43,32 @@ KURALLARI:
 - Paragraflar arasında \\n\\n kullan
 - Google News ve Google Discover uyumlu yaz
 
-KATEGORİ KURALLARI:
+KATEGORİ KURALLARI (en spesifik kategoriyi seç):
 - son-dakika: YALNIZCA deprem, büyük afet, darbe girişimi, suikast
-- teknoloji: Apple, iOS, Android, yapay zeka, yazılım, donanım
 - siyaset: seçim, meclis, parti, cumhurbaşkanı, bakan
 - ekonomi: borsa, döviz, faiz, enflasyon, şirket
-- spor: maç, lig, transfer, sporcu — isBreaking=false
-- saglik: hastalık, ilaç, aşı, hastane
+- teknoloji: Apple, iOS, Android, yapay zeka, yazılım, donanım, bilgisayar
+- saglik: hastalık, ilaç, aşı, hastane, tıp
 - dunya: yurt dışı olaylar, uluslararası haberler
-- kultur: sinema, tiyatro, müzik, sanat
-- magazin: ünlüler, dedikodu — isBreaking=false
+- magazin: ünlüler, dedikodu, moda — isBreaking=false
 - gundem: diğer Türkiye haberleri
 - yerel-haber: tek bir il/ilçe haberi
+- gastronomi: yemek, restoran, mutfak, tarif, şef, gastronomi
+- otomobil: araç, araba, otomobil, motosiklet, trafik, elektrikli araç
+- SPOR alt kategoriler (maç/lig/sporcu haberleri için — isBreaking=false):
+  · futbol: futbol, lig, gol, maç, transfer (futbol)
+  · basketbol: basketbol, NBA, EuroLeague
+  · voleybol: voleybol
+  · hentbol: hentbol
+  · atletizm: koşu, atletizm, olimpiyat
+  · gures: güreş, wrestling
+  · spor: diğer spor haberleri (genel)
+- KÜLTÜR alt kategoriler:
+  · sinema: film, sinema, vizyona giren, oyuncu, yönetmen
+  · tiyatro: tiyatro, sahne, oyun, piyes
+  · konser: konser, müzik, festival, turnesi
+  · festival: kültür festivali, sanat festivali
+  · kultur: genel kültür-sanat haberleri
 
 ÇIKTI: Yalnızca geçerli JSON döndür, başka hiçbir şey ekleme.`
 
@@ -88,7 +102,7 @@ JSON şeması (tüm alanları doldur):
   "summary": "string (haber özeti, 120-160 karakter)",
   "spot": "string (gazetecilik lideri, Kim/Ne/Nerede/Ne zaman/Neden/Nasıl, 60-120 kelime)",
   "content": "string (tam haber, 400-1000 kelime, paragraflar \\n\\n ile)",
-  "category": "string (son-dakika|gundem|siyaset|ekonomi|spor|teknoloji|saglik|dunya|kultur|magazin|bilim|yerel-haber|trend|canakkale)",
+  "category": "string (son-dakika|gundem|siyaset|ekonomi|spor|futbol|basketbol|voleybol|hentbol|atletizm|gures|teknoloji|saglik|dunya|kultur|sinema|tiyatro|konser|festival|magazin|bilim|yerel-haber|gastronomi|otomobil|trend|canakkale)",
   "subCategory": "string veya null",
   "newsType": "string (breaking|feature|analysis|report|opinion|update)",
   "sentiment": "string (positive|negative|neutral)",

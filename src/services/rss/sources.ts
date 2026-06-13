@@ -1019,6 +1019,122 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     maxItemsPerRun: 2,
     enabled: false, // Hollywood odaklı → Türk magazin kitlesiyle alakasız
   },
+
+  // ── Gastronomi ───────────────────────────────────────────────────────────
+  {
+    id: 'gastronomi-google-news',
+    label: 'Gastronomi (Google News)',
+    feedUrl: 'https://news.google.com/rss/search?q=yemek+restoran+mutfak+şef+tarif&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=gastronomi+türk+mutfağı+restoran&hl=tr&gl=TR&ceid=TR:tr',
+      'https://news.google.com/rss/search?q=yemek+tarifi+şef+michelin&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'lezzet-com',
+    label: 'Lezzet.com',
+    feedUrl: 'https://www.lezzet.com.tr/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:lezzet.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'yemek-com',
+    label: 'Yemek.com',
+    feedUrl: 'https://www.yemek.com/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:yemek.com+tarif+yemek&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-gastronomi',
+    label: 'Milliyet Gastronomi',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssnew/yasamrss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:milliyet.com.tr+restoran+yemek+gastronomi&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'hurriyet-gastronomi',
+    label: 'Hürriyet Gastronomi',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/yazarlar',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:hurriyet.com.tr+restoran+yemek+gastronomi&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+
+  // ── Otomobil ─────────────────────────────────────────────────────────────
+  {
+    id: 'otomobil-google-news',
+    label: 'Otomobil (Google News)',
+    feedUrl: 'https://news.google.com/rss/search?q=otomobil+araba+araç+model&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=elektrikli+araç+tesla+togg+otomobil&hl=tr&gl=TR&ceid=TR:tr',
+      'https://news.google.com/rss/search?q=otomobil+fiyat+kampanya+sıfır+araba&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'oto-com-tr',
+    label: 'Oto.com.tr',
+    feedUrl: 'https://www.oto.com.tr/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:oto.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'otomobilhaber',
+    label: 'OtomobilHaber.com',
+    feedUrl: 'https://www.otomobilhaber.com/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:otomobilhaber.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'arabalar-com-tr',
+    label: 'Arabalar.com.tr',
+    feedUrl: 'https://www.arabalar.com.tr/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:arabalar.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'hurriyet-otomobil',
+    label: 'Hürriyet Otomobil',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/otomobil',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:hurriyet.com.tr+otomobil+araba&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-otomobil',
+    label: 'Milliyet Otomobil',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssnew/otomobilrss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:milliyet.com.tr+otomobil+araba+elektrikli&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
 ]
 
 function envFeedOverride(sourceId: string): string | undefined {
