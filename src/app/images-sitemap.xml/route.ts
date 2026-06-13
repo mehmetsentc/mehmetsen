@@ -9,7 +9,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+// force-dynamic kaldırıldı — ISR 1 saat yeterli
 export const revalidate = 3600
 
 function escapeXml(s: string): string {

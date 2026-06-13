@@ -9,8 +9,8 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
-export const revalidate = 300 // refresh every 5 minutes
+// force-dynamic kaldırıldı — her bot isteğinde 1000 doc okutuyordu; ISR 5 dk yeterli
+export const revalidate = 300
 
 function escapeXml(s: string): string {
   return s

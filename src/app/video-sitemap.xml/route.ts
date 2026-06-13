@@ -9,7 +9,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+// force-dynamic kaldırıldı — her bot isteğinde 500 doc okutuyordu; ISR 30 dk yeterli
 export const revalidate = 1800
 
 function escapeXml(s: string): string {

@@ -11,7 +11,7 @@ import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
 
 export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+// force-dynamic kaldırıldı — her RSS reader isteğinde 100 doc okutuyordu; ISR 5 dk yeterli
 export const revalidate = 300
 
 export async function GET() {

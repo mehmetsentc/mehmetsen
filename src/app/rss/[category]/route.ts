@@ -12,7 +12,7 @@ import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
 
 export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+// force-dynamic kaldırıldı — ISR ile cache edilecek
 export const revalidate = 300
 
 export async function generateStaticParams() {

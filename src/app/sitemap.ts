@@ -5,7 +5,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 
-export const dynamic = 'force-dynamic'
+// ISR: saatte bir yenile — force-dynamic ile birlikte kullanılamaz (her istekte 500 doc okur)
 export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

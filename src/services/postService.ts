@@ -236,53 +236,15 @@ export const postService = {
         hasMore: snap.docs.length === PAGE_SIZE,
       }
     } catch (newsError) {
-      console.warn('[postService] news timeline failed, ordered fallback:', newsError)
-
-      // The fallback must remain cursor-aware, otherwise every `loadMore`
-      // re-fetches the same first page → duplicate posts / infinite scroll.
-      // We still order by `createdAt` (a single-field index that always
-      // exists) and `startAfter` the same cursor used by the primary query.
-      const FALLBACK_FETCH = PAGE_SIZE * 3
-      const constraints: Parameters<typeof query>[1][] = [orderBy('createdAt', 'desc')]
-      if (lastDoc) constraints.push(startAfter(lastDoc))
-      constraints.push(limit(FALLBACK_FETCH))
-
-      const snap = await withTimeout(
-        enqueueFirestoreRead(() =>
-          getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints))
-        ),
-        QUERY_TIMEOUT_MS,
-        'news-timeline-fallback'
-      )
-
-      let posts = mapNewsSnapshot(snap.docs).filter((p) => isPubliclyVisibleStatus(p.status))
-
-      if (options?.citySlug) {
-        posts = posts.filter((p) => p.citySlug === options.citySlug)
-      } else if (
-        options?.categoryId === YEREL_HABER_CATEGORY &&
-        options?.preferredCitySlug?.trim()
-      ) {
-        posts = posts.filter((p) => p.citySlug === options.preferredCitySlug?.trim())
-      } else if (options?.categoryId === 'son-dakika') {
-        posts = posts.filter((p) => p.isBreaking === true || p.categoryId === 'son-dakika')
-      } else if (options?.categoryId) {
-        posts = posts.filter((p) => p.categoryId === options.categoryId)
+      // RESOURCE_EXHAUSTED (code 8): Firestore quota doldu — fallback query da başarısız olur,
+      // boş sayfa dön ki site çöküp error sayfası göstermesin.
+      const errCode = (newsError as { code?: number }).code
+      if (errCode === 8) {
+        console.warn('[postService] Firestore RESOURCE_EXHAUSTED — returning empty timeline')
+        return { posts: [], lastDoc: null, hasMore: false }
       }
-
-      if (options?.feedSource) {
-        posts = filterPostsByFeedSource(posts, options.feedSource)
-      }
-
-      posts = applyTimelinePostFilters(posts, options)
-
-      // Advance the cursor by the full raw batch (not the filtered subset) so
-      // the next page continues after everything we've already scanned.
-      return {
-        posts,
-        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length === FALLBACK_FETCH,
-      }
+      console.warn('[postService] news timeline failed, returning empty:', newsError)
+      return { posts: [], lastDoc: null, hasMore: false }
     }
   },
 

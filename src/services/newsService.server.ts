@@ -45,17 +45,15 @@ async function queryPublishedByCategory(
       .get()
     return snap.docs
   } catch (error) {
-    console.warn('[newsService.server] category query failed, fallback:', error)
-    const snap = await db
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .orderBy('publishedAt', 'desc')
-      .limit(itemLimit * 3)
-      .get()
-    return snap.docs.filter((doc) => {
-      const data = doc.data() as NewsDocument
-      return (data.categoryId?.trim() || data.category?.trim()) === categoryId
-    })
+    // RESOURCE_EXHAUSTED (Firestore kota doldu) veya başka Firestore hatası —
+    // fallback query yapmak kotayı daha da zorlar, boş dizi döndür.
+    const code = (error as { code?: number }).code
+    if (code === 8) {
+      console.warn('[newsService.server] Firestore quota exceeded (RESOURCE_EXHAUSTED) — returning []')
+      return []
+    }
+    console.warn('[newsService.server] category query failed — returning []:', error)
+    return []
   }
 }
 
@@ -86,9 +84,14 @@ export async function getFeedTimelinePosts(
 }
 
 export async function getNewsById(id: string): Promise<Post | null> {
-  const snap = await getAdminFirestore().collection(NEWS_COLLECTION).doc(id).get()
-  if (!snap.exists) return null
-  return newsDocToPost(snap.id, snap.data() as NewsDocument)
+  try {
+    const snap = await getAdminFirestore().collection(NEWS_COLLECTION).doc(id).get()
+    if (!snap.exists) return null
+    return newsDocToPost(snap.id, snap.data() as NewsDocument)
+  } catch (error) {
+    console.warn('[newsService.server] getNewsById failed:', error)
+    return null
+  }
 }
 
 export async function getNewsBySlug(slug: string): Promise<Post | null> {
