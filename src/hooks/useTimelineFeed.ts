@@ -58,11 +58,23 @@ function toTimelineOptions(
 export function useTimelineFeed(
   categoryId?: string,
   feedSource: FeedSource = 'nahaber',
-  userCitySlug?: string | null
+  userCitySlug?: string | null,
+  options?: {
+    initialPosts?: TimelinePost[]
+    initialCategoryId?: string
+    initialFeedSource?: FeedSource
+  }
 ) {
   const { user } = useAuth()
-  const [posts, setPosts] = useState<TimelinePost[]>([])
-  const [loading, setLoading] = useState(true)
+  const canUseServerSeed =
+    Boolean(options?.initialPosts?.length) &&
+    categoryId === options?.initialCategoryId &&
+    feedSource === (options?.initialFeedSource ?? 'nahaber')
+
+  const [posts, setPosts] = useState<TimelinePost[]>(
+    canUseServerSeed ? options!.initialPosts! : []
+  )
+  const [loading, setLoading] = useState(!canUseServerSeed)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
@@ -73,9 +85,14 @@ export function useTimelineFeed(
   const userCityRef = useRef(userCitySlug)
   const userIdRef = useRef(user?.uid)
   const retryOnceRef = useRef(false)
-  const initialLoadDoneRef = useRef(false)
-  const newestSeenAtRef = useRef(0)
+  const initialLoadDoneRef = useRef(canUseServerSeed)
+  const newestSeenAtRef = useRef(
+    canUseServerSeed
+      ? Math.max(...options!.initialPosts!.map(postTimestamp), 0)
+      : 0
+  )
   const liveReadyRef = useRef(false)
+  const skipInitialFetchRef = useRef(canUseServerSeed)
 
   categoryRef.current = categoryId
   feedSourceRef.current = feedSource
@@ -206,6 +223,19 @@ export function useTimelineFeed(
   useEffect(() => {
     let cancelled = false
 
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false
+      const uid = userIdRef.current
+      if (uid) {
+        queueMicrotask(() => {
+          if (!cancelled) void loadFollowing(uid)
+        })
+      }
+      return () => {
+        cancelled = true
+      }
+    }
+
     queueMicrotask(() => {
       if (cancelled) return
       void fetchPostsRef.current(true)
@@ -214,7 +244,7 @@ export function useTimelineFeed(
     return () => {
       cancelled = true
     }
-  }, [categoryId, feedSource, user?.uid, userCitySlug])
+  }, [categoryId, feedSource, user?.uid, userCitySlug, loadFollowing])
 
   useEffect(() => {
     if (!initialLoadDoneRef.current || loading) return

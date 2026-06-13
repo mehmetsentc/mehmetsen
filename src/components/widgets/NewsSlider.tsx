@@ -14,24 +14,17 @@ import {
 } from 'firebase/firestore'
 import { db, Collections } from '@/lib/firebase/firestore'
 
-interface SliderItem {
-  id: string
-  title: string
-  slug: string
-  imageUrl: string | null
-  categoryId: string
-  publishedAt: number
-  sourceUrl: string | null
-}
+import type { FeedSliderItem } from '@/types/feedSlider'
 
 interface NewsSliderProps {
   categoryId?: string
+  initialItems?: FeedSliderItem[]
 }
 
 const AUTOPLAY_MS = 5000
 const SLIDER_HEIGHT = '32rem'
 
-function mapDoc(d: { id: string; data: () => Record<string, unknown> }): SliderItem {
+function mapDoc(d: { id: string; data: () => Record<string, unknown> }): FeedSliderItem {
   const data = d.data()
   // Try multiple image fields in priority order
   const raw =
@@ -66,9 +59,9 @@ async function fetchOgImage(sourceUrl: string): Promise<string | null> {
   }
 }
 
-export function NewsSlider({ categoryId }: NewsSliderProps) {
-  const [items, setItems] = useState<SliderItem[]>([])
-  const [loading, setLoading] = useState(true)
+export function NewsSlider({ categoryId, initialItems }: NewsSliderProps) {
+  const [items, setItems] = useState<FeedSliderItem[]>(initialItems ?? [])
+  const [loading, setLoading] = useState(!initialItems?.length)
   const [current, setCurrent] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const touchStartX = useRef<number | null>(null)
@@ -76,11 +69,13 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
   const fetchedRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
+    if (initialItems?.length) return
+
     let cancelled = false
 
     async function load() {
       try {
-        let docs: SliderItem[] = []
+        let docs: FeedSliderItem[] = []
 
         if (categoryId) {
           try {
@@ -89,7 +84,7 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
               where('status', '==', 'published'),
               where('categoryId', '==', categoryId),
               orderBy('publishedAt', 'desc'),
-              limit(20)
+              limit(5)
             )
             const snap = await getDocs(q)
             docs = snap.docs.map(mapDoc)
@@ -98,26 +93,25 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
               collection(db, Collections.NEWS),
               where('status', '==', 'published'),
               orderBy('publishedAt', 'desc'),
-              limit(60)
+              limit(30)
             )
             const snap = await getDocs(q)
             docs = snap.docs
               .map(mapDoc)
               .filter((item) => item.categoryId === categoryId)
-              .slice(0, 20)
+              .slice(0, 5)
           }
         } else {
           const q = query(
             collection(db, Collections.NEWS),
             where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
-            limit(20)
+            limit(5)
           )
           const snap = await getDocs(q)
           docs = snap.docs.map(mapDoc)
         }
 
-        // son-dakika sayfası yok — slider'dan çıkar
         const filtered = docs.filter((item) => item.categoryId !== 'son-dakika')
         if (!cancelled) setItems(filtered)
       } catch {
@@ -129,28 +123,31 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
 
     load()
     return () => { cancelled = true }
-  }, [categoryId])
+  }, [categoryId, initialItems])
 
-  // Lazily fetch og:image for items missing imageUrl
+  // Defer og:image fetch until after LCP window
   useEffect(() => {
     if (items.length === 0) return
 
-    // Fetch for current + next item proactively
-    const toFetch = [current, (current + 1) % items.length]
+    const timer = setTimeout(() => {
+      const toFetch = [current, (current + 1) % items.length]
 
-    for (const idx of toFetch) {
-      const item = items[idx]
-      if (!item || item.imageUrl || !item.sourceUrl) continue
-      if (fetchedRef.current.has(item.id)) continue
-      fetchedRef.current.add(item.id)
+      for (const idx of toFetch) {
+        const item = items[idx]
+        if (!item || item.imageUrl || !item.sourceUrl) continue
+        if (fetchedRef.current.has(item.id)) continue
+        fetchedRef.current.add(item.id)
 
-      fetchOgImage(item.sourceUrl).then((url) => {
-        if (!url) return
-        setItems((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, imageUrl: url } : it))
-        )
-      })
-    }
+        fetchOgImage(item.sourceUrl).then((url) => {
+          if (!url) return
+          setItems((prev) =>
+            prev.map((it) => (it.id === item.id ? { ...it, imageUrl: url } : it))
+          )
+        })
+      }
+    }, 4000)
+
+    return () => clearTimeout(timer)
   }, [items, current])
 
   const goTo = useCallback((idx: number) => {
@@ -233,6 +230,7 @@ export function NewsSlider({ categoryId }: NewsSliderProps) {
                 className="object-cover"
                 sizes="100vw"
                 priority={i === 0}
+                fetchPriority={i === 0 ? 'high' : 'auto'}
                 unoptimized
               />
             ) : (

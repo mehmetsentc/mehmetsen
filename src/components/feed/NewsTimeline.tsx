@@ -23,11 +23,17 @@ import { slugifyCity } from '@/lib/location'
 
 interface NewsTimelineContentProps {
   categoryParam: string | null
+  initialPosts?: TimelinePost[]
+  initialCategoryId?: string
 }
 
 const MAX_CACHED_TIMELINE = 30
 
-function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
+function NewsTimelineContent({
+  categoryParam,
+  initialPosts,
+  initialCategoryId,
+}: NewsTimelineContentProps) {
   const { user, loading: authLoading } = useAuth()
   const { getCachedFeed, setCachedFeed } = useAppState()
   const feedSource = useFeedStore((s) => s.feedSource)
@@ -49,7 +55,8 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
   const { posts, loading, loadingMore, error, hasMore, loadMore, retry } = useTimelineFeed(
     categoryId ?? undefined,
     feedSource,
-    detectedCitySlug
+    detectedCitySlug,
+    { initialPosts, initialCategoryId, initialFeedSource: 'nahaber' }
   )
 
   const [seededPosts, setSeededPosts] = useState<TimelinePost[]>([])
@@ -184,12 +191,40 @@ function NewsTimelineContent({ categoryParam }: NewsTimelineContentProps) {
   )
 }
 
-function NewsTimelineWithSearchParams({ defaultCategory }: { defaultCategory?: string }) {
+function NewsTimelineWithSearchParams({
+  defaultCategory,
+  initialPosts,
+  initialCategoryId,
+}: {
+  defaultCategory?: string
+  initialPosts?: TimelinePost[]
+  initialCategoryId?: string
+}) {
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get('category') ?? defaultCategory ?? null
-  return <NewsTimelineContent categoryParam={categoryParam} />
+  return (
+    <NewsTimelineContent
+      categoryParam={categoryParam}
+      initialPosts={initialPosts}
+      initialCategoryId={initialCategoryId}
+    />
+  )
 }
 
-export function NewsTimeline({ defaultCategory }: { defaultCategory?: string } = {}) {
-  return <NewsTimelineWithSearchParams defaultCategory={defaultCategory} />
+export function NewsTimeline({
+  defaultCategory,
+  initialPosts,
+  initialCategoryId,
+}: {
+  defaultCategory?: string
+  initialPosts?: TimelinePost[]
+  initialCategoryId?: string
+} = {}) {
+  return (
+    <NewsTimelineWithSearchParams
+      defaultCategory={defaultCategory}
+      initialPosts={initialPosts}
+      initialCategoryId={initialCategoryId}
+    />
+  )
 }

@@ -1,7 +1,89 @@
+import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
+import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
+import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import type { Post } from '@/types/post'
+import type { FeedSliderItem } from '@/types/feedSlider'
+
+export type { FeedSliderItem }
+
+function mapSliderItem(id: string, data: NewsDocument): FeedSliderItem | null {
+  const title = data.title?.trim()
+  if (!title) return null
+
+  const raw =
+    data.coverImageUrl?.trim() ||
+    data.thumbnail?.trim() ||
+    null
+
+  return {
+    id,
+    title,
+    slug: data.slug?.trim() || id,
+    imageUrl: raw && raw.length > 5 ? raw : null,
+    categoryId: data.categoryId?.trim() || data.category?.trim() || '',
+    publishedAt: Number(data.publishedAt ?? 0),
+    sourceUrl: data.sourceUrl?.trim() || null,
+  }
+}
+
+async function queryPublishedByCategory(
+  categoryId: string,
+  itemLimit: number
+): Promise<QueryDocumentSnapshot[]> {
+  const db = getAdminFirestore()
+
+  try {
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('categoryId', '==', categoryId)
+      .orderBy('publishedAt', 'desc')
+      .limit(itemLimit)
+      .get()
+    return snap.docs
+  } catch (error) {
+    console.warn('[newsService.server] category query failed, fallback:', error)
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .limit(itemLimit * 3)
+      .get()
+    return snap.docs.filter((doc) => {
+      const data = doc.data() as NewsDocument
+      return (data.categoryId?.trim() || data.category?.trim()) === categoryId
+    })
+  }
+}
+
+export async function getFeedSliderItems(
+  categoryId: string,
+  itemLimit = 5
+): Promise<FeedSliderItem[]> {
+  const docs = await queryPublishedByCategory(categoryId, itemLimit + 8)
+  return docs
+    .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
+    .filter((item): item is FeedSliderItem => item !== null)
+    .filter((item) => item.categoryId !== 'son-dakika')
+    .slice(0, itemLimit)
+}
+
+export async function getFeedTimelinePosts(
+  categoryId: string,
+  itemLimit = 10,
+  feedSource: FeedSource = 'nahaber'
+): Promise<Post[]> {
+  const docs = await queryPublishedByCategory(categoryId, itemLimit + 5)
+  const posts = docs
+    .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+    .filter((post): post is Post => post !== null)
+    .filter((post) => isPubliclyVisibleStatus(post.status))
+
+  return filterPostsByFeedSource(posts, feedSource).slice(0, itemLimit)
+}
 
 export async function getNewsById(id: string): Promise<Post | null> {
   const snap = await getAdminFirestore().collection(NEWS_COLLECTION).doc(id).get()

@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { NewsTimeline } from '@/components/feed/NewsTimeline'
 import { NewsSlider } from '@/components/widgets/NewsSlider'
-import { FinanceTicker } from '@/components/widgets/FinanceTicker'
+import { LazyFinanceTicker } from '@/components/widgets/LazyFinanceTicker'
 import { NewsCardSkeleton } from '@/components/ui/Skeleton'
+import { annotateTimelinePosts } from '@/lib/newsMapper'
+import { getFeedSliderItems, getFeedTimelinePosts } from '@/services/newsService.server'
 
 export const revalidate = 30
 
@@ -12,14 +14,21 @@ export const metadata: Metadata = {
   description: 'Türkiye gündeminden son dakika haberleri — NaHaber',
 }
 
-export default function FeedPage() {
+const FEED_CATEGORY = 'gundem'
+
+export default async function FeedPage() {
+  const [sliderItems, timelinePosts] = await Promise.all([
+    getFeedSliderItems(FEED_CATEGORY, 5),
+    getFeedTimelinePosts(FEED_CATEGORY, 10, 'nahaber'),
+  ])
+
+  const initialPosts = annotateTimelinePosts(timelinePosts, new Set())
+
   return (
     <div className="w-full">
-      {/* Kaydırmalı haber slider — tam genişlik */}
-      <NewsSlider categoryId="gundem" />
+      <NewsSlider categoryId={FEED_CATEGORY} initialItems={sliderItems} />
 
-      {/* Kompakt döviz şeridi — sadece ana sayfada */}
-      <FinanceTicker />
+      <LazyFinanceTicker />
 
       <div className="mt-4" />
 
@@ -32,8 +41,11 @@ export default function FeedPage() {
           </div>
         }
       >
-        {/* Ana sayfa: sadece Gündem haberleri */}
-        <NewsTimeline defaultCategory="gundem" />
+        <NewsTimeline
+          defaultCategory={FEED_CATEGORY}
+          initialPosts={initialPosts}
+          initialCategoryId={FEED_CATEGORY}
+        />
       </Suspense>
     </div>
   )
