@@ -1,23 +1,20 @@
 /**
  * Firebase Storage Uploader — sosyal medya görseli yükleme
  *
- * Buffer'ı Firebase Storage'a `social-images/` klasörüne yükler,
- * genel erişime açar ve public URL döndürür.
+ * Buffer'ı Firebase Storage'a `social-images/` klasörüne yükler
+ * ve Firebase Storage download URL'i döndürür.
+ *
+ * NOT: makePublic() yeni Firebase bucket'larında çalışmaz (uniform ACL).
+ * Bunun yerine Firebase Storage Security Rules ile public read izni verilir
+ * ve URL doğrudan firebasestorage.googleapis.com formatında oluşturulur.
  *
  * Env: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
- * Firebase Admin SDK kullanır (server-side only)
  */
 
 import { getAdminStorage } from '@/lib/firebase/admin'
 
 const FOLDER = 'social-images'
 
-/**
- * Uploads a JPEG buffer to Firebase Storage.
- * @param buffer   JPEG image bytes
- * @param newsId   Firestore document ID (used as filename)
- * @returns Public download URL, or null on failure
- */
 export async function uploadSocialImage(
   buffer: Buffer,
   newsId: string
@@ -36,10 +33,11 @@ export async function uploadSocialImage(
       },
     })
 
-    await file.makePublic()
-
+    // makePublic() yerine Firebase Storage REST URL kullan
+    // Security Rule: match /social-images/{f} { allow read: if true; }
     const bucketName = bucket.name
-    const publicUrl  = `https://storage.googleapis.com/${bucketName}/${filename}`
+    const encodedPath = encodeURIComponent(filename)
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`
 
     console.log(`[storageUploader] uploaded ${filename} → ${publicUrl}`)
     return publicUrl
