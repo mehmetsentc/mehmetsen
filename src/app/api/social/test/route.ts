@@ -75,10 +75,17 @@ async function handleRequest(request: Request) {
       .limit(20)
       .get()
 
-    const candidate = snap.docs.find(d => !d.data().socialPublished)
+    // Görseli olan ilk haberi tercih et
+    const withImage = snap.docs.find(d => {
+      const dd = d.data() as Record<string, unknown>
+      if (dd.socialPublished) return false
+      return ['thumbnail','coverImageUrl','imageUrl','featuredImage','image']
+        .some(k => typeof dd[k] === 'string' && (dd[k] as string).length > 10)
+    })
+    const candidate = withImage ?? snap.docs.find(d => !d.data().socialPublished)
     if (!candidate) {
       return NextResponse.json({
-        error: 'Paylaşılacak Çanakkale haberi bulunamadı. Tüm haberler zaten paylaşılmış olabilir.',
+        error: 'Paylaşılacak Çanakkale haberi bulunamadı.',
       }, { status: 404 })
     }
     docId = candidate.id
