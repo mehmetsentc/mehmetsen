@@ -114,7 +114,7 @@ async function handleRequest(request: Request) {
       hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
       altText:  title,
     }
-    steps.aiContent = 'fallback (Gemini yanıt vermedi)'
+    steps.aiContent = 'fallback (AI yanıt vermedi)'
   } else {
     steps.aiContent = socialContent
   }
