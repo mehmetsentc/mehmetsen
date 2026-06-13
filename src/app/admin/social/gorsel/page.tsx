@@ -13,6 +13,13 @@ import { collection, query, where, orderBy, limit, getDocs } from 'firebase/fire
 import { db } from '@/lib/firebase/firestore'
 import { Download, ExternalLink, ImageIcon, Loader2, RefreshCw } from 'lucide-react'
 
+// Çanakkale il merkezi + tüm ilçeler
+const CANAKKALE_SLUGS = [
+  'canakkale',
+  'biga', 'can', 'yenice', 'bayramic', 'ezine',
+  'ayvacik', 'gokceada', 'bozcaada', 'gelibolu', 'eceabat', 'lapseki',
+]
+
 interface NewsRow {
   id: string
   title: string
@@ -79,6 +86,7 @@ export default function SosyalGorselPage() {
         query(
           collection(db, 'news'),
           where('status', '==', 'published'),
+          where('citySlug', 'in', CANAKKALE_SLUGS),
           where('publishedAt', '>=', cutoff),
           orderBy('publishedAt', 'desc'),
           limit(60)
@@ -144,7 +152,7 @@ export default function SosyalGorselPage() {
             ))}
           </div>
           <p className="mt-2 text-[10px] text-slate-500">
-            {filtered.length} haber · görsel hazır
+            {filtered.length} Çanakkale haberi · görsel hazır
           </p>
         </div>
 
