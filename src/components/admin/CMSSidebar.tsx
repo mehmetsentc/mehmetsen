@@ -9,7 +9,8 @@ import {
   ArrowLeft, Zap, Shield, Radio, TrendingUp, Share2,
   BrainCircuit, ChevronDown, Flame, MapPin, Landmark, Globe,
   Trophy, Cpu, TrendingUp as EkonomiIcon, Heart, FlaskConical,
-  Palette, Star, Tag,
+  Palette, Star, Tag, Utensils, Car, CircleDot, Music, Film,
+  Theater, PartyPopper, Swords,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
@@ -22,12 +23,26 @@ const CATEGORIES = [
   { id: 'siyaset',     label: 'Siyaset',      icon: Landmark,     color: 'text-purple-400' },
   { id: 'yerel-haber', label: 'Yerel Haber',  icon: MapPin,       color: 'text-emerald-400' },
   { id: 'dunya',       label: 'Dünya',        icon: Globe,        color: 'text-slate-400' },
+  // Spor + alt kategoriler
   { id: 'spor',        label: 'Spor',         icon: Trophy,       color: 'text-green-400' },
+  { id: 'futbol',      label: '↳ Futbol',     icon: CircleDot,    color: 'text-green-300' },
+  { id: 'basketbol',   label: '↳ Basketbol',  icon: CircleDot,    color: 'text-green-300' },
+  { id: 'voleybol',    label: '↳ Voleybol',   icon: CircleDot,    color: 'text-green-300' },
+  { id: 'hentbol',     label: '↳ Hentbol',    icon: CircleDot,    color: 'text-green-300' },
+  { id: 'atletizm',    label: '↳ Atletizm',   icon: Zap,          color: 'text-green-300' },
+  { id: 'gures',       label: '↳ Güreş',      icon: Swords,       color: 'text-green-300' },
   { id: 'teknoloji',   label: 'Teknoloji',    icon: Cpu,          color: 'text-blue-400' },
   { id: 'ekonomi',     label: 'Ekonomi',      icon: EkonomiIcon,  color: 'text-yellow-400' },
   { id: 'saglik',      label: 'Sağlık',       icon: Heart,        color: 'text-pink-400' },
   { id: 'bilim',       label: 'Bilim',        icon: FlaskConical, color: 'text-teal-400' },
+  // Kültür + alt kategoriler
   { id: 'kultur',      label: 'Kültür',       icon: Palette,      color: 'text-violet-400' },
+  { id: 'sinema',      label: '↳ Sinema',     icon: Film,         color: 'text-violet-300' },
+  { id: 'tiyatro',     label: '↳ Tiyatro',    icon: Theater,      color: 'text-violet-300' },
+  { id: 'konser',      label: '↳ Konser',     icon: Music,        color: 'text-violet-300' },
+  { id: 'festival',    label: '↳ Festival',   icon: PartyPopper,  color: 'text-violet-300' },
+  { id: 'gastronomi',  label: 'Gastronomi',   icon: Utensils,     color: 'text-orange-400' },
+  { id: 'otomobil',    label: 'Otomobil',     icon: Car,          color: 'text-slate-400' },
   { id: 'magazin',     label: 'Magazin',      icon: Star,         color: 'text-fuchsia-400' },
   { id: 'trend',       label: 'Trend',        icon: Flame,        color: 'text-orange-400' },
 ]
