@@ -7,6 +7,7 @@ import { ROUTES } from '@/constants/routes'
 import { useTimelineFeed } from '@/hooks/useTimelineFeed'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { useAppState } from '@/store/appStateContext'
+import { getCache } from '@/lib/clientCache'
 import { PAGE_CACHE_KEYS, PAGE_CACHE_TTL } from '@/lib/pageCache'
 import { TimelineItem } from './TimelineItem'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
@@ -22,37 +23,43 @@ interface CategoryFeedProps {
 
 export function CategoryFeed({ categoryId }: CategoryFeedProps) {
   const { user } = useAuth()
-  const { getCachedFeed, setCachedFeed } = useAppState()
+  const { setCachedFeed } = useAppState()
   const cacheKey = PAGE_CACHE_KEYS.category(categoryId)
+
+  // Read cache SYNCHRONOUSLY on first render (in-memory Map — zero latency).
+  // Passing as initialPosts triggers canUseServerSeed=true in the hook →
+  // skips the initial Firestore fetch on cache hit, shows content instantly.
+  // The live poll (30–60 s) still runs and prepends new posts with a toast.
+  const [cachedPosts] = useState<TimelinePost[]>(
+    () => getCache<TimelinePost[]>(cacheKey) ?? []
+  )
 
   const { posts, loading, loadingMore, error, hasMore, loadMore, retry } = useTimelineFeed(
     categoryId,
     'nahaber',
     undefined,
+    {
+      initialPosts: cachedPosts,
+      initialCategoryId: categoryId,
+      initialFeedSource: 'nahaber',
+    }
   )
 
-  const [seededPosts, setSeededPosts] = useState<TimelinePost[]>([])
-
-  useEffect(() => {
-    setSeededPosts(getCachedFeed<TimelinePost[]>(cacheKey) ?? [])
-  }, [cacheKey, getCachedFeed])
-
+  // Persist fresh posts to cache for next visit
   useEffect(() => {
     if (loading || posts.length === 0) return
     setCachedFeed(cacheKey, posts.slice(0, MAX_CACHED), PAGE_CACHE_TTL.category)
   }, [posts, loading, cacheKey, setCachedFeed])
 
-  const rawPosts = posts.length > 0 ? posts : seededPosts
-
   const rankedPosts = useMemo(
     () =>
-      rankFeedPosts(rawPosts, {
+      rankFeedPosts(posts, {
         citySlug: user?.citySlug ?? null,
         favoriteCategories: user?.favoriteCategories,
         interests: user?.interests,
         followingUsernames: new Set(),
       }),
-    [rawPosts, user],
+    [posts, user],
   )
 
   const { sentinelRef } = useInfiniteScroll({

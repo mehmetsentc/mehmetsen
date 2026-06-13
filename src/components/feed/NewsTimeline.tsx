@@ -8,6 +8,7 @@ import { getCityCategoryName } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { hasFeedGuestConsent } from '@/lib/feedConsent'
 import { useAppState } from '@/store/appStateContext'
+import { getCache } from '@/lib/clientCache'
 import { useFeedStore } from '@/store/feedStore'
 import { CACHE_KEYS } from '@/lib/stateKeys'
 import type { TimelinePost } from '@/types/post'
@@ -35,7 +36,7 @@ function NewsTimelineContent({
   initialCategoryId,
 }: NewsTimelineContentProps) {
   const { user, loading: authLoading } = useAuth()
-  const { getCachedFeed, setCachedFeed } = useAppState()
+  const { setCachedFeed } = useAppState()
   const feedSource = useFeedStore((s) => s.feedSource)
   const setLastCategoryId = useFeedStore((s) => s.setLastCategoryId)
   const [categoryId, setCategoryId] = useState<string | null>(categoryParam)
@@ -59,12 +60,13 @@ function NewsTimelineContent({
     { initialPosts, initialCategoryId, initialFeedSource: 'nahaber' }
   )
 
-  const [seededPosts, setSeededPosts] = useState<TimelinePost[]>([])
-
-  useEffect(() => {
-    const cached = getCachedFeed<TimelinePost[]>(CACHE_KEYS.timeline(categoryId))
-    setSeededPosts(cached ?? [])
-  }, [categoryId, getCachedFeed])
+  // Read cache SYNCHRONOUSLY — updates instantly when categoryId changes.
+  // This seeds the feed while the Firestore fetch runs in the background,
+  // eliminating the skeleton flash when switching categories.
+  const seededPosts = useMemo(
+    () => getCache<TimelinePost[]>(CACHE_KEYS.timeline(categoryId)) ?? [],
+    [categoryId]
+  )
 
   useEffect(() => {
     if (loading || posts.length === 0) return
