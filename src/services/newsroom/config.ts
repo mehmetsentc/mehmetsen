@@ -37,7 +37,7 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
  * reuters (URL bug vardı, reuters-world yeterli).
  */
 export const BREAKING_NEWS_SOURCE_IDS = [
-  'cnn', 'bbc', 'reuters-world', 'ap-news', 'trt', 'aa',
+  'cnn', 'bbc', 'reuters-world', 'ap-news', 'trt',
 ] as const
 
 /**

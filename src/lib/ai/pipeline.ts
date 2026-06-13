@@ -296,13 +296,20 @@ export async function processPipelineQueue(): Promise<AiCronRunResult> {
   const db = getAdminFirestore()
   const startTime = Date.now()
 
-  // Fetch pending items
-  const snap = await db.collection(Collections.AI_QUEUE)
-    .where('status', '==', 'pending')
-    .orderBy('priority', 'desc')
-    .orderBy('createdAt', 'asc')
-    .limit(BATCH_SIZE)
-    .get()
+  // Fetch pending items — gracefully handle Firestore errors (e.g. RESOURCE_EXHAUSTED, missing index)
+  let snap: FirebaseFirestore.QuerySnapshot
+  try {
+    snap = await db.collection(Collections.AI_QUEUE)
+      .where('status', '==', 'pending')
+      .orderBy('priority', 'desc')
+      .orderBy('createdAt', 'asc')
+      .limit(BATCH_SIZE)
+      .get()
+  } catch (fsErr) {
+    const code = (fsErr as { code?: number }).code
+    console.warn(`[ai-pipeline] Firestore query failed${code === 8 ? ' (RESOURCE_EXHAUSTED)' : ''}:`, fsErr instanceof Error ? fsErr.message : fsErr)
+    return { processed: 0, published: 0, rejected: 0, failed: 0, durationMs: Date.now() - startTime, items: [] }
+  }
 
   const items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as AiQueueItem))
 
