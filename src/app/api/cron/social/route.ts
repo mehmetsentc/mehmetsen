@@ -54,10 +54,11 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
 }
 
 function buildArticleUrl(id: string, data: Record<string, unknown>): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://nahaber.com').replace(/\/$/, '')
+  // Sosyal medya linkleri her zaman production domain kullanır
+  const base = 'https://nahaber.com'
   const url  = typeof data.url   === 'string' ? data.url.trim()  : ''
   const slug = typeof data.slug  === 'string' ? data.slug.trim() : ''
-  if (url)  return url
+  if (url)  return url.replace('nahaber.vercel.app', 'nahaber.com')
   if (slug) return `${base}/news/${slug}`
   return `${base}/news/${id}`
 }
@@ -187,8 +188,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     }
 
     // ── Onyedi Tivi markalı görsel — OG route (1080×1080, Edge cached) ───
-    const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://nahaber.com').replace(/\/$/, '')
-    const socialImageUrl: string = `${appBase}/api/og/social/${id}`
+    const socialImageUrl: string = `https://nahaber.com/api/og/social/${id}`
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
     // ── Sosyal medya metni ────────────────────────────────────────────────
