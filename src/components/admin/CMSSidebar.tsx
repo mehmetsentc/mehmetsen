@@ -98,6 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Sosyal Medya',
     items: [
       { href: '/admin/social', label: 'Paylaşım Durumu', icon: Share2, requiredPermissions: ['news:read'] },
+      { href: '/admin/social/gorsel', label: 'Görsel Üretici', icon: Film, requiredPermissions: ['news:read'] },
     ],
   },
   {
