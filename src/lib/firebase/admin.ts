@@ -50,11 +50,17 @@ function getAdminApp(): App {
     return adminApp
   }
 
+  const storageBucket =
+    process.env.FIREBASE_STORAGE_BUCKET?.trim() ||
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() ||
+    undefined
+
   const serviceAccount = readServiceAccountFromEnv()
   if (serviceAccount) {
     adminApp = initializeApp({
       credential: cert(serviceAccount),
       projectId: serviceAccount.projectId,
+      ...(storageBucket ? { storageBucket } : {}),
     })
     return adminApp
   }
@@ -63,6 +69,7 @@ function getAdminApp(): App {
   adminApp = initializeApp({
     credential: applicationDefault(),
     projectId: process.env.FIREBASE_ADMIN_PROJECT_ID?.trim() || process.env.GCLOUD_PROJECT,
+    ...(storageBucket ? { storageBucket } : {}),
   })
   return adminApp
 }
