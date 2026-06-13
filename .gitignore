@@ -30,6 +30,7 @@ yarn-error.log*
 .DS_Store
 *.pem
 Thumbs.db
+commit-*.sh
 
 # TypeScript
 *.tsbuildinfo
