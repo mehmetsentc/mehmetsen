@@ -5,14 +5,6 @@
  * Firestore `news` koleksiyonunda citySlug='canakkale' olan ve henüz
  * sosyal medyaya yayınlanmamış haberleri Facebook ve Instagram'da paylaşır.
  *
- * Pipeline:
- *   1. Firestore'dan yayınlanmamış Çanakkale haberlerini çek
- *   2. Gemini ile sosyal medya içeriği üret (manşet, açıklama, hashtag)
- *   3. Sharp ile görsel üzerine manşet overlay'i uygula
- *   4. Firebase Storage'a yükle → public URL al
- *   5. Facebook ve Instagram'a paylaş
- *   6. Firestore'da socialPublished=true olarak işaretle
- *
  * Auth: Bearer CRON_SECRET  veya ?secret=CRON_SECRET
  */
 import { NextResponse } from 'next/server'
@@ -22,9 +14,6 @@ import { Collections } from '@/lib/firebase/collections'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { publishToFacebook } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
-import { generateSocialContent } from '@/lib/social/aiSocialEditor'
-import { createSocialImage } from '@/lib/social/imageOverlay'
-import { uploadSocialImage } from '@/lib/social/storageUploader'
 import type {
   SocialCronItemResult,
   SocialCronResult,
@@ -72,11 +61,11 @@ const CANAKKALE_SLUGS = new Set([
 
 /** Dokümanın Çanakkale veya ilçesi haberi olup olmadığını kontrol et */
 function isCanakkale(data: Record<string, unknown>): boolean {
-  const citySlug     = String(data.citySlug     ?? '').toLowerCase()
+  const citySlug    = String(data.citySlug    ?? '').toLowerCase()
   const districtSlug = String(data.districtSlug ?? data.district ?? '').toLowerCase()
-  const city         = String(data.city         ?? '').toLowerCase()
-  const category     = String(data.category     ?? '').toLowerCase()
-  const categoryId   = String(data.categoryId   ?? '').toLowerCase()
+  const city        = String(data.city        ?? '').toLowerCase()
+  const category    = String(data.category   ?? '').toLowerCase()
+  const categoryId  = String(data.categoryId ?? '').toLowerCase()
   return (
     CANAKKALE_SLUGS.has(citySlug)  ||
     CANAKKALE_SLUGS.has(districtSlug) ||
@@ -88,27 +77,6 @@ function isCanakkale(data: Record<string, unknown>): boolean {
     category   === 'canakkale' ||
     categoryId === 'canakkale'
   )
-}
-
-/** Aynı haberin daha önce paylaşılıp paylaşılmadığını çift kontrol et (duplikat önleme) */
-async function isAlreadyPublished(
-  db: FirebaseFirestore.Firestore,
-  newsId: string,
-  title: string
-): Promise<boolean> {
-  // 1. ID ile doğrudan kontrol (birincil)
-  const doc = await db.collection(Collections.NEWS).doc(newsId).get()
-  if (doc.exists && doc.data()?.socialPublished === true) return true
-
-  // 2. Aynı başlıkla daha önce paylaşılmış mı? (başlık eşleşmesi)
-  const snap = await db
-    .collection(Collections.NEWS)
-    .where('socialPublished', '==', true)
-    .where('title', '==', title)
-    .limit(1)
-    .get()
-
-  return !snap.empty
 }
 
 async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
@@ -123,6 +91,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
   const db = getAdminFirestore()
 
   // ── Birincil sorgu: citySlug == 'canakkale' ────────────────────────────
+  // NOT: socialPublished != true yerine memory'de filtrele (composite index gerekmez)
   const snap = await db
     .collection(Collections.NEWS)
     .where('citySlug', '==', 'canakkale')
@@ -157,60 +126,14 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const id    = doc.id
     const title = typeof data.title === 'string' ? data.title : ''
 
-    // ── Duplikat önleme: çift kontrol ────────────────────────────────────
-    const alreadyDone = await isAlreadyPublished(db, id, title)
-    if (alreadyDone) {
-      console.log(`[cron/social] Duplikat atlandı — ${id}: "${title}"`)
-      // Tutarsızlık varsa düzelt
-      await db.collection(Collections.NEWS).doc(id).update({ socialPublished: true })
-      continue
-    }
-
-    const description: string =
-      typeof data.spot    === 'string' ? data.spot    :
-      typeof data.summary === 'string' ? data.summary :
-      typeof data.description === 'string' ? data.description : ''
-
-    const originalImageUrl = extractImageUrl(data)
-    const articleUrl       = buildArticleUrl(id, data)
-    const cityName         = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
-
-    // ── AI İçerik Üretimi ─────────────────────────────────────────────────
-    let socialContent = await generateSocialContent(title, description, cityName)
-    if (!socialContent) {
-      // Fallback: basit içerik
-      socialContent = {
-        headline: title.slice(0, 60),
-        caption:  `📰 ${title}\n\nHaberin devamı için bağlantıya tıklayın.`,
-        hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
-        altText:  title,
-      }
-    }
-
-    // ── Görsel Overlay + Storage Upload ──────────────────────────────────
-    let socialImageUrl: string | undefined = originalImageUrl
-
-    if (originalImageUrl) {
-      const overlaidBuffer = await createSocialImage(originalImageUrl, socialContent.headline)
-      if (overlaidBuffer) {
-        const uploadedUrl = await uploadSocialImage(overlaidBuffer, id)
-        if (uploadedUrl) {
-          socialImageUrl = uploadedUrl
-          console.log(`[cron/social] Overlay görsel yüklendi — ${id}`)
-        }
-      }
-    }
-
-    // ── Sosyal medya metni ────────────────────────────────────────────────
-    const hashtagStr = socialContent.hashtags.join(' ')
-    const fullCaption = `${socialContent.caption}\n\n${hashtagStr}\n\n🔗 ${articleUrl}`
-
     const payload: SocialPublishPayload = {
-      newsId:     id,
-      title:      socialContent.headline || title,
-      description: fullCaption,
-      imageUrl:   socialImageUrl,
-      articleUrl,
+      newsId: id,
+      title,
+      description:
+        typeof data.spot    === 'string' ? data.spot    :
+        typeof data.summary === 'string' ? data.summary : undefined,
+      imageUrl:   extractImageUrl(data),
+      articleUrl: buildArticleUrl(id, data),
     }
 
     // ── Facebook ──────────────────────────────────────────────────────────
@@ -231,7 +154,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       igResult = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
 
-    // ── Firestore güncelle ────────────────────────────────────────────────
+    // ── Firestore güncelle (her iki platformdan biri başarılıysa yeter) ───
     const markedDone = fbResult.success || igResult.success
 
     if (markedDone) {
@@ -239,9 +162,6 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         const update: Record<string, unknown> = {
           socialPublished:   true,
           socialPublishedAt: FieldValue.serverTimestamp(),
-          socialImageUrl:    socialImageUrl ?? null,
-          socialHeadline:    socialContent.headline,
-          socialHashtags:    socialContent.hashtags,
         }
         if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
         if (igResult.platformId) update.instagramMediaId = igResult.platformId
