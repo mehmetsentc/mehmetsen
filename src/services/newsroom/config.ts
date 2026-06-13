@@ -11,7 +11,7 @@ export const NEWSROOM_LOW_CONFIDENCE_THRESHOLD = 50
 export const MAX_AI_CALLS_PER_EDITOR = Number(process.env.NEWS_INGEST_MAX_AI_CALLS ?? 12)
 
 /** Wire + regional Turkish sources — local worker. */
-export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'iha', 'dha'] as const
+export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'iha', 'dha', 'anka-haber'] as const
 
 /**
  * Kaç il Google News feed'i çekilsin.
