@@ -58,38 +58,46 @@ async function handleRequest(request: Request) {
   let docId: string
   let data: Record<string, unknown>
 
-  if (requestedId) {
-    const ref = await db.collection(Collections.NEWS).doc(requestedId).get()
-    if (!ref.exists) {
-      return NextResponse.json({ error: `Haber bulunamadı: ${requestedId}` }, { status: 404 })
-    }
-    docId = ref.id
-    data  = ref.data() as Record<string, unknown>
-  } else {
-    // İlk uygun Çanakkale haberi — daha önce paylaşılmamış
-    const snap = await db
-      .collection(Collections.NEWS)
-      .where('citySlug', '==', 'canakkale')
-      .where('status', '==', 'published')
-      .orderBy('createdAt', 'desc')
-      .limit(20)
-      .get()
+  try {
+    if (requestedId) {
+      const ref = await db.collection(Collections.NEWS).doc(requestedId).get()
+      if (!ref.exists) {
+        return NextResponse.json({ error: `Haber bulunamadı: ${requestedId}` }, { status: 404 })
+      }
+      docId = ref.id
+      data  = ref.data() as Record<string, unknown>
+    } else {
+      // İlk uygun Çanakkale haberi — daha önce paylaşılmamış
+      const snap = await db
+        .collection(Collections.NEWS)
+        .where('citySlug', '==', 'canakkale')
+        .where('status', '==', 'published')
+        .orderBy('createdAt', 'desc')
+        .limit(20)
+        .get()
 
-    // Görseli olan ilk haberi tercih et
-    const withImage = snap.docs.find(d => {
-      const dd = d.data() as Record<string, unknown>
-      if (dd.socialPublished) return false
-      return ['thumbnail','coverImageUrl','imageUrl','featuredImage','image']
-        .some(k => typeof dd[k] === 'string' && (dd[k] as string).length > 10)
-    })
-    const candidate = withImage ?? snap.docs.find(d => !d.data().socialPublished)
-    if (!candidate) {
-      return NextResponse.json({
-        error: 'Paylaşılacak Çanakkale haberi bulunamadı.',
-      }, { status: 404 })
+      // Görseli olan ilk haberi tercih et
+      const withImage = snap.docs.find(d => {
+        const dd = d.data() as Record<string, unknown>
+        if (dd.socialPublished) return false
+        return ['thumbnail','coverImageUrl','imageUrl','featuredImage','image']
+          .some(k => typeof dd[k] === 'string' && (dd[k] as string).length > 10)
+      })
+      const candidate = withImage ?? snap.docs.find(d => !d.data().socialPublished)
+      if (!candidate) {
+        return NextResponse.json({
+          error: 'Paylaşılacak Çanakkale haberi bulunamadı.',
+        }, { status: 404 })
+      }
+      docId = candidate.id
+      data  = candidate.data() as Record<string, unknown>
     }
-    docId = candidate.id
-    data  = candidate.data() as Record<string, unknown>
+  } catch (firestoreErr) {
+    const code = (firestoreErr as { code?: number }).code
+    const msg = code === 8
+      ? 'Firestore kotası doldu (RESOURCE_EXHAUSTED). Gece yarısı Pacific time\'da sıfırlanır.'
+      : String(firestoreErr)
+    return NextResponse.json({ error: msg, firestoreCode: code }, { status: 503 })
   }
 
   const title       = typeof data.title === 'string' ? data.title : '(başlık yok)'
