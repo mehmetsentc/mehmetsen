@@ -1,11 +1,21 @@
 /**
  * POST /api/admin/cron/trigger?job=<jobId>
- * Manually triggers a cron job. Logs the run to Firestore.
+ * Manually triggers a real cron job and logs the run to Firestore.
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
-const ALLOWED_JOBS = ['news-fetch', 'ai-rewrite', 'seo-generate', 'video-sync', 'trending-update', 'cleanup']
+// Maps admin-panel job IDs → actual cron API paths
+const JOB_ROUTES: Record<string, string> = {
+  'news-fetch':        '/api/cron/newsroom/ingest',
+  'ai-rewrite':        '/api/cron/newsroom/process-queue',
+  'seo-generate':      '/api/cron/newsroom/seo',
+  'video-sync':        '/api/cron/newsroom/video-queue',
+  'trending-update':   '/api/cron/newsroom/trend',
+  'cleanup':           '/api/cron/newsroom/archive',
+}
+
+const ALLOWED_JOBS = Object.keys(JOB_ROUTES)
 
 export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'cron:trigger')
@@ -18,13 +28,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid job id' }, { status: 400 })
   }
 
+  const cronPath = JOB_ROUTES[jobId]
+  const secret = process.env.CRON_SECRET
+  if (!secret) {
+    return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+  }
+
   try {
     const { getAdminFirestore } = await import('@/lib/firebase/admin')
     const adminDb = getAdminFirestore()
-    const startedAt = new Date()
+    const startedAt = Date.now()
 
+    // Write "running" record
     const runRef = await adminDb.collection('cronRuns').add({
       jobName: jobId,
+      cronPath,
       status: 'running',
       startedAt,
       triggeredBy: 'manual',
@@ -32,26 +50,48 @@ export async function POST(request: Request) {
       triggeredByEmail: auth.email,
     })
 
-    const durationMs = Math.floor(Math.random() * 2000 + 500)
-    const itemsProcessed = Math.floor(Math.random() * 30 + 1)
+    // Call the real cron endpoint
+    const origin = new URL(request.url).origin
+    let result: unknown = null
+    let status: 'success' | 'failed' = 'success'
+    let errorMsg: string | null = null
 
-    // Update run async — don't block response
-    setTimeout(async () => {
-      try {
-        await runRef.update({
-          status: 'success',
-          finishedAt: new Date(),
-          durationMs,
-          itemsProcessed,
-        })
-      } catch (e) { console.error('[cron-trigger update]', e) }
-    }, durationMs)
+    try {
+      const res = await fetch(`${origin}${cronPath}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${secret}`,
+          'x-cron-secret': secret,
+        },
+      })
+      result = await res.json()
+      if (!res.ok) {
+        status = 'failed'
+        errorMsg = (result as { error?: string })?.error ?? `HTTP ${res.status}`
+      }
+    } catch (e) {
+      status = 'failed'
+      errorMsg = e instanceof Error ? e.message : 'Fetch failed'
+    }
+
+    const finishedAt = Date.now()
+    const durationMs = finishedAt - startedAt
+
+    await runRef.update({
+      status,
+      finishedAt,
+      durationMs,
+      result: result ? JSON.stringify(result).slice(0, 2000) : null,
+      ...(errorMsg ? { error: errorMsg } : {}),
+    })
 
     return NextResponse.json({
-      success: true,
+      success: status === 'success',
       jobId,
+      cronPath,
       runId: runRef.id,
-      message: `Job ${jobId} triggered by ${auth.email}`,
+      durationMs,
+      result,
     })
   } catch (error) {
     console.error('[cron-trigger]', error)
