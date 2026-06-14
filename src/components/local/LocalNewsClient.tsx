@@ -165,6 +165,9 @@ export function LocalNewsClient() {
       const slug     = nearestProvinceSlug(lat, lng)
       const name     = getCityCategoryName(slug)
       const province = TURKISH_PROVINCES.find(p => p.slug === slug)!
+      // loading=true ÖNCE set edilmeli — aksi hâlde city set edildiğinde
+      // "haber bulunamadı" ekranı 1 frame boyunca yanıp söner (race condition)
+      setLoading(true)
       setCity({ slug, name, lat: province.lat, lng: province.lng })
       setLocationState('granted')
       writeStoredUserLocation({ citySlug: slug, cityName: name, lat, lng, source: 'geolocation', updatedAt: Date.now() })

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { DEFAULT_CATEGORIES, getSubcategories } from '@/constants/config'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
-
+import { LocalCategoryBanner } from '@/components/local/LocalCategoryBanner'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 
 interface Props {
@@ -59,6 +59,9 @@ export default async function CategoryPage({ params }: Props) {
           </p>
         </div>
       </div>
+
+      {/* Yerel haber sayfasında şehir seçimi için yönlendirme banner'ı */}
+      {cat.slug === 'yerel-haber' && <LocalCategoryBanner />}
 
       {/* Subcategory chips — shown only for parent categories */}
       {subcategories.length > 0 && (
