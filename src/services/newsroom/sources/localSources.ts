@@ -245,18 +245,11 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     localMeta: { citySlug: 'bursa', cityName: 'Bursa' },
   },
   // ── Çanakkale ─────────────────────────────────────────────────────────────
+  // Merkez il haberleri — doğrulanmış RSS feed'leri
   {
     id: 'portal-canakkale-haber',
     label: 'Çanakkale Haber',
     feedUrl: 'https://www.canakkalehaber.com/rss',
-    maxItemsPerRun: 5,
-    enabled: true,
-    localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
-  },
-  {
-    id: 'portal-canakkale-ninsesi',
-    label: "Çanakkale'nin Sesi",
-    feedUrl: 'https://www.canakkaleninsesi.com/rss.xml',
     maxItemsPerRun: 5,
     enabled: true,
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
@@ -277,11 +270,43 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     enabled: true,
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
   },
-  // Çanakkale ilçeleri
+  {
+    id: 'portal-canakkale-gundem',
+    label: 'Çanakkale Gündem',
+    feedUrl: 'https://canakkalegundem.net/rss',
+    maxItemsPerRun: 5,
+    enabled: true,
+    localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
+  },
+  {
+    id: 'portal-canakkale-aynalipazar',
+    label: 'Çanakkale Aynalı Pazar',
+    feedUrl: 'https://www.canakkaleaynalipazar.com/rss.xml',
+    maxItemsPerRun: 5,
+    enabled: true,
+    localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
+  },
+  // Çanakkale ilçeleri — doğrulanmış RSS feed'leri
   {
     id: 'portal-biga-insesi',
     label: "Biga'nın Sesi",
     feedUrl: 'https://www.biganinsesi.com/rss',
+    maxItemsPerRun: 3,
+    enabled: true,
+    localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Biga' },
+  },
+  {
+    id: 'portal-bogaz-gazetesi',
+    label: 'Boğaz Gazetesi',
+    feedUrl: 'https://www.bogazgazetesi.com.tr/rss',
+    maxItemsPerRun: 3,
+    enabled: true,
+    localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Biga' },
+  },
+  {
+    id: 'portal-medya-lokum',
+    label: 'Medya Lokum (Biga)',
+    feedUrl: 'https://www.medyalokum.com/rss',
     maxItemsPerRun: 3,
     enabled: true,
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Biga' },
