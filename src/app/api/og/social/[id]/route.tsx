@@ -110,19 +110,51 @@ function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str
 }
 
-// Onyedi Tivi logosu — base64 PNG (320×320, pieslice gradient ring + dark inner + "17")
-const LOGO_B64 = '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'
-
+// Onyedi Tivi logosu — Satori destekli pure CSS (linear-gradient halka + "17")
 function OnyediLogo({ size = 108 }: { size?: number }) {
+  const ring = Math.round(size * 0.11)
+  const inner = size - ring * 2
+  const fontSize = Math.round(inner * 0.50)
+
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`data:image/png;base64,${LOGO_B64}`}
-      width={size}
-      height={size}
-      alt="Onyedi Tivi"
-      style={{ display: 'flex', flexShrink: 0 }}
-    />
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #f97316 0%, #e879f9 35%, #3b82f6 68%, #06b6d4 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{
+          width: inner,
+          height: inner,
+          borderRadius: '50%',
+          background: '#0a1628',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <span
+          style={{
+            fontSize,
+            color: 'white',
+            fontWeight: 800,
+            letterSpacing: -1,
+            lineHeight: 1,
+            display: 'flex',
+          }}
+        >
+          17
+        </span>
+      </div>
+    </div>
   )
 }
 
