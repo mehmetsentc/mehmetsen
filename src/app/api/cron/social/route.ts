@@ -147,7 +147,13 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     })
   }
 
-  const finalDocs = candidates.slice(0, BATCH_LIMIT)
+  // ── Görseli olan haberleri önceliklendir ──────────────────────────────
+  // Instagram için görsel şart — görselsiz haberler koyu/siyah görünür.
+  const withImage    = candidates.filter(doc => !!extractImageUrl(doc.data() as Record<string, unknown>))
+  const prioritized  = withImage.length > 0 ? withImage : candidates
+  console.log(`[cron/social] candidates=${candidates.length} withImage=${withImage.length}`)
+
+  const finalDocs = prioritized.slice(0, BATCH_LIMIT)
   const results: SocialCronItemResult[] = []
   let succeeded = 0
   let failed = 0
