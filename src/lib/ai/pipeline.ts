@@ -1,11 +1,11 @@
 /**
  * NaHaber Multi-Agent AI Pipeline
  *
- * Akış: DeepSeek (Collector) → Gemini (Editor) → GPT (QA) → Firestore
+ * Akış: DeepSeek (Collector) → Gemini (Editor) → GPT Genel Yayın Yönetmeni → Firestore
  *
- * - DeepSeek: duplicate tespiti + içerik zenginleştirme
- * - Gemini: profesyonel haber yazımı + SEO + sosyal medya
- * - GPT: son kalite kontrolü + onay/red
+ * - DeepSeek : duplicate tespiti + içerik zenginleştirme
+ * - Gemini   : profesyonel haber yazımı + SEO + sosyal medya
+ * - GPT (GYY): kategori doğrulama + web araması + nihai yayın kararı
  * - Onaylanan haberler news koleksiyonuna kaydedilir
  */
 
@@ -14,7 +14,8 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 import { deepseekCollect, isDeepSeekConfigured } from './deepseek'
 import { geminiEditArticle, isGeminiConfigured } from './gemini'
-import { gptQaCheck, gptQaFallback, isGptConfigured } from './gpt'
+import { gptQaFallback } from './gpt'
+import { runChiefEditor, isChiefEditorConfigured } from './chiefEditor'
 import type {
   AiQueueItem,
   AiQueueStatus,
@@ -148,27 +149,74 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
     return { queueItemId: itemId, success: false, stage: 'gemini', error: errMsg, durationMs: Date.now() - startTime }
   }
 
-  // ── Stage 3: GPT QA ────────────────────────────────────────────────────────
-  let gptResult
+  // ── Stage 3: GPT Genel Yayın Yönetmeni ───────────────────────────────────
+  // Kategori doğrulama + web araması + nihai yayın kararı
+  let chiefResult
   try {
-    if (isGptConfigured()) {
-      gptResult = await gptQaCheck(geminiResult)
+    if (isChiefEditorConfigured()) {
+      chiefResult = await runChiefEditor({
+        ...geminiResult,
+        originalTitle: item.originalTitle,
+        sourceLabel: item.sourceLabel,
+      })
+      await log({
+        level: 'info', agent: 'gpt',
+        message: `[${itemId}] GYY: ${chiefResult.decision} (skor: ${chiefResult.overallScore}, kategori: ${chiefResult.finalCategory}${chiefResult.webSearchUsed ? ', web araması yapıldı' : ''})`,
+        queueItemId: itemId,
+      })
     } else {
-      gptResult = gptQaFallback(geminiResult)
-      await log({ level: 'warn', agent: 'gpt', message: `[${itemId}] GPT yapılandırılmamış, fallback QA kullanıldı`, queueItemId: itemId })
+      // Fallback: OpenAI yoksa eski yöntem
+      const fallback = gptQaFallback(geminiResult)
+      chiefResult = {
+        decision: fallback.decision === 'approved' ? 'approved' as const : 'rejected' as const,
+        overallScore: fallback.score,
+        finalTitle: fallback.revisedTitle || geminiResult.title,
+        finalDescription: fallback.revisedDescription || geminiResult.description,
+        finalSummary: geminiResult.summary,
+        finalCategory: geminiResult.category,
+        finalTags: geminiResult.tags,
+        categoryConfidence: 70,
+        contentQuality: geminiResult.qualityScore,
+        webSearchUsed: false,
+        searchQueries: [] as string[],
+        searchSources: [] as string[],
+        categoryReason: 'fallback',
+        issues: fallback.issues,
+        pushTitle: fallback.pushTitle,
+        pushBody: fallback.pushBody,
+        processedAt: Date.now(),
+        modelUsed: 'fallback',
+      }
+      await log({ level: 'warn', agent: 'gpt', message: `[${itemId}] OPENAI_API_KEY yok, GYY fallback kullanıldı`, queueItemId: itemId })
     }
-
-    await updateQueueItem(itemId, { gptResult })
-    await log({ level: 'info', agent: 'gpt', message: `[${itemId}] GPT QA: ${gptResult.decision} (skor: ${gptResult.score})`, queueItemId: itemId })
   } catch (err) {
-    // GPT failure is non-fatal — use fallback
-    gptResult = gptQaFallback(geminiResult)
-    await log({ level: 'warn', agent: 'gpt', message: `[${itemId}] GPT QA hatası, fallback: ${String(err)}`, queueItemId: itemId })
+    const fallback = gptQaFallback(geminiResult)
+    chiefResult = {
+      decision: fallback.decision === 'approved' ? 'approved' as const : 'rejected' as const,
+      overallScore: fallback.score,
+      finalTitle: geminiResult.title,
+      finalDescription: geminiResult.description,
+      finalSummary: geminiResult.summary,
+      finalCategory: geminiResult.category,
+      finalTags: geminiResult.tags,
+      categoryConfidence: 70,
+      contentQuality: geminiResult.qualityScore,
+      webSearchUsed: false,
+      searchQueries: [] as string[],
+      searchSources: [] as string[],
+      categoryReason: 'hata fallback',
+      issues: [String(err)],
+      pushTitle: geminiResult.pushTitle,
+      pushBody: geminiResult.pushBody,
+      processedAt: Date.now(),
+      modelUsed: 'fallback',
+    }
+    await log({ level: 'warn', agent: 'gpt', message: `[${itemId}] GYY hatası, fallback: ${String(err)}`, queueItemId: itemId })
   }
 
-  if (gptResult.decision === 'rejected') {
+  if (chiefResult.decision === 'rejected') {
     await updateQueueItem(itemId, { status: 'rejected' as AiQueueStatus })
-    return { queueItemId: itemId, success: false, stage: 'gpt', decision: 'rejected', error: gptResult.issues.join('; '), durationMs: Date.now() - startTime }
+    return { queueItemId: itemId, success: false, stage: 'gpt', decision: 'rejected', error: chiefResult.issues.join('; '), durationMs: Date.now() - startTime }
   }
 
   // ── Stage 4: Publish to Firestore ─────────────────────────────────────────
@@ -177,9 +225,11 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
     const newsRef = db.collection(Collections.NEWS).doc()
     const newsId = newsRef.id
 
-    // Apply GPT revisions if provided
-    const finalTitle = gptResult.revisedTitle || geminiResult.title
-    const finalDescription = gptResult.revisedDescription || geminiResult.description
+    // Chief Editor'ın nihai içeriği kullan (Gemini'yi override edebilir)
+    const finalTitle = chiefResult.finalTitle || geminiResult.title
+    const finalDescription = chiefResult.finalDescription || geminiResult.description
+    const finalCategory = chiefResult.finalCategory || geminiResult.category
+    const finalTags = chiefResult.finalTags.length > 0 ? chiefResult.finalTags : geminiResult.tags
 
     const slug = geminiResult.slug || generateSlug(finalTitle, newsId)
 
@@ -189,15 +239,17 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       shortTitle: geminiResult.shortTitle,
       slug,
       description: finalDescription,
-      summary: geminiResult.summary,
+      summary: chiefResult.finalSummary || geminiResult.summary,
       spot: geminiResult.spot,
-      content: geminiResult.content,
+      content: finalDescription,
 
-      // Classification
-      category: geminiResult.category,
+      // Classification (Chief Editor onaylı)
+      category: finalCategory,
       subCategory: geminiResult.subCategory || null,
       newsType: geminiResult.newsType,
       sentiment: geminiResult.sentiment,
+      categoryConfidence: chiefResult.categoryConfidence,
+      categoryReason: chiefResult.categoryReason || null,
 
       // Geo
       location: geminiResult.location || null,
@@ -206,7 +258,7 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       language: 'tr',
 
       // Taxonomy
-      tags: geminiResult.tags,
+      tags: finalTags,
       keywords: geminiResult.keywords,
       relatedTopics: geminiResult.relatedTopics,
 
@@ -221,11 +273,11 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       coverImageUrl: item.imageUrl || null,
 
       // Scores
-      qualityScore: geminiResult.qualityScore,
+      qualityScore: chiefResult.contentQuality || geminiResult.qualityScore,
       factCheckScore: geminiResult.factCheckScore,
       readingTime: geminiResult.readingTime,
-      aiConfidence: geminiResult.aiConfidence,
-      gptScore: gptResult.score,
+      aiConfidence: chiefResult.overallScore,
+      chiefEditorScore: chiefResult.overallScore,
 
       // Flags
       breakingNews: geminiResult.breakingNews,
@@ -234,15 +286,19 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       published: true,
       aiGenerated: true,
 
+      // Web arama meta
+      webSearchUsed: chiefResult.webSearchUsed,
+      webSearchQueries: chiefResult.searchQueries.length > 0 ? chiefResult.searchQueries : null,
+
       // Social
       socialCaption: geminiResult.socialCaption,
       twitterText: geminiResult.twitterText,
       facebookText: geminiResult.facebookText,
       instagramCaption: geminiResult.instagramCaption,
 
-      // Push
-      pushTitle: gptResult.pushTitle,
-      pushBody: gptResult.pushBody,
+      // Push (Chief Editor'ın yazdığı)
+      pushTitle: chiefResult.pushTitle,
+      pushBody: chiefResult.pushBody,
 
       // Source
       sourceLabel: item.sourceLabel,
@@ -252,9 +308,9 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       // Pipeline metadata
       aiPipeline: true,
       pipelineQueueId: itemId,
-      aiEditor: 'multi-agent',
+      aiEditor: 'multi-agent-v2',
       geminiModel: geminiResult.modelUsed,
-      gptModel: gptResult.modelUsed,
+      chiefEditorModel: chiefResult.modelUsed,
 
       // Timestamps
       createdAt: FieldValue.serverTimestamp(),
@@ -280,7 +336,7 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       success: true,
       newsId,
       stage: 'publish',
-      decision: gptResult.decision,
+      decision: chiefResult.decision,
       durationMs: Date.now() - startTime,
     }
   } catch (err) {
