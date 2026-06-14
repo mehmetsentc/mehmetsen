@@ -42,6 +42,26 @@ interface SocialNewsRow {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 20
 
+/**
+ * Firestore may store timestamps as plain numbers (Date.now()) OR as Firestore
+ * Timestamp objects (FieldValue.serverTimestamp()). The client SDK returns the
+ * latter as Timestamp objects whose valueOf() returns a string, causing
+ * `new Date(obj)` to produce Invalid Date → RangeError in date-fns.
+ */
+function safeToDate(val: unknown): Date | null {
+  if (val == null) return null
+  if (typeof val === 'number') return new Date(val)
+  // Firestore Timestamp object (client SDK)
+  if (typeof val === 'object' && val !== null && 'toDate' in val) {
+    return (val as { toDate(): Date }).toDate()
+  }
+  if (typeof val === 'string') {
+    const d = new Date(val)
+    return isNaN(d.getTime()) ? null : d
+  }
+  return null
+}
+
 function getBestImage(row: SocialNewsRow): string | undefined {
   return row.socialImageUrl || row.thumbnail || row.coverImageUrl || row.imageUrl
 }
@@ -369,14 +389,12 @@ export default function SocialPage() {
                     {/* Tarih */}
                     <td className="hidden px-4 py-3 text-xs text-[rgb(var(--color-muted))] sm:table-cell">
                       <div>
-                        {row.createdAt
-                          ? formatDistanceToNow(new Date(row.createdAt), { addSuffix: true, locale: tr })
-                          : '—'}
+                        {(() => { const d = safeToDate(row.createdAt); return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—' })()}
                       </div>
                       {row.socialPublishedAt && (
                         <div className="mt-0.5 text-[10px] text-emerald-500">
                           Paylaşıldı:{' '}
-                          {formatDistanceToNow(new Date(row.socialPublishedAt), { addSuffix: true, locale: tr })}
+                          {(() => { const d = safeToDate(row.socialPublishedAt); return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—' })()}
                         </div>
                       )}
                     </td>

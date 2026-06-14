@@ -81,14 +81,17 @@ export default function SosyalGorselPage() {
   async function load() {
     setLoading(true)
     try {
-      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+      // Use numeric createdAt (ms since epoch) — publishedAt is also numeric but
+      // some rows may have it missing; createdAt is always set by the pipeline.
+      // Index: (status ASC, citySlug ASC, createdAt DESC) covers this query.
+      const cutoff = Date.now() - 48 * 60 * 60 * 1000
       const snap = await getDocs(
         query(
           collection(db, 'news'),
           where('status', '==', 'published'),
-          where('citySlug', 'in', CANAKKALE_SLUGS),
-          where('publishedAt', '>=', cutoff),
-          orderBy('publishedAt', 'desc'),
+          where('citySlug', '==', 'canakkale'),
+          where('createdAt', '>=', cutoff),
+          orderBy('createdAt', 'desc'),
           limit(60)
         )
       )

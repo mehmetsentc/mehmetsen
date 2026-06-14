@@ -19,6 +19,14 @@ import { tr } from 'date-fns/locale'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { cn } from '@/lib/utils'
 
+/** Handle Firestore Timestamp objects (serverTimestamp) OR plain ms numbers */
+function tsToMs(val: unknown): number {
+  if (typeof val === 'number') return val
+  if (val && typeof val === 'object' && 'toMillis' in val) return (val as { toMillis(): number }).toMillis()
+  if (val && typeof val === 'object' && 'seconds' in val) return (val as { seconds: number }).seconds * 1000
+  return 0
+}
+
 interface DashStats {
   totalPublished: number
   pendingReview: number
@@ -150,7 +158,7 @@ export default function AdminIndexPage() {
           source: (data.source as string) ?? '',
           categoryId: (data.categoryId as string) ?? '',
           confidenceScore: data.confidenceScore as number | undefined,
-          createdAt: (data.createdAt as number) ?? 0,
+          createdAt: tsToMs(data.createdAt),
         }
       }))
     }, () => {})
@@ -169,7 +177,7 @@ export default function AdminIndexPage() {
           source: (data.source as string) ?? '',
           categoryId: (data.categoryId as string) ?? '',
           confidenceScore: data.confidenceScore as number | undefined,
-          createdAt: (data.createdAt as number) ?? 0,
+          createdAt: tsToMs(data.createdAt),
         }
       }))
     }, () => {})
