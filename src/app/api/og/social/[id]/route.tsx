@@ -50,8 +50,20 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
   }
 }
 
+// Satori (Edge runtime) yalnızca JPEG ve PNG destekler — WebP/AVIF/TIFF çöktürür
+const SUPPORTED_EXTS = /\.(jpe?g|png|gif)(\?|$)/i
+
 function bestImage(a: ArticleOGData): string {
-  return a.thumbnail || a.coverImageUrl || a.imageUrl || a.featuredImage || a.image || ''
+  const candidates = [a.thumbnail, a.coverImageUrl, a.imageUrl, a.featuredImage, a.image]
+  // Önce desteklenen formatlara bak
+  for (const c of candidates) {
+    if (c && SUPPORTED_EXTS.test(c)) return c
+  }
+  // Uzantısı belirsiz URL'leri de dene (bazı CDN'ler format belirtmez)
+  for (const c of candidates) {
+    if (c && !c.includes('.webp') && !c.includes('.avif') && !c.includes('.tiff') && !c.includes('.bmp')) return c
+  }
+  return ''
 }
 
 function truncate(str: string, max: number): string {
