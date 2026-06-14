@@ -110,29 +110,18 @@ function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str
 }
 
-// ── Onyedi Tivi logosu — CSS conic-gradient halkası (Satori destekli) ────────
+// Onyedi Tivi logosu: /public/brand/onyeditivi-ring.png olarak hazırlandı.
+// Bu sabit boyutlu bileşen sadece img wrapper döndürür.
 function OnyediLogo({ size = 108 }: { size?: number }) {
-  const ring = Math.round(size * 0.10)  // halkı kalınlığı
-  const inner = size - ring * 2
-
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%',
-      background: 'conic-gradient(from 0deg, #f97316 0deg 45deg, #fb923c 45deg 90deg, #e879f9 90deg 135deg, #a855f7 135deg 180deg, #3b82f6 180deg 225deg, #06b6d4 225deg 270deg, #22d3ee 270deg 315deg, #f59e0b 315deg 360deg)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-    }}>
-      <div style={{
-        width: inner, height: inner, borderRadius: '50%',
-        background: '#0a1628',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
-          <span style={{ fontSize: Math.round(size * 0.37), fontWeight: 900, color: '#ffffff', lineHeight: 1, letterSpacing: -2 }}>1</span>
-          <span style={{ fontSize: Math.round(size * 0.37), fontWeight: 900, color: '#93c5fd', lineHeight: 1, letterSpacing: -2 }}>7</span>
-        </div>
-      </div>
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="https://nahaber.com/brand/onyeditivi-ring.png"
+      width={size}
+      height={size}
+      alt="Onyedi Tivi"
+      style={{ display: 'flex', flexShrink: 0 }}
+    />
   )
 }
 
