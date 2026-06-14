@@ -225,15 +225,15 @@ Her haber YALNIZCA aşağıdaki kategorilerden BİRİNE girmeli. En spesifik kat
 
 - saglik: Hastalık/ilaç/aşı/tedavi/ameliyat, pandemi/salgın uyarısı, beslenme/diyet araştırması, WHO/sağlık bakanlığı açıklaması.
 
-- dunya: Türkiye dışı coğrafyada gelişen olay — ABD/AB/Rusya/Çin/Ortadoğu haberleri, uluslararası savaş/kriz, NATO/BM/G20 kararları, yabancı lider açıklaması.
+- dunya: Türkiye dışı coğrafyada gelişen olay. ZORUNLU ÖRNEKLER → Gazze/Hamas/İsrail çatışması, Ukrayna/Rusya savaşı, ABD seçimi/politikası, AB kararı, Çin/Tayvan gerilimi, BM/NATO/G20 kararları, yabancı lider açıklaması, dış ülkedeki doğal afet/terör. KURAL: Haber konusu Türkiye dışında ise ve kaynak Türkçe bir haber sitesi olsa bile → dunya. Kaynak gazetenin şehrine bakma; haberin GEÇTİĞİ COĞRAFYAYA bak.
 
 - kultur: Sinema/film/tiyatro/opera/bale/sergi/müze, edebiyat/kitap, müzik albümü çıkışı, ödül töreni (Oscar/Nobel vb.), kültür-sanat etkinliği. ASLA spor.
 
 - magazin: Ünlü/celebrity haberi, oyuncu/şarkıcı özel hayatı, dizi yayın tarihi/fragman, evlilik/boşanma/ayrılık, dedikodu. isBreaking=false.
 
-- gundem: Yukarıdakilere girmeyen Türkiye iç gündemi — trafik kazası (çok ölümlü), yangın, genel kamusal olay, hükümet açıklaması (politika değil).
+- gundem: Yukarıdakilere girmeyen Türkiye iç gündemi — trafik kazası (çok ölümlü), yangın, genel kamusal olay, hükümet açıklaması (politika değil). ASLA uluslararası haber için gundem seçme.
 
-- yerel-haber: Yalnızca tek bir il/ilçeyi kapsayan yerel olay, belediye kararı, yerel seçim sonucu.
+- yerel-haber: Yalnızca tek bir il/ilçeyi kapsayan yerel olay, belediye kararı, yerel seçim sonucu. KURAL: Yerel gazete kaynaklı olması tek başına yeterli değil — haberin konusu da yerel olmalı.
 
 - son-dakika: YALNIZCA şiddetli deprem (4.5+), büyük afet (onlarca ölü), darbe girişimi, suikast, Türkiye'yi doğrudan tehdit eden acil durum. ASLA spor/magazin/teknoloji/ekonomi.
 
@@ -244,7 +244,9 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
 - ÇIKTI DİLİ: Her zaman Türkçe. Kaynak İngilizce/Arapça/başka dilde olsa bile TÜRKÇE çeviri + yeniden yazma yap.
 - ASLA kaynak metni kelimesi kelimesine kopyalama. Özgün Türkçe gazete dili.
 - title, spot, summary, content HEPSİ birbirinden farklı bilgi sunsun — kopyalama.
-- Paragraflar arası \\n\\n kullan. Cümle ortasında satır kırma yapma.`
+- Paragraflar arası \\n\\n kullan. Cümle ortasında satır kırma yapma.
+- İÇERİK KALİTE KURALI: title/spot/summary/content HİÇBİR ZAMAN noktalı virgül (;), virgül (,), tire (-/—), üç nokta (...), açılış parantezi ile başlamamalı. RSS'ten kesik gelmiş cümleler tespit edilirse TAMAMEN YENİDEN YAZ — yarım cümle asla yayınlama.
+- KAYNAK ŞEHRİ KARIŞIKLIĞI: city alanı için KAYNAK GAZETENİN şehrini değil, haberin KONUSUNUN geçtiği şehri yaz. Antalya Ekspres'ten Gazze haberi geliyorsa city: null. Hürriyet'ten Ankara kararı geliyorsa city: "Ankara".`
 
 const HEADLINE_RULES = `ALAN TANIMLARI:
 - title: Gazete manşeti. Maks 65 karakter. Yalnızca ilk harf büyük. Vurucu ama yanıltmayan. Soru işareti ile bitirme.

@@ -4,7 +4,8 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 
-const SIMILARITY_THRESHOLD = 0.9
+// 0.65 = yeterince benzer (aynı haber, farklı kaynak). 0.9 çok yüksekti — pek çok duplikat kaçıyordu.
+const SIMILARITY_THRESHOLD = 0.65
 const LOOKBACK_MS = 48 * 60 * 60 * 1000
 const MAX_CANDIDATES = 80
 

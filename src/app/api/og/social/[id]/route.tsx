@@ -335,7 +335,9 @@ export async function GET(
     {
       width: 1080,
       height: 1080,
-      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+      // Facebook/Instagram crawlers must be able to download the image.
+      // Each URL is unique per article ID so caching 1h is safe.
+      headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400' },
     }
   )
 }
