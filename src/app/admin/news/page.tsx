@@ -532,7 +532,7 @@ export default function AdminNewsPage() {
     setLoading(true)
     try {
       const cursor = pageCursorsRef.current[page] ?? undefined
-      const result = await adminNewsService.list(filter, cursor)
+      const result = await adminNewsService.list(filter, cursor, categoryParam || undefined)
       setPosts(result.posts)
       setCurrentPage(page)
       setHasNext(result.hasMore)
@@ -550,14 +550,14 @@ export default function AdminNewsPage() {
   }, [filter])
 
   useEffect(() => {
-    // Reset pagination on filter change
+    // Reset pagination on filter or category change
     pageCursorsRef.current = [null]
     setCurrentPage(0)
     setKnownPages(1)
     setHasNext(false)
     void load(0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter])
+  }, [filter, categoryParam])
 
   const handleApprove = async (post: AdminNewsItem) => {
     setActionLoading(post.id)
@@ -636,7 +636,6 @@ export default function AdminNewsPage() {
   }
 
   const filtered = posts
-    .filter(p => !categoryParam || p.categoryId === categoryParam)
     .filter(p => !search.trim() || p.title.toLowerCase().includes(search.toLowerCase()))
 
   const pendingCount = posts.filter(p => p.status === 'pending').length

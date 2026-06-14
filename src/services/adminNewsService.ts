@@ -121,7 +121,8 @@ function statusConstraint(filter: AdminNewsFilter): Parameters<typeof where>[2] 
 export const adminNewsService = {
   async list(
     filter: AdminNewsFilter = 'all',
-    lastDoc?: QueryDocumentSnapshot
+    lastDoc?: QueryDocumentSnapshot,
+    categoryId?: string
   ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
     if (filter === 'pending') {
       return listPendingQueue(lastDoc)
@@ -132,6 +133,10 @@ export const adminNewsService = {
     const status = statusConstraint(filter)
     if (status) {
       constraints.push(where('status', '==', status))
+    }
+
+    if (categoryId) {
+      constraints.push(where('categoryId', '==', categoryId))
     }
 
     constraints.push(orderBy('createdAt', 'desc'))
