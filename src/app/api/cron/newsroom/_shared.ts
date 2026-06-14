@@ -19,7 +19,8 @@ export function createNewsroomCronHandler<T>(
     }
 
     const startedAt = Date.now()
-    let runRef: { id: string; update: (data: Record<string, unknown>) => Promise<void> } | null = null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let runRef: any = null
 
     // Write a "running" log entry to Firestore (best-effort — don't fail the cron if this errors)
     try {
@@ -30,7 +31,7 @@ export function createNewsroomCronHandler<T>(
         status: 'running',
         startedAt,
         triggeredBy: 'schedule',
-      }) as typeof runRef
+      })
     } catch {
       // Non-fatal — cron proceeds even if Firestore logging fails
     }
