@@ -4,8 +4,12 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 
-// 0.65 = yeterince benzer (aynı haber, farklı kaynak). 0.9 çok yüksekti — pek çok duplikat kaçıyordu.
-const SIMILARITY_THRESHOLD = 0.65
+// 0.52 = yeterince benzer. 0.65 çok yüksekti — aynı olayı farklı başlıkla anlatan haberler kaçıyordu.
+// Örnek: "Güngören'de kontrollü yıkım faciası" vs "Güngören'de kontrollü yıkım sırasında apartman çöktü"
+// → title Jaccard ~0.50, combined ~0.57 → 0.65 eşiğini geçiyordu → iki kez yayınlanıyordu.
+const SIMILARITY_THRESHOLD = 0.52
+// Başlık benzerliği tek başına bu eşiği geçerse, gövde kontrolüne gerek kalmadan duplikat say.
+const TITLE_ONLY_THRESHOLD = 0.46
 const LOOKBACK_MS = 48 * 60 * 60 * 1000
 const MAX_CANDIDATES = 80
 
@@ -55,6 +59,12 @@ export function computeArticleSimilarity(
   const titleSim = jaccardSimilarity(titleTokensA, titleTokensB)
   const bodySim = jaccardSimilarity(bodyTokensA, bodyTokensB)
 
+  // Başlık benzerliği tek başına yeterliyse combined skoru yükselt (duplikatı yakala).
+  // Örnek: aynı olayı farklı kelimelerle anlatan haberler: titleSim ~0.50 ama body boşsa kaçıyordu.
+  if (titleSim >= TITLE_ONLY_THRESHOLD) {
+    return Math.max(titleSim * 0.55 + bodySim * 0.45, titleSim * 0.9)
+  }
+
   // Headline weighted higher — breaking rewrites often share body facts.
   return titleSim * 0.55 + bodySim * 0.45
 }
@@ -65,17 +75,30 @@ export async function findSimilarPublishedArticle(
   body: string
 ): Promise<SimilarityMatch | null> {
   const since = Date.now() - LOOKBACK_MS
-  const snap = await db
-    .collection(Collections.NEWS)
-    .where('status', '==', 'published')
-    .where('createdAt', '>=', since)
-    .orderBy('createdAt', 'desc')
-    .limit(MAX_CANDIDATES)
-    .get()
 
+  // Hem yayınlanmış haberler hem de henüz draft'taki haberler kontrol edilir.
+  // Sorun: birinci haber draft'tayken ikinci gelirse sadece published kontrolü yakalamıyor.
+  const [publishedSnap, draftSnap] = await Promise.all([
+    db
+      .collection(Collections.NEWS)
+      .where('status', '==', 'published')
+      .where('createdAt', '>=', since)
+      .orderBy('createdAt', 'desc')
+      .limit(MAX_CANDIDATES)
+      .get(),
+    db
+      .collection(Collections.NEWS_DRAFTS)
+      .where('draftStatus', 'in', ['pending_review', 'approved'])
+      .where('createdAt', '>=', since)
+      .orderBy('createdAt', 'desc')
+      .limit(MAX_CANDIDATES)
+      .get(),
+  ])
+
+  const allDocs = [...publishedSnap.docs, ...draftSnap.docs]
   let best: SimilarityMatch | null = null
 
-  for (const doc of snap.docs) {
+  for (const doc of allDocs) {
     const data = doc.data() as { title?: string; description?: string; summary?: string }
     const candidateTitle = data.title ?? ''
     const candidateBody = data.description ?? data.summary ?? ''
