@@ -104,23 +104,7 @@ function buildHaberlerComSource(
  */
 export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
   // ── Adana ─────────────────────────────────────────────────────────────────
-  {
-    id: 'portal-haberler-adana',
-    label: 'Haberler.com — Adana',
-    feedUrl: 'https://www.haberler.com/rss/adana.xml',
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'adana', cityName: 'Adana' },
-  },
-  {
-    id: 'portal-adana-ekspres',
-    label: 'Adana Ekspres',
-    feedUrl: 'https://www.adanaekspres.com/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Adana haber site:adanaekspres.com')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'adana', cityName: 'Adana' },
-  },
+  // haberler.com/rss/adana.xml ve adanaekspres.com/rss: broken — Google News backbone covers Adana
   // ── Adıyaman ──────────────────────────────────────────────────────────────
   {
     id: 'portal-adiyaman-haber',
@@ -143,31 +127,14 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
   },
   // ── Ankara ────────────────────────────────────────────────────────────────
   {
-    id: 'portal-haberler-ankara',
-    label: 'Haberler.com — Ankara',
-    feedUrl: 'https://www.haberler.com/rss/ankara.xml',
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'ankara', cityName: 'Ankara' },
-  },
-  {
-    id: 'portal-ankara-haber',
-    label: 'Ankara Haber',
-    feedUrl: 'https://www.ankarahaber.com.tr/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Ankara haber site:ankarahaber.com.tr')],
+    id: 'portal-haber-ankara',
+    label: 'Haber Ankara',
+    feedUrl: 'https://www.haberankara.com/rss',
     maxItemsPerRun: 3,
     enabled: true,
     localMeta: { citySlug: 'ankara', cityName: 'Ankara' },
   },
   // ── Antalya ───────────────────────────────────────────────────────────────
-  {
-    id: 'portal-haberler-antalya',
-    label: 'Haberler.com — Antalya',
-    feedUrl: 'https://www.haberler.com/rss/antalya.xml',
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'antalya', cityName: 'Antalya' },
-  },
   {
     id: 'portal-antalya-ekspres',
     label: 'Antalya Ekspres',
@@ -197,15 +164,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     localMeta: { citySlug: 'aydin', cityName: 'Aydın' },
   },
   // ── Balıkesir ─────────────────────────────────────────────────────────────
-  {
-    id: 'portal-balikesir-haber',
-    label: 'Balıkesir Haber',
-    feedUrl: 'https://www.balikesirhaber.com/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Balıkesir haber site:balikesirhaber.com')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'balikesir', cityName: 'Balıkesir' },
-  },
+  // balikesirhaber.com/rss: broken — Google News backbone covers Balıkesir
   // ── Batman ────────────────────────────────────────────────────────────────
   {
     id: 'portal-batman-haber',
@@ -228,18 +187,9 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
   },
   // ── Bursa ─────────────────────────────────────────────────────────────────
   {
-    id: 'portal-haberler-bursa',
-    label: 'Haberler.com — Bursa',
-    feedUrl: 'https://www.haberler.com/rss/bursa.xml',
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'bursa', cityName: 'Bursa' },
-  },
-  {
-    id: 'portal-bursa-com',
-    label: 'Bursa.com.tr',
-    feedUrl: 'https://www.bursa.com.tr/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Bursa haber site:bursa.com.tr')],
+    id: 'portal-bursa-haber',
+    label: 'Bursa Haber',
+    feedUrl: 'https://www.bursahaber.com/rss',
     maxItemsPerRun: 3,
     enabled: true,
     localMeta: { citySlug: 'bursa', cityName: 'Bursa' },
@@ -346,15 +296,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     localMeta: { citySlug: 'corum', cityName: 'Çorum' },
   },
   // ── Denizli ───────────────────────────────────────────────────────────────
-  {
-    id: 'portal-denizli-haber',
-    label: 'Denizli Haber',
-    feedUrl: 'https://www.denizlihaber.net/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Denizli haber site:denizlihaber.net')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'denizli', cityName: 'Denizli' },
-  },
+  // denizlihaber.net/rss: broken — Google News backbone covers Denizli
   // ── Diyarbakır ────────────────────────────────────────────────────────────
   {
     id: 'portal-diyarbakir-haber',
@@ -425,33 +367,9 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     localMeta: { citySlug: 'eskisehir', cityName: 'Eskişehir' },
   },
   // ── Gaziantep ─────────────────────────────────────────────────────────────
-  {
-    id: 'portal-haberler-gaziantep',
-    label: 'Haberler.com — Gaziantep',
-    feedUrl: 'https://www.haberler.com/rss/gaziantep.xml',
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'gaziantep', cityName: 'Gaziantep' },
-  },
-  {
-    id: 'portal-gaziantep-haber',
-    label: 'Gaziantep Haber',
-    feedUrl: 'https://www.gaziantephaber.com.tr/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Gaziantep haber site:gaziantephaber.com.tr')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'gaziantep', cityName: 'Gaziantep' },
-  },
+  // haberler.com/rss/gaziantep.xml ve gaziantephaber.com.tr/rss: broken — Google News backbone covers Gaziantep
   // ── Giresun ───────────────────────────────────────────────────────────────
-  {
-    id: 'portal-giresun-haber',
-    label: 'Giresun Haber',
-    feedUrl: 'https://www.giresunhaber.com/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Giresun haber site:giresunhaber.com')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'giresun', cityName: 'Giresun' },
-  },
+  // giresunhaber.com/rss: broken — Google News backbone covers Giresun
   // ── Hatay ─────────────────────────────────────────────────────────────────
   {
     id: 'portal-hatay-haber',
@@ -464,31 +382,30 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
   },
   // ── İstanbul ──────────────────────────────────────────────────────────────
   {
-    id: 'portal-haberler-istanbul',
-    label: 'Haberler.com — İstanbul',
-    feedUrl: 'https://www.haberler.com/rss/istanbul.xml',
-    alternateFeedUrls: ['https://www.haberler.com/rss/istanbul-haberleri.xml'],
+    id: 'portal-istanbul-gazetesi',
+    label: 'İstanbul Gazetesi',
+    feedUrl: 'https://www.istanbulgazetesi.com.tr/rss',
     maxItemsPerRun: 3,
     enabled: true,
     localMeta: { citySlug: 'istanbul', cityName: 'İstanbul' },
   },
   // ── İzmir ─────────────────────────────────────────────────────────────────
   {
-    id: 'portal-haberler-izmir',
-    label: 'Haberler.com — İzmir',
-    feedUrl: 'https://www.haberler.com/rss/izmir.xml',
+    id: 'portal-izmir-haberleri',
+    label: 'İzmir Haberleri',
+    feedUrl: 'https://www.izmirhaberleri.com/rss/news',
     maxItemsPerRun: 3,
     enabled: true,
     localMeta: { citySlug: 'izmir', cityName: 'İzmir' },
   },
+  // ── Kahramanmaraş ─────────────────────────────────────────────────────────
   {
-    id: 'portal-yeni-asir',
-    label: 'Yeni Asır',
-    feedUrl: 'https://www.yeniasir.com.tr/rss/izmir',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('İzmir haber site:yeniasir.com.tr')],
+    id: 'portal-kahramanmaras-haber',
+    label: 'Kahramanmaraş Haber',
+    feedUrl: 'https://www.kahramanmarashaber.com/rss',
     maxItemsPerRun: 3,
     enabled: true,
-    localMeta: { citySlug: 'izmir', cityName: 'İzmir' },
+    localMeta: { citySlug: 'kahramanmaras', cityName: 'Kahramanmaraş' },
   },
   // ── Kastamonu ─────────────────────────────────────────────────────────────
   {
@@ -501,35 +418,11 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     localMeta: { citySlug: 'kastamonu', cityName: 'Kastamonu' },
   },
   // ── Kayseri ───────────────────────────────────────────────────────────────
-  {
-    id: 'portal-kayseri-haber',
-    label: 'Kayseri Haber',
-    feedUrl: 'https://www.kayserihaber.com.tr/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Kayseri haber site:kayserihaber.com.tr')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'kayseri', cityName: 'Kayseri' },
-  },
+  // kayserihaber.com.tr/rss: broken — Google News backbone covers Kayseri
   // ── Kocaeli ───────────────────────────────────────────────────────────────
-  {
-    id: 'portal-kocaeli-haber',
-    label: 'Kocaeli Haber',
-    feedUrl: 'https://www.kocaelihaber.com/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Kocaeli haber site:kocaelihaber.com')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'kocaeli', cityName: 'Kocaeli' },
-  },
+  // kocaelihaber.com/rss: broken — Google News backbone covers Kocaeli
   // ── Konya ─────────────────────────────────────────────────────────────────
-  {
-    id: 'portal-konya-haber',
-    label: 'Konya Haber',
-    feedUrl: 'https://www.konyahaber.com.tr/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Konya haber site:konyahaber.com.tr')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'konya', cityName: 'Konya' },
-  },
+  // konyahaber.com.tr/rss: broken — Google News backbone covers Konya
   // ── Malatya ───────────────────────────────────────────────────────────────
   {
     id: 'portal-malatya-haber',
@@ -562,10 +455,9 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
   },
   // ── Mersin ────────────────────────────────────────────────────────────────
   {
-    id: 'portal-mersin-haber',
-    label: 'Mersin Haber',
-    feedUrl: 'https://www.mersinhaber.net/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Mersin haber site:mersinhaber.net')],
+    id: 'portal-haber-mersin',
+    label: 'Haber Mersin',
+    feedUrl: 'https://www.habermersin.com/rss',
     maxItemsPerRun: 3,
     enabled: true,
     localMeta: { citySlug: 'mersin', cityName: 'Mersin' },
@@ -681,25 +573,9 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     localMeta: { citySlug: 'tokat', cityName: 'Tokat' },
   },
   // ── Trabzon ───────────────────────────────────────────────────────────────
-  {
-    id: 'portal-trabzon-haber',
-    label: 'Trabzon Haber',
-    feedUrl: 'https://www.trabzonhaber.com/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Trabzon haber site:trabzonhaber.com')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'trabzon', cityName: 'Trabzon' },
-  },
+  // trabzonhaber.com/rss: domain squatted — Google News backbone covers Trabzon
   // ── Van ───────────────────────────────────────────────────────────────────
-  {
-    id: 'portal-van-haber',
-    label: 'Van Haber',
-    feedUrl: 'https://www.vanhaber.net/rss',
-    alternateFeedUrls: [buildGoogleNewsFeedUrl('Van haber site:vanhaber.net')],
-    maxItemsPerRun: 3,
-    enabled: true,
-    localMeta: { citySlug: 'van', cityName: 'Van' },
-  },
+  // vanhaber.net/rss: broken — Google News backbone covers Van
   // ── Yozgat ────────────────────────────────────────────────────────────────
   {
     id: 'portal-yozgat-haber',
