@@ -11,6 +11,7 @@
  *       If imageUrl is missing, we skip Instagram (image is mandatory for IG posts).
  */
 import type { SocialPublishPayload, SocialPublishResult } from './types'
+import { getSocialTokens } from './tokenStore'
 
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
@@ -93,8 +94,7 @@ export async function publishToInstagram(
   payload: SocialPublishPayload
 ): Promise<SocialPublishResult> {
   const igBusinessId = process.env.INSTAGRAM_BUSINESS_ID?.trim()
-  // Prefer Instagram-specific token; fall back to Facebook Page Access Token
-  const accessToken = (process.env.INSTAGRAM_ACCESS_TOKEN?.trim() || process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim())
+  const { igToken: accessToken } = await getSocialTokens()
 
   if (!igBusinessId || !accessToken) {
     return {

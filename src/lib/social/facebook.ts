@@ -7,6 +7,7 @@
  *   FACEBOOK_PAGE_ACCESS_TOKEN — long-lived page access token
  */
 import type { SocialPublishPayload, SocialPublishResult } from './types'
+import { getSocialTokens } from './tokenStore'
 
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
@@ -33,7 +34,7 @@ export async function publishToFacebook(
   payload: SocialPublishPayload
 ): Promise<SocialPublishResult> {
   const pageId = process.env.FACEBOOK_PAGE_ID?.trim()
-  const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim()
+  const { fbToken: accessToken } = await getSocialTokens()
 
   if (!pageId || !accessToken) {
     return {

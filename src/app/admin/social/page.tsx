@@ -94,6 +94,11 @@ export default function SocialPage() {
   const [diagnosing, setDiagnosing] = useState(false)
   const [diagResult, setDiagResult] = useState<{ summary: string; steps: Array<{ name: string; ok: boolean; detail: string }> } | null>(null)
   const [filter, setFilter] = useState<'all' | 'published' | 'pending'>('all')
+  const [showTokenPanel, setShowTokenPanel] = useState(false)
+  const [newFbToken, setNewFbToken] = useState('')
+  const [newIgToken, setNewIgToken] = useState('')
+  const [savingToken, setSavingToken] = useState(false)
+  const [tokenResult, setTokenResult] = useState<{ ok: boolean; message: string; permissions?: string[] } | null>(null)
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchRows = useCallback(
@@ -202,6 +207,36 @@ export default function SocialPage() {
     }
   }
 
+  // ── Token güncelle ─────────────────────────────────────────────────────────
+  const saveToken = async () => {
+    if (!user || savingToken || !newFbToken.trim()) return
+    setSavingToken(true)
+    setTokenResult(null)
+    try {
+      const idToken = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ facebookPageToken: newFbToken.trim(), instagramToken: newIgToken.trim() || undefined }),
+      })
+      const data = await res.json() as { ok?: boolean; message?: string; permissions?: string[]; error?: string }
+      if (res.ok && data.ok) {
+        setTokenResult({ ok: true, message: data.message ?? 'Token kaydedildi', permissions: data.permissions })
+        setNewFbToken('')
+        setNewIgToken('')
+        toast.success('Token başarıyla güncellendi!')
+      } else {
+        setTokenResult({ ok: false, message: data.error ?? 'Hata oluştu' })
+        toast.error(data.error ?? 'Token kaydedilemedi')
+      }
+    } catch (err) {
+      toast.error('Bağlantı hatası')
+      console.error(err)
+    } finally {
+      setSavingToken(false)
+    }
+  }
+
   // ── Diagnose ───────────────────────────────────────────────────────────────
   const runDiagnose = async () => {
     if (!user || diagnosing) return
@@ -279,7 +314,7 @@ export default function SocialPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => { setLastDoc(null); void fetchRows(true) }}
               disabled={loading}
@@ -287,6 +322,12 @@ export default function SocialPage() {
             >
               <RefreshCw className={cn('h-3 w-3', loading && 'animate-spin')} />
               Yenile
+            </button>
+            <button
+              onClick={() => { setShowTokenPanel(p => !p); setTokenResult(null) }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+            >
+              🔑 Token Güncelle
             </button>
             <button
               onClick={() => void runDiagnose()}
@@ -309,6 +350,81 @@ export default function SocialPage() {
             </button>
           </div>
         </div>
+
+        {/* Token güncelleme paneli */}
+        {showTokenPanel && (
+          <div className="rounded-xl border border-violet-500/30 bg-violet-950/20 p-5">
+            <h3 className="mb-1 font-bold text-white">🔑 Facebook / Instagram Token Güncelle</h3>
+            <p className="mb-4 text-xs text-slate-400">
+              Token eksik izinlere sahip olduğunda paylaşımlar çalışmaz. Yeni token almak için:
+            </p>
+            <ol className="mb-4 space-y-1 text-xs text-slate-300">
+              <li>1. <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-violet-400 underline">Graph API Explorer</a> aç</li>
+              <li>2. App: <strong>NaHaber Social Publisher</strong> seç</li>
+              <li>3. İzinler listesinde şunları ekle: <code className="rounded bg-white/10 px-1">instagram_content_publish</code>, <code className="rounded bg-white/10 px-1">instagram_basic</code>, <code className="rounded bg-white/10 px-1">pages_read_engagement</code></li>
+              <li>4. <strong>Generate Access Token</strong> → izin ver</li>
+              <li>5. <strong>User Token</strong> açılır menüsünden <strong>Onyeditivi</strong> sayfasını seç</li>
+              <li>6. Oluşan token&apos;ı aşağıya yapıştır → <strong>Doğrula & Kaydet</strong></li>
+            </ol>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-300">
+                  Facebook Page Access Token <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  value={newFbToken}
+                  onChange={e => setNewFbToken(e.target.value)}
+                  rows={3}
+                  placeholder="EAAWo..."
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-300">
+                  Instagram Access Token <span className="text-slate-500">(opsiyonel — boş bırakılırsa FB token kullanılır)</span>
+                </label>
+                <textarea
+                  value={newIgToken}
+                  onChange={e => setNewIgToken(e.target.value)}
+                  rows={2}
+                  placeholder="EAAWo... (opsiyonel)"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                />
+              </div>
+
+              {tokenResult && (
+                <div className={cn(
+                  'rounded-lg px-3 py-2 text-xs',
+                  tokenResult.ok ? 'bg-emerald-900/30 text-emerald-300' : 'bg-red-900/30 text-red-300'
+                )}>
+                  {tokenResult.ok ? '✅' : '❌'} {tokenResult.message}
+                  {tokenResult.ok && tokenResult.permissions && (
+                    <div className="mt-1 text-[10px] text-slate-400">
+                      İzinler: {tokenResult.permissions.join(', ')}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => void saveToken()}
+                  disabled={savingToken || !newFbToken.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50"
+                >
+                  {savingToken ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                  Doğrula & Kaydet
+                </button>
+                <button
+                  onClick={() => { setShowTokenPanel(false); setTokenResult(null) }}
+                  className="rounded-lg px-4 py-2 text-xs text-slate-400 hover:text-white"
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Diagnose result panel */}
         {diagResult && (

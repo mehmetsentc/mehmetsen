@@ -20,7 +20,8 @@ interface DiagStep {
 
 async function graphGet(path: string, token: string): Promise<{ ok: boolean; data: unknown; status: number }> {
   try {
-    const res = await fetch(`${GRAPH}${path}?access_token=${token}`)
+    const sep = path.includes('?') ? '&' : '?'
+    const res = await fetch(`${GRAPH}${path}${sep}access_token=${token}`)
     const data = await res.json()
     return { ok: res.ok, data, status: res.status }
   } catch (e) {
