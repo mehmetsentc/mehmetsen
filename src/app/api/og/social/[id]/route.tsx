@@ -1,9 +1,19 @@
 /**
  * GET /api/og/social/[id]
  *
- * Onyedi Tivi marka stilinde 1080×1080 sosyal medya görseli.
- * Tasarım: üst %54 fotoğraf · alt %46 koyu panel (kırmızı başlık + açıklama)
- * Edge runtime — Vercel CDN cache'ler.
+ * ONYEDİTİVİ HABERLERİ — 1080×1080 sosyal medya görseli
+ *
+ * Layout:
+ *   ┌────────────────────────────────────┐
+ *   │                    [● 17 logo]     │  ← mavi blob logo, sağ üst
+ *   │        HABER FOTOĞRAFI             │  ~55%
+ *   ├────────────────────────────────────┤
+ *   │  BAŞLIK  (kırmızı zemin)           │  ~22%
+ *   ├────────────────────────────────────┤
+ *   │  açıklama (koyu lacivert)          │  ~18%
+ *   ├────────────────────────────────────┤
+ *   │  DAHA FAZLASI İÇİN: NAHABER.COM   │  ~5%
+ *   └────────────────────────────────────┘
  */
 export const runtime = 'edge'
 
@@ -15,7 +25,6 @@ const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}
 
 interface ArticleOGData {
   title: string
-  categoryId: string
   spot: string
   imageUrl: string
   thumbnail: string
@@ -37,7 +46,6 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
     if (!f) return null
     return {
       title:         f.title?.stringValue         || '',
-      categoryId:    f.categoryId?.stringValue    || 'gundem',
       spot:          f.spot?.stringValue          || f.summary?.stringValue || f.description?.stringValue || '',
       imageUrl:      f.imageUrl?.stringValue      || '',
       thumbnail:     f.thumbnail?.stringValue     || '',
@@ -45,23 +53,18 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
       featuredImage: f.featuredImage?.stringValue || '',
       image:         f.image?.stringValue         || '',
     }
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
-// Satori (Edge runtime) yalnızca JPEG ve PNG destekler — WebP/AVIF/TIFF çöktürür
 const SUPPORTED_EXTS = /\.(jpe?g|png|gif)(\?|$)/i
 
 function bestImage(a: ArticleOGData): string {
   const candidates = [a.thumbnail, a.coverImageUrl, a.imageUrl, a.featuredImage, a.image]
-  // Önce desteklenen formatlara bak
   for (const c of candidates) {
     if (c && SUPPORTED_EXTS.test(c)) return c
   }
-  // Uzantısı belirsiz URL'leri de dene (bazı CDN'ler format belirtmez)
   for (const c of candidates) {
-    if (c && !c.includes('.webp') && !c.includes('.avif') && !c.includes('.tiff') && !c.includes('.bmp')) return c
+    if (c && !c.includes('.webp') && !c.includes('.avif')) return c
   }
   return ''
 }
@@ -70,273 +73,190 @@ function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str
 }
 
-// Bölüm yükseklikleri
-const PHOTO_H = 580   // ~54%
-const TEXT_H  = 500   // ~46%
+const PHOTO_H = 594
+const TITLE_H = 238
+const DESC_H  = 194
+const FOOT_H  = 54
 
-// ── Handler ────────────────────────────────────────────────────────────────
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
   const article = await fetchArticle(id)
-
   if (!article || !article.title) {
-    return new Response('Haber bulunamadı', { status: 404 })
+    return new Response('Haber bulunamadi', { status: 404 })
   }
 
-  const photo     = bestImage(article)
-  const title     = truncate(article.title, 65)
-  const spot      = truncate(article.spot || '', 135)
-  const titleSize = title.length > 52 ? 40 : title.length > 36 ? 48 : 56
+  const photo = bestImage(article)
+  const title = truncate(article.title, 72)
+  const spot  = truncate(article.spot || '', 130)
+  const titleFontSize = title.length > 60 ? 38 : title.length > 44 ? 44 : title.length > 30 ? 50 : 56
 
   return new ImageResponse(
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     (
-      <div
-        style={{
-          width: 1080,
-          height: 1080,
-          display: 'flex',
-          flexDirection: 'column',
-          fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-          overflow: 'hidden',
-          position: 'relative',
-          background: '#0a1628',
-        }}
-      >
-        {/* ═══════════════════════════════════════════════════════════════
-            ÜST BÖLÜM — Haber fotoğrafı
-        ═══════════════════════════════════════════════════════════════ */}
-        <div
-          style={{
-            width: 1080,
-            height: PHOTO_H,
-            position: 'relative',
-            display: 'flex',
-            overflow: 'hidden',
-            flexShrink: 0,
-            backgroundColor: '#0d1f3a',
-          }}
-        >
+      <div style={{
+        width: 1080, height: 1080,
+        display: 'flex', flexDirection: 'column',
+        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+        overflow: 'hidden', background: '#111827',
+      }}>
+
+        {/* ── 1. FOTOĞRAF ── */}
+        <div style={{
+          width: 1080, height: PHOTO_H,
+          position: 'relative', display: 'flex',
+          overflow: 'hidden', flexShrink: 0,
+          backgroundColor: '#1e3a5f',
+        }}>
           {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={photo}
-              alt=""
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'flex',
-              }}
-            />
+            <img src={photo} alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'flex' }} />
           ) : (
-            /* Görselsiz fallback — markalı gradient */
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                background: 'linear-gradient(135deg, #1e3a5f 0%, #0d2b4e 60%, #071528 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {/* Dekoratif ışıma */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: -120, right: -120,
-                  width: 480, height: 480,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(249,115,22,0.22) 0%, transparent 65%)',
-                  display: 'flex',
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: -80, left: -80,
-                  width: 360, height: 360,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 65%)',
-                  display: 'flex',
-                }}
-              />
-            </div>
+            <div style={{
+              width: '100%', height: '100%',
+              background: 'linear-gradient(135deg, #1e3a5f 0%, #0d2b4e 60%, #071528 100%)',
+              display: 'flex',
+            }} />
           )}
 
-          {/* ── ÜST SAĞ: ONYEDİTİVİ HABERLERİ rozeti ── */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 38,
-              right: 0,
-              backgroundColor: '#dc2626',
-              padding: '14px 30px 14px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <span
-              style={{
-                color: 'white',
-                fontWeight: 900,
-                fontSize: 26,
-                letterSpacing: 1,
-                display: 'flex',
-              }}
-            >
-              ONYEDİTİVİ
-            </span>
-            <span
-              style={{
-                color: 'rgba(255,255,255,0.80)',
-                fontWeight: 400,
-                fontSize: 19,
-                letterSpacing: 2,
-                display: 'flex',
-              }}
-            >
-              HABERLERİ
-            </span>
-          </div>
-        </div>
+          {/* ── LOGO BADGE: ONYEDİTİVİ mavi blob logosu ── */}
+          {/* Beyaz yarı-saydam pill — fotoğraf üzerinde okunabilirlik için */}
+          <div style={{
+            position: 'absolute', top: 32, right: 32,
+            backgroundColor: 'rgba(255,255,255,0.92)',
+            borderRadius: 100,
+            display: 'flex', alignItems: 'center',
+            padding: '10px 22px 10px 10px',
+            gap: 14,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+          }}>
 
-        {/* ═══════════════════════════════════════════════════════════════
-            ALT BÖLÜM — Koyu panel: başlık + açıklama + footer
-        ═══════════════════════════════════════════════════════════════ */}
-        <div
-          style={{
-            width: 1080,
-            height: TEXT_H,
-            backgroundColor: '#0a1628',
-            display: 'flex',
-            flexDirection: 'column',
-            position: 'relative',
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
-        >
-          {/* Dekoratif dalga — sağ alt */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: -100, right: -70,
-              width: 380, height: 380,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(30,100,210,0.38) 0%, rgba(10,50,140,0.22) 50%, transparent 70%)',
-              display: 'flex',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 30, right: 50,
-              width: 220, height: 220,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(56,189,248,0.28) 0%, transparent 68%)',
-              display: 'flex',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: -10, right: 210,
-              width: 170, height: 170,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(99,179,237,0.20) 0%, transparent 68%)',
-              display: 'flex',
-            }}
-          />
-
-          {/* Kırmızı başlık şeridi */}
-          <div
-            style={{
-              backgroundColor: '#dc2626',
-              padding: '22px 44px',
-              display: 'flex',
+            {/* ── ONYEDİTİVİ LOGO (mavi blob + 17) ── */}
+            <div style={{
+              width: 72, height: 72,
+              position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
-            }}
-          >
-            <span
-              style={{
-                color: 'white',
-                fontSize: titleSize,
-                fontWeight: 900,
-                lineHeight: 1.22,
+            }}>
+              {/* Blob katman 1 — en dış, açık mavi, döndürülmüş */}
+              <div style={{
+                position: 'absolute',
+                width: 68, height: 68,
+                backgroundColor: '#a8c8f0',
+                borderRadius: 20,
+                transform: 'rotate(12deg)',
                 display: 'flex',
-              }}
-            >
-              {title}
-            </span>
-          </div>
-
-          {/* Açıklama metni */}
-          {spot ? (
-            <div
-              style={{
-                padding: '26px 44px 0',
+              }} />
+              {/* Blob katman 2 — orta mavi */}
+              <div style={{
+                position: 'absolute',
+                width: 64, height: 64,
+                backgroundColor: '#5b8fd4',
+                borderRadius: 18,
+                transform: 'rotate(-6deg)',
                 display: 'flex',
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  color: 'rgba(255,255,255,0.82)',
-                  fontSize: 28,
-                  lineHeight: 1.55,
-                  display: 'flex',
-                }}
-              >
-                {spot}
-              </span>
+              }} />
+              {/* Blob katman 3 — koyu mavi */}
+              <div style={{
+                position: 'absolute',
+                width: 60, height: 60,
+                backgroundColor: '#2a5cb0',
+                borderRadius: 16,
+                transform: 'rotate(3deg)',
+                display: 'flex',
+              }} />
+              {/* İç daire — lacivert */}
+              <div style={{
+                position: 'absolute',
+                width: 54, height: 54,
+                backgroundColor: '#1a3480',
+                borderRadius: '50%',
+                display: 'flex',
+              }} />
+              {/* "17" yazısı */}
+              <div style={{
+                position: 'relative',
+                display: 'flex', alignItems: 'baseline',
+                zIndex: 10,
+              }}>
+                <span style={{
+                  color: '#ffffff',
+                  fontWeight: 900, fontSize: 28,
+                  lineHeight: 1, display: 'flex',
+                  marginRight: -2,
+                }}>1</span>
+                <span style={{
+                  color: '#87ceeb',
+                  fontWeight: 900, fontSize: 28,
+                  lineHeight: 1, display: 'flex',
+                }}>7</span>
+              </div>
             </div>
-          ) : null}
 
-          {/* Footer */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 34,
-              left: 44,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                width: 32,
-                height: 3,
-                backgroundColor: '#dc2626',
-                borderRadius: 2,
+            {/* Metin */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{
+                color: '#111827', fontWeight: 900,
+                fontSize: 19, letterSpacing: 0.5,
                 display: 'flex',
-              }}
-            />
-            <span
-              style={{
-                color: 'rgba(255,255,255,0.38)',
-                fontSize: 17,
-                fontWeight: 600,
-                letterSpacing: 3,
+              }}>ONYEDiTiVi</span>
+              <span style={{
+                color: '#6b7280', fontWeight: 500,
+                fontSize: 12, letterSpacing: 2.5,
                 display: 'flex',
-              }}
-            >
-              DAHA FAZLASI İÇİN: WWW.NAHABER.COM
-            </span>
+              }}>HABERLERi</span>
+            </div>
           </div>
         </div>
+
+        {/* ── 2. BAŞLIK — kırmızı ── */}
+        <div style={{
+          width: 1080, height: TITLE_H,
+          backgroundColor: '#dc2626',
+          display: 'flex', alignItems: 'center',
+          padding: '0 48px', flexShrink: 0,
+        }}>
+          <span style={{
+            color: 'white',
+            fontSize: titleFontSize, fontWeight: 900,
+            lineHeight: 1.25, display: 'flex',
+          }}>{title}</span>
+        </div>
+
+        {/* ── 3. AÇIKLAMA ── */}
+        <div style={{
+          width: 1080, height: DESC_H,
+          backgroundColor: '#1f2937',
+          display: 'flex', alignItems: 'center',
+          padding: '0 48px', flexShrink: 0,
+        }}>
+          {spot ? (
+            <span style={{
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: 26, lineHeight: 1.55, display: 'flex',
+            }}>{spot}</span>
+          ) : null}
+        </div>
+
+        {/* ── 4. FOOTER ── */}
+        <div style={{
+          width: 1080, height: FOOT_H,
+          backgroundColor: '#111827',
+          display: 'flex', alignItems: 'center',
+          padding: '0 48px', flexShrink: 0,
+        }}>
+          <span style={{
+            color: 'rgba(255,255,255,0.40)',
+            fontSize: 16, fontWeight: 600,
+            letterSpacing: 3, display: 'flex',
+          }}>DAHA FAZLASI iCiN: WWW.NAHABER.COM</span>
+        </div>
+
       </div>
     ),
     {
-      width: 1080,
-      height: 1080,
-      // Facebook/Instagram crawlers must be able to download the image.
-      // Each URL is unique per article ID so caching 1h is safe.
+      width: 1080, height: 1080,
       headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400' },
     }
   )
