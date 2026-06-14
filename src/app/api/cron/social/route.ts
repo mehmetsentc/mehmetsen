@@ -131,7 +131,12 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     .limit(BATCH_LIMIT * 5)
     .get()
 
-  let candidates = snap.docs.filter(doc => !doc.data().socialPublished)
+  let candidates = snap.docs.filter(doc => {
+    const d = doc.data()
+    // Video haberlerini atla — thumbnail'leri "Videolu Haber" kartı olduğu için
+    // OG şablonunun fotoğraf alanında kötü görünüyor
+    return !d.socialPublished && !d.hasVideo && !d.isVideo
+  })
 
   // ── Yedek sorgu: son 100 haberi tara, Çanakkale olanları bul ──────────
   if (candidates.length === 0) {
@@ -143,7 +148,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       .get()
     candidates = snap2.docs.filter(doc => {
       const d = doc.data() as Record<string, unknown>
-      return isCanakkale(d) && !d.socialPublished
+      return isCanakkale(d) && !d.socialPublished && !d.hasVideo && !d.isVideo
     })
   }
 
