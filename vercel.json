@@ -56,7 +56,7 @@
     { "path": "/api/cron/newsroom/magazine",      "schedule": "30 */4 * * *"      },
     { "path": "/api/cron/newsroom/trend",         "schedule": "0 */4 * * *"       },
     { "path": "/api/cron/newsroom/video-process", "schedule": "0 */4 * * *"       },
-    { "path": "/api/cron/social",                 "schedule": "0 8,13,19 * * *"   },
+    { "path": "/api/cron/social",                 "schedule": "*/20 * * * *"       },
     { "path": "/api/cron/weather-news",           "schedule": "0 6,12,18 * * *"   },
     { "path": "/api/cron/newsroom/seo",           "schedule": "0 4 * * *"         },
     { "path": "/api/cron/newsroom/influencer",    "schedule": "0 3 * * *"         },

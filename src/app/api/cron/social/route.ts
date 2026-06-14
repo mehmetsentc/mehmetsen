@@ -181,13 +181,12 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const articleUrl       = buildArticleUrl(id, data)
     const cityName         = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
 
-    // ── AI İçerik Üretimi ─────────────────────────────────────────────────
+    // ── AI İçerik Üretimi (yalnızca hashtag üretmek için) ────────────────
     let socialContent = await generateSocialContent(title, description, cityName)
     if (!socialContent) {
-      // Fallback: basit içerik
       socialContent = {
         headline: title.slice(0, 60),
-        caption:  `📰 ${title}\n\nHaberin devamı için bağlantıya tıklayın.`,
+        caption:  '',
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText:  title,
       }
@@ -197,9 +196,17 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const socialImageUrl: string = `https://nahaber.com/api/og/social/${id}`
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
-    // ── Sosyal medya metni ────────────────────────────────────────────────
+    // ── Post formatı: kısa açıklama + site linki + etiketler ─────────────
+    // Spot: haberin özeti (2-3 cümle). Çok uzunsa 280 karakterde kes.
+    const spotText = description.trim().slice(0, 280)
     const hashtagStr = socialContent.hashtags.join(' ')
-    const fullCaption = `${socialContent.caption}\n\n${hashtagStr}\n\n🔗 ${articleUrl}`
+    const fullCaption = [
+      spotText,
+      '',
+      `🔗 Haberin devamı: ${articleUrl}`,
+      '',
+      hashtagStr,
+    ].join('\n')
 
     const payload: SocialPublishPayload = {
       newsId:     id,
