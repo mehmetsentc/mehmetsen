@@ -6,6 +6,35 @@ import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { useTrendingTopics } from '@/hooks/useTrendingTopics'
 
+/** Normalise Turkish chars for comparison */
+function normTR(s: string) {
+  return s
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+}
+
+// Build lookup: normalised slug/id/name → category id
+const CATEGORY_LOOKUP = new Map<string, string>()
+for (const cat of DEFAULT_CATEGORIES) {
+  CATEGORY_LOOKUP.set(normTR(cat.id),   cat.id)
+  CATEGORY_LOOKUP.set(normTR(cat.slug), cat.id)
+  CATEGORY_LOOKUP.set(normTR(cat.name), cat.id)
+}
+
+/** Returns category id if tag matches a category, else null */
+function tagToCategoryId(tag: string): string | null {
+  return CATEGORY_LOOKUP.get(normTR(tag)) ?? null
+}
+
+/** Builds the correct href for a trending tag */
+function trendHref(tag: string): string {
+  const catId = tagToCategoryId(tag)
+  return catId
+    ? `${ROUTES.FEED}?category=${catId}`
+    : `${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}`
+}
+
 export function TrendingPanel() {
   const { topics, loading } = useTrendingTopics()
 
@@ -30,7 +59,7 @@ export function TrendingPanel() {
           {topics.map((item, i) => (
             <li key={item.tag}>
               <Link
-                href={`${ROUTES.SEARCH}?q=${encodeURIComponent(item.tag)}`}
+                href={trendHref(item.tag)}
                 className="group flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-[rgb(var(--color-surface))]"
               >
                 <span className="text-sm font-bold text-[rgb(var(--color-border))]">{i + 1}</span>
