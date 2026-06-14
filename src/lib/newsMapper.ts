@@ -124,6 +124,9 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
   if (!isDisplayableNews(data)) return null
 
   const createdAt = normalizeTimestamp(data.createdAt)
+  const publishedAt = normalizeTimestamp(
+    data.publishedAt != null ? (data.publishedAt as NewsDocument['createdAt']) : data.createdAt
+  )
   const author = (data.author?.trim() || 'nahaber').slice(0, 64)
   const videoUrl = data.videoUrl?.trim() ?? ''
   const thumbnail = data.thumbnail?.trim() || data.coverImageUrl?.trim() || ''
@@ -177,7 +180,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     priorityScore: data.priorityScore ?? 0,
     editorType: data.editorType,
     confidenceScore: data.confidenceScore,
-    publishedAt: createdAt,
+    publishedAt,
     createdAt,
     updatedAt: createdAt,
   }
