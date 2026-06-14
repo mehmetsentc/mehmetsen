@@ -20,7 +20,7 @@ export const maxDuration = 300
 const BATCH_SIZE = 400
 
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'super_admin')
+  const auth = await verifyCmsToken(request, 'system:settings')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let cursor: string | undefined
