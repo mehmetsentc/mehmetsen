@@ -32,12 +32,13 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
 ] as const
 
 /**
- * Son dakika kaynakları — acil + güvenilir (10 kaynak → 6).
- * Kaldırılanlar: ntv/haberturk (national'da var), aljazeera (world'de var),
- * reuters (URL bug vardı, reuters-world yeterli).
+ * Son dakika kaynakları — Türk + uluslararası ajanslar (5 → 9).
+ * Eklendi: hurriyet, sozcu, haberturk, sabah (yüksek trafikli Türk kaynakları)
+ * Bunlar 15 dakikada bir taranır → Türkçe son dakika haberler çok daha hızlı gelir.
  */
 export const BREAKING_NEWS_SOURCE_IDS = [
   'cnn', 'bbc', 'reuters-world', 'ap-news', 'trt',
+  'hurriyet', 'sozcu', 'haberturk', 'sabah',
 ] as const
 
 /**

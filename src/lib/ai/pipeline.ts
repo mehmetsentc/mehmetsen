@@ -27,8 +27,8 @@ import type {
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DUPLICATE_THRESHOLD = 80      // duplicateScore >= 80 → skip
 const MIN_QUALITY_THRESHOLD = 40    // qualityScore < 40 → reject after Gemini
-const BATCH_SIZE = 5                // items per cron run
-const INTER_ITEM_DELAY_MS = 1500    // rate limit pause between items
+const BATCH_SIZE = 10               // items per cron run (was 5 → doubled for throughput)
+const INTER_ITEM_DELAY_MS = 800     // rate limit pause between items (was 1500ms)
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 async function log(entry: Omit<AiLogEntry, 'timestamp'>): Promise<void> {
