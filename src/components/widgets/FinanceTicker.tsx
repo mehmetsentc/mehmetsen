@@ -42,11 +42,20 @@ export function FinanceTicker() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/finance/rates')
-      .then((r) => r.json())
-      .then((d: FinanceRates) => setRates(d))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    const fetchRates = () => {
+      fetch('/api/finance/rates')
+        .then((r) => r.json())
+        .then((d: FinanceRates) => {
+          setRates(d)
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    }
+
+    fetchRates()
+    // 60 saniyede bir güncelle — Yahoo Finance intraday verisi
+    const interval = setInterval(fetchRates, 60_000)
+    return () => clearInterval(interval)
   }, [])
 
   if (loading) {
