@@ -528,11 +528,15 @@ export default function AdminNewsPage() {
   const [knownPages, setKnownPages] = useState(1)
   const [hasNext, setHasNext] = useState(false)
 
+  // Keep a ref so `load` always reads the latest categoryParam without being recreated
+  const categoryParamRef = useRef(categoryParam)
+  categoryParamRef.current = categoryParam
+
   const load = useCallback(async (page: number) => {
     setLoading(true)
     try {
       const cursor = pageCursorsRef.current[page] ?? undefined
-      const result = await adminNewsService.list(filter, cursor, categoryParam || undefined)
+      const result = await adminNewsService.list(filter, cursor, categoryParamRef.current || undefined)
       setPosts(result.posts)
       setCurrentPage(page)
       setHasNext(result.hasMore)
