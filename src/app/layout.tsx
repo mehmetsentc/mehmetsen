@@ -16,6 +16,7 @@ import {
   LANGUAGE_COOKIE,
   resolveInitialLanguage,
 } from '@/lib/i18n'
+import { NEWS_IMAGE_PRECONNECT_HOSTS } from '@/constants/imageHosts'
 import './globals.css'
 
 const inter = Inter({
@@ -159,6 +160,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
+        {NEWS_IMAGE_PRECONNECT_HOSTS.map((href) => (
+          <link key={href} rel="preconnect" href={href} crossOrigin="anonymous" />
+        ))}
         <link rel="alternate" type="application/rss+xml" title={`${appName} RSS`} href="/rss.xml" />
         <link rel="alternate" type="application/rss+xml" title={`${appName} Son Dakika`} href="/breaking-news.xml" />
         <link rel="alternate" type="application/rss+xml" title={`${appName} Video`} href="/video-feed.xml" />

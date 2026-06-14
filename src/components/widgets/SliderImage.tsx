@@ -31,7 +31,8 @@ export function SliderImage({ src, alt, priority = false, className }: SliderIma
         alt={alt}
         fill
         className={cn('object-cover', className)}
-        sizes="100vw"
+        sizes="(max-width: 768px) 640px, 1200px"
+        quality={priority ? 82 : 72}
         priority={priority}
         fetchPriority={priority ? 'high' : 'auto'}
       />

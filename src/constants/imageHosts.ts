@@ -57,6 +57,16 @@ function newsPattern(hostname: string): RemotePattern {
   return { protocol: 'https', hostname, pathname: '/**' }
 }
 
+/** Early connection hints for LCP image hosts (root layout <head>). */
+export const NEWS_IMAGE_PRECONNECT_HOSTS = [
+  'https://im.haberturk.com',
+  'https://images.ntv.com.tr',
+  'https://www.hurriyet.com.tr',
+  'https://www.milliyet.com.tr',
+  'https://www.aa.com.tr',
+  'https://firebasestorage.googleapis.com',
+] as const
+
 /** Remote patterns for next/image — imported by next.config.ts */
 export const NEWS_IMAGE_REMOTE_PATTERNS: RemotePattern[] = [
   // Explicit Habertürk CDN (reported in production)

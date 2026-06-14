@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
-import { Suspense } from 'react'
 import { NewsTimeline } from '@/components/feed/NewsTimeline'
-import { NewsSlider } from '@/components/widgets/NewsSlider'
+import { FeedTimelineShell } from '@/components/feed/FeedTimelineShell'
 import { FeedSliderHero } from '@/components/widgets/FeedSliderHero'
 import { LazyFinanceTicker } from '@/components/widgets/LazyFinanceTicker'
-import { NewsCardSkeleton } from '@/components/ui/Skeleton'
+import { LazyNewsSlider } from '@/components/widgets/LazyNewsSlider'
 import { annotateTimelinePosts } from '@/lib/newsMapper'
 import { getFeedSliderItems, getFeedTimelinePosts } from '@/services/newsService.server'
 
@@ -24,37 +23,23 @@ export default async function FeedPage() {
   ])
 
   const initialPosts = annotateTimelinePosts(timelinePosts, new Set())
-  const lcpImage = sliderItems[0]?.imageUrl
 
   return (
     <div className="w-full">
-      {lcpImage ? (
-        <link rel="preload" as="image" href={lcpImage} fetchPriority="high" />
-      ) : null}
-
-      <NewsSlider categoryId={FEED_CATEGORY} initialItems={sliderItems}>
-        {sliderItems[0] ? <FeedSliderHero item={sliderItems[0]} /> : null}
-      </NewsSlider>
+      {sliderItems[0] ? <FeedSliderHero item={sliderItems[0]} /> : null}
+      <LazyNewsSlider categoryId={FEED_CATEGORY} initialItems={sliderItems} />
 
       <LazyFinanceTicker />
 
       <div className="mt-4" />
 
-      <Suspense
-        fallback={
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <NewsCardSkeleton key={i} />
-            ))}
-          </div>
-        }
-      >
-        <NewsTimeline
-          defaultCategory={FEED_CATEGORY}
-          initialPosts={initialPosts}
-          initialCategoryId={FEED_CATEGORY}
-        />
-      </Suspense>
+      <FeedTimelineShell posts={initialPosts} />
+      <NewsTimeline
+        defaultCategory={FEED_CATEGORY}
+        initialPosts={initialPosts}
+        initialCategoryId={FEED_CATEGORY}
+        hideUntilHydrated
+      />
     </div>
   )
 }

@@ -26,6 +26,7 @@ interface NewsTimelineContentProps {
   categoryParam: string | null
   initialPosts?: TimelinePost[]
   initialCategoryId?: string
+  hideUntilHydrated?: boolean
 }
 
 const MAX_CACHED_TIMELINE = 30
@@ -34,12 +35,21 @@ function NewsTimelineContent({
   categoryParam,
   initialPosts,
   initialCategoryId,
+  hideUntilHydrated,
 }: NewsTimelineContentProps) {
   const { user, loading: authLoading } = useAuth()
   const { setCachedFeed } = useAppState()
   const feedSource = useFeedStore((s) => s.feedSource)
   const setLastCategoryId = useFeedStore((s) => s.setLastCategoryId)
   const [categoryId, setCategoryId] = useState<string | null>(categoryParam)
+
+  const [hydrated, setHydrated] = useState(!hideUntilHydrated)
+
+  useEffect(() => {
+    if (!hideUntilHydrated) return
+    setHydrated(true)
+    document.getElementById('feed-timeline-static')?.classList.add('hidden')
+  }, [hideUntilHydrated])
 
   useEffect(() => { setCategoryId(categoryParam) }, [categoryParam])
 
@@ -114,7 +124,7 @@ function NewsTimelineContent({
   const showSkeleton = canViewFeed && loading && rankedPosts.length === 0
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${hideUntilHydrated && !hydrated ? 'hidden' : ''}`}>
       {!canViewFeed && !authLoading && (
         <div className="surface-card border-dashed py-16 text-center">
           <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Akışı görüntülemek için onay gerekli</p>
@@ -197,10 +207,12 @@ function NewsTimelineWithSearchParams({
   defaultCategory,
   initialPosts,
   initialCategoryId,
+  hideUntilHydrated,
 }: {
   defaultCategory?: string
   initialPosts?: TimelinePost[]
   initialCategoryId?: string
+  hideUntilHydrated?: boolean
 }) {
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get('category') ?? defaultCategory ?? null
@@ -209,6 +221,7 @@ function NewsTimelineWithSearchParams({
       categoryParam={categoryParam}
       initialPosts={initialPosts}
       initialCategoryId={initialCategoryId}
+      hideUntilHydrated={hideUntilHydrated}
     />
   )
 }
@@ -217,16 +230,19 @@ export function NewsTimeline({
   defaultCategory,
   initialPosts,
   initialCategoryId,
+  hideUntilHydrated,
 }: {
   defaultCategory?: string
   initialPosts?: TimelinePost[]
   initialCategoryId?: string
+  hideUntilHydrated?: boolean
 } = {}) {
   return (
     <NewsTimelineWithSearchParams
       defaultCategory={defaultCategory}
       initialPosts={initialPosts}
       initialCategoryId={initialCategoryId}
+      hideUntilHydrated={hideUntilHydrated}
     />
   )
 }
