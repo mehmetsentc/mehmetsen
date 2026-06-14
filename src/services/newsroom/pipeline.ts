@@ -69,10 +69,11 @@ function isTruncated(text: string): boolean {
 }
 
 /**
- * AI fallback — when article extraction fails (blocked site),
- * generate a complete Turkish news article from headline alone.
- * Supports both OpenAI and DeepSeek (mirrors getActiveAiConfig logic).
+ * @deprecated Bu fonksiyon artık kullanılmıyor.
+ * Başlıktan haber üretmek uydurma/halüsinasyon içerik üretir.
+ * İçerik yetersizse pipeline direkt 'skipped' döner.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function generateArticleFromHeadline(
   title: string,
   sourceLabel: string
@@ -399,31 +400,20 @@ export async function processNewsroomArticle(
     }
 
     // ── QUALITY GATE ────────────────────────────────────────────────────────
-    // After extraction, check again for thin OR still-truncated content.
-    // GPT generates a complete article from the headline when all else fails.
+    // After extraction, skip if content is still too thin or truncated.
+    // We do NOT generate articles from headlines — that produces hallucinated news.
     const totalAfterExtract = (workingInput.originalContent + ' ' + workingInput.originalSummary).trim()
     const stillTruncated = isTruncated(workingInput.originalContent?.trimEnd() ?? '')
-    const needsGptFallback =
-      !workingInput.skipAiRewrite &&
-      (totalAfterExtract.length < QUALITY_MIN_CHARS || stillTruncated)
 
-    if (needsGptFallback) {
-      if (stillTruncated) {
-        console.log(`[newsroom/pipeline] content still truncated after extraction, using GPT fallback: ${workingInput.sourceUrl}`)
-      }
-      const generated = await generateArticleFromHeadline(workingInput.originalTitle, workingInput.sourceLabel)
-      if (generated) {
-        workingInput = {
-          ...workingInput,
-          originalContent: generated.content,
-          originalSummary: generated.summary || workingInput.originalSummary,
-        }
-        console.log(`[newsroom/pipeline] GPT fallback applied: ${workingInput.sourceUrl}`)
-      } else if (totalAfterExtract.length < QUALITY_MIN_CHARS) {
-        console.warn(`[newsroom/pipeline] quality gate: content too thin, skipping ${workingInput.sourceUrl}`)
+    if (!workingInput.skipAiRewrite) {
+      if (totalAfterExtract.length < QUALITY_MIN_CHARS) {
+        console.warn(`[newsroom/pipeline] quality gate: içerik çok kısa (${totalAfterExtract.length} kar), atlandı: ${workingInput.sourceUrl}`)
         return { outcome: 'skipped' }
       }
-      // If GPT failed but we have a non-truncated (just short) article, let it through
+      if (stillTruncated) {
+        console.warn(`[newsroom/pipeline] quality gate: içerik hâlâ kesilmiş, atlandı: ${workingInput.sourceUrl}`)
+        return { outcome: 'skipped' }
+      }
     }
 
     // ── TRANSLATION STAGE ────────────────────────────────────────────────────

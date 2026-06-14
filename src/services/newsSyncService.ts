@@ -252,6 +252,10 @@ export const newsSyncService = {
       return result
     }
 
+    // Sadece son 48 saatteki haberleri al — eski haberlerin yeni gibi yayınlanmasını engelle
+    const MAX_AGE_MS = 48 * 60 * 60 * 1000
+    const minPublishedAt = Date.now() - MAX_AGE_MS
+
     let aiCalls = 0
 
     for (const source of sources) {
@@ -259,7 +263,7 @@ export const newsSyncService = {
 
       let items: RssFeedItem[]
       try {
-        items = await fetchRssItems(source)
+        items = await fetchRssItems(source, { minPublishedAt })
       } catch (error) {
         const msg = `[${source.id}] RSS fetch failed: ${error instanceof Error ? error.message : String(error)}`
         console.warn(msg)

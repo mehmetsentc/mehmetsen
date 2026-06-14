@@ -34,27 +34,40 @@ GÖREVLER:
 4. Kategori ve etiketleri belirle
 5. Kalite ve güven puanları ver
 
-KURALLARI:
+MUTLAK KURALLAR — ASLA İHLAL ETME:
+- UYDURMA YASAK: Kaynak metinde OLMAYAN hiçbir bilgi, alıntı, istatistik, kişi adı veya olay ekleme. Kaynakta ne varsa onu yaz.
+- İçerik kısa veya yetersizse: qualityScore=25 ver ve sadece mevcut bilgileri yaz, eksik bölümleri asla uydurma.
 - ÇIKTI DİLİ: Her zaman TÜRKÇE
-- Clickbait, yanlış bilgi, kaynak göstermeyen haber YASAK
+- Clickbait, yanlış bilgi YASAK
 - Profesyonel gazete dili: tarafsız, akıcı, doğal Türkçe
 - Başlıkta BÜYÜK HARF spam, "FLAŞ", "SON DAKİKA" ifadeleri YASAK
 - title, summary, content birbirinden FARKLI olmalı
 - Paragraflar arasında \\n\\n kullan
 - Google News ve Google Discover uyumlu yaz
 
-KATEGORİ KURALLARI (en spesifik kategoriyi seç):
+KATEGORİ KURALLARI — KAYNAK ADI DEĞİL, İÇERİK BELİRLER:
+- Kaynağın adı ("Sabah Spor", "Milliyet Magazin" vb.) kategoriyi ASLA belirlemez
+- Haberin GERÇEK konusu kategoriyi belirler
+- Siyaset/meclis/seçim/bakan → MUTLAKA "siyaset"
+- Yabancı ülke/savaş/uluslararası → MUTLAKA "dunya"
+- Ekonomi/borsa/döviz/şirket → MUTLAKA "ekonomi"
+- Yemek/restoran/tarif/şef/mutfak → MUTLAKA "gastronomi" (kultur veya gundem değil)
+- Araba/TOGG/otomobil/trafik → MUTLAKA "otomobil"
+- Magazin = YALNIZCA ünlülerin kişisel hayatı, ilişkisi, skandalı
+- Futbol maçı/gol/transfer → "futbol" ("spor" değil)
+
+KATEGORİ LİSTESİ (en spesifik olanı seç):
 - son-dakika: YALNIZCA deprem, büyük afet, darbe girişimi, suikast
 - siyaset: seçim, meclis, parti, cumhurbaşkanı, bakan
 - ekonomi: borsa, döviz, faiz, enflasyon, şirket
 - teknoloji: Apple, iOS, Android, yapay zeka, yazılım, donanım, bilgisayar
 - saglik: hastalık, ilaç, aşı, hastane, tıp
 - dunya: yurt dışı olaylar, uluslararası haberler
-- magazin: ünlüler, dedikodu, moda — isBreaking=false
+- magazin: ünlüler, dedikodu — isBreaking=false
 - gundem: diğer Türkiye haberleri
 - yerel-haber: tek bir il/ilçe haberi
-- gastronomi: yemek, restoran, mutfak, tarif, şef, gastronomi
-- otomobil: araç, araba, otomobil, motosiklet, trafik, elektrikli araç
+- gastronomi: yemek, restoran, mutfak, tarif, şef
+- otomobil: araç, araba, motosiklet, trafik, elektrikli araç
 - SPOR alt kategoriler (maç/lig/sporcu haberleri için — isBreaking=false):
   · futbol: futbol, lig, gol, maç, transfer (futbol)
   · basketbol: basketbol, NBA, EuroLeague
