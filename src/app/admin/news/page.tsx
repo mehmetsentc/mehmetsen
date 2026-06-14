@@ -19,6 +19,7 @@ import { tr } from 'date-fns/locale'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { TURKISH_PROVINCES } from '@/constants/cities'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -197,6 +198,7 @@ function EditDrawer({
   const [spot, setSpot] = useState(post.spot ?? '')
   const [categoryId, setCategoryId] = useState(post.categoryId ?? '')
   const [status, setStatus] = useState<string>(post.status ?? 'draft')
+  const [citySlug, setCitySlug] = useState((post as AdminNewsItem & { citySlug?: string }).citySlug ?? '')
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -207,7 +209,15 @@ function EditDrawer({
       const res = await fetch(`/api/admin/news/${post.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
-        body: JSON.stringify({ title, summary, content, spot, categoryId, status }),
+        body: JSON.stringify({
+          title, summary, content, spot, categoryId, status,
+          ...(categoryId === 'yerel-haber' && citySlug
+            ? {
+                citySlug,
+                city: TURKISH_PROVINCES.find(p => p.slug === citySlug)?.name ?? citySlug,
+              }
+            : {}),
+        }),
       })
       if (!res.ok) {
         const err = await res.json() as { error?: string }
@@ -309,6 +319,28 @@ function EditDrawer({
               </select>
             </div>
           </div>
+
+          {/* Şehir seçici — yalnızca Yerel Haber kategorisinde görünür */}
+          {categoryId === 'yerel-haber' && (
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+                Şehir
+                <span className="ml-1 text-emerald-500">*</span>
+              </label>
+              <select
+                value={citySlug} onChange={e => setCitySlug(e.target.value)}
+                className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">— şehir seçin —</option>
+                {TURKISH_PROVINCES.map(p => (
+                  <option key={p.slug} value={p.slug}>{p.name}</option>
+                ))}
+              </select>
+              {!citySlug && (
+                <p className="mt-1 text-[11px] text-amber-500">Yerel haber için şehir seçimi zorunludur.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

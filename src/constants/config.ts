@@ -55,8 +55,9 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'festival',    name: 'Festival',    slug: 'festival',    iconName: 'party-popper', color: '#8B5CF6', parentId: 'kultur' },
 
   // ── Yeni kategoriler ────────────────────────────────────────────────────────
-  { id: 'gastronomi',  name: 'Gastronomi',  slug: 'gastronomi',  iconName: 'utensils',     color: '#F97316' },
-  { id: 'otomobil',    name: 'Otomobil',    slug: 'otomobil',    iconName: 'car',          color: '#64748B' },
+  { id: 'gastronomi',    name: 'Gastronomi',    slug: 'gastronomi',    iconName: 'utensils',    color: '#F97316' },
+  { id: 'otomobil',      name: 'Otomobil',      slug: 'otomobil',      iconName: 'car',         color: '#64748B' },
+  { id: 'meteoroloji',   name: 'Meteoroloji',   slug: 'meteoroloji',   iconName: 'cloud-rain',  color: '#0EA5E9' },
 ]
 
 /** Returns subcategories of a given parent category id */
@@ -93,6 +94,7 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'ekonomi',
   'saglik',
   'bilim',
+  'meteoroloji',
   'kultur',
   'gastronomi',
   'otomobil',

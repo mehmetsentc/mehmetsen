@@ -91,6 +91,8 @@ export default function SocialPage() {
   const [hasMore, setHasMore] = useState(true)
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
   const [triggeringCron, setTriggeringCron] = useState(false)
+  const [diagnosing, setDiagnosing] = useState(false)
+  const [diagResult, setDiagResult] = useState<{ summary: string; steps: Array<{ name: string; ok: boolean; detail: string }> } | null>(null)
   const [filter, setFilter] = useState<'all' | 'published' | 'pending'>('all')
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -200,6 +202,26 @@ export default function SocialPage() {
     }
   }
 
+  // ── Diagnose ───────────────────────────────────────────────────────────────
+  const runDiagnose = async () => {
+    if (!user || diagnosing) return
+    setDiagnosing(true)
+    setDiagResult(null)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/diagnose', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json() as typeof diagResult
+      setDiagResult(data)
+    } catch (err) {
+      toast.error('Teşhis başarısız')
+      console.error(err)
+    } finally {
+      setDiagnosing(false)
+    }
+  }
+
   // ── Stats ──────────────────────────────────────────────────────────────────
   const publishedCount = rows.filter((r) => r.socialPublished).length
   const pendingCount   = rows.filter((r) => !r.socialPublished).length
@@ -267,6 +289,14 @@ export default function SocialPage() {
               Yenile
             </button>
             <button
+              onClick={() => void runDiagnose()}
+              disabled={diagnosing}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+            >
+              {diagnosing ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+              Teşhis
+            </button>
+            <button
               onClick={() => void triggerCron()}
               disabled={triggeringCron}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
@@ -279,6 +309,34 @@ export default function SocialPage() {
             </button>
           </div>
         </div>
+
+        {/* Diagnose result panel */}
+        {diagResult && (
+          <div className={cn(
+            'rounded-xl border p-4 text-sm',
+            diagResult.steps.some(s => !s.ok)
+              ? 'border-red-500/30 bg-red-950/20'
+              : 'border-emerald-500/30 bg-emerald-950/20'
+          )}>
+            <p className="mb-3 font-bold text-white">{diagResult.summary}</p>
+            <div className="space-y-1.5">
+              {diagResult.steps.map((step, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className={step.ok ? 'text-emerald-400' : 'text-red-400'}>
+                    {step.ok ? '✓' : '✗'}
+                  </span>
+                  <span className="shrink-0 font-semibold text-white">{step.name}:</span>
+                  <span className={cn('text-[11px]', step.ok ? 'text-slate-300' : 'text-red-300')}>
+                    {step.detail}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setDiagResult(null)} className="mt-3 text-xs text-slate-500 hover:text-white">
+              Kapat
+            </button>
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-hidden rounded-xl border border-white/10">

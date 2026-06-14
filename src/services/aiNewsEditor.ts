@@ -22,6 +22,7 @@ export const AI_NEWS_CATEGORIES: Record<string, string> = {
   kultur: 'Kültür',
   magazin: 'Magazin',
   bilim: 'Bilim',
+  meteoroloji: 'Meteoroloji',
   trend: 'Trend',
   influencer: 'Influencer',
 }
@@ -40,6 +41,9 @@ const CATEGORY_ALIASES: Record<string, string> = {
   culture: 'kultur',
   'kultur-sanat': 'kultur',
   science: 'bilim',
+  weather: 'meteoroloji',
+  meteorology: 'meteoroloji',
+  'hava-durumu': 'meteoroloji',
   general: 'gundem',
   local: 'yerel-haber',
   'local-news': 'yerel-haber',
@@ -230,6 +234,8 @@ Her haber YALNIZCA aşağıdaki kategorilerden BİRİNE girmeli. En spesifik kat
 - kultur: Sinema/film/tiyatro/opera/bale/sergi/müze, edebiyat/kitap, müzik albümü çıkışı, ödül töreni (Oscar/Nobel vb.), kültür-sanat etkinliği. ASLA spor.
 
 - magazin: Ünlü/celebrity haberi, oyuncu/şarkıcı özel hayatı, dizi yayın tarihi/fragman, evlilik/boşanma/ayrılık, dedikodu. isBreaking=false.
+
+- meteoroloji: Hava durumu tahmini/uyarısı, don/kar/yağmur/fırtına/sıcaklık rekoru/hava alarmı, Meteoroloji Genel Müdürlüğü (MGM) açıklaması, mevsim normali/anomalisi, iklim verisi (güncel ölçüm). KURAL: "Hava durumu" içeren BÜTÜN haberler meteoroloji kategorisine girer — bilim değil.
 
 - gundem: Yukarıdakilere girmeyen Türkiye iç gündemi — trafik kazası (çok ölümlü), yangın, genel kamusal olay, hükümet açıklaması (politika değil). ASLA uluslararası haber için gundem seçme.
 
