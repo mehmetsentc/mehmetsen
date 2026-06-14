@@ -110,59 +110,29 @@ function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str
 }
 
-// ── Onyedi Tivi logosu — gradient halkalı SVG ──────────────────────────────
+// ── Onyedi Tivi logosu — CSS conic-gradient halkası (Satori destekli) ────────
 function OnyediLogo({ size = 108 }: { size?: number }) {
-  const cx = size / 2
-  const r  = size / 2
-
-  // Gradient ring: 8 renkli segment (her biri 45°)
-  const segments = [
-    { color: '#f97316', start: 0   },   // turuncu
-    { color: '#fb923c', start: 45  },   // açık turuncu
-    { color: '#e879f9', start: 90  },   // pembe/magenta
-    { color: '#a855f7', start: 135 },   // mor
-    { color: '#3b82f6', start: 180 },   // mavi
-    { color: '#06b6d4', start: 225 },   // cyan
-    { color: '#22d3ee', start: 270 },   // açık cyan
-    { color: '#f59e0b', start: 315 },   // sarı/altın
-  ]
-
-  function arcPath(startDeg: number, endDeg: number, outerR: number, innerR: number) {
-    const toRad = (d: number) => ((d - 90) * Math.PI) / 180
-    const s = toRad(startDeg), e = toRad(endDeg)
-    const x1 = cx + outerR * Math.cos(s), y1 = cx + outerR * Math.sin(s)
-    const x2 = cx + outerR * Math.cos(e), y2 = cx + outerR * Math.sin(e)
-    const x3 = cx + innerR * Math.cos(e), y3 = cx + innerR * Math.sin(e)
-    const x4 = cx + innerR * Math.cos(s), y4 = cx + innerR * Math.sin(s)
-    const large = endDeg - startDeg > 180 ? 1 : 0
-    return `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${large} 0 ${x4} ${y4} Z`
-  }
-
-  const outerR = r - 1
-  const innerR = r - 10
+  const ring = Math.round(size * 0.10)  // halkı kalınlığı
+  const inner = size - ring * 2
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {/* Gradient ring segmentleri */}
-      {segments.map((seg, i) => (
-        <path
-          key={i}
-          d={arcPath(seg.start, seg.start + 46, outerR, innerR)}
-          fill={seg.color}
-        />
-      ))}
-      {/* İç lacivert daire */}
-      <circle cx={cx} cy={cx} r={innerR - 2} fill="#0a1628" />
-      {/* Organik mavi şekil 1 — arka katman */}
-      <ellipse cx={cx - 3} cy={cx + 2} rx={innerR * 0.72} ry={innerR * 0.68}
-               fill="#1d4ed8" opacity="0.5" />
-      {/* Organik mavi şekil 2 — orta katman */}
-      <ellipse cx={cx + 2} cy={cx - 2} rx={innerR * 0.62} ry={innerR * 0.58}
-               fill="#1e40af" opacity="0.7" />
-      {/* Organik mavi şekil 3 — ön katman */}
-      <ellipse cx={cx} cy={cx} rx={innerR * 0.50} ry={innerR * 0.48}
-               fill="#1e3a8a" opacity="0.9" />
-    </svg>
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: 'conic-gradient(from 0deg, #f97316 0deg 45deg, #fb923c 45deg 90deg, #e879f9 90deg 135deg, #a855f7 135deg 180deg, #3b82f6 180deg 225deg, #06b6d4 225deg 270deg, #22d3ee 270deg 315deg, #f59e0b 315deg 360deg)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    }}>
+      <div style={{
+        width: inner, height: inner, borderRadius: '50%',
+        background: '#0a1628',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
+          <span style={{ fontSize: Math.round(size * 0.37), fontWeight: 900, color: '#ffffff', lineHeight: 1, letterSpacing: -2 }}>1</span>
+          <span style={{ fontSize: Math.round(size * 0.37), fontWeight: 900, color: '#93c5fd', lineHeight: 1, letterSpacing: -2 }}>7</span>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -185,6 +155,7 @@ export async function GET(
   const titleSize  = title.length > 65 ? 50 : title.length > 45 ? 58 : 66
 
   return new ImageResponse(
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     (
       // ══════════════════════════════════════════════════════════════════
       // KAPSAYICI — lacivert gradient arka plan
@@ -225,20 +196,8 @@ export async function GET(
           padding: '36px 52px 28px',
           flexShrink: 0,
         }}>
-          {/* Sol: Onyedi Tivi logosu (gradient halk + 17) */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 108, height: 108 }}>
-            <OnyediLogo size={108} />
-            {/* "1" ve "7" merkeze yerleştirilmiş */}
-            <div style={{
-              position: 'absolute',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <span style={{ fontSize: 42, fontWeight: 900, color: 'white', lineHeight: 1, letterSpacing: -3 }}>1</span>
-              <span style={{ fontSize: 42, fontWeight: 900, color: '#93c5fd', lineHeight: 1, letterSpacing: -3 }}>7</span>
-            </div>
-          </div>
+          {/* Sol: Onyedi Tivi logosu (gradient halka + 17) */}
+          <OnyediLogo size={108} />
 
           {/* Sağ: ONYEDİ TİVİ marka metni */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -389,6 +348,6 @@ export async function GET(
         </div>
       </div>
     ),
-    { width: 1080, height: 1080 }
+    { width: 1080, height: 1080, headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } }
   )
 }
