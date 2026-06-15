@@ -86,7 +86,7 @@ export async function classifyArticleCategory(
   if (!geminiKey) return null
 
   // Use a lightweight model for speed and cost
-  const model = 'gemini-2.0-flash-lite'
+  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 
   const categoryList = CATEGORIES.map(
     c => `  - ${c}: ${CATEGORY_DESCRIPTIONS[c]}`

@@ -17,7 +17,7 @@
 
 import type { GeminiEditResult } from './types'
 
-const CHIEF_MODEL = process.env.GEMINI_CHIEF_MODEL?.trim() || 'gemini-2.0-flash'
+const CHIEF_MODEL = process.env.GEMINI_CHIEF_MODEL?.trim() || process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 /** İçerik bu kelime sayısının altındaysa Google Search tetiklenir */

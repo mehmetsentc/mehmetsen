@@ -87,7 +87,7 @@ Google Search grounding aracını kullanarak bu konunun NEDEN bugün gündemde o
 
   // ── 1. Gemini 2.0 Flash + built-in Google Search (ücretsiz, güncel bilgi) ─────
   const geminiKey = process.env.GEMINI_API_KEY?.trim()
-  const geminiModel = 'gemini-2.0-flash'
+  const geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 
   if (geminiKey) {
     try {

@@ -350,7 +350,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     label: 'Kalenin Sesi',
     feedUrl: 'https://www.kaleninsesi.com/rss',
     maxItemsPerRun: 5,
-    enabled: true,
+    enabled: false, // 403 — hotlink koruması
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
   },
   {
