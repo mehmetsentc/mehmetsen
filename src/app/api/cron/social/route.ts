@@ -202,8 +202,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
     // ── Post formatı: kısa açıklama + site linki + etiketler ─────────────
-    // Spot: haberin özeti (2-3 cümle). Çok uzunsa 280 karakterde kes.
-    const spotText = description.trim().slice(0, 280)
+    // Öncelik: spot → summary → AI caption (boş olunca)
+    const rawDesc   = description.trim()
+    const aiCaption = (socialContent.caption || '').trim()
+    const spotText  = (rawDesc || aiCaption).slice(0, 280)
     const hashtagStr = socialContent.hashtags.join(' ')
     const fullCaption = [
       spotText,

@@ -73,10 +73,11 @@ function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str
 }
 
-const PHOTO_H = 594
-const TITLE_H = 238
-const DESC_H  = 194
-const FOOT_H  = 54
+// Layout yükseklikleri
+const PHOTO_H = 620   // fotoğraf biraz daha büyük
+const TITLE_H = 220   // kırmızı başlık bandı
+const DESC_H  = 180   // beyaz açıklama alanı
+const FOOT_H  = 60    // footer
 
 export async function GET(
   _req: NextRequest,
@@ -90,8 +91,8 @@ export async function GET(
 
   const photo = bestImage(article)
   const title = truncate(article.title, 72)
-  const spot  = truncate(article.spot || '', 130)
-  const titleFontSize = title.length > 60 ? 38 : title.length > 44 ? 44 : title.length > 30 ? 50 : 56
+  const spot  = truncate(article.spot || '', 120)
+  const titleFontSize = title.length > 60 ? 36 : title.length > 44 ? 42 : title.length > 30 ? 48 : 54
 
   return new ImageResponse(
     (
@@ -99,7 +100,7 @@ export async function GET(
         width: 1080, height: 1080,
         display: 'flex', flexDirection: 'column',
         fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-        overflow: 'hidden', background: '#111827',
+        overflow: 'hidden', background: '#ffffff',
       }}>
 
         {/* ── 1. FOTOĞRAF ── */}
@@ -113,101 +114,69 @@ export async function GET(
             <img src={photo} alt=""
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'flex' }} />
           ) : (
+            /* Fotoğraf yoksa: koyu mavi gradyan + geometrik desen */
             <div style={{
-              width: '100%', height: '100%',
-              background: 'linear-gradient(135deg, #1e3a5f 0%, #0d2b4e 60%, #071528 100%)',
-              display: 'flex',
-            }} />
+              width: '100%', height: '100%', display: 'flex',
+              background: 'linear-gradient(150deg, #1a3a6e 0%, #0f2347 50%, #071528 100%)',
+              position: 'relative',
+            }}>
+              {/* Dekoratif daireler */}
+              <div style={{
+                position: 'absolute', width: 480, height: 480,
+                borderRadius: '50%', border: '2px solid rgba(255,255,255,0.06)',
+                bottom: -160, right: -80, display: 'flex',
+              }} />
+              <div style={{
+                position: 'absolute', width: 320, height: 320,
+                borderRadius: '50%', border: '2px solid rgba(255,255,255,0.08)',
+                bottom: -80, right: 40, display: 'flex',
+              }} />
+              <div style={{
+                position: 'absolute', width: 180, height: 180,
+                borderRadius: '50%', backgroundColor: 'rgba(59,130,246,0.12)',
+                top: 60, left: -40, display: 'flex',
+              }} />
+            </div>
           )}
 
-          {/* ── LOGO BADGE: ONYEDİTİVİ mavi blob logosu ── */}
-          {/* Beyaz yarı-saydam pill — fotoğraf üzerinde okunabilirlik için */}
+          {/* ── LOGO BADGE ── */}
           <div style={{
-            position: 'absolute', top: 32, right: 32,
-            backgroundColor: 'rgba(255,255,255,0.92)',
+            position: 'absolute', top: 28, right: 28,
+            backgroundColor: 'rgba(255,255,255,0.95)',
             borderRadius: 100,
             display: 'flex', alignItems: 'center',
-            padding: '10px 22px 10px 10px',
-            gap: 14,
-            boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+            padding: '8px 20px 8px 8px',
+            gap: 12,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.30)',
           }}>
-
-            {/* ── ONYEDİTİVİ LOGO (mavi blob + 17) ── */}
+            {/* 17 logosu */}
             <div style={{
-              width: 72, height: 72,
+              width: 64, height: 64,
               position: 'relative',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
             }}>
-              {/* Blob katman 1 — en dış, açık mavi, döndürülmüş */}
-              <div style={{
-                position: 'absolute',
-                width: 68, height: 68,
-                backgroundColor: '#a8c8f0',
-                borderRadius: 20,
-                transform: 'rotate(12deg)',
-                display: 'flex',
-              }} />
-              {/* Blob katman 2 — orta mavi */}
-              <div style={{
-                position: 'absolute',
-                width: 64, height: 64,
-                backgroundColor: '#5b8fd4',
-                borderRadius: 18,
-                transform: 'rotate(-6deg)',
-                display: 'flex',
-              }} />
-              {/* Blob katman 3 — koyu mavi */}
-              <div style={{
-                position: 'absolute',
-                width: 60, height: 60,
-                backgroundColor: '#2a5cb0',
-                borderRadius: 16,
-                transform: 'rotate(3deg)',
-                display: 'flex',
-              }} />
-              {/* İç daire — lacivert */}
-              <div style={{
-                position: 'absolute',
-                width: 54, height: 54,
-                backgroundColor: '#1a3480',
-                borderRadius: '50%',
-                display: 'flex',
-              }} />
-              {/* "17" yazısı */}
-              <div style={{
-                position: 'relative',
-                display: 'flex', alignItems: 'baseline',
-                zIndex: 10,
-              }}>
-                <span style={{
-                  color: '#ffffff',
-                  fontWeight: 900, fontSize: 28,
-                  lineHeight: 1, display: 'flex',
-                  marginRight: -2,
-                }}>1</span>
-                <span style={{
-                  color: '#87ceeb',
-                  fontWeight: 900, fontSize: 28,
-                  lineHeight: 1, display: 'flex',
-                }}>7</span>
+              <div style={{ position:'absolute', width:60, height:60, backgroundColor:'#a8c8f0', borderRadius:18, transform:'rotate(12deg)', display:'flex' }} />
+              <div style={{ position:'absolute', width:56, height:56, backgroundColor:'#5b8fd4', borderRadius:16, transform:'rotate(-6deg)', display:'flex' }} />
+              <div style={{ position:'absolute', width:52, height:52, backgroundColor:'#2a5cb0', borderRadius:14, transform:'rotate(3deg)', display:'flex' }} />
+              <div style={{ position:'absolute', width:46, height:46, backgroundColor:'#1a3480', borderRadius:'50%', display:'flex' }} />
+              <div style={{ position:'relative', display:'flex', alignItems:'baseline', zIndex:10 }}>
+                <span style={{ color:'#ffffff', fontWeight:900, fontSize:24, lineHeight:1, display:'flex', marginRight:-1 }}>1</span>
+                <span style={{ color:'#87ceeb', fontWeight:900, fontSize:24, lineHeight:1, display:'flex' }}>7</span>
               </div>
             </div>
-
-            {/* Metin */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{
-                color: '#111827', fontWeight: 900,
-                fontSize: 19, letterSpacing: 0.5,
-                display: 'flex',
-              }}>ONYEDiTiVi</span>
-              <span style={{
-                color: '#6b7280', fontWeight: 500,
-                fontSize: 12, letterSpacing: 2.5,
-                display: 'flex',
-              }}>HABERLERi</span>
+            <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
+              <span style={{ color:'#111827', fontWeight:900, fontSize:17, letterSpacing:0.5, display:'flex' }}>ONYEDiTiVi</span>
+              <span style={{ color:'#6b7280', fontWeight:500, fontSize:11, letterSpacing:2.5, display:'flex' }}>HABERLERi</span>
             </div>
           </div>
+
+          {/* ── Fotoğraf alt geçiş — koyu gradient ── */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 100%)',
+            display: 'flex',
+          }} />
         </div>
 
         {/* ── 2. BAŞLIK — kırmızı ── */}
@@ -215,40 +184,46 @@ export async function GET(
           width: 1080, height: TITLE_H,
           backgroundColor: '#dc2626',
           display: 'flex', alignItems: 'center',
-          padding: '0 48px', flexShrink: 0,
+          padding: '0 44px', flexShrink: 0,
         }}>
           <span style={{
             color: 'white',
             fontSize: titleFontSize, fontWeight: 900,
-            lineHeight: 1.25, display: 'flex',
+            lineHeight: 1.22, display: 'flex',
           }}>{title}</span>
         </div>
 
-        {/* ── 3. AÇIKLAMA ── */}
+        {/* ── 3. AÇIKLAMA — beyaz ── */}
         <div style={{
           width: 1080, height: DESC_H,
-          backgroundColor: '#1f2937',
+          backgroundColor: '#ffffff',
           display: 'flex', alignItems: 'center',
-          padding: '0 48px', flexShrink: 0,
+          padding: '0 44px', flexShrink: 0,
+          borderTop: '3px solid #f3f4f6',
         }}>
           {spot ? (
             <span style={{
-              color: 'rgba(255,255,255,0.85)',
-              fontSize: 26, lineHeight: 1.55, display: 'flex',
+              color: '#374151',
+              fontSize: 24, lineHeight: 1.5, display: 'flex',
             }}>{spot}</span>
-          ) : null}
+          ) : (
+            <span style={{
+              color: '#9ca3af',
+              fontSize: 22, fontStyle: 'italic', display: 'flex',
+            }}>nahaber.com'da haberin devamını okuyun</span>
+          )}
         </div>
 
-        {/* ── 4. FOOTER ── */}
+        {/* ── 4. FOOTER — lacivert ── */}
         <div style={{
           width: 1080, height: FOOT_H,
-          backgroundColor: '#111827',
+          backgroundColor: '#1a3480',
           display: 'flex', alignItems: 'center',
-          padding: '0 48px', flexShrink: 0,
+          padding: '0 44px', flexShrink: 0,
         }}>
           <span style={{
-            color: 'rgba(255,255,255,0.40)',
-            fontSize: 16, fontWeight: 600,
+            color: 'rgba(255,255,255,0.70)',
+            fontSize: 15, fontWeight: 600,
             letterSpacing: 3, display: 'flex',
           }}>DAHA FAZLASI iCiN: WWW.NAHABER.COM</span>
         </div>
@@ -257,7 +232,7 @@ export async function GET(
     ),
     {
       width: 1080, height: 1080,
-      headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400' },
+      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600' },
     }
   )
 }
