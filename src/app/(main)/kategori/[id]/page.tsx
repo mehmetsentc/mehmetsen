@@ -26,24 +26,9 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
       .get()
 
     return snap.docs.map(doc => {
+      // Tüm Firestore alanlarını yay — eksik alan crashini önler
       const d = doc.data()
-      return {
-        id:          doc.id,
-        title:       d.title       ?? '',
-        spot:        d.spot        ?? d.summary ?? '',
-        categoryId:  d.categoryId  ?? '',
-        citySlug:    d.citySlug    ?? '',
-        cityName:    d.cityName    ?? '',
-        thumbnail:   d.thumbnail   ?? d.coverImageUrl ?? d.imageUrl ?? '',
-        url:         d.url         ?? `/news/${doc.id}`,
-        slug:        d.slug        ?? doc.id,
-        publishedAt: d.publishedAt ?? d.createdAt ?? null,
-        status:      d.status      ?? 'published',
-        source:      d.source      ?? '',
-        author:      d.author      ?? null,
-        isBreaking:  d.isBreaking  ?? false,
-        hasVideo:    d.hasVideo    ?? false,
-      } as unknown as TimelinePost
+      return { id: doc.id, ...d } as unknown as TimelinePost
     })
   } catch {
     return []   // prefetch başarısız → client normal akışa devam eder

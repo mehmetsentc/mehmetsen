@@ -81,11 +81,23 @@ function buildNewsTimelineQueryConstraints(
   return { constraints, filterAuthorOnServer }
 }
 
+/** Şehir sorgusu için daha hafif filtre — sadece salt ulusal kategorileri blokla */
+const CITY_QUERY_BLOCKED_CATEGORIES = new Set([
+  'meteoroloji', 'hava-durumu', 'hava', 'cevre', 'dunya', 'kripto', 'borsa',
+])
+
 function applyTimelinePostFilters(posts: Post[], options?: NewsTimelineOptions): Post[] {
-  // Yerel haber sayfası (hem categoryId hem citySlug sorgusu) —
-  // ulusal kategorideki haberler yerel sayfada görünmemeli
-  if (options?.categoryId === YEREL_HABER_CATEGORY || options?.citySlug) {
+  if (options?.categoryId === YEREL_HABER_CATEGORY) {
+    // Yerel haber sayfası: tam filtre — citySlug olmayan veya ulusal kategori olan her şeyi at
     return posts.filter(isYerelHaberEligible)
+  }
+  if (options?.citySlug) {
+    // Şehir sayfası: sadece meteoroloji/dünya gibi salt ulusal kategorileri blokla.
+    // gundem/spor/ekonomi vb. o şehirden gelen haber olabilir, bloklanmamalı.
+    return posts.filter(p => {
+      const cat = (p as Post & { categoryId?: string }).categoryId?.trim().toLowerCase() ?? ''
+      return !CITY_QUERY_BLOCKED_CATEGORIES.has(cat)
+    })
   }
   return posts
 }

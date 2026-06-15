@@ -152,7 +152,7 @@ export function rankFeedPosts(posts: TimelinePost[], prefs: FeedPersonalization 
       boost += INTEREST_BOOST
     }
 
-    if (following.has(post.authorUsername.toLowerCase())) {
+    if (post.authorUsername && following.has(post.authorUsername.toLowerCase())) {
       boost += FOLLOWING_BOOST
     }
 
