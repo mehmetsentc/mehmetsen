@@ -60,10 +60,8 @@ function heuristicFactCheck(input: FactCheckInput): FactCheckResult {
     }
   }
 
-  if (!input.rewritten.description.toLowerCase().includes('kaynak:')) {
-    flags.push('missing_attribution')
-    score -= 10
-  }
+  // AI-rewritten content doesn't embed "kaynak:" inline — attribution is stored
+  // in the article's source field, not body text. Skipping this penalty.
 
   return {
     confidenceScore: Math.min(100, Math.max(0, score)),

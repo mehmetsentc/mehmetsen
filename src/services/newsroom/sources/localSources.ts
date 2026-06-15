@@ -407,7 +407,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     label: "Çan'ın Sesi",
     feedUrl: 'https://www.caninsesi.com.tr/rss',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 403 Forbidden
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Çan' },
   },
   {
