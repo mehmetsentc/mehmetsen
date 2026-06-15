@@ -165,9 +165,6 @@ export function LocalNewsClient() {
       const slug     = nearestProvinceSlug(lat, lng)
       const name     = getCityCategoryName(slug)
       const province = TURKISH_PROVINCES.find(p => p.slug === slug)!
-      // loading=true ÖNCE set edilmeli — aksi hâlde city set edildiğinde
-      // "haber bulunamadı" ekranı 1 frame boyunca yanıp söner (race condition)
-      setLoading(true)
       setCity({ slug, name, lat: province.lat, lng: province.lng })
       setLocationState('granted')
       writeStoredUserLocation({ citySlug: slug, cityName: name, lat, lng, source: 'geolocation', updatedAt: Date.now() })
@@ -265,13 +262,17 @@ export function LocalNewsClient() {
           </button>
         </div>
       ) : posts.length === 0 && !loading ? (
-        <div className="mx-3 rounded-2xl border border-dashed border-[rgb(var(--color-border))] py-16 text-center">
+        <div className="mx-3 rounded-2xl border border-dashed border-[rgb(var(--color-border))] py-12 text-center px-6">
           <MapPin className="mx-auto mb-3 h-8 w-8 text-[rgb(var(--color-muted))]" />
           <p className="text-sm font-semibold text-[rgb(var(--color-text))]">
-            {city ? `${city.name} için haber bulunamadı` : 'Haber bulunamadı'}
+            {city ? `${city.name} haberleri henüz eklenmedi` : 'Haber bulunamadı'}
+          </p>
+          <p className="mt-1 text-xs text-[rgb(var(--color-muted))] leading-relaxed">
+            Şu an yalnızca Çanakkale ve bazı şehirlerin haberleri mevcut.{'\n'}
+            Yakında tüm şehirler eklenecek.
           </p>
           <button type="button" onClick={() => setShowCitySheet(true)}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--color-border))] px-4 py-2 text-xs font-semibold text-[rgb(var(--color-text))]">
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--color-border))] px-4 py-2 text-xs font-semibold text-[rgb(var(--color-text))]">
             Başka şehir seç
           </button>
         </div>

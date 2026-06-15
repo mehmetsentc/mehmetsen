@@ -19,19 +19,17 @@ const MAX_CACHED = 30
 
 interface CategoryFeedProps {
   categoryId: string
+  initialPosts?: TimelinePost[]   // server-side prefetch (ISR)
 }
 
-export function CategoryFeed({ categoryId }: CategoryFeedProps) {
+export function CategoryFeed({ categoryId, initialPosts: serverPosts }: CategoryFeedProps) {
   const { user } = useAuth()
   const { setCachedFeed } = useAppState()
   const cacheKey = PAGE_CACHE_KEYS.category(categoryId)
 
-  // Read cache SYNCHRONOUSLY on first render (in-memory Map — zero latency).
-  // Passing as initialPosts triggers canUseServerSeed=true in the hook →
-  // skips the initial Firestore fetch on cache hit, shows content instantly.
-  // The live poll (30–60 s) still runs and prepends new posts with a toast.
+  // Öncelik: server prefetch > in-memory cache > boş (Firestore fetch)
   const [cachedPosts] = useState<TimelinePost[]>(
-    () => getCache<TimelinePost[]>(cacheKey) ?? []
+    () => serverPosts?.length ? serverPosts : (getCache<TimelinePost[]>(cacheKey) ?? [])
   )
 
   const { posts, loading, loadingMore, error, hasMore, loadMore, retry } = useTimelineFeed(

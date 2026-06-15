@@ -4,11 +4,50 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { DEFAULT_CATEGORIES, getSubcategories } from '@/constants/config'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
-import { LocalCategoryBanner } from '@/components/local/LocalCategoryBanner'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
+import { getAdminFirestore } from '@/lib/firebase/admin'
+import { Collections } from '@/lib/firebase/collections'
+import type { TimelinePost } from '@/types/post'
 
 interface Props {
   params: Promise<{ id: string }>
+}
+
+/** Server-side: ilk 20 haberi Admin SDK ile çek (ISR cache'lenecek) */
+async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]> {
+  try {
+    const db = getAdminFirestore()
+    const snap = await db
+      .collection(Collections.NEWS)
+      .where('status', '==', 'published')
+      .where('categoryId', '==', categoryId)
+      .orderBy('publishedAt', 'desc')
+      .limit(20)
+      .get()
+
+    return snap.docs.map(doc => {
+      const d = doc.data()
+      return {
+        id:          doc.id,
+        title:       d.title       ?? '',
+        spot:        d.spot        ?? d.summary ?? '',
+        categoryId:  d.categoryId  ?? '',
+        citySlug:    d.citySlug    ?? '',
+        cityName:    d.cityName    ?? '',
+        thumbnail:   d.thumbnail   ?? d.coverImageUrl ?? d.imageUrl ?? '',
+        url:         d.url         ?? `/news/${doc.id}`,
+        slug:        d.slug        ?? doc.id,
+        publishedAt: d.publishedAt ?? d.createdAt ?? null,
+        status:      d.status      ?? 'published',
+        source:      d.source      ?? '',
+        author:      d.author      ?? null,
+        isBreaking:  d.isBreaking  ?? false,
+        hasVideo:    d.hasVideo    ?? false,
+      } as TimelinePost
+    })
+  } catch {
+    return []   // prefetch başarısız → client normal akışa devam eder
+  }
 }
 
 function getCategoryMeta(id: string) {
@@ -43,6 +82,9 @@ export default async function CategoryPage({ params }: Props) {
 
   const subcategories = getSubcategories(cat.id)
 
+  // Server-side prefetch — skeleton göstermeden anında içerik
+  const initialPosts = await prefetchCategoryPosts(cat.id)
+
   return (
     <div className="w-full">
       {/* Category header */}
@@ -59,9 +101,6 @@ export default async function CategoryPage({ params }: Props) {
           </p>
         </div>
       </div>
-
-      {/* Yerel haber sayfasında şehir seçimi için yönlendirme banner'ı */}
-      {cat.slug === 'yerel-haber' && <LocalCategoryBanner />}
 
       {/* Subcategory chips — shown only for parent categories */}
       {subcategories.length > 0 && (
@@ -85,7 +124,7 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       )}
 
-      {/* News feed */}
+      {/* News feed — initialPosts varsa skeleton göstermeden anında yükler */}
       <Suspense
         fallback={
           <div className="space-y-4">
@@ -95,7 +134,7 @@ export default async function CategoryPage({ params }: Props) {
           </div>
         }
       >
-        <CategoryFeed categoryId={cat.id} />
+        <CategoryFeed categoryId={cat.id} initialPosts={initialPosts} />
       </Suspense>
     </div>
   )
