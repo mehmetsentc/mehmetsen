@@ -327,15 +327,11 @@ async function appendEditHistory(
   }
 ): Promise<void> {
   const now = Date.now()
-  await db
-    .collection(Collections.NEWS)
-    .doc(newsId)
-    .collection('editHistory')
-    .add({
-      ...entry,
-      editedAt: now,
-      editor: NAHABER_AUTHOR_ID,
-    })
+  // Firestore undefined değeri kabul etmez — queueJobId opsiyonel, filtrele
+  const { queueJobId, ...rest } = entry
+  const doc: Record<string, unknown> = { ...rest, editedAt: now, editor: NAHABER_AUTHOR_ID }
+  if (queueJobId !== undefined) doc.queueJobId = queueJobId
+  await db.collection(Collections.NEWS).doc(newsId).collection('editHistory').add(doc)
 }
 
 export async function processNewsroomArticle(
