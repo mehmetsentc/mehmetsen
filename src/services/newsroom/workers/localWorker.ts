@@ -52,9 +52,9 @@ export async function runLocalWorker(): Promise<NewsroomRunResult> {
   const started = Date.now()
   const merged = emptyNewsroomResult('local-news')
 
-  // Yerel haberler: sadece son 24 saat (env ile override edilebilir)
-  // Cron runs every 6 hours — fetch only news published within that window
-  const localMaxAgeMs = Number(process.env.LOCAL_NEWS_MAX_AGE_MS ?? 6 * 60 * 60 * 1000)
+  // Cron runs 7x/day (04,10,13,15,18,21,00 UTC) — longest gap is 7h (21→04 UTC)
+  // Use 8h window to cover that gap safely
+  const localMaxAgeMs = Number(process.env.LOCAL_NEWS_MAX_AGE_MS ?? 8 * 60 * 60 * 1000)
 
   const wire = await runRssWorker({
     workerId: 'local-news',
