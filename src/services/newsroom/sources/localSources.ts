@@ -366,7 +366,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     label: 'Çanakkale Gündem',
     feedUrl: 'https://canakkalegundem.net/rss',
     maxItemsPerRun: 5,
-    enabled: true,
+    enabled: false, // 403 Forbidden
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
   },
   {
