@@ -377,6 +377,14 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     enabled: true,
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
   },
+  {
+    id: 'portal-canakkale-kalem',
+    label: 'Çanakkale Kalem',
+    feedUrl: 'https://www.canakkalekalem.com/rss',
+    maxItemsPerRun: 5,
+    enabled: true,
+    localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
+  },
   // Çanakkale ilçeleri — doğrulanmış RSS feed'leri
   {
     id: 'portal-biga-insesi',
