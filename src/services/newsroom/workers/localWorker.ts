@@ -66,6 +66,11 @@ export async function runLocalWorker(): Promise<NewsroomRunResult> {
   })
   mergeRunResult(merged, wire)
 
+  // Saat bazlı rotasyon: her run farklı illerden başlar
+  // 81 il / 20 il/run → ~4 run'da tam kapsama (yarım günde tüm Türkiye)
+  if (!process.env.LOCAL_NEWS_PROVINCE_OFFSET) {
+    process.env.LOCAL_NEWS_PROVINCE_OFFSET = String(Math.floor(Date.now() / 3_600_000) % 81)
+  }
   const localSources = getLocalNewsSourcesForRun({
     maxProvinces: LOCAL_NEWS_DEFAULT_MAX_PROVINCES,
   })

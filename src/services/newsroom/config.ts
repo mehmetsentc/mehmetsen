@@ -15,11 +15,11 @@ export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'iha', 'dha', 'anka-haber'] as const
 
 /**
  * Kaç il Google News feed'i çekilsin.
- * Odak: Çanakkale + büyük şehirler → 5 yeterli.
- * Tüm 81 ili taramak gereksiz Firestore fingerprint yazımı yaratır.
+ * Her run'da 20 il taranır, saat bazlı rotasyon ile 81 ilin tamamı
+ * yaklaşık 4 run'da (yarım günde) kapsanır.
  */
 export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
-  process.env.LOCAL_NEWS_MAX_PROVINCES ?? 5
+  process.env.LOCAL_NEWS_MAX_PROVINCES ?? 20
 )
 
 /**

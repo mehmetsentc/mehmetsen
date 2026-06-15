@@ -3413,7 +3413,7 @@ export function getLocalNewsSourcesForRun(
       else if (DISTRICT_TO_PROVINCE_SLUG[slug]) portalSlugs.add(DISTRICT_TO_PROVINCE_SLUG[slug]!)
     }
     for (const portal of LOCAL_PORTAL_FEEDS) {
-      if (portalSlugs.has(portal.localMeta.citySlug)) {
+      if (portal.enabled && portalSlugs.has(portal.localMeta.citySlug)) {
         sources.push({ ...portal, maxItemsPerRun: itemsPerSource })
       }
     }
