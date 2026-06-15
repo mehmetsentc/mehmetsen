@@ -90,9 +90,16 @@ export async function GET(
   }
 
   const photo = bestImage(article)
-  const title = truncate(article.title, 72)
+  const title = article.title   // tam başlık — kırpma yok
   const spot  = truncate(article.spot || '', 110)
-  const titleFontSize = title.length > 60 ? 42 : title.length > 44 ? 48 : title.length > 30 ? 54 : 62
+  // Başlık uzunluğuna göre font boyutu — tam cümle sığsın, kırpma yok
+  const titleFontSize =
+    title.length > 110 ? 30 :
+    title.length > 90  ? 34 :
+    title.length > 70  ? 38 :
+    title.length > 55  ? 42 :
+    title.length > 40  ? 48 :
+    title.length > 28  ? 54 : 62
 
   return new ImageResponse(
     (
@@ -182,13 +189,15 @@ export async function GET(
           width: 1080, height: TITLE_H,
           backgroundColor: '#dc2626',
           display: 'flex', alignItems: 'center',
-          padding: '0 44px', flexShrink: 0,
+          padding: '18px 44px', flexShrink: 0,
+          overflow: 'hidden',
         }}>
-          <span style={{
+          <div style={{
             color: 'white',
             fontSize: titleFontSize, fontWeight: 900,
-            lineHeight: 1.22, display: 'flex',
-          }}>{title}</span>
+            lineHeight: 1.28,
+            display: 'flex', flexDirection: 'column',
+          }}>{title}</div>
         </div>
 
         {/* ── 3. AÇIKLAMA + FOOTER — lacivert gradient (Canva tasarımı) ── */}
