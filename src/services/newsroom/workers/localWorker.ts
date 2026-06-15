@@ -7,7 +7,9 @@ import {
   getLocalNewsSourcesForRun,
   type LocalFeedSource,
 } from '@/services/newsroom/sources/localSources'
+import { getEnabledScraperSources } from '@/services/newsroom/sources/scraperSources'
 import { runRssWorker } from '@/services/newsroom/workers/baseWorker'
+import { runScraperSources } from '@/services/newsroom/workers/scraperWorker'
 import type { NewsroomArticleInput, NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import type { RssSourceDefinition } from '@/services/rss/sources'
@@ -87,6 +89,14 @@ export async function runLocalWorker(): Promise<NewsroomRunResult> {
       enrichInput: (_item, source) => buildLocalEnrichment(source),
     })
     mergeRunResult(merged, partial)
+  }
+
+  // ── Scraper Worker ───────────────────────────────────────────────────────
+  // RSS'i olmayan veya 403 veren portallar için HTML scraping
+  const scraperSources = getEnabledScraperSources()
+  if (scraperSources.length > 0) {
+    const scraperResult = await runScraperSources(scraperSources)
+    mergeRunResult(merged, scraperResult)
   }
 
   merged.durationMs = Date.now() - started
