@@ -82,7 +82,9 @@ function buildNewsTimelineQueryConstraints(
 }
 
 function applyTimelinePostFilters(posts: Post[], options?: NewsTimelineOptions): Post[] {
-  if (options?.categoryId === YEREL_HABER_CATEGORY) {
+  // Yerel haber sayfası (hem categoryId hem citySlug sorgusu) —
+  // ulusal kategorideki haberler yerel sayfada görünmemeli
+  if (options?.categoryId === YEREL_HABER_CATEGORY || options?.citySlug) {
     return posts.filter(isYerelHaberEligible)
   }
   return posts

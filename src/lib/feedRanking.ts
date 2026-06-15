@@ -18,6 +18,20 @@ const NATIONAL_ONLY_CATEGORIES = new Set([
   'siyaset',
   'kultur',
   'bilim',
+  // Hava durumu, meteoroloji — ulusal kaynaklı, şehir adı geçse bile yerel haber değil
+  'meteoroloji',
+  'hava-durumu',
+  'hava',
+  'cevre',
+  // Finans / kripto — ulusal/global konu
+  'finans',
+  'kripto',
+  'borsa',
+  // Diğer ulusal kategoriler
+  'otomobil',
+  'gastronomi',
+  'yasam',
+  'eglence',
 ])
 
 /** True when a post belongs in the Yerel Haber category view. */
