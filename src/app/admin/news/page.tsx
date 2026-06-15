@@ -572,7 +572,7 @@ export default function AdminNewsPage() {
       const cursor = pageCursorsRef.current[page] ?? undefined
       // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
       const catFilter = searchTerm.trim() ? undefined : categoryParamRef.current || undefined
-      const result = await adminNewsService.list(filter, cursor, catFilter)
+      const result = await adminNewsService.list(filter, cursor, catFilter, searchTerm.trim() ? 500 : undefined)
       setPosts(result.posts)
       setCurrentPage(page)
       setHasNext(result.hasMore)
@@ -785,7 +785,7 @@ export default function AdminNewsPage() {
           )}
         </div>
 
-        {(knownPages > 1 || hasNext) && (
+        {!search.trim() && (knownPages > 1 || hasNext) && (
           <PaginationBar
             currentPage={currentPage}
             knownPages={knownPages}

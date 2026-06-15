@@ -122,8 +122,10 @@ export const adminNewsService = {
   async list(
     filter: AdminNewsFilter = 'all',
     lastDoc?: QueryDocumentSnapshot,
-    categoryId?: string
+    categoryId?: string,
+    limitOverride?: number
   ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
+    const pageSize = limitOverride ?? PAGE_SIZE
     if (filter === 'pending') {
       return listPendingQueue(lastDoc)
     }
@@ -141,7 +143,7 @@ export const adminNewsService = {
 
     constraints.push(orderBy('createdAt', 'desc'))
     if (lastDoc) constraints.push(startAfter(lastDoc))
-    constraints.push(limit(PAGE_SIZE))
+    constraints.push(limit(pageSize))
 
     try {
       const q = query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)
@@ -165,7 +167,7 @@ export const adminNewsService = {
       return {
         posts,
         lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length === PAGE_SIZE,
+        hasMore: snap.docs.length === pageSize,
       }
     } catch (error) {
       console.warn('[adminNewsService] list failed, fallback:', error)
