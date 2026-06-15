@@ -26,9 +26,47 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
       .get()
 
     return snap.docs.map(doc => {
-      // Tüm Firestore alanlarını yay — eksik alan crashini önler
       const d = doc.data()
-      return { id: doc.id, ...d } as unknown as TimelinePost
+      // Firestore Timestamp'leri sayıya çevir — RSC→Client serialize edilebilir olmalı
+      const ts = (v: unknown): number | null => {
+        if (!v) return null
+        if (typeof v === 'object' && 'toMillis' in (v as object)) {
+          return (v as { toMillis(): number }).toMillis()
+        }
+        if (typeof v === 'number') return v
+        if (typeof v === 'string') { const n = Date.parse(v); return isNaN(n) ? null : n }
+        return null
+      }
+      return {
+        id:                doc.id,
+        authorUsername:    d.authorUsername    ?? '',
+        authorDisplayName: d.authorDisplayName ?? '',
+        authorId:          d.authorId          ?? '',
+        title:             d.title             ?? '',
+        spot:              d.spot              ?? d.summary ?? '',
+        content:           d.content           ?? '',
+        summary:           d.summary           ?? d.spot ?? '',
+        categoryId:        d.categoryId        ?? '',
+        citySlug:          d.citySlug          ?? '',
+        cityName:          d.cityName          ?? '',
+        thumbnail:         d.thumbnail         ?? d.coverImageUrl ?? d.imageUrl ?? '',
+        url:               d.url               ?? `/news/${doc.id}`,
+        slug:              d.slug              ?? doc.id,
+        publishedAt:       ts(d.publishedAt)   ?? ts(d.createdAt) ?? Date.now(),
+        createdAt:         ts(d.createdAt)     ?? Date.now(),
+        updatedAt:         ts(d.updatedAt)     ?? null,
+        status:            d.status            ?? 'published',
+        source:            d.source            ?? '',
+        author:            d.author            ?? null,
+        isBreaking:        d.isBreaking        ?? false,
+        hasVideo:          d.hasVideo          ?? false,
+        isVideo:           d.isVideo           ?? false,
+        tags:              d.tags              ?? [],
+        priorityScore:     d.priorityScore     ?? null,
+        viewsCount:        d.viewsCount        ?? 0,
+        likesCount:        d.likesCount        ?? 0,
+        sharesCount:       d.sharesCount       ?? 0,
+      } as unknown as TimelinePost
     })
   } catch {
     return []   // prefetch başarısız → client normal akışa devam eder
