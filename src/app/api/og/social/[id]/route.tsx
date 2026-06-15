@@ -91,8 +91,8 @@ export async function GET(
 
   const photo = bestImage(article)
   const title = truncate(article.title, 72)
-  const spot  = truncate(article.spot || '', 120)
-  const titleFontSize = title.length > 60 ? 36 : title.length > 44 ? 42 : title.length > 30 ? 48 : 54
+  const spot  = truncate(article.spot || '', 110)
+  const titleFontSize = title.length > 60 ? 42 : title.length > 44 ? 48 : title.length > 30 ? 54 : 62
 
   return new ImageResponse(
     (
@@ -219,13 +219,13 @@ export async function GET(
           <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
             {spot ? (
               <span style={{
-                color: 'rgba(255,255,255,0.92)',
-                fontSize: 24, lineHeight: 1.55, display: 'flex',
+                color: 'rgba(255,255,255,0.95)',
+                fontSize: 28, fontWeight: 500, lineHeight: 1.5, display: 'flex',
               }}>{spot}</span>
             ) : (
               <span style={{
                 color: 'rgba(255,255,255,0.55)',
-                fontSize: 22, fontStyle: 'italic', display: 'flex',
+                fontSize: 26, fontStyle: 'italic', display: 'flex',
               }}>nahaber.com'da haberin devamını okuyun</span>
             )}
           </div>
@@ -233,8 +233,8 @@ export async function GET(
           {/* Footer metni */}
           <div style={{ display: 'flex' }}>
             <span style={{
-              color: 'rgba(255,255,255,0.55)',
-              fontSize: 13, fontWeight: 600,
+              color: 'rgba(255,255,255,0.60)',
+              fontSize: 15, fontWeight: 600,
               letterSpacing: 3, display: 'flex',
             }}>DAHA FAZLASI iCiN: WWW.NAHABER.COM</span>
           </div>
