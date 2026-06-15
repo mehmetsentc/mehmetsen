@@ -547,6 +547,7 @@ export default function AdminNewsPage() {
   const categoryParam = searchParams.get('category') ?? ''
   const [filter, setFilter] = useState<AdminNewsFilter>('all')
   const [search, setSearch] = useState('')
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [posts, setPosts] = useState<AdminNewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -564,15 +565,17 @@ export default function AdminNewsPage() {
   const categoryParamRef = useRef(categoryParam)
   categoryParamRef.current = categoryParam
 
-  const load = useCallback(async (page: number) => {
+  const load = useCallback(async (page: number, searchOverride?: string) => {
     setLoading(true)
+    const searchTerm = searchOverride !== undefined ? searchOverride : search
     try {
       const cursor = pageCursorsRef.current[page] ?? undefined
-      const result = await adminNewsService.list(filter, cursor, categoryParamRef.current || undefined)
+      // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
+      const catFilter = searchTerm.trim() ? undefined : categoryParamRef.current || undefined
+      const result = await adminNewsService.list(filter, cursor, catFilter)
       setPosts(result.posts)
       setCurrentPage(page)
       setHasNext(result.hasMore)
-      // Store cursor for the next page if we haven't seen it yet
       if (result.hasMore && result.lastDoc && !pageCursorsRef.current[page + 1]) {
         pageCursorsRef.current[page + 1] = result.lastDoc
         setKnownPages(prev => Math.max(prev, page + 2))
@@ -583,7 +586,7 @@ export default function AdminNewsPage() {
     } finally {
       setLoading(false)
     }
-  }, [filter])
+  }, [filter, search])
 
   useEffect(() => {
     // Reset pagination on filter or category change
@@ -702,7 +705,19 @@ export default function AdminNewsPage() {
           </div>
           <div className="relative ml-auto max-w-64 flex-1">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            <input type="text" value={search} onChange={e => {
+              const val = e.target.value
+              setSearch(val)
+              // Debounce — arama değişince kategori filtresi olmadan yeniden yükle
+              if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+              searchDebounceRef.current = setTimeout(() => {
+                pageCursorsRef.current = [null]
+                setCurrentPage(0)
+                setKnownPages(1)
+                setHasNext(false)
+                void load(0, val)
+              }, 350)
+            }}
               placeholder="Başlıkta ara..."
               className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2 pl-8 pr-3 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
