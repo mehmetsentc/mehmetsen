@@ -5,6 +5,7 @@ import { Heart, MessageCircle, Bookmark } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { formatCount } from '@/lib/postUtils'
 import { ShareButton } from '@/components/post/ShareButton'
+import { PostMoreButton } from '@/components/post/PostMoreMenu'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
 import { cn } from '@/lib/utils'
@@ -22,8 +23,11 @@ interface TimelineItemActionsProps {
 export function TimelineItemActions({
   postId,
   title,
+  authorUsername,
   likesCount: initialLikes,
   commentsCount,
+  viewsCount = 0,
+  isVideo = false,
 }: TimelineItemActionsProps) {
   const { liked, count: likesCount, toggle: toggleLike } = useLike({
     postId,
@@ -66,6 +70,18 @@ export function TimelineItemActions({
         <span>Sakla</span>
       </button>
 
+      <PostMoreButton
+        post={{
+          id: postId,
+          title,
+          authorUsername,
+          isVideo,
+          viewsCount,
+          likesCount,
+          commentsCount,
+        }}
+        variant="timeline"
+      />
     </div>
   )
 }

@@ -26,7 +26,8 @@ interface NewsTimelineContentProps {
   categoryParam: string | null
   initialPosts?: TimelinePost[]
   initialCategoryId?: string
-  hideUntilHydrated?: boolean
+  /** Posts already rendered as server HTML — client skips them. */
+  serverStaticCount?: number
 }
 
 const MAX_CACHED_TIMELINE = 30
@@ -35,21 +36,13 @@ function NewsTimelineContent({
   categoryParam,
   initialPosts,
   initialCategoryId,
-  hideUntilHydrated,
+  serverStaticCount = 0,
 }: NewsTimelineContentProps) {
   const { user, loading: authLoading } = useAuth()
   const { setCachedFeed } = useAppState()
   const feedSource = useFeedStore((s) => s.feedSource)
   const setLastCategoryId = useFeedStore((s) => s.setLastCategoryId)
   const [categoryId, setCategoryId] = useState<string | null>(categoryParam)
-
-  const [hydrated, setHydrated] = useState(!hideUntilHydrated)
-
-  useEffect(() => {
-    if (!hideUntilHydrated) return
-    setHydrated(true)
-    document.getElementById('feed-timeline-static')?.classList.add('hidden')
-  }, [hideUntilHydrated])
 
   useEffect(() => { setCategoryId(categoryParam) }, [categoryParam])
 
@@ -103,15 +96,26 @@ function NewsTimelineContent({
     })
   }, [filteredPosts, user?.location, user?.citySlug, detectedCitySlug, user?.favoriteCategories, user?.interests])
 
+  const serverIds = useMemo(
+    () => new Set((serverStaticCount > 0 ? initialPosts : [])?.map((p) => p.id) ?? []),
+    [serverStaticCount, initialPosts]
+  )
+
+  const clientOnlyPosts = useMemo(() => {
+    if (serverStaticCount <= 0) return rankedPosts
+    return rankedPosts.filter((p) => !serverIds.has(p.id))
+  }, [rankedPosts, serverStaticCount, serverIds])
+
   useEffect(() => {
     if (!loading && canViewFeed) void refreshCities()
   }, [loading, categoryId, canViewFeed, refreshCities])
 
   const citySlug = categoryId?.startsWith('city:') ? categoryId.slice(5) : null
   const cityLabel = citySlug ? getCityCategoryName(citySlug) : null
-  const leadPost = citySlug && rankedPosts.length > 0 ? rankedPosts[0] : null
+  const displayPosts = serverStaticCount > 0 ? clientOnlyPosts : rankedPosts
+  const leadPost = citySlug && displayPosts.length > 0 ? displayPosts[0] : null
   const relatedPosts =
-    citySlug && rankedPosts.length > 1 ? rankedPosts.slice(1) : citySlug ? [] : rankedPosts
+    citySlug && displayPosts.length > 1 ? displayPosts.slice(1) : citySlug ? [] : displayPosts
 
   const { sentinelRef } = useInfiniteScroll({
     onLoadMore: loadMore,
@@ -119,12 +123,14 @@ function NewsTimelineContent({
     loading: loadingMore,
   })
 
-  const showEmpty = canViewFeed && !loading && !error && rankedPosts.length === 0
-  const showItems = canViewFeed && rankedPosts.length > 0
-  const showSkeleton = canViewFeed && loading && rankedPosts.length === 0
+  const showEmpty =
+    canViewFeed && !loading && !error && displayPosts.length === 0 && serverStaticCount === 0
+  const showItems = canViewFeed && displayPosts.length > 0
+  const showSkeleton =
+    canViewFeed && loading && displayPosts.length === 0 && serverStaticCount === 0
 
   return (
-    <div className={`w-full ${hideUntilHydrated && !hydrated ? 'hidden' : ''}`}>
+    <div className="w-full">
       {!canViewFeed && !authLoading && (
         <div className="surface-card border-dashed py-16 text-center">
           <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Akışı görüntülemek için onay gerekli</p>
@@ -191,8 +197,8 @@ function NewsTimelineContent({
           </>
         )}
 
-        {showItems && !citySlug && rankedPosts.map((post, i) => (
-          <TimelineItem key={post.id} post={post} isLast={i === rankedPosts.length - 1} />
+        {showItems && !citySlug && displayPosts.map((post, i) => (
+          <TimelineItem key={post.id} post={post} isLast={i === displayPosts.length - 1} />
         ))}
 
         {canViewFeed && loadingMore && <TimelineItemSkeleton key="sk-more" />}
@@ -207,12 +213,12 @@ function NewsTimelineWithSearchParams({
   defaultCategory,
   initialPosts,
   initialCategoryId,
-  hideUntilHydrated,
+  serverStaticCount,
 }: {
   defaultCategory?: string
   initialPosts?: TimelinePost[]
   initialCategoryId?: string
-  hideUntilHydrated?: boolean
+  serverStaticCount?: number
 }) {
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get('category') ?? defaultCategory ?? null
@@ -221,7 +227,7 @@ function NewsTimelineWithSearchParams({
       categoryParam={categoryParam}
       initialPosts={initialPosts}
       initialCategoryId={initialCategoryId}
-      hideUntilHydrated={hideUntilHydrated}
+      serverStaticCount={serverStaticCount}
     />
   )
 }
@@ -230,19 +236,19 @@ export function NewsTimeline({
   defaultCategory,
   initialPosts,
   initialCategoryId,
-  hideUntilHydrated,
+  serverStaticCount,
 }: {
   defaultCategory?: string
   initialPosts?: TimelinePost[]
   initialCategoryId?: string
-  hideUntilHydrated?: boolean
+  serverStaticCount?: number
 } = {}) {
   return (
     <NewsTimelineWithSearchParams
       defaultCategory={defaultCategory}
       initialPosts={initialPosts}
       initialCategoryId={initialCategoryId}
-      hideUntilHydrated={hideUntilHydrated}
+      serverStaticCount={serverStaticCount}
     />
   )
 }

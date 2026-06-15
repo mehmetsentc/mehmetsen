@@ -19,12 +19,12 @@ interface SidebarProps {
 }
 
 const APP_NAV = [
-  { label: 'Etkinlikler', href: ROUTES.EVENTS,      icon: CalendarDays },
+  { label: 'Yerel Haber', href: ROUTES.LOCAL,        icon: MapPin       },
   { label: 'Magazin',     href: '/kategori/magazin', icon: Star         },
+  { label: 'Etkinlikler', href: ROUTES.EVENTS,       icon: CalendarDays },
   { label: 'Trending',    href: '/kategori/trend',   icon: Flame        },
   { label: 'Teve',        href: ROUTES.REELS,        icon: Clapperboard },
   { label: 'Influencer',  href: ROUTES.INFLUENCER,   icon: Star         },
-  { label: 'Yerel',       href: ROUTES.LOCAL,        icon: MapPin       },
   { label: 'Hava Durumu', href: ROUTES.WEATHER,      icon: Cloud        },
 ]
 
@@ -53,7 +53,7 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
     (e: React.FormEvent) => {
       e.preventDefault()
       if (searchQuery.trim()) {
-        router.push(`${ROUTES.DISCOVER}?q=${encodeURIComponent(searchQuery.trim())}`)
+        router.push(`${ROUTES.SEARCH}?q=${encodeURIComponent(searchQuery.trim())}`)
         onMobileClose?.()
       }
     },

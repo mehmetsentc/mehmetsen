@@ -1,12 +1,12 @@
 'use client'
 
 import { memo, useEffect, Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Navbar } from '@/components/layout/Navbar'
 import { MobileNav } from '@/components/layout/MobileNav'
-import { TrendingPanel } from '@/components/feed/TrendingPanel'
 import { ConsentStrip } from '@/components/consent/ConsentStrip'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
@@ -21,6 +21,11 @@ import { logRouteChange } from '@/lib/navDiagnostics'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
 import { ROUTES, isPublicRoute } from '@/constants/routes'
 import { cn } from '@/lib/utils'
+
+const TrendingPanel = dynamic(
+  () => import('@/components/feed/TrendingPanel').then((m) => m.TrendingPanel),
+  { ssr: false, loading: () => null }
+)
 
 type ContentVariant = 'default' | 'wide' | 'reels' | 'messages'
 

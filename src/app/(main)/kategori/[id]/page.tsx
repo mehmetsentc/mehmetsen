@@ -80,12 +80,18 @@ function getCategoryMeta(id: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const cat = getCategoryMeta(id)
-  if (!cat) return { title: 'Kategori | NaHaber' }
+  if (!cat) return { title: 'Kategori' }
+  // "Yerel Haber Haberleri" yerine "Şehrinizden Haberler"
+  const pageTitle = cat.id === 'yerel-haber'
+    ? 'Şehrinizden Haberler'
+    : cat.id === 'son-dakika'
+    ? 'Son Dakika'
+    : `${cat.name} Haberleri`
   return {
-    title: `${cat.name} Haberleri | NaHaber`,
+    title: pageTitle,
     description: `NaHaber'de ${cat.name} kategorisindeki son dakika gelişmeleri ve haberler`,
     openGraph: {
-      title: `${cat.name} Haberleri | NaHaber`,
+      title: `${pageTitle} | NaHaber`,
       description: `NaHaber'de ${cat.name} kategorisindeki son dakika gelişmeleri ve haberler`,
     },
   }

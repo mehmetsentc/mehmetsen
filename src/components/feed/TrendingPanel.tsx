@@ -1,55 +1,54 @@
 'use client'
 
 import Link from 'next/link'
-import { TrendingUp, Hash, Flame } from 'lucide-react'
+import { TrendingUp, Hash, Zap } from 'lucide-react'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { useTrendingTopics } from '@/hooks/useTrendingTopics'
-
-/** Normalise Turkish chars for comparison */
-function normTR(s: string) {
-  return s
-    .toLocaleLowerCase('tr-TR')
-    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-}
-
-// Build lookup: normalised slug/id/name → category id
-const CATEGORY_LOOKUP = new Map<string, string>()
-for (const cat of DEFAULT_CATEGORIES) {
-  CATEGORY_LOOKUP.set(normTR(cat.id),   cat.id)
-  CATEGORY_LOOKUP.set(normTR(cat.slug), cat.id)
-  CATEGORY_LOOKUP.set(normTR(cat.name), cat.id)
-}
-
-/** Returns category id if tag matches a category, else null */
-function tagToCategoryId(tag: string): string | null {
-  return CATEGORY_LOOKUP.get(normTR(tag)) ?? null
-}
-
-/** Builds the correct href for a trending tag */
-function trendHref(tag: string): string {
-  const catId = tagToCategoryId(tag)
-  return catId
-    ? `${ROUTES.FEED}?category=${catId}`
-    : `${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}`
-}
+import { useBreakingNews } from '@/hooks/useBreakingNews'
 
 export function TrendingPanel() {
   const { topics, loading } = useTrendingTopics()
+  const { posts: breakingPosts, loading: breakingLoading } = useBreakingNews()
 
   return (
     <aside className="feed-rail space-y-4">
+      {/* Son Dakika */}
       <div className="surface-card-padded">
         <div className="mb-3 flex items-center gap-2">
-          <Flame className="h-4 w-4 text-orange-500" />
+          <Zap className="h-4 w-4 text-red-500" />
           <h3 className="section-heading">Son Dakika</h3>
         </div>
-        <p className="text-sm text-[rgb(var(--color-muted))]">
-          Türkiye ve dünyadan en güncel haberler anlık olarak akışınızda.
-        </p>
+        {breakingLoading ? (
+          <ul className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <li key={i} className="h-4 animate-pulse rounded bg-[rgb(var(--color-border))]" />
+            ))}
+          </ul>
+        ) : breakingPosts.length > 0 ? (
+          <ul className="space-y-2">
+            {breakingPosts.map((post) => (
+              <li key={post.id}>
+                <Link
+                  href={`/haber/${post.slug ?? post.id}`}
+                  className="group flex items-start gap-2 rounded-lg p-1.5 transition-colors hover:bg-[rgb(var(--color-surface))]"
+                >
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                  <p className="line-clamp-2 text-sm font-medium leading-snug text-[rgb(var(--color-text))] group-hover:text-red-500">
+                    {post.title}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-[rgb(var(--color-muted))]">
+            Şu an aktif son dakika haberi yok.
+          </p>
+        )}
       </div>
 
+      {/* Trend Konular */}
       <div className="surface-card-padded">
         <div className="mb-3 flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -59,7 +58,7 @@ export function TrendingPanel() {
           {topics.map((item, i) => (
             <li key={item.tag}>
               <Link
-                href={trendHref(item.tag)}
+                href={`${ROUTES.SEARCH}?q=${encodeURIComponent(item.tag)}`}
                 className="group flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-[rgb(var(--color-surface))]"
               >
                 <span className="text-sm font-bold text-[rgb(var(--color-border))]">{i + 1}</span>
@@ -81,6 +80,7 @@ export function TrendingPanel() {
         </ul>
       </div>
 
+      {/* Kategoriler */}
       <div className="surface-card-padded">
         <div className="mb-3 flex items-center gap-2">
           <Hash className="h-4 w-4 text-[rgb(var(--color-muted))]" />

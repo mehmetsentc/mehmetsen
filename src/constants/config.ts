@@ -58,6 +58,10 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'gastronomi',    name: 'Gastronomi',    slug: 'gastronomi',    iconName: 'utensils',    color: '#F97316' },
   { id: 'otomobil',      name: 'Otomobil',      slug: 'otomobil',      iconName: 'car',         color: '#64748B' },
   { id: 'meteoroloji',   name: 'Meteoroloji',   slug: 'meteoroloji',   iconName: 'cloud-rain',  color: '#0EA5E9' },
+
+  // ── Özel kategoriler ────────────────────────────────────────────────────────
+  { id: 'son-dakika',    name: 'Son Dakika',    slug: 'son-dakika',    iconName: 'zap',         color: '#EF4444' },
+  { id: 'etkinlikler',   name: 'Etkinlikler',   slug: 'etkinlikler',   iconName: 'calendar',    color: '#8B5CF6' },
 ]
 
 /** Returns subcategories of a given parent category id */
@@ -86,7 +90,6 @@ export function getCategoryFamily(parentId: string): string[] {
  */
 export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'gundem',
-  'yerel-haber',
   'siyaset',
   'dunya',
   'spor',

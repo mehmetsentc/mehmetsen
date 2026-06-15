@@ -14,7 +14,7 @@ const SPOR_SUBCATEGORIES = getSubcategories('spor')
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: 'Spor Haberleri | NaHaber',
+  title: 'Spor Haberleri',
   description: 'NaHaber\'de son dakika spor haberleri, maç sonuçları ve Dünya Kupası gelişmeleri',
   openGraph: {
     title: 'Spor Haberleri | NaHaber',

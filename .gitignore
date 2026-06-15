@@ -31,7 +31,6 @@ yarn-error.log*
 *.pem
 Thumbs.db
 commit-*.sh
-*.command
 
 # TypeScript
 *.tsbuildinfo

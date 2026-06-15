@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { FeedSliderItem } from '@/types/feedSlider'
@@ -10,8 +10,8 @@ import { SliderImage } from './SliderImage'
 interface NewsSliderProps {
   categoryId?: string
   initialItems?: FeedSliderItem[]
-  /** Hide server-rendered #feed-hero-static once carousel is ready. */
-  replaceStaticHero?: boolean
+  /** Server-rendered hero — shown until client carousel is ready (LCP). */
+  children?: ReactNode
 }
 
 const AUTOPLAY_MS = 5000
@@ -98,7 +98,8 @@ async function fetchSliderItems(categoryId?: string): Promise<FeedSliderItem[]> 
   return docs.filter((item) => item.categoryId !== 'son-dakika')
 }
 
-export function NewsSlider({ categoryId, initialItems, replaceStaticHero }: NewsSliderProps) {
+export function NewsSlider({ categoryId, initialItems, children }: NewsSliderProps) {
+  const [interactive, setInteractive] = useState(false)
   const [items, setItems] = useState<FeedSliderItem[]>(initialItems ?? [])
   const [loading, setLoading] = useState(!initialItems?.length)
   const [current, setCurrent] = useState(0)
@@ -107,9 +108,8 @@ export function NewsSlider({ categoryId, initialItems, replaceStaticHero }: News
   const fetchedRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!replaceStaticHero) return
-    document.getElementById('feed-hero-static')?.classList.add('hidden')
-  }, [replaceStaticHero])
+    setInteractive(true)
+  }, [])
 
   useEffect(() => {
     if (initialItems?.length) return
@@ -200,6 +200,10 @@ export function NewsSlider({ categoryId, initialItems, replaceStaticHero }: News
       dx < 0 ? handleNext() : handlePrev()
     }
     touchStartX.current = null
+  }
+
+  if (!interactive && children) {
+    return <>{children}</>
   }
 
   if (loading) {

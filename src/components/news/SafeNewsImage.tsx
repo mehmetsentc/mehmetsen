@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import Image, { type ImageProps } from 'next/image'
 import { cn } from '@/lib/utils'
 import { isKnownNewsImageHost } from '@/constants/imageHosts'
 
 type SafeNewsImageProps = Omit<ImageProps, 'unoptimized'> & {
   src: string
+  onLoadError?: () => void
 }
 
 function parseHostname(src: string): string | null {
@@ -22,10 +24,20 @@ function parseHostname(src: string): string | null {
  * Renders RSS/news thumbnails with next/image for known CDNs and falls back to
  * a native lazy-loaded <img> for unknown external hosts — prevents runtime
  * "hostname not configured" errors when a feed introduces a new image CDN.
+ *
+ * If the image fails to load (broken URL), calls onLoadError and hides itself.
  */
-export function SafeNewsImage({ src, alt, className, fill, loading, ...rest }: SafeNewsImageProps) {
+export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError, ...rest }: SafeNewsImageProps) {
+  const [errored, setErrored] = useState(false)
   const hostname = parseHostname(src)
   const useNextImage = !hostname || isKnownNewsImageHost(hostname)
+
+  function handleError() {
+    setErrored(true)
+    onLoadError?.()
+  }
+
+  if (errored) return null
 
   if (useNextImage) {
     return (
@@ -35,6 +47,7 @@ export function SafeNewsImage({ src, alt, className, fill, loading, ...rest }: S
         className={className}
         fill={fill}
         loading={loading}
+        onError={handleError}
         {...rest}
       />
     )
@@ -51,6 +64,7 @@ export function SafeNewsImage({ src, alt, className, fill, loading, ...rest }: S
         loading={lazy ? 'lazy' : 'eager'}
         decoding="async"
         className={cn('absolute inset-0 h-full w-full object-cover', className)}
+        onError={handleError}
       />
     )
   }
@@ -65,6 +79,7 @@ export function SafeNewsImage({ src, alt, className, fill, loading, ...rest }: S
       className={className}
       width={typeof rest.width === 'number' ? rest.width : undefined}
       height={typeof rest.height === 'number' ? rest.height : undefined}
+      onError={handleError}
     />
   )
 }

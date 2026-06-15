@@ -1,6 +1,6 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
@@ -42,9 +42,11 @@ function FeedMediaCardInner({
   isFallbackImage = false,
   className,
 }: FeedMediaCardProps) {
+  const [imgErrored, setImgErrored] = useState(false)
   const tier = useNetworkTier()
   const hasVideo = Boolean(isVideo && videoUrl?.trim())
-  const displayImage = imageUrl?.trim() || FEED_FALLBACK_LOGO
+  const displayImage = (!imgErrored && imageUrl?.trim()) || FEED_FALLBACK_LOGO
+  const effectiveFallback = isFallbackImage || imgErrored || !imageUrl?.trim()
   const fallbackGradient = getCategoryFallbackGradient(categoryId)
 
   return (
@@ -68,7 +70,7 @@ function FeedMediaCardInner({
             preload={videoPreloadForTier(tier, false)}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
-        ) : isFallbackImage ? (
+        ) : effectiveFallback ? (
           <div
             className="absolute inset-0 flex items-center justify-center"
             style={{
@@ -92,6 +94,7 @@ function FeedMediaCardInner({
             quality={imageQualityForTier(tier)}
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             sizes={scaleSizesForTier('(max-width: 768px) 100vw, 720px', tier)}
+            onLoadError={() => setImgErrored(true)}
           />
         )}
 

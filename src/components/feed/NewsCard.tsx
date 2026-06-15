@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { Heart, MessageCircle, Bookmark, Share2, Clock, MapPin } from 'lucide-react'
@@ -23,14 +24,14 @@ interface NewsCardProps {
 }
 
 export function NewsCard({ post }: NewsCardProps) {
+  const [imgErrored, setImgErrored] = useState(false)
+
   const timeAgo = post.publishedAt
     ? formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true, locale: tr })
     : ''
 
   const cover =
-    post.coverImageUrl ||
-    getPrimaryVideo(post)?.thumbnailUrl ||
-    null
+    !imgErrored && (post.coverImageUrl || getPrimaryVideo(post)?.thumbnailUrl || null)
 
   const { liked, count: likesCount, toggle: toggleLike } = useLike({
     postId: post.id,
@@ -96,12 +97,13 @@ export function NewsCard({ post }: NewsCardProps) {
           <div className="feed-media-card feed-media-card-photo">
             <div className="feed-media-card-media">
               <SafeNewsImage
-                src={cover}
+                src={cover as string}
                 alt={post.title}
                 fill
                 loading="lazy"
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                 sizes="(max-width: 768px) 100vw, 600px"
+                onLoadError={() => setImgErrored(true)}
               />
               {/* Category badge — top left */}
               <span className="feed-media-card-badge">{getCategoryLabel(post.categoryId)}</span>

@@ -10,7 +10,7 @@ interface FeedSliderHeroProps {
 /** Server-rendered first slide — paints before client JS (LCP). */
 export function FeedSliderHero({ item }: FeedSliderHeroProps) {
   return (
-    <div id="feed-hero-static" style={SLIDER_OUTER_STYLE}>
+    <div style={SLIDER_OUTER_STYLE}>
       <div className={`relative overflow-hidden ${SLIDER_HEIGHT_CLASS}`}>
         <Link href={`/news/${item.slug}`} className="absolute inset-0 block">
           {item.imageUrl ? (
