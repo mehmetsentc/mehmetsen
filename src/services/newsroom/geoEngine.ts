@@ -113,8 +113,30 @@ export function enrichGeo(rewritten: AiRewriteResult, extraTags: string[] = []):
   const country = rewritten.country?.trim() || 'Türkiye'
 
   if (city) {
-    // Normalize to canonical display name (e.g. "diyarbakır" → "Diyarbakır")
-    city = normalizeDisplayCity(city)
+    if (country && country !== 'Türkiye') {
+      // Yurt dışı haber — AI'ın verdiği şehri kullanma.
+      // "Gazze" gibi yabancı yer isimleri normalizeCitySlug fuzzy match ile
+      // yanlış Türk iline eşleşir (örn. Gazze → Gaziantep).
+      city = null
+      district = null
+    } else {
+      // Normalize to canonical display name (e.g. "diyarbakır" → "Diyarbakır")
+      city = normalizeDisplayCity(city)
+      // Normalize edilmiş şehrin gerçek bir Türk ili olup olmadığını doğrula.
+      // Fuzzy match yanlış eşleşmeleri önlemek için CITY_DISPLAY map'ini kullan.
+      const slugCheck = city
+        .toLocaleLowerCase('tr-TR')
+        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+        .replace(/\s+/g, '')
+      if (!CITY_DISPLAY.has(slugCheck)) {
+        // AI'ın verdiği şehir bilinmiyor (yabancı yer adı veya AI hatası).
+        // Metinden tekrar dene; text extraction daha kontrollü çalışır.
+        const haystack = `${rewritten.title} ${rewritten.description}`
+        city = extractCityFromText(haystack)
+        district = null
+      }
+    }
   } else if (country === 'Türkiye' || !country) {
     // Yalnızca Türkiye haberleri için metinden şehir çıkar.
     // Dünya haberleri (country !== 'Türkiye') metinde Türk şehri geçse bile tag ekleme.
