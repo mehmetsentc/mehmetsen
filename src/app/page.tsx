@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation'
+import { permanentRedirect } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
 
 export default function Home() {
-  redirect(ROUTES.FEED)
+  permanentRedirect(ROUTES.FEED)
 }

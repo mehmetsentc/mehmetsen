@@ -12,6 +12,7 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
+import { ROUTES } from '@/constants/routes'
 import { deepseekCollect, isDeepSeekConfigured } from './deepseek'
 import { geminiEditArticle, isGeminiConfigured } from './gemini'
 import { gptQaFallback } from './gpt'
@@ -266,7 +267,7 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       metaTitle: geminiResult.metaTitle,
       metaDescription: geminiResult.metaDescription,
       seoScore: geminiResult.seoScore,
-      canonical: `https://nahaber.com/haber/${slug}`,
+      canonical: `${process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://nahaber.com'}${ROUTES.NEWS_DETAIL(slug)}`,
 
       // Media
       imageUrl: item.imageUrl || null,

@@ -222,6 +222,7 @@ export function buildPostMetadata(post: Post): Metadata {
   return {
     title,
     description,
+    robots: { index: true, follow: true },
     ...(source ? { authors: [{ name: source }] } : {}),
     alternates: {
       canonical: url,

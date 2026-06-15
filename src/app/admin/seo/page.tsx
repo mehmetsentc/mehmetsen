@@ -198,7 +198,7 @@ export default function SeoManagementPage() {
                       {fixing === issue.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                       AI Düzelt
                     </button>
-                    <a href={`/p/${issue.id}`} target="_blank" rel="noopener noreferrer"
+                    <a href={issue.slug ? `/news/${issue.slug}` : `/post/${issue.id}`} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-bold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]">
                       <ExternalLink className="h-3 w-3" />Görüntüle
                     </a>

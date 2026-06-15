@@ -5,14 +5,27 @@ import { LazyFinanceTicker } from '@/components/widgets/LazyFinanceTicker'
 import { FeedTimelineStatic } from '@/components/feed/FeedTimelineStatic'
 import { DeferredNewsTimeline } from '@/components/feed/DeferredNewsTimeline'
 import { annotateTimelinePosts } from '@/lib/newsMapper'
+import { getSiteUrl } from '@/lib/seo'
 import { getLcpPreloadHref } from '@/lib/lcpImage'
 import { getFeedSliderItems, getFeedTimelinePosts } from '@/services/newsService.server'
+import { ROUTES } from '@/constants/routes'
 
 export const revalidate = 30
 
+const siteUrl = getSiteUrl()
+
 export const metadata: Metadata = {
-  title: 'Gündem',
-  description: 'Türkiye gündeminden son dakika haberleri — NaHaber',
+  title: 'Gündem — Son Dakika Haberler',
+  description: 'Türkiye gündeminden son dakika haberleri, güncel gelişmeler ve editoryal içerik — NaHaber',
+  alternates: {
+    canonical: `${siteUrl}${ROUTES.FEED}`,
+  },
+  openGraph: {
+    title: 'Gündem — Son Dakika Haberler | NaHaber',
+    description: 'Türkiye gündeminden son dakika haberleri — NaHaber',
+    url: `${siteUrl}${ROUTES.FEED}`,
+    type: 'website',
+  },
 }
 
 const FEED_CATEGORY = 'gundem'

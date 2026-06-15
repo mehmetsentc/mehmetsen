@@ -1,7 +1,8 @@
 import { cache } from 'react'
 import type { Metadata } from 'next'
-import { redirect, notFound } from 'next/navigation'
-import { NewsArticleClient } from '@/components/news/NewsArticleClient'
+import { permanentRedirect, notFound } from 'next/navigation'
+import { NewsArticleStatic } from '@/components/news/NewsArticleStatic'
+import { NewsArticleInteractive } from '@/components/news/NewsArticleInteractive'
 import {
   buildNewsArticleJsonLd,
   buildNewsBreadcrumbJsonLd,
@@ -56,7 +57,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
   }
 
   if (post.slug && post.slug !== slug && post.slug !== post.id) {
-    redirect(ROUTES.NEWS_DETAIL(post.slug))
+    permanentRedirect(ROUTES.NEWS_DETAIL(post.slug))
   }
 
   const jsonLd = buildNewsArticleJsonLd(post)
@@ -72,7 +73,8 @@ export default async function NewsDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <NewsArticleClient postId={post.id} initialPost={post} />
+      <NewsArticleStatic post={post} />
+      <NewsArticleInteractive post={post} />
     </>
   )
 }

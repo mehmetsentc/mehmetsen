@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
+import { permanentRedirect } from 'next/navigation'
 import { PostDetailClient } from '@/components/post/PostDetailClient'
 import { buildNewsArticleJsonLd, buildPostMetadata } from '@/lib/seo'
 import { getNewsById } from '@/services/newsService.server'
@@ -21,7 +21,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         robots: { index: false, follow: false },
       }
     }
-    // Pulls title, description, og:url, og:image from the Firestore post document.
+    if (post.slug && post.slug !== post.id) {
+      return {
+        ...buildPostMetadata(post),
+        robots: { index: false, follow: true },
+      }
+    }
     return buildPostMetadata(post)
   } catch {
     return {
@@ -37,7 +42,7 @@ export default async function PostDetailPage({ params }: PageProps) {
 
   const post = await getNewsById(id).catch(() => null)
   if (post?.slug && post.slug !== post.id) {
-    redirect(ROUTES.NEWS_DETAIL(post.slug))
+    permanentRedirect(ROUTES.NEWS_DETAIL(post.slug))
   }
   if (post) jsonLd = buildNewsArticleJsonLd(post)
 

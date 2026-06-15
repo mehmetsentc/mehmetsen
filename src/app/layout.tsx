@@ -101,7 +101,6 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: appUrl,
     types: {
       'application/rss+xml': [
           { url: `${appUrl}/rss.xml`,          title: `${appName} RSS` },

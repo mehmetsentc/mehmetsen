@@ -30,7 +30,7 @@ export function TrendingPanel() {
             {breakingPosts.map((post) => (
               <li key={post.id}>
                 <Link
-                  href={`/haber/${post.slug ?? post.id}`}
+                  href={ROUTES.NEWS_DETAIL(post.slug ?? post.id)}
                   className="group flex items-start gap-2 rounded-lg p-1.5 transition-colors hover:bg-[rgb(var(--color-surface))]"
                 >
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />

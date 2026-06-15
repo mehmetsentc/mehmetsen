@@ -1,4 +1,12 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ROUTES } from '@/constants/routes'
+
+export const metadata: Metadata = {
+  title: 'Sayfa Bulunamadı',
+  description: 'Aradığınız sayfa bulunamadı.',
+  robots: { index: false, follow: true },
+}
 
 export default function NotFound() {
   return (
@@ -6,7 +14,7 @@ export default function NotFound() {
       <h1 className="text-6xl font-bold text-brand-600">404</h1>
       <p className="text-gray-500">Aradığın sayfa bulunamadı.</p>
       <Link
-        href="/"
+        href={ROUTES.FEED}
         className="rounded-md bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700"
       >
         Ana sayfaya dön

@@ -7,6 +7,8 @@ import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { getSiteUrl } from '@/lib/seo'
+import { ROUTES } from '@/constants/routes'
 import type { TimelinePost } from '@/types/post'
 
 interface Props {
@@ -90,9 +92,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: pageTitle,
     description: `NaHaber'de ${cat.name} kategorisindeki son dakika gelişmeleri ve haberler`,
+    alternates: {
+      canonical: `${getSiteUrl()}${ROUTES.CATEGORY(cat.id)}`,
+    },
     openGraph: {
       title: `${pageTitle} | NaHaber`,
       description: `NaHaber'de ${cat.name} kategorisindeki son dakika gelişmeleri ve haberler`,
+      url: `${getSiteUrl()}${ROUTES.CATEGORY(cat.id)}`,
     },
   }
 }

@@ -7,6 +7,8 @@ import { MatchResults } from '@/components/sports/MatchResults'
 import { SuperLigTable } from '@/components/sports/SuperLigTable'
 import { TransferStrip } from '@/components/sports/TransferStrip'
 import { getSubcategories } from '@/constants/config'
+import { getSiteUrl } from '@/lib/seo'
+import { ROUTES } from '@/constants/routes'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 
 const SPOR_SUBCATEGORIES = getSubcategories('spor')
@@ -16,6 +18,9 @@ export const revalidate = 60
 export const metadata: Metadata = {
   title: 'Spor Haberleri',
   description: 'NaHaber\'de son dakika spor haberleri, maç sonuçları ve Dünya Kupası gelişmeleri',
+  alternates: {
+    canonical: `${getSiteUrl()}${ROUTES.SPOR}`,
+  },
   openGraph: {
     title: 'Spor Haberleri | NaHaber',
     description: 'Son dakika spor haberleri, maç sonuçları ve Dünya Kupası gelişmeleri',

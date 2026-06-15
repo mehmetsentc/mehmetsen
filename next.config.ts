@@ -21,6 +21,17 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  async redirects() {
+    return [
+      { source: '/haber/:slug', destination: '/news/:slug', permanent: true },
+      { source: '/ayarlar', destination: '/settings', permanent: true },
+      { source: '/ayarlar/:path*', destination: '/settings/:path*', permanent: true },
+      { source: '/mesajlar', destination: '/messages', permanent: true },
+      { source: '/mesajlar/:path*', destination: '/messages/:path*', permanent: true },
+      { source: '/bildirimler', destination: '/notifications', permanent: true },
+    ]
+  },
+
   // HTTP caching headers — Vercel CDN caches these globally (Pro)
   async headers() {
     return [
