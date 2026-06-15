@@ -43,7 +43,7 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
         author:      d.author      ?? null,
         isBreaking:  d.isBreaking  ?? false,
         hasVideo:    d.hasVideo    ?? false,
-      } as TimelinePost
+      } as unknown as TimelinePost
     })
   } catch {
     return []   // prefetch başarısız → client normal akışa devam eder
