@@ -95,44 +95,15 @@ export function useEvents({
         cursor,
       })
 
-      let nextEvents = result.events
-      let nextHasMore = result.hasMore
-      let nextLastDoc = result.lastDoc
-      let nextSource: EventsDataSource | null =
+      const nextEvents = result.events
+      const nextHasMore = result.hasMore
+      const nextLastDoc = result.lastDoc
+      const nextSource: EventsDataSource | null =
         result.events.length > 0 ? result.source : null
-
-      if (reset && nextEvents.length === 0) {
-        const aggregate = await fetchAggregatedEvents(
-          {
-            citySlug: isNearby ? null : city,
-            category: cat ?? null,
-          },
-          signal
-        )
-
-        if (aggregate.events.length > 0) {
-          const filtered = sortEventsByTimeRange(
-            dedupeEvents(
-              filterEventsForQuery(aggregate.events, {
-                citySlug: isNearby ? undefined : (city ?? undefined),
-                category: cat,
-                timeRange: range,
-              })
-            ),
-            range
-          )
-
-          if (filtered.length > 0) {
-            nextEvents = filtered
-            nextHasMore = false
-            nextLastDoc = null
-            nextSource = 'live'
-          }
-        }
-      }
 
       if (signal?.aborted) return
 
+      // Firestore sonuçlarını hemen göster (boş olsa bile)
       setEvents((prev) => {
         if (reset) return nextEvents
         const seen = new Set(prev.map((e) => e.id))
@@ -152,6 +123,33 @@ export function useEvents({
 
       setDataSource(nextSource)
       retryOnceRef.current = false
+
+      // Firestore boş gelince aggregated kaynağı ARKA PLANDA çek
+      // loading kapalıyken kullanıcı boş ekran görmez, sonuç gelince güncellenir
+      if (reset && nextEvents.length === 0) {
+        fetchAggregatedEvents(
+          { citySlug: isNearby ? null : city, category: cat ?? null },
+          signal
+        ).then((aggregate) => {
+          if (signal?.aborted || !aggregate.events.length) return
+          const filtered = sortEventsByTimeRange(
+            dedupeEvents(
+              filterEventsForQuery(aggregate.events, {
+                citySlug: isNearby ? undefined : (city ?? undefined),
+                category: cat,
+                timeRange: range,
+              })
+            ),
+            range
+          )
+          if (filtered.length > 0) {
+            setEvents(filtered)
+            setHasMore(false)
+            lastDocRef.current = null
+            setDataSource('live')
+          }
+        }).catch(() => { /* sessiz — aggregated opsiyonel */ })
+      }
     } catch (err) {
       if (signal?.aborted) return
 

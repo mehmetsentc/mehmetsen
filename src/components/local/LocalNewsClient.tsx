@@ -104,36 +104,42 @@ export function LocalNewsClient() {
   )
   const requestedRef = useRef(false)
   const citySlugRef  = useRef<string | null>(null)
+  // GPS iptal bayrağı — kullanıcı manuel şehir seçerse GPS sonucu yok sayılır
+  const geoAbortRef  = useRef(false)
 
   const fetchFirst = useCallback(async (citySlug: string) => {
+    citySlugRef.current = citySlug
     setLoading(true)
     setError(null)
     setPosts([])
     setLastDoc(null)
     setHasMore(false)
-    citySlugRef.current = citySlug
 
     try {
       let result
 
       if (citySlug === '__all__') {
-        // Konum alınamadı — tüm yerel haberleri göster, şehir filtresi yok
         result = await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
       } else {
-        // Şehir belli — SADECE o şehrin haberleri, fallback yok
         result = await postService.getNewsTimeline(undefined, { citySlug })
       }
 
+      // Bu fetch hâlâ geçerliyse güncelle (araya başka bir şehir girdiyse atla)
       if (citySlugRef.current !== citySlug) return
 
       setPosts(result.posts as TimelinePost[])
       setLastDoc(result.lastDoc ?? null)
       setHasMore(result.hasMore)
     } catch (err) {
+      if (citySlugRef.current !== citySlug) return
       console.error('[LocalNewsClient] fetch failed:', err)
       setError('Haberler yüklenemedi')
     } finally {
-      setLoading(false)
+      // Yalnızca bu fetch hâlâ aktifse loading'i kapat
+      // (eski fetch'in finally'si yeni fetch'in loading=true'sunu ezmemeli)
+      if (citySlugRef.current === citySlug) {
+        setLoading(false)
+      }
     }
   }, [])
 
@@ -158,9 +164,12 @@ export function LocalNewsClient() {
   const requestGeolocation = useCallback(async () => {
     if (requestedRef.current) return
     requestedRef.current = true
+    geoAbortRef.current = false
     setLocationState('requesting')
     try {
       const pos = await getCurrentPosition()
+      // GPS sonucu gelene kadar kullanıcı manuel şehir seçtiyse yok say
+      if (geoAbortRef.current) return
       const { latitude: lat, longitude: lng } = pos.coords
       const slug     = nearestProvinceSlug(lat, lng)
       const name     = getCityCategoryName(slug)
@@ -169,10 +178,9 @@ export function LocalNewsClient() {
       setLocationState('granted')
       writeStoredUserLocation({ citySlug: slug, cityName: name, lat, lng, source: 'geolocation', updatedAt: Date.now() })
     } catch {
+      if (geoAbortRef.current) return
       setLocationState('denied')
-      // Konum izni reddedildi — şehir seçim sheet'ini aç
       setShowCitySheet(true)
-      // Yine de tüm yerel haberleri yükle
       void fetchFirst('__all__')
     }
   }, [fetchFirst])
@@ -196,6 +204,7 @@ export function LocalNewsClient() {
   }, [city?.slug, fetchFirst])
 
   const handleSelectCity = useCallback((selected: LocalCity) => {
+    geoAbortRef.current = true  // GPS sonucu gelirse yok say
     setCity(selected)
     setStoredCitySlug(selected.slug)
     setShowCitySheet(false)
