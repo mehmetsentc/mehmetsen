@@ -177,17 +177,39 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       continue
     }
 
-    const description: string =
-      typeof data.spot    === 'string' ? data.spot    :
-      typeof data.summary === 'string' ? data.summary :
+    // Spot / özet metin (AI için kısa bağlam)
+    const spot: string =
+      typeof data.spot        === 'string' ? data.spot        :
+      typeof data.summary     === 'string' ? data.summary     :
       typeof data.description === 'string' ? data.description : ''
+
+    // Tam haber metni — HTML strip + 2000 karakter (Instagram limiti ~2200)
+    const rawContent: string =
+      typeof data.content === 'string' ? data.content :
+      typeof data.body    === 'string' ? data.body    : ''
+
+    /** HTML tag ve fazla boşlukları temizle */
+    function stripHtml(html: string): string {
+      return html
+        .replace(/<[^>]+>/g, ' ')          // tag'ları boşlukla değiştir
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/\s{2,}/g, ' ')           // çoklu boşlukları tek'e
+        .trim()
+    }
+
+    const fullText  = rawContent ? stripHtml(rawContent) : spot
+    const bodyText  = fullText.slice(0, 2000)   // Instagram güvenli limit
 
     const originalImageUrl = extractImageUrl(data)
     const articleUrl       = buildArticleUrl(id, data)
     const cityName         = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
 
-    // ── AI İçerik Üretimi (yalnızca hashtag üretmek için) ────────────────
-    let socialContent = await generateSocialContent(title, description, cityName)
+    // ── AI İçerik Üretimi (hashtag için) ─────────────────────────────────
+    let socialContent = await generateSocialContent(title, spot, cityName)
     if (!socialContent) {
       socialContent = {
         headline: title.slice(0, 60),
@@ -201,14 +223,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const socialImageUrl: string = `https://nahaber.com/api/og/social/${id}`
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
-    // ── Post formatı: kısa açıklama + site linki + etiketler ─────────────
-    // Öncelik: spot → summary → AI caption (boş olunca)
-    const rawDesc   = description.trim()
-    const aiCaption = (socialContent.caption || '').trim()
-    const spotText  = (rawDesc || aiCaption).slice(0, 280)
+    // ── Post formatı: tam haber metni + link + hashtag ───────────────────
     const hashtagStr = socialContent.hashtags.join(' ')
     const fullCaption = [
-      spotText,
+      bodyText,
       '',
       `🔗 Haberin devamı: ${articleUrl}`,
       '',
@@ -216,10 +234,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     ].join('\n')
 
     const payload: SocialPublishPayload = {
-      newsId:     id,
-      title:      socialContent.headline || title,
-      description: fullCaption,
-      imageUrl:   socialImageUrl,
+      newsId:      id,
+      title:       socialContent.headline || title,
+      description: fullCaption,   // tam metin + link + hashtag
+      imageUrl:    socialImageUrl,
       articleUrl,
     }
 
