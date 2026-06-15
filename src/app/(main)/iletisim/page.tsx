@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { getSiteUrl } from '@/lib/seo'
 
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-const siteUrl  = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://nahaber.com'
+const siteUrl = getSiteUrl()
 
 export const metadata: Metadata = {
   title: `İletişim | ${siteName}`,

@@ -23,6 +23,7 @@ import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { publishToFacebook } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
+import { getSiteUrl } from '@/lib/seo'
 
 import type {
   SocialCronItemResult,
@@ -54,11 +55,14 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
 }
 
 function buildArticleUrl(id: string, data: Record<string, unknown>): string {
-  // Sosyal medya linkleri her zaman production domain kullanır
-  const base = 'https://nahaber.com'
-  const url  = typeof data.url   === 'string' ? data.url.trim()  : ''
-  const slug = typeof data.slug  === 'string' ? data.slug.trim() : ''
-  if (url)  return url.replace('nahaber.vercel.app', 'nahaber.com')
+  const base = getSiteUrl()
+  const url = typeof data.url === 'string' ? data.url.trim() : ''
+  const slug = typeof data.slug === 'string' ? data.slug.trim() : ''
+  if (url) {
+    return url
+      .replace('nahaber.vercel.app', 'www.nahaber.com')
+      .replace('https://nahaber.com', 'https://www.nahaber.com')
+  }
   if (slug) return `${base}/news/${slug}`
   return `${base}/news/${id}`
 }

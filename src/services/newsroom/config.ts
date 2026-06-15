@@ -28,7 +28,14 @@ export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
  * independent-tr/gazeteduvar (küçük kitle), euronews-tr (world worker'da var).
  */
 export const NATIONAL_NEWS_SOURCE_IDS = [
-  'trt', 'ntv', 'haberturk', 'hurriyet', 'sozcu', 'cumhuriyet', 't24',
+  // Haber ajansları (birincil kaynaklar)
+  'aa', 'iha', 'dha',
+  // Ana yayın kuruluşları
+  'trt', 'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu',
+  // Haber aggregatörleri
+  'haberler', 'sondakika',
+  // Gazetecilik / görüş
+  'cumhuriyet', 't24',
 ] as const
 
 /**
@@ -37,8 +44,14 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
  * Bunlar 15 dakikada bir taranır → Türkçe son dakika haberler çok daha hızlı gelir.
  */
 export const BREAKING_NEWS_SOURCE_IDS = [
-  'cnn', 'bbc', 'reuters-world', 'ap-news', 'trt',
-  'hurriyet', 'sozcu', 'haberturk', 'sabah',
+  // Ajanslar — en hızlı son dakika
+  'aa', 'iha', 'dha',
+  // Türk ulusal medya
+  'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu', 'trt', 'sabah',
+  // Haber aggregatörleri (yüksek hacim)
+  'haberler', 'sondakika',
+  // Uluslararası
+  'reuters-world', 'ap-news', 'bbc',
 ] as const
 
 /**

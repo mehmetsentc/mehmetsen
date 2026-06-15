@@ -6,6 +6,18 @@ import { ROUTES } from '@/constants/routes'
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i
 
+/** Canonical production origin — apex nahaber.com redirects here via Vercel DNS. */
+export const CANONICAL_PRODUCTION_URL = 'https://www.nahaber.com'
+
+function isDisposableDeployUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    return host.endsWith('.vercel.app') || host === 'localhost' || host === '127.0.0.1'
+  } catch {
+    return true
+  }
+}
+
 export function isLocalhostOrigin(url: string): boolean {
   try {
     return LOCALHOST_ORIGIN.test(new URL(url).origin)
@@ -14,12 +26,42 @@ export function isLocalhostOrigin(url: string): boolean {
   }
 }
 
-/** Public base URL for share links and OG tags. Prefer NEXT_PUBLIC_APP_URL (HTTPS in prod). */
+/** Public base URL for share links, sitemaps, and OG tags. */
 export function getSiteUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (configured) return configured.replace(/\/$/, '')
-  if (typeof window !== 'undefined') return window.location.origin.replace(/\/$/, '')
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim()?.replace(/\/$/, '')
+
+  if (process.env.VERCEL_ENV === 'production') {
+    if (!configured || isDisposableDeployUrl(configured)) {
+      return CANONICAL_PRODUCTION_URL
+    }
+    return configured
+  }
+
+  if (configured && !isDisposableDeployUrl(configured)) {
+    return configured
+  }
+
+  if (typeof window !== 'undefined') {
+    return window.location.origin.replace(/\/$/, '')
+  }
+
   return 'http://localhost:3000'
+}
+
+/** Notify search engines that sitemaps were updated (best-effort). */
+export async function pingSitemaps(siteUrl: string = getSiteUrl()): Promise<void> {
+  const targets = [
+    `${siteUrl}/sitemap.xml`,
+    `${siteUrl}/news-sitemap.xml`,
+  ]
+  await Promise.allSettled(
+    targets.map(async (sitemap) => {
+      const encoded = encodeURIComponent(sitemap)
+      await fetch(`https://www.bing.com/ping?sitemap=${encoded}`, {
+        signal: AbortSignal.timeout(10_000),
+      })
+    })
+  )
 }
 
 export function buildPostSharePath(post: Pick<Post, 'id'> & { slug?: string }): string {

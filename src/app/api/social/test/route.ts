@@ -19,6 +19,7 @@ import { publishToInstagram } from '@/lib/social/instagram'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { FieldValue } from 'firebase-admin/firestore'
 import type { SocialPublishPayload } from '@/lib/social/types'
+import { getSiteUrl } from '@/lib/seo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,9 +34,13 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
 }
 
 function buildArticleUrl(id: string, data: Record<string, unknown>): string {
-  // Sosyal medya linkleri her zaman production domain kullanır
-  const base = 'https://nahaber.com'
-  if (typeof data.url  === 'string' && data.url.trim())  return data.url.trim().replace('nahaber.vercel.app', 'nahaber.com')
+  const base = getSiteUrl()
+  if (typeof data.url === 'string' && data.url.trim()) {
+    return data.url
+      .trim()
+      .replace('nahaber.vercel.app', 'www.nahaber.com')
+      .replace('https://nahaber.com', 'https://www.nahaber.com')
+  }
   if (typeof data.slug === 'string' && data.slug.trim()) return `${base}/news/${data.slug.trim()}`
   return `${base}/news/${id}`
 }

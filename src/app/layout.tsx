@@ -25,7 +25,9 @@ const inter = Inter({
   adjustFontFallback: true,
 })
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://nahaber.com'
+import { getSiteUrl } from '@/lib/seo'
+
+const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 const appDescription = 'Türkiye\'nin anlık haber platformu. Son dakika haberler, spor, teknoloji, ekonomi, dünya ve yerel haberler NaHaber\'de.'
 

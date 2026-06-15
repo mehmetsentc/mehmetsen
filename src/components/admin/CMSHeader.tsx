@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { db } from '@/lib/firebase/firestore'
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import type { CmsNotification } from '@/types/cms'
+import { getSiteUrl } from '@/lib/seo'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 
@@ -197,7 +198,7 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
 
         {/* Preview site */}
         <a
-          href="https://nahaber.vercel.app"
+          href={getSiteUrl()}
           target="_blank"
           rel="noopener noreferrer"
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
