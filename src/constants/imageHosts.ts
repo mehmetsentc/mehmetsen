@@ -16,8 +16,13 @@ export const NEWS_IMAGE_DOMAIN_SUFFIXES = [
   'iha.com.tr',
   'dha.com.tr',
   'hurriyet.com.tr',
+  'hurimg.com',       // Hurriyet resim CDN (image.hurimg.com)
   'milliyet.com.tr',
+  'milimaj.com',      // Milliyet resim CDN (image.milimaj.com)
   'sabah.com.tr',
+  'tmgrup.com.tr',    // Sabah/Takvim grup CDN (iasbh, isbh)
+  'dunya.com',        // Dünya gazetesi
+  'teimg.com',        // istanbulgazetesi CDN
   'bbci.co.uk',
   'reuters.com',
   'reutersagency.com',
