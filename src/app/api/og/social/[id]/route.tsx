@@ -73,11 +73,11 @@ function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str
 }
 
-// Layout yükseklikleri
-const PHOTO_H = 620   // fotoğraf biraz daha büyük
-const TITLE_H = 220   // kırmızı başlık bandı
-const DESC_H  = 180   // beyaz açıklama alanı
-const FOOT_H  = 60    // footer
+// Layout yükseklikleri — toplam 1080px
+const PHOTO_H = 600   // fotoğraf
+const TITLE_H = 200   // kırmızı başlık bandı
+const DESC_H  = 220   // lacivert açıklama + footer (tek alan)
+const FOOT_H  = 60    // DESC_H içinde kullanılan virtual footer yüksekliği (ref)
 
 export async function GET(
   _req: NextRequest,
@@ -139,35 +139,33 @@ export async function GET(
             </div>
           )}
 
-          {/* ── LOGO BADGE ── */}
+          {/* ── LOGO BADGE — koyu lacivert dikdörtgen (Canva tasarımı) ── */}
           <div style={{
-            position: 'absolute', top: 28, right: 28,
-            backgroundColor: 'rgba(255,255,255,0.95)',
-            borderRadius: 100,
+            position: 'absolute', top: 24, right: 24,
+            backgroundColor: '#0d1f44',
+            borderRadius: 10,
             display: 'flex', alignItems: 'center',
-            padding: '8px 20px 8px 8px',
-            gap: 12,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.30)',
+            padding: '10px 22px 10px 10px',
+            gap: 10,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.55)',
           }}>
             {/* 17 logosu */}
             <div style={{
-              width: 64, height: 64,
+              width: 52, height: 52,
               position: 'relative',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
             }}>
-              <div style={{ position:'absolute', width:60, height:60, backgroundColor:'#a8c8f0', borderRadius:18, transform:'rotate(12deg)', display:'flex' }} />
-              <div style={{ position:'absolute', width:56, height:56, backgroundColor:'#5b8fd4', borderRadius:16, transform:'rotate(-6deg)', display:'flex' }} />
-              <div style={{ position:'absolute', width:52, height:52, backgroundColor:'#2a5cb0', borderRadius:14, transform:'rotate(3deg)', display:'flex' }} />
+              <div style={{ position:'absolute', width:50, height:50, backgroundColor:'#1a4299', borderRadius:14, transform:'rotate(12deg)', display:'flex' }} />
               <div style={{ position:'absolute', width:46, height:46, backgroundColor:'#1a3480', borderRadius:'50%', display:'flex' }} />
               <div style={{ position:'relative', display:'flex', alignItems:'baseline', zIndex:10 }}>
-                <span style={{ color:'#ffffff', fontWeight:900, fontSize:24, lineHeight:1, display:'flex', marginRight:-1 }}>1</span>
-                <span style={{ color:'#87ceeb', fontWeight:900, fontSize:24, lineHeight:1, display:'flex' }}>7</span>
+                <span style={{ color:'#ffffff', fontWeight:900, fontSize:22, lineHeight:1, display:'flex', marginRight:-1 }}>1</span>
+                <span style={{ color:'#60a5fa', fontWeight:900, fontSize:22, lineHeight:1, display:'flex' }}>7</span>
               </div>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
-              <span style={{ color:'#111827', fontWeight:900, fontSize:17, letterSpacing:0.5, display:'flex' }}>ONYEDiTiVi</span>
-              <span style={{ color:'#6b7280', fontWeight:500, fontSize:11, letterSpacing:2.5, display:'flex' }}>HABERLERi</span>
+              <span style={{ color:'#ffffff', fontWeight:900, fontSize:16, letterSpacing:0.5, display:'flex' }}>ONYEDiTiVi</span>
+              <span style={{ color:'#93c5fd', fontWeight:500, fontSize:10, letterSpacing:2.5, display:'flex' }}>HABERLERi</span>
             </div>
           </div>
 
@@ -193,39 +191,53 @@ export async function GET(
           }}>{title}</span>
         </div>
 
-        {/* ── 3. AÇIKLAMA — beyaz ── */}
+        {/* ── 3. AÇIKLAMA + FOOTER — lacivert gradient (Canva tasarımı) ── */}
         <div style={{
-          width: 1080, height: DESC_H,
-          backgroundColor: '#ffffff',
-          display: 'flex', alignItems: 'center',
-          padding: '0 44px', flexShrink: 0,
-          borderTop: '3px solid #f3f4f6',
+          width: 1080, height: DESC_H + FOOT_H,
+          background: 'linear-gradient(135deg, #0d1f44 0%, #1a3480 60%, #0f2a5e 100%)',
+          display: 'flex', flexDirection: 'column',
+          padding: '28px 44px 20px 44px', flexShrink: 0,
+          position: 'relative', overflow: 'hidden',
         }}>
-          {spot ? (
-            <span style={{
-              color: '#374151',
-              fontSize: 24, lineHeight: 1.5, display: 'flex',
-            }}>{spot}</span>
-          ) : (
-            <span style={{
-              color: '#9ca3af',
-              fontSize: 22, fontStyle: 'italic', display: 'flex',
-            }}>nahaber.com'da haberin devamını okuyun</span>
-          )}
-        </div>
+          {/* Teal dalga dekorasyon — sağ alt */}
+          <div style={{
+            position: 'absolute', bottom: -60, right: -60,
+            width: 280, height: 280,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(6,182,212,0.25) 0%, rgba(14,116,144,0.12) 50%, transparent 70%)',
+            display: 'flex',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: 10, right: 80,
+            width: 180, height: 80,
+            borderRadius: '50%',
+            background: 'radial-gradient(ellipse, rgba(6,182,212,0.18) 0%, transparent 70%)',
+            display: 'flex',
+          }} />
 
-        {/* ── 4. FOOTER — lacivert ── */}
-        <div style={{
-          width: 1080, height: FOOT_H,
-          backgroundColor: '#1a3480',
-          display: 'flex', alignItems: 'center',
-          padding: '0 44px', flexShrink: 0,
-        }}>
-          <span style={{
-            color: 'rgba(255,255,255,0.70)',
-            fontSize: 15, fontWeight: 600,
-            letterSpacing: 3, display: 'flex',
-          }}>DAHA FAZLASI iCiN: WWW.NAHABER.COM</span>
+          {/* Açıklama metni */}
+          <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
+            {spot ? (
+              <span style={{
+                color: 'rgba(255,255,255,0.92)',
+                fontSize: 24, lineHeight: 1.55, display: 'flex',
+              }}>{spot}</span>
+            ) : (
+              <span style={{
+                color: 'rgba(255,255,255,0.55)',
+                fontSize: 22, fontStyle: 'italic', display: 'flex',
+              }}>nahaber.com'da haberin devamını okuyun</span>
+            )}
+          </div>
+
+          {/* Footer metni */}
+          <div style={{ display: 'flex' }}>
+            <span style={{
+              color: 'rgba(255,255,255,0.55)',
+              fontSize: 13, fontWeight: 600,
+              letterSpacing: 3, display: 'flex',
+            }}>DAHA FAZLASI iCiN: WWW.NAHABER.COM</span>
+          </div>
         </div>
 
       </div>
