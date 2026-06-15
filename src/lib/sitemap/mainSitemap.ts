@@ -6,9 +6,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 
-export const revalidate = 3600
-
-const ARTICLES_PER_PAGE = 500
+export const ARTICLES_PER_PAGE = 500
 
 function staticAndCategoryRoutes(base: string): MetadataRoute.Sitemap {
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -50,7 +48,7 @@ function mapArticleDocs(
   })
 }
 
-export async function generateSitemaps() {
+export async function getSitemapPageCount(): Promise<number> {
   try {
     const countSnap = await getAdminFirestore()
       .collection(Collections.NEWS)
@@ -58,18 +56,13 @@ export async function generateSitemaps() {
       .count()
       .get()
     const total = countSnap.data().count
-    const articlePages = Math.max(1, Math.ceil(total / ARTICLES_PER_PAGE))
-    return Array.from({ length: articlePages }, (_, id) => ({ id }))
+    return Math.max(1, Math.ceil(total / ARTICLES_PER_PAGE))
   } catch {
-    return [{ id: 0 }]
+    return 1
   }
 }
 
-export default async function sitemap({
-  id,
-}: {
-  id: number
-}): Promise<MetadataRoute.Sitemap> {
+export async function getSitemapPage(id: number): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl()
 
   try {
@@ -90,4 +83,38 @@ export default async function sitemap({
     console.warn(`[sitemap/${id}] fetch failed:`, error)
     return id === 0 ? staticAndCategoryRoutes(base) : []
   }
+}
+
+function formatLastMod(value: Date | string | undefined): string {
+  if (!value) return ''
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toISOString()
+}
+
+export function sitemapEntriesToXml(entries: MetadataRoute.Sitemap): string {
+  return entries
+    .map((entry) => {
+      const lastMod = formatLastMod(entry.lastModified)
+      const changeFreq = entry.changeFrequency
+        ? `<changefreq>${entry.changeFrequency}</changefreq>`
+        : ''
+      const priority =
+        entry.priority !== undefined ? `<priority>${entry.priority}</priority>` : ''
+      const lastModTag = lastMod ? `<lastmod>${lastMod}</lastmod>` : ''
+
+      return `<url><loc>${entry.url}</loc>${lastModTag}${changeFreq}${priority}</url>`
+    })
+    .join('')
+}
+
+export function buildSitemapIndexXml(base: string, pageCount: number): string {
+  const items = Array.from({ length: pageCount }, (_, id) => {
+    return `<sitemap><loc>${base}/sitemap/${id}.xml</loc></sitemap>`
+  }).join('')
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${items}
+</sitemapindex>`
 }
