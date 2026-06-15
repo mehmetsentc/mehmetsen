@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server'
-import { getSitemapPage, sitemapEntriesToXml } from '@/lib/sitemap/mainSitemap'
+import { getSitemapPage, getSitemapPageCount, sitemapEntriesToXml } from '@/lib/sitemap/mainSitemap'
 
 export const runtime = 'nodejs'
 export const revalidate = 3600
+
+export async function generateStaticParams() {
+  try {
+    const count = await getSitemapPageCount()
+    return Array.from({ length: count }, (_, id) => ({ id: `${id}.xml` }))
+  } catch {
+    return [{ id: '0.xml' }]
+  }
+}
 
 export async function GET(
   _request: Request,

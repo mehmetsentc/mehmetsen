@@ -92,6 +92,15 @@ function formatLastMod(value: Date | string | undefined): string {
   return date.toISOString()
 }
 
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+}
+
 export function sitemapEntriesToXml(entries: MetadataRoute.Sitemap): string {
   return entries
     .map((entry) => {
@@ -103,15 +112,15 @@ export function sitemapEntriesToXml(entries: MetadataRoute.Sitemap): string {
         entry.priority !== undefined ? `<priority>${entry.priority}</priority>` : ''
       const lastModTag = lastMod ? `<lastmod>${lastMod}</lastmod>` : ''
 
-      return `<url><loc>${entry.url}</loc>${lastModTag}${changeFreq}${priority}</url>`
+      return `<url><loc>${escapeXml(entry.url)}</loc>${lastModTag}${changeFreq}${priority}</url>`
     })
     .join('')
 }
 
 export function buildSitemapIndexXml(base: string, pageCount: number): string {
   const items = Array.from({ length: pageCount }, (_, id) => {
-    return `<sitemap><loc>${base}/sitemap/${id}.xml</loc></sitemap>`
-  }).join('')
+    return `  <sitemap>\n    <loc>${base}/sitemap/${id}.xml</loc>\n  </sitemap>`
+  }).join('\n')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
