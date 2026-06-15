@@ -24,6 +24,8 @@ export interface RssWorkerOptions {
   sources?: RssSourceDefinition[]
   forcedCategoryId?: string
   maxItemsPerSource?: number
+  /** Only accept RSS items newer than this many milliseconds (e.g. 24 * 60 * 60 * 1000). */
+  maxAgeMs?: number
   enrichInput?: (
     item: RssFeedItem,
     source: RssSourceDefinition
@@ -65,10 +67,12 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
   for (const source of sources) {
     result.sourcesChecked += 1
 
+    const minPublishedAt = options.maxAgeMs != null ? Date.now() - options.maxAgeMs : undefined
     let items
     try {
       items = await fetchRssItems(source, {
         maxItems: options.maxItemsPerSource ?? source.maxItemsPerRun,
+        minPublishedAt,
       })
     } catch (error) {
       const msg = `[${options.workerId}:${source.id}] RSS fetch failed: ${

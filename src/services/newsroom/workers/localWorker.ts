@@ -52,11 +52,16 @@ export async function runLocalWorker(): Promise<NewsroomRunResult> {
   const started = Date.now()
   const merged = emptyNewsroomResult('local-news')
 
+  // Yerel haberler: sadece son 24 saat (env ile override edilebilir)
+  // Cron runs every 6 hours — fetch only news published within that window
+  const localMaxAgeMs = Number(process.env.LOCAL_NEWS_MAX_AGE_MS ?? 6 * 60 * 60 * 1000)
+
   const wire = await runRssWorker({
     workerId: 'local-news',
     editorType: 'local',
     sourceIds: LOCAL_NEWS_SOURCE_IDS,
     forcedCategoryId: 'yerel-haber',
+    maxAgeMs: localMaxAgeMs,
     enrichInput: (_item, source) => buildLocalEnrichment(source),
   })
   mergeRunResult(merged, wire)
@@ -73,6 +78,7 @@ export async function runLocalWorker(): Promise<NewsroomRunResult> {
       editorType: 'local',
       sources: batch,
       forcedCategoryId: 'yerel-haber',
+      maxAgeMs: localMaxAgeMs,
       enrichInput: (_item, source) => buildLocalEnrichment(source),
     })
     mergeRunResult(merged, partial)
