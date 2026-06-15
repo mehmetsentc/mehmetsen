@@ -1,16 +1,16 @@
 /**
- * Gemini 2.5 Flash — Chief News Editor
+ * Gemini Flash — Chief News Editor
  *
  * Görevleri: haber yazma, SEO, kategori, kalite puanlama,
  * sosyal medya metinleri, push bildirim, schema.org alanları
  *
  * API: https://generativelanguage.googleapis.com (REST, no SDK required)
- * Env: GEMINI_API_KEY
+ * Env: GEMINI_API_KEY, GEMINI_MODEL (override)
  */
 
 import type { GeminiEditResult } from './types'
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 // ── Config ────────────────────────────────────────────────────────────────────

@@ -99,7 +99,7 @@ Google Search grounding aracını kullanarak bu konunun NEDEN bugün gündemde o
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: USER_MSG }] }],
             systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            tools: [{ google_search: {} }],
+            tools: [{ googleSearch: {} }],
             generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
           }),
           signal: AbortSignal.timeout(30_000),
