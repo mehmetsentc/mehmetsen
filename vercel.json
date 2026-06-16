@@ -1,67 +1,223 @@
 {
   "framework": "nextjs",
   "installCommand": "npm ci",
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "functions": {
-    "src/app/api/events/sync/route.ts":                    { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/cron/newsroom/afad/route.ts":             { "maxDuration": 60 },
-    "src/app/api/cron/newsroom/breaking/route.ts":         { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/cron/newsroom/ai-pipeline/route.ts":      { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/cron/newsroom/national/route.ts":         { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/cron/newsroom/politics/route.ts":         { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/local/route.ts":            { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/cron/newsroom/sports/route.ts":           { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/world/route.ts":            { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/technology/route.ts":       { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/tech/route.ts":             { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/health/route.ts":           { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/entertainment/route.ts":    { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/magazine/route.ts":         { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/gastronomi/route.ts":       { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/otomobil/route.ts":         { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/finans/route.ts":           { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/kripto/route.ts":           { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/trend/route.ts":            { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/weather/route.ts":          { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/seo/route.ts":              { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/archive/route.ts":          { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/cron/newsroom/influencer/route.ts":       { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/video-queue/route.ts":      { "maxDuration": 300 },
-    "src/app/api/cron/newsroom/video-process/route.ts":    { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/cron/newsroom/process-queue/route.ts":    { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/cron/social/route.ts":                    { "maxDuration": 300 },
-    "src/app/api/cron/weather-news/route.ts":              { "maxDuration": 120 },
-    "src/app/api/admin/backfill-images/route.ts":          { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/admin/recategorize/route.ts":             { "maxDuration": 300, "memory": 1024 },
-    "src/app/api/ai/pipeline/route.ts":                    { "maxDuration": 300, "memory": 1024 }
+    "src/app/api/events/sync/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/cron/newsroom/afad/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/newsroom/breaking/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/cron/newsroom/ai-pipeline/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/cron/newsroom/national/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/cron/newsroom/politics/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/local/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/cron/newsroom/sports/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/world/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/technology/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/tech/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/health/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/entertainment/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/magazine/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/gastronomi/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/otomobil/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/finans/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/kripto/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/trend/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/weather/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/seo/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/archive/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/cron/newsroom/influencer/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/video-queue/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/video-process/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/cron/newsroom/process-queue/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/cron/social/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/weather-news/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/admin/backfill-images/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/admin/recategorize/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "src/app/api/ai/pipeline/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
   },
   "crons": [
-    { "path": "/api/cron/newsroom/afad",          "schedule": "*/10 * * * *"      },
-    { "path": "/api/cron/newsroom/breaking",      "schedule": "*/15 * * * *"      },
-    { "path": "/api/cron/newsroom/local",         "schedule": "0 4,10,13,15,18,21 * * *" },
-    { "path": "/api/cron/newsroom/ai-pipeline",   "schedule": "*/30 * * * *"      },
-    { "path": "/api/cron/newsroom/process-queue", "schedule": "*/30 * * * *"      },
-    { "path": "/api/cron/newsroom/national",      "schedule": "0 * * * *"         },
-    { "path": "/api/cron/newsroom/finans",        "schedule": "0 * * * *"         },
-    { "path": "/api/cron/newsroom/politics",      "schedule": "0 */2 * * *"       },
-    { "path": "/api/cron/newsroom/sports",        "schedule": "30 */2 * * *"      },
-    { "path": "/api/cron/newsroom/world",         "schedule": "0 */3 * * *"       },
-    { "path": "/api/cron/newsroom/weather",       "schedule": "30 */3 * * *"      },
-    { "path": "/api/cron/newsroom/technology",    "schedule": "0 */3 * * *"       },
-    { "path": "/api/cron/newsroom/kripto",        "schedule": "0 */4 * * *"       },
-    { "path": "/api/cron/newsroom/health",        "schedule": "30 */4 * * *"      },
-    { "path": "/api/cron/newsroom/entertainment", "schedule": "0 */6 * * *"       },
-    { "path": "/api/cron/newsroom/magazine",      "schedule": "30 */6 * * *"      },
-    { "path": "/api/cron/newsroom/gastronomi",    "schedule": "15 */4 * * *"      },
-    { "path": "/api/cron/newsroom/otomobil",      "schedule": "45 */4 * * *"      },
-    { "path": "/api/cron/newsroom/trend",         "schedule": "0 */6 * * *"       },
-    { "path": "/api/cron/newsroom/video-process", "schedule": "0 */4 * * *"       },
-    { "path": "/api/cron/social",                 "schedule": "*/20 * * * *"       },
-    { "path": "/api/cron/weather-news",           "schedule": "0 6,12,18 * * *"   },
-    { "path": "/api/cron/newsroom/seo",           "schedule": "0 4 * * *"         },
-    { "path": "/api/cron/newsroom/influencer",    "schedule": "0 3 * * *"         },
-    { "path": "/api/cron/newsroom/video-queue",   "schedule": "0 6,18 * * *"      },
-    { "path": "/api/events/sync",                 "schedule": "0 21 * * *"        },
-    { "path": "/api/cron/newsroom/archive",       "schedule": "0 2 * * *"         }
+    {
+      "path": "/api/cron/newsroom/afad",
+      "schedule": "*/3 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/breaking",
+      "schedule": "*/3 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/local",
+      "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/ai-pipeline",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/process-queue",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/national",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/finans",
+      "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/politics",
+      "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/sports",
+      "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/world",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/weather",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/technology",
+      "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/kripto",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/health",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/entertainment",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/magazine",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/gastronomi",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/otomobil",
+      "schedule": "45 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/trend",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/video-process",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/social",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/weather-news",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/seo",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/influencer",
+      "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/video-queue",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/events/sync",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/archive",
+      "schedule": "0 2 * * *"
+    }
   ]
 }

@@ -1,66 +1,52 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
+import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import { db, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
 import { mapNewsSnapshot } from '@/lib/newsMapper'
 import type { Post } from '@/types/post'
 
 const BREAKING_LIMIT = 5
-const GUNDEM_LIMIT = 5
+const LIVE_SCAN_LIMIT = 30
+const BREAKING_FRESH_WINDOW_MS = 2 * 60 * 60 * 1000
 
 export function useBreakingNews() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let cancelled = false
+    const q = query(
+      collection(db, VIDEO_FEED_COLLECTION),
+      where('status', '==', 'published'),
+      orderBy('publishedAt', 'desc'),
+      limit(LIVE_SCAN_LIMIT)
+    )
 
-    async function fetchBreaking() {
-      try {
-        // Önce son-dakika kategorisinden çek
-        const breakingSnap = await getDocs(
-          query(
-            collection(db, VIDEO_FEED_COLLECTION),
-            where('status', '==', 'published'),
-            where('categoryId', '==', 'son-dakika'),
-            orderBy('publishedAt', 'desc'),
-            limit(BREAKING_LIMIT)
-          )
-        )
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        const now = Date.now()
+        const candidates = mapNewsSnapshot(snap.docs)
 
-        let results = mapNewsSnapshot(breakingSnap.docs)
+        const freshBreaking = candidates
+          .filter((post) => {
+            const publishedAt = Date.parse(post.publishedAt ?? post.createdAt)
+            if (!Number.isFinite(publishedAt)) return false
+            const isFresh = now - publishedAt <= BREAKING_FRESH_WINDOW_MS
+            const isBreaking = post.isBreaking || post.categoryId === 'son-dakika'
+            return isFresh && isBreaking
+          })
+          .slice(0, BREAKING_LIMIT)
 
-        // son-dakika yeterli değilse gündem'den tamamla
-        if (results.length < BREAKING_LIMIT) {
-          const gundemSnap = await getDocs(
-            query(
-              collection(db, VIDEO_FEED_COLLECTION),
-              where('status', '==', 'published'),
-              where('categoryId', '==', 'gundem'),
-              orderBy('publishedAt', 'desc'),
-              limit(GUNDEM_LIMIT)
-            )
-          )
-          const gundemPosts = mapNewsSnapshot(gundemSnap.docs)
-          // Mevcut id'leri çıkar
-          const existingIds = new Set(results.map((p) => p.id))
-          results = [
-            ...results,
-            ...gundemPosts.filter((p) => !existingIds.has(p.id)),
-          ].slice(0, BREAKING_LIMIT)
-        }
-
-        if (!cancelled) setPosts(results)
-      } catch {
-        // Sessizce başarısız ol — placeholder göster
-      } finally {
-        if (!cancelled) setLoading(false)
+        setPosts(freshBreaking)
+        setLoading(false)
+      },
+      () => {
+        setLoading(false)
       }
-    }
+    )
 
-    void fetchBreaking()
-    return () => { cancelled = true }
+    return () => unsubscribe()
   }, [])
 
   return { posts, loading }
