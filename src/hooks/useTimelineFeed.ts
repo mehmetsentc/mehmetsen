@@ -128,20 +128,17 @@ export function useTimelineFeed(
         const fresh = annotated.filter((p) => !seen.has(p.id))
         if (fresh.length === 0) return prev
 
-        const newer = fresh.filter((p) => postTimestamp(p) > newestSeenAtRef.current)
-        if (newer.length === 0) return prev
-
-        const maxTs = Math.max(...newer.map(postTimestamp), newestSeenAtRef.current)
+        const maxTs = Math.max(...fresh.map(postTimestamp), newestSeenAtRef.current)
         newestSeenAtRef.current = maxTs
 
         if (shouldNotify) {
           toast.success(
-            newer.length === 1 ? 'Yeni haber eklendi' : 'Yeni haberler eklendi',
+            fresh.length === 1 ? 'Yeni haber eklendi' : 'Yeni haberler eklendi',
             { duration: 3500, id: 'feed-new-posts' }
           )
         }
 
-        return [...newer, ...prev]
+        return [...fresh, ...prev].sort((a, b) => postTimestamp(b) - postTimestamp(a))
       })
     },
     []
