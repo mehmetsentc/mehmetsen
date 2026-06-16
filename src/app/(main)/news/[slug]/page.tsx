@@ -6,6 +6,7 @@ import { NewsArticleInteractive } from '@/components/news/NewsArticleInteractive
 import {
   buildNewsArticleJsonLd,
   buildNewsBreadcrumbJsonLd,
+  buildVideoObjectJsonLd,
   buildPostMetadata,
 } from '@/lib/seo'
 import { getNewsBySlug } from '@/services/newsService.server'
@@ -62,6 +63,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
 
   const jsonLd = buildNewsArticleJsonLd(post)
   const breadcrumbJsonLd = buildNewsBreadcrumbJsonLd(post)
+  const videoJsonLd = buildVideoObjectJsonLd(post)
 
   return (
     <>
@@ -73,6 +75,12 @@ export default async function NewsDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      {videoJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(videoJsonLd) }}
+        />
+      )}
       <NewsArticleStatic post={post} />
       <NewsArticleInteractive post={post} />
     </>

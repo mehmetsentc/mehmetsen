@@ -30,6 +30,16 @@ export default function robots(): MetadataRoute.Robots {
         allow: ['/news/', '/kategori/', '/feed'],
         disallow: ['/admin/', '/api/', '/settings', '/login', '/register'],
       },
+      {
+        userAgent: 'Googlebot-Image',
+        allow: ['/news/', '/kategori/', '/feed', '/images-sitemap.xml'],
+        disallow: ['/admin/', '/api/'],
+      },
+      {
+        userAgent: 'Googlebot-Video',
+        allow: ['/news/', '/reels', '/video-sitemap.xml'],
+        disallow: ['/admin/', '/api/'],
+      },
     ],
     sitemap: [
       `${siteUrl}/sitemap.xml`,

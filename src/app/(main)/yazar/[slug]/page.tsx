@@ -36,6 +36,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${siteUrl}/yazar/${slug}`,
       type: 'profile',
     },
+    twitter: {
+      card: 'summary',
+      title: `${source} Haberleri | ${siteName}`,
+      description: `${source} kaynağından en son haberler`,
+    },
   }
 }
 
@@ -71,12 +76,25 @@ export default async function YazarPage({ params }: PageProps) {
       },
     },
   }
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Ana Sayfa', item: `${siteUrl}${ROUTES.FEED}` },
+      { '@type': 'ListItem', position: 2, name: 'Yazarlar', item: `${siteUrl}/yazar/${slug}` },
+      { '@type': 'ListItem', position: 3, name: source, item: `${siteUrl}/yazar/${slug}` },
+    ],
+  }
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <main className="mx-auto max-w-4xl px-4 py-10">
         {/* Author header */}

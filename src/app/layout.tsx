@@ -30,6 +30,12 @@ import { getSiteUrl } from '@/lib/seo'
 const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 const appDescription = 'Türkiye\'nin anlık haber platformu. Son dakika haberler, spor, teknoloji, ekonomi, dünya ve yerel haberler NaHaber\'de.'
+const socialLinks = [
+  process.env.NEXT_PUBLIC_X_URL?.trim() || 'https://x.com/nahabercom',
+  process.env.NEXT_PUBLIC_FACEBOOK_URL?.trim() || 'https://www.facebook.com/nahabercom',
+  process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim() || 'https://www.instagram.com/nahabercom',
+  process.env.NEXT_PUBLIC_YOUTUBE_URL?.trim() || 'https://www.youtube.com/@nahabercom',
+].filter(Boolean)
 
 const organizationJsonLd = {
   '@context': 'https://schema.org',
@@ -42,11 +48,7 @@ const organizationJsonLd = {
     width: 512,
     height: 512,
   },
-  sameAs: [
-    'https://twitter.com/nahabercom',
-    'https://www.facebook.com/nahabercom',
-    'https://www.instagram.com/nahabercom',
-  ],
+  sameAs: socialLinks,
   contactPoint: {
     '@type': 'ContactPoint',
     contactType: 'editorial',

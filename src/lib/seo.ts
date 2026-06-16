@@ -201,6 +201,50 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
   }
 }
 
+/** schema.org VideoObject JSON-LD for video-enabled news detail pages. */
+export function buildVideoObjectJsonLd(post: Post): Record<string, unknown> | null {
+  const video = getPrimaryVideo(post)
+  if (!video?.url) return null
+
+  const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const siteUrl = getSiteUrl()
+  const url = buildPostShareUrl(post)
+  const thumbnailUrl = (video.thumbnailUrl?.trim() || getPostShareImage(post) || '').trim()
+  const datePublished = post.publishedAt || post.createdAt
+  const dateModified = post.updatedAt || datePublished
+  const description =
+    post.summary?.trim() ||
+    post.seoDescription?.trim() ||
+    post.content?.trim().slice(0, 280) ||
+    post.title
+  const durationMinutes = Math.max(1, post.readingTimeMinutes ?? 1)
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: post.title,
+    description,
+    ...(thumbnailUrl ? { thumbnailUrl: [thumbnailUrl] } : {}),
+    uploadDate: datePublished,
+    dateModified,
+    contentUrl: video.url,
+    embedUrl: `${siteUrl}${ROUTES.REELS_VIDEO(post.id)}`,
+    duration: `PT${durationMinutes}M`,
+    mainEntityOfPage: url,
+    publisher: {
+      '@type': 'NewsMediaOrganization',
+      name: siteName,
+      url: siteUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/brand/nahaber-logo.png`,
+        width: 512,
+        height: 512,
+      },
+    },
+  }
+}
+
 /** schema.org BreadcrumbList JSON-LD for news detail pages. */
 export function buildNewsBreadcrumbJsonLd(post: Post): Record<string, unknown> {
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -249,6 +293,8 @@ export function buildPostMetadata(post: Post): Metadata {
   const coverImage = getPostShareImage(post)
   const section = getCategoryLabel(post.categoryId)
   const source = post.source?.trim()
+  const authorSlug = source ? encodeURIComponent(source.toLowerCase().replace(/\s+/g, '-')) : null
+  const authorUrl = authorSlug ? `${siteUrl}/yazar/${authorSlug}` : null
 
   // Build dynamic OG image URL — use cover if available, fallback to generated card
   const ogParams = new URLSearchParams({ title: title.slice(0, 100) })
@@ -297,9 +343,22 @@ export function buildPostMetadata(post: Post): Metadata {
     },
     twitter: {
       card: image ? 'summary_large_image' : 'summary',
+      site: '@nahabercom',
+      creator: source ? `@${source.replace(/\s+/g, '').slice(0, 15)}` : '@nahabercom',
       title,
       description,
-      ...(image ? { images: [image] } : {}),
+      ...(image ? { images: [{ url: image, alt: `${title} - ${siteName}` }] } : {}),
+    },
+    other: {
+      'article:published_time': datePublished,
+      'article:modified_time': dateModified,
+      ...(source ? { 'article:author': source } : {}),
+      ...(authorUrl ? { 'article:author:url': authorUrl } : {}),
+      ...(section ? { 'article:section': section } : {}),
+      ...(post.tags?.length ? { 'article:tag': post.tags.join(',') } : {}),
+      'twitter:image:alt': `${title} - ${siteName}`,
+      'twitter:label1': 'Okuma Süresi',
+      'twitter:data1': `${Math.max(1, post.readingTimeMinutes ?? 1)} dk`,
     },
   }
 }

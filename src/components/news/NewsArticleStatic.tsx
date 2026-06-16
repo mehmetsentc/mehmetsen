@@ -21,10 +21,15 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
   const sourceLabel = post.source?.trim() || post.authorDisplayName
   const categoryLabel = getCategoryLabel(post.categoryId)
   const publishedAt = post.publishedAt ?? post.createdAt
+  const updatedAt = post.updatedAt && post.updatedAt !== publishedAt ? post.updatedAt : null
   const publishedLabel = publishedAt
     ? format(new Date(publishedAt), 'd MMMM yyyy, HH:mm', { locale: tr })
     : ''
+  const updatedLabel = updatedAt
+    ? format(new Date(updatedAt), 'd MMMM yyyy, HH:mm', { locale: tr })
+    : ''
   const authorName = post.authorDisplayName !== 'nahaber' ? post.authorDisplayName : sourceLabel
+  const authorSlug = sourceLabel ? encodeURIComponent(sourceLabel.toLowerCase().replace(/\s+/g, '-')) : ''
   const hasTags = post.tags.length > 0
   const hasCity = Boolean(post.city || post.citySlug)
 
@@ -95,15 +100,24 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
 
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[rgb(var(--color-muted))]">
             {authorName && (
-              <span className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-text))]">
+              <Link
+                href={`/yazar/${authorSlug}`}
+                className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
+              >
                 <User className="h-3.5 w-3.5" />
                 {authorName}
-              </span>
+              </Link>
             )}
             {publishedLabel && (
               <>
                 <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
                 <time dateTime={publishedAt ?? ''}>{publishedLabel}</time>
+              </>
+            )}
+            {updatedLabel && (
+              <>
+                <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
+                <time dateTime={updatedAt ?? ''}>Güncellendi: {updatedLabel}</time>
               </>
             )}
             <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>

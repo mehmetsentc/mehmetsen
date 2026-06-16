@@ -20,6 +20,7 @@ interface NewsArticleInteractiveProps {
 /** Client-only actions loaded after server article HTML (likes, comments, related). */
 export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
   const [suggested, setSuggested] = useState<Post[]>([])
+  const [latest, setLatest] = useState<Post[]>([])
   const { leadText, bodyText } = parseArticleContent(post)
 
   const { liked, count: likesCount, toggle: toggleLike, loading: likeLoading } = useLike({
@@ -37,6 +38,12 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
     void postService
       .getSuggestedNews(post.id, { categoryId: post.categoryId ?? 'gundem', limit: 10 })
       .then(setSuggested)
+      .catch(() => {})
+    void postService
+      .getNewsTimeline(undefined, { feedSource: 'nahaber' })
+      .then((result) => {
+        setLatest(result.posts.filter((item) => item.id !== post.id).slice(0, 8))
+      })
       .catch(() => {})
   }, [post.id, post.categoryId])
 
@@ -80,7 +87,25 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
           <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
             İlgili Haberler
           </h2>
-          <SuggestedNewsRail posts={suggested} preferSlugLinks />
+          <SuggestedNewsRail posts={suggested.slice(0, 6)} preferSlugLinks />
+        </section>
+      )}
+
+      {suggested.length > 6 && (
+        <section className="mt-8">
+          <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
+            Benzer Haberler
+          </h2>
+          <SuggestedNewsRail posts={suggested.slice(6, 12)} preferSlugLinks />
+        </section>
+      )}
+
+      {latest.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
+            Son Haberler
+          </h2>
+          <SuggestedNewsRail posts={latest} preferSlugLinks />
         </section>
       )}
     </div>

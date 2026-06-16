@@ -8,12 +8,14 @@ import { DEFAULT_CATEGORIES } from '@/constants/config'
 
 export const ARTICLES_PER_PAGE = 500
 
-function staticAndCategoryRoutes(base: string): MetadataRoute.Sitemap {
+async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
+    { url: `${base}${ROUTES.HOME}`, changeFrequency: 'hourly', priority: 1 },
     { url: `${base}${ROUTES.FEED}`, changeFrequency: 'hourly', priority: 1 },
     { url: `${base}${ROUTES.DISCOVER}`, changeFrequency: 'hourly', priority: 0.9 },
     { url: `${base}${ROUTES.EVENTS}`, changeFrequency: 'daily', priority: 0.8 },
     { url: `${base}${ROUTES.REELS}`, changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${base}${ROUTES.LOCAL}`, changeFrequency: 'hourly', priority: 0.85 },
     { url: `${base}/hakkimizda`, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/iletisim`, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/gizlilik`, changeFrequency: 'monthly', priority: 0.3 },
@@ -27,7 +29,46 @@ function staticAndCategoryRoutes(base: string): MetadataRoute.Sitemap {
     priority: 0.85,
   }))
 
-  return [...staticRoutes, ...categoryRoutes]
+  try {
+    const latestForSeo = await getAdminFirestore()
+      .collection(Collections.NEWS)
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .limit(300)
+      .get()
+
+    const authorSlugs = new Set<string>()
+    const tagSlugs = new Set<string>()
+
+    for (const doc of latestForSeo.docs) {
+      const data = doc.data() as { source?: string; tags?: string[] }
+      const source = data.source?.trim()
+      if (source) {
+        authorSlugs.add(encodeURIComponent(source.toLowerCase().replace(/\s+/g, '-')))
+      }
+      for (const tag of data.tags ?? []) {
+        const normalized = tag?.trim()
+        if (normalized) tagSlugs.add(normalized)
+        if (tagSlugs.size >= 100) break
+      }
+    }
+
+    const authorRoutes: MetadataRoute.Sitemap = Array.from(authorSlugs).map((slug) => ({
+      url: `${base}/yazar/${slug}`,
+      changeFrequency: 'daily',
+      priority: 0.6,
+    }))
+
+    const tagRoutes: MetadataRoute.Sitemap = Array.from(tagSlugs).map((tag) => ({
+      url: `${base}${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}`,
+      changeFrequency: 'daily',
+      priority: 0.5,
+    }))
+
+    return [...staticRoutes, ...categoryRoutes, ...authorRoutes, ...tagRoutes]
+  } catch {
+    return [...staticRoutes, ...categoryRoutes]
+  }
 }
 
 function mapArticleDocs(
@@ -76,12 +117,13 @@ export async function getSitemapPage(id: number): Promise<MetadataRoute.Sitemap>
 
     const articles = mapArticleDocs(snap.docs, base)
     if (id === 0) {
-      return [...staticAndCategoryRoutes(base), ...articles]
+      const staticRoutes = await staticAndCategoryRoutes(base)
+      return [...staticRoutes, ...articles]
     }
     return articles
   } catch (error) {
     console.warn(`[sitemap/${id}] fetch failed:`, error)
-    return id === 0 ? staticAndCategoryRoutes(base) : []
+    return id === 0 ? await staticAndCategoryRoutes(base) : []
   }
 }
 
@@ -118,9 +160,15 @@ export function sitemapEntriesToXml(entries: MetadataRoute.Sitemap): string {
 }
 
 export function buildSitemapIndexXml(base: string, pageCount: number): string {
-  const items = Array.from({ length: pageCount }, (_, id) => {
+  const pageItems = Array.from({ length: pageCount }, (_, id) => {
     return `  <sitemap>\n    <loc>${base}/sitemap/${id}.xml</loc>\n  </sitemap>`
-  }).join('\n')
+  })
+  const dedicatedItems = [
+    `${base}/news-sitemap.xml`,
+    `${base}/video-sitemap.xml`,
+    `${base}/images-sitemap.xml`,
+  ].map((url) => `  <sitemap>\n    <loc>${url}</loc>\n  </sitemap>`)
+  const items = [...dedicatedItems, ...pageItems].join('\n')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

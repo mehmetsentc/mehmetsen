@@ -14,6 +14,14 @@ export const metadata: Metadata = {
     title: 'Keşfet | NaHaber',
     description: 'Trend haberler ve popüler konular',
     url: `${siteUrl}${ROUTES.DISCOVER}`,
+    images: [
+      {
+        url: `${siteUrl}/brand/og-default.png`,
+        width: 1200,
+        height: 630,
+        alt: 'NaHaber Keşfet',
+      },
+    ],
   },
 }
 
