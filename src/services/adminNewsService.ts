@@ -243,10 +243,14 @@ export const adminNewsService = {
   async createAdminNews(data: {
     title: string
     description: string
+    spot?: string
+    seoTitle?: string
+    seoDescription?: string
     category?: string
     city?: string
     thumbnail?: string
     videoUrl?: string
+    draftId?: string | null
     tags?: string[]
     authorId: string
     authorUsername: string
@@ -254,6 +258,26 @@ export const adminNewsService = {
     const location: PostLocation | null = data.city?.trim()
       ? { city: data.city.trim(), country: 'Türkiye', lat: 0, lng: 0 }
       : null
+
+    if (data.draftId) {
+      await postService.publishNews(data.draftId, {
+        title: data.title,
+        description: data.description,
+        author: 'nahaber',
+        authorId: data.authorId,
+        thumbnail: data.thumbnail,
+        videoUrl: data.videoUrl,
+        category: data.category,
+        tags: data.tags,
+        location,
+        status: 'published',
+        type: 'news',
+        spot: data.spot,
+        seoTitle: data.seoTitle,
+        seoDescription: data.seoDescription,
+      })
+      return data.draftId
+    }
 
     return postService.createNews({
       title: data.title,
@@ -267,6 +291,9 @@ export const adminNewsService = {
       location,
       status: 'published',
       type: 'news',
+      spot: data.spot,
+      seoTitle: data.seoTitle,
+      seoDescription: data.seoDescription,
     })
   },
 
@@ -275,6 +302,9 @@ export const adminNewsService = {
     data: {
       title: string
       description: string
+      spot?: string
+      seoTitle?: string
+      seoDescription?: string
       category?: string
       city?: string
       thumbnail?: string
@@ -298,6 +328,8 @@ export const adminNewsService = {
       title: data.title.trim(),
       description: data.description.trim(),
       thumbnail: data.thumbnail ?? '',
+      coverImageUrl: data.thumbnail ?? '',
+      imageUrl: data.thumbnail ?? '',
       videoUrl: data.videoUrl ?? '',
       category: topicCategory || cityCategory,
       categoryId: topicCategory || cityCategory,
@@ -305,6 +337,9 @@ export const adminNewsService = {
       citySlug,
       location,
       tags: data.tags ?? [],
+      spot: data.spot?.trim() || '',
+      seoTitle: data.seoTitle?.trim() || '',
+      seoDescription: data.seoDescription?.trim() || '',
       status,
       publishedAt: status === 'published' ? now : null,
       updatedAt: now,

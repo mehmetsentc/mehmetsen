@@ -22,6 +22,9 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
   const router = useRouter()
   const [title, setTitle] = useState(post?.title ?? '')
   const [description, setDescription] = useState(post?.content ?? '')
+  const [spot, setSpot] = useState(post?.spot ?? '')
+  const [seoTitle, setSeoTitle] = useState(post?.seoTitle ?? '')
+  const [seoDescription, setSeoDescription] = useState(post?.seoDescription ?? '')
   const [category, setCategory] = useState(post?.categoryId ?? '')
   const [city, setCity] = useState(post?.city ?? '')
   const [status, setStatus] = useState<PostStatus>(post?.status ?? 'published')
@@ -50,10 +53,14 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
       const payload = {
         title,
         description,
+        spot,
+        seoTitle,
+        seoDescription,
         category,
         city,
         thumbnail: media.thumbnail,
         videoUrl: media.videoUrl,
+        draftId: media.draftId,
         tags: post?.tags ?? [],
         status,
       }
@@ -95,6 +102,36 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
           placeholder="Haber metni"
           className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Spot (Özet giriş)</label>
+        <textarea
+          value={spot}
+          onChange={(e) => setSpot(e.target.value)}
+          rows={3}
+          placeholder="Haberin kısa özet giriş metni"
+          className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">SEO Başlık</label>
+          <Input
+            value={seoTitle}
+            onChange={(e) => setSeoTitle(e.target.value)}
+            placeholder="Arama sonuçlarında görünecek başlık"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">SEO Açıklama</label>
+          <Input
+            value={seoDescription}
+            onChange={(e) => setSeoDescription(e.target.value)}
+            placeholder="Arama sonuçlarında görünecek kısa açıklama"
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -142,6 +179,7 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
           userId={userId}
           authorUsername={username}
           onFilesChange={() => {}}
+          autoUploadDraft
           onUploadStateChange={setMedia}
         />
         {(media.thumbnail || media.videoUrl) && (

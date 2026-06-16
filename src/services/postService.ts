@@ -609,6 +609,9 @@ export const postService = {
     status?: string
     tags?: string[]
     location?: PostLocation | null
+    spot?: string
+    seoTitle?: string
+    seoDescription?: string
   }): Promise<string> {
     console.log('FIRESTORE WRITE START', {
       title: data.title,
@@ -629,9 +632,14 @@ export const postService = {
     const ref = await addDoc(collection(db, VIDEO_FEED_COLLECTION), {
       title: data.title.trim(),
       description: data.description.trim(),
+      spot: data.spot?.trim() ?? '',
+      seoTitle: data.seoTitle?.trim() ?? '',
+      seoDescription: data.seoDescription?.trim() ?? '',
       author: data.author,
       authorId: data.authorId,
       thumbnail: data.thumbnail ?? '',
+      coverImageUrl: data.thumbnail ?? '',
+      imageUrl: data.thumbnail ?? '',
       videoUrl: data.videoUrl ?? '',
       category: topicCategory || cityCategory,
       categoryId: topicCategory || cityCategory,
@@ -721,6 +729,9 @@ export const postService = {
       // Resolved by moderation: 'published' (clean) or 'pending' (held for
       // admin approval). Defaults to 'published' to preserve prior behaviour.
       status?: 'published' | 'pending'
+      spot?: string
+      seoTitle?: string
+      seoDescription?: string
     }
   ): Promise<void> {
     const now = Date.now()
@@ -733,9 +744,14 @@ export const postService = {
     await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
       title: data.title.trim(),
       description: data.description.trim(),
+      spot: data.spot?.trim() ?? '',
+      seoTitle: data.seoTitle?.trim() ?? '',
+      seoDescription: data.seoDescription?.trim() ?? '',
       author: data.author,
       authorId: data.authorId,
       thumbnail: data.thumbnail ?? '',
+      coverImageUrl: data.thumbnail ?? '',
+      imageUrl: data.thumbnail ?? '',
       videoUrl: data.videoUrl ?? '',
       category: topicCategory || cityCategory,
       categoryId: topicCategory || cityCategory,

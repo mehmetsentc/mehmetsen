@@ -25,6 +25,7 @@ export interface NewsDocument {
   videoUrl?: string
   thumbnail?: string
   coverImageUrl?: string
+  imageUrl?: string
   type?: PostType
   source?: string
   sourceUrl?: string
@@ -50,6 +51,9 @@ export interface NewsDocument {
   editorId?: string
   editorType?: string
   confidenceScore?: number
+  spot?: string
+  seoTitle?: string
+  seoDescription?: string
   isBreaking?: boolean
   priorityScore?: number
   createdAt?: number | string | { toDate?: () => Date }
@@ -126,7 +130,11 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
   const createdAt = normalizeTimestamp(data.createdAt)
   const author = (data.author?.trim() || 'nahaber').slice(0, 64)
   const videoUrl = data.videoUrl?.trim() ?? ''
-  const thumbnail = data.thumbnail?.trim() || data.coverImageUrl?.trim() || ''
+  const thumbnail =
+    data.thumbnail?.trim() ||
+    data.coverImageUrl?.trim() ||
+    data.imageUrl?.trim() ||
+    ''
   const title = data.title?.trim() || 'Başlıksız'
   const description = data.description?.trim() ?? ''
   const storedSummary = data.summary?.trim() ?? ''
@@ -144,6 +152,9 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     content: description,
     summary,
     feedTeaser,
+    spot: data.spot?.trim() || '',
+    seoTitle: data.seoTitle?.trim() || '',
+    seoDescription: data.seoDescription?.trim() || '',
     authorId: author,
     authorUsername: author,
     authorDisplayName: author,
