@@ -1,4 +1,3 @@
-import DOMPurify from 'isomorphic-dompurify'
 import { splitNewsParagraphs } from '@/lib/newsContent'
 import {
   cleanupNewsBody,
@@ -11,16 +10,16 @@ function normalizeForCompare(text: string): string {
   return text.trim().replace(/\s+/g, ' ')
 }
 
-/** Strip unsafe HTML for server-rendered article bodies. */
+/** Strip unsafe HTML for server-rendered article bodies (no jsdom — Vercel-safe). */
 export function sanitizeArticleHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: [
-      'p', 'br', 'strong', 'em', 'b', 'i', 'u', 'a', 'ul', 'ol', 'li',
-      'h2', 'h3', 'h4', 'blockquote', 'span', 'div',
-    ],
-    ALLOWED_ATTR: ['href', 'title', 'class'],
-    ALLOW_DATA_ATTR: false,
-  })
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/<img[^>]+>/gi, '')
+    .replace(/<(\w+)[^>]*>\s*<\/\1>/gi, '')
 }
 
 export function estimateReadMinutes(text: string): number {

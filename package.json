@@ -41,7 +41,6 @@
     "date-fns": "^4.4.0",
     "firebase": "^12.14.0",
     "firebase-admin": "^13.10.0",
-    "isomorphic-dompurify": "^3.17.0",
     "lucide-react": "^0.468.0",
     "next": "^15.0.0",
     "react": "^19.0.0",

@@ -54,6 +54,8 @@ export interface NewsDocument {
   spot?: string
   seoTitle?: string
   seoDescription?: string
+  htmlContent?: string
+  readingTimeMinutes?: number
   isBreaking?: boolean
   priorityScore?: number
   createdAt?: number | string | { toDate?: () => Date }
@@ -128,6 +130,8 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
   if (!isDisplayableNews(data)) return null
 
   const createdAt = normalizeTimestamp(data.createdAt)
+  const publishedAt = normalizeTimestamp(data.publishedAt ?? data.createdAt)
+  const updatedAt = normalizeTimestamp(data.updatedAt ?? data.publishedAt ?? data.createdAt)
   const author = (data.author?.trim() || 'nahaber').slice(0, 64)
   const videoUrl = data.videoUrl?.trim() ?? ''
   const thumbnail =
@@ -188,9 +192,12 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     priorityScore: data.priorityScore ?? 0,
     editorType: data.editorType,
     confidenceScore: data.confidenceScore,
-    publishedAt: createdAt,
+    htmlContent: data.htmlContent?.trim() || undefined,
+    readingTimeMinutes: data.readingTimeMinutes,
+    sourceUrl: data.sourceUrl?.trim() || undefined,
+    publishedAt,
     createdAt,
-    updatedAt: createdAt,
+    updatedAt,
   }
 }
 

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { format, isValid } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { ChevronRight, Clock, ExternalLink, Eye, Hash, MapPin, User } from 'lucide-react'
 import type { Post } from '@/types/post'
@@ -22,12 +22,13 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
   const categoryLabel = getCategoryLabel(post.categoryId)
   const publishedAt = post.publishedAt ?? post.createdAt
   const updatedAt = post.updatedAt && post.updatedAt !== publishedAt ? post.updatedAt : null
-  const publishedLabel = publishedAt
-    ? format(new Date(publishedAt), 'd MMMM yyyy, HH:mm', { locale: tr })
-    : ''
-  const updatedLabel = updatedAt
-    ? format(new Date(updatedAt), 'd MMMM yyyy, HH:mm', { locale: tr })
-    : ''
+  const formatPublished = (value: string | null | undefined): string => {
+    if (!value) return ''
+    const date = new Date(value)
+    return isValid(date) ? format(date, 'd MMMM yyyy, HH:mm', { locale: tr }) : ''
+  }
+  const publishedLabel = formatPublished(publishedAt)
+  const updatedLabel = formatPublished(updatedAt)
   const authorName = post.authorDisplayName !== 'nahaber' ? post.authorDisplayName : sourceLabel
   const authorSlug = sourceLabel ? encodeURIComponent(sourceLabel.toLowerCase().replace(/\s+/g, '-')) : ''
   const hasTags = post.tags.length > 0
@@ -99,7 +100,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
           </h1>
 
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[rgb(var(--color-muted))]">
-            {authorName && (
+            {authorName && authorSlug ? (
               <Link
                 href={`/yazar/${authorSlug}`}
                 className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
@@ -107,7 +108,12 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
                 <User className="h-3.5 w-3.5" />
                 {authorName}
               </Link>
-            )}
+            ) : authorName ? (
+              <span className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-text))]">
+                <User className="h-3.5 w-3.5" />
+                {authorName}
+              </span>
+            ) : null}
             {publishedLabel && (
               <>
                 <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
