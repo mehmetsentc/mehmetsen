@@ -31,6 +31,8 @@ export const NEWS_IMAGE_DOMAIN_SUFFIXES = [
 
 /** Explicit hostnames (including CDNs not covered by suffix rules). */
 export const NEWS_IMAGE_HOSTS = [
+  // Firebase Storage — used for admin-uploaded images
+  'firebasestorage.googleapis.com',
   'im.haberturk.com',
   'i.haberturk.com',
   'www.haberturk.com',

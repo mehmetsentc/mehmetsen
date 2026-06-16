@@ -50,6 +50,9 @@ export function MediaUploader({
     draftId: draftId ?? null,
   })
   const uploadingRef = useRef(false)
+  // Always-current ref so patchUploadState can compute next state without stale closures
+  const uploadStateRef = useRef(uploadState)
+  uploadStateRef.current = uploadState
 
   const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
   const allowedVideoTypes = ['video/mp4', 'video/webm']
@@ -66,11 +69,16 @@ export function MediaUploader({
 
   const patchUploadState = useCallback(
     (patch: Partial<MediaUploadState>) => {
-      setUploadState((prev) => {
-        const next = { ...prev, ...patch }
-        onUploadStateChange?.(next)
-        return next
-      })
+      // Compute next state from ref (always current) rather than inside updater.
+      // Calling onUploadStateChange (parent's setState) inside setUploadState's
+      // updater triggers React's "Cannot update a different component during render"
+      // warning in React 18 and causes the parent state to be deferred by one
+      // render cycle — meaning media.thumbnail is still empty when the user clicks
+      // "Yayınla" right after upload completes.
+      const next = { ...uploadStateRef.current, ...patch }
+      uploadStateRef.current = next
+      setUploadState(next)
+      onUploadStateChange?.(next)
     },
     [onUploadStateChange]
   )

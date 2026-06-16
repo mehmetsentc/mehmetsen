@@ -627,7 +627,7 @@ export const postService = {
     const citySlug = location?.city ? slugifyCity(location.city) : ''
     const cityCategory = citySlug ? cityCategoryId(citySlug) : ''
     const topicCategory = data.category?.trim() ?? ''
-    const status = data.status ?? 'published'
+    const status = data.status ?? 'pending'
 
     const ref = await addDoc(collection(db, VIDEO_FEED_COLLECTION), {
       title: data.title.trim(),
@@ -740,6 +740,7 @@ export const postService = {
     const cityCategory = citySlug ? cityCategoryId(citySlug) : ''
     const topicCategory = data.category?.trim() ?? ''
     const status = data.status ?? 'published'
+    const slug = buildNewsSlug(data.title.trim(), id.slice(0, 8))
 
     await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
       title: data.title.trim(),
@@ -761,6 +762,8 @@ export const postService = {
       tags: data.tags ?? [],
       type: data.type ?? 'news',
       status,
+      // Set slug on publish so the news detail URL (/news/[slug]) works.
+      ...(status === 'published' ? { slug } : {}),
       // A pending post is not yet live, so it has no publish time.
       publishedAt: status === 'published' ? now : null,
       updatedAt: now,

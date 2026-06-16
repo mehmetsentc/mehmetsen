@@ -33,7 +33,7 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
   // Ana yayın kuruluşları
   'trt', 'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu',
   // Haber aggregatörleri
-  'haberler', 'sondakika',
+  'haberler', 'sondakika', 'mynet',
   // Gazetecilik / görüş
   'cumhuriyet', 't24',
 ] as const

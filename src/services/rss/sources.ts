@@ -84,6 +84,17 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
   {
+    id: 'mynet',
+    label: 'Mynet Haber',
+    feedUrl: 'https://www.mynet.com/haber/rss/gundem',
+    alternateFeedUrls: [
+      'https://www.mynet.com/haber/rss/anasayfa',
+      'https://news.google.com/rss/search?q=site:mynet.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
     id: 'reuters',
     label: 'Reuters',
     feedUrl: 'https://feeds.reuters.com/reuters/topNews',
