@@ -29,6 +29,18 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
 
     return snap.docs.map(doc => {
       const d = doc.data()
+      const image =
+        d.coverImageUrl ??
+        d.thumbnail ??
+        d.imageUrl ??
+        d.featuredImage ??
+        null
+      const videoUrl = d.videoUrl ?? ''
+      const mediaItems = videoUrl
+        ? [{ type: 'video' as const, url: videoUrl, thumbnailUrl: image, caption: null }]
+        : image
+          ? [{ type: 'image' as const, url: image, thumbnailUrl: image, caption: null }]
+          : []
       // Firestore Timestamp'leri sayıya çevir — RSC→Client serialize edilebilir olmalı
       const ts = (v: unknown): number | null => {
         if (!v) return null
@@ -50,14 +62,18 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
         summary:           d.summary           ?? d.spot ?? '',
         categoryId:        d.categoryId        ?? '',
         citySlug:          d.citySlug          ?? '',
+        city:              d.city              ?? null,
         cityName:          d.cityName          ?? '',
-        thumbnail:         d.thumbnail         ?? d.coverImageUrl ?? d.imageUrl ?? '',
+        coverImageUrl:     image,
+        mediaItems,
         url:               d.url               ?? `/news/${doc.id}`,
         slug:              d.slug              ?? doc.id,
         publishedAt:       ts(d.publishedAt)   ?? ts(d.createdAt) ?? Date.now(),
         createdAt:         ts(d.createdAt)     ?? Date.now(),
         updatedAt:         ts(d.updatedAt)     ?? null,
         status:            d.status            ?? 'published',
+        visibility:        d.visibility        ?? 'public',
+        postType:          d.postType          ?? (videoUrl ? 'video' : 'news'),
         source:            d.source            ?? '',
         author:            d.author            ?? null,
         isBreaking:        d.isBreaking        ?? false,
@@ -67,6 +83,8 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
         priorityScore:     d.priorityScore     ?? null,
         viewsCount:        d.viewsCount        ?? 0,
         likesCount:        d.likesCount        ?? 0,
+        commentsCount:     d.commentsCount     ?? d.commentCount ?? 0,
+        savesCount:        d.savesCount        ?? 0,
         sharesCount:       d.sharesCount       ?? 0,
       } as unknown as TimelinePost
     })
