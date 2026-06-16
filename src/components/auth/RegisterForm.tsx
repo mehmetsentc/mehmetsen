@@ -56,7 +56,7 @@ export function RegisterForm() {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                         <label className="mb-1 block text-sm font-medium text-gray-700">Ad Soyad</label>
                         <input

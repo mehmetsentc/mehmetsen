@@ -1,9 +1,44 @@
-import { differenceInCalendarDays, format, formatDistanceToNow, isToday } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { PostType } from '@/types/post'
 
+const ISTANBUL_TZ = 'Europe/Istanbul'
+
+const istanbulClockFormatter = new Intl.DateTimeFormat('tr-TR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: ISTANBUL_TZ,
+})
+
+const istanbulDayKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: ISTANBUL_TZ,
+})
+
 function formatShareClock(date: Date): string {
-  return format(date, 'HH:mm', { locale: tr })
+  return istanbulClockFormatter.format(date)
+}
+
+function getIstanbulDayKey(date: Date): string {
+  return istanbulDayKeyFormatter.format(date)
+}
+
+function parseDayKey(key: string): number {
+  const [year, month, day] = key.split('-').map(Number)
+  if (!year || !month || !day) return NaN
+  return Date.UTC(year, month - 1, day)
+}
+
+function getIstanbulDaysAgo(date: Date): number {
+  const todayKey = getIstanbulDayKey(new Date())
+  const targetKey = getIstanbulDayKey(date)
+  const todayUtc = parseDayKey(todayKey)
+  const targetUtc = parseDayKey(targetKey)
+  if (Number.isNaN(todayUtc) || Number.isNaN(targetUtc)) return 0
+  return Math.floor((todayUtc - targetUtc) / (24 * 60 * 60 * 1000))
 }
 
 export function formatTimelineTime(iso: string | null): string {
@@ -11,7 +46,7 @@ export function formatTimelineTime(iso: string | null): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
 
-  const daysAgo = differenceInCalendarDays(new Date(), date)
+  const daysAgo = getIstanbulDaysAgo(date)
   const clock = formatShareClock(date)
 
   if (daysAgo <= 0) {
@@ -30,7 +65,7 @@ export function formatTimelineRelative(iso: string | null): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
 
-  if (isToday(date)) {
+  if (getIstanbulDaysAgo(date) === 0) {
     return formatDistanceToNow(date, { addSuffix: true, locale: tr })
   }
 
