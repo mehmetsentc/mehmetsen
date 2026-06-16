@@ -29,7 +29,13 @@ export async function verifyCmsToken(
 
     const userDoc = await getAdminFirestore().collection('users').doc(decoded.uid).get()
     const userData = userDoc.data()
-    const role = (userData?.role as CmsRole) ?? 'user'
+    const rawRole = (userData?.role as string | undefined)?.trim().toLowerCase()
+    const role: CmsRole =
+      rawRole === 'admin'
+        ? 'managing_editor'
+        : rawRole === 'moderator'
+          ? 'editor'
+          : ((rawRole as CmsRole | undefined) ?? 'user')
 
     if (!CMS_STAFF_ROLES.includes(role)) return null
     if (requiredPermission && !hasPermission(role, requiredPermission)) return null
