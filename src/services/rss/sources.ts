@@ -899,7 +899,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     alternateFeedUrls: [
       'https://news.google.com/rss/search?q=site:ankahaber.net&hl=tr&gl=TR&ceid=TR:tr',
     ],
-    maxItemsPerRun: 4,
+    maxItemsPerRun: 8,
     enabled: true,
   },
   {

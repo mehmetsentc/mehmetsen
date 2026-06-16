@@ -29,7 +29,7 @@ export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
  */
 export const NATIONAL_NEWS_SOURCE_IDS = [
   // Haber ajansları (birincil kaynaklar)
-  'aa', 'iha', 'dha',
+  'aa', 'iha', 'dha', 'anka-haber',
   // Ana yayın kuruluşları
   'trt', 'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu',
   // Haber aggregatörleri
@@ -45,7 +45,7 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
  */
 export const BREAKING_NEWS_SOURCE_IDS = [
   // Ajanslar — en hızlı son dakika
-  'aa', 'iha', 'dha',
+  'aa', 'iha', 'dha', 'anka-haber',
   // Türk ulusal medya
   'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu', 'trt', 'sabah',
   // Haber aggregatörleri (yüksek hacim)
