@@ -15,11 +15,12 @@ export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'iha', 'dha', 'anka-haber'] as const
 
 /**
  * Kaç il Google News feed'i çekilsin.
- * Her run'da 10 il taranır, saat bazlı rotasyon ile 81 ilin tamamı
- * ~8 run'da (1 günde) kapsanır. 300s Vercel timeout'una sığar.
+ * Her run'da 20 il taranır, saat bazlı rotasyon ile 81 ilin tamamı
+ * ~4 run'da (~2 saatte) kapsanır. 300s Vercel timeout'una sığar.
+ * Vercel env: LOCAL_NEWS_MAX_PROVINCES ile override edilebilir.
  */
 export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
-  process.env.LOCAL_NEWS_MAX_PROVINCES ?? 10
+  process.env.LOCAL_NEWS_MAX_PROVINCES ?? 20
 )
 
 /**
