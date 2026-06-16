@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { FeedSliderItem } from '@/types/feedSlider'
+import { ROUTES } from '@/constants/routes'
 import { SLIDER_HEIGHT_CLASS, SLIDER_OUTER_STYLE } from './sliderConstants'
 import { SliderImage } from './SliderImage'
 
@@ -12,7 +13,7 @@ export function FeedSliderHero({ item }: FeedSliderHeroProps) {
   return (
     <div style={SLIDER_OUTER_STYLE}>
       <div className={`relative overflow-hidden ${SLIDER_HEIGHT_CLASS}`}>
-        <Link href={`/news/${item.slug}`} className="absolute inset-0 block">
+        <Link href={ROUTES.NEWS_DETAIL(item.slug)} className="absolute inset-0 block">
           {item.imageUrl ? (
             <SliderImage src={item.imageUrl} alt={item.title} priority />
           ) : (

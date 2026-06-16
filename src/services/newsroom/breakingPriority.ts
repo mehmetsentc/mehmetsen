@@ -95,7 +95,7 @@ export async function queueBreakingPushNotification(
     await broadcastPush({
       title: `🔴 SON DAKİKA: ${title}`,
       body: summary,
-      url: `https://www.nahaber.com/news/${slug}`,
+      url: `https://www.nahaber.com/haber/${slug}`,
       image,
       tag: `breaking-${newsId}`,
       breaking: true,

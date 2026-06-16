@@ -8,6 +8,7 @@ import { db, Collections } from '@/lib/firebase/firestore'
 import { collection, query, where, limit, getDocs, orderBy, doc, updateDoc, getCountFromServer } from 'firebase/firestore'
 import { Search, AlertTriangle, CheckCircle2, RefreshCw, ExternalLink, Wand2, Loader2, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ROUTES } from '@/constants/routes'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -198,7 +199,7 @@ export default function SeoManagementPage() {
                       {fixing === issue.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                       AI Düzelt
                     </button>
-                    <a href={issue.slug ? `/news/${issue.slug}` : `/post/${issue.id}`} target="_blank" rel="noopener noreferrer"
+                    <a href={issue.slug ? ROUTES.NEWS_DETAIL(issue.slug) : ROUTES.POST_DETAIL(issue.id)} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-bold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]">
                       <ExternalLink className="h-3 w-3" />Görüntüle
                     </a>

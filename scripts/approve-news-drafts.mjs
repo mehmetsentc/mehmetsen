@@ -189,7 +189,7 @@ for (const doc of snap.docs) {
   try {
     const result = await approveDraft(doc.id, doc.data())
     results.push(result)
-    console.log(`✓ ${result.title} → /news/${result.slug}`)
+    console.log(`✓ ${result.title} → /haber/${result.slug}`)
   } catch (error) {
     console.error(`✗ ${doc.id}:`, error instanceof Error ? error.message : error)
   }

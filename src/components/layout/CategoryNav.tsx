@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
 interface Category {
@@ -73,8 +74,8 @@ const CATEGORIES: Category[] = [
   },
   {
     label: 'Yerel',
-    href: '/local',
-    match: (p) => p === '/local',
+    href: ROUTES.LOCAL,
+    match: (p) => p === ROUTES.LOCAL || p.startsWith(`${ROUTES.LOCAL}/`),
   },
 ]
 
@@ -86,7 +87,7 @@ export function CategoryNav() {
     pathname === '/reels' ||
     pathname.startsWith('/messages') ||
     pathname.startsWith('/admin') ||
-    pathname.startsWith('/news/') ||
+    pathname.startsWith('/haber/') ||
     pathname.startsWith('/post/') ||
     pathname.startsWith('/profile/')
 

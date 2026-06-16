@@ -4,13 +4,14 @@
  * LocalCategoryBanner
  *
  * Web'de /kategori/yerel-haber sayfasında gösterilir.
- * Kullanıcıyı şehre özel haber sayfasına (/local) yönlendirir.
+ * Kullanıcıyı şehre özel haber sayfasına (/yerel) yönlendirir.
  * Mevcut saklı şehri gösterir, varsa.
  */
 
 import Link from 'next/link'
 import { MapPin, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ROUTES } from '@/constants/routes'
 import { readStoredUserLocation } from '@/lib/userLocationStorage'
 
 export function LocalCategoryBanner() {
@@ -23,7 +24,7 @@ export function LocalCategoryBanner() {
 
   return (
     <Link
-      href="/local"
+      href={ROUTES.LOCAL}
       className="mb-4 flex items-center gap-3 rounded-2xl border border-[rgb(var(--color-brand))]/30 bg-[rgb(var(--color-brand))]/5 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-brand))]/10"
     >
       <MapPin className="h-5 w-5 shrink-0 text-[rgb(var(--color-brand))]" />

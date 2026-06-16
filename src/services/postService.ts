@@ -762,7 +762,7 @@ export const postService = {
       tags: data.tags ?? [],
       type: data.type ?? 'news',
       status,
-      // Set slug on publish so the news detail URL (/news/[slug]) works.
+      // Set slug on publish so the news detail URL (/haber/[slug]) works.
       ...(status === 'published' ? { slug } : {}),
       // A pending post is not yet live, so it has no publish time.
       publishedAt: status === 'published' ? now : null,

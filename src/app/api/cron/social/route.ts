@@ -24,6 +24,7 @@ import { publishToFacebook } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
+import { ROUTES } from '@/constants/routes'
 
 import type {
   SocialCronItemResult,
@@ -63,8 +64,8 @@ function buildArticleUrl(id: string, data: Record<string, unknown>): string {
       .replace('nahaber.vercel.app', 'www.nahaber.com')
       .replace('https://nahaber.com', 'https://www.nahaber.com')
   }
-  if (slug) return `${base}/news/${slug}`
-  return `${base}/news/${id}`
+  if (slug) return `${base}${ROUTES.NEWS_DETAIL(slug)}`
+  return `${base}${ROUTES.POST_DETAIL(id)}`
 }
 
 // Çanakkale ve tüm ilçelerinin slug listesi

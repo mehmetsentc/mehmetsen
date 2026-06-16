@@ -13,6 +13,7 @@ import {
   Facebook, Instagram, ExternalLink, Play, Tag, Image as ImageIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ROUTES } from '@/constants/routes'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -491,7 +492,7 @@ export default function SocialPage() {
 
               {!loading && rows.map((row) => {
                 const img = getBestImage(row)
-                const articleUrl = row.url ?? (row.slug ? `/news/${row.slug}` : null)
+                const articleUrl = row.url ?? (row.slug ? ROUTES.NEWS_DETAIL(row.slug) : null)
                 return (
                   <tr key={row.id} className="transition-colors hover:bg-white/5">
                     {/* Haber başlığı + görsel */}

@@ -66,7 +66,7 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
         cityName:          d.cityName          ?? '',
         coverImageUrl:     image,
         mediaItems,
-        url:               d.url               ?? `/news/${doc.id}`,
+        url:               d.url               ?? ROUTES.NEWS_DETAIL(d.slug?.trim() || doc.id),
         slug:              d.slug              ?? doc.id,
         publishedAt:       ts(d.publishedAt)   ?? ts(d.createdAt) ?? Date.now(),
         createdAt:         ts(d.createdAt)     ?? Date.now(),

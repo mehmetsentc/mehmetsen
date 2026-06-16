@@ -8,7 +8,7 @@ import { ShareMenu } from '@/components/post/ShareMenu'
 
 interface ShareButtonProps {
   postId: string
-  /** Canonical slug for `/news/[slug]` share URLs when available. */
+  /** Canonical slug for `/haber/[slug]` share URLs when available. */
   slug?: string
   title: string
   /** Optional body excerpt; combined with title for copy / native / social share text. */

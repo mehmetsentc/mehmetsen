@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { FeedSliderItem } from '@/types/feedSlider'
+import { ROUTES } from '@/constants/routes'
 import { SLIDER_HEIGHT_CLASS, SLIDER_OUTER_STYLE } from './sliderConstants'
 import { SliderImage } from './SliderImage'
 
@@ -228,7 +229,7 @@ export function NewsSlider({ categoryId, initialItems, children }: NewsSliderPro
         {items.map((it, i) => (
           <Link
             key={it.id}
-            href={`/news/${it.slug}`}
+            href={ROUTES.NEWS_DETAIL(it.slug)}
             className={`absolute inset-0 transition-opacity duration-500 ${
               i === current ? 'opacity-100 z-10' : 'opacity-0 z-0'
             }`}

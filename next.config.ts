@@ -23,7 +23,9 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
-      { source: '/haber/:slug', destination: '/news/:slug', permanent: true },
+      { source: '/news/:slug', destination: '/haber/:slug', permanent: true },
+      { source: '/local', destination: '/yerel', permanent: true },
+      { source: '/local/:path*', destination: '/yerel/:path*', permanent: true },
       { source: '/ayarlar', destination: '/settings', permanent: true },
       { source: '/ayarlar/:path*', destination: '/settings/:path*', permanent: true },
       { source: '/mesajlar', destination: '/messages', permanent: true },

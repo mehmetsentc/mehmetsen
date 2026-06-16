@@ -20,6 +20,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { FieldValue } from 'firebase-admin/firestore'
 import type { SocialPublishPayload } from '@/lib/social/types'
 import { getSiteUrl } from '@/lib/seo'
+import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -41,8 +42,8 @@ function buildArticleUrl(id: string, data: Record<string, unknown>): string {
       .replace('nahaber.vercel.app', 'www.nahaber.com')
       .replace('https://nahaber.com', 'https://www.nahaber.com')
   }
-  if (typeof data.slug === 'string' && data.slug.trim()) return `${base}/news/${data.slug.trim()}`
-  return `${base}/news/${id}`
+  if (typeof data.slug === 'string' && data.slug.trim()) return `${base}${ROUTES.NEWS_DETAIL(data.slug.trim())}`
+  return `${base}${ROUTES.POST_DETAIL(id)}`
 }
 
 async function handleRequest(request: Request) {

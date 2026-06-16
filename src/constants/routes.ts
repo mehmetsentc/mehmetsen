@@ -9,7 +9,7 @@ export const ROUTES = {
   REELS_VIDEO: (id: string) => `/reels?v=${encodeURIComponent(id)}`,
   POST_CREATE: '/post/create',
   POST_DETAIL: (id: string) => `/post/${id}`,
-  NEWS_DETAIL: (slug: string) => `/news/${slug}`,
+  NEWS_DETAIL: (slug: string) => `/haber/${slug}`,
   POST_EDIT: (id: string) => `/post/${id}/edit`,
   PROFILE: (username: string) => `/profile/${username}`,
   SAVED: '/saved',
@@ -18,7 +18,7 @@ export const ROUTES = {
   DISCOVER: '/discover',
   INFLUENCER: '/influencer',
   WEATHER: '/weather',
-  LOCAL: '/local',
+  LOCAL: '/yerel',
   CATEGORY: (slug: string) => `/kategori/${slug}`,
   TEKNOLOJI: '/kategori/teknoloji',
   SPOR: '/kategori/spor',
@@ -83,8 +83,8 @@ export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
   if (pathname.startsWith('/profile/')) return true
   if (pathname.startsWith('/kategori/')) return true
-  if (pathname.startsWith('/news/')) return true
-  if (pathname.startsWith('/local')) return true
+  if (pathname.startsWith('/haber/')) return true
+  if (pathname.startsWith('/yerel')) return true
   if (pathname.startsWith('/events')) return true
   if (pathname.startsWith('/weather')) return true
   if (pathname.startsWith('/discover')) return true

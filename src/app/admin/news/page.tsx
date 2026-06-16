@@ -19,6 +19,7 @@ import { tr } from 'date-fns/locale'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { MediaUploader, type MediaUploadState } from '@/components/post/MediaUploader'
 
@@ -161,7 +162,7 @@ function AiToolbar({
 function SeoPreview({ post }: { post: AdminNewsItem }) {
   const title = post.seoTitle || post.title
   const desc = post.seoDescription || post.summary || ''
-  const url = `nahaber.com/news/${post.id}`
+  const url = `nahaber.com${ROUTES.NEWS_DETAIL(post.slug || post.id)}`
 
   return (
     <div className="border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">
@@ -473,7 +474,7 @@ function NewsRow({
               </>
             )}
             {post.status === 'published' && (
-              <a href={`/news/${post.id}`} target="_blank" rel="noopener noreferrer"
+              <a href={ROUTES.NEWS_DETAIL(post.slug || post.id)} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-[11px] font-bold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]">
                 <ExternalLink className="h-3 w-3" />Görüntüle
               </a>

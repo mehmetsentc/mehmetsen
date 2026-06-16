@@ -132,7 +132,7 @@ export async function sendBreakingNewsPush(opts: {
   postId: string
   image?: string
 }): Promise<void> {
-  const url = `https://www.nahaber.com/news/${opts.slug}`
+  const url = `https://www.nahaber.com/haber/${opts.slug}`
   await broadcastPush({
     title: `🔴 SON DAKİKA: ${opts.title}`,
     body: opts.summary.slice(0, 120),

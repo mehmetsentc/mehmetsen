@@ -15,7 +15,7 @@ import {
 
 interface SuggestedNewsRailProps {
   posts: Post[]
-  /** Prefer canonical `/news/[slug]` links for news articles. */
+  /** Prefer canonical `/haber/[slug]` links for news articles. */
   preferSlugLinks?: boolean
 }
 

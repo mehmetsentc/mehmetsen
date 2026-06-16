@@ -17,7 +17,7 @@ interface MobileNavItem {
 
 function isNavActive(pathname: string, item: MobileNavItem): boolean {
   if (item.href === ROUTES.FEED) return pathname === ROUTES.FEED
-  if (item.href === ROUTES.LOCAL) return pathname.startsWith('/local')
+  if (item.href === ROUTES.LOCAL) return pathname.startsWith(ROUTES.LOCAL)
   if (item.href === ROUTES.EVENTS) return pathname.startsWith('/events')
   if (item.href === ROUTES.SPOR) return pathname.startsWith('/kategori/spor')
   return pathname.startsWith(item.href)
