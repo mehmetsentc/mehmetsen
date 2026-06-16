@@ -8,7 +8,7 @@ export const NEWSROOM_AUTO_PUBLISH_THRESHOLD = Number(
 /** Items below this score are flagged for admin review and held in newsDrafts. */
 export const NEWSROOM_LOW_CONFIDENCE_THRESHOLD = 40
 
-export const MAX_AI_CALLS_PER_EDITOR = Number(process.env.NEWS_INGEST_MAX_AI_CALLS ?? 20)
+export const MAX_AI_CALLS_PER_EDITOR = Number(process.env.NEWS_INGEST_MAX_AI_CALLS ?? 12)
 
 /** Wire + regional Turkish sources — local worker. */
 export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'iha', 'dha', 'anka-haber'] as const
@@ -19,7 +19,7 @@ export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'iha', 'dha', 'anka-haber'] as const
  * ~8 run'da (1 günde) kapsanır. 300s Vercel timeout'una sığar.
  */
 export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
-  process.env.LOCAL_NEWS_MAX_PROVINCES ?? 20
+  process.env.LOCAL_NEWS_MAX_PROVINCES ?? 10
 )
 
 /**
