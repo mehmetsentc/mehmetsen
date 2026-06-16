@@ -4,9 +4,9 @@ import {
   type ModerationMedia,
   type ModerationMediaType,
 } from '@/services/moderationService'
+import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rateLimit'
 
-// Moderation must run server-side (uses secret keys) and never be statically
-// cached — each submission is evaluated fresh.
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +30,16 @@ function parseMedia(value: unknown): ModerationMedia[] {
 }
 
 export async function POST(request: Request) {
+  const auth = await verifyFirebaseIdToken(request)
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const rateKey = `moderate:${auth.uid}:${getClientIp(request)}`
+  if (!checkRateLimit(rateKey, 30, 60_000)) {
+    return rateLimitResponse()
+  }
+
   let body: ModerateRequestBody
   try {
     body = (await request.json()) as ModerateRequestBody
@@ -44,8 +54,6 @@ export async function POST(request: Request) {
     const result = await moderateContent({ text, mediaUrls })
     return NextResponse.json(result)
   } catch {
-    // Defensive: moderateContent already fails closed, but if anything escapes
-    // we still hold the content for review rather than allow publishing.
     return NextResponse.json(
       { decision: 'review', reasons: ['error:internal'], provider: 'heuristic' },
       { status: 200 }

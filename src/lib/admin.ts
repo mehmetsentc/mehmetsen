@@ -1,35 +1,32 @@
 import type { User } from '@/types/user'
-import { getBootstrapAdminUids } from '@/lib/eventSyncAuth'
+import { canAccessCms } from '@/lib/cmsAuth'
 
-export { getBootstrapAdminUids } from '@/lib/eventSyncAuth'
-
-export function isBootstrapAdmin(uid: string): boolean {
-  return getBootstrapAdminUids().includes(uid)
+/** @deprecated Roles are managed in Firestore — no client-side UID bootstrap. */
+export function isBootstrapAdmin(_uid: string): boolean {
+  return false
 }
 
-/** True when NEXT_PUBLIC_ADMIN_UIDS lists at least one UID. */
+/** @deprecated */
 export function isBootstrapAdminConfigured(): boolean {
-  return getBootstrapAdminUids().length > 0
+  return false
 }
 
-/** Env line to paste into `.env.local` for local admin access. */
+/** @deprecated Use ADMIN_BOOTSTRAP_UIDS server env + /api/admin/bootstrap instead. */
 export function buildAdminEnvLine(uid: string): string {
-  return `NEXT_PUBLIC_ADMIN_UIDS=${uid}`
+  return `ADMIN_BOOTSTRAP_UIDS=${uid}`
 }
 
-/** Promote bootstrap UIDs to admin in memory (Firestore may still need sync). */
+/** No-op — client must not promote roles in memory. */
 export function applyAdminBootstrap(user: User): User {
-  if (user.role === 'admin' || !isBootstrapAdmin(user.uid)) return user
-  return { ...user, role: 'admin' }
+  return user
 }
 
+/** True when user has CMS staff access. */
 export function isAdminUser(user: User | null | undefined): boolean {
-  if (!user) return false
-  if (user.role === 'admin') return true
-  return isBootstrapAdmin(user.uid)
+  return canAccessCms(user)
 }
 
-/** Sync bootstrap admin role to Firestore via server API (no-op if not configured). */
+/** Sync super_admin role to Firestore via server API. */
 export async function syncBootstrapAdminRole(idToken: string): Promise<void> {
   try {
     const res = await fetch('/api/admin/bootstrap', {

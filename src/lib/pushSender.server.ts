@@ -44,7 +44,11 @@ async function getWebPush() {
 
 /** Store a new push subscription in Firestore. */
 export async function storePushSubscription(
-  subscription: { endpoint: string; keys?: { p256dh?: string; auth?: string } }
+  subscription: {
+    endpoint: string
+    keys?: { p256dh?: string; auth?: string }
+    userId?: string
+  }
 ): Promise<void> {
   const db = getAdminFirestore()
   const id = Buffer.from(subscription.endpoint).toString('base64').slice(0, 64)
@@ -52,6 +56,7 @@ export async function storePushSubscription(
     {
       endpoint: subscription.endpoint,
       keys: subscription.keys ?? {},
+      userId: subscription.userId ?? null,
       updatedAt: Date.now(),
       createdAt: Date.now(),
     },
@@ -59,11 +64,17 @@ export async function storePushSubscription(
   )
 }
 
-/** Remove a push subscription (unsubscribe). */
-export async function removePushSubscription(endpoint: string): Promise<void> {
+/** Remove a push subscription (unsubscribe). Verifies ownership when userId provided. */
+export async function removePushSubscription(endpoint: string, userId?: string): Promise<void> {
   const db = getAdminFirestore()
   const id = Buffer.from(endpoint).toString('base64').slice(0, 64)
-  await db.collection(PUSH_SUBSCRIPTIONS_COLLECTION).doc(id).delete()
+  const ref = db.collection(PUSH_SUBSCRIPTIONS_COLLECTION).doc(id)
+  if (userId) {
+    const snap = await ref.get()
+    const owner = snap.data()?.userId as string | undefined
+    if (owner && owner !== userId) return
+  }
+  await ref.delete()
 }
 
 /** Send a push notification to ALL subscribers. */

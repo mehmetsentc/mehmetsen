@@ -1,6 +1,5 @@
 /**
  * Web Push Notification client utilities.
- * Handles subscription, permission, and notification display.
  */
 
 const SW_PATH = '/sw.js'
@@ -46,7 +45,7 @@ export interface SubscribeResult {
 }
 
 /** Request push permission and subscribe the browser. */
-export async function subscribeToPush(): Promise<SubscribeResult> {
+export async function subscribeToPush(idToken: string): Promise<SubscribeResult> {
   if (!isPushSupported()) {
     return { success: false, permission: 'unsupported', reason: 'Browser does not support push' }
   }
@@ -70,7 +69,10 @@ export async function subscribeToPush(): Promise<SubscribeResult> {
 
     await fetch(PUSH_SUBSCRIBE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
       body: JSON.stringify(sub.toJSON()),
     })
 
@@ -86,7 +88,7 @@ export async function subscribeToPush(): Promise<SubscribeResult> {
 }
 
 /** Unsubscribe from push notifications. */
-export async function unsubscribeFromPush(): Promise<void> {
+export async function unsubscribeFromPush(idToken: string): Promise<void> {
   if (!isPushSupported()) return
   try {
     const reg = await getSwRegistration()
@@ -94,7 +96,10 @@ export async function unsubscribeFromPush(): Promise<void> {
     if (!sub) return
     await fetch(PUSH_UNSUBSCRIBE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
       body: JSON.stringify({ endpoint: sub.endpoint }),
     })
     await sub.unsubscribe()

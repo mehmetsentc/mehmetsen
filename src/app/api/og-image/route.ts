@@ -1,20 +1,26 @@
 /**
  * GET /api/og-image?url=https://...
  * Returns the og:image URL from an article page via Jina Reader.
- * Used by NewsSlider to lazily load missing article images.
+ * SSRF guard: only known news publisher hosts are allowed.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isAllowedOgFetchUrl } from '@/lib/ogImageUtils'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rateLimit'
 
 const CACHE: Record<string, { url: string | null; ts: number }> = {}
 const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req)
+  if (!checkRateLimit(`og-image:${ip}`, 60, 60_000)) {
+    return rateLimitResponse()
+  }
+
   const url = req.nextUrl.searchParams.get('url')
-  if (!url || !url.startsWith('http')) {
+  if (!url || !isAllowedOgFetchUrl(url)) {
     return NextResponse.json({ imageUrl: null }, { status: 400 })
   }
 
-  // In-process cache
   const cached = CACHE[url]
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
     return NextResponse.json({ imageUrl: cached.url }, {
@@ -39,8 +45,6 @@ export async function GET(req: NextRequest) {
     }
 
     const markdown = await res.text()
-
-    // Extract first real image from markdown: ![alt](https://...)
     const match = markdown.match(/!\[[^\]]*\]\((https?:\/\/[^)]+)\)/)
     const imageUrl = match?.[1] ?? null
     const filtered =

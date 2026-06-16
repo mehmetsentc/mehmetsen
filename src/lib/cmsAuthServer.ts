@@ -5,7 +5,7 @@
 import 'server-only'
 import type { CmsRole, CmsPermission } from '@/types/cms'
 import { hasPermission, CMS_STAFF_ROLES } from '@/types/cms'
-import { isSuperAdminEmail } from '@/lib/cmsAuth'
+import { isSuperAdminEmailServer } from '@/lib/cmsSecrets.server'
 
 /** Server-side: verify Bearer token + resolve CMS role from Firestore */
 export async function verifyCmsToken(
@@ -22,7 +22,7 @@ export async function verifyCmsToken(
     const decoded = await getAdminAuth().verifyIdToken(token)
     const email = decoded.email ?? ''
 
-    if (isSuperAdminEmail(email)) {
+    if (isSuperAdminEmailServer(email)) {
       if (requiredPermission && !hasPermission('super_admin', requiredPermission)) return null
       return { uid: decoded.uid, role: 'super_admin', email }
     }

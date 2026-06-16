@@ -20,6 +20,7 @@ import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { TURKISH_PROVINCES } from '@/constants/cities'
+import { MediaUploader, type MediaUploadState } from '@/components/post/MediaUploader'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -185,10 +186,14 @@ function SeoPreview({ post }: { post: AdminNewsItem }) {
 // ── Edit Drawer ────────────────────────────────────────────────────────────
 function EditDrawer({
   post,
+  userId,
+  username,
   onClose,
   onSaved,
 }: {
   post: AdminNewsItem
+  userId: string
+  username: string
   onClose: () => void
   onSaved: (updated: Partial<AdminNewsItem>) => void
 }) {
@@ -199,10 +204,18 @@ function EditDrawer({
   const [categoryId, setCategoryId] = useState(post.categoryId ?? '')
   const [status, setStatus] = useState<string>(post.status ?? 'draft')
   const [citySlug, setCitySlug] = useState((post as AdminNewsItem & { citySlug?: string }).citySlug ?? '')
+  const [media, setMedia] = useState<MediaUploadState>({
+    uploading: false,
+    progress: 0,
+    thumbnail: post.coverImageUrl ?? '',
+    videoUrl: post.mediaItems?.find((m) => m.type === 'video')?.url ?? '',
+    draftId: null,
+  })
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     if (!title.trim()) { toast.error('Başlık boş olamaz'); return }
+    if (media.uploading) { toast.error('Medya yüklemesi devam ediyor'); return }
     setSaving(true)
     try {
       const token = await auth.currentUser?.getIdToken()
@@ -211,6 +224,8 @@ function EditDrawer({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
         body: JSON.stringify({
           title, summary, content, spot, categoryId, status,
+          thumbnail: media.thumbnail,
+          videoUrl: media.videoUrl,
           ...(categoryId === 'yerel-haber' && citySlug
             ? {
                 citySlug,
@@ -224,7 +239,15 @@ function EditDrawer({
         throw new Error(err.error ?? 'Kayıt başarısız')
       }
       toast.success('Haber güncellendi')
-      onSaved({ title, summary, content, spot, categoryId, status: status as AdminNewsItem['status'] })
+      onSaved({
+        title,
+        summary,
+        content,
+        spot,
+        categoryId,
+        status: status as AdminNewsItem['status'],
+        coverImageUrl: media.thumbnail || post.coverImageUrl,
+      })
       onClose()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Hata oluştu')
@@ -290,6 +313,23 @@ function EditDrawer({
               className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y font-mono"
               placeholder="Haber metni..."
             />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Görsel / Video</label>
+            <MediaUploader
+              mode="news"
+              userId={userId}
+              authorUsername={username}
+              onFilesChange={() => {}}
+              autoUploadDraft
+              onUploadStateChange={setMedia}
+            />
+            {(media.thumbnail || media.videoUrl) && (
+              <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
+                {media.videoUrl ? 'Video yüklendi' : 'Görsel yüklendi'}
+              </p>
+            )}
           </div>
 
           {/* Kategori + Durum */}
@@ -542,7 +582,7 @@ function PaginationBar({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function AdminNewsPage() {
-  const { can } = useCmsAuth()
+  const { can, user } = useCmsAuth()
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get('category') ?? ''
   const [filter, setFilter] = useState<AdminNewsFilter>('all')
@@ -799,6 +839,8 @@ export default function AdminNewsPage() {
       {editingPost && (
         <EditDrawer
           post={editingPost}
+          userId={user?.uid ?? ''}
+          username={user?.username ?? ''}
           onClose={() => setEditingPost(null)}
           onSaved={(updated) => { handleSaved(editingPost.id, updated) }}
         />

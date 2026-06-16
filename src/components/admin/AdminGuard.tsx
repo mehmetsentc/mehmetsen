@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
-import { isAdminUser } from '@/lib/admin'
+import { canAccessCms } from '@/lib/cmsAuth'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 
 const IS_DEV = process.env.NODE_ENV === 'development'
@@ -33,7 +33,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
       return
     }
 
-    if (!isAdminUser(user)) {
+    if (!canAccessCms(user)) {
       if (!deniedToastShown.current) {
         deniedToastShown.current = true
         if (IS_DEV) {
@@ -50,7 +50,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) return <AdminSpinner />
   if (!user) return <AdminSpinner label="Giriş sayfasına yönlendiriliyor..." />
-  if (!isAdminUser(user)) {
+  if (!canAccessCms(user)) {
     return <AdminAccessDenied uid={user.uid} showSetupGuide={IS_DEV} />
   }
 

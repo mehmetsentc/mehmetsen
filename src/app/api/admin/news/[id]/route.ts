@@ -14,11 +14,15 @@ interface UpdatePayload {
   summary?: string
   content?: string
   spot?: string
+  seoTitle?: string
+  seoDescription?: string
   categoryId?: string
   status?: string
   tags?: string[]
   citySlug?: string
   city?: string
+  thumbnail?: string
+  videoUrl?: string
 }
 
 /** PUT /api/admin/news/[id] — manually update a news article */
@@ -48,11 +52,27 @@ export async function PUT(request: Request, context: RouteContext) {
   if (body.summary?.trim())    update.summary = body.summary.trim()
   if (body.content?.trim())    update.content = body.content.trim()
   if (body.spot?.trim())       update.spot = body.spot.trim()
+  if (body.seoTitle?.trim())   update.seoTitle = body.seoTitle.trim()
+  if (body.seoDescription?.trim()) update.seoDescription = body.seoDescription.trim()
   if (body.categoryId?.trim()) update.categoryId = body.categoryId.trim()
   if (body.status?.trim())     update.status = body.status.trim()
   if (Array.isArray(body.tags)) update.tags = body.tags
   if (body.citySlug !== undefined) update.citySlug = body.citySlug.trim()
   if (body.city !== undefined)    update.city = body.city.trim()
+  if (body.thumbnail?.trim()) {
+    update.thumbnail = body.thumbnail.trim()
+    update.coverImageUrl = body.thumbnail.trim()
+    update.imageUrl = body.thumbnail.trim()
+  }
+  if (body.videoUrl?.trim()) {
+    update.mediaItems = [
+      {
+        type: 'video',
+        url: body.videoUrl.trim(),
+        thumbnailUrl: body.thumbnail?.trim() || '',
+      },
+    ]
+  }
 
   const db = getAdminFirestore()
 

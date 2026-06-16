@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
+import { auth } from '@/lib/firebase/auth'
 import {
   isPushSupported,
   getPushPermission,
@@ -18,6 +20,7 @@ export interface PushState {
 }
 
 export function usePushNotifications() {
+  const { user } = useAuth()
   const [state, setState] = useState<PushState>({
     supported: false,
     permission: 'default',
@@ -40,8 +43,14 @@ export function usePushNotifications() {
   }, [])
 
   const subscribe = useCallback(async () => {
+    if (!user) return { success: false, permission: 'default' as PushPermission, reason: 'Login required' }
     setState((s) => ({ ...s, loading: true }))
-    const result = await subscribeToPush()
+    const idToken = await auth.currentUser?.getIdToken()
+    if (!idToken) {
+      setState((s) => ({ ...s, loading: false }))
+      return { success: false, permission: 'default' as PushPermission, reason: 'Auth failed' }
+    }
+    const result = await subscribeToPush(idToken)
     setState((s) => ({
       ...s,
       loading: false,
@@ -49,11 +58,12 @@ export function usePushNotifications() {
       subscribed: result.success,
     }))
     return result
-  }, [])
+  }, [user])
 
   const unsubscribe = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }))
-    await unsubscribeFromPush()
+    const idToken = await auth.currentUser?.getIdToken()
+    if (idToken) await unsubscribeFromPush(idToken)
     setState((s) => ({ ...s, loading: false, subscribed: false }))
   }, [])
 

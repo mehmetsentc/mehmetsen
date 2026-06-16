@@ -1,8 +1,9 @@
 /**
  * Auth helpers for newsroom cron API routes.
  */
-import { getBootstrapAdminUids, isSyncSecretAuthorized } from '@/lib/eventSyncAuth'
-import { getAdminAuth, getAdminFirestore } from '@/lib/firebase/admin'
+import { isSyncSecretAuthorized } from '@/lib/eventSyncAuth'
+import { getBootstrapAdminUids } from '@/lib/cmsSecrets.server'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
 export function getNewsroomSecret(): string | undefined {
   return (
@@ -13,18 +14,6 @@ export function getNewsroomSecret(): string | undefined {
   )
 }
 
-async function isAdminIdToken(token: string): Promise<boolean> {
-  try {
-    const decoded = await getAdminAuth().verifyIdToken(token)
-    const userDoc = await getAdminFirestore().collection('users').doc(decoded.uid).get()
-    const role = userDoc.data()?.role
-    if (role === 'admin') return true
-    return getBootstrapAdminUids().includes(decoded.uid)
-  } catch {
-    return false
-  }
-}
-
 export async function isNewsroomAuthorized(request: Request): Promise<boolean> {
   if (isSyncSecretAuthorized(request)) return true
 
@@ -32,15 +21,25 @@ export async function isNewsroomAuthorized(request: Request): Promise<boolean> {
   if (newsroomSecret) {
     const authHeader = request.headers.get('authorization')
     if (authHeader === `Bearer ${newsroomSecret}`) return true
-    if (request.headers.get('x-cron-secret') === newsroomSecret) return true
-    const url = new URL(request.url)
-    if (url.searchParams.get('secret') === newsroomSecret) return true
   }
+
+  const cms = await verifyCmsToken(request, 'cron:trigger')
+  if (cms) return true
 
   const authHeader = request.headers.get('authorization')
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7).trim()
-    if (token && (await isAdminIdToken(token))) return true
+    if (token) {
+      try {
+        const { getAdminAuth, getAdminFirestore } = await import('@/lib/firebase/admin')
+        const decoded = await getAdminAuth().verifyIdToken(token)
+        const userDoc = await getAdminFirestore().collection('users').doc(decoded.uid).get()
+        const role = userDoc.data()?.role
+        if (role === 'admin' || getBootstrapAdminUids().includes(decoded.uid)) return true
+      } catch {
+        // fall through
+      }
+    }
   }
 
   return false

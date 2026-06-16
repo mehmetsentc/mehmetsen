@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/firestore'
+import { isSyncSecretAuthorized } from '@/lib/eventSyncAuth'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
 const JINA_TIMEOUT_MS = 15_000
 const DEFAULT_BATCH = 30
@@ -40,15 +42,15 @@ async function fetchImageFromJina(sourceUrl: string): Promise<string | null> {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      secret?: string
-      limit?: number
-      categoryId?: string
+    const authorized =
+      isSyncSecretAuthorized(req) || (await verifyCmsToken(req, 'news:edit'))
+    if (!authorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const secret = body.secret?.trim()
-    if (secret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = (await req.json()) as {
+      limit?: number
+      categoryId?: string
     }
 
     const batchLimit = Math.min(body.limit ?? DEFAULT_BATCH, 100)

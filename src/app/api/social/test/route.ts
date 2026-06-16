@@ -46,6 +46,10 @@ function buildArticleUrl(id: string, data: Record<string, unknown>): string {
 }
 
 async function handleRequest(request: Request) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   if (!(await isNewsroomAuthorized(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

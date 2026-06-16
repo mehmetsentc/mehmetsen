@@ -10,17 +10,23 @@ service firebase.storage {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function userRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+
     function isAdmin() {
       return isSignedIn()
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        && userRole() in ['admin', 'super_admin', 'managing_editor', 'editor'];
     }
 
     function isValidPostMedia() {
-      return request.resource.size < 50 * 1024 * 1024;
+      return request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|video/.*');
     }
 
     function isValidAvatar() {
-      return request.resource.size < 5 * 1024 * 1024;
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
 
     function isValidEventImage() {

@@ -20,6 +20,7 @@ import { ROUTES } from '@/constants/routes'
 import { detectCurrentLocation, type PostLocation } from '@/lib/location'
 import { getPrivacyPreferences } from '@/lib/userPreferences'
 import { moderate, type ModerationMedia } from '@/lib/moderationClient'
+import { auth } from '@/lib/firebase/auth'
 
 const REVIEW_MESSAGE =
   'İçeriğiniz incelemeye alındı, onaylandıktan sonra yayınlanacak.'
@@ -178,13 +179,22 @@ export function PostEditor({ mode = 'news' }: PostEditorProps) {
       if (thumbnail) mediaUrls.push({ url: thumbnail, type: 'image' })
 
       setIsModerating(true)
+      const idToken = await auth.currentUser?.getIdToken()
+      if (!idToken) {
+        toast.error('Oturum doğrulanamadı')
+        setIsModerating(false)
+        setIsSubmitting(false)
+        return
+      }
       const moderation = await moderate({
         text: [data.title, data.content, ...tags].filter(Boolean).join('\n'),
         mediaUrls,
+        idToken,
       })
       setIsModerating(false)
 
-      const resolvedStatus = moderation.decision === 'approve' ? 'published' : 'pending'
+      // Users cannot self-publish — Firestore rules require pending/draft for authors.
+      const resolvedStatus = 'pending' as const
 
       if (!postId) {
         postId = await postService.createNews({
@@ -218,15 +228,8 @@ export function PostEditor({ mode = 'news' }: PostEditorProps) {
 
       await userService.refreshPostsCount(user.uid, user.username).catch(() => {})
 
-      if (resolvedStatus === 'published') {
-        toast.success('Haber paylaşıldı!')
-        router.push(ROUTES.POST_DETAIL(postId))
-      } else {
-        // Held for admin approval — route to the author's profile rather than
-        // the (not-yet-live) post detail page.
-        toast(REVIEW_MESSAGE, { icon: '🛡️', duration: 6000 })
-        router.push(ROUTES.PROFILE(user.username))
-      }
+      toast(REVIEW_MESSAGE, { icon: '🛡️', duration: 6000 })
+      router.push(ROUTES.PROFILE(user.username))
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Haber oluşturulurken bir hata oluştu'

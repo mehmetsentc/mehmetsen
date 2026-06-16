@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { getCmsRole, canAccessCms, userCan, userCanAny, isSuperAdminEmail, isAtLeast } from '@/lib/cmsAuth'
+import { getCmsRole, canAccessCms, userCan, userCanAny, isAtLeast } from '@/lib/cmsAuth'
 import type { CmsRole, CmsPermission } from '@/types/cms'
 import { CMS_ROLE_LABELS } from '@/types/cms'
 
@@ -24,7 +24,7 @@ export function useCmsAuth(): CmsAuthState {
   return useMemo(() => {
     const role = getCmsRole(user)
     const isStaff = canAccessCms(user)
-    const isSuperAdmin = isSuperAdminEmail(user?.email)
+    const isSuperAdmin = user?.role === 'super_admin'
 
     return {
       user,

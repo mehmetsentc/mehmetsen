@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getBootstrapAdminUids, isSyncSecretAuthorized } from '@/lib/eventSyncAuth'
-import { getAdminAuth, getAdminFirestore } from '@/lib/firebase/admin'
+import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { newsSyncService } from '@/services/newsSyncService'
 
 /**
@@ -21,37 +20,8 @@ export const maxDuration = 300
 
 let ingestInFlight: Promise<Awaited<ReturnType<typeof newsSyncService.ingestNews>>> | null = null
 
-async function isAdminIdToken(token: string): Promise<boolean> {
-  try {
-    const decoded = await getAdminAuth().verifyIdToken(token)
-    const userDoc = await getAdminFirestore().collection('users').doc(decoded.uid).get()
-    const role = userDoc.data()?.role
-    if (role === 'admin') return true
-    return getBootstrapAdminUids().includes(decoded.uid)
-  } catch {
-    return false
-  }
-}
-
 async function isAuthorized(request: Request): Promise<boolean> {
-  if (isSyncSecretAuthorized(request)) return true
-
-  const newsSecret = process.env.NEWS_INGEST_SECRET?.trim()
-  if (newsSecret) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader === `Bearer ${newsSecret}`) return true
-    if (request.headers.get('x-cron-secret') === newsSecret) return true
-    const url = new URL(request.url)
-    if (url.searchParams.get('secret') === newsSecret) return true
-  }
-
-  const authHeader = request.headers.get('authorization')
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7).trim()
-    if (token && (await isAdminIdToken(token))) return true
-  }
-
-  return false
+  return isNewsroomAuthorized(request)
 }
 
 export async function GET(request: Request) {
