@@ -58,24 +58,24 @@ export function RegisterForm() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">Ad Soyad</label>
+                        <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Ad Soyad</label>
                         <input
                             {...register('displayName')}
                             placeholder="Ahmet Yılmaz"
-                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                         />
                         {errors.displayName && (
                             <p className="mt-1 text-xs text-red-500">{errors.displayName.message}</p>
                         )}
                     </div>
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                        <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">
                             Kullanıcı Adı
                         </label>
                         <input
                             {...register('username')}
                             placeholder="ahmet_yilmaz"
-                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                         />
                         {errors.username && (
                             <p className="mt-1 text-xs text-red-500">{errors.username.message}</p>
@@ -84,23 +84,23 @@ export function RegisterForm() {
                 </div>
 
                 <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">E-posta</label>
+                    <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">E-posta</label>
                     <input
                         {...register('email')}
                         type="email"
                         placeholder="ornek@email.com"
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                     />
                     {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
                 </div>
 
                 <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Şifre</label>
+                    <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Şifre</label>
                     <input
                         {...register('password')}
                         type="password"
                         placeholder="••••••••"
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                     />
                     {errors.password && (
                         <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
@@ -108,12 +108,12 @@ export function RegisterForm() {
                 </div>
 
                 <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Şifre Tekrar</label>
+                    <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Şifre Tekrar</label>
                     <input
                         {...register('confirmPassword')}
                         type="password"
                         placeholder="••••••••"
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                     />
                     {errors.confirmPassword && (
                         <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>
@@ -130,14 +130,14 @@ export function RegisterForm() {
             </form>
 
             <div className="my-4 flex items-center gap-3">
-                <div className="flex-1 border-t border-gray-200" />
-                <span className="text-xs text-gray-400">veya</span>
-                <div className="flex-1 border-t border-gray-200" />
+                <div className="flex-1 border-t border-[rgb(var(--color-border))]" />
+                <span className="text-xs text-[rgb(var(--color-muted))]">veya</span>
+                <div className="flex-1 border-t border-[rgb(var(--color-border))]" />
             </div>
 
             <button
                 onClick={handleGoogle}
-                className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                className="flex w-full items-center justify-center gap-3 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2.5 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:opacity-80"
             >
                 <GoogleIcon />
                 Google ile devam et
