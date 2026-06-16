@@ -4,11 +4,11 @@ import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { ChevronRight, Clock, Eye, Hash, MapPin, ExternalLink, User } from 'lucide-react'
+import { ChevronRight, Clock, Eye, Hash, MapPin, User } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { formatCount } from '@/lib/postUtils'
+import { formatCount, getArticleBylineName } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { Badge } from '@/components/ui/Badge'
@@ -55,7 +55,7 @@ function sanitizeHtml(html: string): string {
     .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
     .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
     .replace(/javascript:/gi, '')
-    // Fix relative image URLs (skip — they won't load anyway)
+    .replace(/<a\b[^>]*href\s*=\s*["'][^"']*["'][^>]*>([\s\S]*?)<\/a>/gi, '$1')
     .replace(/<img[^>]+>/gi, '')
     // Clean up empty tags
     .replace(/<(\w+)[^>]*>\s*<\/\1>/gi, '')
@@ -64,8 +64,8 @@ function sanitizeHtml(html: string): string {
 export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
   const tier = useNetworkTier()
   const imageUrl = post.coverImageUrl?.trim() || null
-  const sourceLabel = post.source?.trim() || post.authorDisplayName
   const categoryLabel = getCategoryLabel(post.categoryId)
+  const bylineName = getArticleBylineName(post)
   const publishedAt = post.publishedAt ?? post.createdAt
   const publishedLabel = publishedAt
     ? format(new Date(publishedAt), 'd MMMM yyyy, HH:mm', { locale: tr })
@@ -93,7 +93,6 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
 
   const hasTags = post.tags.length > 0
   const hasCity = Boolean(post.city || post.citySlug)
-  const authorName = post.authorDisplayName !== 'nahaber' ? post.authorDisplayName : sourceLabel
 
   const { liked, count: likesCount, toggle: toggleLike, loading: likeLoading } = useLike({
     postId: post.id,
@@ -145,11 +144,6 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
           {/* Category + Source badges */}
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Badge variant="category">{categoryLabel}</Badge>
-            {sourceLabel && (
-              <span className="inline-flex items-center rounded-full bg-[rgb(var(--color-surface))] px-2.5 py-0.5 text-xs font-semibold text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))]">
-                {sourceLabel}
-              </span>
-            )}
             {post.isBreaking && (
               <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
@@ -165,12 +159,10 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
 
           {/* Meta row */}
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[rgb(var(--color-muted))]">
-            {authorName && (
-              <span className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-text))]">
-                <User className="h-3.5 w-3.5" />
-                {authorName}
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-text))]">
+              <User className="h-3.5 w-3.5" />
+              {bylineName}
+            </span>
             {publishedLabel && (
               <>
                 <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
@@ -208,11 +200,6 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
                 priority
               />
             </div>
-            {sourceLabel && (
-              <figcaption className="border-b border-[rgb(var(--color-border))] px-4 py-2 text-xs text-[rgb(var(--color-muted))] sm:px-8">
-                {post.title} — {sourceLabel}
-              </figcaption>
-            )}
           </figure>
         )}
 
@@ -223,24 +210,6 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
             <blockquote className="news-lead mb-8 border-l-4 border-[rgb(var(--color-brand))] bg-[rgb(var(--color-surface))] px-5 py-4 text-lg font-medium leading-relaxed text-[rgb(var(--color-text))] sm:text-xl not-italic">
               {leadText}
             </blockquote>
-          )}
-
-          {/* "Haberin Tamamı" — prominent source link */}
-          {post.sourceUrl && (
-            <div className="mb-8">
-              <a
-                href={post.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgb(var(--color-brand))] bg-[rgb(var(--color-brand))]/10 px-5 py-3.5 text-base font-bold text-[rgb(var(--color-brand))] transition-colors hover:bg-[rgb(var(--color-brand))]/20 sm:w-auto"
-              >
-                <ExternalLink className="h-4 w-4 shrink-0" />
-                Haberin Tamamını Oku
-              </a>
-              <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
-                Kaynak siteye yeni sekmede açılır. Sekmeyi kapattığınızda NaHaber'e dönersiniz.
-              </p>
-            </div>
           )}
 
           {/* Full HTML content (extracted from source) */}
@@ -262,16 +231,6 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
 
           {!showLead && !hasHtmlContent && paragraphs.length === 0 && (
             <p className="text-[rgb(var(--color-muted))]">Bu haber için içerik bulunamadı.</p>
-          )}
-
-          {/* Source attribution */}
-          {sourceLabel && (
-            <div className="mt-8 border-t border-[rgb(var(--color-border))] pt-5">
-              <p className="text-sm text-[rgb(var(--color-muted))]">
-                Kaynak:{' '}
-                <span className="font-semibold text-[rgb(var(--color-text))]">{sourceLabel}</span>
-              </p>
-            </div>
           )}
 
           {/* Tags */}

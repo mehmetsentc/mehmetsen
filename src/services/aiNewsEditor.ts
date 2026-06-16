@@ -165,11 +165,8 @@ function normalizeCategoryId(raw?: string): string {
   return 'gundem'
 }
 
-function appendSourceAttribution(body: string, sourceLabel: string): string {
-  const trimmed = body.trim()
-  const marker = `Kaynak: ${sourceLabel}`
-  if (trimmed.toLowerCase().includes('kaynak:')) return trimmed
-  return `${trimmed}\n\n${marker}`
+function appendSourceAttribution(body: string, _sourceLabel: string): string {
+  return body.trim()
 }
 
 // ── Sabit prompt blokları ────────────────────────────────────────────────────

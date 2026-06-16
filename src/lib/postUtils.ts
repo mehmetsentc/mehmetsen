@@ -26,3 +26,12 @@ export function formatCount(count: number): string {
   if (count >= 1_000) return `${(count / 1_000).toFixed(1).replace(/\.0$/, '')}K`
   return String(count)
 }
+
+/** Public byline — syndicated news shows the site brand, not upstream RSS labels. */
+export function getArticleBylineName(post: Post): string {
+  const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  if (post.postType === 'user_post' && post.authorDisplayName.trim() && post.authorDisplayName !== 'nahaber') {
+    return post.authorDisplayName
+  }
+  return siteName
+}

@@ -154,11 +154,11 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
   const rawContent = post.content?.trim() || ''
   const articleBody = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 5000)
 
-  // Author — use source if available, otherwise fall back to NaHaber as Person/Organization
-  const authorSource = post.source?.trim()
-  const author = authorSource
-    ? { '@type': 'Person', name: authorSource, url: post.sourceUrl || undefined }
-    : { '@type': 'Organization', name: siteName, url: siteUrl }
+  // Author — NaHaber for syndicated news; real person only for user posts.
+  const author =
+    post.postType === 'user_post' && post.authorDisplayName.trim() && post.authorDisplayName !== 'nahaber'
+      ? { '@type': 'Person', name: post.authorDisplayName }
+      : { '@type': 'Organization', name: siteName, url: siteUrl }
 
   return {
     '@context': 'https://schema.org',
@@ -292,9 +292,6 @@ export function buildPostMetadata(post: Post): Metadata {
   ).slice(0, 165)
   const coverImage = getPostShareImage(post)
   const section = getCategoryLabel(post.categoryId)
-  const source = post.source?.trim()
-  const authorSlug = source ? encodeURIComponent(source.toLowerCase().replace(/\s+/g, '-')) : null
-  const authorUrl = authorSlug ? `${siteUrl}/yazar/${authorSlug}` : null
 
   // Build dynamic OG image URL — use cover if available, fallback to generated card
   const ogParams = new URLSearchParams({ title: title.slice(0, 100) })
@@ -311,7 +308,7 @@ export function buildPostMetadata(post: Post): Metadata {
     title,
     description,
     robots: { index: true, follow: true },
-    ...(source ? { authors: [{ name: source }] } : {}),
+    authors: [{ name: siteName }],
     alternates: {
       canonical: url,
     },
@@ -344,7 +341,7 @@ export function buildPostMetadata(post: Post): Metadata {
     twitter: {
       card: image ? 'summary_large_image' : 'summary',
       site: '@nahabercom',
-      creator: source ? `@${source.replace(/\s+/g, '').slice(0, 15)}` : '@nahabercom',
+      creator: '@nahabercom',
       title,
       description,
       ...(image ? { images: [{ url: image, alt: `${title} - ${siteName}` }] } : {}),
@@ -352,8 +349,6 @@ export function buildPostMetadata(post: Post): Metadata {
     other: {
       'article:published_time': datePublished,
       'article:modified_time': dateModified,
-      ...(source ? { 'article:author': source } : {}),
-      ...(authorUrl ? { 'article:author:url': authorUrl } : {}),
       ...(section ? { 'article:section': section } : {}),
       ...(post.tags?.length ? { 'article:tag': post.tags.join(',') } : {}),
       'twitter:image:alt': `${title} - ${siteName}`,

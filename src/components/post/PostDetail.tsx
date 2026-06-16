@@ -24,7 +24,7 @@ import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
 import { PostMeta } from '@/components/post/PostMeta'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
-import { formatCount } from '@/lib/postUtils'
+import { formatCount, getArticleBylineName } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 import {
   useNetworkTier,
@@ -114,7 +114,7 @@ export function PostDetail({ post, suggested }: PostDetailProps) {
               username={post.authorUsername}
               className="font-semibold text-[rgb(var(--color-text))]"
             >
-              {post.source ?? post.authorDisplayName}
+              {getArticleBylineName(post)}
             </ProfileLink>
             {publishedLabel && (
               <>

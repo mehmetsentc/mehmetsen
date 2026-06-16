@@ -18,6 +18,7 @@ export function sanitizeArticleHtml(html: string): string {
     .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
     .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
     .replace(/javascript:/gi, '')
+    .replace(/<a\b[^>]*href\s*=\s*["'][^"']*["'][^>]*>([\s\S]*?)<\/a>/gi, '$1')
     .replace(/<img[^>]+>/gi, '')
     .replace(/<(\w+)[^>]*>\s*<\/\1>/gi, '')
 }

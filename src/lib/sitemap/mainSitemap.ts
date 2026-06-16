@@ -37,15 +37,10 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
       .limit(300)
       .get()
 
-    const authorSlugs = new Set<string>()
     const tagSlugs = new Set<string>()
 
     for (const doc of latestForSeo.docs) {
-      const data = doc.data() as { source?: string; tags?: string[] }
-      const source = data.source?.trim()
-      if (source) {
-        authorSlugs.add(encodeURIComponent(source.toLowerCase().replace(/\s+/g, '-')))
-      }
+      const data = doc.data() as { tags?: string[] }
       for (const tag of data.tags ?? []) {
         const normalized = tag?.trim()
         if (normalized) tagSlugs.add(normalized)
@@ -53,19 +48,13 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
       }
     }
 
-    const authorRoutes: MetadataRoute.Sitemap = Array.from(authorSlugs).map((slug) => ({
-      url: `${base}/yazar/${slug}`,
-      changeFrequency: 'daily',
-      priority: 0.6,
-    }))
-
     const tagRoutes: MetadataRoute.Sitemap = Array.from(tagSlugs).map((tag) => ({
       url: `${base}${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}`,
       changeFrequency: 'daily',
       priority: 0.5,
     }))
 
-    return [...staticRoutes, ...categoryRoutes, ...authorRoutes, ...tagRoutes]
+    return [...staticRoutes, ...categoryRoutes, ...tagRoutes]
   } catch {
     return [...staticRoutes, ...categoryRoutes]
   }

@@ -279,11 +279,11 @@ export function cleanupNewsBody(
   const contentLines: string[] = []
 
   for (const line of lines) {
-    if (preserveSource && SOURCE_LINE_RE.test(line.trim())) {
-      sourceLines.push(line.trim())
-    } else {
-      contentLines.push(line)
+    if (SOURCE_LINE_RE.test(line.trim())) {
+      if (preserveSource) sourceLines.push(line.trim())
+      continue
     }
+    contentLines.push(line)
   }
 
   let text = contentLines.join('\n')
