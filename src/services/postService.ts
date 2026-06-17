@@ -41,6 +41,71 @@ const LIVE_WATCH_LIMIT = 12
 const REELS_PAGE_SIZE = 24
 const QUERY_TIMEOUT_MS = 15_000
 
+// ── Videos collection document (AI-generated TTS reels) ──────────────────────
+interface VideoCollectionDoc {
+  newsId?: string
+  title?: string
+  description?: string
+  voiceText?: string
+  thumbnailUrl?: string
+  coverImageUrl?: string
+  audioUrl?: string
+  categoryId?: string
+  status?: string
+  scriptReady?: boolean
+  audioReady?: boolean
+  hashtags?: string[]
+  likes?: number
+  views?: number
+  comments?: number
+  saves?: number
+  createdAt?: number
+  publishedAt?: number
+}
+
+type AudioPost = Post & { audioUrl?: string }
+
+function videoDocToPost(id: string, data: VideoCollectionDoc): AudioPost {
+  const thumbUrl = data.thumbnailUrl?.trim() || data.coverImageUrl?.trim() || null
+  const createdMs = typeof data.createdAt === 'number' ? data.createdAt : Date.now()
+  const createdIso = new Date(createdMs).toISOString()
+  return {
+    id,
+    title: data.title?.trim() || 'Sesli Haber',
+    slug: id,
+    content: data.voiceText?.trim() || data.description?.trim() || '',
+    summary: data.description?.trim() || data.voiceText?.slice(0, 280) || '',
+    feedTeaser: data.title?.trim() || '',
+    authorId: 'nahaber',
+    authorUsername: 'nahaber',
+    authorDisplayName: 'NaHaber',
+    authorPhotoURL: null,
+    categoryId: data.categoryId?.trim() || 'gundem',
+    city: null,
+    citySlug: null,
+    location: null,
+    tags: Array.isArray(data.hashtags) ? data.hashtags : [],
+    postType: 'news',
+    source: 'NaHaber',
+    // Use image mediaItem so the VideoFeedItem falls into audio-mode (no stableSrc)
+    mediaItems: thumbUrl ? [{ type: 'image' as const, url: thumbUrl, thumbnailUrl: thumbUrl, caption: null }] : [],
+    coverImageUrl: thumbUrl,
+    status: 'published',
+    visibility: 'public',
+    likesCount: data.likes ?? 0,
+    commentsCount: data.comments ?? 0,
+    savesCount: data.saves ?? 0,
+    sharesCount: 0,
+    viewsCount: data.views ?? 0,
+    isEditorPick: false,
+    isTrending: false,
+    publishedAt: createdIso,
+    createdAt: createdIso,
+    updatedAt: createdIso,
+    audioUrl: data.audioUrl?.trim() || undefined,
+  }
+}
+
 export type NewsTimelineOptions = {
   citySlug?: string
   categoryId?: string
@@ -350,6 +415,11 @@ export const postService = {
   async getVideoFeed(lastDoc?: QueryDocumentSnapshot) {
     devLog('postService', 'getVideoFeed', { query: NEWS_REELS_QUERY.firestore, hasCursor: !!lastDoc })
 
+    let newsPosts: Post[] = []
+    let newsLastDoc: QueryDocumentSnapshot | null = null
+    let newsHasMore = false
+
+    // 1. Primary: news where videoUrl != '' (admin-added YouTube / direct video URLs)
     try {
       const constraints: Parameters<typeof query>[1][] = [
         where('videoUrl', '!=', ''),
@@ -359,50 +429,81 @@ export const postService = {
       ]
       if (lastDoc) constraints.push(startAfter(lastDoc))
 
-      const q = query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)
-      const snap = await withTimeout(getDocs(q), QUERY_TIMEOUT_MS, 'news-reels')
+      const snap = await withTimeout(
+        getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)),
+        QUERY_TIMEOUT_MS,
+        'news-reels'
+      )
 
-      const posts = mapNewsSnapshot(snap.docs)
+      newsPosts = mapNewsSnapshot(snap.docs)
         .filter((p) => isPubliclyVisibleStatus(p.status))
         .filter(hasVideoContent)
+      newsLastDoc = snap.docs[snap.docs.length - 1] ?? null
+      newsHasMore = snap.docs.length === REELS_PAGE_SIZE
 
-      devLog('postService', 'getVideoFeed success', {
+      devLog('postService', 'getVideoFeed primary', {
         rawCount: snap.docs.length,
-        videoCount: posts.length,
+        videoCount: newsPosts.length,
       })
-
-      return {
-        posts,
-        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length === REELS_PAGE_SIZE,
-      }
     } catch (reelsError) {
-      console.warn(
-        '[postService] reels query failed, fallback:',
-        NEWS_REELS_QUERY.fallback,
-        reelsError
-      )
+      console.warn('[postService] reels primary failed, trying news fallback:', reelsError)
 
-      const constraints: Parameters<typeof query>[1][] = [
-        orderBy('createdAt', 'desc'),
-        limit(REELS_PAGE_SIZE),
-      ]
-      if (lastDoc) constraints.push(startAfter(lastDoc))
+      // 2. News fallback: recent news, client-side filter for videoUrl
+      try {
+        const fbConstraints: Parameters<typeof query>[1][] = [
+          orderBy('createdAt', 'desc'),
+          limit(200),
+        ]
+        if (lastDoc) fbConstraints.push(startAfter(lastDoc))
 
-      const q = query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)
-      const snap = await withTimeout(getDocs(q), QUERY_TIMEOUT_MS, 'news-reels-fallback')
-
-      const posts = mapNewsSnapshot(
-        snap.docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument))
-      )
-        .filter((p) => isPubliclyVisibleStatus(p.status))
-        .filter(hasVideoContent)
-
-      return {
-        posts,
-        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length === REELS_PAGE_SIZE,
+        const snap = await withTimeout(
+          getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...fbConstraints)),
+          QUERY_TIMEOUT_MS,
+          'news-reels-fallback'
+        )
+        newsPosts = mapNewsSnapshot(
+          snap.docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument))
+        )
+          .filter((p) => isPubliclyVisibleStatus(p.status))
+          .filter(hasVideoContent)
+          .slice(0, REELS_PAGE_SIZE)
+        newsLastDoc = snap.docs[snap.docs.length - 1] ?? null
+        newsHasMore = snap.docs.length >= 200
+      } catch (fbError) {
+        console.warn('[postService] reels news fallback failed:', fbError)
       }
+    }
+
+    // If we have news video results (or are paginating), return them
+    if (newsPosts.length > 0 || lastDoc) {
+      return { posts: newsPosts, lastDoc: newsLastDoc, hasMore: newsHasMore }
+    }
+
+    // 3. Final fallback: videos collection (AI-generated TTS audio reels)
+    // Only runs on first-page load when no news videos exist yet.
+    devLog('postService', 'getVideoFeed falling back to videos collection')
+    try {
+      const videosSnap = await withTimeout(
+        getDocs(
+          query(
+            collection(db, Collections.VIDEOS),
+            orderBy('createdAt', 'desc'),
+            limit(REELS_PAGE_SIZE)
+          )
+        ),
+        QUERY_TIMEOUT_MS,
+        'news-reels-audio'
+      )
+
+      const posts = videosSnap.docs
+        .map((d) => videoDocToPost(d.id, d.data() as VideoCollectionDoc))
+        .filter((p) => Boolean(p.audioUrl))
+
+      devLog('postService', 'getVideoFeed audio fallback', { audioCount: posts.length })
+      return { posts, lastDoc: null, hasMore: false }
+    } catch (audioError) {
+      console.warn('[postService] reels audio fallback failed:', audioError)
+      return { posts: [], lastDoc: null, hasMore: false }
     }
   },
 
