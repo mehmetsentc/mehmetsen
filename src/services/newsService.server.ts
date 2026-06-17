@@ -61,6 +61,57 @@ async function queryPublishedByCategory(
   }
 }
 
+const BREAKING_FRESH_WINDOW_MS = 2 * 60 * 60 * 1000
+
+function isFreshBreakingItem(publishedAt: number, now = Date.now()): boolean {
+  if (!publishedAt) return false
+  return now - publishedAt <= BREAKING_FRESH_WINDOW_MS
+}
+
+/** Son dakika slider — isBreaking veya son-dakika kategorisi, son 2 saat. */
+export async function getBreakingSliderItems(itemLimit = 5): Promise<FeedSliderItem[]> {
+  const db = getAdminFirestore()
+  const now = Date.now()
+  const scanLimit = Math.max(itemLimit * 4, 20)
+
+  const collectFresh = (docs: QueryDocumentSnapshot[]): FeedSliderItem[] =>
+    docs
+      .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
+      .filter((item): item is FeedSliderItem => item !== null)
+      .filter((item) => isFreshBreakingItem(item.publishedAt, now))
+      .slice(0, itemLimit)
+
+  try {
+    const breakingSnap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('isBreaking', '==', true)
+      .orderBy('publishedAt', 'desc')
+      .limit(scanLimit)
+      .get()
+
+    const fromBreaking = collectFresh(breakingSnap.docs)
+    if (fromBreaking.length > 0) return fromBreaking
+  } catch (error) {
+    console.warn('[newsService.server] breaking slider query failed:', error)
+  }
+
+  try {
+    const categorySnap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('categoryId', '==', 'son-dakika')
+      .orderBy('publishedAt', 'desc')
+      .limit(scanLimit)
+      .get()
+
+    return collectFresh(categorySnap.docs)
+  } catch (error) {
+    console.warn('[newsService.server] son-dakika slider query failed:', error)
+    return []
+  }
+}
+
 export async function getFeedSliderItems(
   categoryId: string,
   itemLimit = 5
