@@ -17,6 +17,8 @@ import * as cheerio from 'cheerio'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
+import { extractCityFromText } from '@/services/newsroom/geoEngine'
+import { normalizeCitySlug } from '@/constants/cities'
 
 const FETCH_HEADERS = {
   'User-Agent':
@@ -244,6 +246,15 @@ async function publishArticle(
     const slug = buildSlug(article.title, article.ankaId)
     const now  = Date.now()
 
+    // Şehir tespiti — başlık + içerikten otomatik bul
+    const cityText = `${article.title} ${article.spot} ${article.content.slice(0, 500)}`
+    const detectedCity = extractCityFromText(cityText)
+    const detectedCitySlug = detectedCity ? normalizeCitySlug(
+      detectedCity.toLocaleLowerCase('tr-TR')
+        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    ) : ''
+
     const doc: Record<string, unknown> = {
       title:           article.title,
       spot:            article.spot,
@@ -270,6 +281,8 @@ async function publishArticle(
       socialPublished: false,
       fingerprint:     `anka-breaking-${article.ankaId}`,
       editorType:      'anka-breaking',
+      ...(detectedCity     ? { city: detectedCity, cityName: detectedCity } : {}),
+      ...(detectedCitySlug ? { citySlug: detectedCitySlug } : {}),
     }
 
     if (article.videoUrl) {

@@ -236,7 +236,7 @@ Her haber YALNIZCA aşağıdaki kategorilerden BİRİNE girmeli. En spesifik kat
 
 - gundem: Yukarıdakilere girmeyen Türkiye iç gündemi — trafik kazası (çok ölümlü), yangın, genel kamusal olay, hükümet açıklaması (politika değil). ASLA uluslararası haber için gundem seçme.
 
-- yerel-haber: Yalnızca tek bir il/ilçeyi kapsayan yerel olay, belediye kararı, yerel seçim sonucu. KURAL: Yerel gazete kaynaklı olması tek başına yeterli değil — haberin konusu da yerel olmalı.
+- yerel-haber: Tek bir il veya ilçeyi kapsayan yerel olay. ÖRNEKLER: belediye kararı/projesi, valilik açıklaması, yerel trafik kazası, yerel yangın/operasyon, ilçe haberi, yerel spor kulübü. KURALLAR: (1) Haberden tek bir Türk şehrinin adı geçiyorsa ve olay o şehre özgüse → yerel-haber. (2) Belediye başkanı açıklaması tek şehre aitse → yerel-haber (siyaset değil). (3) DHA yerel ajans haberi tek şehir içeriyorsa → yerel-haber. Yerel gazete kaynaklı olması tek başına yeterli değil — haberin konusu da yerel olmalı.
 
 - son-dakika: YALNIZCA şiddetli deprem (4.5+), büyük afet (onlarca ölü), darbe girişimi, suikast, Türkiye'yi doğrudan tehdit eden acil durum. ASLA spor/magazin/teknoloji/ekonomi.
 

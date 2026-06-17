@@ -62,16 +62,22 @@ const AMBIGUOUS_CITY_SLUGS = new Set(['agri', 'van', 'ordu', 'mus', 'bolu', 'bat
 /**
  * National-scope keywords: if ANY of these appear in the text, this is
  * a national/political story — skip text-based city extraction entirely.
+ *
+ * KURAL: Yalnızca gerçekten ulusal haberleri engelle.
+ * "bakan ", "milletvekili", "akp", "chp", "mhp" gibi kelimeler yerel siyasi
+ * haberlerde de geçer (belediye başkanı toplantısı, il teşkilatı vb.).
+ * Bunları listeden çıkardık — çok agresif city detection'ı engelliyorlardı.
  */
 const NATIONAL_SCOPE_KEYWORDS = [
-  'cumhurbaskani', 'erdogan', 'tbmm', 'meclis', 'hukumet', 'basbakan',
-  'bakanligi', 'bakan ', 'savunma bakani', 'disisleri', 'icisleri',
-  'milletvekili', 'genel kurul', 'anayasa', 'cumhuriyet halk', 'akp', 'chp',
-  'mhp', 'iyip', 'kilicdaroglu', 'bahceli', 'imamoglu', 'yavaş',
-  'secim kampanyasi', 'parti genel',
+  'cumhurbaskani', 'erdogan', 'tbmm', 'basbakan',
+  'savunma bakani', 'disisleri bakani', 'icisleri bakani',
+  'genel kurul', 'anayasa mahkemesi', 'yargitay', 'danistay',
+  'kilicdaroglu', 'bahceli',
+  'secim kampanyasi', 'parti genel baskani', 'parti kurultayi',
+  'nato zirvesi', 'ab zirvesi', 'birlesmis milletler',
 ]
 
-function extractCityFromText(text: string): string | null {
+export function extractCityFromText(text: string): string | null {
   // Normalize Turkish chars to ASCII for matching
   const lower = text
     .toLocaleLowerCase('tr-TR')

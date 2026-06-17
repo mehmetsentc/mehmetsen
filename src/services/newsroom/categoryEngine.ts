@@ -358,6 +358,12 @@ const YEREL_KEYWORDS = [
   'park ve bahce', 'asfalt calısma', 'trafik duzenleme',
   'yerel secim', 'mahalle muhtarlık', 'kent donusum',
   'zabita', 'belde', 'koy muhtari', 'ilce', 'mahalle',
+  // Ek yerel sinyaller
+  'valilik', 'il mudurlugu', 'kaymakamlık', 'kaymakam',
+  'il genel meclis', 'il baskani', 'il teşkilat',
+  'spor merkezi', 'kulturpark', 'fuar alani',
+  'trafik kazasi', 'yangin cikti', 'hırsız yakalandi',
+  'uyusturucu operasyon', 'narkotik', 'gozaltı',
 ] as const
 
 function hasYerelKeywords(text: string): boolean {
@@ -656,13 +662,14 @@ export function validateCategoryClassification(
   }
 
   // ── Yerel-haber override: belediye/municipal keywords + single city → yerel-haber
-  // Prevents local municipal news from polluting the main gündem feed
+  // Prevents local municipal news from polluting the main gündem/siyaset feed.
+  // Genişletildi: AI siyaset de dönse belediye haberi tek şehirle → yerel-haber.
+  const YEREL_OVERRIDE_CATEGORIES = new Set(['gundem', 'siyaset', 'spor', 'ekonomi', 'kultur'])
   if (
     hasYerelKeywords(text) &&
     mentionsSingleCity(text) &&
     !nationalScope &&
-    !siyaset &&
-    (categoryId === 'gundem' || categoryId === 'spor')
+    YEREL_OVERRIDE_CATEGORIES.has(categoryId)
   ) {
     overrides.push(`yerel-keywords + single-city → yerel-haber (was ${categoryId})`)
     categoryId = 'yerel-haber'
