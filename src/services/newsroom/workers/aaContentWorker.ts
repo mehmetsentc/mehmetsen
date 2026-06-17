@@ -127,8 +127,13 @@ async function scrapeArticle(url: string): Promise<AAArticle | null> {
   const content = String(ld.articleBody || ld.description || '').trim()
   const spot    = String(ld.description || '').trim()
 
-  // Yayın tarihi
-  const dateStr = String(ld.datePublished || '')
+  // Yayın tarihi — AA datePublished timezone içermez (örn: "2026-06-17T12:29:26.787")
+  // Node.js bunu UTC olarak yorumlar, oysa gerçekte Türkiye saatidir (UTC+3).
+  // +03:00 ekleyerek doğru UTC timestamp'e çeviriyoruz.
+  const rawDateStr = String(ld.datePublished || '')
+  const dateStr = rawDateStr && !rawDateStr.includes('+') && !rawDateStr.endsWith('Z')
+    ? rawDateStr + '+03:00'
+    : rawDateStr
   const publishedAt = dateStr ? new Date(dateStr).getTime() : Date.now()
 
   const aaId = url.match(/\/(\d{6,})$/)?.[1] ?? String(Date.now())

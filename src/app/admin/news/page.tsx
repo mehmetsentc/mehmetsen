@@ -715,8 +715,20 @@ export default function AdminNewsPage() {
     else setSelected(new Set(posts.map(p => p.id)))
   }
 
-  const filtered = posts
-    .filter(p => !search.trim() || p.title.toLowerCase().includes(search.toLowerCase()))
+  const filtered = posts.filter(p => {
+    if (!search.trim()) return true
+    const term = search.toLowerCase()
+    const haystack = [
+      p.title,
+      p.content,
+      p.summary,
+      p.city ?? '',
+      p.citySlug ?? '',
+      p.categoryId ?? '',
+      ...(p.tags ?? []),
+    ].join(' ').toLowerCase()
+    return haystack.includes(term)
+  })
 
   const pendingCount = posts.filter(p => p.status === 'pending').length
 
