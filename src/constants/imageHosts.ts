@@ -27,6 +27,7 @@ export const NEWS_IMAGE_DOMAIN_SUFFIXES = [
   'reuters.com',
   'reutersagency.com',
   'reutersmedia.net',
+  'ankahaber.net',    // ANKA Haber Ajansı görselleri
 ] as const
 
 /** Explicit hostnames (including CDNs not covered by suffix rules). */
@@ -68,6 +69,9 @@ function newsPattern(hostname: string): RemotePattern {
 export const NEWS_IMAGE_REMOTE_PATTERNS: RemotePattern[] = [
   // Explicit Habertürk CDN (reported in production)
   newsPattern('im.haberturk.com'),
+  // YouTube thumbnail API — video reels önerileri için
+  newsPattern('img.youtube.com'),
+  newsPattern('i.ytimg.com'),
   // Wildcard subdomains per news publisher (Next.js 15)
   ...NEWS_IMAGE_DOMAIN_SUFFIXES.map((suffix) => newsPattern(`**.${suffix}`)),
   // Apex domains

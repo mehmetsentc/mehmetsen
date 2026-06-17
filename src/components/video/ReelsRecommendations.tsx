@@ -41,8 +41,14 @@ export function ReelsRecommendations({
       <div className="reels-recommendations-list hide-scrollbar">
         {recommended.map(({ video, index }) => {
           const media = getPrimaryVideo(video)
+
+          // YouTube embed URL'sinden video ID çıkar → thumbnail al
+          // Örnek: https://www.youtube-nocookie.com/embed/VIDEO_ID
+          const ytId = media?.url?.match(/\/embed\/([a-zA-Z0-9_-]{11})/)?.[1]
+          const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null
+
           const thumb =
-            media?.thumbnailUrl || video.coverImageUrl || null
+            media?.thumbnailUrl || video.coverImageUrl || ytThumb || null
           const isActive = index === activeIndex
 
           return (
@@ -63,14 +69,6 @@ export function ReelsRecommendations({
                     fill
                     className="object-cover"
                     sizes="120px"
-                  />
-                ) : media?.url ? (
-                  <video
-                    src={media.url}
-                    muted
-                    playsInline
-                    preload="metadata"
-                    className="h-full w-full object-cover"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-[rgb(var(--color-border))]">
