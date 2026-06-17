@@ -15,11 +15,19 @@ export const AI_NEWS_CATEGORIES: Record<string, string> = {
   gundem: 'Gündem',
   siyaset: 'Siyaset',
   ekonomi: 'Ekonomi',
+  // Spor ana + alt kategoriler
   spor: 'Spor',
+  futbol: 'Futbol',
+  basketbol: 'Basketbol',
+  voleybol: 'Voleybol',
+  hentbol: 'Hentbol',
+  atletizm: 'Atletizm',
+  gures: 'Güreş',
   dunya: 'Dünya',
   teknoloji: 'Teknoloji',
   saglik: 'Sağlık',
   kultur: 'Kültür',
+  gastronomi: 'Gastronomi',
   magazin: 'Magazin',
   bilim: 'Bilim',
   meteoroloji: 'Meteoroloji',
@@ -222,13 +230,29 @@ Her haber YALNIZCA aşağıdaki kategorilerden BİRİNE girmeli. En spesifik kat
 
 - ekonomi: Borsa/döviz/faiz/enflasyon rakamları, TCMB kararı, şirket bilançosu/halka arz, ihracat/ithalat istatistik, işsizlik oranı, kripto piyasa, vergi düzenlemesi, asgari ücret.
 
-- spor: Futbol/basketbol/tenis/voleybol/F1/olimpiyat/güreş — maç sonucu, transfer, sakatlık, teknik direktör değişikliği, turnuva haberi. ASLA son-dakika kategorisi (istisna: Dünya Kupası finali milli zafer).
+- futbol: Futbol maç sonucu, gol, Süper Lig/Şampiyonlar Ligi/Premier Lig/La Liga, transfer, teknik direktör, Galatasaray/Fenerbahçe/Beşiktaş/Trabzonspor, TFF, UEFA, FIFA, penaltı, derbi. ÖRNEKLER: "Galatasaray 3-0 kazandı", "Milli takım World Cup'a hazırlanıyor", "Şampiyonlar Ligi kura çekimi".
+
+- basketbol: NBA, EuroLeague, Anadolu Efes, Fenerbahçe Beko, basketbol maç sonucu, basketbol transfer, play-off. ÖRNEKLER: "NBA finalinde Golden State kazandı", "Efes EuroLeague'e veda etti".
+
+- voleybol: Voleybol maç, Efeler Ligi, Sultanlar Ligi, milli voleybol takımı, voleybol kupası. ÖRNEKLER: "Türkiye voleybolda dünya şampiyonu oldu".
+
+- hentbol: Hentbol maç, hentbol turnuva, hentbol transfer.
+
+- atletizm: Koşu, maraton, olimpiyat atletizm, dünya rekoru, atlet sakatlık/transfer.
+
+- gures: Güreş, dünya güreş şampiyonası, olimpiyat güreş.
+
+- spor: Yukarıdaki spor dallarına girmeyen diğer spor haberleri — F1, Formula 1, MotoGP, tenis, yüzme, boks, kayak, golf, kriket, olimpiyat (dala özgü değilse). ASLA son-dakika kategorisi (istisna: Dünya Kupası finali milli zafer).
+
+SPOR KATEGORİ SEÇİM KURALI: Her spor haberinde mümkün olan en spesifik kategoriye gir. Futbol haberleri → futbol (spor değil). Basketbol haberleri → basketbol (spor değil). Voleybol → voleybol. Birden fazla dal geçiyorsa → spor. Hangi dal olduğu belirsizse → spor.
 
 - saglik: Hastalık/ilaç/aşı/tedavi/ameliyat, pandemi/salgın uyarısı, beslenme/diyet araştırması, WHO/sağlık bakanlığı açıklaması.
 
 - dunya: Türkiye dışı coğrafyada gelişen olay. ZORUNLU ÖRNEKLER → Gazze/Hamas/İsrail çatışması, Ukrayna/Rusya savaşı, ABD seçimi/politikası, AB kararı, Çin/Tayvan gerilimi, BM/NATO/G20 kararları, yabancı lider açıklaması, dış ülkedeki doğal afet/terör. KURAL: Haber konusu Türkiye dışında ise ve kaynak Türkçe bir haber sitesi olsa bile → dunya. Kaynak gazetenin şehrine bakma; haberin GEÇTİĞİ COĞRAFYAYA bak.
 
-- kultur: Sinema/film/tiyatro/opera/bale/sergi/müze, edebiyat/kitap, müzik albümü çıkışı, ödül töreni (Oscar/Nobel vb.), kültür-sanat etkinliği. ASLA spor.
+- kultur: Sinema/film/tiyatro/opera/bale/sergi/müze, edebiyat/kitap, müzik albümü çıkışı, ödül töreni (Oscar/Nobel vb.), kültür-sanat etkinliği. ASLA spor. ASLA yemek/restoran/mutfak haberleri (bunlar → gastronomi).
+
+- gastronomi: Yemek tarifi, restoran açılış/kapanış/inceleme, şef haberi, yemek festivali, mutfak kültürü, gastronomi ödülü, Michelin yıldızı, fine dining, street food, masterchef/top chef yarışması, food blogger haberi. ÖRNEKLER: "İstanbul'da yeni Michelin yıldızlı restoran", "Türk mutfağı UNESCO listesinde", "Masterchef Türkiye finali", "Pizza fiyatlarına zam". KURAL: Yemek kelimesi geçen her haber gastronomi değildir — zam/ekonomik boyutu varsa ekonomi; sağlık boyutu varsa saglik. Ama yemek kültürü/tarifi/restoranı → gastronomi.
 
 - magazin: Ünlü/celebrity haberi, oyuncu/şarkıcı özel hayatı, dizi yayın tarihi/fragman, evlilik/boşanma/ayrılık, dedikodu. isBreaking=false.
 

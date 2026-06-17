@@ -184,6 +184,44 @@ const SPOR_KEYWORDS = [
   'olimpiyat',
 ] as const
 
+// ── Spor alt dalı keyword'leri ────────────────────────────────────────────────
+const FUTBOL_KEYWORDS = [
+  'futbol', 'süper lig', 'super lig', 'şampiyonlar ligi', 'sampiyonlar ligi',
+  'champions league', 'premier lig', 'la liga', 'serie a', 'bundesliga',
+  'galatasaray', 'fenerbahçe', 'fenerbahce', 'beşiktaş', 'besiktas', 'trabzonspor',
+  'gol', 'penaltı', 'penalti', 'kaleci', 'forvet', 'hücum', 'savunma',
+  'tff', 'uefa', 'fifa', 'derbi', 'lig maç', 'teknik direktör', 'teknik direktor',
+  'golcü', 'golcu', 'kupa maç', 'stadyum', 'saha gol', 'futbolcu',
+  'kırmızı kart', 'kirmizi kart', 'sarı kart', 'sari kart', 'hakem kararı',
+  'dünya kupası futbol', 'dunya kupasi futbol', 'milli takım maç',
+] as const
+
+const BASKETBOL_KEYWORDS = [
+  'basketbol', 'nba', 'euroleague', 'bsbl', 'bsl',
+  'üç sayı', 'uc savi', 'basket maç', 'basketbol lig',
+  'anadolu efes', 'fenerbahçe beko', 'fenerbahce beko',
+  'ribaund', 'asist sayı', 'basketbol kupası', 'basketbol turnuva',
+  'play-off basketbol', 'playoff basketbol', 'nba maç', 'nba transfer',
+] as const
+
+const VOLEYBOL_KEYWORDS = [
+  'voleybol', 'set kazandı', 'smaç', 'smac', 'servis voleybol',
+  'blok voleybol', 'voleybol lig', 'voleybol maç', 'voleybol kupası',
+  'tkbl', 'efeler lig', 'sultanlar lig', 'voleybol milli', 'voleybol transfer',
+  'hentbol', // hentbol da spor'un alt kategorisi
+] as const
+
+// ── Gastronomi keyword'leri ───────────────────────────────────────────────────
+const GASTRONOMI_KEYWORDS = [
+  'yemek tarif', 'yemek festival', 'yemek kültür', 'gastronomi', 'gurme',
+  'restoran', 'lokanta', 'mutfak', 'şef', 'aşçı', 'asci', 'pişirme', 'pisirme',
+  'pizza', 'burger', 'kebab', 'baklava', 'tatlı tarif', 'tatli tarif',
+  'kahvaltı tarif', 'kahvalti tarif', 'yemek blogg', 'food blog',
+  'michelin yıldız', 'michelin yildiz', 'fine dining', 'street food',
+  'yemek yarışma', 'masterchef', 'top chef', 'yemek yap', 'tarif nasıl',
+  'lezzet', 'damak', 'sofra', 'pişirme teknik', 'fırın tarif',
+] as const
+
 const MAGAZIN_KEYWORDS = [
   'magazin',
   'ünlü',
@@ -234,6 +272,33 @@ const BILIM_KEYWORDS = [
 
 function hasBilimKeywords(text: string): boolean {
   return containsKeyword(text, BILIM_KEYWORDS)
+}
+
+function hasFutbolKeywords(text: string): boolean {
+  return containsKeyword(text, FUTBOL_KEYWORDS)
+}
+
+function hasBasketbolKeywords(text: string): boolean {
+  return containsKeyword(text, BASKETBOL_KEYWORDS)
+}
+
+function hasVoleybolKeywords(text: string): boolean {
+  return containsKeyword(text, VOLEYBOL_KEYWORDS)
+}
+
+function hasGastronomiKeywords(text: string): boolean {
+  return containsKeyword(text, GASTRONOMI_KEYWORDS)
+}
+
+/**
+ * Spor haberinde hangi alt dal olduğunu tespit eder.
+ * Öncelik sırası: futbol > basketbol > voleybol > genel spor
+ */
+function detectSportSubcategory(text: string): 'futbol' | 'basketbol' | 'voleybol' | null {
+  if (hasFutbolKeywords(text)) return 'futbol'
+  if (hasBasketbolKeywords(text)) return 'basketbol'
+  if (hasVoleybolKeywords(text)) return 'voleybol'
+  return null
 }
 
 const KULTUR_KEYWORDS = [
@@ -411,6 +476,9 @@ function isWorldCupFinalNationalWin(text: string): boolean {
   return lower.includes('milli takım') || lower.includes('milli takim') || lower.includes('türkiye')
 }
 
+/** Spor alt kategorileri kümesi — birden fazla fonksiyon kullanır */
+export const SPOR_SUBS = new Set(['futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures'])
+
 export function normalizeNewsroomCategory(raw?: string): string {
   const value = raw?.trim().toLowerCase() ?? ''
   const slug = value
@@ -473,7 +541,6 @@ export function resolveCategoryForEditor(
   // Trust AI content analysis over the source-origin hint.
   // Exception: forced subcategories that belong to the same parent as the AI category
   // (e.g., AI says 'spor', forced says 'futbol' → prefer the more specific 'futbol').
-  const SPOR_SUBS = new Set(['futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures'])
   const KULTUR_SUBS = new Set(['sinema', 'tiyatro', 'konser', 'festival'])
   const isAiSpor = normalizedAi === 'spor' || SPOR_SUBS.has(normalizedAi)
   const isForcedSpor = normalizedForced === 'spor' || SPOR_SUBS.has(normalizedForced)
@@ -525,6 +592,7 @@ export function validateCategoryClassification(
   const ekonomi = hasEkonomiKeywords(text)
   const dunya = hasDunyaKeywords(text)
   const bilim = hasBilimKeywords(text)
+  const gastronomi = hasGastronomiKeywords(text)
   const nationalScope = hasNationalScopeKeywords(text)
   const worldCupFinal = isWorldCupFinalNationalWin(text)
 
@@ -677,11 +745,23 @@ export function validateCategoryClassification(
   }
 
   if (sports) {
-    if (categoryId !== 'spor') {
-      overrides.push(`spor-keywords → spor (was ${categoryId})`)
-      categoryId = 'spor'
+    // Alt dal tespiti: futbol > basketbol > voleybol > genel spor
+    const sportSub = detectSportSubcategory(text)
+    const targetCat = sportSub ?? 'spor'
+    const isAlreadySportsFamily = categoryId === 'spor' || SPOR_SUBS.has(categoryId)
+
+    if (!isAlreadySportsFamily) {
+      overrides.push(`spor-keywords → ${targetCat} (was ${categoryId})`)
+      categoryId = targetCat
+      categoryConfidence = Math.max(categoryConfidence, 88)
+    } else if (categoryId === 'spor' && sportSub) {
+      // Genel 'spor' idi ama alt dal tespit edilebildi → daha spesifik kategoriye yükselt
+      overrides.push(`spor → ${sportSub} (sub-category detected)`)
+      categoryId = sportSub
       categoryConfidence = Math.max(categoryConfidence, 88)
     }
+    // Eğer zaten bir alt dal ise (futbol, basketbol...) → dokunma
+
     if (isBreaking && !worldCupFinal && !nationalScope) {
       overrides.push('clear isBreaking for sports (non-national emergency)')
       isBreaking = false
@@ -689,9 +769,23 @@ export function validateCategoryClassification(
   }
 
   if (categoryId === 'kultur' && sports) {
-    overrides.push('kultur+spor-keywords → spor')
-    categoryId = 'spor'
+    const sportSub = detectSportSubcategory(text)
+    overrides.push(`kultur+spor-keywords → ${sportSub ?? 'spor'}`)
+    categoryId = sportSub ?? 'spor'
     isBreaking = worldCupFinal && nationalScope
+  }
+
+  // ── Gastronomi override: yemek/restoran/mutfak haberleri kültür'e gitmesin ──
+  if (
+    gastronomi &&
+    !sports &&
+    !nationalScope &&
+    !siyaset &&
+    (categoryId === 'kultur' || categoryId === 'gundem' || categoryId === 'magazin')
+  ) {
+    overrides.push(`gastronomi-keywords → gastronomi (was ${categoryId})`)
+    categoryId = 'gastronomi'
+    categoryConfidence = Math.max(categoryConfidence, 84)
   }
 
   if (categoryId === 'son-dakika') {

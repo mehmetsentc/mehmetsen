@@ -18,6 +18,7 @@ import {
 import { cityCategoryId, slugifyCity, toFirestoreLocation, type PostLocation } from '@/lib/location'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { getCityCategoryName } from '@/constants/cities'
+import { getCategoryFamily } from '@/constants/config'
 import { filterPostsByFeedSource } from '@/lib/feedSource'
 import { YEREL_HABER_CATEGORY, isYerelHaberEligible } from '@/lib/feedRanking'
 import { db, Collections, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
@@ -71,7 +72,13 @@ function buildNewsTimelineQueryConstraints(
     // isBreaking==true catches all breaking news regardless of stored categoryId
     constraints.push(where('isBreaking', '==', true))
   } else if (options?.categoryId) {
-    constraints.push(where('categoryId', '==', options.categoryId))
+    // Parent kategorileri (spor, kultur) → tüm alt kategorileri de kapsa
+    const family = getCategoryFamily(options.categoryId)
+    if (family.length > 1) {
+      constraints.push(where('categoryId', 'in', family))
+    } else {
+      constraints.push(where('categoryId', '==', options.categoryId))
+    }
   }
 
   // publishedAt kullan — tüm composite index'ler bu alanı referans alıyor

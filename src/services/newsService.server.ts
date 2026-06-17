@@ -4,6 +4,7 @@ import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
+import { getCategoryFamily } from '@/constants/config'
 import type { Post } from '@/types/post'
 import type { FeedSliderItem } from '@/types/feedSlider'
 
@@ -36,10 +37,13 @@ async function queryPublishedByCategory(
   const db = getAdminFirestore()
 
   try {
-    const snap = await db
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .where('categoryId', '==', categoryId)
+    const family = getCategoryFamily(categoryId)
+    const baseQuery = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
+    const snap = await (
+      family.length > 1
+        ? baseQuery.where('categoryId', 'in', family)
+        : baseQuery.where('categoryId', '==', categoryId)
+    )
       .orderBy('publishedAt', 'desc')
       .limit(itemLimit)
       .get()

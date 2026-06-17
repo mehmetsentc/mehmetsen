@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { DEFAULT_CATEGORIES, getSubcategories } from '@/constants/config'
+import { DEFAULT_CATEGORIES, getSubcategories, getCategoryFamily } from '@/constants/config'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -19,10 +19,13 @@ interface Props {
 async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]> {
   try {
     const db = getAdminFirestore()
-    const snap = await db
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .where('categoryId', '==', categoryId)
+    const family = getCategoryFamily(categoryId)
+    const baseQ = db.collection(Collections.NEWS).where('status', '==', 'published')
+    const snap = await (
+      family.length > 1
+        ? baseQ.where('categoryId', 'in', family)
+        : baseQ.where('categoryId', '==', categoryId)
+    )
       .orderBy('publishedAt', 'desc')
       .limit(20)
       .get()
