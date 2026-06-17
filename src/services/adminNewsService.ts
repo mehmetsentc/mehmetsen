@@ -170,23 +170,31 @@ export const adminNewsService = {
         hasMore: snap.docs.length === pageSize,
       }
     } catch (error) {
-      console.warn('[adminNewsService] list failed, fallback:', error)
-      const q = query(
-        collection(db, VIDEO_FEED_COLLECTION),
-        orderBy('createdAt', 'desc'),
-        limit(PAGE_SIZE * 2)
-      )
-      const snap = await getDocs(q)
-      let posts: AdminNewsItem[] = snap.docs.map((d) => ({
-        ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
-        adminSource: 'news' as const,
-      }))
+      console.warn('[adminNewsService] list failed, trying fallback:', error)
+      // Fallback: drop all filters, just fetch latest news by createdAt
+      try {
+        const fallbackQ = query(
+          collection(db, VIDEO_FEED_COLLECTION),
+          orderBy('createdAt', 'desc'),
+          limit(PAGE_SIZE * 2)
+        )
+        const snap = await getDocs(fallbackQ)
+        let posts: AdminNewsItem[] = snap.docs.map((d) => ({
+          ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
+          adminSource: 'news' as const,
+        }))
 
-      if (filter === 'published') posts = posts.filter((p) => p.status === 'published')
-      else if (filter === 'draft') posts = posts.filter((p) => p.status === 'draft')
-      else if (filter === 'removed') posts = posts.filter((p) => p.status === 'archived' || p.status === 'banned')
+        if (filter === 'published') posts = posts.filter((p) => p.status === 'published')
+        else if (filter === 'draft') posts = posts.filter((p) => p.status === 'draft')
+        else if (filter === 'removed') posts = posts.filter((p) => p.status === 'archived' || p.status === 'banned')
 
-      return { posts: posts.slice(0, PAGE_SIZE), lastDoc: null, hasMore: false }
+        return { posts: posts.slice(0, PAGE_SIZE), lastDoc: null, hasMore: false }
+      } catch (fallbackError) {
+        console.error('[adminNewsService] fallback also failed:', fallbackError)
+        // Return empty result instead of throwing — UI shows "Bu filtrede haber bulunamadı"
+        // rather than an error toast. User can retry manually.
+        return { posts: [], lastDoc: null, hasMore: false }
+      }
     }
   },
 

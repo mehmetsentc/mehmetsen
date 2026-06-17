@@ -606,13 +606,7 @@ export default function AdminNewsPage() {
   const categoryParamRef = useRef(categoryParam)
   categoryParamRef.current = categoryParam
 
-  // Generation counter — each new load() call increments this.
-  // Older in-flight calls check gen before committing results, so only the LATEST
-  // call's results are applied (prevents stale category results + duplicate toasts).
-  const loadGenRef = useRef(0)
-
   const load = useCallback(async (page: number, searchOverride?: string) => {
-    const myGen = ++loadGenRef.current
     setLoading(true)
     const searchTerm = searchOverride !== undefined ? searchOverride : search
     try {
@@ -620,8 +614,6 @@ export default function AdminNewsPage() {
       // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
       const catFilter = searchTerm.trim() ? undefined : categoryParamRef.current || undefined
       const result = await adminNewsService.list(filter, cursor, catFilter, searchTerm.trim() ? 500 : undefined)
-      // Discard stale results if a newer load was triggered while this was in-flight
-      if (myGen !== loadGenRef.current) return
       setPosts(result.posts)
       setCurrentPage(page)
       setHasNext(result.hasMore)
@@ -631,21 +623,24 @@ export default function AdminNewsPage() {
       }
       setSelected(new Set())
     } catch (err) {
-      if (myGen !== loadGenRef.current) return // superseded, suppress error
       console.error('[admin/news] load error:', err)
       toast.error('Haberler yüklenemedi')
     } finally {
-      if (myGen === loadGenRef.current) setLoading(false)
+      setLoading(false)
     }
   }, [filter, search])
 
   useEffect(() => {
-    // Reset pagination on filter or category change
+    // Reset pagination on filter or category change.
+    // setTimeout(0) defers load() to the next tick: if React fires this effect twice
+    // (e.g. useSearchParams hydration in Next.js 15), the first timeout is cancelled
+    // by cleanup before it fires — only the final render's load() actually runs.
     pageCursorsRef.current = [null]
     setCurrentPage(0)
     setKnownPages(1)
     setHasNext(false)
-    void load(0)
+    const tid = setTimeout(() => { void load(0) }, 0)
+    return () => clearTimeout(tid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, categoryParam])
 
