@@ -344,6 +344,30 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     description: 'Oto.com.tr, OtomobilHaber, Arabalar.com.tr, Hürriyet/Milliyet Otomobil — araç ve trafik haberleri.',
     cronPath: '/api/cron/newsroom/otomobil',
   },
+  'aa-content': {
+    id: 'aa-content',
+    name: 'AA Content Worker',
+    nameTr: 'Anadolu Ajansı İçerik Worker',
+    schedule: '1h',
+    description: 'aa.com.tr/tr/gundem — her saat son 2 saatin haberlerini tam içerik + görsel ile çeker, doğrudan Firestore\'a yazar.',
+    cronPath: '/api/cron/newsroom/aa-content',
+  },
+  'anka-breaking': {
+    id: 'anka-breaking',
+    name: 'ANKA Breaking Worker',
+    nameTr: 'Anka Haber Son Dakika Worker',
+    schedule: '10m',
+    description: 'ankahaber.net/kategori/sondakika — 10 dakikada bir son 15 dakikanın son-dakika haberlerini tam içerik + görsel ile çeker.',
+    cronPath: '/api/cron/newsroom/anka-breaking',
+  },
+  'anka-local': {
+    id: 'anka-local',
+    name: 'ANKA Local Worker',
+    nameTr: 'Anka Haber Yerel Haberler Worker',
+    schedule: '6h',
+    description: 'ankahaber.net/kategori/yerel-haberler — TRT ile 06:00, 16:00, 18:00, 00:00\'da son 6 saatin yerel haberlerini tam içerik + görsel + video ile çeker.',
+    cronPath: '/api/cron/newsroom/anka-local',
+  },
 }
 
 export function getInfluencerList(): string[] {

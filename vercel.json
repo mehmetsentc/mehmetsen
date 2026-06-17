@@ -58,6 +58,15 @@
     "src/app/api/cron/newsroom/otomobil/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/cron/newsroom/aa-content/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/anka-breaking/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/cron/newsroom/anka-local/route.ts": {
+      "maxDuration": 300
+    },
     "src/app/api/cron/newsroom/finans/route.ts": {
       "maxDuration": 300
     },
@@ -218,6 +227,18 @@
     {
       "path": "/api/cron/newsroom/archive",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/aa-content",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/anka-breaking",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/anka-local",
+      "schedule": "0 3,13,15,21 * * *"
     }
   ]
 }
