@@ -25,6 +25,10 @@ export interface NewsDocument {
   location?: PostLocation | null
   tags?: string[]
   videoUrl?: string
+  /** TTS / AI audio reel URL (videoProcessor writes this on news docs). */
+  audioUrl?: string
+  videoEmbedUrl?: string
+  hasVideo?: boolean
   thumbnail?: string
   coverImageUrl?: string
   imageUrl?: string
@@ -137,7 +141,12 @@ export function isDisplayableNews(data: NewsDocument): boolean {
 }
 
 export function hasNewsVideoUrl(data: NewsDocument): boolean {
-  return Boolean(data.videoUrl?.trim())
+  return Boolean(
+    data.videoUrl?.trim() ||
+      data.audioUrl?.trim() ||
+      data.videoEmbedUrl?.trim() ||
+      data.hasVideo
+  )
 }
 
 export function newsDocToPost(id: string, data: NewsDocument): Post | null {
@@ -214,6 +223,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     htmlContent: data.htmlContent?.trim() || undefined,
     readingTimeMinutes: data.readingTimeMinutes,
     sourceUrl: data.sourceUrl?.trim() || undefined,
+    audioUrl: data.audioUrl?.trim() || undefined,
     publishedAt,
     createdAt,
     updatedAt,
