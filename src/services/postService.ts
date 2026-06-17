@@ -479,7 +479,7 @@ export const postService = {
 
       const posts = videosSnap.docs
         .map((d) => videoDocToPost(d.id, d.data() as VideoCollectionDoc))
-        .filter((p) => Boolean(p.audioUrl?.trim()))
+        .filter((p) => Boolean(p.coverImageUrl || p.title))
 
       devLog('postService', 'getVideoFeed audio fallback', { audioCount: posts.length })
       return { posts, lastDoc: null, hasMore: false }

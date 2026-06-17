@@ -321,11 +321,45 @@ function VideoFeedItemInner({
       )
     }
 
-    // No video, no audio → spinner placeholder
+    // No video, no audio — static thumbnail card (AI script-ready reels without TTS audio)
+    const staticCover = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl ?? null
     return (
       <div ref={refCallback} data-index={index} className="reels-slide">
-        <div className="flex h-full w-full items-center justify-center bg-black">
-          <Loader2 className="h-8 w-8 animate-spin text-[rgb(var(--color-muted))]" />
+        <div className="reels-video-card relative overflow-hidden bg-black">
+          {staticCover && (
+            <img
+              src={staticCover}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover opacity-80"
+              loading="lazy"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+          <div className="absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+            </svg>
+            Haber Videosu
+          </div>
+          <VideoActions
+            video={{ ...video, isLiked: liked, likesCount }}
+            onCommentClick={() => setCommentsOpen(true)}
+            onLikeChange={(likedVal, count) =>
+              onUpdate(video.id, { isLiked: likedVal, likesCount: count })
+            }
+            onSaveChange={(saved, count) =>
+              onUpdate(video.id, { isSaved: saved, savesCount: count })
+            }
+            onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+          />
+          <VideoOverlay video={video} />
+          <VideoCommentSheet
+            postId={video.id}
+            open={commentsOpen}
+            onClose={() => setCommentsOpen(false)}
+            commentsCount={video.commentsCount}
+            onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+          />
         </div>
       </div>
     )
