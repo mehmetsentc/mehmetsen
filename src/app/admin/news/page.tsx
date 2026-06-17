@@ -606,12 +606,13 @@ export default function AdminNewsPage() {
   const categoryParamRef = useRef(categoryParam)
   categoryParamRef.current = categoryParam
 
-  // Guard against concurrent load() calls (e.g. from useSearchParams double-render)
-  const loadInProgressRef = useRef(false)
+  // Generation counter — each new load() call increments this.
+  // Older in-flight calls check gen before committing results, so only the LATEST
+  // call's results are applied (prevents stale category results + duplicate toasts).
+  const loadGenRef = useRef(0)
 
   const load = useCallback(async (page: number, searchOverride?: string) => {
-    if (loadInProgressRef.current) return
-    loadInProgressRef.current = true
+    const myGen = ++loadGenRef.current
     setLoading(true)
     const searchTerm = searchOverride !== undefined ? searchOverride : search
     try {
@@ -619,6 +620,8 @@ export default function AdminNewsPage() {
       // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
       const catFilter = searchTerm.trim() ? undefined : categoryParamRef.current || undefined
       const result = await adminNewsService.list(filter, cursor, catFilter, searchTerm.trim() ? 500 : undefined)
+      // Discard stale results if a newer load was triggered while this was in-flight
+      if (myGen !== loadGenRef.current) return
       setPosts(result.posts)
       setCurrentPage(page)
       setHasNext(result.hasMore)
@@ -628,11 +631,11 @@ export default function AdminNewsPage() {
       }
       setSelected(new Set())
     } catch (err) {
+      if (myGen !== loadGenRef.current) return // superseded, suppress error
       console.error('[admin/news] load error:', err)
       toast.error('Haberler yüklenemedi')
     } finally {
-      loadInProgressRef.current = false
-      setLoading(false)
+      if (myGen === loadGenRef.current) setLoading(false)
     }
   }, [filter, search])
 
