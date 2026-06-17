@@ -66,6 +66,9 @@ function VideoFeedItemInner({
     return getVideoUrl(video.id) ?? media.url
   }, [getVideoUrl, video.id, media?.url])
 
+  // YouTube embed tespiti — youtube-nocookie.com/embed veya youtube.com/embed
+  const isYouTube = Boolean(stableSrc && /youtube[^/]*\/embed\//.test(stableSrc))
+
   // Audio-only mode: AI-generated news audio without video file
   const audioUrl = (video as VideoFeedItemType & { audioUrl?: string }).audioUrl
   const isAudioMode = !stableSrc && Boolean(audioUrl)
@@ -325,6 +328,56 @@ function VideoFeedItemInner({
       <div ref={refCallback} data-index={index} className="reels-slide">
         <div className="flex h-full w-full items-center justify-center bg-black">
           <Loader2 className="h-8 w-8 animate-spin text-[rgb(var(--color-muted))]" />
+        </div>
+      </div>
+    )
+  }
+
+  // ── YouTube iframe modu ────────────────────────────────────────────────────
+  // <video> HTML element YouTube URL'lerini oynatamaz — iframe gerekir.
+  if (isYouTube && stableSrc) {
+    const embedSrc = isActive
+      ? `${stableSrc}?autoplay=1&mute=${muted ? 1 : 0}&loop=1&playlist=${stableSrc.split('/embed/')[1]?.split('?')[0]}&rel=0&modestbranding=1`
+      : stableSrc
+    return (
+      <div ref={refCallback} data-index={index} className="reels-slide">
+        <div className="reels-video-card relative overflow-hidden bg-black">
+          {/* Spinner — iframe yüklenene kadar */}
+          {loading && isActive && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
+              <Loader2 className="h-10 w-10 animate-spin text-white/80" />
+            </div>
+          )}
+          <iframe
+            key={isActive ? 'active' : 'inactive'}
+            src={embedSrc}
+            title={video.title}
+            className="absolute inset-0 h-full w-full border-0"
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            allowFullScreen
+            onLoad={() => setLoading(false)}
+          />
+          <VideoActions
+            video={{ ...video, isLiked: liked, likesCount }}
+            onCommentClick={() => setCommentsOpen(true)}
+            onLikeChange={(likedVal, count) =>
+              onUpdate(video.id, { isLiked: likedVal, likesCount: count })
+            }
+            onSaveChange={(saved, count) =>
+              onUpdate(video.id, { isSaved: saved, savesCount: count })
+            }
+            onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+            muted={muted}
+            onToggleMuted={toggleMuted}
+          />
+          <VideoOverlay video={video} />
+          <VideoCommentSheet
+            postId={video.id}
+            open={commentsOpen}
+            onClose={() => setCommentsOpen(false)}
+            commentsCount={video.commentsCount}
+            onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+          />
         </div>
       </div>
     )

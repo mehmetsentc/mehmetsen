@@ -113,6 +113,18 @@ export function resolveSource(data: NewsDocument, author: string): string {
   return DEFAULT_SOURCE
 }
 
+/**
+ * YouTube watch URL'yi (youtube.com/watch?v=ID veya youtu.be/ID)
+ * iframe-oynatılabilir embed URL'ye çevirir.
+ * Zaten embed URL ise değiştirmez.
+ */
+function toYouTubeEmbed(url: string): string {
+  if (url.includes('/embed/')) return url  // zaten embed
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  if (m) return `https://www.youtube-nocookie.com/embed/${m[1]}`
+  return url
+}
+
 export function isDisplayableNews(data: NewsDocument): boolean {
   return Boolean(
     data.title?.trim() ||
@@ -133,7 +145,12 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
   const publishedAt = normalizeTimestamp(data.publishedAt ?? data.createdAt)
   const updatedAt = normalizeTimestamp(data.updatedAt ?? data.publishedAt ?? data.createdAt)
   const author = (data.author?.trim() || 'nahaber').slice(0, 64)
-  const videoUrl = data.videoUrl?.trim() ?? ''
+  // YouTube watch URL → embed URL (iframe oynatma için)
+  // Firestore'da videoUrl = watch URL, videoEmbedUrl = embed URL olabilir.
+  const rawVideoUrl = data.videoUrl?.trim() ?? ''
+  const videoUrl = rawVideoUrl
+    ? ((data as { videoEmbedUrl?: string }).videoEmbedUrl?.trim() || toYouTubeEmbed(rawVideoUrl))
+    : ''
   const thumbnail =
     data.thumbnail?.trim() ||
     data.coverImageUrl?.trim() ||
