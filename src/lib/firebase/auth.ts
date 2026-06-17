@@ -1,28 +1,8 @@
-import {
-  browserLocalPersistence,
-  getAuth,
-  indexedDBLocalPersistence,
-  initializeAuth,
-  type Auth,
-} from 'firebase/auth'
+import { getAuth } from 'firebase/auth'
 import { firebaseApp } from './config'
 
-function createAuth(): Auth {
-  if (typeof window === 'undefined') {
-    return getAuth(firebaseApp)
-  }
-
-  try {
-    return initializeAuth(firebaseApp, {
-      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
-    })
-  } catch {
-    // Hot reload or duplicate init — reuse existing instance.
-    return getAuth(firebaseApp)
-  }
-}
-
-export const auth = createAuth()
+// getAuth includes popupRedirectResolver + persistence — required for Google popup/redirect.
+export const auth = getAuth(firebaseApp)
 
 let authReadyPromise: Promise<void> | null = null
 
