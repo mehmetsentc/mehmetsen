@@ -94,6 +94,27 @@ function extractArticleUrls(html: string): string[] {
   return urls.filter(u => !u.includes('foto-') && !u.includes('video-'))
 }
 
+// ── <article> paragraflarından içerik çıkar ──────────────────────────────────
+function extractArticleBody(html: string): string {
+  const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
+  const articleHtml = articleMatch ? articleMatch[1] : html
+
+  return [...articleHtml.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map(m => m[1]
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+    )
+    .filter(t => t.length > 30)
+    .join('\n\n')
+}
+
 // ── JSON-LD NewsArticle çıkar ─────────────────────────────────────────────────
 function parseJsonLd(html: string): Record<string, unknown> | null {
   const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi)]
@@ -123,8 +144,12 @@ async function scrapeArticle(url: string): Promise<AAArticle | null> {
     ? rawImg
     : (html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i)?.[1] ?? '')
 
-  // İçerik — articleBody yoksa description
-  const content = String(ld.articleBody || ld.description || '').trim()
+  // İçerik — JSON-LD articleBody varsa ve yeterliyse kullan,
+  // yoksa <article> paragraflarını scrape et, son çare description
+  const ldBody  = String(ld.articleBody || '').trim()
+  const content = ldBody.length > 100
+    ? ldBody
+    : (extractArticleBody(html) || String(ld.description || '').trim())
   const spot    = String(ld.description || '').trim()
 
   // Yayın tarihi — AA datePublished timezone içermez (örn: "2026-06-17T12:29:26.787")
