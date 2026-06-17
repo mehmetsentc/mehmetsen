@@ -72,8 +72,7 @@ export const NEWS_IMAGE_REMOTE_PATTERNS: RemotePattern[] = [
   // YouTube thumbnail API — video reels önerileri için
   newsPattern('img.youtube.com'),
   newsPattern('i.ytimg.com'),
-  // Wildcard subdomains per news publisher (Next.js 15)
+  // Wildcard subdomains per news publisher — covers www., cdn., img. etc.
+  // Apex patterns kaldırıldı: Next.js limit 50, haber CDN'leri her zaman subdomain kullanır.
   ...NEWS_IMAGE_DOMAIN_SUFFIXES.map((suffix) => newsPattern(`**.${suffix}`)),
-  // Apex domains
-  ...NEWS_IMAGE_DOMAIN_SUFFIXES.map((suffix) => newsPattern(suffix)),
 ]
