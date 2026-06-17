@@ -66,7 +66,7 @@ function adminNewsDocToPost(id: string, data: NewsDocument): Post {
 
   const author = data.author?.trim() || 'nahaber'
   const title = data.title?.trim() || 'Başlıksız'
-  const content = data.description?.trim() ?? ''
+  const content = data.description?.trim() || data.content?.trim() || ''
   const summary = data.summary?.trim() || content.slice(0, 280)
   return {
     id,

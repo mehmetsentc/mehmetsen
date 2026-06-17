@@ -10,6 +10,8 @@ import { shouldShowBreakingBadge } from '@/lib/newsBreaking'
 export interface NewsDocument {
   title?: string
   description?: string
+  /** Full article body (used by ANKA workers instead of description). */
+  content?: string
   /** Short feed teaser (distinct from title). */
   summary?: string
   author?: string
@@ -157,7 +159,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     data.imageUrl?.trim() ||
     ''
   const title = data.title?.trim() || 'Başlıksız'
-  const description = data.description?.trim() ?? ''
+  const description = data.description?.trim() || data.content?.trim() || ''
   const storedSummary = data.summary?.trim() ?? ''
   const summary = storedSummary || description.slice(0, 280)
   const feedTeaser = buildFeedTeaser(title, summary, description)
