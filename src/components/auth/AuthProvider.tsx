@@ -6,14 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import type { User as FirebaseUser } from 'firebase/auth'
 import { onAuthStateChanged } from 'firebase/auth'
-import { auth } from '@/lib/firebase/auth'
-import { authService } from '@/services/authService'
+import { auth, ensureAuthReady } from '@/lib/firebase/auth'
+import { completeGoogleRedirectSignIn } from '@/lib/googleAuth'
+import { authService, finalizeGoogleSignIn } from '@/services/authService'
 import { devLog, withTimeout } from '@/lib/asyncUtils'
 import type { LoginFormData, RegisterFormData } from '@/lib/validators/auth'
 import type { User } from '@/types/user'
@@ -22,10 +22,11 @@ import {
   syncCmsRoleFromServer,
 } from '@/lib/admin'
 
-const AUTH_TIMEOUT_MS = 8_000
+const PROFILE_TIMEOUT_MS = 8_000
 
 interface AuthContextValue {
   user: User | null
+  /** True until persisted Firebase session is restored on first load. */
   loading: boolean
   login: (data: LoginFormData) => ReturnType<typeof authService.login>
   register: (data: RegisterFormData) => ReturnType<typeof authService.register>
@@ -87,62 +88,62 @@ async function refreshProfileAfterCmsSync(
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const initialAuthResolved = useRef(false)
 
   useEffect(() => {
     let mounted = true
 
-    const resolveInitialLoading = () => {
-      if (!initialAuthResolved.current && mounted) {
-        initialAuthResolved.current = true
-        setLoading(false)
-        devLog('AuthProvider', 'initial auth resolved')
+    const handleAuthUser = async (firebaseUser: FirebaseUser | null) => {
+      if (!mounted) return
+
+      if (!firebaseUser) {
+        setUser(null)
+        return
+      }
+
+      setUser(applyAdminBootstrap(buildFallbackUser(firebaseUser)))
+
+      try {
+        const profile = await withTimeout(
+          authService.getUserProfile(firebaseUser.uid),
+          PROFILE_TIMEOUT_MS,
+          'getUserProfile'
+        )
+        if (mounted && profile) {
+          setUser(applyAdminBootstrap(profile))
+        }
+        void refreshProfileAfterCmsSync(firebaseUser, mounted, setUser)
+        devLog('AuthProvider', 'profile loaded', {
+          uid: firebaseUser.uid,
+          found: !!profile,
+        })
+      } catch (error) {
+        console.error('[AuthProvider] Failed to load user profile:', error)
       }
     }
 
-    const authTimeout = setTimeout(() => {
-      console.warn('[AuthProvider] Auth state timeout — forcing loading to false')
-      resolveInitialLoading()
-    }, AUTH_TIMEOUT_MS)
-
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       devLog('AuthProvider', 'auth state changed', { uid: firebaseUser?.uid ?? null })
+      void handleAuthUser(firebaseUser)
+    })
 
+    void (async () => {
       try {
-        if (firebaseUser) {
-          const profile = await withTimeout(
-            authService.getUserProfile(firebaseUser.uid),
-            AUTH_TIMEOUT_MS,
-            'getUserProfile'
-          )
-          const resolved = applyAdminBootstrap(profile ?? buildFallbackUser(firebaseUser))
-          if (mounted) {
-            setUser(resolved)
-          }
-          void refreshProfileAfterCmsSync(firebaseUser, mounted, setUser)
-          devLog('AuthProvider', 'profile loaded', {
-            uid: firebaseUser.uid,
-            found: !!profile,
-            fallback: !profile,
-            admin: resolved.role === 'admin',
-          })
-        } else if (mounted) {
-          setUser(null)
+        await ensureAuthReady()
+        if (!mounted) return
+
+        const redirectResult = await completeGoogleRedirectSignIn(auth)
+        if (redirectResult?.user) {
+          void finalizeGoogleSignIn(redirectResult.user)
         }
       } catch (error) {
-        console.error('[AuthProvider] Failed to load user profile:', error)
-        if (mounted) {
-          setUser(firebaseUser ? applyAdminBootstrap(buildFallbackUser(firebaseUser)) : null)
-        }
+        console.error('[AuthProvider] Auth bootstrap failed:', error)
       } finally {
-        resolveInitialLoading()
-        clearTimeout(authTimeout)
+        if (mounted) setLoading(false)
       }
-    })
+    })()
 
     return () => {
       mounted = false
-      clearTimeout(authTimeout)
       unsubscribe()
     }
   }, [])

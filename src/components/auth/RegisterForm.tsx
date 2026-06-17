@@ -14,6 +14,7 @@ import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
 
 export function RegisterForm() {
     const [isLoading, setIsLoading] = useState(false)
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false)
     const { register: registerUser, loginWithGoogle } = useAuth()
     const router = useRouter()
 
@@ -38,11 +39,22 @@ export function RegisterForm() {
     }
 
     const handleGoogle = async () => {
+        if (isGoogleLoading) return
+        setIsGoogleLoading(true)
+        let isRedirecting = false
         try {
-            await loginWithGoogle()
+            const firebaseUser = await loginWithGoogle()
+            if (firebaseUser === null) {
+                isRedirecting = true
+                return
+            }
             router.push(ROUTES.FEED)
         } catch (err: unknown) {
-            toast.error(getGoogleAuthErrorMessage(err))
+            console.error('[RegisterForm] Google sign-in failed:', err)
+            const message = getGoogleAuthErrorMessage(err)
+            if (message) toast.error(message)
+        } finally {
+            if (!isRedirecting) setIsGoogleLoading(false)
         }
     }
 
@@ -138,10 +150,11 @@ export function RegisterForm() {
 
             <button
                 onClick={handleGoogle}
-                className="flex w-full items-center justify-center gap-3 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2.5 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:opacity-80"
+                disabled={isGoogleLoading}
+                className="flex w-full items-center justify-center gap-3 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2.5 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
             >
                 <GoogleIcon />
-                Google ile devam et
+                {isGoogleLoading ? 'Yükleniyor...' : 'Google ile devam et'}
             </button>
 
             <p className="mt-6 text-center text-sm text-[rgb(var(--color-muted))]">

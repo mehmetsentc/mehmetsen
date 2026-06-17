@@ -2,16 +2,68 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  GoogleAuthProvider,
-  signInWithPopup,
   updateProfile,
+  type User as FirebaseUser,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { auth } from '@/lib/firebase/auth'
+import { auth, ensureAuthReady } from '@/lib/firebase/auth'
 import { db, Collections } from '@/lib/firebase/firestore'
 import { userService } from '@/services/userService'
 import { syncCmsRoleFromServer } from '@/lib/admin'
+import { signInWithGoogle } from '@/lib/googleAuth'
+import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
 import type { User } from '@/types/user'
+
+function buildGoogleUsername(firebaseUser: FirebaseUser): string {
+  const email = firebaseUser.email ?? ''
+  const base = (email.split('@')[0] || 'user')
+    .replace(/[^a-z0-9_]/gi, '_')
+    .toLowerCase()
+    .slice(0, 24)
+  return `${base}_${firebaseUser.uid.slice(0, 6)}`
+}
+
+/** Create/update Firestore profile after Google popup or redirect sign-in. */
+export async function finalizeGoogleSignIn(firebaseUser: FirebaseUser): Promise<void> {
+  try {
+    const userRef = doc(db, Collections.USERS, firebaseUser.uid)
+    const userSnap = await enqueueFirestoreRead(() => getDoc(userRef))
+
+    if (!userSnap.exists()) {
+      const username = buildGoogleUsername(firebaseUser)
+      const userData: User = {
+        uid: firebaseUser.uid,
+        username,
+        displayName: firebaseUser.displayName ?? username,
+        email: firebaseUser.email ?? '',
+        photoURL: firebaseUser.photoURL,
+        bio: null,
+        website: null,
+        location: null,
+        role: 'user',
+        isVerified: false,
+        isBlocked: false,
+        followersCount: 0,
+        followingCount: 0,
+        postsCount: 0,
+        onboardingCompleted: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      await setDoc(userRef, userData)
+    }
+  } catch (error) {
+    console.error('[finalizeGoogleSignIn] Firestore profile setup failed:', error)
+    // Firebase Auth already succeeded — AuthProvider falls back to a minimal profile.
+  }
+
+  try {
+    const token = await firebaseUser.getIdToken()
+    await syncCmsRoleFromServer(token)
+  } catch {
+    // CMS sync is best-effort — login should still succeed.
+  }
+}
 
 export const authService = {
   async register(
@@ -20,6 +72,7 @@ export const authService = {
     username: string,
     displayName: string
   ): Promise<User> {
+    await ensureAuthReady()
     const normalizedUsername = userService.normalizeUsername(username)
     const available = await userService.isUsernameAvailable(normalizedUsername)
     if (!available) {
@@ -54,49 +107,17 @@ export const authService = {
   },
 
   async login(email: string, password: string) {
+    await ensureAuthReady()
     const credential = await signInWithEmailAndPassword(auth, email, password)
     return credential.user
   },
 
   async loginWithGoogle() {
-    const provider = new GoogleAuthProvider()
-    const credential = await signInWithPopup(auth, provider)
-    const userRef = doc(db, Collections.USERS, credential.user.uid)
-    const userSnap = await getDoc(userRef)
-
-    if (!userSnap.exists()) {
-      const base = credential.user.email!.split('@')[0]
-      let username = base.replace(/[^a-z0-9_]/gi, '_').toLowerCase()
-      if (!(await userService.isUsernameAvailable(username))) {
-        username = `${username}_${credential.user.uid.slice(0, 6)}`
-      }
-
-      const userData: User = {
-        uid: credential.user.uid,
-        username,
-        displayName: credential.user.displayName ?? username,
-        email: credential.user.email!,
-        photoURL: credential.user.photoURL,
-        bio: null,
-        website: null,
-        location: null,
-        role: 'user',
-        isVerified: false,
-        isBlocked: false,
-        followersCount: 0,
-        followingCount: 0,
-        postsCount: 0,
-        onboardingCompleted: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      await setDoc(userRef, userData)
-    }
-
-    const token = await credential.user.getIdToken()
-    await syncCmsRoleFromServer(token)
-
-    return credential.user
+    await ensureAuthReady()
+    const result = await signInWithGoogle(auth)
+    if (result === 'redirect') return null
+    void finalizeGoogleSignIn(result.user)
+    return result.user
   },
 
   async logout() {

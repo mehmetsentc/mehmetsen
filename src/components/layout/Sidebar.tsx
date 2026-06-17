@@ -36,7 +36,7 @@ const MAIN_CATEGORIES = SIDEBAR_MAIN_CATEGORY_IDS
 function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user, logout, loading } = useAuth()
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -203,7 +203,7 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
 
         {/* Footer */}
         <div className="shrink-0 space-y-1 border-t border-[rgb(var(--color-border))] p-3">
-          {hydrated && user && (
+          {hydrated && !loading && user && (
             <>
               <Link
                 href={ROUTES.PROFILE(user.username)}
@@ -231,7 +231,7 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
               </button>
             </>
           )}
-          {hydrated && !user && (
+          {hydrated && !loading && !user && (
             <Link
               href={ROUTES.LOGIN}
               onClick={onMobileClose}

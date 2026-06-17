@@ -13,7 +13,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ onMenuClick }: NavbarProps = {}) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [hydrated, setHydrated] = useState(false)
 
@@ -60,7 +60,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               <Bell className="h-5 w-5" strokeWidth={2} />
             </Link>
             <Link
-              href={hydrated && user ? ROUTES.SETTINGS : ROUTES.LOGIN}
+              href={hydrated && !loading && user ? ROUTES.SETTINGS : ROUTES.LOGIN}
               className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
               aria-label="Ayarlar"
             >

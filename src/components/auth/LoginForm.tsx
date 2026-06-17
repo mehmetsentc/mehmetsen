@@ -38,14 +38,22 @@ export function LoginForm() {
   }
 
   const handleGoogle = async () => {
+    if (isGoogleLoading) return
     setIsGoogleLoading(true)
+    let isRedirecting = false
     try {
-      await loginWithGoogle()
+      const firebaseUser = await loginWithGoogle()
+      if (firebaseUser === null) {
+        isRedirecting = true
+        return
+      }
       router.push(ROUTES.FEED)
     } catch (err: unknown) {
-      toast.error(getGoogleAuthErrorMessage(err))
+      console.error('[LoginForm] Google sign-in failed:', err)
+      const message = getGoogleAuthErrorMessage(err)
+      if (message) toast.error(message)
     } finally {
-      setIsGoogleLoading(false)
+      if (!isRedirecting) setIsGoogleLoading(false)
     }
   }
 
