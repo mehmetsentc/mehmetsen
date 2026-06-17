@@ -10,19 +10,17 @@ import {
   startAfter,
   updateDoc,
   type QueryDocumentSnapshot,
+  type QueryConstraint,
 } from 'firebase/firestore'
 import { cityCategoryId, slugifyCity, toFirestoreLocation, type PostLocation } from '@/lib/location'
 import { auth } from '@/lib/firebase/auth'
 import { Collections, db, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
-import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
-import { withTimeout } from '@/lib/asyncUtils'
 import { buildFeedTeaser } from '@/lib/newsContentCleanup'
 import { mapNewsSnapshot, type NewsDocument } from '@/lib/newsMapper'
 import { postService } from '@/services/postService'
 import type { Post, PostStatus } from '@/types/post'
 
 const PAGE_SIZE = 50
-const QUERY_TIMEOUT_MS = 15_000
 
 export type AdminNewsFilter = 'all' | 'published' | 'pending' | 'draft' | 'removed'
 
@@ -118,6 +116,62 @@ function statusConstraint(filter: AdminNewsFilter): Parameters<typeof where>[2] 
   }
 }
 
+function docCreatedAtMs(data: NewsDocument): number {
+  const raw = data.createdAt
+  if (typeof raw === 'number') {
+    return raw < 1_000_000_000_000 ? raw * 1000 : raw
+  }
+  if (typeof raw === 'string') {
+    const parsed = Date.parse(raw)
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
+  if (raw && typeof raw === 'object' && 'toMillis' in raw && typeof raw.toMillis === 'function') {
+    return raw.toMillis()
+  }
+  if (raw && typeof raw === 'object' && 'seconds' in raw) {
+    return Number((raw as { seconds: number }).seconds) * 1000
+  }
+  const published = data.publishedAt
+  if (typeof published === 'number') {
+    return published < 1_000_000_000_000 ? published * 1000 : published
+  }
+  return 0
+}
+
+function mapAdminNewsDocs(
+  docs: QueryDocumentSnapshot[],
+  filter: AdminNewsFilter
+): AdminNewsItem[] {
+  const sorted = [...docs].sort(
+    (a, b) =>
+      docCreatedAtMs(b.data() as NewsDocument) - docCreatedAtMs(a.data() as NewsDocument)
+  )
+
+  let posts: AdminNewsItem[] = sorted.map((d) => ({
+    ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
+    adminSource: 'news' as const,
+  }))
+
+  if (filter === 'removed') {
+    posts = posts.filter((p) => p.status === 'archived' || p.status === 'banned')
+  } else if (filter === 'published') {
+    posts = posts.filter((p) => p.status === 'published')
+  } else if (filter === 'draft') {
+    posts = posts.filter((p) => p.status === 'draft')
+  }
+
+  posts.sort((a, b) => {
+    const aMs = Date.parse(a.createdAt) || 0
+    const bMs = Date.parse(b.createdAt) || 0
+    return bMs - aMs
+  })
+  return posts
+}
+
+async function fetchAdminNewsSnap(constraints: QueryConstraint[]) {
+  return getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints))
+}
+
 export const adminNewsService = {
   async list(
     filter: AdminNewsFilter = 'all',
@@ -130,72 +184,36 @@ export const adminNewsService = {
       return listPendingQueue(lastDoc)
     }
 
-    const constraints: Parameters<typeof query>[1][] = []
-
     const status = statusConstraint(filter)
-    if (status) {
-      constraints.push(where('status', '==', status))
-    }
+    const filterConstraints: QueryConstraint[] = []
+    if (status) filterConstraints.push(where('status', '==', status))
+    if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
 
-    if (categoryId) {
-      constraints.push(where('categoryId', '==', categoryId))
-    }
+    const queryAttempts: QueryConstraint[][] = [
+      [...filterConstraints, orderBy('createdAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
+      [...filterConstraints, orderBy('publishedAt', 'desc'), limit(pageSize)],
+      [...filterConstraints, limit(pageSize * 2)],
+      [limit(Math.max(pageSize * 3, 150))],
+    ]
 
-    constraints.push(orderBy('createdAt', 'desc'))
-    if (lastDoc) constraints.push(startAfter(lastDoc))
-    constraints.push(limit(pageSize))
-
-    try {
-      const q = query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)
-      const snap = await withTimeout(
-        enqueueFirestoreRead(() => getDocs(q)),
-        QUERY_TIMEOUT_MS,
-        'admin-news-list'
-      )
-
-      let posts: AdminNewsItem[] = snap.docs.map((d) => ({
-        ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
-        adminSource: 'news' as const,
-      }))
-
-      if (filter === 'removed') {
-        posts = posts.filter((p) => p.status === 'archived' || p.status === 'banned')
-      } else if (filter === 'all') {
-        // no extra filter
-      }
-
-      return {
-        posts,
-        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length === pageSize,
-      }
-    } catch (error) {
-      console.warn('[adminNewsService] list failed, trying fallback:', error)
-      // Fallback: drop all filters, just fetch latest news by createdAt
+    let lastError: unknown = null
+    for (const constraints of queryAttempts) {
       try {
-        const fallbackQ = query(
-          collection(db, VIDEO_FEED_COLLECTION),
-          orderBy('createdAt', 'desc'),
-          limit(PAGE_SIZE * 2)
-        )
-        const snap = await getDocs(fallbackQ)
-        let posts: AdminNewsItem[] = snap.docs.map((d) => ({
-          ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
-          adminSource: 'news' as const,
-        }))
-
-        if (filter === 'published') posts = posts.filter((p) => p.status === 'published')
-        else if (filter === 'draft') posts = posts.filter((p) => p.status === 'draft')
-        else if (filter === 'removed') posts = posts.filter((p) => p.status === 'archived' || p.status === 'banned')
-
-        return { posts: posts.slice(0, PAGE_SIZE), lastDoc: null, hasMore: false }
-      } catch (fallbackError) {
-        console.error('[adminNewsService] fallback also failed:', fallbackError)
-        // Return empty result instead of throwing — UI shows "Bu filtrede haber bulunamadı"
-        // rather than an error toast. User can retry manually.
-        return { posts: [], lastDoc: null, hasMore: false }
+        const snap = await fetchAdminNewsSnap(constraints)
+        const posts = mapAdminNewsDocs(snap.docs, filter).slice(0, pageSize)
+        return {
+          posts,
+          lastDoc: snap.docs[snap.docs.length - 1] ?? null,
+          hasMore: snap.docs.length >= pageSize,
+        }
+      } catch (error) {
+        lastError = error
+        console.warn('[adminNewsService] list attempt failed:', error)
       }
     }
+
+    console.error('[adminNewsService] all list attempts failed:', lastError)
+    throw lastError instanceof Error ? lastError : new Error('Haberler yüklenemedi')
   },
 
   async getById(id: string): Promise<Post | null> {
@@ -393,20 +411,14 @@ async function listPendingQueue(
   const items: AdminNewsItem[] = []
 
   try {
-    const draftConstraints: Parameters<typeof query>[1][] = [
+    const draftConstraints: QueryConstraint[] = [
       where('draftStatus', '==', 'pending_review'),
       orderBy('createdAt', 'desc'),
       limit(PAGE_SIZE),
     ]
     if (lastDoc) draftConstraints.push(startAfter(lastDoc))
 
-    const draftSnap = await withTimeout(
-      enqueueFirestoreRead(() =>
-        getDocs(query(collection(db, Collections.NEWS_DRAFTS), ...draftConstraints))
-      ),
-      QUERY_TIMEOUT_MS,
-      'admin-drafts-list'
-    )
+    const draftSnap = await getDocs(query(collection(db, Collections.NEWS_DRAFTS), ...draftConstraints))
 
     for (const d of draftSnap.docs) {
       items.push(draftDocToPost(d.id, d.data() as NewsDocument))

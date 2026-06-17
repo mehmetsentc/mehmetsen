@@ -583,10 +583,27 @@ function PaginationBar({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function AdminNewsPage() {
-  const { can, user } = useCmsAuth()
+  const { can, user, loading: authLoading } = useCmsAuth()
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get('category') ?? ''
-  const [filter, setFilter] = useState<AdminNewsFilter>('all')
+  const filterParam = searchParams.get('filter') ?? ''
+  const initialFilter: AdminNewsFilter =
+    filterParam === 'published' ||
+    filterParam === 'pending' ||
+    filterParam === 'draft' ||
+    filterParam === 'removed'
+      ? filterParam
+      : 'all'
+  const [filter, setFilter] = useState<AdminNewsFilter>(initialFilter)
+
+  useEffect(() => {
+    const fp = searchParams.get('filter') ?? ''
+    if (fp === 'published' || fp === 'pending' || fp === 'draft' || fp === 'removed') {
+      setFilter(fp)
+    } else if (!fp) {
+      setFilter('all')
+    }
+  }, [searchParams])
   const [search, setSearch] = useState('')
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [posts, setPosts] = useState<AdminNewsItem[]>([])
@@ -631,10 +648,8 @@ export default function AdminNewsPage() {
   }, [filter, search])
 
   useEffect(() => {
+    if (authLoading) return
     // Reset pagination on filter or category change.
-    // setTimeout(0) defers load() to the next tick: if React fires this effect twice
-    // (e.g. useSearchParams hydration in Next.js 15), the first timeout is cancelled
-    // by cleanup before it fires — only the final render's load() actually runs.
     pageCursorsRef.current = [null]
     setCurrentPage(0)
     setKnownPages(1)
@@ -642,7 +657,7 @@ export default function AdminNewsPage() {
     const tid = setTimeout(() => { void load(0) }, 0)
     return () => clearTimeout(tid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, categoryParam])
+  }, [filter, categoryParam, authLoading])
 
   const handleApprove = async (post: AdminNewsItem) => {
     setActionLoading(post.id)
