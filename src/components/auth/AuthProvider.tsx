@@ -19,8 +19,7 @@ import type { LoginFormData, RegisterFormData } from '@/lib/validators/auth'
 import type { User } from '@/types/user'
 import {
   applyAdminBootstrap,
-  isBootstrapAdmin,
-  syncBootstrapAdminRole,
+  syncCmsRoleFromServer,
 } from '@/lib/admin'
 
 const AUTH_TIMEOUT_MS = 8_000
@@ -67,14 +66,22 @@ function buildFallbackUser(firebaseUser: FirebaseUser): User {
   return applyAdminBootstrap(baseUser)
 }
 
-async function maybeSyncBootstrapAdmin(
+async function refreshProfileAfterCmsSync(
   firebaseUser: FirebaseUser,
-  profile: User | null
+  mounted: boolean,
+  setUser: (user: User | null) => void
 ): Promise<void> {
-  if (!isBootstrapAdmin(firebaseUser.uid)) return
-  if (profile?.role === 'admin') return
-  const token = await firebaseUser.getIdToken()
-  await syncBootstrapAdminRole(token)
+  try {
+    const token = await firebaseUser.getIdToken()
+    await syncCmsRoleFromServer(token)
+    if (!mounted) return
+    const refreshed = await authService.getUserProfile(firebaseUser.uid)
+    if (refreshed) {
+      setUser(applyAdminBootstrap(refreshed))
+    }
+  } catch {
+    // Profile refresh is best-effort after CMS sync.
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -112,13 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (mounted) {
             setUser(resolved)
           }
-          void maybeSyncBootstrapAdmin(firebaseUser, profile).then(async () => {
-            if (!mounted || !isBootstrapAdmin(firebaseUser.uid)) return
-            const refreshed = await authService.getUserProfile(firebaseUser.uid)
-            if (refreshed && mounted) {
-              setUser(applyAdminBootstrap(refreshed))
-            }
-          })
+          void refreshProfileAfterCmsSync(firebaseUser, mounted, setUser)
           devLog('AuthProvider', 'profile loaded', {
             uid: firebaseUser.uid,
             found: !!profile,

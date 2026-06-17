@@ -10,6 +10,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth } from '@/lib/firebase/auth'
 import { db, Collections } from '@/lib/firebase/firestore'
 import { userService } from '@/services/userService'
+import { syncCmsRoleFromServer } from '@/lib/admin'
 import type { User } from '@/types/user'
 
 export const authService = {
@@ -91,6 +92,9 @@ export const authService = {
       }
       await setDoc(userRef, userData)
     }
+
+    const token = await credential.user.getIdToken()
+    await syncCmsRoleFromServer(token)
 
     return credential.user
   },

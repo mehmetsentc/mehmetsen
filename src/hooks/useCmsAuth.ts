@@ -24,7 +24,7 @@ export function useCmsAuth(): CmsAuthState {
   return useMemo(() => {
     const role = getCmsRole(user)
     const isStaff = canAccessCms(user)
-    const isSuperAdmin = user?.role === 'super_admin'
+    const isSuperAdmin = getCmsRole(user) === 'super_admin'
 
     return {
       user,

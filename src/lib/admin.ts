@@ -26,15 +26,20 @@ export function isAdminUser(user: User | null | undefined): boolean {
   return canAccessCms(user)
 }
 
-/** Sync super_admin role to Firestore via server API. */
-export async function syncBootstrapAdminRole(idToken: string): Promise<void> {
+/** Sync CMS role from server (super admin email / bootstrap UID) into Firestore. */
+export async function syncCmsRoleFromServer(idToken: string): Promise<void> {
   try {
-    const res = await fetch('/api/admin/bootstrap', {
+    const res = await fetch('/api/auth/cms-sync', {
       method: 'POST',
       headers: { Authorization: `Bearer ${idToken}` },
     })
     if (!res.ok) return
   } catch {
-    // Service account may be unset in local dev — set role in Firebase Console instead.
+    // Non-fatal — Firestore role may already be correct.
   }
+}
+
+/** @deprecated Use syncCmsRoleFromServer */
+export async function syncBootstrapAdminRole(idToken: string): Promise<void> {
+  await syncCmsRoleFromServer(idToken)
 }

@@ -10,6 +10,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo'
 import { loginSchema, type LoginFormData } from '@/lib/validators/auth'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
+import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
 
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -41,8 +42,8 @@ export function LoginForm() {
     try {
       await loginWithGoogle()
       router.push(ROUTES.FEED)
-    } catch {
-      toast.error('Google ile giriş başarısız oldu')
+    } catch (err: unknown) {
+      toast.error(getGoogleAuthErrorMessage(err))
     } finally {
       setIsGoogleLoading(false)
     }

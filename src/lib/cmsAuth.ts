@@ -5,6 +5,7 @@
 import type { User } from '@/types/user'
 import type { CmsRole, CmsPermission } from '@/types/cms'
 import { hasPermission, hasAnyPermission, CMS_STAFF_ROLES, ROLE_LEVEL } from '@/types/cms'
+import { resolveCmsRoleFromFirestore } from '@/lib/cmsRoleUtils'
 
 export { hasPermission, hasAnyPermission }
 
@@ -16,10 +17,7 @@ export function isSuperAdminEmail(_email: string | null | undefined): boolean {
 /** Resolve effective CMS role from a User object */
 export function getCmsRole(user: User | null | undefined): CmsRole {
   if (!user) return 'user'
-  const role = user.role as CmsRole | 'admin' | 'moderator'
-  if (CMS_STAFF_ROLES.includes(role as CmsRole)) return role as CmsRole
-  if (role === 'admin') return 'managing_editor'
-  return 'user'
+  return resolveCmsRoleFromFirestore(user.role)
 }
 
 /** True when user has any CMS staff access */

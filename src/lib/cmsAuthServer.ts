@@ -5,7 +5,8 @@
 import 'server-only'
 import type { CmsRole, CmsPermission } from '@/types/cms'
 import { hasPermission, CMS_STAFF_ROLES } from '@/types/cms'
-import { isSuperAdminEmailServer } from '@/lib/cmsSecrets.server'
+import { isSuperAdminEmailServer, getBootstrapAdminUids } from '@/lib/cmsSecrets.server'
+import { resolveCmsRoleFromFirestore } from '@/lib/cmsRoleUtils'
 
 /** Server-side: verify Bearer token + resolve CMS role from Firestore */
 export async function verifyCmsToken(
@@ -27,15 +28,15 @@ export async function verifyCmsToken(
       return { uid: decoded.uid, role: 'super_admin', email }
     }
 
+    if (getBootstrapAdminUids().includes(decoded.uid)) {
+      const role: CmsRole = 'managing_editor'
+      if (requiredPermission && !hasPermission(role, requiredPermission)) return null
+      return { uid: decoded.uid, role, email }
+    }
+
     const userDoc = await getAdminFirestore().collection('users').doc(decoded.uid).get()
     const userData = userDoc.data()
-    const rawRole = (userData?.role as string | undefined)?.trim().toLowerCase()
-    const role: CmsRole =
-      rawRole === 'admin'
-        ? 'managing_editor'
-        : rawRole === 'moderator'
-          ? 'editor'
-          : ((rawRole as CmsRole | undefined) ?? 'user')
+    const role = resolveCmsRoleFromFirestore(userData?.role as string | undefined)
 
     if (!CMS_STAFF_ROLES.includes(role)) return null
     if (requiredPermission && !hasPermission(role, requiredPermission)) return null
