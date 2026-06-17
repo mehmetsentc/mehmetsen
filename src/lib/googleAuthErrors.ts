@@ -18,7 +18,8 @@ export function getGoogleAuthErrorMessage(err: unknown): string | null {
     'auth/account-exists-with-different-credential':
       'Bu e-posta başka bir yöntemle kayıtlı — e-posta/şifre ile giriş yapın',
     'auth/network-request-failed': 'Ağ hatası — bağlantınızı kontrol edin',
-    'auth/internal-error': 'Google oturum açma hatası — farklı tarayıcı veya gizli mod deneyin',
+    'auth/internal-error':
+      'Google bağlantı hatası — sayfayı yenileyip tekrar deneyin veya farklı tarayıcı kullanın',
     'auth/web-storage-unsupported': 'Tarayıcı depolama desteklemiyor — çerezleri etkinleştirin',
     'permission-denied': 'Hesap kaydı oluşturulamadı — Firestore izin hatası',
     'failed-precondition': 'Veritabanı yapılandırma hatası — lütfen daha sonra tekrar deneyin',

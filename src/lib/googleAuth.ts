@@ -8,26 +8,24 @@ import {
 } from 'firebase/auth'
 
 const googleProvider = new GoogleAuthProvider()
-googleProvider.setCustomParameters({ prompt: 'select_account' })
 
 const POPUP_FALLBACK_CODES = new Set([
   'auth/popup-blocked',
   'auth/operation-not-supported-in-this-environment',
   'auth/web-storage-unsupported',
+  'auth/internal-error',
 ])
 
 let googleSignInPromise: Promise<UserCredential | 'redirect'> | null = null
+let redirectResultPromise: Promise<UserCredential | null> | null = null
 
-function prefersGoogleRedirect(): boolean {
+function isInAppBrowser(): boolean {
   if (typeof window === 'undefined') return false
-  const ua = navigator.userAgent
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(ua)
-  const isInApp = /FBAN|FBAV|Instagram|Twitter|Line\//i.test(ua)
-  return isMobile || isInApp
+  return /FBAN|FBAV|Instagram|Twitter|Line\//i.test(navigator.userAgent)
 }
 
 async function runGoogleSignIn(auth: Auth): Promise<UserCredential | 'redirect'> {
-  if (prefersGoogleRedirect()) {
+  if (isInAppBrowser()) {
     await signInWithRedirect(auth, googleProvider)
     return 'redirect'
   }
@@ -54,6 +52,13 @@ export function signInWithGoogle(auth: Auth): Promise<UserCredential | 'redirect
   return googleSignInPromise
 }
 
-export async function completeGoogleRedirectSignIn(auth: Auth): Promise<UserCredential | null> {
-  return getRedirectResult(auth)
+/** Call once on app load — must run before any setPersistence / second sign-in attempt. */
+export function completeGoogleRedirectSignIn(auth: Auth): Promise<UserCredential | null> {
+  if (!redirectResultPromise) {
+    redirectResultPromise = getRedirectResult(auth).catch((error) => {
+      redirectResultPromise = null
+      throw error
+    })
+  }
+  return redirectResultPromise
 }

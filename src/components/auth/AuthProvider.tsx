@@ -91,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+    let unsubscribe: (() => void) | undefined
 
     const handleAuthUser = async (firebaseUser: FirebaseUser | null) => {
       if (!mounted) return
@@ -121,30 +122,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      devLog('AuthProvider', 'auth state changed', { uid: firebaseUser?.uid ?? null })
-      void handleAuthUser(firebaseUser)
-    })
-
     void (async () => {
       try {
-        await ensureAuthReady()
-        if (!mounted) return
-
         const redirectResult = await completeGoogleRedirectSignIn(auth)
         if (redirectResult?.user) {
           void finalizeGoogleSignIn(redirectResult.user)
         }
+
+        await ensureAuthReady()
       } catch (error) {
         console.error('[AuthProvider] Auth bootstrap failed:', error)
-      } finally {
-        if (mounted) setLoading(false)
       }
+
+      if (!mounted) return
+
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        devLog('AuthProvider', 'auth state changed', { uid: firebaseUser?.uid ?? null })
+        void handleAuthUser(firebaseUser)
+      })
+
+      if (mounted) setLoading(false)
     })()
 
     return () => {
       mounted = false
-      unsubscribe()
+      unsubscribe?.()
     }
   }, [])
 
