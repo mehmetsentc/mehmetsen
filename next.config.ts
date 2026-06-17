@@ -102,7 +102,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' https://*.googleapis.com https://oauth2.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firebasestorage.googleapis.com https://www.google-analytics.com https://vitals.vercel-insights.com https://nahaberapp.firebaseapp.com",
-              "frame-src 'self' https://accounts.google.com https://www.google.com https://*.google.com https://*.firebaseapp.com https://nahaberapp.firebaseapp.com",
+              "frame-src 'self' https://accounts.google.com https://www.google.com https://*.google.com https://*.firebaseapp.com https://nahaberapp.firebaseapp.com https://www.youtube.com https://www.youtube-nocookie.com",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self' https://accounts.google.com",

@@ -334,11 +334,16 @@ function VideoFeedItemInner({
   }
 
   // ── YouTube iframe modu ────────────────────────────────────────────────────
-  // <video> HTML element YouTube URL'lerini oynatamaz — iframe gerekir.
+  // <video> HTML elementi YouTube URL'lerini oynatamaz — iframe gerekir.
+  // Browser autoplay politikası: sesli autoplay engellenir → her zaman mute=1 başlar.
+  // CSP frame-src'ye youtube-nocookie.com eklendi (next.config.ts).
   if (isYouTube && stableSrc) {
+    const videoId = stableSrc.split('/embed/')[1]?.split('?')[0] ?? ''
+    // Aktif slide → autoplay + sessiz (browser politikası). Ses YouTube kontrolünden açılır.
+    // Aktif olmayan slide → sadece thumbnail göster (enablejsapi ile daha hafif).
     const embedSrc = isActive
-      ? `${stableSrc}?autoplay=1&mute=${muted ? 1 : 0}&loop=1&playlist=${stableSrc.split('/embed/')[1]?.split('?')[0]}&rel=0&modestbranding=1`
-      : stableSrc
+      ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1`
+      : `${stableSrc}?rel=0&modestbranding=1`
     return (
       <div ref={refCallback} data-index={index} className="reels-slide">
         <div className="reels-video-card relative overflow-hidden bg-black">
@@ -349,14 +354,15 @@ function VideoFeedItemInner({
             </div>
           )}
           <iframe
-            key={isActive ? 'active' : 'inactive'}
+            key={isActive ? `yt-active-${video.id}` : `yt-inactive-${video.id}`}
             src={embedSrc}
             title={video.title}
             className="absolute inset-0 h-full w-full border-0"
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share"
             allowFullScreen
             onLoad={() => setLoading(false)}
           />
+          {/* VideoActions sağ kenarda — iframe'in ortasına müdahale etmez */}
           <VideoActions
             video={{ ...video, isLiked: liked, likesCount }}
             onCommentClick={() => setCommentsOpen(true)}
