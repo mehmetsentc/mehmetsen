@@ -56,15 +56,17 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
   } catch { return null }
 }
 
-const SUPPORTED_EXTS = /\.(jpe?g|png|gif)(\?|$)/i
+const SUPPORTED_EXTS = /\.(jpe?g|png|gif|webp|avif)(\?|$)/i
 
 function bestImage(a: ArticleOGData): string {
   const candidates = [a.thumbnail, a.coverImageUrl, a.imageUrl, a.featuredImage, a.image]
+  // Önce bilinen uzantılı görselleri dene (webp/avif dahil — Edge runtime destekler)
   for (const c of candidates) {
     if (c && SUPPORTED_EXTS.test(c)) return c
   }
+  // Uzantısız URL'leri de kabul et (CDN query-string URL'leri)
   for (const c of candidates) {
-    if (c && !c.includes('.webp') && !c.includes('.avif')) return c
+    if (c && c.startsWith('http')) return c
   }
   return ''
 }
