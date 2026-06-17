@@ -1,6 +1,6 @@
 'use client'
 
-import { ThumbsUp, ThumbsDown, MessageCircle, Volume2, VolumeX } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, MessageCircle } from 'lucide-react'
 import { LikeButton } from '@/components/post/LikeButton'
 import { SaveButton } from '@/components/post/SaveButton'
 import { ShareButton } from '@/components/post/ShareButton'
@@ -17,9 +17,6 @@ interface VideoActionsProps {
   onLikeChange?: (liked: boolean, count: number) => void
   onSaveChange?: (saved: boolean, count: number) => void
   onShareChange?: (count: number) => void
-  /** Muted state for the sound toggle button */
-  muted?: boolean
-  onToggleMuted?: () => void
   className?: string
 }
 
@@ -29,8 +26,6 @@ export function VideoActions({
   onLikeChange,
   onSaveChange,
   onShareChange,
-  muted,
-  onToggleMuted,
   className,
 }: VideoActionsProps) {
   const { liked, count: likesCount, toggle: toggleLike, loading: likeLoading } = useLike({
@@ -113,19 +108,6 @@ export function VideoActions({
         loading={saveLoading}
         variant="reels"
       />
-
-      {/* Sound toggle */}
-      {onToggleMuted !== undefined && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onToggleMuted() }}
-          aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
-          className="flex flex-col items-center gap-1.5 text-white transition-transform active:scale-90"
-        >
-          {muted ? <VolumeX className="h-7 w-7" /> : <Volume2 className="h-7 w-7" />}
-          <span className="text-xs font-bold drop-shadow">{muted ? 'Ses' : 'Ses'}</span>
-        </button>
-      )}
 
       <PostMoreButton
         post={{

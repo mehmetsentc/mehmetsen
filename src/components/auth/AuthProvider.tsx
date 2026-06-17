@@ -136,12 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!mounted) return
 
+      // Keep loading=true until the first handleAuthUser call fully completes (profile
+      // fetched from Firestore). This prevents AdminGuard from briefly seeing the
+      // fallback user (role='user') and firing the "admin yetkisi gerekli" toast.
+      let firstHandled = false
       unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         devLog('AuthProvider', 'auth state changed', { uid: firebaseUser?.uid ?? null })
-        void handleAuthUser(firebaseUser)
+        void handleAuthUser(firebaseUser).finally(() => {
+          if (mounted && !firstHandled) {
+            firstHandled = true
+            setLoading(false)
+          }
+        })
       })
-
-      if (mounted) setLoading(false)
     })()
 
     return () => {

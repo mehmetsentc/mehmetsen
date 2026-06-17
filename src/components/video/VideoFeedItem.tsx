@@ -305,8 +305,6 @@ function VideoFeedItemInner({
                 onUpdate(video.id, { isSaved: saved, savesCount: count })
               }
               onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
-              muted={muted}
-              onToggleMuted={toggleMuted}
             />
 
             <VideoOverlay video={video} />
@@ -373,8 +371,6 @@ function VideoFeedItemInner({
               onUpdate(video.id, { isSaved: saved, savesCount: count })
             }
             onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
-            muted={muted}
-            onToggleMuted={toggleMuted}
           />
           <VideoOverlay video={video} />
           <VideoCommentSheet
@@ -392,6 +388,16 @@ function VideoFeedItemInner({
   return (
     <div ref={refCallback} data-index={index} className="reels-slide">
       <div className="reels-video-card">
+        {/* Thumbnail background — shows instantly while video buffers, prevents white flash */}
+        {media?.thumbnailUrl && (
+          <img
+            src={media.thumbnailUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover object-center"
+          />
+        )}
+
         <video
           ref={videoRef}
           src={stableSrc}
@@ -421,6 +427,23 @@ function VideoFeedItemInner({
           </div>
         )}
 
+        {/* Muted indicator — tap anywhere on video to unmute */}
+        {muted && isActive && !loading && !paused && (
+          <button
+            type="button"
+            aria-label="Sesi aç"
+            onClick={(e) => { e.stopPropagation(); toggleMuted() }}
+            className="pointer-events-auto absolute bottom-24 left-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm transition-opacity hover:bg-black/80"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </svg>
+            Sesi aç
+          </button>
+        )}
+
         {/* Heart burst on double-tap */}
         {heartBurst && (
           <div
@@ -442,8 +465,6 @@ function VideoFeedItemInner({
             onUpdate(video.id, { isSaved: saved, savesCount: count })
           }
           onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
-          muted={muted}
-          onToggleMuted={toggleMuted}
         />
 
         <VideoOverlay video={video} />

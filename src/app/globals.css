@@ -1039,7 +1039,7 @@
   }
 
   .reels-slide {
-    @apply flex w-full shrink-0 snap-start snap-always items-center justify-center bg-[rgb(var(--color-surface))];
+    @apply flex w-full shrink-0 snap-start snap-always items-center justify-center bg-black;
     height: var(--reels-viewport-h);
     min-height: 420px;
   }

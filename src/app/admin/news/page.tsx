@@ -606,7 +606,12 @@ export default function AdminNewsPage() {
   const categoryParamRef = useRef(categoryParam)
   categoryParamRef.current = categoryParam
 
+  // Guard against concurrent load() calls (e.g. from useSearchParams double-render)
+  const loadInProgressRef = useRef(false)
+
   const load = useCallback(async (page: number, searchOverride?: string) => {
+    if (loadInProgressRef.current) return
+    loadInProgressRef.current = true
     setLoading(true)
     const searchTerm = searchOverride !== undefined ? searchOverride : search
     try {
@@ -622,9 +627,11 @@ export default function AdminNewsPage() {
         setKnownPages(prev => Math.max(prev, page + 2))
       }
       setSelected(new Set())
-    } catch {
+    } catch (err) {
+      console.error('[admin/news] load error:', err)
       toast.error('Haberler yüklenemedi')
     } finally {
+      loadInProgressRef.current = false
       setLoading(false)
     }
   }, [filter, search])
