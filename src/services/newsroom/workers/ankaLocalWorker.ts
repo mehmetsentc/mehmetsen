@@ -13,6 +13,7 @@
  *   4. fingerprint dedup → Firestore `news` koleksiyonuna yaz
  */
 
+import * as cheerio from 'cheerio'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
@@ -107,25 +108,59 @@ function parseJsonLd(html: string): Record<string, unknown> | null {
   return null
 }
 
-// ── <article> paragraflarından içerik çıkar ───────────────────────────────────
-function extractArticleBody(html: string): string {
-  const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
-  const articleHtml = articleMatch ? articleMatch[1] : html
+// ── Cheerio ile makale içeriğini çıkar ───────────────────────────────────────
+const ANKA_CONTENT_SELECTORS = [
+  'article',
+  '[class*="article-body"]', '[class*="articleBody"]',
+  '[class*="haber-icerik"]', '[class*="haberIcerik"]',
+  '[class*="haber-detay"]', '[class*="haberDetay"]',
+  '[class*="news-content"]', '[class*="newsContent"]',
+  '[class*="story-body"]',  '[class*="storyBody"]',
+  '[class*="post-content"]', '[class*="postContent"]',
+  '[class*="entry-content"]',
+  'main',
+]
 
-  return [...articleHtml.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
-    .map(m => m[1]
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#x27;/g, "'")
-      .replace(/\s{2,}/g, ' ')
-      .trim()
-    )
-    .filter(t => t.length > 30)
-    .join('\n\n')
+const ANKA_NOISE_SELECTORS = [
+  'nav', 'header', 'footer', 'aside',
+  '[class*="sidebar"]', '[class*="related"]', '[class*="recommended"]',
+  '[class*="popular"]', '[class*="most-read"]', '[class*="en-cok"]',
+  '[class*="share"]', '[class*="social"]', '[class*="tag"]',
+  '[class*="banner"]', '[class*="ad"]', 'script', 'style', 'noscript',
+]
+
+function extractArticleBody(html: string): string {
+  const $ = cheerio.load(html)
+
+  $(ANKA_NOISE_SELECTORS.join(',')).remove()
+
+  let bestText = ''
+
+  for (const sel of ANKA_CONTENT_SELECTORS) {
+    try {
+      const $el = $(sel).first()
+      if (!$el.length) continue
+
+      const paragraphs = $el.find('p')
+        .map((_i, el) => $(el).text().replace(/\s{2,}/g, ' ').trim())
+        .get()
+        .filter(t => t.length > 30)
+
+      const joined = paragraphs.join('\n\n')
+      if (joined.length > bestText.length) bestText = joined
+      if (joined.length > 500) break
+    } catch { /* selector hatası, sonrakine geç */ }
+  }
+
+  if (bestText.length < 100) {
+    const paragraphs = $('p')
+      .map((_i, el) => $(el).text().replace(/\s{2,}/g, ' ').trim())
+      .get()
+      .filter(t => t.length > 40)
+    bestText = paragraphs.join('\n\n')
+  }
+
+  return bestText
 }
 
 // ── Video URL'si çıkar (YouTube-nocookie embed + MP4) ─────────────────────────

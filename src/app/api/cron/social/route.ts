@@ -213,12 +213,19 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const articleUrl       = buildArticleUrl(id, data)
     const cityName         = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
 
-    // ── AI İçerik Üretimi (hashtag için) ─────────────────────────────────
-    let socialContent = await generateSocialContent(title, spot, cityName)
+    // ── AI İçerik Üretimi — tam metin gönder, 3 paragraflı açıklama al ──
+    // AI'a spot değil tam haber içeriğini (bodyText) veriyoruz; bu sayede
+    // daha zengin, bilgilendirici ve paragraflı bir açıklama üretiyor.
+    const aiContext = bodyText.length > 100 ? bodyText : spot
+    let socialContent = await generateSocialContent(title, aiContext, cityName)
     if (!socialContent) {
+      // Fallback: AI başarısız olursa spot'tan manuel bir caption oluştur
+      const fallbackCaption = spot
+        ? `📰 ${spot}`
+        : `📰 ${title}`
       socialContent = {
         headline: title.slice(0, 60),
-        caption:  '',
+        caption:  fallbackCaption,
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText:  title,
       }
@@ -228,10 +235,11 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const socialImageUrl: string = `https://nahaber.com/api/og/social/${id}`
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
-    // ── Post formatı: tam haber metni + link + hashtag ───────────────────
+    // ── Post formatı: AI'ın ürettiği paragraflı açıklama + link + hashtag ─
+    // socialContent.caption → 3 paragraf, bilgilendirici, emoji'li
     const hashtagStr = socialContent.hashtags.join(' ')
     const fullCaption = [
-      bodyText,
+      socialContent.caption,
       '',
       `🔗 Haberin devamı: ${articleUrl}`,
       '',

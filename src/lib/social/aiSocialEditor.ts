@@ -23,10 +23,10 @@ export interface AISocialContent {
 }
 
 const SYSTEM_PROMPT = `Sen NaHaber'in Sosyal Medya Editörüsün.
-Türkçe haber başlıklarından sosyal medya içeriği üretiyorsun.
+Türkçe haberlerden Instagram ve Facebook için profesyonel sosyal medya içeriği üretiyorsun.
 KURALLARI:
 - headline: Dikkat çekici, kısa, clickbait olmayan TÜRKÇE manşet (max 60 karakter)
-- caption: 200-280 karakter, emoji ile başla, haber özetini ver, URL olmadan bitir
+- caption: 3 paragraf hâlinde haber açıklaması, toplam 400-600 karakter. 1. paragraf emoji ile başlayıp haberin özünü anlatsın. 2. paragraf önemli detayları/rakamları versin. 3. paragraf bağlamı veya önemi anlatsın. Paragraflar arasında boş satır bırak (\\n\\n). URL ekleme.
 - hashtags: TAM OLARAK 5 adet, Türkçe, #ile başlayan, haber konusuyla ilgili
 - altText: SEO uyumlu, haber ne anlattığını açıklayan, 10-20 kelime
 - ÇIKTI: Yalnızca geçerli JSON, başka hiçbir şey ekleme`
@@ -35,13 +35,13 @@ function buildPrompt(title: string, description: string, cityName: string): stri
   return `Aşağıdaki haber için sosyal medya içeriği oluştur:
 
 BAŞLIK: ${title}
-ÖZET: ${description.slice(0, 500)}
+HABERİN İÇERİĞİ: ${description.slice(0, 1500)}
 ŞEHİR: ${cityName}
 
 JSON şeması:
 {
   "headline": "string (max 60 karakter, büyük-küçük harf karışık, dikkat çekici)",
-  "caption": "string (200-280 karakter, emoji ile başla)",
+  "caption": "string (3 paragraf, 400-600 karakter, 1. paragraf emoji ile başlar, paragraflar \\n\\n ile ayrılır, URL içermez)",
   "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5"],
   "altText": "string (10-20 kelime, SEO açıklaması)"
 }`
@@ -61,7 +61,7 @@ function parseAISocialJSON(raw: string, title: string): AISocialContent | null {
     while (tags.length < 5) tags.push('#NaHaber')
     return {
       headline: str(p.headline, title.slice(0, 60), 60),
-      caption:  str(p.caption,  `📰 ${title}`, 300),
+      caption:  str(p.caption,  `📰 ${title}`, 700),
       hashtags: tags,
       altText:  str(p.altText,  title, 200),
     }
