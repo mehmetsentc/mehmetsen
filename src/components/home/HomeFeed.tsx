@@ -3,7 +3,6 @@
 import { useMemo } from 'react'
 import { BreakingStories } from '@/components/home/BreakingStories'
 import { FeaturedSlider } from '@/components/home/FeaturedSlider'
-import { BreakingTicker } from '@/components/home/BreakingTicker'
 import { MarketTicker } from '@/components/home/MarketTicker'
 import { NewsFeedList } from '@/components/home/NewsFeedCard'
 import { CategoryRail } from '@/components/home/CategoryRail'
@@ -29,7 +28,6 @@ export function HomeFeed({ data }: HomeFeedProps) {
 
       <BreakingStories items={breaking} />
       <FeaturedSlider items={featured} />
-      <BreakingTicker items={breaking} />
       <MarketTicker />
 
       <section className="home-section" aria-label="Son haberler">

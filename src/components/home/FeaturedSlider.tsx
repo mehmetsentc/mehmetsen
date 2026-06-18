@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
 import type { NewsItem } from '@/types/newsItem'
@@ -65,7 +65,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
                 tabIndex={index === current ? 0 : -1}
                 aria-hidden={index !== current}
               >
-                <Image
+                <SafeNewsImage
                   src={image}
                   alt={item.title}
                   fill

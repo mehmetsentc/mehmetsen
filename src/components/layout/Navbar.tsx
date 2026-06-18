@@ -34,26 +34,26 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       <header
         className={cn(
           'sticky top-0 z-40 lg:hidden',
-          isFeed
-            ? 'border-b border-red-700 bg-[rgb(var(--color-brand))] text-white'
-            : 'border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]'
+          'border-b border-[rgb(var(--color-brand))]/30 bg-[rgb(var(--color-card))]',
+          isFeed && 'h-[72px]'
         )}
       >
         <div className={cn('flex items-center gap-3 px-4', isFeed ? 'h-[72px]' : 'h-14')}>
           <button
             type="button"
             onClick={onMenuClick}
-            className={isFeed ? 'text-white' : 'text-[rgb(var(--color-text))]'}
+            className="text-[rgb(var(--color-text))]"
             aria-label="Menü"
           >
             <Menu className="h-6 w-6" strokeWidth={2} />
           </button>
 
+          {/* Logo — logo renklerine uyarlanmış: Na=kırmızı, Haber=beyaz, .com=muted */}
           <Link href={ROUTES.FEED} className="flex-1" aria-label="NaHaber">
             <span className="text-[1.45rem] font-black leading-none tracking-tight">
-              <span className={isFeed ? 'text-white' : 'text-[rgb(var(--color-brand))]'}>Na</span>
-              <span className={isFeed ? 'text-white/80' : 'text-[rgb(var(--color-text))]'}>Haber</span>
-              <span className={isFeed ? 'text-white/50 text-base font-semibold' : 'text-[rgb(var(--color-muted))] text-base font-semibold'}>.com</span>
+              <span className="text-[rgb(var(--color-brand))]">Na</span>
+              <span className="text-[rgb(var(--color-text))]">Haber</span>
+              <span className="text-[rgb(var(--color-muted))] text-base font-semibold">.com</span>
             </span>
           </Link>
 
@@ -70,20 +70,14 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             ) : null}
             <Link
               href={ROUTES.NOTIFICATIONS}
-              className={cn(
-                'flex h-9 w-9 items-center justify-center',
-                isFeed ? 'text-white' : 'text-[rgb(var(--color-text))]'
-              )}
+              className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
               aria-label="Bildirimler"
             >
               <Bell className="h-5 w-5" strokeWidth={2} />
             </Link>
             <Link
               href={profileHref}
-              className={cn(
-                'flex h-9 w-9 items-center justify-center',
-                isFeed ? 'text-white' : 'text-[rgb(var(--color-text))]'
-              )}
+              className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
               aria-label="Profil"
             >
               <User className="h-5 w-5" strokeWidth={2} />

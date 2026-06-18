@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -32,8 +32,8 @@ export function CategoryRail({ categoryId, title, items }: CategoryRailProps) {
               href={newsItemDetailHref(item)}
               className="w-[250px] shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
             >
-              <div className="relative aspect-video w-full overflow-hidden bg-neutral-100">
-                <Image src={image} alt={item.title} fill sizes="250px" className="object-cover" />
+              <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-border))]">
+                <SafeNewsImage src={image} alt={item.title} fill sizes="250px" className="object-cover" />
               </div>
               <div className="p-3">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">

@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { Eye } from 'lucide-react'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
 import type { NewsItem } from '@/types/newsItem'
@@ -29,8 +29,8 @@ export function NewsFeedCard({ item, priority = false }: NewsFeedCardProps) {
   return (
     <article className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
       <Link href={newsItemDetailHref(item)} className="block">
-        <div className="relative aspect-video w-full overflow-hidden bg-neutral-100">
-          <Image
+        <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-border))]">
+          <SafeNewsImage
             src={image}
             alt={item.title}
             fill
@@ -41,7 +41,7 @@ export function NewsFeedCard({ item, priority = false }: NewsFeedCardProps) {
         </div>
         <div className="p-4">
           <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[rgb(var(--color-muted))]">
-            <span className="rounded bg-red-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[rgb(var(--color-brand))]">
+            <span className="rounded bg-[rgb(var(--color-brand))]/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[rgb(var(--color-brand))]">
               {newsItemCategoryLabel(item)}
             </span>
             {item.source ? <span>{item.source}</span> : null}

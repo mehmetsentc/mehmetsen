@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { Zap } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
@@ -22,7 +22,7 @@ function StoryCard({ item, priority = false }: { item: NewsItem; priority?: bool
       className="relative h-[220px] w-[124px] shrink-0 snap-start overflow-hidden rounded-2xl bg-neutral-900"
       style={{ aspectRatio: '9/16' }}
     >
-      <Image
+      <SafeNewsImage
         src={image}
         alt={item.title}
         fill

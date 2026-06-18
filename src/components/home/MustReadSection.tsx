@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import type { NewsItem } from '@/types/newsItem'
@@ -27,8 +27,8 @@ export function MustReadSection({ items }: MustReadSectionProps) {
               href={newsItemDetailHref(item)}
               className="flex gap-3 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2"
             >
-              <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
-                <Image src={image} alt={item.title} fill sizes="128px" className="object-cover" />
+              <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-xl bg-[rgb(var(--color-border))]">
+                <SafeNewsImage src={image} alt={item.title} fill sizes="128px" className="object-cover" />
               </div>
               <div className="flex min-w-0 flex-1 flex-col justify-center py-1">
                 <h3 className="line-clamp-3 text-base font-black leading-snug text-[rgb(var(--color-text))]">

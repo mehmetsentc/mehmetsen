@@ -12,12 +12,11 @@ interface MarketCellProps {
 function MarketCell({ label, value, change }: MarketCellProps) {
   const up = change >= 0
   return (
-    <div className="flex min-w-[140px] shrink-0 flex-col gap-0.5 border-r border-white/10 px-4 py-3 last:border-r-0">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-white/60">{label}</span>
-      <span className="text-sm font-black tabular-nums text-white">{value}</span>
-      <span className={`text-[11px] font-semibold tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
-        {up ? '+' : ''}
-        {change.toFixed(2)}%
+    <div className="flex flex-col gap-0.5 border-r border-white/10 px-3 py-2.5 last:border-r-0">
+      <span className="truncate text-[9px] font-bold uppercase tracking-wider text-white/55">{label}</span>
+      <span className="text-[13px] font-black tabular-nums leading-tight text-white">{value}</span>
+      <span className={`text-[10px] font-semibold tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+        {up ? '+' : ''}{change.toFixed(2)}%
       </span>
     </div>
   )
@@ -49,8 +48,8 @@ export function MarketTicker() {
   }, [])
 
   return (
-    <section className="home-full-bleed bg-neutral-950 md:home-contained md:rounded-xl" aria-label="Piyasalar">
-      <div className="flex overflow-x-auto scrollbar-hide">
+    <section className="home-full-bleed bg-[rgb(var(--color-card))] md:home-contained md:rounded-xl" aria-label="Piyasalar" style={{borderTop:'1px solid rgb(var(--color-brand)/0.4)',borderBottom:'1px solid rgb(var(--color-border))'}}>
+      <div className="grid grid-cols-4">
         <MarketCell label="Dolar" value={fmt(rates.usdTry.value, 4)} change={rates.usdTry.change} />
         <MarketCell label="Euro" value={fmt(rates.eurTry.value, 4)} change={rates.eurTry.change} />
         <MarketCell
