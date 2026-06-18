@@ -21,16 +21,18 @@ const ReelsAudioContext = createContext<ReelsAudioContextValue | undefined>(unde
 const REELS_MUTED_KEY = 'nahaber-reels-muted'
 
 function readInitialMuted(): boolean {
-  if (typeof window === 'undefined') return true
+  if (typeof window === 'undefined') return false
   try {
-    return sessionStorage.getItem(REELS_MUTED_KEY) !== '0'
+    const stored = sessionStorage.getItem(REELS_MUTED_KEY)
+    // '1' = muted, '0' = unmuted; null (first visit) → unmuted (ses açık)
+    return stored === '1'
   } catch {
-    return true
+    return false
   }
 }
 
 export function ReelsAudioProvider({ children }: { children: ReactNode }) {
-  const [muted, setMutedState] = useState(true)
+  const [muted, setMutedState] = useState(false)
 
   useEffect(() => {
     setMutedState(readInitialMuted())
