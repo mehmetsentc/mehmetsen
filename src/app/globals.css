@@ -4,13 +4,14 @@
 
 @layer base {
   :root {
+    /* Light tema — beyaz/açık arka plan, koyu metin */
     --color-brand: 232 30 52;
-    --color-surface: 10 15 35;
-    --color-card: 16 23 50;
-    --color-border: 30 42 78;
-    --color-text: 245 247 252;
-    --color-muted: 148 163 184;
-    --color-nav-hover: 22 32 65;
+    --color-surface: 248 249 252;
+    --color-card: 255 255 255;
+    --color-border: 220 224 234;
+    --color-text: 15 20 40;
+    --color-muted: 90 103 128;
+    --color-nav-hover: 240 242 247;
     --sidebar-width-collapsed: 256px;
     --sidebar-width-expanded: 256px;
     --layout-gutter: 1.5rem;

@@ -689,8 +689,6 @@ export function validateCategoryClassification(
     !sports &&
     !nationalScope &&
     !siyaset &&
-    input.editorType !== 'trend' &&
-    input.editorType !== 'local' &&
     categoryId !== 'teknoloji' &&
     categoryId !== 'trend' &&
     categoryId !== 'yerel-haber' &&
