@@ -64,7 +64,7 @@ const CATEGORY_DESCRIPTIONS: Record<NewsCategory, string> = {
   festival:      'Kültür/sanat festivalleri, film festivali (Cannes, Berlin, İstanbul Film Festivali)',
   gastronomi:    'Yemek, tarif, restoran haberleri, şef, Michelin yıldızı, mutfak kültürü, foodie',
   otomobil:      'Araba, araç, otomobil, motosiklet, trafik, elektrikli araç, TOGG, yeni model tanıtımı',
-  'yerel-haber': 'Belirli bir şehir/ilçeye ait yerel haber (tek şehir adı geçiyor)',
+  'yerel-haber': 'Yalnızca TÜRKİYE\'deki tek bir il/ilçeyi kapsayan yerel olay (belediye kararı, yerel kaza, yerel yangın). YURT DIŞI haberler için ASLA kullanma.',
 }
 
 export interface ClassifierResult {
@@ -103,10 +103,11 @@ KATEGORİ SEÇENEKLERİ:
 ${categoryList}
 
 TEMEL KURALLAR (hepsini uygula):
-1. KAYNAK ADINI GÖRMEZDEN GEL — "Milliyet Magazin", "Sabah Spor", "Hürriyet Otomobil" gibi kaynak isimleri kategoriye etki ETMEMELİ. Haberin GERÇEK içeriği her şeyi belirler.
-2. Siyasi/meclis/seçim/hükümet içeriği → mutlaka "siyaset" (kaynak spor gazetesi bile olsa)
-3. Yabancı ülke/savaş/diplomasi haberi → mutlaka "dunya"
-4. Ekonomi/borsa/döviz/şirket haberi → mutlaka "ekonomi"
+1. KAYNAK ADINI VE KAYNAK GAZETENİN ŞEHRİNİ GÖRMEZDEN GEL — "Bursa Gazetesi", "Milliyet Magazin", "Sabah Spor" gibi kaynak isimleri kategoriye etki ETMEMELİ. Haberin GERÇEK coğrafyası ve içeriği her şeyi belirler.
+2. YURT DIŞI HABER ALTIN KURALI — Olay İngiltere, ABD, Almanya, Fransa, Gazze, Ukrayna veya Türkiye DIŞINDA herhangi bir yerde geçiyorsa → KESİNLİKLE "dunya". Kaynak gazete Bursa'dan çıksa bile, haber İngiltere'deki bir olaysa → "dunya". Asla "yerel-haber" değil.
+3. yerel-haber → SADECE olayın geçtiği yer Türkiye'deki tek bir il/ilçe ise. "Bursa Gazetesi İngiltere'deki haberi yazdı" → dunya.
+4. Siyasi/meclis/seçim/hükümet içeriği → mutlaka "siyaset" (kaynak spor gazetesi bile olsa)
+5. Ekonomi/borsa/döviz/şirket haberi → mutlaka "ekonomi"
 5. Futbol maçı/gol/lig/transfer → "futbol" (genel "spor" değil)
 6. Yemek/restoran/şef/tarif haberi → "gastronomi"
 7. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil"

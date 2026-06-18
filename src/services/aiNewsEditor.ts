@@ -273,7 +273,13 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
 - title, spot, summary, content HEPSİ birbirinden farklı bilgi sunsun — kopyalama.
 - Paragraflar arası \\n\\n kullan. Cümle ortasında satır kırma yapma.
 - İÇERİK KALİTE KURALI: title/spot/summary/content HİÇBİR ZAMAN noktalı virgül (;), virgül (,), tire (-/—), üç nokta (...), açılış parantezi ile başlamamalı. RSS'ten kesik gelmiş cümleler tespit edilirse TAMAMEN YENİDEN YAZ — yarım cümle asla yayınlama.
-- KAYNAK ŞEHRİ KARIŞIKLIĞI: city alanı için KAYNAK GAZETENİN şehrini değil, haberin KONUSUNUN geçtiği şehri yaz. Antalya Ekspres'ten Gazze haberi geliyorsa city: null. Hürriyet'ten Ankara kararı geliyorsa city: "Ankara".
+- KAYNAK ŞEHRİ KARIŞIKLIĞI (KRİTİK KURAL):
+  * city alanı için KAYNAK GAZETENİN şehrini ASLA kullanma. Haberin KONUSUNUN geçtiği Türk şehrini yaz.
+  * Bursa Gazetesi → İngiltere haberi: city=null, country="İngiltere", category="dunya"
+  * Antalya Ekspres → Gazze haberi: city=null, country="Filistin", category="dunya"
+  * Hürriyet → Ankara kararı: city="Ankara", country="Türkiye"
+  * Olay yurt dışında geçiyorsa: city=null, country=olayın geçtiği ülke adı (Türkçe), category="dunya"
+- TAGS KURALI: tags dizisine KAYNAK GAZETENİN ŞEHRİNİ ekleme. Sadece haberin konusuyla ilgili etiketler ekle. "Bursa Gazetesi"nden İngiltere haberi geliyorsa tags'e "bursa" ekleme.
 - ÇIKTI KALİTE ZORUNLULUĞU:
   * content alanı minimum 150 kelime içermelidir.
   * content içinde HTML tag, JSON yapısı ({\\"className\\":), React/Next.js kodu, script bloğu, self.__next_f gibi teknik içerik KESİNLİKLE yasak.

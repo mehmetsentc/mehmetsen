@@ -515,10 +515,7 @@ export async function processNewsroomArticle(
     let citySlug = geo.citySlug
     const country = geo.country
 
-    if (workingInput.forcedCitySlug?.trim()) {
-      citySlug = normalizeCitySlug(workingInput.forcedCitySlug)
-      city = workingInput.forcedCity?.trim() || getCityCategoryName(citySlug)
-    }
+    // forcedDistrict uygula (her zaman)
     if (workingInput.forcedDistrict?.trim()) {
       district = workingInput.forcedDistrict.trim()
     }
@@ -545,10 +542,14 @@ export async function processNewsroomArticle(
     }
 
     // ── AI Final Editor: category sanity check ──────────────────────────────
-    // Fast Gemini Flash call that reads actual content and can override rule-based
-    // classification. Catches cases like magazin-source → local/gündem articles.
-    // SKIP if forcedCategoryId is set — trend/influencer/breaking editors lock category explicitly.
-    if (!workingInput.forcedCategoryId) {
+    // Local worker'dan gelen haberler de dahil — kaynak şehrini haber içeriğiyle
+    // örtüşmeyen kategorilere atamayı önlemek için her zaman çalışır.
+    // SADECE trend/influencer/breaking gibi içerik-bağımsız editörler atlar.
+    const skipAiCategoryCheck =
+      workingInput.forcedCategoryId &&
+      workingInput.editorType !== 'local'
+
+    if (!skipAiCategoryCheck) {
       try {
         const aiCheck = await classifyArticleCategory(
           rewritten.title,
@@ -566,6 +567,21 @@ export async function processNewsroomArticle(
       } catch {
         // Non-blocking — if AI check fails, keep the rule-based category
       }
+    }
+
+    // ── forcedCitySlug override — SADECE yerel-haber kategorisinde uygula ──
+    // Yerel gazete kaynağından gelen dünya/gündem/spor haberleri için
+    // kaynak şehrini zorla atama — haber İngiltere'deyse city = null olsun.
+    const finalCategoryIsLocal = classification.categoryId === 'yerel-haber'
+    const articleIsAbroad = country && country !== 'Türkiye'
+
+    if (workingInput.forcedCitySlug?.trim() && finalCategoryIsLocal && !articleIsAbroad) {
+      citySlug = normalizeCitySlug(workingInput.forcedCitySlug)
+      city = workingInput.forcedCity?.trim() || getCityCategoryName(citySlug)
+    } else if (articleIsAbroad) {
+      // Yurt dışı haber — kaynak şehri ne olursa olsun city sıfırla
+      city = null
+      citySlug = ''
     }
 
     const moderationRaw = await moderateContent({
