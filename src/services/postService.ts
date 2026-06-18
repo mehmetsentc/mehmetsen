@@ -425,14 +425,15 @@ export const postService = {
     let newsHasMore = false
 
     const queryAttempts: Parameters<typeof query>[1][][] = [
-      // Best for mixed videoUrl + audioUrl reels on published news
+      // Primary: server-side filter on hasVideo flag — fast, targeted
       [
+        where('hasVideo', '==', true),
         where('status', '==', 'published'),
         orderBy('createdAt', 'desc'),
-        limit(200),
+        limit(REELS_PAGE_SIZE),
         ...(lastDoc ? [startAfter(lastDoc)] : []),
       ],
-      // Legacy: explicit videoUrl field
+      // Fallback: explicit videoUrl field
       [
         where('videoUrl', '!=', ''),
         orderBy('videoUrl'),
@@ -440,20 +441,17 @@ export const postService = {
         limit(REELS_PAGE_SIZE),
         ...(lastDoc ? [startAfter(lastDoc)] : []),
       ],
-      // Broad fallback without status filter
-      [orderBy('createdAt', 'desc'), limit(200), ...(lastDoc ? [startAfter(lastDoc)] : [])],
     ]
 
     for (let attempt = 0; attempt < queryAttempts.length; attempt++) {
       const constraints = queryAttempts[attempt]
-      const fetchLimit = attempt === 1 ? REELS_PAGE_SIZE : 200
       try {
         const snap = await getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints))
         const posts = mapReelsDocs(snap.docs).slice(0, REELS_PAGE_SIZE)
         if (posts.length > 0 || lastDoc) {
           newsPosts = posts
           newsLastDoc = snap.docs[snap.docs.length - 1] ?? null
-          newsHasMore = snap.docs.length >= fetchLimit
+          newsHasMore = snap.docs.length >= REELS_PAGE_SIZE
           devLog('postService', 'getVideoFeed news hit', { raw: snap.docs.length, videos: posts.length })
           break
         }
