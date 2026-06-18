@@ -12,10 +12,10 @@ interface MarketCellProps {
 function MarketCell({ label, value, change }: MarketCellProps) {
   const up = change >= 0
   return (
-    <div className="flex flex-col gap-0.5 border-r border-white/10 px-3 py-2.5 last:border-r-0">
-      <span className="truncate text-[9px] font-bold uppercase tracking-wider text-white/55">{label}</span>
-      <span className="text-[13px] font-black tabular-nums leading-tight text-white">{value}</span>
-      <span className={`text-[10px] font-semibold tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+    <div className="flex flex-col gap-0.5 border-r border-[rgb(var(--color-border))] px-3 py-2.5 last:border-r-0">
+      <span className="truncate text-[9px] font-bold uppercase tracking-wider text-[rgb(var(--color-muted))]">{label}</span>
+      <span className="text-[13px] font-black tabular-nums leading-tight text-[rgb(var(--color-text))]">{value}</span>
+      <span className={`text-[10px] font-semibold tabular-nums ${up ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
         {up ? '+' : ''}{change.toFixed(2)}%
       </span>
     </div>
