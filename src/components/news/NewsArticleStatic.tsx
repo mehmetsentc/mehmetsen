@@ -144,6 +144,9 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
                     allowFullScreen
                     loading="lazy"
                   />
+                  <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/25 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/65">
+                    nahaber.com
+                  </span>
                 </div>
               </figure>
             )
@@ -161,6 +164,9 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
                     playsInline
                     className="absolute inset-0 h-full w-full object-contain"
                   />
+                  <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/25 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/65">
+                    nahaber.com
+                  </span>
                 </div>
               </figure>
             )
@@ -171,6 +177,9 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
               <figure className="relative">
                 <div className="relative aspect-[16/9] max-h-[min(70vh,560px)] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
                   <SliderImage src={imageUrl} alt={post.title} priority />
+                  <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/70">
+                    nahaber.com
+                  </span>
                 </div>
               </figure>
             )

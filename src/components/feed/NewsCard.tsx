@@ -53,16 +53,13 @@ export function NewsCard({ post }: NewsCardProps) {
     <article className="news-card">
       <div className="flex items-center justify-between gap-3 border-b border-[rgb(var(--color-border))] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={post.authorDisplayName} src={post.authorPhotoURL} size="sm" />
+          <Avatar name="NaHaber" src={null} size="sm" />
           <div className="min-w-0">
-            <Link
-              href={ROUTES.PROFILE(post.authorUsername)}
-              className="truncate text-sm font-semibold text-[rgb(var(--color-text))] hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              {post.authorDisplayName}
-            </Link>
+            <span className="truncate text-sm font-semibold text-[rgb(var(--color-text))]">
+              NaHaber
+            </span>
             <div className="flex items-center gap-1.5 text-xs text-[rgb(var(--color-muted))]">
-              <span>@{post.authorUsername}</span>
+              <span>@nahaber</span>
               {timeAgo && (
                 <>
                   <span>·</span>
@@ -114,6 +111,10 @@ export function NewsCard({ post }: NewsCardProps) {
                   {post.city}
                 </span>
               )}
+              {/* NaHaber watermark */}
+              <span className="absolute bottom-10 right-2 z-10 rounded px-1 py-0.5 text-[9px] font-bold text-white/60 tracking-wide">
+                nahaber.com
+              </span>
               <div className="feed-media-card-shade" aria-hidden />
               <div className="feed-media-card-overlay">
                 <h2 className="feed-media-headline">{post.title}</h2>
@@ -142,7 +143,7 @@ export function NewsCard({ post }: NewsCardProps) {
                 <span aria-hidden>·</span>
               </>
             )}
-            <span>{post.authorDisplayName}</span>
+            <span>NaHaber</span>
           </div>
         </div>
       </Link>

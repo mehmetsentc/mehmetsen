@@ -19,14 +19,14 @@ function StoryCard({ item, priority = false }: { item: NewsItem; priority?: bool
   return (
     <Link
       href={href}
-      className="relative h-[220px] w-[124px] shrink-0 snap-start overflow-hidden rounded-2xl bg-neutral-900"
+      className="relative h-[290px] w-[163px] shrink-0 snap-start overflow-hidden rounded-2xl bg-neutral-900"
       style={{ aspectRatio: '9/16' }}
     >
       <SafeNewsImage
         src={image}
         alt={item.title}
         fill
-        sizes="124px"
+        sizes="163px"
         priority={priority}
         className="object-cover"
       />
@@ -34,7 +34,11 @@ function StoryCard({ item, priority = false }: { item: NewsItem; priority?: bool
       <div className="absolute left-2 top-2 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
         Son Dakika
       </div>
-      <p className="absolute bottom-0 left-0 right-0 line-clamp-2 px-2.5 pb-3 text-[11px] font-bold leading-snug text-white">
+      {/* NaHaber watermark */}
+      <span className="absolute bottom-9 right-2 rounded px-1 py-0.5 text-[8px] font-bold text-white/60 tracking-wide">
+        nahaber.com
+      </span>
+      <p className="absolute bottom-0 left-0 right-0 line-clamp-3 px-2.5 pb-3 text-[12px] font-bold leading-snug text-white">
         {item.title}
       </p>
     </Link>
@@ -59,7 +63,7 @@ export function BreakingStories({ items }: BreakingStoriesProps) {
         <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide snap-x snap-mandatory">
           <Link
             href={ROUTES.CATEGORY('son-dakika')}
-            className="relative flex h-[220px] w-[124px] shrink-0 snap-start flex-col items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-900 p-3 text-center"
+            className="relative flex h-[290px] w-[163px] shrink-0 snap-start flex-col items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-900 p-3 text-center"
             style={{ aspectRatio: '9/16' }}
           >
             <Zap className="mb-2 h-8 w-8 text-white" />

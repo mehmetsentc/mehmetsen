@@ -280,6 +280,7 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
   * Hürriyet → Ankara kararı: city="Ankara", country="Türkiye"
   * Olay yurt dışında geçiyorsa: city=null, country=olayın geçtiği ülke adı (Türkçe), category="dunya"
 - TAGS KURALI: tags dizisine KAYNAK GAZETENİN ŞEHRİNİ ekleme. Sadece haberin konusuyla ilgili etiketler ekle. "Bursa Gazetesi"nden İngiltere haberi geliyorsa tags'e "bursa" ekleme.
+- KAYNAK AJANS/GAZETE ADI YASAK: İçerikte "Anka Ajansı", "AA", "DHA", "İHA", "Bursa Gazetesi" gibi kaynak ajans veya gazete adı ASLA yazma. Haber NaHaber editörü tarafından yazılıyormuş gibi kaleme al. Alıntı gerektiğinde yalnızca birincil kaynağı (kişi/kurum) referans göster.
 - ÇIKTI KALİTE ZORUNLULUĞU:
   * content alanı minimum 150 kelime içermelidir.
   * content içinde HTML tag, JSON yapısı ({\\"className\\":), React/Next.js kodu, script bloğu, self.__next_f gibi teknik içerik KESİNLİKLE yasak.

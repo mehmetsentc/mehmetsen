@@ -38,13 +38,16 @@ export function NewsFeedCard({ item, priority = false }: NewsFeedCardProps) {
             priority={priority}
             className="object-cover"
           />
+          {/* NaHaber watermark */}
+          <span className="absolute bottom-2 right-2 rounded px-1.5 py-0.5 text-[9px] font-bold text-white/70 tracking-wide bg-black/20">
+            nahaber.com
+          </span>
         </div>
         <div className="p-4">
           <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[rgb(var(--color-muted))]">
             <span className="rounded bg-[rgb(var(--color-brand))]/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[rgb(var(--color-brand))]">
               {newsItemCategoryLabel(item)}
             </span>
-            {item.source ? <span>{item.source}</span> : null}
             {dateLabel ? <span>{dateLabel}</span> : null}
           </div>
           <h3 className="line-clamp-3 text-lg font-black leading-snug text-[rgb(var(--color-text))] md:text-xl">
