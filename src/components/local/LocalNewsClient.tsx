@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  MapPin, Search, X, ChevronDown,
+  MapPin, Search, X,
   Navigation, AlertCircle, Loader2,
 } from 'lucide-react'
 import { TURKISH_PROVINCES } from '@/constants/cities'
@@ -31,81 +31,52 @@ interface LocalCity {
   lng: number
 }
 
-function searchCities(q: string): LocalCity[] {
-  const provinces = q.trim()
-    ? TURKISH_PROVINCES.filter(p =>
-        p.name.toLocaleLowerCase('tr-TR').includes(q.toLocaleLowerCase('tr-TR')) ||
-        p.slug.includes(q.toLocaleLowerCase('tr-TR'))
-      ).slice(0, 12)
-    : TURKISH_PROVINCES.slice(0, 20)
-  return provinces.map(p => ({ slug: p.slug, name: p.name, lat: p.lat, lng: p.lng }))
-}
-
-function CitySelectorSheet({ onSelect, onClose }: { onSelect: (c: LocalCity) => void; onClose: () => void }) {
-  const [query, setQuery] = useState('')
-  const results = useMemo(() => searchCities(query), [query])
-  const inputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => { inputRef.current?.focus() }, [])
-
-  return (
-    <div className="fixed inset-0 z-[150] flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[80dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-[rgb(var(--color-surface))] shadow-2xl sm:rounded-3xl">
-        <div className="flex justify-center pt-3 sm:hidden">
-          <div className="h-1 w-10 rounded-full bg-[rgb(var(--color-border))]" />
-        </div>
-        <div className="flex items-center gap-3 border-b border-[rgb(var(--color-border))] px-4 py-3">
-          <MapPin className="h-5 w-5 text-[rgb(var(--color-brand))]" />
-          <h2 className="flex-1 text-base font-black text-[rgb(var(--color-text))]">Şehir Seç</h2>
-          <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-[rgb(var(--color-card))]">
-            <X className="h-4 w-4 text-[rgb(var(--color-muted))]" />
-          </button>
-        </div>
-        <div className="border-b border-[rgb(var(--color-border))] px-4 py-3">
-          <div className="flex items-center gap-2 rounded-xl bg-[rgb(var(--color-card))] px-3 py-2.5">
-            <Search className="h-4 w-4 shrink-0 text-[rgb(var(--color-muted))]" />
-            <input ref={inputRef} type="search" placeholder="Şehir ara… (İstanbul, İzmir…)"
-              value={query} onChange={e => setQuery(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none" />
-            {query && (
-              <button type="button" onClick={() => setQuery('')}>
-                <X className="h-3.5 w-3.5 text-[rgb(var(--color-muted))]" />
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {results.map(city => (
-            <button key={city.slug} type="button" onClick={() => onSelect(city)}
-              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[rgb(var(--color-card))]">
-              <MapPin className="h-4 w-4 shrink-0 text-[rgb(var(--color-muted))]" />
-              <span className="text-sm font-semibold text-[rgb(var(--color-text))]">{city.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+const ALL_CITIES: LocalCity[] = TURKISH_PROVINCES.map(p => ({
+  slug: p.slug,
+  name: p.name,
+  lat: p.lat,
+  lng: p.lng,
+}))
 
 export function LocalNewsClient() {
   const [locationState, setLocationState] = useState<LocationState>('idle')
   const [city, setCity]               = useState<LocalCity | null>(null)
+  const [query, setQuery]             = useState('')
   const [posts, setPosts]             = useState<TimelinePost[]>([])
   const [lastDoc, setLastDoc]         = useState<QueryDocumentSnapshot | null>(null)
   const [hasMore, setHasMore]         = useState(false)
   const [loading, setLoading]         = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError]             = useState<string | null>(null)
-  const [showCitySheet, setShowCitySheet] = usePageState(PAGE_STATE_KEYS.localCitySheetOpen, false)
   const [storedCitySlug, setStoredCitySlug] = usePageState<string | null>(
     PAGE_STATE_KEYS.localCitySlug,
     null
   )
-  const requestedRef = useRef(false)
-  const citySlugRef  = useRef<string | null>(null)
-  // GPS iptal bayrağı — kullanıcı manuel şehir seçerse GPS sonucu yok sayılır
-  const geoAbortRef  = useRef(false)
+
+  const requestedRef   = useRef(false)
+  const citySlugRef    = useRef<string | null>(null)
+  const geoAbortRef    = useRef(false)
+  const chipsScrollRef = useRef<HTMLDivElement>(null)
+  const selectedChipRef = useRef<HTMLButtonElement>(null)
+
+  // Filtered city list based on search query
+  const filteredCities = query.trim()
+    ? ALL_CITIES.filter(c =>
+        c.name.toLocaleLowerCase('tr-TR').includes(query.toLocaleLowerCase('tr-TR')) ||
+        c.slug.includes(query.toLocaleLowerCase('tr-TR'))
+      )
+    : ALL_CITIES
+
+  // Scroll selected chip into view
+  useEffect(() => {
+    if (selectedChipRef.current && chipsScrollRef.current) {
+      selectedChipRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      })
+    }
+  }, [city?.slug])
 
   const fetchFirst = useCallback(async (citySlug: string) => {
     citySlugRef.current = citySlug
@@ -116,17 +87,11 @@ export function LocalNewsClient() {
     setHasMore(false)
 
     try {
-      let result
+      const result = citySlug === '__all__'
+        ? await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
+        : await postService.getNewsTimeline(undefined, { citySlug })
 
-      if (citySlug === '__all__') {
-        result = await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
-      } else {
-        result = await postService.getNewsTimeline(undefined, { citySlug })
-      }
-
-      // Bu fetch hâlâ geçerliyse güncelle (araya başka bir şehir girdiyse atla)
       if (citySlugRef.current !== citySlug) return
-
       setPosts(result.posts as TimelinePost[])
       setLastDoc(result.lastDoc ?? null)
       setHasMore(result.hasMore)
@@ -135,11 +100,7 @@ export function LocalNewsClient() {
       console.error('[LocalNewsClient] fetch failed:', err)
       setError('Haberler yüklenemedi')
     } finally {
-      // Yalnızca bu fetch hâlâ aktifse loading'i kapat
-      // (eski fetch'in finally'si yeni fetch'in loading=true'sunu ezmemeli)
-      if (citySlugRef.current === citySlug) {
-        setLoading(false)
-      }
+      if (citySlugRef.current === citySlug) setLoading(false)
     }
   }, [])
 
@@ -147,9 +108,7 @@ export function LocalNewsClient() {
     if (!lastDoc || loadingMore || !hasMore) return
     setLoadingMore(true)
     try {
-      const params = city
-        ? { citySlug: city.slug }
-        : { categoryId: 'yerel-haber' }
+      const params = city ? { citySlug: city.slug } : { categoryId: 'yerel-haber' }
       const result = await postService.getNewsTimeline(lastDoc, params)
       setPosts(prev => [...prev, ...result.posts as TimelinePost[]])
       setLastDoc(result.lastDoc ?? null)
@@ -168,7 +127,6 @@ export function LocalNewsClient() {
     setLocationState('requesting')
     try {
       const pos = await getCurrentPosition()
-      // GPS sonucu gelene kadar kullanıcı manuel şehir seçtiyse yok say
       if (geoAbortRef.current) return
       const { latitude: lat, longitude: lng } = pos.coords
       const slug     = nearestProvinceSlug(lat, lng)
@@ -180,7 +138,6 @@ export function LocalNewsClient() {
     } catch {
       if (geoAbortRef.current) return
       setLocationState('denied')
-      setShowCitySheet(true)
       void fetchFirst('__all__')
     }
   }, [fetchFirst])
@@ -188,7 +145,7 @@ export function LocalNewsClient() {
   useEffect(() => {
     const slug = storedCitySlug ?? readStoredUserLocation()?.citySlug
     if (slug && slug !== '__all__') {
-      const province = TURKISH_PROVINCES.find((p) => p.slug === slug)
+      const province = TURKISH_PROVINCES.find(p => p.slug === slug)
       if (province) {
         setCity({ slug: province.slug, name: province.name, lat: province.lat, lng: province.lng })
         setLocationState('stored')
@@ -204,101 +161,137 @@ export function LocalNewsClient() {
   }, [city?.slug, fetchFirst])
 
   const handleSelectCity = useCallback((selected: LocalCity) => {
-    geoAbortRef.current = true  // GPS sonucu gelirse yok say
+    geoAbortRef.current = true
     setCity(selected)
     setStoredCitySlug(selected.slug)
-    setShowCitySheet(false)
     setLocationState('stored')
-    writeStoredUserLocation({ citySlug: selected.slug, cityName: selected.name, lat: selected.lat, lng: selected.lng, source: 'geolocation', updatedAt: Date.now() })
+    setQuery('')
+    writeStoredUserLocation({
+      citySlug: selected.slug, cityName: selected.name,
+      lat: selected.lat, lng: selected.lng,
+      source: 'geolocation', updatedAt: Date.now(),
+    })
     requestedRef.current = true
-  }, [setShowCitySheet, setStoredCitySlug])
+  }, [setStoredCitySlug])
 
   return (
-    <div className={cn('w-full pb-8')}>
-      {/* Konum pill */}
-      <div className="mb-4 px-3 sm:px-4">
-        <button type="button" onClick={() => setShowCitySheet(true)}
-          className={cn(
-            'flex w-full items-center gap-2 rounded-2xl border px-4 py-3 text-left transition-all',
-            city ? 'border-[rgb(var(--color-brand))]/40 bg-[rgb(var(--color-brand))]/5'
-                 : 'border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]'
-          )}>
-          {locationState === 'requesting'
-            ? <Loader2 className="h-5 w-5 animate-spin text-[rgb(var(--color-brand))]" />
-            : locationState === 'denied'
-              ? <AlertCircle className="h-5 w-5 text-amber-500" />
-              : <MapPin className="h-5 w-5 text-[rgb(var(--color-brand))]" />}
-          <div className="min-w-0 flex-1">
-            <p className={cn('text-base font-black leading-tight',
-              city ? 'text-[rgb(var(--color-text))]' : 'text-[rgb(var(--color-muted))]')}>
-              {locationState === 'requesting' ? 'Konum alınıyor…' : city ? `📍 ${city.name}` : 'Şehir seçilmedi'}
-            </p>
-            <p className="text-[11px] text-[rgb(var(--color-muted))]">
-              {locationState === 'granted' ? 'GPS ile tespit edildi'
-                : locationState === 'stored' ? 'Kaydedilmiş konum'
-                : locationState === 'denied' ? 'Tüm yerel haberler gösteriliyor · Şehir seç'
-                : ''}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-[rgb(var(--color-muted))]">
-            <span>Değiştir</span>
-            <ChevronDown className="h-3.5 w-3.5" />
-          </div>
-        </button>
+    <div className="w-full pb-8">
 
-        {locationState !== 'requesting' && city && (
-          <button type="button"
+      {/* ── Şehir seçici: arama + kaydırmalı chip'ler ── */}
+      <div className="sticky top-0 z-20 bg-[rgb(var(--color-surface))]/95 backdrop-blur-sm border-b border-[rgb(var(--color-border))] pb-2">
+
+        {/* Arama + GPS satırı */}
+        <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+          <div className="flex flex-1 items-center gap-2 rounded-xl bg-[rgb(var(--color-card))] border border-[rgb(var(--color-border))] px-3 py-2">
+            <Search className="h-4 w-4 shrink-0 text-[rgb(var(--color-muted))]" />
+            <input
+              type="search"
+              placeholder="Şehir ara… (İstanbul, Bursa…)"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="flex-1 bg-transparent text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery('')} className="shrink-0">
+                <X className="h-3.5 w-3.5 text-[rgb(var(--color-muted))]" />
+              </button>
+            )}
+          </div>
+
+          {/* GPS butonu */}
+          <button
+            type="button"
             onClick={() => { requestedRef.current = false; void requestGeolocation() }}
-            className="mt-2 flex items-center gap-2 text-xs text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]">
-            <Navigation className="h-3.5 w-3.5" />
-            GPS ile konumu güncelle
+            title="GPS ile tespit et"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))] transition-colors"
+          >
+            {locationState === 'requesting'
+              ? <Loader2 className="h-4 w-4 animate-spin text-[rgb(var(--color-brand))]" />
+              : <Navigation className="h-4 w-4" />}
           </button>
+        </div>
+
+        {/* 81 il chip'leri — yatay kaydırma */}
+        <div
+          ref={chipsScrollRef}
+          className="flex gap-2 overflow-x-auto px-3 pb-1 scrollbar-hide snap-x"
+        >
+          {filteredCities.map(c => {
+            const isSelected = city?.slug === c.slug
+            return (
+              <button
+                key={c.slug}
+                ref={isSelected ? selectedChipRef : null}
+                type="button"
+                onClick={() => handleSelectCity(c)}
+                className={cn(
+                  'shrink-0 snap-start rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all',
+                  isSelected
+                    ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
+                    : 'bg-[rgb(var(--color-card))] border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:border-[rgb(var(--color-primary))]/40'
+                )}
+              >
+                {c.name}
+              </button>
+            )
+          })}
+
+          {filteredCities.length === 0 && (
+            <p className="py-1.5 text-xs text-[rgb(var(--color-muted))]">Şehir bulunamadı</p>
+          )}
+        </div>
+
+        {/* Seçili şehir etiketi */}
+        {city && (
+          <div className="flex items-center gap-1.5 px-3 pt-1 pb-0.5">
+            <MapPin className="h-3 w-3 text-[rgb(var(--color-brand))]" />
+            <span className="text-xs font-semibold text-[rgb(var(--color-brand))]">{city.name}</span>
+            <span className="text-xs text-[rgb(var(--color-muted))]">
+              {locationState === 'granted' ? '· GPS' : locationState === 'stored' ? '· Kaydedilmiş' : ''}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Feed — ana feed ile aynı TimelineItem */}
-      {loading ? (
-        <div className="space-y-0">
-          {[...Array(4)].map((_, i) => <TimelineItemSkeleton key={i} />)}
-        </div>
-      ) : error ? (
-        <div className="mx-3 rounded-2xl border border-[rgb(var(--color-border))] p-8 text-center">
-          <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
-          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">{error}</p>
-          <button type="button" onClick={() => city && fetchFirst(city.slug)}
-            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[rgb(var(--color-brand))] px-4 py-2 text-xs font-bold text-white">
-            Tekrar dene
-          </button>
-        </div>
-      ) : posts.length === 0 && !loading ? (
-        <div className="mx-3 rounded-2xl border border-dashed border-[rgb(var(--color-border))] py-12 text-center px-6">
-          <MapPin className="mx-auto mb-3 h-8 w-8 text-[rgb(var(--color-muted))]" />
-          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">
-            {city ? `${city.name} haberleri henüz eklenmedi` : 'Haber bulunamadı'}
-          </p>
-          <p className="mt-1 text-xs text-[rgb(var(--color-muted))] leading-relaxed">
-            Şu an yalnızca Çanakkale ve bazı şehirlerin haberleri mevcut.{'\n'}
-            Yakında tüm şehirler eklenecek.
-          </p>
-          <button type="button" onClick={() => setShowCitySheet(true)}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--color-border))] px-4 py-2 text-xs font-semibold text-[rgb(var(--color-text))]">
-            Başka şehir seç
-          </button>
-        </div>
-      ) : (
-        <div className="timeline-list">
-          {posts.map((post, i) => (
-            <TimelineItem key={post.id} post={post} isLast={i === posts.length - 1} />
-          ))}
-          {loadingMore && <TimelineItemSkeleton key="sk-more" />}
-        </div>
-      )}
+      {/* ── Haber akışı ── */}
+      <div className="mt-1">
+        {loading ? (
+          <div className="space-y-0">
+            {[...Array(4)].map((_, i) => <TimelineItemSkeleton key={i} />)}
+          </div>
+        ) : error ? (
+          <div className="mx-3 mt-4 rounded-2xl border border-[rgb(var(--color-border))] p-8 text-center">
+            <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
+            <p className="text-sm font-semibold text-[rgb(var(--color-text))]">{error}</p>
+            <button
+              type="button"
+              onClick={() => city && fetchFirst(city.slug)}
+              className="mt-3 inline-flex items-center gap-2 rounded-full bg-[rgb(var(--color-brand))] px-4 py-2 text-xs font-bold text-white"
+            >
+              Tekrar dene
+            </button>
+          </div>
+        ) : posts.length === 0 && !loading ? (
+          <div className="mx-3 mt-4 rounded-2xl border border-dashed border-[rgb(var(--color-border))] py-12 px-6 text-center">
+            <MapPin className="mx-auto mb-3 h-8 w-8 text-[rgb(var(--color-muted))]" />
+            <p className="text-sm font-semibold text-[rgb(var(--color-text))]">
+              {city ? `${city.name} haberleri henüz eklenmedi` : 'Haber bulunamadı'}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-[rgb(var(--color-muted))]">
+              Yakında tüm şehirler eklenecek. Başka bir şehir seçebilirsiniz.
+            </p>
+          </div>
+        ) : (
+          <div className="timeline-list">
+            {posts.map((post, i) => (
+              <TimelineItem key={post.id} post={post} isLast={i === posts.length - 1} />
+            ))}
+            {loadingMore && <TimelineItemSkeleton key="sk-more" />}
+          </div>
+        )}
+      </div>
 
       <div ref={sentinelRef} className="h-4" aria-hidden />
-
-      {showCitySheet && (
-        <CitySelectorSheet onSelect={handleSelectCity} onClose={() => setShowCitySheet(false)} />
-      )}
     </div>
   )
 }
