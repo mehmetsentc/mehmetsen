@@ -32,6 +32,38 @@ import {
   scaleSizesForTier,
 } from '@/store/networkContext'
 
+/**
+ * Haber içeriğini temiz paragraflara dönüştürür.
+ * Sorun: Scraper bazı haberlerde isim kısaltmalarını ("P.\n\nS.\n\n,") ayrı
+ * satırlara böler. Bu helper çift-newline'ları paragraf yapar, ardından
+ * tek harfli / virgül/kesme işaretiyle başlayan kısa parçacıkları önceki
+ * paragrafla birleştirir.
+ */
+function renderNewsContent(raw: string): React.ReactNode {
+  // Çift (veya daha fazla) newline = paragraf sınırı
+  const rawParts = raw.split(/\n{2,}/).map((p) => p.replace(/\n/g, ' ').trim()).filter(Boolean)
+
+  // Kısa fragment'leri (≤6 karakter VEYA virgül/kesme ile başlayan) öncekiyle birleştir
+  const merged: string[] = []
+  for (const part of rawParts) {
+    const prev = merged[merged.length - 1]
+    const isFragment =
+      part.length <= 6 ||
+      /^[,'''‘’“”]/.test(part)
+    if (prev !== undefined && isFragment) {
+      merged[merged.length - 1] = prev + part
+    } else {
+      merged.push(part)
+    }
+  }
+
+  return merged.map((para, i) => (
+    <p key={i} className="mb-4 leading-relaxed last:mb-0">
+      {para}
+    </p>
+  ))
+}
+
 interface PostDetailProps {
   post: Post
   suggested: Post[]
@@ -174,8 +206,8 @@ export function PostDetail({ post, suggested }: PostDetailProps) {
 
         <div className="px-4 py-5 sm:px-6">
           {post.content && (
-            <div className="prose prose-sm max-w-none text-gray-700 dark:prose-invert dark:text-gray-300">
-              <p className="whitespace-pre-wrap leading-relaxed">{post.content}</p>
+            <div className="prose prose-sm max-w-none text-[rgb(var(--color-text))] dark:prose-invert">
+              {renderNewsContent(post.content)}
             </div>
           )}
 
