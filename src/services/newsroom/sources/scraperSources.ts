@@ -61,6 +61,15 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
     maxItems: 5,
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Çan' },
   },
+  {
+    id: 'scraper-canakkale-tontv',
+    label: 'Ton TV (scraper)',
+    enabled: true,
+    listUrls: ['https://www.tontv.com.tr/canakkale-haber', 'https://www.tontv.com.tr/'],
+    linkPattern: '/haber/\\d+/',
+    maxItems: 5,
+    localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
+  },
 
   // ── Bursa ─────────────────────────────────────────────────────────────────
   {
