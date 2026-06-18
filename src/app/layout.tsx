@@ -25,6 +25,7 @@ const inter = Inter({
   adjustFontFallback: true,
 })
 
+import { CookieConsentBanner } from '@/components/legal/CookieConsentBanner'
 import { getSiteUrl } from '@/lib/seo'
 
 const appUrl = getSiteUrl()
@@ -186,6 +187,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <LanguageProvider initialLanguage={initialLanguage}>
             <AuthProvider>
               {children}
+              <CookieConsentBanner />
               <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
               <Analytics />
               <SpeedInsights />

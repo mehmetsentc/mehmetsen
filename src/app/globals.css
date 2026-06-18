@@ -1203,3 +1203,9 @@
 html[data-platform='mobile'] .app-shell-mobile .content-main {
   padding-bottom: calc(4.5rem + var(--safe-bottom, 0px));
 }
+
+/* FeaturedSlider progress bar animation */
+@keyframes progress {
+  from { width: 0% }
+  to   { width: 100% }
+}
