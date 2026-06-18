@@ -547,22 +547,25 @@ export async function processNewsroomArticle(
     // ── AI Final Editor: category sanity check ──────────────────────────────
     // Fast Gemini Flash call that reads actual content and can override rule-based
     // classification. Catches cases like magazin-source → local/gündem articles.
-    try {
-      const aiCheck = await classifyArticleCategory(
-        rewritten.title,
-        rewritten.description ?? rewritten.summary ?? '',
-        classification.categoryId,
-      )
-      if (aiCheck && aiCheck.categoryId !== classification.categoryId) {
-        console.log(
-          `[newsroom/ai-editor] Kategori düzeltildi: ${classification.categoryId} → ${aiCheck.categoryId} ` +
-          `(güven: ${aiCheck.confidence}) — ${aiCheck.reason}`
+    // SKIP if forcedCategoryId is set — trend/influencer/breaking editors lock category explicitly.
+    if (!workingInput.forcedCategoryId) {
+      try {
+        const aiCheck = await classifyArticleCategory(
+          rewritten.title,
+          rewritten.description ?? rewritten.summary ?? '',
+          classification.categoryId,
         )
-        classification.categoryId = aiCheck.categoryId
-        classification.categoryConfidence = aiCheck.confidence
+        if (aiCheck && aiCheck.categoryId !== classification.categoryId) {
+          console.log(
+            `[newsroom/ai-editor] Kategori düzeltildi: ${classification.categoryId} → ${aiCheck.categoryId} ` +
+            `(güven: ${aiCheck.confidence}) — ${aiCheck.reason}`
+          )
+          classification.categoryId = aiCheck.categoryId
+          classification.categoryConfidence = aiCheck.confidence
+        }
+      } catch {
+        // Non-blocking — if AI check fails, keep the rule-based category
       }
-    } catch {
-      // Non-blocking — if AI check fails, keep the rule-based category
     }
 
     const moderationRaw = await moderateContent({

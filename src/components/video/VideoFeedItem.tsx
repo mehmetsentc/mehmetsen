@@ -34,6 +34,7 @@ function VideoFeedItemInner({
   onUpdate,
 }: VideoFeedItemProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const viewedRef = useRef(false)
   const seenMarkedRef = useRef(false)
   const { user } = useAuth()
@@ -218,6 +219,21 @@ function VideoFeedItemInner({
     }
   }, [isActive, paused, muted, isAudioMode])
 
+  // ── YouTube ses senkronizasyonu ───────────────────────────────────────────
+  // enablejsapi=1 ile yüklenen iframe'e postMessage gönderir.
+  // Kullanıcı VideoActions'daki ses butonuna basınca YouTube sesini de kontrol eder.
+  useEffect(() => {
+    if (!isYouTube || !isActive) return
+    const iframe = iframeRef.current
+    if (!iframe?.contentWindow) return
+    const msg = JSON.stringify({
+      event: 'command',
+      func: muted ? 'mute' : 'unMute',
+      args: [],
+    })
+    iframe.contentWindow.postMessage(msg, '*')
+  }, [muted, isYouTube, isActive])
+
   if (!stableSrc) {
     if (isAudioMode) {
       const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl ?? null
@@ -374,8 +390,8 @@ function VideoFeedItemInner({
     // Aktif slide → autoplay + sessiz (browser politikası). Ses YouTube kontrolünden açılır.
     // Aktif olmayan slide → sadece thumbnail göster (enablejsapi ile daha hafif).
     const embedSrc = isActive
-      ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1`
-      : `${stableSrc}?rel=0&modestbranding=1`
+      ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1`
+      : `${stableSrc}?rel=0&modestbranding=1&enablejsapi=1`
     return (
       <div ref={refCallback} data-index={index} className="reels-slide">
         <div className="reels-video-card relative overflow-hidden bg-black">
@@ -386,6 +402,7 @@ function VideoFeedItemInner({
             </div>
           )}
           <iframe
+            ref={iframeRef}
             key={isActive ? `yt-active-${video.id}` : `yt-inactive-${video.id}`}
             src={embedSrc}
             title={video.title}
@@ -461,22 +478,6 @@ function VideoFeedItemInner({
           </div>
         )}
 
-        {/* Muted indicator — tap anywhere on video to unmute */}
-        {muted && isActive && !loading && !paused && (
-          <button
-            type="button"
-            aria-label="Sesi aç"
-            onClick={(e) => { e.stopPropagation(); toggleMuted() }}
-            className="pointer-events-auto absolute bottom-24 left-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm transition-opacity hover:bg-black/80"
-          >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
-            Sesi aç
-          </button>
-        )}
 
         {/* Heart burst on double-tap */}
         {heartBurst && (

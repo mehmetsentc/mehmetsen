@@ -581,6 +581,22 @@ export function validateCategoryClassification(
   const text = `${input.title} ${input.body}`.trim()
   const overrides: string[] = []
   let categoryId = normalizeNewsroomCategory(input.aiCategoryId)
+
+  // ── Hard-locked categories: trend / influencer editörleri kendi kategorilerine kilitlidir.
+  // Keyword heuristik override'ları (spor, magazin, teknoloji vb.) bu kategorilere uygulanmaz.
+  if (
+    categoryId === 'trend' ||
+    categoryId === 'influencer' ||
+    input.editorType === 'trend' ||
+    input.editorType === 'influencer'
+  ) {
+    return {
+      categoryId: input.editorType === 'trend' ? 'trend' : input.editorType === 'influencer' ? 'influencer' : categoryId,
+      categoryConfidence: Math.min(100, Math.max(0, input.categoryConfidence ?? 80)),
+      isBreaking: false, // trend/influencer haberleri asla son-dakika değil
+      overrides: [],
+    }
+  }
   let categoryConfidence = Math.min(100, Math.max(0, input.categoryConfidence ?? 70))
   let isBreaking = Boolean(input.aiIsBreaking)
 

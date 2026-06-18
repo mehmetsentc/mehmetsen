@@ -1,12 +1,13 @@
 'use client'
 
-import { ThumbsUp, ThumbsDown, MessageCircle } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, MessageCircle, Volume2, VolumeX } from 'lucide-react'
 import { LikeButton } from '@/components/post/LikeButton'
 import { SaveButton } from '@/components/post/SaveButton'
 import { ShareButton } from '@/components/post/ShareButton'
 import { PostMoreButton } from '@/components/post/PostMoreMenu'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
+import { useReelsAudio } from '@/store/reelsAudioContext'
 import { formatCount } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 import type { VideoFeedItem } from '@/hooks/useVideoFeed'
@@ -28,6 +29,8 @@ export function VideoActions({
   onShareChange,
   className,
 }: VideoActionsProps) {
+  const { muted, toggleMuted } = useReelsAudio()
+
   const { liked, count: likesCount, toggle: toggleLike, loading: likeLoading } = useLike({
     postId: video.id,
     initialLiked: video.isLiked,
@@ -56,6 +59,20 @@ export function VideoActions({
 
   return (
     <div className={cn('reels-actions', className)}>
+      {/* Mute / Unmute — tüm video modlarında çalışır (native, YouTube, audio) */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); toggleMuted() }}
+        aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
+        className="flex flex-col items-center gap-1.5 text-white transition-transform active:scale-90"
+      >
+        {muted
+          ? <VolumeX className="h-7 w-7 text-white/70" />
+          : <Volume2 className="h-7 w-7 text-white" />
+        }
+        <span className="text-xs font-bold drop-shadow">{muted ? 'Sessiz' : 'Sesli'}</span>
+      </button>
+
       {/* Thumbs up (like) */}
       <button
         type="button"
