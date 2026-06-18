@@ -52,10 +52,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           <Link href={ROUTES.FEED} className="flex-1" aria-label="NaHaber">
             <span className="text-[1.45rem] font-black leading-none tracking-tight">
               <span className={isFeed ? 'text-white' : 'text-[rgb(var(--color-brand))]'}>Na</span>
-              <span className={isFeed ? 'text-white' : 'text-[rgb(var(--color-text))]'}>Haber</span>
-              {!isFeed ? (
-                <span className="text-[rgb(var(--color-muted))] text-base font-semibold">.com</span>
-              ) : null}
+              <span className={isFeed ? 'text-white/80' : 'text-[rgb(var(--color-text))]'}>Haber</span>
+              <span className={isFeed ? 'text-white/50 text-base font-semibold' : 'text-[rgb(var(--color-muted))] text-base font-semibold'}>.com</span>
             </span>
           </Link>
 
