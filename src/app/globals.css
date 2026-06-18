@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --color-brand: 230 57 70;
-    --color-surface: 248 250 252;
-    --color-card: 255 255 255;
-    --color-border: 226 232 240;
-    --color-text: 15 23 42;
-    --color-muted: 100 116 139;
-    --color-nav-hover: 241 245 249;
+    --color-brand: 232 30 52;
+    --color-surface: 10 15 35;
+    --color-card: 16 23 50;
+    --color-border: 30 42 78;
+    --color-text: 245 247 252;
+    --color-muted: 148 163 184;
+    --color-nav-hover: 22 32 65;
     --sidebar-width-collapsed: 256px;
     --sidebar-width-expanded: 256px;
     --layout-gutter: 1.5rem;
@@ -117,13 +117,13 @@
   }
 
   .dark {
-    --color-brand: 230 57 70;
-    --color-surface: 15 23 42;
-    --color-card: 26 31 46;
-    --color-border: 45 55 72;
+    --color-brand: 232 30 52;
+    --color-surface: 8 12 28;
+    --color-card: 13 19 44;
+    --color-border: 26 37 70;
     --color-text: 248 250 252;
     --color-muted: 148 163 184;
-    --color-nav-hover: 30 41 59;
+    --color-nav-hover: 18 27 58;
   }
 
   html {
