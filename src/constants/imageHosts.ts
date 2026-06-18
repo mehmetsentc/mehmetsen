@@ -28,6 +28,19 @@ export const NEWS_IMAGE_DOMAIN_SUFFIXES = [
   'reutersagency.com',
   'reutersmedia.net',
   'ankahaber.net',    // ANKA Haber Ajansı görselleri
+  // Kripto
+  'coindesk.com',
+  'cointelegraph.com',
+  'kriptokoin.com',
+  'btchaber.com',
+  // Finans / Ekonomi
+  'bloomberght.com',
+  'ekonomim.com',
+  // Diğer ulusal gazeteler
+  'cumhuriyet.com.tr',
+  'posta.com.tr',
+  'ensonhaber.com',
+  'mynet.com',
 ] as const
 
 /** Explicit hostnames (including CDNs not covered by suffix rules). */
