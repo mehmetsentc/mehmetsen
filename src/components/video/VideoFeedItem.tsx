@@ -21,6 +21,8 @@ const SEEN_THRESHOLD_MS = 2_500
 interface VideoFeedItemProps {
   video: VideoFeedItemType
   isActive: boolean
+  /** True for the item immediately after the active one — triggers preload */
+  isNext?: boolean
   index: number
   setItemRef: (index: number, el: HTMLDivElement | null) => void
   onUpdate: (postId: string, patch: Partial<VideoFeedItemType>) => void
@@ -29,6 +31,7 @@ interface VideoFeedItemProps {
 function VideoFeedItemInner({
   video,
   isActive,
+  isNext = false,
   index,
   setItemRef,
   onUpdate,
@@ -81,8 +84,11 @@ function VideoFeedItemInner({
     if (wasLoadedBefore || (stableSrc && hasMediaBeenFetched(stableSrc))) {
       return 'auto'
     }
-    return videoPreloadForTier(tier, isActive)
-  }, [wasLoadedBefore, stableSrc, tier, isActive, hasMediaBeenFetched])
+    if (isActive) return videoPreloadForTier(tier, true)
+    // Sıradaki video: yavaş bağlantıda metadata, diğerlerinde tam buffer
+    if (isNext) return tier === 'low' ? 'metadata' : 'auto'
+    return 'none'
+  }, [wasLoadedBefore, stableSrc, tier, isActive, isNext, hasMediaBeenFetched])
 
   const refCallback = useCallback(
     (el: HTMLDivElement | null) => setItemRef(index, el),

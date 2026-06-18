@@ -256,6 +256,7 @@ export function VideoFeed() {
               video={video}
               index={index}
               isActive={playbackEnabled && index === activeIndex}
+              isNext={index === activeIndex + 1}
               setItemRef={setItemRef}
               onUpdate={updateVideo}
             />
