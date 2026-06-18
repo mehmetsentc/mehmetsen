@@ -82,21 +82,30 @@ export function getCategoryLabel(categoryId?: string | null): string {
   return value
 }
 
+function safeIso(d: Date): string {
+  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
+}
+
 function normalizeTimestamp(value: NewsDocument['createdAt']): string {
   if (value == null) return new Date().toISOString()
 
   if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return new Date().toISOString()
     const ms = value < 1_000_000_000_000 ? value * 1000 : value
-    return new Date(ms).toISOString()
+    return safeIso(new Date(ms))
   }
 
   if (typeof value === 'string') {
     const parsed = Date.parse(value)
-    return Number.isNaN(parsed) ? new Date().toISOString() : new Date(parsed).toISOString()
+    return Number.isNaN(parsed) ? new Date().toISOString() : safeIso(new Date(parsed))
   }
 
   if (typeof value === 'object' && typeof value.toDate === 'function') {
-    return value.toDate().toISOString()
+    try {
+      return safeIso(value.toDate())
+    } catch {
+      return new Date().toISOString()
+    }
   }
 
   return new Date().toISOString()
