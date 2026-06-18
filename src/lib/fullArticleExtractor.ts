@@ -71,6 +71,28 @@ function estimateReadingMinutes(text: string): number {
   return Math.max(1, Math.ceil(words / 200))
 }
 
+/**
+ * Detect RSC / Next.js server payload pollution.
+ * Returns true if the content looks like a raw RSC serialization dump
+ * rather than real article prose.
+ */
+function isRscPolluted(text: string): boolean {
+  const rscMarkers = [
+    'self.__next_f.push',
+    '["$","$L',
+    '"className":"',
+    '"children":[',
+    '$RC("',
+    '$RS("',
+  ]
+  let hits = 0
+  for (const m of rscMarkers) {
+    if (text.includes(m)) hits++
+    if (hits >= 2) return true
+  }
+  return false
+}
+
 function htmlToPlainText(html: string): string {
   const $ = cheerio.load(html)
   // Replace block elements with newlines
@@ -174,6 +196,12 @@ function extractWithCheerio(html: string, url: string): ExtractedArticle {
     contentHtml = paras.map(p => `<p>${p}</p>`).join('\n')
   }
 
+  // If RSC/Next.js payload leaked into extracted text, discard content
+  if (isRscPolluted(contentText)) {
+    contentText = ''
+    contentHtml = ''
+  }
+
   const method = contentText.length > 150 ? 'cheerio' : 'meta-only'
 
   return {
@@ -206,7 +234,7 @@ async function tryArticleExtractor(url: string): Promise<ExtractedArticle | null
     if (!result || !result.content) return null
 
     const plainText = htmlToPlainText(result.content as string)
-    if (plainText.length < 100) return null
+    if (plainText.length < 100 || isRscPolluted(plainText)) return null
 
     return {
       title: (result.title as string) || null,
@@ -298,7 +326,8 @@ async function fetchViaJina(url: string): Promise<{ text: string; imageUrl: stri
       .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim()
-    return clean.length > 200 ? { text: clean.slice(0, 4000), imageUrl } : null
+    if (clean.length < 200 || isRscPolluted(clean)) return null
+    return { text: clean.slice(0, 4000), imageUrl }
   } catch {
     return null
   }

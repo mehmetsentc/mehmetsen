@@ -273,7 +273,13 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
 - title, spot, summary, content HEPSİ birbirinden farklı bilgi sunsun — kopyalama.
 - Paragraflar arası \\n\\n kullan. Cümle ortasında satır kırma yapma.
 - İÇERİK KALİTE KURALI: title/spot/summary/content HİÇBİR ZAMAN noktalı virgül (;), virgül (,), tire (-/—), üç nokta (...), açılış parantezi ile başlamamalı. RSS'ten kesik gelmiş cümleler tespit edilirse TAMAMEN YENİDEN YAZ — yarım cümle asla yayınlama.
-- KAYNAK ŞEHRİ KARIŞIKLIĞI: city alanı için KAYNAK GAZETENİN şehrini değil, haberin KONUSUNUN geçtiği şehri yaz. Antalya Ekspres'ten Gazze haberi geliyorsa city: null. Hürriyet'ten Ankara kararı geliyorsa city: "Ankara".`
+- KAYNAK ŞEHRİ KARIŞIKLIĞI: city alanı için KAYNAK GAZETENİN şehrini değil, haberin KONUSUNUN geçtiği şehri yaz. Antalya Ekspres'ten Gazze haberi geliyorsa city: null. Hürriyet'ten Ankara kararı geliyorsa city: "Ankara".
+- ÇIKTI KALİTE ZORUNLULUĞU:
+  * content alanı minimum 150 kelime içermelidir.
+  * content içinde HTML tag, JSON yapısı ({\\"className\\":), React/Next.js kodu, script bloğu, self.__next_f gibi teknik içerik KESİNLİKLE yasak.
+  * Kaynak içerik teknik veri (HTML/JSON/JS) içeriyorsa YALNIZCAoriginalTitle + originalSummary'den yararlanarak haber yaz; teknik içeriği kopyalama.
+  * title en az 5 kelime, spot en az 3 cümle içermelidir.
+  * content başlıkla birebir aynı cümleyle başlamamalıdır.`
 
 const HEADLINE_RULES = `ALAN TANIMLARI:
 - title: Gazete manşeti. Maks 65 karakter. Yalnızca ilk harf büyük. Vurucu ama yanıltmayan. Soru işareti ile bitirme.
@@ -323,8 +329,61 @@ ${CATEGORY_CLASSIFICATION_RULES}
 Yanıt YALNIZCA geçerli JSON: ${jsonSchema}`
 }
 
+/**
+ * Detect RSC / Next.js / HTML / JSON payload pollution in extracted text.
+ * Returns true if the text looks like technical data rather than article prose.
+ */
+function isGarbageContent(text: string): boolean {
+  const markers = [
+    'self.__next_f.push',
+    '["$","$L',
+    '"className":"',
+    '"children":[',
+    '$RC("',
+    '$RS("',
+    'self.__next_f',
+    'application/ld+json',
+    '\\u003c',  // HTML entity in JSON
+  ]
+  let hits = 0
+  for (const m of markers) {
+    if (text.includes(m)) hits++
+    if (hits >= 2) return true
+  }
+  // Also reject if content is > 30% JSON-like characters
+  const jsonChars = (text.match(/[{}[\]":\\]/g) || []).length
+  if (text.length > 200 && jsonChars / text.length > 0.3) return true
+  return false
+}
+
+/** Strip any RSC/HTML/script pollution from content before sending to AI */
+function sanitizeContentForAi(content: string): string {
+  if (!content) return ''
+  // Remove self.__next_f.push(...) lines
+  let cleaned = content.replace(/self\.__next_f\.push\([^)]*\)/g, '')
+  // Remove lines that look like RSC node arrays
+  cleaned = cleaned.replace(/\["\$",[^\n]{0,500}\]/g, '')
+  // Remove JSON-like structures
+  cleaned = cleaned.replace(/\{[^{}]{0,200}\}/g, '')
+  // Remove script-like content
+  cleaned = cleaned.replace(/\$R[CS]\([^)]*\)/g, '')
+  // Clean up residue
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim()
+  return cleaned
+}
+
 function buildUserPrompt(input: AiRewriteInput): string {
-  const excerpt = input.originalContent.slice(0, 3500) || input.originalSummary
+  // Sanitize content before passing to AI
+  let rawContent = input.originalContent || input.originalSummary || ''
+  if (isGarbageContent(rawContent)) {
+    // Discard garbage — AI will rewrite from title + summary only
+    rawContent = input.originalSummary || ''
+    console.warn(`[aiNewsEditor] RSC/HTML garbage detected in content, using summary only for: "${input.originalTitle?.slice(0, 60)}"`)
+  } else {
+    rawContent = sanitizeContentForAi(rawContent)
+  }
+
+  const excerpt = rawContent.slice(0, 3500) || input.originalTitle
   const recentSection = input.recentTitles && input.recentTitles.length > 0
     ? `\nRECENT_TITLES (son 48 saatte yayınlananlar — duplikasyon kontrolü için):\n${input.recentTitles.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n`
     : ''
@@ -399,6 +458,18 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
   // Duplikasyon tespiti — AI aynı haberi zaten yayınlandığı için işaretlediyse atla
   if (parsed.isDuplicate === true) {
     throw new Error(`[aiNewsEditor] AI duplikat tespit etti — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
+  }
+
+  // Çıktı kalite kontrolü — teknik içerik varsa reddet
+  const aiContentBody = parsed.content?.trim() || parsed.description?.trim() || ''
+  if (isGarbageContent(aiContentBody)) {
+    throw new Error(`[aiNewsEditor] AI çıktısında teknik içerik (RSC/HTML/JSON) tespit edildi — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
+  }
+
+  // Minimum içerik uzunluğu kontrolü
+  const aiWordCount = aiContentBody.split(/\s+/).filter(Boolean).length
+  if (aiWordCount < 30 && input.originalContent.length > 100) {
+    console.warn(`[aiNewsEditor] AI çok kısa içerik döndürdü (${aiWordCount} kelime): "${input.originalTitle.slice(0, 60)}"`)
   }
 
   const title = cleanupNewsTitle(parsed.title?.trim() || input.originalTitle)
