@@ -569,20 +569,27 @@ export async function processNewsroomArticle(
       }
     }
 
-    // ── forcedCitySlug override — SADECE yerel-haber kategorisinde uygula ──
-    // Yerel gazete kaynağından gelen dünya/gündem/spor haberleri için
-    // kaynak şehrini zorla atama — haber İngiltere'deyse city = null olsun.
+    // ── forcedCitySlug override — SADECE yerel-haber + içerikten şehir bulunamadıysa ──
+    // Kural: geo engine haber metninden bir şehir çıkardıysa (geo.city) → onu koru.
+    // forcedCitySlug (kaynak gazetenin şehri) yalnızca FALLBACK olarak devreye girer:
+    //   - Haber yerel-haber kategorisindeyse
+    //   - Yurt dışı haber değilse
+    //   - VE içerikten şehir bulunamadıysa
+    // Örnek sorun (önceki davranış): Muğla gazetesinden alınan Hakkari haberi → geo.city = "Hakkari"
+    // ama forcedCitySlug = "mugla" eziyordu. Artık içerik şehri korunur.
     const finalCategoryIsLocal = classification.categoryId === 'yerel-haber'
     const articleIsAbroad = country && country !== 'Türkiye'
 
-    if (workingInput.forcedCitySlug?.trim() && finalCategoryIsLocal && !articleIsAbroad) {
-      citySlug = normalizeCitySlug(workingInput.forcedCitySlug)
-      city = workingInput.forcedCity?.trim() || getCityCategoryName(citySlug)
-    } else if (articleIsAbroad) {
+    if (articleIsAbroad) {
       // Yurt dışı haber — kaynak şehri ne olursa olsun city sıfırla
       city = null
       citySlug = ''
+    } else if (workingInput.forcedCitySlug?.trim() && finalCategoryIsLocal && !geo.city) {
+      // Geo engine içerikten şehir bulamadı → kaynak şehrini fallback olarak kullan
+      citySlug = normalizeCitySlug(workingInput.forcedCitySlug)
+      city = workingInput.forcedCity?.trim() || getCityCategoryName(citySlug)
     }
+    // else: geo engine'in içerikten bulduğu şehri koru (geo.city)
 
     const moderationRaw = await moderateContent({
       text: `${rewritten.title}\n\n${rewritten.description}`,
