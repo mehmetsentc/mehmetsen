@@ -126,13 +126,58 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
           </div>
         </header>
 
-        {imageUrl && (
-          <figure className="relative">
-            <div className="relative aspect-[16/9] max-h-[min(70vh,560px)] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
-              <SliderImage src={imageUrl} alt={post.title} priority />
-            </div>
-          </figure>
-        )}
+        {/* Video player or cover image */}
+        {(() => {
+          const videoItem = post.mediaItems?.find((m) => m.type === 'video' && m.url?.trim())
+          const isYouTube = Boolean(videoItem && /youtube[^/]*\/embed\//.test(videoItem.url))
+          const isMp4 = Boolean(videoItem && !isYouTube && /\.mp4(\?|$)/i.test(videoItem.url))
+
+          if (isYouTube && videoItem) {
+            return (
+              <figure className="relative bg-black">
+                <div className="relative aspect-[16/9] w-full overflow-hidden">
+                  <iframe
+                    src={`${videoItem.url}?rel=0&modestbranding=1&playsinline=1`}
+                    title={post.title}
+                    className="absolute inset-0 h-full w-full border-0"
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    loading="lazy"
+                  />
+                </div>
+              </figure>
+            )
+          }
+
+          if (isMp4 && videoItem) {
+            return (
+              <figure className="relative bg-black">
+                <div className="relative aspect-[16/9] w-full overflow-hidden">
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    src={videoItem.url}
+                    poster={videoItem.thumbnailUrl ?? imageUrl ?? undefined}
+                    controls
+                    playsInline
+                    className="absolute inset-0 h-full w-full object-contain"
+                  />
+                </div>
+              </figure>
+            )
+          }
+
+          if (imageUrl) {
+            return (
+              <figure className="relative">
+                <div className="relative aspect-[16/9] max-h-[min(70vh,560px)] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
+                  <SliderImage src={imageUrl} alt={post.title} priority />
+                </div>
+              </figure>
+            )
+          }
+
+          return null
+        })()}
 
         <div className="px-4 py-6 sm:px-8 sm:py-8">
           {showLead && (
