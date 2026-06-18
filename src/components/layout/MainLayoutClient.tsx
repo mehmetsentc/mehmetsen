@@ -1,7 +1,6 @@
 'use client'
 
 import { memo, useEffect, Suspense } from 'react'
-import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -22,11 +21,6 @@ import { pauseAllPageVideos } from '@/lib/videoPlayback'
 import { ROUTES, isPublicRoute } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
-const TrendingPanel = dynamic(
-  () => import('@/components/feed/TrendingPanel').then((m) => m.TrendingPanel),
-  { ssr: false, loading: () => null }
-)
-
 type ContentVariant = 'default' | 'wide' | 'reels' | 'messages'
 
 function getContentVariant(pathname: string): ContentVariant {
@@ -36,8 +30,7 @@ function getContentVariant(pathname: string): ContentVariant {
   return 'default'
 }
 
-function getStageClass(pathname: string, isFeed: boolean, isReels: boolean, variant: ContentVariant): string {
-  if (isFeed) return 'content-stage-with-rail'
+function getStageClass(pathname: string, isReels: boolean, variant: ContentVariant): string {
   if (isReels) return 'content-stage-reels'
   if (variant === 'messages') return 'content-stage-messages'
   if (variant === 'wide') return 'content-stage-wide'
@@ -47,7 +40,6 @@ function getStageClass(pathname: string, isFeed: boolean, isReels: boolean, vari
 const LayoutShell = memo(function LayoutShell({
   children,
   pathname,
-  isFeed,
   isReels,
   variant,
   platform,
@@ -56,7 +48,6 @@ const LayoutShell = memo(function LayoutShell({
 }: {
   children: React.ReactNode
   pathname: string
-  isFeed: boolean
   isReels: boolean
   variant: ContentVariant
   platform: string
@@ -86,7 +77,7 @@ const LayoutShell = memo(function LayoutShell({
           <div
             className={cn(
               'content-stage',
-              getStageClass(pathname, isFeed, isReels, variant)
+              getStageClass(pathname, isReels, variant)
             )}
           >
             <main
@@ -99,7 +90,6 @@ const LayoutShell = memo(function LayoutShell({
             >
               {children}
             </main>
-            {isFeed && <TrendingPanel />}
           </div>
         </PullToRefresh>
       </div>
@@ -132,7 +122,6 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
   const { platform, isMobile, isDesktop } = usePlatformLayout()
   const isPublic = isPublicRoute(pathname)
   const isReels = pathname === ROUTES.REELS
-  const isFeed = pathname === ROUTES.FEED
   const variant = getContentVariant(pathname)
 
   return (
@@ -146,7 +135,6 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
             <UiEffects />
             <LayoutShell
               pathname={pathname}
-              isFeed={isFeed}
               isReels={isReels}
               variant={variant}
               platform={platform}

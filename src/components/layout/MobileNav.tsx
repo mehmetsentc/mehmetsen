@@ -44,7 +44,7 @@ const MobileNavLink = memo(function MobileNavLink({ item, active, pathname }: Mo
       onClick={handleClick}
       className={cn(
         'flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors',
-        active ? 'text-[rgb(var(--color-text))]' : 'text-[rgb(var(--color-muted))]'
+        active ? 'text-[rgb(var(--color-brand))]' : 'text-[rgb(var(--color-muted))]'
       )}
     >
       <Icon

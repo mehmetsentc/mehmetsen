@@ -4,9 +4,12 @@ import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
+import { docToNewsItem, sortNewsByDate } from '@/lib/newsItemUtils'
 import { getCategoryFamily } from '@/constants/config'
 import type { Post } from '@/types/post'
 import type { FeedSliderItem } from '@/types/feedSlider'
+import type { HomeFeedInitialData, HomeCategorySlug, NewsItem } from '@/types/newsItem'
+import { HOME_CATEGORY_RAILS } from '@/types/newsItem'
 
 export type { FeedSliderItem }
 
@@ -169,4 +172,139 @@ export async function getNewsBySlug(slug: string): Promise<Post | null> {
   }
 
   return getNewsById(normalized)
+}
+
+function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
+  return docs
+    .map((doc) => docToNewsItem(doc.id, doc.data() as Record<string, unknown>))
+    .filter((item): item is NewsItem => item !== null)
+}
+
+async function adminPublishedQuery(
+  build: (base: FirebaseFirestore.Query) => FirebaseFirestore.Query,
+  scanLimit: number
+): Promise<NewsItem[]> {
+  try {
+    const db = getAdminFirestore()
+    const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
+    const snap = await build(base).orderBy('publishedAt', 'desc').limit(scanLimit).get()
+    return mapAdminDocs(snap.docs)
+  } catch (error) {
+    console.warn('[newsService.server] adminPublishedQuery failed:', error)
+    return []
+  }
+}
+
+export async function getHomeBreakingNews(limitCount = 12): Promise<NewsItem[]> {
+  const scanLimit = Math.max(limitCount * 3, 24)
+  const fromBreaking = await adminPublishedQuery(
+    (q) => q.where('isBreaking', '==', true),
+    scanLimit
+  )
+  if (fromBreaking.length >= limitCount) return fromBreaking.slice(0, limitCount)
+
+  const fromCategory = await adminPublishedQuery(
+    (q) => q.where('categoryId', '==', 'son-dakika'),
+    scanLimit
+  )
+  const merged = sortNewsByDate(
+    [...fromBreaking, ...fromCategory].filter(
+      (item, index, arr) => arr.findIndex((x) => x.id === item.id) === index
+    )
+  )
+  return merged.slice(0, limitCount)
+}
+
+export async function getHomeFeaturedNews(limitCount = 8): Promise<NewsItem[]> {
+  const scanLimit = Math.max(limitCount * 3, 24)
+  const fromFeatured = await adminPublishedQuery((q) => q.where('featured', '==', true), scanLimit)
+  if (fromFeatured.length >= limitCount) return fromFeatured.slice(0, limitCount)
+
+  const fromGundem = await adminPublishedQuery((q) => q.where('categoryId', '==', 'gundem'), scanLimit)
+  const merged = sortNewsByDate(
+    [...fromFeatured, ...fromGundem].filter(
+      (item, index, arr) => arr.findIndex((x) => x.id === item.id) === index
+    )
+  )
+  return merged.slice(0, limitCount)
+}
+
+export async function getHomeLatestNews(limitCount = 20): Promise<NewsItem[]> {
+  try {
+    const snap = await getAdminFirestore()
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .orderBy('createdAt', 'desc')
+      .limit(limitCount)
+      .get()
+    return mapAdminDocs(snap.docs)
+  } catch (error) {
+    console.warn('[newsService.server] getHomeLatestNews createdAt index fallback:', error)
+    return adminPublishedQuery((q) => q, limitCount)
+  }
+}
+
+export async function getHomeMostReadNews(limitCount = 6): Promise<NewsItem[]> {
+  try {
+    const snap = await getAdminFirestore()
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .orderBy('viewsCount', 'desc')
+      .limit(limitCount)
+      .get()
+    const items = mapAdminDocs(snap.docs)
+    if (items.length > 0) return items
+  } catch (error) {
+    console.warn('[newsService.server] getHomeMostReadNews viewsCount index fallback:', error)
+  }
+  return getHomeLatestNews(limitCount)
+}
+
+export async function getHomeCategoryRails(): Promise<Partial<Record<HomeCategorySlug, NewsItem[]>>> {
+  const entries = await Promise.all(
+    HOME_CATEGORY_RAILS.map(async (category) => {
+      const items = await adminPublishedQuery(
+        (q) => {
+          const family = getCategoryFamily(category)
+          return family.length > 1 ? q.where('categoryId', 'in', family) : q.where('categoryId', '==', category)
+        },
+        10
+      )
+      return [category, items] as const
+    })
+  )
+
+  const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
+  for (const [category, items] of entries) {
+    if (items.length > 0) rails[category] = items
+  }
+  return rails
+}
+
+export async function getHomeLocalNews(citySlug: string, limitCount = 8): Promise<NewsItem[]> {
+  const normalized = citySlug.trim().toLowerCase()
+  if (!normalized) return []
+
+  const bySlug = await adminPublishedQuery((q) => q.where('citySlug', '==', normalized), limitCount)
+  if (bySlug.length > 0) return bySlug
+
+  const yerel = await adminPublishedQuery((q) => q.where('categoryId', '==', 'yerel-haber'), limitCount * 3)
+  return yerel
+    .filter((item) => {
+      const city = item.city?.toLowerCase() ?? item.locationCity?.toLowerCase() ?? ''
+      return city.includes(normalized)
+    })
+    .slice(0, limitCount)
+}
+
+export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
+  const [breaking, featured, latest, mostRead, categoryRails] = await Promise.all([
+    getHomeBreakingNews(12),
+    getHomeFeaturedNews(8),
+    getHomeLatestNews(20),
+    getHomeMostReadNews(6),
+    getHomeCategoryRails(),
+  ])
+
+  return { breaking, featured, latest, mostRead, categoryRails }
 }

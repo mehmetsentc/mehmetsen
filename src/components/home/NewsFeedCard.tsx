@@ -1,0 +1,79 @@
+import Link from 'next/link'
+import Image from 'next/image'
+import { Eye } from 'lucide-react'
+import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
+import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
+import type { NewsItem } from '@/types/newsItem'
+
+interface NewsFeedCardProps {
+  item: NewsItem
+  priority?: boolean
+}
+
+function formatDate(value?: string): string | null {
+  if (!value) return null
+  const parsed = Date.parse(value)
+  if (!Number.isFinite(parsed)) return null
+  return new Intl.DateTimeFormat('tr-TR', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsed)
+}
+
+export function NewsFeedCard({ item, priority = false }: NewsFeedCardProps) {
+  const image = item.imageUrl || FEED_FALLBACK_LOGO
+  const dateLabel = formatDate(item.publishedAt ?? item.createdAt)
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
+      <Link href={newsItemDetailHref(item)} className="block">
+        <div className="relative aspect-video w-full overflow-hidden bg-neutral-100">
+          <Image
+            src={image}
+            alt={item.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 720px"
+            priority={priority}
+            className="object-cover"
+          />
+        </div>
+        <div className="p-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[rgb(var(--color-muted))]">
+            <span className="rounded bg-red-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[rgb(var(--color-brand))]">
+              {newsItemCategoryLabel(item)}
+            </span>
+            {item.source ? <span>{item.source}</span> : null}
+            {dateLabel ? <span>{dateLabel}</span> : null}
+          </div>
+          <h3 className="line-clamp-3 text-lg font-black leading-snug text-[rgb(var(--color-text))] md:text-xl">
+            {item.title}
+          </h3>
+          {typeof item.views === 'number' && item.views > 0 ? (
+            <div className="mt-3 flex items-center gap-1 text-xs text-[rgb(var(--color-muted))]">
+              <Eye className="h-3.5 w-3.5" />
+              <span>{item.views.toLocaleString('tr-TR')} görüntülenme</span>
+            </div>
+          ) : null}
+        </div>
+      </Link>
+    </article>
+  )
+}
+
+interface NewsFeedListProps {
+  items: NewsItem[]
+}
+
+export function NewsFeedList({ items }: NewsFeedListProps) {
+  if (items.length === 0) return null
+
+  return (
+    <div className="space-y-4">
+      {items.map((item, index) => (
+        <NewsFeedCard key={item.id} item={item} priority={index === 0} />
+      ))}
+    </div>
+  )
+}

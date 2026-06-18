@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Search, Settings, Menu, Bell } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Search, Menu, Bell, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { useRouter } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
+import { cn } from '@/lib/utils'
 
 interface NavbarProps {
   onMenuClick?: () => void
@@ -15,63 +16,85 @@ interface NavbarProps {
 export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const [hydrated, setHydrated] = useState(false)
+  const isFeed = pathname === ROUTES.FEED
 
-  useEffect(() => { setHydrated(true) }, [])
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  const profileHref =
+    hydrated && !loading && user
+      ? ROUTES.PROFILE(user.username || user.uid)
+      : ROUTES.LOGIN
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] lg:hidden">
-        <div className="flex h-14 items-center gap-3 px-4">
-          {/* Hamburger */}
+      <header
+        className={cn(
+          'sticky top-0 z-40 lg:hidden',
+          isFeed
+            ? 'border-b border-red-700 bg-[rgb(var(--color-brand))] text-white'
+            : 'border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]'
+        )}
+      >
+        <div className={cn('flex items-center gap-3 px-4', isFeed ? 'h-[72px]' : 'h-14')}>
           <button
             type="button"
             onClick={onMenuClick}
-            className="text-[rgb(var(--color-text))]"
+            className={isFeed ? 'text-white' : 'text-[rgb(var(--color-text))]'}
             aria-label="Menü"
           >
             <Menu className="h-6 w-6" strokeWidth={2} />
           </button>
 
-          {/* Logo */}
           <Link href={ROUTES.FEED} className="flex-1" aria-label="NaHaber">
             <span className="text-[1.45rem] font-black leading-none tracking-tight">
-              <span className="text-[rgb(var(--color-brand))]">Na</span>
-              <span className="text-[rgb(var(--color-text))]">Haber</span>
-              <span className="text-[rgb(var(--color-muted))] text-base font-semibold">.com</span>
+              <span className={isFeed ? 'text-white' : 'text-[rgb(var(--color-brand))]'}>Na</span>
+              <span className={isFeed ? 'text-white' : 'text-[rgb(var(--color-text))]'}>Haber</span>
+              {!isFeed ? (
+                <span className="text-[rgb(var(--color-muted))] text-base font-semibold">.com</span>
+              ) : null}
             </span>
           </Link>
 
-          {/* Right: Search + Bell + Settings */}
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => router.push(ROUTES.DISCOVER)}
-              className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
-              aria-label="Ara"
-            >
-              <Search className="h-5 w-5" strokeWidth={2} />
-            </button>
+            {!isFeed ? (
+              <button
+                type="button"
+                onClick={() => router.push(ROUTES.DISCOVER)}
+                className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
+                aria-label="Ara"
+              >
+                <Search className="h-5 w-5" strokeWidth={2} />
+              </button>
+            ) : null}
             <Link
               href={ROUTES.NOTIFICATIONS}
-              className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
+              className={cn(
+                'flex h-9 w-9 items-center justify-center',
+                isFeed ? 'text-white' : 'text-[rgb(var(--color-text))]'
+              )}
               aria-label="Bildirimler"
             >
               <Bell className="h-5 w-5" strokeWidth={2} />
             </Link>
             <Link
-              href={hydrated && !loading && user ? ROUTES.SETTINGS : ROUTES.LOGIN}
-              className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
-              aria-label="Ayarlar"
+              href={profileHref}
+              className={cn(
+                'flex h-9 w-9 items-center justify-center',
+                isFeed ? 'text-white' : 'text-[rgb(var(--color-text))]'
+              )}
+              aria-label="Profil"
             >
-              <Settings className="h-5 w-5" strokeWidth={2} />
+              <User className="h-5 w-5" strokeWidth={2} />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Kategori şeridi — navbar'ın hemen altında, tüm sayfalarda */}
-      <CategoryNav />
+      {!isFeed ? <CategoryNav /> : null}
     </>
   )
 }

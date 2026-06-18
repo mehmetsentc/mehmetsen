@@ -1129,3 +1129,76 @@
   background-color: rgb(var(--color-brand));
   animation: dot-pulse 1.4s ease-in-out infinite;
 }
+
+/* ── Homepage feed (mobile-first) ── */
+.home-feed {
+  @apply bg-[rgb(var(--color-surface))];
+}
+
+.home-section {
+  @apply mb-5 px-1;
+}
+
+.home-section-header {
+  @apply mb-3 flex items-center gap-2 px-1;
+}
+
+.home-section-title {
+  @apply text-base font-black text-[rgb(var(--color-text))];
+}
+
+.home-rail-title {
+  @apply mb-3 flex items-center gap-2 px-1;
+}
+
+.home-rail-accent {
+  @apply h-6 w-1 rounded-full bg-[rgb(var(--color-brand))];
+}
+
+.home-full-bleed {
+  margin-left: calc(-1 * var(--layout-gutter));
+  margin-right: calc(-1 * var(--layout-gutter));
+  width: calc(100% + 2 * var(--layout-gutter));
+}
+
+@media (min-width: 768px) {
+  .home-contained {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .md\:home-contained {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+  }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: inline-block;
+  min-width: 100%;
+  animation: marquee 18s linear infinite;
+}
+
+html[data-platform='mobile'] .app-shell-mobile .content-main {
+  padding-bottom: calc(4.5rem + var(--safe-bottom, 0px));
+}

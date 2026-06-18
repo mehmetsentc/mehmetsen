@@ -1,0 +1,122 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { CalendarDays, MapPin } from 'lucide-react'
+import { useUserLocation } from '@/hooks/useUserLocation'
+import { getLocalEvents, getLocalNews } from '@/lib/news'
+import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
+import { newsItemDetailHref } from '@/lib/newsItemUtils'
+import { ROUTES } from '@/constants/routes'
+import type { NewsItem } from '@/types/newsItem'
+import type { NaEvent } from '@/types/event'
+
+export function LocalNewsSection() {
+  const { citySlug, cityName, ready } = useUserLocation()
+  const [news, setNews] = useState<NewsItem[]>([])
+  const [events, setEvents] = useState<NaEvent[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!ready || !citySlug) return
+
+    let cancelled = false
+    setLoading(true)
+
+    void Promise.all([getLocalNews(citySlug, 6), getLocalEvents(citySlug, 4)])
+      .then(([localNews, localEvents]) => {
+        if (cancelled) return
+        setNews(localNews)
+        setEvents(localEvents)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    const onLocationUpdated = () => {
+      void getLocalNews(citySlug, 6).then(setNews)
+      void getLocalEvents(citySlug, 4).then(setEvents)
+    }
+    window.addEventListener('nahaber:location-updated', onLocationUpdated)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('nahaber:location-updated', onLocationUpdated)
+    }
+  }, [citySlug, ready])
+
+  if (!ready || loading) return null
+  if (news.length === 0 && events.length === 0) return null
+
+  return (
+    <div className="space-y-6">
+      {news.length > 0 ? (
+        <section className="home-section" aria-label="Yakınındaki haberler">
+          <div className="home-rail-title">
+            <span className="home-rail-accent" aria-hidden />
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-[rgb(var(--color-brand))]" />
+              <h2 className="text-lg font-black text-[rgb(var(--color-text))]">
+                Yakınındaki Haberler
+                {cityName ? <span className="ml-1 text-sm font-semibold text-[rgb(var(--color-muted))]">· {cityName}</span> : null}
+              </h2>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {news.map((item) => {
+              const image = item.imageUrl || FEED_FALLBACK_LOGO
+              return (
+                <Link
+                  key={item.id}
+                  href={newsItemDetailHref(item)}
+                  className="flex gap-3 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2"
+                >
+                  <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
+                    <Image src={image} alt={item.title} fill sizes="112px" className="object-cover" />
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center">
+                    <p className="line-clamp-3 text-sm font-bold leading-snug text-[rgb(var(--color-text))]">
+                      {item.title}
+                    </p>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {events.length > 0 ? (
+        <section className="home-section" aria-label="Yakınındaki etkinlikler">
+          <div className="home-rail-title">
+            <span className="home-rail-accent" aria-hidden />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-[rgb(var(--color-brand))]" />
+                <h2 className="text-lg font-black text-[rgb(var(--color-text))]">Yakınındaki Etkinlikler</h2>
+              </div>
+              <Link href={ROUTES.EVENTS} className="text-xs font-bold text-[rgb(var(--color-brand))]">
+                Tümü
+              </Link>
+            </div>
+          </div>
+          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide">
+            {events.map((event) => (
+              <Link
+                key={event.id}
+                href={ROUTES.EVENTS}
+                className="w-[220px] shrink-0 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3"
+              >
+                <p className="line-clamp-2 text-sm font-bold text-[rgb(var(--color-text))]">{event.title}</p>
+                <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
+                  {event.city || cityName}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  )
+}
