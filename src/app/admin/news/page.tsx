@@ -759,6 +759,45 @@ export default function AdminNewsPage() {
         subtitle={categoryParam ? `${categoryParam} kategorisi filtresi aktif` : 'İçerik editörü ve onay merkezi'}
       />
       <div className="p-6 space-y-4">
+        {/* Category quick-filter chips */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          <Link
+            href={ROUTES.ADMIN.NEWS}
+            className={cn(
+              'flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all',
+              !categoryParam
+                ? 'bg-[rgb(var(--color-text))] text-[rgb(var(--color-surface))] shadow-sm'
+                : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+            )}
+          >
+            Tüm Kategoriler
+          </Link>
+          {[
+            { id: 'son-dakika', label: '🔴 Son Dakika' },
+            { id: 'gundem',     label: 'Gündem' },
+            { id: 'siyaset',    label: 'Siyaset' },
+            { id: 'dunya',      label: 'Dünya' },
+            { id: 'spor',       label: 'Spor' },
+            { id: 'ekonomi',    label: 'Ekonomi' },
+            { id: 'teknoloji',  label: 'Teknoloji' },
+            { id: 'saglik',     label: 'Sağlık' },
+            { id: 'yerel-haber', label: 'Yerel' },
+          ].map(cat => (
+            <Link
+              key={cat.id}
+              href={`${ROUTES.ADMIN.NEWS}?category=${cat.id}`}
+              className={cn(
+                'flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all',
+                categoryParam === cat.id
+                  ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
+                  : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+              )}
+            >
+              {cat.label}
+            </Link>
+          ))}
+        </div>
+
         {/* Filter tabs + search */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-1 overflow-x-auto pb-1">

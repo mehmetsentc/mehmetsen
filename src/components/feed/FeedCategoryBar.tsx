@@ -11,7 +11,7 @@ interface FeedCategoryBarProps {
 }
 
 const IN_PAGE_TABS: { id: FeedTab; label: string }[] = [
-  { id: 'home', label: 'Ana Feed' },
+  { id: 'home', label: 'Ana Sayfa' },
   { id: 'gundem', label: 'Gündem' },
 ]
 
