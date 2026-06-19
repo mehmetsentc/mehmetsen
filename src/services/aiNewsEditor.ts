@@ -260,11 +260,11 @@ SPOR KATEGORİ SEÇİM KURALI: Her spor haberinde mümkün olan en spesifik kate
 
 - gundem: Yukarıdakilere girmeyen Türkiye iç gündemi — trafik kazası (çok ölümlü), yangın, genel kamusal olay, hükümet açıklaması (politika değil). ASLA uluslararası haber için gundem seçme.
 
-- yerel-haber: Tek bir il veya ilçeyi kapsayan yerel olay. ÖRNEKLER: belediye kararı/projesi, valilik açıklaması, yerel trafik kazası, yerel yangın/operasyon, ilçe haberi, yerel spor kulübü. KURALLAR: (1) Haberden tek bir Türk şehrinin adı geçiyorsa ve olay o şehre özgüse → yerel-haber. (2) Belediye başkanı açıklaması tek şehre aitse → yerel-haber (siyaset değil). (3) DHA yerel ajans haberi tek şehir içeriyorsa → yerel-haber. Yerel gazete kaynaklı olması tek başına yeterli değil — haberin konusu da yerel olmalı.
+- yerel-haber: Tek bir il veya ilçeyi kapsayan yerel olay. isBreaking HER ZAMAN false — yerel yangın, yerel kaza, yerel operasyon, yerel haber HİÇBİRİ son-dakika değildir. ÖRNEKLER: belediye kararı/projesi, valilik açıklaması, yerel trafik kazası, yerel yangın/operasyon, ilçe haberi, yerel spor kulübü, kaplumbağa/vahşi hayvan haberi, yerel çevre/doğa haberi. KURALLAR: (1) Haberden tek bir Türk şehrinin adı geçiyorsa ve olay o şehre özgüse → yerel-haber. (2) Belediye başkanı açıklaması tek şehre aitse → yerel-haber (siyaset değil). (3) DHA yerel ajans haberi tek şehir içeriyorsa → yerel-haber. Yerel gazete kaynaklı olması tek başına yeterli değil — haberin konusu da yerel olmalı.
 
-- son-dakika: YALNIZCA şiddetli deprem (4.5+), büyük afet (onlarca ölü), darbe girişimi, suikast, Türkiye'yi doğrudan tehdit eden acil durum. ASLA spor/magazin/teknoloji/ekonomi.
+- son-dakika: SADECE tüm Türkiye'yi veya dünyayı doğrudan etkileyen BÜYÜK KRİZ haberleri. İZİN VERİLEN KRİTERLER (hepsi zorunlu değil — ama bunlardan biri olmalı): (1) Şiddetli deprem 4.5+ (2) Büyük afet — onlarca ölü veya toplu tahliye gerektiren (3) Darbe girişimi / suikast (4) Türkiye'yi doğrudan tehdit eden savaş/çatışma/terör saldırısı (5) Anlık kritik ekonomik kriz (döviz serbest düşüşü, borsa devre kesici). ASLA son-dakika OLMAZ: tek şehre özgü kaza/yangın/operasyon, yerel haber, spor, magazin, teknoloji, kültür, gastronomi, yerel doğa/hayvan haberi. ALTIN KURAL: "Bu haber ŞU AN tüm Türkiye'yi veya dünyayı mı etkiliyor?" → Hayır ise → son-dakika DEĞİL.
 
-isBreaking: son-dakika kriterleriyle aynı; spor/magazin/kultur/teknoloji için her zaman false.
+isBreaking: son-dakika kriterleriyle tam aynıdır. YERELHABERLER İÇİN HER ZAMAN false (yerel yangın/kaza/olay ne kadar dramatik olursa olsun). spor/magazin/kultur/teknoloji/gastronomi için HER ZAMAN false. Tek bir şehre veya ilçeye özgü olay için false.
 categoryConfidence: kesin eşleşme 88-100, iyi eşleşme 75-87, belirsiz 55-74.`
 
 const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:

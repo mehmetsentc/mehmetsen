@@ -802,6 +802,9 @@ export function validateCategoryClassification(
     categoryConfidence = Math.max(categoryConfidence, 84)
   }
 
+  // ── son-dakika içine sızan uygunsuz kategorileri geri çek ─────────────────
+  // Kural: son-dakika SADECE ulusal/küresel kriz. Yerel, spor, magazin, kültür
+  // ne kadar "acil" görünürse görünsün son-dakika olamaz.
   if (categoryId === 'son-dakika') {
     if (sports && !worldCupFinal) {
       overrides.push('son-dakika+sports → spor')
@@ -815,20 +818,44 @@ export function validateCategoryClassification(
       overrides.push('son-dakika+kultur → kultur')
       categoryId = 'kultur'
       isBreaking = false
+    } else if (gastronomi && !nationalScope) {
+      overrides.push('son-dakika+gastronomi → gastronomi')
+      categoryId = 'gastronomi'
+      isBreaking = false
+    } else if (!nationalScope && (hasYerelKeywords(text) || mentionsSingleCity(text))) {
+      // Ulusal kapsam yoksa VE yerel sinyal varsa → yerel-haber
+      overrides.push('son-dakika+yerel-sinyal+ulusal-kapsam-yok → yerel-haber')
+      categoryId = 'yerel-haber'
+      isBreaking = false
+    } else if (!nationalScope && input.editorType !== 'breaking' && !worldCupFinal) {
+      // Ulusal kapsam yok, breaking editörü değil → gündem
+      overrides.push('son-dakika+ulusal-kapsam-yok → gundem')
+      categoryId = 'gundem'
+      isBreaking = false
     }
+  }
+
+  // ── yerel-haber hiçbir zaman son-dakika olamaz ───────────────────────────
+  // Yerel yangın/kaza/operasyon ne kadar dramatik olursa olsun isBreaking=false.
+  if (categoryId === 'yerel-haber' && isBreaking) {
+    overrides.push('isBreaking cleared — yerel-haber asla son-dakika olamaz')
+    isBreaking = false
   }
 
   // Breaking editor pre-scores urgency signals — trust them without requiring nationalScope
   const isBreakingEditor = input.editorType === 'breaking'
 
   if (isBreaking) {
-    const allowedBreaking =
-      isBreakingEditor || worldCupFinal || nationalScope || categoryConfidence > 90 || categoryId === 'son-dakika'
+    // categoryConfidence > 90 artık tek başına yeterli değil.
+    // Yerel haberlerin yüksek confidence ile son-dakikaya sızmasını önler.
+    const allowedBreaking = isBreakingEditor || worldCupFinal || nationalScope
     if (!allowedBreaking) {
-      overrides.push('isBreaking cleared — no national scope / low confidence')
+      overrides.push('isBreaking cleared — no national scope')
       isBreaking = false
       if (categoryId === 'son-dakika') {
-        categoryId = sports ? 'spor' : magazin ? 'magazin' : 'gundem'
+        const fallback = sports ? 'spor' : magazin ? 'magazin' : 'gundem'
+        overrides.push(`son-dakika → ${fallback} (no national scope)`)
+        categoryId = fallback
       }
     }
   }
@@ -838,7 +865,7 @@ export function validateCategoryClassification(
     isBreaking = false
   }
 
-  if (isBreaking && (categoryId === 'magazin' || categoryId === 'kultur')) {
+  if (isBreaking && (categoryId === 'magazin' || categoryId === 'kultur' || categoryId === 'gastronomi')) {
     overrides.push(`isBreaking cleared for ${categoryId}`)
     isBreaking = false
   }
