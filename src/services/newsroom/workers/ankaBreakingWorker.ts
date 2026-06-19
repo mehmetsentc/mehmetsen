@@ -19,6 +19,30 @@ import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { extractCityFromText } from '@/services/newsroom/geoEngine'
 import { normalizeCitySlug } from '@/constants/cities'
+import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
+
+/**
+ * Bu liste gerçekten ulusal/küresel son dakika olabilecek haberleri
+ * belirler. Bu kelimelerden hiçbiri yoksa haber son-dakika olamaz.
+ */
+const NATIONAL_BREAKING_KEYWORDS = [
+  'deprem', 'tsunami', 'volkan',
+  'patlama', 'büyük patlama',
+  'darbe girişimi', 'suikast',
+  'terör saldırısı', 'bombalı saldırı', 'bombalama',
+  'savaş ilan', 'işgal etti', 'füze saldırısı', 'hava saldırısı',
+  'olağanüstü hal', 'seferberlik ilan',
+  'çok sayıda ölü', 'onlarca ölü', 'yüzlerce ölü', 'binlerce ölü',
+  'toplu ölüm', 'can kaybı sayısı',
+  'faiz kararı açıklandı', 'borsa devre kesici', 'merkez bankası acil',
+  'göçük', 'bina çöktü', 'sel felaketi', 'büyük sel',
+  'nükleer', 'radyasyon sızıntısı',
+]
+
+function isNationalBreakingWorthy(text: string): boolean {
+  const lower = text.toLocaleLowerCase('tr-TR')
+  return NATIONAL_BREAKING_KEYWORDS.some(kw => lower.includes(kw))
+}
 
 const FETCH_HEADERS = {
   'User-Agent':
@@ -255,6 +279,57 @@ async function publishArticle(
         .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
     ) : ''
 
+    // ── Son-dakika uygunluk kontrolü ─────────────────────────────────────────
+    // Anka'nın son-dakika sayfası her şeyi son-dakika olarak işaret eder.
+    // Gerçekten ulusal/küresel öneme sahip mi kontrol ediyoruz.
+    let finalCategory    = 'son-dakika'
+    let finalIsBreaking  = true
+    let finalBreakingScore = 90
+
+    const checkText    = `${article.title} ${article.spot} ${article.content.slice(0, 800)}`
+    const nationalWorthy = isNationalBreakingWorthy(checkText)
+
+    try {
+      const aiResult = await classifyArticleCategory(
+        article.title,
+        `${article.spot}\n${article.content}`,
+        'son-dakika'
+      )
+
+      if (aiResult) {
+        if (aiResult.categoryId === 'yerel-haber') {
+          // Kesinlikle yerel olay → son-dakika olamaz
+          finalCategory    = 'yerel-haber'
+          finalIsBreaking  = false
+          finalBreakingScore = 30
+          console.log(`[ankaBreaking] 📍 Yerel demote: "${article.title.slice(0, 55)}" → yerel-haber`)
+        } else if (!nationalWorthy) {
+          // Ulusal kapsam yok + AI gerçek kategoriyi verdi → o kategoriye düşür
+          finalCategory    = aiResult.categoryId
+          finalIsBreaking  = false
+          finalBreakingScore = 45
+          console.log(`[ankaBreaking] ⬇️  Demote: "${article.title.slice(0, 55)}" → ${aiResult.categoryId}`)
+        } else {
+          // nationalWorthy=true → son-dakika hakkını kazandı
+          console.log(`[ankaBreaking] 🚨 Son-dakika onaylandı: "${article.title.slice(0, 55)}"`)
+        }
+      } else if (!nationalWorthy) {
+        // AI çalışmadı + ulusal keyword yok → gündem'e düşür (son-dakika değil)
+        finalCategory    = 'gundem'
+        finalIsBreaking  = false
+        finalBreakingScore = 50
+        console.log(`[ankaBreaking] ⬇️  AI yok + ulusal değil: "${article.title.slice(0, 55)}" → gundem`)
+      }
+    } catch {
+      // AI hatası → yalnızca keyword'e güven
+      if (!nationalWorthy) {
+        finalCategory    = 'gundem'
+        finalIsBreaking  = false
+        finalBreakingScore = 50
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     const doc: Record<string, unknown> = {
       title:           article.title,
       spot:            article.spot,
@@ -263,8 +338,8 @@ async function publishArticle(
       thumbnail:       article.thumbnail,
       coverImageUrl:   article.thumbnail,
       status:          'published',
-      category:        'son-dakika',
-      categoryId:      'son-dakika',
+      category:        finalCategory,
+      categoryId:      finalCategory,
       source:          'anka-haber',
       sourceLabel:     'Anka Haber Ajansı',
       sourceUrl:       article.url,
@@ -275,8 +350,8 @@ async function publishArticle(
       updatedAt:       now,
       confidenceScore: 85,
       type:            'news',
-      isBreaking:      true,
-      breakingScore:   90,
+      isBreaking:      finalIsBreaking,
+      breakingScore:   finalBreakingScore,
       hasVideo:        !!article.videoUrl,
       socialPublished: false,
       fingerprint:     `anka-breaking-${article.ankaId}`,
