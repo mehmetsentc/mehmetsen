@@ -1,16 +1,16 @@
-/** Whether the feed should show a Son Dakika badge for this post. */
+/** Whether the feed should show a Son Dakika badge for this post.
+ * KURAL: Tek gerçek kaynak categoryId === 'son-dakika'.
+ * isBreaking veya breakingScore tek başına yeterli değil —
+ * kategori son-dakika olmadan badge gösterilmez.
+ */
 export function shouldShowBreakingBadge(post: {
   isBreaking?: boolean
   categoryId?: string | null
   breakingScore?: number
   isPinned?: boolean
 }): boolean {
-  if (post.isPinned) return true
-  if ((post.breakingScore ?? 0) > 80) return true
-  if (!post.isBreaking) return false
   const cat = post.categoryId?.trim().toLowerCase()
-  if (cat === 'spor' || cat === 'magazin') return false
-  return true
+  return cat === 'son-dakika'
 }
 
 /** Trending section flag — breakingScore > 70 or explicit isTrending. */
