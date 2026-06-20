@@ -22,27 +22,21 @@ import { normalizeCitySlug } from '@/constants/cities'
 import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
 
 /**
- * Bu liste gerçekten ulusal/küresel son dakika olabilecek haberleri
- * belirler. Bu kelimelerden hiçbiri yoksa haber son-dakika olamaz.
+ * Bu kategoriler hiçbir zaman son-dakika olamaz.
+ * Diğerleri (gundem, siyaset, ekonomi, dunya, saglik, teknoloji...)
+ * son-dakika olmaya devam edebilir.
  */
-const NATIONAL_BREAKING_KEYWORDS = [
-  'deprem', 'tsunami', 'volkan',
-  'patlama', 'büyük patlama',
-  'darbe girişimi', 'suikast',
-  'terör saldırısı', 'bombalı saldırı', 'bombalama',
-  'savaş ilan', 'işgal etti', 'füze saldırısı', 'hava saldırısı',
-  'olağanüstü hal', 'seferberlik ilan',
-  'çok sayıda ölü', 'onlarca ölü', 'yüzlerce ölü', 'binlerce ölü',
-  'toplu ölüm', 'can kaybı sayısı',
-  'faiz kararı açıklandı', 'borsa devre kesici', 'merkez bankası acil',
-  'göçük', 'bina çöktü', 'sel felaketi', 'büyük sel',
-  'nükleer', 'radyasyon sızıntısı',
-]
-
-function isNationalBreakingWorthy(text: string): boolean {
-  const lower = text.toLocaleLowerCase('tr-TR')
-  return NATIONAL_BREAKING_KEYWORDS.some(kw => lower.includes(kw))
-}
+const NEVER_BREAKING_CATEGORIES = new Set([
+  'yerel-haber',   // Tek bir il/ilçeye ait yerel haber
+  'gastronomi',    // Yemek, restoran, tarif
+  'otomobil',      // Araba haberleri
+  'magazin',       // Ünlülerin kişisel hayatı
+  'sinema',        // Film haberleri
+  'tiyatro',       // Tiyatro haberleri
+  'konser',        // Konser/etkinlik haberleri
+  'festival',      // Kültür-sanat festivalleri
+  'kultur',        // Genel kültür-sanat
+])
 
 const FETCH_HEADERS = {
   'User-Agent':
@@ -286,9 +280,6 @@ async function publishArticle(
     let finalIsBreaking  = true
     let finalBreakingScore = 90
 
-    const checkText    = `${article.title} ${article.spot} ${article.content.slice(0, 800)}`
-    const nationalWorthy = isNationalBreakingWorthy(checkText)
-
     try {
       const aiResult = await classifyArticleCategory(
         article.title,
@@ -296,37 +287,20 @@ async function publishArticle(
         'son-dakika'
       )
 
-      if (aiResult) {
-        if (aiResult.categoryId === 'yerel-haber') {
-          // Kesinlikle yerel olay → son-dakika olamaz
-          finalCategory    = 'yerel-haber'
-          finalIsBreaking  = false
-          finalBreakingScore = 30
-          console.log(`[ankaBreaking] 📍 Yerel demote: "${article.title.slice(0, 55)}" → yerel-haber`)
-        } else if (!nationalWorthy) {
-          // Ulusal kapsam yok + AI gerçek kategoriyi verdi → o kategoriye düşür
-          finalCategory    = aiResult.categoryId
-          finalIsBreaking  = false
-          finalBreakingScore = 45
-          console.log(`[ankaBreaking] ⬇️  Demote: "${article.title.slice(0, 55)}" → ${aiResult.categoryId}`)
-        } else {
-          // nationalWorthy=true → son-dakika hakkını kazandı
-          console.log(`[ankaBreaking] 🚨 Son-dakika onaylandı: "${article.title.slice(0, 55)}"`)
-        }
-      } else if (!nationalWorthy) {
-        // AI çalışmadı + ulusal keyword yok → gündem'e düşür (son-dakika değil)
-        finalCategory    = 'gundem'
+      if (aiResult && NEVER_BREAKING_CATEGORIES.has(aiResult.categoryId)) {
+        // AI açıkça yerel/magazin/gastronomi/kültür gibi kategoriye koydu → demote
+        finalCategory    = aiResult.categoryId
         finalIsBreaking  = false
-        finalBreakingScore = 50
-        console.log(`[ankaBreaking] ⬇️  AI yok + ulusal değil: "${article.title.slice(0, 55)}" → gundem`)
+        finalBreakingScore = aiResult.categoryId === 'yerel-haber' ? 30 : 45
+        console.log(`[ankaBreaking] ⬇️  Demote: "${article.title.slice(0, 55)}" → ${aiResult.categoryId}`)
+      } else {
+        // AI son-dakika/gundem/siyaset/ekonomi/dunya gibi ulusal kategori verdi
+        // VEYA AI çalışmadı → son-dakika olarak kalsın
+        console.log(`[ankaBreaking] 🚨 Son-dakika: "${article.title.slice(0, 55)}"`)
       }
     } catch {
-      // AI hatası → yalnızca keyword'e güven
-      if (!nationalWorthy) {
-        finalCategory    = 'gundem'
-        finalIsBreaking  = false
-        finalBreakingScore = 50
-      }
+      // AI hatası → orijinal davranış, son-dakika olarak yayınla
+      console.warn(`[ankaBreaking] AI hatası, son-dakika olarak yayınlanıyor: "${article.title.slice(0, 55)}"`)
     }
     // ────────────────────────────────────────────────────────────────────────
 

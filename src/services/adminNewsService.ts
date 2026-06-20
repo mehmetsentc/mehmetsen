@@ -350,6 +350,7 @@ export const adminNewsService = {
     const now = Date.now()
     const status = data.status ?? 'published'
 
+    const finalCategoryId = topicCategory || cityCategory
     await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
       title: data.title.trim(),
       description: data.description.trim(),
@@ -357,8 +358,10 @@ export const adminNewsService = {
       coverImageUrl: data.thumbnail ?? '',
       imageUrl: data.thumbnail ?? '',
       videoUrl: data.videoUrl ?? '',
-      category: topicCategory || cityCategory,
-      categoryId: topicCategory || cityCategory,
+      category: finalCategoryId,
+      categoryId: finalCategoryId,
+      // Kategori son-dakika değilse isBreaking temizle
+      isBreaking: finalCategoryId === 'son-dakika',
       city: location?.city ?? '',
       citySlug,
       location,

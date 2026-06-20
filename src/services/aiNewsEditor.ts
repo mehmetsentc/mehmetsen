@@ -220,51 +220,117 @@ SPOR HABERLERI ÖZEL KURALLAR:
   - Maç saatini MUTLAKA Türkiye saati (TSİ) ile belirt
   - Lig sıralaması değişmişse belirt: "Süper Lig'de liderliğe yükseldi"`
 
-const CATEGORY_CLASSIFICATION_RULES = `KATEGORİ SINIFLANDIRMA KURALLARI:
+const CATEGORY_CLASSIFICATION_RULES = `════════════════════════════════════════════════════════
+KATEGORİ KARAR AĞACI — ADIM ADIM UYGULA (sırayı atla)
+════════════════════════════════════════════════════════
 
-Her haber YALNIZCA aşağıdaki kategorilerden BİRİNE girmeli. En spesifik kategoriyi seç.
+ADIM 1 — COĞRAFYA KONTROLÜ
+  • Olay Türkiye DIŞINDA mı? → KESİNLİKLE "dunya". Kaynak Türkçe gazete olsa bile.
+    Örnekler: Ukrayna savaşı, ABD seçimi, Gazze, AB kararı, yabancı lider açıklaması.
+  • Coğrafya Türkiye içindeyse → ADIM 2'ye geç.
 
-- teknoloji: Apple/Google/Microsoft/Meta/Tesla ürün veya hizmeti, yapay zeka, ChatGPT, yazılım güncelleme, siber saldırı, oyun konsolu, elektrikli araç teknolojisi, uzay/roket, drone, robot, sosyal medya platform değişikliği. KURAL: Ürün/servis → teknoloji. Şirketin ekonomik haberi → ekonomi.
+ADIM 2 — SPOR KONTROLÜ
+  • Futbol haberi? → "futbol". Basketbol? → "basketbol". Voleybol? → "voleybol".
+    Hentbol → "hentbol". Atletizm → "atletizm". Güreş → "gures".
+    F1/MotoGP/tenis/boks/yüzme/kayak/golf → "spor".
+  • Spor değilse → ADIM 3'e geç.
 
-- siyaset: Cumhurbaşkanı/Başbakan/Bakan kararı veya açıklaması, seçim/sandık/oy, AKP/CHP/MHP/HDP/DEM parti haberleri, meclis/TBMM oturumu, koalisyon/referandum, siyasetçi yargılanması. KURAL: Afet sonrası "hükümet yardım gönderdi" → gundem (siyaset değil). Gerçek siyasi karar/tartışma → siyaset.
+ADIM 3 — UZMAN KATEGORİ KONTROLÜ (eşleşirse dur, devam etme)
+  • Ekonomi (borsa/döviz/faiz/enflasyon/TCMB/şirket bilançosu/kripto) → "ekonomi"
+  • Siyaset (Cumhurbaşkanı kararı, TBMM, parti haberi, seçim) → "siyaset"
+  • Teknoloji (Apple/Google/AI/yazılım/siber/uzay/drone/robot) → "teknoloji"
+  • Sağlık (hastalık/ilaç/pandemi/aşı/WHO/sağlık bakanlığı) → "saglik"
+  • Bilim (araştırma/keşif/NASA/uzay bilimi/iklim bilimi) → "bilim"
+  • Hava durumu / MGM uyarısı / fırtına / sıcaklık rekoru → "meteoroloji"
+  • Yemek/restoran/şef/tarif/Michelin/MasterChef → "gastronomi"
+  • Araba/araç/TOGG/trafik/motosiklet → "otomobil" (KURAL: trafik kazası → yerel-haber veya gundem, otomobil değil)
+  • Sinema/tiyatro/opera/müze/edebiyat/ödül töreni → "kultur"
+  • Konser/müzik etkinliği/albüm çıkışı → "kultur"
+  • Ünlü özel hayatı/evlilik-boşanma/dizi fragmanı/dedikodu → "magazin"
+  • Hiçbiri eşleşmiyorsa → ADIM 4'e geç.
 
-- ekonomi: Borsa/döviz/faiz/enflasyon rakamları, TCMB kararı, şirket bilançosu/halka arz, ihracat/ithalat istatistik, işsizlik oranı, kripto piyasa, vergi düzenlemesi, asgari ücret.
+ADIM 4 — YEREL mi ULUSAL mi? (EN KRİTİK ADIM)
 
-- futbol: Futbol maç sonucu, gol, Süper Lig/Şampiyonlar Ligi/Premier Lig/La Liga, transfer, teknik direktör, Galatasaray/Fenerbahçe/Beşiktaş/Trabzonspor, TFF, UEFA, FIFA, penaltı, derbi. ÖRNEKLER: "Galatasaray 3-0 kazandı", "Milli takım World Cup'a hazırlanıyor", "Şampiyonlar Ligi kura çekimi".
+  ┌─ YERELLİK TESTİ ──────────────────────────────────────────┐
+  │  Aşağıdakilerin HEPSİ doğruysa → "yerel-haber":           │
+  │  ✓ Olay TAM OLARAK tek bir Türk şehri/ilçesinde geçiyor   │
+  │  ✓ Diğer şehirlerde benzer bir etki/sonuç yaratmıyor      │
+  │  ✓ Türkiye genelinde politika/yasa/ekonomi değişikliği YOK│
+  └────────────────────────────────────────────────────────────┘
 
-- basketbol: NBA, EuroLeague, Anadolu Efes, Fenerbahçe Beko, basketbol maç sonucu, basketbol transfer, play-off. ÖRNEKLER: "NBA finalinde Golden State kazandı", "Efes EuroLeague'e veda etti".
+  YERELLİK TESTİ ÖRNEKLERİ — yerel-haber seç:
+    "Konya'da trafik kazası: 2 yaralı"         → yerel-haber
+    "Trabzon Belediyesi park yapıyor"           → yerel-haber
+    "Erzurum'da bıçaklı kavga"                 → yerel-haber
+    "İzmir'de berber emeklilere döner ısmarlıyor" → yerel-haber
+    "Adana'da uyuşturucu operasyonu"            → yerel-haber
+    "Bursa'da yangın çıktı, 1 kişi öldü"       → yerel-haber
+    "Mersin'de kaplumbağa kurtarıldı"           → yerel-haber
+    "Gaziantep Büyükşehir metroyu açıyor"       → yerel-haber
+    "Kayseri Valisi açıklama yaptı"             → yerel-haber
+    "Antalya'da tatilci denizde boğuldu"        → yerel-haber
 
-- voleybol: Voleybol maç, Efeler Ligi, Sultanlar Ligi, milli voleybol takımı, voleybol kupası. ÖRNEKLER: "Türkiye voleybolda dünya şampiyonu oldu".
+  ULUSAL TEST ÖRNEKLERİ — gundem veya son-dakika seç:
+    "İstanbul'da 6.5 büyüklüğünde deprem"      → son-dakika (tüm ülke etkisi)
+    "Türkiye genelinde sel uyarısı verildi"     → gundem (Türkiye geneli)
+    "Türkiye-Yunanistan sınırında gerilim"      → siyaset/dunya
+    "Asgari ücret zammı açıklandı"              → ekonomi (ulusal)
+    "Ankara'da büyük terör saldırısı"           → son-dakika
 
-- hentbol: Hentbol maç, hentbol turnuva, hentbol transfer.
+  SINIR DURUMLARI — hep yerel-haber:
+    ✗ "Büyük" veya "feci" kelimesi tek şehir olayını ulusal yapmaz
+    ✗ Ölü sayısı az bile olsa tek şehirde kaldıysa → yerel-haber
+    ✗ Belediye başkanı konuşması → yerel-haber (siyaset DEĞİL)
+    ✗ Valilik açıklaması → yerel-haber
+    ✗ Yerel spor kulübü haberi → yerel-haber (futbol/spor DEĞİL)
 
-- atletizm: Koşu, maraton, olimpiyat atletizm, dünya rekoru, atlet sakatlık/transfer.
+ADIM 5 — GÜNDEM mi SON DAKİKA mı?
+  Eğer ulusal/genel bir Türkiye haberi ise:
 
-- gures: Güreş, dünya güreş şampiyonası, olimpiyat güreş.
+  "gundem" → TÜM ŞUNLAR için:
+    Genel kamu haberleri, çok ölümlü ama sınırlı etki bırakmış kazalar,
+    hükümet duyurusu (politika değil), doğal olaylar (küçük çaplı).
+    isBreaking = false ZORUNLU.
 
-- spor: Yukarıdaki spor dallarına girmeyen diğer spor haberleri — F1, Formula 1, MotoGP, tenis, yüzme, boks, kayak, golf, kriket, olimpiyat (dala özgü değilse). ASLA son-dakika kategorisi (istisna: Dünya Kupası finali milli zafer).
+  "son-dakika" → YALNIZCA şunlar için (biri yeterlı):
+    (1) Deprem 4.5 büyüklük veya üzeri
+    (2) Büyük afet: onlarca ölü VEYA toplu tahliye/kentsel yıkım
+    (3) Darbe girişimi, suikast, devlet başkanına saldırı
+    (4) Türkiye'yi doğrudan etkileyen aktif savaş/terör saldırısı
+    (5) Anlık kritik ekonomik çöküş: borsa devre kesici, döviz serbest düşüşü
+    (6) Hükümet olağanüstü hal / seferberlik ilanı
+    isBreaking = true ZORUNLU.
 
-SPOR KATEGORİ SEÇİM KURALI: Her spor haberinde mümkün olan en spesifik kategoriye gir. Futbol haberleri → futbol (spor değil). Basketbol haberleri → basketbol (spor değil). Voleybol → voleybol. Birden fazla dal geçiyorsa → spor. Hangi dal olduğu belirsizse → spor.
+  ALTIN KURAL: "Bu haber ŞU AN Türkiye'nin 5'ten fazla ilini veya tüm
+  ekonomisini doğrudan etkiliyor mu?" → Hayır ise → son-dakika DEĞİL.
 
-- saglik: Hastalık/ilaç/aşı/tedavi/ameliyat, pandemi/salgın uyarısı, beslenme/diyet araştırması, WHO/sağlık bakanlığı açıklaması.
+════════════════════════════════════════════════════════
+KATEGORİ TANIMLARI (referans)
+════════════════════════════════════════════════════════
 
-- dunya: Türkiye dışı coğrafyada gelişen olay. ZORUNLU ÖRNEKLER → Gazze/Hamas/İsrail çatışması, Ukrayna/Rusya savaşı, ABD seçimi/politikası, AB kararı, Çin/Tayvan gerilimi, BM/NATO/G20 kararları, yabancı lider açıklaması, dış ülkedeki doğal afet/terör. KURAL: Haber konusu Türkiye dışında ise ve kaynak Türkçe bir haber sitesi olsa bile → dunya. Kaynak gazetenin şehrine bakma; haberin GEÇTİĞİ COĞRAFYAYA bak.
+- futbol: Futbol maçı, gol, Süper Lig/CL/Premier Lig/La Liga, transfer, teknik direktör, TFF, UEFA, FIFA, derbi.
+- basketbol: NBA, EuroLeague, Anadolu Efes, Fenerbahçe Beko, basketbol maç/transfer/play-off.
+- voleybol: Voleybol maç/kupa, Efeler/Sultanlar Ligi, milli voleybol takımı.
+- hentbol: Hentbol maç/turnuva/transfer.
+- atletizm: Koşu, maraton, olimpiyat atletizm, dünya rekoru.
+- gures: Güreş, dünya/olimpiyat güreş şampiyonası.
+- spor: Diğer spor — F1, tenis, boks, yüzme, kayak, golf, olimpiyat (dal belli değilse). isBreaking=false.
+- siyaset: Cumhurbaşkanı/TBMM/bakan kararı, seçim, parti haberi, koalisyon, referandum. NOT: Belediye başkanı yerel kararı → yerel-haber.
+- ekonomi: Borsa, döviz, faiz, enflasyon, TCMB, şirket bilançosu, kripto, asgari ücret, ihracat istatistiği.
+- teknoloji: Apple/Google/Meta/AI/yazılım/siber saldırı/uzay/drone/robot/sosyal medya platform değişikliği.
+- saglik: Hastalık, ilaç, aşı, pandemi/salgın, WHO, sağlık bakanlığı açıklaması.
+- bilim: Araştırma, keşif, NASA, uzay bilimi, iklim bilimi, fizik/kimya bulgusu.
+- meteoroloji: Hava durumu tahmini, MGM uyarısı, don/kar/yağmur/fırtına/sıcaklık rekoru. Tüm hava haberleri buraya girer — bilim değil.
+- gastronomi: Yemek tarifi, restoran haberi, şef, Michelin, MasterChef, mutfak kültürü, food blogger.
+- otomobil: Araç modeli tanıtımı, TOGG, elektrikli araç, otomotiv sektörü. NOT: trafik kazası → yerel-haber veya gundem.
+- kultur: Sinema, tiyatro, opera, müze, edebiyat, ödül töreni (Oscar/Nobel vb.), konser, müzik albümü.
+- magazin: Ünlü özel hayatı, evlilik/boşanma, dizi fragmanı, dedikodu, celebrity. isBreaking=false.
+- dunya: Türkiye dışında gerçekleşen TÜM haberler — kaynak Türkçe olsa bile.
+- gundem: Türkiye genelini etkileyen, yukarıdaki spesifik kategorilere girmeyen ulusal haberler. ASLA tek şehir olayı için kullanma.
+- yerel-haber: Tek il/ilçeye özgü olay. isBreaking=false ZORUNLU. Ölü sayısı, dramatik içerik, büyük manşet hiçbir yerel haberi gündem/son-dakika yapmaz.
+- son-dakika: Yalnızca ADIM 5'teki kriterlerden biri sağlandığında. isBreaking=true ZORUNLU.
 
-- kultur: Sinema/film/tiyatro/opera/bale/sergi/müze, edebiyat/kitap, müzik albümü çıkışı, ödül töreni (Oscar/Nobel vb.), kültür-sanat etkinliği. ASLA spor. ASLA yemek/restoran/mutfak haberleri (bunlar → gastronomi).
-
-- gastronomi: Yemek tarifi, restoran açılış/kapanış/inceleme, şef haberi, yemek festivali, mutfak kültürü, gastronomi ödülü, Michelin yıldızı, fine dining, street food, masterchef/top chef yarışması, food blogger haberi. ÖRNEKLER: "İstanbul'da yeni Michelin yıldızlı restoran", "Türk mutfağı UNESCO listesinde", "Masterchef Türkiye finali", "Pizza fiyatlarına zam". KURAL: Yemek kelimesi geçen her haber gastronomi değildir — zam/ekonomik boyutu varsa ekonomi; sağlık boyutu varsa saglik. Ama yemek kültürü/tarifi/restoranı → gastronomi.
-
-- magazin: Ünlü/celebrity haberi, oyuncu/şarkıcı özel hayatı, dizi yayın tarihi/fragman, evlilik/boşanma/ayrılık, dedikodu. isBreaking=false.
-
-- meteoroloji: Hava durumu tahmini/uyarısı, don/kar/yağmur/fırtına/sıcaklık rekoru/hava alarmı, Meteoroloji Genel Müdürlüğü (MGM) açıklaması, mevsim normali/anomalisi, iklim verisi (güncel ölçüm). KURAL: "Hava durumu" içeren BÜTÜN haberler meteoroloji kategorisine girer — bilim değil.
-
-- gundem: Yukarıdakilere girmeyen Türkiye iç gündemi — trafik kazası (çok ölümlü), yangın, genel kamusal olay, hükümet açıklaması (politika değil). ASLA uluslararası haber için gundem seçme.
-
-- yerel-haber: Tek bir il veya ilçeyi kapsayan yerel olay. isBreaking HER ZAMAN false — yerel yangın, yerel kaza, yerel operasyon, yerel haber HİÇBİRİ son-dakika değildir. ÖRNEKLER: belediye kararı/projesi, valilik açıklaması, yerel trafik kazası, yerel yangın/operasyon, ilçe haberi, yerel spor kulübü, kaplumbağa/vahşi hayvan haberi, yerel çevre/doğa haberi. KURALLAR: (1) Haberden tek bir Türk şehrinin adı geçiyorsa ve olay o şehre özgüse → yerel-haber. (2) Belediye başkanı açıklaması tek şehre aitse → yerel-haber (siyaset değil). (3) DHA yerel ajans haberi tek şehir içeriyorsa → yerel-haber. Yerel gazete kaynaklı olması tek başına yeterli değil — haberin konusu da yerel olmalı.
-
-- son-dakika: SADECE tüm Türkiye'yi veya dünyayı doğrudan etkileyen BÜYÜK KRİZ haberleri. İZİN VERİLEN KRİTERLER (hepsi zorunlu değil — ama bunlardan biri olmalı): (1) Şiddetli deprem 4.5+ (2) Büyük afet — onlarca ölü veya toplu tahliye gerektiren (3) Darbe girişimi / suikast (4) Türkiye'yi doğrudan tehdit eden savaş/çatışma/terör saldırısı (5) Anlık kritik ekonomik kriz (döviz serbest düşüşü, borsa devre kesici). ASLA son-dakika OLMAZ: tek şehre özgü kaza/yangın/operasyon, yerel haber, spor, magazin, teknoloji, kültür, gastronomi, yerel doğa/hayvan haberi. ALTIN KURAL: "Bu haber ŞU AN tüm Türkiye'yi veya dünyayı mı etkiliyor?" → Hayır ise → son-dakika DEĞİL.
-
-isBreaking: son-dakika kriterleriyle tam aynıdır. YERELHABERLER İÇİN HER ZAMAN false (yerel yangın/kaza/olay ne kadar dramatik olursa olsun). spor/magazin/kultur/teknoloji/gastronomi için HER ZAMAN false. Tek bir şehre veya ilçeye özgü olay için false.
+isBreaking kuralı: son-dakika → true; diğer tüm kategoriler → false.
 categoryConfidence: kesin eşleşme 88-100, iyi eşleşme 75-87, belirsiz 55-74.`
 
 const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
@@ -563,8 +629,13 @@ function sanitizeRssContent(text: string): string {
 }
 
 function fallbackRewrite(input: AiRewriteInput): AiRewriteResult | AiArchiveRewriteResult {
-  const rawBase = sanitizeRssContent(input.originalContent || input.originalSummary || '')
-    || sanitizeRssContent(input.originalSummary || '')
+  // RSC/Next.js garbage kontrolü — garbage ise sadece summary'yi kullan
+  const rawContent = input.originalContent || ''
+  const cleanContent = isGarbageContent(rawContent)
+    ? sanitizeRssContent(input.originalSummary || '')
+    : sanitizeRssContent(rawContent) || sanitizeRssContent(input.originalSummary || '')
+
+  const rawBase = cleanContent
 
   // If content is still too short after sanitization, refuse to publish garbage
   if (rawBase.trim().length < 80) {
