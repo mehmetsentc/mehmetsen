@@ -32,6 +32,10 @@ export interface User {
   interests?: string[]
   /** Preferred news category ids */
   favoriteCategories?: string[]
+  /** Favorite sports team name */
+  favoriteTeam?: string | null
+  /** Favorite sport branch id (futbol, basketbol, voleybol…) */
+  favoriteSport?: string | null
   createdAt: string
   updatedAt: string
 }
