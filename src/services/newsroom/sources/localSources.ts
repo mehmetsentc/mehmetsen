@@ -434,6 +434,19 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     enabled: true,
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Bozcaada' },
   },
+  {
+    id: 'portal-canakkale-kanal17',
+    label: 'Kanal 17 (Çanakkale)',
+    feedUrl: 'https://www.kanal17.com.tr/feed',
+    alternateFeedUrls: [
+      'https://www.kanal17.com.tr/rss',
+      'https://www.kanal17.com.tr/rss.xml',
+      buildGoogleNewsFeedUrl('Çanakkale haber site:kanal17.com.tr'),
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+    localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale' },
+  },
   // ── Çorum ─────────────────────────────────────────────────────────────────
   {
     id: 'portal-corum-haber',
