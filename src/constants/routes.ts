@@ -37,6 +37,7 @@ export const ROUTES = {
   SETTINGS_ABOUT: '/settings/about',
   SETTINGS_TERMS: '/settings/terms',
   SETTINGS_PRIVACY_POLICY: '/settings/privacy-policy',
+  SETTINGS_PROFILE: '/settings/profile',
   FEED_CONTENT_POLICY: '/feed/kurallar',
   ADMIN: {
     ROOT: '/admin',

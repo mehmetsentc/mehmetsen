@@ -39,8 +39,8 @@ export function FeedCategoryBar({ activeTab, onTabChange }: FeedCategoryBarProps
             className={[
               'flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all',
               activeTab === tab.id
-                ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
-                : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-border))]',
+                ? 'bg-[rgb(var(--color-brand))] text-white shadow-sm'
+                : 'text-[rgb(var(--color-text))] opacity-60 hover:opacity-100 hover:bg-[rgb(var(--color-nav-hover))]',
             ].join(' ')}
           >
             {tab.label}

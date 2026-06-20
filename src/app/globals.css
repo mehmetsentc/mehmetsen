@@ -6,12 +6,14 @@
   :root {
     /* Light tema — beyaz/açık arka plan, koyu metin */
     --color-brand: 232 30 52;
+    --color-primary: 232 30 52;        /* alias → brand kırmızısı */
     --color-surface: 248 249 252;
     --color-card: 255 255 255;
-    --color-border: 220 224 234;
+    --color-border: 214 219 230;
     --color-text: 15 20 40;
-    --color-muted: 90 103 128;
-    --color-nav-hover: 240 242 247;
+    --color-muted: 75 90 115;          /* daha koyu: light'ta okunabilir */
+    --color-muted-subtle: 120 135 160; /* çok soluk metinler için */
+    --color-nav-hover: 237 240 247;
     --sidebar-width-collapsed: 256px;
     --sidebar-width-expanded: 256px;
     --layout-gutter: 1.5rem;
@@ -119,11 +121,13 @@
 
   .dark {
     --color-brand: 232 30 52;
+    --color-primary: 232 30 52;
     --color-surface: 8 12 28;
     --color-card: 13 19 44;
     --color-border: 26 37 70;
     --color-text: 248 250 252;
     --color-muted: 148 163 184;
+    --color-muted-subtle: 100 115 140;
     --color-nav-hover: 18 27 58;
   }
 

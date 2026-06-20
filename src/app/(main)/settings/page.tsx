@@ -15,6 +15,7 @@ import {
   Moon,
   Search,
   Shield,
+  Sparkles,
   User,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -64,6 +65,15 @@ export default function SettingsPage() {
 
   const entries: SettingsEntry[] = useMemo(
     () => [
+      {
+        id: 'profile-interests',
+        section: 'Nasıl kullanıyorsun?',
+        icon: Sparkles,
+        label: 'Profil ve İlgi Alanları',
+        description: 'Avatar, biyografi, haber kategorileri ve spor tercihleri',
+        href: ROUTES.SETTINGS_PROFILE,
+        keywords: ['profil', 'ilgi', 'kategori', 'spor', 'avatar', 'biyografi', 'şehir', 'takım'],
+      },
       {
         id: 'saved',
         section: 'Nasıl kullanıyorsun?',

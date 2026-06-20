@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { ProfileHeader } from './ProfileHeader'
 import { ProfileTabs } from './ProfileTabs'
+import { ProfileCompleteModal } from './ProfileCompleteModal'
 import { ROUTES } from '@/constants/routes'
 import { Button } from '@/components/ui/Button'
 
@@ -47,6 +48,9 @@ export function ProfilePageClient({ username }: ProfilePageClientProps) {
 
   return (
     <div className="mx-auto w-full space-y-2">
+      {/* Kendi profilindeyse ve profil eksikse tamamlama popup'ı göster */}
+      {isOwnProfile && authUser && <ProfileCompleteModal user={authUser} />}
+
       <ProfileHeader
         user={profile}
         isOwnProfile={isOwnProfile}
