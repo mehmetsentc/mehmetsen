@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ROUTES } from '@/constants/routes'
 
-export type FeedTab = 'home' | 'gundem'
+export type FeedTab = 'home' | 'gundem' | 'personal'
 
 interface FeedCategoryBarProps {
   activeTab: FeedTab
@@ -13,6 +13,7 @@ interface FeedCategoryBarProps {
 const IN_PAGE_TABS: { id: FeedTab; label: string }[] = [
   { id: 'home', label: 'Ana Sayfa' },
   { id: 'gundem', label: 'Gündem' },
+  { id: 'personal', label: '✨ Sana Özel' },
 ]
 
 const NAV_CATEGORIES = [

@@ -109,16 +109,42 @@ export const userService = {
 
   async completeOnboarding(
     uid: string,
-    data: Partial<Pick<User, 'username' | 'displayName' | 'bio' | 'photoURL' | 'website' | 'location'>>
+    data: {
+      username?: string
+      displayName?: string
+      bio?: string | null
+      photoURL?: string | null
+      website?: string | null
+      location?: string | null
+      favoriteCategories?: string[]
+      interests?: string[]
+      favoriteTeam?: string
+      favoriteSport?: string
+    }
   ) {
-    const citySlug = data.location?.trim() ? slugifyCity(data.location.trim()) : null
+    const { favoriteCategories, interests, favoriteTeam, favoriteSport, ...profileData } = data
+    const citySlug = profileData.location?.trim() ? slugifyCity(profileData.location.trim()) : null
     await updateDoc(doc(db, Collections.USERS, uid), {
-      ...data,
-      ...(typeof data.username === 'string'
-        ? { username: normalizeUsername(data.username) }
+      ...profileData,
+      ...(typeof profileData.username === 'string'
+        ? { username: normalizeUsername(profileData.username) }
         : {}),
       citySlug,
+      ...(favoriteCategories !== undefined ? { favoriteCategories } : {}),
+      ...(interests !== undefined ? { interests } : {}),
+      ...(favoriteTeam !== undefined ? { favoriteTeam } : {}),
+      ...(favoriteSport !== undefined ? { favoriteSport } : {}),
       onboardingCompleted: true,
+      updatedAt: new Date().toISOString(),
+    })
+  },
+
+  async updateInterests(
+    uid: string,
+    data: { favoriteCategories?: string[]; interests?: string[]; favoriteTeam?: string; favoriteSport?: string }
+  ) {
+    await updateDoc(doc(db, Collections.USERS, uid), {
+      ...data,
       updatedAt: new Date().toISOString(),
     })
   },
