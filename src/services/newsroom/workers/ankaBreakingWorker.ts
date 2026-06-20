@@ -22,20 +22,21 @@ import { normalizeCitySlug } from '@/constants/cities'
 import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
 
 /**
- * Bu kategoriler hiçbir zaman son-dakika olamaz.
- * Diğerleri (gundem, siyaset, ekonomi, dunya, saglik, teknoloji...)
- * son-dakika olmaya devam edebilir.
+ * BEYAZ LİSTE: SADECE bu kategoriler son-dakika olabilir.
+ *
+ * Kara liste yaklaşımı yetersizdi: AI "Manisa Belediye Başkanı festival"ı
+ * "siyaset" olarak sınıflandırınca kara listeden kaçıyordu.
+ * Beyaz liste ile sadece gerçekten ulusal/küresel öneme sahip haberler geçer.
+ *
+ * Siyaset için ek kural: şehir tespiti yoksa (ulusal siyaset) son-dakika olabilir.
+ * Şehir tespiti varsa (belediye haberi, yerel siyaset) → demote.
  */
-const NEVER_BREAKING_CATEGORIES = new Set([
-  'yerel-haber',   // Tek bir il/ilçeye ait yerel haber
-  'gastronomi',    // Yemek, restoran, tarif
-  'otomobil',      // Araba haberleri
-  'magazin',       // Ünlülerin kişisel hayatı
-  'sinema',        // Film haberleri
-  'tiyatro',       // Tiyatro haberleri
-  'konser',        // Konser/etkinlik haberleri
-  'festival',      // Kültür-sanat festivalleri
-  'kultur',        // Genel kültür-sanat
+const TRULY_BREAKING_CATEGORIES = new Set([
+  'gundem',        // Ulusal gündem: deprem, büyük kaza, kritik açıklama, yangın
+  'dunya',         // Uluslararası gelişmeler: savaş, büyük olay
+  'ekonomi',       // Büyük ekonomik kriz, piyasa çöküşü, merkez bankası kararı
+  'saglik',        // Salgın, büyük halk sağlığı krizi, salgın uyarısı
+  'meteoroloji',   // Fırtına, sel, kar felaketi (birden fazla ili etkileyen)
 ])
 
 const FETCH_HEADERS = {
@@ -273,9 +274,11 @@ async function publishArticle(
         .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
     ) : ''
 
-    // ── Son-dakika uygunluk kontrolü ─────────────────────────────────────────
+    // ── Son-dakika uygunluk kontrolü (BEYAZ LİSTE) ──────────────────────────
     // Anka'nın son-dakika sayfası her şeyi son-dakika olarak işaret eder.
-    // Gerçekten ulusal/küresel öneme sahip mi kontrol ediyoruz.
+    // BEYAZ LİSTE: Sadece TRULY_BREAKING_CATEGORIES son-dakika olabilir.
+    // Siyaset için ek kural: şehir tespiti yoksa ulusal siyaset → kabul.
+    //   Şehir tespiti varsa yerel siyaset (belediye haberi) → demote.
     let finalCategory    = 'son-dakika'
     let finalIsBreaking  = true
     let finalBreakingScore = 90
@@ -287,19 +290,32 @@ async function publishArticle(
         'son-dakika'
       )
 
-      if (aiResult && NEVER_BREAKING_CATEGORIES.has(aiResult.categoryId)) {
-        // AI açıkça yerel/magazin/gastronomi/kültür gibi kategoriye koydu → demote
-        finalCategory    = aiResult.categoryId
-        finalIsBreaking  = false
-        finalBreakingScore = aiResult.categoryId === 'yerel-haber' ? 30 : 45
-        console.log(`[ankaBreaking] ⬇️  Demote: "${article.title.slice(0, 55)}" → ${aiResult.categoryId}`)
-      } else {
-        // AI son-dakika/gundem/siyaset/ekonomi/dunya gibi ulusal kategori verdi
-        // VEYA AI çalışmadı → son-dakika olarak kalsın
-        console.log(`[ankaBreaking] 🚨 Son-dakika: "${article.title.slice(0, 55)}"`)
+      if (aiResult) {
+        const aiCategory = aiResult.categoryId
+
+        if (TRULY_BREAKING_CATEGORIES.has(aiCategory)) {
+          // ✅ Ulusal/küresel kapsam — son-dakika olarak kalsın
+          console.log(`[ankaBreaking] 🚨 Son-dakika (${aiCategory}): "${article.title.slice(0, 55)}"`)
+
+        } else if (aiCategory === 'siyaset' && !detectedCity) {
+          // ✅ Ulusal siyaset (şehir yok: TBMM, Cumhurbaşkanı, Bakan, MEB vb.)
+          console.log(`[ankaBreaking] 🚨 Son-dakika (ulusal siyaset): "${article.title.slice(0, 55)}"`)
+
+        } else {
+          // ❌ Demote: yerel siyaset / spor / kültür / teknoloji / magazin / vb.
+          // Şehir tespiti varsa yerel-haber; yoksa AI kategorisi (ör. spor, teknoloji)
+          finalCategory    = detectedCity ? 'yerel-haber' : aiCategory
+          finalIsBreaking  = false
+          finalBreakingScore = 35
+          console.log(
+            `[ankaBreaking] ⬇️  Demote (AI=${aiCategory}, şehir=${detectedCity ?? 'yok'}): ` +
+            `"${article.title.slice(0, 55)}" → ${finalCategory}`
+          )
+        }
       }
+      // aiResult null ise (AI dönmedi) → son-dakika olarak kalsın
     } catch {
-      // AI hatası → orijinal davranış, son-dakika olarak yayınla
+      // AI hatası → güvenli taraf: son-dakika olarak yayınla
       console.warn(`[ankaBreaking] AI hatası, son-dakika olarak yayınlanıyor: "${article.title.slice(0, 55)}"`)
     }
     // ────────────────────────────────────────────────────────────────────────

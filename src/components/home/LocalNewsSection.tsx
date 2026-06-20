@@ -3,14 +3,66 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { CalendarDays, MapPin } from 'lucide-react'
+import { CalendarDays, MapPin, PartyPopper } from 'lucide-react'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { getLocalEvents, getLocalNews } from '@/lib/news'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
+import { resolveEventImageUrl, formatEventDayBadge } from '@/lib/eventUtils'
 import { ROUTES } from '@/constants/routes'
 import type { NewsItem } from '@/types/newsItem'
 import type { NaEvent } from '@/types/event'
+
+// ── Küçük etkinlik kartı (yatay kaydırma şeridi için) ─────────────────────────
+function EventMiniCard({ event, fallbackCity }: { event: NaEvent; fallbackCity?: string | null }) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const imgUrl = resolveEventImageUrl(event.coverImageUrl)
+  const showImg = !!imgUrl && !imgFailed
+  const { day, month } = formatEventDayBadge(event.startsAt)
+
+  return (
+    <Link
+      href={ROUTES.EVENTS}
+      className="w-[160px] shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
+    >
+      {/* Görsel alanı */}
+      <div className="relative h-[100px] w-full overflow-hidden bg-[rgb(var(--color-surface-elevated))]">
+        {showImg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imgUrl}
+            alt={event.title}
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+            <PartyPopper className="h-7 w-7 text-[rgb(var(--color-muted))]" />
+          </div>
+        )}
+
+        {/* Tarih badge */}
+        {day && (
+          <div className="absolute left-2 top-2 flex flex-col items-center rounded-lg bg-[rgb(var(--color-surface))]/90 px-1.5 py-1 shadow-sm backdrop-blur">
+            <span className="text-xs font-black leading-none text-[rgb(var(--color-text))]">{day}</span>
+            <span className="text-[9px] font-semibold uppercase text-[rgb(var(--color-muted))]">{month}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Başlık + şehir */}
+      <div className="px-2.5 py-2">
+        <p className="line-clamp-2 text-xs font-bold leading-snug text-[rgb(var(--color-text))]">
+          {event.title}
+        </p>
+        <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))] truncate">
+          {event.city || fallbackCity}
+        </p>
+      </div>
+    </Link>
+  )
+}
 
 export function LocalNewsSection() {
   const { citySlug, cityName, ready } = useUserLocation()
@@ -103,16 +155,7 @@ export function LocalNewsSection() {
           </div>
           <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide">
             {events.map((event) => (
-              <Link
-                key={event.id}
-                href={ROUTES.EVENTS}
-                className="w-[220px] shrink-0 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3"
-              >
-                <p className="line-clamp-2 text-sm font-bold text-[rgb(var(--color-text))]">{event.title}</p>
-                <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
-                  {event.city || cityName}
-                </p>
-              </Link>
+              <EventMiniCard key={event.id} event={event} fallbackCity={cityName} />
             ))}
           </div>
         </section>
