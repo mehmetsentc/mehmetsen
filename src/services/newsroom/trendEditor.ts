@@ -51,6 +51,7 @@ async function generateTrendArticle(topic: string): Promise<{
   title: string
   summary: string
   content: string
+  category: string
 } | null> {
   const today = new Date().toLocaleDateString('tr-TR', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -76,8 +77,23 @@ YAZIM KURALLARI:
 - content: 5-7 paragraf, 250-450 kelime
 - summary: max 130 karakter, merak uyandıran
 
+KATEGORİ SEÇİMİ (category alanı zorunlu):
+Haberin içeriğine göre EN UYGUN kategoriyi seç:
+- futbol → futbol maçı, gol, transfer, teknik direktör, Süper Lig, Şampiyonlar Ligi
+- basketbol → NBA, EuroLeague, basketbol maçı/transfer
+- voleybol → voleybol maçı, Efeler/Sultanlar Ligi, milli voleybol
+- spor → diğer spor dalları (F1, tenis, boks, yüzme, atletizm vb.)
+- magazin → ünlü özel hayatı, dizi/film oyuncusu, şarkıcı, ilişki, skandal
+- kultur → dizi/film içeriği (oyuncu değil içerik), müzik albümü, festival, konser
+- teknoloji → yapay zeka, uygulama, sosyal medya platform, telefon, oyun
+- ekonomi → şirket, borsa, kripto, para birimi, ürün fiyatı
+- saglik → hastalık, ilaç, sağlık uyarısı, pandemi
+- siyaset → siyasetçi, seçim, meclis, parti
+- dunya → Türkiye dışında gerçekleşen olay
+- gundem → yukarıdakilere girmeyen genel Türkiye gündemi
+
 Yanıtı YALNIZCA geçerli JSON olarak ver:
-{"title":"...","summary":"...","content":"..."}`
+{"title":"...","summary":"...","content":"...","category":"gundem"}`
 
   const USER_MSG = `Trend konusu: "${topic}"
 
@@ -113,14 +129,15 @@ Google Search grounding aracını kullanarak bu konunun NEDEN bugün gündemde o
         const raw = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
         const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
         if (cleaned.startsWith('{')) {
-          const parsed = JSON.parse(cleaned) as { title?: string; summary?: string; content?: string }
+          const parsed = JSON.parse(cleaned) as { title?: string; summary?: string; content?: string; category?: string }
           const content = parsed.content?.trim() ?? ''
           // 200 karakterden kısa içerik dolgu demektir → atla
           if (content.length >= 200) {
             return {
-              title:   parsed.title?.trim()   || `${topic} neden gündemde?`,
-              summary: parsed.summary?.trim() || '',
+              title:    parsed.title?.trim()    || `${topic} neden gündemde?`,
+              summary:  parsed.summary?.trim()  || '',
               content,
+              category: parsed.category?.trim() || 'gundem',
             }
           }
           console.warn(`[trendEditor] Gemini içerik çok kısa (${content.length} karakter), konu atlanıyor: ${topic}`)
@@ -159,13 +176,14 @@ Google Search grounding aracını kullanarak bu konunun NEDEN bugün gündemde o
         const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
         const raw = json.choices?.[0]?.message?.content?.trim()
         if (raw) {
-          const parsed = JSON.parse(raw) as { title?: string; summary?: string; content?: string }
+          const parsed = JSON.parse(raw) as { title?: string; summary?: string; content?: string; category?: string }
           const content = parsed.content?.trim() ?? ''
           if (content.length >= 200) {
             return {
-              title:   parsed.title?.trim()   || `${topic} neden gündemde?`,
-              summary: parsed.summary?.trim() || '',
+              title:    parsed.title?.trim()    || `${topic} neden gündemde?`,
+              summary:  parsed.summary?.trim()  || '',
               content,
+              category: parsed.category?.trim() || 'gundem',
             }
           }
         }
@@ -209,9 +227,11 @@ export const trendEditor = {
       }
 
       const fingerprint = `trend:${topic.title.toLowerCase().replace(/\s+/g, '-')}`
+      console.log(`[trendEditor] "${generated.title}" → kategori: ${generated.category}`)
+
       const { outcome, lowConfidence } = await processNewsroomArticle(db, {
         editorId: 'trend',
-        editorType: 'trend',
+        editorType: 'trend',   // ← trending badge için kalır
         sourceLabel: 'Google Trends',
         sourceUrl: topic.link ?? `https://trends.google.com/trends/explore?q=${encodeURIComponent(topic.title)}`,
         originalTitle: generated.title,
@@ -220,7 +240,7 @@ export const trendEditor = {
         rssFingerprint: fingerprint,
         rssGuid: fingerprint,
         ingestionSourceId: 'google-trends',
-        forcedCategoryId: 'trend',
+        forcedCategoryId: generated.category,  // ← AI'ın belirlediği gerçek kategori
         extraTags: ['trending', 'trend'],
         skipAiRewrite: true,
       })
