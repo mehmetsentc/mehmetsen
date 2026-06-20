@@ -19,8 +19,15 @@ interface HomeFeedProps {
 export function HomeFeed({ data }: HomeFeedProps) {
   const { breaking, featured, latest, mostRead, categoryRails } = data
 
-  const feedHead = useMemo(() => latest.slice(0, 6), [latest])
-  const feedTail = useMemo(() => latest.slice(6), [latest])
+  // Son dakika hikayelerde gösterilen haberleri feed'den çıkar (tekrar önle)
+  const breakingIds = useMemo(() => new Set(breaking.map(b => b.id)), [breaking])
+  const dedupedLatest = useMemo(
+    () => latest.filter(item => !breakingIds.has(item.id) && item.category !== 'son-dakika'),
+    [latest, breakingIds]
+  )
+
+  const feedHead = useMemo(() => dedupedLatest.slice(0, 6), [dedupedLatest])
+  const feedTail = useMemo(() => dedupedLatest.slice(6), [dedupedLatest])
 
   return (
     <div className="home-feed mx-auto w-full max-w-3xl pb-6">
