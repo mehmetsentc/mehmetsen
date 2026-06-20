@@ -46,10 +46,10 @@ const CATEGORY_DESCRIPTIONS: Record<NewsCategory, string> = {
   siyaset:       'Siyasi partiler, seçimler, meclis, hükümet, cumhurbaşkanı, CHP, AKP, MHP politikası',
   dunya:         'Uluslararası haberler, yabancı ülkeler, savaş, diplomasi, NATO, AB, BM',
   ekonomi:       'Ekonomi, borsa, döviz, faiz, enflasyon, şirket, finans, kripto para',
-  spor:          'Genel spor haberleri (branş belli değilse), olimpiyat açılış/kapanış gibi',
-  futbol:        'Futbol maçları, gol, lig, transfer, FIFA, UEFA, Süper Lig, Şampiyonlar Ligi',
-  basketbol:     'Basketbol haberleri, NBA, EuroLeague, FIBA, Türkiye basketbol ligi',
-  voleybol:      'Voleybol haberleri, CEV, FIVB, Türkiye voleybol ligi',
+  spor:          'Genel spor haberleri (hangi branş olduğu belli değilse), olimpiyat açılış/kapanış',
+  futbol:        'SADECE futbol: top, gol, penaltı, offside, Süper Lig, Şampiyonlar Ligi, FIFA, UEFA, futbol transferi. Basketbol/voleybol haberleri için ASLA kullanma.',
+  basketbol:     'SADECE basketbol: NBA, EuroLeague, BSL (Basketbol Süper Ligi), FIBA, Fenerbahçe Beko, Anadolu Efes, Galatasaray Nef, basketbol maçı/transfer/antrenman. Futbol ile karıştırma.',
+  voleybol:      'SADECE voleybol: CEV, FIVB, Sultanlar Ligi, Efeler Ligi, milli voleybol takımı, voleybol maçı/transfer. Futbol ile karıştırma.',
   hentbol:       'Hentbol haberleri, EHF, Türkiye hentbol ligi',
   atletizm:      'Atletizm, koşu, maraton, olimpiyat atletizm, dünya şampiyonası',
   gures:         'Güreş haberleri, wrestling, dünya güreş şampiyonası',
@@ -108,12 +108,17 @@ TEMEL KURALLAR (hepsini uygula):
 3. yerel-haber → SADECE olayın geçtiği yer Türkiye'deki tek bir il/ilçe ise. "Bursa Gazetesi İngiltere'deki haberi yazdı" → dunya.
 4. Siyasi/meclis/seçim/hükümet içeriği → mutlaka "siyaset" (kaynak spor gazetesi bile olsa)
 5. Ekonomi/borsa/döviz/şirket haberi → mutlaka "ekonomi"
-5. Futbol maçı/gol/lig/transfer → "futbol" (genel "spor" değil)
-6. Yemek/restoran/şef/tarif haberi → "gastronomi"
-7. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil"
-8. Sinema filmi/vizyona girenler → "sinema", tiyatro oyunu → "tiyatro", konser haberi → "konser"
-9. Magazin = SADECE ünlülerin kişisel hayatı, ilişkisi, skandalı, dedikodu
-10. Mevcut kategori doğruysa onayla, yanlışsa düzelt
+6. SPOR BRANŞI AYIRT ETME — KESİNLİKLE karıştırma:
+   - Basketbol, NBA, EuroLeague, BSL, Fenerbahçe Beko, Anadolu Efes, Galatasaray Nef → "basketbol" (ASLA "futbol" değil)
+   - Voleybol, Sultanlar Ligi, Efeler Ligi, CEV, FIVB, milli voleybol → "voleybol" (ASLA "futbol" değil)
+   - Futbol, Süper Lig, Şampiyonlar Ligi, FIFA, UEFA, top/gol/penaltı → "futbol" (ASLA "basketbol" veya "voleybol" değil)
+   - Kulüp adı (Fenerbahçe, Galatasaray, Beşiktaş) branşı belirlemez — metnin SPOR BRANŞINA bak
+   - "Fenerbahçe Beko şampiyon" → basketbol. "Fenerbahçe 3-1 Galatasaray" → futbol.
+7. Yemek/restoran/şef/tarif haberi → "gastronomi"
+8. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil"
+9. Sinema filmi/vizyona girenler → "sinema", tiyatro oyunu → "tiyatro", konser haberi → "konser"
+10. Magazin = SADECE ünlülerin kişisel hayatı, ilişkisi, skandalı, dedikodu
+11. Mevcut kategori doğruysa onayla, yanlışsa düzelt
 
 JSON formatında yanıt ver:
 {"categoryId": "kategori-adı", "confidence": 85, "reason": "kısa açıklama"}`
