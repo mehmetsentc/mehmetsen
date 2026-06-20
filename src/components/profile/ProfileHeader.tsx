@@ -58,8 +58,14 @@ export function ProfileHeader({
       await userService.updateProfile(user.uid, { photoURL: url })
       await refreshUser()
       toast.success('Profil fotoğrafı güncellendi ✓')
-    } catch {
-      toast.error('Yükleme başarısız')
+    } catch (err) {
+      console.error('[Avatar upload error]', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('storage/unauthorized') || msg.includes('permission-denied')) {
+        toast.error('Yükleme izni yok — lütfen tekrar giriş yap')
+      } else {
+        toast.error('Yükleme başarısız: ' + (msg.slice(0, 60) || 'bilinmeyen hata'))
+      }
     } finally {
       setUploading(false)
     }

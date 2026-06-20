@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { X, ZoomIn, ZoomOut, Check } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface AvatarCropModalProps {
   file: File
@@ -115,18 +116,22 @@ export function AvatarCropModal({ file, onConfirm, onClose }: AvatarCropModalPro
     ctx.drawImage(img, drawX, drawY, drawW, drawH)
 
     canvas.toBlob(blob => {
-      if (blob) onConfirm(blob)
+      if (blob) {
+        onConfirm(blob)
+      } else {
+        toast.error('Fotoğraf işlenemedi, tekrar dene')
+      }
     }, 'image/jpeg', 0.92)
   }, [scale, offset, onConfirm])
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Profil fotoğrafı kırp"
-        className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-sm rounded-t-2xl bg-[rgb(var(--color-card))] p-6 shadow-2xl sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"
+        className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-sm rounded-t-2xl bg-[rgb(var(--color-card))] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"
       >
         {/* Başlık */}
         <div className="mb-4 flex items-center justify-between">

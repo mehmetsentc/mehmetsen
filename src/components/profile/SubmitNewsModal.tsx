@@ -130,7 +130,8 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      {/* Backdrop — z-40 so modal buttons at z-50 always receive touch events */}
+      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -305,7 +306,7 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
 
         {/* Alt butonlar */}
         {!submitted && (
-          <div className="shrink-0 border-t border-[rgb(var(--color-border))] p-4">
+          <div className="shrink-0 border-t border-[rgb(var(--color-border))] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex gap-3">
               {step > 1 && (
                 <button
