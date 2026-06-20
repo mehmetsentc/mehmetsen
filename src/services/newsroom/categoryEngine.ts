@@ -531,8 +531,15 @@ export function resolveCategoryForEditor(
 
   if (!normalizedForced) return normalizedAi
 
-  // AI fell back to generic → apply source hint
-  if (normalizedAi === 'gundem') return normalizedForced
+  // AI fell back to generic → apply source hint, ANCAK spor alt kategorisi ise dikkatli ol.
+  // Örnek: YKS haberi basketbol kaynağından geldi → AI "gundem" dedi →
+  // normalizedForced="basketbol" → YKS haberi basketbol'a düşüyor. YANLIŞ.
+  // Spor alt kategorisi ise AI'nın gundem kararına güven (validate aşaması düzeltir).
+  if (normalizedAi === 'gundem') {
+    const isForcedSportSub = SPOR_SUBS.has(normalizedForced)
+    if (isForcedSportSub) return normalizedAi  // gündem olarak bırak, validate düzeltir
+    return normalizedForced
+  }
 
   // AI agrees with source hint → use it (may be a subcategory the hint targets)
   if (normalizedAi === normalizedForced) return normalizedForced
@@ -613,41 +620,46 @@ export function validateCategoryClassification(
   const worldCupFinal = isWorldCupFinalNationalWin(text)
 
   // ── EN YÜKSEK ÖNCELİK: "Spor kaynaklı ama spor haberi değil" kurtarma ──────
-  // Sorun: spor gazeteleri siyasi/dünya haberlerini de yayınlar.
-  // forcedCategoryId='spor' olsa bile içerik spor kelimesi taşımıyorsa
-  // gerçek kategoriye taşı.
-  if (categoryId === 'spor' && !sports) {
+  // Sorun: spor gazeteleri / basketbol-voleybol kaynakları siyasi/eğitim/dünya
+  // haberlerini de yayınlar. forcedCategoryId='basketbol' olsa bile içerikte
+  // HIÇBIR spor kelimesi yoksa gerçek kategoriye taşı.
+  //
+  // KURAL: spor alt kategorileri dahil (futbol, basketbol, voleybol, hentbol...) —
+  // metinde spor sinyali yoksa kaynak zorlaması GEÇERSİZ.
+  const isAnySportCategory = categoryId === 'spor' || SPOR_SUBS.has(categoryId)
+  if (isAnySportCategory && !sports) {
+    const prevCat = categoryId
     if (siyaset) {
-      overrides.push('spor-source ama siyaset-keywords → siyaset')
+      overrides.push(`${prevCat}-source ama siyaset-keywords → siyaset`)
       categoryId = 'siyaset'
       categoryConfidence = Math.max(categoryConfidence, 90)
     } else if (dunya) {
-      overrides.push('spor-source ama dunya-keywords → dunya')
+      overrides.push(`${prevCat}-source ama dunya-keywords → dunya`)
       categoryId = 'dunya'
       categoryConfidence = Math.max(categoryConfidence, 88)
     } else if (ekonomi) {
-      overrides.push('spor-source ama ekonomi-keywords → ekonomi')
+      overrides.push(`${prevCat}-source ama ekonomi-keywords → ekonomi`)
       categoryId = 'ekonomi'
       categoryConfidence = Math.max(categoryConfidence, 85)
     } else if (bilim) {
-      overrides.push('spor-source ama bilim-keywords → bilim')
+      overrides.push(`${prevCat}-source ama bilim-keywords → bilim`)
       categoryId = 'bilim'
       categoryConfidence = Math.max(categoryConfidence, 85)
     } else if (tech) {
-      overrides.push('spor-source ama tech-keywords → teknoloji')
+      overrides.push(`${prevCat}-source ama tech-keywords → teknoloji`)
       categoryId = 'teknoloji'
       categoryConfidence = Math.max(categoryConfidence, 83)
     } else if (magazin) {
-      overrides.push('spor-source ama magazin-keywords → magazin')
+      overrides.push(`${prevCat}-source ama magazin-keywords → magazin`)
       categoryId = 'magazin'
       categoryConfidence = Math.max(categoryConfidence, 82)
     } else if (nationalScope) {
-      overrides.push('spor-source ama ulusal-kriz → gundem')
+      overrides.push(`${prevCat}-source ama ulusal-kriz → gundem`)
       categoryId = 'gundem'
       categoryConfidence = Math.max(categoryConfidence, 88)
     } else {
-      // Spor kelimesi yok, başka sinyal de yok → gündem
-      overrides.push('spor-source ama içerikte spor yok → gundem')
+      // Spor kelimesi yok, başka güçlü sinyal de yok → gündem
+      overrides.push(`${prevCat}-source ama içerikte spor yok → gundem`)
       categoryId = 'gundem'
       categoryConfidence = Math.max(categoryConfidence, 70)
     }
