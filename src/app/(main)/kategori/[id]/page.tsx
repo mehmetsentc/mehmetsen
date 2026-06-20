@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { DEFAULT_CATEGORIES, getSubcategories, getCategoryFamily } from '@/constants/config'
+import { DEFAULT_CATEGORIES, getSubcategories, getCategoryFamily, type CategoryDef } from '@/constants/config'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -136,7 +136,19 @@ export default async function CategoryPage({ params }: Props) {
   const cat = getCategoryMeta(id)
   if (!cat) notFound()
 
-  const subcategories = getSubcategories(cat.id)
+  // Alt kategorideyse (parentId var) üst kategoriden tab çubuğunu al
+  const isSubcategory = !!cat.parentId
+  const parentCat: CategoryDef | null = isSubcategory
+    ? (DEFAULT_CATEGORIES.find(c => c.id === cat.parentId) ?? null)
+    : null
+
+  // Tab çubuğu: ana kategori ise kendi alt kategorileri, alt kategori ise üst kategorinin alt kategorileri
+  const tabParent = parentCat ?? cat
+  const subcategories = getSubcategories(tabParent.id)
+  const showTabs = subcategories.length > 0
+
+  // Header: alt kategorideyse üst kategori adını da göster
+  const headerCat = parentCat ?? cat
 
   // Server-side prefetch — skeleton göstermeden anında içerik
   const initialPosts = await prefetchCategoryPosts(cat.id)
@@ -146,11 +158,11 @@ export default async function CategoryPage({ params }: Props) {
       {/* Category header */}
       <div
         className="mb-3 flex items-center gap-3 rounded-2xl px-4 py-2.5"
-        style={{ backgroundColor: `${cat.color}18`, borderLeft: `4px solid ${cat.color}` }}
+        style={{ backgroundColor: `${headerCat.color}18`, borderLeft: `4px solid ${headerCat.color}` }}
       >
         <div>
           <h1 className="text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
-            {cat.name}
+            {isSubcategory ? `${parentCat?.name} · ${cat.name}` : cat.name}
           </h1>
           <p className="text-[11px] text-[rgb(var(--color-muted))]">
             {cat.name} kategorisindeki son gelişmeler
@@ -158,25 +170,39 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Subcategory chips — shown only for parent categories */}
-      {subcategories.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
+      {/* Kaydırmalı tab çubuğu — hem ana hem alt kategori sayfalarında görünür */}
+      {showTabs && (
+        <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+          {/* "Tümü" → üst kategoriye gider */}
           <Link
-            href={`/kategori/${cat.slug}`}
-            className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-xs font-semibold"
-            style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+            href={`/kategori/${tabParent.slug}`}
+            className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors"
+            style={
+              !isSubcategory
+                ? { backgroundColor: `${tabParent.color}25`, color: tabParent.color, borderColor: `${tabParent.color}50` }
+                : { borderColor: 'rgb(var(--color-border))', color: 'rgb(var(--color-muted))' }
+            }
           >
             Tümü
           </Link>
-          {subcategories.map((sub) => (
-            <Link
-              key={sub.id}
-              href={`/kategori/${sub.slug}`}
-              className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-xs font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] transition-colors"
-            >
-              {sub.name}
-            </Link>
-          ))}
+
+          {subcategories.map((sub) => {
+            const isActive = sub.id === cat.id
+            return (
+              <Link
+                key={sub.id}
+                href={`/kategori/${sub.slug}`}
+                className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors"
+                style={
+                  isActive
+                    ? { backgroundColor: `${sub.color}25`, color: sub.color, borderColor: `${sub.color}50` }
+                    : { borderColor: 'rgb(var(--color-border))', color: 'rgb(var(--color-muted))' }
+                }
+              >
+                {sub.name}
+              </Link>
+            )
+          })}
         </div>
       )}
 
