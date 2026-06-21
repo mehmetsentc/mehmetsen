@@ -59,6 +59,7 @@ function VideoFeedItemInner({
   const [loading, setLoading] = useState(true)
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null)
+  const [progress, setProgress] = useState(0) // 0–100
 
   // Like hook for double-tap like
   const { liked, count: likesCount, toggle: toggleLike } = useLike({
@@ -171,6 +172,17 @@ function VideoFeedItemInner({
       if (timer) clearTimeout(timer)
     }
   }, [isActive, video.id, user?.uid])
+
+  // Progress bar — timeupdate
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el || !isActive) return
+    const onTime = () => {
+      if (el.duration > 0) setProgress((el.currentTime / el.duration) * 100)
+    }
+    el.addEventListener('timeupdate', onTime)
+    return () => el.removeEventListener('timeupdate', onTime)
+  }, [isActive])
 
   useEffect(() => {
     return () => {
@@ -533,6 +545,16 @@ function VideoFeedItemInner({
           commentsCount={video.commentsCount}
           onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
         />
+
+        {/* ── Progress bar (TikTok stili, en alt) ── */}
+        {isActive && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 h-0.5 bg-white/20">
+            <div
+              className="h-full bg-white transition-none"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

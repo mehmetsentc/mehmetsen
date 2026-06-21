@@ -12,7 +12,7 @@ import { CACHE_TTL } from '@/lib/clientCache'
 import { CACHE_KEYS } from '@/lib/stateKeys'
 import { useAppState } from '@/store/appStateContext'
 import { getSeenPostIds } from '@/lib/reelsSeen'
-import type { ReelsFeedTab } from '@/components/video/ReelsFeedTabs'
+import { type ReelsFeedTab, isCategoryTab } from '@/components/video/ReelsFeedTabs'
 import type { Post } from '@/types/post'
 
 export interface VideoFeedItem extends Post {
@@ -137,15 +137,13 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
       }
 
       try {
+        const cursor = reset ? undefined : (lastDocRef.current ?? undefined)
         const result =
           mode === 'following' && userId
-            ? await postService.getFollowingVideoFeed(
-                userId,
-                reset ? undefined : (lastDocRef.current ?? undefined)
-              )
-            : await postService.getVideoFeed(
-                reset ? undefined : (lastDocRef.current ?? undefined)
-              )
+            ? await postService.getFollowingVideoFeed(userId, cursor)
+            : isCategoryTab(mode)
+              ? await postService.getVideoFeedByCategory(mode, cursor)
+              : await postService.getVideoFeed(cursor)
 
         if (fetchId !== fetchIdRef.current) return
 

@@ -495,6 +495,44 @@ export const postService = {
     }
   },
 
+  /** Belirli bir kategorideki videoları çeker (reels kategori filtresi). */
+  async getVideoFeedByCategory(categoryId: string, lastDoc?: QueryDocumentSnapshot) {
+    const mapReelsDocs = (docs: QueryDocumentSnapshot[]) =>
+      mapNewsSnapshot(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument)))
+        .filter((p) => isPubliclyVisibleStatus(p.status))
+        .filter(hasVideoContent)
+
+    const { getCategoryFamily } = await import('@/constants/config')
+    const family = getCategoryFamily(categoryId)
+
+    try {
+      const constraints = [
+        where('hasVideo', '==', true),
+        where('status', '==', 'published'),
+        ...(family.length > 1
+          ? [where('categoryId', 'in', family)]
+          : [where('categoryId', '==', categoryId)]),
+        orderBy('createdAt', 'desc'),
+        limit(REELS_PAGE_SIZE),
+        ...(lastDoc ? [startAfter(lastDoc)] : []),
+      ]
+      const snap = await withTimeout(
+        getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)),
+        QUERY_TIMEOUT_MS,
+        `getVideoFeedByCategory-${categoryId}`
+      )
+      const posts = mapReelsDocs(snap.docs)
+      return {
+        posts,
+        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
+        hasMore: snap.docs.length >= REELS_PAGE_SIZE,
+      }
+    } catch (err) {
+      console.warn(`[postService] getVideoFeedByCategory(${categoryId}) failed:`, err)
+      return { posts: [], lastDoc: null, hasMore: false }
+    }
+  },
+
   async getFollowingVideoFeed(followerId: string, lastDoc?: QueryDocumentSnapshot) {
     const { followService } = await import('@/services/followService')
     const followingIds = await followService.getFollowingIds(followerId)

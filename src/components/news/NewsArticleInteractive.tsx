@@ -7,6 +7,7 @@ import { SaveButton } from '@/components/post/SaveButton'
 import { ShareButton } from '@/components/post/ShareButton'
 import { PostComments } from '@/components/post/PostComments'
 import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
+import { NextArticleCard } from '@/components/news/NextArticleCard'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
 import { formatCount } from '@/lib/postUtils'
@@ -106,6 +107,13 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
             Son Haberler
           </h2>
           <SuggestedNewsRail posts={latest} preferSlugLinks />
+        </section>
+      )}
+
+      {/* ── Sıradaki Haber kartı — ilgili veya son haberden ilki ── */}
+      {(suggested[0] ?? latest[0]) && (
+        <section className="mt-4">
+          <NextArticleCard nextPost={suggested[0] ?? latest[0]} />
         </section>
       )}
     </div>
