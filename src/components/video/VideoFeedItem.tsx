@@ -256,38 +256,45 @@ function VideoFeedItemInner({
   }, [isActive, paused, muted, isAudioMode, virtualized])
 
   // ── YouTube ses senkronizasyonu ───────────────────────────────────────────
-  // YouTube player hazır olmadan postMessage görmezden gelir.
-  // 'onReady' mesajını dinleyerek hazır olduktan sonra unmute gönder.
+  // YouTube player iframe yüklenince postMessage komutunu hemen almayabilir.
+  // Hem onStateChange/onReady'yi dinle hem de artan aralıklarla retry yap.
   useEffect(() => {
     if (virtualized || !isYouTube || !isActive) return
 
     const sendCmd = (func: string) => {
-      const iframe = iframeRef.current
-      if (!iframe?.contentWindow) return
-      iframe.contentWindow.postMessage(
+      iframeRef.current?.contentWindow?.postMessage(
         JSON.stringify({ event: 'command', func, args: [] }),
         '*'
       )
     }
 
-    // Hemen dene (player önceden yüklendiyse çalışır)
-    sendCmd(muted ? 'mute' : 'unMute')
+    const func = muted ? 'mute' : 'unMute'
 
-    // YouTube 'onReady' event'ini postMessage ile yayınlar — bunu yakala
+    // Hemen dene
+    sendCmd(func)
+
+    // YouTube onStateChange (1=oynuyor, 3=buffer) veya onReady gelince tekrar gönder
     const handleMessage = (e: MessageEvent) => {
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
-        if (data?.event === 'onReady') {
-          sendCmd(muted ? 'mute' : 'unMute')
-        }
-        // Ses durumu değişirse güncelle
-        if (data?.event === 'onVolumeChange') {
-          // player kendi içinde değiştirdiyse ikonumuzu güncelleme (UI tutarlılığı)
+        if (data?.event === 'onStateChange' || data?.event === 'onReady') {
+          sendCmd(func)
         }
       } catch { /* ignore */ }
     }
     window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
+
+    // Başlatma gecikmesini kapsamak için artan interval retry
+    const t1 = setTimeout(() => sendCmd(func), 600)
+    const t2 = setTimeout(() => sendCmd(func), 1500)
+    const t3 = setTimeout(() => sendCmd(func), 3000)
+
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
+    }
   }, [muted, isYouTube, isActive, virtualized])
 
   // Virtual window: render only scroll-snap anchor outside ± render window.
@@ -461,6 +468,12 @@ function VideoFeedItemInner({
     const embedSrc = isActive
       ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0`
       : `${stableSrc}?rel=0&modestbranding=1&enablejsapi=1&controls=0`
+    const sendYTCmd = (func: string) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'command', func, args: [] }), '*'
+      )
+    }
+
     return (
       <div ref={refCallback} data-index={index} className="reels-slide">
         <div className="reels-video-card relative overflow-hidden bg-black">
@@ -470,6 +483,7 @@ function VideoFeedItemInner({
               <Loader2 className="h-10 w-10 animate-spin text-white/80" />
             </div>
           )}
+
           <iframe
             ref={iframeRef}
             key={isActive ? `yt-active-${video.id}` : `yt-inactive-${video.id}`}
@@ -480,7 +494,29 @@ function VideoFeedItemInner({
             allowFullScreen
             onLoad={() => setLoading(false)}
           />
-          {/* VideoActions sağ kenarda — iframe'in ortasına müdahale etmez */}
+
+          {/* YouTube üst başlık/kanal overlay'ini gizle — siyah bant */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-16 bg-black" />
+
+          {/* Tap interceptor: YouTube'un ortadaki native kontrollerine (⏮⏸⏭) dokunulmasını engelle.
+              z-[1] → iframe'in üstünde, VideoOverlay (z-10) ve VideoActions (z-20)'ın altında. */}
+          <div
+            className="absolute inset-0 z-[1]"
+            onClick={() => {
+              sendYTCmd(paused ? 'playVideo' : 'pauseVideo')
+              setPaused((p) => !p)
+            }}
+          />
+
+          {/* Duraklama ikonu */}
+          {paused && isActive && (
+            <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+                <Play className="h-8 w-8 fill-white text-white" />
+              </div>
+            </div>
+          )}
+
           <VideoActions
             video={{ ...video, isLiked: liked, likesCount }}
             onCommentClick={() => setCommentsOpen(true)}

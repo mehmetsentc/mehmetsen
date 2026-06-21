@@ -611,6 +611,7 @@ export default function AdminNewsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [confirmBulkRemove, setConfirmBulkRemove] = useState(false)
   const [editingPost, setEditingPost] = useState<AdminNewsItem | null>(null)
 
   // Pagination — cursor per page stored in a ref (no re-render on update)
@@ -705,13 +706,33 @@ export default function AdminNewsPage() {
   }
 
   const handleBulkRemove = async () => {
-    if (!selected.size || !confirm(`${selected.size} haberi kaldırmak istediğinize emin misiniz?`)) return
+    if (!selected.size) return
+    // confirm() bazı tarayıcılarda bloke olur — state tabanlı onay kullan
+    if (!confirmBulkRemove) { setConfirmBulkRemove(true); return }
+    setConfirmBulkRemove(false)
     setBulkLoading(true)
-    for (const id of selected) {
-      try { await adminNewsService.remove(id) } catch { /* skip */ }
-    }
-    toast.success(`${selected.size} haber kaldırıldı`)
+    const ids = [...selected]
+    // Paralel silme — sıralı await yerine hızlı
+    await Promise.allSettled(ids.map(id => adminNewsService.remove(id)))
+    toast.success(`${ids.length} haber kaldırıldı`)
     setPosts(prev => prev.filter(p => !selected.has(p.id)))
+    setSelected(new Set())
+    setBulkLoading(false)
+  }
+
+  const handleBulkRemoveAllDrafts = async () => {
+    const drafts = posts.filter(p => p.status === 'draft')
+    if (!drafts.length) { toast('Silinecek taslak yok'); return }
+    if (!confirmBulkRemove) {
+      setSelected(new Set(drafts.map(p => p.id)))
+      setConfirmBulkRemove(true)
+      return
+    }
+    setConfirmBulkRemove(false)
+    setBulkLoading(true)
+    await Promise.allSettled(drafts.map(p => adminNewsService.remove(p.id)))
+    toast.success(`${drafts.length} taslak silindi`)
+    setPosts(prev => prev.filter(p => p.status !== 'draft'))
     setSelected(new Set())
     setBulkLoading(false)
   }
@@ -840,20 +861,44 @@ export default function AdminNewsPage() {
         </div>
 
         {/* Bulk actions */}
-        {selected.size > 0 && (
-          <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 dark:border-blue-800 dark:bg-blue-950/30">
-            <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{selected.size} seçili</span>
-            <button onClick={handleBulkApprove} disabled={bulkLoading}
-              className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-              {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}Toplu Onayla
-            </button>
-            <button onClick={handleBulkRemove} disabled={bulkLoading}
-              className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50">
-              <Trash2 className="h-3 w-3" />Toplu Kaldır
-            </button>
-            <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-blue-600 hover:underline dark:text-blue-400">
-              Seçimi temizle
-            </button>
+        {(selected.size > 0 || filter === 'draft') && (
+          <div className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 ${confirmBulkRemove ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30' : 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30'}`}>
+            {selected.size > 0 && <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{selected.size} seçili</span>}
+            {selected.size > 0 && (
+              <button onClick={handleBulkApprove} disabled={bulkLoading}
+                className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}Toplu Onayla
+              </button>
+            )}
+            {selected.size > 0 && !confirmBulkRemove && (
+              <button onClick={handleBulkRemove} disabled={bulkLoading}
+                className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50">
+                <Trash2 className="h-3 w-3" />Toplu Kaldır
+              </button>
+            )}
+            {confirmBulkRemove && (
+              <>
+                <span className="text-sm font-bold text-red-700 dark:text-red-300">{selected.size} haber silinecek. Emin misiniz?</span>
+                <button onClick={handleBulkRemove} disabled={bulkLoading}
+                  className="flex items-center gap-1 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-800 disabled:opacity-50">
+                  {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}Evet, Sil
+                </button>
+                <button onClick={() => setConfirmBulkRemove(false)} className="text-xs text-slate-600 hover:underline dark:text-slate-400">
+                  Vazgeç
+                </button>
+              </>
+            )}
+            {filter === 'draft' && !confirmBulkRemove && (
+              <button onClick={handleBulkRemoveAllDrafts} disabled={bulkLoading}
+                className="flex items-center gap-1 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-700 disabled:opacity-50">
+                <Trash2 className="h-3 w-3" />Tüm Taslakları Sil
+              </button>
+            )}
+            {selected.size > 0 && !confirmBulkRemove && (
+              <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-blue-600 hover:underline dark:text-blue-400">
+                Seçimi temizle
+              </button>
+            )}
           </div>
         )}
 
