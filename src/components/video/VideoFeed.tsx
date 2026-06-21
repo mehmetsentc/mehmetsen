@@ -250,17 +250,26 @@ export function VideoFeed() {
           )}
           style={{ scrollSnapType: 'y mandatory' }}
         >
-          {videos.map((video, index) => (
-            <VideoFeedItem
-              key={video.id}
-              video={video}
-              index={index}
-              isActive={playbackEnabled && index === activeIndex}
-              isNext={index === activeIndex + 1}
-              setItemRef={setItemRef}
-              onUpdate={updateVideo}
-            />
-          ))}
+          {videos.map((video, index) => {
+            // Virtual window: render full content only for ±1 around active + 3 ahead.
+            // Out-of-window items render as empty scroll-snap anchors — this prevents
+            // iOS WebKit from holding dozens of <video> elements in memory simultaneously.
+            const windowStart = Math.max(0, activeIndex - 1)
+            const windowEnd = activeIndex + 3
+            const inWindow = index >= windowStart && index <= windowEnd
+            return (
+              <VideoFeedItem
+                key={video.id}
+                video={video}
+                index={index}
+                isActive={playbackEnabled && index === activeIndex}
+                isNext={index === activeIndex + 1}
+                setItemRef={setItemRef}
+                onUpdate={updateVideo}
+                virtualized={!inWindow}
+              />
+            )
+          })}
 
           <div ref={sentinelRef} className="h-px w-full shrink-0" aria-hidden />
 

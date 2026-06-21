@@ -26,6 +26,8 @@ interface VideoFeedItemProps {
   index: number
   setItemRef: (index: number, el: HTMLDivElement | null) => void
   onUpdate: (postId: string, patch: Partial<VideoFeedItemType>) => void
+  /** Virtual window — render only a scroll-snap anchor, no video content */
+  virtualized?: boolean
 }
 
 function VideoFeedItemInner({
@@ -35,6 +37,7 @@ function VideoFeedItemInner({
   index,
   setItemRef,
   onUpdate,
+  virtualized = false,
 }: VideoFeedItemProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -94,6 +97,19 @@ function VideoFeedItemInner({
     (el: HTMLDivElement | null) => setItemRef(index, el),
     [index, setItemRef]
   )
+
+  // Virtual window: render only scroll-snap anchor outside ± render window.
+  // This keeps scroll positions intact while freeing video memory on iOS.
+  if (virtualized) {
+    return (
+      <div
+        ref={refCallback}
+        data-index={index}
+        className="reels-slide bg-black"
+        aria-hidden
+      />
+    )
+  }
 
   const handleMediaReady = useCallback(() => {
     if (stableSrc) {

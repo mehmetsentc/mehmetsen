@@ -20,7 +20,7 @@ export interface VideoFeedItem extends Post {
   isSaved?: boolean
 }
 
-const FEED_LOAD_TIMEOUT_MS = 10_000
+const FEED_LOAD_TIMEOUT_MS = 15_000
 // Cap how many items we persist so we stay well under storage quotas.
 const MAX_CACHED_VIDEOS = 20
 // When every loaded video is already seen, auto-fetch more pages to find fresh content.
@@ -237,6 +237,9 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, authLoading])
 
+  const seededFromCacheExposedRef = useRef(false)
+  seededFromCacheExposedRef.current = seededFromCacheRef.current
+
   useEffect(() => {
     if (!loading) return
 
@@ -244,9 +247,12 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
       isFetchingRef.current = false
       setLoading(false)
       setLoadingMore(false)
-      setError('Video akışı yüklenemedi (zaman aşımı). Lütfen tekrar deneyin.')
       hasFetchedRef.current = true
       setResolvingTarget(false)
+      // Cache'den yüklenen içerik varsa hata gösterme — SWR background refresh failed silently
+      if (!seededFromCacheExposedRef.current) {
+        setError('Video akışı yüklenemedi (zaman aşımı). Lütfen tekrar deneyin.')
+      }
     }, FEED_LOAD_TIMEOUT_MS)
 
     return () => clearTimeout(timeout)
