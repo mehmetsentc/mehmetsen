@@ -446,7 +446,11 @@ export const postService = {
     for (let attempt = 0; attempt < queryAttempts.length; attempt++) {
       const constraints = queryAttempts[attempt]
       try {
-        const snap = await getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints))
+        const snap = await withTimeout(
+          getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)),
+          QUERY_TIMEOUT_MS,
+          `getVideoFeed-attempt-${attempt}`
+        )
         const posts = mapReelsDocs(snap.docs).slice(0, REELS_PAGE_SIZE)
         if (posts.length > 0 || lastDoc) {
           newsPosts = posts
@@ -467,12 +471,16 @@ export const postService = {
     // Final fallback: videos collection (AI-generated TTS audio reels)
     devLog('postService', 'getVideoFeed falling back to videos collection')
     try {
-      const videosSnap = await getDocs(
-        query(
-          collection(db, Collections.VIDEOS),
-          orderBy('createdAt', 'desc'),
-          limit(REELS_PAGE_SIZE)
-        )
+      const videosSnap = await withTimeout(
+        getDocs(
+          query(
+            collection(db, Collections.VIDEOS),
+            orderBy('createdAt', 'desc'),
+            limit(REELS_PAGE_SIZE)
+          )
+        ),
+        QUERY_TIMEOUT_MS,
+        'getVideoFeed-videos-fallback'
       )
 
       const posts = videosSnap.docs
