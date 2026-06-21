@@ -86,8 +86,11 @@ function buildHaberlerComSource(
   return {
     id: `haberler-com-${province.slug}`,
     label: `Haberler.com — ${province.name}`,
-    feedUrl: `https://www.haberler.com/rss/${haberlerSlug}.xml`,
-    alternateFeedUrls: [buildGoogleNewsFeedUrl(`${province.name} haberleri site:haberler.com`)],
+    feedUrl: `https://rss.haberler.com/rss.asp?kategori=${haberlerSlug}`,
+    alternateFeedUrls: [
+      `https://www.haberler.com/rss/${haberlerSlug}.xml`,
+      buildGoogleNewsFeedUrl(`${province.name} haberleri site:haberler.com`),
+    ],
     maxItemsPerRun,
     enabled: true,
     localMeta: {

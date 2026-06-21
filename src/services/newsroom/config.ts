@@ -33,6 +33,8 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
   'aa', 'iha', 'dha', 'anka-haber',
   // Ana yayın kuruluşları
   'trt', 'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu',
+  // Büyük gazeteler
+  'ahaber', 'ensonhaber', 'yeniasir', 'yeniakit', 'dw-turkish',
   // Haber aggregatörleri
   'haberler', 'sondakika', 'mynet',
   // Gazetecilik / görüş
@@ -48,7 +50,9 @@ export const BREAKING_NEWS_SOURCE_IDS = [
   // Ajanslar — en hızlı son dakika
   'aa', 'iha', 'dha', 'anka-haber',
   // Türk ulusal medya
-  'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu', 'trt', 'sabah',
+  'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu', 'trt', 'sabah', 'ahaber',
+  // Son dakika özel feedler
+  'sabah-sondakika', 'milliyet-sondakika', 'trt-sondakika',
   // Haber aggregatörleri (yüksek hacim)
   'haberler', 'sondakika',
   // Uluslararası
@@ -62,6 +66,7 @@ export const BREAKING_NEWS_SOURCE_IDS = [
  */
 export const WORLD_NEWS_SOURCE_IDS = [
   'reuters-world', 'ap-news', 'aljazeera', 'bbc-world', 'euronews-tr',
+  'sputnik-tr', 'dw-turkish', 'milliyet-dunya', 'sabah-dunya', 'ahaber-dunya',
 ] as const
 
 /**
@@ -71,6 +76,7 @@ export const WORLD_NEWS_SOURCE_IDS = [
  */
 export const TECH_NEWS_SOURCE_IDS = [
   'techcrunch', 'theverge', 'shiftdelete', 'webtekno', 'donanimhaber',
+  'ntv-teknoloji', 'cnnturk-bilim', 'milliyet-teknoloji', 'sabah-teknoloji', 'ahaber-teknoloji',
 ] as const
 
 /**
@@ -81,6 +87,7 @@ export const TECH_NEWS_SOURCE_IDS = [
  */
 export const SPORTS_NEWS_SOURCE_IDS = [
   'fanatik', 'fotomac', 'ajansspor', 'ntv-spor', 'trt-spor',
+  'sabah-spor', 'cnnturk-spor', 'ahaber-spor',
 ] as const
 
 /**
@@ -90,6 +97,7 @@ export const SPORTS_NEWS_SOURCE_IDS = [
  */
 export const HEALTH_NEWS_SOURCE_IDS = [
   'who-news', 'saglik-tr', 'medimagazin', 'saglik-aktuel',
+  'ntv-saglik', 'cnnturk-saglik', 'milliyet-saglik', 'sabah-saglik', 'hurriyet-saglik', 'ahaber-saglik',
 ] as const
 
 /**
@@ -109,6 +117,8 @@ export const POLITICS_NEWS_SOURCE_IDS = [
  */
 export const MAGAZINE_NEWS_SOURCE_IDS = [
   'milliyet-magazin', 'sabah-magazin', 'posta-magazin',
+  'hurriyet-magazin', 'takvim-magazin', 'cnnturk-kultur', 'cnnturk-yasam',
+  'ntv-yasam', 'sabah-kultur-sanat', 'ntv-kultur',
 ] as const
 
 /**
@@ -118,6 +128,8 @@ export const MAGAZINE_NEWS_SOURCE_IDS = [
  */
 export const FINANS_SOURCE_IDS = [
   'bloomberght', 'dunya-ekonomi', 'ntv-ekonomi',
+  'bigpara', 'finansgundem', 'milliyet-ekonomi', 'hurriyet-ekonomi', 'cnnturk-ekonomi',
+  'sabah-ekonomi', 'ahaber-ekonomi',
 ] as const
 
 /** Gastronomi kaynakları — yemek, restoran, mutfak haberleri. */
@@ -127,7 +139,8 @@ export const GASTRONOMI_SOURCE_IDS = [
 
 /** Otomobil kaynakları — araç, araba, trafik, elektrikli araç haberleri. */
 export const OTOMOBIL_SOURCE_IDS = [
-  'otomobil-google-news', 'oto-com-tr', 'otomobilhaber', 'arabalar-com-tr', 'hurriyet-otomobil', 'milliyet-otomobil',
+  'otomobil-google-news', 'oto-com-tr', 'otomobilhaber', 'arabalar-com-tr',
+  'hurriyet-otomobil', 'milliyet-otomobil', 'ntv-otomobil', 'cnnturk-otomobil', 'sabah-otomobil',
   'sozcu-otomotiv',
 ] as const
 

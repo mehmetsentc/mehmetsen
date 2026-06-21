@@ -67,6 +67,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     feedUrl: 'https://www.haberler.com/rss/',
     alternateFeedUrls: [
       'https://www.haberler.com/rss/1.xml',
+      'https://rss.haberler.com/rssnew.aspx',
       'https://news.google.com/rss/search?q=site:haberler.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
@@ -1237,6 +1238,354 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
 
+  // ── NTV (ek kategoriler) ─────────────────────────────────────────────────
+  {
+    id: 'ntv-turkiye',
+    label: 'NTV Türkiye',
+    feedUrl: 'https://www.ntv.com.tr/turkiye.rss',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'ntv-yasam',
+    label: 'NTV Yaşam',
+    feedUrl: 'https://www.ntv.com.tr/yasam.rss',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'ntv-saglik',
+    label: 'NTV Sağlık',
+    feedUrl: 'https://www.ntv.com.tr/saglik.rss',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'ntv-teknoloji',
+    label: 'NTV Teknoloji',
+    feedUrl: 'https://www.ntv.com.tr/teknoloji.rss',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'ntv-otomobil',
+    label: 'NTV Otomobil',
+    feedUrl: 'https://www.ntv.com.tr/otomobil.rss',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'ntv-seyahat',
+    label: 'NTV Seyahat',
+    feedUrl: 'https://www.ntv.com.tr/seyahat.rss',
+    maxItemsPerRun: 2,
+    enabled: true,
+  },
+
+  // ── A Haber ──────────────────────────────────────────────────────────────
+  {
+    id: 'ahaber',
+    label: 'A Haber',
+    feedUrl: 'https://www.ahaber.com.tr/rss/gundem.xml',
+    alternateFeedUrls: [
+      'https://www.ahaber.com.tr/rss/anasayfa.xml',
+      'https://www.ahaber.com.tr/rss/son24saat.xml',
+      'https://news.google.com/rss/search?q=site:ahaber.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'ahaber-ekonomi',
+    label: 'A Haber Ekonomi',
+    feedUrl: 'https://www.ahaber.com.tr/rss/ekonomi.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'ahaber-spor',
+    label: 'A Haber Spor',
+    feedUrl: 'https://www.ahaber.com.tr/rss/spor.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'ahaber-dunya',
+    label: 'A Haber Dünya',
+    feedUrl: 'https://www.ahaber.com.tr/rss/dunya.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'ahaber-saglik',
+    label: 'A Haber Sağlık',
+    feedUrl: 'https://www.ahaber.com.tr/rss/saglik.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'ahaber-teknoloji',
+    label: 'A Haber Teknoloji',
+    feedUrl: 'https://www.ahaber.com.tr/rss/teknoloji.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Sabah (ek kategoriler) ───────────────────────────────────────────────
+  {
+    id: 'sabah-ekonomi',
+    label: 'Sabah Ekonomi',
+    feedUrl: 'https://www.sabah.com.tr/rss/ekonomi.xml',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'sabah-spor',
+    label: 'Sabah Spor',
+    feedUrl: 'https://www.sabah.com.tr/rss/spor.xml',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'sabah-dunya',
+    label: 'Sabah Dünya',
+    feedUrl: 'https://www.sabah.com.tr/rss/dunya.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'sabah-teknoloji',
+    label: 'Sabah Teknoloji',
+    feedUrl: 'https://www.sabah.com.tr/rss/teknoloji.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'sabah-saglik',
+    label: 'Sabah Sağlık',
+    feedUrl: 'https://www.sabah.com.tr/rss/saglik.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'sabah-sondakika',
+    label: 'Sabah Son Dakika',
+    feedUrl: 'https://www.sabah.com.tr/rss/sondakika.xml',
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'sabah-yasam',
+    label: 'Sabah Yaşam',
+    feedUrl: 'https://www.sabah.com.tr/rss/yasam.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'sabah-kultur-sanat',
+    label: 'Sabah Kültür Sanat',
+    feedUrl: 'https://www.sabah.com.tr/rss/kultur-sanat.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Milliyet (ek kategoriler) ────────────────────────────────────────────
+  {
+    id: 'milliyet-ekonomi',
+    label: 'Milliyet Ekonomi',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/ekonomiRss.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-teknoloji',
+    label: 'Milliyet Teknoloji',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/teknolojiRss.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-saglik',
+    label: 'Milliyet Sağlık',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/saglikRss.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-dunya',
+    label: 'Milliyet Dünya',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/dunyaRss.xml',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-sondakika',
+    label: 'Milliyet Son Dakika',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/SonDakikaRss.xml',
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+
+  // ── Hürriyet (ek kategoriler) ────────────────────────────────────────────
+  {
+    id: 'hurriyet-ekonomi',
+    label: 'Hürriyet Ekonomi',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/ekonomi',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'hurriyet-saglik',
+    label: 'Hürriyet Sağlık',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/saglik',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'hurriyet-teknoloji',
+    label: 'Hürriyet Teknoloji',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/teknoloji',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── CNN Türk (ek kategoriler) ────────────────────────────────────────────
+  {
+    id: 'cnnturk-ekonomi',
+    label: 'CNN Türk Ekonomi',
+    feedUrl: 'https://www.cnnturk.com/feed/rss/ekonomi/news',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'cnnturk-spor',
+    label: 'CNN Türk Spor',
+    feedUrl: 'https://www.cnnturk.com/feed/rss/spor/news',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'cnnturk-saglik',
+    label: 'CNN Türk Sağlık',
+    feedUrl: 'https://www.cnnturk.com/feed/rss/saglik/news',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'cnnturk-bilim',
+    label: 'CNN Türk Bilim Teknoloji',
+    feedUrl: 'https://www.cnnturk.com/feed/rss/bilim-teknoloji/news',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'cnnturk-kultur',
+    label: 'CNN Türk Kültür Sanat',
+    feedUrl: 'https://www.cnnturk.com/feed/rss/kultur-sanat/news',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'cnnturk-yasam',
+    label: 'CNN Türk Yaşam',
+    feedUrl: 'https://www.cnnturk.com/feed/rss/yasam/news',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'cnnturk-otomobil',
+    label: 'CNN Türk Otomobil',
+    feedUrl: 'https://www.cnnturk.com/feed/rss/otomobil/news',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── TRT Son Dakika ───────────────────────────────────────────────────────
+  {
+    id: 'trt-sondakika',
+    label: 'TRT Haber Son Dakika',
+    feedUrl: 'https://www.trthaber.com/sondakika.rss',
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+
+  // ── Uluslararası Türkçe Kaynaklar ───────────────────────────────────────
+  {
+    id: 'sputnik-tr',
+    label: 'Sputnik Türkçe',
+    feedUrl: 'https://tr.sputniknews.com/export/rss2/archive/index.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:tr.sputniknews.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'dw-turkish',
+    label: 'DW Türkçe',
+    feedUrl: 'https://rss.dw.com/rdf/rss-tur-all',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:dw.com/tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+
+  // ── Diğer Türk Haber Siteleri ────────────────────────────────────────────
+  {
+    id: 'ensonhaber',
+    label: 'Ensonhaber',
+    feedUrl: 'https://www.ensonhaber.com/rss/ensonhaber.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:ensonhaber.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'yeniasir',
+    label: 'Yeni Asır',
+    feedUrl: 'https://www.yeniasir.com.tr/rss/anasayfa.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:yeniasir.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'yeniakit',
+    label: 'Yeni Akit',
+    feedUrl: 'https://www.yeniakit.com.tr/rss/haber',
+    alternateFeedUrls: [
+      'https://www.yeniakit.com.tr/rss/haber/gundem',
+      'https://news.google.com/rss/search?q=site:yeniakit.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+
+  // ── Finans (ek) ──────────────────────────────────────────────────────────
+  {
+    id: 'bigpara',
+    label: 'Bigpara (Hürriyet)',
+    feedUrl: 'https://bigpara.hurriyet.com.tr/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:bigpara.hurriyet.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'finansgundem',
+    label: 'Finansgundem',
+    feedUrl: 'https://www.finansgundem.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:finansgundem.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+
   // ── Otomobil ─────────────────────────────────────────────────────────────
   {
     id: 'otomobil-google-news',
@@ -1267,6 +1616,13 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:otomobilhaber.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'sabah-otomobil',
+    label: 'Sabah Otomobil',
+    feedUrl: 'https://www.sabah.com.tr/rss/otomobil.xml',
+    maxItemsPerRun: 3,
     enabled: true,
   },
   {
