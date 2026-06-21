@@ -3,28 +3,30 @@
 import Link from 'next/link'
 import { ROUTES } from '@/constants/routes'
 
-export type FeedTab = 'home' | 'gundem' | 'personal'
+export type FeedTab = 'home' | 'personal'
 
 interface FeedCategoryBarProps {
   activeTab: FeedTab
   onTabChange: (tab: FeedTab) => void
 }
 
+// Sadece 2 sekme: Ana Sayfa | Sana Özel
 const IN_PAGE_TABS: { id: FeedTab; label: string }[] = [
-  { id: 'home', label: 'Ana Sayfa' },
-  { id: 'gundem', label: 'Gündem' },
-  { id: 'personal', label: '✨ Sana Özel' },
+  { id: 'home',     label: 'Ana Sayfa' },
+  { id: 'personal', label: 'Sana Özel' },
 ]
 
+// Kategoriler divider'dan sonra — Gündem başa alındı
 const NAV_CATEGORIES = [
-  { id: 'siyaset',   label: 'Siyaset',   color: '#7C3AED' },
-  { id: 'dunya',     label: 'Dünya',     color: '#6B7280' },
-  { id: 'spor',      label: 'Spor',      color: '#10B981' },
-  { id: 'ekonomi',   label: 'Ekonomi',   color: '#F59E0B' },
-  { id: 'teknoloji', label: 'Teknoloji', color: '#3B82F6' },
-  { id: 'saglik',    label: 'Sağlık',    color: '#EC4899' },
-  { id: 'kultur',    label: 'Kültür',    color: '#8B5CF6' },
-  { id: 'magazin',   label: 'Magazin',   color: '#F472B6' },
+  { id: 'gundem',    label: 'Gündem' },
+  { id: 'siyaset',   label: 'Siyaset' },
+  { id: 'dunya',     label: 'Dünya' },
+  { id: 'spor',      label: 'Spor' },
+  { id: 'ekonomi',   label: 'Ekonomi' },
+  { id: 'teknoloji', label: 'Teknoloji' },
+  { id: 'saglik',    label: 'Sağlık' },
+  { id: 'kultur',    label: 'Kültür' },
+  { id: 'magazin',   label: 'Magazin' },
 ]
 
 export function FeedCategoryBar({ activeTab, onTabChange }: FeedCategoryBarProps) {
