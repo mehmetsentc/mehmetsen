@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -264,6 +265,11 @@ export const adminNewsService = {
       updatedAt: now,
       moderationNote: reason?.trim() || 'Admin tarafından kaldırıldı',
     })
+  },
+
+  /** Taslakları (draft) kalıcı olarak Firestore'dan siler. */
+  async permanentDelete(id: string): Promise<void> {
+    await deleteDoc(doc(db, VIDEO_FEED_COLLECTION, id))
   },
 
   async createAdminNews(data: {

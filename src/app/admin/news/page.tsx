@@ -681,14 +681,37 @@ export default function AdminNewsPage() {
   }
 
   const handleRemove = async (id: string) => {
-    if (!confirm('Bu haberi kaldırmak istediğinize emin misiniz?')) return
     setActionLoading(id)
     try {
-      await adminNewsService.remove(id)
-      toast.success('Haber kaldırıldı')
+      const post = posts.find(p => p.id === id)
+      // Taslak veya zaten arşivlenmiş → kalıcı sil. Diğerleri arşivlenir.
+      if (post?.status === 'draft' || post?.status === 'archived') {
+        await adminNewsService.permanentDelete(id)
+        toast.success('Kalıcı olarak silindi')
+      } else {
+        await adminNewsService.remove(id)
+        toast.success('Haber kaldırıldı')
+      }
       setPosts(prev => prev.filter(p => p.id !== id))
     } catch { toast.error('Kaldırma başarısız') }
     finally { setActionLoading(null) }
+  }
+
+  const handlePurgeAllArchived = async () => {
+    const archived = posts.filter(p => p.status === 'archived' || p.status === 'banned')
+    if (!archived.length) { toast('Silinecek arşiv yok'); return }
+    if (!confirmBulkRemove) {
+      setSelected(new Set(archived.map(p => p.id)))
+      setConfirmBulkRemove(true)
+      return
+    }
+    setConfirmBulkRemove(false)
+    setBulkLoading(true)
+    await Promise.allSettled(archived.map(p => adminNewsService.permanentDelete(p.id)))
+    toast.success(`${archived.length} arşiv kalıcı olarak silindi`)
+    setPosts(prev => prev.filter(p => p.status !== 'archived' && p.status !== 'banned'))
+    setSelected(new Set())
+    setBulkLoading(false)
   }
 
   const handleBulkApprove = async () => {
@@ -707,14 +730,18 @@ export default function AdminNewsPage() {
 
   const handleBulkRemove = async () => {
     if (!selected.size) return
-    // confirm() bazı tarayıcılarda bloke olur — state tabanlı onay kullan
     if (!confirmBulkRemove) { setConfirmBulkRemove(true); return }
     setConfirmBulkRemove(false)
     setBulkLoading(true)
     const ids = [...selected]
-    // Paralel silme — sıralı await yerine hızlı
-    await Promise.allSettled(ids.map(id => adminNewsService.remove(id)))
-    toast.success(`${ids.length} haber kaldırıldı`)
+    const selectedPosts = posts.filter(p => selected.has(p.id))
+    // Taslak ve arşivler kalıcı silinir; yayındaki/bekleyenler arşivlenir
+    await Promise.allSettled(selectedPosts.map(p =>
+      (p.status === 'draft' || p.status === 'archived')
+        ? adminNewsService.permanentDelete(p.id)
+        : adminNewsService.remove(p.id)
+    ))
+    toast.success(`${ids.length} haber silindi`)
     setPosts(prev => prev.filter(p => !selected.has(p.id)))
     setSelected(new Set())
     setBulkLoading(false)
@@ -730,8 +757,9 @@ export default function AdminNewsPage() {
     }
     setConfirmBulkRemove(false)
     setBulkLoading(true)
-    await Promise.allSettled(drafts.map(p => adminNewsService.remove(p.id)))
-    toast.success(`${drafts.length} taslak silindi`)
+    // Taslaklar kalıcı olarak silinir (arşivlenmez)
+    await Promise.allSettled(drafts.map(p => adminNewsService.permanentDelete(p.id)))
+    toast.success(`${drafts.length} taslak kalıcı olarak silindi`)
     setPosts(prev => prev.filter(p => p.status !== 'draft'))
     setSelected(new Set())
     setBulkLoading(false)
@@ -892,6 +920,12 @@ export default function AdminNewsPage() {
               <button onClick={handleBulkRemoveAllDrafts} disabled={bulkLoading}
                 className="flex items-center gap-1 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-700 disabled:opacity-50">
                 <Trash2 className="h-3 w-3" />Tüm Taslakları Sil
+              </button>
+            )}
+            {filter === 'removed' && !confirmBulkRemove && (
+              <button onClick={handlePurgeAllArchived} disabled={bulkLoading}
+                className="flex items-center gap-1 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-800 disabled:opacity-50">
+                <Trash2 className="h-3 w-3" />Tümünü Kalıcı Sil
               </button>
             )}
             {selected.size > 0 && !confirmBulkRemove && (
