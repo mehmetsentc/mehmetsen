@@ -2,18 +2,15 @@
 
 import { useState } from 'react'
 import { HomeFeed } from '@/components/home/HomeFeed'
-import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import { PersonalFeed } from '@/components/feed/PersonalFeed'
 import { FeedCategoryBar, type FeedTab } from '@/components/feed/FeedCategoryBar'
 import type { HomeFeedInitialData } from '@/types/newsItem'
-import type { TimelinePost } from '@/types/post'
 
 interface FeedPageClientProps {
   homeFeedData: HomeFeedInitialData
-  gundemInitialPosts: TimelinePost[]
 }
 
-export function FeedPageClient({ homeFeedData, gundemInitialPosts }: FeedPageClientProps) {
+export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('home')
 
   return (
@@ -21,12 +18,6 @@ export function FeedPageClient({ homeFeedData, gundemInitialPosts }: FeedPageCli
       <FeedCategoryBar activeTab={activeTab} onTabChange={setActiveTab} />
 
       {activeTab === 'home' && <HomeFeed data={homeFeedData} />}
-
-      {activeTab === 'gundem' && (
-        <div className="mt-4">
-          <CategoryFeed categoryId="gundem" initialPosts={gundemInitialPosts} />
-        </div>
-      )}
 
       {activeTab === 'personal' && (
         <div className="mt-4">

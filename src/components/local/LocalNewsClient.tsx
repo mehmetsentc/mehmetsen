@@ -21,6 +21,7 @@ import type { TimelinePost } from '@/types/post'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
+import { WeatherAirQualityWidget } from '@/components/local/WeatherAirQualityWidget'
 
 type LocationState = 'idle' | 'requesting' | 'granted' | 'denied' | 'stored'
 
@@ -252,6 +253,15 @@ export function LocalNewsClient() {
           </div>
         )}
       </div>
+
+      {/* ── Hava Durumu + Hava Kalitesi ── */}
+      {city && city.lat && city.lng && (
+        <WeatherAirQualityWidget
+          lat={city.lat}
+          lng={city.lng}
+          cityName={city.name}
+        />
+      )}
 
       {/* ── Haber akışı ── */}
       <div className="mt-1">

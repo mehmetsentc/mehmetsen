@@ -105,10 +105,7 @@ async function prefetchGundemPosts(): Promise<TimelinePost[]> {
 }
 
 export default async function FeedPage() {
-  const [data, gundemInitialPosts] = await Promise.all([
-    getHomeFeedInitialData(),
-    prefetchGundemPosts(),
-  ])
+  const data = await getHomeFeedInitialData()
 
   const lcpImage =
     data.featured[0]?.imageUrl ??
@@ -122,7 +119,7 @@ export default async function FeedPage() {
       {lcpPreload ? (
         <link rel="preload" as="image" href={lcpPreload} fetchPriority="high" />
       ) : null}
-      <FeedPageClient homeFeedData={data} gundemInitialPosts={gundemInitialPosts} />
+      <FeedPageClient homeFeedData={data} />
     </>
   )
 }
