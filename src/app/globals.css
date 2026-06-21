@@ -1091,14 +1091,6 @@
     @apply absolute inset-0 h-full w-full object-cover object-center;
   }
 
-  /* iOS/WebKit native video kontrol overlay'lerini gizle (CC butonu, ses badge, airplay) */
-  .reels-video::-webkit-media-controls {
-    display: none !important;
-  }
-  .reels-video::-webkit-media-controls-overlay-play-button {
-    display: none !important;
-  }
-
   .reels-actions {
     @apply absolute bottom-20 right-3 z-20 flex flex-col items-center gap-5 sm:bottom-24 sm:right-4;
   }
@@ -1113,6 +1105,23 @@
 
 .animate-heart-burst {
   animation: heart-burst 0.9s ease-out forwards;
+}
+
+/* ── iOS/WebKit native video kontrol overlay'lerini gizle ── */
+/* @layer dışında olması gerekiyor — pseudo-element override için */
+video.reels-video::-webkit-media-controls,
+video.reels-video::-webkit-media-controls-panel,
+video.reels-video::-webkit-media-controls-overlay-play-button,
+video.reels-video::-webkit-media-controls-play-button,
+video.reels-video::-webkit-media-controls-mute-button,
+video.reels-video::-webkit-media-controls-volume-slider,
+video.reels-video::-webkit-media-controls-fullscreen-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+/* Alternatif: tüm native kontrolleri sıfırla */
+video.reels-video {
+  -webkit-media-controls: none;
 }
 
 /* ── Timeline rail animation ── */

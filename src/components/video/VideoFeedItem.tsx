@@ -46,7 +46,7 @@ function VideoFeedItemInner({
   const { user } = useAuth()
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tapCountRef = useRef(0)
-  const { muted, toggleMuted, setMuted } = useReelsAudio()
+  const { muted, toggleMuted } = useReelsAudio()
   const tier = useNetworkTier()
   const {
     isVideoLoaded,
@@ -129,10 +129,10 @@ function VideoFeedItemInner({
     if (isActive) {
       if (!wasLoadedBefore) el.currentTime = 0
       el.muted = muted
-      // Sesli autoplay dene; tarayıcı engellerse sessiz moduna düş ve durumu güncelle
+      // Sesli autoplay dene; tarayıcı engellerse sadece elementi sessizleştir.
+      // setMuted ÇAĞIRILMAZ — kullanıcı tercihi korunur, sonraki gesture'da sesli oynar.
       el.play().catch(() => {
         el.muted = true
-        setMuted(true)
         el.play().catch(() => setPaused(true))
       })
       setPaused(false)
