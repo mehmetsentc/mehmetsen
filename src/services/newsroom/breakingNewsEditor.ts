@@ -67,7 +67,9 @@ export function analyzeBreakingSignals(
 
   const priorityScore = Math.min(100, Math.max(1, score))
   const hasUrgencyKeyword = URGENCY_KEYWORDS.some((kw) => text.includes(kw))
-  const isBreaking = !textHasSportsSignals(text) && (priorityScore >= 55 || hasUrgencyKeyword)
+  // Eşik 55→80: sadece zaman yeterliliği (70 puan) artık son-dakikayı tetiklemiyor.
+  // Gerçek son-dakika = acil kelime İÇERMELİ veya çok yüksek skor (acil kw + tazelik).
+  const isBreaking = !textHasSportsSignals(text) && (priorityScore >= 80 || hasUrgencyKeyword)
 
   return { isBreaking, priorityScore }
 }

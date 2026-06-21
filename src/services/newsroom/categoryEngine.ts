@@ -890,9 +890,17 @@ export function validateCategoryClassification(
 
   if (isBreaking && categoryId !== 'son-dakika') {
     if (nationalScope || isBreakingEditor) {
-      categoryId = 'son-dakika'
-      categoryConfidence = Math.max(categoryConfidence, 92)
-      overrides.push(`isBreaking → son-dakika (${isBreakingEditor ? 'breaking editor' : 'national scope'})`)
+      // Yerel içerik son-dakika olamaz — breaking editör bypass'ı da geçersiz.
+      const isLocalContent = !nationalScope && (hasYerelKeywords(text) || mentionsSingleCity(text))
+      if (isLocalContent) {
+        overrides.push('isBreaking + yerel-içerik → yerel-haber (son-dakika engellendi)')
+        categoryId = 'yerel-haber'
+        isBreaking = false
+      } else {
+        categoryId = 'son-dakika'
+        categoryConfidence = Math.max(categoryConfidence, 92)
+        overrides.push(`isBreaking → son-dakika (${isBreakingEditor ? 'breaking editor' : 'national scope'})`)
+      }
     }
   }
 
