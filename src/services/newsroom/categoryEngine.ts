@@ -521,7 +521,13 @@ export function resolveCategoryForEditor(
 ): string {
   // Hard locks — editor type always wins for these
   if (editorType === 'local') return 'yerel-haber'
-  if (editorType === 'trend') return 'trend'
+  if (editorType === 'trend') {
+    // AI'ın belirlediği gerçek kategoriyi kullan (futbol, magazin, vb.)
+    // forcedCategoryId yoksa veya 'trend' ise fallback olarak 'trend' kategorisine düş
+    const forced = forcedCategoryId?.trim()
+    if (forced && forced !== 'trend' && forced !== 'trending') return forced
+    return 'trend'
+  }
   if (editorType === 'influencer') return 'influencer'
 
   const normalizedAi = normalizeNewsroomCategory(aiCategoryId)
