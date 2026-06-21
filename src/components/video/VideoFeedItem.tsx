@@ -99,18 +99,7 @@ function VideoFeedItemInner({
     [index, setItemRef]
   )
 
-  // Virtual window: render only scroll-snap anchor outside ± render window.
-  // This keeps scroll positions intact while freeing video memory on iOS.
-  if (virtualized) {
-    return (
-      <div
-        ref={refCallback}
-        data-index={index}
-        className="reels-slide bg-black"
-        aria-hidden
-      />
-    )
-  }
+  // ── All hooks MUST be declared before any conditional return (Rules of Hooks) ──
 
   const handleMediaReady = useCallback(() => {
     if (stableSrc) {
@@ -121,16 +110,19 @@ function VideoFeedItemInner({
   }, [stableSrc, markMediaFetched, markVideoLoaded, video.id])
 
   useEffect(() => {
+    if (virtualized) return
     if (wasLoadedBefore) setLoading(false)
-  }, [wasLoadedBefore])
+  }, [wasLoadedBefore, virtualized])
 
   useEffect(() => {
+    if (virtualized) return
     const el = videoRef.current
     if (!el) return
     el.muted = muted
-  }, [muted, isActive, video.id])
+  }, [muted, isActive, video.id, virtualized])
 
   useEffect(() => {
+    if (virtualized) return
     const el = videoRef.current
     if (!el) return
 
@@ -150,10 +142,10 @@ function VideoFeedItemInner({
       setPaused(false)
       seenMarkedRef.current = false
     }
-  }, [isActive, video.id, muted, onUpdate, video.viewsCount, wasLoadedBefore])
+  }, [isActive, video.id, muted, onUpdate, video.viewsCount, wasLoadedBefore, virtualized])
 
   useEffect(() => {
-    if (!isActive) return
+    if (virtualized || !isActive) return
     const el = videoRef.current
     if (!el) return
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -171,24 +163,45 @@ function VideoFeedItemInner({
       el.removeEventListener('playing', handlePlaying)
       if (timer) clearTimeout(timer)
     }
-  }, [isActive, video.id, user?.uid])
+  }, [isActive, video.id, user?.uid, virtualized])
 
-  // Progress bar — timeupdate
+  // Progress bar — timeupdate; reset to 0 when inactive or virtualized
   useEffect(() => {
+    if (virtualized || !isActive) {
+      setProgress(0)
+      return
+    }
     const el = videoRef.current
-    if (!el || !isActive) return
+    if (!el) return
     const onTime = () => {
-      if (el.duration > 0) setProgress((el.currentTime / el.duration) * 100)
+      if (el.duration > 0) {
+        const pct = (el.currentTime / el.duration) * 100
+        requestAnimationFrame(() => setProgress(pct))
+      }
     }
     el.addEventListener('timeupdate', onTime)
     return () => el.removeEventListener('timeupdate', onTime)
-  }, [isActive])
+  }, [isActive, virtualized])
 
   useEffect(() => {
     return () => {
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current)
     }
   }, [])
+
+  // Virtual window: render only scroll-snap anchor outside ± render window.
+  // This keeps scroll positions intact while freeing video memory on iOS.
+  // IMPORTANT: this return must come AFTER all hooks above.
+  if (virtualized) {
+    return (
+      <div
+        ref={refCallback}
+        data-index={index}
+        className="reels-slide bg-black"
+        aria-hidden
+      />
+    )
+  }
 
   const togglePlay = useCallback(() => {
     const el = videoRef.current
