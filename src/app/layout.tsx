@@ -27,6 +27,8 @@ const inter = Inter({
 
 import { CookieConsentBanner } from '@/components/legal/CookieConsentBanner'
 import { getSiteUrl } from '@/lib/seo'
+import Script from 'next/script'
+import { OneSignalProvider } from '@/components/OneSignalProvider'
 
 const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -183,6 +185,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <ThemeScript />
         <PlatformScript />
+        {/* OneSignal Web Push SDK */}
+        <Script
+          src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+          strategy="lazyOnload"
+        />
+        <OneSignalProvider />
         <ThemeProvider>
           <LanguageProvider initialLanguage={initialLanguage}>
             <AuthProvider>

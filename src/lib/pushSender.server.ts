@@ -1,11 +1,9 @@
 /**
- * Server-side push notification sender (web-push library).
- * Used from API routes + pipeline (breaking news trigger).
+ * Server-side push notification sender — OneSignal REST API.
+ * Replaces the old web-push / VAPID approach.
+ * OneSignal manages all subscriber storage — no Firestore pushSubscriptions needed.
  */
 import 'server-only'
-import { getAdminFirestore } from '@/lib/firebase/admin'
-
-const PUSH_SUBSCRIPTIONS_COLLECTION = 'pushSubscriptions'
 
 export interface PushPayload {
   title: string
@@ -17,111 +15,62 @@ export interface PushPayload {
   postId?: string
 }
 
-interface StoredSubscription {
-  endpoint: string
-  keys: { p256dh: string; auth: string }
-  createdAt: number
-}
+/** Send a push to ALL OneSignal subscribers. */
+export async function broadcastPush(
+  payload: PushPayload
+): Promise<{ sent: number; failed: number }> {
+  const appId = process.env.ONESIGNAL_APP_ID
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY
 
-/** Lazily load web-push to keep server bundle lean. */
-async function getWebPush() {
-  // Dynamic import — web-push is Node-only (not bundled into client)
-  const wp = await import('web-push')
-  // web-push exports as a plain namespace; access it directly
-  const module = wp as typeof import('web-push')
-
-  const publicKey = process.env.VAPID_PUBLIC_KEY?.trim()
-  const privateKey = process.env.VAPID_PRIVATE_KEY?.trim()
-  const subject = process.env.VAPID_SUBJECT?.trim() || 'mailto:support@nahaber.com'
-
-  if (!publicKey || !privateKey) {
-    throw new Error('[push] VAPID keys not configured (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY)')
-  }
-
-  module.setVapidDetails(subject, publicKey, privateKey)
-  return module
-}
-
-/** Store a new push subscription in Firestore. */
-export async function storePushSubscription(
-  subscription: {
-    endpoint: string
-    keys?: { p256dh?: string; auth?: string }
-    userId?: string
-  }
-): Promise<void> {
-  const db = getAdminFirestore()
-  const id = Buffer.from(subscription.endpoint).toString('base64').slice(0, 64)
-  await db.collection(PUSH_SUBSCRIPTIONS_COLLECTION).doc(id).set(
-    {
-      endpoint: subscription.endpoint,
-      keys: subscription.keys ?? {},
-      userId: subscription.userId ?? null,
-      updatedAt: Date.now(),
-      createdAt: Date.now(),
-    },
-    { merge: true }
-  )
-}
-
-/** Remove a push subscription (unsubscribe). Verifies ownership when userId provided. */
-export async function removePushSubscription(endpoint: string, userId?: string): Promise<void> {
-  const db = getAdminFirestore()
-  const id = Buffer.from(endpoint).toString('base64').slice(0, 64)
-  const ref = db.collection(PUSH_SUBSCRIPTIONS_COLLECTION).doc(id)
-  if (userId) {
-    const snap = await ref.get()
-    const owner = snap.data()?.userId as string | undefined
-    if (owner && owner !== userId) return
-  }
-  await ref.delete()
-}
-
-/** Send a push notification to ALL subscribers. */
-export async function broadcastPush(payload: PushPayload): Promise<{ sent: number; failed: number }> {
-  const db = getAdminFirestore()
-  const snap = await db.collection(PUSH_SUBSCRIPTIONS_COLLECTION).limit(5000).get()
-  if (snap.empty) return { sent: 0, failed: 0 }
-
-  let wp: Awaited<ReturnType<typeof getWebPush>>
-  try {
-    wp = await getWebPush()
-  } catch (err) {
-    console.error('[push] web-push not available:', err)
+  if (!appId || !apiKey) {
+    console.warn('[push] Missing ONESIGNAL_APP_ID or ONESIGNAL_REST_API_KEY — skipping push')
     return { sent: 0, failed: 0 }
   }
 
-  const body = JSON.stringify(payload)
-  let sent = 0
-  let failed = 0
-  const toDelete: string[] = []
-
-  await Promise.allSettled(
-    snap.docs.map(async (doc) => {
-      const sub = doc.data() as StoredSubscription
-      try {
-        await wp.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, body)
-        sent++
-      } catch (err: unknown) {
-        const statusCode = (err as { statusCode?: number }).statusCode
-        // 410 = Gone, 404 = Not Found → subscription expired, remove it
-        if (statusCode === 410 || statusCode === 404) {
-          toDelete.push(doc.id)
-        }
-        failed++
-      }
-    })
-  )
-
-  // Clean up expired subscriptions in batch
-  if (toDelete.length > 0) {
-    const batch = db.batch()
-    toDelete.forEach((id) => batch.delete(db.collection(PUSH_SUBSCRIPTIONS_COLLECTION).doc(id)))
-    await batch.commit()
+  const body: Record<string, unknown> = {
+    app_id: appId,
+    included_segments: ['All'],
+    headings: { tr: payload.title, en: payload.title },
+    contents: { tr: payload.body, en: payload.body },
+    ttl: 3600,
   }
 
-  console.log(`[push] broadcast: sent=${sent} failed=${failed} cleaned=${toDelete.length}`)
-  return { sent, failed }
+  if (payload.url) body.url = payload.url
+  if (payload.image) {
+    body.big_picture = payload.image
+    body.chrome_web_image = payload.image
+    body.large_icon = payload.image
+  }
+  if (payload.tag) body.collapse_id = payload.tag
+  if (payload.breaking) {
+    body.priority = 10 // urgent
+    body.android_channel_id = 'breaking-news'
+  }
+
+  try {
+    const res = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    })
+
+    const data = (await res.json()) as { id?: string; recipients?: number; errors?: string[] }
+
+    if (!res.ok) {
+      console.error('[push] OneSignal error:', data)
+      return { sent: 0, failed: 1 }
+    }
+
+    const sent = data.recipients ?? 0
+    console.log(`[push] OneSignal broadcast sent=${sent} id=${data.id}`)
+    return { sent, failed: 0 }
+  } catch (err) {
+    console.error('[push] OneSignal fetch error:', err)
+    return { sent: 0, failed: 1 }
+  }
 }
 
 /** Send a breaking news push notification. */
@@ -142,4 +91,14 @@ export async function sendBreakingNewsPush(opts: {
     breaking: true,
     postId: opts.postId,
   }).catch((err) => console.error('[push] breaking news push failed:', err))
+}
+
+// ── Legacy stubs — kept for backward compat, no-ops with OneSignal ──────────
+
+export async function storePushSubscription(_sub: unknown): Promise<void> {
+  // OneSignal manages subscriptions automatically — no-op
+}
+
+export async function removePushSubscription(_endpoint: string, _userId?: string): Promise<void> {
+  // OneSignal manages subscriptions automatically — no-op
 }
