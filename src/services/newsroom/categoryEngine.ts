@@ -91,6 +91,26 @@ const TEKNOLOJI_KEYWORDS = [
   'işlemci', 'grafik kartı', 'gpu', 'cpu', 'bilgisayar',
 ] as const
 
+// ── Otomobil / Motorlu taşıt keyword'leri ────────────────────────────────────
+const OTOMOBIL_KEYWORDS = [
+  // Araç türleri
+  'otomobil', 'kamyon', 'kamyonet', 'minibüs', 'minibus', 'midibüs',
+  'elektrikli otobüs', 'elektrikli otobus', 'otonom otobüs', 'otonom otobus',
+  'hibrit araç', 'hibrit otomobil', 'elektrikli araç', 'elektrikli otomobil',
+  'otonom araç', 'sürücüsüz araç', 'surucusuz arac',
+  // Üreticiler (Türkçe ilgili)
+  'karsan', 'togg', 'ford otosan', 'tofaş', 'tofas', 'oyak renault',
+  'mercedes benz türk', 'man türkiye', 'man turkiye',
+  // Otomotiv terimleri
+  'araç üretim', 'arac uretim', 'araç satış', 'arac satis',
+  'otomotiv', 'otomotiv sektör', 'araç ihracat', 'araç pazar',
+  'motor gücü', 'motor gucu', 'beygir gücü', 'yakıt tüketim',
+  'şarj istasyonu', 'sarj istasyonu', 'elektrik motoru',
+  'toplu taşıma araç', 'toplu tasima arac', 'ulaşım aracı',
+  'busworld', 'eurotruck', 'iaa', 'automechanika',
+  'araç ruhsat', 'egzoz muayene', 'trafik muayene',
+] as const
+
 const SIYASET_KEYWORDS = [
   'cumhurbaşkanı', 'cumhurbaskani', 'başbakan', 'basbakan',
   'tbmm', 'meclis', 'milletvekili', 'bakan ',
@@ -272,6 +292,10 @@ const BILIM_KEYWORDS = [
 
 function hasBilimKeywords(text: string): boolean {
   return containsKeyword(text, BILIM_KEYWORDS)
+}
+
+function hasOtomobilKeywords(text: string): boolean {
+  return containsKeyword(text, OTOMOBIL_KEYWORDS)
 }
 
 function hasFutbolKeywords(text: string): boolean {
@@ -622,6 +646,7 @@ export function validateCategoryClassification(
   const dunya = hasDunyaKeywords(text)
   const bilim = hasBilimKeywords(text)
   const gastronomi = hasGastronomiKeywords(text)
+  const otomobil = hasOtomobilKeywords(text)
   const nationalScope = hasNationalScopeKeywords(text)
   const worldCupFinal = isWorldCupFinalNationalWin(text)
 
@@ -651,6 +676,10 @@ export function validateCategoryClassification(
       overrides.push(`${prevCat}-source ama bilim-keywords → bilim`)
       categoryId = 'bilim'
       categoryConfidence = Math.max(categoryConfidence, 85)
+    } else if (otomobil) {
+      overrides.push(`${prevCat}-source ama otomobil-keywords → otomobil`)
+      categoryId = 'otomobil'
+      categoryConfidence = Math.max(categoryConfidence, 84)
     } else if (tech) {
       overrides.push(`${prevCat}-source ama tech-keywords → teknoloji`)
       categoryId = 'teknoloji'
