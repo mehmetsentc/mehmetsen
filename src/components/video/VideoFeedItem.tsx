@@ -256,16 +256,38 @@ function VideoFeedItemInner({
   }, [isActive, paused, muted, isAudioMode, virtualized])
 
   // ── YouTube ses senkronizasyonu ───────────────────────────────────────────
+  // YouTube player hazır olmadan postMessage görmezden gelir.
+  // 'onReady' mesajını dinleyerek hazır olduktan sonra unmute gönder.
   useEffect(() => {
     if (virtualized || !isYouTube || !isActive) return
-    const iframe = iframeRef.current
-    if (!iframe?.contentWindow) return
-    const msg = JSON.stringify({
-      event: 'command',
-      func: muted ? 'mute' : 'unMute',
-      args: [],
-    })
-    iframe.contentWindow.postMessage(msg, '*')
+
+    const sendCmd = (func: string) => {
+      const iframe = iframeRef.current
+      if (!iframe?.contentWindow) return
+      iframe.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func, args: [] }),
+        '*'
+      )
+    }
+
+    // Hemen dene (player önceden yüklendiyse çalışır)
+    sendCmd(muted ? 'mute' : 'unMute')
+
+    // YouTube 'onReady' event'ini postMessage ile yayınlar — bunu yakala
+    const handleMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+        if (data?.event === 'onReady') {
+          sendCmd(muted ? 'mute' : 'unMute')
+        }
+        // Ses durumu değişirse güncelle
+        if (data?.event === 'onVolumeChange') {
+          // player kendi içinde değiştirdiyse ikonumuzu güncelleme (UI tutarlılığı)
+        }
+      } catch { /* ignore */ }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
   }, [muted, isYouTube, isActive, virtualized])
 
   // Virtual window: render only scroll-snap anchor outside ± render window.
@@ -437,8 +459,8 @@ function VideoFeedItemInner({
     // Aktif slide → autoplay + sessiz (browser politikası). Ses YouTube kontrolünden açılır.
     // Aktif olmayan slide → sadece thumbnail göster (enablejsapi ile daha hafif).
     const embedSrc = isActive
-      ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1`
-      : `${stableSrc}?rel=0&modestbranding=1&enablejsapi=1`
+      ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0`
+      : `${stableSrc}?rel=0&modestbranding=1&enablejsapi=1&controls=0`
     return (
       <div ref={refCallback} data-index={index} className="reels-slide">
         <div className="reels-video-card relative overflow-hidden bg-black">

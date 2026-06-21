@@ -342,11 +342,10 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
   }, [loading, loadingMore, hasMore, fetchVideos])
 
   const updateVideo = useCallback((postId: string, patch: Partial<VideoFeedItem>) => {
+    // partitionBySeen ÇAĞIRILMAZ — sıralama değişirse scroll pozisyonu yanlış
+    // video gösterir (farklı videonun başlığı görünür). Sadece ilgili öğeyi güncelle.
     setVideos((prev) =>
-      partitionBySeen(
-        prev.map((v) => (v.id === postId ? { ...v, ...patch } : v)),
-        userIdRef.current
-      )
+      prev.map((v) => (v.id === postId ? { ...v, ...patch } : v))
     )
   }, [])
 
