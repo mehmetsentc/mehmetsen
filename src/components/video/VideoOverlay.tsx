@@ -31,8 +31,8 @@ export function VideoOverlay({ video }: VideoOverlayProps) {
         </span>
       </div>
 
-      {/* Bottom gradient + title */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pb-5 pt-28">
+      {/* Bottom gradient + title — biraz yukarıda (bottom nav'ın üstünde) */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pb-20 pt-28">
         <div className="pointer-events-auto px-4 pr-20">
           {video.title && (
             <Link

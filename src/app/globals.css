@@ -99,7 +99,8 @@
     --layout-content: 100%;
     --layout-content-wide: 100%;
     --layout-content-reels: 100%;
-    --reels-viewport-h: calc(100dvh - 7.25rem - var(--safe-bottom));
+    /* Reels header kaldırıldı — sadece site navbar (3.5rem) ve safe area hesaba katılır */
+    --reels-viewport-h: calc(100dvh - 3.5rem - var(--safe-bottom));
     --reels-video-w: 100%;
   }
 
@@ -1088,6 +1089,14 @@
 
   .reels-video {
     @apply absolute inset-0 h-full w-full object-cover object-center;
+  }
+
+  /* iOS/WebKit native video kontrol overlay'lerini gizle (CC butonu, ses badge, airplay) */
+  .reels-video::-webkit-media-controls {
+    display: none !important;
+  }
+  .reels-video::-webkit-media-controls-overlay-play-button {
+    display: none !important;
   }
 
   .reels-actions {

@@ -46,7 +46,7 @@ function VideoFeedItemInner({
   const { user } = useAuth()
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tapCountRef = useRef(0)
-  const { muted, toggleMuted } = useReelsAudio()
+  const { muted, toggleMuted, setMuted } = useReelsAudio()
   const tier = useNetworkTier()
   const {
     isVideoLoaded,
@@ -129,7 +129,12 @@ function VideoFeedItemInner({
     if (isActive) {
       if (!wasLoadedBefore) el.currentTime = 0
       el.muted = muted
-      el.play().catch(() => setPaused(true))
+      // Sesli autoplay dene; tarayıcı engellerse sessiz moduna düş ve durumu güncelle
+      el.play().catch(() => {
+        el.muted = true
+        setMuted(true)
+        el.play().catch(() => setPaused(true))
+      })
       setPaused(false)
       if (!viewedRef.current) {
         viewedRef.current = true
@@ -500,6 +505,9 @@ function VideoFeedItemInner({
           playsInline
           muted={muted}
           preload={preload}
+          disablePictureInPicture
+          // iOS native kontrol overlay'lerini gizle (CC, airplay, volume badge)
+          controlsList="nodownload nofullscreen noremoteplayback"
           onLoadedData={handleMediaReady}
           onWaiting={() => { if (!wasLoadedBefore) setLoading(true) }}
           onPlaying={() => setLoading(false)}

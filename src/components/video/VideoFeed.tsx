@@ -2,14 +2,11 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/hooks/useAuth'
 import { useVideoFeed } from '@/hooks/useVideoFeed'
 import { useInfiniteScroll, useActiveSnapItem } from '@/hooks/useInfiniteScroll'
 import { VideoFeedItem } from './VideoFeedItem'
-import { ReelsFeedTabs, type ReelsFeedTab } from './ReelsFeedTabs'
 import { ReelsRecommendations } from './ReelsRecommendations'
 import { ReelsAudioProvider } from '@/store/reelsAudioContext'
 import { ROUTES } from '@/constants/routes'
@@ -39,15 +36,12 @@ function ReelsStatePanel({
 export function VideoFeed() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { user, loading: authLoading } = useAuth()
   const targetVideoId = searchParams.get('v')
-  const [feedTab, setFeedTab] = usePageState<ReelsFeedTab>(
-    PAGE_STATE_KEYS.reelsFeedTab,
-    'for-you'
-  )
+  // Tab sistemi kaldırıldı — sadece "senin için" akışı
+  const feedTab = 'for-you' as const
   const [activeIndexByTab, setActiveIndexByTab] = usePageState<
-    Record<ReelsFeedTab, number>
-  >(PAGE_STATE_KEYS.reelsActiveIndexByTab, { 'for-you': 0, following: 0 })
+    Record<string, number>
+  >(PAGE_STATE_KEYS.reelsActiveIndexByTab, { 'for-you': 0 })
   const hasScrolledToTargetRef = useRef(false)
   const restoredScrollRef = useRef(false)
 
@@ -141,16 +135,6 @@ export function VideoFeed() {
     setActiveIndex,
   ])
 
-  const handleTabChange = useCallback(
-    (tab: ReelsFeedTab) => {
-      pauseAllPageVideos()
-      setFeedTab(tab)
-      hasScrolledToTargetRef.current = false
-      restoredScrollRef.current = false
-    },
-    [setFeedTab]
-  )
-
   useEffect(() => {
     return () => {
       pauseAllPageVideos()
@@ -162,9 +146,6 @@ export function VideoFeed() {
       pauseAllPageVideos()
     }
   }, [pathname])
-
-  const showFollowingLoginPrompt = feedTab === 'following' && !authLoading && !user
-  const showFollowingEmpty = feedTab === 'following' && user && !loading && !awaitingTarget && videos.length === 0 && !error
 
   useEffect(() => {
     if (loading || awaitingTarget || videos.length === 0) return
@@ -178,19 +159,12 @@ export function VideoFeed() {
     !loading &&
     !awaitingTarget &&
     !error &&
-    !showFollowingLoginPrompt &&
-    !showFollowingEmpty &&
     videos.length > 0
 
   return (
     <ReelsAudioProvider>
     <div className={cn('reels-page', showVideoFeed && 'reels-layout')}>
       <div className={cn('reels-feed w-full', showVideoFeed && 'reels-player-wrap')}>
-        {/* Immersive header: tabs only, no title/icon */}
-        <header className="reels-header bg-black/0 backdrop-blur-none">
-          <ReelsFeedTabs active={feedTab} onChange={handleTabChange} />
-        </header>
-
         {loading || awaitingTarget ? (
         <ReelsStatePanel>
           <Loader2 className="h-9 w-9 animate-spin text-blue-500" />
@@ -213,26 +187,6 @@ export function VideoFeed() {
             <RefreshCw className="h-4 w-4" />
             Tekrar dene
           </button>
-        </ReelsStatePanel>
-      ) : showFollowingLoginPrompt ? (
-        <ReelsStatePanel>
-          <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Takip akışı</p>
-          <p className="text-sm text-[rgb(var(--color-muted))]">
-            Takip ettiğiniz hesapların videolarını görmek için giriş yapın.
-          </p>
-          <Link
-            href={ROUTES.LOGIN}
-            className="mt-2 inline-flex items-center rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            Giriş yap
-          </Link>
-        </ReelsStatePanel>
-      ) : showFollowingEmpty ? (
-        <ReelsStatePanel>
-          <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Takip akışı boş</p>
-          <p className="text-sm text-[rgb(var(--color-muted))]">
-            Takip ettiğiniz hesaplardan henüz video yok. Yeni içerikler burada görünecek.
-          </p>
         </ReelsStatePanel>
       ) : videos.length === 0 ? (
         <ReelsStatePanel>
