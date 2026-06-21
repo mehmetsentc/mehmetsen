@@ -191,7 +191,7 @@ export default function SettingsProfilePage() {
   }
 
   return (
-    <div className="pb-24">
+    <div className="pb-40">
       <SettingsHeader title="Profil ve İlgi Alanları" backHref={ROUTES.SETTINGS} />
 
       <div className="space-y-6 px-4 pt-4">
@@ -348,8 +348,8 @@ export default function SettingsProfilePage() {
         </section>
       </div>
 
-      {/* ── Kaydet butonu (fixed bottom) ── */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/95 p-4 backdrop-blur-sm">
+      {/* ── Kaydet butonu — mobile nav barının üstünde (bottom-14 = 3.5rem = nav yüksekliği) ── */}
+      <div className="fixed bottom-14 left-0 right-0 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/95 px-4 py-3 backdrop-blur-sm">
         <Button
           onClick={handleSave}
           disabled={saving}
