@@ -189,20 +189,6 @@ function VideoFeedItemInner({
     }
   }, [])
 
-  // Virtual window: render only scroll-snap anchor outside ± render window.
-  // This keeps scroll positions intact while freeing video memory on iOS.
-  // IMPORTANT: this return must come AFTER all hooks above.
-  if (virtualized) {
-    return (
-      <div
-        ref={refCallback}
-        data-index={index}
-        className="reels-slide bg-black"
-        aria-hidden
-      />
-    )
-  }
-
   const togglePlay = useCallback(() => {
     const el = videoRef.current
     if (!el) return
@@ -237,14 +223,12 @@ function VideoFeedItemInner({
 
       if (tapCountRef.current >= 2) {
         tapCountRef.current = 0
-        // Double tap → like
         triggerDoubleTapLike(x, y)
         return
       }
 
       tapTimerRef.current = setTimeout(() => {
         if (tapCountRef.current === 1) {
-          // Single tap → play/pause
           togglePlay()
         }
         tapCountRef.current = 0
@@ -253,9 +237,9 @@ function VideoFeedItemInner({
     [togglePlay, triggerDoubleTapLike]
   )
 
-  // ── Audio-only card (AI-generated TTS, no video file) ─────────────────────
-  // Sync audio element play/pause/mute with isActive + paused + muted state
+  // ── Audio-only card ses senkronizasyonu ───────────────────────────────────
   useEffect(() => {
+    if (virtualized) return
     const el = audioRef.current
     if (!el || !isAudioMode) return
     el.muted = muted
@@ -264,13 +248,11 @@ function VideoFeedItemInner({
     } else {
       el.pause()
     }
-  }, [isActive, paused, muted, isAudioMode])
+  }, [isActive, paused, muted, isAudioMode, virtualized])
 
   // ── YouTube ses senkronizasyonu ───────────────────────────────────────────
-  // enablejsapi=1 ile yüklenen iframe'e postMessage gönderir.
-  // Kullanıcı VideoActions'daki ses butonuna basınca YouTube sesini de kontrol eder.
   useEffect(() => {
-    if (!isYouTube || !isActive) return
+    if (virtualized || !isYouTube || !isActive) return
     const iframe = iframeRef.current
     if (!iframe?.contentWindow) return
     const msg = JSON.stringify({
@@ -279,7 +261,20 @@ function VideoFeedItemInner({
       args: [],
     })
     iframe.contentWindow.postMessage(msg, '*')
-  }, [muted, isYouTube, isActive])
+  }, [muted, isYouTube, isActive, virtualized])
+
+  // Virtual window: render only scroll-snap anchor outside ± render window.
+  // IMPORTANT: this return must come AFTER ALL hooks above — Rules of Hooks.
+  if (virtualized) {
+    return (
+      <div
+        ref={refCallback}
+        data-index={index}
+        className="reels-slide bg-black"
+        aria-hidden
+      />
+    )
+  }
 
   if (!stableSrc) {
     if (isAudioMode) {
