@@ -60,6 +60,7 @@ export const ROUTES = {
     REPORTS: '/admin/reports',
     EVENTS: '/admin/events',
     ARCHIVE: '/admin/archive',
+    SUBMISSIONS: '/admin/submissions',
     /** @deprecated Use ADMIN.NEWS */
     POSTS: '/admin/posts',
   },

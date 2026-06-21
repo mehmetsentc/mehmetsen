@@ -12,6 +12,7 @@ import {
   Archive,
   Settings,
   ArrowLeft,
+  Inbox,
 } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { BrandLogo } from '@/components/brand/BrandLogo'
@@ -22,6 +23,7 @@ const navItems = [
   { href: ROUTES.ADMIN.NEWS, label: 'Haberler', icon: Newspaper },
   { href: ROUTES.ADMIN.CATEGORIES, label: 'Kategoriler', icon: Tags },
   { href: ROUTES.ADMIN.USERS, label: 'Kullanıcılar', icon: Users },
+  { href: ROUTES.ADMIN.SUBMISSIONS, label: 'Okuyucu Haberleri', icon: Inbox },
   { href: ROUTES.ADMIN.REPORTS, label: 'Raporlar', icon: Flag },
   { href: ROUTES.ADMIN.EVENTS, label: 'Etkinlikler', icon: CalendarDays },
   { href: ROUTES.ADMIN.ARCHIVE, label: 'Arşiv', icon: Archive },
