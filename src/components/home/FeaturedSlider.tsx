@@ -123,10 +123,10 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
             </button>
           )}
 
-          {/* ── İçerik ── */}
+          {/* ── İçerik ── tüm slayt tıklanabilir, içerik altta */}
           <Link
             href={newsItemDetailHref(item)}
-            className="absolute inset-x-0 bottom-0 z-10 flex flex-col justify-end focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="absolute inset-0 z-10 flex flex-col justify-end focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <div className="px-4 pb-4 pt-6 sm:px-6 sm:pb-5">
               {/* Kategori rozeti */}

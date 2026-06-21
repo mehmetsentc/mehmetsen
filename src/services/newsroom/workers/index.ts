@@ -10,6 +10,7 @@ export { runTechWorker } from '@/services/newsroom/workers/techWorker'
 export { runHealthWorker } from '@/services/newsroom/workers/healthWorker'
 export { runPoliticsWorker } from '@/services/newsroom/workers/politicsWorker'
 export { runMagazineWorker } from '@/services/newsroom/workers/magazineWorker'
+export { runGundemWorker } from '@/services/newsroom/workers/gundemWorker'
 
 import { runBreakingWorker } from '@/services/newsroom/workers/breakingWorker'
 import { runNationalWorker } from '@/services/newsroom/workers/nationalWorker'

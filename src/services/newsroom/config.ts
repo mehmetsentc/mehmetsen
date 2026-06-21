@@ -132,6 +132,19 @@ export const FINANS_SOURCE_IDS = [
   'sabah-ekonomi', 'ahaber-ekonomi',
 ] as const
 
+/**
+ * Gündem bot kaynakları — Google News TR + AA kategori feedleri + yüksek kaliteli son-dakika.
+ * Ulusal kapsam filtresi: AI "Tüm Türkiye'yi etkiler mi?" sorusuyla doğrular.
+ */
+export const GUNDEM_SOURCE_IDS = [
+  // Google News algoritması — gündemdeki haberleri yüzey
+  'google-news-tr', 'google-news-tr-ulusal', 'google-news-tr-politika', 'google-news-tr-ekonomi',
+  // Anadolu Ajansı — birincil kaynak, kategori feedleri
+  'aa-gundem', 'aa-politika', 'aa-ekonomi',
+  // Yüksek kaliteli son-dakika feedleri
+  'ntv-sondakika', 'haberturk-sondakika', 'cumhuriyet-gundem', 'iha-gundem',
+] as const
+
 /** Gastronomi kaynakları — yemek, restoran, mutfak haberleri. */
 export const GASTRONOMI_SOURCE_IDS = [
   'gastronomi-google-news', 'lezzet-com', 'yemek-com', 'milliyet-gastronomi', 'hurriyet-gastronomi',
@@ -445,6 +458,14 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     schedule: '10m',
     description: 'Sözcü Son Dakika RSS — tam içerik scraping ile 10 dakikada bir son-dakika kategorisine kaydeder.',
     cronPath: '/api/cron/newsroom/sozcu-breaking',
+  },
+  gundem: {
+    id: 'gundem',
+    name: 'Gündem Bot',
+    nameTr: 'Gündem Bot',
+    schedule: '5m',
+    description: 'Google News TR + AA kategori feedleri — ulusal kapsam filtresi ile tüm Türkiye\'yi ilgilendiren haberleri gündem kategorisine yayınlar.',
+    cronPath: '/api/cron/newsroom/gundem',
   },
 }
 

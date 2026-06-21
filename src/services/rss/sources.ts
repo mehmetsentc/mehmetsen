@@ -1655,6 +1655,111 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     maxItemsPerRun: 5,
     enabled: true,
   },
+
+  // ══════════════════════════════════════════════════════════════════
+  // GÜNDEM BOTU — Ulusal öneme sahip haberler için özel kaynaklar
+  // ══════════════════════════════════════════════════════════════════
+
+  // Google News TR — algoritmik olarak öne çıkan ulusal haberler
+  {
+    id: 'google-news-tr',
+    label: 'Google Haberler Türkiye',
+    feedUrl: 'https://news.google.com/rss?hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 15,
+    enabled: true,
+  },
+  {
+    id: 'google-news-tr-ulusal',
+    label: 'Google Haberler TR Ulusal',
+    feedUrl: 'https://news.google.com/rss/headlines/section/topic/NATION?hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 12,
+    enabled: true,
+  },
+  {
+    id: 'google-news-tr-politika',
+    label: 'Google Haberler TR Politika',
+    feedUrl: 'https://news.google.com/rss/headlines/section/topic/POLITICS?hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+  {
+    id: 'google-news-tr-ekonomi',
+    label: 'Google Haberler TR Ekonomi',
+    feedUrl: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+
+  // Anadolu Ajansı — kategori bazlı feed'ler
+  {
+    id: 'aa-gundem',
+    label: 'AA Gündem',
+    feedUrl: 'https://www.aa.com.tr/tr/rss/default?cat=gundem',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:aa.com.tr+gündem&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 12,
+    enabled: true,
+  },
+  {
+    id: 'aa-politika',
+    label: 'AA Politika',
+    feedUrl: 'https://www.aa.com.tr/tr/rss/default?cat=politika',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:aa.com.tr+politika+tbmm+meclis&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+  {
+    id: 'aa-ekonomi',
+    label: 'AA Ekonomi',
+    feedUrl: 'https://www.aa.com.tr/tr/rss/default?cat=ekonomi',
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+
+  // Son dakika feed'leri — ulusal medya
+  {
+    id: 'ntv-sondakika',
+    label: 'NTV Son Dakika',
+    feedUrl: 'https://www.ntv.com.tr/son-dakika.rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:ntv.com.tr+son+dakika&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+  {
+    id: 'haberturk-sondakika',
+    label: 'Habertürk Son Dakika',
+    feedUrl: 'https://www.haberturk.com/rss/haber/sondakika.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:haberturk.com+son+dakika&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+  {
+    id: 'cumhuriyet-gundem',
+    label: 'Cumhuriyet Gündem',
+    feedUrl: 'https://www.cumhuriyet.com.tr/rss/son_dakika.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:cumhuriyet.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'iha-gundem',
+    label: 'İHA Gündem',
+    feedUrl: 'https://www.iha.com.tr/rss/rss.php?kategori=0',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:iha.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 12,
+    enabled: true,
+  },
 ]
 
 function envFeedOverride(sourceId: string): string | undefined {

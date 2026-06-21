@@ -24,6 +24,10 @@
       "maxDuration": 300,
       "memory": 1024
     },
+    "src/app/api/cron/newsroom/gundem/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
     "src/app/api/cron/newsroom/politics/route.ts": {
       "maxDuration": 300
     },
@@ -167,6 +171,10 @@
     {
       "path": "/api/cron/newsroom/national",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/gundem",
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/newsroom/finans",
