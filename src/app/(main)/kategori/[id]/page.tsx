@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { Suspense } from 'react'
 import { DEFAULT_CATEGORIES, getSubcategories, getCategoryFamily, type CategoryDef } from '@/constants/config'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
@@ -11,12 +10,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { TimelinePost } from '@/types/post'
-
-// Dinamik import — TradingView scriptleri window gerektirir, SSR kapalı
-const BorsaWidget = dynamic(
-  () => import('@/components/widgets/BorsaWidget').then((m) => m.BorsaWidget),
-  { ssr: false }
-)
+import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -216,7 +210,7 @@ export default async function CategoryPage({ params }: Props) {
       {/* Borsa kategorisinde canlı piyasa verileri */}
       {cat.id === 'borsa' && (
         <>
-          <BorsaWidget />
+          <BorsaWidgetClient />
           <div className="mb-4 flex items-center gap-2">
             <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
             <span className="text-xs font-semibold text-[rgb(var(--color-muted))]">Borsa Haberleri</span>
