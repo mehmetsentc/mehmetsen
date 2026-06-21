@@ -10,6 +10,7 @@ export const KRIPTO_SOURCE_IDS = [
   'cointelegraph',
   'kriptokoin',
   'btchaber',
+  'sozcu-kripto',
 ] as const
 
 export async function runKriptoWorker(): Promise<NewsroomRunResult> {

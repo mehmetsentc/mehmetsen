@@ -73,6 +73,30 @@
     "src/app/api/cron/newsroom/kripto/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/cron/newsroom/world-cup/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/voleybol/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/basketbol/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/futbol/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/borsa/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/bilim-teknoloji/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/saglik-sozcu/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/newsroom/sozcu-breaking/route.ts": {
+      "maxDuration": 300
+    },
     "src/app/api/cron/newsroom/trend/route.ts": {
       "maxDuration": 300
     },
@@ -239,6 +263,38 @@
     {
       "path": "/api/cron/newsroom/anka-local",
       "schedule": "0 3,13,15,21 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/world-cup",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/voleybol",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/basketbol",
+      "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/futbol",
+      "schedule": "25 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/borsa",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/bilim-teknoloji",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/saglik-sozcu",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/sozcu-breaking",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

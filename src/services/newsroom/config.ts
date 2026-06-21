@@ -128,6 +128,7 @@ export const GASTRONOMI_SOURCE_IDS = [
 /** Otomobil kaynakları — araç, araba, trafik, elektrikli araç haberleri. */
 export const OTOMOBIL_SOURCE_IDS = [
   'otomobil-google-news', 'oto-com-tr', 'otomobilhaber', 'arabalar-com-tr', 'hurriyet-otomobil', 'milliyet-otomobil',
+  'sozcu-otomotiv',
 ] as const
 
 export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
@@ -367,6 +368,70 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     schedule: '6h',
     description: 'ankahaber.net/kategori/yerel-haberler — TRT ile 06:00, 16:00, 18:00, 00:00\'da son 6 saatin yerel haberlerini tam içerik + görsel + video ile çeker.',
     cronPath: '/api/cron/newsroom/anka-local',
+  },
+  'world-cup-2026': {
+    id: 'world-cup-2026',
+    name: '2026 World Cup Worker',
+    nameTr: '2026 FIFA Dünya Kupası Worker',
+    schedule: '1h',
+    description: 'Sözcü 2026 FIFA Dünya Kupası RSS — sadece dunya-kupasi-2026 kategorisine kaydeder.',
+    cronPath: '/api/cron/newsroom/world-cup',
+  },
+  voleybol: {
+    id: 'voleybol',
+    name: 'Voleybol Worker',
+    nameTr: 'Voleybol Worker',
+    schedule: '1h',
+    description: 'Sözcü Voleybol RSS — sadece voleybol kategorisine kaydeder.',
+    cronPath: '/api/cron/newsroom/voleybol',
+  },
+  basketbol: {
+    id: 'basketbol',
+    name: 'Basketbol Worker',
+    nameTr: 'Basketbol Worker',
+    schedule: '1h',
+    description: 'Sözcü Basketbol RSS — sadece basketbol kategorisine kaydeder.',
+    cronPath: '/api/cron/newsroom/basketbol',
+  },
+  'futbol-sozcu': {
+    id: 'futbol-sozcu',
+    name: 'Futbol Sozcu Worker',
+    nameTr: 'Sözcü Dünyadan Spor (Futbol) Worker',
+    schedule: '1h',
+    description: 'Sözcü Dünyadan Spor RSS — sadece futbol kategorisine kaydeder.',
+    cronPath: '/api/cron/newsroom/futbol',
+  },
+  borsa: {
+    id: 'borsa',
+    name: 'Borsa Worker',
+    nameTr: 'Borsa Worker',
+    schedule: '1h',
+    description: 'Sözcü Borsa RSS — sadece borsa kategorisine kaydeder. Ana feed\'e düşmez.',
+    cronPath: '/api/cron/newsroom/borsa',
+  },
+  'bilim-teknoloji': {
+    id: 'bilim-teknoloji',
+    name: 'Bilim & Teknoloji Worker',
+    nameTr: 'Sözcü Bilim & Teknoloji Worker',
+    schedule: '1h',
+    description: 'Sözcü Bilim-Teknoloji RSS — AI ile bilim veya teknoloji kategorisine yönlendirir.',
+    cronPath: '/api/cron/newsroom/bilim-teknoloji',
+  },
+  'saglik-sozcu': {
+    id: 'saglik-sozcu',
+    name: 'Saglik Sozcu Worker',
+    nameTr: 'Sözcü Sağlık Worker',
+    schedule: '1h',
+    description: 'Sözcü Sağlık RSS — sadece saglik kategorisine kaydeder.',
+    cronPath: '/api/cron/newsroom/saglik-sozcu',
+  },
+  'sozcu-breaking': {
+    id: 'sozcu-breaking',
+    name: 'Sozcu Breaking Worker',
+    nameTr: 'Sözcü Son Dakika Worker',
+    schedule: '10m',
+    description: 'Sözcü Son Dakika RSS — tam içerik scraping ile 10 dakikada bir son-dakika kategorisine kaydeder.',
+    cronPath: '/api/cron/newsroom/sozcu-breaking',
   },
 }
 

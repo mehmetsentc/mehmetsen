@@ -23,6 +23,10 @@ export const AI_NEWS_CATEGORIES: Record<string, string> = {
   hentbol: 'Hentbol',
   atletizm: 'Atletizm',
   gures: 'Güreş',
+  'dunya-kupasi-2026': '2026 Dünya Kupası',
+  // Ekonomi alt kategoriler
+  borsa: 'Borsa',
+  kripto: 'Kripto',
   dunya: 'Dünya',
   teknoloji: 'Teknoloji',
   saglik: 'Sağlık',

@@ -310,6 +310,111 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
 
+  // ── Sözcü — İzole Kategori Akışları ─────────────────────────────────────
+  // Bu kaynaklar forcedCategoryId ile kendi worker'larında kullanılır.
+  // Ana feed'e düşmez.
+  {
+    id: 'sozcu-world-cup',
+    label: 'Sözcü — 2026 FIFA Dünya Kupası',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-2026-fifa-dunya-kupasi',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=2026+dünya+kupası+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-voleybol',
+    label: 'Sözcü — Voleybol',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-voleybol',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=voleybol+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-basketbol',
+    label: 'Sözcü — Basketbol',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-basketbol',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=basketbol+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-dunyadan-spor',
+    label: 'Sözcü — Dünyadan Spor (Futbol)',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-dunyadan-spor',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=futbol+dünya+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-kripto',
+    label: 'Sözcü — Kripto',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-kripto',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=kripto+bitcoin+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-borsa',
+    label: 'Sözcü — Borsa',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-borsa',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=borsa+bist+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-otomotiv',
+    label: 'Sözcü — Otomotiv',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-otomotiv',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=otomobil+araç+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-bilim-teknoloji',
+    label: 'Sözcü — Bilim & Teknoloji',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-bilim-teknoloji',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=bilim+teknoloji+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-saglik',
+    label: 'Sözcü — Sağlık',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-saglik',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=sağlık+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'sozcu-son-dakika',
+    label: 'Sözcü — Son Dakika',
+    feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-son-dakika',
+    alternateFeedUrls: [
+      'https://www.sozcu.com.tr/rss/son-dakika',
+      'https://news.google.com/rss/search?q=son+dakika+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 15,
+    enabled: true,
+  },
+
   // ── Kripto ───────────────────────────────────────────────────────────────
   {
     id: 'coindesk',

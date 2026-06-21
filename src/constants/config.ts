@@ -23,6 +23,12 @@ export interface CategoryDef {
   color: string
   /** Parent category id — defines a subcategory relationship */
   parentId?: string
+  /**
+   * When true, this subcategory's articles are ISOLATED — they appear only
+   * on their own page and NOT in the parent's feed query.
+   * The chip still shows on the parent page for navigation.
+   */
+  standalone?: boolean
 }
 
 export const DEFAULT_CATEGORIES: CategoryDef[] = [
@@ -33,19 +39,22 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'siyaset',     name: 'Siyaset',     slug: 'siyaset',     iconName: 'landmark',     color: '#7C3AED' },
   { id: 'dunya',       name: 'Dünya',       slug: 'dunya',       iconName: 'globe',        color: '#6B7280' },
   { id: 'ekonomi',     name: 'Ekonomi',     slug: 'ekonomi',     iconName: 'trending-up',  color: '#F59E0B' },
+  { id: 'borsa',       name: 'Borsa',       slug: 'borsa',       iconName: 'bar-chart-2',  color: '#22C55E', parentId: 'ekonomi', standalone: true },
+  { id: 'kripto',      name: 'Kripto',      slug: 'kripto',      iconName: 'bitcoin',      color: '#F7931A', parentId: 'ekonomi', standalone: true },
   { id: 'teknoloji',   name: 'Teknoloji',   slug: 'teknoloji',   iconName: 'cpu',          color: '#3B82F6' },
   { id: 'saglik',      name: 'Sağlık',      slug: 'saglik',      iconName: 'heart',        color: '#EC4899' },
   { id: 'bilim',       name: 'Bilim',       slug: 'bilim',       iconName: 'flask',        color: '#14B8A6' },
   { id: 'magazin',     name: 'Magazin',     slug: 'magazin',     iconName: 'star',         color: '#F472B6' },
 
   // ── Spor + alt kategoriler ──────────────────────────────────────────────────
-  { id: 'spor',        name: 'Spor',        slug: 'spor',        iconName: 'trophy',       color: '#10B981' },
-  { id: 'futbol',      name: 'Futbol',      slug: 'futbol',      iconName: 'circle-dot',   color: '#10B981', parentId: 'spor' },
-  { id: 'basketbol',   name: 'Basketbol',   slug: 'basketbol',   iconName: 'circle',       color: '#10B981', parentId: 'spor' },
-  { id: 'voleybol',    name: 'Voleybol',    slug: 'voleybol',    iconName: 'circle',       color: '#10B981', parentId: 'spor' },
-  { id: 'hentbol',     name: 'Hentbol',     slug: 'hentbol',     iconName: 'circle',       color: '#10B981', parentId: 'spor' },
-  { id: 'atletizm',    name: 'Atletizm',    slug: 'atletizm',    iconName: 'zap',          color: '#10B981', parentId: 'spor' },
-  { id: 'gures',       name: 'Güreş',       slug: 'gures',       iconName: 'swords',       color: '#10B981', parentId: 'spor' },
+  { id: 'spor',              name: 'Spor',             slug: 'spor',              iconName: 'trophy',       color: '#10B981' },
+  { id: 'futbol',            name: 'Futbol',           slug: 'futbol',            iconName: 'circle-dot',   color: '#10B981', parentId: 'spor', standalone: true },
+  { id: 'basketbol',         name: 'Basketbol',        slug: 'basketbol',         iconName: 'circle',       color: '#10B981', parentId: 'spor', standalone: true },
+  { id: 'voleybol',          name: 'Voleybol',         slug: 'voleybol',          iconName: 'circle',       color: '#10B981', parentId: 'spor', standalone: true },
+  { id: 'hentbol',           name: 'Hentbol',          slug: 'hentbol',           iconName: 'circle',       color: '#10B981', parentId: 'spor' },
+  { id: 'atletizm',          name: 'Atletizm',         slug: 'atletizm',          iconName: 'zap',          color: '#10B981', parentId: 'spor' },
+  { id: 'gures',             name: 'Güreş',            slug: 'gures',             iconName: 'swords',       color: '#10B981', parentId: 'spor' },
+  { id: 'dunya-kupasi-2026', name: '2026 Dünya Kupası', slug: 'dunya-kupasi-2026', iconName: 'trophy',      color: '#F59E0B', parentId: 'spor', standalone: true },
 
   // ── Kültür + alt kategoriler ────────────────────────────────────────────────
   { id: 'kultur',      name: 'Kültür',      slug: 'kultur',      iconName: 'palette',      color: '#8B5CF6' },
@@ -79,9 +88,15 @@ export function getParentCategory(categoryId: string): CategoryDef | undefined {
 /**
  * All category ids that belong to a parent (inclusive).
  * Used to query Firestore for "show all sport news" (spor + futbol + basketbol + ...).
+ * Standalone subcategories are EXCLUDED — their articles stay isolated on their own page.
  */
 export function getCategoryFamily(parentId: string): string[] {
-  return [parentId, ...getSubcategories(parentId).map((c) => c.id)]
+  return [
+    parentId,
+    ...getSubcategories(parentId)
+      .filter((c) => !c.standalone)
+      .map((c) => c.id),
+  ]
 }
 
 /**
