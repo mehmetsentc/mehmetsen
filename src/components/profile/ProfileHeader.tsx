@@ -8,6 +8,7 @@ import type { User } from '@/types/user'
 import { Avatar } from '@/components/ui/Avatar'
 import { FollowButton } from './FollowButton'
 import { MessageButton } from '@/components/messages/MessageButton'
+import { AvatarPickerSheet } from './AvatarPickerSheet'
 import { AvatarCropModal } from './AvatarCropModal'
 import { SubmitNewsModal } from './SubmitNewsModal'
 import { storageService } from '@/services/storageService'
@@ -30,24 +31,63 @@ export function ProfileHeader({
   onFollowChange,
 }: ProfileHeaderProps) {
   const { refreshUser } = useAuth()
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Avatar dosya input refs — biri kamera, biri galeri
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
+
+  // UI state
+  const [showPicker, setShowPicker] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [showNewsModal, setShowNewsModal] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
+  /* ── Dosya seçildi ── */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!allowed.includes(file.type)) { toast.error('Desteklenmeyen format'); return }
-    if (file.size > 5 * 1024 * 1024) { toast.error('En fazla 5MB'); return }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
+    if (!allowed.includes(file.type)) {
+      toast.error('Desteklenmeyen format — JPEG, PNG veya WebP seç')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('En fazla 10MB')
+      return
+    }
     setCropFile(file)
-    // Reset input so same file can be re-selected
-    e.target.value = ''
+    e.target.value = '' // aynı dosya tekrar seçilebilsin
   }
 
+  /* ── Picker sheet aksiyonları ── */
+  const handlePickerCamera = () => {
+    setShowPicker(false)
+    setTimeout(() => cameraInputRef.current?.click(), 100) // sheet kapandıktan sonra aç
+  }
+
+  const handlePickerGallery = () => {
+    setShowPicker(false)
+    setTimeout(() => galleryInputRef.current?.click(), 100)
+  }
+
+  const handlePickerRemove = async () => {
+    setShowPicker(false)
+    setUploading(true)
+    try {
+      await userService.updateProfile(user.uid, { photoURL: null })
+      await refreshUser()
+      setAvatarPreview(null)
+      toast.success('Profil fotoğrafı kaldırıldı')
+    } catch (err) {
+      console.error('[Avatar remove error]', err)
+      toast.error('Kaldırılamadı, tekrar dene')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  /* ── Kırpma onaylandı → yükle ── */
   const handleCropConfirm = async (blob: Blob) => {
     setCropFile(null)
     setUploading(true)
@@ -64,7 +104,7 @@ export function ProfileHeader({
       if (msg.includes('storage/unauthorized') || msg.includes('permission-denied')) {
         toast.error('Yükleme izni yok — lütfen tekrar giriş yap')
       } else {
-        toast.error('Yükleme başarısız: ' + (msg.slice(0, 60) || 'bilinmeyen hata'))
+        toast.error('Yükleme başarısız, tekrar dene')
       }
     } finally {
       setUploading(false)
@@ -87,28 +127,46 @@ export function ProfileHeader({
                     name={user.displayName}
                     src={avatarPreview ?? user.photoURL}
                     size="xl"
-                    className={uploading ? 'opacity-60' : ''}
+                    className={uploading ? 'opacity-50' : ''}
                   />
                 </div>
               </div>
 
-              {/* "+" butonu — sadece kendi profili */}
+              {/* "+" butonu — kendi profili */}
               {isOwnProfile && (
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setShowPicker(true)}
                   disabled={uploading}
                   aria-label="Profil fotoğrafı değiştir"
                   className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-[rgb(var(--color-card))] bg-[rgb(var(--color-brand))] text-white shadow-md transition hover:scale-110 active:scale-95 disabled:opacity-60"
                 >
-                  <span className="text-lg font-light leading-none">+</span>
+                  {uploading ? (
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  ) : (
+                    <span className="text-lg font-light leading-none select-none">+</span>
+                  )}
                 </button>
               )}
 
+              {/* Hidden file inputs */}
+              {/* Kamera — capture="user" iOS'ta front camera, "environment" arka kamera açar */}
               <input
-                ref={fileInputRef}
+                ref={cameraInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              {/* Galeri */}
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
                 className="hidden"
                 onChange={handleFileSelect}
               />
@@ -127,11 +185,7 @@ export function ProfileHeader({
                     <Link href={ROUTES.SETTINGS_PROFILE} className="profile-edit-btn">
                       Profili düzenle
                     </Link>
-                    <Link
-                      href={ROUTES.SETTINGS}
-                      className="profile-edit-btn"
-                      aria-label="Ayarlar"
-                    >
+                    <Link href={ROUTES.SETTINGS} className="profile-edit-btn" aria-label="Ayarlar">
                       <Settings className="h-4 w-4" />
                     </Link>
                   </div>
@@ -208,7 +262,20 @@ export function ProfileHeader({
         )}
       </header>
 
-      {/* ── Modals ── */}
+      {/* ── Modals & sheets ── */}
+
+      {/* Instagram-like picker sheet */}
+      {showPicker && (
+        <AvatarPickerSheet
+          hasPhoto={!!(avatarPreview ?? user.photoURL)}
+          onCamera={handlePickerCamera}
+          onGallery={handlePickerGallery}
+          onRemove={handlePickerRemove}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {/* Kırpma modal */}
       {cropFile && (
         <AvatarCropModal
           file={cropFile}
@@ -216,6 +283,8 @@ export function ProfileHeader({
           onClose={() => setCropFile(null)}
         />
       )}
+
+      {/* Haber gönder modal */}
       {showNewsModal && (
         <SubmitNewsModal onClose={() => setShowNewsModal(false)} />
       )}
