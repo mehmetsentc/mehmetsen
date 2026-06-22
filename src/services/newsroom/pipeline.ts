@@ -632,7 +632,20 @@ export async function processNewsroomArticle(
       factCheck.flags.includes('speculation') ||
       factCheck.flags.includes('title_mismatch')
 
+    // Fallback tespiti: categoryConfidence === 0, AI editör yerine ham RSS içeriği kullanıldı.
+    // (Hem Gemini hem DeepSeek başarısız olduğunda aiNewsEditor fallbackRewrite() çalışır
+    //  ve categoryConfidence: 0 marker döner.)
+    // Ham içerik ASLA otomatik yayınlanmaz — admin incelemesine alınır.
+    const isFallbackContent = !workingInput.skipAiRewrite && rewritten.categoryConfidence === 0
+
+    if (isFallbackContent) {
+      console.warn(
+        `[newsroom/pipeline] fallback içerik tespit edildi (AI başarısız) — taslağa alınıyor: ${workingInput.sourceUrl}`
+      )
+    }
+
     const needsDraft =
+      isFallbackContent ||
       factCheck.confidenceScore < NEWSROOM_AUTO_PUBLISH_THRESHOLD ||
       factCheckFailedBadly ||
       moderation.decision === 'review'

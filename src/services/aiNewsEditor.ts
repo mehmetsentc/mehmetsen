@@ -673,7 +673,10 @@ function fallbackRewrite(input: AiRewriteInput): AiRewriteResult | AiArchiveRewr
     seoTitle: title.slice(0, 70),
     seoDescription: (summary || base.slice(0, 160)).slice(0, 165),
     categoryId: 'gundem',
-    categoryConfidence: 50,
+    // categoryConfidence: 0 → pipeline'a "ham metin fallback" sinyali.
+    // Bu değer < 10 olduğunda pipeline otomatik yayın YAPMAZ, taslağa alır.
+    // Hem Gemini hem DeepSeek başarısız olduğunda bu kod çalışır.
+    categoryConfidence: 0,
     isBreaking: false,
     city: null,
     district: null,
