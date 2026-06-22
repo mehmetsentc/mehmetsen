@@ -889,6 +889,35 @@ export function validateCategoryClassification(
     isBreaking = false
   }
 
+  // ── Kutlama / tören / özel gün içeriği son-dakika olamaz ─────────────────
+  // "Babalar Günü kutlamaları", "Mezuniyet töreni" vb. içerikler acil keyword
+  // içermese de breaking news editörünün kaynaklarından geldiğinde son-dakika
+  // statüsü alabiliyordu. Bu guard o boşluğu kapatır.
+  const CELEBRATION_TERMS = [
+    'kutlama', 'kutlandı', 'kutluyor', 'kutladı', 'kutlayacak',
+    'babalar günü', 'anneler günü', 'sevgililer günü',
+    'öğretmenler günü', 'öğretmenlerin günü',
+    'çocuk bayramı kutl', 'gençlik bayramı kutl',
+    'anma töreni', 'anma etkinliği',
+    'mezuniyet töreni', 'mezuniyet tören',
+    'açılış töreni', 'şenlik başladı', 'şenlik düzenlendi',
+    'festival başladı', 'tören düzenlendi', 'resepsiyon düzenlendi',
+    'sergi açıldı', 'sergi açılışı', 'kariyer günü', 'özel gün',
+  ]
+  const hasCelebrationContent = CELEBRATION_TERMS.some(
+    (t) => text.toLocaleLowerCase('tr-TR').includes(t)
+  )
+  // Gerçek bir afet/acil durum varsa kutlama filtresini bypass et
+  // (örn: Cumhuriyet Bayramı töreninde patlama haberi)
+  if (hasCelebrationContent && isBreaking && !hasDisasterTerm) {
+    overrides.push('isBreaking cleared — kutlama/tören/özel gün içeriği son-dakika olamaz')
+    isBreaking = false
+    if (categoryId === 'son-dakika') {
+      overrides.push('son-dakika → gundem (kutlama içeriği)')
+      categoryId = 'gundem'
+    }
+  }
+
   // Breaking editor pre-scores urgency signals — trust them without requiring nationalScope
   const isBreakingEditor = input.editorType === 'breaking'
 

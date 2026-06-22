@@ -35,6 +35,40 @@ const SPOR_SIGNAL_KEYWORDS = [
   'basketbol',
 ] as const
 
+/**
+ * Bu içerikler ne kadar yeni/acil görünürse görünsün son-dakika olamaz.
+ * Kutlama, tören, şenlik, anma gibi planlı sosyal etkinlikler.
+ */
+const NON_BREAKING_KEYWORDS = [
+  'kutlama',
+  'kutlandı',
+  'kutluyor',
+  'kutladı',
+  'kutlayacak',
+  'babalar günü',
+  'anneler günü',
+  'sevgililer günü',
+  'öğretmenler günü',
+  'öğretmenlerin günü',
+  'çocuk bayramı',
+  'gençlik bayramı',
+  'zafer bayramı kutl',
+  'cumhuriyet bayramı kutl',
+  'anma töreni',
+  'anma etkinliği',
+  'mezuniyet töreni',
+  'açılış töreni',
+  'şenlik başladı',
+  'şenlik düzenlendi',
+  'festival başladı',
+  'tören düzenlendi',
+  'resepsiyon düzenlendi',
+  'sergi açıldı',
+  'sergi açılışı',
+  'kariyer günü',
+  'özel gün',
+] as const
+
 export interface BreakingSignals {
   isBreaking: boolean
   priorityScore: number
@@ -67,9 +101,15 @@ export function analyzeBreakingSignals(
 
   const priorityScore = Math.min(100, Math.max(1, score))
   const hasUrgencyKeyword = URGENCY_KEYWORDS.some((kw) => text.includes(kw))
+  // Kutlama/tören/şenlik gibi planlı sosyal etkinlikler son-dakika olamaz.
+  // "son dakika" kaynağından gelen Babalar Günü vs. içerikleri filtrele.
+  const hasCelebrationContent = NON_BREAKING_KEYWORDS.some((kw) => text.includes(kw))
   // Eşik 55→80: sadece zaman yeterliliği (70 puan) artık son-dakikayı tetiklemiyor.
   // Gerçek son-dakika = acil kelime İÇERMELİ veya çok yüksek skor (acil kw + tazelik).
-  const isBreaking = !textHasSportsSignals(text) && (priorityScore >= 80 || hasUrgencyKeyword)
+  const isBreaking =
+    !textHasSportsSignals(text) &&
+    !hasCelebrationContent &&
+    (priorityScore >= 80 || hasUrgencyKeyword)
 
   return { isBreaking, priorityScore }
 }
