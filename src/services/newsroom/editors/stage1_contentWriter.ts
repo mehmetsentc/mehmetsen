@@ -1,0 +1,258 @@
+/**
+ * STAGE 1 — Content Writer
+ *
+ * Tek sorumluluğu: Ham RSS içeriğini profesyonel Türkçe gazete haberine dönüştürmek.
+ * Kategori, son-dakika kararı VERMEZ — sadece içerik yazar.
+ * DeepSeek birincil, Gemini yedek.
+ */
+
+export interface WrittenArticle {
+  title: string
+  spot: string       // gazetecilik girişi, 2-4 cümle
+  summary: string    // feed teaser, max 120 karakter
+  content: string    // tam haber gövdesi, min 200 kelime
+  seoTitle: string
+  seoDescription: string
+  /** true = AI yazdı, false = ham RSS fallback (yayınlanmaz) */
+  aiWritten: boolean
+}
+
+interface WriterInput {
+  sourceLabel: string
+  originalTitle: string
+  originalSummary: string
+  originalContent: string
+  sourceUrl: string
+}
+
+const SYSTEM_PROMPT = `Sen NaHaber'in içerik editörüsün. Görevin: verilen ham haberi profesyonel Türkçe gazete haberine dönüştürmek.
+
+MUTLAK KURALLAR:
+- Kaynak metinde OLMAYAN hiçbir bilgi, istatistik, kişi, alıntı EKLEME
+- İçerik yetersizse qualityScore 0-30 ver — yeterli içerik olmadan uzun haber YAZMA
+- Kaynak gazete/ajans adını (AA, DHA, İHA, Hürriyet vb.) içeriğe YAZMA
+- Başlıkta BÜYÜK HARF spam, "FLAŞ", "SON DAKİKA" yazma
+- Paragraflar arası \\n\\n kullan
+- ÇIKTI DİLİ: Her zaman Türkçe
+
+ALAN TANIMLARI:
+- title: Gazete manşeti, max 70 karakter, sadece ilk harf büyük
+- spot: Lider paragraf. Kim+Ne+Nerede+Ne zaman+Neden. 2-4 cümle, 60-120 kelime
+- summary: Feed teaser, max 120 karakter, title'dan FARKLI bilgi
+- content: Haber gövdesi, min 200 kelime, 4-6 paragraf. Giriş + olgular + arka plan
+- seoTitle: SEO başlık, 55-65 karakter
+- seoDescription: Meta description, 145-160 karakter
+
+ÇIKTI: Yalnızca geçerli JSON, başka hiçbir şey:`
+
+function buildPrompt(input: WriterInput): string {
+  const content = input.originalContent || input.originalSummary || ''
+  return `Kaynak: ${input.sourceLabel}
+Başlık: ${input.originalTitle}
+Özet: ${input.originalSummary || ''}
+İçerik:
+${content.slice(0, 5000)}
+
+Haberi yaz. JSON formatı:
+{
+  "title": "string",
+  "spot": "string",
+  "summary": "string",
+  "content": "string",
+  "seoTitle": "string",
+  "seoDescription": "string"
+}`
+}
+
+async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> {
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (!apiKey) return null
+
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+
+  try {
+    let res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        temperature: 0.5,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: buildPrompt(input) },
+        ],
+      }),
+      signal: AbortSignal.timeout(35_000),
+    })
+
+    if (res.status === 429) {
+      console.warn('[stage1/deepseek] 429, 3s retry')
+      await new Promise((r) => setTimeout(r, 3000))
+      res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          temperature: 0.5,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: buildPrompt(input) },
+          ],
+        }),
+        signal: AbortSignal.timeout(35_000),
+      })
+    }
+
+    if (!res.ok) {
+      console.warn(`[stage1/deepseek] error ${res.status}`)
+      return null
+    }
+
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    const raw = json.choices?.[0]?.message?.content?.trim()
+    if (!raw) return null
+
+    const p = JSON.parse(raw) as {
+      title?: string; spot?: string; summary?: string
+      content?: string; seoTitle?: string; seoDescription?: string
+    }
+
+    const content = p.content?.trim() || ''
+    const wordCount = content.split(/\s+/).filter(Boolean).length
+    if (wordCount < 40) {
+      console.warn(`[stage1/deepseek] çok kısa içerik (${wordCount} kelime), yedek deneniyor`)
+      return null
+    }
+
+    return {
+      title: p.title?.trim() || input.originalTitle,
+      spot: p.spot?.trim() || '',
+      summary: (p.summary?.trim() || '').slice(0, 150),
+      content,
+      seoTitle: (p.seoTitle?.trim() || p.title?.trim() || input.originalTitle).slice(0, 70),
+      seoDescription: (p.seoDescription?.trim() || p.summary?.trim() || '').slice(0, 165),
+      aiWritten: true,
+    }
+  } catch (err) {
+    console.warn('[stage1/deepseek] exception:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+async function callGemini(input: WriterInput): Promise<WrittenArticle | null> {
+  const apiKey = process.env.GEMINI_API_KEY?.trim()
+  if (!apiKey) return null
+
+  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+  try {
+    let res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: buildPrompt(input) }] }],
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        generationConfig: {
+          temperature: 0.5,
+          maxOutputTokens: 2048,
+          responseMimeType: 'application/json',
+        },
+      }),
+      signal: AbortSignal.timeout(35_000),
+    })
+
+    if (res.status === 429) {
+      console.warn('[stage1/gemini] 429, 3s retry')
+      await new Promise((r) => setTimeout(r, 3000))
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: buildPrompt(input) }] }],
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          generationConfig: {
+            temperature: 0.5,
+            maxOutputTokens: 2048,
+            responseMimeType: 'application/json',
+          },
+        }),
+        signal: AbortSignal.timeout(35_000),
+      })
+    }
+
+    if (!res.ok) {
+      console.warn(`[stage1/gemini] error ${res.status}`)
+      return null
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    }
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+    if (!cleaned.startsWith('{')) return null
+
+    const p = JSON.parse(cleaned) as {
+      title?: string; spot?: string; summary?: string
+      content?: string; seoTitle?: string; seoDescription?: string
+    }
+
+    const content = p.content?.trim() || ''
+    const wordCount = content.split(/\s+/).filter(Boolean).length
+    if (wordCount < 40) {
+      console.warn(`[stage1/gemini] çok kısa içerik (${wordCount} kelime)`)
+      return null
+    }
+
+    return {
+      title: p.title?.trim() || input.originalTitle,
+      spot: p.spot?.trim() || '',
+      summary: (p.summary?.trim() || '').slice(0, 150),
+      content,
+      seoTitle: (p.seoTitle?.trim() || p.title?.trim() || input.originalTitle).slice(0, 70),
+      seoDescription: (p.seoDescription?.trim() || p.summary?.trim() || '').slice(0, 165),
+      aiWritten: true,
+    }
+  } catch (err) {
+    console.warn('[stage1/gemini] exception:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+/**
+ * Stage 1 ana fonksiyon.
+ * DeepSeek → Gemini → ham fallback (aiWritten: false)
+ */
+export async function writeArticle(input: WriterInput): Promise<WrittenArticle> {
+  console.log(`[stage1/contentWriter] başlıyor: "${input.originalTitle.slice(0, 60)}"`)
+
+  // 1. DeepSeek
+  const deepseekResult = await callDeepSeek(input)
+  if (deepseekResult) {
+    console.log(`[stage1] DeepSeek başarılı: "${deepseekResult.title.slice(0, 60)}"`)
+    return deepseekResult
+  }
+
+  // 2. Gemini yedek
+  const geminiResult = await callGemini(input)
+  if (geminiResult) {
+    console.log(`[stage1] Gemini başarılı: "${geminiResult.title.slice(0, 60)}"`)
+    return geminiResult
+  }
+
+  // 3. Ham fallback — aiWritten: false → pipeline taslağa alır
+  console.warn(`[stage1] Tüm AI başarısız — ham fallback: "${input.originalTitle.slice(0, 60)}"`)
+  const rawContent = (input.originalContent || input.originalSummary || '').slice(0, 800)
+  return {
+    title: input.originalTitle,
+    spot: input.originalSummary || '',
+    summary: (input.originalSummary || '').slice(0, 120),
+    content: rawContent,
+    seoTitle: input.originalTitle.slice(0, 70),
+    seoDescription: (input.originalSummary || '').slice(0, 165),
+    aiWritten: false,
+  }
+}

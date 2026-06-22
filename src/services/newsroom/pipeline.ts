@@ -13,6 +13,7 @@ import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
 import { Collections } from '@/lib/firebase/admin'
 import { aiNewsEditor, type AiRewriteResult } from '@/services/aiNewsEditor'
 import { geminiEditArticle, isGeminiConfigured } from '@/lib/ai/gemini'
+import { runMultiStageEditor } from '@/services/newsroom/editors/multiStageEditor'
 import { moderateContent } from '@/services/moderationService'
 import { newsDraftService } from '@/services/newsDraftService'
 import {
@@ -456,7 +457,10 @@ export async function processNewsroomArticle(
 
     // Skip second AI rewrite for editors that already produced AI content (trend, influencer)
     const recentTitles = workingInput.skipAiRewrite ? [] : await fetchRecentTitles(db)
-    const rewritten = workingInput.skipAiRewrite
+    // ── AI REWRITE STAGE ──────────────────────────────────────────────────────
+    // skipAiRewrite=true → trend/influencer editörler kendi içeriğini üretir, yeniden yazma yok
+    // skipAiRewrite=false → 4 aşamalı AI editör zinciri çalışır
+    const rewrittenRaw = workingInput.skipAiRewrite
       ? {
           title: workingInput.originalTitle,
           spot: workingInput.originalSummary ?? '',
@@ -471,34 +475,27 @@ export async function processNewsroomArticle(
           district: null,
           country: 'Türkiye',
           tags: workingInput.extraTags ?? [],
+          gateDecision: 'publish' as const,
+          gateReasons: [] as string[],
+          publishScore: 80,
         }
-      : await (async () => {
-          // Gemini birincil — daha zengin içerik + araştırma kalitesi
-          // OpenAI/DeepSeek yedek — Gemini key yoksa veya hata alırsa devreye girer
-          if (isGeminiConfigured()) {
-            const geminiResult = await rewriteWithGemini({
-              sourceLabel: workingInput.sourceLabel,
-              originalTitle: workingInput.originalTitle,
-              originalSummary: workingInput.originalSummary,
-              originalContent: workingInput.originalContent,
-              sourceUrl: workingInput.sourceUrl,
-              forcedCategoryId: workingInput.forcedCategoryId,
-            })
-            if (geminiResult) {
-              console.log(`[pipeline] Gemini ile yeniden yazıldı: ${workingInput.sourceUrl?.slice(0, 60)}`)
-              return geminiResult
-            }
-          }
-          // Yedek: OpenAI / DeepSeek
-          return aiNewsEditor.rewriteArticle({
-            sourceLabel: workingInput.sourceLabel,
-            originalTitle: workingInput.originalTitle,
-            originalSummary: workingInput.originalSummary,
-            originalContent: workingInput.originalContent,
-            sourceUrl: workingInput.sourceUrl,
-            recentTitles,
-          })
-        })()
+      : await runMultiStageEditor({
+          sourceLabel: workingInput.sourceLabel,
+          originalTitle: workingInput.originalTitle,
+          originalSummary: workingInput.originalSummary,
+          originalContent: workingInput.originalContent,
+          sourceUrl: workingInput.sourceUrl,
+          forcedCategoryId: workingInput.forcedCategoryId,
+        })
+
+    // Gate keeper skip kararı → haber atlanır
+    if (!workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'skip') {
+      console.warn(`[pipeline] gate keeper skip: ${workingInput.sourceUrl?.slice(0, 80)}`)
+      return { outcome: 'skipped' }
+    }
+
+    // AiRewriteResult uyumluluğu için tip cast
+    const rewritten: AiRewriteResult & { gateDecision?: string; gateReasons?: string[]; publishScore?: number } = rewrittenRaw
 
     const factCheck = await factChecker.check({
       sourceLabel: workingInput.sourceLabel,
@@ -632,19 +629,24 @@ export async function processNewsroomArticle(
       factCheck.flags.includes('speculation') ||
       factCheck.flags.includes('title_mismatch')
 
-    // Fallback tespiti: categoryConfidence === 0, AI editör yerine ham RSS içeriği kullanıldı.
-    // (Hem Gemini hem DeepSeek başarısız olduğunda aiNewsEditor fallbackRewrite() çalışır
-    //  ve categoryConfidence: 0 marker döner.)
-    // Ham içerik ASLA otomatik yayınlanmaz — admin incelemesine alınır.
+    // ── YAYINLAMA KARARI ─────────────────────────────────────────────────────────
+    // Gate keeper 'draft' kararı → ham içerik / kalite sorunu → taslağa al
+    // Gate keeper 'publish' kararı → AI yazdı, kalite geçti → eski fact-check koşulları geçerlir
+    const gateDraft = !workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'draft'
     const isFallbackContent = !workingInput.skipAiRewrite && rewritten.categoryConfidence === 0
 
-    if (isFallbackContent) {
+    if (gateDraft) {
       console.warn(
-        `[newsroom/pipeline] fallback içerik tespit edildi (AI başarısız) — taslağa alınıyor: ${workingInput.sourceUrl}`
+        `[pipeline] gate keeper taslağa aldı (${rewrittenRaw.gateReasons?.join(', ')}): ${workingInput.sourceUrl?.slice(0, 80)}`
+      )
+    } else if (isFallbackContent) {
+      console.warn(
+        `[pipeline] fallback içerik (AI başarısız) — taslağa alınıyor: ${workingInput.sourceUrl?.slice(0, 80)}`
       )
     }
 
     const needsDraft =
+      gateDraft ||
       isFallbackContent ||
       factCheck.confidenceScore < NEWSROOM_AUTO_PUBLISH_THRESHOLD ||
       factCheckFailedBadly ||
