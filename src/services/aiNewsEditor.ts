@@ -135,7 +135,7 @@ interface AiProviderConfig {
   apiKey: string
   model: string
   baseUrl: string
-  provider: 'openai' | 'deepseek'
+  provider: 'deepseek' | 'gemini' | 'openai'
 }
 
 function getDeepSeekConfig(): AiProviderConfig | null {
@@ -149,9 +149,44 @@ function getDeepSeekConfig(): AiProviderConfig | null {
   }
 }
 
-/** DeepSeek — aktif AI sağlayıcısı (Gemini pipeline'dan önce dener, burası yedek) */
+function getGeminiConfig(): AiProviderConfig | null {
+  const apiKey = process.env.GEMINI_API_KEY?.trim()
+  if (!apiKey) return null
+  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+  return {
+    apiKey,
+    model,
+    baseUrl: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    provider: 'gemini',
+  }
+}
+
+function getOpenAiNewsConfig(): AiProviderConfig | null {
+  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  if (!apiKey) return null
+  return {
+    apiKey,
+    model: process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini',
+    baseUrl: 'https://api.openai.com/v1/chat/completions',
+    provider: 'openai',
+  }
+}
+
+/**
+ * Aktif AI sağlayıcı listesi — öncelik sırası:
+ * 1. DeepSeek (hızlı, ucuz)
+ * 2. Gemini 2.5 Flash (yedek — DeepSeek limit/hata durumunda)
+ * 3. OpenAI GPT-4o-mini (son çare)
+ */
+function getProviderList(): AiProviderConfig[] {
+  return [getDeepSeekConfig(), getGeminiConfig(), getOpenAiNewsConfig()].filter(
+    (p): p is AiProviderConfig => p !== null
+  )
+}
+
+/** Geriye uyumluluk için — en az bir sağlayıcı var mı? */
 function getActiveAiConfig(): AiProviderConfig | null {
-  return getDeepSeekConfig()
+  return getProviderList()[0] ?? null
 }
 
 function normalizeCategoryId(raw?: string): string {
@@ -471,7 +506,7 @@ Orijinal başlık: ${input.originalTitle}${recentSection}
 ${excerpt}`
 }
 
-/** Single HTTP call to one provider. Throws on non-2xx. */
+/** Single HTTP call — OpenAI-compatible providers (DeepSeek, OpenAI). */
 async function callSingleProvider(
   config: AiProviderConfig,
   input: AiRewriteInput,
@@ -496,57 +531,90 @@ async function callSingleProvider(
   })
 }
 
-async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
+/**
+ * Gemini API çağrısı — Google AI Studio formatı.
+ * Yanıtı OpenAI formatına normalize eder: { choices[0].message.content }
+ */
+async function callGeminiProvider(
+  config: AiProviderConfig,
+  input: AiRewriteInput,
+): Promise<{ choices: Array<{ message: { content: string } }>} | null> {
   const mode = input.mode ?? 'feed'
-  const primary = getActiveAiConfig()
-  if (!primary) {
-    throw new Error('AI sağlayıcısı yapılandırılmamış (DEEPSEEK_API_KEY gerekli)')
-  }
+  const sysPrompt = buildSystemPrompt(mode)
+  const userPrompt = buildUserPrompt(input)
 
-  console.log(`[aiNewsEditor] ${primary.provider} kullanılıyor (${primary.model})`)
+  const res = await fetch(`${config.baseUrl}?key=${config.apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: sysPrompt }] },
+      generationConfig: {
+        temperature: mode === 'archive' ? 0.45 : 0.55,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+      },
+    }),
+    signal: AbortSignal.timeout(35_000),
+  })
 
-  let res = await callSingleProvider(primary, input)
-
-  // 429 rate-limit → retry once after short wait
   if (res.status === 429) {
-    console.warn(`[aiNewsEditor] DeepSeek 429, 3s sonra tekrar deneniyor`)
+    console.warn('[aiNewsEditor] Gemini 429, 3s sonra tekrar deneniyor')
     await new Promise((r) => setTimeout(r, 3000))
-    res = await callSingleProvider(primary, input)
+    return callGeminiProvider(config, input) // tek retry
   }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
-    throw new Error(`AI API error ${res.status}: ${errText.slice(0, 200)}`)
+    throw new Error(`gemini API error ${res.status}: ${errText.slice(0, 200)}`)
   }
 
-  const json = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
+  const data = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
   }
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+  if (!cleaned) return null
+  // Normalize to OpenAI shape so parseProviderResponse works unchanged
+  return { choices: [{ message: { content: cleaned } }] }
+}
+
+/** API yanıtını AiRewriteResult'a çevirir. Başarısız olursa null döner. */
+function parseProviderResponse(
+  json: { choices?: Array<{ message?: { content?: string } }> },
+  input: AiRewriteInput,
+  provider: string,
+  mode: 'feed' | 'archive',
+): AiRewriteResult | AiArchiveRewriteResult | null {
   const content = json.choices?.[0]?.message?.content?.trim()
-  if (!content) throw new Error('OpenAI returned empty content')
+  if (!content) {
+    console.warn(`[aiNewsEditor] ${provider} boş içerik döndürdü`)
+    return null
+  }
 
   let parsed: OpenAiJsonPayload
   try {
     parsed = JSON.parse(content) as OpenAiJsonPayload
   } catch {
-    throw new Error('OpenAI returned invalid JSON')
+    console.warn(`[aiNewsEditor] ${provider} geçersiz JSON döndürdü`)
+    return null
   }
 
-  // Duplikasyon tespiti — AI aynı haberi zaten yayınlandığı için işaretlediyse atla
+  // Duplikasyon tespiti — yayınlama, hata fırlat
   if (parsed.isDuplicate === true) {
     throw new Error(`[aiNewsEditor] AI duplikat tespit etti — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
   }
 
-  // Çıktı kalite kontrolü — teknik içerik varsa reddet
+  // Teknik/garbage içerik kontrolü
   const aiContentBody = parsed.content?.trim() || parsed.description?.trim() || ''
   if (isGarbageContent(aiContentBody)) {
-    throw new Error(`[aiNewsEditor] AI çıktısında teknik içerik (RSC/HTML/JSON) tespit edildi — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
+    console.warn(`[aiNewsEditor] ${provider} garbage içerik döndürdü, atlanıyor`)
+    return null
   }
 
-  // Minimum içerik uzunluğu kontrolü
   const aiWordCount = aiContentBody.split(/\s+/).filter(Boolean).length
   if (aiWordCount < 30 && input.originalContent.length > 100) {
-    console.warn(`[aiNewsEditor] AI çok kısa içerik döndürdü (${aiWordCount} kelime): "${input.originalTitle.slice(0, 60)}"`)
+    console.warn(`[aiNewsEditor] ${provider} çok kısa içerik döndürdü (${aiWordCount} kelime)`)
   }
 
   const title = cleanupNewsTitle(parsed.title?.trim() || input.originalTitle)
@@ -563,10 +631,7 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
     buildFeedTeaser(title, summaryCandidate, bodyRaw) ||
     buildFeedTeaser(title, bodyRaw.split(/[.!?]\s+/).slice(0, 1).join('. '), bodyRaw)
 
-  // Spot — journalistic lead paragraph
   const spot = cleanupNewsSummary(parsed.spot?.trim() || summary).slice(0, 600)
-
-  // SEO fields — fallback to title/summary if AI didn't return them
   const seoTitle = (parsed.seoTitle?.trim() || title).slice(0, 70)
   const seoDescription = (parsed.seoDescription?.trim() || summary || bodyRaw.slice(0, 160)).slice(0, 165)
 
@@ -595,26 +660,74 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
   }
 
   const base = {
-    title,
-    spot,
-    summary,
-    description,
-    seoTitle,
-    seoDescription,
-    categoryId,
-    categoryConfidence,
-    isBreaking,
-    city,
-    district,
-    country,
-    tags,
+    title, spot, summary, description, seoTitle, seoDescription,
+    categoryId, categoryConfidence, isBreaking,
+    city, district, country, tags,
   }
 
   if (mode === 'archive') {
     return { ...base, summary: summary || cleanupNewsSummary(bodyRaw.slice(0, MAX_FEED_TEASER_LENGTH)) }
   }
-
   return base
+}
+
+async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
+  const mode = input.mode ?? 'feed'
+  const providers = getProviderList()
+
+  if (providers.length === 0) {
+    throw new Error('AI sağlayıcısı yapılandırılmamış (DEEPSEEK_API_KEY veya OPENAI_API_KEY gerekli)')
+  }
+
+  let lastError: Error = new Error('Tüm AI sağlayıcıları başarısız')
+
+  for (const provider of providers) {
+    console.log(`[aiNewsEditor] ${provider.provider} deneniyor (${provider.model})`)
+
+    try {
+      let json: { choices?: Array<{ message?: { content?: string } }> } | null
+
+      if (provider.provider === 'gemini') {
+        // Gemini — kendi HTTP + retry mantığı var, normalize edilmiş JSON döner
+        json = await callGeminiProvider(provider, input)
+      } else {
+        // OpenAI-uyumlu sağlayıcılar (DeepSeek, OpenAI)
+        let res = await callSingleProvider(provider, input)
+        if (res.status === 429) {
+          console.warn(`[aiNewsEditor] ${provider.provider} 429, 3s sonra tekrar deneniyor`)
+          await new Promise((r) => setTimeout(r, 3000))
+          res = await callSingleProvider(provider, input)
+        }
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '')
+          lastError = new Error(`${provider.provider} API error ${res.status}: ${errText.slice(0, 200)}`)
+          console.warn(`[aiNewsEditor] ${provider.provider} başarısız (${res.status}), sıradaki deneniyor`)
+          continue
+        }
+        json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+      }
+
+      if (!json) {
+        lastError = new Error(`${provider.provider} boş yanıt döndürdü`)
+        continue
+      }
+
+      const result = parseProviderResponse(json, input, provider.provider, mode)
+      if (result) {
+        console.log(`[aiNewsEditor] ${provider.provider} başarılı: "${input.originalTitle.slice(0, 60)}"`)
+        return result
+      }
+      // parseProviderResponse null döndürdü (boş/garbage) → sıradaki sağlayıcı
+      lastError = new Error(`${provider.provider} kullanılabilir içerik üretemedi`)
+    } catch (err) {
+      // isDuplicate gibi kasıtlı hatalar direkt fırlatılır
+      if (err instanceof Error && err.message.includes('AI duplikat tespit etti')) throw err
+      lastError = err instanceof Error ? err : new Error(String(err))
+      console.warn(`[aiNewsEditor] ${provider.provider} exception:`, lastError.message)
+    }
+  }
+
+  throw lastError
 }
 
 /** Fallback when OpenAI is unavailable — still unique-ish summary + source line. */
@@ -709,16 +822,16 @@ function isLikelyNonTurkish(text: string): boolean {
 
 export const aiNewsEditor = {
   isConfigured(): boolean {
-    return Boolean(getActiveAiConfig())
+    return getProviderList().length > 0
   },
 
   async rewriteArticle(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
-    if (!getActiveAiConfig()) {
+    if (getProviderList().length === 0) {
       // Hiçbir AI yokken İngilizce içerik yayınlama
       if (isLikelyNonTurkish(input.originalTitle)) {
         throw new Error(`[aiNewsEditor] İngilizce içerik, AI key eksik — yayın atlandı: "${input.originalTitle.slice(0, 60)}"`)
       }
-      console.warn('[aiNewsEditor] DEEPSEEK_API_KEY eksik — ham metin fallback')
+      console.warn('[aiNewsEditor] AI key eksik — ham metin fallback')
       return fallbackRewrite(input)
     }
 
