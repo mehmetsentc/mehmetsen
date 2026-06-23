@@ -93,6 +93,46 @@ const nextConfig: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // HSTS — 2 years + subdomains + preload-list eligible. Once this is
+          // in production for ~30 days you can submit nahaber.com to
+          // https://hstspreload.org so all browsers ship the upgrade.
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          // Lock down browser feature surfaces we don't use — defence in depth
+          // against a future XSS being able to pop up camera/mic/payment APIs.
+          {
+            key: 'Permissions-Policy',
+            value: [
+              'accelerometer=()',
+              'autoplay=(self)',
+              'camera=()',
+              'clipboard-read=(self)',
+              'clipboard-write=(self)',
+              'display-capture=()',
+              'document-domain=()',
+              'encrypted-media=(self)',
+              'fullscreen=(self)',
+              'gamepad=()',
+              'geolocation=(self)',
+              'gyroscope=()',
+              'hid=()',
+              'idle-detection=()',
+              'magnetometer=()',
+              'microphone=()',
+              'midi=()',
+              'payment=()',
+              'picture-in-picture=(self)',
+              'publickey-credentials-get=(self)',
+              'screen-wake-lock=(self)',
+              'serial=()',
+              'sync-xhr=()',
+              'usb=()',
+              'web-share=(self)',
+              'xr-spatial-tracking=()',
+            ].join(', '),
+          },
           {
             key: 'Content-Security-Policy',
             value: [

@@ -2,16 +2,30 @@
  * Diagnostic endpoint — server-side feed pool size + per-bucket counts.
  * Used to verify SSR data is reaching the page. Returns no document content,
  * only counts and a tiny sample for debug purposes.
+ *
+ * **Requires Bearer CRON_SECRET** — anonymous access used to leak Firestore
+ * samples + environment fingerprints (which Admin SDK vars were present etc.),
+ * which is enough recon info to make this a meaningful information disclosure
+ * vector. Gating with the existing newsroom secret keeps the tool available
+ * for ops without exposing it to the public.
  */
 import { NextResponse } from 'next/server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { getHomeFeedInitialData } from '@/services/newsService.server'
+import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!(await isNewsroomAuthorized(request))) {
+    return NextResponse.json(
+      { ok: false, error: 'unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'no-store' } }
+    )
+  }
+
   const result: Record<string, unknown> = { ok: false }
 
   // 1) Admin SDK init test

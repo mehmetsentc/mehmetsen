@@ -200,11 +200,28 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Notifications model:
+    //   userId = recipient (the person who will SEE the notification)
+    //   actorId = who triggered it (e.g. comment author, follower)
+    // The recipient owns the doc (read/update/delete), but creates have to
+    // be allowed from the *actor's* session — otherwise a like/comment/follow
+    // could never create a notification for someone else. We constrain those
+    // cross-user creates so the caller must be the actor and the payload
+    // must look like a notification rather than a privileged write.
+    function isOwnNotificationCreate() {
+      return request.resource.data.userId == request.auth.uid;
+    }
+    function isCrossUserNotificationCreate() {
+      return request.resource.data.actorId == request.auth.uid
+        && request.resource.data.userId is string
+        && request.resource.data.userId != request.auth.uid
+        && request.resource.data.read == false;
+    }
     match /notifications/{docId} {
       allow read, update: if isSignedIn()
         && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
+        && (isOwnNotificationCreate() || isCrossUserNotificationCreate());
       allow delete: if isSignedIn()
         && resource.data.userId == request.auth.uid;
     }

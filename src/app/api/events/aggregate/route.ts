@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { eventAggregatorService } from '@/services/eventAggregatorService'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rateLimit'
 import type { EventCategory } from '@/types/event'
 
 /**
@@ -12,6 +13,9 @@ import type { EventCategory } from '@/types/event'
  *
  * Runs on the Node.js runtime and is force-dynamic: provider data is live and
  * must not be statically cached at build time.
+ *
+ * Rate-limited per IP — each call fans out to multiple paid third-party APIs,
+ * so unauthenticated clients are capped to a sane budget per minute.
  */
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,7 +29,14 @@ const VALID_CATEGORIES: ReadonlySet<string> = new Set<EventCategory>([
   'other',
 ])
 
+const RATE_LIMIT_PER_MINUTE = 6
+
 export async function GET(request: Request) {
+  const ip = getClientIp(request)
+  if (!checkRateLimit(`events-aggregate:${ip}`, RATE_LIMIT_PER_MINUTE, 60_000)) {
+    return rateLimitResponse()
+  }
+
   const { searchParams } = new URL(request.url)
 
   const citySlugRaw = searchParams.get('citySlug')?.trim()

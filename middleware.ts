@@ -24,13 +24,20 @@ function detectCountry(request: NextRequest): string {
 export function middleware(request: NextRequest) {
   const country = detectCountry(request)
   const existingLang = request.cookies.get(LANGUAGE_COOKIE)?.value
+  const existingCountry = request.cookies.get(COUNTRY_COOKIE)?.value
 
-  // Forward resolved cookies to the server render of THIS request so the layout
-  // can pick the correct initial language (no hydration mismatch).
-  if (country) {
+  // CRITICAL: Only forward the cookie to the inner render when it isn't already
+  // present on the request. If we always called `request.cookies.set(...)` here
+  // the response would be tagged dynamic and Vercel would strip its CDN cache,
+  // turning every news page into a fresh SSR + Firestore round-trip. The
+  // forwarded value is only needed by the layout when the user is hitting us
+  // for the very first time and the language cookie hasn't been minted yet.
+  const needsCountryForward = country && existingCountry !== country
+  const needsLangForward = !isLanguage(existingLang) && country
+  if (needsCountryForward) {
     request.cookies.set(COUNTRY_COOKIE, country)
   }
-  if (!isLanguage(existingLang) && country) {
+  if (needsLangForward) {
     request.cookies.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country))
   }
 
@@ -38,18 +45,17 @@ export function middleware(request: NextRequest) {
     request: { headers: request.headers },
   })
 
-  // Persist to the browser for subsequent requests.
-  if (country) {
+  // Persist to the browser only when the cookie is missing or stale. Setting a
+  // Set-Cookie on every response would (a) waste bytes on every page load and
+  // (b) flip Vercel's caching layer into private mode for the entire site.
+  if (needsCountryForward) {
     response.cookies.set(COUNTRY_COOKIE, country, {
       path: '/',
       maxAge: COOKIE_MAX_AGE_YEAR,
       sameSite: 'lax',
     })
   }
-
-  // Only seed the default language when the user has not chosen one yet, so an
-  // explicit preference always wins over the geo default.
-  if (!isLanguage(existingLang) && country) {
+  if (needsLangForward) {
     response.cookies.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country), {
       path: '/',
       maxAge: COOKIE_MAX_AGE_YEAR,
