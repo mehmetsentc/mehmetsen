@@ -1,4 +1,5 @@
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
+import { unstable_cache } from 'next/cache'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
@@ -180,12 +181,19 @@ function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
     .filter((item): item is NewsItem => item !== null)
 }
 
+/** In-process fallback — RESOURCE_EXHAUSTED durumunda son başarılı sonuç. */
+let lastSuccessfulPool: NewsItem[] | null = null
+let lastSuccessfulPoolAt = 0
+
 /**
  * Tek geniş sorgu — son `poolSize` published haberi tek seferde çeker.
  * Tüm ana sayfa bucket'ları (breaking, featured, latest, mostRead, kategori rails)
  * bu havuzdan üretilir — 19 paralel Firestore çağrısı yerine yalnızca 1 çağrı.
+ *
+ * `unstable_cache` ile aynı poolSize için 60 saniye boyunca tek sorgu yapılır;
+ * Firestore RESOURCE_EXHAUSTED dönerse in-process son başarılı sonucu kullanır.
  */
-async function getHomeNewsPool(poolSize = 300): Promise<NewsItem[]> {
+async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
   try {
     const snap = await getAdminFirestore()
       .collection(NEWS_COLLECTION)
@@ -193,11 +201,35 @@ async function getHomeNewsPool(poolSize = 300): Promise<NewsItem[]> {
       .orderBy('publishedAt', 'desc')
       .limit(poolSize)
       .get()
-    return mapAdminDocs(snap.docs)
+    const items = mapAdminDocs(snap.docs)
+    if (items.length > 0) {
+      lastSuccessfulPool = items
+      lastSuccessfulPoolAt = Date.now()
+    }
+    return items
   } catch (error) {
-    console.warn('[newsService.server] getHomeNewsPool failed:', error)
+    const code = (error as { code?: number }).code
+    const message = error instanceof Error ? error.message : String(error)
+    if (code === 8 || message.includes('RESOURCE_EXHAUSTED')) {
+      console.warn('[newsService.server] pool quota exhausted; serving cached fallback')
+    } else {
+      console.warn('[newsService.server] getHomeNewsPool failed:', error)
+    }
+    if (lastSuccessfulPool && Date.now() - lastSuccessfulPoolAt < 30 * 60 * 1000) {
+      return lastSuccessfulPool
+    }
     return []
   }
+}
+
+const getHomeNewsPoolCached = unstable_cache(
+  async (poolSize: number) => fetchHomeNewsPool(poolSize),
+  ['home-news-pool-v1'],
+  { revalidate: 60, tags: ['home-feed'] }
+)
+
+async function getHomeNewsPool(poolSize = 300): Promise<NewsItem[]> {
+  return getHomeNewsPoolCached(poolSize)
 }
 
 function isBreakingPoolItem(item: NewsItem): boolean {
