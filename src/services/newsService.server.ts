@@ -4,7 +4,7 @@ import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
-import { docToNewsItem, sortNewsByDate } from '@/lib/newsItemUtils'
+import { docToNewsItem } from '@/lib/newsItemUtils'
 import { getCategoryFamily } from '@/constants/config'
 import type { Post } from '@/types/post'
 import type { FeedSliderItem } from '@/types/feedSlider'
@@ -180,131 +180,146 @@ function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
     .filter((item): item is NewsItem => item !== null)
 }
 
-async function adminPublishedQuery(
-  build: (base: FirebaseFirestore.Query) => FirebaseFirestore.Query,
-  scanLimit: number
-): Promise<NewsItem[]> {
+/**
+ * Tek geniş sorgu — son `poolSize` published haberi tek seferde çeker.
+ * Tüm ana sayfa bucket'ları (breaking, featured, latest, mostRead, kategori rails)
+ * bu havuzdan üretilir — 19 paralel Firestore çağrısı yerine yalnızca 1 çağrı.
+ */
+async function getHomeNewsPool(poolSize = 300): Promise<NewsItem[]> {
   try {
-    const db = getAdminFirestore()
-    const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
-    const snap = await build(base).orderBy('publishedAt', 'desc').limit(scanLimit).get()
+    const snap = await getAdminFirestore()
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .limit(poolSize)
+      .get()
     return mapAdminDocs(snap.docs)
   } catch (error) {
-    console.warn('[newsService.server] adminPublishedQuery failed:', error)
+    console.warn('[newsService.server] getHomeNewsPool failed:', error)
     return []
   }
 }
 
-export async function getHomeBreakingNews(limitCount = 12): Promise<NewsItem[]> {
-  const scanLimit = Math.max(limitCount * 3, 24)
-  const fromBreaking = await adminPublishedQuery(
-    (q) => q.where('isBreaking', '==', true),
-    scanLimit
-  )
-  if (fromBreaking.length >= limitCount) return fromBreaking.slice(0, limitCount)
-
-  const fromCategory = await adminPublishedQuery(
-    (q) => q.where('categoryId', '==', 'son-dakika'),
-    scanLimit
-  )
-  const merged = sortNewsByDate(
-    [...fromBreaking, ...fromCategory].filter(
-      (item, index, arr) => arr.findIndex((x) => x.id === item.id) === index
-    )
-  )
-  return merged.slice(0, limitCount)
+function isBreakingPoolItem(item: NewsItem): boolean {
+  return item.breaking === true || item.category === 'son-dakika'
 }
 
-export async function getHomeFeaturedNews(limitCount = 8): Promise<NewsItem[]> {
-  const scanLimit = Math.max(limitCount * 3, 24)
-  const fromFeatured = await adminPublishedQuery((q) => q.where('featured', '==', true), scanLimit)
-  if (fromFeatured.length >= limitCount) return fromFeatured.slice(0, limitCount)
-
-  const fromGundem = await adminPublishedQuery((q) => q.where('categoryId', '==', 'gundem'), scanLimit)
-  const merged = sortNewsByDate(
-    [...fromFeatured, ...fromGundem].filter(
-      (item, index, arr) => arr.findIndex((x) => x.id === item.id) === index
-    )
-  )
-  return merged.slice(0, limitCount)
+function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
+  return pool.filter(isBreakingPoolItem).slice(0, limit)
 }
 
-export async function getHomeLatestNews(limitCount = 20): Promise<NewsItem[]> {
+function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
+  // Önce explicit featured + gundem; yetmezse pool top'tan tamamla
+  const featured = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
+  const gundem = pool.filter((p) => p.category === 'gundem' && !isBreakingPoolItem(p))
+  const candidates = [...featured, ...gundem]
+  const seen = new Set<string>()
+  const result: NewsItem[] = []
+  for (const item of candidates) {
+    if (seen.has(item.id)) continue
+    if (!item.imageUrl) continue
+    seen.add(item.id)
+    result.push(item)
+    if (result.length >= limit) break
+  }
+  if (result.length < limit) {
+    for (const item of pool) {
+      if (seen.has(item.id) || !item.imageUrl || isBreakingPoolItem(item)) continue
+      seen.add(item.id)
+      result.push(item)
+      if (result.length >= limit) break
+    }
+  }
+  return result
+}
+
+function bucketLatest(pool: NewsItem[], limit: number): NewsItem[] {
+  return pool.filter((item) => !isBreakingPoolItem(item)).slice(0, limit)
+}
+
+function bucketMostRead(pool: NewsItem[], limit: number): NewsItem[] {
+  const withViews = pool.filter((p) => typeof p.views === 'number' && (p.views ?? 0) > 0)
+  if (withViews.length === 0) return pool.slice(0, limit)
+  return [...withViews]
+    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+    .slice(0, limit)
+}
+
+function bucketCategoryRails(pool: NewsItem[], perCategory = 10): Partial<Record<HomeCategorySlug, NewsItem[]>> {
+  const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
+  for (const category of HOME_CATEGORY_RAILS) {
+    const family = new Set(getCategoryFamily(category))
+    const items = pool
+      .filter((item) => item.category && family.has(item.category))
+      .slice(0, perCategory)
+    if (items.length > 0) rails[category] = items
+  }
+  return rails
+}
+
+/**
+ * Tek Firestore sorgusu ile ana sayfanın ihtiyaç duyduğu tüm bucket'ları üretir.
+ * Önceki implementasyon ~19 ayrı admin sorgusu yapıyordu (TTFB 5-15s); şimdi 1.
+ */
+export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
+  const pool = await getHomeNewsPool(300)
+
+  if (pool.length === 0) {
+    return {
+      breaking: [],
+      featured: [],
+      latest: [],
+      mostRead: [],
+      categoryRails: {},
+    }
+  }
+
+  return {
+    breaking: bucketBreaking(pool, 12),
+    featured: bucketFeatured(pool, 8),
+    latest: bucketLatest(pool, 20),
+    mostRead: bucketMostRead(pool, 6),
+    categoryRails: bucketCategoryRails(pool, 10),
+  }
+}
+
+/** Tek bir kategori için ek sorgu — pool'da yetersizse client tarafından çağrılır. */
+export async function getHomeCategoryItems(category: string, limitCount = 10): Promise<NewsItem[]> {
   try {
-    const snap = await getAdminFirestore()
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .orderBy('createdAt', 'desc')
+    const db = getAdminFirestore()
+    const family = getCategoryFamily(category)
+    const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
+    const snap = await (
+      family.length > 1
+        ? base.where('categoryId', 'in', family)
+        : base.where('categoryId', '==', category)
+    )
+      .orderBy('publishedAt', 'desc')
       .limit(limitCount)
       .get()
     return mapAdminDocs(snap.docs)
   } catch (error) {
-    console.warn('[newsService.server] getHomeLatestNews createdAt index fallback:', error)
-    return adminPublishedQuery((q) => q, limitCount)
+    console.warn('[newsService.server] getHomeCategoryItems failed:', category, error)
+    return []
   }
-}
-
-export async function getHomeMostReadNews(limitCount = 6): Promise<NewsItem[]> {
-  try {
-    const snap = await getAdminFirestore()
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .orderBy('viewsCount', 'desc')
-      .limit(limitCount)
-      .get()
-    const items = mapAdminDocs(snap.docs)
-    if (items.length > 0) return items
-  } catch (error) {
-    console.warn('[newsService.server] getHomeMostReadNews viewsCount index fallback:', error)
-  }
-  return getHomeLatestNews(limitCount)
-}
-
-export async function getHomeCategoryRails(): Promise<Partial<Record<HomeCategorySlug, NewsItem[]>>> {
-  const entries = await Promise.all(
-    HOME_CATEGORY_RAILS.map(async (category) => {
-      const items = await adminPublishedQuery(
-        (q) => {
-          const family = getCategoryFamily(category)
-          return family.length > 1 ? q.where('categoryId', 'in', family) : q.where('categoryId', '==', category)
-        },
-        10
-      )
-      return [category, items] as const
-    })
-  )
-
-  const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
-  for (const [category, items] of entries) {
-    if (items.length > 0) rails[category] = items
-  }
-  return rails
 }
 
 export async function getHomeLocalNews(citySlug: string, limitCount = 8): Promise<NewsItem[]> {
   const normalized = citySlug.trim().toLowerCase()
   if (!normalized) return []
 
-  const bySlug = await adminPublishedQuery((q) => q.where('citySlug', '==', normalized), limitCount)
-  if (bySlug.length > 0) return bySlug
-
-  const yerel = await adminPublishedQuery((q) => q.where('categoryId', '==', 'yerel-haber'), limitCount * 3)
-  return yerel
-    .filter((item) => {
-      const city = item.city?.toLowerCase() ?? item.locationCity?.toLowerCase() ?? ''
-      return city.includes(normalized)
-    })
-    .slice(0, limitCount)
-}
-
-export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
-  const [breaking, featured, latest, mostRead, categoryRails] = await Promise.all([
-    getHomeBreakingNews(12),
-    getHomeFeaturedNews(8),
-    getHomeLatestNews(20),
-    getHomeMostReadNews(6),
-    getHomeCategoryRails(),
-  ])
-
-  return { breaking, featured, latest, mostRead, categoryRails }
+  try {
+    const db = getAdminFirestore()
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('citySlug', '==', normalized)
+      .orderBy('publishedAt', 'desc')
+      .limit(limitCount)
+      .get()
+    return mapAdminDocs(snap.docs)
+  } catch (error) {
+    console.warn('[newsService.server] getHomeLocalNews failed:', error)
+    return []
+  }
 }

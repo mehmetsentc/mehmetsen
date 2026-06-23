@@ -214,7 +214,17 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
         ...enriched,
       }
 
-      const { outcome, lowConfidence } = await processNewsroomArticle(db, input)
+      let outcome: string
+      let lowConfidence: boolean | undefined
+      try {
+        const pipelineResult = await processNewsroomArticle(db, input)
+        outcome = pipelineResult.outcome
+        lowConfidence = pipelineResult.lowConfidence
+      } catch (pipelineErr) {
+        const msg = pipelineErr instanceof Error ? pipelineErr.message : String(pipelineErr)
+        console.error(`[rssEditor/${options.editorId}] pipeline threw (uncaught):`, msg)
+        outcome = 'failed'
+      }
       aiCalls += 1
 
       if (outcome === 'published' || outcome === 'updated') {

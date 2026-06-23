@@ -30,7 +30,15 @@ export async function processNewsQueue(
     errors: [],
   }
 
-  const batch = await claimPendingQueueItems(db, batchSize)
+  let batch: Awaited<ReturnType<typeof claimPendingQueueItems>>
+  try {
+    batch = await claimPendingQueueItems(db, batchSize)
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('[processNewsQueue] claimPendingQueueItems failed:', msg)
+    stats.errors.push(`claimPendingQueueItems: ${msg}`)
+    return stats
+  }
   stats.picked = batch.length
 
   for (const job of batch) {
@@ -61,9 +69,13 @@ export async function processNewsQueue(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
+      console.error(`[processNewsQueue] job ${job.id} failed:`, message)
       stats.errors.push(`[${job.id}] ${message}`)
-      await markQueueFailed(db, job.id, message, data.attempts, data.maxAttempts)
-
+      try {
+        await markQueueFailed(db, job.id, message, data.attempts, data.maxAttempts)
+      } catch (markErr) {
+        console.error(`[processNewsQueue] markQueueFailed also failed for ${job.id}:`, markErr)
+      }
       if (data.attempts + 1 >= data.maxAttempts) stats.deadLetter += 1
       else stats.failed += 1
     }

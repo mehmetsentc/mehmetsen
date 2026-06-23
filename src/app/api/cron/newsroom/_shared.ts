@@ -57,8 +57,12 @@ export function createNewsroomCronHandler<T>(
 
       return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
     } catch (error) {
-      console.error(`[api/cron/newsroom/${label}] failed:`, error)
-      const message = error instanceof Error ? error.message : `${label} run failed`
+      const message = error instanceof Error ? error.message : String(error)
+      // Short prefix so Vercel MCP's 30-char truncation shows the actual error
+      console.error(`CRON_FAIL[${label}]: ${message}`)
+      if (error instanceof Error && error.stack) {
+        console.error('CRON_STACK:', error.stack.slice(0, 500))
+      }
 
       // Update log with failure
       if (runRef) {
