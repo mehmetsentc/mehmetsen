@@ -40,6 +40,28 @@ export default function robots(): MetadataRoute.Robots {
         allow: ['/haber/', '/reels', '/video-sitemap.xml'],
         disallow: ['/admin/', '/api/'],
       },
+      // Block AI training crawlers — they pull every URL, every day, and add no
+      // referral traffic. Each crawl translates directly into Firestore reads
+      // for SSR'd article pages, which is exactly what we're trying to cap.
+      {
+        userAgent: [
+          'GPTBot',
+          'ChatGPT-User',
+          'OAI-SearchBot',
+          'CCBot',
+          'anthropic-ai',
+          'ClaudeBot',
+          'Claude-Web',
+          'Google-Extended',
+          'PerplexityBot',
+          'Bytespider',
+          'Amazonbot',
+          'cohere-ai',
+          'Diffbot',
+          'ImagesiftBot',
+        ],
+        disallow: '/',
+      },
     ],
     sitemap: [
       `${siteUrl}/sitemap.xml`,

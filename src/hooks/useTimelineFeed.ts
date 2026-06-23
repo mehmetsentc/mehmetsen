@@ -11,10 +11,12 @@ import { YEREL_HABER_CATEGORY } from '@/lib/feedRanking'
 import { useAuth } from '@/hooks/useAuth'
 import type { TimelinePost } from '@/types/post'
 
-// Longer poll interval on mobile to save battery & Firestore reads
-const LIVE_POLL_MS = typeof window !== 'undefined' && window.innerWidth < 768 ? 60_000 : 30_000
-/** Defer Firestore live subscription until after LCP window. */
-const LIVE_SUBSCRIBE_DEFER_MS = 4_000
+// Longer poll interval on mobile to save battery & Firestore reads.
+// These intervals are also pause-on-hidden (see visibilitychange handler
+// below) so a backgrounded tab never bills Firestore at all.
+const LIVE_POLL_MS = typeof window !== 'undefined' && window.innerWidth < 768 ? 180_000 : 120_000
+/** Defer Firestore live subscription until well after the LCP window. */
+const LIVE_SUBSCRIBE_DEFER_MS = 8_000
 
 let postServiceModule: Promise<typeof import('@/services/postService')> | null = null
 function loadPostService() {

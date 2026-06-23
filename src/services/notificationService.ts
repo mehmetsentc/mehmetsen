@@ -2,7 +2,6 @@ import {
   addDoc,
   doc,
   getDocs,
-  onSnapshot,
   query,
   where,
   limit,
@@ -118,30 +117,6 @@ export const notificationService = {
       console.warn('[notificationService] getNotifications failed:', error)
       return []
     }
-  },
-
-  /**
-   * Real-time subscription so notifications display live. Sorts client-side and
-   * returns an unsubscribe function. Errors are logged, not thrown.
-   */
-  subscribeNotifications(
-    userId: string,
-    cb: (notifications: Notification[]) => void
-  ): () => void {
-    if (!userId) return () => {}
-    const q = query(notificationsRef(), where('userId', '==', userId), limit(FETCH_CAP))
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        const items = snap.docs.map((d) => mapNotification(d.id, d.data()))
-        items.sort(sortByNewest)
-        cb(items.slice(0, MAX_RESULTS))
-      },
-      (error) => {
-        console.warn('[notificationService] subscribeNotifications failed:', error)
-      }
-    )
-    return unsubscribe
   },
 
   async markAsRead(id: string): Promise<void> {

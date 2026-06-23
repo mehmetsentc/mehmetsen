@@ -33,13 +33,42 @@ function articlesCollection(db: Firestore, sourceId: string) {
   return db.collection(Collections.SOURCE_FINGERPRINTS).doc(sourceId).collection('articles')
 }
 
+/**
+ * Maximum fingerprints to load per source per run.
+ *
+ * Prior to this cap, every cron tick would read the entire fingerprint
+ * sub-collection (frequently 1k–5k docs per source, growing forever) just
+ * to do a diff against the latest 20–60 RSS items. The diff only cares
+ * about *recent* known items — old fingerprints are dead weight, so we
+ * scan the most recently seen ones and let stale entries fall out of
+ * scope (a separate archive cron can hard-delete them).
+ */
+const FINGERPRINT_SCAN_LIMIT = 600
+
 export async function loadSourceFingerprints(
   db: Firestore,
   sourceId: string
 ): Promise<Map<string, SourceArticleFingerprint>> {
-  const snap = await articlesCollection(db, sourceId).get()
+  // Recency-ordered scan keeps the diff window small and bounded. Falls back
+  // to an unordered scan only when the index/order field is missing on legacy
+  // docs — we still cap the read at the same limit so a single source can
+  // never blow up the daily Firestore read budget on its own.
+  let docs
+  try {
+    const snap = await articlesCollection(db, sourceId)
+      .orderBy('lastSeenAt', 'desc')
+      .limit(FINGERPRINT_SCAN_LIMIT)
+      .get()
+    docs = snap.docs
+  } catch {
+    const snap = await articlesCollection(db, sourceId)
+      .limit(FINGERPRINT_SCAN_LIMIT)
+      .get()
+    docs = snap.docs
+  }
+
   const map = new Map<string, SourceArticleFingerprint>()
-  for (const doc of snap.docs) {
+  for (const doc of docs) {
     map.set(doc.id, doc.data() as SourceArticleFingerprint)
   }
   return map

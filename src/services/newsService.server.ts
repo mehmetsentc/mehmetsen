@@ -225,7 +225,11 @@ async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
 const getHomeNewsPoolCached = unstable_cache(
   async (poolSize: number) => fetchHomeNewsPool(poolSize),
   ['home-news-pool-v1'],
-  { revalidate: 60, tags: ['home-feed'] }
+  // 2 minutes: fresh enough that breaking-news additions feel "live" on the
+  // home feed, but slow enough that we only spend 1 Firestore pool-read per
+  // ~120 seconds per Vercel edge cache shard. Pair with `revalidateTag` from
+  // the cache buster route if you need to force a refresh sooner.
+  { revalidate: 120, tags: ['home-feed'] }
 )
 
 async function getHomeNewsPool(poolSize = 300): Promise<NewsItem[]> {

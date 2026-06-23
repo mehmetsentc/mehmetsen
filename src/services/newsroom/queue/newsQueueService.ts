@@ -60,10 +60,13 @@ export async function claimPendingQueueItems(
     if (remaining <= 0) return
 
     // Single-field index on status only — filter scheduledAt in memory for local dev
-    // without requiring a composite index deploy.
+    // without requiring a composite index deploy. We over-fetch slightly (2x) so
+    // not-yet-due items can be skipped without making a second round trip, but
+    // we keep the multiplier tight to avoid bloating Firestore reads when the
+    // backlog grows.
     const snap = await queueCollection(db)
       .where('status', '==', status)
-      .limit(Math.max(remaining * 4, 8))
+      .limit(Math.max(remaining * 2, 8))
       .get()
 
     const due = snap.docs

@@ -12,7 +12,6 @@ import {
   limit,
   startAfter,
   increment,
-  onSnapshot,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { cityCategoryId, slugifyCity, toFirestoreLocation, type PostLocation } from '@/lib/location'
@@ -32,12 +31,11 @@ import {
 import { NEWS_FEED_QUERY, NEWS_REELS_QUERY } from '@/lib/newsQueries'
 import { devLog, withTimeout } from '@/lib/asyncUtils'
 import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
-import type { Post, TimelinePost } from '@/types/post'
+import type { Post } from '@/types/post'
 
 export { NEWS_FEED_QUERY, NEWS_REELS_QUERY }
 
 const PAGE_SIZE = 10
-const LIVE_WATCH_LIMIT = 12
 const REELS_PAGE_SIZE = 24
 const QUERY_TIMEOUT_MS = 15_000
 
@@ -332,38 +330,6 @@ export const postService = {
       console.warn('[postService] news timeline failed, returning empty:', newsError)
       return { posts: [], lastDoc: null, hasMore: false }
     }
-  },
-
-  /**
-   * Real-time listener for the newest feed page only (pagination stays cursor-based).
-   * Returns an unsubscribe function; errors are passed to onError.
-   */
-  subscribeNewsTimeline(
-    options: NewsTimelineOptions | undefined,
-    onPosts: (posts: TimelinePost[]) => void,
-    onError?: (error: unknown) => void
-  ): () => void {
-    const { constraints, filterAuthorOnServer } = buildNewsTimelineQueryConstraints(
-      options,
-      LIVE_WATCH_LIMIT
-    )
-    const q = query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)
-
-    return onSnapshot(
-      q,
-      (snap) => {
-        let posts = mapNewsSnapshot(snap.docs).filter((p) => isPubliclyVisibleStatus(p.status))
-        if (!filterAuthorOnServer && options?.feedSource) {
-          posts = filterPostsByFeedSource(posts, options.feedSource)
-        }
-        posts = applyTimelinePostFilters(posts, options)
-        onPosts(posts)
-      },
-      (error) => {
-        console.warn('[postService] subscribeNewsTimeline failed:', error)
-        onError?.(error)
-      }
-    )
   },
 
   async getRecentCities(scanLimit = 120): Promise<Array<{ slug: string; name: string; lastPostAt: number }>> {

@@ -1,9 +1,23 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { notificationService } from '@/services/notificationService'
 import { useAuth } from '@/hooks/useAuth'
 import type { Notification } from '@/types/notification'
+
+/**
+ * Notification refresh cadence.
+ *
+ * We deliberately do not use Firestore `onSnapshot` here — a live listener
+ * billed Firestore continuously per signed-in user and was a top source of
+ * runaway daily reads. Notifications aren't latency-critical; a periodic
+ * poll plus a manual refresh when the tab regains focus is fine.
+ *
+ * 90s is the sweet spot: fast enough that users see new badges shortly
+ * after the action that triggered them, slow enough that an idle tab in
+ * the background costs ~40 reads/hour instead of streaming forever.
+ */
+const NOTIFICATIONS_POLL_MS = 90_000
 
 export function useNotifications() {
   const { user } = useAuth()
@@ -12,7 +26,30 @@ export function useNotifications() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
+  const cancelledRef = useRef(false)
+
+  const loadOnce = useCallback(
+    async (showLoading: boolean) => {
+      if (!uid) return
+      if (showLoading) setLoading(true)
+      try {
+        const items = await notificationService.getNotifications(uid)
+        if (!cancelledRef.current) {
+          setNotifications(items)
+          setError(false)
+        }
+      } catch {
+        if (!cancelledRef.current) setError(true)
+      } finally {
+        if (!cancelledRef.current && showLoading) setLoading(false)
+      }
+    },
+    [uid]
+  )
+
   useEffect(() => {
+    cancelledRef.current = false
+
     if (!uid) {
       setNotifications([])
       setLoading(false)
@@ -20,39 +57,25 @@ export function useNotifications() {
       return
     }
 
-    let cancelled = false
-    setLoading(true)
-    setError(false)
+    void loadOnce(true)
 
-    // Initial one-shot fetch resolves the loading/error states deterministically,
-    // then a live subscription keeps the list up to date.
-    notificationService
-      .getNotifications(uid)
-      .then((items) => {
-        if (!cancelled) {
-          setNotifications(items)
-          setLoading(false)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError(true)
-          setLoading(false)
-        }
-      })
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      void loadOnce(false)
+    }, NOTIFICATIONS_POLL_MS)
 
-    const unsubscribe = notificationService.subscribeNotifications(uid, (items) => {
-      if (!cancelled) {
-        setNotifications(items)
-        setLoading(false)
-      }
-    })
+    const onVisibility = () => {
+      if (typeof document === 'undefined') return
+      if (!document.hidden) void loadOnce(false)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
-      cancelled = true
-      unsubscribe()
+      cancelledRef.current = true
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [uid])
+  }, [uid, loadOnce])
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,

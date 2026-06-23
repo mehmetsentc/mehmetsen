@@ -150,95 +150,95 @@
   "crons": [
     {
       "path": "/api/cron/newsroom/afad",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/breaking",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/local",
-      "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/ai-pipeline",
-      "schedule": "*/20 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/process-queue",
       "schedule": "*/10 * * * *"
     },
     {
-      "path": "/api/cron/newsroom/national",
+      "path": "/api/cron/newsroom/breaking",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/local",
+      "schedule": "*/45 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/ai-pipeline",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/process-queue",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/national",
+      "schedule": "*/45 * * * *"
     },
     {
       "path": "/api/cron/newsroom/gundem",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/finans",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/newsroom/politics",
-      "schedule": "*/30 * * * *"
+      "schedule": "0,30 * * * *"
     },
     {
       "path": "/api/cron/newsroom/sports",
-      "schedule": "*/30 * * * *"
+      "schedule": "15,45 * * * *"
     },
     {
       "path": "/api/cron/newsroom/world",
-      "schedule": "0 * * * *"
+      "schedule": "5 * * * *"
     },
     {
       "path": "/api/cron/newsroom/weather",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/technology",
-      "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/kripto",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/health",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/entertainment",
       "schedule": "0 */2 * * *"
     },
     {
+      "path": "/api/cron/newsroom/technology",
+      "schedule": "10,40 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/kripto",
+      "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/health",
+      "schedule": "35 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/entertainment",
+      "schedule": "0 */3 * * *"
+    },
+    {
       "path": "/api/cron/newsroom/magazine",
-      "schedule": "30 */2 * * *"
+      "schedule": "30 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/gastronomi",
-      "schedule": "15 */2 * * *"
+      "schedule": "15 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/otomobil",
-      "schedule": "45 */2 * * *"
+      "schedule": "45 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/trend",
-      "schedule": "0 * * * *"
+      "schedule": "50 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/video-process",
-      "schedule": "0 * * * *"
+      "schedule": "25 */2 * * *"
     },
     {
       "path": "/api/cron/social",
-      "schedule": "*/20 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/weather-news",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/seo",
@@ -250,7 +250,7 @@
     },
     {
       "path": "/api/cron/newsroom/video-queue",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/events/sync",
@@ -262,11 +262,11 @@
     },
     {
       "path": "/api/cron/newsroom/aa-content",
-      "schedule": "0 * * * *"
+      "schedule": "40 * * * *"
     },
     {
       "path": "/api/cron/newsroom/anka-breaking",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/anka-local",
@@ -274,35 +274,35 @@
     },
     {
       "path": "/api/cron/newsroom/world-cup",
-      "schedule": "0 * * * *"
+      "schedule": "55 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/voleybol",
-      "schedule": "15 * * * *"
+      "schedule": "15 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/basketbol",
-      "schedule": "20 * * * *"
+      "schedule": "25 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/futbol",
-      "schedule": "25 * * * *"
+      "schedule": "35 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/borsa",
-      "schedule": "30 * * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/bilim-teknoloji",
-      "schedule": "0 * * * *"
+      "schedule": "45 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/saglik-sozcu",
-      "schedule": "0 * * * *"
+      "schedule": "55 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/sozcu-breaking",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/20 * * * *"
     }
   ]
 }
