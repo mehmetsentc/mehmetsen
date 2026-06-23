@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
@@ -80,14 +81,23 @@ export async function PUT(request: Request, context: RouteContext) {
   const newsRef = db.collection(Collections.NEWS).doc(id)
   const newsSnap = await newsRef.get()
   if (newsSnap.exists) {
+    const prevData = newsSnap.data()
+    const oldCategoryId = prevData?.categoryId as string | undefined
     await newsRef.update(update)
     // Sync to posts if published
-    const data = newsSnap.data()
-    if (data?.status === 'published' || body.status === 'published') {
+    if (prevData?.status === 'published' || body.status === 'published') {
       const postsRef = db.collection(Collections.POSTS).doc(id)
       const postsSnap = await postsRef.get()
       if (postsSnap.exists) await postsRef.update(update)
     }
+    // Invalidate ISR cache for affected pages
+    const newCategoryId = body.categoryId?.trim()
+    try {
+      revalidatePath('/feed')
+      revalidatePath('/')
+      if (oldCategoryId) revalidatePath(`/kategori/${oldCategoryId}`)
+      if (newCategoryId && newCategoryId !== oldCategoryId) revalidatePath(`/kategori/${newCategoryId}`)
+    } catch { /* revalidation is best-effort */ }
     return NextResponse.json({ ok: true, collection: 'news' })
   }
 
@@ -121,4 +131,59 @@ export async function PUT(request: Request, context: RouteContext) {
   }
 
   return NextResponse.json({ error: 'Article not found' }, { status: 404 })
+}
+
+/** DELETE /api/admin/news/[id] — archive (soft) or permanently delete an article */
+export async function DELETE(request: Request, context: RouteContext) {
+  const auth = await verifyCmsToken(request, 'news:edit')
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await context.params
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  const url = new URL(request.url)
+  const permanent = url.searchParams.get('permanent') === 'true'
+
+  const db = getAdminFirestore()
+
+  // Read article to get categoryId for cache invalidation
+  const newsRef = db.collection(Collections.NEWS).doc(id)
+  const newsSnap = await newsRef.get()
+
+  let categoryId: string | undefined
+  let collection = 'news'
+
+  if (newsSnap.exists) {
+    categoryId = newsSnap.data()?.categoryId as string | undefined
+    if (permanent) {
+      await newsRef.delete()
+      // Also remove from posts if present
+      try { await db.collection(Collections.POSTS).doc(id).delete() } catch { /* ok */ }
+    } else {
+      await newsRef.update({
+        status: 'archived',
+        publishedAt: null,
+        updatedAt: FieldValue.serverTimestamp(),
+        moderationNote: 'Admin tarafından kaldırıldı',
+      })
+      try { await db.collection(Collections.POSTS).doc(id).update({ status: 'archived' }) } catch { /* ok */ }
+    }
+  } else {
+    // Try newsDrafts
+    const draftRef = db.collection(Collections.NEWS_DRAFTS).doc(id)
+    const draftSnap = await draftRef.get()
+    if (!draftSnap.exists) return NextResponse.json({ error: 'Article not found' }, { status: 404 })
+    categoryId = draftSnap.data()?.categoryId as string | undefined
+    collection = 'newsDrafts'
+    await draftRef.delete()
+  }
+
+  // Invalidate ISR cache
+  try {
+    revalidatePath('/feed')
+    revalidatePath('/')
+    if (categoryId) revalidatePath(`/kategori/${categoryId}`)
+  } catch { /* best-effort */ }
+
+  return NextResponse.json({ ok: true, collection, permanent })
 }

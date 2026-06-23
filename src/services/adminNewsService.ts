@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -31,7 +30,7 @@ export interface AdminNewsItem extends Post {
   adminSource: AdminNewsSource
 }
 
-async function adminFetch(path: string, method: 'POST', body?: object): Promise<void> {
+async function adminFetch(path: string, method: 'POST' | 'DELETE', body?: object): Promise<void> {
   const user = auth.currentUser
   if (!user) throw new Error('Giriş gerekli')
   const token = await user.getIdToken()
@@ -257,19 +256,15 @@ export const adminNewsService = {
     })
   },
 
-  async remove(id: string, reason?: string): Promise<void> {
-    const now = Date.now()
-    await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
-      status: 'archived',
-      publishedAt: null,
-      updatedAt: now,
-      moderationNote: reason?.trim() || 'Admin tarafından kaldırıldı',
-    })
+  async remove(id: string, _reason?: string): Promise<void> {
+    // Server-side route: archives + revalidates ISR cache
+    await adminFetch(`/api/admin/news/${id}`, 'DELETE' as never)
   },
 
   /** Taslakları (draft) kalıcı olarak Firestore'dan siler. */
   async permanentDelete(id: string): Promise<void> {
-    await deleteDoc(doc(db, VIDEO_FEED_COLLECTION, id))
+    // Server-side route: hard-deletes + revalidates ISR cache
+    await adminFetch(`/api/admin/news/${id}?permanent=true`, 'DELETE' as never)
   },
 
   async createAdminNews(data: {
