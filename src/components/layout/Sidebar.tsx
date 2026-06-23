@@ -181,24 +181,6 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
             )
           })}
 
-          {hydrated && user && isAdminUser(user) && (
-            <Link
-              href={ROUTES.ADMIN.DASHBOARD}
-              onClick={onMobileClose}
-              className={cn(
-                'relative flex items-center gap-3 px-5 py-3 text-[15px] transition-colors',
-                pathname.startsWith('/admin')
-                  ? 'font-bold text-[rgb(var(--color-text))]'
-                  : 'font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
-              )}
-            >
-              {pathname.startsWith('/admin') && (
-                <span className="absolute left-0 top-0 h-full w-[3px] rounded-r-full bg-[rgb(var(--color-brand))]" />
-              )}
-              <Shield className="h-4 w-4 shrink-0" />
-              Admin Panel
-            </Link>
-          )}
         </nav>
 
         {/* Footer */}
@@ -221,6 +203,17 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
                 <Settings className="h-4 w-4 shrink-0" />
                 Ayarlar
               </Link>
+              {isAdminUser(user) && (
+                <a
+                  href={ROUTES.ADMIN.DASHBOARD}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
+                >
+                  <Shield className="h-4 w-4 shrink-0" />
+                  Admin Panel
+                </a>
+              )}
               <button
                 type="button"
                 onClick={handleLogout}

@@ -301,20 +301,6 @@ function toLocation(
 }
 
 /** Son 48 saatte yayınlanan haberlerin başlıklarını çeker (AI duplikat tespiti için). */
-async function fetchRecentTitles(db: Firestore): Promise<string[]> {
-  try {
-    const since = Date.now() - 48 * 60 * 60 * 1000
-    const snap = await db
-      .collection(Collections.NEWS)
-      .where('publishedAt', '>=', since)
-      .orderBy('publishedAt', 'desc')
-      .limit(80)
-      .get()
-    return snap.docs.map((d) => (d.data() as { title?: string }).title ?? '').filter(Boolean)
-  } catch {
-    return []
-  }
-}
 
 async function appendEditHistory(
   db: Firestore,
@@ -455,8 +441,6 @@ export async function processNewsroomArticle(
       }
     }
 
-    // Skip second AI rewrite for editors that already produced AI content (trend, influencer)
-    const recentTitles = workingInput.skipAiRewrite ? [] : await fetchRecentTitles(db)
     // ── AI REWRITE STAGE ──────────────────────────────────────────────────────
     // skipAiRewrite=true → trend/influencer editörler kendi içeriğini üretir, yeniden yazma yok
     // skipAiRewrite=false → 4 aşamalı AI editör zinciri çalışır
