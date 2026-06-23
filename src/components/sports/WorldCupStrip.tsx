@@ -26,11 +26,44 @@ function isWorldCup(title: string): boolean {
   return WC_KEYWORDS.some((kw) => lower.includes(kw))
 }
 
+const CACHE_KEY = 'nahaber-wcstrip-cache'
+const CACHE_TTL_MS = 10 * 60 * 1000
+
+interface StripCache {
+  items: StripNews[]
+  fetchedAt: number
+}
+
+function readCache(): StripCache | null {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as StripCache
+    if (!Array.isArray(parsed.items) || typeof parsed.fetchedAt !== 'number') return null
+    if (Date.now() - parsed.fetchedAt > CACHE_TTL_MS) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCache(items: StripNews[]): void {
+  if (typeof sessionStorage === 'undefined') return
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ items, fetchedAt: Date.now() }))
+  } catch {
+    // ignore
+  }
+}
+
 export function WorldCupStrip() {
-  const [news, setNews] = useState<StripNews[]>([])
-  const [loading, setLoading] = useState(true)
+  const [news, setNews] = useState<StripNews[]>(() => readCache()?.items ?? [])
+  const [loading, setLoading] = useState(() => !readCache())
 
   useEffect(() => {
+    if (readCache()) return
+
     let cancelled = false
 
     async function load() {
@@ -40,7 +73,7 @@ export function WorldCupStrip() {
             collection(db, Collections.NEWS),
             where('category', '==', 'spor'),
             orderBy('publishedAt', 'desc'),
-            limit(60),
+            limit(40),
           )
         )
 
@@ -56,11 +89,13 @@ export function WorldCupStrip() {
           } as StripNews
         })
 
-        // Önce WC haberleri, yoksa tüm spor haberleri göster
         const filtered = all.filter((n) => isWorldCup(n.title))
-        const result = filtered.length >= 3 ? filtered : all
+        const result = (filtered.length >= 3 ? filtered : all).slice(0, 15)
 
-        if (!cancelled) setNews(result.slice(0, 15))
+        if (!cancelled) {
+          setNews(result)
+          writeCache(result)
+        }
       } catch {
         // sessizce geç
       } finally {

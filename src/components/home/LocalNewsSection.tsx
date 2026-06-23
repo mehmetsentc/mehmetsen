@@ -64,6 +64,38 @@ function EventMiniCard({ event, fallbackCity }: { event: NaEvent; fallbackCity?:
   )
 }
 
+const LOCAL_CACHE_TTL_MS = 10 * 60 * 1000
+
+interface LocalCache {
+  citySlug: string
+  news: NewsItem[]
+  events: NaEvent[]
+  fetchedAt: number
+}
+
+function readLocalCache(citySlug: string): LocalCache | null {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem('nahaber-local-cache')
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as LocalCache
+    if (parsed.citySlug !== citySlug) return null
+    if (Date.now() - parsed.fetchedAt > LOCAL_CACHE_TTL_MS) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeLocalCache(entry: LocalCache): void {
+  if (typeof sessionStorage === 'undefined') return
+  try {
+    sessionStorage.setItem('nahaber-local-cache', JSON.stringify(entry))
+  } catch {
+    // ignore
+  }
+}
+
 export function LocalNewsSection() {
   const { citySlug, cityName, ready } = useUserLocation()
   const [news, setNews] = useState<NewsItem[]>([])
@@ -73,6 +105,13 @@ export function LocalNewsSection() {
   useEffect(() => {
     if (!ready || !citySlug) return
 
+    const cached = readLocalCache(citySlug)
+    if (cached) {
+      setNews(cached.news)
+      setEvents(cached.events)
+      return
+    }
+
     let cancelled = false
     setLoading(true)
 
@@ -81,20 +120,14 @@ export function LocalNewsSection() {
         if (cancelled) return
         setNews(localNews)
         setEvents(localEvents)
+        writeLocalCache({ citySlug, news: localNews, events: localEvents, fetchedAt: Date.now() })
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
 
-    const onLocationUpdated = () => {
-      void getLocalNews(citySlug, 6).then(setNews)
-      void getLocalEvents(citySlug, 4).then(setEvents)
-    }
-    window.addEventListener('nahaber:location-updated', onLocationUpdated)
-
     return () => {
       cancelled = true
-      window.removeEventListener('nahaber:location-updated', onLocationUpdated)
     }
   }, [citySlug, ready])
 

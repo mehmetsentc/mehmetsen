@@ -256,64 +256,47 @@ export function useTimelineFeed(
 
     const timelineOptions = toTimelineOptions(categoryRef.current, feedSourceRef.current, userCityRef.current)
     let pollTimer: ReturnType<typeof setInterval> | null = null
-    let unsubscribe: (() => void) | null = null
     let deferTimer: ReturnType<typeof setTimeout> | null = null
     let cancelled = false
 
+    const runPoll = () => {
+      void loadPostService()
+        .then((postService) => postService.getNewsTimeline(undefined, timelineOptions))
+        .then((result) => {
+          if (cancelled) return
+          if (result.posts.length > 0) {
+            const notify = liveReadyRef.current
+            liveReadyRef.current = true
+            prependLivePosts(result.posts, { notify })
+          } else {
+            liveReadyRef.current = true
+          }
+        })
+        .catch((err) => console.warn('[useTimelineFeed] poll failed:', err))
+    }
+
     const startPolling = () => {
       if (pollTimer || cancelled) return
-      pollTimer = setInterval(() => {
-        void loadPostService()
-          .then((postService) => postService.getNewsTimeline(undefined, timelineOptions))
-          .then((result) => {
-            if (result.posts.length > 0) {
-              prependLivePosts(result.posts)
-            }
-          })
-          .catch((err) => console.warn('[useTimelineFeed] poll failed:', err))
-      }, LIVE_POLL_MS)
+      pollTimer = setInterval(runPoll, LIVE_POLL_MS)
     }
 
-    const startLive = () => {
-      if (cancelled) return
-
-      void loadPostService().then((postService) => {
-        if (cancelled) return
-        unsubscribe = postService.subscribeNewsTimeline(
-        timelineOptions,
-        (livePosts) => {
-          const notify = liveReadyRef.current
-          liveReadyRef.current = true
-          prependLivePosts(livePosts, { notify })
-        },
-        () => {
-          unsubscribe?.()
-          unsubscribe = null
-          startPolling()
-        }
-      )
-      })
-    }
-
-    // Pause polling when tab is hidden (saves Firestore reads on mobile)
     const handleVisibility = () => {
       if (document.hidden) {
         if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
-      } else if (!unsubscribe && !cancelled) {
+      } else if (!cancelled) {
         startPolling()
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
 
-    // Defer live subscription so route transitions stay instant.
-    deferTimer = setTimeout(startLive, LIVE_SUBSCRIBE_DEFER_MS)
+    // Firestore canlı abone yerine ertelenmiş polling — Firestore okuma maliyetini düşürür.
+    deferTimer = setTimeout(startPolling, LIVE_SUBSCRIBE_DEFER_MS)
 
     return () => {
       cancelled = true
       liveReadyRef.current = false
       document.removeEventListener('visibilitychange', handleVisibility)
       if (deferTimer) clearTimeout(deferTimer)
-      unsubscribe?.()
       if (pollTimer) clearInterval(pollTimer)
     }
   }, [categoryId, feedSource, userCitySlug, loading, prependLivePosts])
