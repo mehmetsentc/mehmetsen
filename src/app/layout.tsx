@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { cookies } from 'next/headers'
 import { Toaster } from 'react-hot-toast'
 
 import { Analytics } from '@vercel/analytics/react'
@@ -11,11 +10,6 @@ import { LanguageProvider } from '@/store/languageContext'
 import { ThemeProvider } from '@/store/themeContext'
 import { ThemeScript } from '@/components/theme/ThemeScript'
 import { PlatformScript } from '@/components/layout/PlatformScript'
-import {
-  COUNTRY_COOKIE,
-  LANGUAGE_COOKIE,
-  resolveInitialLanguage,
-} from '@/lib/i18n'
 import './globals.css'
 
 const inter = Inter({
@@ -155,13 +149,14 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies()
-  const initialLanguage = resolveInitialLanguage(
-    cookieStore.get(LANGUAGE_COOKIE)?.value,
-    cookieStore.get(COUNTRY_COOKIE)?.value
-  )
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // CRITICAL: do NOT call `cookies()` / `headers()` from this layout.
+  // Any dynamic API call here opts the entire app out of static rendering,
+  // which forces Vercel to serve every page with `cache-control: private,
+  // no-cache, no-store` (CDN cache off, ISR ignored, full SSR + Firestore on
+  // every request). LanguageProvider already hydrates the user's stored
+  // preference client-side from the `lang` cookie, so the SSR shell can
+  // safely render with the default language and let the client adjust.
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
@@ -192,7 +187,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <OneSignalProvider />
         <ThemeProvider>
-          <LanguageProvider initialLanguage={initialLanguage}>
+          <LanguageProvider>
             <AuthProvider>
               {children}
               <CookieConsentBanner />
