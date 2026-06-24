@@ -11,6 +11,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { TimelinePost } from '@/types/post'
 import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
+import { WorldCup2026Widget } from '@/components/widgets/WorldCup2026Widget'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -205,6 +206,11 @@ export default async function CategoryPage({ params }: Props) {
             )
           })}
         </div>
+      )}
+
+      {/* Dünya Kupası 2026 widget */}
+      {cat.id === 'dunya-kupasi-2026' && (
+        <WorldCup2026Widget />
       )}
 
       {/* Borsa kategorisinde canlı piyasa verileri */}
