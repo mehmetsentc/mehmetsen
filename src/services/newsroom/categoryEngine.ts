@@ -43,6 +43,12 @@ const CATEGORY_ALIASES: Record<string, string> = {
   athletics: 'atletizm',
   gures: 'gures',
   wrestling: 'gures',
+  'dunya-kupasi-2026': 'dunya-kupasi-2026',
+  'dünya kupası': 'dunya-kupasi-2026',
+  'dunya kupasi': 'dunya-kupasi-2026',
+  'world cup': 'dunya-kupasi-2026',
+  'world cup 2026': 'dunya-kupasi-2026',
+  'fifa 2026': 'dunya-kupasi-2026',
   sinema: 'sinema',
   cinema: 'sinema',
   film: 'sinema',
@@ -68,6 +74,7 @@ export const NEWSROOM_CATEGORIES: Record<string, string> = {
   hentbol: 'Hentbol',
   atletizm: 'Atletizm',
   gures: 'Güreş',
+  'dunya-kupasi-2026': '2026 Dünya Kupası',
   sinema: 'Sinema',
   tiyatro: 'Tiyatro',
   konser: 'Konser',
@@ -231,6 +238,33 @@ const VOLEYBOL_KEYWORDS = [
   'hentbol', // hentbol da spor'un alt kategorisi
 ] as const
 
+// ── 2026 FIFA Dünya Kupası keyword'leri ──────────────────────────────────────
+const DUNYA_KUPASI_2026_KEYWORDS = [
+  // Türkçe terimler
+  'dünya kupası 2026', 'dunya kupasi 2026',
+  '2026 dünya kupası', '2026 dunya kupasi',
+  'fifa 2026', 'fifa dünya kupası',
+  'dünya kupası grup', 'dunya kupasi grup',
+  'dünya kupası maç', 'dunya kupasi mac',
+  'dünya kupası eleme', 'dunya kupasi eleme',
+  'dünya kupası kadro', 'dünya kupası kadrosu',
+  'dünya kupası golü', 'dünya kupası galibi',
+  'dünya kupası şampiyonu', 'dunya kupasi sampiyonu',
+  'dünya kupası finali', 'dunya kupasi finali',
+  'dünya kupası yarı final', 'dünya kupası çeyrek final',
+  'dünya kupası son 16', 'dünya kupası 16 takım',
+  'dünya kupası puan', 'dünya kupası sıralama',
+  'dünya kupası skorları', 'dünya kupası sonuçları',
+  'milli takım dünya kupası', 'türkiye dünya kupası',
+  // İngilizce terimler
+  'world cup 2026', '2026 world cup',
+  'fifa world cup 2026', 'world cup 2026 group',
+  'world cup group stage', 'world cup knockout',
+  'world cup standings', 'world cup results',
+  'world cup squad', 'world cup goal',
+  'world cup match', 'world cup score',
+] as const
+
 // ── Gastronomi keyword'leri ───────────────────────────────────────────────────
 const GASTRONOMI_KEYWORDS = [
   'yemek tarif', 'yemek festival', 'yemek kültür', 'gastronomi', 'gurme',
@@ -314,11 +348,16 @@ function hasGastronomiKeywords(text: string): boolean {
   return containsKeyword(text, GASTRONOMI_KEYWORDS)
 }
 
+function hasDunyaKupasi2026Keywords(text: string): boolean {
+  return containsKeyword(text, DUNYA_KUPASI_2026_KEYWORDS)
+}
+
 /**
  * Spor haberinde hangi alt dal olduğunu tespit eder.
- * Öncelik sırası: futbol > basketbol > voleybol > genel spor
+ * Öncelik sırası: dunya-kupasi-2026 > futbol > basketbol > voleybol > genel spor
  */
-function detectSportSubcategory(text: string): 'futbol' | 'basketbol' | 'voleybol' | null {
+function detectSportSubcategory(text: string): 'dunya-kupasi-2026' | 'futbol' | 'basketbol' | 'voleybol' | null {
+  if (hasDunyaKupasi2026Keywords(text)) return 'dunya-kupasi-2026'
   if (hasFutbolKeywords(text)) return 'futbol'
   if (hasBasketbolKeywords(text)) return 'basketbol'
   if (hasVoleybolKeywords(text)) return 'voleybol'
@@ -501,7 +540,7 @@ function isWorldCupFinalNationalWin(text: string): boolean {
 }
 
 /** Spor alt kategorileri kümesi — birden fazla fonksiyon kullanır */
-export const SPOR_SUBS = new Set(['futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures'])
+export const SPOR_SUBS = new Set(['futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures', 'dunya-kupasi-2026'])
 
 export function normalizeNewsroomCategory(raw?: string): string {
   const value = raw?.trim().toLowerCase() ?? ''
@@ -657,6 +696,22 @@ export function validateCategoryClassification(
   //
   // KURAL: spor alt kategorileri dahil (futbol, basketbol, voleybol, hentbol...) —
   // metinde spor sinyali yoksa kaynak zorlaması GEÇERSİZ.
+  // Dünya Kupası 2026 haberleri: spor keyword kontrolünden önce değerlendir
+  const isDunyaKupasi = hasDunyaKupasi2026Keywords(text)
+  if (isDunyaKupasi) {
+    if (categoryId !== 'dunya-kupasi-2026') {
+      overrides.push(`dunya-kupasi-2026-keywords → dunya-kupasi-2026 (was ${categoryId})`)
+      categoryId = 'dunya-kupasi-2026'
+      categoryConfidence = Math.max(categoryConfidence, 92)
+    }
+    return {
+      categoryId,
+      categoryConfidence,
+      isBreaking: false, // Dünya Kupası haberleri rutin; final maçı son-dakika değil
+      overrides,
+    }
+  }
+
   const isAnySportCategory = categoryId === 'spor' || SPOR_SUBS.has(categoryId)
   if (isAnySportCategory && !sports) {
     const prevCat = categoryId

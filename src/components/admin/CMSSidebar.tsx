@@ -31,6 +31,7 @@ const CATEGORIES = [
   { id: 'hentbol',     label: '↳ Hentbol',    icon: CircleDot,    color: 'text-green-300' },
   { id: 'atletizm',    label: '↳ Atletizm',   icon: Zap,          color: 'text-green-300' },
   { id: 'gures',       label: '↳ Güreş',      icon: Swords,       color: 'text-green-300' },
+  { id: 'dunya-kupasi-2026', label: '↳ 2026 Dünya Kupası', icon: Trophy, color: 'text-amber-400' },
   { id: 'teknoloji',   label: 'Teknoloji',    icon: Cpu,          color: 'text-blue-400' },
   { id: 'ekonomi',     label: 'Ekonomi',      icon: EkonomiIcon,  color: 'text-yellow-400' },
   { id: 'saglik',      label: 'Sağlık',       icon: Heart,        color: 'text-pink-400' },
