@@ -25,6 +25,7 @@ import { CookieConsentBanner } from '@/components/legal/CookieConsentBanner'
 import { getSiteUrl } from '@/lib/seo'
 import Script from 'next/script'
 import { OneSignalProvider } from '@/components/OneSignalProvider'
+import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt'
 
 const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -193,6 +194,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AuthProvider>
               {children}
               <CookieConsentBanner />
+              {/* F5: PWA "Ana ekrana ekle" prompt */}
+              <PWAInstallPrompt />
               {/* Legacy react-hot-toast — kademeli olarak yeni sonner viewport'a geçilecek */}
               <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
               <ToastViewport />

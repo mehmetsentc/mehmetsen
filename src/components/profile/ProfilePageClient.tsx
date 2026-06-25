@@ -7,6 +7,8 @@ import { useProfile } from '@/hooks/useProfile'
 import { ProfileHeader } from './ProfileHeader'
 import { ProfileTabs } from './ProfileTabs'
 import { ProfileCompleteModal } from './ProfileCompleteModal'
+import { ProfileBadges } from './ProfileBadges'
+import { ProfileReadingStats } from './ProfileReadingStats'
 import { ROUTES } from '@/constants/routes'
 import { Button } from '@/components/ui/Button'
 
@@ -60,6 +62,13 @@ export function ProfilePageClient({ username }: ProfilePageClientProps) {
           refreshCounts(next ? 1 : -1)
         }}
       />
+
+      {/* F5: Rozetler + okuma istatistikleri */}
+      <div className="space-y-3 px-4 pt-2 sm:px-0">
+        <ProfileBadges user={profile} />
+        <ProfileReadingStats userId={profile.uid} isOwnProfile={isOwnProfile} />
+      </div>
+
       <ProfileTabs
         userId={profile.uid}
         username={profile.username}

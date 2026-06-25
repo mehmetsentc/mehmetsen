@@ -3,8 +3,8 @@
  * Handles FCM push messages and background sync.
  */
 
-const CACHE_VERSION = 'nahaber-v1'
-const STATIC_CACHE = ['/offline', '/favicon.ico']
+const CACHE_VERSION = 'nahaber-v2'
+const STATIC_CACHE = ['/offline', '/favicon.ico', '/brand/icon-192.png', '/brand/icon-512.png']
 
 // ── Install ───────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
@@ -75,11 +75,16 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-// ── Fetch (network-first, cache fallback) ────────────────────────────────
+// ── Fetch (network-first, cache fallback, offline page) ──────────────────
 self.addEventListener('fetch', (event) => {
   // Only cache same-origin GET requests
   if (event.request.method !== 'GET') return
   if (!event.request.url.startsWith(self.location.origin)) return
+
+  const isNavigation =
+    event.request.mode === 'navigate' ||
+    (event.request.method === 'GET' &&
+      (event.request.headers.get('accept') || '').includes('text/html'))
 
   event.respondWith(
     fetch(event.request)
@@ -91,6 +96,15 @@ self.addEventListener('fetch', (event) => {
         }
         return res
       })
-      .catch(() => caches.match(event.request))
+      .catch(async () => {
+        const cached = await caches.match(event.request)
+        if (cached) return cached
+        // For HTML navigations, serve the offline fallback page
+        if (isNavigation) {
+          const offline = await caches.match('/offline')
+          if (offline) return offline
+        }
+        return Response.error()
+      })
   )
 })
