@@ -8,6 +8,12 @@ import { ShareButton } from '@/components/post/ShareButton'
 import { PostComments } from '@/components/post/PostComments'
 import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
 import { NextArticleCard } from '@/components/news/NextArticleCard'
+import { ArticleScrollProgress } from '@/components/news/ArticleScrollProgress'
+import { ArticleStickyHeader } from '@/components/news/ArticleStickyHeader'
+import { ArticleTOC } from '@/components/news/ArticleTOC'
+import { ArticleReaderTools } from '@/components/news/ArticleReaderTools'
+import { ArticleReactions } from '@/components/news/ArticleReactions'
+import { ArticleSourceBadge } from '@/components/news/ArticleSourceBadge'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
 import { formatCount } from '@/lib/postUtils'
@@ -50,9 +56,23 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-10 sm:px-0">
+      {/* ── F2: Premium reader layer ──────────────────────────────── */}
+      <ArticleScrollProgress />
+      <ArticleStickyHeader post={post} />
+      <ArticleTOC postId={post.id} />
+      <ArticleReaderTools post={post} />
+
       <div className="-mt-4 overflow-hidden rounded-none border border-t-0 border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] sm:rounded-b-2xl sm:border-t">
         <div className="px-4 py-6 sm:px-8">
-          <div className="flex flex-wrap items-center gap-2 border-t border-[rgb(var(--color-border))] pt-5">
+          {/* Source verification badge */}
+          <div className="-mt-2 mb-3 flex flex-wrap items-center gap-2">
+            <ArticleSourceBadge post={post} />
+          </div>
+
+          {/* Emoji reactions */}
+          <ArticleReactions postId={post.id} />
+
+          <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[rgb(var(--color-border))] pt-5">
             <LikeButton
               liked={liked}
               count={likesCount}
