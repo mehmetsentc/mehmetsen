@@ -23,6 +23,8 @@ export default function robots(): MetadataRoute.Robots {
           '/post/create',
           '/saved',
           '/search',
+          '/offline',
+          '/dev/',
         ],
       },
       {

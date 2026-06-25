@@ -16,6 +16,35 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+/**
+ * Firestore'da publishedAt 3 ayrı tipte olabilir:
+ *   - number (unix ms)
+ *   - string (ISO)
+ *   - Timestamp ({seconds, nanoseconds} veya .toDate())
+ * Geçerli bir ISO yoksa şimdiki zamanı döner — sitemap kırılmaz.
+ */
+function toISODateString(value: unknown): string {
+  try {
+    if (!value) return new Date().toISOString()
+    if (typeof value === 'string') {
+      const d = new Date(value)
+      return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
+    }
+    if (typeof value === 'number') {
+      const d = new Date(value)
+      return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
+    }
+    if (typeof value === 'object' && value !== null) {
+      const obj = value as { toDate?: () => Date; seconds?: number }
+      if (typeof obj.toDate === 'function') return obj.toDate().toISOString()
+      if (typeof obj.seconds === 'number') return new Date(obj.seconds * 1000).toISOString()
+    }
+    return new Date().toISOString()
+  } catch {
+    return new Date().toISOString()
+  }
+}
+
 export async function GET() {
   const base = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -47,7 +76,7 @@ export async function GET() {
       const url = `${base}${path}`
       const title = escapeXml(d.title?.trim() || 'Haber Videosu')
       const description = escapeXml((d.description || d.summary || d.title || '').slice(0, 500))
-      const pubDate = new Date(d.publishedAt ?? Date.now()).toISOString()
+      const pubDate = toISODateString(d.publishedAt)
       const thumbnail = d.coverImageUrl?.trim() || `${base}/brand/og-default.png`
       const duration = (d.readingTimeMinutes ?? 2) * 60
 

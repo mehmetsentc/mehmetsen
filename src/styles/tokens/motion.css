@@ -4,7 +4,6 @@
  * Apple-tarzı yumuşak geçişler için spring-benzeri bezier'lar.
  * ───────────────────────────────────────────────────────────────────────── */
 
-@layer base {
   :root {
     /* ── Duration ──────────────────────────────────────────────────── */
     --motion-instant:  0ms;
@@ -28,7 +27,6 @@
     /* Yapışkan giriş — Instagram story tarzı */
     --ease-spring:      cubic-bezier(0.5, 0, 0.1, 1);
   }
-}
 
 /* Reduced motion: tüm hareketi minimize et — accessibility */
 @media (prefers-reduced-motion: reduce) {

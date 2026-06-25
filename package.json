@@ -2,6 +2,9 @@
   "name": "nahaber",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "predev": "node scripts/reset-dev.mjs --kill-only",
     "dev": "next dev",
