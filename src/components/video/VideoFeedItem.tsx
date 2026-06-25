@@ -57,6 +57,7 @@ function VideoFeedItemInner({
   } = useAppState()
   const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [ytBlocked, setYtBlocked] = useState(false)  // embedding engeli: 101/150
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null)
   const [progress, setProgress] = useState(0) // 0–100
@@ -255,11 +256,11 @@ function VideoFeedItemInner({
     }
   }, [isActive, paused, muted, isAudioMode, virtualized])
 
-  // ── YouTube ses senkronizasyonu ───────────────────────────────────────────
-  // YouTube player iframe yüklenince postMessage komutunu hemen almayabilir.
-  // Hem onStateChange/onReady'yi dinle hem de artan aralıklarla retry yap.
+  // ── YouTube postMessage — ses sync + embedding engeli tespiti ────────────
+  // origin parametresi JS API cross-origin iletişimi için zorunlu.
+  // Hata kodları: 101/150 = embedding engeli, 100 = video bulunamadı.
   useEffect(() => {
-    if (virtualized || !isYouTube || !isActive) return
+    if (virtualized || !isYouTube) return
 
     const sendCmd = (func: string) => {
       iframeRef.current?.contentWindow?.postMessage(
@@ -269,25 +270,34 @@ function VideoFeedItemInner({
     }
 
     const func = muted ? 'mute' : 'unMute'
+    if (isActive) sendCmd(func)
 
-    // Hemen dene
-    sendCmd(func)
-
-    // YouTube onStateChange (1=oynuyor, 3=buffer) veya onReady gelince tekrar gönder
     const handleMessage = (e: MessageEvent) => {
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
-        if (data?.event === 'onStateChange' || data?.event === 'onReady') {
+        if (!data) return
+
+        // Ses senkronizasyonu
+        if (isActive && (data?.event === 'onStateChange' || data?.event === 'onReady')) {
           sendCmd(func)
+        }
+
+        // Embedding engeli tespiti:
+        // 101/150 = video sahibi embedding'i kapattı, 100 = video kaldırıldı
+        if (data?.event === 'onError') {
+          const code = typeof data.info === 'number' ? data.info : data.info?.errorCode
+          if (code === 100 || code === 101 || code === 150) {
+            setYtBlocked(true)
+            setLoading(false)
+          }
         }
       } catch { /* ignore */ }
     }
-    window.addEventListener('message', handleMessage)
 
-    // Başlatma gecikmesini kapsamak için artan interval retry
-    const t1 = setTimeout(() => sendCmd(func), 600)
-    const t2 = setTimeout(() => sendCmd(func), 1500)
-    const t3 = setTimeout(() => sendCmd(func), 3000)
+    window.addEventListener('message', handleMessage)
+    const t1 = setTimeout(() => { if (isActive) sendCmd(func) }, 600)
+    const t2 = setTimeout(() => { if (isActive) sendCmd(func) }, 1500)
+    const t3 = setTimeout(() => { if (isActive) sendCmd(func) }, 3000)
 
     return () => {
       window.removeEventListener('message', handleMessage)
@@ -459,83 +469,145 @@ function VideoFeedItemInner({
 
   // ── YouTube iframe modu ────────────────────────────────────────────────────
   // <video> HTML elementi YouTube URL'lerini oynatamaz — iframe gerekir.
-  // Browser autoplay politikası: sesli autoplay engellenir → her zaman mute=1 başlar.
-  // CSP frame-src'ye youtube-nocookie.com eklendi (next.config.ts).
+  // Browser autoplay politikası: sesli autoplay engellenir → mute=1 başlar.
+  // origin parametresi: YouTube JS API cross-origin postMessage güvenliği için zorunlu.
+  // ytBlocked=true: video sahibi embedding'i kapatmış (101/150) → fallback UI göster.
   if (isYouTube && stableSrc) {
     const videoId = stableSrc.split('/embed/')[1]?.split('?')[0] ?? ''
-    // Aktif slide → autoplay + sessiz (browser politikası). Ses YouTube kontrolünden açılır.
-    // Aktif olmayan slide → sadece thumbnail göster (enablejsapi ile daha hafif).
+    const origin = typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
+
     const embedSrc = isActive
-      ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0`
-      : `${stableSrc}?rel=0&modestbranding=1&enablejsapi=1&controls=0`
+      ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
+      : `${stableSrc}?rel=0&modestbranding=1&enablejsapi=1&controls=0&origin=${origin}`
+
     const sendYTCmd = (func: string) => {
       iframeRef.current?.contentWindow?.postMessage(
         JSON.stringify({ event: 'command', func, args: [] }), '*'
       )
     }
 
+    const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl
+      ?? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+
     return (
       <div ref={refCallback} data-index={index} className="reels-slide">
         <div className="reels-video-card relative overflow-hidden bg-black">
-          {/* Spinner — iframe yüklenene kadar */}
-          {loading && isActive && (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
-              <Loader2 className="h-10 w-10 animate-spin text-white/80" />
-            </div>
+
+          {/* ── Embedding engeli fallback ── */}
+          {ytBlocked ? (
+            <>
+              {/* Thumbnail arka plan */}
+              {coverSrc && (
+                <img
+                  src={coverSrc}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover opacity-60"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/70" />
+
+              {/* "YouTube'da İzle" butonu — ortada */}
+              <a
+                href={watchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-3"
+              >
+                {/* YouTube logo */}
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 shadow-lg">
+                  <svg viewBox="0 0 24 24" className="h-8 w-8 fill-white">
+                    <path d="M10 15l5.19-3L10 9v6z"/>
+                    <path d="M21.56 7.17a2.76 2.76 0 0 0-1.94-1.95C17.88 4.8 12 4.8 12 4.8s-5.88 0-7.62.42a2.76 2.76 0 0 0-1.94 1.95C2 8.93 2 12 2 12s0 3.07.44 4.83a2.76 2.76 0 0 0 1.94 1.95C6.12 19.2 12 19.2 12 19.2s5.88 0 7.62-.42a2.76 2.76 0 0 0 1.94-1.95C22 15.07 22 12 22 12s0-3.07-.44-4.83z"/>
+                  </svg>
+                </div>
+                <span className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-bold text-gray-900 shadow">
+                  YouTube&apos;da İzle
+                </span>
+              </a>
+
+              <VideoActions
+                video={{ ...video, isLiked: liked, likesCount }}
+                onCommentClick={() => setCommentsOpen(true)}
+                onLikeChange={(likedVal, count) =>
+                  onUpdate(video.id, { isLiked: likedVal, likesCount: count })
+                }
+                onSaveChange={(saved, count) =>
+                  onUpdate(video.id, { isSaved: saved, savesCount: count })
+                }
+                onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+              />
+              <VideoOverlay video={video} />
+              <VideoCommentSheet
+                postId={video.id}
+                open={commentsOpen}
+                onClose={() => setCommentsOpen(false)}
+                commentsCount={video.commentsCount}
+                onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+              />
+            </>
+          ) : (
+            <>
+              {/* Spinner — iframe yüklenene kadar */}
+              {loading && isActive && (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
+                  <Loader2 className="h-10 w-10 animate-spin text-white/80" />
+                </div>
+              )}
+
+              <iframe
+                ref={iframeRef}
+                key={isActive ? `yt-active-${video.id}` : `yt-inactive-${video.id}`}
+                src={embedSrc}
+                title={video.title}
+                className="absolute inset-0 h-full w-full border-0"
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share"
+                allowFullScreen
+                onLoad={() => setLoading(false)}
+              />
+
+              {/* YouTube üst başlık/kanal overlay'ini gizle — siyah bant */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-16 bg-black" />
+
+              {/* Tap interceptor */}
+              <div
+                className="absolute inset-0 z-[1]"
+                onClick={() => {
+                  sendYTCmd(paused ? 'playVideo' : 'pauseVideo')
+                  setPaused((p) => !p)
+                }}
+              />
+
+              {/* Duraklama ikonu */}
+              {paused && isActive && (
+                <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+                    <Play className="h-8 w-8 fill-white text-white" />
+                  </div>
+                </div>
+              )}
+
+              <VideoActions
+                video={{ ...video, isLiked: liked, likesCount }}
+                onCommentClick={() => setCommentsOpen(true)}
+                onLikeChange={(likedVal, count) =>
+                  onUpdate(video.id, { isLiked: likedVal, likesCount: count })
+                }
+                onSaveChange={(saved, count) =>
+                  onUpdate(video.id, { isSaved: saved, savesCount: count })
+                }
+                onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+              />
+              <VideoOverlay video={video} />
+              <VideoCommentSheet
+                postId={video.id}
+                open={commentsOpen}
+                onClose={() => setCommentsOpen(false)}
+                commentsCount={video.commentsCount}
+                onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+              />
+            </>
           )}
-
-          <iframe
-            ref={iframeRef}
-            key={isActive ? `yt-active-${video.id}` : `yt-inactive-${video.id}`}
-            src={embedSrc}
-            title={video.title}
-            className="absolute inset-0 h-full w-full border-0"
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share"
-            allowFullScreen
-            onLoad={() => setLoading(false)}
-          />
-
-          {/* YouTube üst başlık/kanal overlay'ini gizle — siyah bant */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-16 bg-black" />
-
-          {/* Tap interceptor: YouTube'un ortadaki native kontrollerine (⏮⏸⏭) dokunulmasını engelle.
-              z-[1] → iframe'in üstünde, VideoOverlay (z-10) ve VideoActions (z-20)'ın altında. */}
-          <div
-            className="absolute inset-0 z-[1]"
-            onClick={() => {
-              sendYTCmd(paused ? 'playVideo' : 'pauseVideo')
-              setPaused((p) => !p)
-            }}
-          />
-
-          {/* Duraklama ikonu */}
-          {paused && isActive && (
-            <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
-                <Play className="h-8 w-8 fill-white text-white" />
-              </div>
-            </div>
-          )}
-
-          <VideoActions
-            video={{ ...video, isLiked: liked, likesCount }}
-            onCommentClick={() => setCommentsOpen(true)}
-            onLikeChange={(likedVal, count) =>
-              onUpdate(video.id, { isLiked: likedVal, likesCount: count })
-            }
-            onSaveChange={(saved, count) =>
-              onUpdate(video.id, { isSaved: saved, savesCount: count })
-            }
-            onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
-          />
-          <VideoOverlay video={video} />
-          <VideoCommentSheet
-            postId={video.id}
-            open={commentsOpen}
-            onClose={() => setCommentsOpen(false)}
-            commentsCount={video.commentsCount}
-            onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
-          />
         </div>
       </div>
     )
