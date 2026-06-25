@@ -11,7 +11,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { TimelinePost } from '@/types/post'
 import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
-import { WorldCup2026Widget } from '@/components/widgets/WorldCup2026Widget'
+import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -208,35 +208,37 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       )}
 
-      {/* Dünya Kupası 2026 widget */}
-      {cat.id === 'dunya-kupasi-2026' && (
-        <WorldCup2026Widget />
-      )}
-
-      {/* Borsa kategorisinde canlı piyasa verileri */}
-      {cat.id === 'borsa' && (
+      {/* Dünya Kupası 2026 — chip navigation (Haberler + Grup A–L) */}
+      {cat.id === 'dunya-kupasi-2026' ? (
+        <WorldCupCategoryTabs initialPosts={initialPosts} />
+      ) : (
         <>
-          <BorsaWidgetClient />
-          <div className="mb-4 flex items-center gap-2">
-            <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
-            <span className="text-xs font-semibold text-[rgb(var(--color-muted))]">Borsa Haberleri</span>
-            <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
-          </div>
+          {/* Borsa kategorisinde canlı piyasa verileri */}
+          {cat.id === 'borsa' && (
+            <>
+              <BorsaWidgetClient />
+              <div className="mb-4 flex items-center gap-2">
+                <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
+                <span className="text-xs font-semibold text-[rgb(var(--color-muted))]">Borsa Haberleri</span>
+                <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
+              </div>
+            </>
+          )}
+
+          {/* News feed — initialPosts varsa skeleton göstermeden anında yükler */}
+          <Suspense
+            fallback={
+              <div className="space-y-4">
+                {[...Array(4)].map((_, i) => (
+                  <TimelineItemSkeleton key={i} />
+                ))}
+              </div>
+            }
+          >
+            <CategoryFeed categoryId={cat.id} initialPosts={initialPosts} />
+          </Suspense>
         </>
       )}
-
-      {/* News feed — initialPosts varsa skeleton göstermeden anında yükler */}
-      <Suspense
-        fallback={
-          <div className="space-y-4">
-            {[...Array(4)].map((_, i) => (
-              <TimelineItemSkeleton key={i} />
-            ))}
-          </div>
-        }
-      >
-        <CategoryFeed categoryId={cat.id} initialPosts={initialPosts} />
-      </Suspense>
     </div>
   )
 }
