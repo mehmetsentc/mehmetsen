@@ -37,7 +37,7 @@ export { NEWS_FEED_QUERY, NEWS_REELS_QUERY }
 
 const PAGE_SIZE = 10
 const REELS_PAGE_SIZE = 24
-const QUERY_TIMEOUT_MS = 15_000
+const QUERY_TIMEOUT_MS = 8_000
 
 // ── Videos collection document (AI-generated TTS reels) ──────────────────────
 interface VideoCollectionDoc {

@@ -20,7 +20,7 @@ export interface VideoFeedItem extends Post {
   isSaved?: boolean
 }
 
-const FEED_LOAD_TIMEOUT_MS = 15_000
+const FEED_LOAD_TIMEOUT_MS = 25_000
 // Cap how many items we persist so we stay well under storage quotas.
 const MAX_CACHED_VIDEOS = 20
 // When every loaded video is already seen, auto-fetch more pages to find fresh content.
