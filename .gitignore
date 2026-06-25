@@ -32,6 +32,17 @@ yarn-error.log*
 Thumbs.db
 commit-*.sh
 
+# Apple Developer secrets — ASLA commit etme
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+AuthKey_*.p8
+ios/App/App/GoogleService-Info.plist
+android/app/google-services.json
+*.keystore
+*.jks
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
