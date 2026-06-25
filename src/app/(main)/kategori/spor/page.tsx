@@ -6,14 +6,103 @@ import { WorldCupStrip } from '@/components/sports/WorldCupStrip'
 import { MatchResults } from '@/components/sports/MatchResults'
 import { SuperLigTable } from '@/components/sports/SuperLigTable'
 import { TransferStrip } from '@/components/sports/TransferStrip'
-import { getSubcategories } from '@/constants/config'
+import { getSubcategories, getCategoryFamily } from '@/constants/config'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
+import { getAdminFirestore } from '@/lib/firebase/admin'
+import { Collections } from '@/lib/firebase/collections'
+import type { TimelinePost } from '@/types/post'
 
 const SPOR_SUBCATEGORIES = getSubcategories('spor')
 
 export const revalidate = 60
+
+/**
+ * Server-side prefetch — spor + alt branşların ilk 20 haberi.
+ * /kategori/[id]/page.tsx'taki prefetchCategoryPosts ile aynı şekil:
+ * SSR HTML içinde haber linkleri olduğundan SEO + crawler her ikisi
+ * de doğru görür. (Bug fix: önceden bu prefetch yoktu, spor sayfası
+ * Googlebot için boş görünüyordu.)
+ */
+async function prefetchSporPosts(): Promise<TimelinePost[]> {
+  try {
+    const db = getAdminFirestore()
+    const family = getCategoryFamily('spor')
+    const baseQ = db.collection(Collections.NEWS).where('status', '==', 'published')
+    const snap = await (
+      family.length > 1
+        ? baseQ.where('categoryId', 'in', family)
+        : baseQ.where('categoryId', '==', 'spor')
+    )
+      .orderBy('publishedAt', 'desc')
+      .limit(20)
+      .get()
+
+    const ts = (v: unknown): number | null => {
+      if (!v) return null
+      if (typeof v === 'object' && 'toMillis' in (v as object)) {
+        return (v as { toMillis(): number }).toMillis()
+      }
+      if (typeof v === 'number') return v
+      if (typeof v === 'string') {
+        const n = Date.parse(v)
+        return Number.isNaN(n) ? null : n
+      }
+      return null
+    }
+
+    return snap.docs.map((doc) => {
+      const d = doc.data()
+      const image =
+        d.coverImageUrl ?? d.thumbnail ?? d.imageUrl ?? d.featuredImage ?? null
+      const videoUrl = d.videoUrl ?? ''
+      const mediaItems = videoUrl
+        ? [{ type: 'video' as const, url: videoUrl, thumbnailUrl: image, caption: null }]
+        : image
+          ? [{ type: 'image' as const, url: image, thumbnailUrl: image, caption: null }]
+          : []
+      return {
+        id: doc.id,
+        authorUsername: d.authorUsername ?? '',
+        authorDisplayName: d.authorDisplayName ?? '',
+        authorId: d.authorId ?? '',
+        title: d.title ?? '',
+        spot: d.spot ?? d.summary ?? '',
+        content: d.content ?? '',
+        summary: d.summary ?? d.spot ?? '',
+        categoryId: d.categoryId ?? '',
+        citySlug: d.citySlug ?? '',
+        city: d.city ?? null,
+        cityName: d.cityName ?? '',
+        coverImageUrl: image,
+        mediaItems,
+        url: d.url ?? ROUTES.NEWS_DETAIL(d.slug?.trim() || doc.id),
+        slug: d.slug ?? doc.id,
+        publishedAt: ts(d.publishedAt) ?? ts(d.createdAt) ?? Date.now(),
+        createdAt: ts(d.createdAt) ?? Date.now(),
+        updatedAt: ts(d.updatedAt) ?? null,
+        status: d.status ?? 'published',
+        visibility: d.visibility ?? 'public',
+        postType: d.postType ?? (videoUrl ? 'video' : 'news'),
+        source: d.source ?? '',
+        author: d.author ?? null,
+        isBreaking: d.isBreaking ?? false,
+        hasVideo: d.hasVideo ?? false,
+        isVideo: d.isVideo ?? false,
+        tags: d.tags ?? [],
+        priorityScore: d.priorityScore ?? null,
+        viewsCount: d.viewsCount ?? 0,
+        likesCount: d.likesCount ?? 0,
+        commentsCount: d.commentsCount ?? d.commentCount ?? 0,
+        savesCount: d.savesCount ?? 0,
+        sharesCount: d.sharesCount ?? 0,
+      } as unknown as TimelinePost
+    })
+  } catch {
+    return [] // prefetch başarısız → client normal akışa devam eder
+  }
+}
 
 export const metadata: Metadata = {
   title: 'Spor Haberleri',
@@ -27,7 +116,11 @@ export const metadata: Metadata = {
   },
 }
 
-export default function SporPage() {
+export default async function SporPage() {
+  // SSR'da ilk 20 haberi çek → Googlebot ve curl-tabanlı crawler'lar
+  // sayfayı boş görmesin, hidrasyon öncesi de okunsun.
+  const initialPosts = await prefetchSporPosts()
+
   return (
     <div className="w-full">
       {/* Category header */}
@@ -98,7 +191,7 @@ export default function SporPage() {
           </div>
         }
       >
-        <CategoryFeed categoryId="spor" />
+        <CategoryFeed categoryId="spor" initialPosts={initialPosts} />
       </Suspense>
     </div>
   )
