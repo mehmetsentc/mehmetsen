@@ -74,7 +74,7 @@ export function BottomSheet({
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-sheet flex flex-col justify-end">
+        <div className="fixed inset-0 z-[10000] flex flex-col justify-end">
           {withOverlay && (
             <motion.div
               aria-hidden

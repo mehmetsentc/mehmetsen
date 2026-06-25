@@ -239,7 +239,7 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-modal flex items-center justify-center bg-black"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
