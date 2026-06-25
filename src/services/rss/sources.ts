@@ -42,9 +42,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'iha',
     label: 'İHA',
-    feedUrl: 'https://www.iha.com.tr/rss/guncel',
+    feedUrl: 'https://www.iha.com.tr/rss.aspx', // guncel boş döndü, aspx dene
     alternateFeedUrls: [
-      'https://www.iha.com.tr/rss.aspx',
+      'https://www.iha.com.tr/rss/guncel',
       'https://news.google.com/rss/search?q=site:iha.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
@@ -53,9 +53,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'dha',
     label: 'DHA (Demirören)',
-    feedUrl: 'https://www.dha.com.tr/rss',
+    feedUrl: 'https://news.google.com/rss/search?q=site:dha.com.tr+haber&hl=tr&gl=TR&ceid=TR:tr', // dha.com.tr/rss boş döndü
     alternateFeedUrls: [
-      'https://news.google.com/rss/search?q=site:dha.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+      'https://www.dha.com.tr/rss',
       'https://news.google.com/rss/search?q=DHA+Demir%C3%B6ren+haber&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
@@ -110,7 +110,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'BBC Türkçe',
     feedUrl: 'https://feeds.bbci.co.uk/turkce/rss.xml',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // Feed bayatladı — son güncelleme 7 Nisan 2026, yeni içerik gelmiyor
   },
   {
     id: 'cnn',
@@ -180,11 +180,10 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 't24',
     label: 'T24',
-    feedUrl: 'https://t24.com.tr/rss/haber/gundem',
+    feedUrl: 'https://news.google.com/rss/search?q=site:t24.com.tr&hl=tr&gl=TR&ceid=TR:tr', // /rss ve /rss/haber/gundem 404 döndü
     alternateFeedUrls: [
-      'https://t24.com.tr/rss/haber/gundem/feed',
+      'https://t24.com.tr/rss/haber/gundem',
       'https://t24.com.tr/rss',
-      'https://news.google.com/rss/search?q=site:t24.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
     enabled: true,
@@ -192,10 +191,10 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'gazeteduvar',
     label: 'Gazete Duvar',
-    feedUrl: 'https://www.gazeteduvar.com.tr/gundem/rss',
+    feedUrl: 'https://news.google.com/rss/search?q=site:gazeteduvar.com.tr&hl=tr&gl=TR&ceid=TR:tr', // gundem/rss boş döndü
     alternateFeedUrls: [
+      'https://www.gazeteduvar.com.tr/gundem/rss',
       'https://www.gazeteduvar.com.tr/rss',
-      'https://news.google.com/rss/search?q=site:gazeteduvar.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
     enabled: true,
@@ -440,8 +439,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'kriptokoin',
     label: 'Kriptokoin.com',
-    feedUrl: 'https://kriptokoin.com/feed/',
+    feedUrl: 'https://news.google.com/rss/search?q=kripto+bitcoin+ethereum+türkiye&hl=tr&gl=TR&ceid=TR:tr', // kriptokoin.com/feed/ timeout alıyor
     alternateFeedUrls: [
+      'https://kriptokoin.com/feed/',
       'https://news.google.com/rss/search?q=site:kriptokoin.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
@@ -718,9 +718,10 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'fanatik',
     label: 'Fanatik',
-    feedUrl: 'https://www.fanatik.com.tr/rss',
+    feedUrl: 'https://news.google.com/rss/search?q=site:fanatik.com.tr&hl=tr&gl=TR&ceid=TR:tr', // /rss ve /rss/guncel-haberler boş döndü
     alternateFeedUrls: [
-      'https://news.google.com/rss/search?q=site:fanatik.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+      'https://www.fanatik.com.tr/rss',
+      'https://www.fanatik.com.tr/rss/guncel-haberler',
     ],
     maxItemsPerRun: 4,
     enabled: true,
@@ -728,9 +729,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'fotomac',
     label: 'Fotomaç',
-    feedUrl: 'https://www.fotomac.com.tr/rss/tum-haberler.xml',
+    feedUrl: 'https://news.google.com/rss/search?q=site:fotomac.com.tr&hl=tr&gl=TR&ceid=TR:tr', // /rss/tum-haberler.xml boş döndü
     alternateFeedUrls: [
-      'https://news.google.com/rss/search?q=site:fotomac.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+      'https://www.fotomac.com.tr/rss/tum-haberler.xml',
     ],
     maxItemsPerRun: 4,
     enabled: true,
@@ -748,9 +749,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'ajansspor',
     label: 'Ajansspor',
-    feedUrl: 'https://www.ajansspor.com/rss',
+    feedUrl: 'https://news.google.com/rss/search?q=site:ajansspor.com&hl=tr&gl=TR&ceid=TR:tr', // /rss boş döndü
     alternateFeedUrls: [
-      'https://news.google.com/rss/search?q=site:ajansspor.com&hl=tr&gl=TR&ceid=TR:tr',
+      'https://www.ajansspor.com/rss',
     ],
     maxItemsPerRun: 4,
     enabled: true,
@@ -1012,9 +1013,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'anka-haber',
     label: 'ANKA Haber Ajansı',
-    feedUrl: 'https://www.ankahaber.net/rss/haber',
+    feedUrl: 'https://news.google.com/rss/search?q=site:ankahaber.net&hl=tr&gl=TR&ceid=TR:tr', // ankahaber.net/rss/haber boş döndü
     alternateFeedUrls: [
-      'https://news.google.com/rss/search?q=site:ankahaber.net&hl=tr&gl=TR&ceid=TR:tr',
+      'https://www.ankahaber.net/rss/haber',
     ],
     maxItemsPerRun: 8,
     enabled: true,
@@ -1356,7 +1357,10 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'sabah-teknoloji',
     label: 'Sabah Teknoloji',
-    feedUrl: 'https://www.sabah.com.tr/rss/teknoloji.xml',
+    feedUrl: 'https://news.google.com/rss/search?q=site:sabah.com.tr+teknoloji&hl=tr&gl=TR&ceid=TR:tr', // /rss/teknoloji.xml boş döndü
+    alternateFeedUrls: [
+      'https://www.sabah.com.tr/rss/teknoloji.xml',
+    ],
     maxItemsPerRun: 3,
     enabled: true,
   },
@@ -1474,7 +1478,10 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'cnnturk-bilim',
     label: 'CNN Türk Bilim Teknoloji',
-    feedUrl: 'https://www.cnnturk.com/feed/rss/bilim-teknoloji/news',
+    feedUrl: 'https://news.google.com/rss/search?q=teknoloji+bilim+yapay+zeka+türkiye&hl=tr&gl=TR&ceid=TR:tr', // /bilim-teknoloji/news boş döndü
+    alternateFeedUrls: [
+      'https://www.cnnturk.com/feed/rss/bilim-teknoloji/news',
+    ],
     maxItemsPerRun: 3,
     enabled: true,
   },
@@ -1506,7 +1513,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'TRT Haber Son Dakika',
     feedUrl: 'https://www.trthaber.com/sondakika.rss',
     maxItemsPerRun: 6,
-    enabled: true,
+    enabled: false, // Feed bayatladı — son güncelleme 20 Nisan 2026; trt (xml_mobile) çalışıyor
   },
 
   // ── Uluslararası Türkçe Kaynaklar ───────────────────────────────────────
@@ -1518,7 +1525,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:tr.sputniknews.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false, // Timeout alıyor — muhtemelen DNS/ağ engeli (Türkiye'de bloklu)
   },
   {
     id: 'dw-turkish',
@@ -1753,9 +1760,10 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'iha-gundem',
     label: 'İHA Gündem',
-    feedUrl: 'https://www.iha.com.tr/rss/rss.php?kategori=0',
+    feedUrl: 'https://news.google.com/rss/search?q=site:iha.com.tr&hl=tr&gl=TR&ceid=TR:tr', // iha.com.tr RSS'leri boş döndü
     alternateFeedUrls: [
-      'https://news.google.com/rss/search?q=site:iha.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+      'https://www.iha.com.tr/rss/rss.php?kategori=0',
+      'https://www.iha.com.tr/rss/guncel',
     ],
     maxItemsPerRun: 12,
     enabled: true,
