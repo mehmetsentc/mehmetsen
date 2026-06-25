@@ -14,14 +14,14 @@ export async function runSozcuBreakingWorker(): Promise<NewsroomRunResult> {
     editorId: 'sozcu-breaking',
     editorType: 'breaking',
     maxAiCalls: 15,
-    forcedCategoryId: 'son-dakika',
-    isBreaking: true,
+    // forcedCategoryId kaldırıldı — stage3+stage4 gatekeeper karar verecek
+    // isBreaking kaldırıldı — analyzeBreakingSignals sonucuna göre belirlenecek
     enrichInput: (item) => {
       const signals = analyzeBreakingSignals(item.title, item.summary, item.publishedAt)
       return {
-        priorityScore: Math.max(signals.priorityScore, 80),
-        isBreaking: true,
-        extraTags: ['son-dakika', 'sözcü'],
+        priorityScore: signals.priorityScore,
+        isBreaking: signals.isBreaking,
+        extraTags: ['sözcü'],
       }
     },
   })

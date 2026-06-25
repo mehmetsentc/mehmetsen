@@ -49,8 +49,8 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
 export const BREAKING_NEWS_SOURCE_IDS = [
   // Ajanslar — en hızlı son dakika
   'aa', 'iha', 'dha', 'anka-haber',
-  // Türk ulusal medya
-  'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu', 'trt', 'sabah', 'ahaber',
+  // Türk ulusal medya (sozcu kaldırıldı — içerik kazıma engelliyor)
+  'ntv', 'cnn', 'haberturk', 'hurriyet', 'trt', 'sabah', 'ahaber',
   // Son dakika özel feedler
   'sabah-sondakika', 'milliyet-sondakika', 'trt-sondakika',
   // Haber aggregatörleri (yüksek hacim)

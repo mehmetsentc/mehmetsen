@@ -40,6 +40,7 @@ const SPOR_SIGNAL_KEYWORDS = [
  * Kutlama, tören, şenlik, anma gibi planlı sosyal etkinlikler.
  */
 const NON_BREAKING_KEYWORDS = [
+  // Kutlama / bayram
   'kutlama',
   'kutlandı',
   'kutluyor',
@@ -54,8 +55,13 @@ const NON_BREAKING_KEYWORDS = [
   'gençlik bayramı',
   'zafer bayramı kutl',
   'cumhuriyet bayramı kutl',
+  // Tören / etkinlik
   'anma töreni',
   'anma etkinliği',
+  'anıldı',
+  'anıldı',
+  'muharrem',
+  'aşure',
   'mezuniyet töreni',
   'açılış töreni',
   'şenlik başladı',
@@ -67,6 +73,22 @@ const NON_BREAKING_KEYWORDS = [
   'sergi açılışı',
   'kariyer günü',
   'özel gün',
+  // Kurumsal / konferans
+  'temsil etti',
+  'genel kurulunda',
+  'konferansa katıldı',
+  'konferansa iştirak',
+  'ödül töreni',
+  'ödüllendirild',
+  'ödül aldı',
+  // Yerel olaylar — breaking değil
+  'şarampole',
+  'trafik kazası',
+  // Trend / piyasa araştırması
+  'içerik üreticisi ekonomisi',
+  'milyar dolara yaklaşacak',
+  'pazar büyüklüğü',
+  'araştırma şirketi',
 ] as const
 
 export interface BreakingSignals {

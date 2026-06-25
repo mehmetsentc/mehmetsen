@@ -59,9 +59,14 @@ function validateBreaking(
     { pattern: /kutlama|kutlandı|kutluyor/, reason: 'kutlama içeriği' },
     { pattern: /babalar günü|anneler günü|sevgililer günü|öğretmenler günü/, reason: 'özel gün kutlaması' },
     { pattern: /tören düzenlendi|anma töreni|mezuniyet töreni|açılış töreni/, reason: 'tören haberi' },
+    { pattern: /anıldı|muharrem ayı|muharrem etkinlik|hazreti hüseyin.*anıl|aşure.*töreni/, reason: 'dini anma etkinliği' },
     { pattern: /şenlik|festival|konser.*düzenlendi/, reason: 'etkinlik haberi' },
     { pattern: /belediye.*park|belediye.*yol|belediye.*hizmet/, reason: 'belediye hizmet haberi' },
     { pattern: /belediye başkanı.*ziyaret|belediye başkanı.*açıkladı|belediye başkanı.*dedi/, reason: 'belediye başkanı açıklaması' },
+    { pattern: /genel kurulunda.*temsil|temsil.*genel kurulunda|konferansa katıldı|genel kurul.*delegasyon/, reason: 'konferans/temsil haberi' },
+    { pattern: /ödül töreni|ödüllendirild|ödül aldı|ödüle layık/, reason: 'ödül töreni haberi' },
+    { pattern: /şarampole.*araç|araç.*şarampole|şarampole.*devrildi|şarampole.*devrildi/, reason: 'yerel trafik kazası' },
+    { pattern: /içerik üreticisi.*ekonomisi|pazar büyüklüğü.*milyar|araştırma şirketi.*rapor/, reason: 'piyasa araştırma raporu' },
   ]
 
   for (const { pattern, reason } of NON_BREAKING_TRIGGERS) {
