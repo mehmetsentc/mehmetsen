@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { Toaster } from 'react-hot-toast'
 import { ToastViewport } from '@/components/ui/Toast'
 
 import { Analytics } from '@vercel/analytics/react'
@@ -196,8 +195,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <CookieConsentBanner />
               {/* F5: PWA "Ana ekrana ekle" prompt */}
               <PWAInstallPrompt />
-              {/* Legacy react-hot-toast — kademeli olarak yeni sonner viewport'a geçilecek */}
-              <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+              {/* F2.5: tüm toast'lar artık sonner ToastViewport üzerinden çıkar
+                  (react-hot-toast webpack alias ile shim'e yönlendirildi) */}
               <ToastViewport />
               <Analytics />
               <SpeedInsights />

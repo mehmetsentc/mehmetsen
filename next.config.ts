@@ -1,10 +1,28 @@
 import type { NextConfig } from 'next'
+import path from 'node:path'
 import { NEWS_IMAGE_REMOTE_PATTERNS } from './src/constants/imageHosts'
 
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
+
+  // F2.5 — react-hot-toast'u kendi sonner-shim'imize yönlendir.
+  // Tüm legacy `import toast from 'react-hot-toast'` çağrıları artık NaHaber
+  // design-token'lı sonner UI'sından beslenir. Dosyalara dokunulmadı.
+  webpack: (config) => {
+    config.resolve = config.resolve || {}
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      'react-hot-toast': path.resolve(__dirname, 'src/lib/toast-shim.ts'),
+    }
+    return config
+  },
+  turbopack: {
+    resolveAlias: {
+      'react-hot-toast': './src/lib/toast-shim.ts',
+    },
+  },
 
   images: {
     // Cache optimized images for 7 days
