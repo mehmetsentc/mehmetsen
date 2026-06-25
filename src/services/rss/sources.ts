@@ -497,7 +497,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:yenisafak.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // Kullanıcı isteğiyle devre dışı
   },
   {
     id: 'karar',
@@ -1283,7 +1283,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
 
-  // ── A Haber ──────────────────────────────────────────────────────────────
+  // ── A Haber — Kullanıcı isteğiyle devre dışı ────────────────────────────
   {
     id: 'ahaber',
     label: 'A Haber',
@@ -1294,42 +1294,42 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:ahaber.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 5,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'ahaber-ekonomi',
     label: 'A Haber Ekonomi',
     feedUrl: 'https://www.ahaber.com.tr/rss/ekonomi.xml',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'ahaber-spor',
     label: 'A Haber Spor',
     feedUrl: 'https://www.ahaber.com.tr/rss/spor.xml',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'ahaber-dunya',
     label: 'A Haber Dünya',
     feedUrl: 'https://www.ahaber.com.tr/rss/dunya.xml',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'ahaber-saglik',
     label: 'A Haber Sağlık',
     feedUrl: 'https://www.ahaber.com.tr/rss/saglik.xml',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'ahaber-teknoloji',
     label: 'A Haber Teknoloji',
     feedUrl: 'https://www.ahaber.com.tr/rss/teknoloji.xml',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
 
   // ── Sabah (ek kategoriler) ───────────────────────────────────────────────
