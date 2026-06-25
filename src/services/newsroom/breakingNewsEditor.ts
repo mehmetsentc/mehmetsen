@@ -126,11 +126,28 @@ export function analyzeBreakingSignals(
   // Kutlama/tören/şenlik gibi planlı sosyal etkinlikler son-dakika olamaz.
   // "son dakika" kaynağından gelen Babalar Günü vs. içerikleri filtrele.
   const hasCelebrationContent = NON_BREAKING_KEYWORDS.some((kw) => text.includes(kw))
+
+  // Yerel haber sinyalleri — "son dakika" prefix'i olsa bile breaking değil.
+  // Aggregatör siteler (sondakika.com, haberler.com) yerel haberleri "Son Dakika:"
+  // prefix'iyle yayınlıyor. Bu bayrakla blokluyoruz.
+  const LOCAL_BLOCKING_TERMS = [
+    'belediye başkanı', 'belediye baskani',
+    'asfalt serim', 'asfalt çalışma', 'yol onarım', 'kaldırım',
+    'mahalle.*inceledi', 'ilçede.*inceledi', 'beldede.*inceledi',
+    'açılışını yaptı', 'açılışına katıldı', 'etkinliğine katıldı',
+    'hırsız', 'uyuşturucu operasyon', 'narkotik operasyon',
+    'zabıta', 'muhtarlık',
+  ] as const
+  const hasLocalBlockingTerm = LOCAL_BLOCKING_TERMS.some((kw) =>
+    kw.includes('.*') ? new RegExp(kw).test(text) : text.includes(kw)
+  )
+
   // Eşik 55→80: sadece zaman yeterliliği (70 puan) artık son-dakikayı tetiklemiyor.
   // Gerçek son-dakika = acil kelime İÇERMELİ veya çok yüksek skor (acil kw + tazelik).
   const isBreaking =
     !textHasSportsSignals(text) &&
     !hasCelebrationContent &&
+    !hasLocalBlockingTerm &&
     (priorityScore >= 80 || hasUrgencyKeyword)
 
   return { isBreaking, priorityScore }

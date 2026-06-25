@@ -49,12 +49,15 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
 export const BREAKING_NEWS_SOURCE_IDS = [
   // Ajanslar — en hızlı son dakika
   'aa', 'iha', 'dha', 'anka-haber',
-  // Türk ulusal medya (sozcu kaldırıldı — içerik kazıma engelliyor)
-  'ntv', 'cnn', 'haberturk', 'hurriyet', 'trt', 'sabah', 'ahaber',
+  // Türk ulusal medya (sozcu kaldırıldı — içerik kazıma engelliyor; ahaber kaldırıldı — kullanıcı isteği)
+  'ntv', 'cnn', 'haberturk', 'hurriyet', 'trt', 'sabah',
   // Son dakika özel feedler
-  'sabah-sondakika', 'milliyet-sondakika', 'trt-sondakika',
-  // Haber aggregatörleri (yüksek hacim)
-  'haberler', 'sondakika',
+  'sabah-sondakika', 'milliyet-sondakika',
+  // NOT: 'haberler' ve 'sondakika' aggregatörleri kaldırıldı —
+  //   Bu siteler yerel haberleri "Son Dakika:" prefix'iyle yayınlıyor,
+  //   bu da analyzeBreakingSignals'ı tetikleyerek yerel haberlerin son-dakika'ya
+  //   sızmasına neden oluyor. National worker'a taşındı.
+  // NOT: 'trt-sondakika' kaldırıldı — feed bayatladı (son güncelleme 20 Nisan 2026)
   // Uluslararası
   'reuters-world', 'ap-news', 'bbc',
 ] as const

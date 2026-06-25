@@ -866,10 +866,18 @@ export function validateCategoryClassification(
     const targetCat = sportSub ?? 'spor'
     const isAlreadySportsFamily = categoryId === 'spor' || SPOR_SUBS.has(categoryId)
 
-    if (!isAlreadySportsFamily) {
+    // Teknoloji haberleri spora dönüşmesin.
+    // Örn: "NBA AI takip teknolojisi" → sports=true && tech=true → teknoloji kalmalı.
+    // Kural: kategori teknoloji/bilim ise VE tech sinyali de varsa → spor override yok.
+    const isTechOrScienceCategory = categoryId === 'teknoloji' || categoryId === 'bilim'
+    const skipSportsOverride = isTechOrScienceCategory && tech
+
+    if (!isAlreadySportsFamily && !skipSportsOverride) {
       overrides.push(`spor-keywords → ${targetCat} (was ${categoryId})`)
       categoryId = targetCat
       categoryConfidence = Math.max(categoryConfidence, 88)
+    } else if (skipSportsOverride) {
+      overrides.push(`spor-keywords ignored — teknoloji/bilim içeriği baskın (was ${categoryId})`)
     } else if (categoryId === 'spor' && sportSub) {
       // Genel 'spor' idi ama alt dal tespit edilebildi → daha spesifik kategoriye yükselt
       overrides.push(`spor → ${sportSub} (sub-category detected)`)
