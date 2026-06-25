@@ -51,6 +51,33 @@ export interface AdminDashboardStats {
   pendingReports: number
 }
 
+/** Last 7 days publish volume series (F4) */
+export interface PublishSeriesPoint {
+  date: string // ISO yyyy-mm-dd
+  count: number
+}
+
+export interface DashboardOverview {
+  stats: AdminDashboardStats
+  publishSeries: PublishSeriesPoint[]
+  topNews: Array<{
+    id: string
+    slug: string
+    title: string
+    coverImageUrl: string | null
+    viewsCount: number
+    categoryId: string
+    publishedAt: string | null
+  }>
+  recentActivity: Array<{
+    id: string
+    type: 'publish' | 'pending'
+    title: string
+    when: string
+    category: string
+  }>
+}
+
 export const adminService = {
   async getDashboardStats(): Promise<AdminDashboardStats> {
     const [newsSnap, pendingSnap, usersSnap, reportsSnap] = await Promise.all([
@@ -184,6 +211,97 @@ export const adminService = {
     const { adminNewsService } = await import('@/services/adminNewsService')
     await adminNewsService.remove(targetId, 'Rapor sonucu kaldırıldı')
     await this.reviewReport(reportId, reviewerId, 'content_removed')
+  },
+
+  /**
+   * F4 — Dashboard v2 için tek seferde tüm gerekli veriyi getirir.
+   * (Stat sayaçları + 7 gün publish series + popüler haber + aktivite feed.)
+   *
+   * Hata yutar — kısmi başarısızlıkta diğer kısımları döndürür.
+   */
+  async getDashboardOverview(): Promise<DashboardOverview> {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const sevenDaysAgoIso = sevenDaysAgo.toISOString()
+
+    const [stats, topNewsSnap, recentSnap] = await Promise.all([
+      this.getDashboardStats().catch(() => ({
+        totalNews: 0,
+        pendingNews: 0,
+        totalUsers: 0,
+        pendingReports: 0,
+      })),
+      enqueueFirestoreRead(() =>
+        getDocs(
+          query(
+            collection(db, VIDEO_FEED_COLLECTION),
+            where('status', '==', 'published'),
+            orderBy('viewsCount', 'desc'),
+            limit(8)
+          )
+        )
+      ).catch(() => null),
+      enqueueFirestoreRead(() =>
+        getDocs(
+          query(
+            collection(db, VIDEO_FEED_COLLECTION),
+            where('createdAt', '>=', sevenDaysAgoIso),
+            orderBy('createdAt', 'desc'),
+            limit(400)
+          )
+        )
+      ).catch(() => null),
+    ])
+
+    // Top news mapping
+    const topNews =
+      topNewsSnap?.docs.map((d) => {
+        const data = d.data() as Record<string, unknown>
+        return {
+          id: d.id,
+          slug: (data.slug as string) ?? d.id,
+          title: (data.title as string) ?? '',
+          coverImageUrl: (data.coverImageUrl as string | null) ?? null,
+          viewsCount: Number(data.viewsCount ?? 0),
+          categoryId: (data.categoryId as string) ?? 'gundem',
+          publishedAt: (data.publishedAt as string | null) ?? null,
+        }
+      }) ?? []
+
+    // 7-day publish series (bucket by yyyy-mm-dd)
+    const bucket = new Map<string, number>()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const key = d.toISOString().slice(0, 10)
+      bucket.set(key, 0)
+    }
+    recentSnap?.docs.forEach((d) => {
+      const data = d.data() as Record<string, unknown>
+      const createdAt = (data.createdAt as string) ?? null
+      if (!createdAt) return
+      const key = createdAt.slice(0, 10)
+      if (bucket.has(key)) bucket.set(key, (bucket.get(key) ?? 0) + 1)
+    })
+    const publishSeries: PublishSeriesPoint[] = Array.from(bucket.entries()).map(
+      ([date, count]) => ({ date, count })
+    )
+
+    // Recent activity feed (latest 12)
+    const recentActivity =
+      recentSnap?.docs.slice(0, 12).map((d) => {
+        const data = d.data() as Record<string, unknown>
+        const status = (data.status as string) ?? 'published'
+        return {
+          id: d.id,
+          type: (status === 'pending' ? 'pending' : 'publish') as 'publish' | 'pending',
+          title: (data.title as string) ?? '(başlıksız)',
+          when: (data.createdAt as string) ?? new Date().toISOString(),
+          category: (data.categoryId as string) ?? 'gundem',
+        }
+      }) ?? []
+
+    return { stats, publishSeries, topNews, recentActivity }
   },
 
   async getEventsCount(): Promise<number> {

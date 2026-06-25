@@ -51,6 +51,7 @@ export const ROUTES = {
     USERS: '/admin/users',
     AI_NEWS: '/admin/ai/news',
     AI_VIDEO: '/admin/ai/video',
+    NEWSROOM: '/admin/newsroom',
     SEO: '/admin/seo',
     CRON: '/admin/cron',
     API_MANAGEMENT: '/admin/api-management',
