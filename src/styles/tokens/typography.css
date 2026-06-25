@@ -1,0 +1,61 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * NaHaber 2026 — Typography Tokens
+ * Type scale, line-heights, letter-spacing, font weights.
+ * Editör'ün Notu: Apple News tarzı için font-display ağır + leading sıkı,
+ * gövde metni için leading bol bırakıldı.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    /* ── Font Families ─────────────────────────────────────────────── */
+    --font-sans:
+      var(--font-inter),
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+      Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-display:
+      var(--font-inter),
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono:
+      ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas,
+      'Liberation Mono', monospace;
+
+    /* ── Type Scale ────────────────────────────────────────────────── */
+    /* Mobile-first; xl breakpoint'te genişler */
+    --fs-2xs:    0.6875rem;   /* 11px - micro tags */
+    --fs-xs:     0.75rem;     /* 12px - caption */
+    --fs-sm:     0.8125rem;   /* 13px - meta */
+    --fs-base:   0.9375rem;   /* 15px - body small */
+    --fs-md:     1rem;        /* 16px - body */
+    --fs-lg:     1.125rem;    /* 18px - body large */
+    --fs-xl:     1.25rem;     /* 20px - subhead */
+    --fs-2xl:    1.5rem;      /* 24px - h3 */
+    --fs-3xl:    1.875rem;    /* 30px - h2 */
+    --fs-4xl:    2.25rem;     /* 36px - h1 */
+    --fs-5xl:    3rem;        /* 48px - hero */
+    --fs-6xl:    3.75rem;     /* 60px - display */
+
+    /* ── Line Heights ──────────────────────────────────────────────── */
+    --lh-tight:    1.1;   /* hero / display */
+    --lh-snug:     1.25;  /* başlık */
+    --lh-normal:   1.5;   /* body small */
+    --lh-relaxed:  1.65;  /* body */
+    --lh-loose:    1.85;  /* okuma metni */
+
+    /* ── Letter Spacing ────────────────────────────────────────────── */
+    --tracking-tightest: -0.04em;
+    --tracking-tighter:  -0.025em;
+    --tracking-tight:    -0.015em;
+    --tracking-normal:    0em;
+    --tracking-wide:      0.025em;
+    --tracking-wider:     0.05em;
+    --tracking-widest:    0.15em; /* SON DAKİKA kapaklar */
+
+    /* ── Font Weights ──────────────────────────────────────────────── */
+    --fw-regular:  400;
+    --fw-medium:   500;
+    --fw-semibold: 600;
+    --fw-bold:     700;
+    --fw-extrabold: 800;
+    --fw-black:    900;
+  }
+}

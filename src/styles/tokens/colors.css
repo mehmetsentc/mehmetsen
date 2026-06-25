@@ -1,0 +1,126 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * NaHaber 2026 — Color Tokens
+ * Format: `R G B` triplet so all consumers can use rgb(var(--token) / α)
+ * 3 katmanlı tema sistemi:
+ *   :root              — Light (varsayılan)
+ *   .dark              — Dark (gece koyu lacivert)
+ *   [data-theme="oled"]— OLED Dark (tam siyah, AMOLED için)
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    /* ── Brand ────────────────────────────────────────────────────────── */
+    --brand-50:  254 232 235;
+    --brand-100: 252 209 213;
+    --brand-200: 250 168 175;
+    --brand-300: 243 117 127;
+    --brand-400: 237  76  90;
+    --brand-500: 229  9  20;   /* #E50914 — Master brand */
+    --brand-600: 200  9  18;
+    --brand-700: 168  6  14;
+    --brand-800: 130  4  10;
+    --brand-900:  92  3   7;
+
+    /* ── Support / Destructive ────────────────────────────────────────── */
+    --support-500: 255 59 48; /* #FF3B30 — iOS system red */
+
+    /* ── Surface (light) ──────────────────────────────────────────────── */
+    --bg-base:        255 255 255; /* sayfa zemini */
+    --bg-subtle:      248 250 252; /* hafif gri */
+    --bg-muted:       241 245 249;
+    --bg-card:        255 255 255; /* kart */
+    --bg-elevated:    255 255 255; /* dropdown/modal */
+    --bg-inverse:      15  20  40;
+    --bg-overlay:      15  20  40; /* modal arkası — α ile kullan */
+
+    /* ── Border ───────────────────────────────────────────────────────── */
+    --border-subtle:  226 232 240;
+    --border-default: 214 219 230;
+    --border-strong:  148 163 184;
+    --border-focus:   229   9  20; /* brand-500 */
+
+    /* ── Text ─────────────────────────────────────────────────────────── */
+    --text-primary:   15  20  40;
+    --text-secondary: 51  65  85;
+    --text-tertiary:  75  90 115;
+    --text-muted:    120 135 160;
+    --text-inverse:  255 255 255;
+    --text-onbrand:  255 255 255;
+    --text-link:     200   9  18; /* brand-600 — light'ta okunabilir */
+
+    /* ── Semantic ─────────────────────────────────────────────────────── */
+    --success-500: 16 185 129;  /* emerald */
+    --success-fg:  255 255 255;
+    --warning-500: 245 158 11;  /* amber */
+    --warning-fg:   30  41  59;
+    --danger-500:  239  68  68; /* red */
+    --danger-fg:   255 255 255;
+    --info-500:     59 130 246; /* blue */
+    --info-fg:     255 255 255;
+
+    /* ── Category Accents (Sticker palette) ───────────────────────────── */
+    --cat-gundem:     232  30  52;
+    --cat-sondakika:  229   9  20;
+    --cat-siyaset:     79  70 229;  /* indigo */
+    --cat-ekonomi:     16 185 129;  /* emerald */
+    --cat-spor:       249 115  22;  /* orange */
+    --cat-dunya:      139  92 246;  /* violet */
+    --cat-teknoloji:    6 182 212;  /* cyan */
+    --cat-saglik:     244  63  94;  /* rose */
+    --cat-kultur:     236  72 153;  /* pink */
+    --cat-yerel:      245 158  11;  /* amber */
+    --cat-yasam:      168  85 247;  /* purple */
+    --cat-video:      236  72 153;  /* pink */
+    --cat-egitim:      14 165 233;  /* sky */
+    --cat-magazin:    234  88 198;
+    --cat-hava:        56 189 248;  /* sky-400 */
+
+    /* ── Nav ──────────────────────────────────────────────────────────── */
+    --nav-hover:      237 240 247;
+    --nav-active:     229   9  20;
+  }
+
+  .dark {
+    /* Dark — koyu lacivert, mevcut sürümün gece tonu */
+    --bg-base:         8  12  28;
+    --bg-subtle:      11  16  38;
+    --bg-muted:       18  26  56;
+    --bg-card:        13  19  44;
+    --bg-elevated:    20  28  64;
+    --bg-inverse:    248 250 252;
+    --bg-overlay:      0   0   0;
+
+    --border-subtle:  20  28  64;
+    --border-default: 26  37  70;
+    --border-strong:  51  65 105;
+
+    --text-primary:   248 250 252;
+    --text-secondary: 203 213 225;
+    --text-tertiary:  148 163 184;
+    --text-muted:     100 115 140;
+    --text-inverse:    15  20  40;
+    --text-link:      243 117 127; /* brand-300 — dark'ta okunabilir */
+
+    --nav-hover:      18  27  58;
+  }
+
+  /* OLED Dark — AMOLED ekranlar için tam siyah, batarya dostu */
+  html[data-theme="oled"],
+  html[data-theme="oled"].dark {
+    --bg-base:         0   0   0;
+    --bg-subtle:       6   6   8;
+    --bg-muted:       12  12  16;
+    --bg-card:         8   8  12;
+    --bg-elevated:    14  14  20;
+    --border-subtle:  22  22  28;
+    --border-default: 32  32  40;
+    --border-strong:  60  60  72;
+
+    --text-primary:   255 255 255;
+    --text-secondary: 220 220 230;
+    --text-tertiary:  170 170 180;
+    --text-muted:     130 130 145;
+
+    --nav-hover:      18  18  24;
+  }
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
+import { ToastViewport } from '@/components/ui/Toast'
 
 import { Analytics } from '@vercel/analytics/react'
 
@@ -17,6 +18,7 @@ const inter = Inter({
   display: 'swap',
   preload: true,
   adjustFontFallback: true,
+  variable: '--font-inter',
 })
 
 import { CookieConsentBanner } from '@/components/legal/CookieConsentBanner'
@@ -169,7 +171,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="revisit-after" content="1 days" />
         <meta name="rating" content="general" />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${inter.className} font-sans antialiased`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
@@ -191,7 +193,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AuthProvider>
               {children}
               <CookieConsentBanner />
+              {/* Legacy react-hot-toast — kademeli olarak yeni sonner viewport'a geçilecek */}
               <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+              <ToastViewport />
               <Analytics />
               <SpeedInsights />
             </AuthProvider>

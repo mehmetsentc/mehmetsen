@@ -15,12 +15,13 @@ import {
   getStoredTheme,
   resolveTheme,
   setStoredTheme,
+  type ResolvedTheme,
   type ThemePreference,
 } from '@/lib/theme'
 
 interface ThemeContextType {
   theme: ThemePreference
-  resolvedTheme: 'light' | 'dark'
+  resolvedTheme: ResolvedTheme
   setTheme: (theme: ThemePreference) => void
 }
 
@@ -28,7 +29,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemePreference>(DEFAULT_THEME)
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light')
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
 
   const syncTheme = useCallback((preference: ThemePreference) => {
     const resolved = resolveTheme(preference)

@@ -1,0 +1,11 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * NaHaber 2026 — Design Tokens Entry
+ *
+ * globals.css en üstünde bir kez import edilir. Sırasız import edilse de
+ * @layer base sayesinde CSS cascade'de Tailwind base'in yanında oturur.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@import './colors.css';
+@import './typography.css';
+@import './spacing.css';
+@import './motion.css';

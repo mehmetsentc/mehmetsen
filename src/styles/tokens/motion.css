@@ -1,0 +1,84 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * NaHaber 2026 — Motion Tokens
+ * Duration + easing curves + utility keyframes.
+ * Apple-tarzı yumuşak geçişler için spring-benzeri bezier'lar.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    /* ── Duration ──────────────────────────────────────────────────── */
+    --motion-instant:  0ms;
+    --motion-fast:     120ms;
+    --motion-quick:    180ms;
+    --motion-base:     240ms;
+    --motion-relaxed:  320ms;
+    --motion-slow:     420ms;
+    --motion-slower:   560ms;
+    --motion-slowest:  720ms;
+
+    /* ── Easing curves ─────────────────────────────────────────────── */
+    --ease-linear:      linear;
+    --ease-in:          cubic-bezier(0.4, 0, 1, 1);
+    --ease-out:         cubic-bezier(0, 0, 0.2, 1);
+    --ease-in-out:      cubic-bezier(0.4, 0, 0.2, 1);
+    /* Apple-tarzı yumuşak çıkış */
+    --ease-out-soft:    cubic-bezier(0.16, 1, 0.3, 1);
+    /* Hafif overshoot — pop animasyonu için */
+    --ease-bounce:      cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Yapışkan giriş — Instagram story tarzı */
+    --ease-spring:      cubic-bezier(0.5, 0, 0.1, 1);
+  }
+}
+
+/* Reduced motion: tüm hareketi minimize et — accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Reusable keyframes ───────────────────────────────────────────── */
+@keyframes na-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes na-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes na-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes na-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes na-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes na-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes na-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes na-pulse-brand {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--brand-500) / 0.55); }
+  50%      { box-shadow: 0 0 0 8px rgb(var(--brand-500) / 0); }
+}
