@@ -3,8 +3,16 @@
  * Handles FCM push messages and background sync.
  */
 
-const CACHE_VERSION = 'nahaber-v2'
-const STATIC_CACHE = ['/offline', '/favicon.ico', '/brand/icon-192.png', '/brand/icon-512.png']
+const CACHE_VERSION = 'nahaber-v3'
+const STATIC_CACHE = [
+  '/offline',
+  '/favicon.ico',
+  '/brand/icon-192.png',
+  '/brand/icon-512.png',
+  '/apple-touch-icon.png',
+  '/uygulama',
+  '/manifest.webmanifest',
+]
 
 // ── Install ───────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {

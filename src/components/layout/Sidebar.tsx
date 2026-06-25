@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
 import { BrandLogo } from '@/components/brand/BrandLogo'
+import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
 import { DEFAULT_CATEGORIES, SIDEBAR_MAIN_CATEGORY_IDS } from '@/constants/config'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -185,6 +186,7 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
 
         {/* Footer */}
         <div className="shrink-0 space-y-1 border-t border-[rgb(var(--color-border))] p-3">
+          {hydrated && <SidebarInstallCTA onNavigate={onMobileClose} />}
           {hydrated && !loading && user && (
             <>
               <Link

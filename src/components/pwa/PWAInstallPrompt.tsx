@@ -109,6 +109,19 @@ export function PWAInstallPrompt() {
       const choice = await deferred.userChoice
       if (choice.outcome === 'accepted') {
         setInstalled(true)
+        // Conversion event — Vercel Analytics tarafından otomatik yakalanır
+        try {
+          window.dispatchEvent(new CustomEvent('pwa:installed', { detail: { source: 'prompt' } }))
+        } catch {
+          /* ignore */
+        }
+      } else {
+        // Reddedilirse de event ile sayalım (analytics için)
+        try {
+          window.dispatchEvent(new CustomEvent('pwa:install-dismissed', { detail: { source: 'prompt' } }))
+        } catch {
+          /* ignore */
+        }
       }
       setVisible(false)
       setDeferred(null)

@@ -16,6 +16,7 @@ export const ROUTES = {
   BOOKMARKS: '/saved',
   SEARCH: '/search',
   DISCOVER: '/discover',
+  APP: '/uygulama',
   INFLUENCER: '/influencer',
   WEATHER: '/weather',
   LOCAL: '/yerel',

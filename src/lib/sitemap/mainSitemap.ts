@@ -16,6 +16,7 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
     { url: `${base}${ROUTES.EVENTS}`, changeFrequency: 'daily', priority: 0.8 },
     { url: `${base}${ROUTES.REELS}`, changeFrequency: 'hourly', priority: 0.8 },
     { url: `${base}${ROUTES.LOCAL}`, changeFrequency: 'hourly', priority: 0.85 },
+    { url: `${base}${ROUTES.APP}`, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/hakkimizda`, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/iletisim`, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/gizlilik`, changeFrequency: 'monthly', priority: 0.3 },
