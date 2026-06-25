@@ -1,13 +1,14 @@
 'use client'
 
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { Zap } from 'lucide-react'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
+import { Badge } from '@/components/ui/Badge'
 import { ROUTES } from '@/constants/routes'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
-import { newsItemDetailHref } from '@/lib/newsItemUtils'
-import { Badge } from '@/components/ui/Badge'
+import { StoryViewer } from './StoryViewer'
 import type { NewsItem } from '@/types/newsItem'
 
 interface BreakingStoriesProps {
@@ -34,16 +35,23 @@ const ITEM_VARIANTS = {
   },
 }
 
-function StoryCard({ item, priority = false }: { item: NewsItem; priority?: boolean }) {
-  const href = newsItemDetailHref(item)
+interface StoryCardProps {
+  item: NewsItem
+  priority?: boolean
+  onOpen: () => void
+}
+
+function StoryCard({ item, priority = false, onOpen }: StoryCardProps) {
   const image = item.imageUrl || FEED_FALLBACK_LOGO
 
   return (
     <motion.div variants={ITEM_VARIANTS} className="shrink-0 snap-start">
-      <Link
-        href={href}
-        className="group/story relative block h-[290px] w-[163px] overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-white/5 transition-transform duration-quick ease-out-soft hover:-translate-y-0.5 hover:shadow-xl"
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group/story relative block h-[290px] w-[163px] overflow-hidden rounded-2xl bg-neutral-900 text-left ring-1 ring-white/5 transition-transform duration-quick ease-out-soft hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
         style={{ aspectRatio: '9/16' }}
+        aria-label={`Son dakika: ${item.title}`}
       >
         <SafeNewsImage
           src={image}
@@ -71,12 +79,20 @@ function StoryCard({ item, priority = false }: { item: NewsItem; priority?: bool
         <p className="absolute bottom-0 left-0 right-0 line-clamp-3 px-2.5 pb-3 text-[12px] font-bold leading-snug text-white">
           {item.title}
         </p>
-      </Link>
+      </button>
     </motion.div>
   )
 }
 
 export function BreakingStories({ items }: BreakingStoriesProps) {
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const openAt = useCallback((idx: number) => {
+    setActiveIndex(idx)
+    setViewerOpen(true)
+  }, [])
+
   return (
     <section className="home-section" aria-label="Son dakika hikayeleri">
       <div className="home-section-header">
@@ -114,10 +130,22 @@ export function BreakingStories({ items }: BreakingStoriesProps) {
             </Link>
           </motion.div>
           {items.map((item, index) => (
-            <StoryCard key={item.id} item={item} priority={index === 0} />
+            <StoryCard
+              key={item.id}
+              item={item}
+              priority={index === 0}
+              onOpen={() => openAt(index)}
+            />
           ))}
         </motion.div>
       )}
+
+      <StoryViewer
+        items={items}
+        open={viewerOpen}
+        initialIndex={activeIndex}
+        onClose={() => setViewerOpen(false)}
+      />
     </section>
   )
 }
