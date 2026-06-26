@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Link2, Loader2, X, Youtube, Image as ImageIcon, Video } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { auth } from '@/lib/firebase/auth'
 
 // ── YouTube URL → embed dönüşümü ───────────────────────────────────────────
 function parseYouTubeId(url: string): string | null {
@@ -75,11 +76,15 @@ export function MediaLinkSection({ onThumbnailChange, onVideoUrlChange }: MediaL
 
     setLoading(true)
     try {
+      const token = await auth.currentUser?.getIdToken()
+      if (!token) { toast.error('Giriş gerekli'); setLoading(false); return }
       const res = await fetch('/api/admin/media/import', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ url }),
-        credentials: 'include',
       })
       const data = await res.json() as { url?: string; type?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? 'Medya yüklenemedi')
