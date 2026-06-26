@@ -22,7 +22,9 @@ import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { WeatherAirQualityWidget } from '@/components/local/WeatherAirQualityWidget'
+import { PharmacyWidget } from '@/components/local/PharmacyWidget'
 
+type ActiveTab = 'haberler' | 'eczaneler'
 type LocationState = 'idle' | 'requesting' | 'granted' | 'denied' | 'stored'
 
 interface LocalCity {
@@ -41,6 +43,7 @@ const ALL_CITIES: LocalCity[] = TURKISH_PROVINCES.map(p => ({
 
 export function LocalNewsClient() {
   const [locationState, setLocationState] = useState<LocationState>('idle')
+  const [activeTab, setActiveTab]     = useState<ActiveTab>('haberler')
   const [city, setCity]               = useState<LocalCity | null>(null)
   const [query, setQuery]             = useState('')
   const [posts, setPosts]             = useState<TimelinePost[]>([])
@@ -263,8 +266,45 @@ export function LocalNewsClient() {
         />
       )}
 
+      {/* ── Alt kategori tab bar ── */}
+      {city && (
+        <div className="flex gap-1 px-3 pt-3 pb-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('haberler')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all',
+              activeTab === 'haberler'
+                ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
+                : 'bg-[rgb(var(--color-card))] border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+            )}
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            Haberler
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('eczaneler')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all',
+              activeTab === 'eczaneler'
+                ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
+                : 'bg-[rgb(var(--color-card))] border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+            )}
+          >
+            <span className="text-[11px]">💊</span>
+            Nöbetçi Eczaneler
+          </button>
+        </div>
+      )}
+
+      {/* ── Nöbetçi Eczaneler ── */}
+      {city && activeTab === 'eczaneler' && (
+        <PharmacyWidget citySlug={city.slug} cityName={city.name} />
+      )}
+
       {/* ── Haber akışı ── */}
-      <div className="mt-1">
+      <div className={cn('mt-1', city && activeTab !== 'haberler' && 'hidden')}>
         {loading ? (
           <div className="space-y-0">
             {[...Array(4)].map((_, i) => <TimelineItemSkeleton key={i} />)}

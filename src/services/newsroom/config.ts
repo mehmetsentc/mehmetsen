@@ -470,6 +470,14 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     description: 'Google News TR + AA kategori feedleri — ulusal kapsam filtresi ile tüm Türkiye\'yi ilgilendiren haberleri gündem kategorisine yayınlar.',
     cronPath: '/api/cron/newsroom/gundem',
   },
+  hackernews: {
+    id: 'hackernews',
+    name: 'HackerNews Worker',
+    nameTr: 'HackerNews',
+    schedule: '10m',
+    description: 'HackerNews beststories — score≥150 teknoloji/dünya haberlerini çeker, AI ile Türkçeye çevirir.',
+    cronPath: '/api/cron/newsroom/technology',
+  },
 }
 
 export function getInfluencerList(): string[] {
