@@ -274,6 +274,8 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
             dönebilirsiniz.{' '}
             <Link
               href={ROUTES.SETTINGS_PRIVACY_POLICY ?? '/settings/privacy-policy'}
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-semibold text-[rgb(var(--color-brand))] hover:underline"
             >
               Gizlilik Politikası
@@ -281,6 +283,8 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
             {' · '}
             <Link
               href="/aydinlatma-metni"
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-semibold text-[rgb(var(--color-brand))] hover:underline"
             >
               KVKK Aydınlatma Metni
