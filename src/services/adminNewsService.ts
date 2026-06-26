@@ -376,6 +376,52 @@ export const adminNewsService = {
     })
   },
 
+  /**
+   * Tag'e göre Firestore array-contains sorgusu — tüm arşivde arama yapar.
+   * Admin arama kutusunda kullanılır: normal list(500) limitinin dışındaki
+   * eski haberleri de bulur.
+   */
+  async searchByTag(rawTerm: string): Promise<AdminNewsItem[]> {
+    const term = rawTerm.trim()
+    if (!term) return []
+
+    const variants = new Set<string>([
+      term.toLocaleLowerCase('tr-TR'),
+      term.charAt(0).toUpperCase() + term.slice(1),
+      term,
+    ])
+
+    const seen = new Set<string>()
+    const results: AdminNewsItem[] = []
+
+    await Promise.allSettled(
+      [...variants].map(async (variant) => {
+        try {
+          const snap = await getDocs(
+            query(
+              collection(db, VIDEO_FEED_COLLECTION),
+              where('tags', 'array-contains', variant),
+              limit(200)
+            )
+          )
+          for (const d of snap.docs) {
+            if (!seen.has(d.id)) {
+              seen.add(d.id)
+              results.push({
+                ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
+                adminSource: 'news' as const,
+              })
+            }
+          }
+        } catch {
+          // composite index eksik olabilir — sessizce atla
+        }
+      })
+    )
+
+    return results.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+  },
+
   async countByStatus(): Promise<Record<string, number>> {
     const statuses = ['published', 'pending', 'draft', 'archived', 'banned'] as const
     const counts: Record<string, number> = { total: 0 }

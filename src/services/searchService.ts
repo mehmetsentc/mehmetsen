@@ -8,7 +8,8 @@ import { userService } from '@/services/userService'
 import type { Post } from '@/types/post'
 import type { User } from '@/types/user'
 
-const SEARCH_POOL = 150
+const SEARCH_POOL = 300        // son N makale bellekte tam-metin taraması için
+const TAG_FETCH_LIMIT = 150    // tag sorgusu maks döküman sayısı
 const QUERY_TIMEOUT_MS = 12_000
 const MIN_QUERY_LENGTH = 2
 
@@ -42,6 +43,51 @@ function matchesPost(post: Post, term: string): boolean {
   return haystack.includes(term)
 }
 
+/**
+ * Tag'e göre Firestore array-contains sorgusu.
+ * orderBy olmadan çalışır — composite index gerektirmez.
+ * Tag'ler büyük/küçük harf farklılığı olabileceğinden birden fazla varyant denenır.
+ */
+async function fetchByTag(term: string): Promise<Post[]> {
+  // Tags farklı büyük/küçük harf biçimlerinde saklanmış olabilir
+  const variants = new Set<string>([
+    term,                                                    // normalized (lowercase)
+    term.charAt(0).toUpperCase() + term.slice(1),           // Title case
+    term.toUpperCase(),                                      // ALL CAPS
+  ])
+
+  const seen = new Set<string>()
+  const results: Post[] = []
+
+  await Promise.allSettled(
+    [...variants].map(async (variant) => {
+      try {
+        const snap = await withTimeout(
+          getDocs(
+            query(
+              collection(db, VIDEO_FEED_COLLECTION),
+              where('tags', 'array-contains', variant),
+              limit(TAG_FETCH_LIMIT)
+            )
+          ),
+          QUERY_TIMEOUT_MS,
+          `search-tag-${variant}`
+        )
+        for (const post of mapNewsSnapshot(snap.docs)) {
+          if (!seen.has(post.id) && isPubliclyVisibleStatus(post.status)) {
+            seen.add(post.id)
+            results.push(post)
+          }
+        }
+      } catch {
+        // Index eksik veya sorgu başarısız — sessizce atla
+      }
+    })
+  )
+
+  return results.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+}
+
 async function fetchRecentPosts(): Promise<Post[]> {
   try {
     const snap = await withTimeout(
@@ -65,8 +111,28 @@ async function fetchRecentPosts(): Promise<Post[]> {
 }
 
 async function searchPosts(term: string, maxResults: number): Promise<Post[]> {
-  const posts = await fetchRecentPosts()
-  return posts.filter((p) => matchesPost(p, term)).slice(0, maxResults)
+  // Tag sorgusu (tüm arşiv) + son makaleler havuzu paralel çalışır
+  const [tagPosts, poolPosts] = await Promise.all([
+    fetchByTag(term),
+    fetchRecentPosts(),
+  ])
+
+  // Son makaleleri bellekte filtrele (başlık, içerik, özet vb.)
+  const poolMatches = poolPosts.filter((p) => matchesPost(p, term))
+
+  // Birleştir: tag sonuçları önce (daha kesin), ardından havuz eşleşmeleri
+  const seen = new Set<string>()
+  const merged: Post[] = []
+  for (const post of [...tagPosts, ...poolMatches]) {
+    if (!seen.has(post.id)) {
+      seen.add(post.id)
+      merged.push(post)
+    }
+  }
+
+  return merged
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, maxResults)
 }
 
 async function searchUsers(term: string, maxResults: number): Promise<User[]> {

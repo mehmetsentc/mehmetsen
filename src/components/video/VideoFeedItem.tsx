@@ -57,7 +57,8 @@ function VideoFeedItemInner({
   } = useAppState()
   const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [ytBlocked, setYtBlocked] = useState(false)  // embedding engeli: 101/150
+  const [ytBlocked, setYtBlocked] = useState(false)   // embedding engeli: 101/150
+  const [ytApiConnected, setYtApiConnected] = useState(false) // YouTube JS API bağlandı mı
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null)
   const [progress, setProgress] = useState(0) // 0–100
@@ -277,6 +278,9 @@ function VideoFeedItemInner({
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
         if (!data) return
 
+        // Herhangi bir YouTube event'i → API bağlandı
+        if (data?.event) setYtApiConnected(true)
+
         // Ses senkronizasyonu
         if (isActive && (data?.event === 'onStateChange' || data?.event === 'onReady')) {
           sendCmd(func)
@@ -291,6 +295,9 @@ function VideoFeedItemInner({
             setLoading(false)
           }
         }
+
+        // playerState === -1 veya 5 = hazır ama oynatmıyor olabilir (yine de API bağlı)
+        // playerState === 0 = bitti, 1 = oynuyor, 2 = duraklatıldı, 3 = yüklüyor
       } catch { /* ignore */ }
     }
 
@@ -306,6 +313,26 @@ function VideoFeedItemInner({
       clearTimeout(t3)
     }
   }, [muted, isYouTube, isActive, virtualized])
+
+  // ── YouTube API timeout fallback ────────────────────────────────────────────
+  // iOS/WebKit'te youtube-nocookie.com postMessage bazen hiç gelmiyor.
+  // Iframe yüklendikten 7s sonra hâlâ API bağlantısı yoksa embedding engeli var diye kabul et.
+  useEffect(() => {
+    if (virtualized || !isYouTube || !isActive || ytBlocked) return
+    if (ytApiConnected) return // API zaten bağlı, timeout gerekmez
+
+    const timer = setTimeout(() => {
+      setYtBlocked(true)
+      setLoading(false)
+    }, 7_000)
+
+    return () => clearTimeout(timer)
+  }, [isActive, isYouTube, ytBlocked, ytApiConnected, virtualized])
+
+  // Video değiştiğinde ytApiConnected sıfırla
+  useEffect(() => {
+    setYtApiConnected(false)
+  }, [video.id])
 
   // Virtual window: render only scroll-snap anchor outside ± render window.
   // IMPORTANT: this return must come AFTER ALL hooks above — Rules of Hooks.

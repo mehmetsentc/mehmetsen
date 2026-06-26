@@ -631,8 +631,17 @@ export default function AdminNewsPage() {
       const cursor = pageCursorsRef.current[page] ?? undefined
       // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
       const catFilter = searchTerm.trim() ? undefined : categoryParamRef.current || undefined
-      const result = await adminNewsService.list(filter, cursor, catFilter, searchTerm.trim() ? 500 : undefined)
-      setPosts(result.posts)
+      const [result, tagResults] = await Promise.all([
+        adminNewsService.list(filter, cursor, catFilter, searchTerm.trim() ? 500 : undefined),
+        searchTerm.trim() ? adminNewsService.searchByTag(searchTerm) : Promise.resolve([]),
+      ])
+      // Tag sorgusu sonuçlarını merge et — 500 limitinin dışındaki eski haberler de görünsün
+      const seen = new Set(result.posts.map(p => p.id))
+      const merged = [...result.posts]
+      for (const p of tagResults) {
+        if (!seen.has(p.id)) { seen.add(p.id); merged.push(p) }
+      }
+      setPosts(merged)
       setCurrentPage(page)
       setHasNext(result.hasMore)
       if (result.hasMore && result.lastDoc && !pageCursorsRef.current[page + 1]) {
