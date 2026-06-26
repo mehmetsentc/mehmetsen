@@ -135,8 +135,18 @@ export function analyzeBreakingSignals(
     'asfalt serim', 'asfalt çalışma', 'yol onarım', 'kaldırım',
     'mahalle.*inceledi', 'ilçede.*inceledi', 'beldede.*inceledi',
     'açılışını yaptı', 'açılışına katıldı', 'etkinliğine katıldı',
-    'hırsız', 'uyuşturucu operasyon', 'narkotik operasyon',
-    'zabıta', 'muhtarlık',
+    'hırsız', 'hırsızlık', 'hirsiz', 'hirsizlik',
+    'dolandırıcılık operasyon', 'dolandiricilik operasyon',
+    'uyuşturucu operasyon', 'narkotik operasyon',
+    'zabıta', 'zabita', 'muhtarlık', 'muhtarlik',
+    'karne töreni', 'karne heyecanı', 'karne sevinci',
+    'mezuniyet töreni', 'diploma töreni',
+    'şampiyonluk kutla', 'sampiyonluk kutla',
+    'kupayı kaldırdı', 'kupayi kaldirdi',
+    'başarı belgesi', 'basari belgesi',
+    'piknik düzenlendi', 'kermes', 'bağış kampanyası',
+    'sergi açılış', 'fotoğraf sergisi', 'resim sergisi',
+    'sertifika töreni', 'sertifika toreni',
   ] as const
   const hasLocalBlockingTerm = LOCAL_BLOCKING_TERMS.some((kw) =>
     kw.includes('.*') ? new RegExp(kw).test(text) : text.includes(kw)

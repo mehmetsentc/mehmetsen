@@ -1,0 +1,16 @@
+{
+	"appId": "com.nahaber.app",
+	"appName": "NaHaber",
+	"webDir": "out",
+	"server": {
+		"url": "https://www.nahaber.com",
+		"cleartext": false
+	},
+	"ios": {
+		"contentInset": "automatic",
+		"backgroundColor": "#0a0a0a",
+		"scrollEnabled": true,
+		"limitsNavigationsToAppBoundDomains": true
+	},
+	"packageClassList": []
+}

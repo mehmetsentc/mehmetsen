@@ -24,20 +24,31 @@ import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifie
 /**
  * BEYAZ LİSTE: SADECE bu kategoriler son-dakika olabilir.
  *
- * Kara liste yaklaşımı yetersizdi: AI "Manisa Belediye Başkanı festival"ı
- * "siyaset" olarak sınıflandırınca kara listeden kaçıyordu.
- * Beyaz liste ile sadece gerçekten ulusal/küresel öneme sahip haberler geçer.
+ * ÖNEMLI: 'gundem' bu listede YOK. Nedeni:
+ *   aiCategoryClassifier'daki gundem tanımı "belediye, yerel yönetim, sosyal" gibi
+ *   yerel haberleri de kapsar. gundem → TRULY_BREAKING olursa belediye haberleri
+ *   son-dakikaya sızar. gundem için ek kontrol: deprem/patlama/yangın gibi
+ *   acil keyword varsa son-dakika, yoksa → demote.
  *
  * Siyaset için ek kural: şehir tespiti yoksa (ulusal siyaset) son-dakika olabilir.
  * Şehir tespiti varsa (belediye haberi, yerel siyaset) → demote.
  */
 const TRULY_BREAKING_CATEGORIES = new Set([
-  'gundem',        // Ulusal gündem: deprem, büyük kaza, kritik açıklama, yangın
+  // 'gundem' kasıtlı olarak ÇIKARILDI — AI gundem tanımı belediye/yerel haberleri kapsar
   'dunya',         // Uluslararası gelişmeler: savaş, büyük olay
   'ekonomi',       // Büyük ekonomik kriz, piyasa çöküşü, merkez bankası kararı
   'saglik',        // Salgın, büyük halk sağlığı krizi, salgın uyarısı
   'meteoroloji',   // Fırtına, sel, kar felaketi (birden fazla ili etkileyen)
 ])
+
+/** gundem için ek acil kontrol — TRULY_BREAKING_CATEGORIES'e eklemek yerine ayrı. */
+const GUNDEM_BREAKING_KEYWORDS = [
+  'deprem', 'patlama', 'yangın', 'yangin', 'sel', 'heyelan', 'tsunami',
+  'saldırı', 'saldiri', 'terör', 'teror', 'suikast', 'darbe',
+  'can kaybı', 'can kaybi', 'ölü', 'yaralı', 'enkaz', 'göçük',
+  'fırtına', 'hortum', 'afet', 'acil durum', 'olağanüstü hal',
+  'nükleer', 'kimyasal', 'biyolojik tehdit',
+] as const
 
 const FETCH_HEADERS = {
   'User-Agent':
@@ -292,17 +303,24 @@ async function publishArticle(
 
       if (aiResult) {
         const aiCategory = aiResult.categoryId
+        const titleLower = article.title.toLocaleLowerCase('tr-TR')
+        const contentLower = `${article.spot} ${article.content.slice(0, 300)}`.toLocaleLowerCase('tr-TR')
+        const combinedText = `${titleLower} ${contentLower}`
 
         if (TRULY_BREAKING_CATEGORIES.has(aiCategory)) {
-          // ✅ Ulusal/küresel kapsam — son-dakika olarak kalsın
+          // ✅ Ulusal/küresel kapsam (dunya, ekonomi, saglik, meteoroloji) — son-dakika
           console.log(`[ankaBreaking] 🚨 Son-dakika (${aiCategory}): "${article.title.slice(0, 55)}"`)
+
+        } else if (aiCategory === 'gundem' && !detectedCity && GUNDEM_BREAKING_KEYWORDS.some(kw => combinedText.includes(kw))) {
+          // ✅ Ulusal acil gündem: deprem/patlama/yangın/saldırı + şehir tespit edilmedi
+          console.log(`[ankaBreaking] 🚨 Son-dakika (acil-gundem): "${article.title.slice(0, 55)}"`)
 
         } else if (aiCategory === 'siyaset' && !detectedCity) {
           // ✅ Ulusal siyaset (şehir yok: TBMM, Cumhurbaşkanı, Bakan, MEB vb.)
           console.log(`[ankaBreaking] 🚨 Son-dakika (ulusal siyaset): "${article.title.slice(0, 55)}"`)
 
         } else {
-          // ❌ Demote: yerel siyaset / spor / kültür / teknoloji / magazin / vb.
+          // ❌ Demote: belediye/yerel gundem / yerel siyaset / spor / kültür / teknoloji / magazin / vb.
           // Şehir tespiti varsa yerel-haber; yoksa AI kategorisi (ör. spor, teknoloji)
           finalCategory    = detectedCity ? 'yerel-haber' : aiCategory
           finalIsBreaking  = false
@@ -312,11 +330,31 @@ async function publishArticle(
             `"${article.title.slice(0, 55)}" → ${finalCategory}`
           )
         }
+      } else {
+        // aiResult null — AI dönmedi veya güven düşük.
+        // GÜVENSİZ FALLBACK (eski: son-dakika) kaldırıldı.
+        // Acil keyword yoksa gundem olarak yayınla; varsa son-dakika.
+        const titleLower = article.title.toLocaleLowerCase('tr-TR')
+        const hasUrgentKeyword = GUNDEM_BREAKING_KEYWORDS.some(kw => titleLower.includes(kw))
+        if (!hasUrgentKeyword || detectedCity) {
+          finalCategory    = detectedCity ? 'yerel-haber' : 'gundem'
+          finalIsBreaking  = false
+          finalBreakingScore = 40
+          console.log(`[ankaBreaking] AI null → güvenli demote: "${article.title.slice(0, 55)}" → ${finalCategory}`)
+        } else {
+          console.log(`[ankaBreaking] AI null + acil keyword → son-dakika: "${article.title.slice(0, 55)}"`)
+        }
       }
-      // aiResult null ise (AI dönmedi) → son-dakika olarak kalsın
     } catch {
-      // AI hatası → güvenli taraf: son-dakika olarak yayınla
-      console.warn(`[ankaBreaking] AI hatası, son-dakika olarak yayınlanıyor: "${article.title.slice(0, 55)}"`)
+      // AI hatası → acil keyword yoksa güvenli taraf: gundem olarak yayınla
+      const titleLower = article.title.toLocaleLowerCase('tr-TR')
+      const hasUrgentKeyword = GUNDEM_BREAKING_KEYWORDS.some(kw => titleLower.includes(kw))
+      if (!hasUrgentKeyword || detectedCity) {
+        finalCategory    = detectedCity ? 'yerel-haber' : 'gundem'
+        finalIsBreaking  = false
+        finalBreakingScore = 40
+      }
+      console.warn(`[ankaBreaking] AI hatası → ${finalCategory}: "${article.title.slice(0, 55)}"`)
     }
     // ────────────────────────────────────────────────────────────────────────
 
