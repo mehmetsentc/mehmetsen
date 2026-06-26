@@ -19,6 +19,7 @@ interface UpdatePayload {
   seoDescription?: string
   categoryId?: string
   status?: string
+  isBreaking?: boolean
   tags?: string[]
   citySlug?: string
   city?: string
@@ -55,7 +56,16 @@ export async function PUT(request: Request, context: RouteContext) {
   if (body.spot?.trim())       update.spot = body.spot.trim()
   if (body.seoTitle?.trim())   update.seoTitle = body.seoTitle.trim()
   if (body.seoDescription?.trim()) update.seoDescription = body.seoDescription.trim()
-  if (body.categoryId?.trim()) update.categoryId = body.categoryId.trim()
+  if (body.categoryId?.trim()) {
+    const newCat = body.categoryId.trim()
+    update.categoryId = newCat
+    // Son-dakika dışına çıkarılırsa isBreaking otomatik kapat
+    if (newCat !== 'son-dakika') {
+      update.isBreaking = false
+      update.breakingScore = 30
+    }
+  }
+  if (typeof body.isBreaking === 'boolean') update.isBreaking = body.isBreaking
   if (body.status?.trim())     update.status = body.status.trim()
   if (Array.isArray(body.tags)) update.tags = body.tags
   if (body.citySlug !== undefined) update.citySlug = body.citySlug.trim()
@@ -95,8 +105,12 @@ export async function PUT(request: Request, context: RouteContext) {
     try {
       revalidatePath('/feed')
       revalidatePath('/')
+      revalidatePath('/kategori/son-dakika') // breaking news strip her zaman temizle
       if (oldCategoryId) revalidatePath(`/kategori/${oldCategoryId}`)
       if (newCategoryId && newCategoryId !== oldCategoryId) revalidatePath(`/kategori/${newCategoryId}`)
+      // Makale sayfasını da temizle
+      const slug = prevData?.slug as string | undefined
+      if (slug) revalidatePath(`/haber/${slug}`)
     } catch { /* revalidation is best-effort */ }
     return NextResponse.json({ ok: true, collection: 'news' })
   }

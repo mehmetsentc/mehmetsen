@@ -249,7 +249,7 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
           aria-label="Son dakika hikayesi"
         >
           <motion.div
-            className="relative flex h-[100dvh] w-full max-w-[min(100vw,440px)] flex-col overflow-hidden bg-black sm:rounded-3xl sm:shadow-2xl"
+            className="relative flex h-[100dvh] w-full max-w-[100vw] sm:h-[90dvh] sm:max-w-[min(90vw,480px)] md:max-w-[min(75vw,560px)] lg:max-w-[min(55vw,640px)] flex-col overflow-hidden bg-black sm:rounded-3xl sm:shadow-2xl"
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.4 }}
