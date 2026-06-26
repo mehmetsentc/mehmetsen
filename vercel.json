@@ -104,6 +104,9 @@
     "src/app/api/cron/newsroom/expire-breaking/route.ts": {
       "maxDuration": 120
     },
+    "src/app/api/cron/newsroom/hackernews/route.ts": {
+      "maxDuration": 120
+    },
     "src/app/api/admin/backfill-breaking/route.ts": {
       "maxDuration": 300,
       "memory": 1024
