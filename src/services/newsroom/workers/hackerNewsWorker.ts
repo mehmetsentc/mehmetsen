@@ -13,7 +13,7 @@
  * Kategori: teknoloji (varsayılan) — başlığa göre 'dunya' da olabilir.
  * Dil: İngilizce → pipeline'daki translateToTurkish() otomatik çevirir.
  *
- * Cron: her 3 saatte bir (0 */3 * * *)
+ * Cron: her 3 saatte bir — technology cron içinden çalışır
  */
 
 import { getAdminFirestore } from '@/lib/firebase/admin'
