@@ -101,6 +101,13 @@
     "src/app/api/cron/newsroom/sozcu-breaking/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/cron/newsroom/expire-breaking/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/admin/backfill-breaking/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
     "src/app/api/cron/newsroom/trend/route.ts": {
       "maxDuration": 300
     },
@@ -303,6 +310,10 @@
     {
       "path": "/api/cron/newsroom/sozcu-breaking",
       "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/expire-breaking",
+      "schedule": "0 * * * *"
     }
   ]
 }
