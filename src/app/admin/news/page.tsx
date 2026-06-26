@@ -22,6 +22,7 @@ import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { MediaUploader, type MediaUploadState } from '@/components/post/MediaUploader'
+import { MediaLinkSection } from '@/components/admin/MediaLinkSection'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -331,6 +332,12 @@ function EditDrawer({
                 {media.videoUrl ? 'Video yüklendi' : 'Görsel yüklendi'}
               </p>
             )}
+            <div className="mt-3">
+              <MediaLinkSection
+                onThumbnailChange={(url) => setMedia((prev) => ({ ...prev, thumbnail: url }))}
+                onVideoUrlChange={(url) => setMedia((prev) => ({ ...prev, videoUrl: url }))}
+              />
+            </div>
           </div>
 
           {/* Kategori + Durum */}
