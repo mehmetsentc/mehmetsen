@@ -218,27 +218,11 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
           {post.source && (
             <div className="mt-6 border-t border-[rgb(var(--color-border))] pt-4 text-sm text-[rgb(var(--color-muted))]">
               <span className="font-semibold">Kaynak: </span>
-              {post.sourceUrl ? (
-                <a
-                  href={post.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="text-[rgb(var(--color-brand))] hover:underline"
-                >
-                  {post.source}
-                </a>
-              ) : (
-                <span>{post.source}</span>
-              )}
+              <span>{post.source}</span>
               {categoryLabel && (
                 <>
                   <span className="mx-1 text-[rgb(var(--color-border))]">/</span>
-                  <Link
-                    href={ROUTES.CATEGORY(post.categoryId)}
-                    className="hover:text-[rgb(var(--color-text))] hover:underline"
-                  >
-                    {categoryLabel}
-                  </Link>
+                  <span>{categoryLabel}</span>
                 </>
               )}
             </div>
