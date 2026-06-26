@@ -166,7 +166,7 @@
     },
     {
       "path": "/api/cron/newsroom/process-queue",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/cron/newsroom/national",
@@ -186,7 +186,7 @@
     },
     {
       "path": "/api/cron/newsroom/sports",
-      "schedule": "15,45 * * * *"
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/cron/newsroom/world",
@@ -278,15 +278,15 @@
     },
     {
       "path": "/api/cron/newsroom/voleybol",
-      "schedule": "15 */3 * * *"
+      "schedule": "15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/basketbol",
-      "schedule": "25 */3 * * *"
+      "schedule": "25 * * * *"
     },
     {
       "path": "/api/cron/newsroom/futbol",
-      "schedule": "35 */3 * * *"
+      "schedule": "5,35 * * * *"
     },
     {
       "path": "/api/cron/newsroom/borsa",
