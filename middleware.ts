@@ -5,8 +5,11 @@ import {
   isLanguage,
   resolveDefaultLanguage,
 } from '@/lib/i18n'
+import { verifyCmsSessionToken } from '@/lib/cmsSession'
+import { CMS_STAFF_ROLES } from '@/types/cms'
 
 const COOKIE_MAX_AGE_YEAR = 60 * 60 * 24 * 365
+const CMS_SESSION_COOKIE = 'cms_session'
 
 // Read the visitor country from common CDN/edge headers. On Vercel this is
 // `x-vercel-ip-country`; Cloudflare uses `cf-ipcountry`. `request.geo` is no
@@ -21,7 +24,23 @@ function detectCountry(request: NextRequest): string {
   return fromHeader.trim().toUpperCase()
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // /admin/* için edge-level guard. Detaylı rol/permission kontrolü server
+  // action ve API route'larında zaten yapılıyor; bu sadece anonim trafiği
+  // login'e yönlendiren defense-in-depth.
+  if (pathname.startsWith('/admin')) {
+    const token = request.cookies.get(CMS_SESSION_COOKIE)?.value
+    const session = await verifyCmsSessionToken(token)
+    if (!session || !CMS_STAFF_ROLES.includes(session.role)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('next', pathname)
+      return NextResponse.redirect(url)
+    }
+  }
+
   const country = detectCountry(request)
   const existingLang = request.cookies.get(LANGUAGE_COOKIE)?.value
   const existingCountry = request.cookies.get(COUNTRY_COOKIE)?.value

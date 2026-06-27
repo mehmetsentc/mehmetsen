@@ -34,7 +34,18 @@ export function AuthGuard({
   const redirectingRef = useRef(false)
 
   useEffect(() => {
-    if (!requireAuth || loading) return
+    if (loading) return
+
+    // 1) Onboarding gate — user oturum açmışsa onboarding tamamlanana kadar
+    // tüm rotalardan /onboarding'e zorla. Public rotalarda da geçerlidir;
+    // böylece Google ile yeni kayıt olan kullanıcı dolaşırken /onboarding'i
+    // atlayamaz.
+    if (user && !user.onboardingCompleted && pathname !== ROUTES.ONBOARDING) {
+      router.replace(ROUTES.ONBOARDING)
+      return
+    }
+
+    if (!requireAuth) return
 
     if (!user) {
       if (!redirectingRef.current) {
@@ -46,11 +57,6 @@ export function AuthGuard({
 
     redirectingRef.current = false
 
-    if (!user.onboardingCompleted && pathname !== ROUTES.ONBOARDING) {
-      router.replace(ROUTES.ONBOARDING)
-      return
-    }
-
     if (requireAdmin && !isAdminUser(user)) {
       if (!deniedToastShown.current) {
         deniedToastShown.current = true
@@ -60,12 +66,18 @@ export function AuthGuard({
     }
   }, [user, loading, requireAuth, requireAdmin, router, pathname])
 
-  if (!requireAuth) {
+  // Render shell immediately while auth resolves — nav stays interactive.
+  if (loading) {
     return <>{children}</>
   }
 
-  // Render shell immediately while auth resolves — nav stays interactive.
-  if (loading) {
+  // Onboarding gate — public route'ta bile onboarding tamamlanmamışsa
+  // yönlendirme spinner'ı göster. /onboarding'in kendisi hariç.
+  if (user && !user.onboardingCompleted && pathname !== ROUTES.ONBOARDING) {
+    return <AuthSpinner label="Profilini tamamla..." />
+  }
+
+  if (!requireAuth) {
     return <>{children}</>
   }
 

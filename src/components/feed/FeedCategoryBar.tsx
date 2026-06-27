@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ROUTES } from '@/constants/routes'
+import { getTopNavCategories } from '@/constants/config'
 
 export type FeedTab = 'home' | 'personal'
 
@@ -16,18 +16,8 @@ const IN_PAGE_TABS: { id: FeedTab; label: string }[] = [
   { id: 'personal', label: 'Sana Özel' },
 ]
 
-// Kategoriler divider'dan sonra — Gündem başa alındı
-const NAV_CATEGORIES = [
-  { id: 'gundem',    label: 'Gündem' },
-  { id: 'siyaset',   label: 'Siyaset' },
-  { id: 'dunya',     label: 'Dünya' },
-  { id: 'spor',      label: 'Spor' },
-  { id: 'ekonomi',   label: 'Ekonomi' },
-  { id: 'teknoloji', label: 'Teknoloji' },
-  { id: 'saglik',    label: 'Sağlık' },
-  { id: 'kultur',    label: 'Kültür' },
-  { id: 'magazin',   label: 'Magazin' },
-]
+// Tek SSOT: constants/config.ts → getTopNavCategories
+const NAV_CATEGORIES = getTopNavCategories()
 
 export function FeedCategoryBar({ activeTab, onTabChange }: FeedCategoryBarProps) {
   return (
@@ -56,7 +46,7 @@ export function FeedCategoryBar({ activeTab, onTabChange }: FeedCategoryBarProps
         {NAV_CATEGORIES.map((cat) => (
           <Link
             key={cat.id}
-            href={ROUTES.CATEGORY(cat.id)}
+            href={cat.href}
             className="flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-border))]"
           >
             {cat.label}

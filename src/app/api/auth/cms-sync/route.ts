@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server'
 import { resolveCmsRoleFromFirestore } from '@/lib/cmsRoleUtils'
 import type { CmsRole } from '@/types/cms'
+import { CMS_STAFF_ROLES } from '@/types/cms'
 import { getBootstrapAdminUids, isSuperAdminEmailServer } from '@/lib/cmsSecrets.server'
+import { signCmsSessionToken } from '@/lib/cmsSession'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+const CMS_SESSION_COOKIE = 'cms_session'
+const CMS_SESSION_MAX_AGE = 60 * 60 // 1 saat
 
 /**
  * POST /api/auth/cms-sync
@@ -68,15 +73,55 @@ export async function POST(request: Request) {
           await userRef.update({ role: targetRole, updatedAt: now })
         }
       }
-      return NextResponse.json({ role: targetRole, synced: true })
+      return jsonWithCmsSession({ role: targetRole, synced: true }, uid, targetRole)
     }
 
     const role = userSnap.exists
       ? resolveCmsRoleFromFirestore(userSnap.data()?.role as string)
       : 'user'
-    return NextResponse.json({ role, synced: false })
+    return jsonWithCmsSession({ role, synced: false }, uid, role)
   } catch (error) {
     console.error('[api/auth/cms-sync]', error)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+}
+
+/**
+ * CMS sync yanıtına edge-safe imzalı session cookie iliştirir. Cookie sadece
+ * `/admin/*` middleware'i için kullanılır — gerçek yetki API route'larında
+ * yine `verifyCmsToken` (Firebase ID token) ile kontrol edilir. Yani
+ * defense-in-depth; cookie tek başına yetki vermez.
+ *
+ * - CMS staff için cookie set ediliyor (1 saat).
+ * - Staff olmayan kullanıcıda cookie silinir, çünkü `/admin/*`'a erişimi yok.
+ */
+async function jsonWithCmsSession(
+  body: Record<string, unknown>,
+  uid: string,
+  role: CmsRole
+) {
+  const res = NextResponse.json(body)
+  if (CMS_STAFF_ROLES.includes(role)) {
+    const token = await signCmsSessionToken({
+      uid,
+      role,
+      exp: Math.floor(Date.now() / 1000) + CMS_SESSION_MAX_AGE,
+    })
+    res.cookies.set(CMS_SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: CMS_SESSION_MAX_AGE,
+      path: '/',
+    })
+  } else {
+    res.cookies.set(CMS_SESSION_COOKIE, '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    })
+  }
+  return res
 }

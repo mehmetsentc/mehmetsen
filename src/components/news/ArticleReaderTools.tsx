@@ -243,14 +243,14 @@ export function ArticleReaderTools({
                 onClick={togglePlay}
                 aria-label={playing ? 'Duraklat' : 'Haberi dinle'}
                 className={cn(
-                  'flex h-11 items-center gap-2 rounded-full px-4 shadow-lg backdrop-blur-md transition-colors',
+                  'flex h-11 items-center gap-2 rounded-full px-4 shadow-lg shadow-black/30 transition-colors',
                   playing
                     ? 'bg-brand-500 text-white'
-                    : 'bg-[rgb(var(--color-text))] text-[rgb(var(--color-bg))]'
+                    : 'bg-zinc-900 text-white'
                 )}
               >
                 {playing ? <Pause className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
-                <span className="text-sm font-semibold">{playing ? 'Dinleniyor' : 'Dinle'}</span>
+                <span className="text-sm font-semibold">{playing ? 'Duraklat' : 'Dinle'}</span>
               </motion.button>
             )}
           </AnimatePresence>
@@ -261,7 +261,10 @@ export function ArticleReaderTools({
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? 'Kapat' : 'Okuma araçları'}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-[rgb(var(--color-text))] text-[rgb(var(--color-bg))] shadow-lg"
+            className={cn(
+              'flex h-11 w-11 items-center justify-center rounded-full shadow-lg shadow-black/30',
+              open ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-white'
+            )}
           >
             {open ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
           </motion.button>
@@ -360,14 +363,14 @@ export function ArticleReaderTools({
               onClick={togglePlay}
               aria-label={playing ? 'Duraklat' : 'Haberi dinle'}
               className={cn(
-                'flex h-12 items-center gap-2 rounded-full px-4 shadow-lg backdrop-blur-md transition-colors',
+                'flex h-12 items-center gap-2 rounded-full px-4 shadow-lg shadow-black/30 transition-colors',
                 playing
-                  ? 'bg-brand-500 text-white shadow-brand'
-                  : 'bg-[rgb(var(--color-text))] text-[rgb(var(--color-bg))] hover:opacity-90'
+                  ? 'bg-brand-500 text-white'
+                  : 'bg-zinc-900 text-white hover:bg-zinc-800'
               )}
             >
               {playing ? <Pause className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
-              <span className="text-sm font-semibold">{playing ? 'Dinleniyor' : 'Dinle'}</span>
+              <span className="text-sm font-semibold">{playing ? 'Duraklat' : 'Dinle'}</span>
             </motion.button>
           )}
 
@@ -378,7 +381,10 @@ export function ArticleReaderTools({
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? 'Araçları kapat' : 'Okuma araçları'}
             aria-expanded={open}
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-[rgb(var(--color-text))] text-[rgb(var(--color-bg))] shadow-lg transition-transform hover:scale-105"
+            className={cn(
+              'flex h-12 w-12 items-center justify-center rounded-full shadow-lg shadow-black/30 transition-transform hover:scale-105',
+              open ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-white'
+            )}
           >
             {open ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
           </motion.button>

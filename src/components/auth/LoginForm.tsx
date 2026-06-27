@@ -15,7 +15,8 @@ import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-  const { login, loginWithGoogle } = useAuth()
+  const [isAppleLoading, setIsAppleLoading] = useState(false)
+  const { login, loginWithGoogle, loginWithApple } = useAuth()
   const router = useRouter()
 
   const {
@@ -54,6 +55,28 @@ export function LoginForm() {
       if (message) toast.error(message)
     } finally {
       if (!isRedirecting) setIsGoogleLoading(false)
+    }
+  }
+
+  const handleApple = async () => {
+    if (isAppleLoading) return
+    setIsAppleLoading(true)
+    let isRedirecting = false
+    try {
+      const firebaseUser = await loginWithApple()
+      if (firebaseUser === null) {
+        isRedirecting = true
+        return
+      }
+      router.push(ROUTES.FEED)
+    } catch (err: unknown) {
+      console.error('[LoginForm] Apple sign-in failed:', err)
+      const code = (err as { code?: string }).code ?? ''
+      // Kullanıcı popup'ı kapattıysa sessizce dön
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
+      toast.error('Apple ile giriş başarısız oldu')
+    } finally {
+      if (!isRedirecting) setIsAppleLoading(false)
     }
   }
 
@@ -116,6 +139,15 @@ export function LoginForm() {
         {isGoogleLoading ? 'Yükleniyor...' : 'Google ile devam et'}
       </button>
 
+      <button
+        onClick={handleApple}
+        disabled={isAppleLoading}
+        className="mt-3 flex w-full items-center justify-center gap-3 rounded-lg bg-black py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+      >
+        <AppleIcon />
+        {isAppleLoading ? 'Yükleniyor...' : 'Apple ile devam et'}
+      </button>
+
       <p className="mt-6 text-center text-sm text-[rgb(var(--color-muted))]">
         Hesabın yok mu?{' '}
         <Link href={ROUTES.REGISTER} className="font-medium text-brand-600 hover:underline">
@@ -145,6 +177,14 @@ function GoogleIcon() {
         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
         fill="#EA4335"
       />
+    </svg>
+  )
+}
+
+function AppleIcon() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
     </svg>
   )
 }

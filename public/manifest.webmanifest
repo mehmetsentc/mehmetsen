@@ -24,25 +24,25 @@
   ],
   "screenshots": [
     {
-      "src": "/brand/screenshot-feed-mobile.png",
+      "src": "/brand/screenshots/ss1-anasayfa.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Ana sayfa — son dakika ve gündem haberleri"
     },
     {
-      "src": "/brand/screenshot-article-mobile.png",
+      "src": "/brand/screenshots/ss2-spor.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Haber detayı — premium okuma deneyimi"
+      "label": "Spor — maç ve transfer haberleri"
     },
     {
-      "src": "/brand/screenshot-feed-desktop.png",
-      "sizes": "1920x1080",
+      "src": "/brand/screenshots/ss3-yerel.png",
+      "sizes": "1080x1920",
       "type": "image/png",
-      "form_factor": "wide",
-      "label": "Masaüstü ana sayfa — kategoriler ve gündem"
+      "form_factor": "narrow",
+      "label": "Yerel — şehrindeki haberler"
     }
   ],
   "shortcuts": [

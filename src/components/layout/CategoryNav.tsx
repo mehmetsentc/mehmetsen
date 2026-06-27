@@ -3,86 +3,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
+import { getTopNavCategories } from '@/constants/config'
 import { cn } from '@/lib/utils'
 
-interface Category {
-  label: string
-  href: string
-  match: (pathname: string) => boolean
-}
-
-const CATEGORIES: Category[] = [
-  {
-    label: 'Gündem',
-    href: '/feed',
-    match: (p) => p === '/feed' || p === '/',
-  },
-  {
-    label: 'Siyaset',
-    href: '/kategori/siyaset',
-    match: (p) => p === '/kategori/siyaset',
-  },
-  {
-    label: 'Ekonomi',
-    href: '/kategori/ekonomi',
-    match: (p) => p === '/kategori/ekonomi',
-  },
-  {
-    label: 'Spor',
-    href: '/kategori/spor',
-    match: (p) => p === '/kategori/spor',
-  },
-  {
-    label: 'Dünya',
-    href: '/kategori/dunya',
-    match: (p) => p === '/kategori/dunya',
-  },
-  {
-    label: 'Teknoloji',
-    href: '/kategori/teknoloji',
-    match: (p) => p === '/kategori/teknoloji',
-  },
-  {
-    label: 'Sağlık',
-    href: '/kategori/saglik',
-    match: (p) => p === '/kategori/saglik',
-  },
-  {
-    label: 'Magazin',
-    href: '/kategori/magazin',
-    match: (p) => p === '/kategori/magazin',
-  },
-  {
-    label: 'Kültür',
-    href: '/kategori/kultur',
-    match: (p) => p === '/kategori/kultur',
-  },
-  {
-    label: 'Gastronomi',
-    href: '/kategori/gastronomi',
-    match: (p) => p === '/kategori/gastronomi',
-  },
-  {
-    label: 'Otomobil',
-    href: '/kategori/otomobil',
-    match: (p) => p === '/kategori/otomobil',
-  },
-  {
-    label: 'Bilim',
-    href: '/kategori/bilim',
-    match: (p) => p === '/kategori/bilim',
-  },
-  {
-    label: 'Yerel',
-    href: ROUTES.LOCAL,
-    match: (p) => p === ROUTES.LOCAL || p.startsWith(`${ROUTES.LOCAL}/`),
-  },
+const NAV_CATEGORIES = [
+  ...getTopNavCategories(),
+  // Yerel haber statik route — kategori id'sinden bağımsız
+  { id: 'yerel', label: 'Yerel', href: ROUTES.LOCAL },
 ]
 
 export function CategoryNav() {
   const pathname = usePathname()
 
-  // Reels, messages, admin, news detail gibi sayfalarda gösterme
   const hide =
     pathname === '/reels' ||
     pathname.startsWith('/messages') ||
@@ -99,8 +31,8 @@ export function CategoryNav() {
       aria-label="Kategoriler"
     >
       <div className="flex gap-0 overflow-x-auto scrollbar-none">
-        {CATEGORIES.map((cat) => {
-          const isActive = cat.match(pathname)
+        {NAV_CATEGORIES.map((cat) => {
+          const isActive = pathname === cat.href || pathname.startsWith(`${cat.href}/`)
           return (
             <Link
               key={cat.href}

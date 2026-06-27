@@ -207,24 +207,6 @@ export const postService = {
     }
   },
 
-  async getByCategory(categoryId: string, lastDoc?: QueryDocumentSnapshot) {
-    const constraints: Parameters<typeof query>[1][] = [
-      where('status', '==', 'published'),
-      where('visibility', '==', 'public'),
-      where('categoryId', '==', categoryId),
-      orderBy('publishedAt', 'desc'),
-      limit(PAGE_SIZE),
-    ]
-    if (lastDoc) constraints.push(startAfter(lastDoc))
-
-    const docs = await runQuery(constraints, 'getByCategory')
-    return {
-      posts: docs.map(toPost),
-      lastDoc: docs[docs.length - 1] ?? null,
-      hasMore: docs.length === PAGE_SIZE,
-    }
-  },
-
   async getByAuthor(authorId: string, lastDoc?: QueryDocumentSnapshot) {
     const constraints: Parameters<typeof query>[1][] = [
       where('authorId', '==', authorId),

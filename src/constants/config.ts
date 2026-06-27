@@ -64,6 +64,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'festival',    name: 'Festival',    slug: 'festival',    iconName: 'party-popper', color: '#8B5CF6', parentId: 'kultur' },
 
   // ── Yeni kategoriler ────────────────────────────────────────────────────────
+  { id: 'yasam',         name: 'Yaşam',         slug: 'yasam',         iconName: 'leaf',        color: '#16A34A' },
   { id: 'gastronomi',    name: 'Gastronomi',    slug: 'gastronomi',    iconName: 'utensils',    color: '#F97316' },
   { id: 'otomobil',      name: 'Otomobil',      slug: 'otomobil',      iconName: 'car',         color: '#64748B' },
   { id: 'meteoroloji',   name: 'Meteoroloji',   slug: 'meteoroloji',   iconName: 'cloud-rain',  color: '#0EA5E9' },
@@ -117,3 +118,38 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'gastronomi',
   'otomobil',
 ] as const
+
+/**
+ * Üst gezinme barlarında (CategoryNav mobile + FeedCategoryBar) gösterilecek
+ * kategori id'leri — TEK kaynak. Yerel haber bağlantısı kart düzeyinde
+ * eklenir (slug yerine sabit route).
+ */
+export const TOP_NAV_CATEGORY_IDS = [
+  'gundem',
+  'siyaset',
+  'ekonomi',
+  'spor',
+  'dunya',
+  'teknoloji',
+  'saglik',
+  'magazin',
+  'kultur',
+  'gastronomi',
+  'otomobil',
+  'bilim',
+] as const
+
+/**
+ * Üst nav kategorileri — id, label, href tuple'ı, DEFAULT_CATEGORIES'den
+ * türetiliyor. Slug yoksa id'yi kullanır.
+ */
+export function getTopNavCategories(): Array<{ id: string; label: string; href: string }> {
+  return TOP_NAV_CATEGORY_IDS
+    .map((id) => DEFAULT_CATEGORIES.find((c) => c.id === id))
+    .filter(Boolean)
+    .map((c) => ({
+      id: c!.id,
+      label: c!.name,
+      href: `/kategori/${c!.slug ?? c!.id}`,
+    }))
+}

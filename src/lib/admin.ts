@@ -32,6 +32,7 @@ export async function syncCmsRoleFromServer(idToken: string): Promise<void> {
     const res = await fetch('/api/auth/cms-sync', {
       method: 'POST',
       headers: { Authorization: `Bearer ${idToken}` },
+      credentials: 'same-origin',
     })
     if (!res.ok) return
   } catch {

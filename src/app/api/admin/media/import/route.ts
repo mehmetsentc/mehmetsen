@@ -86,7 +86,10 @@ export async function POST(request: Request) {
   // Firebase Admin Storage'a yükle
   try {
     const adminStorage = getAdminStorage()
-    const bucket = adminStorage.bucket()
+    const bucketName =
+      process.env.FIREBASE_STORAGE_BUCKET?.trim() ||
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim()
+    const bucket = adminStorage.bucket(bucketName)
     const file = bucket.file(storagePath)
 
     await file.save(Buffer.from(buffer), {

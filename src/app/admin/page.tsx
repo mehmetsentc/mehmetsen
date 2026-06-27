@@ -18,6 +18,9 @@ import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { cn } from '@/lib/utils'
+import { DashboardChart } from '@/components/admin/DashboardChart'
+import { PopularNewsTable } from '@/components/admin/PopularNewsTable'
+import { adminService, type DashboardOverview } from '@/services/adminService'
 
 /** Handle Firestore Timestamp objects (serverTimestamp) OR plain ms numbers */
 function tsToMs(val: unknown): number {
@@ -116,6 +119,7 @@ export default function AdminIndexPage() {
   const [recent, setRecent] = useState<RecentArticle[]>([])
   const [pending, setPending] = useState<RecentArticle[]>([])
   const [loading, setLoading] = useState(true)
+  const [overview, setOverview] = useState<DashboardOverview | null>(null)
 
   const loadStats = useCallback(async () => {
     try {
@@ -144,6 +148,15 @@ export default function AdminIndexPage() {
   useEffect(() => {
     loadStats()
   }, [loadStats])
+
+  useEffect(() => {
+    let cancelled = false
+    adminService
+      .getDashboardOverview()
+      .then((d) => { if (!cancelled) setOverview(d) })
+      .catch((e) => console.error('[admin overview]', e))
+    return () => { cancelled = true }
+  }, [])
 
   // Live recent articles
   useEffect(() => {
@@ -318,6 +331,29 @@ export default function AdminIndexPage() {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Analytics: 7-day chart + popular news */}
+        <div className="grid gap-6 xl:grid-cols-5">
+          <div className="xl:col-span-3">
+            <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[rgb(var(--color-border))] px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-bold text-[rgb(var(--color-text))]">Son 7 Gün Yayın Grafiği</span>
+                </div>
+                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                  {(overview?.publishSeries ?? []).reduce((a, p) => a + p.count, 0)} haber
+                </span>
+              </div>
+              <div className="p-5">
+                <DashboardChart data={overview?.publishSeries ?? []} height={220} />
+              </div>
+            </div>
+          </div>
+          <div className="xl:col-span-2">
+            <PopularNewsTable items={overview?.topNews ?? []} loading={!overview} />
           </div>
         </div>
 

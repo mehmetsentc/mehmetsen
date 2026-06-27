@@ -71,7 +71,7 @@ export function WorldCupStrip() {
         const snap = await getDocs(
           query(
             collection(db, Collections.NEWS),
-            where('category', '==', 'spor'),
+            where('categoryId', '==', 'spor'),
             orderBy('publishedAt', 'desc'),
             limit(40),
           )

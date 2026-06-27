@@ -11,6 +11,7 @@ import { db, Collections } from '@/lib/firebase/firestore'
 import { userService } from '@/services/userService'
 import { syncCmsRoleFromServer } from '@/lib/admin'
 import { signInWithGoogle } from '@/lib/googleAuth'
+import { signInWithApple } from '@/lib/appleAuth'
 import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
 import type { User } from '@/types/user'
 
@@ -21,6 +22,19 @@ function buildGoogleUsername(firebaseUser: FirebaseUser): string {
     .toLowerCase()
     .slice(0, 24)
   return `${base}_${firebaseUser.uid.slice(0, 6)}`
+}
+
+/**
+ * Apple Sign-In sonrası Firestore profilini kurar.
+ *
+ * Apple ilk girişte email/name döner, sonraki girişlerde sadece UID gelir.
+ * Kullanıcı "Hide my email" derse Firebase relay adresi (privaterelay.appleid.com)
+ * gelir — yine de geçerli bir email'dir. Profil oluşturma yalnızca ilk
+ * girişte gerçekleşir; üye varsa dokunulmaz.
+ */
+export async function finalizeAppleSignIn(firebaseUser: FirebaseUser): Promise<void> {
+  // İmplementasyonu Google ile aynı — Firestore profil + CMS sync.
+  return finalizeGoogleSignIn(firebaseUser)
 }
 
 /** Create/update Firestore profile after Google popup or redirect sign-in. */
@@ -120,8 +134,22 @@ export const authService = {
     return result.user
   },
 
+  async loginWithApple() {
+    await ensureAuthReady()
+    const result = await signInWithApple(auth)
+    if (result === 'redirect') return null
+    void finalizeAppleSignIn(result.user)
+    return result.user
+  },
+
   async logout() {
     await signOut(auth)
+    // CMS session cookie'sini temizle ki middleware admin sayfalarına erişimi engellesin
+    try {
+      await fetch('/api/auth/cms-logout', { method: 'POST', credentials: 'same-origin' })
+    } catch {
+      // Non-fatal — cookie expire olunca da kendiliğinden temizlenir.
+    }
   },
 
   async getUserProfile(uid: string): Promise<User | null> {

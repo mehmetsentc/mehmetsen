@@ -245,28 +245,21 @@ function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
 }
 
 function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
-  // Önce explicit featured + gundem; yetmezse pool top'tan tamamla
+  // Slider: SADECE featured=true veya kategori=gundem olan haberler
+  // Önce resimli olanlar, sonra resimsizler (slider fallback logo kullanır)
   const featured = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
   const gundem = pool.filter((p) => p.category === 'gundem' && !isBreakingPoolItem(p))
   const candidates = [...featured, ...gundem]
   const seen = new Set<string>()
-  const result: NewsItem[] = []
+  const withImg: NewsItem[] = []
+  const withoutImg: NewsItem[] = []
   for (const item of candidates) {
     if (seen.has(item.id)) continue
-    if (!item.imageUrl) continue
     seen.add(item.id)
-    result.push(item)
-    if (result.length >= limit) break
+    if (item.imageUrl) withImg.push(item)
+    else withoutImg.push(item)
   }
-  if (result.length < limit) {
-    for (const item of pool) {
-      if (seen.has(item.id) || !item.imageUrl || isBreakingPoolItem(item)) continue
-      seen.add(item.id)
-      result.push(item)
-      if (result.length >= limit) break
-    }
-  }
-  return result
+  return [...withImg, ...withoutImg].slice(0, limit)
 }
 
 function bucketLatest(pool: NewsItem[], limit: number): NewsItem[] {
@@ -312,7 +305,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
 
   return {
     breaking: bucketBreaking(pool, 12),
-    featured: bucketFeatured(pool, 8),
+    featured: bucketFeatured(pool, 20),
     latest: bucketLatest(pool, 20),
     mostRead: bucketMostRead(pool, 6),
     categoryRails: bucketCategoryRails(pool, 10),

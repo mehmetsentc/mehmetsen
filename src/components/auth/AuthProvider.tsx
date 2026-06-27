@@ -14,6 +14,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth, ensureAuthReady } from '@/lib/firebase/auth'
 import { completeGoogleRedirectSignIn } from '@/lib/googleAuth'
 import { authService, finalizeGoogleSignIn } from '@/services/authService'
+// Apple redirect aynı getRedirectResult'ı paylaşır; ekstra çağrı gerekmez.
 import { devLog, withTimeout } from '@/lib/asyncUtils'
 import type { LoginFormData, RegisterFormData } from '@/lib/validators/auth'
 import type { User } from '@/types/user'
@@ -31,6 +32,7 @@ interface AuthContextValue {
   login: (data: LoginFormData) => ReturnType<typeof authService.login>
   register: (data: RegisterFormData) => ReturnType<typeof authService.register>
   loginWithGoogle: () => ReturnType<typeof authService.loginWithGoogle>
+  loginWithApple: () => ReturnType<typeof authService.loginWithApple>
   logout: () => ReturnType<typeof authService.logout>
   refreshUser: () => Promise<void>
 }
@@ -170,6 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = useCallback(() => authService.loginWithGoogle(), [])
 
+  const loginWithApple = useCallback(() => authService.loginWithApple(), [])
+
   const logout = useCallback(() => authService.logout(), [])
 
   const refreshUser = useCallback(async () => {
@@ -193,10 +197,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       loginWithGoogle,
+      loginWithApple,
       logout,
       refreshUser,
     }),
-    [user, loading, login, register, loginWithGoogle, logout, refreshUser]
+    [user, loading, login, register, loginWithGoogle, loginWithApple, logout, refreshUser]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

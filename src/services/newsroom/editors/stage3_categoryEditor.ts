@@ -46,22 +46,37 @@ SPOR alt kategorileri:
 - spor: F1, tenis, boks, yüzme, golf, olimpiyat (dal belirsiz)
 
 DİĞER KATEGORİLER:
-- son-dakika: YALNIZCA (1) deprem 4.5+, (2) büyük afet onlarca ölü/toplu tahliye, (3) darbe/suikast, (4) aktif terör saldırısı, (5) borsa devre kesici/döviz serbest düşüş. isBreaking: true ZORUNLU.
-- siyaset: Cumhurbaşkanı/TBMM/bakan/seçim/parti/referandum. Belediye başkanı yerel kararı → yerel-haber.
+- son-dakika: Türkiye'yi veya dünyayı doğrudan etkileyen ÖNEMLİ gelişmeler. isBreaking: true ZORUNLU.
+  TÜRKİYE son-dakika kriterleri (herhangi biri):
+  • Deprem 4.0+, büyük afet, toplu tahliye, onlarca ölü
+  • Darbe girişimi, suikast, OHAL ilanı, seferberlik
+  • Aktif terör saldırısı, bombalı saldırı
+  • Cumhurbaşkanı/Başbakan/Meclis önemli kararı veya açıklaması (savaş ilanı, antlaşma, büyük reform yasası)
+  • Merkez bankası faiz kararı, devalüasyon, borsa devre kesici
+  • Türkiye'nin taraf olduğu çatışma, askeri operasyon, sınır olayı
+  • Büyük ekonomik kriz, IMF/kredi derecelendirme kararı
+  DÜNYA son-dakika kriterleri (herhangi biri):
+  • Savaş ilanı, büyük askeri saldırı, ülke işgali
+  • Büyük lider/devlet başkanı suikastı veya ölümü
+  • Nükleer tehdit, biyolojik/kimyasal saldırı
+  • G7/G20/BM acil kararı Türkiye'yi etkileyen
+  • Küresel finans krizi, büyük borsa çöküşü (ABD/AB/Çin)
+  • Büyük doğal afet (100+ ölü veya milyonlarca etkilenen)
+- siyaset: Cumhurbaşkanı/TBMM/bakan/seçim/parti/referandum (son-dakika eşiği altındakiler). Belediye başkanı yerel kararı → yerel-haber.
 - ekonomi: Borsa, döviz, faiz, enflasyon, TCMB, şirket bilançosu, asgari ücret
 - borsa: Hisse, borsa, BİST, yatırım piyasası
 - kripto: Bitcoin, kripto para, blockchain
 - teknoloji: Apple/Google/Meta/AI/yazılım/siber/uzay/drone/robot
 - saglik: Hastalık, ilaç, aşı, pandemi, WHO, sağlık bakanlığı
 - bilim: Araştırma, keşif, NASA, iklim bilimi
-- dunya: Türkiye DIŞINDA gerçekleşen tüm haberler
+- dunya: Türkiye DIŞINDA gerçekleşen önemli ama son-dakika eşiği altındaki haberler
 - magazin: Ünlü kişisel hayatı, evlilik/boşanma, ilişki, skandal. isBreaking: false ZORUNLU.
 - kultur: Sinema, tiyatro, opera, müze, edebiyat, ödül töreni, konser, müzik
 - gastronomi: Yemek, restoran, şef, Michelin, MasterChef, tarif
 - otomobil: Araç modeli, TOGG, elektrikli araç. Trafik KAZASI → yerel-haber.
 - meteoroloji: Hava durumu, MGM uyarısı, fırtına, don, sel (Türkiye geneli uyarılar)
-- yerel-haber: Tek il/ilçeye özgü olay. isBreaking: false ZORUNLU. ÖNEMLİ: ölü sayısı, dramatik dil, büyük manşet yerel haberi son-dakika YAPMAZ.
-- gundem: Türkiye geneli, yukarıdakilere girmeyen ulusal haberler
+- yerel-haber: Tek il/ilçeye özgü olay. isBreaking: false ZORUNLU. Yerel kaza/olay/tören → burada, son-dakika DEĞİL.
+- gundem: Türkiye geneli, yukarıdakilere girmeyen ulusal haberler. Slider/ana sayfada öne çıkan kategori.
 
 YERELLİK TESTİ:
 Aşağıdakilerin hepsi doğruysa → yerel-haber:
@@ -69,9 +84,13 @@ Aşağıdakilerin hepsi doğruysa → yerel-haber:
 ✓ Diğer şehirlerde benzer etki yok
 ✓ Türkiye genelinde politika/yasa/ekonomi değişikliği yok
 
-ALTIN KURAL son-dakika için: "Bu haber ŞU AN Türkiye'nin 5+ ilini veya tüm ekonomisini doğrudan etkiliyor mu?" → Hayır → son-dakika DEĞİL.
-
-KUTLAMA/TÖREN KURALI: Babalar günü, anneler günü, mezuniyet töreni, anma etkinliği, açılış töreni, festival, şenlik, belediye etkinliği → SON-DAKİKA OLAMAZ. gundem veya yerel-haber.
+KESİN YASAKLAR (son-dakika olamaz):
+- Kutlama, tören, festival, şenlik, anma etkinliği
+- Babalar/anneler/öğretmenler/sevgililer günü
+- Belediye hizmet/asfalt/park haberleri
+- Yerel trafik kazası (tek şehir)
+- Ödül töreni, konser, spor maçı sonucu
+- Piyasa/araştırma raporu, akademik çalışma
 
 ÇIKTI: Yalnızca geçerli JSON:`
 

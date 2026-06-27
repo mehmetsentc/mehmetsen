@@ -55,14 +55,9 @@ export async function GET(request: Request) {
         configured: isGptConfigured(),
         ...resolve(gpt, { ok: false, latencyMs: 0 }),
       },
-      claude: {
-        id: 'claude',
-        name: 'Claude Haiku',
-        role: 'Technical AI',
-        configured: Boolean(process.env.ANTHROPIC_API_KEY),
-        ok: Boolean(process.env.ANTHROPIC_API_KEY),
-        latencyMs: 0,
-      },
+      // Claude entegrasyonu kodda yok — yanıltıcı "configured" gösterimini
+      // kaldırdık. İleride ANTHROPIC_API_KEY ile gerçek bir adapter eklenirse
+      // (lib/ai/claude.ts gibi) bu blok geri gelir.
     },
     queue: resolve(queueStats, { pending: 0, processing: 0, done: 0, failed: 0, rejected: 0 }),
   }, { headers: { 'Cache-Control': 'no-store, max-age=0' } })

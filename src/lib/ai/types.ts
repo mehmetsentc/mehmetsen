@@ -5,7 +5,7 @@
  */
 
 // ── Agent identifiers ─────────────────────────────────────────────────────────
-export type AiAgentId = 'deepseek' | 'gemini' | 'gpt' | 'claude'
+export type AiAgentId = 'deepseek' | 'gemini' | 'gpt'
 
 export interface AiAgentStatus {
   id: AiAgentId

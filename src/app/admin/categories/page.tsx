@@ -1,192 +1,101 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
-import { Plus } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { CategoryTable } from '@/components/admin/CategoryTable'
-import { categoryService } from '@/services/categoryService'
-import type { Category } from '@/types/common'
+import { useMemo } from 'react'
+import Link from 'next/link'
+import { Info, Folder } from 'lucide-react'
+import { DEFAULT_CATEGORIES, getSubcategories } from '@/constants/config'
 
+/**
+ * Admin → Kategoriler (read-only)
+ *
+ * Kategoriler artık `constants/config.ts` içindeki `DEFAULT_CATEGORIES`
+ * tarafından yönetiliyor. Bu liste sidebar nav'ı, home rails, kategori
+ * sayfa rotaları ve ön yüzdeki tüm bağımlılıklar için tek kaynak. Firestore
+ * tarafında dinamik bir koleksiyon tutulmuyor — değişiklikler kod üzerinden
+ * yapılır ve deploy edilir.
+ */
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<Category | null>(null)
-  const [form, setForm] = useState({ id: '', name: '', slug: '', order: 0, color: '#EF4444' })
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const list = await categoryService.list()
-      setCategories(list)
-    } catch (err) {
-      console.error(err)
-      toast.error('Kategoriler yüklenemedi')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  const resetForm = () => {
-    setForm({ id: '', name: '', slug: '', order: categories.length, color: '#EF4444' })
-    setEditing(null)
-    setShowForm(false)
-  }
-
-  const handleEdit = (cat: Category) => {
-    setEditing(cat)
-    setForm({ id: cat.id, name: cat.name, slug: cat.slug, order: cat.order, color: cat.color })
-    setShowForm(true)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.name.trim() || !form.slug.trim()) {
-      toast.error('Ad ve slug gerekli')
-      return
-    }
-
-    setActionLoading('form')
-    try {
-      if (editing) {
-        await categoryService.update(editing.id, {
-          name: form.name,
-          slug: form.slug,
-          order: form.order,
-          color: form.color,
-        })
-        toast.success('Kategori güncellendi')
-      } else {
-        const id = form.id.trim() || form.slug.trim()
-        await categoryService.create({
-          id,
-          name: form.name,
-          slug: form.slug,
-          order: form.order,
-          color: form.color,
-        })
-        toast.success('Kategori oluşturuldu')
-      }
-      resetForm()
-      await load()
-    } catch (err) {
-      console.error(err)
-      toast.error('Kaydetme başarısız')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Bu kategoriyi silmek istediğinize emin misiniz?')) return
-    setActionLoading(id)
-    try {
-      await categoryService.remove(id)
-      toast.success('Kategori silindi')
-      setCategories((prev) => prev.filter((c) => c.id !== id))
-    } catch (err) {
-      console.error(err)
-      toast.error('Silme başarısız')
-    } finally {
-      setActionLoading(null)
-    }
-  }
+  const topLevel = useMemo(
+    () => DEFAULT_CATEGORIES.filter((c) => !c.parentId),
+    []
+  )
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div className="p-6 lg:p-8 space-y-6">
+      <header>
+        <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Kategoriler</h1>
+        <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
+          Tek kaynak: <code className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 text-xs">src/constants/config.ts</code>
+        </p>
+      </header>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-300 flex gap-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <div>
-          <h1 className="text-2xl font-bold text-[rgb(var(--color-text))]">Kategoriler</h1>
-          <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-            Feed filtrelerinde kullanılan kategoriler
+          <p className="font-semibold">Kategori yönetimi kodda</p>
+          <p className="mt-1 text-amber-700 dark:text-amber-400">
+            Sidebar, üst nav, home rails, kategori rotaları ve AI categoryEngine
+            bu listeden okur. Yeni kategori eklemek için kodu güncelleyip deploy et.
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setShowForm(true) }}>
-          <Plus className="mr-2 inline h-4 w-4" />
-          Yeni Kategori
-        </Button>
       </div>
 
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="mb-6 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5"
-        >
-          <h2 className="mb-4 font-semibold text-[rgb(var(--color-text))]">
-            {editing ? 'Kategori Düzenle' : 'Yeni Kategori'}
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {!editing && (
-              <div>
-                <label className="mb-1 block text-sm text-[rgb(var(--color-muted))]">ID</label>
-                <Input
-                  value={form.id}
-                  onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
-                  placeholder="gundem"
-                />
-              </div>
-            )}
-            <div>
-              <label className="mb-1 block text-sm text-[rgb(var(--color-muted))]">Ad</label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Gündem"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-[rgb(var(--color-muted))]">Slug</label>
-              <Input
-                value={form.slug}
-                onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
-                placeholder="gundem"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-[rgb(var(--color-muted))]">Sıra</label>
-              <Input
-                type="number"
-                value={form.order}
-                onChange={(e) => setForm((f) => ({ ...f, order: Number(e.target.value) }))}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-[rgb(var(--color-muted))]">Renk</label>
-              <Input
-                type="color"
-                value={form.color}
-                onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                className="h-10"
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex gap-2">
-            <Button type="submit" disabled={actionLoading === 'form'}>
-              {editing ? 'Güncelle' : 'Oluştur'}
-            </Button>
-            <Button type="button" variant="secondary" onClick={resetForm}>
-              İptal
-            </Button>
-          </div>
-        </form>
-      )}
-
-      <CategoryTable
-        categories={categories}
-        loading={loading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        actionLoading={actionLoading}
-      />
+      <div className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
+        <table className="w-full text-sm">
+          <thead className="bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]">
+            <tr>
+              <th className="px-4 py-2 text-left font-semibold">Ad</th>
+              <th className="px-4 py-2 text-left font-semibold">ID / Slug</th>
+              <th className="px-4 py-2 text-left font-semibold">Alt Kategoriler</th>
+              <th className="px-4 py-2 text-left font-semibold">Renk</th>
+              <th className="px-4 py-2 text-right font-semibold">Sayfa</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+            {topLevel.map((cat) => {
+              const subs = getSubcategories(cat.id)
+              return (
+                <tr key={cat.id}>
+                  <td className="px-4 py-2.5 font-semibold text-[rgb(var(--color-text))]">
+                    <span className="inline-flex items-center gap-2">
+                      <Folder className="h-3.5 w-3.5" style={{ color: cat.color }} />
+                      {cat.name}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-[rgb(var(--color-muted))]">
+                    {cat.id}
+                    {cat.slug && cat.slug !== cat.id ? <> · {cat.slug}</> : null}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {subs.length ? (
+                      <span className="text-xs text-[rgb(var(--color-muted))]">
+                        {subs.map((s) => s.name).join(', ')}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[rgb(var(--color-muted))] opacity-50">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span
+                      className="inline-block h-4 w-4 rounded-full border border-[rgb(var(--color-border))]"
+                      style={{ backgroundColor: cat.color }}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <Link
+                      href={`/kategori/${cat.slug ?? cat.id}`}
+                      target="_blank"
+                      className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      Aç ↗
+                    </Link>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
