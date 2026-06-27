@@ -478,6 +478,14 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     description: 'HackerNews beststories — score≥150 teknoloji/dünya haberlerini çeker, AI ile Türkçeye çevirir.',
     cronPath: '/api/cron/newsroom/technology',
   },
+  freenews: {
+    id: 'freenews',
+    name: 'FreeNewsAPI Worker',
+    nameTr: 'FreeNewsAPI',
+    schedule: '30m',
+    description: 'freenewsapi.io üzerinden Türkçe (language=tr) haberler çeker, AI ile yeniden yazar ve yayınlar.',
+    cronPath: '/api/cron/newsroom/freenews',
+  },
 }
 
 export function getInfluencerList(): string[] {
