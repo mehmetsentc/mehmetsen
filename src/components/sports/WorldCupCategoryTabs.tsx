@@ -6,229 +6,19 @@
  * Kaydırmalı chip navigation:
  *   [📰 Haberler] [Grup A] [Grup B] ... [Grup L]
  *
- * - Haberler chipsi: haber feed gösterir (CategoryFeed)
- * - Grup chipleri: o grubun puan durumu + maç sonuçları
+ * Veri: `WorldCup2026Data` (ESPN'den 15 dk cache'li server fetch). Sayfa
+ * bileşeni veriyi `initialData` prop'u ile aktarır.
  */
 
 import { useState } from 'react'
-import { Trophy } from 'lucide-react'
+import { Trophy, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import type { TimelinePost } from '@/types/post'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface TeamStat {
-  team: string
-  flag: string
-  p: number
-  w: number
-  d: number
-  l: number
-  gf: number
-  ga: number
-  gd: number
-  pts: number
-  isTurkiye?: boolean
-}
-
-interface Group {
-  id: string
-  name: string
-  teams: TeamStat[]
-}
-
-interface Match {
-  home: string
-  homeFlag: string
-  homeScore: number
-  awayScore: number
-  away: string
-  awayFlag: string
-  date: string
-  group: string
-  finished: boolean
-  isLive?: boolean
-}
-
-// ─── Data (güncel: 25 Haziran 2026, Grup Aşaması devam ediyor) ───────────────
-const GROUPS: Group[] = [
-  {
-    id: 'A', name: 'Grup A',
-    teams: [
-      { team: 'Meksika',       flag: '🇲🇽', p: 2, w: 2, d: 0, l: 0, gf: 3,  ga: 0,  gd: 3,  pts: 6 },
-      { team: 'G. Kore',       flag: '🇰🇷', p: 2, w: 1, d: 0, l: 1, gf: 2,  ga: 2,  gd: 0,  pts: 3 },
-      { team: 'Çekya',         flag: '🇨🇿', p: 2, w: 0, d: 1, l: 1, gf: 2,  ga: 3,  gd: -1, pts: 1 },
-      { team: 'G. Afrika',     flag: '🇿🇦', p: 2, w: 0, d: 1, l: 1, gf: 1,  ga: 3,  gd: -2, pts: 1 },
-    ],
-  },
-  {
-    id: 'B', name: 'Grup B',
-    teams: [
-      { team: 'Kanada',        flag: '🇨🇦', p: 2, w: 1, d: 1, l: 0, gf: 7,  ga: 1,  gd: 6,  pts: 4 },
-      { team: 'İsviçre',       flag: '🇨🇭', p: 2, w: 1, d: 1, l: 0, gf: 5,  ga: 2,  gd: 3,  pts: 4 },
-      { team: 'Bosna Hersek',  flag: '🇧🇦', p: 2, w: 0, d: 1, l: 1, gf: 2,  ga: 5,  gd: -3, pts: 1 },
-      { team: 'Katar',         flag: '🇶🇦', p: 2, w: 0, d: 1, l: 1, gf: 1,  ga: 7,  gd: -6, pts: 1 },
-    ],
-  },
-  {
-    id: 'C', name: 'Grup C',
-    teams: [
-      { team: 'Brezilya',      flag: '🇧🇷', p: 2, w: 1, d: 1, l: 0, gf: 4,  ga: 1,  gd: 3,  pts: 4 },
-      { team: 'Fas',           flag: '🇲🇦', p: 2, w: 1, d: 1, l: 0, gf: 2,  ga: 1,  gd: 1,  pts: 4 },
-      { team: 'İskoçya',       flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', p: 2, w: 1, d: 0, l: 1, gf: 1,  ga: 1,  gd: 0,  pts: 3 },
-      { team: 'Haiti',         flag: '🇭🇹', p: 2, w: 0, d: 0, l: 2, gf: 0,  ga: 4,  gd: -4, pts: 0 },
-    ],
-  },
-  {
-    id: 'D', name: 'Grup D',
-    teams: [
-      { team: 'ABD',           flag: '🇺🇸', p: 2, w: 2, d: 0, l: 0, gf: 6,  ga: 1,  gd: 5,  pts: 6 },
-      { team: 'Avustralya',    flag: '🇦🇺', p: 2, w: 1, d: 0, l: 1, gf: 2,  ga: 2,  gd: 0,  pts: 3 },
-      { team: 'Paraguay',      flag: '🇵🇾', p: 2, w: 1, d: 0, l: 1, gf: 2,  ga: 4,  gd: -2, pts: 3 },
-      { team: 'Türkiye',       flag: '🇹🇷', p: 2, w: 0, d: 0, l: 2, gf: 0,  ga: 3,  gd: -3, pts: 0, isTurkiye: true },
-    ],
-  },
-  {
-    id: 'E', name: 'Grup E',
-    teams: [
-      { team: 'Almanya',       flag: '🇩🇪', p: 2, w: 2, d: 0, l: 0, gf: 9,  ga: 2,  gd: 7,  pts: 6 },
-      { team: 'Fildişi Sah.', flag: '🇨🇮',  p: 2, w: 1, d: 0, l: 1, gf: 2,  ga: 2,  gd: 0,  pts: 3 },
-      { team: 'Ekvador',       flag: '🇪🇨', p: 2, w: 0, d: 1, l: 1, gf: 0,  ga: 1,  gd: -1, pts: 1 },
-      { team: 'Curaçao',       flag: '🇨🇼', p: 2, w: 0, d: 1, l: 1, gf: 1,  ga: 9,  gd: -8, pts: 1 },
-    ],
-  },
-  {
-    id: 'F', name: 'Grup F',
-    teams: [
-      { team: 'Hollanda',      flag: '🇳🇱', p: 2, w: 1, d: 1, l: 0, gf: 7,  ga: 3,  gd: 4,  pts: 4 },
-      { team: 'Japonya',       flag: '🇯🇵', p: 2, w: 1, d: 1, l: 0, gf: 6,  ga: 2,  gd: 4,  pts: 4 },
-      { team: 'İsveç',         flag: '🇸🇪', p: 2, w: 1, d: 0, l: 1, gf: 6,  ga: 6,  gd: 0,  pts: 3 },
-      { team: 'Tunus',         flag: '🇹🇳', p: 2, w: 0, d: 0, l: 2, gf: 1,  ga: 9,  gd: -8, pts: 0 },
-    ],
-  },
-  {
-    id: 'G', name: 'Grup G',
-    teams: [
-      { team: 'Mısır',         flag: '🇪🇬', p: 2, w: 1, d: 1, l: 0, gf: 4,  ga: 2,  gd: 2,  pts: 4 },
-      { team: 'İran',          flag: '🇮🇷', p: 2, w: 0, d: 2, l: 0, gf: 2,  ga: 2,  gd: 0,  pts: 2 },
-      { team: 'Belçika',       flag: '🇧🇪', p: 2, w: 0, d: 2, l: 0, gf: 1,  ga: 1,  gd: 0,  pts: 2 },
-      { team: 'Yeni Zelanda',  flag: '🇳🇿', p: 2, w: 0, d: 0, l: 2, gf: 3,  ga: 5,  gd: -2, pts: 0 },
-    ],
-  },
-  {
-    id: 'H', name: 'Grup H',
-    teams: [
-      { team: 'Fransa',        flag: '🇫🇷', p: 2, w: 2, d: 0, l: 0, gf: 6,  ga: 1,  gd: 5,  pts: 6 },
-      { team: 'Norveç',        flag: '🇳🇴', p: 2, w: 2, d: 0, l: 0, gf: 7,  ga: 3,  gd: 4,  pts: 6 },
-      { team: 'Senegal',       flag: '🇸🇳', p: 2, w: 0, d: 0, l: 2, gf: 3,  ga: 6,  gd: -3, pts: 0 },
-      { team: 'Irak',          flag: '🇮🇶', p: 2, w: 0, d: 0, l: 2, gf: 1,  ga: 7,  gd: -6, pts: 0 },
-    ],
-  },
-  {
-    id: 'I', name: 'Grup I',
-    teams: [
-      { team: 'Arjantin',      flag: '🇦🇷', p: 2, w: 2, d: 0, l: 0, gf: 4,  ga: 0,  gd: 4,  pts: 6 },
-      { team: 'Avusturya',     flag: '🇦🇹', p: 2, w: 1, d: 0, l: 1, gf: 3,  ga: 2,  gd: 1,  pts: 3 },
-      { team: 'Ürdün',         flag: '🇯🇴', p: 2, w: 1, d: 0, l: 1, gf: 3,  ga: 4,  gd: -1, pts: 3 },
-      { team: 'Cezayir',       flag: '🇩🇿', p: 2, w: 0, d: 0, l: 2, gf: 1,  ga: 5,  gd: -4, pts: 0 },
-    ],
-  },
-  {
-    id: 'J', name: 'Grup J',
-    teams: [
-      { team: 'Kolombiya',     flag: '🇨🇴', p: 2, w: 2, d: 0, l: 0, gf: 4,  ga: 1,  gd: 3,  pts: 6 },
-      { team: 'Portekiz',      flag: '🇵🇹', p: 2, w: 1, d: 1, l: 0, gf: 6,  ga: 1,  gd: 5,  pts: 4 },
-      { team: 'K. Kongo',      flag: '🇨🇩', p: 2, w: 0, d: 1, l: 1, gf: 1,  ga: 2,  gd: -1, pts: 1 },
-      { team: 'Özbekistan',    flag: '🇺🇿', p: 2, w: 0, d: 0, l: 2, gf: 1,  ga: 8,  gd: -7, pts: 0 },
-    ],
-  },
-  {
-    id: 'K', name: 'Grup K',
-    teams: [
-      { team: 'İngiltere',     flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', p: 2, w: 1, d: 1, l: 0, gf: 4,  ga: 2,  gd: 2,  pts: 4 },
-      { team: 'Gana',          flag: '🇬🇭', p: 2, w: 1, d: 1, l: 0, gf: 1,  ga: 0,  gd: 1,  pts: 4 },
-      { team: 'Hırvatistan',   flag: '🇭🇷', p: 2, w: 1, d: 0, l: 1, gf: 3,  ga: 4,  gd: -1, pts: 3 },
-      { team: 'Panama',        flag: '🇵🇦', p: 2, w: 0, d: 0, l: 2, gf: 0,  ga: 2,  gd: -2, pts: 0 },
-    ],
-  },
-  {
-    id: 'L', name: 'Grup L',
-    teams: [
-      { team: 'İspanya',       flag: '🇪🇸', p: 2, w: 2, d: 0, l: 0, gf: 5,  ga: 1,  gd: 4,  pts: 6 },
-      { team: 'Uruguay',       flag: '🇺🇾', p: 2, w: 1, d: 0, l: 1, gf: 2,  ga: 2,  gd: 0,  pts: 3 },
-      { team: 'G. Arabistan',  flag: '🇸🇦', p: 2, w: 1, d: 0, l: 1, gf: 2,  ga: 3,  gd: -1, pts: 3 },
-      { team: 'Madagaskar',    flag: '🇲🇬', p: 2, w: 0, d: 0, l: 2, gf: 1,  ga: 4,  gd: -3, pts: 0 },
-    ],
-  },
-]
-
-const MATCHES: Match[] = [
-  // Grup A
-  { home: 'Meksika',      homeFlag: '🇲🇽', homeScore: 2, awayScore: 0, away: 'G. Afrika',     awayFlag: '🇿🇦', date: '13 Haz', group: 'A', finished: true },
-  { home: 'G. Kore',      homeFlag: '🇰🇷', homeScore: 2, awayScore: 1, away: 'Çekya',          awayFlag: '🇨🇿', date: '13 Haz', group: 'A', finished: true },
-  { home: 'Çekya',        homeFlag: '🇨🇿', homeScore: 1, awayScore: 1, away: 'G. Afrika',     awayFlag: '🇿🇦', date: '19 Haz', group: 'A', finished: true },
-  { home: 'Meksika',      homeFlag: '🇲🇽', homeScore: 1, awayScore: 0, away: 'G. Kore',       awayFlag: '🇰🇷', date: '19 Haz', group: 'A', finished: true },
-  // Grup B
-  { home: 'Kanada',       homeFlag: '🇨🇦', homeScore: 1, awayScore: 1, away: 'Bosna Hersek', awayFlag: '🇧🇦', date: '14 Haz', group: 'B', finished: true },
-  { home: 'İsviçre',      homeFlag: '🇨🇭', homeScore: 1, awayScore: 1, away: 'Katar',         awayFlag: '🇶🇦', date: '14 Haz', group: 'B', finished: true },
-  { home: 'İsviçre',      homeFlag: '🇨🇭', homeScore: 4, awayScore: 1, away: 'Bosna Hersek', awayFlag: '🇧🇦', date: '20 Haz', group: 'B', finished: true },
-  { home: 'Kanada',       homeFlag: '🇨🇦', homeScore: 6, awayScore: 0, away: 'Katar',         awayFlag: '🇶🇦', date: '20 Haz', group: 'B', finished: true },
-  // Grup C
-  { home: 'Brezilya',     homeFlag: '🇧🇷', homeScore: 1, awayScore: 1, away: 'Fas',           awayFlag: '🇲🇦', date: '14 Haz', group: 'C', finished: true },
-  { home: 'İskoçya',      homeFlag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', homeScore: 1, awayScore: 0, away: 'Haiti',         awayFlag: '🇭🇹', date: '14 Haz', group: 'C', finished: true },
-  { home: 'Fas',          homeFlag: '🇲🇦', homeScore: 1, awayScore: 0, away: 'İskoçya',       awayFlag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', date: '20 Haz', group: 'C', finished: true },
-  { home: 'Brezilya',     homeFlag: '🇧🇷', homeScore: 3, awayScore: 0, away: 'Haiti',         awayFlag: '🇭🇹', date: '20 Haz', group: 'C', finished: true },
-  // Grup D — TÜRKİYE
-  { home: 'ABD',          homeFlag: '🇺🇸', homeScore: 4, awayScore: 1, away: 'Paraguay',      awayFlag: '🇵🇾', date: '15 Haz', group: 'D', finished: true },
-  { home: 'Avustralya',   homeFlag: '🇦🇺', homeScore: 2, awayScore: 0, away: 'Türkiye',       awayFlag: '🇹🇷', date: '15 Haz', group: 'D', finished: true },
-  { home: 'ABD',          homeFlag: '🇺🇸', homeScore: 2, awayScore: 0, away: 'Avustralya',    awayFlag: '🇦🇺', date: '21 Haz', group: 'D', finished: true },
-  { home: 'Türkiye',      homeFlag: '🇹🇷', homeScore: 0, awayScore: 1, away: 'Paraguay',      awayFlag: '🇵🇾', date: '21 Haz', group: 'D', finished: true },
-  { home: 'Türkiye',      homeFlag: '🇹🇷', homeScore: 0, awayScore: 0, away: 'ABD',           awayFlag: '🇺🇸', date: '26 Haz', group: 'D', finished: false },
-  { home: 'Paraguay',     homeFlag: '🇵🇾', homeScore: 0, awayScore: 0, away: 'Avustralya',    awayFlag: '🇦🇺', date: '26 Haz', group: 'D', finished: false },
-  // Grup E
-  { home: 'Almanya',      homeFlag: '🇩🇪', homeScore: 7, awayScore: 1, away: 'Curaçao',       awayFlag: '🇨🇼', date: '14 Haz', group: 'E', finished: true },
-  { home: 'Fildişi Sah.', homeFlag: '🇨🇮', homeScore: 1, awayScore: 0, away: 'Ekvador',       awayFlag: '🇪🇨', date: '14 Haz', group: 'E', finished: true },
-  { home: 'Almanya',      homeFlag: '🇩🇪', homeScore: 2, awayScore: 1, away: 'Fildişi Sah.', awayFlag: '🇨🇮',  date: '20 Haz', group: 'E', finished: true },
-  { home: 'Ekvador',      homeFlag: '🇪🇨', homeScore: 0, awayScore: 0, away: 'Curaçao',       awayFlag: '🇨🇼', date: '20 Haz', group: 'E', finished: true },
-  // Grup F
-  { home: 'Hollanda',     homeFlag: '🇳🇱', homeScore: 2, awayScore: 2, away: 'Japonya',       awayFlag: '🇯🇵', date: '15 Haz', group: 'F', finished: true },
-  { home: 'İsveç',        homeFlag: '🇸🇪', homeScore: 5, awayScore: 1, away: 'Tunus',         awayFlag: '🇹🇳', date: '15 Haz', group: 'F', finished: true },
-  { home: 'Hollanda',     homeFlag: '🇳🇱', homeScore: 5, awayScore: 1, away: 'İsveç',         awayFlag: '🇸🇪', date: '21 Haz', group: 'F', finished: true },
-  { home: 'Japonya',      homeFlag: '🇯🇵', homeScore: 4, awayScore: 0, away: 'Tunus',         awayFlag: '🇹🇳', date: '21 Haz', group: 'F', finished: true },
-  // Grup G
-  { home: 'Belçika',      homeFlag: '🇧🇪', homeScore: 1, awayScore: 1, away: 'Mısır',         awayFlag: '🇪🇬', date: '15 Haz', group: 'G', finished: true },
-  { home: 'İran',         homeFlag: '🇮🇷', homeScore: 2, awayScore: 2, away: 'Yeni Zelanda',  awayFlag: '🇳🇿', date: '15 Haz', group: 'G', finished: true },
-  { home: 'Belçika',      homeFlag: '🇧🇪', homeScore: 0, awayScore: 0, away: 'İran',          awayFlag: '🇮🇷', date: '21 Haz', group: 'G', finished: true },
-  { home: 'Mısır',        homeFlag: '🇪🇬', homeScore: 3, awayScore: 1, away: 'Yeni Zelanda',  awayFlag: '🇳🇿', date: '21 Haz', group: 'G', finished: true },
-  // Grup H
-  { home: 'Fransa',       homeFlag: '🇫🇷', homeScore: 3, awayScore: 1, away: 'Senegal',       awayFlag: '🇸🇳', date: '16 Haz', group: 'H', finished: true },
-  { home: 'Norveç',       homeFlag: '🇳🇴', homeScore: 4, awayScore: 1, away: 'Irak',          awayFlag: '🇮🇶', date: '16 Haz', group: 'H', finished: true },
-  { home: 'Fransa',       homeFlag: '🇫🇷', homeScore: 3, awayScore: 0, away: 'Irak',          awayFlag: '🇮🇶', date: '22 Haz', group: 'H', finished: true },
-  { home: 'Norveç',       homeFlag: '🇳🇴', homeScore: 3, awayScore: 2, away: 'Senegal',       awayFlag: '🇸🇳', date: '22 Haz', group: 'H', finished: true },
-  // Grup I
-  { home: 'Arjantin',     homeFlag: '🇦🇷', homeScore: 3, awayScore: 0, away: 'Cezayir',       awayFlag: '🇩🇿', date: '16 Haz', group: 'I', finished: true },
-  { home: 'Avusturya',    homeFlag: '🇦🇹', homeScore: 3, awayScore: 1, away: 'Ürdün',         awayFlag: '🇯🇴', date: '17 Haz', group: 'I', finished: true },
-  { home: 'Arjantin',     homeFlag: '🇦🇷', homeScore: 1, awayScore: 0, away: 'Avusturya',     awayFlag: '🇦🇹', date: '22 Haz', group: 'I', finished: true },
-  { home: 'Ürdün',        homeFlag: '🇯🇴', homeScore: 2, awayScore: 1, away: 'Cezayir',       awayFlag: '🇩🇿', date: '22 Haz', group: 'I', finished: true },
-  // Grup J
-  { home: 'Portekiz',     homeFlag: '🇵🇹', homeScore: 1, awayScore: 1, away: 'K. Kongo',      awayFlag: '🇨🇩', date: '17 Haz', group: 'J', finished: true },
-  { home: 'Kolombiya',    homeFlag: '🇨🇴', homeScore: 3, awayScore: 1, away: 'Özbekistan',    awayFlag: '🇺🇿', date: '17 Haz', group: 'J', finished: true },
-  { home: 'Portekiz',     homeFlag: '🇵🇹', homeScore: 5, awayScore: 0, away: 'Özbekistan',    awayFlag: '🇺🇿', date: '23 Haz', group: 'J', finished: true },
-  { home: 'Kolombiya',    homeFlag: '🇨🇴', homeScore: 1, awayScore: 0, away: 'K. Kongo',      awayFlag: '🇨🇩', date: '23 Haz', group: 'J', finished: true },
-  // Grup K
-  { home: 'İngiltere',    homeFlag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', homeScore: 4, awayScore: 2, away: 'Hırvatistan',   awayFlag: '🇭🇷', date: '17 Haz', group: 'K', finished: true },
-  { home: 'Gana',         homeFlag: '🇬🇭', homeScore: 1, awayScore: 0, away: 'Panama',        awayFlag: '🇵🇦', date: '17 Haz', group: 'K', finished: true },
-  { home: 'İngiltere',    homeFlag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', homeScore: 0, awayScore: 0, away: 'Gana',          awayFlag: '🇬🇭', date: '23 Haz', group: 'K', finished: true },
-  { home: 'Hırvatistan',  homeFlag: '🇭🇷', homeScore: 1, awayScore: 0, away: 'Panama',        awayFlag: '🇵🇦', date: '23 Haz', group: 'K', finished: true },
-  // Grup L
-  { home: 'İspanya',      homeFlag: '🇪🇸', homeScore: 3, awayScore: 0, away: 'Madagaskar',    awayFlag: '🇲🇬', date: '18 Haz', group: 'L', finished: true },
-  { home: 'Uruguay',      homeFlag: '🇺🇾', homeScore: 2, awayScore: 1, away: 'G. Arabistan',  awayFlag: '🇸🇦', date: '18 Haz', group: 'L', finished: true },
-  { home: 'İspanya',      homeFlag: '🇪🇸', homeScore: 2, awayScore: 1, away: 'Uruguay',       awayFlag: '🇺🇾', date: '24 Haz', group: 'L', finished: true },
-  { home: 'G. Arabistan', homeFlag: '🇸🇦', homeScore: 1, awayScore: 1, away: 'Madagaskar',    awayFlag: '🇲🇬', date: '24 Haz', group: 'L', finished: true },
-]
+import type { WorldCup2026Data, WcGroup, WcMatch } from '@/services/sportsApi/worldCup2026'
 
 // ─── Sub-Components ───────────────────────────────────────────────────────────
-function StandingsTable({ group }: { group: Group }) {
+function StandingsTable({ group }: { group: WcGroup }) {
   return (
     <div className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
       <div className="flex items-center gap-2 bg-amber-500 px-3 py-2">
@@ -299,7 +89,7 @@ function StandingsTable({ group }: { group: Group }) {
   )
 }
 
-function MatchRow({ match }: { match: Match }) {
+function MatchRow({ match }: { match: WcMatch }) {
   const hasTurkiye = match.home === 'Türkiye' || match.away === 'Türkiye'
   return (
     <div className={cn(
@@ -317,11 +107,13 @@ function MatchRow({ match }: { match: Match }) {
       </div>
       <div className={cn(
         'flex w-12 shrink-0 items-center justify-center rounded-lg px-1.5 py-1 text-sm font-black',
-        match.finished
-          ? 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]'
-          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+        match.isLive
+          ? 'bg-red-500 text-white animate-pulse'
+          : match.finished
+            ? 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]'
+            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
       )}>
-        {match.finished ? `${match.homeScore}–${match.awayScore}` : 'vs'}
+        {match.finished || match.isLive ? `${match.homeScore}–${match.awayScore}` : 'vs'}
       </div>
       <div className="flex flex-1 items-center gap-1.5">
         <span className="text-sm">{match.awayFlag}</span>
@@ -336,26 +128,35 @@ type ActiveChip = 'haberler' | string  // string = grup ID ('A'…'L')
 
 interface Props {
   initialPosts?: TimelinePost[]
+  data: WorldCup2026Data
 }
 
-export function WorldCupCategoryTabs({ initialPosts }: Props) {
+export function WorldCupCategoryTabs({ initialPosts, data }: Props) {
   const [active, setActive] = useState<ActiveChip>('haberler')
+
+  const groups = data.groups
+  const matches = data.matches
 
   const chips: { id: ActiveChip; label: string }[] = [
     { id: 'haberler', label: '📰 Haberler' },
-    ...GROUPS.map(g => ({
+    ...groups.map(g => ({
       id: g.id,
-      label: g.id === 'D' ? `🇹🇷 ${g.name}` : g.name,
+      // Türkiye hangi gruptaysa onu işaretle
+      label: g.teams.some(t => t.isTurkiye) ? `🇹🇷 ${g.name}` : g.name,
     })),
   ]
 
   const activeGroup = active !== 'haberler'
-    ? GROUPS.find(g => g.id === active) ?? null
+    ? groups.find(g => g.id === active) ?? null
     : null
 
   const groupMatches = activeGroup
-    ? MATCHES.filter(m => m.group === activeGroup.id)
+    ? matches.filter(m => m.group === activeGroup.id)
     : []
+
+  const updatedAt = data.updatedAt && data.source === 'espn'
+    ? new Date(data.updatedAt).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
+    : null
 
   return (
     <div>
@@ -392,20 +193,26 @@ export function WorldCupCategoryTabs({ initialPosts }: Props) {
           <StandingsTable group={activeGroup} />
 
           {/* Maç sonuçları */}
-          <div>
-            <h3 className="mb-2 text-xs font-black uppercase tracking-wide text-[rgb(var(--color-muted))]">
-              {activeGroup.name} Maçları
-            </h3>
-            <div className="space-y-2">
-              {groupMatches.map((m, i) => (
-                <MatchRow key={i} match={m} />
-              ))}
+          {groupMatches.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-xs font-black uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                {activeGroup.name} Maçları
+              </h3>
+              <div className="space-y-2">
+                {groupMatches.map((m, i) => (
+                  <MatchRow key={i} match={m} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Güncelleme notu */}
-          <p className="text-center text-[10px] text-[rgb(var(--color-muted))]">
-            Güncelleme: 25 Haziran 2026 · Kaynak: FIFA / ESPN
+          <p className="flex items-center justify-center gap-1.5 text-center text-[10px] text-[rgb(var(--color-muted))]">
+            <RefreshCw className="h-3 w-3" />
+            {updatedAt
+              ? <>Güncelleme: {updatedAt} · Kaynak: ESPN</>
+              : <>Kaynak: ESPN — anlık veri alınamadı, son bilinen veri gösteriliyor</>
+            }
           </p>
         </div>
       )}

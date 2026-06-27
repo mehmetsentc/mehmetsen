@@ -12,6 +12,7 @@ import { ROUTES } from '@/constants/routes'
 import type { TimelinePost } from '@/types/post'
 import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
 import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
+import { getWorldCup2026Data } from '@/services/sportsApi/worldCup2026'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -210,7 +211,10 @@ export default async function CategoryPage({ params }: Props) {
 
       {/* Dünya Kupası 2026 — chip navigation (Haberler + Grup A–L) */}
       {cat.id === 'dunya-kupasi-2026' ? (
-        <WorldCupCategoryTabs initialPosts={initialPosts} />
+        <WorldCupCategoryTabs
+          initialPosts={initialPosts}
+          data={await getWorldCup2026Data()}
+        />
       ) : (
         <>
           {/* Borsa kategorisinde canlı piyasa verileri */}

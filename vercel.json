@@ -110,6 +110,9 @@
     "src/app/api/cron/newsroom/freenews/route.ts": {
       "maxDuration": 120
     },
+    "src/app/api/cron/sports/worldcup-sync/route.ts": {
+      "maxDuration": 30
+    },
     "src/app/api/admin/backfill-breaking/route.ts": {
       "maxDuration": 300,
       "memory": 1024
@@ -324,6 +327,10 @@
     {
       "path": "/api/cron/newsroom/freenews",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/sports/worldcup-sync",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
