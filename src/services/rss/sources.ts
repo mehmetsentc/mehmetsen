@@ -298,7 +298,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'ntv-kultur',
     label: 'NTV Kültür Sanat',
-    feedUrl: 'https://www.ntv.com.tr/kultur-sanat.rss',
+    // ntv.com.tr/kultur-sanat.rss → 403 (bot-detection); Google News fallback'a düşüyor
+    feedUrl: 'https://news.google.com/rss/search?q=site:ntv.com.tr+kultur-sanat&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: ['https://www.ntv.com.tr/kultur-sanat.rss'],
     maxItemsPerRun: 3,
     enabled: true,
   },
@@ -1278,7 +1280,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'ntv-seyahat',
     label: 'NTV Seyahat',
-    feedUrl: 'https://www.ntv.com.tr/seyahat.rss',
+    // ntv.com.tr/seyahat.rss → 403/301 (anti-bot); Google News fallback aktif
+    feedUrl: 'https://news.google.com/rss/search?q=site:ntv.com.tr+seyahat&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: ['https://www.ntv.com.tr/seyahat.rss'],
     maxItemsPerRun: 2,
     enabled: true,
   },
@@ -1441,7 +1445,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'hurriyet-saglik',
     label: 'Hürriyet Sağlık',
-    feedUrl: 'https://www.hurriyet.com.tr/rss/saglik',
+    // /rss/saglik → 301 redirect /son-dakika-haberleri/ (eski endpoint); Google News fallback
+    feedUrl: 'https://news.google.com/rss/search?q=site:hurriyet.com.tr+sa%C4%9Fl%C4%B1k&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: ['https://www.hurriyet.com.tr/rss/saglik'],
     maxItemsPerRun: 3,
     enabled: true,
   },
@@ -1608,12 +1614,12 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'oto-com-tr',
     label: 'Oto.com.tr',
-    feedUrl: 'https://www.oto.com.tr/rss',
-    alternateFeedUrls: [
-      'https://news.google.com/rss/search?q=site:oto.com.tr&hl=tr&gl=TR&ceid=TR:tr',
-    ],
+    // oto.com.tr/rss → SSL hatası (HTTP 000); Google News bile site için sonuç vermiyor.
+    // otomobilhaber / arabalar-com-tr / hurriyet-otomobil / milliyet-otomobil / otomobil-google-news kapsıyor.
+    feedUrl: 'https://news.google.com/rss/search?q=site:oto.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: ['https://www.oto.com.tr/rss'],
     maxItemsPerRun: 5,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'otomobilhaber',
@@ -1628,7 +1634,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'sabah-otomobil',
     label: 'Sabah Otomobil',
-    feedUrl: 'https://www.sabah.com.tr/rss/otomobil.xml',
+    // /rss/otomobil.xml 200 dönüyor ama channel boş (item yok); Google News fallback
+    feedUrl: 'https://news.google.com/rss/search?q=site:sabah.com.tr+otomobil&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: ['https://www.sabah.com.tr/rss/otomobil.xml'],
     maxItemsPerRun: 3,
     enabled: true,
   },
