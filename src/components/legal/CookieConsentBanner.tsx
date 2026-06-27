@@ -3,16 +3,29 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { X, Cookie } from 'lucide-react'
+import { isCapacitorNative } from '@/lib/platform'
 
 const CONSENT_KEY = 'nahaber-cookie-consent'
 const CONSENT_VERSION = '1'
 
 type ConsentState = 'accepted' | 'rejected' | null
 
+/**
+ * Web tarayıcı bağlamında gösterilen KVKK çerez bilgilendirme şeridi.
+ *
+ * App Store Review (Guideline 5.1.2(i)): iOS Capacitor native shell'de
+ * render edilmez — Apple WebView içindeki tracking/cookie prompt'larını
+ * reddediyor ve uygulamamız native context'te takip amaçlı veri
+ * toplamadığı için sadece web'de göstermek yeterli.
+ */
 export function CookieConsentBanner() {
   const [consent, setConsent] = useState<ConsentState | 'loading'>('loading')
 
   useEffect(() => {
+    if (isCapacitorNative()) {
+      setConsent('accepted')
+      return
+    }
     try {
       const stored = localStorage.getItem(CONSENT_KEY)
       setConsent(stored === 'accepted' ? 'accepted' : stored === 'rejected' ? 'rejected' : null)

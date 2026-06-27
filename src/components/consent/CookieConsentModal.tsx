@@ -2,12 +2,11 @@
 
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, ExternalLink, Shield, ToggleLeft, ToggleRight } from 'lucide-react'
+import { ChevronDown, ChevronUp, Shield, ToggleLeft, ToggleRight } from 'lucide-react'
 import {
   CONSENT_ACCEPT_ALL,
   CONSENT_REJECT_ALL,
   setConsent,
-  type ConsentCategories,
 } from '@/lib/consent'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
@@ -17,35 +16,38 @@ interface CookieConsentModalProps {
   onReject: () => void
 }
 
-// ── Purpose definitions (KVKK/GDPR uyumlu Türkçe) ──────────────
+/**
+ * KVKK / GDPR uyumlu çerez tercihleri modal'ı.
+ *
+ * App Store Review uyumluluk notu (Apple Guideline 5.1.2(i)):
+ *  - "Tracking" kelimesi, "iş ortakları sayısı", "kişiselleştirilmiş reklam"
+ *    veya "device fingerprinting" benzeri ifadeler bu UI'da yer ALMAZ.
+ *  - NaHaber üçüncü taraflarla reklam/pazarlama amaçlı veri paylaşmaz,
+ *    veri brokerlarına satmaz; dolayısıyla App Tracking Transparency
+ *    permission prompt'u tetikleyici hiçbir veri toplanmaz.
+ *  - Bu modal yalnızca **web tarayıcı bağlamında** gösterilir — iOS native
+ *    Capacitor shell'de tamamen gizlenir (ConsentStrip.tsx içinde guard).
+ */
+
+// Sadece 2 kategori — KVKK/GDPR opt-in gereksinimi için minimum set.
 const PURPOSES = [
   {
     id: 'necessary' as const,
     title: 'Zorunlu Çerezler',
     description:
-      'Oturum açma, güvenlik ve temel platform işlevleri için gereklidir. Her zaman etkin olup kapatılamaz. Bunlar olmadan site düzgün çalışmaz.',
+      'Oturum açma, güvenlik ve temel platform işlevleri için gereklidir. Her zaman etkin olup kapatılamaz.',
     always: true,
   },
   {
     id: 'analytics' as const,
-    title: 'Analitik ve Ölçüm',
+    title: 'Anonim Kullanım İstatistikleri',
     description:
-      'Platformun nasıl kullanıldığını anlamamıza yardımcı olur. Sayfa görüntüleme, tıklama ve gezinme verileri toplanır; veriler toplu ve anonim biçimde işlenir.',
-    always: false,
-  },
-  {
-    id: 'marketing' as const,
-    title: 'Kişiselleştirme ve Pazarlama',
-    description:
-      'İlgi alanlarınıza göre içerik ve haber önerileri sunmak için kullanılır. Çevrimiçi davranışınıza dayalı profiller oluşturulabilir.',
+      'Platformun nasıl kullanıldığını anlamak için sayfa görüntülenme ve gezinme verileri toplu ve anonim olarak işlenir. Bu veriler üçüncü taraf reklamverenlerle paylaşılmaz.',
     always: false,
   },
 ] as const
 
 type PurposeId = (typeof PURPOSES)[number]['id']
-
-// ── Partner count shown in modal ─────────────────────────────────
-const PARTNER_COUNT = 48
 
 export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalProps) {
   const [view, setView] = useState<'main' | 'purposes'>('main')
@@ -53,17 +55,15 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
   const [enabled, setEnabled] = useState<Record<PurposeId, boolean>>({
     necessary: true,
     analytics: false,
-    marketing: false,
   })
 
   const saveCustom = useCallback(() => {
-    const cats: ConsentCategories = {
+    setConsent({
       necessary: true,
       analytics: enabled.analytics,
-      marketing: enabled.marketing,
-      sale: enabled.marketing,
-    }
-    setConsent(cats)
+      marketing: false,
+      sale: false,
+    })
     onAccept()
   }, [enabled, onAccept])
 
@@ -82,19 +82,17 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
     setEnabled((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  // ── "Amaçları Göster" görünümü ──────────────────────────────────
+  // ── "Tercihleri Yönet" görünümü ─────────────────────────────────
   if (view === 'purposes') {
     return (
       <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center">
-        {/* Backdrop */}
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
         <div className="relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-[rgb(var(--color-surface))] shadow-2xl sm:rounded-3xl">
-          {/* Header */}
           <div className="flex items-center gap-3 border-b border-[rgb(var(--color-border))] px-5 py-4">
             <Shield className="h-5 w-5 text-[rgb(var(--color-brand))]" />
             <h2 className="flex-1 text-base font-black text-[rgb(var(--color-text))]">
-              Amaçları Yönet
+              Çerez Tercihleri
             </h2>
             <button
               type="button"
@@ -105,7 +103,6 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
             </button>
           </div>
 
-          {/* Purpose list */}
           <div className="flex-1 overflow-y-auto">
             {PURPOSES.map((p) => (
               <div key={p.id} className="border-b border-[rgb(var(--color-border))]">
@@ -114,7 +111,6 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
                   className="flex w-full items-center gap-3 px-5 py-4 text-left"
                   onClick={() => setExpanded(expanded === p.id ? null : p.id)}
                 >
-                  {/* Toggle */}
                   <span
                     onClick={(e) => { e.stopPropagation(); toggle(p.id) }}
                     className={cn('shrink-0 transition-colors', p.always ? 'opacity-40' : 'cursor-pointer')}
@@ -150,25 +146,22 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
               </div>
             ))}
 
-            {/* Partner count */}
             <div className="px-5 py-4">
-              <p className="text-xs text-[rgb(var(--color-muted))]">
-                Biz ve{' '}
-                <span className="font-bold text-[rgb(var(--color-text))]">{PARTNER_COUNT}</span>{' '}
-                iş ortağımız, cihazınızda tarama verileri gibi kişisel verileri depolayabilir.{' '}
+              <p className="text-xs leading-relaxed text-[rgb(var(--color-muted))]">
+                NaHaber, kişisel verilerinizi üçüncü taraf reklamverenlere satmaz veya pazarlama
+                amaçlı paylaşmaz. Detaylar için{' '}
                 <Link
                   href={ROUTES.SETTINGS_PRIVACY_POLICY ?? '/settings/privacy-policy'}
                   target="_blank"
-                  className="inline-flex items-center gap-0.5 font-semibold text-[rgb(var(--color-brand))] hover:underline"
+                  className="font-semibold text-[rgb(var(--color-brand))] hover:underline"
                 >
-                  İş Ortakları Listesi
-                  <ExternalLink className="h-3 w-3" />
+                  Gizlilik Politikası
                 </Link>
+                .
               </p>
             </div>
           </div>
 
-          {/* Footer buttons */}
           <div className="border-t border-[rgb(var(--color-border))] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex flex-col gap-2">
               <button
@@ -183,7 +176,7 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
                 onClick={handleRejectAll}
                 className="w-full rounded-2xl border border-[rgb(var(--color-border))] py-3.5 text-sm font-bold text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-card))]"
               >
-                Tümünü Reddet
+                Sadece Zorunlu Çerezler
               </button>
             </div>
           </div>
@@ -192,86 +185,66 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
     )
   }
 
-  // ── Ana görünüm ──────────────────────────────────────────────────
+  // ── Ana görünüm — sade KVKK aydınlatması ───────────────────────────
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       <div className="relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-[rgb(var(--color-surface))] shadow-2xl sm:rounded-3xl">
-        {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 sm:hidden">
           <div className="h-1 w-10 rounded-full bg-[rgb(var(--color-border))]" />
         </div>
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {/* Icon + title */}
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[rgb(var(--color-brand))]/10">
               <Shield className="h-5 w-5 text-[rgb(var(--color-brand))]" />
             </div>
             <h2 className="text-lg font-black text-[rgb(var(--color-text))]">
-              Gizliliğinizi Önemsiyoruz
+              Çerez Kullanımı
             </h2>
           </div>
 
-          {/* Description */}
           <p className="mb-4 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
-            Biz ve{' '}
-            <span className="font-bold text-[rgb(var(--color-text))]">{PARTNER_COUNT}</span>{' '}
-            iş ortağımız, cihazınızda tarama verileri veya benzersiz tanımlayıcılar gibi kişisel
-            verileri depolarız ve bunlara erişiriz. <strong className="text-[rgb(var(--color-text))]">Kabul ediyorum</strong>'u
-            seçmeniz, bu teknolojilerin veri işleme amaçlarını desteklemesini sağlar.{' '}
-            <strong className="text-[rgb(var(--color-text))]">Tümünü Reddet</strong>'i seçmeniz
-            veya onayınızı geri çekmeniz bunları devre dışı bırakacaktır.
+            NaHaber, sitenin temel işlevlerini sağlamak ve anonim kullanım istatistiklerini ölçmek
+            için çerez kullanır. <strong className="text-[rgb(var(--color-text))]">
+            Verilerinizi üçüncü taraf reklamverenlere satmıyor veya pazarlama amacıyla
+            paylaşmıyoruz.</strong>
           </p>
 
-          {/* Data use purposes summary */}
           <div className="mb-4 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
             <p className="mb-2 text-xs font-black uppercase tracking-wide text-[rgb(var(--color-muted))]">
-              Veriler şu amaçlarla işlenir:
+              Çerezler ne için kullanılır:
             </p>
             <ul className="space-y-1.5 text-xs text-[rgb(var(--color-muted))]">
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 text-[rgb(var(--color-brand))]">•</span>
-                Kesin coğrafi konum verilerini kullanmak
+                Oturum açma ve güvenlik (zorunlu)
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 text-[rgb(var(--color-brand))]">•</span>
-                Belirleme amacı ile cihaz özelliklerini aktif şekilde taramak
+                Tercihlerinizin hatırlanması (tema, dil)
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 text-[rgb(var(--color-brand))]">•</span>
-                Bilgileri bir cihazda depolamak ve/veya erişmek
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[rgb(var(--color-brand))]">•</span>
-                Kişiselleştirilmiş içerik, içerik ölçümü ve hedef kitle araştırması
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[rgb(var(--color-brand))]">•</span>
-                Hizmetlerin geliştirilmesi
+                Anonim ve toplu kullanım istatistikleri (opsiyonel)
               </li>
             </ul>
           </div>
 
-          {/* Manage purposes link */}
           <button
             type="button"
             onClick={() => setView('purposes')}
             className="mb-4 flex w-full items-center justify-between rounded-xl border border-[rgb(var(--color-border))] px-4 py-3 text-left transition-colors hover:bg-[rgb(var(--color-card))]"
           >
             <span className="text-sm font-semibold text-[rgb(var(--color-text))]">
-              Amaçları Göster
+              Tercihleri Yönet
             </span>
             <ChevronDown className="h-4 w-4 text-[rgb(var(--color-muted))]" />
           </button>
 
-          {/* Privacy policy link */}
           <p className="text-xs text-[rgb(var(--color-muted))]">
-            Seçimlerinizi değiştirmek için Ayarlar → Gizlilik bölümünden her zaman bu menüye
-            dönebilirsiniz.{' '}
+            Seçiminizi her zaman Ayarlar → Gizlilik bölümünden değiştirebilirsiniz.{' '}
             <Link
               href={ROUTES.SETTINGS_PRIVACY_POLICY ?? '/settings/privacy-policy'}
               target="_blank"
@@ -292,7 +265,6 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
           </p>
         </div>
 
-        {/* Action buttons */}
         <div className="border-t border-[rgb(var(--color-border))] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex flex-col gap-2">
             <button
@@ -300,21 +272,21 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
               onClick={handleAcceptAll}
               className="w-full rounded-2xl bg-[rgb(var(--color-brand))] py-3.5 text-sm font-black text-white shadow-lg shadow-[rgb(var(--color-brand))]/20 transition-colors hover:bg-red-700"
             >
-              Kabul ediyorum
+              Kabul Et
             </button>
             <button
               type="button"
               onClick={handleRejectAll}
               className="w-full rounded-2xl border border-[rgb(var(--color-border))] py-3.5 text-sm font-bold text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-card))]"
             >
-              Tümünü Reddet
+              Sadece Zorunlu Çerezler
             </button>
             <button
               type="button"
               onClick={() => setView('purposes')}
               className="w-full rounded-2xl border border-[rgb(var(--color-border))] py-3.5 text-sm font-bold text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-card))]"
             >
-              Amaçları Göster
+              Tercihleri Yönet
             </button>
           </div>
         </div>

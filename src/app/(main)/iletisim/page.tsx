@@ -1,16 +1,17 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { getSiteUrl } from '@/lib/seo'
 
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 const siteUrl = getSiteUrl()
 
 export const metadata: Metadata = {
-  title: `İletişim | ${siteName}`,
-  description: `${siteName} ile iletişime geçin. Editöryal şikayetler, reklam ve iş birliği talepleriniz için bize ulaşın.`,
+  title: `Destek ve İletişim | ${siteName}`,
+  description: `${siteName} destek sayfası. Sıkça sorulan sorular, hesap silme, editöryal düzeltme, gizlilik ve iletişim bilgileri.`,
   alternates: { canonical: `${siteUrl}/iletisim` },
   openGraph: {
-    title: `İletişim | ${siteName}`,
-    description: `${siteName} ile iletişime geçin.`,
+    title: `Destek ve İletişim | ${siteName}`,
+    description: `${siteName} ile iletişime geçin, sıkça sorulan sorulara cevap bulun.`,
     url: `${siteUrl}/iletisim`,
     type: 'website',
   },
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'ContactPage',
-  name: `${siteName} İletişim`,
+  name: `${siteName} Destek ve İletişim`,
   url: `${siteUrl}/iletisim`,
   mainEntity: {
     '@type': 'Organization',
@@ -28,18 +29,156 @@ const jsonLd = {
     contactPoint: [
       {
         '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'destek@nahaber.com',
+        availableLanguage: ['Turkish', 'English'],
+      },
+      {
+        '@type': 'ContactPoint',
         contactType: 'editorial',
         email: 'haber@nahaber.com',
         availableLanguage: 'Turkish',
       },
       {
         '@type': 'ContactPoint',
-        contactType: 'customer support',
-        email: 'iletisim@nahaber.com',
+        contactType: 'privacy',
+        email: 'kvkk@nahaber.com',
         availableLanguage: 'Turkish',
       },
     ],
   },
+}
+
+interface FaqEntry {
+  q: string
+  a: React.ReactNode
+}
+
+const FAQ: FaqEntry[] = [
+  {
+    q: 'Hesabımı nasıl silerim?',
+    a: (
+      <>
+        Hesabınızı silmek için kayıtlı e-posta adresinizden{' '}
+        <a className="text-[rgb(var(--color-brand))] underline" href="mailto:destek@nahaber.com?subject=Hesap%20Silme%20Talebi">
+          destek@nahaber.com
+        </a>
+        {' '}adresine "Hesap Silme Talebi" konulu bir e-posta gönderin. Talebiniz en geç{' '}
+        <strong>30 gün</strong> içinde işleme alınır; hesabınız ve ilişkili kişisel verileriniz
+        kalıcı olarak silinir. Yasal saklama yükümlülüğü olan kayıtlar (örn. fatura, vergi
+        mevzuatı kaynaklı veriler) ilgili yasal süre dolana kadar saklanır.
+      </>
+    ),
+  },
+  {
+    q: 'Şifremi unuttum, nasıl sıfırlarım?',
+    a: (
+      <>
+        Giriş ekranındaki <strong>"Şifremi Unuttum"</strong> bağlantısına tıklayın; e-posta
+        adresinize gönderilen bağlantı ile yeni şifrenizi belirleyebilirsiniz. Bağlantı 1 saat
+        süreyle geçerlidir.
+      </>
+    ),
+  },
+  {
+    q: 'Bir haberde yanlış bilgi var, nasıl bildirebilirim?',
+    a: (
+      <>
+        Editöryal düzeltme talepleri için{' '}
+        <a className="text-[rgb(var(--color-brand))] underline" href="mailto:haber@nahaber.com?subject=Haber%20D%C3%BCzeltme">
+          haber@nahaber.com
+        </a>
+        {' '}adresine ulaşın. E-postanızda haberin URL'sini, hatalı kısmı ve doğru bilgiyi
+        kaynağıyla birlikte belirtmeniz inceleme süresini kısaltır.
+      </>
+    ),
+  },
+  {
+    q: 'Uygulamada bildirimleri nasıl açıp kapatabilirim?',
+    a: (
+      <>
+        <strong>Ayarlar → Bildirimler</strong> menüsünden istediğiniz bildirim kategorilerini
+        ayrı ayrı açıp kapatabilirsiniz. iOS'ta cihaz ayarlarındaki bildirim tercihleri de
+        geçerlidir.
+      </>
+    ),
+  },
+  {
+    q: 'Bir kullanıcıyı / yorumu nasıl şikayet ederim?',
+    a: (
+      <>
+        Şikayet etmek istediğiniz yorumun yanındaki <strong>...</strong> menüsünden{' '}
+        <strong>"Şikayet et"</strong> seçeneğini kullanın. Toplu raporlama veya acil durumlar
+        için{' '}
+        <a className="text-[rgb(var(--color-brand))] underline" href="mailto:destek@nahaber.com?subject=%C5%9Eikayet">
+          destek@nahaber.com
+        </a>
+        {' '}adresine yazın; içerik 24 saat içinde incelenir.
+      </>
+    ),
+  },
+  {
+    q: 'Kişisel verilerime ilişkin haklarımı nasıl kullanabilirim?',
+    a: (
+      <>
+        KVKK kapsamında verilerinizin işlenmesine ilişkin tüm haklarınızı{' '}
+        <a className="text-[rgb(var(--color-brand))] underline" href="mailto:kvkk@nahaber.com">
+          kvkk@nahaber.com
+        </a>
+        {' '}adresine yazarak kullanabilirsiniz. Detaylar için{' '}
+        <Link className="text-[rgb(var(--color-brand))] underline" href="/aydinlatma-metni">
+          Aydınlatma Metni
+        </Link>
+        {' '}sayfasına bakabilirsiniz.
+      </>
+    ),
+  },
+  {
+    q: 'Reklam veya iş birliği için kiminle iletişime geçmeliyim?',
+    a: (
+      <>
+        Reklam, sponsorluk ve iş birliği talepleri için{' '}
+        <a className="text-[rgb(var(--color-brand))] underline" href="mailto:iletisim@nahaber.com">
+          iletisim@nahaber.com
+        </a>
+        {' '}adresine ulaşın.
+      </>
+    ),
+  },
+  {
+    q: 'Uygulamada bir hata gördüm, nereye bildiririm?',
+    a: (
+      <>
+        Hata raporları için{' '}
+        <a className="text-[rgb(var(--color-brand))] underline" href="mailto:destek@nahaber.com?subject=Hata%20Raporu">
+          destek@nahaber.com
+        </a>
+        {' '}adresine cihaz modeli, iOS sürümü ve hatanın oluştuğu adım sırasını içeren bir
+        e-posta gönderin. Ekran görüntüsü eklemeniz inceleme süresini kısaltır.
+      </>
+    ),
+  },
+]
+
+interface SupportChannelProps {
+  title: string
+  description: string
+  email: string
+}
+
+function SupportChannel({ title, description, email }: SupportChannelProps) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <h3 className="text-base font-semibold text-white">{title}</h3>
+      <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">{description}</p>
+      <a
+        href={`mailto:${email}`}
+        className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[rgb(var(--color-brand))]/15 px-3 py-1.5 text-sm font-semibold text-[rgb(var(--color-brand))] transition-colors hover:bg-[rgb(var(--color-brand))]/25"
+      >
+        {email}
+      </a>
+    </div>
+  )
 }
 
 export default function IletisimPage() {
@@ -49,44 +188,151 @@ export default function IletisimPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="mx-auto max-w-3xl px-4 py-12">
-        <h1 className="mb-6 text-3xl font-bold">İletişim</h1>
+      <main className="mx-auto max-w-3xl px-4 py-10">
+        {/* ── Başlık ────────────────────────────────────────────────────── */}
+        <header className="mb-8">
+          <h1 className="text-3xl font-bold text-white">Destek ve İletişim</h1>
+          <p className="mt-2 text-sm text-[rgb(var(--color-muted))]">
+            Sorularınız ve geri bildirimleriniz için aşağıdaki kanallardan bize ulaşabilir veya
+            sıkça sorulan sorulara göz atabilirsiniz. Tüm e-postalara hafta içi 24 saat içinde
+            yanıt veriyoruz.
+          </p>
+        </header>
 
-        <section className="space-y-8 text-[rgb(var(--color-muted))]">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-            <h2 className="mb-3 text-lg font-semibold text-white">Editöryal & Haber</h2>
-            <p className="mb-2 text-sm">
-              Haber düzeltme, bilgi yanlışlığı bildirimi veya basın bülteni göndermek için:
-            </p>
+        {/* ── İletişim Kanalları ───────────────────────────────────────── */}
+        <section className="mb-10 grid gap-4 sm:grid-cols-2">
+          <SupportChannel
+            title="Müşteri Destek"
+            description="Hesap, ödeme, teknik sorun ve genel destek talepleri."
+            email="destek@nahaber.com"
+          />
+          <SupportChannel
+            title="Editöryal & Düzeltme"
+            description="Haber düzeltme, bilgi yanlışlığı bildirimi, basın bülteni."
+            email="haber@nahaber.com"
+          />
+          <SupportChannel
+            title="Gizlilik & KVKK"
+            description="Kişisel veri talepleri, KVKK kapsamındaki haklarınızın kullanımı."
+            email="kvkk@nahaber.com"
+          />
+          <SupportChannel
+            title="Reklam & İş Birliği"
+            description="Reklam, sponsorluk, içerik ortaklığı talepleri."
+            email="iletisim@nahaber.com"
+          />
+        </section>
+
+        {/* ── SSS ─────────────────────────────────────────────────────── */}
+        <section className="mb-10">
+          <h2 className="mb-4 text-xl font-bold text-white">Sıkça Sorulan Sorular</h2>
+          <div className="space-y-3">
+            {FAQ.map((entry, idx) => (
+              <details
+                key={idx}
+                className="group rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/[0.07]"
+              >
+                <summary className="cursor-pointer list-none text-sm font-semibold text-white marker:hidden">
+                  <span className="mr-2 inline-block text-[rgb(var(--color-brand))] transition-transform group-open:rotate-90">
+                    ▸
+                  </span>
+                  {entry.q}
+                </summary>
+                <div className="mt-3 pl-5 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+                  {entry.a}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Hesap Silme ──────────────────────────────────────────────── */}
+        <section className="mb-10 rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
+          <h2 className="mb-2 text-base font-bold text-white">Hesabınızı Silmek mi İstiyorsunuz?</h2>
+          <p className="mb-3 text-sm text-[rgb(var(--color-muted))]">
+            Hesabınızı kalıcı olarak silmek için kayıtlı e-posta adresinizden{' '}
+            <a className="font-semibold text-[rgb(var(--color-brand))] underline" href="mailto:destek@nahaber.com?subject=Hesap%20Silme%20Talebi">
+              destek@nahaber.com
+            </a>
+            {' '}adresine "Hesap Silme Talebi" konulu bir e-posta gönderin. Talebiniz en geç{' '}
+            <strong>30 gün</strong> içinde işleme alınır; hesabınız ve ilişkili kişisel
+            verileriniz kalıcı olarak silinir.
+          </p>
+          <p className="text-xs text-[rgb(var(--color-muted))]">
+            Yasal yükümlülük gereği saklanması zorunlu kayıtlar (örn. fatura, vergi mevzuatı
+            kaynaklı veriler) ilgili yasal süre dolana kadar saklanır; bu süre sonunda otomatik
+            olarak silinir.
+          </p>
+        </section>
+
+        {/* ── Sosyal Medya ─────────────────────────────────────────────── */}
+        <section className="mb-10">
+          <h2 className="mb-3 text-lg font-semibold text-white">Sosyal Medya</h2>
+          <div className="flex flex-wrap gap-3">
             <a
-              href="mailto:haber@nahaber.com"
-              className="text-[rgb(var(--color-brand))] underline"
+              href="https://twitter.com/nahabercom"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-[rgb(var(--color-brand))] hover:bg-white/[0.08]"
             >
-              haber@nahaber.com
+              Twitter / X
+            </a>
+            <a
+              href="https://www.instagram.com/nahabercom"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-[rgb(var(--color-brand))] hover:bg-white/[0.08]"
+            >
+              Instagram
+            </a>
+            <a
+              href="https://www.facebook.com/nahabercom"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-[rgb(var(--color-brand))] hover:bg-white/[0.08]"
+            >
+              Facebook
             </a>
           </div>
+        </section>
 
-          <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-            <h2 className="mb-3 text-lg font-semibold text-white">Genel İletişim</h2>
-            <p className="mb-2 text-sm">
-              Reklam, iş birliği ve diğer konular için:
-            </p>
-            <a
-              href="mailto:iletisim@nahaber.com"
-              className="text-[rgb(var(--color-brand))] underline"
-            >
-              iletisim@nahaber.com
-            </a>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-            <h2 className="mb-3 text-lg font-semibold text-white">Sosyal Medya</h2>
-            <div className="flex flex-wrap gap-4 text-sm">
-              <a href="https://twitter.com/nahabercom" target="_blank" rel="noopener noreferrer" className="text-[rgb(var(--color-brand))] underline">Twitter / X</a>
-              <a href="https://www.instagram.com/nahabercom" target="_blank" rel="noopener noreferrer" className="text-[rgb(var(--color-brand))] underline">Instagram</a>
-              <a href="https://www.facebook.com/nahabercom" target="_blank" rel="noopener noreferrer" className="text-[rgb(var(--color-brand))] underline">Facebook</a>
-            </div>
-          </div>
+        {/* ── Yasal Sayfa Linkleri ─────────────────────────────────────── */}
+        <section className="border-t border-white/10 pt-6">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+            Yasal Bilgiler
+          </h2>
+          <ul className="grid gap-2 text-sm sm:grid-cols-2">
+            <li>
+              <Link href="/hukuk/gizlilik" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
+                Gizlilik Politikası
+              </Link>
+            </li>
+            <li>
+              <Link href="/hukuk/kullanim-kosullari" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
+                Kullanım Koşulları
+              </Link>
+            </li>
+            <li>
+              <Link href="/hukuk/kvkk" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
+                KVKK Aydınlatma Metni
+              </Link>
+            </li>
+            <li>
+              <Link href="/hukuk/cerez-politikasi" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
+                Çerez Politikası
+              </Link>
+            </li>
+            <li>
+              <Link href="/editoryal-ilkeler" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
+                Editöryal İlkeler
+              </Link>
+            </li>
+            <li>
+              <Link href="/kunye" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
+                Künye
+              </Link>
+            </li>
+          </ul>
         </section>
       </main>
     </>
