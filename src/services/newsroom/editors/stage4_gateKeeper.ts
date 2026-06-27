@@ -45,13 +45,21 @@ function validateBreaking(
 
   // Gerçek son-dakika kriterleri
   const BREAKING_TRIGGERS = [
-    { pattern: /deprem.*[4-9]\.[0-9]|[4-9]\.[0-9].*deprem/, reason: '4.5+ deprem' },
+    // Türkiye doğal/beşeri afet
+    { pattern: /deprem.*[4-9]\.[0-9]|[4-9]\.[0-9].*deprem|deprem.*büyüklüğünde/, reason: '4.0+ deprem' },
     { pattern: /darbe girişimi|darbe teşebbüs|darbesi/, reason: 'darbe girişimi' },
-    { pattern: /suikast|cumhurbaşkan.*saldırı|başbakan.*saldırı/, reason: 'suikast' },
-    { pattern: /terör saldırısı|bombalı saldırı|canlı bomba/, reason: 'terör saldırısı' },
+    { pattern: /suikast|cumhurbaşkan.*saldırı|başbakan.*saldırı|lider.*öldürüld/, reason: 'suikast/saldırı' },
+    { pattern: /terör saldırısı|bombalı saldırı|canlı bomba|silahlı saldırı.*düzenlendi/, reason: 'terör saldırısı' },
     { pattern: /olağanüstü hal ilan|seferberlik ilan/, reason: 'OHAL ilanı' },
-    { pattern: /borsa devre kesici|dolar.*serbest düşüş|lira.*çöküş/, reason: 'kritik ekonomik çöküş' },
-    { pattern: /onlarca kişi öldü|yüzlerce kişi.*hayat.*kaybetti|toplu tahliye/, reason: 'büyük afet' },
+    { pattern: /onlarca kişi öldü|yüzlerce kişi.*hayat.*kaybetti|toplu tahliye|büyük sel felaketi/, reason: 'büyük afet' },
+    // Türkiye ekonomi/siyaset kritik
+    { pattern: /borsa devre kesici|dolar.*serbest düşüş|lira.*çöküş|merkez bankası.*faiz.*kararı/, reason: 'kritik ekonomik gelişme' },
+    { pattern: /türkiye.*savaş ilan|askeri operasyon başlatıldı|sınırda.*çatışma.*çıktı/, reason: 'askeri operasyon' },
+    { pattern: /cumhurbaşkanı.*ilan etti|tbmm.*kabul etti.*yasa|anayasa değişikliği/, reason: 'kritik siyasi karar' },
+    // Dünya kritik
+    { pattern: /savaş ilan|ülke.*işgal|nükleer.*saldırı|kimyasal saldırı/, reason: 'uluslararası kriz' },
+    { pattern: /dünya lideri.*öldü|devlet başkanı.*öldürüldü|başbakan.*öldürüldü/, reason: 'dünya lideri ölümü' },
+    { pattern: /küresel borsa.*çöküş|wall street.*devre kesici|küresel finans krizi/, reason: 'küresel finans krizi' },
   ]
 
   // Non-breaking içerik — KESİNLİKLE son-dakika olamaz
