@@ -17,6 +17,19 @@ function normalizeUsername(username: string): string {
   return username.trim().toLowerCase()
 }
 
+/**
+ * Strips properties whose value is `undefined`. Firebase JS SDK throws
+ * "Unsupported field value: undefined" without `ignoreUndefinedProperties`.
+ * Callers that want to clear a field must pass `null` explicitly.
+ */
+function pruneUndefined<T extends Record<string, unknown>>(payload: T): Partial<T> {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(payload)) {
+    if (value !== undefined) out[key] = value
+  }
+  return out as Partial<T>
+}
+
 function isValidUserData(data: Record<string, unknown>): boolean {
   return (
     typeof data.uid === 'string' &&
@@ -104,7 +117,7 @@ export const userService = {
       payload.username = normalizeUsername(payload.username)
     }
     await updateDoc(doc(db, Collections.USERS, uid), {
-      ...payload,
+      ...pruneUndefined(payload),
       updatedAt: new Date().toISOString(),
     })
   },
@@ -143,10 +156,17 @@ export const userService = {
 
   async updateInterests(
     uid: string,
-    data: { favoriteCategories?: string[]; interests?: string[]; favoriteTeam?: string; favoriteSport?: string }
+    data: {
+      favoriteCategories?: string[]
+      interests?: string[]
+      /** Pass `null` to clear; `undefined` leaves the field untouched. */
+      favoriteTeam?: string | null
+      /** Pass `null` to clear; `undefined` leaves the field untouched. */
+      favoriteSport?: string | null
+    }
   ) {
     await updateDoc(doc(db, Collections.USERS, uid), {
-      ...data,
+      ...pruneUndefined(data as Record<string, unknown>),
       updatedAt: new Date().toISOString(),
     })
   },

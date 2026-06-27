@@ -154,13 +154,19 @@ export default function SettingsProfilePage() {
     if (saving) return
     setSaving(true)
     try {
-      let photoURL = user.photoURL
+      let photoURL = user.photoURL ?? null
       if (avatarFile) {
         photoURL = await storageService.uploadAvatar(avatarFile, user.uid)
       }
 
+      const trimmedDisplayName = displayName.trim() || user.displayName?.trim() || ''
+      if (!trimmedDisplayName) {
+        toast.error('Ad Soyad boş bırakılamaz')
+        return
+      }
+
       await userService.updateProfile(user.uid, {
-        displayName: displayName.trim() || user.displayName,
+        displayName: trimmedDisplayName,
         bio: bio.trim() || null,
         location: location.trim() || null,
         website: website.trim() || null,
@@ -170,11 +176,10 @@ export default function SettingsProfilePage() {
       await userService.updateInterests(user.uid, {
         favoriteCategories: selectedCategories,
         interests: selectedInterests,
-        favoriteTeam: favoriteTeam.trim() || undefined,
-        favoriteSport: selectedSport || undefined,
+        favoriteTeam: favoriteTeam.trim() || null,
+        favoriteSport: selectedSport || null,
       })
 
-      // localStorage dismiss flag'ini sil — profil artık tamamlandı
       try {
         localStorage.removeItem(`nahaber_profile_prompt_v1_${user.uid}`)
       } catch { /* ignore */ }
@@ -183,8 +188,12 @@ export default function SettingsProfilePage() {
       toast.success('Profil güncellendi ✓')
       router.push(ROUTES.SETTINGS)
     } catch (err) {
-      console.error(err)
-      toast.error('Kaydedilemedi, tekrar dene')
+      console.error('[profile/save]', err)
+      const message =
+        err instanceof Error && err.message
+          ? `Kaydedilemedi: ${err.message}`
+          : 'Kaydedilemedi, tekrar dene'
+      toast.error(message)
     } finally {
       setSaving(false)
     }
