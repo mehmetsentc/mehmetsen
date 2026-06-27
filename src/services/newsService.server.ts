@@ -245,7 +245,7 @@ function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
 }
 
 function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
-  // Önce explicit featured + gundem; yetmezse pool top'tan tamamla
+  // Slider: SADECE featured=true veya kategori=gundem olan haberler
   const featured = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
   const gundem = pool.filter((p) => p.category === 'gundem' && !isBreakingPoolItem(p))
   const candidates = [...featured, ...gundem]
@@ -257,14 +257,6 @@ function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
     seen.add(item.id)
     result.push(item)
     if (result.length >= limit) break
-  }
-  if (result.length < limit) {
-    for (const item of pool) {
-      if (seen.has(item.id) || !item.imageUrl || isBreakingPoolItem(item)) continue
-      seen.add(item.id)
-      result.push(item)
-      if (result.length >= limit) break
-    }
   }
   return result
 }
