@@ -174,13 +174,17 @@ export async function DELETE(request: Request, context: RouteContext) {
       // Also remove from posts if present
       try { await db.collection(Collections.POSTS).doc(id).delete() } catch { /* ok */ }
     } else {
-      await newsRef.update({
+      const softDeleteUpdate = {
         status: 'archived',
+        isBreaking: false,      // son-dakika feed'inden çıkar
+        breakingScore: 0,
         publishedAt: null,
         updatedAt: FieldValue.serverTimestamp(),
         moderationNote: 'Admin tarafından kaldırıldı',
-      })
-      try { await db.collection(Collections.POSTS).doc(id).update({ status: 'archived' }) } catch { /* ok */ }
+      }
+      await newsRef.update(softDeleteUpdate)
+      // POSTS collection'ı da güncelle — sessiz başarısızlığa izin ver
+      try { await db.collection(Collections.POSTS).doc(id).update(softDeleteUpdate) } catch { /* ok */ }
     }
   } else {
     // Try newsDrafts
@@ -196,6 +200,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   try {
     revalidatePath('/feed')
     revalidatePath('/')
+    revalidatePath('/kategori/son-dakika') // isBreaking olan haberler buraya etki eder
     if (categoryId) revalidatePath(`/kategori/${categoryId}`)
   } catch { /* best-effort */ }
 

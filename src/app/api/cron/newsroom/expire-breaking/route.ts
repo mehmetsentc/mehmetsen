@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,8 +22,12 @@ const TARGET_CATEGORY = 'gundem'
  * Güncellenen alanlar:
  *   - isBreaking: false
  *   - breakingScore: 30
- *   - categoryId: 'gundem'  (zaten son-dakika değilse dokunmaz)
+ *   - categoryId: 'gundem'
  *   - _breakingExpiredAt: timestamp
+ *
+ * Not: publishedAt bazı haberlerde Number (ms), bazılarında Firestore Timestamp
+ * olarak saklanabilir. Firestore type ordering'de Number ve Timestamp ayrı
+ * tipler olduğundan her ikisi için ayrı query yapılır ve sonuçlar birleştirilir.
  */
 export async function GET(request: Request) {
   return handler(request)
@@ -38,37 +42,43 @@ async function handler(request: Request) {
   }
 
   const db = getAdminFirestore()
-  const cutoff = Date.now() - BREAKING_TTL_MS
+  const cutoffMs = Date.now() - BREAKING_TTL_MS
+  const cutoffTs = Timestamp.fromMillis(cutoffMs)
 
   let expired = 0
   let skipped = 0
   const errors: string[] = []
 
   for (const col of [Collections.NEWS, Collections.POSTS]) {
-    // isBreaking=true ve publishedAt < cutoff
-    let snap
-    try {
-      snap = await db
-        .collection(col)
-        .where('isBreaking', '==', true)
-        .where('publishedAt', '<', cutoff)
-        .get()
-    } catch (e) {
-      const msg = `[expire-breaking] ${col} query failed: ${e instanceof Error ? e.message : e}`
-      console.error(msg)
-      errors.push(msg)
-      continue
+    // publishedAt tipi belirsiz olduğundan iki query: ms (Number) ve Timestamp
+    const docMap = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>()
+
+    for (const cutoff of [cutoffMs, cutoffTs] as const) {
+      try {
+        const snap = await db
+          .collection(col)
+          .where('isBreaking', '==', true)
+          .where('publishedAt', '<', cutoff)
+          .get()
+        for (const doc of snap.docs) {
+          docMap.set(doc.id, doc)
+        }
+      } catch (e) {
+        const typeName = cutoff instanceof Timestamp ? 'Timestamp' : 'Number'
+        const msg = `[expire-breaking] ${col} query failed (${typeName}): ${e instanceof Error ? e.message : e}`
+        console.error(msg)
+        errors.push(msg)
+      }
     }
 
-    if (snap.empty) continue
+    if (docMap.size === 0) continue
 
     const batch = db.batch()
     let batchCount = 0
 
-    for (const doc of snap.docs) {
+    for (const doc of docMap.values()) {
       const data = doc.data()
       // Admin tarafından el ile son-dakikaya alınmışsa dokunma
-      // (manualBreaking flag'i varsa atla)
       if (data.manualBreaking === true) {
         skipped++
         continue
@@ -102,7 +112,6 @@ async function handler(request: Request) {
   }
 
   if (expired > 0) {
-    // Cache'i temizle
     revalidatePath('/kategori/son-dakika')
     revalidatePath('/kategori/gundem')
     revalidatePath('/')
