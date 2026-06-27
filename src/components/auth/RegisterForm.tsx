@@ -11,6 +11,7 @@ import { registerSchema, type RegisterFormData } from '@/lib/validators/auth'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
+import { getAppleAuthErrorMessage } from '@/lib/appleAuthErrors'
 
 export function RegisterForm() {
     const [isLoading, setIsLoading] = useState(false)
@@ -72,9 +73,8 @@ export function RegisterForm() {
             router.push(ROUTES.FEED)
         } catch (err: unknown) {
             console.error('[RegisterForm] Apple sign-in failed:', err)
-            const code = (err as { code?: string }).code ?? ''
-            if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
-            toast.error('Apple ile giriş başarısız oldu')
+            const message = getAppleAuthErrorMessage(err)
+            if (message) toast.error(message)
         } finally {
             if (!isRedirecting) setIsAppleLoading(false)
         }

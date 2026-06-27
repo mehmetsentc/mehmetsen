@@ -11,6 +11,7 @@ import { loginSchema, type LoginFormData } from '@/lib/validators/auth'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
+import { getAppleAuthErrorMessage } from '@/lib/appleAuthErrors'
 
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -71,10 +72,8 @@ export function LoginForm() {
       router.push(ROUTES.FEED)
     } catch (err: unknown) {
       console.error('[LoginForm] Apple sign-in failed:', err)
-      const code = (err as { code?: string }).code ?? ''
-      // Kullanıcı popup'ı kapattıysa sessizce dön
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
-      toast.error('Apple ile giriş başarısız oldu')
+      const message = getAppleAuthErrorMessage(err)
+      if (message) toast.error(message)
     } finally {
       if (!isRedirecting) setIsAppleLoading(false)
     }
