@@ -9,18 +9,18 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
 
-const BREAKING_TTL_MS = 4 * 60 * 60 * 1000 // 4 saat
+const BREAKING_TTL_MS = 24 * 60 * 60 * 1000 // 24 saat
 const TARGET_CATEGORY = 'gundem'
 
 /**
  * GET/POST /api/cron/newsroom/expire-breaking
  *
  * Her saat bir kez çalışır.
- * isBreaking=true olan ve yayınlanma tarihi 4 saatten eski haberleri
+ * isBreaking=true olan ve yayınlanma tarihi 24 saatten eski haberleri
  * bulup otomatik olarak "gündem" kategorisine taşır.
  *
- * ?force=true → publishedAt filtresi olmadan TÜM isBreaking=true dokümanları temizler.
- * (tek seferlik backfill için kullanılır)
+ * ?force=true   → publishedAt filtresi olmadan TÜM isBreaking=true dokümanları temizler.
+ * ?restore=true → son 24 saatin yayınlanmış haberlerini isBreaking=true yapar (tek seferlik backfill).
  */
 export async function GET(request: Request) {
   return handler(request)
@@ -37,6 +37,62 @@ async function handler(request: Request) {
   const db = getAdminFirestore()
   const url = new URL(request.url)
   const forceAll = url.searchParams.get('force') === 'true'
+  const restore = url.searchParams.get('restore') === 'true'
+
+  // --- RESTORE MODU: son 24 saatin haberlerini isBreaking=true yap ---
+  if (restore) {
+    const since24h = Date.now() - BREAKING_TTL_MS
+    const since24hTs = Timestamp.fromMillis(since24h)
+    let restored = 0
+    const restoreErrors: string[] = []
+    const seenIds = new Set<string>()
+
+    for (const col of [Collections.NEWS, Collections.POSTS]) {
+      for (const cutoff of [since24h, since24hTs] as const) {
+        try {
+          const snap = await db
+            .collection(col)
+            .where('status', '==', 'published')
+            .where('publishedAt', '>', cutoff)
+            .get()
+
+          let batch = db.batch()
+          let count = 0
+          for (const doc of snap.docs) {
+            if (seenIds.has(doc.id)) continue
+            seenIds.add(doc.id)
+            if (doc.data().manualBreaking === false) continue // manuel kapatılmış
+            batch.update(doc.ref, {
+              isBreaking: true,
+              updatedAt: FieldValue.serverTimestamp(),
+            })
+            count++
+            restored++
+            if (count === 499) {
+              await batch.commit()
+              batch = db.batch()
+              count = 0
+            }
+          }
+          if (count > 0) await batch.commit()
+        } catch (e) {
+          const msg = `[expire-breaking] restore ${col} failed: ${e instanceof Error ? e.message : e}`
+          console.error(msg)
+          restoreErrors.push(msg)
+        }
+      }
+    }
+
+    if (restored > 0) {
+      revalidatePath('/kategori/son-dakika')
+      revalidatePath('/')
+      console.log(`[expire-breaking] restore: ${restored} haber isBreaking=true yapıldı`)
+    }
+    return NextResponse.json(
+      { ok: true, restored, errors: restoreErrors, mode: 'restore' },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
+  }
 
   const cutoffMs = Date.now() - BREAKING_TTL_MS
   const cutoffTs = Timestamp.fromMillis(cutoffMs)
@@ -102,7 +158,7 @@ async function handler(request: Request) {
 
       if (batchCount === 499) {
         await batch.commit()
-        batch = db.batch() // yeni batch oluştur
+        batch = db.batch()
         batchCount = 0
       }
     }
