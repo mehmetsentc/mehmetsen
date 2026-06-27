@@ -79,11 +79,12 @@ async function handler(request: Request) {
 
     if (docMap.size === 0) continue
 
-    const batch = db.batch()
+    let batch = db.batch()
     let batchCount = 0
 
     for (const doc of docMap.values()) {
       const data = doc.data()
+      // manualBreaking=true ise el ile eklenmiş — dokunma
       if (data.manualBreaking === true) {
         skipped++
         continue
@@ -101,6 +102,7 @@ async function handler(request: Request) {
 
       if (batchCount === 499) {
         await batch.commit()
+        batch = db.batch() // yeni batch oluştur
         batchCount = 0
       }
     }
