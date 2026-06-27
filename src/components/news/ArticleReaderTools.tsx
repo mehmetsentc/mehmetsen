@@ -250,7 +250,7 @@ export function ArticleReaderTools({
                 )}
               >
                 {playing ? <Pause className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
-                <span className="text-sm font-semibold">{playing ? 'Duraklat' : 'Dinle'}</span>
+                <span className="text-sm font-semibold">{playing ? 'Dinleniyor' : 'Dinle'}</span>
               </motion.button>
             )}
           </AnimatePresence>
@@ -365,12 +365,12 @@ export function ArticleReaderTools({
               className={cn(
                 'flex h-12 items-center gap-2 rounded-full px-4 shadow-lg shadow-black/30 transition-colors',
                 playing
-                  ? 'bg-brand-500 text-white'
+                  ? 'bg-brand-500 text-white shadow-brand'
                   : 'bg-zinc-900 text-white hover:bg-zinc-800'
               )}
             >
               {playing ? <Pause className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
-              <span className="text-sm font-semibold">{playing ? 'Duraklat' : 'Dinle'}</span>
+              <span className="text-sm font-semibold">{playing ? 'Dinleniyor' : 'Dinle'}</span>
             </motion.button>
           )}
 

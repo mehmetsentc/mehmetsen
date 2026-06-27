@@ -69,7 +69,7 @@ DİĞER KATEGORİLER:
 - teknoloji: Apple/Google/Meta/AI/yazılım/siber/uzay/drone/robot
 - saglik: Hastalık, ilaç, aşı, pandemi, WHO, sağlık bakanlığı
 - bilim: Araştırma, keşif, NASA, iklim bilimi
-- dunya: Türkiye DIŞINDA gerçekleşen önemli ama son-dakika eşiği altındaki haberler
+- dunya: Türkiye DIŞINDA gerçekleşen tüm haberler
 - magazin: Ünlü kişisel hayatı, evlilik/boşanma, ilişki, skandal. isBreaking: false ZORUNLU.
 - kultur: Sinema, tiyatro, opera, müze, edebiyat, ödül töreni, konser, müzik
 - gastronomi: Yemek, restoran, şef, Michelin, MasterChef, tarif
@@ -83,6 +83,8 @@ Aşağıdakilerin hepsi doğruysa → yerel-haber:
 ✓ Olay tek bir Türk şehri/ilçesinde geçiyor
 ✓ Diğer şehirlerde benzer etki yok
 ✓ Türkiye genelinde politika/yasa/ekonomi değişikliği yok
+
+ALTIN KURAL son-dakika için: "Bu haber Türkiye genelini veya uluslararası düzeni doğrudan etkiliyor mu?" → Hayır → son-dakika DEĞİL.
 
 KESİN YASAKLAR (son-dakika olamaz):
 - Kutlama, tören, festival, şenlik, anma etkinliği

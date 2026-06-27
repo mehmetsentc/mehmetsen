@@ -16,10 +16,10 @@ const TARGET_CATEGORY = 'gundem'
  * GET/POST /api/cron/newsroom/expire-breaking
  *
  * Her saat bir kez çalışır.
- * isBreaking=true olan ve yayınlanma tarihi 4 saatten eski haberleri
+ * isBreaking=true olan ve yayınlanma tarihi 24 saatten eski haberleri
  * bulup otomatik olarak "gündem" kategorisine taşır.
  *
- * ?force=true → publishedAt filtresi olmadan TÜM isBreaking=true dokümanları temizler.
+ * ?force=true   → publishedAt filtresi olmadan TÜM isBreaking=true dokümanları temizler.
  * ?restore=true → son 24 saatin yayınlanmış haberlerini isBreaking=true yapar (tek seferlik backfill).
  */
 export async function GET(request: Request) {
@@ -45,6 +45,7 @@ async function handler(request: Request) {
     const since24hTs = Timestamp.fromMillis(since24h)
     let restored = 0
     const restoreErrors: string[] = []
+    const seenIds = new Set<string>()
 
     for (const col of [Collections.NEWS, Collections.POSTS]) {
       for (const cutoff of [since24h, since24hTs] as const) {
@@ -58,6 +59,8 @@ async function handler(request: Request) {
           let batch = db.batch()
           let count = 0
           for (const doc of snap.docs) {
+            if (seenIds.has(doc.id)) continue
+            seenIds.add(doc.id)
             const d = doc.data()
             if (d.status !== 'published') continue // yayınlanmamış atla
             if (d.manualBreaking === false) continue // manuel kapatılmış
@@ -85,6 +88,7 @@ async function handler(request: Request) {
     if (restored > 0) {
       revalidatePath('/kategori/son-dakika')
       revalidatePath('/')
+      console.log(`[expire-breaking] restore: ${restored} haber isBreaking=true yapıldı`)
     }
     return NextResponse.json(
       { ok: true, restored, errors: restoreErrors, mode: 'restore' },
@@ -156,7 +160,7 @@ async function handler(request: Request) {
 
       if (batchCount === 499) {
         await batch.commit()
-        batch = db.batch() // yeni batch oluştur
+        batch = db.batch()
         batchCount = 0
       }
     }
