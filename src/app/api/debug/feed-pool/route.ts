@@ -60,6 +60,7 @@ export async function GET(request: Request) {
         breaking: data.breaking.length,
         featured: data.featured.length,
         latest: data.latest.length,
+        trending: data.trending.length,
         mostRead: data.mostRead.length,
         categoryRails: Object.fromEntries(
           Object.entries(data.categoryRails).map(([k, v]) => [k, v?.length ?? 0])

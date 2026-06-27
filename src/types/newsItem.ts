@@ -58,7 +58,11 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
 export interface HomeFeedInitialData {
   breaking: NewsItem[]
   featured: NewsItem[]
+  /** Hot-aware sıralanmış akış (son 72 saat hot skoru ile, eski haberler kronolojik). */
   latest: NewsItem[]
+  /** "Şu an trend" — kısa pencerede en çok ilgi gören haberler. */
+  trending: NewsItem[]
+  /** "Gözden Kaçmasın" — all-time en çok okunan haberler. */
   mostRead: NewsItem[]
   categoryRails: Partial<Record<HomeCategorySlug, NewsItem[]>>
 }

@@ -9,6 +9,7 @@ import { CategoryRail } from '@/components/home/CategoryRail'
 import { MustReadSection } from '@/components/home/MustReadSection'
 import { LocalNewsSection } from '@/components/home/LocalNewsSection'
 import { LocationPermission } from '@/components/home/LocationPermission'
+import { TrendingRail } from '@/components/home/TrendingRail'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { HOME_CATEGORY_RAILS, type HomeFeedInitialData } from '@/types/newsItem'
 
@@ -17,13 +18,22 @@ interface HomeFeedProps {
 }
 
 export function HomeFeed({ data }: HomeFeedProps) {
-  const { breaking, featured, latest, mostRead, categoryRails } = data
+  const { breaking, featured, latest, trending, mostRead, categoryRails } = data
 
-  // Son dakika hikayelerde gösterilen haberleri feed'den çıkar (tekrar önle)
-  const breakingIds = useMemo(() => new Set(breaking.map(b => b.id)), [breaking])
+  // Son dakika hikayeleri ve "Şu An Trend" rail'inde gösterilen haberleri
+  // ana akıştan çıkar; aynı haber iki yerde art arda görünmesin.
+  const breakingIds = useMemo(() => new Set(breaking.map((b) => b.id)), [breaking])
+  const trendingIds = useMemo(() => new Set(trending.map((t) => t.id)), [trending])
+
   const dedupedLatest = useMemo(
-    () => latest.filter(item => !breakingIds.has(item.id) && item.category !== 'son-dakika'),
-    [latest, breakingIds]
+    () =>
+      latest.filter(
+        (item) =>
+          !breakingIds.has(item.id) &&
+          !trendingIds.has(item.id) &&
+          item.category !== 'son-dakika'
+      ),
+    [latest, breakingIds, trendingIds]
   )
 
   const feedHead = useMemo(() => dedupedLatest.slice(0, 6), [dedupedLatest])
@@ -36,6 +46,8 @@ export function HomeFeed({ data }: HomeFeedProps) {
       <BreakingStories items={breaking} />
       <FeaturedSlider items={featured} />
       <MarketTicker />
+
+      <TrendingRail items={trending} />
 
       <section className="home-section" aria-label="Son haberler">
         <div className="home-rail-title">

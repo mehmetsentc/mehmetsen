@@ -7,6 +7,7 @@ import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem } from '@/lib/newsItemUtils'
 import { getCategoryFamily } from '@/constants/config'
+import { pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
 import type { Post } from '@/types/post'
 import type { FeedSliderItem } from '@/types/feedSlider'
 import type { HomeFeedInitialData, HomeCategorySlug, NewsItem } from '@/types/newsItem'
@@ -261,10 +262,25 @@ function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
   return result
 }
 
-function bucketLatest(pool: NewsItem[], limit: number): NewsItem[] {
-  return pool.filter((item) => !isBreakingPoolItem(item)).slice(0, limit)
+/**
+ * Akış: breaking olmayan havuzu hot-aware sıralar. Son 72 saatlik haberler
+ * "hot" skoruna göre tepeye çıkar (en çok okunanlar ilk sıralarda), eski
+ * haberler kronolojik düzende altta kalır.
+ */
+function bucketLatest(pool: NewsItem[], limit: number, now: number): NewsItem[] {
+  const fresh = pool.filter((item) => !isBreakingPoolItem(item))
+  return rankFeedHotAware(fresh, now).slice(0, limit)
 }
 
+/**
+ * "Şu an trend" rail'i — son 72 saatte hot skoru en yüksek haberler.
+ * Akış'tan ayrı, breaking ve featured'ın altında gösterilir.
+ */
+function bucketTrending(pool: NewsItem[], limit: number, now: number): NewsItem[] {
+  return pickTrending(pool, limit, undefined, now)
+}
+
+/** "Gözden Kaçmasın" — all-time en çok okunan haberler (zaman bağımsız). */
 function bucketMostRead(pool: NewsItem[], limit: number): NewsItem[] {
   const withViews = pool.filter((p) => typeof p.views === 'number' && (p.views ?? 0) > 0)
   if (withViews.length === 0) return pool.slice(0, limit)
@@ -297,15 +313,19 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
       breaking: [],
       featured: [],
       latest: [],
+      trending: [],
       mostRead: [],
       categoryRails: {},
     }
   }
 
+  const now = Date.now()
+
   return {
     breaking: bucketBreaking(pool, 12),
     featured: bucketFeatured(pool, 8),
-    latest: bucketLatest(pool, 20),
+    latest: bucketLatest(pool, 28, now),
+    trending: bucketTrending(pool, 6, now),
     mostRead: bucketMostRead(pool, 6),
     categoryRails: bucketCategoryRails(pool, 10),
   }
