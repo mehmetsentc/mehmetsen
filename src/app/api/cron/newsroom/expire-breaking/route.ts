@@ -50,9 +50,9 @@ async function handler(request: Request) {
     for (const col of [Collections.NEWS, Collections.POSTS]) {
       for (const cutoff of [since24h, since24hTs] as const) {
         try {
+          // Tek alan index (publishedAt) kullan — status bellekte filtrele
           const snap = await db
             .collection(col)
-            .where('status', '==', 'published')
             .where('publishedAt', '>', cutoff)
             .get()
 
@@ -61,7 +61,9 @@ async function handler(request: Request) {
           for (const doc of snap.docs) {
             if (seenIds.has(doc.id)) continue
             seenIds.add(doc.id)
-            if (doc.data().manualBreaking === false) continue // manuel kapatılmış
+            const d = doc.data()
+            if (d.status !== 'published') continue // yayınlanmamış atla
+            if (d.manualBreaking === false) continue // manuel kapatılmış
             batch.update(doc.ref, {
               isBreaking: true,
               updatedAt: FieldValue.serverTimestamp(),
