@@ -59,14 +59,19 @@ const FAQ: FaqEntry[] = [
     q: 'Hesabımı nasıl silerim?',
     a: (
       <>
-        Hesabınızı silmek için kayıtlı e-posta adresinizden{' '}
+        Uygulamada{' '}
+        <Link href="/settings/account/delete" className="text-[rgb(var(--color-brand))] underline">
+          <strong>Ayarlar → Oturum → Hesabı Sil</strong>
+        </Link>
+        {' '}menüsünden hesabınızı doğrudan silebilirsiniz. İşlem geri alınamaz ve profiliniz,
+        beğenileriniz, kayıtlı haberleriniz dahil tüm kişisel verileriniz kalıcı olarak
+        kaldırılır. Sorun yaşarsanız{' '}
         <a className="text-[rgb(var(--color-brand))] underline" href="mailto:destek@nahaber.com?subject=Hesap%20Silme%20Talebi">
           destek@nahaber.com
         </a>
-        {' '}adresine "Hesap Silme Talebi" konulu bir e-posta gönderin. Talebiniz en geç{' '}
-        <strong>30 gün</strong> içinde işleme alınır; hesabınız ve ilişkili kişisel verileriniz
-        kalıcı olarak silinir. Yasal saklama yükümlülüğü olan kayıtlar (örn. fatura, vergi
-        mevzuatı kaynaklı veriler) ilgili yasal süre dolana kadar saklanır.
+        {' '}adresine yazın; en geç 30 gün içinde silme tamamlanır. Yasal saklama yükümlülüğü
+        olan kayıtlar (örn. fatura, vergi mevzuatı kaynaklı veriler) ilgili yasal süre dolana
+        kadar saklanır.
       </>
     ),
   },
@@ -250,18 +255,25 @@ export default function IletisimPage() {
         <section className="mb-10 rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
           <h2 className="mb-2 text-base font-bold text-white">Hesabınızı Silmek mi İstiyorsunuz?</h2>
           <p className="mb-3 text-sm text-[rgb(var(--color-muted))]">
-            Hesabınızı kalıcı olarak silmek için kayıtlı e-posta adresinizden{' '}
-            <a className="font-semibold text-[rgb(var(--color-brand))] underline" href="mailto:destek@nahaber.com?subject=Hesap%20Silme%20Talebi">
+            Uygulama içinden{' '}
+            <strong className="text-white">Ayarlar → Oturum → Hesabı Sil</strong> menüsüne
+            giderek hesabınızı doğrudan ve kalıcı olarak silebilirsiniz. İşlem birkaç saniye
+            içinde tamamlanır.
+          </p>
+          <Link
+            href="/settings/account/delete"
+            className="mb-3 inline-flex items-center gap-2 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/30"
+          >
+            Hesap Silme Sayfasına Git →
+          </Link>
+          <p className="text-xs text-[rgb(var(--color-muted))]">
+            Uygulamaya erişiminiz yoksa{' '}
+            <a className="text-[rgb(var(--color-brand))] underline" href="mailto:destek@nahaber.com?subject=Hesap%20Silme%20Talebi">
               destek@nahaber.com
             </a>
-            {' '}adresine "Hesap Silme Talebi" konulu bir e-posta gönderin. Talebiniz en geç{' '}
-            <strong>30 gün</strong> içinde işleme alınır; hesabınız ve ilişkili kişisel
-            verileriniz kalıcı olarak silinir.
-          </p>
-          <p className="text-xs text-[rgb(var(--color-muted))]">
-            Yasal yükümlülük gereği saklanması zorunlu kayıtlar (örn. fatura, vergi mevzuatı
-            kaynaklı veriler) ilgili yasal süre dolana kadar saklanır; bu süre sonunda otomatik
-            olarak silinir.
+            {' '}adresine yazın; talep en geç 30 gün içinde işleme alınır. Yasal saklama
+            yükümlülüğü olan kayıtlar (örn. fatura, vergi mevzuatı kaynaklı veriler) ilgili
+            yasal süre dolana kadar saklanır.
           </p>
         </section>
 

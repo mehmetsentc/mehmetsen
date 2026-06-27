@@ -16,6 +16,7 @@ import {
   Search,
   Shield,
   Sparkles,
+  Trash2,
   User,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -230,6 +231,13 @@ export default function SettingsPage() {
           <SettingsItem
             label="Çıkış yap"
             onClick={handleLogout}
+            destructive
+          />
+          <SettingsItem
+            icon={Trash2}
+            label="Hesabı Sil"
+            description="Profilinizi ve verilerinizi kalıcı olarak kaldırır"
+            href={ROUTES.SETTINGS_ACCOUNT_DELETE}
             destructive
           />
         </SettingsSection>
