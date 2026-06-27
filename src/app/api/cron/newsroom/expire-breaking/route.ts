@@ -19,15 +19,8 @@ const TARGET_CATEGORY = 'gundem'
  * isBreaking=true olan ve yayınlanma tarihi 4 saatten eski haberleri
  * bulup otomatik olarak "gündem" kategorisine taşır.
  *
- * Güncellenen alanlar:
- *   - isBreaking: false
- *   - breakingScore: 30
- *   - categoryId: 'gundem'
- *   - _breakingExpiredAt: timestamp
- *
- * Not: publishedAt bazı haberlerde Number (ms), bazılarında Firestore Timestamp
- * olarak saklanabilir. Firestore type ordering'de Number ve Timestamp ayrı
- * tipler olduğundan her ikisi için ayrı query yapılır ve sonuçlar birleştirilir.
+ * ?force=true → publishedAt filtresi olmadan TÜM isBreaking=true dokümanları temizler.
+ * (tek seferlik backfill için kullanılır)
  */
 export async function GET(request: Request) {
   return handler(request)
@@ -42,6 +35,9 @@ async function handler(request: Request) {
   }
 
   const db = getAdminFirestore()
+  const url = new URL(request.url)
+  const forceAll = url.searchParams.get('force') === 'true'
+
   const cutoffMs = Date.now() - BREAKING_TTL_MS
   const cutoffTs = Timestamp.fromMillis(cutoffMs)
 
@@ -50,24 +46,34 @@ async function handler(request: Request) {
   const errors: string[] = []
 
   for (const col of [Collections.NEWS, Collections.POSTS]) {
-    // publishedAt tipi belirsiz olduğundan iki query: ms (Number) ve Timestamp
     const docMap = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>()
 
-    for (const cutoff of [cutoffMs, cutoffTs] as const) {
+    if (forceAll) {
+      // Force mod: publishedAt filtresi yok — tüm isBreaking=true dokümanları temizle
       try {
-        const snap = await db
-          .collection(col)
-          .where('isBreaking', '==', true)
-          .where('publishedAt', '<', cutoff)
-          .get()
-        for (const doc of snap.docs) {
-          docMap.set(doc.id, doc)
-        }
+        const snap = await db.collection(col).where('isBreaking', '==', true).get()
+        for (const doc of snap.docs) docMap.set(doc.id, doc)
       } catch (e) {
-        const typeName = cutoff instanceof Timestamp ? 'Timestamp' : 'Number'
-        const msg = `[expire-breaking] ${col} query failed (${typeName}): ${e instanceof Error ? e.message : e}`
+        const msg = `[expire-breaking] ${col} force query failed: ${e instanceof Error ? e.message : e}`
         console.error(msg)
         errors.push(msg)
+      }
+    } else {
+      // Normal mod: publishedAt tipi belirsiz (Number veya Timestamp) — iki query yap
+      for (const cutoff of [cutoffMs, cutoffTs] as const) {
+        try {
+          const snap = await db
+            .collection(col)
+            .where('isBreaking', '==', true)
+            .where('publishedAt', '<', cutoff)
+            .get()
+          for (const doc of snap.docs) docMap.set(doc.id, doc)
+        } catch (e) {
+          const typeName = cutoff instanceof Timestamp ? 'Timestamp' : 'Number'
+          const msg = `[expire-breaking] ${col} query failed (${typeName}): ${e instanceof Error ? e.message : e}`
+          console.error(msg)
+          errors.push(msg)
+        }
       }
     }
 
@@ -78,7 +84,6 @@ async function handler(request: Request) {
 
     for (const doc of docMap.values()) {
       const data = doc.data()
-      // Admin tarafından el ile son-dakikaya alınmışsa dokunma
       if (data.manualBreaking === true) {
         skipped++
         continue
@@ -115,11 +120,11 @@ async function handler(request: Request) {
     revalidatePath('/kategori/son-dakika')
     revalidatePath('/kategori/gundem')
     revalidatePath('/')
-    console.log(`[expire-breaking] ${expired} haber son-dakika→gündem taşındı`)
+    console.log(`[expire-breaking] ${expired} haber son-dakika→gündem taşındı (force=${forceAll})`)
   }
 
   return NextResponse.json(
-    { ok: true, expired, skipped, errors },
+    { ok: true, expired, skipped, errors, force: forceAll },
     { headers: { 'Cache-Control': 'no-store' } }
   )
 }
