@@ -1,18 +1,103 @@
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { format, isValid } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { ChevronRight, Clock, Eye, Hash, MapPin, User } from 'lucide-react'
-import type { Post } from '@/types/post'
+import type { MediaItem, Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { formatCount, getArticleBylineName } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
+import { planMediaPlacement } from '@/lib/mediaPlacement'
 import { SliderImage } from '@/components/widgets/SliderImage'
 
 interface NewsArticleStaticProps {
   post: Post
+}
+
+/** YouTube veya MP4 hero player. Tek bir component'te toplandı. */
+function VideoHero({ item, title, posterFallback }: {
+  item: MediaItem
+  title: string
+  posterFallback: string | null
+}) {
+  const isYouTube = /youtube[^/]*\/embed\//.test(item.url)
+  return (
+    <figure className="relative bg-black">
+      <div className="relative aspect-[16/9] w-full overflow-hidden">
+        {isYouTube ? (
+          <iframe
+            src={`${item.url}?rel=0&modestbranding=1&playsinline=1`}
+            title={title}
+            className="absolute inset-0 h-full w-full border-0"
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+          />
+        ) : (
+          // eslint-disable-next-line jsx-a11y/media-has-caption
+          <video
+            src={item.url}
+            poster={item.thumbnailUrl ?? posterFallback ?? undefined}
+            controls
+            playsInline
+            className="absolute inset-0 h-full w-full object-contain"
+          />
+        )}
+        <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/25 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/65">
+          nahaber.com
+        </span>
+      </div>
+      {(item.caption || item.credit) && (
+        <figcaption className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2 text-xs text-[rgb(var(--color-muted))]">
+          {item.caption}
+          {item.caption && item.credit && <span className="mx-1">·</span>}
+          {item.credit && <span className="font-medium">{item.credit}</span>}
+        </figcaption>
+      )}
+    </figure>
+  )
+}
+
+/** Hero görsel (tek görsel veya hero olarak seçilen ilk image). */
+function ImageHero({ item, title }: { item: MediaItem; title: string }) {
+  return (
+    <figure className="relative">
+      <div className="relative aspect-[16/9] max-h-[min(70vh,560px)] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
+        <SliderImage src={item.url} alt={item.alt ?? title} priority />
+        <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/70">
+          nahaber.com
+        </span>
+      </div>
+      {(item.caption || item.credit) && (
+        <figcaption className="px-4 py-2 text-xs text-[rgb(var(--color-muted))] sm:px-8">
+          {item.caption}
+          {item.caption && item.credit && <span className="mx-1">·</span>}
+          {item.credit && <span className="font-medium">{item.credit}</span>}
+        </figcaption>
+      )}
+    </figure>
+  )
+}
+
+/** Paragraf araları için inline görsel — ekran genişliğinde, altyazılı. */
+function InlineImage({ item, title }: { item: MediaItem; title: string }) {
+  return (
+    <figure className="my-7 -mx-4 overflow-hidden sm:mx-0 sm:rounded-xl">
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
+        <SliderImage src={item.url} alt={item.alt ?? item.caption ?? title} />
+      </div>
+      {(item.caption || item.credit) && (
+        <figcaption className="px-4 py-2 text-[13px] text-[rgb(var(--color-muted))] sm:px-3">
+          {item.caption}
+          {item.caption && item.credit && <span className="mx-1">·</span>}
+          {item.credit && <span className="font-medium">{item.credit}</span>}
+        </figcaption>
+      )}
+    </figure>
+  )
 }
 
 /** Server-rendered article — crawlable before client JS. */
@@ -126,65 +211,15 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
           </div>
         </header>
 
-        {/* Video player or cover image */}
+        {/* ── Hero (video varsa video, yoksa ilk görsel) ─────────────── */}
         {(() => {
-          const videoItem = post.mediaItems?.find((m) => m.type === 'video' && m.url?.trim())
-          const isYouTube = Boolean(videoItem && /youtube[^/]*\/embed\//.test(videoItem.url))
-          const isMp4 = Boolean(videoItem && !isYouTube && /\.mp4(\?|$)/i.test(videoItem.url))
-
-          if (isYouTube && videoItem) {
-            return (
-              <figure className="relative bg-black">
-                <div className="relative aspect-[16/9] w-full overflow-hidden">
-                  <iframe
-                    src={`${videoItem.url}?rel=0&modestbranding=1&playsinline=1`}
-                    title={post.title}
-                    className="absolute inset-0 h-full w-full border-0"
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                    allowFullScreen
-                    loading="lazy"
-                  />
-                  <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/25 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/65">
-                    nahaber.com
-                  </span>
-                </div>
-              </figure>
-            )
+          const placement = planMediaPlacement(post.mediaItems, paragraphs.length)
+          if (placement.hero?.type === 'video') {
+            return <VideoHero item={placement.hero} title={post.title} posterFallback={imageUrl} />
           }
-
-          if (isMp4 && videoItem) {
-            return (
-              <figure className="relative bg-black">
-                <div className="relative aspect-[16/9] w-full overflow-hidden">
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <video
-                    src={videoItem.url}
-                    poster={videoItem.thumbnailUrl ?? imageUrl ?? undefined}
-                    controls
-                    playsInline
-                    className="absolute inset-0 h-full w-full object-contain"
-                  />
-                  <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/25 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/65">
-                    nahaber.com
-                  </span>
-                </div>
-              </figure>
-            )
+          if (placement.hero?.type === 'image') {
+            return <ImageHero item={placement.hero} title={post.title} />
           }
-
-          if (imageUrl) {
-            return (
-              <figure className="relative">
-                <div className="relative aspect-[16/9] max-h-[min(70vh,560px)] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
-                  <SliderImage src={imageUrl} alt={post.title} priority />
-                  <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/70">
-                    nahaber.com
-                  </span>
-                </div>
-              </figure>
-            )
-          }
-
           return null
         })()}
 
@@ -202,12 +237,40 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
             />
           )}
 
-          {!hasHtmlContent && paragraphs.length > 0 && (
-            <div className="news-body space-y-6 text-[17px] leading-[1.85] text-[rgb(var(--color-text))] sm:text-[18px]">
-              {paragraphs.map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))}
-            </div>
+          {!hasHtmlContent && paragraphs.length > 0 && (() => {
+            const placement = planMediaPlacement(post.mediaItems, paragraphs.length)
+            return (
+              <div className="news-body space-y-6 text-[17px] leading-[1.85] text-[rgb(var(--color-text))] sm:text-[18px]">
+                {paragraphs.map((paragraph, index) => {
+                  const inline = placement.inlineAfter.get(index)
+                  return (
+                    <Fragment key={index}>
+                      <p>{paragraph}</p>
+                      {inline && <InlineImage item={inline} title={post.title} />}
+                    </Fragment>
+                  )
+                })}
+                {placement.trailing.length > 0 && (
+                  <section aria-label="Galeri" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {placement.trailing.map((item, i) => (
+                      <InlineImage key={`trail-${i}`} item={item} title={post.title} />
+                    ))}
+                  </section>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* HTML content modunda inline yerleştirme zor — paragraflar tek string olarak gelir.
+              Bu nedenle ekstra görseller HTML body'nin altında bir galeri olarak gösterilir. */}
+          {hasHtmlContent && post.mediaItems && post.mediaItems.filter((m, i) => i > 0 && m.type === 'image').length > 0 && (
+            <section aria-label="Galeri" className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {post.mediaItems
+                .filter((m, i) => i > 0 && m.type === 'image')
+                .map((item, i) => (
+                  <InlineImage key={`htmlgal-${i}`} item={item} title={post.title} />
+                ))}
+            </section>
           )}
 
           {!showLead && !hasHtmlContent && paragraphs.length === 0 && (

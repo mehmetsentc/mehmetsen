@@ -12,6 +12,25 @@ export interface MediaItem {
   url: string
   thumbnailUrl: string | null
   caption: string | null
+  /**
+   * Optional alt text for accessibility / SEO. Falls back to `caption` then
+   * to the article title when rendered.
+   */
+  alt?: string | null
+  /**
+   * Stable identifier for drag-reorder + dedup. Generated client-side when
+   * absent (e.g. URL hash).
+   */
+  id?: string
+  /**
+   * Stable ordering hint. Lower values render first. When two items share
+   * the same value, the array order wins.
+   */
+  order?: number
+  /**
+   * Optional credit line (e.g. photographer / agency).
+   */
+  credit?: string | null
 }
 
 export interface Post {

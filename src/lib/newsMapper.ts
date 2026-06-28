@@ -1,4 +1,4 @@
-import type { Post, PostType, TimelinePost } from '@/types/post'
+import type { MediaItem, Post, PostType, TimelinePost } from '@/types/post'
 import type { PostLocation } from '@/lib/location'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { getCityCategoryName } from '@/constants/cities'
@@ -32,6 +32,26 @@ export interface NewsDocument {
   thumbnail?: string
   coverImageUrl?: string
   imageUrl?: string
+  /**
+   * Ordered list of all media (images + video) attached to the article.
+   * Replaces the single `thumbnail`/`videoUrl` pair when authored in the
+   * admin editor with multiple images. Legacy docs lack this field; the
+   * mapper synthesises it from thumbnail + videoUrl as a fallback.
+   */
+  mediaItems?: Array<{
+    type?: 'image' | 'video'
+    url?: string
+    thumbnailUrl?: string | null
+    caption?: string | null
+    alt?: string | null
+    credit?: string | null
+    order?: number
+  }>
+  /**
+   * Lightweight legacy field: extra image URLs beyond `thumbnail`.
+   * Older RSS-ingested docs may use this; we merge it into `mediaItems`.
+   */
+  galleryImages?: string[]
   type?: PostType
   source?: string
   sourceUrl?: string
@@ -129,6 +149,94 @@ export function resolveSource(data: NewsDocument, author: string): string {
 }
 
 /**
+ * `mediaItems` arrayini Firestore'dan okunan ham veri + legacy alanlardan
+ * üretir. Backward compatibility'yi garanti eder:
+ *
+ *   - Firestore'da `mediaItems` array varsa onu temizle ve sırala
+ *   - Yoksa legacy `videoUrl` + `coverImage` + `galleryImages`'tan sentezle
+ *
+ * Sıralama kuralı:
+ *   1. Açık `order` değeri (artan)
+ *   2. Aynı order'da array sırası
+ *   3. Video > Cover Image > Gallery Images (legacy fallback)
+ */
+function buildMediaItems(input: {
+  storedMediaItems?: NewsDocument['mediaItems']
+  galleryImages?: string[]
+  coverImage: string | null
+  videoUrl: string | null
+}): MediaItem[] {
+  const result: MediaItem[] = []
+  const seenUrls = new Set<string>()
+
+  const pushItem = (item: MediaItem) => {
+    const trimmed = item.url.trim()
+    if (!trimmed) return
+    if (seenUrls.has(trimmed)) return
+    seenUrls.add(trimmed)
+    result.push({ ...item, url: trimmed })
+  }
+
+  // ── 1) Yeni schema: yazılı mediaItems ───────────────────────────────
+  if (Array.isArray(input.storedMediaItems) && input.storedMediaItems.length > 0) {
+    const sorted = [...input.storedMediaItems]
+      .filter((m) => m && typeof m.url === 'string' && m.url.trim())
+      .sort((a, b) => {
+        const ao = typeof a.order === 'number' ? a.order : Number.POSITIVE_INFINITY
+        const bo = typeof b.order === 'number' ? b.order : Number.POSITIVE_INFINITY
+        return ao - bo
+      })
+    for (const m of sorted) {
+      pushItem({
+        type: m.type === 'video' ? 'video' : 'image',
+        url: m.url as string,
+        thumbnailUrl: m.thumbnailUrl?.trim() || null,
+        caption: m.caption?.trim() || null,
+        alt: m.alt?.trim() || null,
+        credit: m.credit?.trim() || null,
+        order: typeof m.order === 'number' ? m.order : undefined,
+      })
+    }
+  }
+
+  // ── 2) Legacy fallback: video item (yoksa ekle, varsa atla) ──────────
+  if (input.videoUrl && !result.some((m) => m.type === 'video')) {
+    pushItem({
+      type: 'video',
+      url: input.videoUrl,
+      thumbnailUrl: input.coverImage,
+      caption: null,
+    })
+  }
+
+  // ── 3) Legacy fallback: cover image ──────────────────────────────────
+  if (input.coverImage) {
+    pushItem({
+      type: 'image',
+      url: input.coverImage,
+      thumbnailUrl: input.coverImage,
+      caption: null,
+    })
+  }
+
+  // ── 4) Legacy fallback: galleryImages[] ──────────────────────────────
+  if (Array.isArray(input.galleryImages)) {
+    for (const url of input.galleryImages) {
+      if (typeof url === 'string' && url.trim()) {
+        pushItem({
+          type: 'image',
+          url: url.trim(),
+          thumbnailUrl: url.trim(),
+          caption: null,
+        })
+      }
+    }
+  }
+
+  return result
+}
+
+/**
  * YouTube watch URL'yi (youtube.com/watch?v=ID veya youtu.be/ID)
  * iframe-oynatılabilir embed URL'ye çevirir.
  * Zaten embed URL ise değiştirmez.
@@ -185,6 +293,12 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
   const source = resolveSource(data, author)
 
   const imageUrl = thumbnail || null
+  const mediaItems = buildMediaItems({
+    storedMediaItems: data.mediaItems,
+    galleryImages: data.galleryImages,
+    coverImage: imageUrl,
+    videoUrl: videoUrl || null,
+  })
 
   return {
     id,
@@ -207,11 +321,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
     postType,
     source,
-    mediaItems: videoUrl
-      ? [{ type: 'video', url: videoUrl, thumbnailUrl: imageUrl, caption: null }]
-      : imageUrl
-        ? [{ type: 'image', url: imageUrl, thumbnailUrl: imageUrl, caption: null }]
-        : [],
+    mediaItems,
     coverImageUrl: imageUrl,
     status: (data.status as Post['status']) ?? 'published',
     visibility: 'public',

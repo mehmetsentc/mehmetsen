@@ -1,17 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { MediaUploader, type MediaUploadState } from '@/components/post/MediaUploader'
-import { MediaLinkSection } from '@/components/admin/MediaLinkSection'
+import { MediaItemsManager } from '@/components/admin/MediaItemsManager'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { adminNewsService } from '@/services/adminNewsService'
-import type { Post, PostStatus } from '@/types/post'
+import type { MediaItem, Post, PostStatus } from '@/types/post'
 
 
 interface AdminNewsFormProps {
@@ -21,6 +19,26 @@ interface AdminNewsFormProps {
   username: string
 }
 
+/**
+ * Düzenlenirken mevcut `post.mediaItems` çoğunlukla [video-or-image] tek
+ * öğeli geliyor (eski schema). Birden fazla görsel ekleyebilmek için bu
+ * listeyi alıp `MediaItemsManager`'a veriyoruz.
+ */
+function seedMedia(post?: Post): MediaItem[] {
+  if (!post) return []
+  if (post.mediaItems && post.mediaItems.length > 0) return post.mediaItems
+  if (post.coverImageUrl) {
+    return [{
+      type: 'image',
+      url: post.coverImageUrl,
+      thumbnailUrl: post.coverImageUrl,
+      caption: null,
+      alt: null,
+      credit: null,
+    }]
+  }
+  return []
+}
 
 export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormProps) {
   const router = useRouter()
@@ -33,22 +51,29 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
   const [city, setCity] = useState(post?.city ?? '')
   const [status, setStatus] = useState<PostStatus>(post?.status ?? 'published')
   const [saving, setSaving] = useState(false)
-  const [media, setMedia] = useState<MediaUploadState>({
-    uploading: false,
-    progress: 0,
-    thumbnail: post?.coverImageUrl ?? '',
-    videoUrl: post?.mediaItems?.find((m) => m.type === 'video')?.url ?? '',
-    draftId: null,
-  })
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>(() => seedMedia(post))
+
+  /**
+   * Cover image = ilk görsel item'ın URL'i; ya da video varsa video'nun
+   * thumbnail'i (yoksa boş).
+   */
+  const coverThumbnail = useMemo(() => {
+    const firstImage = mediaItems.find((m) => m.type === 'image')
+    if (firstImage) return firstImage.url
+    const videoWithThumb = mediaItems.find((m) => m.type === 'video' && m.thumbnailUrl)
+    return videoWithThumb?.thumbnailUrl ?? ''
+  }, [mediaItems])
+
+  /** Single video URL (en başta gelen video). */
+  const primaryVideoUrl = useMemo(
+    () => mediaItems.find((m) => m.type === 'video')?.url ?? '',
+    [mediaItems]
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) {
       toast.error('Başlık gerekli')
-      return
-    }
-    if (media.uploading) {
-      toast.error('Medya yüklemesi devam ediyor')
       return
     }
 
@@ -62,9 +87,9 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
         seoDescription,
         category,
         city,
-        thumbnail: media.thumbnail,
-        videoUrl: media.videoUrl,
-        draftId: media.draftId,
+        thumbnail: coverThumbnail,
+        videoUrl: primaryVideoUrl,
+        mediaItems,
         tags: post?.tags ?? [],
         status,
       }
@@ -177,28 +202,22 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
       )}
 
       {/* ── Medya Bölümü ─────────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <label className="block text-sm font-medium text-[rgb(var(--color-text))]">Medya</label>
-
-        {/* Dosya Yükle */}
-        <MediaUploader
-          mode="news"
-          userId={userId}
-          authorUsername={username}
-          onFilesChange={() => {}}
-          autoUploadDraft
-          onUploadStateChange={setMedia}
-        />
-        {(media.thumbnail || media.videoUrl) && (
-          <p className="text-xs text-green-600 dark:text-green-400">
-            {media.videoUrl ? '✓ Video yüklendi' : '✓ Görsel yüklendi'}
+      <div className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <label className="block text-sm font-medium text-[rgb(var(--color-text))]">
+            Medya · {mediaItems.length} adet
+          </label>
+          <p className="text-[11px] text-[rgb(var(--color-muted))]">
+            Video varsa en başta, görseller sıraya göre metin arasına dağıtılır
           </p>
-        )}
-
-        {/* Link Ekle (görsel, video veya YouTube) */}
-        <MediaLinkSection
-          onThumbnailChange={(url) => setMedia((prev) => ({ ...prev, thumbnail: url }))}
-          onVideoUrlChange={(url) => setMedia((prev) => ({ ...prev, videoUrl: url }))}
+        </div>
+        <MediaItemsManager
+          value={mediaItems}
+          onChange={setMediaItems}
+          userId={userId}
+          username={username}
+          articleContent={description}
+          articleTitle={title}
         />
       </div>
 

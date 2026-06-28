@@ -686,6 +686,7 @@ export const postService = {
     authorId: string
     thumbnail?: string
     videoUrl?: string
+    mediaItems?: unknown[]
     category?: string
     type?: string
     status?: string
@@ -723,6 +724,7 @@ export const postService = {
       coverImageUrl: data.thumbnail ?? '',
       imageUrl: data.thumbnail ?? '',
       videoUrl: data.videoUrl ?? '',
+      mediaItems: Array.isArray(data.mediaItems) ? data.mediaItems : [],
       category: topicCategory || cityCategory,
       categoryId: topicCategory || cityCategory,
       city: location?.city ?? '',
@@ -804,6 +806,7 @@ export const postService = {
       authorId: string
       thumbnail?: string
       videoUrl?: string
+      mediaItems?: unknown[]
       category?: string
       type?: string
       tags?: string[]
@@ -836,6 +839,7 @@ export const postService = {
       coverImageUrl: data.thumbnail ?? '',
       imageUrl: data.thumbnail ?? '',
       videoUrl: data.videoUrl ?? '',
+      mediaItems: Array.isArray(data.mediaItems) ? data.mediaItems : [],
       category: topicCategory || cityCategory,
       categoryId: topicCategory || cityCategory,
       city: location?.city ?? '',

@@ -18,7 +18,37 @@ import { Collections, db, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore
 import { buildFeedTeaser } from '@/lib/newsContentCleanup'
 import { mapNewsSnapshot, type NewsDocument } from '@/lib/newsMapper'
 import { postService } from '@/services/postService'
-import type { Post, PostStatus } from '@/types/post'
+import type { MediaItem, Post, PostStatus } from '@/types/post'
+
+/**
+ * `MediaItem[]`'i Firestore'a güvenli yazılacak hâle getirir.
+ *
+ * Firebase JS SDK `undefined` değerleri reddeder; alt/credit gibi opsiyonel
+ * alanlar boşsa düşürülmeli. Order alanı yoksa index ile damgalanır ki
+ * okuma tarafı kararlı bir sıraya sahip olsun.
+ */
+function sanitizeMediaItems(items: MediaItem[] | undefined): Array<{
+  type: 'image' | 'video'
+  url: string
+  thumbnailUrl: string | null
+  caption: string | null
+  alt: string | null
+  credit: string | null
+  order: number
+}> {
+  if (!Array.isArray(items)) return []
+  return items
+    .filter((m) => m && typeof m.url === 'string' && m.url.trim())
+    .map((m, idx) => ({
+      type: m.type === 'video' ? 'video' : 'image',
+      url: m.url.trim(),
+      thumbnailUrl: m.thumbnailUrl?.trim() || null,
+      caption: m.caption?.trim() || null,
+      alt: m.alt?.trim() || null,
+      credit: m.credit?.trim() || null,
+      order: typeof m.order === 'number' ? m.order : idx,
+    }))
+}
 
 const PAGE_SIZE = 50
 
@@ -277,6 +307,7 @@ export const adminNewsService = {
     city?: string
     thumbnail?: string
     videoUrl?: string
+    mediaItems?: MediaItem[]
     draftId?: string | null
     tags?: string[]
     authorId: string
@@ -285,6 +316,7 @@ export const adminNewsService = {
     const location: PostLocation | null = data.city?.trim()
       ? { city: data.city.trim(), country: 'Türkiye', lat: 0, lng: 0 }
       : null
+    const sanitizedMedia = sanitizeMediaItems(data.mediaItems)
 
     if (data.draftId) {
       await postService.publishNews(data.draftId, {
@@ -294,6 +326,7 @@ export const adminNewsService = {
         authorId: data.authorId,
         thumbnail: data.thumbnail,
         videoUrl: data.videoUrl,
+        mediaItems: sanitizedMedia,
         category: data.category,
         tags: data.tags,
         location,
@@ -313,6 +346,7 @@ export const adminNewsService = {
       authorId: data.authorId,
       thumbnail: data.thumbnail,
       videoUrl: data.videoUrl,
+      mediaItems: sanitizedMedia,
       category: data.category,
       tags: data.tags,
       location,
@@ -336,6 +370,7 @@ export const adminNewsService = {
       city?: string
       thumbnail?: string
       videoUrl?: string
+      mediaItems?: MediaItem[]
       tags?: string[]
       status?: PostStatus
     }
@@ -350,6 +385,7 @@ export const adminNewsService = {
     const topicCategory = data.category?.trim() ?? ''
     const now = Date.now()
     const status = data.status ?? 'published'
+    const sanitizedMedia = sanitizeMediaItems(data.mediaItems)
 
     const finalCategoryId = topicCategory || cityCategory
     await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
@@ -359,6 +395,7 @@ export const adminNewsService = {
       coverImageUrl: data.thumbnail ?? '',
       imageUrl: data.thumbnail ?? '',
       videoUrl: data.videoUrl ?? '',
+      mediaItems: sanitizedMedia,
       category: finalCategoryId,
       categoryId: finalCategoryId,
       // Kategori son-dakika değilse isBreaking temizle
