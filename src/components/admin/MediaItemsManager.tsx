@@ -100,19 +100,6 @@ export function MediaItemsManager({
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // ── Mutations ─────────────────────────────────────────────────────────
-  const pushItem = useCallback(
-    (item: MediaItem) => {
-      const trimmed = item.url.trim()
-      if (!trimmed) return
-      if (value.some((m) => m.url === trimmed)) {
-        toast.error('Bu medya zaten eklenmiş')
-        return
-      }
-      onChange([...value, { ...item, url: trimmed }])
-    },
-    [value, onChange]
-  )
-
   const removeAt = (index: number) => {
     onChange(value.filter((_, i) => i !== index))
   }
@@ -194,51 +181,104 @@ export function MediaItemsManager({
     [ensureDraftId, onChange, userId, value]
   )
 
-  // ── Link / URL ekleme ─────────────────────────────────────────────────
-  const handleAddLink = useCallback(async () => {
-    const url = linkInput.trim()
-    if (!url) return
+  // ── Link / URL ekleme (tek veya çoklu — satır/virgül/boşluk ile) ─────
+  /**
+   * Bir tek URL'i işler ve eklenecek MediaItem'ı döndürür. Storage'a
+   * indirme veya YouTube embed dönüşümü burada yapılır. Hata durumunda
+   * `null` döner ve toast atılır.
+   */
+  const importSingleUrl = useCallback(
+    async (rawUrl: string, token: string | null): Promise<MediaItem | null> => {
+      const url = rawUrl.trim()
+      if (!url) return null
+      const kind = guessMediaType(url)
 
-    const kind = guessMediaType(url)
+      if (kind === 'youtube') {
+        const embedUrl = toYouTubeEmbed(url)
+        if (!embedUrl) {
+          toast.error(`Geçerli bir YouTube linki değil: ${url.slice(0, 40)}`)
+          return null
+        }
+        return { type: 'video', url: embedUrl, thumbnailUrl: null, caption: null, alt: null, credit: null }
+      }
 
-    if (kind === 'youtube') {
-      const embedUrl = toYouTubeEmbed(url)
-      if (!embedUrl) { toast.error('Geçerli bir YouTube linki değil'); return }
-      pushItem({ type: 'video', url: embedUrl, thumbnailUrl: null, caption: null, alt: null, credit: null })
-      setLinkInput('')
-      toast.success('YouTube videosu eklendi')
-      return
-    }
-
-    setLinkLoading(true)
-    try {
-      const token = await auth.currentUser?.getIdToken()
-      if (!token) { toast.error('Giriş gerekli'); return }
+      if (!token) {
+        toast.error('Giriş gerekli')
+        return null
+      }
       const res = await fetch('/api/admin/media/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ url }),
       })
       const data = (await res.json()) as { url?: string; type?: string; error?: string }
-      if (!res.ok || !data.url) throw new Error(data.error ?? 'Medya yüklenemedi')
-
+      if (!res.ok || !data.url) {
+        toast.error(data.error ?? `Yüklenemedi: ${url.slice(0, 40)}`)
+        return null
+      }
       const storedType = data.type === 'video' ? 'video' : 'image'
-      pushItem({
+      return {
         type: storedType,
         url: data.url,
         thumbnailUrl: storedType === 'image' ? data.url : null,
         caption: null,
         alt: null,
         credit: null,
-      })
-      setLinkInput('')
-      toast.success(`${storedType === 'image' ? 'Görsel' : 'Video'} Storage'a yüklendi`)
+      }
+    },
+    []
+  )
+
+  const handleAddLink = useCallback(async () => {
+    const trimmed = linkInput.trim()
+    if (!trimmed) return
+
+    // Birden fazla URL'i tek seferde işle: satır/virgül/boşluk ayraçları.
+    // Aynı işlemde HEM tek URL HEM çoklu paste destekleniyor; URL içinde
+    // boşluk olmadığı için bu ayırma güvenli.
+    const urls = trimmed
+      .split(/[\s,;\n\r]+/g)
+      .map((u) => u.trim())
+      .filter(Boolean)
+
+    if (urls.length === 0) return
+
+    setLinkLoading(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? null
+      const newItems: MediaItem[] = []
+      for (const url of urls) {
+        if (value.some((m) => m.url === url) || newItems.some((m) => m.url === url)) {
+          toast(`Zaten eklenmiş: ${url.slice(0, 40)}`)
+          continue
+        }
+        const item = await importSingleUrl(url, token)
+        if (item) {
+          // URL alanına yapıştırılan embed/storage URL aynı olabilir — son
+          // bir dedup kontrolü.
+          if (
+            !value.some((m) => m.url === item.url) &&
+            !newItems.some((m) => m.url === item.url)
+          ) {
+            newItems.push(item)
+          }
+        }
+      }
+      if (newItems.length > 0) {
+        onChange([...value, ...newItems])
+        setLinkInput('')
+        toast.success(
+          newItems.length === 1
+            ? `${newItems[0].type === 'image' ? 'Görsel' : 'Video'} eklendi`
+            : `${newItems.length} medya eklendi`
+        )
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Medya yüklenemedi')
     } finally {
       setLinkLoading(false)
     }
-  }, [linkInput, pushItem])
+  }, [importSingleUrl, linkInput, onChange, value])
 
   // ── AI ile sırala ─────────────────────────────────────────────────────
   const handleAiSort = useCallback(async () => {
@@ -452,33 +492,47 @@ export function MediaItemsManager({
           </p>
         </div>
 
-        {/* Link ekle */}
+        {/* Link ekle — tek veya çoklu (satır/virgül/boşluk ile) */}
         <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3">
           <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-[rgb(var(--color-text))]">
             <Link2 className="h-3.5 w-3.5" />
             URL/YouTube ile ekle
+            <span className="font-normal text-[rgb(var(--color-muted))]">· tek veya çoklu</span>
           </label>
-          <div className="flex gap-2">
-            <input
-              type="url"
+          <div className="flex flex-col gap-2">
+            <textarea
               value={linkInput}
               onChange={(e) => setLinkInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddLink() } }}
+              onKeyDown={(e) => {
+                // Cmd/Ctrl+Enter ile gönder (textarea içinde plain Enter yeni satır açar)
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault()
+                  void handleAddLink()
+                }
+              }}
               disabled={linkLoading}
-              placeholder="https://..."
-              className="flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))]"
+              placeholder={'https://...\nhttps://...\nveya virgülle ayırarak'}
+              rows={3}
+              className="w-full resize-y rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))]"
             />
             <button
               type="button"
               onClick={() => void handleAddLink()}
               disabled={!linkInput.trim() || linkLoading}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {linkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Ekle'}
+              {linkLoading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Yükleniyor…
+                </>
+              ) : (
+                'Hepsini Ekle'
+              )}
             </button>
           </div>
           <p className="mt-1.5 text-[10px] text-[rgb(var(--color-muted))]">
-            YouTube embed olarak gömülür · Diğer linkler Storage'a kopyalanır
+            Her satıra bir URL, veya virgül/boşlukla ayır · YouTube embed gömülür · Diğer linkler Storage'a kopyalanır
           </p>
         </div>
       </div>
