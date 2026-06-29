@@ -326,6 +326,33 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
   {
+    id: 'gnews-world-cup-tr',
+    label: 'Google News — 2026 Dünya Kupası (Türkçe)',
+    feedUrl:
+      'https://news.google.com/rss/search?q=%222026+D%C3%BCnya+Kupas%C4%B1%22+OR+%22FIFA+Dünya+Kupası%22&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=d%C3%BCnya+kupas%C4%B1+2026&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 12,
+    enabled: true,
+  },
+  {
+    id: 'gnews-milli-takim-wc',
+    label: 'Google News — Milli Takım Dünya Kupası',
+    feedUrl:
+      'https://news.google.com/rss/search?q=%22A+Milli+Tak%C4%B1m%22+%22D%C3%BCnya+Kupas%C4%B1%22&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'gnews-world-cup-results',
+    label: 'Google News — Dünya Kupası Maç Sonuçları',
+    feedUrl:
+      'https://news.google.com/rss/search?q=%22d%C3%BCnya+kupas%C4%B1%22+%28ma%C3%A7+sonucu+OR+%22ma%C3%A7%C4%B1%22+OR+%22golleri%22+OR+%22kazand%C4%B1%22+OR+%22elendi%22%29&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+  {
     id: 'sozcu-voleybol',
     label: 'Sözcü — Voleybol',
     feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-voleybol',
