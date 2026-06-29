@@ -24,7 +24,12 @@ export async function runWorldCupWorker(): Promise<NewsroomRunResult> {
     ],
     editorId: 'world-cup-2026',
     editorType: 'national',
-    maxAiCalls: 24,
+    // 60s'lik Vercel proxy timeout'a takılmamak için: her run en fazla
+    // ~12 AI yeniden-yazımı yapsın. Geriye kalanlar bir sonraki cron'a kalır.
+    maxAiCalls: 12,
+    // Kaynak başına en fazla 4 öğe — Google News feed'leri zaten taze sıralı,
+    // ilk 4 sonuç son birkaç saatin haberlerini içerir.
+    maxItemsPerSource: 4,
     forcedCategoryId: 'dunya-kupasi-2026',
     enrichInput: () => ({
       extraTags: ['2026', 'dünya-kupası', 'fifa', 'world-cup', 'futbol', 'milli-takım'],
