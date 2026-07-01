@@ -247,19 +247,20 @@ function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
 
 function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
   // Slider: SADECE featured=true veya kategori=gundem olan haberler
+  // Önce resimli olanlar, sonra resimsizler (slider fallback logo kullanır)
   const featured = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
   const gundem = pool.filter((p) => p.category === 'gundem' && !isBreakingPoolItem(p))
   const candidates = [...featured, ...gundem]
   const seen = new Set<string>()
-  const result: NewsItem[] = []
+  const withImg: NewsItem[] = []
+  const withoutImg: NewsItem[] = []
   for (const item of candidates) {
     if (seen.has(item.id)) continue
-    if (!item.imageUrl) continue
     seen.add(item.id)
-    result.push(item)
-    if (result.length >= limit) break
+    if (item.imageUrl) withImg.push(item)
+    else withoutImg.push(item)
   }
-  return result
+  return [...withImg, ...withoutImg].slice(0, limit)
 }
 
 /**
@@ -323,7 +324,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
 
   return {
     breaking: bucketBreaking(pool, 12),
-    featured: bucketFeatured(pool, 8),
+    featured: bucketFeatured(pool, 20),
     latest: bucketLatest(pool, 28, now),
     trending: bucketTrending(pool, 6, now),
     mostRead: bucketMostRead(pool, 6),
