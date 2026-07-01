@@ -54,8 +54,6 @@ async function queryPublishedByCategory(
       .get()
     return snap.docs
   } catch (error) {
-    // RESOURCE_EXHAUSTED (Firestore kota doldu) veya başka Firestore hatası —
-    // fallback query yapmak kotayı daha da zorlar, boş dizi döndür.
     const code = (error as { code?: number }).code
     if (code === 8) {
       console.warn('[newsService.server] Firestore quota exceeded (RESOURCE_EXHAUSTED) — returning []')
@@ -73,7 +71,6 @@ function isFreshBreakingItem(publishedAt: number, now = Date.now()): boolean {
   return now - publishedAt <= BREAKING_FRESH_WINDOW_MS
 }
 
-/** Son dakika slider — isBreaking veya son-dakika kategorisi, son 2 saat. */
 export async function getBreakingSliderItems(itemLimit = 5): Promise<FeedSliderItem[]> {
   const db = getAdminFirestore()
   const now = Date.now()
@@ -182,18 +179,9 @@ function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
     .filter((item): item is NewsItem => item !== null)
 }
 
-/** In-process fallback — RESOURCE_EXHAUSTED durumunda son başarılı sonuç. */
 let lastSuccessfulPool: NewsItem[] | null = null
 let lastSuccessfulPoolAt = 0
 
-/**
- * Tek geniş sorgu — son `poolSize` published haberi tek seferde çeker.
- * Tüm ana sayfa bucket'ları (breaking, featured, latest, mostRead, kategori rails)
- * bu havuzdan üretilir — 19 paralel Firestore çağrısı yerine yalnızca 1 çağrı.
- *
- * `unstable_cache` ile aynı poolSize için 60 saniye boyunca tek sorgu yapılır;
- * Firestore RESOURCE_EXHAUSTED dönerse in-process son başarılı sonucu kullanır.
- */
 async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
   try {
     const snap = await getAdminFirestore()
@@ -226,10 +214,6 @@ async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
 const getHomeNewsPoolCached = unstable_cache(
   async (poolSize: number) => fetchHomeNewsPool(poolSize),
   ['home-news-pool-v1'],
-  // 2 minutes: fresh enough that breaking-news additions feel "live" on the
-  // home feed, but slow enough that we only spend 1 Firestore pool-read per
-  // ~120 seconds per Vercel edge cache shard. Pair with `revalidateTag` from
-  // the cache buster route if you need to force a refresh sooner.
   { revalidate: 120, tags: ['home-feed'] }
 )
 
@@ -247,7 +231,6 @@ function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
 
 function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
   // Slider: SADECE featured=true veya kategori=gundem olan haberler
-  // Önce resimli olanlar, sonra resimsizler (slider fallback logo kullanır)
   const featured = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
   const gundem = pool.filter((p) => p.category === 'gundem' && !isBreakingPoolItem(p))
   const candidates = [...featured, ...gundem]
@@ -260,28 +243,19 @@ function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
     if (item.imageUrl) withImg.push(item)
     else withoutImg.push(item)
   }
+  // Resimli haberler once, resimsiz sonra
   return [...withImg, ...withoutImg].slice(0, limit)
 }
 
-/**
- * Akış: breaking olmayan havuzu hot-aware sıralar. Son 72 saatlik haberler
- * "hot" skoruna göre tepeye çıkar (en çok okunanlar ilk sıralarda), eski
- * haberler kronolojik düzende altta kalır.
- */
 function bucketLatest(pool: NewsItem[], limit: number, now: number): NewsItem[] {
   const fresh = pool.filter((item) => !isBreakingPoolItem(item))
   return rankFeedHotAware(fresh, now).slice(0, limit)
 }
 
-/**
- * "Şu an trend" rail'i — son 72 saatte hot skoru en yüksek haberler.
- * Akış'tan ayrı, breaking ve featured'ın altında gösterilir.
- */
 function bucketTrending(pool: NewsItem[], limit: number, now: number): NewsItem[] {
   return pickTrending(pool, limit, undefined, now)
 }
 
-/** "Gözden Kaçmasın" — all-time en çok okunan haberler (zaman bağımsız). */
 function bucketMostRead(pool: NewsItem[], limit: number): NewsItem[] {
   const withViews = pool.filter((p) => typeof p.views === 'number' && (p.views ?? 0) > 0)
   if (withViews.length === 0) return pool.slice(0, limit)
@@ -302,10 +276,6 @@ function bucketCategoryRails(pool: NewsItem[], perCategory = 10): Partial<Record
   return rails
 }
 
-/**
- * Tek Firestore sorgusu ile ana sayfanın ihtiyaç duyduğu tüm bucket'ları üretir.
- * Önceki implementasyon ~19 ayrı admin sorgusu yapıyordu (TTFB 5-15s); şimdi 1.
- */
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   const pool = await getHomeNewsPool(300)
 
@@ -332,7 +302,6 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 }
 
-/** Tek bir kategori için ek sorgu — pool'da yetersizse client tarafından çağrılır. */
 export async function getHomeCategoryItems(category: string, limitCount = 10): Promise<NewsItem[]> {
   try {
     const db = getAdminFirestore()
