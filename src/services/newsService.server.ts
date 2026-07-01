@@ -243,7 +243,7 @@ function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
     if (item.imageUrl) withImg.push(item)
     else withoutImg.push(item)
   }
-  // Resimli haberler once, resimsiz sonra
+  // Resimli haberler önce, resimsiz sonra
   return [...withImg, ...withoutImg].slice(0, limit)
 }
 
