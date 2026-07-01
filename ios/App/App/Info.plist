@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>NaHaber'e haber görseli eklemek için kamera izni gereklidir.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>NaHaber'e haber görseli eklemek için fotoğraf albümü izni gereklidir.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>NaHaber fotoğrafları albümünüze kaydedebilmek için izin gerektirir.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>NaHaber'e video çekebilmek için mikrofon izni gereklidir.</string>
 </dict>
 </plist>
