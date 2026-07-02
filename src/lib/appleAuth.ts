@@ -29,7 +29,7 @@ function buildAppleProvider(): OAuthProvider {
 function isCapacitor(): boolean {
   return (
     typeof window !== 'undefined' &&
-    typeof (window as Record<string, unknown>).Capacitor !== 'undefined'
+    typeof (window as unknown as Record<string, unknown>).Capacitor !== 'undefined'
   )
 }
 
