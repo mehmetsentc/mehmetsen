@@ -13,12 +13,18 @@ import {
 import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 
-const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 8)
+const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 4)
+
+// Her job 3-4 AI çağrısı (stage1-3 + factChecker) × ~30s = yüksek CPU.
+// 200s wall-clock budget: süre aşılırsa yeni job başlatma.
+const WALL_CLOCK_BUDGET_MS = 200_000
 
 export async function processNewsQueue(
   db: Firestore = getAdminFirestore(),
   batchSize = DEFAULT_BATCH_SIZE
 ): Promise<QueueProcessStats> {
+  const startTime = Date.now()
+
   const stats: QueueProcessStats = {
     picked: 0,
     published: 0,
@@ -42,6 +48,10 @@ export async function processNewsQueue(
   stats.picked = batch.length
 
   for (const job of batch) {
+    if (Date.now() - startTime > WALL_CLOCK_BUDGET_MS) {
+      console.warn(`[processNewsQueue] wall-clock budget (${WALL_CLOCK_BUDGET_MS / 1000}s) aşıldı, kalan job'lar sonraki çalışmaya bırakıldı`)
+      break
+    }
     const { data } = job
 
     try {
