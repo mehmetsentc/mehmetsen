@@ -48,7 +48,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:iha.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'dha',
@@ -71,7 +71,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:haberler.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'sondakika',
@@ -82,7 +82,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:sondakika.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'mynet',
@@ -93,7 +93,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:mynet.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'reuters',
@@ -163,7 +163,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:hurriyet.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'sozcu',
@@ -275,7 +275,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:posta.com.tr+magazin&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'ntv-spor',
@@ -286,14 +286,14 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:ntvspor.net&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 5,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'hurriyet-spor',
     label: 'Hürriyet Spor',
     feedUrl: 'https://www.hurriyet.com.tr/rss/spor',
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'ntv-kultur',
@@ -441,7 +441,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=son+dakika+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 15,
-    enabled: true,
+    enabled: false,
   },
 
   // ── Kripto ───────────────────────────────────────────────────────────────
@@ -583,7 +583,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'reuters-world',
     label: 'Reuters World',
-    feedUrl: 'https://feeds.reuters.com/reuters/worldNews',
+    feedUrl: 'https://news.google.com/rss/search?q=reuters+world+news&hl=tr&gl=TR&ceid=TR:tr',
     alternateFeedUrls: [
       'https://news.google.com/rss/search?q=reuters+world+news&hl=tr&gl=TR&ceid=TR:tr',
     ],
@@ -593,7 +593,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'ap-news',
     label: 'Associated Press',
-    feedUrl: 'https://feeds.apnews.com/rss/apf-topnews',
+    feedUrl: 'https://news.google.com/rss/search?q=site:apnews.com&hl=en&gl=US&ceid=US:en',
     alternateFeedUrls: [
       'https://news.google.com/rss/search?q=site:apnews.com&hl=en&gl=US&ceid=US:en',
     ],
@@ -643,7 +643,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'dw-english',
     label: 'DW English',
-    feedUrl: 'https://rss.dw.com/rdf/rss-en-all',
+    feedUrl: 'https://news.google.com/rss/search?q=site:dw.com&hl=en&gl=US&ceid=US:en',
     alternateFeedUrls: [
       'https://news.google.com/rss/search?q=site:dw.com&hl=en&gl=US&ceid=US:en',
     ],
@@ -793,7 +793,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:goal.com+türkiye&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'f1-espn',
@@ -825,7 +825,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:nih.gov+news&hl=en&gl=US&ceid=US:en',
     ],
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'saglik-tr',
@@ -837,7 +837,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'nature-news',
     label: 'Nature News',
-    feedUrl: 'https://www.nature.com/nature.rss',
+    feedUrl: 'https://news.google.com/rss/search?q=site:nature.com+research&hl=en&gl=US&ceid=US:en',
     alternateFeedUrls: [
       'https://news.google.com/rss/search?q=site:nature.com+research&hl=en&gl=US&ceid=US:en',
     ],
@@ -1028,7 +1028,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:donanimhaber.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'chip-tr',
@@ -1057,7 +1057,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:ntv.com.tr+siyaset&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'haberturk-politika',
@@ -1088,7 +1088,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:aa.com.tr+siyaset&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'milliyet-siyaset',
@@ -1108,7 +1108,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:hurriyet.com.tr+siyaset&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
 
   // ── Sağlık (ek) ──────────────────────────────────────────────────────────
@@ -1130,7 +1130,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:thelancet.com&hl=en&gl=US&ceid=US:en',
     ],
     maxItemsPerRun: 2,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'medimagazin',
@@ -1140,7 +1140,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:medimagazin.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'saglik-aktuel',
@@ -1150,7 +1150,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=sağlık+tıp+ilaç+araştırma&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
 
   // ── Magazin / Eğlence (ek) ───────────────────────────────────────────────
@@ -1162,7 +1162,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:hurriyet.com.tr+magazin&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'takvim-magazin',
@@ -1245,7 +1245,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:yemek.com+tarif+yemek&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 5,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'milliyet-gastronomi',
@@ -1265,7 +1265,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:hurriyet.com.tr+restoran+yemek+gastronomi&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
 
   // ── NTV (ek kategoriler) ─────────────────────────────────────────────────
@@ -1467,7 +1467,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'Hürriyet Ekonomi',
     feedUrl: 'https://www.hurriyet.com.tr/rss/ekonomi',
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'hurriyet-saglik',
@@ -1483,7 +1483,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     label: 'Hürriyet Teknoloji',
     feedUrl: 'https://www.hurriyet.com.tr/rss/teknoloji',
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
 
   // ── CNN Türk (ek kategoriler) ────────────────────────────────────────────
@@ -1563,7 +1563,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'dw-turkish',
     label: 'DW Türkçe',
-    feedUrl: 'https://rss.dw.com/rdf/rss-tur-all',
+    feedUrl: 'https://news.google.com/rss/search?q=site:dw.com/tr&hl=tr&gl=TR&ceid=TR:tr',
     alternateFeedUrls: [
       'https://news.google.com/rss/search?q=site:dw.com/tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
@@ -1601,7 +1601,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:yeniakit.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false,
   },
 
   // ── Finans (ek) ──────────────────────────────────────────────────────────
@@ -1613,7 +1613,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:bigpara.hurriyet.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'finansgundem',
@@ -1623,7 +1623,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:finansgundem.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
 
   // ── Otomobil ─────────────────────────────────────────────────────────────
@@ -1675,7 +1675,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:arabalar.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'hurriyet-otomobil',
@@ -1685,7 +1685,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:hurriyet.com.tr+otomobil+araba&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 5,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'milliyet-otomobil',
@@ -1780,7 +1780,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:haberturk.com+son+dakika&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 10,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'cumhuriyet-gundem',
