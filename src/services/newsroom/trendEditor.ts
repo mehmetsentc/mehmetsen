@@ -101,82 +101,34 @@ Bu konu ${today} tarihi itibarıyla Türkiye'de Google'ın en çok aranan konula
 
 Google Search grounding aracını kullanarak bu konunun NEDEN bugün gündemde olduğunu araştır ve kapsamlı bir "neden trend?" haberi yaz. İçerik kısa veya belirsiz kalacaksa makale yazma, bunun yerine boş content döndür.`
 
-  // ── 1. Gemini 2.0 Flash + built-in Google Search (ücretsiz, güncel bilgi) ─────
-  const geminiKey = process.env.GEMINI_API_KEY?.trim()
-  const geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+  // ── DeepSeek ile trend analizi ────────────────────────────────────────────
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  const deepseekModel = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
 
-  if (geminiKey) {
+  if (deepseekKey) {
     try {
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: USER_MSG }] }],
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            tools: [{ googleSearch: {} }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
-          }),
-          signal: AbortSignal.timeout(30_000),
-        }
-      )
-
-      if (geminiRes.ok) {
-        const gData = (await geminiRes.json()) as {
-          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-        }
-        const raw = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
-        const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-        if (cleaned.startsWith('{')) {
-          const parsed = JSON.parse(cleaned) as { title?: string; summary?: string; content?: string; category?: string }
-          const content = parsed.content?.trim() ?? ''
-          // 200 karakterden kısa içerik dolgu demektir → atla
-          if (content.length >= 200) {
-            return {
-              title:    parsed.title?.trim()    || `${topic} neden gündemde?`,
-              summary:  parsed.summary?.trim()  || '',
-              content,
-              category: parsed.category?.trim() || 'gundem',
-            }
-          }
-          console.warn(`[trendEditor] Gemini içerik çok kısa (${content.length} karakter), konu atlanıyor: ${topic}`)
-          return null
-        }
-      } else {
-        console.warn(`[trendEditor] Gemini ${geminiRes.status} for topic: ${topic}`)
-      }
-    } catch (err) {
-      console.warn('[trendEditor] Gemini başarısız:', err)
-    }
-  }
-
-  // ── 2. OpenAI fallback (Gemini yoksa) ─────────────────────────────────────
-  const openaiKey = process.env.OPENAI_API_KEY?.trim()
-  const openaiModel = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
-
-  if (openaiKey) {
-    try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: openaiModel,
-          temperature: 0.65,
+          model: deepseekModel,
+          temperature: 0.5,
           response_format: { type: 'json_object' },
+          max_tokens: 2048,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: USER_MSG },
           ],
         }),
-        signal: AbortSignal.timeout(25_000),
+        signal: AbortSignal.timeout(30_000),
       })
 
       if (res.ok) {
         const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
         const raw = json.choices?.[0]?.message?.content?.trim()
         if (raw) {
-          const parsed = JSON.parse(raw) as { title?: string; summary?: string; content?: string; category?: string }
+          const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+          const parsed = JSON.parse(cleaned) as { title?: string; summary?: string; content?: string; category?: string }
           const content = parsed.content?.trim() ?? ''
           if (content.length >= 200) {
             return {
@@ -186,17 +138,19 @@ Google Search grounding aracını kullanarak bu konunun NEDEN bugün gündemde o
               category: parsed.category?.trim() || 'gundem',
             }
           }
+          console.warn(`[trendEditor] DeepSeek içerik çok kısa (${content.length} karakter), konu atlanıyor: ${topic}`)
+          return null
         }
       } else {
-        console.warn(`[trendEditor] OpenAI ${res.status} for topic: ${topic}`)
+        console.warn(`[trendEditor] DeepSeek ${res.status} for topic: ${topic}`)
       }
     } catch (err) {
-      console.warn('[trendEditor] OpenAI başarısız:', err)
+      console.warn('[trendEditor] DeepSeek başarısız:', err)
     }
   }
 
-  // Her iki AI da başarısız → uydurma içerik YASAK, konuyu atla
-  console.warn(`[trendEditor] AI yok veya başarısız, konu atlanıyor: ${topic}`)
+  // AI başarısız → uydurma içerik YASAK, konuyu atla
+  console.warn(`[trendEditor] DeepSeek başarısız, konu atlanıyor: ${topic}`)
   return null
 }
 

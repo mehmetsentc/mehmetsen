@@ -14,9 +14,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl } from '@/lib/seo'
-import { deepseekCollect, isDeepSeekConfigured } from './deepseek'
-import { geminiEditArticle, isGeminiConfigured } from './gemini'
-import { gptQaFallback } from './gpt'
+import { deepseekCollect, deepseekEditArticle, deepseekQaFallback, isDeepSeekConfigured } from './deepseek'
 import { runChiefEditor, isChiefEditorConfigured } from './chiefEditor'
 import type {
   AiQueueItem,
@@ -118,15 +116,15 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
     }
   }
 
-  // ── Stage 2: Gemini ────────────────────────────────────────────────────────
-  if (!isGeminiConfigured()) {
-    await updateQueueItem(itemId, { status: 'failed' as AiQueueStatus, errorLog: ['GEMINI_API_KEY eksik'] })
-    return { queueItemId: itemId, success: false, stage: 'gemini', error: 'GEMINI_API_KEY eksik', durationMs: Date.now() - startTime }
+  // ── Stage 2: DeepSeek Editörü ─────────────────────────────────────────────
+  if (!isDeepSeekConfigured()) {
+    await updateQueueItem(itemId, { status: 'failed' as AiQueueStatus, errorLog: ['DEEPSEEK_API_KEY eksik'] })
+    return { queueItemId: itemId, success: false, stage: 'gemini', error: 'DEEPSEEK_API_KEY eksik', durationMs: Date.now() - startTime }
   }
 
   let geminiResult
   try {
-    geminiResult = await geminiEditArticle({
+    geminiResult = await deepseekEditArticle({
       sourceLabel: item.sourceLabel,
       originalTitle: item.originalTitle,
       originalSummary: item.originalSummary,
@@ -143,11 +141,11 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       return { queueItemId: itemId, success: false, stage: 'gemini', decision: 'rejected', error: `Düşük kalite skoru: ${geminiResult.qualityScore}`, durationMs: Date.now() - startTime }
     }
 
-    await log({ level: 'info', agent: 'gemini', message: `[${itemId}] Gemini tamamlandı (kalite: ${geminiResult.qualityScore}, SEO: ${geminiResult.seoScore})`, queueItemId: itemId })
+    await log({ level: 'info', agent: 'deepseek', message: `[${itemId}] DeepSeek Editör tamamlandı (kalite: ${geminiResult.qualityScore}, SEO: ${geminiResult.seoScore})`, queueItemId: itemId })
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
     await updateQueueItem(itemId, { status: 'failed' as AiQueueStatus, errorLog: [errMsg] })
-    await log({ level: 'error', agent: 'gemini', message: `[${itemId}] Gemini hatası: ${errMsg}`, queueItemId: itemId })
+    await log({ level: 'error', agent: 'deepseek', message: `[${itemId}] DeepSeek Editör hatası: ${errMsg}`, queueItemId: itemId })
     return { queueItemId: itemId, success: false, stage: 'gemini', error: errMsg, durationMs: Date.now() - startTime }
   }
 
@@ -167,53 +165,12 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
         queueItemId: itemId,
       })
     } else {
-      // Fallback: OpenAI yoksa eski yöntem
-      const fallback = gptQaFallback(geminiResult)
-      chiefResult = {
-        decision: fallback.decision === 'approved' ? 'approved' as const : 'rejected' as const,
-        overallScore: fallback.score,
-        finalTitle: fallback.revisedTitle || geminiResult.title,
-        finalDescription: fallback.revisedDescription || geminiResult.description,
-        finalSummary: geminiResult.summary,
-        finalCategory: geminiResult.category,
-        finalTags: geminiResult.tags,
-        categoryConfidence: 70,
-        contentQuality: geminiResult.qualityScore,
-        webSearchUsed: false,
-        searchQueries: [] as string[],
-        searchSources: [] as string[],
-        categoryReason: 'fallback',
-        issues: fallback.issues,
-        pushTitle: fallback.pushTitle,
-        pushBody: fallback.pushBody,
-        processedAt: Date.now(),
-        modelUsed: 'fallback',
-      }
-      await log({ level: 'warn', agent: 'gpt', message: `[${itemId}] OPENAI_API_KEY yok, GYY fallback kullanıldı`, queueItemId: itemId })
+      chiefResult = deepseekQaFallback(geminiResult)
+      await log({ level: 'warn', agent: 'deepseek', message: `[${itemId}] DEEPSEEK_API_KEY yok, GYY fallback kullanıldı`, queueItemId: itemId })
     }
   } catch (err) {
-    const fallback = gptQaFallback(geminiResult)
-    chiefResult = {
-      decision: fallback.decision === 'approved' ? 'approved' as const : 'rejected' as const,
-      overallScore: fallback.score,
-      finalTitle: geminiResult.title,
-      finalDescription: geminiResult.description,
-      finalSummary: geminiResult.summary,
-      finalCategory: geminiResult.category,
-      finalTags: geminiResult.tags,
-      categoryConfidence: 70,
-      contentQuality: geminiResult.qualityScore,
-      webSearchUsed: false,
-      searchQueries: [] as string[],
-      searchSources: [] as string[],
-      categoryReason: 'hata fallback',
-      issues: [String(err)],
-      pushTitle: geminiResult.pushTitle,
-      pushBody: geminiResult.pushBody,
-      processedAt: Date.now(),
-      modelUsed: 'fallback',
-    }
-    await log({ level: 'warn', agent: 'gpt', message: `[${itemId}] GYY hatası, fallback: ${String(err)}`, queueItemId: itemId })
+    chiefResult = deepseekQaFallback(geminiResult)
+    await log({ level: 'warn', agent: 'deepseek', message: `[${itemId}] GYY hatası, fallback: ${String(err)}`, queueItemId: itemId })
   }
 
   if (chiefResult.decision === 'rejected') {
@@ -310,8 +267,8 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       // Pipeline metadata
       aiPipeline: true,
       pipelineQueueId: itemId,
-      aiEditor: 'multi-agent-v2',
-      geminiModel: geminiResult.modelUsed,
+      aiEditor: 'deepseek-only-v3',
+      deepseekModel: geminiResult.modelUsed,
       chiefEditorModel: chiefResult.modelUsed,
 
       // Timestamps

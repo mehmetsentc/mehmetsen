@@ -12,8 +12,8 @@ async function researchInfluencer(name: string): Promise<{
   summary: string
   content: string
 }> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
 
   if (!apiKey) {
     return {
@@ -23,7 +23,7 @@ async function researchInfluencer(name: string): Promise<{
     }
   }
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,

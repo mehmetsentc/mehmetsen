@@ -162,36 +162,6 @@ async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null
   }
 }
 
-async function callGemini(input: CategoryInput): Promise<CategoryResult | null> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim()
-  if (!apiKey) return null
-  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(input) }] }],
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        generationConfig: { temperature: 0.2, maxOutputTokens: 512, responseMimeType: 'application/json' },
-      }),
-      signal: AbortSignal.timeout(20_000),
-    })
-    if (!res.ok) return null
-    const data = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-    }
-    const raw = (data.candidates?.[0]?.content?.parts?.[0]?.text ?? '')
-      .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-    if (!raw.startsWith('{')) return null
-    return parseResult(raw, input.forcedCategoryId)
-  } catch {
-    return null
-  }
-}
-
 function parseResult(raw: string, forcedCategoryId?: string): CategoryResult | null {
   try {
     const p = JSON.parse(raw) as {
@@ -302,13 +272,7 @@ export async function classifyArticle(
     return deepseekResult
   }
 
-  const geminiResult = await callGemini(input)
-  if (geminiResult) {
-    console.log(`[stage3] Gemini → ${geminiResult.categoryId} (güven: ${geminiResult.confidence})`)
-    return geminiResult
-  }
-
   const fallback = heuristicCategory(input)
-  console.warn(`[stage3] AI başarısız — heuristik: ${fallback.categoryId}`)
+  console.warn(`[stage3] DeepSeek başarısız — heuristik: ${fallback.categoryId}`)
   return fallback
 }

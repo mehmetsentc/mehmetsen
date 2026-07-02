@@ -6,20 +6,22 @@
     <string>app-store-connect</string>
     <key>teamID</key>
     <string>VMZA353GB7</string>
-    <key>destination</key>
-    <string>upload</string>
-    <key>uploadBitcode</key>
-    <false/>
-    <key>compileBitcode</key>
-    <false/>
-    <key>uploadSymbols</key>
-    <true/>
     <key>signingStyle</key>
     <string>manual</string>
+    <key>signingCertificate</key>
+    <string>Apple Distribution</string>
     <key>provisioningProfiles</key>
     <dict>
         <key>com.nahaber.app</key>
-        <string>NaHaber App Store Distribution</string>
+        <string>NaHaber AppStore 2026</string>
     </dict>
+    <key>uploadBitcode</key>
+    <false/>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>manageAppVersionAndBuildNumber</key>
+    <false/>
 </dict>
 </plist>

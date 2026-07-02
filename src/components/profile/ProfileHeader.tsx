@@ -153,12 +153,11 @@ export function ProfileHeader({
               )}
 
               {/* Hidden file inputs */}
-              {/* Kamera — capture="user" iOS'ta front camera, "environment" arka kamera açar */}
+              {/* Kamera — capture olmadan iOS native picker gösterir, iPad'de crash olmaz */}
               <input
                 ref={cameraInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={handleFileSelect}
               />

@@ -1,14 +1,12 @@
 /**
  * GET /api/ai/status
  *
- * Tüm AI agent'larının sağlık durumunu döndürür.
+ * AI agent sağlık durumu — sistem artık sadece DeepSeek kullanıyor.
  * Auth: Bearer CRON_SECRET
  */
 import { NextResponse } from 'next/server'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
-import { checkGeminiHealth, isGeminiConfigured } from '@/lib/ai/gemini'
 import { checkDeepSeekHealth, isDeepSeekConfigured } from '@/lib/ai/deepseek'
-import { checkGptHealth, isGptConfigured } from '@/lib/ai/gpt'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 
@@ -20,44 +18,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Run health checks in parallel
-  const [gemini, deepseek, gpt, queueStats] = await Promise.allSettled([
-    checkGeminiHealth(),
+  const [deepseek, queueStats] = await Promise.allSettled([
     checkDeepSeekHealth(),
-    checkGptHealth(),
     getQueueStats(),
   ])
 
   const resolve = <T>(r: PromiseSettledResult<T>, fallback: T): T =>
     r.status === 'fulfilled' ? r.value : fallback
 
+  const health = resolve(deepseek, { ok: false, latencyMs: 0, model: 'deepseek-chat', roles: [] })
+
   return NextResponse.json({
     timestamp: Date.now(),
+    mode: 'deepseek-only',
     agents: {
-      gemini: {
-        id: 'gemini',
-        name: 'Gemini 2.5 Flash',
-        role: 'Chief News Editor',
-        configured: isGeminiConfigured(),
-        ...resolve(gemini, { ok: false, latencyMs: 0 }),
-      },
       deepseek: {
         id: 'deepseek',
-        name: 'DeepSeek V3',
-        role: 'News Generator',
+        name: `DeepSeek V3 (${health.model})`,
+        roles: ['collector', 'editor', 'qa'],
+        roleDescriptions: {
+          collector: 'Duplicate tespiti + içerik zenginleştirme',
+          editor: 'Profesyonel haber yazımı + SEO + sosyal medya',
+          qa: 'Kategori doğrulama + kalite denetimi + yayın kararı',
+        },
         configured: isDeepSeekConfigured(),
-        ...resolve(deepseek, { ok: false, latencyMs: 0 }),
+        ...health,
       },
-      gpt: {
-        id: 'gpt',
-        name: 'GPT-4o',
-        role: 'Senior Editor',
-        configured: isGptConfigured(),
-        ...resolve(gpt, { ok: false, latencyMs: 0 }),
-      },
-      // Claude entegrasyonu kodda yok — yanıltıcı "configured" gösterimini
-      // kaldırdık. İleride ANTHROPIC_API_KEY ile gerçek bir adapter eklenirse
-      // (lib/ai/claude.ts gibi) bu blok geri gelir.
     },
     queue: resolve(queueStats, { pending: 0, processing: 0, done: 0, failed: 0, rejected: 0 }),
   }, { headers: { 'Cache-Control': 'no-store, max-age=0' } })

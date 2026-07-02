@@ -20,16 +20,16 @@ function isAuthorized(request: Request): boolean {
   return auth === `Bearer ${CRON_SECRET}` && CRON_SECRET.length > 0
 }
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? ''
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY ?? ''
 
 async function classifyWithGpt(title: string, content: string): Promise<string | null> {
-  if (!OPENAI_API_KEY) return null
+  if (!DEEPSEEK_API_KEY) return null
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_API_KEY}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat',
         response_format: { type: 'json_object' },
         max_tokens: 60,
         temperature: 0,
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
       let method = 'heuristic'
 
       // Step 2: if heuristic didn't change it, call GPT
-      if (newCategory === oldCategory && OPENAI_API_KEY) {
+      if (newCategory === oldCategory && DEEPSEEK_API_KEY) {
         const gptCategory = await classifyWithGpt(title, content)
         if (gptCategory && gptCategory !== oldCategory) {
           // Final heuristic pass on GPT result

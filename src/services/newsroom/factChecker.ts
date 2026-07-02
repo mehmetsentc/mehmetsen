@@ -28,10 +28,10 @@ const URGENCY_KEYWORDS = [
   'skandal',
 ]
 
-function getOpenAiConfig(): { apiKey: string; model: string } | null {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
+function getDeepSeekConfig(): { apiKey: string; model: string } | null {
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
-  const model = process.env.OPENAI_NEWS_MODEL?.trim() || 'gpt-4o-mini'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
   return { apiKey, model }
 }
 
@@ -69,11 +69,11 @@ function heuristicFactCheck(input: FactCheckInput): FactCheckResult {
   }
 }
 
-async function openAiFactCheck(input: FactCheckInput): Promise<FactCheckResult> {
-  const config = getOpenAiConfig()
+async function deepSeekFactCheck(input: FactCheckInput): Promise<FactCheckResult> {
+  const config = getDeepSeekConfig()
   if (!config) return heuristicFactCheck(input)
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -104,10 +104,11 @@ Yeniden yazılmış metin: ${input.rewritten.description.slice(0, 1200)}`,
         },
       ],
     }),
+    signal: AbortSignal.timeout(20_000),
   })
 
   if (!res.ok) {
-    console.warn('[factChecker] OpenAI error, using heuristic')
+    console.warn('[factChecker] DeepSeek error, using heuristic')
     return heuristicFactCheck(input)
   }
 
@@ -130,7 +131,7 @@ Yeniden yazılmış metin: ${input.rewritten.description.slice(0, 1200)}`,
 export const factChecker = {
   async check(input: FactCheckInput): Promise<FactCheckResult> {
     try {
-      return await openAiFactCheck(input)
+      return await deepSeekFactCheck(input)
     } catch (error) {
       console.error('[factChecker] failed, heuristic fallback:', error)
       return heuristicFactCheck(input)

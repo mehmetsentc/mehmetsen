@@ -26,32 +26,7 @@ JSON: {"trends":[{"topic":"...","angle":"...","urgency":"high|medium|low"}]} —
 }
 
 async function callAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
-  // 1. Gemini (primary)
-  const geminiKey = process.env.GEMINI_API_KEY?.trim()
-  if (geminiKey) {
-    try {
-      const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash-preview-05-20'
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] }],
-            generationConfig: { temperature: 0.7, responseMimeType: 'application/json' },
-          }),
-          signal: AbortSignal.timeout(20_000),
-        }
-      )
-      if (res.ok) {
-        const json = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
-        const raw = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-        if (raw) return JSON.parse(raw) as Record<string, unknown>
-      }
-    } catch { /* fall through */ }
-  }
-
-  // 2. DeepSeek (fallback)
+  // DeepSeek (tek sağlayıcı)
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (deepseekKey) {
     const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
@@ -72,7 +47,7 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
     return JSON.parse(json.choices[0]?.message?.content ?? '{}') as Record<string, unknown>
   }
 
-  throw new Error('No AI key configured (GEMINI_API_KEY or DEEPSEEK_API_KEY required)')
+  throw new Error('No AI key configured (DEEPSEEK_API_KEY required)')
 }
 
 export async function POST(request: Request) {

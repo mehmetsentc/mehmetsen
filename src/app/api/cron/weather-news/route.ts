@@ -33,9 +33,9 @@ async function generateWeatherNews(weather: WeatherData): Promise<{
   isBreaking: boolean
   alertType: string | null
 } | null> {
-  const openaiKey = process.env.OPENAI_API_KEY
+  const openaiKey = process.env.DEEPSEEK_API_KEY
   if (!openaiKey) {
-    console.warn('[weather-news] OPENAI_API_KEY not set, skipping AI generation')
+    console.warn('[weather-news] DEEPSEEK_API_KEY not set, skipping AI generation')
     return null
   }
 
@@ -69,14 +69,14 @@ ${alertType ? `Uyarı: ${alertType}` : ''}
 Sadece JSON döndür, açıklama ekleme.`
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${openaiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'deepseek-chat',
         temperature: 0.7,
         max_tokens: 800,
         response_format: { type: 'json_object' },

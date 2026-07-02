@@ -220,10 +220,16 @@ function EditDrawer({
     if (media.uploading) { toast.error('Medya yüklemesi devam ediyor'); return }
     setSaving(true)
     try {
-      const token = await auth.currentUser?.getIdToken()
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+        toast.error('Oturumunuz sona ermiş, lütfen sayfayı yenileyip tekrar giriş yapın')
+        setSaving(false)
+        return
+      }
+      const token = await currentUser.getIdToken(true) // force refresh
       const res = await fetch(`/api/admin/news/${post.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           title, summary, content, spot, categoryId, status,
           thumbnail: media.thumbnail,

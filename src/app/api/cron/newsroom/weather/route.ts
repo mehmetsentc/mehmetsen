@@ -30,7 +30,7 @@ async function generateWeatherArticle(
   windKph: number,
   alertType: string | null
 ): Promise<{ title: string; summary: string; content: string } | null> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
   const prompt = `Sen NaHaber Türkçe haber editörüsün.
@@ -39,11 +39,11 @@ Sıcaklık: ${temp}°C | Durum: ${condition} | Nem: %${humidity} | Rüzgar: ${wi
 JSON: {"title":"...max 70 karakter...","summary":"...1 cümle...","content":"...2-3 paragraf..."}`
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'deepseek-chat',
         temperature: 0.5,
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }],

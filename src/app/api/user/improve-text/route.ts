@@ -24,28 +24,31 @@ JSON formatında yanıt ver:
 }`
 
 async function callGemini(content: string, title: string): Promise<{ title: string; content: string; summary: string } | null> {
-  const geminiKey = process.env.GEMINI_API_KEY?.trim()
-  if (!geminiKey) return null
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (!apiKey) return null
 
   try {
-    const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash-preview-05-20'
+    const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
     const userMessage = `BAŞLIK: ${title}\n\nİÇERİK:\n${content}`
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${userMessage}` }] }],
-          generationConfig: { temperature: 0.4, responseMimeType: 'application/json' },
-        }),
-        signal: AbortSignal.timeout(20_000),
-      }
-    )
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userMessage },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.4,
+        max_tokens: 1500,
+      }),
+      signal: AbortSignal.timeout(20_000),
+    })
     if (!res.ok) return null
-    const json = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
-    const raw = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
+    const raw = json.choices?.[0]?.message?.content?.trim()
     if (!raw) return null
     const parsed = JSON.parse(raw) as { title?: string; content?: string; summary?: string }
     if (!parsed.title || !parsed.content) return null

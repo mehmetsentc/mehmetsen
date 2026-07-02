@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const { scriptType = 'news_report', tone = 'formal', topic = '', duration = 90 } = body
   if (!topic.trim()) return NextResponse.json({ error: 'Topic required' }, { status: 400 })
 
-  const apiKey = process.env.OPENAI_API_KEY
+  const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'AI not configured' }, { status: 503 })
 
   const systemPrompt = `Sen profesyonel bir Türk TV haber yönetmenisin.
@@ -38,11 +38,11 @@ Süre hedefi: ~${duration} saniye.
 JSON: {"title":"...","duration":saniye,"intro":"...","segments":[{"label":"...","content":"...","notes":"...","duration":saniye}],"outro":"...","notes":"...","hashtags":["#..."]}`
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'deepseek-chat',
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Konu: ${topic}` }],
         response_format: { type: 'json_object' },
         temperature: 0.7,

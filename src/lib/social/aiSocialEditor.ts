@@ -151,18 +151,12 @@ export async function generateSocialContent(
   description: string,
   cityName = 'Çanakkale'
 ): Promise<AISocialContent | null> {
-  // Gemini önce dene, başarısız olursa DeepSeek'e düş
-  const geminiResult = await generateWithGemini(title, description, cityName)
-  if (geminiResult) {
-    console.log('[aiSocialEditor] Gemini ile içerik üretildi')
-    return geminiResult
-  }
-  console.warn('[aiSocialEditor] Gemini başarısız, DeepSeek deneniyor...')
-  const deepSeekResult = await generateWithDeepSeek(title, description, cityName)
-  if (deepSeekResult) {
+  // Sadece DeepSeek kullan
+  const result = await generateWithDeepSeek(title, description, cityName)
+  if (result) {
     console.log('[aiSocialEditor] DeepSeek ile içerik üretildi')
-    return deepSeekResult
+    return result
   }
-  console.error('[aiSocialEditor] Her iki model de başarısız — null döndürülüyor')
+  console.error('[aiSocialEditor] DeepSeek başarısız — null döndürülüyor')
   return null
 }

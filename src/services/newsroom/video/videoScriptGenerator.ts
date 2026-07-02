@@ -48,9 +48,9 @@ JSON formatında yanıt ver:
 }`
 
 export async function generateVideoScript(input: VideoScriptInput): Promise<VideoScript | null> {
-  const apiKey = process.env.OPENAI_API_KEY
+  const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) {
-    console.warn('[videoScript] OPENAI_API_KEY not set')
+    console.warn('[videoScript] DEEPSEEK_API_KEY not set')
     return null
   }
 
@@ -62,14 +62,14 @@ export async function generateVideoScript(input: VideoScriptInput): Promise<Vide
   ].filter(Boolean).join('\n\n')
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'deepseek-chat',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: articleText },
@@ -81,7 +81,7 @@ export async function generateVideoScript(input: VideoScriptInput): Promise<Vide
     })
 
     if (!res.ok) {
-      console.error('[videoScript] OpenAI error:', res.status)
+      console.error('[videoScript] DeepSeek error:', res.status)
       return null
     }
 
@@ -121,7 +121,7 @@ Tüm metinler akıcı, spikerın okuduğu gibi, noktalama dahil. Haber dilinde, 
 export async function generateMultiLengthScripts(
   input: VideoScriptInput
 ): Promise<MultiLengthScripts | null> {
-  const apiKey = process.env.OPENAI_API_KEY
+  const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) return null
 
   const articleText = [
@@ -132,11 +132,11 @@ export async function generateMultiLengthScripts(
   ].filter(Boolean).join('\n\n')
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'deepseek-chat',
         messages: [
           { role: 'system', content: buildMultiLengthSystemPrompt() },
           { role: 'user', content: articleText },
@@ -181,17 +181,17 @@ Her platform için tonunu optimize et. Hepsinde haber doğruluğunu koru.`
 export async function generateSocialCaptions(
   input: VideoScriptInput
 ): Promise<SocialCaptions | null> {
-  const apiKey = process.env.OPENAI_API_KEY
+  const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) return null
 
   const articleText = `Başlık: ${input.title}\n${input.spot ?? input.summary ?? ''}`
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'deepseek-chat',
         messages: [
           { role: 'system', content: buildSocialCaptionSystemPrompt() },
           { role: 'user', content: articleText },

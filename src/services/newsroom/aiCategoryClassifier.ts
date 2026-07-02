@@ -82,11 +82,10 @@ export async function classifyArticleCategory(
   content: string,
   currentCategory: string,
 ): Promise<ClassifierResult | null> {
-  const geminiKey = process.env.GEMINI_API_KEY?.trim()
-  if (!geminiKey) return null
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (!deepseekKey) return null
 
-  // Use a lightweight model for speed and cost
-  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
 
   const categoryList = CATEGORIES.map(
     c => `  - ${c}: ${CATEGORY_DESCRIPTIONS[c]}`
@@ -124,29 +123,31 @@ JSON formatında yanıt ver:
 {"categoryId": "kategori-adı", "confidence": 85, "reason": "kısa açıklama"}`
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: 'application/json',
-            maxOutputTokens: 200,
-          },
-        }),
-        signal: AbortSignal.timeout(8_000),
-      }
-    )
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${deepseekKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        max_tokens: 200,
+        messages: [
+          { role: 'system', content: 'Sen bir Türk haber kategorileme uzmanısın. Yalnızca JSON döndür.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
 
     if (!res.ok) return null
 
     const json = await res.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+      choices?: Array<{ message?: { content?: string } }>
     }
-    const raw = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+    const raw = json.choices?.[0]?.message?.content?.trim()
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }

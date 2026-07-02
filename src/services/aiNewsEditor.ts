@@ -173,15 +173,11 @@ function getOpenAiNewsConfig(): AiProviderConfig | null {
 }
 
 /**
- * Aktif AI sağlayıcı listesi — öncelik sırası:
- * 1. DeepSeek (hızlı, ucuz)
- * 2. Gemini 2.5 Flash (yedek — DeepSeek limit/hata durumunda)
- * 3. OpenAI GPT-4o-mini (son çare)
+ * Aktif AI sağlayıcı: Yalnızca DeepSeek.
  */
 function getProviderList(): AiProviderConfig[] {
-  return [getDeepSeekConfig(), getGeminiConfig(), getOpenAiNewsConfig()].filter(
-    (p): p is AiProviderConfig => p !== null
-  )
+  const cfg = getDeepSeekConfig()
+  return cfg ? [cfg] : []
 }
 
 /** Geriye uyumluluk için — en az bir sağlayıcı var mı? */
