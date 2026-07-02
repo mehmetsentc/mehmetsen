@@ -60,7 +60,7 @@ const POPUP_FALLBACK_CODES = new Set([
 
 function isInAppBrowser(): boolean {
   if (typeof window === 'undefined') return false
-  return /FBAN|FBAV|Instagram|Twitter|Line\/i.test(navigator.userAgent)
+  return /FBAN|FBAV|Instagram|Twitter|Line/i.test(navigator.userAgent)
 }
 
 async function runAppleSignInWeb(auth: Auth): Promise<UserCredential | 'redirect'> {
