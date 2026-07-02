@@ -121,8 +121,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
 
     const content = p.content?.trim() || ''
     const wordCount = content.split(/\s+/).filter(Boolean).length
-    if (wordCount < 40) {
-      console.warn(`[stage1/deepseek] çok kısa içerik (${wordCount} kelime)`)
+    if (wordCount < 100) {
+      console.warn(`[stage1/deepseek] çok kısa içerik (${wordCount} kelime, min 100)`)
       return null
     }
 

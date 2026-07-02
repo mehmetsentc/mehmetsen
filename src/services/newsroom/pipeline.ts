@@ -523,12 +523,12 @@ export async function processNewsroomArticle(
     }
 
     // ── AI Final Editor: category sanity check ──────────────────────────────
-    // Local worker'dan gelen haberler de dahil — kaynak şehrini haber içeriğiyle
-    // örtüşmeyen kategorilere atamayı önlemek için her zaman çalışır.
-    // SADECE trend/influencer/breaking gibi içerik-bağımsız editörler atlar.
+    // Local worker'dan gelen haberler categoryEngine.resolve() tarafından
+    // zaten 'yerel-haber' olarak atanır — AI kontrolü bu kararı ezmemeli.
+    // forcedCategoryId atanmış haberler de atlar (editör kararı kesin).
     const skipAiCategoryCheck =
-      workingInput.forcedCategoryId &&
-      workingInput.editorType !== 'local'
+      workingInput.editorType === 'local' ||
+      !!workingInput.forcedCategoryId
 
     if (!skipAiCategoryCheck) {
       try {

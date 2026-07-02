@@ -38,8 +38,8 @@ export function quickFactCheck(input: FactCheckInput): FactCheckResult {
   const wordCount = input.written.content.split(/\s+/).filter(Boolean).length
 
   // İçerik uzunluğu
-  const shortContent = wordCount < 80
-  if (shortContent) flags.push(`içerik çok kısa: ${wordCount} kelime`)
+  const shortContent = wordCount < 120
+  if (shortContent) flags.push(`içerik çok kısa: ${wordCount} kelime (min 120)`)
 
   // Teknik içerik tespiti (HTML/JSON/React sızdı mı?)
   const techPatterns = [
