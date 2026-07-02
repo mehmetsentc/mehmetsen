@@ -314,20 +314,11 @@ function VideoFeedItemInner({
     }
   }, [muted, isYouTube, isActive, virtualized])
 
-  // ── YouTube API timeout fallback ────────────────────────────────────────────
-  // iOS/WebKit'te youtube-nocookie.com postMessage bazen hiç gelmiyor.
-  // Iframe yüklendikten 7s sonra hâlâ API bağlantısı yoksa embedding engeli var diye kabul et.
-  useEffect(() => {
-    if (virtualized || !isYouTube || !isActive || ytBlocked) return
-    if (ytApiConnected) return // API zaten bağlı, timeout gerekmez
-
-    const timer = setTimeout(() => {
-      setYtBlocked(true)
-      setLoading(false)
-    }, 7_000)
-
-    return () => clearTimeout(timer)
-  }, [isActive, isYouTube, ytBlocked, ytApiConnected, virtualized])
+  // ── YouTube API timeout kaldırıldı ─────────────────────────────────────────
+  // Eski mantık: iOS/WebKit'te postMessage gelmezse 7s sonra ytBlocked=true yapıyordu.
+  // Sorun: gerçekte oynayan videolar "engelli" sanılıp "YouTube'da İzle" gösteriliyordu.
+  // Yeni mantık: ytBlocked yalnızca gerçek hata kodlarında (100/101/150) set edilir.
+  // ytApiConnected state'i artık kullanılmıyor ama kaldırılmadı (ref için güvenli).
 
   // Video değiştiğinde ytApiConnected sıfırla
   useEffect(() => {
@@ -504,9 +495,11 @@ function VideoFeedItemInner({
     const origin = typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
 
+    // youtube-nocookie.com: gizlilik modu + iOS WebKit'te postMessage daha güvenilir
+    const baseEmbed = `https://www.youtube-nocookie.com/embed/${videoId}`
     const embedSrc = isActive
-      ? `${stableSrc}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
-      : `${stableSrc}?rel=0&modestbranding=1&enablejsapi=1&controls=0&origin=${origin}`
+      ? `${baseEmbed}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
+      : `${baseEmbed}?rel=0&modestbranding=1&enablejsapi=1&controls=0&origin=${origin}`
 
     const sendYTCmd = (func: string) => {
       iframeRef.current?.contentWindow?.postMessage(
