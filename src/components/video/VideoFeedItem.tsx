@@ -257,9 +257,12 @@ function VideoFeedItemInner({
     }
   }, [isActive, paused, muted, isAudioMode, virtualized])
 
-  // ── YouTube postMessage — ses sync + embedding engeli tespiti ────────────
-  // origin parametresi JS API cross-origin iletişimi için zorunlu.
-  // Hata kodları: 101/150 = embedding engeli, 100 = video bulunamadı.
+  // ── YouTube postMessage — oynatma/durdurma + ses sync + embedding engeli ────
+  // Sabit key ile iframe yeniden yüklenmediği için play/pause tamamen postMessage ile yönetilir.
+  // isActive=true  → playVideo + mute/unMute
+  // isActive=false → pauseVideo
+  // onReady        → playVideo (player hazır olduğunda hemen başlat)
+  // Hata kodları: 101/150 = embedding engeli, 100 = video kaldırıldı.
   useEffect(() => {
     if (virtualized || !isYouTube) return
 
@@ -270,8 +273,14 @@ function VideoFeedItemInner({
       )
     }
 
-    const func = muted ? 'mute' : 'unMute'
-    if (isActive) sendCmd(func)
+    const muteCmd = muted ? 'mute' : 'unMute'
+
+    if (isActive) {
+      sendCmd('playVideo')
+      sendCmd(muteCmd)
+    } else {
+      sendCmd('pauseVideo')
+    }
 
     const handleMessage = (e: MessageEvent) => {
       try {
@@ -281,9 +290,19 @@ function VideoFeedItemInner({
         // Herhangi bir YouTube event'i → API bağlandı
         if (data?.event) setYtApiConnected(true)
 
-        // Ses senkronizasyonu
-        if (isActive && (data?.event === 'onStateChange' || data?.event === 'onReady')) {
-          sendCmd(func)
+        // Player hazır olduğunda hemen oynat (veya duraklat)
+        if (data?.event === 'onReady') {
+          if (isActive) {
+            sendCmd('playVideo')
+            sendCmd(muteCmd)
+          } else {
+            sendCmd('pauseVideo')
+          }
+        }
+
+        // Ses senkronizasyonu (state değişince mute durumunu koru)
+        if (isActive && data?.event === 'onStateChange') {
+          sendCmd(muteCmd)
         }
 
         // Embedding engeli tespiti:
@@ -296,15 +315,15 @@ function VideoFeedItemInner({
           }
         }
 
-        // playerState === -1 veya 5 = hazır ama oynatmıyor olabilir (yine de API bağlı)
-        // playerState === 0 = bitti, 1 = oynuyor, 2 = duraklatıldı, 3 = yüklüyor
+        // playerState: -1/5=hazır, 0=bitti, 1=oynuyor, 2=duraklatıldı, 3=yüklüyor
       } catch { /* ignore */ }
     }
 
     window.addEventListener('message', handleMessage)
-    const t1 = setTimeout(() => { if (isActive) sendCmd(func) }, 600)
-    const t2 = setTimeout(() => { if (isActive) sendCmd(func) }, 1500)
-    const t3 = setTimeout(() => { if (isActive) sendCmd(func) }, 3000)
+    // Yeniden deneme: player henüz hazır değilse gecikmiş komutlar
+    const t1 = setTimeout(() => { if (isActive) { sendCmd('playVideo'); sendCmd(muteCmd) } }, 600)
+    const t2 = setTimeout(() => { if (isActive) { sendCmd('playVideo'); sendCmd(muteCmd) } }, 1500)
+    const t3 = setTimeout(() => { if (isActive) { sendCmd('playVideo'); sendCmd(muteCmd) } }, 3000)
 
     return () => {
       window.removeEventListener('message', handleMessage)
@@ -496,10 +515,10 @@ function VideoFeedItemInner({
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
 
     // youtube-nocookie.com: gizlilik modu + iOS WebKit'te postMessage daha güvenilir
+    // Tek sabit src — key değişmez, iframe yeniden yüklenmez.
+    // Oynatma/durdurma postMessage (playVideo/pauseVideo) ile yönetilir.
     const baseEmbed = `https://www.youtube-nocookie.com/embed/${videoId}`
-    const embedSrc = isActive
-      ? `${baseEmbed}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
-      : `${baseEmbed}?rel=0&modestbranding=1&enablejsapi=1&controls=0&origin=${origin}`
+    const embedSrc = `${baseEmbed}?mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
 
     const sendYTCmd = (func: string) => {
       iframeRef.current?.contentWindow?.postMessage(
@@ -577,7 +596,7 @@ function VideoFeedItemInner({
 
               <iframe
                 ref={iframeRef}
-                key={isActive ? `yt-active-${video.id}` : `yt-inactive-${video.id}`}
+                key={`yt-${video.id}`}
                 src={embedSrc}
                 title={video.title}
                 className="absolute inset-0 h-full w-full border-0"
