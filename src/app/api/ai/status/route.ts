@@ -35,7 +35,6 @@ export async function GET(request: Request) {
       deepseek: {
         id: 'deepseek',
         name: `DeepSeek V3 (${health.model})`,
-        roles: ['collector', 'editor', 'qa'],
         roleDescriptions: {
           collector: 'Duplicate tespiti + içerik zenginleştirme',
           editor: 'Profesyonel haber yazımı + SEO + sosyal medya',
@@ -43,6 +42,7 @@ export async function GET(request: Request) {
         },
         configured: isDeepSeekConfigured(),
         ...health,
+        roles: ['collector', 'editor', 'qa'],
       },
     },
     queue: resolve(queueStats, { pending: 0, processing: 0, done: 0, failed: 0, rejected: 0 }),
