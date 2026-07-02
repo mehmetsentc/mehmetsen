@@ -7,7 +7,7 @@ import { tr } from 'date-fns/locale'
 import { Clapperboard, Eye, Heart, Play } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
-import { getPrimaryVideo, hasVideoContent } from '@/lib/postUtils'
+import { getPrimaryVideo, hasVideoContent, isYouTubeUrl } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
   formatTimelineRelative,
@@ -168,40 +168,54 @@ export function PostDetail({ post, suggested }: PostDetailProps) {
         </div>
 
         {(imageUrl || videoUrl) && (
-          <div
-            className={cn(
-              'relative mx-auto w-full overflow-hidden bg-black',
-              isVideo ? 'aspect-[9/16] max-h-[min(80dvh,960px)]' : 'aspect-video max-h-[70vh]'
-            )}
-          >
-            {isVideo && videoUrl ? (
-              <Link href={ROUTES.REELS_VIDEO(post.id)} className="group block h-full w-full">
-                <video
-                  src={videoUrl}
-                  poster={imageUrl ?? undefined}
-                  muted
-                  playsInline
-                  preload={tier === 'low' ? 'none' : 'metadata'}
-                  className="h-full w-full object-cover"
-                />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/40">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                    <Play className="h-7 w-7 fill-white text-white" />
-                  </span>
-                </span>
-              </Link>
-            ) : imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={post.title}
-                fill
-                quality={imageQualityForTier(tier)}
-                className="object-cover"
-                sizes={scaleSizesForTier('(max-width: 768px) 100vw, 672px', tier)}
-                priority
+          isVideo && videoUrl && isYouTubeUrl(videoUrl) ? (
+            /* ── YouTube embed → iframe (16:9) ──────────────────────── */
+            <div className="relative mx-auto w-full overflow-hidden bg-black aspect-video">
+              <iframe
+                src={`${videoUrl.includes('?') ? videoUrl : `${videoUrl}?`}rel=0&modestbranding=1`}
+                title={post.title}
+                className="h-full w-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
               />
-            ) : null}
-          </div>
+            </div>
+          ) : (
+            /* ── Normal video veya görsel ────────────────────────────── */
+            <div
+              className={cn(
+                'relative mx-auto w-full overflow-hidden bg-black',
+                isVideo ? 'aspect-[9/16] max-h-[min(80dvh,960px)]' : 'aspect-video max-h-[70vh]'
+              )}
+            >
+              {isVideo && videoUrl ? (
+                <Link href={ROUTES.REELS_VIDEO(post.id)} className="group block h-full w-full">
+                  <video
+                    src={videoUrl}
+                    poster={imageUrl ?? undefined}
+                    muted
+                    playsInline
+                    preload={tier === 'low' ? 'none' : 'metadata'}
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/40">
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                      <Play className="h-7 w-7 fill-white text-white" />
+                    </span>
+                  </span>
+                </Link>
+              ) : imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt={post.title}
+                  fill
+                  quality={imageQualityForTier(tier)}
+                  className="object-cover"
+                  sizes={scaleSizesForTier('(max-width: 768px) 100vw, 672px', tier)}
+                  priority
+                />
+              ) : null}
+            </div>
+          )
         )}
 
         <div className="px-4 py-5 sm:px-6">

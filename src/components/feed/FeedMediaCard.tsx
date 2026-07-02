@@ -16,6 +16,7 @@ import {
   scaleSizesForTier,
   videoPreloadForTier,
 } from '@/store/networkContext'
+import { isYouTubeUrl } from '@/lib/postUtils'
 
 interface FeedMediaCardProps {
   href: string
@@ -44,7 +45,9 @@ function FeedMediaCardInner({
 }: FeedMediaCardProps) {
   const [imgErrored, setImgErrored] = useState(false)
   const tier = useNetworkTier()
-  const hasVideo = Boolean(isVideo && videoUrl?.trim())
+  // YouTube URL'leri <video> tag'ı ile oynatılamaz — iframe gerektirir.
+  // Feed kartında YouTube varsa thumbnail göster, detail sayfası iframe'i oynatır.
+  const hasNativeVideo = Boolean(isVideo && videoUrl?.trim() && !isYouTubeUrl(videoUrl))
   const displayImage = (!imgErrored && imageUrl?.trim()) || FEED_FALLBACK_LOGO
   const effectiveFallback = isFallbackImage || imgErrored || !imageUrl?.trim()
   const fallbackGradient = getCategoryFallbackGradient(categoryId)
@@ -61,7 +64,7 @@ function FeedMediaCardInner({
       )}
     >
       <div className="feed-media-card-media">
-        {hasVideo ? (
+        {hasNativeVideo ? (
           <video
             src={videoUrl!}
             poster={!isFallbackImage ? displayImage : undefined}

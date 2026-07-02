@@ -10,6 +10,7 @@ import {
   scaleSizesForTier,
   videoPreloadForTier,
 } from '@/store/networkContext'
+import { isYouTubeUrl } from '@/lib/postUtils'
 
 interface FeedMediaPreviewProps {
   href: string
@@ -30,9 +31,10 @@ export function FeedMediaPreview({
 }: FeedMediaPreviewProps) {
   const tier = useNetworkTier()
   const hasImage = Boolean(imageUrl?.trim())
-  const hasVideo = Boolean(isVideo && videoUrl?.trim())
+  // YouTube URL'leri <video> ile oynatılamaz; feed'de thumbnail göster.
+  const hasNativeVideo = Boolean(isVideo && videoUrl?.trim() && !isYouTubeUrl(videoUrl))
 
-  if (!hasImage && !hasVideo) return null
+  if (!hasImage && !hasNativeVideo) return null
 
   const isThumb = layout === 'thumb'
 
@@ -45,7 +47,7 @@ export function FeedMediaPreview({
         className
       )}
     >
-      {hasVideo ? (
+      {hasNativeVideo ? (
         <video
           src={videoUrl!}
           poster={hasImage ? imageUrl! : undefined}

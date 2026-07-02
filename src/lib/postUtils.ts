@@ -12,6 +12,16 @@ export function getPrimaryVideo(post: Post): MediaItem | null {
   return post.mediaItems?.find((m) => m.type === 'video') ?? null
 }
 
+/** YouTube embed veya watch URL'si mi? */
+export function isYouTubeUrl(url: string | null | undefined): boolean {
+  if (!url) return false
+  return (
+    url.includes('youtube.com/embed/') ||
+    url.includes('youtube.com/watch') ||
+    url.includes('youtu.be/')
+  )
+}
+
 export function hasVideoContent(post: Post): boolean {
   return Boolean(
     post.mediaItems?.some((m) => m.type === 'video' && m.url?.trim()) ||
