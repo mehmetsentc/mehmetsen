@@ -16,8 +16,6 @@ interface NewsSliderProps {
   children?: ReactNode
 }
 
-const AUTOPLAY_MS = 5000
-
 function mapDoc(d: { id: string; data: () => Record<string, unknown> }): FeedSliderItem {
   const data = d.data()
   const raw =
@@ -106,7 +104,6 @@ export function NewsSlider({ categoryId, initialItems, variant = 'default', chil
   const [items, setItems] = useState<FeedSliderItem[]>(initialItems ?? [])
   const [loading, setLoading] = useState(!initialItems?.length)
   const [current, setCurrent] = useState(0)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const touchStartX = useRef<number | null>(null)
   const fetchedRef = useRef<Set<string>>(new Set())
 
@@ -167,32 +164,6 @@ export function NewsSlider({ categoryId, initialItems, variant = 'default', chil
   const next = useCallback(() => goTo(current + 1), [current, goTo])
   const prev = useCallback(() => goTo(current - 1), [current, goTo])
 
-  useEffect(() => {
-    if (items.length < 2) return
-    timerRef.current = setInterval(next, AUTOPLAY_MS)
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [items.length, next])
-
-  const resetTimer = () => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    timerRef.current = setInterval(next, AUTOPLAY_MS)
-  }
-
-  const handlePrev = () => {
-    prev()
-    resetTimer()
-  }
-  const handleNext = () => {
-    next()
-    resetTimer()
-  }
-  const handleDot = (i: number) => {
-    goTo(i)
-    resetTimer()
-  }
-
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null
   }
@@ -200,7 +171,7 @@ export function NewsSlider({ categoryId, initialItems, variant = 'default', chil
     if (touchStartX.current === null) return
     const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current
     if (Math.abs(dx) > 40) {
-      dx < 0 ? handleNext() : handlePrev()
+      dx < 0 ? next() : prev()
     }
     touchStartX.current = null
   }
@@ -291,7 +262,7 @@ export function NewsSlider({ categoryId, initialItems, variant = 'default', chil
           <>
             <button
               type="button"
-              onClick={handlePrev}
+              onClick={prev}
               className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm hover:bg-black/70 transition-colors"
               aria-label="Önceki"
             >
@@ -299,7 +270,7 @@ export function NewsSlider({ categoryId, initialItems, variant = 'default', chil
             </button>
             <button
               type="button"
-              onClick={handleNext}
+              onClick={next}
               className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm hover:bg-black/70 transition-colors"
               aria-label="Sonraki"
             >
@@ -315,7 +286,7 @@ export function NewsSlider({ categoryId, initialItems, variant = 'default', chil
             <button
               key={i}
               type="button"
-              onClick={() => handleDot(i)}
+              onClick={() => goTo(i)}
               aria-label={`Slayt ${i + 1}`}
               className={`rounded-full transition-all duration-300 ${
                 i === current

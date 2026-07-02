@@ -71,73 +71,93 @@ function isFreshBreakingItem(publishedAt: number, now = Date.now()): boolean {
   return now - publishedAt <= BREAKING_FRESH_WINDOW_MS
 }
 
-export async function getBreakingSliderItems(itemLimit = 5): Promise<FeedSliderItem[]> {
+async function fetchBreakingSliderRaw(scanLimit: number): Promise<FeedSliderItem[]> {
   const db = getAdminFirestore()
-  const now = Date.now()
-  const scanLimit = Math.max(itemLimit * 4, 20)
-
-  const collectFresh = (docs: QueryDocumentSnapshot[]): FeedSliderItem[] =>
-    docs
-      .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
-      .filter((item): item is FeedSliderItem => item !== null)
-      .filter((item) => isFreshBreakingItem(item.publishedAt, now))
-      .slice(0, itemLimit)
-
   try {
-    const breakingSnap = await db
+    const snap = await db
       .collection(NEWS_COLLECTION)
       .where('status', '==', 'published')
       .where('isBreaking', '==', true)
       .orderBy('publishedAt', 'desc')
       .limit(scanLimit)
       .get()
-
-    const fromBreaking = collectFresh(breakingSnap.docs)
-    if (fromBreaking.length > 0) return fromBreaking
+    const items = snap.docs
+      .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
+      .filter((item): item is FeedSliderItem => item !== null)
+    if (items.length > 0) return items
   } catch (error) {
     console.warn('[newsService.server] breaking slider query failed:', error)
   }
-
   try {
-    const categorySnap = await db
+    const snap = await db
       .collection(NEWS_COLLECTION)
       .where('status', '==', 'published')
       .where('categoryId', '==', 'son-dakika')
       .orderBy('publishedAt', 'desc')
       .limit(scanLimit)
       .get()
-
-    return collectFresh(categorySnap.docs)
+    return snap.docs
+      .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
+      .filter((item): item is FeedSliderItem => item !== null)
   } catch (error) {
     console.warn('[newsService.server] son-dakika slider query failed:', error)
     return []
   }
 }
 
+const getBreakingSliderCached = unstable_cache(
+  (scanLimit: number) => fetchBreakingSliderRaw(scanLimit),
+  ['breaking-slider-v1'],
+  { revalidate: 120, tags: ['breaking-news'] }
+)
+
+export async function getBreakingSliderItems(itemLimit = 5): Promise<FeedSliderItem[]> {
+  const scanLimit = Math.max(itemLimit * 4, 20)
+  const now = Date.now()
+  const raw = await getBreakingSliderCached(scanLimit)
+  return raw.filter((item) => isFreshBreakingItem(item.publishedAt, now)).slice(0, itemLimit)
+}
+
+const getFeedSliderCached = unstable_cache(
+  async (categoryId: string, fetchLimit: number) => {
+    const docs = await queryPublishedByCategory(categoryId, fetchLimit)
+    return docs
+      .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
+      .filter((item): item is FeedSliderItem => item !== null)
+      .filter((item) => item.categoryId !== 'son-dakika')
+  },
+  ['feed-slider-v1'],
+  { revalidate: 300, tags: ['feed-slider'] }
+)
+
 export async function getFeedSliderItems(
   categoryId: string,
   itemLimit = 5
 ): Promise<FeedSliderItem[]> {
-  const docs = await queryPublishedByCategory(categoryId, itemLimit + 8)
-  return docs
-    .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
-    .filter((item): item is FeedSliderItem => item !== null)
-    .filter((item) => item.categoryId !== 'son-dakika')
-    .slice(0, itemLimit)
+  const items = await getFeedSliderCached(categoryId, itemLimit + 8)
+  return items.slice(0, itemLimit)
 }
+
+const getFeedTimelineCached = unstable_cache(
+  async (categoryId: string, fetchLimit: number, feedSource: FeedSource) => {
+    const docs = await queryPublishedByCategory(categoryId, fetchLimit)
+    const posts = docs
+      .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+      .filter((post): post is Post => post !== null)
+      .filter((post) => isPubliclyVisibleStatus(post.status))
+    return filterPostsByFeedSource(posts, feedSource)
+  },
+  ['feed-timeline-v1'],
+  { revalidate: 300, tags: ['feed-timeline'] }
+)
 
 export async function getFeedTimelinePosts(
   categoryId: string,
   itemLimit = 10,
   feedSource: FeedSource = 'nahaber'
 ): Promise<Post[]> {
-  const docs = await queryPublishedByCategory(categoryId, itemLimit + 5)
-  const posts = docs
-    .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
-    .filter((post): post is Post => post !== null)
-    .filter((post) => isPubliclyVisibleStatus(post.status))
-
-  return filterPostsByFeedSource(posts, feedSource).slice(0, itemLimit)
+  const posts = await getFeedTimelineCached(categoryId, itemLimit + 5, feedSource)
+  return posts.slice(0, itemLimit)
 }
 
 export async function getNewsById(id: string): Promise<Post | null> {
@@ -213,11 +233,11 @@ async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
 
 const getHomeNewsPoolCached = unstable_cache(
   async (poolSize: number) => fetchHomeNewsPool(poolSize),
-  ['home-news-pool-v1'],
-  { revalidate: 120, tags: ['home-feed'] }
+  ['home-news-pool-v2'],
+  { revalidate: 300, tags: ['home-feed'] }
 )
 
-async function getHomeNewsPool(poolSize = 300): Promise<NewsItem[]> {
+async function getHomeNewsPool(poolSize = 150): Promise<NewsItem[]> {
   return getHomeNewsPoolCached(poolSize)
 }
 
@@ -277,7 +297,7 @@ function bucketCategoryRails(pool: NewsItem[], perCategory = 10): Partial<Record
 }
 
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
-  const pool = await getHomeNewsPool(300)
+  const pool = await getHomeNewsPool(150)
 
   if (pool.length === 0) {
     return {
@@ -302,42 +322,57 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 }
 
+const getHomeCategoryItemsCached = unstable_cache(
+  async (category: string, limitCount: number) => {
+    try {
+      const db = getAdminFirestore()
+      const family = getCategoryFamily(category)
+      const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
+      const snap = await (
+        family.length > 1
+          ? base.where('categoryId', 'in', family)
+          : base.where('categoryId', '==', category)
+      )
+        .orderBy('publishedAt', 'desc')
+        .limit(limitCount)
+        .get()
+      return mapAdminDocs(snap.docs)
+    } catch (error) {
+      console.warn('[newsService.server] getHomeCategoryItems failed:', category, error)
+      return []
+    }
+  },
+  ['home-category-items-v1'],
+  { revalidate: 300, tags: ['home-feed'] }
+)
+
 export async function getHomeCategoryItems(category: string, limitCount = 10): Promise<NewsItem[]> {
-  try {
-    const db = getAdminFirestore()
-    const family = getCategoryFamily(category)
-    const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
-    const snap = await (
-      family.length > 1
-        ? base.where('categoryId', 'in', family)
-        : base.where('categoryId', '==', category)
-    )
-      .orderBy('publishedAt', 'desc')
-      .limit(limitCount)
-      .get()
-    return mapAdminDocs(snap.docs)
-  } catch (error) {
-    console.warn('[newsService.server] getHomeCategoryItems failed:', category, error)
-    return []
-  }
+  return getHomeCategoryItemsCached(category, limitCount)
 }
+
+const getHomeLocalNewsCached = unstable_cache(
+  async (citySlug: string, limitCount: number) => {
+    try {
+      const db = getAdminFirestore()
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where('citySlug', '==', citySlug)
+        .orderBy('publishedAt', 'desc')
+        .limit(limitCount)
+        .get()
+      return mapAdminDocs(snap.docs)
+    } catch (error) {
+      console.warn('[newsService.server] getHomeLocalNews failed:', error)
+      return []
+    }
+  },
+  ['home-local-news-v1'],
+  { revalidate: 600, tags: ['local-news'] }
+)
 
 export async function getHomeLocalNews(citySlug: string, limitCount = 8): Promise<NewsItem[]> {
   const normalized = citySlug.trim().toLowerCase()
   if (!normalized) return []
-
-  try {
-    const db = getAdminFirestore()
-    const snap = await db
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .where('citySlug', '==', normalized)
-      .orderBy('publishedAt', 'desc')
-      .limit(limitCount)
-      .get()
-    return mapAdminDocs(snap.docs)
-  } catch (error) {
-    console.warn('[newsService.server] getHomeLocalNews failed:', error)
-    return []
-  }
+  return getHomeLocalNewsCached(normalized, limitCount)
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
@@ -12,12 +12,9 @@ interface FeaturedSliderProps {
   items: NewsItem[]
 }
 
-const AUTOPLAY_MS = 5500
-
 export function FeaturedSlider({ items }: FeaturedSliderProps) {
   const [current, setCurrent] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const touchStartX = useRef<number | null>(null)
 
   const goTo = useCallback(
@@ -33,17 +30,6 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
   const next = useCallback(() => goTo(current + 1), [current, goTo])
   const prev = useCallback(() => goTo(current - 1), [current, goTo])
 
-  const resetTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    if (items.length < 2) return
-    timerRef.current = setInterval(next, AUTOPLAY_MS)
-  }, [items.length, next])
-
-  useEffect(() => {
-    resetTimer()
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [resetTimer])
-
   if (items.length === 0) return null
 
   const item = items[current]
@@ -58,10 +44,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
           onTouchEnd={(e) => {
             if (touchStartX.current === null) return
             const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current
-            if (Math.abs(dx) > 40) {
-              resetTimer()
-              goTo(dx < 0 ? current + 1 : current - 1)
-            }
+            if (Math.abs(dx) > 40) goTo(dx < 0 ? current + 1 : current - 1)
             touchStartX.current = null
           }}
         >
@@ -104,7 +87,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
             <button
               type="button"
               aria-label="Önceki"
-              onClick={() => { resetTimer(); prev() }}
+              onClick={prev}
               className="absolute left-3 top-1/2 z-20 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/75 active:scale-95 md:left-4 md:h-11 md:w-11"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -116,7 +99,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
             <button
               type="button"
               aria-label="Sonraki"
-              onClick={() => { resetTimer(); next() }}
+              onClick={next}
               className="absolute right-3 top-1/2 z-20 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/75 active:scale-95 md:right-4 md:h-11 md:w-11"
             >
               <ChevronRight className="h-5 w-5" />
@@ -147,7 +130,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
                       key={i}
                       type="button"
                       aria-label={`Slayt ${i + 1}`}
-                      onClick={(e) => { e.preventDefault(); resetTimer(); goTo(i) }}
+                      onClick={(e) => { e.preventDefault(); goTo(i) }}
                       className={`rounded-full transition-all duration-300 ${
                         i === current
                           ? 'h-2.5 w-2.5 bg-white scale-110'
