@@ -21,8 +21,7 @@ import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES } from '@/constants/cities'
-import { MediaUploader, type MediaUploadState } from '@/components/post/MediaUploader'
-import { MediaLinkSection } from '@/components/admin/MediaLinkSection'
+import { EditMediaSection } from '@/components/admin/EditMediaSection'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -206,18 +205,14 @@ function EditDrawer({
   const [categoryId, setCategoryId] = useState(post.categoryId ?? '')
   const [status, setStatus] = useState<string>(post.status ?? 'draft')
   const [citySlug, setCitySlug] = useState((post as AdminNewsItem & { citySlug?: string }).citySlug ?? '')
-  const [media, setMedia] = useState<MediaUploadState>({
-    uploading: false,
-    progress: 0,
-    thumbnail: post.coverImageUrl ?? '',
-    videoUrl: post.mediaItems?.find((m) => m.type === 'video')?.url ?? '',
-    draftId: null,
-  })
+  const [thumbnail, setThumbnail] = useState(post.coverImageUrl ?? '')
+  const [videoUrl, setVideoUrl] = useState(post.mediaItems?.find((m) => m.type === 'video')?.url ?? '')
+  const [mediaUploading, setMediaUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     if (!title.trim()) { toast.error('Başlık boş olamaz'); return }
-    if (media.uploading) { toast.error('Medya yüklemesi devam ediyor'); return }
+    if (mediaUploading) { toast.error('Medya yüklemesi devam ediyor'); return }
     setSaving(true)
     try {
       const currentUser = auth.currentUser
@@ -232,8 +227,8 @@ function EditDrawer({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           title, summary, content, spot, categoryId, status,
-          thumbnail: media.thumbnail,
-          videoUrl: media.videoUrl,
+          thumbnail,
+          videoUrl,
           ...(categoryId === 'yerel-haber' && citySlug
             ? {
                 citySlug,
@@ -254,7 +249,7 @@ function EditDrawer({
         spot,
         categoryId,
         status: status as AdminNewsItem['status'],
-        coverImageUrl: media.thumbnail || post.coverImageUrl,
+        coverImageUrl: thumbnail || post.coverImageUrl,
       })
       onClose()
     } catch (e) {
@@ -325,25 +320,15 @@ function EditDrawer({
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Görsel / Video</label>
-            <MediaUploader
-              mode="news"
+            <EditMediaSection
+              postId={post.id}
               userId={userId}
-              authorUsername={username}
-              onFilesChange={() => {}}
-              autoUploadDraft
-              onUploadStateChange={setMedia}
+              thumbnail={thumbnail}
+              videoUrl={videoUrl}
+              onThumbnailChange={setThumbnail}
+              onVideoUrlChange={setVideoUrl}
+              onUploadingChange={setMediaUploading}
             />
-            {(media.thumbnail || media.videoUrl) && (
-              <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
-                {media.videoUrl ? 'Video yüklendi' : 'Görsel yüklendi'}
-              </p>
-            )}
-            <div className="mt-3">
-              <MediaLinkSection
-                onThumbnailChange={(url) => setMedia((prev) => ({ ...prev, thumbnail: url }))}
-                onVideoUrlChange={(url) => setMedia((prev) => ({ ...prev, videoUrl: url }))}
-              />
-            </div>
           </div>
 
           {/* Kategori + Durum */}
