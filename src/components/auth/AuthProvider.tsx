@@ -22,6 +22,7 @@ import {
   applyAdminBootstrap,
   syncCmsRoleFromServer,
 } from '@/lib/admin'
+import { EulaModal } from '@/components/auth/EulaModal'
 
 const PROFILE_TIMEOUT_MS = 8_000
 
@@ -204,7 +205,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, loading, login, register, loginWithGoogle, loginWithApple, logout, refreshUser]
   )
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  // EULA — kullanıcı giriş yaptıysa ama koşulları kabul etmediyse modal göster
+  const needsEula = !!user && !loading && !user.termsAcceptedAt
+
+  const acceptTerms = async () => {
+    try {
+      await fetch('/api/user/accept-terms', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      // Profili yenile — termsAcceptedAt artık doldu
+      await refreshUser()
+    } catch (error) {
+      console.error('[AuthProvider] acceptTerms failed:', error)
+    }
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {needsEula && <EulaModal onAccept={acceptTerms} />}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuthContext() {

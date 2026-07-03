@@ -36,6 +36,8 @@ export interface User {
   favoriteTeam?: string | null
   /** Favorite sport branch id (futbol, basketbol, voleybol…) */
   favoriteSport?: string | null
+  /** ISO timestamp of when user accepted Terms of Service / EULA. Null = not yet accepted. */
+  termsAcceptedAt?: string | null
   createdAt: string
   updatedAt: string
 }
