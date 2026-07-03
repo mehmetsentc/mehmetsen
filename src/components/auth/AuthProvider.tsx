@@ -23,6 +23,8 @@ import {
   syncCmsRoleFromServer,
 } from '@/lib/admin'
 import { EulaModal } from '@/components/auth/EulaModal'
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { db, Collections } from '@/lib/firebase/firestore'
 
 const PROFILE_TIMEOUT_MS = 8_000
 
@@ -209,16 +211,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const needsEula = !!user && !loading && !user.termsAcceptedAt
 
   const acceptTerms = async () => {
-    try {
-      await fetch('/api/user/accept-terms', {
-        method: 'POST',
-        credentials: 'include',
-      })
-      // Profili yenile — termsAcceptedAt artık doldu
-      await refreshUser()
-    } catch (error) {
-      console.error('[AuthProvider] acceptTerms failed:', error)
-    }
+    const current = auth.currentUser
+    if (!current) return
+    const now = new Date().toISOString()
+    await updateDoc(doc(db, Collections.USERS, current.uid), {
+      termsAcceptedAt: serverTimestamp(),
+    })
+    // Firestore refresh beklemeden local state'i anında güncelle —
+    // needsEula false'a döner ve modal unmount edilir.
+    setUser(prev => prev ? { ...prev, termsAcceptedAt: now } : null)
   }
 
   return (

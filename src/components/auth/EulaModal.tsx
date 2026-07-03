@@ -18,8 +18,13 @@ export function EulaModal({ onAccept }: EulaModalProps) {
 
   const handleAccept = async () => {
     setLoading(true)
-    await onAccept()
-    // onAccept çözünce AuthProvider user'ı günceller ve modal kapanır
+    try {
+      await onAccept()
+      // onAccept başarılı olunca AuthProvider user'ı günceller ve modal kapanır
+    } catch (error) {
+      console.error('[EulaModal] accept failed:', error)
+      setLoading(false)
+    }
   }
 
   return (

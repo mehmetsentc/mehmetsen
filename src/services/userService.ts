@@ -66,7 +66,16 @@ function normalizeUser(uid: string, data: Record<string, unknown>): User {
       : [],
     favoriteTeam: (data.favoriteTeam as string | null | undefined) ?? null,
     favoriteSport: (data.favoriteSport as string | null | undefined) ?? null,
-    termsAcceptedAt: (data.termsAcceptedAt as string | null | undefined) ?? null,
+    termsAcceptedAt: (() => {
+      const v = data.termsAcceptedAt
+      if (!v) return null
+      if (typeof v === 'string') return v
+      // Firestore Timestamp nesnesi (serverTimestamp yazıldıktan sonra okunur)
+      if (typeof (v as { toDate?: unknown }).toDate === 'function') {
+        return (v as { toDate: () => Date }).toDate().toISOString()
+      }
+      return String(v)
+    })(),
     createdAt: (data.createdAt as string) ?? new Date().toISOString(),
     updatedAt: (data.updatedAt as string) ?? new Date().toISOString(),
   }
