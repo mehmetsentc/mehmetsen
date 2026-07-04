@@ -63,8 +63,10 @@ echo "✅ Profile yüklendi" | tee -a "$LOG"
 # --- Login keychain'i aktif/açık tut ---
 echo "" | tee -a "$LOG"
 echo "=== Keychain unlock ===" | tee -a "$LOG"
-security unlock-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null || true
-security list-keychains -d user -s ~/Library/Keychains/login.keychain-db
+security unlock-keychain -p "" ~/Library/Keychains/login.keychain-db 2>/dev/null || true
+security list-keychains -d user -s ~/Library/Keychains/login.keychain-db 2>/dev/null || true
+# Codesign için önceden erişim tanımla (parola gerekmeyebilir, keychain zaten açıksa)
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" ~/Library/Keychains/login.keychain-db 2>/dev/null || true
 echo "✅ Login keychain aktif" | tee -a "$LOG"
 
 # --- xcodebuild archive (Build 5) ---
