@@ -16,6 +16,7 @@ export const Collections = {
   EVENTS:     'events',
   EVENT_REVIEWS: 'eventReviews',
   REPORTS:         'reports',
+  BLOCKS:          'blocks',
   NOTIFICATIONS:   'notifications',
   CONVERSATIONS:   'conversations',
   MESSAGES:        'messages',

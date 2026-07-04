@@ -36,7 +36,36 @@ public class NativeAppleSignInPlugin: CAPPlugin, ASAuthorizationControllerDelega
     // MARK: - ASAuthorizationControllerPresentationContextProviding
 
     public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        return self.bridge?.viewController?.view.window ?? UIWindow()
+        // 1. Capacitor bridge'in aktif view controller penceresi (ideal yol)
+        if let window = self.bridge?.viewController?.view.window {
+            return window
+        }
+
+        // 2. iOS 15+ / iPadOS 26 scene-based — foreground aktif sahneyi bul
+        let windowScenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+
+        // Önce foregroundActive, yoksa foregroundInactive dene (iPad Stage Manager)
+        let targetScene = windowScenes.first(where: { $0.activationState == .foregroundActive })
+                       ?? windowScenes.first(where: { $0.activationState == .foregroundInactive })
+                       ?? windowScenes.first
+
+        if let scene = targetScene {
+            // iOS 16+ keyWindow özelliği
+            if let key = scene.keyWindow { return key }
+            // isKeyWindow ile bul
+            if let key = scene.windows.first(where: { $0.isKeyWindow }) { return key }
+            // İlk pencereyi kullan
+            if let first = scene.windows.first { return first }
+        }
+
+        // 3. Son çare — tüm sahnelerin tüm pencereleri
+        for scene in windowScenes {
+            if let w = scene.windows.first { return w }
+        }
+
+        // 4. Hiçbir pencere yoksa boş döndür (crash olmaz ama sign-in başarısız olur)
+        return UIWindow()
     }
 
     // MARK: - ASAuthorizationControllerDelegate

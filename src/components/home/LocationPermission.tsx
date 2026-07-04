@@ -93,7 +93,7 @@ export function LocationPermission() {
             onClick={accept}
             className="flex-1 rounded-xl bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-bold text-white"
           >
-            İzin ver
+            Devam
           </button>
           <button
             type="button"
