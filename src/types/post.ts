@@ -110,6 +110,11 @@ export interface Post {
   audioStoragePath?: string
   /** True when TTS audio has been generated successfully */
   audioReady?: boolean
+  /**
+   * Additional inline images placed between article paragraphs.
+   * Stored in order; rendered evenly distributed across paragraphs.
+   */
+  additionalImages?: Array<{ url: string; caption?: string }>
   publishedAt: string | null
   createdAt: string
   updatedAt: string

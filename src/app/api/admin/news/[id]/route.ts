@@ -25,6 +25,7 @@ interface UpdatePayload {
   city?: string
   thumbnail?: string
   videoUrl?: string
+  additionalImages?: Array<{ url: string; caption?: string }>
 }
 
 /** PUT /api/admin/news/[id] — manually update a news article */
@@ -83,6 +84,11 @@ export async function PUT(request: Request, context: RouteContext) {
         thumbnailUrl: body.thumbnail?.trim() || '',
       },
     ]
+  }
+  if (Array.isArray(body.additionalImages)) {
+    update.additionalImages = body.additionalImages
+      .filter((img) => img.url?.trim())
+      .map((img) => ({ url: img.url.trim(), caption: img.caption?.trim() ?? '' }))
   }
 
   const db = getAdminFirestore()

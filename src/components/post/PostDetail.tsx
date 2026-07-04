@@ -34,22 +34,28 @@ import {
 
 /**
  * Haber içeriğini temiz paragraflara dönüştürür.
- * Sorun: Scraper bazı haberlerde isim kısaltmalarını ("P.\n\nS.\n\n,") ayrı
- * satırlara böler. Bu helper çift-newline'ları paragraf yapar, ardından
+ * Sorun: Scraper bazı haberlerde isim kısaltmalarını (“P.\n\nS.\n\n,”) ayrı
+ * satırlara böler. Bu helper çift-newline’ları paragraf yapar, ardından
  * tek harfli / virgül/kesme işaretiyle başlayan kısa parçacıkları önceki
  * paragrafla birleştirir.
+ *
+ * additionalImages parametresi ile görseller paragraflar arasına eşit
+ * aralıklarla yerleştirilir.
  */
-function renderNewsContent(raw: string): React.ReactNode {
+function renderNewsContent(
+  raw: string,
+  additionalImages?: Array<{ url: string; caption?: string }>
+): React.ReactNode {
   // Çift (veya daha fazla) newline = paragraf sınırı
   const rawParts = raw.split(/\n{2,}/).map((p) => p.replace(/\n/g, ' ').trim()).filter(Boolean)
 
-  // Kısa fragment'leri (≤6 karakter VEYA virgül/kesme ile başlayan) öncekiyle birleştir
+  // Kısa fragment’leri (≤6 karakter VEYA virgül/kesme ile başlayan) öncekiyle birleştir
   const merged: string[] = []
   for (const part of rawParts) {
     const prev = merged[merged.length - 1]
     const isFragment =
       part.length <= 6 ||
-      /^[,'''‘’“”]/.test(part)
+      /^[,’’’’’””]/.test(part)
     if (prev !== undefined && isFragment) {
       merged[merged.length - 1] = prev + part
     } else {
@@ -57,11 +63,67 @@ function renderNewsContent(raw: string): React.ReactNode {
     }
   }
 
-  return merged.map((para, i) => (
-    <p key={i} className="mb-4 leading-relaxed last:mb-0">
-      {para}
-    </p>
-  ))
+  const imgs = additionalImages?.filter((i) => i.url) ?? []
+  const nodes: React.ReactNode[] = []
+
+  merged.forEach((para, i) => {
+    nodes.push(
+      <p key={`p-${i}`} className="mb-4 leading-relaxed last:mb-0">
+        {para}
+      </p>
+    )
+    // Her kaç paragrafta bir görsel göster (eşit dağılım)
+    if (imgs.length > 0) {
+      // Görseli yerleştireceğimiz paragraf aralıkları hesapla (en az 1 paragrafta bir)
+      const step = Math.max(1, Math.floor(merged.length / (imgs.length + 1)))
+      const imgIndex = Math.floor((i + 1) / step) - 1
+      if ((i + 1) % step === 0 && imgIndex >= 0 && imgIndex < imgs.length) {
+        const img = imgs[imgIndex]
+        nodes.push(
+          <figure key={`img-${imgIndex}`} className="my-5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={img.url}
+              alt={img.caption ?? ''}
+              className="w-full rounded-xl object-cover"
+              loading="lazy"
+            />
+            {img.caption && (
+              <figcaption className="mt-2 text-center text-xs text-[rgb(var(--color-muted))]">
+                {img.caption}
+              </figcaption>
+            )}
+          </figure>
+        )
+      }
+    }
+  })
+
+  // Yerleştirilemeyen görselleri sona ekle
+  if (imgs.length > 0) {
+    const step = Math.max(1, Math.floor(merged.length / (imgs.length + 1)))
+    const placedCount = Math.min(imgs.length, Math.floor(merged.length / step))
+    imgs.slice(placedCount).forEach((img, j) => {
+      nodes.push(
+        <figure key={`img-tail-${j}`} className="my-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={img.url}
+            alt={img.caption ?? ''}
+            className="w-full rounded-xl object-cover"
+            loading="lazy"
+          />
+          {img.caption && (
+            <figcaption className="mt-2 text-center text-xs text-[rgb(var(--color-muted))]">
+              {img.caption}
+            </figcaption>
+          )}
+        </figure>
+      )
+    })
+  }
+
+  return nodes
 }
 
 interface PostDetailProps {
@@ -221,7 +283,7 @@ export function PostDetail({ post, suggested }: PostDetailProps) {
         <div className="px-4 py-5 sm:px-6">
           {post.content && (
             <div className="prose prose-sm max-w-none text-[rgb(var(--color-text))] dark:prose-invert">
-              {renderNewsContent(post.content)}
+              {renderNewsContent(post.content, post.additionalImages)}
             </div>
           )}
 

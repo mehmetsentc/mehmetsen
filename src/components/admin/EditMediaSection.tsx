@@ -4,20 +4,27 @@ import { useCallback, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import {
   Upload, Link2, X, Loader2,
-  Image as ImageIcon, Video, Youtube,
+  Image as ImageIcon, Video, Youtube, Star, Plus, Pencil,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { storageService } from '@/services/storageService'
 import { toYouTubeEmbed } from '@/components/admin/MediaLinkSection'
 import { auth } from '@/lib/firebase/auth'
 
+export interface AdditionalImageItem {
+  url: string
+  caption?: string
+}
+
 interface EditMediaSectionProps {
   postId: string
   userId: string
   thumbnail: string
   videoUrl: string
+  additionalImages: AdditionalImageItem[]
   onThumbnailChange: (url: string) => void
   onVideoUrlChange: (url: string) => void
+  onAdditionalImagesChange: (items: AdditionalImageItem[]) => void
   /** uploading durumunu dışarıya bildir (kaydet butonunu disable etmek için) */
   onUploadingChange?: (uploading: boolean) => void
 }
@@ -27,12 +34,16 @@ export function EditMediaSection({
   userId,
   thumbnail,
   videoUrl,
+  additionalImages,
   onThumbnailChange,
   onVideoUrlChange,
+  onAdditionalImagesChange,
   onUploadingChange,
 }: EditMediaSectionProps) {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
+  /** 'replace' = ana görseli değiştir, 'additional' = ek görsel ekle, null = kapalı */
+  const [uploadMode, setUploadMode] = useState<'replace' | 'additional' | null>(null)
   const [linkInput, setLinkInput] = useState('')
   const [linkLoading, setLinkLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -43,7 +54,7 @@ export function EditMediaSection({
   }
 
   const handleFiles = useCallback(
-    async (files: File[]) => {
+    async (files: File[], mode: 'replace' | 'additional') => {
       if (files.length === 0) return
       const file = files[0]
       const isVideo = file.type.startsWith('video/')
@@ -67,36 +78,49 @@ export function EditMediaSection({
           toast.success('Video yüklendi')
         } else {
           const url = await storageService.uploadPostImage(file, userId, postId, setProgress)
-          onThumbnailChange(url)
-          toast.success('Görsel yüklendi')
+          if (mode === 'replace' || !thumbnail) {
+            onThumbnailChange(url)
+            toast.success('Ana görsel güncellendi')
+          } else {
+            onAdditionalImagesChange([...additionalImages, { url, caption: '' }])
+            toast.success('Ek görsel eklendi')
+          }
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Yükleme başarısız')
       } finally {
         setUploadingState(false)
         setProgress(0)
+        setUploadMode(null)
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [postId, userId, onThumbnailChange, onVideoUrlChange]
+    [postId, userId, thumbnail, additionalImages, onThumbnailChange, onVideoUrlChange, onAdditionalImagesChange]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (accepted) => void handleFiles(accepted),
+    onDrop: (accepted) => {
+      if (uploadMode) void handleFiles(accepted, uploadMode)
+    },
     accept: {
       'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
       'video/*': ['.mp4', '.webm'],
     },
     maxFiles: 1,
-    disabled: uploading,
-    noClick: true, // click'i kendi butonumuz yönetiyor
+    disabled: uploading || !uploadMode,
+    noClick: true,
   })
+
+  const triggerUpload = (mode: 'replace' | 'additional') => {
+    setUploadMode(mode)
+    // Küçük timeout: state güncellenince fileInput'u tetikle
+    setTimeout(() => fileInputRef.current?.click(), 50)
+  }
 
   const handleLinkAdd = async () => {
     const url = linkInput.trim()
     if (!url) return
 
-    // YouTube kontrolü — storage'a kopyalamadan direkt embed URL kullan
     const ytEmbed = toYouTubeEmbed(url)
     if (ytEmbed) {
       onVideoUrlChange(ytEmbed)
@@ -122,8 +146,14 @@ export function EditMediaSection({
         onVideoUrlChange(data.url)
         toast.success('Video eklendi')
       } else {
-        onThumbnailChange(data.url)
-        toast.success('Görsel eklendi')
+        // URL ile ekleme → ek görsel olarak işle (thumbnail yoksa ana görsel)
+        if (!thumbnail) {
+          onThumbnailChange(data.url)
+          toast.success('Ana görsel eklendi')
+        } else {
+          onAdditionalImagesChange([...additionalImages, { url: data.url, caption: '' }])
+          toast.success('Ek görsel eklendi')
+        }
       }
       setLinkInput('')
     } catch (err) {
@@ -133,15 +163,219 @@ export function EditMediaSection({
     }
   }
 
+  /** Ek görseli ana görsel yap — mevcut thumbnail ek görseller listesine taşınır */
+  const makeMain = (index: number) => {
+    const item = additionalImages[index]
+    const newAdditional = additionalImages.filter((_, i) => i !== index)
+    if (thumbnail) {
+      newAdditional.unshift({ url: thumbnail, caption: '' })
+    }
+    onThumbnailChange(item.url)
+    onAdditionalImagesChange(newAdditional)
+    toast.success('Ana görsel değiştirildi')
+  }
+
+  const removeAdditional = (index: number) => {
+    onAdditionalImagesChange(additionalImages.filter((_, i) => i !== index))
+  }
+
+  const updateCaption = (index: number, caption: string) => {
+    const updated = additionalImages.map((img, i) => i === index ? { ...img, caption } : img)
+    onAdditionalImagesChange(updated)
+  }
+
   const isYouTube = videoUrl.includes('youtube.com/embed')
 
   return (
-    <div className="space-y-3">
-      {/* ── Mevcut medya önizlemesi ─────────────────────────────────── */}
-      {(thumbnail || videoUrl) && (
-        <div className="relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
-          {videoUrl ? (
-            isYouTube ? (
+    <div className="space-y-4">
+      {/* ── Dosya input (gizli) ────────────────────────────── */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
+        className="hidden"
+        onChange={(e) => {
+          if (uploadMode) void handleFiles(Array.from(e.target.files ?? []), uploadMode)
+          e.target.value = ''
+        }}
+      />
+
+      {/* ── Ana Görsel ──────────────────────────────────────── */}
+      <div>
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-muted))]">
+          <Star className="h-3.5 w-3.5 text-amber-500" />
+          Ana Görsel (Kapak)
+        </p>
+
+        {thumbnail ? (
+          <div className="relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={thumbnail}
+              alt="Kapak görseli"
+              className="max-h-48 w-full rounded-xl object-cover"
+            />
+            <div className="absolute right-2 top-2 flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => triggerUpload('replace')}
+                disabled={uploading}
+                className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+                title="Ana görseli değiştir"
+              >
+                <Pencil className="h-3 w-3" />
+                Değiştir
+              </button>
+              <button
+                type="button"
+                onClick={() => onThumbnailChange('')}
+                disabled={uploading}
+                className="rounded-full bg-black/60 p-1.5 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                title="Ana görseli kaldır"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="absolute left-2 top-2">
+              <span className="flex items-center gap-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white">
+                <Star className="h-2.5 w-2.5" /> Ana Görsel
+              </span>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => triggerUpload('replace')}
+            disabled={uploading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-8 text-sm font-semibold text-[rgb(var(--color-muted))] hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
+          >
+            <ImageIcon className="h-5 w-5" />
+            Ana görsel yükle
+          </button>
+        )}
+      </div>
+
+      {/* ── Ek Görseller ────────────────────────────────────── */}
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-muted))]">
+            <ImageIcon className="h-3.5 w-3.5" />
+            Ek Görseller
+            {additionalImages.length > 0 && (
+              <span className="ml-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                {additionalImages.length}
+              </span>
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={() => triggerUpload('additional')}
+            disabled={uploading}
+            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Ek görsel ekle
+          </button>
+        </div>
+
+        {/* Yükleniyor durumu */}
+        {uploading && (
+          <div className="mb-3 flex flex-col items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+            <p className="text-sm font-medium text-[rgb(var(--color-text))]">
+              Yükleniyor… %{Math.round(progress)}
+            </p>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgb(var(--color-border))]">
+              <div
+                className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Sürükle & bırak alanı (drag active göstergesi) */}
+        <div
+          {...getRootProps()}
+          className={`${isDragActive && uploadMode ? 'block' : 'hidden'} rounded-xl border-2 border-dashed border-blue-500 bg-blue-50 p-5 text-center dark:bg-blue-950`}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center gap-2 text-blue-600">
+            <Upload className="h-8 w-8" />
+            <p className="font-semibold">Dosyayı buraya bırakın...</p>
+          </div>
+        </div>
+
+        {/* Ek görseller listesi */}
+        {additionalImages.length > 0 ? (
+          <div className="space-y-3">
+            {additionalImages.map((img, index) => (
+              <div
+                key={`${img.url}-${index}`}
+                className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]"
+              >
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.url}
+                    alt={`Ek görsel ${index + 1}`}
+                    className="max-h-40 w-full object-cover"
+                  />
+                  <div className="absolute right-2 top-2 flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => makeMain(index)}
+                      className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-500 transition-colors"
+                      title="Ana görsel olarak işaretle"
+                    >
+                      <Star className="h-3 w-3" />
+                      Ana yap
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeAdditional(index)}
+                      className="rounded-full bg-black/60 p-1.5 text-white hover:bg-red-600 transition-colors"
+                      title="Görseli kaldır"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="absolute left-2 top-2">
+                    <span className="rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      #{index + 1}
+                    </span>
+                  </div>
+                </div>
+                {/* Görsel açıklaması */}
+                <div className="px-3 py-2">
+                  <input
+                    type="text"
+                    value={img.caption ?? ''}
+                    onChange={(e) => updateCaption(index, e.target.value)}
+                    placeholder="Görsel açıklaması (isteğe bağlı)"
+                    className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-xs text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-3 text-center text-xs text-[rgb(var(--color-muted))]">
+            Henüz ek görsel yok — paragraflar arasına yerleştirilecek görseller için &quot;Ek görsel ekle&quot; butonunu kullanın
+          </p>
+        )}
+      </div>
+
+      {/* ── Video ───────────────────────────────────────────── */}
+      <div>
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-muted))]">
+          <Video className="h-3.5 w-3.5" />
+          Video
+        </p>
+
+        {videoUrl && (
+          <div className="relative mb-3 overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
+            {isYouTube ? (
               <div className="aspect-video w-full">
                 <iframe
                   src={`${videoUrl}?rel=0&modestbranding=1`}
@@ -153,20 +387,9 @@ export function EditMediaSection({
               </div>
             ) : (
               // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={videoUrl} controls className="max-h-52 w-full rounded-xl" />
-            )
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={thumbnail}
-              alt="Kapak görseli"
-              className="max-h-52 w-full rounded-xl object-cover"
-            />
-          )}
-
-          {/* Kaldır butonları */}
-          <div className="absolute right-2 top-2 flex gap-1.5">
-            {videoUrl && (
+              <video src={videoUrl} controls className="max-h-48 w-full rounded-xl" />
+            )}
+            <div className="absolute right-2 top-2 flex gap-1.5">
               <button
                 type="button"
                 onClick={() => onVideoUrlChange('')}
@@ -175,128 +398,59 @@ export function EditMediaSection({
               >
                 <X className="h-3.5 w-3.5" />
               </button>
-            )}
-            {thumbnail && !videoUrl && (
-              <button
-                type="button"
-                onClick={() => onThumbnailChange('')}
-                className="rounded-full bg-black/60 p-1.5 text-white hover:bg-red-600 transition-colors"
-                title="Görseli kaldır"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Medya tipi etiketi */}
-          <div className="absolute left-2 top-2">
-            <span className="flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
-              {isYouTube
-                ? <><Youtube className="h-3 w-3 text-red-400" /> YouTube</>
-                : videoUrl
-                  ? <><Video className="h-3 w-3" /> Video</>
-                  : <><ImageIcon className="h-3 w-3" /> Kapak Görseli</>}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Cihazdan yükle (drag & drop + dosya seç) ────────────────── */}
-      <div
-        {...getRootProps()}
-        className={`rounded-xl border-2 border-dashed p-5 text-center transition-all ${
-          isDragActive
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-            : 'border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] hover:border-blue-400 hover:bg-[rgb(var(--color-card))]'
-        } ${uploading ? 'pointer-events-none opacity-70' : 'cursor-default'}`}
-      >
-        {/* react-dropzone'un kendi input'u */}
-        <input {...getInputProps()} />
-        {/* Dosya seç butonu için ayrı input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
-          className="hidden"
-          onChange={(e) => {
-            void handleFiles(Array.from(e.target.files ?? []))
-            e.target.value = ''
-          }}
-        />
-
-        {uploading ? (
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <p className="text-sm font-medium text-[rgb(var(--color-text))]">
-              Yükleniyor… %{Math.round(progress)}
-            </p>
-            <div className="mx-auto h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-[rgb(var(--color-border))]">
-              <div
-                className="h-full rounded-full bg-blue-500 transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
             </div>
-          </div>
-        ) : isDragActive ? (
-          <div className="flex flex-col items-center gap-2 text-blue-600">
-            <Upload className="h-8 w-8" />
-            <p className="font-semibold">Dosyayı buraya bırakın...</p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2.5">
-            <div className="flex items-center gap-3 text-[rgb(var(--color-muted))]">
-              <ImageIcon className="h-5 w-5" />
-              <Upload className="h-5 w-5" />
-              <Video className="h-5 w-5" />
+            <div className="absolute left-2 top-2">
+              <span className="flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
+                {isYouTube
+                  ? <><Youtube className="h-3 w-3 text-red-400" /> YouTube</>
+                  : <><Video className="h-3 w-3" /> Video</>}
+              </span>
             </div>
-            <p className="text-sm text-[rgb(var(--color-muted))]">
-              Sürükle &amp; bırak <span className="text-[rgb(var(--color-text))]">veya</span>
-            </p>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
-            >
-              Cihazdan Dosya Seç
-            </button>
-            <p className="text-[11px] text-[rgb(var(--color-muted))]">
-              JPG · PNG · WebP · GIF · MP4 · WebM · Maks. 50 MB
-            </p>
           </div>
         )}
-      </div>
 
-      {/* ── URL / YouTube linki ──────────────────────────────────────── */}
-      <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-text))]">
-          <Link2 className="h-3.5 w-3.5 text-[rgb(var(--color-muted))]" />
-          URL&apos;den ekle
-          <span className="font-normal text-[rgb(var(--color-muted))]">
-            · görsel URL, video URL veya YouTube
-          </span>
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="url"
-            value={linkInput}
-            onChange={(e) => setLinkInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleLinkAdd() } }}
-            disabled={linkLoading}
-            placeholder="https://youtube.com/watch?v=... veya görsel/video URL"
-            className="flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-          />
-          <button
-            type="button"
-            onClick={() => void handleLinkAdd()}
-            disabled={!linkInput.trim() || linkLoading}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {linkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Ekle'}
-          </button>
+        <button
+          type="button"
+          onClick={() => triggerUpload('additional')}
+          disabled={uploading}
+          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-4 text-sm font-semibold text-[rgb(var(--color-muted))] hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
+        >
+          <Video className="h-4 w-4" />
+          Video yükle (MP4 / WebM)
+        </button>
+
+        {/* URL / YouTube linki */}
+        <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-text))]">
+            <Link2 className="h-3.5 w-3.5 text-[rgb(var(--color-muted))]" />
+            URL&apos;den ekle
+            <span className="font-normal text-[rgb(var(--color-muted))]">
+              · görsel URL, video URL veya YouTube
+            </span>
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={linkInput}
+              onChange={(e) => setLinkInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleLinkAdd() } }}
+              disabled={linkLoading}
+              placeholder="https://youtube.com/watch?v=... veya görsel/video URL"
+              className="flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={() => void handleLinkAdd()}
+              disabled={!linkInput.trim() || linkLoading}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {linkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Ekle'}
+            </button>
+          </div>
+          <p className="mt-1.5 text-[10px] text-[rgb(var(--color-muted))]">
+            YouTube linki direkt oynatılır · Diğer linkler Firebase Storage&apos;a kopyalanır
+          </p>
         </div>
-        <p className="mt-1.5 text-[10px] text-[rgb(var(--color-muted))]">
-          YouTube linki direkt oynatılır · Diğer linkler Firebase Storage&apos;a kopyalanır
-        </p>
       </div>
     </div>
   )

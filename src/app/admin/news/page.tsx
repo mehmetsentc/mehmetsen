@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
+import type { AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
@@ -207,6 +208,9 @@ function EditDrawer({
   const [citySlug, setCitySlug] = useState((post as AdminNewsItem & { citySlug?: string }).citySlug ?? '')
   const [thumbnail, setThumbnail] = useState(post.coverImageUrl ?? '')
   const [videoUrl, setVideoUrl] = useState(post.mediaItems?.find((m) => m.type === 'video')?.url ?? '')
+  const [additionalImages, setAdditionalImages] = useState<AdditionalImageItem[]>(
+    (post as AdminNewsItem & { additionalImages?: AdditionalImageItem[] }).additionalImages ?? []
+  )
   const [mediaUploading, setMediaUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -229,6 +233,7 @@ function EditDrawer({
           title, summary, content, spot, categoryId, status,
           thumbnail,
           videoUrl,
+          additionalImages,
           ...(categoryId === 'yerel-haber' && citySlug
             ? {
                 citySlug,
@@ -325,8 +330,10 @@ function EditDrawer({
               userId={userId}
               thumbnail={thumbnail}
               videoUrl={videoUrl}
+              additionalImages={additionalImages}
               onThumbnailChange={setThumbnail}
               onVideoUrlChange={setVideoUrl}
+              onAdditionalImagesChange={setAdditionalImages}
               onUploadingChange={setMediaUploading}
             />
           </div>
