@@ -6,7 +6,6 @@ set -e
 # Düzeltmeler:
 #   - Guideline 5.1.1: Konum izni "İzin ver" → "Devam" butonu
 #   - Guideline 2.1(a): Apple Sign In iPad iPadOS 26 fix
-#     (presentationAnchor: Stage Manager + foregroundInactive desteği)
 # ============================================================
 
 PROJECT_DIR="/Users/user/nahaber"
@@ -14,13 +13,9 @@ IOS_DIR="$PROJECT_DIR/ios/App"
 ARCHIVE_PATH="/Users/user/Downloads/NaHaber_1.2_b5.xcarchive"
 EXPORT_DIR="/Users/user/Downloads/NaHaber_IPA_b5"
 EXPORT_OPTIONS="$PROJECT_DIR/ExportOptions.plist"
-P12_FILE="/Users/user/nahaber/ios_distribution_v2.p12"
-P12_PASS=""
 PROFILE_SRC="$PROJECT_DIR/NaHaber_AppStore_2026.mobileprovision"
 PROFILE_UUID="2e4d40b4-a18f-4a91-8b90-7004ab7ab8b6"
 PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-BUILD_KEYCHAIN="/tmp/nahaber_build5.keychain-db"
-BUILD_KP="NaHaber_Build_2026"
 
 KEY_P8="$PROJECT_DIR/AuthKey_88PX7Q6W29.p8"
 KEY_ID="88PX7Q6W29"
@@ -47,11 +42,7 @@ echo "=== Git commit + push ===" | tee -a "$LOG"
 cd "$PROJECT_DIR"
 rm -f .git/HEAD.lock .git/index.lock 2>/dev/null || true
 git add -A
-git commit -m "fix: Guideline 5.1.1 konum butonu + Guideline 2.1 Apple Sign In iPad (Build 5)
-
-- LocationPermission.tsx: 'İzin ver' → 'Devam' (Apple 5.1.1 uyumu)
-- NativeAppleSignInPlugin.swift: iPadOS 26 Stage Manager desteği
-  presentationAnchor foregroundInactive + tüm scene fallback" || echo "Nothing to commit"
+git commit -m "fix: build script keychain (Build 5)" || echo "Nothing to commit"
 git push origin "$(git branch --show-current)" 2>&1 | tee -a "$LOG"
 echo "✅ Git push tamamlandı" | tee -a "$LOG"
 
@@ -69,19 +60,15 @@ mkdir -p "$PROFILE_DIR"
 cp "$PROFILE_SRC" "$PROFILE_DIR/$PROFILE_UUID.mobileprovision"
 echo "✅ Profile yüklendi" | tee -a "$LOG"
 
-# --- Build Keychain ---
+# --- Login keychain'i aktif/açık tut ---
 echo "" | tee -a "$LOG"
-echo "=== Build Keychain ===" | tee -a "$LOG"
-security delete-keychain "$BUILD_KEYCHAIN" 2>/dev/null || true
-security create-keychain -p "$BUILD_KP" "$BUILD_KEYCHAIN"
-security set-keychain-settings -lut 21600 "$BUILD_KEYCHAIN"
-security unlock-keychain -p "$BUILD_KP" "$BUILD_KEYCHAIN"
-security import "$P12_FILE" -P "$P12_PASS" -k "$BUILD_KEYCHAIN" -T /usr/bin/codesign -T /usr/bin/security -A 2>&1 | tee -a "$LOG"
-security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$BUILD_KP" "$BUILD_KEYCHAIN"
-security list-keychains -d user -s "$BUILD_KEYCHAIN" ~/Library/Keychains/login.keychain-db
-echo "✅ Build keychain hazır" | tee -a "$LOG"
+echo "=== Keychain unlock ===" | tee -a "$LOG"
+security unlock-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null || true
+security list-keychains -d user -s ~/Library/Keychains/login.keychain-db
+echo "✅ Login keychain aktif" | tee -a "$LOG"
 
 # --- xcodebuild archive (Build 5) ---
+# NOT: --keychain flag KULLANILMIYOR — codesign login keychain'i otomatik bulur
 echo "" | tee -a "$LOG"
 echo "=== Xcode Archive (v1.2 Build 5) ===" | tee -a "$LOG"
 rm -rf "$ARCHIVE_PATH"
@@ -98,7 +85,6 @@ xcodebuild archive \
   PROVISIONING_PROFILE="$PROFILE_UUID" \
   DEVELOPMENT_TEAM="VMZA353GB7" \
   CODE_SIGN_ENTITLEMENTS="App/App.entitlements" \
-  OTHER_CODE_SIGN_FLAGS="--keychain $BUILD_KEYCHAIN" \
   2>&1 | tee -a "$LOG"
 echo "✅ Archive tamamlandı: $ARCHIVE_PATH" | tee -a "$LOG"
 
@@ -111,13 +97,9 @@ xcodebuild -exportArchive \
   -archivePath "$ARCHIVE_PATH" \
   -exportPath "$EXPORT_DIR" \
   -exportOptionsPlist "$EXPORT_OPTIONS" \
-  OTHER_CODE_SIGN_FLAGS="--keychain $BUILD_KEYCHAIN" \
   2>&1 | tee -a "$LOG"
 echo "✅ IPA export tamamlandı" | tee -a "$LOG"
 ls -lh "$EXPORT_DIR" | tee -a "$LOG"
-
-# Keychain temizle
-security list-keychains -d user -s ~/Library/Keychains/login.keychain-db
 
 # --- IPA dosyasını bul ---
 IPA_FILE=$(find "$EXPORT_DIR" -name "*.ipa" | head -1)
@@ -146,8 +128,8 @@ echo "Log: $LOG" | tee -a "$LOG"
 echo "============================================================" | tee -a "$LOG"
 echo ""
 echo "Sonraki adım — App Store Connect'te:"
-echo "1. Build 5'i seç (TestFlight'ta işlendikten sonra)"
-echo "2. 'Update Review' → yeni build seç → 'Resubmit to App Review'"
+echo "1. Build 5 TestFlight'ta işlenince (~15dk) version sayfasına ekle"
+echo "2. Resubmit to App Review"
 echo "URL: https://appstoreconnect.apple.com/apps/6784465855/distribution"
 echo ""
 echo "PENCEREYI KAPATMAK İÇİN ENTER'A BAS..."
