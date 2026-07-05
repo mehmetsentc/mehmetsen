@@ -3,17 +3,17 @@
 import Link from 'next/link'
 import { getTopNavCategories } from '@/constants/config'
 
-export type FeedTab = 'home' | 'personal'
+export type FeedTab = 'home' | 'trend'
 
 interface FeedCategoryBarProps {
   activeTab: FeedTab
   onTabChange: (tab: FeedTab) => void
 }
 
-// Sadece 2 sekme: Ana Sayfa | Sana Özel
+// Sadece 2 sekme: Ana Sayfa | Trend
 const IN_PAGE_TABS: { id: FeedTab; label: string }[] = [
-  { id: 'home',     label: 'Ana Sayfa' },
-  { id: 'personal', label: 'Sana Özel' },
+  { id: 'home',  label: 'Ana Sayfa' },
+  { id: 'trend', label: 'Trend' },
 ]
 
 // Tek SSOT: constants/config.ts → getTopNavCategories

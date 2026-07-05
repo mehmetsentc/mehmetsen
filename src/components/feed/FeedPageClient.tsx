@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { HomeFeed } from '@/components/home/HomeFeed'
-import { PersonalFeed } from '@/components/feed/PersonalFeed'
+import { TrendFeed } from '@/components/feed/TrendFeed'
 import { FeedCategoryBar, type FeedTab } from '@/components/feed/FeedCategoryBar'
 import type { HomeFeedInitialData } from '@/types/newsItem'
 
@@ -19,9 +19,9 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
 
       {activeTab === 'home' && <HomeFeed data={homeFeedData} />}
 
-      {activeTab === 'personal' && (
+      {activeTab === 'trend' && (
         <div className="mt-4">
-          <PersonalFeed />
+          <TrendFeed items={homeFeedData.trendFeed} />
         </div>
       )}
     </>

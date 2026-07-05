@@ -305,6 +305,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
       featured: [],
       latest: [],
       trending: [],
+      trendFeed: [],
       mostRead: [],
       categoryRails: {},
     }
@@ -317,6 +318,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
     featured: bucketFeatured(pool, 20),
     latest: bucketLatest(pool, 28, now),
     trending: bucketTrending(pool, 6, now),
+    trendFeed: bucketTrending(pool, 24, now),
     mostRead: bucketMostRead(pool, 6),
     categoryRails: bucketCategoryRails(pool, 10),
   }

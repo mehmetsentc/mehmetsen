@@ -60,8 +60,10 @@ export interface HomeFeedInitialData {
   featured: NewsItem[]
   /** Hot-aware sıralanmış akış (son 72 saat hot skoru ile, eski haberler kronolojik). */
   latest: NewsItem[]
-  /** "Şu an trend" — kısa pencerede en çok ilgi gören haberler. */
+  /** "Şu an trend" rail — kısa pencerede en çok ilgi gören haberler (yatay şerit). */
   trending: NewsItem[]
+  /** Trend sekmesi — hot skoruna göre sıralanmış tam akış. */
+  trendFeed: NewsItem[]
   /** "Gözden Kaçmasın" — all-time en çok okunan haberler. */
   mostRead: NewsItem[]
   categoryRails: Partial<Record<HomeCategorySlug, NewsItem[]>>
