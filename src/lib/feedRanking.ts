@@ -361,6 +361,47 @@ export function pickTrending(
 }
 
 /**
+ * Trend sekmesi tam akışı — sıkı `pickTrending` filtresi boş döndüğünde
+ * hot-aware sıralama ile doldurulur; sekme asla boş kalmaz.
+ */
+export function pickTrendFeed(
+  pool: readonly NewsItem[],
+  limit: number,
+  now: number = Date.now()
+): NewsItem[] {
+  const nonBreaking = pool.filter(
+    (item) => item.breaking !== true && item.category !== 'son-dakika'
+  )
+
+  // Gevşetilmiş trend: engagement/görsel zorunluluğu yok, 7 günlük pencere
+  const trending = pickTrending(nonBreaking, limit, {
+    maxAgeHours: 168,
+    requireImage: false,
+    excludeBreaking: false,
+    minEngagement: 0,
+  }, now)
+
+  const seen = new Set(trending.map((i) => i.id))
+  const merged: NewsItem[] = [...trending]
+
+  // Hot skoruna göre kalan slotları doldur
+  if (merged.length < limit) {
+    for (const item of rankFeedHotAware(nonBreaking, now, 168)) {
+      if (merged.length >= limit) break
+      if (!seen.has(item.id)) {
+        seen.add(item.id)
+        merged.push(item)
+      }
+    }
+  }
+
+  // Görseli olanlar önce (daha iyi kart görünümü)
+  const withImg = merged.filter((i) => i.imageUrl)
+  const withoutImg = merged.filter((i) => !i.imageUrl)
+  return [...withImg, ...withoutImg].slice(0, limit)
+}
+
+/**
  * Ana feed için "hibrit" sıralama: son `hotWindowHours` (default 72) saatlik
  * haberler hot skoruna göre tepede, daha eski haberler kronolojik düzende
  * altta kalır.

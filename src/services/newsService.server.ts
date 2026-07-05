@@ -7,7 +7,7 @@ import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem } from '@/lib/newsItemUtils'
 import { getCategoryFamily } from '@/constants/config'
-import { pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
+import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
 import type { Post } from '@/types/post'
 import type { FeedSliderItem } from '@/types/feedSlider'
 import type { HomeFeedInitialData, HomeCategorySlug, NewsItem } from '@/types/newsItem'
@@ -276,6 +276,10 @@ function bucketTrending(pool: NewsItem[], limit: number, now: number): NewsItem[
   return pickTrending(pool, limit, undefined, now)
 }
 
+function bucketTrendFeed(pool: NewsItem[], limit: number, now: number): NewsItem[] {
+  return pickTrendFeed(pool, limit, now)
+}
+
 function bucketMostRead(pool: NewsItem[], limit: number): NewsItem[] {
   const withViews = pool.filter((p) => typeof p.views === 'number' && (p.views ?? 0) > 0)
   if (withViews.length === 0) return pool.slice(0, limit)
@@ -318,7 +322,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
     featured: bucketFeatured(pool, 20),
     latest: bucketLatest(pool, 28, now),
     trending: bucketTrending(pool, 6, now),
-    trendFeed: bucketTrending(pool, 24, now),
+    trendFeed: bucketTrendFeed(pool, 24, now),
     mostRead: bucketMostRead(pool, 6),
     categoryRails: bucketCategoryRails(pool, 10),
   }
