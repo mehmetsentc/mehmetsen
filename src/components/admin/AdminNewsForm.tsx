@@ -45,8 +45,12 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
   const [title, setTitle] = useState(post?.title ?? '')
   const [description, setDescription] = useState(post?.content ?? '')
   const [spot, setSpot] = useState(post?.spot ?? '')
-  const [seoTitle, setSeoTitle] = useState(post?.seoTitle ?? '')
-  const [seoDescription, setSeoDescription] = useState(post?.seoDescription ?? '')
+  const [seoTitle, setSeoTitle] = useState(
+    post?.seoTitle?.trim() || post?.title?.trim() || ''
+  )
+  const [seoDescription, setSeoDescription] = useState(
+    post?.seoDescription?.trim() || post?.summary?.trim() || post?.spot?.trim() || ''
+  )
   const [category, setCategory] = useState(post?.categoryId ?? '')
   const [city, setCity] = useState(post?.city ?? '')
   const [status, setStatus] = useState<PostStatus>(post?.status ?? 'published')

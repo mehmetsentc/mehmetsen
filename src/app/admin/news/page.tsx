@@ -39,6 +39,24 @@ interface AiResult {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+function normalizeTag(raw: string): string {
+  return raw.trim().toLowerCase().replace(/^#+/, '').replace(/\s+/g, '-')
+}
+
+/** "NATO, CHP, Sezgin" → ['nato', 'chp', 'sezgin'] */
+function parseTagInput(raw: string): string[] {
+  return raw
+    .split(/[,;]+/)
+    .map(normalizeTag)
+    .filter(Boolean)
+}
+
+function mergeTags(existing: string[], incoming: string[]): string[] {
+  const set = new Set(existing.map(normalizeTag).filter(Boolean))
+  for (const tag of incoming) set.add(tag)
+  return [...set]
+}
+
 const FILTERS: { id: AdminNewsFilter; label: string; color: string }[] = [
   { id: 'all', label: 'Tümü', color: '' },
   { id: 'published', label: 'Yayında', color: 'text-emerald-600' },
@@ -213,11 +231,26 @@ function EditDrawer({
   )
   const [tags, setTags] = useState<string[]>(post.tags ?? [])
   const [tagInput, setTagInput] = useState('')
-  const [seoTitle, setSeoTitle] = useState((post as AdminNewsItem & { seoTitle?: string }).seoTitle ?? '')
-  const [seoDescription, setSeoDescription] = useState((post as AdminNewsItem & { seoDescription?: string }).seoDescription ?? '')
-  const [isBreaking, setIsBreaking] = useState<boolean>((post as AdminNewsItem & { isBreaking?: boolean }).isBreaking ?? false)
+  const storedSeoTitle = post.seoTitle?.trim() ?? ''
+  const storedSeoDescription = post.seoDescription?.trim() ?? ''
+  const [seoTitle, setSeoTitle] = useState(
+    storedSeoTitle || post.title?.trim() || ''
+  )
+  const [seoDescription, setSeoDescription] = useState(
+    storedSeoDescription || post.summary?.trim() || post.spot?.trim() || ''
+  )
+  const seoTitleUsesFallback = !storedSeoTitle
+  const seoDescriptionUsesFallback = !storedSeoDescription
+  const [isBreaking, setIsBreaking] = useState<boolean>(post.isBreaking ?? false)
   const [mediaUploading, setMediaUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  const addTagsFromInput = () => {
+    const parsed = parseTagInput(tagInput)
+    if (parsed.length === 0) return
+    setTags((prev) => mergeTags(prev, parsed))
+    setTagInput('')
+  }
 
   const handleSave = async () => {
     if (!title.trim()) { toast.error('Başlık boş olamaz'); return }
@@ -264,6 +297,10 @@ function EditDrawer({
         categoryId,
         status: status as AdminNewsItem['status'],
         coverImageUrl: thumbnail || post.coverImageUrl,
+        tags,
+        seoTitle,
+        seoDescription,
+        isBreaking,
       })
       onClose()
     } catch (e) {
@@ -454,23 +491,15 @@ function EditDrawer({
                 onKeyDown={e => {
                   if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
                     e.preventDefault()
-                    const newTag = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
-                    if (!tags.includes(newTag)) setTags([...tags, newTag])
-                    setTagInput('')
+                    addTagsFromInput()
                   }
                 }}
-                placeholder="Etiket yaz ve Enter'a bas..."
+                placeholder="Etiket yaz veya virgülle ayırarak toplu ekle (NATO, CHP, ...)"
                 className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="button"
-                onClick={() => {
-                  if (tagInput.trim()) {
-                    const newTag = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
-                    if (!tags.includes(newTag)) setTags([...tags, newTag])
-                    setTagInput('')
-                  }
-                }}
+                onClick={addTagsFromInput}
                 disabled={!tagInput.trim()}
                 className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
@@ -505,6 +534,11 @@ function EditDrawer({
               {!seoTitle && (
                 <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Boş bırakılırsa haber başlığı kullanılır</p>
               )}
+              {seoTitleUsesFallback && seoTitle && (
+                <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                  Kayıtlı SEO başlığı yok — haber başlığı otomatik dolduruldu
+                </p>
+              )}
             </div>
 
             {/* SEO Açıklama */}
@@ -525,6 +559,11 @@ function EditDrawer({
               />
               {!seoDescription && (
                 <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Boş bırakılırsa özet kullanılır</p>
+              )}
+              {seoDescriptionUsesFallback && seoDescription && (
+                <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                  Kayıtlı SEO açıklaması yok — özet/spot otomatik dolduruldu
+                </p>
               )}
             </div>
           </div>
