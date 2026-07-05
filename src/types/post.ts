@@ -84,6 +84,8 @@ export interface Post {
   seoTitle?: string
   /** SEO meta description for SERP snippet (145-165 chars) */
   seoDescription?: string
+  /** SEO keywords for meta keywords tag */
+  seoKeywords?: string[]
   /** AI-generated 60s video voiceover script (first 500 chars) */
   videoScript?: string
   /** Full JSON-serialized VideoScript object */

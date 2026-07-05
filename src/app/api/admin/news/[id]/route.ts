@@ -17,6 +17,7 @@ interface UpdatePayload {
   spot?: string
   seoTitle?: string
   seoDescription?: string
+  seoKeywords?: string[]
   categoryId?: string
   status?: string
   isBreaking?: boolean
@@ -57,6 +58,7 @@ export async function PUT(request: Request, context: RouteContext) {
   if (body.spot?.trim())       update.spot = body.spot.trim()
   if (body.seoTitle?.trim())   update.seoTitle = body.seoTitle.trim()
   if (body.seoDescription?.trim()) update.seoDescription = body.seoDescription.trim()
+  if (Array.isArray(body.seoKeywords)) update.seoKeywords = body.seoKeywords.map((k: string) => k.trim().toLowerCase()).filter(Boolean)
   if (body.categoryId?.trim()) {
     const newCat = body.categoryId.trim()
     update.categoryId = newCat

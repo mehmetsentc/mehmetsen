@@ -80,6 +80,7 @@ export interface NewsDocument {
   spot?: string
   seoTitle?: string
   seoDescription?: string
+  seoKeywords?: string[]
   htmlContent?: string
   readingTimeMinutes?: number
   isBreaking?: boolean
@@ -310,6 +311,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     spot: data.spot?.trim() || '',
     seoTitle: data.seoTitle?.trim() || '',
     seoDescription: data.seoDescription?.trim() || '',
+    seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
     authorId: author,
     authorUsername: author,
     authorDisplayName: author,

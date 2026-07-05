@@ -239,6 +239,10 @@ function EditDrawer({
   const [seoDescription, setSeoDescription] = useState(
     storedSeoDescription || post.summary?.trim() || post.spot?.trim() || ''
   )
+  const [seoKeywords, setSeoKeywords] = useState<string[]>(
+    (post as AdminNewsItem & { seoKeywords?: string[] }).seoKeywords ?? []
+  )
+  const [seoKeywordInput, setSeoKeywordInput] = useState('')
   const seoTitleUsesFallback = !storedSeoTitle
   const seoDescriptionUsesFallback = !storedSeoDescription
   const [isBreaking, setIsBreaking] = useState<boolean>(post.isBreaking ?? false)
@@ -275,6 +279,7 @@ function EditDrawer({
           tags,
           seoTitle,
           seoDescription,
+          seoKeywords,
           isBreaking,
           ...(categoryId === 'yerel-haber' && citySlug
             ? {
@@ -300,6 +305,7 @@ function EditDrawer({
         tags,
         seoTitle,
         seoDescription,
+        seoKeywords,
         isBreaking,
       })
       onClose()
@@ -565,6 +571,69 @@ function EditDrawer({
                   Kayıtlı SEO açıklaması yok — özet/spot otomatik dolduruldu
                 </p>
               )}
+            </div>
+
+            {/* SEO Anahtar Kelimeler */}
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+                🔑 SEO Anahtar Kelimeler
+              </label>
+              {/* Mevcut kelimeler */}
+              {seoKeywords.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {seoKeywords.map((kw) => (
+                    <span
+                      key={kw}
+                      className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400"
+                    >
+                      {kw}
+                      <button
+                        type="button"
+                        onClick={() => setSeoKeywords((prev) => prev.filter((k) => k !== kw))}
+                        className="ml-0.5 text-emerald-600 hover:text-red-500"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Giriş */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={seoKeywordInput}
+                  onChange={e => setSeoKeywordInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault()
+                      const kws = seoKeywordInput.split(',').map(k => k.trim().toLowerCase()).filter(Boolean)
+                      if (kws.length) {
+                        setSeoKeywords(prev => [...new Set([...prev, ...kws])])
+                        setSeoKeywordInput('')
+                      }
+                    }
+                  }}
+                  placeholder="kelime1, kelime2... (virgülle ayır)"
+                  className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const kws = seoKeywordInput.split(',').map(k => k.trim().toLowerCase()).filter(Boolean)
+                    if (kws.length) {
+                      setSeoKeywords(prev => [...new Set([...prev, ...kws])])
+                      setSeoKeywordInput('')
+                    }
+                  }}
+                  className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  Ekle
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">
+                Google meta keywords — virgülle ayırarak veya Enter ile ekle ({seoKeywords.length} kelime)
+              </p>
             </div>
           </div>
         </div>

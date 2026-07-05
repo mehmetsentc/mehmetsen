@@ -304,9 +304,16 @@ export function buildPostMetadata(post: Post): Metadata {
   const datePublished = post.publishedAt || post.createdAt
   const dateModified = post.updatedAt || datePublished
 
+  const seoKeywords: string[] | undefined = (post as Post & { seoKeywords?: string[] }).seoKeywords
+  const keywords = [
+    ...(seoKeywords?.length ? seoKeywords : []),
+    ...(post.tags?.length ? post.tags : []),
+  ].filter(Boolean)
+
   return {
     title,
     description,
+    ...(keywords.length ? { keywords: keywords.join(', ') } : {}),
     robots: { index: true, follow: true },
     authors: [{ name: siteName }],
     alternates: {

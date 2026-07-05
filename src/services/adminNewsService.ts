@@ -106,6 +106,7 @@ function adminNewsDocToPost(id: string, data: NewsDocument): Post {
     spot: data.spot?.trim() || '',
     seoTitle: data.seoTitle?.trim() || '',
     seoDescription: data.seoDescription?.trim() || '',
+    seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
     authorId: data.authorId?.trim() || author,
     authorUsername: author,
     authorDisplayName: author,
