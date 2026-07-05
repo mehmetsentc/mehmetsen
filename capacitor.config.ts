@@ -13,7 +13,8 @@ const config: CapacitorConfig = {
     contentInset: 'automatic',
     backgroundColor: '#0a0a0a',
     scrollEnabled: true,
-    limitsNavigationsToAppBoundDomains: true,
+    // limitsNavigationsToAppBoundDomains kaldırıldı — remote URL modunda
+    // WKAppBoundDomains kısıtlaması Firebase/API çağrılarını engelleyebilir
   },
 };
 

@@ -38,7 +38,23 @@ function isCapacitor(): boolean {
 async function signInWithNativeApple(auth: Auth): Promise<UserCredential> {
   // Dinamik import — web build'de bundle'a girmez, Capacitor'da runtime'da yüklenir
   const { default: NativeAppleSignIn } = await import('@/plugins/NativeAppleSignIn')
-  const result = await NativeAppleSignIn.authorize()
+
+  let result: import('@/plugins/NativeAppleSignIn').NativeAppleSignInResult
+  try {
+    result = await NativeAppleSignIn.authorize()
+  } catch (err) {
+    const code = (err as { code?: string }).code ?? ''
+    const msg = (err as { message?: string }).message ?? ''
+    // Kullanıcı iptal etti — sessizce rethrow
+    if (code === 'SIGN_IN_CANCELED' || msg.includes('cancelled') || msg.includes('canceled')) {
+      throw Object.assign(new Error('Sign in cancelled'), { code: 'auth/cancelled-popup-request' })
+    }
+    // Devam eden istek
+    if (code === 'SIGN_IN_IN_PROGRESS') {
+      throw Object.assign(new Error('Sign in already in progress'), { code: 'auth/popup-blocked' })
+    }
+    throw err
+  }
 
   const provider = new OAuthProvider('apple.com')
   const credential = provider.credential({
