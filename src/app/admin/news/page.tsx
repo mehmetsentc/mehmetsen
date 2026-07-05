@@ -8,7 +8,7 @@ import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X, Save,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Zap, Hash, SearchIcon,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
@@ -211,6 +211,11 @@ function EditDrawer({
   const [additionalImages, setAdditionalImages] = useState<AdditionalImageItem[]>(
     (post as AdminNewsItem & { additionalImages?: AdditionalImageItem[] }).additionalImages ?? []
   )
+  const [tags, setTags] = useState<string[]>(post.tags ?? [])
+  const [tagInput, setTagInput] = useState('')
+  const [seoTitle, setSeoTitle] = useState((post as AdminNewsItem & { seoTitle?: string }).seoTitle ?? '')
+  const [seoDescription, setSeoDescription] = useState((post as AdminNewsItem & { seoDescription?: string }).seoDescription ?? '')
+  const [isBreaking, setIsBreaking] = useState<boolean>((post as AdminNewsItem & { isBreaking?: boolean }).isBreaking ?? false)
   const [mediaUploading, setMediaUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -234,6 +239,10 @@ function EditDrawer({
           thumbnail,
           videoUrl,
           additionalImages,
+          tags,
+          seoTitle,
+          seoDescription,
+          isBreaking,
           ...(categoryId === 'yerel-haber' && citySlug
             ? {
                 citySlug,
@@ -387,6 +396,138 @@ function EditDrawer({
               )}
             </div>
           )}
+
+          {/* Son Dakika toggle */}
+          <div className="flex items-center justify-between rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Zap className={`h-4 w-4 ${isBreaking ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`} />
+              <div>
+                <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Son Dakika</p>
+                <p className="text-[11px] text-[rgb(var(--color-muted))]">Ana sayfada ve son dakika şeridinde öne çıkar</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsBreaking(v => !v)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isBreaking ? 'bg-red-500' : 'bg-[rgb(var(--color-border))]'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                isBreaking ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* Etiketler (Tags) */}
+          <div>
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-muted))]">
+              <Hash className="h-3.5 w-3.5" />
+              Etiketler
+            </label>
+            {/* Tag chips */}
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {tags.map((tag, i) => (
+                <span
+                  key={i}
+                  className="flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                >
+                  #{tag}
+                  <button
+                    type="button"
+                    onClick={() => setTags(tags.filter((_, j) => j !== i))}
+                    className="ml-0.5 rounded-full hover:text-red-500 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              {tags.length === 0 && (
+                <span className="text-xs text-[rgb(var(--color-muted))]">Henüz etiket yok</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                    e.preventDefault()
+                    const newTag = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
+                    if (!tags.includes(newTag)) setTags([...tags, newTag])
+                    setTagInput('')
+                  }
+                }}
+                placeholder="Etiket yaz ve Enter'a bas..."
+                className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (tagInput.trim()) {
+                    const newTag = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
+                    if (!tags.includes(newTag)) setTags([...tags, newTag])
+                    setTagInput('')
+                  }
+                }}
+                disabled={!tagInput.trim()}
+                className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                Ekle
+              </button>
+            </div>
+          </div>
+
+          {/* SEO Bölümü */}
+          <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 space-y-3">
+            <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
+              <SearchIcon className="h-3.5 w-3.5 text-emerald-500" />
+              SEO Ayarları
+            </p>
+
+            {/* SEO Başlık */}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Başlık</label>
+                <span className={`text-[10px] font-mono ${seoTitle.length > 65 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+                  {seoTitle.length}/65
+                </span>
+              </div>
+              <input
+                type="text"
+                value={seoTitle}
+                onChange={e => setSeoTitle(e.target.value)}
+                maxLength={80}
+                placeholder="Arama motorları için optimize başlık (55-65 karakter)..."
+                className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              {!seoTitle && (
+                <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Boş bırakılırsa haber başlığı kullanılır</p>
+              )}
+            </div>
+
+            {/* SEO Açıklama */}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Açıklama (Meta Description)</label>
+                <span className={`text-[10px] font-mono ${seoDescription.length > 165 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+                  {seoDescription.length}/165
+                </span>
+              </div>
+              <textarea
+                value={seoDescription}
+                onChange={e => setSeoDescription(e.target.value)}
+                rows={3}
+                maxLength={200}
+                placeholder="Google SERP snippet açıklaması (145-165 karakter)..."
+                className="w-full resize-none rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              {!seoDescription && (
+                <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Boş bırakılırsa özet kullanılır</p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
