@@ -22,16 +22,27 @@ interface Props {
 async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]> {
   try {
     const db = getAdminFirestore()
-    const family = getCategoryFamily(categoryId)
     const baseQ = db.collection(Collections.NEWS).where('status', '==', 'published')
-    const snap = await (
-      family.length > 1
-        ? baseQ.where('categoryId', 'in', family)
-        : baseQ.where('categoryId', '==', categoryId)
-    )
-      .orderBy('publishedAt', 'desc')
-      .limit(20)
-      .get()
+
+    // Son Dakika: categoryId'den bağımsız, isBreaking==true olan TÜM haberler
+    // (gündem, siyaset vb. kategorideki haberler de son dakikada görünür)
+    const snap = categoryId === 'son-dakika'
+      ? await baseQ
+          .where('isBreaking', '==', true)
+          .orderBy('publishedAt', 'desc')
+          .limit(20)
+          .get()
+      : await (() => {
+          const family = getCategoryFamily(categoryId)
+          return (
+            family.length > 1
+              ? baseQ.where('categoryId', 'in', family)
+              : baseQ.where('categoryId', '==', categoryId)
+          )
+            .orderBy('publishedAt', 'desc')
+            .limit(20)
+            .get()
+        })()
 
     return snap.docs.map(doc => {
       const d = doc.data()

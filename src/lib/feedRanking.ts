@@ -361,8 +361,8 @@ export function pickTrending(
 }
 
 /**
- * Trend sekmesi tam akışı — sıkı `pickTrending` filtresi boş döndüğünde
- * hot-aware sıralama ile doldurulur; sekme asla boş kalmaz.
+ * Trend sekmesi tam akışı — yalnızca gerçek etkileşim almış haberler gösterilir.
+ * Hiç etkileşimi olmayan haberler Trend sekmesine girmez.
  */
 export function pickTrendFeed(
   pool: readonly NewsItem[],
@@ -373,25 +373,32 @@ export function pickTrendFeed(
     (item) => item.breaking !== true && item.category !== 'son-dakika'
   )
 
-  // Gevşetilmiş trend: engagement/görsel zorunluluğu yok, 7 günlük pencere
-  const trending = pickTrending(nonBreaking, limit, {
+  // Birincil: en az 3 etkileşim (view+like+yorum), görsel zorunlu, 7 günlük pencere
+  const primary = pickTrending(nonBreaking, limit, {
+    maxAgeHours: 168,
+    requireImage: true,
+    excludeBreaking: false,
+    minEngagement: 3,
+  }, now)
+
+  if (primary.length >= limit) return primary
+
+  const seen = new Set(primary.map((i) => i.id))
+  const merged: NewsItem[] = [...primary]
+
+  // Fallback: en az 1 etkileşim — hiç etkileşim almamış haberler kabul edilmez
+  const secondary = pickTrending(nonBreaking, limit * 2, {
     maxAgeHours: 168,
     requireImage: false,
     excludeBreaking: false,
-    minEngagement: 0,
+    minEngagement: 1,
   }, now)
 
-  const seen = new Set(trending.map((i) => i.id))
-  const merged: NewsItem[] = [...trending]
-
-  // Hot skoruna göre kalan slotları doldur
-  if (merged.length < limit) {
-    for (const item of rankFeedHotAware(nonBreaking, now, 168)) {
-      if (merged.length >= limit) break
-      if (!seen.has(item.id)) {
-        seen.add(item.id)
-        merged.push(item)
-      }
+  for (const item of secondary) {
+    if (merged.length >= limit) break
+    if (!seen.has(item.id)) {
+      seen.add(item.id)
+      merged.push(item)
     }
   }
 

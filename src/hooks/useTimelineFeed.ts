@@ -15,6 +15,8 @@ import type { TimelinePost } from '@/types/post'
 // These intervals are also pause-on-hidden (see visibilitychange handler
 // below) so a backgrounded tab never bills Firestore at all.
 const LIVE_POLL_MS = typeof window !== 'undefined' && window.innerWidth < 768 ? 180_000 : 120_000
+/** Son Dakika kategorisi için daha kısa poll süresi — breaking news gerçek zamanlı olmalı. */
+const BREAKING_POLL_MS = 30_000
 /** Defer Firestore live subscription until well after the LCP window. */
 const LIVE_SUBSCRIBE_DEFER_MS = 8_000
 
@@ -277,9 +279,10 @@ export function useTimelineFeed(
         .catch((err) => console.warn('[useTimelineFeed] poll failed:', err))
     }
 
+    const pollMs = categoryRef.current === 'son-dakika' ? BREAKING_POLL_MS : LIVE_POLL_MS
     const startPolling = () => {
       if (pollTimer || cancelled) return
-      pollTimer = setInterval(runPoll, LIVE_POLL_MS)
+      pollTimer = setInterval(runPoll, pollMs)
     }
 
     const handleVisibility = () => {
