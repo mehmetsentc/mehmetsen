@@ -243,6 +243,7 @@ function EditDrawer({
     (post as AdminNewsItem & { seoKeywords?: string[] }).seoKeywords ?? []
   )
   const [seoKeywordInput, setSeoKeywordInput] = useState('')
+  const [aiKwLoading, setAiKwLoading] = useState(false)
   const seoTitleUsesFallback = !storedSeoTitle
   const seoDescriptionUsesFallback = !storedSeoDescription
   const [isBreaking, setIsBreaking] = useState<boolean>(post.isBreaking ?? false)
@@ -254,6 +255,30 @@ function EditDrawer({
     if (parsed.length === 0) return
     setTags((prev) => mergeTags(prev, parsed))
     setTagInput('')
+  }
+
+  const generateAiKeywords = async () => {
+    setAiKwLoading(true)
+    try {
+      const token = await auth.currentUser?.getIdToken() ?? ''
+      const input = [post.title, post.content ?? post.summary ?? ''].filter(Boolean).join('\n\n').slice(0, 2000)
+      const res = await fetch('/api/admin/ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mode: 'keywords', input }),
+      })
+      const data = await res.json() as { keywords?: string[] }
+      if (Array.isArray(data.keywords) && data.keywords.length > 0) {
+        setSeoKeywords(prev => [...new Set([...prev, ...data.keywords!.map((k: string) => k.trim().toLowerCase()).filter(Boolean)])])
+        toast.success(`${data.keywords.length} anahtar kelime eklendi`)
+      } else {
+        toast.error('AI anahtar kelime üretemedi')
+      }
+    } catch {
+      toast.error('AI isteği başarısız')
+    } finally {
+      setAiKwLoading(false)
+    }
   }
 
   const handleSave = async () => {
@@ -575,9 +600,20 @@ function EditDrawer({
 
             {/* SEO Anahtar Kelimeler */}
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
-                🔑 SEO Anahtar Kelimeler
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">
+                  🔑 SEO Anahtar Kelimeler
+                </label>
+                <button
+                  type="button"
+                  onClick={generateAiKeywords}
+                  disabled={aiKwLoading}
+                  className="flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+                >
+                  {aiKwLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                  {aiKwLoading ? 'Üretiliyor...' : '✨ AI Üret'}
+                </button>
+              </div>
               {/* Mevcut kelimeler */}
               {seoKeywords.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">

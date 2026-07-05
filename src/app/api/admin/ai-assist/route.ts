@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
-type AssistMode = 'create' | 'rewrite' | 'seo' | 'tags' | 'headline' | 'trends'
+type AssistMode = 'create' | 'rewrite' | 'seo' | 'tags' | 'headline' | 'trends' | 'keywords'
 
 const SYSTEM_PROMPTS: Record<AssistMode, string> = {
   create: `Sen deneyimli bir Türk gazetecisisin. Verilen konuda profesyonel bir haber metni yaz.
@@ -23,6 +23,10 @@ JSON: {"headlines":["başlık1","başlık2","başlık3","başlık4","başlık5"]
 
   trends: `Türkiye gündemindeki trend konuları analiz et ve haber fikirleri sun.
 JSON: {"trends":[{"topic":"...","angle":"...","urgency":"high|medium|low"}]} — 5 trend.`,
+
+  keywords: `Sen bir SEO uzmanısın. Verilen haber başlığı ve içeriği için arama motoru optimizasyonuna uygun anahtar kelimeler oluştur.
+JSON: {"keywords":["kelime1","kelime2",...]} — 8 ile 15 arasında anahtar kelime, Türkçe, küçük harf, tekil veya 2-3 kelimelik ifadeler olabilir.
+Kişi adları, yer adları, konu başlıkları ve arama niyetiyle eşleşen terimleri dahil et.`,
 }
 
 async function callAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {

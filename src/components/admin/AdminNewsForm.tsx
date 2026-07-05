@@ -3,14 +3,15 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { Flame, Loader2, Search, Tag, Wand2, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { MediaItemsManager } from '@/components/admin/MediaItemsManager'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, type CategoryDef } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { adminNewsService } from '@/services/adminNewsService'
+import { auth } from '@/lib/firebase/auth'
 import type { MediaItem, Post, PostStatus } from '@/types/post'
-
 
 interface AdminNewsFormProps {
   mode: 'create' | 'edit'
@@ -19,11 +20,6 @@ interface AdminNewsFormProps {
   username: string
 }
 
-/**
- * Düzenlenirken mevcut `post.mediaItems` çoğunlukla [video-or-image] tek
- * öğeli geliyor (eski schema). Birden fazla görsel ekleyebilmek için bu
- * listeyi alıp `MediaItemsManager`'a veriyoruz.
- */
 function seedMedia(post?: Post): MediaItem[] {
   if (!post) return []
   if (post.mediaItems && post.mediaItems.length > 0) return post.mediaItems
@@ -40,70 +36,111 @@ function seedMedia(post?: Post): MediaItem[] {
   return []
 }
 
+function parseTagInput(raw: string): string[] {
+  return raw.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+}
+function mergeTags(existing: string[], incoming: string[]): string[] {
+  return [...new Set([...existing, ...incoming])]
+}
+
 export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormProps) {
   const router = useRouter()
-  const [title, setTitle] = useState(post?.title ?? '')
-  const [description, setDescription] = useState(post?.content ?? '')
-  const [spot, setSpot] = useState(post?.spot ?? '')
-  const [seoTitle, setSeoTitle] = useState(
-    post?.seoTitle?.trim() || post?.title?.trim() || ''
-  )
-  const [seoDescription, setSeoDescription] = useState(
-    post?.seoDescription?.trim() || post?.summary?.trim() || post?.spot?.trim() || ''
-  )
-  const [category, setCategory] = useState(post?.categoryId ?? '')
-  const [city, setCity] = useState(post?.city ?? '')
-  const [status, setStatus] = useState<PostStatus>(post?.status ?? 'published')
-  const [saving, setSaving] = useState(false)
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>(() => seedMedia(post))
 
-  /**
-   * Cover image = ilk görsel item'ın URL'i; ya da video varsa video'nun
-   * thumbnail'i (yoksa boş).
-   */
+  // ── Temel alanlar ────────────────────────────────────────────────────────
+  const [title, setTitle]           = useState(post?.title ?? '')
+  const [description, setDescription] = useState(post?.content ?? '')
+  const [spot, setSpot]             = useState(post?.spot ?? '')
+  const [category, setCategory]     = useState(post?.categoryId ?? '')
+  const [city, setCity]             = useState(post?.city ?? '')
+  const [status, setStatus]         = useState<PostStatus>(post?.status ?? 'published')
+  const [isBreaking, setIsBreaking] = useState(post?.isBreaking ?? false)
+
+  // ── Etiketler ────────────────────────────────────────────────────────────
+  const [tags, setTags]           = useState<string[]>(post?.tags ?? [])
+  const [tagInput, setTagInput]   = useState('')
+
+  // ── SEO ──────────────────────────────────────────────────────────────────
+  const [seoTitle, setSeoTitle]             = useState(post?.seoTitle?.trim() || post?.title?.trim() || '')
+  const [seoDescription, setSeoDescription] = useState(post?.seoDescription?.trim() || post?.summary?.trim() || post?.spot?.trim() || '')
+  const [seoKeywords, setSeoKeywords]       = useState<string[]>((post as (Post & { seoKeywords?: string[] }))?.seoKeywords ?? [])
+  const [seoKeywordInput, setSeoKeywordInput] = useState('')
+
+  // ── Medya ────────────────────────────────────────────────────────────────
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>(() => seedMedia(post))
+  const [saving, setSaving]         = useState(false)
+  const [aiKwLoading, setAiKwLoading] = useState(false)
+
   const coverThumbnail = useMemo(() => {
-    const firstImage = mediaItems.find((m) => m.type === 'image')
-    if (firstImage) return firstImage.url
-    const videoWithThumb = mediaItems.find((m) => m.type === 'video' && m.thumbnailUrl)
-    return videoWithThumb?.thumbnailUrl ?? ''
+    const img = mediaItems.find(m => m.type === 'image')
+    if (img) return img.url
+    return mediaItems.find(m => m.type === 'video' && m.thumbnailUrl)?.thumbnailUrl ?? ''
   }, [mediaItems])
 
-  /** Single video URL (en başta gelen video). */
   const primaryVideoUrl = useMemo(
-    () => mediaItems.find((m) => m.type === 'video')?.url ?? '',
+    () => mediaItems.find(m => m.type === 'video')?.url ?? '',
     [mediaItems]
   )
 
+  // ── Tag helpers ──────────────────────────────────────────────────────────
+  const addTagsFromInput = () => {
+    const parsed = parseTagInput(tagInput)
+    if (!parsed.length) return
+    setTags(prev => mergeTags(prev, parsed))
+    setTagInput('')
+  }
+
+  // ── Keyword helpers ──────────────────────────────────────────────────────
+  const addKeywordsFromInput = () => {
+    const kws = seoKeywordInput.split(',').map(k => k.trim().toLowerCase()).filter(Boolean)
+    if (!kws.length) return
+    setSeoKeywords(prev => [...new Set([...prev, ...kws])])
+    setSeoKeywordInput('')
+  }
+
+  const generateAiKeywords = async () => {
+    setAiKwLoading(true)
+    try {
+      const token = await auth.currentUser?.getIdToken() ?? ''
+      const input = [title, description].filter(Boolean).join('\n\n').slice(0, 2000)
+      const res = await fetch('/api/admin/ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mode: 'keywords', input }),
+      })
+      const data = await res.json() as { keywords?: string[] }
+      if (Array.isArray(data.keywords) && data.keywords.length > 0) {
+        setSeoKeywords(prev => [...new Set([...prev, ...data.keywords!.map((k: string) => k.trim().toLowerCase()).filter(Boolean)])])
+        toast.success(`${data.keywords.length} anahtar kelime eklendi`)
+      } else {
+        toast.error('AI anahtar kelime üretemedi')
+      }
+    } catch {
+      toast.error('AI isteği başarısız')
+    } finally {
+      setAiKwLoading(false)
+    }
+  }
+
+  // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) {
-      toast.error('Başlık gerekli')
-      return
-    }
+    if (!title.trim()) { toast.error('Başlık gerekli'); return }
 
     setSaving(true)
     try {
       const payload = {
-        title,
-        description,
-        spot,
-        seoTitle,
-        seoDescription,
-        category,
-        city,
+        title, description, spot, seoTitle, seoDescription, seoKeywords,
+        category, city,
         thumbnail: coverThumbnail,
         videoUrl: primaryVideoUrl,
         mediaItems,
-        tags: post?.tags ?? [],
+        tags,
+        isBreaking,
         status,
       }
 
       if (mode === 'create') {
-        await adminNewsService.createAdminNews({
-          ...payload,
-          authorId: userId,
-          authorUsername: username,
-        })
+        await adminNewsService.createAdminNews({ ...payload, authorId: userId, authorUsername: username })
         toast.success('Haber yayınlandı')
         router.push(ROUTES.ADMIN.NEWS)
       } else if (post) {
@@ -119,101 +156,50 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
     }
   }
 
+  const inputCls = 'w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500'
+  const sectionCls = 'rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 space-y-3'
+  const labelCls = 'text-xs font-semibold text-[rgb(var(--color-muted))]'
+
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Başlık</label>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Haber başlığı" required />
+    <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-5">
+
+      {/* ── Başlık ── */}
+      <div className={sectionCls}>
+        <label className={labelCls}>Başlık</label>
+        <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Haber başlığı" required />
       </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">İçerik</label>
+      {/* ── İçerik ── */}
+      <div className={sectionCls}>
+        <label className={labelCls}>İçerik</label>
         <textarea
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={6}
-          placeholder="Haber metni"
-          className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-brand-500"
+          onChange={e => setDescription(e.target.value)}
+          rows={8}
+          placeholder="Haber metni..."
+          className={inputCls + ' resize-y'}
         />
       </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Spot (Özet giriş)</label>
+      {/* ── Spot ── */}
+      <div className={sectionCls}>
+        <label className={labelCls}>Spot (Giriş cümlesi)</label>
         <textarea
           value={spot}
-          onChange={(e) => setSpot(e.target.value)}
+          onChange={e => setSpot(e.target.value)}
           rows={3}
           placeholder="Haberin kısa özet giriş metni"
-          className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className={inputCls + ' resize-none'}
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">SEO Başlık</label>
-          <Input
-            value={seoTitle}
-            onChange={(e) => setSeoTitle(e.target.value)}
-            placeholder="Arama sonuçlarında görünecek başlık"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">SEO Açıklama</label>
-          <Input
-            value={seoDescription}
-            onChange={(e) => setSeoDescription(e.target.value)}
-            placeholder="Arama sonuçlarında görünecek kısa açıklama"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Kategori</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-text))]"
-          >
-            <option value="">Seçiniz</option>
-            {DEFAULT_CATEGORIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Şehir</label>
-          <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="ör. İstanbul" />
-        </div>
-      </div>
-
-      {mode === 'edit' && (
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">Durum</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as PostStatus)}
-            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-text))]"
-          >
-            <option value="published">Yayında</option>
-            <option value="pending">Onay Bekliyor</option>
-            <option value="draft">Taslak</option>
-            <option value="archived">Kaldırıldı</option>
-          </select>
-        </div>
-      )}
-
-      {/* ── Medya Bölümü ─────────────────────────────────────────────── */}
-      <div className="space-y-3">
+      {/* ── Medya ── */}
+      <div className={sectionCls}>
         <div className="flex items-baseline justify-between">
-          <label className="block text-sm font-medium text-[rgb(var(--color-text))]">
-            Medya · {mediaItems.length} adet
-          </label>
-          <p className="text-[11px] text-[rgb(var(--color-muted))]">
-            Video varsa en başta, görseller sıraya göre metin arasına dağıtılır
-          </p>
+          <label className={labelCls}>Medya · {mediaItems.length} adet</label>
+          <span className="text-[11px] text-[rgb(var(--color-muted))]">
+            Video önce, görseller içeriğe dağıtılır
+          </span>
         </div>
         <MediaItemsManager
           value={mediaItems}
@@ -225,7 +211,177 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
         />
       </div>
 
-      <div className="flex gap-3">
+      {/* ── Kategori + Durum ── */}
+      <div className={sectionCls}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelCls + ' mb-1.5 block'}>Kategori</label>
+            <select value={category} onChange={e => setCategory(e.target.value)} className={inputCls}>
+              <option value="">Seçiniz</option>
+              {DEFAULT_CATEGORIES.map((c: CategoryDef) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls + ' mb-1.5 block'}>Durum</label>
+            <select value={status} onChange={e => setStatus(e.target.value as PostStatus)} className={inputCls}>
+              <option value="published">Yayında</option>
+              <option value="pending">Onay Bekliyor</option>
+              <option value="draft">Taslak</option>
+              <option value="archived">Kaldırıldı</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Şehir — sadece yerel-haber kategorisinde */}
+        {category === 'yerel-haber' && (
+          <div className="mt-3">
+            <label className={labelCls + ' mb-1.5 block'}>Şehir</label>
+            <Input value={city} onChange={e => setCity(e.target.value)} placeholder="ör. İstanbul" />
+          </div>
+        )}
+      </div>
+
+      {/* ── Son Dakika ── */}
+      <div className={sectionCls}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Flame className="h-4 w-4 text-red-500" />
+            <div>
+              <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Son Dakika</p>
+              <p className="text-[11px] text-[rgb(var(--color-muted))]">Ana sayfada ve son dakika şeridinde öne çıkar</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsBreaking(v => !v)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isBreaking ? 'bg-red-500' : 'bg-[rgb(var(--color-border))]'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isBreaking ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Etiketler ── */}
+      <div className={sectionCls}>
+        <div className="flex items-center gap-1.5">
+          <Tag className="h-3.5 w-3.5 text-blue-500" />
+          <label className={labelCls}>Etiketler</label>
+        </div>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map(tag => (
+              <span key={tag} className="flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-400">
+                #{tag}
+                <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))} className="ml-0.5 hover:text-red-500">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {tags.length === 0 && <p className="text-xs text-[rgb(var(--color-muted))]">Henüz etiket yok</p>}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTagsFromInput() } }}
+            placeholder="Etiket yaz veya virgülle ayırarak toplu ekle (NATO, CHP, ...)"
+            className={inputCls}
+          />
+          <button type="button" onClick={addTagsFromInput} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 whitespace-nowrap">
+            Ekle
+          </button>
+        </div>
+      </div>
+
+      {/* ── SEO Ayarları ── */}
+      <div className={sectionCls}>
+        <div className="flex items-center gap-1.5">
+          <Search className="h-3.5 w-3.5 text-emerald-500" />
+          <p className="text-xs font-bold text-[rgb(var(--color-text))]">SEO Ayarları</p>
+        </div>
+
+        {/* SEO Başlık */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className={labelCls}>SEO Başlık</label>
+            <span className={`text-[10px] font-mono ${seoTitle.length > 65 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>{seoTitle.length}/65</span>
+          </div>
+          <input
+            type="text"
+            value={seoTitle}
+            onChange={e => setSeoTitle(e.target.value)}
+            maxLength={80}
+            placeholder="Arama motorları için optimize başlık (55-65 karakter)..."
+            className={inputCls}
+          />
+          {!post?.seoTitle && seoTitle && (
+            <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Haber başlığından otomatik dolduruldu</p>
+          )}
+        </div>
+
+        {/* SEO Açıklama */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className={labelCls}>SEO Açıklama (Meta Description)</label>
+            <span className={`text-[10px] font-mono ${seoDescription.length > 165 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>{seoDescription.length}/165</span>
+          </div>
+          <textarea
+            value={seoDescription}
+            onChange={e => setSeoDescription(e.target.value)}
+            rows={3}
+            maxLength={200}
+            placeholder="Google SERP snippet açıklaması (145-165 karakter)..."
+            className={inputCls + ' resize-none'}
+          />
+        </div>
+
+        {/* SEO Anahtar Kelimeler */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className={labelCls}>🔑 SEO Anahtar Kelimeler</label>
+            <button
+              type="button"
+              onClick={generateAiKeywords}
+              disabled={aiKwLoading}
+              className="flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              {aiKwLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+              {aiKwLoading ? 'Üretiliyor...' : '✨ AI Üret'}
+            </button>
+          </div>
+          {seoKeywords.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {seoKeywords.map(kw => (
+                <span key={kw} className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                  {kw}
+                  <button type="button" onClick={() => setSeoKeywords(prev => prev.filter(k => k !== kw))} className="ml-0.5 hover:text-red-500">×</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={seoKeywordInput}
+              onChange={e => setSeoKeywordInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addKeywordsFromInput() } }}
+              placeholder="kelime1, kelime2... (virgülle ayır)"
+              className={inputCls}
+            />
+            <button type="button" onClick={addKeywordsFromInput} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 whitespace-nowrap">
+              Ekle
+            </button>
+          </div>
+          <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Google meta keywords — virgülle ayır veya Enter ({seoKeywords.length} kelime)</p>
+        </div>
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="flex gap-3 pb-6">
         <Button type="submit" disabled={saving}>
           {saving ? 'Kaydediliyor...' : mode === 'create' ? 'Yayınla' : 'Güncelle'}
         </Button>
