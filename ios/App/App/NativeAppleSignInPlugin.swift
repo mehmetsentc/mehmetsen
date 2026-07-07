@@ -16,77 +16,81 @@ public class NativeAppleSignInPlugin: CAPPlugin, ASAuthorizationControllerDelega
     // MARK: - Public API
 
     @objc func authorize(_ call: CAPPluginCall) {
-        // Eğer zaten bir işlem devam ediyorsa iptal et
-        if signInCall != nil {
-            call.reject("Sign in already in progress", "SIGN_IN_IN_PROGRESS")
-            return
-        }
-
-        let rawNonce = randomNonceString()
-        currentNonce = rawNonce
-
-        let appleIDProvider = ASAuthorizationAppleIDProvider()
-        let request = appleIDProvider.createRequest()
-        request.requestedScopes = [.fullName, .email]
-        request.nonce = sha256(rawNonce)
-
-        let controller = ASAuthorizationController(authorizationRequests: [request])
-        controller.delegate = self
-        controller.presentationContextProvider = self
-
-        // Instance variable'a ata — ARC tarafından serbest bırakılmasın
-        self.authorizationController = controller
-        self.signInCall = call
-
+        // Tüm ASAuthorization setup'ı main thread'de çalışmalı
         DispatchQueue.main.async { [weak self] in
-            self?.authorizationController?.performRequests()
+            guard let self = self else {
+                call.reject("Plugin deallocated", "SIGN_IN_FAILED")
+                return
+            }
+
+            // Önceki takılmış oturumu temizle (yeniden deneme senaryosu)
+            if self.signInCall != nil {
+                self.signInCall?.reject("Cancelled by new request", "SIGN_IN_CANCELED")
+                self.reset()
+            }
+
+            let rawNonce = self.randomNonceString()
+            self.currentNonce = rawNonce
+            self.signInCall = call
+
+            let appleIDProvider = ASAuthorizationAppleIDProvider()
+            let request = appleIDProvider.createRequest()
+            request.requestedScopes = [.fullName, .email]
+            request.nonce = self.sha256(rawNonce)
+
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            self.authorizationController = controller
+            controller.performRequests()
         }
     }
 
     // MARK: - ASAuthorizationControllerPresentationContextProviding
 
     public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        // Main thread'de çalıştığından emin ol
-        assert(Thread.isMainThread, "presentationAnchor must be called on main thread")
+        // Bu delegate her zaman main thread'den çağrılır
 
-        // 1. Capacitor bridge'in aktif view controller'ının penceresi (en güvenilir)
+        // 1. Capacitor bridge view controller'ının penceresi (en güvenilir)
         if let vc = self.bridge?.viewController,
            let window = vc.view.window,
            !window.isHidden {
             return window
         }
 
-        // 2. iPadOS 26+ — scene-based window, Stage Manager dahil
+        // 2. Foreground active scene → key window
         let scenes = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
 
-        // Önce foregroundActive sahne
-        let activeScenes = scenes.filter { $0.activationState == .foregroundActive }
-        let candidateScenes = activeScenes.isEmpty
-            ? scenes.filter { $0.activationState == .foregroundInactive }
-            : activeScenes
-
-        for scene in candidateScenes {
-            // iOS 16+ keyWindow (en güvenilir)
+        for scene in scenes where scene.activationState == .foregroundActive {
             if let key = scene.keyWindow, !key.isHidden { return key }
         }
 
-        // 3. Herhangi bir visible window
+        // 3. Foreground inactive scene → key window
+        for scene in scenes where scene.activationState == .foregroundInactive {
+            if let key = scene.keyWindow, !key.isHidden { return key }
+        }
+
+        // 4. Herhangi bir scene → key window
         for scene in scenes {
             if let key = scene.keyWindow, !key.isHidden { return key }
-            for window in scene.windows where !window.isHidden && window.isKeyWindow {
-                return window
-            }
         }
 
-        // 4. Görünür herhangi bir window
+        // 5. Herhangi bir görünür window
         for scene in scenes {
             for window in scene.windows where !window.isHidden {
                 return window
             }
         }
 
-        // 5. Son çare — boş pencere (nadiren buraya düşer)
+        // 6. Son çare — bridge'in root window'u
+        if let vc = self.bridge?.viewController {
+            let window = UIWindow(frame: UIScreen.main.bounds)
+            window.rootViewController = vc
+            window.makeKeyAndVisible()
+            return window
+        }
+
         return UIWindow()
     }
 

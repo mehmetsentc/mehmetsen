@@ -14,6 +14,8 @@ const SILENT_APPLE_AUTH_CODES = new Set([
   'auth/popup-closed-by-user',
   'auth/cancelled-popup-request',
   'auth/user-cancelled',
+  'SIGN_IN_CANCELED',
+  'SIGN_IN_IN_PROGRESS',
 ])
 
 /** User-facing Turkish messages for Firebase Apple sign-in errors. */
@@ -49,11 +51,16 @@ export function getAppleAuthErrorMessage(err: unknown): string | null {
 
   if (messages[code]) return messages[code]
 
+  // SIGN_IN_FAILED — native plugin hatası
+  if (code === 'SIGN_IN_FAILED' || message.includes('SIGN_IN_FAILED')) {
+    return 'Apple ile giriş şu anda kullanılamıyor — tekrar deneyin'
+  }
+
   if (code) {
-    return `Apple ile giriş başarısız (${code})`
+    return 'Apple ile giriş başarısız oldu — tekrar deneyin'
   }
   if (message.trim()) {
-    return `Apple ile giriş başarısız: ${message.slice(0, 140)}`
+    return 'Apple ile giriş başarısız oldu — tekrar deneyin'
   }
   return 'Apple ile giriş başarısız oldu'
 }
