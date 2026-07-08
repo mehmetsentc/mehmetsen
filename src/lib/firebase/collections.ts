@@ -40,6 +40,10 @@ export const Collections = {
   RSS_FEEDS:      'rssFeeds',
   /** Ingestion source metadata */
   SOURCES:        'sources',
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  /** Daily aggregated page-view counters — doc id: YYYY-MM-DD */
+  ANALYTICS_DAILY: 'analyticsDaily',
 } as const
 
 /** Primary collection for the TikTok-style video feed */

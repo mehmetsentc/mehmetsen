@@ -10,6 +10,7 @@ import { LanguageProvider } from '@/store/languageContext'
 import { ThemeProvider } from '@/store/themeContext'
 import { ThemeScript } from '@/components/theme/ThemeScript'
 import { PlatformScript } from '@/components/layout/PlatformScript'
+import { AnalyticsTracker } from '@/components/layout/AnalyticsTracker'
 import './globals.css'
 
 const inter = Inter({
@@ -269,6 +270,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {/* F2.5: tüm toast'lar artık sonner ToastViewport üzerinden çıkar
                   (react-hot-toast webpack alias ile shim'e yönlendirildi) */}
               <ToastViewport />
+              <AnalyticsTracker />
               <Analytics />
               <SpeedInsights />
             </AuthProvider>
