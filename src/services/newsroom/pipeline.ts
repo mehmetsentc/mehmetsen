@@ -358,7 +358,11 @@ export async function processNewsroomArticle(
 
     if (needsExtraction && workingInput.sourceUrl) {
       try {
-        const extracted = await fetchArticleEnrichment(workingInput.sourceUrl, 12_000)
+        const extracted = await fetchArticleEnrichment(
+          workingInput.sourceUrl,
+          12_000,
+          { title: workingInput.originalTitle }
+        )
         if (extracted) {
           // Only replace content if extracted text is substantially longer/cleaner
           if (extracted.bodyText && extracted.bodyText.length > (workingInput.originalContent?.length ?? 0)) {

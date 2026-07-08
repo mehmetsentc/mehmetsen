@@ -1,8 +1,9 @@
 /**
- * Article fetcher — wraps fullArticleExtractor with the legacy interface.
- * Used by rssEditor to enrich RSS items with full article content.
+ * Article fetcher — çok katmanlı extraction + arama fallback.
+ * Used by rssEditor and newsroom pipeline.
  */
-import { extractFullArticle, isContentThin } from '@/lib/fullArticleExtractor'
+import { isContentThin } from '@/lib/fullArticleExtractor'
+import { fetchEnrichedArticle } from '@/services/rss/enrichedArticleFetcher'
 
 export interface ArticleEnrichment {
   imageUrl: string | null
@@ -21,20 +22,11 @@ export interface ArticleEnrichment {
  */
 export async function fetchArticleEnrichment(
   url: string,
-  _timeoutMs = 10_000
+  _timeoutMs = 10_000,
+  options?: { title?: string }
 ): Promise<ArticleEnrichment | null> {
   try {
-    const result = await extractFullArticle(url)
-    return {
-      imageUrl: result.featuredImage,
-      description: result.summary,
-      bodyText: result.content || null,
-      htmlBody: result.htmlContent || null,
-      author: result.author,
-      publishedAt: result.publishedAt,
-      readingTimeMinutes: result.readingTimeMinutes,
-      extractionMethod: result.extractionMethod,
-    }
+    return await fetchEnrichedArticle(url, { title: options?.title, trySearch: true })
   } catch {
     return null
   }

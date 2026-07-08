@@ -294,6 +294,14 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     description: '24 saatte bir: eksik slug/seo alanlarını tamamlar, düşük kaliteli taslakları temizler.',
     cronPath: '/api/cron/newsroom/seo',
   },
+  'thin-content-backfill': {
+    id: 'thin-content-backfill',
+    name: 'Thin Content Backfill',
+    nameTr: 'İnce İçerik Tamamlama',
+    schedule: '6h',
+    description: 'İçeriği kısa yayınlanmış haberleri Jina+arama ile çekip AI ile yeniden yazar.',
+    cronPath: '/api/cron/newsroom/thin-content-backfill',
+  },
   weather: {
     id: 'weather',
     name: 'Weather News Worker',

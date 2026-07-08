@@ -25,71 +25,6 @@ function sanitizeRss(text: string): string {
     .trim()
 }
 
-/**
- * GPT fallback: when articleFetcher can't get real content (blocked site),
- * ask OpenAI to write a proper Turkish news article from the headline alone.
- */
-async function generateArticleFromTitle(
-  title: string,
-  sourceLabel: string
-): Promise<{ summary: string; content: string } | null> {
-  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
-  if (!apiKey) return null
-
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
-  const baseUrl = 'https://api.deepseek.com/v1/chat/completions'
-
-  const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
-Sana bir haber başlığı ve kaynak verilecek. Bu başlığa dayanarak gerçekçi, bilgilendirici bir haber içeriği yaz.
-
-KURALLARI:
-- Türkçe, akıcı gazetecilik dili kullan
-- summary: 1-2 cümle, başlığı açıklayan özet (max 150 karakter)
-- content: 3-5 paragraf (toplam 150-300 kelime), kaza/olay/konu hakkında detay ver
-- Bilinmeyen detayları mantıklı şekilde varsay (kayıp sayısı bilinmiyorsa "detaylar araştırılıyor" gibi)
-- Başlıkla çelişme, tutarlı ol
-- Sadece JSON döndür: {"summary":"...","content":"..."}`
-
-  const tryProvider = async (url: string, key: string): Promise<{ summary: string; content: string } | null> => {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          temperature: 0.5,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Başlık: "${title}"\nKaynak: ${sourceLabel}\n\nBu haberi yaz.` },
-          ],
-        }),
-        signal: AbortSignal.timeout(20_000),
-      })
-      // 429 rate-limit → try fallback provider
-      if (res.status === 429) return null
-      if (!res.ok) return null
-      const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
-      const raw = json.choices?.[0]?.message?.content?.trim()
-      if (!raw) return null
-      const parsed = JSON.parse(raw) as { summary?: string; content?: string }
-      const summary = parsed.summary?.trim() || ''
-      const content = parsed.content?.trim() || ''
-      if (content.length < 80) return null
-      return { summary, content }
-    } catch {
-      return null
-    }
-  }
-
-  // Try DeepSeek; on 429 wait 2s and retry once
-  const result = await tryProvider(baseUrl, apiKey)
-  if (result) return result
-
-  await new Promise((r) => setTimeout(r, 2000))
-  return tryProvider(baseUrl, apiKey)
-}
-
 export interface RssEditorOptions {
   sourceIds: readonly string[]
   editorId: EditorId
@@ -149,11 +84,10 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
       let enrichedHtmlBody: string | undefined
       let enrichedReadingTime: number | undefined
       let enrichedAuthor: string | undefined
-      let aiGenerated = false
 
       if (item.link) {
         try {
-          const article = await fetchArticleEnrichment(item.link, 10_000)
+          const article = await fetchArticleEnrichment(item.link, 10_000, { title: item.title })
           if (article) {
             // Always prefer extracted image
             if (article.imageUrl) enrichedImageUrl = article.imageUrl
@@ -177,18 +111,11 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
       enrichedSummary = sanitizeRss(enrichedSummary)
       enrichedContent = sanitizeRss(enrichedContent)
 
-      // If content is still thin (site blocked scraper), use GPT to write article
+      // İçerik hâlâ inceyse pipeline quality gate atlayacak — uydurma içerik YOK
       if (isThinContent(enrichedSummary, enrichedContent)) {
-        try {
-          const generated = await generateArticleFromTitle(item.title, item.source.label)
-          if (generated && generated.content.length > 150) {
-            enrichedSummary = generated.summary || enrichedSummary
-            enrichedContent = generated.content
-            aiGenerated = true
-          }
-        } catch {
-          // non-blocking
-        }
+        console.warn(
+          `[rssEditor/${options.editorId}] thin content after extraction, pipeline may skip: ${item.link}`
+        )
       }
 
       const input: NewsroomArticleInput = {

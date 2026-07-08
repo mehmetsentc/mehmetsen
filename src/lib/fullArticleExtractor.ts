@@ -296,12 +296,14 @@ async function fetchHtml(url: string): Promise<string | null> {
  */
 async function fetchViaJina(url: string): Promise<{ text: string; imageUrl: string | null } | null> {
   try {
+    const jinaKey = process.env.JINA_API_KEY?.trim()
     const jinaUrl = `https://r.jina.ai/${url}`
     const res = await fetch(jinaUrl, {
       headers: {
         Accept: 'text/plain',
         'X-Return-Format': 'markdown',
         'X-Timeout': '15',
+        ...(jinaKey ? { Authorization: `Bearer ${jinaKey}` } : {}),
       },
       signal: AbortSignal.timeout(20_000),
     })

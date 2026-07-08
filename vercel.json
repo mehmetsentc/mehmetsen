@@ -126,6 +126,10 @@
     "src/app/api/cron/newsroom/seo/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/cron/newsroom/thin-content-backfill/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
     "src/app/api/cron/newsroom/archive/route.ts": {
       "maxDuration": 300,
       "memory": 1024
@@ -259,6 +263,10 @@
     {
       "path": "/api/cron/newsroom/seo",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/thin-content-backfill",
+      "schedule": "30 */6 * * *"
     },
     {
       "path": "/api/cron/newsroom/influencer",
