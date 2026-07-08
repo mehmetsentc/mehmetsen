@@ -692,9 +692,13 @@ export const postService = {
     status?: string
     tags?: string[]
     location?: PostLocation | null
+    citySlug?: string   // doğrudan slug (location.city'den türetilmez)
+    districtSlug?: string
     spot?: string
     seoTitle?: string
     seoDescription?: string
+    seoKeywords?: string[]
+    isBreaking?: boolean
   }): Promise<string> {
     console.log('FIRESTORE WRITE START', {
       title: data.title,
@@ -707,8 +711,9 @@ export const postService = {
 
     const now = Date.now()
     const location = toFirestoreLocation(data.location)
-    const citySlug = location?.city ? slugifyCity(location.city) : ''
-    const cityCategory = citySlug ? cityCategoryId(citySlug) : ''
+    // citySlug: doğrudan gelenler önce, yoksa location.city'den türet
+    const resolvedCitySlug = data.citySlug?.trim() || (location?.city ? slugifyCity(location.city) : '')
+    const cityCategory = resolvedCitySlug ? cityCategoryId(resolvedCitySlug) : ''
     const topicCategory = data.category?.trim() ?? ''
     const status = data.status ?? 'pending'
 
@@ -718,6 +723,8 @@ export const postService = {
       spot: data.spot?.trim() ?? '',
       seoTitle: data.seoTitle?.trim() ?? '',
       seoDescription: data.seoDescription?.trim() ?? '',
+      seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
+      isBreaking: data.isBreaking ?? false,
       author: data.author,
       authorId: data.authorId,
       thumbnail: data.thumbnail ?? '',
@@ -728,7 +735,8 @@ export const postService = {
       category: topicCategory || cityCategory,
       categoryId: topicCategory || cityCategory,
       city: location?.city ?? '',
-      citySlug,
+      citySlug: resolvedCitySlug,
+      districtSlug: data.districtSlug?.trim() ?? '',
       location,
       tags: data.tags ?? [],
       type: data.type ?? 'news',
@@ -817,6 +825,8 @@ export const postService = {
       spot?: string
       seoTitle?: string
       seoDescription?: string
+      seoKeywords?: string[]
+      isBreaking?: boolean
     }
   ): Promise<void> {
     const now = Date.now()
@@ -833,6 +843,8 @@ export const postService = {
       spot: data.spot?.trim() ?? '',
       seoTitle: data.seoTitle?.trim() ?? '',
       seoDescription: data.seoDescription?.trim() ?? '',
+      seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
+      isBreaking: data.isBreaking ?? false,
       author: data.author,
       authorId: data.authorId,
       thumbnail: data.thumbnail ?? '',

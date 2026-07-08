@@ -307,13 +307,17 @@ export const adminNewsService = {
     spot?: string
     seoTitle?: string
     seoDescription?: string
+    seoKeywords?: string[]
     category?: string
     city?: string
+    citySlug?: string
+    districtSlug?: string
     thumbnail?: string
     videoUrl?: string
     mediaItems?: MediaItem[]
     draftId?: string | null
     tags?: string[]
+    isBreaking?: boolean
     authorId: string
     authorUsername: string
   }): Promise<string> {
@@ -354,11 +358,15 @@ export const adminNewsService = {
       category: data.category,
       tags: data.tags,
       location,
+      citySlug: data.citySlug?.trim() || undefined,
+      districtSlug: data.districtSlug?.trim() || undefined,
       status: 'published',
       type: 'news',
       spot: data.spot,
       seoTitle: data.seoTitle,
       seoDescription: data.seoDescription,
+      seoKeywords: data.seoKeywords,
+      isBreaking: data.isBreaking ?? false,
     })
   },
 

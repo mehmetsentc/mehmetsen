@@ -11,6 +11,7 @@ import { DEFAULT_CATEGORIES, type CategoryDef } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { adminNewsService } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
+import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import type { MediaItem, Post, PostStatus } from '@/types/post'
 
 interface AdminNewsFormProps {
@@ -54,6 +55,8 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
   const [spot, setSpot]             = useState(post?.spot ?? '')
   const [category, setCategory]     = useState(post?.categoryId ?? '')
   const [city, setCity]             = useState(post?.city ?? '')
+  const [citySlug, setCitySlug]     = useState((post as (Post & { citySlug?: string }))?.citySlug ?? '')
+  const [districtSlug, setDistrictSlug] = useState((post as (Post & { districtSlug?: string }))?.districtSlug ?? '')
   const [status, setStatus]         = useState<PostStatus>(post?.status ?? 'published')
   const [isBreaking, setIsBreaking] = useState(post?.isBreaking ?? false)
 
@@ -71,6 +74,9 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
   const [mediaItems, setMediaItems] = useState<MediaItem[]>(() => seedMedia(post))
   const [saving, setSaving]         = useState(false)
   const [aiKwLoading, setAiKwLoading] = useState(false)
+
+  // Districts for the selected province (recomputed when citySlug changes)
+  const availableDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
 
   const coverThumbnail = useMemo(() => {
     const img = mediaItems.find(m => m.type === 'image')
@@ -130,14 +136,17 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
 
     setSaving(true)
     try {
-      const payload = {
+      const basePayload = {
         title,
         slug: slug.trim() || undefined,
         description,
         summary,
         spot,
         seoTitle, seoDescription, seoKeywords,
-        category, city,
+        category,
+        city,
+        citySlug,
+        districtSlug: districtSlug || undefined,
         thumbnail: coverThumbnail,
         videoUrl: primaryVideoUrl,
         mediaItems,
@@ -147,17 +156,46 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
       }
 
       if (mode === 'create') {
-        await adminNewsService.createAdminNews({ ...payload, authorId: userId, authorUsername: username })
+        await adminNewsService.createAdminNews({ ...basePayload, authorId: userId, authorUsername: username })
         toast.success('Haber yayınlandı')
         router.push(ROUTES.ADMIN.NEWS)
       } else if (post) {
-        await adminNewsService.updateAdminNews(post.id, payload)
+        // Edit: API route üzerinden gönder (Admin SDK + isBreaking/originalCategoryId korunur)
+        const token = await auth.currentUser?.getIdToken()
+        if (!token) { toast.error('Oturum süresi doldu'); return }
+        const res = await fetch(`/api/admin/news/${post.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            title: basePayload.title,
+            slug: basePayload.slug,
+            content: basePayload.description,
+            summary: basePayload.summary,
+            spot: basePayload.spot,
+            seoTitle: basePayload.seoTitle,
+            seoDescription: basePayload.seoDescription,
+            seoKeywords: basePayload.seoKeywords,
+            categoryId: basePayload.category,
+            city: basePayload.city,
+            citySlug: basePayload.citySlug,
+            districtSlug: basePayload.districtSlug,
+            thumbnail: basePayload.thumbnail,
+            videoUrl: basePayload.videoUrl,
+            tags: basePayload.tags,
+            isBreaking: basePayload.isBreaking,
+            status: basePayload.status,
+          }),
+        })
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as { error?: string }
+          throw new Error(err.error ?? 'Güncelleme başarısız')
+        }
         toast.success('Haber güncellendi')
         router.push(ROUTES.ADMIN.NEWS)
       }
     } catch (err) {
       console.error(err)
-      toast.error('Kaydetme başarısız')
+      toast.error(err instanceof Error ? err.message : 'Kaydetme başarısız')
     } finally {
       setSaving(false)
     }
@@ -273,13 +311,42 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
           </div>
         </div>
 
-        {/* Şehir — sadece yerel-haber kategorisinde */}
-        {category === 'yerel-haber' && (
-          <div className="mt-3">
-            <label className={labelCls + ' mb-1.5 block'}>Şehir</label>
-            <Input value={city} onChange={e => setCity(e.target.value)} placeholder="ör. İstanbul" />
-          </div>
-        )}
+        {/* Şehir — tüm kategorilerde isteğe bağlı */}
+        <div className="mt-3 space-y-2">
+          <label className={labelCls + ' block'}>
+            Şehir <span className="font-normal text-[rgb(var(--color-muted))]">(isteğe bağlı · yerel akışta da görünür)</span>
+          </label>
+          <select
+            value={citySlug}
+            onChange={e => {
+              const slug = e.target.value
+              const prov = TURKISH_PROVINCES.find(p => p.slug === slug)
+              setCitySlug(slug)
+              setCity(prov?.name ?? '')
+              setDistrictSlug('')   // şehir değişince ilçeyi sıfırla
+            }}
+            className={inputCls}
+          >
+            <option value="">— Şehir seçin (isteğe bağlı) —</option>
+            {TURKISH_PROVINCES.map(p => (
+              <option key={p.slug} value={p.slug}>{p.name}</option>
+            ))}
+          </select>
+
+          {/* İlçe — şehir seçiliyse göster */}
+          {citySlug && availableDistricts.length > 0 && (
+            <select
+              value={districtSlug}
+              onChange={e => setDistrictSlug(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">— İlçe seçin (isteğe bağlı) —</option>
+              {availableDistricts.map(d => (
+                <option key={d.slug} value={d.slug}>{d.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       {/* ── Son Dakika ── */}

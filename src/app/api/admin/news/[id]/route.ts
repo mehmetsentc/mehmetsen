@@ -25,6 +25,8 @@ interface UpdatePayload {
   tags?: string[]
   citySlug?: string
   city?: string
+  districtSlug?: string
+  district?: string
   thumbnail?: string
   videoUrl?: string
   additionalImages?: Array<{ url: string; caption?: string }>
@@ -69,6 +71,8 @@ export async function PUT(request: Request, context: RouteContext) {
   if (Array.isArray(body.tags)) update.tags = body.tags
   if (body.citySlug !== undefined) update.citySlug = body.citySlug.trim()
   if (body.city !== undefined)    update.city = body.city.trim()
+  if (body.districtSlug !== undefined) update.districtSlug = body.districtSlug?.trim() ?? ''
+  if (body.district !== undefined)     update.district = body.district?.trim() ?? ''
   if (body.thumbnail?.trim()) {
     update.thumbnail = body.thumbnail.trim()
     update.coverImageUrl = body.thumbnail.trim()

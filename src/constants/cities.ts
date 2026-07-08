@@ -227,6 +227,38 @@ export const DISTRICT_TO_PROVINCE_SLUG: Readonly<Record<string, string>> = {
   lapseki: 'canakkale',
 }
 
+/** Proper Turkish display names for districts in DISTRICT_TO_PROVINCE_SLUG. */
+export const DISTRICT_DISPLAY_NAMES: Readonly<Record<string, string>> = {
+  manavgat: 'Manavgat', alanya: 'Alanya', serik: 'Serik', kas: 'Kaş',
+  kemer: 'Kemer', muratpasa: 'Muratpaşa', kepez: 'Kepez', konyaalti: 'Konyaaltı', aksu: 'Aksu',
+  kadikoy: 'Kadıköy', besiktas: 'Beşiktaş', uskudar: 'Üsküdar', bakirkoy: 'Bakırköy',
+  sisli: 'Şişli', beyoglu: 'Beyoğlu', pendik: 'Pendik', bagcilar: 'Bağcılar', esenyurt: 'Esenyurt',
+  cankaya: 'Çankaya', kecioren: 'Keçiören', yenimahalle: 'Yenimahalle', mamak: 'Mamak',
+  karsiyaka: 'Karşıyaka', bornova: 'Bornova', konak: 'Konak', buca: 'Buca', cesme: 'Çeşme',
+  fethiye: 'Fethiye', bodrum: 'Bodrum', marmaris: 'Marmaris', datca: 'Datça',
+  merkezefendi: 'Merkezefendi', pamukkale: 'Pamukkale',
+  meram: 'Meram', selcuklu: 'Selçuklu', karatay: 'Karatay',
+  mezitli: 'Mezitli', yenishehir: 'Yenişehir', toroslar: 'Toroslar', akdeniz: 'Akdeniz', tarsus: 'Tarsus',
+  osmangazi: 'Osmangazi', nilufer: 'Nilüfer', gemlik: 'Gemlik', inegeul: 'İnegöl',
+  corlu: 'Çorlu', cerkezkoy: 'Çerkezköy',
+  iskenderun: 'İskenderun', antakya: 'Antakya', defne: 'Defne',
+  safranbolu: 'Safranbolu',
+  biga: 'Biga', can: 'Çan', yenice: 'Yenice', bayramic: 'Bayramiç', ezine: 'Ezine',
+  ayvacik: 'Ayvacık', gokceada: 'Gökçeada', bozcaada: 'Bozcaada', gelibolu: 'Gelibolu',
+  eceabat: 'Eceabat', lapseki: 'Lapseki',
+}
+
+/** Returns all districts for a given province slug, sorted by display name. */
+export function getDistrictsForProvince(provinceSlug: string): Array<{ slug: string; name: string }> {
+  const result: Array<{ slug: string; name: string }> = []
+  for (const [distSlug, provSlug] of Object.entries(DISTRICT_TO_PROVINCE_SLUG)) {
+    if (provSlug === provinceSlug) {
+      result.push({ slug: distSlug, name: DISTRICT_DISPLAY_NAMES[distSlug] ?? distSlug })
+    }
+  }
+  return result.sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+}
+
 /** Map user district or province slug to province slug used on ingested news. */
 export function resolveLocalNewsCitySlug(rawSlug: string): string {
   return normalizeCitySlug(rawSlug)
