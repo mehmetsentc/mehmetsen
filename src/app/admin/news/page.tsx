@@ -218,6 +218,7 @@ function EditDrawer({
   onSaved: (updated: Partial<AdminNewsItem>) => void
 }) {
   const [title, setTitle] = useState(post.title ?? '')
+  const [slug, setSlug] = useState((post as AdminNewsItem & { slug?: string }).slug ?? '')
   const [summary, setSummary] = useState(post.summary ?? '')
   const [content, setContent] = useState(post.content ?? '')
   const [spot, setSpot] = useState(post.spot ?? '')
@@ -297,7 +298,7 @@ function EditDrawer({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title, summary, content, spot, categoryId, status,
+          title, slug: slug.trim() || undefined, summary, content, spot, categoryId, status,
           thumbnail,
           videoUrl,
           additionalImages,
@@ -368,6 +369,26 @@ function EditDrawer({
               className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Haber başlığı..."
             />
+          </div>
+
+          {/* Slug */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">
+                Slug (URL)
+              </label>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400">⚠ Değiştirmek mevcut URL'yi bozabilir</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 text-[11px] text-[rgb(var(--color-muted))]">nahaber.com/haber/</span>
+              <input
+                type="text"
+                value={slug}
+                onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))}
+                className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm font-mono text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-orange-400"
+                placeholder="haber-slug..."
+              />
+            </div>
           </div>
 
           {/* Spot / girizgah */}

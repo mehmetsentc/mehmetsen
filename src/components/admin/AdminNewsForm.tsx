@@ -48,7 +48,9 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
 
   // ── Temel alanlar ────────────────────────────────────────────────────────
   const [title, setTitle]           = useState(post?.title ?? '')
+  const [slug, setSlug]             = useState((post as (Post & { slug?: string }))?.slug ?? '')
   const [description, setDescription] = useState(post?.content ?? '')
+  const [summary, setSummary]       = useState(post?.summary ?? '')
   const [spot, setSpot]             = useState(post?.spot ?? '')
   const [category, setCategory]     = useState(post?.categoryId ?? '')
   const [city, setCity]             = useState(post?.city ?? '')
@@ -129,7 +131,12 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
     setSaving(true)
     try {
       const payload = {
-        title, description, spot, seoTitle, seoDescription, seoKeywords,
+        title,
+        slug: slug.trim() || undefined,
+        description,
+        summary,
+        spot,
+        seoTitle, seoDescription, seoKeywords,
         category, city,
         thumbnail: coverThumbnail,
         videoUrl: primaryVideoUrl,
@@ -169,6 +176,26 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
         <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Haber başlığı" required />
       </div>
 
+      {/* ── Slug (edit modunda göster) ── */}
+      {mode === 'edit' && (
+        <div className={sectionCls}>
+          <div className="flex items-center justify-between">
+            <label className={labelCls}>Slug (URL)</label>
+            <span className="text-[10px] text-amber-600 dark:text-amber-400">⚠ Değiştirmek mevcut URL'yi bozabilir</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-[11px] text-[rgb(var(--color-muted))]">nahaber.com/haber/</span>
+            <input
+              type="text"
+              value={slug}
+              onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))}
+              className={inputCls + ' font-mono'}
+              placeholder="haber-slug..."
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── İçerik ── */}
       <div className={sectionCls}>
         <label className={labelCls}>İçerik</label>
@@ -189,6 +216,18 @@ export function AdminNewsForm({ mode, post, userId, username }: AdminNewsFormPro
           onChange={e => setSpot(e.target.value)}
           rows={3}
           placeholder="Haberin kısa özet giriş metni"
+          className={inputCls + ' resize-none'}
+        />
+      </div>
+
+      {/* ── Özet ── */}
+      <div className={sectionCls}>
+        <label className={labelCls}>Özet</label>
+        <textarea
+          value={summary}
+          onChange={e => setSummary(e.target.value)}
+          rows={2}
+          placeholder="Kısa özet..."
           className={inputCls + ' resize-none'}
         />
       </div>

@@ -12,6 +12,7 @@ type RouteContext = { params: Promise<{ id: string }> }
 
 interface UpdatePayload {
   title?: string
+  slug?: string
   summary?: string
   content?: string
   spot?: string
@@ -53,6 +54,7 @@ export async function PUT(request: Request, context: RouteContext) {
   }
 
   if (body.title?.trim())      update.title = body.title.trim()
+  if (body.slug?.trim())       update.slug = body.slug.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
   if (body.summary?.trim())    update.summary = body.summary.trim()
   if (body.content?.trim())    update.content = body.content.trim()
   if (body.spot?.trim())       update.spot = body.spot.trim()
@@ -116,9 +118,10 @@ export async function PUT(request: Request, context: RouteContext) {
       revalidatePath('/kategori/son-dakika') // breaking news strip her zaman temizle
       if (oldCategoryId) revalidatePath(`/kategori/${oldCategoryId}`)
       if (newCategoryId && newCategoryId !== oldCategoryId) revalidatePath(`/kategori/${newCategoryId}`)
-      // Makale sayfasını da temizle
+      // Makale sayfasını da temizle (eski ve yeni slug)
       const slug = prevData?.slug as string | undefined
       if (slug) revalidatePath(`/haber/${slug}`)
+      if (body.slug?.trim() && body.slug.trim() !== slug) revalidatePath(`/haber/${body.slug.trim()}`)
     } catch { /* revalidation is best-effort */ }
     return NextResponse.json({ ok: true, collection: 'news' })
   }
