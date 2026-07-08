@@ -62,13 +62,7 @@ export async function PUT(request: Request, context: RouteContext) {
   if (body.seoDescription?.trim()) update.seoDescription = body.seoDescription.trim()
   if (Array.isArray(body.seoKeywords)) update.seoKeywords = body.seoKeywords.map((k: string) => k.trim().toLowerCase()).filter(Boolean)
   if (body.categoryId?.trim()) {
-    const newCat = body.categoryId.trim()
-    update.categoryId = newCat
-    // Son-dakika dışına çıkarılırsa isBreaking otomatik kapat
-    if (newCat !== 'son-dakika') {
-      update.isBreaking = false
-      update.breakingScore = 30
-    }
+    update.categoryId = body.categoryId.trim()
   }
   if (typeof body.isBreaking === 'boolean') update.isBreaking = body.isBreaking
   if (body.status?.trim())     update.status = body.status.trim()
@@ -103,6 +97,26 @@ export async function PUT(request: Request, context: RouteContext) {
   if (newsSnap.exists) {
     const prevData = newsSnap.data()
     const oldCategoryId = prevData?.categoryId as string | undefined
+
+    // Breaking toggle — originalCategoryId ile kategori koru/geri yükle
+    if (body.isBreaking === true) {
+      // İlk kez breaking açılıyorsa orijinal kategoriyi sakla
+      const prevOriginalCat = prevData?.originalCategoryId as string | undefined
+      const prevCat = prevData?.categoryId as string | undefined
+      if (!prevOriginalCat && prevCat && prevCat !== 'son-dakika') {
+        update.originalCategoryId = prevCat
+      }
+      update.breakingSetAt = FieldValue.serverTimestamp()
+    } else if (body.isBreaking === false) {
+      // Breaking kapatılıyorsa orijinal kategoriye geri dön
+      const originalCat = prevData?.originalCategoryId as string | undefined
+      if (originalCat) {
+        if (!update.categoryId) update.categoryId = originalCat
+        update.originalCategoryId = FieldValue.delete()
+      }
+      update.breakingScore = 30
+    }
+
     await newsRef.update(update)
     // Sync to posts if published
     if (prevData?.status === 'published' || body.status === 'published') {

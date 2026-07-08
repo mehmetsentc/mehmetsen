@@ -148,13 +148,24 @@ async function handler(request: Request) {
         continue
       }
 
-      batch.update(doc.ref, {
+      // Orijinal kategori varsa oraya döndür; son-dakika pipeline haberleri gundem'e gider
+      const originalCat = data.originalCategoryId as string | undefined
+      const currentCat = data.categoryId as string | undefined
+      const restoreCat =
+        originalCat ||
+        (currentCat && currentCat !== 'son-dakika' ? currentCat : null) ||
+        TARGET_CATEGORY
+
+      const expireUpdate: Record<string, unknown> = {
         isBreaking: false,
         breakingScore: 30,
-        categoryId: TARGET_CATEGORY,
+        categoryId: restoreCat,
         updatedAt: FieldValue.serverTimestamp(),
         _breakingExpiredAt: FieldValue.serverTimestamp(),
-      })
+      }
+      if (originalCat) expireUpdate.originalCategoryId = FieldValue.delete()
+
+      batch.update(doc.ref, expireUpdate)
       batchCount++
       expired++
 
@@ -180,7 +191,7 @@ async function handler(request: Request) {
     revalidatePath('/kategori/son-dakika')
     revalidatePath('/kategori/gundem')
     revalidatePath('/')
-    console.log(`[expire-breaking] ${expired} haber son-dakika→gündem taşındı (force=${forceAll})`)
+    console.log(`[expire-breaking] ${expired} haber son-dakika süresi doldu → kendi kategorisine döndürüldü (force=${forceAll})`)
   }
 
   return NextResponse.json(
