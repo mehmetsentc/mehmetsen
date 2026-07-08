@@ -30,7 +30,7 @@ function pruneUndefined<T extends Record<string, unknown>>(payload: T): Partial<
   return out as Partial<T>
 }
 
-function isValidUserData(data: Record<string, unknown>): boolean {
+export function isValidUserData(data: Record<string, unknown>): boolean {
   return (
     typeof data.uid === 'string' &&
     typeof data.username === 'string' &&
@@ -40,7 +40,7 @@ function isValidUserData(data: Record<string, unknown>): boolean {
   )
 }
 
-function normalizeUser(uid: string, data: Record<string, unknown>): User {
+export function normalizeUser(uid: string, data: Record<string, unknown>): User {
   return {
     uid: (data.uid as string) ?? uid,
     username: (data.username as string) ?? '',

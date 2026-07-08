@@ -58,7 +58,7 @@ export function TrendingPanel() {
           {topics.map((item, i) => (
             <li key={item.tag}>
               <Link
-                href={`${ROUTES.SEARCH}?q=${encodeURIComponent(item.tag)}`}
+                href={`${ROUTES.SEARCH}?q=${encodeURIComponent(item.tag)}&tag=1`}
                 className="group flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-[rgb(var(--color-surface))]"
               >
                 <span className="text-sm font-bold text-[rgb(var(--color-border))]">{i + 1}</span>

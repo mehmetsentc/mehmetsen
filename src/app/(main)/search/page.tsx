@@ -178,19 +178,24 @@ function SearchPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialQ = searchParams.get('q') ?? ''
+  const initialTagOnly = searchParams.get('tag') === '1'
   const [tab, setTab] = usePageState<SearchTab>(PAGE_STATE_KEYS.searchTab, 'all')
-  const { query, setQuery, results, loading, error, searched, submit } = useSearch(initialQ)
+  const { query, applyQuery, results, loading, error, searched, submit } = useSearch(initialQ, initialTagOnly)
 
   useEffect(() => {
     const q = searchParams.get('q') ?? ''
-    if (q !== query) setQuery(q)
+    const nextTagOnly = searchParams.get('tag') === '1'
+    applyQuery(q, nextTagOnly)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  const updateQuery = (value: string) => {
-    setQuery(value)
+  const updateQuery = (value: string, tag = false) => {
+    applyQuery(value, tag)
     const trimmed = value.trim()
-    const next = trimmed ? `${ROUTES.SEARCH}?q=${encodeURIComponent(trimmed)}` : ROUTES.SEARCH
+    const params = new URLSearchParams()
+    if (trimmed) params.set('q', trimmed)
+    if (tag) params.set('tag', '1')
+    const next = trimmed ? `${ROUTES.SEARCH}?${params.toString()}` : ROUTES.SEARCH
     router.replace(next)
   }
 

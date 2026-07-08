@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { searchService, type SearchResults } from '@/services/searchService'
+import { searchService, type SearchOptions, type SearchResults } from '@/services/searchService'
 
 const DEBOUNCE_MS = 350
 
@@ -12,15 +12,17 @@ const emptyResults: SearchResults = {
   categories: [],
 }
 
-export function useSearch(initialQuery = '') {
+export function useSearch(initialQuery = '', initialTagOnly = false) {
   const [query, setQuery] = useState(initialQuery)
+  const [tagOnly, setTagOnly] = useState(initialTagOnly)
   const [results, setResults] = useState<SearchResults>(emptyResults)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState(false)
   const requestIdRef = useRef(0)
+  const skipDebounceRef = useRef(initialQuery.trim().length >= 2)
 
-  const runSearch = useCallback(async (term: string) => {
+  const runSearch = useCallback(async (term: string, options?: Pick<SearchOptions, 'tagOnly'>) => {
     const normalized = searchService.normalizeTerm(term)
     if (normalized.length < 2) {
       setResults(emptyResults)
@@ -35,7 +37,9 @@ export function useSearch(initialQuery = '') {
     setError(null)
 
     try {
-      const next = await searchService.search(term)
+      const next = await searchService.search(term, {
+        tagOnly: options?.tagOnly ?? tagOnly,
+      })
       if (requestId !== requestIdRef.current) return
       setResults(next)
       setSearched(true)
@@ -49,7 +53,7 @@ export function useSearch(initialQuery = '') {
         setLoading(false)
       }
     }
-  }, [])
+  }, [tagOnly])
 
   useEffect(() => {
     if (!query.trim()) {
@@ -59,20 +63,33 @@ export function useSearch(initialQuery = '') {
       return
     }
 
+    const delay = skipDebounceRef.current ? 0 : DEBOUNCE_MS
+    skipDebounceRef.current = false
+
     const timer = setTimeout(() => {
       void runSearch(query)
-    }, DEBOUNCE_MS)
+    }, delay)
 
     return () => clearTimeout(timer)
-  }, [query, runSearch])
+  }, [query, tagOnly, runSearch])
 
   const submit = useCallback(() => {
+    skipDebounceRef.current = true
     void runSearch(query)
   }, [query, runSearch])
+
+  const applyQuery = useCallback((value: string, nextTagOnly = false) => {
+    skipDebounceRef.current = true
+    setTagOnly(nextTagOnly)
+    setQuery(value)
+  }, [])
 
   return {
     query,
     setQuery,
+    tagOnly,
+    setTagOnly,
+    applyQuery,
     results,
     loading,
     error,

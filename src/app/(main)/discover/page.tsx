@@ -78,7 +78,7 @@ function TrendingTopicRow({ item, rank, maxCount }: { item: TrendingTopic; rank:
 
   return (
     <Link
-      href={`${ROUTES.SEARCH}?q=${encodeURIComponent(item.tag)}`}
+      href={`${ROUTES.SEARCH}?q=${encodeURIComponent(item.tag)}&tag=1`}
       className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[rgb(var(--color-card))]"
     >
       {/* Rank */}

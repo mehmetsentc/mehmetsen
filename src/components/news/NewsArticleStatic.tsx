@@ -309,7 +309,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
                 {post.tags.map((tag) => (
                   <Link
                     key={tag}
-                    href={`${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}`}
+                    href={`${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}&tag=1`}
                     className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--color-surface))] px-2.5 py-1 text-xs font-semibold text-blue-600 ring-1 ring-[rgb(var(--color-border))]"
                   >
                     <Hash className="h-3 w-3" />

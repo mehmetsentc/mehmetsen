@@ -4,13 +4,13 @@ import { mapNewsSnapshot } from '@/lib/newsMapper'
 import { hasVideoContent, isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { withTimeout } from '@/lib/asyncUtils'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
-import { userService } from '@/services/userService'
+import { isValidUserData, normalizeUser } from '@/services/userService'
 import type { Post } from '@/types/post'
 import type { User } from '@/types/user'
 
-const SEARCH_POOL = 300        // son N makale bellekte tam-metin taraması için
-const TAG_FETCH_LIMIT = 150    // tag sorgusu maks döküman sayısı
-const QUERY_TIMEOUT_MS = 12_000
+const SEARCH_POOL = 120        // son N makale bellekte tam-metin taraması için
+const TAG_FETCH_LIMIT = 60     // tag sorgusu maks döküman sayısı
+const QUERY_TIMEOUT_MS = 8_000
 const MIN_QUERY_LENGTH = 2
 
 export type SearchCategory = (typeof DEFAULT_CATEGORIES)[number]
@@ -20,6 +20,12 @@ export interface SearchResults {
   videos: Post[]
   users: User[]
   categories: SearchCategory[]
+}
+
+export interface SearchOptions {
+  maxPerType?: number
+  /** Etiket tıklaması — sadece tag sorgusu, kullanıcı/havuz taraması yok */
+  tagOnly?: boolean
 }
 
 function normalizeTerm(raw: string): string {
@@ -49,43 +55,24 @@ function matchesPost(post: Post, term: string): boolean {
  * Tag'ler büyük/küçük harf farklılığı olabileceğinden birden fazla varyant denenır.
  */
 async function fetchByTag(term: string): Promise<Post[]> {
-  // Tags farklı büyük/küçük harf biçimlerinde saklanmış olabilir
-  const variants = new Set<string>([
-    term,                                                    // normalized (lowercase)
-    term.charAt(0).toUpperCase() + term.slice(1),           // Title case
-    term.toUpperCase(),                                      // ALL CAPS
-  ])
-
-  const seen = new Set<string>()
-  const results: Post[] = []
-
-  await Promise.allSettled(
-    [...variants].map(async (variant) => {
-      try {
-        const snap = await withTimeout(
-          getDocs(
-            query(
-              collection(db, VIDEO_FEED_COLLECTION),
-              where('tags', 'array-contains', variant),
-              limit(TAG_FETCH_LIMIT)
-            )
-          ),
-          QUERY_TIMEOUT_MS,
-          `search-tag-${variant}`
+  try {
+    const snap = await withTimeout(
+      getDocs(
+        query(
+          collection(db, VIDEO_FEED_COLLECTION),
+          where('tags', 'array-contains', term),
+          limit(TAG_FETCH_LIMIT)
         )
-        for (const post of mapNewsSnapshot(snap.docs)) {
-          if (!seen.has(post.id) && isPubliclyVisibleStatus(post.status)) {
-            seen.add(post.id)
-            results.push(post)
-          }
-        }
-      } catch {
-        // Index eksik veya sorgu başarısız — sessizce atla
-      }
-    })
-  )
-
-  return results.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      ),
+      QUERY_TIMEOUT_MS,
+      'search-tag'
+    )
+    return mapNewsSnapshot(snap.docs)
+      .filter((p) => isPubliclyVisibleStatus(p.status))
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+  } catch {
+    return []
+  }
 }
 
 async function fetchRecentPosts(): Promise<Post[]> {
@@ -110,17 +97,20 @@ async function fetchRecentPosts(): Promise<Post[]> {
   }
 }
 
-async function searchPosts(term: string, maxResults: number): Promise<Post[]> {
-  // Tag sorgusu (tüm arşiv) + son makaleler havuzu paralel çalışır
-  const [tagPosts, poolPosts] = await Promise.all([
-    fetchByTag(term),
-    fetchRecentPosts(),
-  ])
+async function searchPosts(term: string, maxResults: number, tagOnly = false): Promise<Post[]> {
+  const tagPosts = await fetchByTag(term)
 
-  // Son makaleleri bellekte filtrele (başlık, içerik, özet vb.)
+  if (tagOnly) {
+    return tagPosts.slice(0, maxResults)
+  }
+
+  if (tagPosts.length >= maxResults) {
+    return tagPosts.slice(0, maxResults)
+  }
+
+  const poolPosts = await fetchRecentPosts()
   const poolMatches = poolPosts.filter((p) => matchesPost(p, term))
 
-  // Birleştir: tag sonuçları önce (daha kesin), ardından havuz eşleşmeleri
   const seen = new Set<string>()
   const merged: Post[] = []
   for (const post of [...tagPosts, ...poolMatches]) {
@@ -135,6 +125,20 @@ async function searchPosts(term: string, maxResults: number): Promise<Post[]> {
     .slice(0, maxResults)
 }
 
+function userFromDoc(uid: string, data: Record<string, unknown>): User | null {
+  if (!isValidUserData(data)) return null
+  const user = normalizeUser(uid, data)
+  if (user.isBlocked) return null
+  return user
+}
+
+function matchesUser(user: User, normalized: string): boolean {
+  const haystack = [user.username, user.displayName, user.bio ?? '']
+    .join(' ')
+    .toLocaleLowerCase('tr-TR')
+  return haystack.includes(normalized)
+}
+
 async function searchUsers(term: string, maxResults: number): Promise<User[]> {
   const normalized = term.replace(/^@/, '')
   if (normalized.length < MIN_QUERY_LENGTH) return []
@@ -142,15 +146,11 @@ async function searchUsers(term: string, maxResults: number): Promise<User[]> {
   const users: User[] = []
   const seen = new Set<string>()
 
-  const addUser = async (uid: string) => {
+  const addFromSnapshot = (uid: string, data: Record<string, unknown>) => {
     if (seen.has(uid)) return
     seen.add(uid)
-    const user = await userService.getByUid(uid)
-    if (!user || user.isBlocked) return
-    const haystack = [user.username, user.displayName, user.bio ?? '']
-      .join(' ')
-      .toLocaleLowerCase('tr-TR')
-    if (haystack.includes(normalized)) users.push(user)
+    const user = userFromDoc(uid, data)
+    if (user && matchesUser(user, normalized)) users.push(user)
   }
 
   try {
@@ -162,15 +162,20 @@ async function searchUsers(term: string, maxResults: number): Promise<User[]> {
         limit(maxResults)
       )
     )
-    await Promise.all(prefixSnap.docs.map((docSnap) => addUser(docSnap.id)))
+    for (const docSnap of prefixSnap.docs) {
+      addFromSnapshot(docSnap.id, docSnap.data() as Record<string, unknown>)
+    }
   } catch {
     // username index may be missing
   }
 
   if (users.length < maxResults) {
     try {
-      const poolSnap = await getDocs(query(collection(db, Collections.USERS), limit(80)))
-      await Promise.all(poolSnap.docs.map((docSnap) => addUser(docSnap.id)))
+      const poolSnap = await getDocs(query(collection(db, Collections.USERS), limit(40)))
+      for (const docSnap of poolSnap.docs) {
+        addFromSnapshot(docSnap.id, docSnap.data() as Record<string, unknown>)
+        if (users.length >= maxResults) break
+      }
     } catch {
       // ignore
     }
@@ -191,20 +196,21 @@ function searchCategories(term: string): SearchCategory[] {
 export const searchService = {
   normalizeTerm,
 
-  async search(rawTerm: string, maxPerType = 12): Promise<SearchResults> {
+  async search(rawTerm: string, options: SearchOptions = {}): Promise<SearchResults> {
+    const { maxPerType = 12, tagOnly = false } = options
     const term = normalizeTerm(rawTerm)
     if (term.length < MIN_QUERY_LENGTH) {
       return { posts: [], videos: [], users: [], categories: [] }
     }
 
     const [matchedPosts, users] = await Promise.all([
-      searchPosts(term, maxPerType * 2),
-      searchUsers(term, maxPerType),
+      searchPosts(term, maxPerType * 2, tagOnly),
+      tagOnly ? Promise.resolve([]) : searchUsers(term, maxPerType),
     ])
 
     const videos = matchedPosts.filter(hasVideoContent).slice(0, maxPerType)
     const posts = matchedPosts.filter((p) => !hasVideoContent(p)).slice(0, maxPerType)
-    const categories = searchCategories(term)
+    const categories = tagOnly ? [] : searchCategories(term)
 
     return { posts, videos, users, categories }
   },

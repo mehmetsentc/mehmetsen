@@ -33,7 +33,7 @@ export function PostMeta({ post, className = '' }: PostMetaProps) {
         post.tags.map((tag) => (
           <Link
             key={tag}
-            href={`${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}`}
+            href={`${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}&tag=1`}
             className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-blue-600 hover:underline dark:text-blue-400"
           >
             <Hash className="h-3 w-3" />
