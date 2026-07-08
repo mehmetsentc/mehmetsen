@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { getSitemapPage, getSitemapPageCount, sitemapEntriesToXml } from '@/lib/sitemap/mainSitemap'
 
 export const runtime = 'nodejs'
-export const revalidate = 3600
+// 48h cache — sitemaps don't need frequent rebuilds; this was causing massive Firestore reads
+export const revalidate = 172800
 
 export async function generateStaticParams() {
   try {
@@ -35,7 +36,7 @@ ${sitemapEntriesToXml(entries)}
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 's-maxage=3600, stale-while-revalidate=600',
+      'Cache-Control': 's-maxage=172800, stale-while-revalidate=7200',
     },
   })
 }

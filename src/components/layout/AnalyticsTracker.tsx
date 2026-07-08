@@ -1,9 +1,11 @@
 'use client'
 
 import { useTrackPageview } from '@/hooks/useTrackPageview'
+import { useWebVitals } from '@/hooks/useWebVitals'
 
-/** Drop this into the root layout — tracks every page navigation automatically. */
+/** Tracks pageviews + Core Web Vitals on every navigation. */
 export function AnalyticsTracker() {
   useTrackPageview()
+  useWebVitals()
   return null
 }

@@ -1,4 +1,3 @@
-import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import type { MetadataRoute } from 'next'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
@@ -6,22 +5,38 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 
+// ─── Pagination config ────────────────────────────────────────────────────────
+// Time-range pagination: each sitemap page covers one WEEK of articles.
+// This eliminates Firestore OFFSET scans (old approach scanned 20k+ docs per page).
+// Each query now reads ONLY the documents it returns.
+const DAYS_PER_PAGE = 7
+const MS_PER_PAGE   = DAYS_PER_PAGE * 24 * 60 * 60 * 1000
+
+// Maximum pages = 2 years of weekly buckets. Google only cares about recent content.
+const MAX_PAGES = 104 // 2 years
+
+// Hard limit per page (Firestore max = 1000)
 export const ARTICLES_PER_PAGE = 500
 
+// ─── Helper: fields only ──────────────────────────────────────────────────────
+// Select only the 3 fields we actually need → fewer bytes transferred
+const SELECT_FIELDS = ['slug', 'publishedAt', 'updatedAt'] as const
+
+// ─── Static + category routes (page 0 only) ──────────────────────────────────
 async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: `${base}${ROUTES.HOME}`, changeFrequency: 'hourly', priority: 1 },
-    { url: `${base}${ROUTES.FEED}`, changeFrequency: 'hourly', priority: 1 },
+    { url: `${base}${ROUTES.HOME}`,     changeFrequency: 'hourly', priority: 1 },
+    { url: `${base}${ROUTES.FEED}`,     changeFrequency: 'hourly', priority: 1 },
     { url: `${base}${ROUTES.DISCOVER}`, changeFrequency: 'hourly', priority: 0.9 },
-    { url: `${base}${ROUTES.EVENTS}`, changeFrequency: 'daily', priority: 0.8 },
-    { url: `${base}${ROUTES.REELS}`, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${base}${ROUTES.LOCAL}`, changeFrequency: 'hourly', priority: 0.85 },
-    { url: `${base}${ROUTES.APP}`, changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${base}/hakkimizda`, changeFrequency: 'monthly', priority: 0.4 },
-    { url: `${base}/iletisim`, changeFrequency: 'monthly', priority: 0.4 },
-    { url: `${base}/gizlilik`, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${base}${ROUTES.EVENTS}`,   changeFrequency: 'daily',  priority: 0.8 },
+    { url: `${base}${ROUTES.REELS}`,    changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${base}${ROUTES.LOCAL}`,    changeFrequency: 'hourly', priority: 0.85 },
+    { url: `${base}${ROUTES.APP}`,      changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/hakkimizda`,        changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${base}/iletisim`,          changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${base}/gizlilik`,          changeFrequency: 'monthly', priority: 0.3 },
     { url: `${base}/editoryal-ilkeler`, changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${base}/kune`, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${base}/kune`,              changeFrequency: 'monthly', priority: 0.3 },
   ]
 
   const categoryRoutes: MetadataRoute.Sitemap = DEFAULT_CATEGORIES.map((cat) => ({
@@ -35,11 +50,11 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
       .collection(Collections.NEWS)
       .where('status', '==', 'published')
       .orderBy('publishedAt', 'desc')
+      .select(...SELECT_FIELDS, 'tags')
       .limit(300)
       .get()
 
     const tagSlugs = new Set<string>()
-
     for (const doc of latestForSeo.docs) {
       const data = doc.data() as { tags?: string[] }
       for (const tag of data.tags ?? []) {
@@ -61,8 +76,9 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
   }
 }
 
+// ─── Article doc → sitemap entry ─────────────────────────────────────────────
 function mapArticleDocs(
-  docs: QueryDocumentSnapshot[],
+  docs: FirebaseFirestore.QueryDocumentSnapshot[],
   base: string
 ): MetadataRoute.Sitemap {
   return docs.map((doc) => {
@@ -79,33 +95,59 @@ function mapArticleDocs(
   })
 }
 
+// ─── Time windows for each page ───────────────────────────────────────────────
+// page 0 → now .. now-7d  (most recent week)
+// page 1 → now-7d .. now-14d
+// page N → now - N*7d .. now - (N+1)*7d
+function pageTimeRange(id: number): { from: number; to: number } {
+  const now = Date.now()
+  return {
+    to:   now - id * MS_PER_PAGE,
+    from: now - (id + 1) * MS_PER_PAGE,
+  }
+}
+
+// ─── Page count ───────────────────────────────────────────────────────────────
 export async function getSitemapPageCount(): Promise<number> {
   try {
-    const countSnap = await getAdminFirestore()
+    // Find the oldest published article to know how many weeks back we go
+    const oldest = await getAdminFirestore()
       .collection(Collections.NEWS)
       .where('status', '==', 'published')
-      .count()
+      .orderBy('publishedAt', 'asc')
+      .select('publishedAt')
+      .limit(1)
       .get()
-    const total = countSnap.data().count
-    return Math.max(1, Math.ceil(total / ARTICLES_PER_PAGE))
+
+    if (oldest.empty) return 1
+
+    const firstPublishedAt = (oldest.docs[0].data() as { publishedAt?: number }).publishedAt ?? 0
+    const weeksBack = Math.ceil((Date.now() - firstPublishedAt) / MS_PER_PAGE)
+    return Math.min(MAX_PAGES, Math.max(1, weeksBack))
   } catch {
     return 1
   }
 }
 
+// ─── Sitemap page ─────────────────────────────────────────────────────────────
 export async function getSitemapPage(id: number): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl()
 
   try {
+    const { from, to } = pageTimeRange(id)
+
     const snap = await getAdminFirestore()
       .collection(Collections.NEWS)
       .where('status', '==', 'published')
+      .where('publishedAt', '>=', from)
+      .where('publishedAt', '<', to)
       .orderBy('publishedAt', 'desc')
-      .offset(id * ARTICLES_PER_PAGE)
+      .select(...SELECT_FIELDS)
       .limit(ARTICLES_PER_PAGE)
       .get()
 
     const articles = mapArticleDocs(snap.docs, base)
+
     if (id === 0) {
       const staticRoutes = await staticAndCategoryRoutes(base)
       return [...staticRoutes, ...articles]
@@ -117,6 +159,7 @@ export async function getSitemapPage(id: number): Promise<MetadataRoute.Sitemap>
   }
 }
 
+// ─── XML helpers ─────────────────────────────────────────────────────────────
 function formatLastMod(value: Date | string | undefined): string {
   if (!value) return ''
   const date = value instanceof Date ? value : new Date(value)
@@ -136,14 +179,10 @@ function escapeXml(value: string): string {
 export function sitemapEntriesToXml(entries: MetadataRoute.Sitemap): string {
   return entries
     .map((entry) => {
-      const lastMod = formatLastMod(entry.lastModified)
-      const changeFreq = entry.changeFrequency
-        ? `<changefreq>${entry.changeFrequency}</changefreq>`
-        : ''
-      const priority =
-        entry.priority !== undefined ? `<priority>${entry.priority}</priority>` : ''
+      const lastMod    = formatLastMod(entry.lastModified)
+      const changeFreq = entry.changeFrequency ? `<changefreq>${entry.changeFrequency}</changefreq>` : ''
+      const priority   = entry.priority !== undefined ? `<priority>${entry.priority}</priority>` : ''
       const lastModTag = lastMod ? `<lastmod>${lastMod}</lastmod>` : ''
-
       return `<url><loc>${escapeXml(entry.url)}</loc>${lastModTag}${changeFreq}${priority}</url>`
     })
     .join('')

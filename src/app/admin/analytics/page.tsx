@@ -7,7 +7,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { collection, query, where, orderBy, limit, getDocs, getCountFromServer, doc, getDoc } from 'firebase/firestore'
 import {
   TrendingUp, Eye, Users, Newspaper, RefreshCw, BarChart3,
-  Globe, Monitor, Smartphone, ExternalLink, Activity,
+  Globe, Monitor, Smartphone, ExternalLink, Activity, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +22,15 @@ interface DailyDoc {
 
 interface TopPost { id: string; title: string; views: number; category?: string; slug?: string }
 
+// ── Vitals types ───────────────────────────────────────────────────────────
+interface MetricBuckets { good?: number; ni?: number; poor?: number; sum?: number; count?: number }
+interface VitalsDoc {
+  path: string
+  FCP?: MetricBuckets; LCP?: MetricBuckets; INP?: MetricBuckets
+  CLS?: MetricBuckets; TTFB?: MetricBuckets
+}
+interface RouteVitals { path: string; score: number; lcp: number; fcp: number; inp: number; cls: number; ttfb: number; samples: number }
+
 interface DashData {
   totalViews: number
   totalUsers: number
@@ -32,6 +41,7 @@ interface DashData {
   devices: { mobile: number; desktop: number }
   os: Record<string, number>
   topPosts: TopPost[]
+  vitals: RouteVitals[]
 }
 
 type Period = '7d' | '30d' | 'today'
@@ -50,6 +60,31 @@ function dateRange(period: Period): string[] {
 
 function unSanitizeDomain(s: string) {
   return s.replace(/_/g, '.')
+}
+
+// ── Vitals helpers ─────────────────────────────────────────────────────────
+function avg(m?: MetricBuckets): number {
+  if (!m?.count || !m?.sum) return 0
+  return Math.round(m.sum / m.count)
+}
+function goodPct(m?: MetricBuckets): number {
+  const total = (m?.good ?? 0) + (m?.ni ?? 0) + (m?.poor ?? 0)
+  return total > 0 ? Math.round(((m?.good ?? 0) / total) * 100) : 0
+}
+/** Compute a 0-100 score from LCP + CLS + INP good% (weighted) */
+function computeScore(doc: VitalsDoc): number {
+  const lcpPct = goodPct(doc.LCP)
+  const clsPct = goodPct(doc.CLS)
+  const inpPct = goodPct(doc.INP)
+  const fcpPct = goodPct(doc.FCP)
+  const count = [doc.LCP, doc.CLS, doc.INP, doc.FCP].filter(Boolean).length
+  if (count === 0) return 0
+  return Math.round((lcpPct * 0.4 + clsPct * 0.2 + inpPct * 0.2 + fcpPct * 0.2))
+}
+function scoreBadge(score: number) {
+  if (score >= 90) return { label: 'İyi', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' }
+  if (score >= 50) return { label: 'Orta', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' }
+  return { label: 'Zayıf', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' }
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
@@ -160,6 +195,22 @@ export default function AnalyticsPage() {
         .slice(0, 8)
         .map(([domain, views]) => ({ domain: unSanitizeDomain(domain), views }))
 
+      // Vitals
+      const vitalsSnap = await getDocs(collection(db, 'analyticsVitals')).catch(() => null)
+      const vitals: RouteVitals[] = (vitalsSnap?.docs ?? []).map(d => {
+        const v = d.data() as VitalsDoc
+        return {
+          path: v.path ?? d.id,
+          score: computeScore(v),
+          lcp: avg(v.LCP),
+          fcp: avg(v.FCP),
+          inp: avg(v.INP),
+          cls: avg(v.CLS),
+          ttfb: avg(v.TTFB),
+          samples: v.LCP?.count ?? v.FCP?.count ?? 0,
+        }
+      }).filter(r => r.samples > 0).sort((a, b) => b.samples - a.samples)
+
       // Firebase counts
       const [usersSnap, postsSnap, topPostsSnap] = await Promise.all([
         getCountFromServer(query(collection(db, 'users'))).catch(() => null),
@@ -182,6 +233,7 @@ export default function AnalyticsPage() {
         devices: { mobile, desktop },
         os: Object.fromEntries(osMap),
         topPosts,
+        vitals,
       })
     } catch (e) {
       console.error(e)
@@ -400,6 +452,84 @@ export default function AnalyticsPage() {
                 </div>
             }
           </div>
+        </div>
+
+        {/* ── Speed Insights ── */}
+        <div className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+          <div className="flex items-center gap-2 border-b border-[rgb(var(--color-border))] px-5 py-3">
+            <Zap className="h-4 w-4 text-amber-500" />
+            <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">Speed Insights — Sayfa Performansı</h2>
+            <span className="ml-auto text-[10px] text-[rgb(var(--color-muted))]">Core Web Vitals (ortalama)</span>
+          </div>
+          {loading ? (
+            <div className="p-4 space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded-xl bg-[rgb(var(--color-surface))]" />)}
+            </div>
+          ) : data?.vitals.length === 0 ? (
+            <div className="py-12 text-center">
+              <Zap className="mx-auto mb-2 h-8 w-8 text-[rgb(var(--color-muted))] opacity-30" />
+              <p className="text-sm text-[rgb(var(--color-muted))]">Henüz veri toplanmadı — deploy sonrası ziyaretlerle dolmaya başlar</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
+                    <th className="px-5 py-2.5 text-left font-bold text-[rgb(var(--color-muted))]">Sayfa</th>
+                    <th className="px-3 py-2.5 text-center font-bold text-[rgb(var(--color-muted))]">Skor</th>
+                    <th className="px-3 py-2.5 text-right font-bold text-[rgb(var(--color-muted))]">FCP</th>
+                    <th className="px-3 py-2.5 text-right font-bold text-[rgb(var(--color-muted))]">LCP</th>
+                    <th className="px-3 py-2.5 text-right font-bold text-[rgb(var(--color-muted))]">INP</th>
+                    <th className="px-3 py-2.5 text-right font-bold text-[rgb(var(--color-muted))]">CLS</th>
+                    <th className="px-3 py-2.5 text-right font-bold text-[rgb(var(--color-muted))]">TTFB</th>
+                    <th className="px-3 py-2.5 text-right font-bold text-[rgb(var(--color-muted))]">Örnek</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[rgb(var(--color-border))]">
+                  {data?.vitals.map(r => {
+                    const badge = scoreBadge(r.score)
+                    return (
+                      <tr key={r.path} className="hover:bg-[rgb(var(--color-surface))] transition-colors">
+                        <td className="px-5 py-3 font-mono text-[rgb(var(--color-text))]">{r.path}</td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold', badge.cls)}>
+                            {r.score > 0 ? r.score : '—'}
+                          </span>
+                        </td>
+                        <td className={cn('px-3 py-3 text-right tabular-nums font-semibold',
+                          r.fcp > 0 ? (r.fcp <= 1800 ? 'text-emerald-600' : r.fcp <= 3000 ? 'text-amber-600' : 'text-red-600') : 'text-[rgb(var(--color-muted))]')}>
+                          {r.fcp > 0 ? `${(r.fcp / 1000).toFixed(2)}s` : '—'}
+                        </td>
+                        <td className={cn('px-3 py-3 text-right tabular-nums font-semibold',
+                          r.lcp > 0 ? (r.lcp <= 2500 ? 'text-emerald-600' : r.lcp <= 4000 ? 'text-amber-600' : 'text-red-600') : 'text-[rgb(var(--color-muted))]')}>
+                          {r.lcp > 0 ? `${(r.lcp / 1000).toFixed(2)}s` : '—'}
+                        </td>
+                        <td className={cn('px-3 py-3 text-right tabular-nums font-semibold',
+                          r.inp > 0 ? (r.inp <= 200 ? 'text-emerald-600' : r.inp <= 500 ? 'text-amber-600' : 'text-red-600') : 'text-[rgb(var(--color-muted))]')}>
+                          {r.inp > 0 ? `${r.inp}ms` : '—'}
+                        </td>
+                        <td className={cn('px-3 py-3 text-right tabular-nums font-semibold',
+                          r.cls > 0 ? (r.cls / 1000 <= 0.1 ? 'text-emerald-600' : r.cls / 1000 <= 0.25 ? 'text-amber-600' : 'text-red-600') : 'text-[rgb(var(--color-muted))]')}>
+                          {r.cls > 0 ? (r.cls / 1000).toFixed(3) : '—'}
+                        </td>
+                        <td className={cn('px-3 py-3 text-right tabular-nums font-semibold',
+                          r.ttfb > 0 ? (r.ttfb <= 800 ? 'text-emerald-600' : r.ttfb <= 1800 ? 'text-amber-600' : 'text-red-600') : 'text-[rgb(var(--color-muted))]')}>
+                          {r.ttfb > 0 ? `${r.ttfb}ms` : '—'}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums text-[rgb(var(--color-muted))]">{r.samples}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              <div className="flex gap-4 border-t border-[rgb(var(--color-border))] px-5 py-2.5 text-[10px]">
+                <span className="text-emerald-600">● İyi ≥90</span>
+                <span className="text-amber-600">● Orta 50–90</span>
+                <span className="text-red-600">● Zayıf &lt;50</span>
+                <span className="ml-auto text-[rgb(var(--color-muted))]">FCP · LCP · TTFB saniye · INP milisaniye · CLS birim</span>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
