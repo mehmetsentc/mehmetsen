@@ -6,9 +6,10 @@ interface DesktopSectionHeaderProps {
   title: string
   href?: string
   className?: string
+  variant?: 'default' | 'brand'
 }
 
-export function DesktopSectionHeader({ title, href, className }: DesktopSectionHeaderProps) {
+export function DesktopSectionHeader({ title, href, className, variant = 'default' }: DesktopSectionHeaderProps) {
   const content = (
     <>
       <span>{title}</span>
@@ -17,13 +18,16 @@ export function DesktopSectionHeader({ title, href, className }: DesktopSectionH
   )
 
   const cls = cn(
-    'mb-5 flex items-center gap-1 border-t border-[rgb(var(--color-text))] pt-3 text-sm font-black uppercase tracking-wide text-[rgb(var(--color-text))]',
+    'mb-5 flex items-center gap-1 pt-3 text-sm font-black uppercase tracking-wide',
+    variant === 'brand'
+      ? 'border-t-2 border-[rgb(var(--color-brand))] text-[rgb(var(--color-brand))]'
+      : 'border-t border-[rgb(var(--color-text))] text-[rgb(var(--color-text))]',
     className
   )
 
   if (href) {
     return (
-      <Link href={href} className={cn(cls, 'group w-fit hover:text-[rgb(var(--color-brand))]')}>
+      <Link href={href} className={cn(cls, 'group w-fit hover:opacity-80')}>
         {content}
       </Link>
     )

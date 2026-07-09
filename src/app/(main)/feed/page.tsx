@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { FeedPageClient } from '@/components/feed/FeedPageClient'
+import { FeedStructuredData } from '@/components/home/desktop/FeedStructuredData'
 import { getSiteUrl } from '@/lib/seo'
 import { getLcpPreloadHref } from '@/lib/lcpImage'
 import { getHomeFeedInitialData } from '@/services/newsService.server'
@@ -12,19 +13,46 @@ import { ROUTES } from '@/constants/routes'
 export const revalidate = 120
 
 const siteUrl = getSiteUrl()
+const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+
+const FEED_TITLE = `${siteName} — Türkiye Gündem, Son Dakika ve Haberler`
+const FEED_DESCRIPTION =
+  'Gündem, 3. sayfa, spor, dünya, siyaset, ekonomi, turizm, gezi, teknoloji, bilim, otomotiv, kültür, sinema, tiyatro ve magazin haberleri. Türkiye\'nin güncel haber platformu.'
 
 export const metadata: Metadata = {
-  title: 'Gündem — Son Dakika Haberler',
-  description:
-    'Türkiye gündeminden son dakika haberleri, güncel gelişmeler ve editoryal içerik — NaHaber',
+  title: FEED_TITLE,
+  description: FEED_DESCRIPTION,
+  keywords: [
+    'son dakika',
+    'gündem haberleri',
+    'türkiye haberleri',
+    'spor haberleri',
+    '3. sayfa',
+    'asayiş',
+    'ekonomi',
+    'turizm',
+    'gezi',
+    'teknoloji',
+    'magazin',
+    'NaHaber',
+  ],
+  robots: { index: true, follow: true },
   alternates: {
     canonical: `${siteUrl}${ROUTES.FEED}`,
   },
   openGraph: {
-    title: 'Gündem — Son Dakika Haberler | NaHaber',
-    description: 'Türkiye gündeminden son dakika haberleri — NaHaber',
+    title: FEED_TITLE,
+    description: FEED_DESCRIPTION,
     url: `${siteUrl}${ROUTES.FEED}`,
     type: 'website',
+    locale: 'tr_TR',
+    siteName,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@nahabercom',
+    title: FEED_TITLE,
+    description: FEED_DESCRIPTION,
   },
 }
 
@@ -38,8 +66,11 @@ export default async function FeedPage() {
     null
   const lcpPreload = lcpImage ? getLcpPreloadHref(lcpImage) : null
 
+  const headlinePool = [...data.featured, ...data.latest, ...data.breaking]
+
   return (
     <>
+      <FeedStructuredData headlines={headlinePool} />
       {lcpPreload ? (
         <link rel="preload" as="image" href={lcpPreload} fetchPriority="high" />
       ) : null}

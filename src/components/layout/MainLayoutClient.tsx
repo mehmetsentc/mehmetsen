@@ -30,6 +30,7 @@ function getContentVariant(pathname: string): ContentVariant {
   if (pathname.startsWith('/messages')) return 'messages'
   if (pathname.startsWith('/profile/')) return 'wide'
   if (pathname === ROUTES.FEED) return 'newspaper'
+  if (pathname.startsWith('/kategori/')) return 'newspaper'
   return 'default'
 }
 

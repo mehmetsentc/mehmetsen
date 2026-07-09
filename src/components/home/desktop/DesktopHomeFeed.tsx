@@ -5,13 +5,15 @@ import { ROUTES } from '@/constants/routes'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopCategoryColumn } from '@/components/home/desktop/DesktopCategoryColumn'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
+import { DesktopMoreList } from '@/components/home/desktop/DesktopMoreList'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import {
-  DualImageStory,
-  HeroStory,
+  HeroImageOnly,
   ImageStory,
   NumberedStory,
+  QuickHeadlineStrip,
+  RightFeatureStory,
   SidebarTextStory,
   TextLeadStory,
 } from '@/components/home/desktop/DesktopStoryBlocks'
@@ -19,7 +21,7 @@ import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
 import type { HomeFeedInitialData } from '@/types/newsItem'
 
 const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
-const CATEGORY_ROW_2 = ['saglik', 'kultur', 'turizm', 'asayis'] as const
+const CATEGORY_ROW_2 = ['saglik', 'kultur', 'turizm', 'gezi'] as const
 
 interface DesktopHomeFeedProps {
   data: HomeFeedInitialData
@@ -29,17 +31,17 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
   const layout = useMemo(() => {
     const { take, takeCategory } = createFeedAllocator(data)
 
-    const heroLeft = take(1)[0]
-    const heroCenter = take(1)[0]
-    const heroSidebar = take(5)
-
-    const moreLead = take(1)[0]
-    const moreCenter = take(2)
-    const moreRight = take(1)[0]
-    const moreGrid = take(3)
-    const moreSidebar = take(2)
+    const heroLead = take(1)[0]
+    const heroRight = take(3)
+    const heroSidebarText = take(2)
 
     const topFour = take(4)
+    const quickHeadlines = take(5)
+    const topicFour = takeCategory('spor', 4)
+
+    const moreGrid = take(4)
+    const moreSidebar = take(2)
+
     const featureLead = take(1)[0]
     const featureImage = take(1)[0]
 
@@ -54,106 +56,111 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
     const mostRead = data.mostRead.slice(0, 6)
     const trending = data.trending.slice(0, 8)
+    const moreList = take(8)
 
     return {
-      heroLeft,
-      heroCenter,
-      heroSidebar,
-      moreLead,
-      moreCenter,
-      moreRight,
+      heroLead,
+      heroRight,
+      heroSidebarText,
+      topFour,
+      quickHeadlines,
+      topicFour,
       moreGrid,
       moreSidebar,
-      topFour,
       featureLead,
       featureImage,
       catRow1,
       catRow2,
       mostRead,
       trending,
+      moreList,
     }
   }, [data])
 
-  const hasHero = layout.heroCenter
+  const hasHero = layout.heroLead
 
   return (
     <div className="desktop-home-feed">
-      {/* ── Üst reklam ── */}
+      <h1 className="sr-only">NaHaber — Türkiye Gündem, Son Dakika ve Güncel Haberler</h1>
+
       <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
 
-      {/* ── Manşet (BBC hero: sol + merkez + sağ liste) ── */}
+      <DesktopSectionHeader title="Haberler" variant="brand" href={ROUTES.CATEGORY('gundem')} />
+
       {hasHero ? (
         <section
           className="mb-10 grid grid-cols-12 gap-6 border-b border-[rgb(var(--color-border))] pb-10"
           aria-label="Manşet"
         >
-          <div className="col-span-12 lg:col-span-3">
-            {layout.heroLeft ? (
-              <ImageStory item={layout.heroLeft} aspect="portrait" priority showSummary />
-            ) : null}
+          <div className="col-span-12 flex flex-col justify-center lg:col-span-3">
+            <TextLeadStory item={layout.heroLead!} size="hero" />
           </div>
 
-          <div className="col-span-12 lg:col-span-6">
-            <HeroStory item={layout.heroCenter!} priority />
+          <div className="col-span-12 lg:col-span-5">
+            <HeroImageOnly item={layout.heroLead!} priority />
           </div>
 
-          <aside className="col-span-12 lg:col-span-3 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
-            {layout.heroSidebar.map((item, i) => (
-              <SidebarTextStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
+          <aside className="col-span-12 lg:col-span-4 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
+            {layout.heroRight.map((item, i) => (
+              <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
+            ))}
+            {layout.heroSidebarText.map((item) => (
+              <SidebarTextStory key={item.id} item={item} />
             ))}
           </aside>
         </section>
       ) : null}
 
-      {/* ── 4'lü öne çıkan grid ── */}
       {layout.topFour.length > 0 ? (
-        <section className="mb-10 grid grid-cols-4 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Öne çıkanlar">
+        <section className="mb-6 grid grid-cols-4 gap-6" aria-label="Öne çıkanlar">
           {layout.topFour.map((item, i) => (
             <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
           ))}
         </section>
       ) : null}
 
-      {/* ── Daha fazla haber (asimetrik BBC grid) ── */}
-      <DesktopSectionHeader title="Daha Fazla Haber" href={ROUTES.CATEGORY('gundem')} />
+      <QuickHeadlineStrip items={layout.quickHeadlines} />
 
-      <section className="mb-8 grid grid-cols-12 gap-6" aria-label="Gündem haberleri">
-        <div className="col-span-12 lg:col-span-3">
-          {layout.moreLead ? <TextLeadStory item={layout.moreLead} size="lg" /> : null}
-        </div>
-        <div className="col-span-12 lg:col-span-6">
-          {layout.moreCenter.length > 0 ? <DualImageStory items={layout.moreCenter} /> : null}
-        </div>
-        <div className="col-span-12 lg:col-span-3">
-          {layout.moreRight ? <ImageStory item={layout.moreRight} aspect="wide" /> : null}
-        </div>
-      </section>
-
-      <section className="mb-10 grid grid-cols-12 gap-6 border-b border-[rgb(var(--color-border))] pb-10">
-        {layout.moreGrid.map((item) => (
-          <div key={item.id} className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <ImageStory item={item} aspect="video" />
+      {layout.topicFour.length > 0 ? (
+        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Spor">
+          <DesktopSectionHeader title="Spor" href={ROUTES.CATEGORY('spor')} />
+          <div className="grid grid-cols-4 gap-6">
+            {layout.topicFour.map((item) => (
+              <ImageStory key={item.id} item={item} aspect="video" />
+            ))}
           </div>
-        ))}
-        <aside className="col-span-12 lg:col-span-3 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
-          {layout.moreSidebar.map((item) => (
-            <SidebarTextStory key={item.id} item={item} />
-          ))}
-        </aside>
-      </section>
+        </section>
+      ) : null}
 
-      {/* ── Orta reklam ── */}
+      {layout.moreGrid.length > 0 ? (
+        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Gündem">
+          <DesktopSectionHeader title="Gündem" href={ROUTES.CATEGORY('gundem')} />
+          <div className="grid grid-cols-12 gap-6">
+            {layout.moreGrid.map((item) => (
+              <div key={item.id} className="col-span-12 sm:col-span-6 lg:col-span-2">
+                <ImageStory item={item} aspect="video" />
+              </div>
+            ))}
+            {layout.moreSidebar.length > 0 ? (
+              <aside className="col-span-12 lg:col-span-4">
+                {layout.moreSidebar.map((item) => (
+                  <SidebarTextStory key={item.id} item={item} />
+                ))}
+              </aside>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       <DesktopAdBanner slot="leaderboard-mid" className="mb-10" />
 
-      {/* ── Trend / Must Watch (koyu bant) ── */}
       <DesktopMustWatch items={layout.trending} />
 
-      {/* ── Öne çıkan feature (metin + görsel) ── */}
       {layout.featureLead && layout.featureImage ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editoryal">
           <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
           <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-12 lg:col-span-5 flex flex-col justify-center">
+            <div className="col-span-12 flex flex-col justify-center lg:col-span-5">
               <TextLeadStory item={layout.featureLead} size="lg" />
             </div>
             <div className="col-span-12 lg:col-span-7">
@@ -163,24 +170,20 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         </section>
       ) : null}
 
-      {/* ── Kategori sütunları (satır 1) ── */}
       <section className="mb-10 grid grid-cols-4 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Kategori haberleri">
         {layout.catRow1.map(({ id, items }) =>
           items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
         )}
       </section>
 
-      {/* ── Alt reklam ── */}
       <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
 
-      {/* ── Kategori sütunları (satır 2 — Turizm, 3. Sayfa vb.) ── */}
       <section className="mb-10 grid grid-cols-4 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Diğer kategoriler">
         {layout.catRow2.map(({ id, items }) =>
           items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
         )}
       </section>
 
-      {/* ── Çok okunanlar ── */}
       {layout.mostRead.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Çok okunanlar">
           <DesktopSectionHeader title="Çok Okunanlar" />
@@ -192,7 +195,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         </section>
       ) : null}
 
-      {/* ── Footer ── */}
+      <DesktopMoreList newsItems={layout.moreList} title="Daha Fazla" href={ROUTES.CATEGORY('gundem')} />
+
       <DesktopHomeFooter />
     </div>
   )

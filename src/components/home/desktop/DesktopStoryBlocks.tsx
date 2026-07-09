@@ -78,6 +78,80 @@ export function HeroStory({ item, priority = false }: { item: NewsItem; priority
   )
 }
 
+/** BBC hero: sadece büyük dikey görsel (metin solda ayrı) */
+export function HeroImageOnly({ item, priority = false }: { item: NewsItem; priority?: boolean }) {
+  return (
+    <article className="h-full">
+      <Link href={newsItemDetailHref(item)} className="group block h-full">
+        <div className="relative aspect-[3/4] overflow-hidden bg-[rgb(var(--color-border))] lg:aspect-auto lg:min-h-[420px] lg:h-full">
+          <SafeNewsImage
+            src={item.imageUrl || FEED_FALLBACK_LOGO}
+            alt={item.title}
+            fill
+            sizes="(max-width: 1280px) 40vw, 520px"
+            priority={priority}
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.01]"
+          />
+        </div>
+      </Link>
+    </article>
+  )
+}
+
+/** BBC hero sağ sütun: küçük görsel + başlık + özet */
+export function RightFeatureStory({ item, live = false }: { item: NewsItem; live?: boolean }) {
+  return (
+    <article className="border-b border-[rgb(var(--color-border))] py-4 last:border-b-0">
+      {live ? (
+        <span className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-red-600">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-600" />
+          Canlı
+        </span>
+      ) : null}
+      <Link href={newsItemDetailHref(item)} className="group block">
+        <div className="relative mb-2 aspect-[16/10] overflow-hidden bg-[rgb(var(--color-border))]">
+          <SafeNewsImage
+            src={item.imageUrl || FEED_FALLBACK_LOGO}
+            alt={item.title}
+            fill
+            sizes="280px"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+        </div>
+        <Headline item={item} size="md" serif />
+        {item.description ? (
+          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+            {item.description}
+          </p>
+        ) : null}
+        <StoryMeta item={item} className="mt-2" />
+      </Link>
+    </article>
+  )
+}
+
+/** BBC yatay manşet şeridi — sadece başlık */
+export function QuickHeadlineStrip({ items }: { items: NewsItem[] }) {
+  if (items.length === 0) return null
+
+  return (
+    <nav className="mb-10 border-y border-[rgb(var(--color-border))] py-4" aria-label="Hızlı başlıklar">
+      <ul className="flex flex-wrap divide-x divide-[rgb(var(--color-border))]">
+        {items.map((item) => (
+          <li key={item.id} className="min-w-0 flex-1 px-4 first:pl-0 last:pr-0">
+            <Link
+              href={newsItemDetailHref(item)}
+              className="line-clamp-3 text-sm font-bold leading-snug text-[rgb(var(--color-text))] hover:underline"
+            >
+              {item.title}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
 export function ImageStory({
   item,
   priority = false,
@@ -121,10 +195,10 @@ export function ImageStory({
   )
 }
 
-export function TextLeadStory({ item, size = 'lg' }: { item: NewsItem; size?: 'md' | 'lg' }) {
+export function TextLeadStory({ item, size = 'lg' }: { item: NewsItem; size?: 'md' | 'lg' | 'hero' }) {
   return (
     <article>
-      <Headline item={item} size={size} serif />
+      <Headline item={item} size={size === 'hero' ? 'hero' : size} serif />
       {item.description ? (
         <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
           {item.description}

@@ -41,6 +41,7 @@ export const ROUTES = {
   SETTINGS_PROFILE: '/settings/profile',
   SETTINGS_ACCOUNT_DELETE: '/settings/account/delete',
   FEED_CONTENT_POLICY: '/feed/kurallar',
+  SITE_MAP: '/site-haritasi',
   ADMIN: {
     ROOT: '/admin',
     DASHBOARD: '/admin',
@@ -95,5 +96,8 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname.startsWith('/discover')) return true
   if (pathname.startsWith('/search')) return true
   if (pathname.startsWith('/influencer')) return true
+  if (pathname === ROUTES.SITE_MAP) return true
+  if (pathname.startsWith('/hakkimizda')) return true
+  if (pathname.startsWith('/iletisim')) return true
   return false
 }

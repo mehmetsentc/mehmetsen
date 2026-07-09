@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import type { Post } from '@/types/post'
+import type { NewsItem } from '@/types/newsItem'
 import { getPrimaryVideo } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { ROUTES } from '@/constants/routes'
+import { newsItemDetailHref } from '@/lib/newsItemUtils'
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i
 
@@ -241,6 +243,39 @@ export function buildVideoObjectJsonLd(post: Post): Record<string, unknown> | nu
         width: 512,
         height: 512,
       },
+    },
+  }
+}
+
+/** schema.org CollectionPage + ItemList for homepage feed SEO. */
+export function buildFeedPageJsonLd(
+  headlines: NewsItem[],
+  siteUrl: string = getSiteUrl()
+): Record<string, unknown> {
+  const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const feedUrl = `${siteUrl}${ROUTES.FEED}`
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${siteName} — Türkiye Gündem ve Son Dakika Haberleri`,
+    description:
+      'Gündem, 3. sayfa, spor, dünya, siyaset, ekonomi, turizm, gezi, teknoloji, bilim, otomotiv, kültür ve magazin haberleri.',
+    url: feedUrl,
+    inLanguage: 'tr-TR',
+    isPartOf: {
+      '@type': 'WebSite',
+      name: siteName,
+      url: siteUrl,
+    },
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: headlines.slice(0, 12).map((item, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        url: `${siteUrl}${newsItemDetailHref(item)}`,
+        name: item.title,
+      })),
     },
   }
 }

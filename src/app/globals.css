@@ -50,8 +50,9 @@
 
   @media (min-width: 1024px) {
     :root {
+      --layout-gutter: 1rem;
       --layout-content-newspaper: min(
-        1200px,
+        1440px,
         calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
       );
       --layout-content: min(720px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
@@ -68,7 +69,7 @@
     }
 
     html[data-sidebar='closed'] {
-      --layout-content-newspaper: min(1200px, calc(100vw - var(--layout-gutter) * 2));
+      --layout-content-newspaper: min(1440px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content: min(720px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-reels: min(720px, calc(100vw - var(--layout-gutter) * 2));
@@ -140,7 +141,7 @@
   }
 
   html[data-platform='desktop'] {
-    --layout-gutter: 1.5rem;
+    --layout-gutter: 1rem;
     --reels-viewport-h: calc(100dvh - 2.5rem);
     --reels-video-w: min(
       520px,
@@ -288,7 +289,7 @@
 
   @media (min-width: 1024px) {
     .content-stage-newspaper {
-      @apply max-w-none px-[var(--layout-gutter)] py-4;
+      @apply max-w-none px-3 py-4 sm:px-4;
     }
 
     .content-stage-newspaper > .content-main-newspaper {
@@ -310,8 +311,12 @@
     font-family: var(--font-inter, Inter, system-ui, sans-serif);
   }
 
-  .desktop-newspaper .desktop-home-feed {
+  .desktop-newspaper .desktop-category-page {
     @apply w-full;
+  }
+
+  .desktop-newspaper .desktop-web-header {
+    font-family: var(--font-inter, Inter, system-ui, sans-serif);
   }
 
   .desktop-newspaper .desktop-must-watch .desktop-section-header,

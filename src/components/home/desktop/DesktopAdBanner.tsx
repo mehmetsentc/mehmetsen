@@ -4,13 +4,16 @@ import { cn } from '@/lib/utils'
 
 interface DesktopAdBannerProps {
   slot: string
-  size?: 'leaderboard' | 'large'
+  size?: 'leaderboard' | 'large' | 'skyscraper'
   className?: string
 }
 
 export function DesktopAdBanner({ slot, size = 'leaderboard', className }: DesktopAdBannerProps) {
-  const height = size === 'large' ? 'min-h-[250px]' : 'min-h-[90px]'
-  const label = size === 'large' ? '970 × 250' : '970 × 90'
+  const config = {
+    leaderboard: { height: 'min-h-[90px]', label: '970 × 90' },
+    large: { height: 'min-h-[250px]', label: '970 × 250' },
+    skyscraper: { height: 'min-h-[600px]', label: '300 × 600' },
+  }[size]
 
   return (
     <aside
@@ -24,10 +27,10 @@ export function DesktopAdBanner({ slot, size = 'leaderboard', className }: Deskt
       <div
         className={cn(
           'flex items-center justify-center border border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/60',
-          height
+          config.height
         )}
       >
-        <span className="text-xs text-[rgb(var(--color-muted))]">{label}</span>
+        <span className="text-xs text-[rgb(var(--color-muted))]">{config.label}</span>
       </div>
     </aside>
   )

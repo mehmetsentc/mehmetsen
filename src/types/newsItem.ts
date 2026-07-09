@@ -39,6 +39,7 @@ export type HomeCategorySlug =
   | 'gastronomi'
   | 'kultur'
   | 'turizm'
+  | 'gezi'
   | 'asayis'
 
 export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
@@ -56,6 +57,7 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'gastronomi',
   'kultur',
   'turizm',
+  'gezi',
   'asayis',
 ]
 

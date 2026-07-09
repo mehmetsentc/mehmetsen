@@ -1,17 +1,15 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { Suspense } from 'react'
 import { DEFAULT_CATEGORIES, getSubcategories, getCategoryFamily, type CategoryDef } from '@/constants/config'
-import { CategoryFeed } from '@/components/feed/CategoryFeed'
+import { CategoryPageClient } from '@/components/category/CategoryPageClient'
+import { CategoryStructuredData } from '@/components/category/CategoryStructuredData'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { TimelinePost } from '@/types/post'
-import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
-import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
 import { getWorldCup2026Data } from '@/services/sportsApi/worldCup2026'
 
 interface Props {
@@ -24,8 +22,6 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
     const db = getAdminFirestore()
     const baseQ = db.collection(Collections.NEWS).where('status', '==', 'published')
 
-    // Son Dakika: categoryId'den bağımsız, isBreaking==true olan TÜM haberler
-    // (gündem, siyaset vb. kategorideki haberler de son dakikada görünür)
     const snap = categoryId === 'son-dakika'
       ? await baseQ
           .where('isBreaking', '==', true)
@@ -58,7 +54,6 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
         : image
           ? [{ type: 'image' as const, url: image, thumbnailUrl: image, caption: null }]
           : []
-      // Firestore Timestamp'leri sayıya çevir — RSC→Client serialize edilebilir olmalı
       const ts = (v: unknown): number | null => {
         if (!v) return null
         if (typeof v === 'object' && 'toMillis' in (v as object)) {
@@ -106,34 +101,51 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
       } as unknown as TimelinePost
     })
   } catch {
-    return []   // prefetch başarısız → client normal akışa devam eder
+    return []
   }
 }
 
 function getCategoryMeta(id: string) {
-  return DEFAULT_CATEGORIES.find((c) => c.slug === id) ?? null
+  return DEFAULT_CATEGORIES.find((c) => c.slug === id || c.id === id) ?? null
+}
+
+function getCategoryPageTitle(cat: CategoryDef): string {
+  if (cat.id === 'yerel-haber') return 'Şehrinizden Haberler'
+  if (cat.id === 'son-dakika') return 'Son Dakika Haberleri'
+  return `${cat.name} Haberleri`
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const cat = getCategoryMeta(id)
   if (!cat) return { title: 'Kategori' }
-  // "Yerel Haber Haberleri" yerine "Şehrinizden Haberler"
-  const pageTitle = cat.id === 'yerel-haber'
-    ? 'Şehrinizden Haberler'
-    : cat.id === 'son-dakika'
-    ? 'Son Dakika'
-    : `${cat.name} Haberleri`
+
+  const siteUrl = getSiteUrl()
+  const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const pageTitle = getCategoryPageTitle(cat)
+  const description = `${cat.name} kategorisindeki son dakika haberler, güncel gelişmeler ve editoryal içerik — ${siteName}`
+
   return {
-    title: pageTitle,
-    description: `NaHaber'de ${cat.name} kategorisindeki son dakika gelişmeleri ve haberler`,
+    title: `${pageTitle} | ${siteName}`,
+    description,
+    keywords: [cat.name, `${cat.name} haberleri`, 'son dakika', siteName, 'Türkiye haberleri'],
+    robots: { index: true, follow: true },
     alternates: {
-      canonical: `${getSiteUrl()}${ROUTES.CATEGORY(cat.id)}`,
+      canonical: `${siteUrl}${ROUTES.CATEGORY(cat.slug ?? cat.id)}`,
     },
     openGraph: {
-      title: `${pageTitle} | NaHaber`,
-      description: `NaHaber'de ${cat.name} kategorisindeki son dakika gelişmeleri ve haberler`,
-      url: `${getSiteUrl()}${ROUTES.CATEGORY(cat.id)}`,
+      title: `${pageTitle} | ${siteName}`,
+      description,
+      url: `${siteUrl}${ROUTES.CATEGORY(cat.slug ?? cat.id)}`,
+      type: 'website',
+      locale: 'tr_TR',
+      siteName,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      site: '@nahabercom',
+      title: `${pageTitle} | ${siteName}`,
+      description,
     },
   }
 }
@@ -142,7 +154,6 @@ export function generateStaticParams() {
   return DEFAULT_CATEGORIES.map((cat) => ({ id: cat.slug }))
 }
 
-// ISR: Vercel CDN caches category shells; feed hydrates client-side.
 export const revalidate = 60
 
 export default async function CategoryPage({ params }: Props) {
@@ -150,110 +161,52 @@ export default async function CategoryPage({ params }: Props) {
   const cat = getCategoryMeta(id)
   if (!cat) notFound()
 
-  // Alt kategorideyse (parentId var) üst kategoriden tab çubuğunu al
   const isSubcategory = !!cat.parentId
   const parentCat: CategoryDef | null = isSubcategory
     ? (DEFAULT_CATEGORIES.find(c => c.id === cat.parentId) ?? null)
     : null
 
-  // Tab çubuğu: ana kategori ise kendi alt kategorileri, alt kategori ise üst kategorinin alt kategorileri
   const tabParent = parentCat ?? cat
   const subcategories = getSubcategories(tabParent.id)
   const showTabs = subcategories.length > 0
-
-  // Header: alt kategorideyse üst kategori adını da göster
   const headerCat = parentCat ?? cat
 
-  // Server-side prefetch — skeleton göstermeden anında içerik
+  const subTabs = subcategories.map((sub) => ({
+    id: sub.id,
+    slug: sub.slug,
+    name: sub.name,
+    color: sub.color,
+    href: `/kategori/${sub.slug}`,
+    active: sub.id === cat.id,
+  }))
+
   const initialPosts = await prefetchCategoryPosts(cat.id)
+  const worldCupData = cat.id === 'dunya-kupasi-2026' ? await getWorldCup2026Data() : null
 
   return (
-    <div className="w-full">
-      {/* Category header */}
-      <div
-        className="mb-3 flex items-center gap-3 rounded-2xl px-4 py-2.5"
-        style={{ backgroundColor: `${headerCat.color}18`, borderLeft: `4px solid ${headerCat.color}` }}
+    <>
+      <CategoryStructuredData cat={cat} posts={initialPosts} />
+      <Suspense
+        fallback={
+          <div className="space-y-4 p-4">
+            {[...Array(4)].map((_, i) => (
+              <TimelineItemSkeleton key={i} />
+            ))}
+          </div>
+        }
       >
-        <div>
-          <h1 className="text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
-            {isSubcategory ? `${parentCat?.name} · ${cat.name}` : cat.name}
-          </h1>
-          <p className="text-[11px] text-[rgb(var(--color-muted))]">
-            {cat.name} kategorisindeki son gelişmeler
-          </p>
-        </div>
-      </div>
-
-      {/* Kaydırmalı tab çubuğu — hem ana hem alt kategori sayfalarında görünür */}
-      {showTabs && (
-        <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
-          {/* "Tümü" → üst kategoriye gider */}
-          <Link
-            href={`/kategori/${tabParent.slug}`}
-            className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors"
-            style={
-              !isSubcategory
-                ? { backgroundColor: `${tabParent.color}25`, color: tabParent.color, borderColor: `${tabParent.color}50` }
-                : { borderColor: 'rgb(var(--color-border))', color: 'rgb(var(--color-muted))' }
-            }
-          >
-            Tümü
-          </Link>
-
-          {subcategories.map((sub) => {
-            const isActive = sub.id === cat.id
-            return (
-              <Link
-                key={sub.id}
-                href={`/kategori/${sub.slug}`}
-                className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors"
-                style={
-                  isActive
-                    ? { backgroundColor: `${sub.color}25`, color: sub.color, borderColor: `${sub.color}50` }
-                    : { borderColor: 'rgb(var(--color-border))', color: 'rgb(var(--color-muted))' }
-                }
-              >
-                {sub.name}
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Dünya Kupası 2026 — chip navigation (Haberler + Grup A–L) */}
-      {cat.id === 'dunya-kupasi-2026' ? (
-        <WorldCupCategoryTabs
+        <CategoryPageClient
+          cat={cat}
+          headerCat={headerCat}
+          isSubcategory={isSubcategory}
+          parentCat={parentCat}
+          subTabs={subTabs}
+          tabParent={tabParent}
+          showTabs={showTabs}
           initialPosts={initialPosts}
-          data={await getWorldCup2026Data()}
+          worldCupData={worldCupData}
         />
-      ) : (
-        <>
-          {/* Borsa kategorisinde canlı piyasa verileri */}
-          {cat.id === 'borsa' && (
-            <>
-              <BorsaWidgetClient />
-              <div className="mb-4 flex items-center gap-2">
-                <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
-                <span className="text-xs font-semibold text-[rgb(var(--color-muted))]">Borsa Haberleri</span>
-                <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
-              </div>
-            </>
-          )}
-
-          {/* News feed — initialPosts varsa skeleton göstermeden anında yükler */}
-          <Suspense
-            fallback={
-              <div className="space-y-4">
-                {[...Array(4)].map((_, i) => (
-                  <TimelineItemSkeleton key={i} />
-                ))}
-              </div>
-            }
-          >
-            <CategoryFeed categoryId={cat.id} initialPosts={initialPosts} />
-          </Suspense>
-        </>
-      )}
-    </div>
+      </Suspense>
+    </>
   )
 }

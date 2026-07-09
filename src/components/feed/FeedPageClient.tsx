@@ -31,11 +31,7 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
 
       {/* Web (lg+) — BBC / NYT tarzı geniş düzen */}
       <div className="hidden lg:block desktop-newspaper">
-        <DesktopFeedHeader
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          breakingItems={homeFeedData.breaking}
-        />
+        <DesktopFeedHeader breakingItems={homeFeedData.breaking} />
         {activeTab === 'home' && <DesktopHomeFeed data={homeFeedData} />}
         {activeTab === 'trend' && (
           <div className="pb-10">

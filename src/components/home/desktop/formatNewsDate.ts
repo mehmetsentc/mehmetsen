@@ -19,6 +19,19 @@ export function formatNewsDateLong(): string {
   }).format(new Date())
 }
 
+/** BBC MORE satırı: "1 Tem 2026" */
+export function formatNewsDateBbc(value?: string | number): string | null {
+  if (value == null) return null
+  const iso = typeof value === 'number' ? new Date(value).toISOString() : value
+  const parsed = Date.parse(iso)
+  if (!Number.isFinite(parsed)) return null
+  return new Intl.DateTimeFormat('tr-TR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed)
+}
+
 /** BBC tarzı "3 sa önce | Gündem" meta satırı */
 export function formatNewsRelative(value?: string): string | null {
   if (!value) return null
