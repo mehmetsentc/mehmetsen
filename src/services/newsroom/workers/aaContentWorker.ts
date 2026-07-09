@@ -15,6 +15,7 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
+import { publishScraperViaPipeline } from '@/services/newsroom/scraperPublishHelper'
 
 const FETCH_HEADERS = {
   'User-Agent':
@@ -170,47 +171,22 @@ async function scrapeArticle(url: string): Promise<AAArticle | null> {
 async function publishArticle(
   db: FirebaseFirestore.Firestore,
   article: AAArticle
-): Promise<'published' | 'skipped' | 'error'> {
-  try {
-    const docId = `aa-${article.aaId}`
+): Promise<'published' | 'queued' | 'skipped' | 'error'> {
+  const slug = buildSlug(article.title, article.aaId.slice(-6))
+  const status = await publishScraperViaPipeline(db, article, {
+    docId: `aa-${article.aaId}`,
+    fingerprint: `aa-${article.aaId}`,
+    editorId: 'aa-content',
+    editorType: 'national',
+    sourceLabel: 'Anadolu Ajansı',
+    preferredSlug: slug,
+    forcedCategoryId: 'gundem',
+  })
 
-    const existing = await db.collection('news').doc(docId).get()
-    if (existing.exists) return 'skipped'
-
-    const slug = buildSlug(article.title, article.aaId.slice(-6))
-    const now  = Date.now()
-
-    await db.collection('news').doc(docId).set({
-      title:           article.title,
-      spot:            article.spot,
-      content:         article.content,
-      summary:         article.spot,
-      thumbnail:       article.thumbnail,
-      coverImageUrl:   article.thumbnail,
-      status:          'published',
-      category:        'gundem',
-      categoryId:      'gundem',
-      source:          'aa',
-      sourceLabel:     'Anadolu Ajansı',
-      sourceUrl:       article.url,
-      slug,
-      url:             `https://www.nahaber.com/haber/${slug}`,
-      publishedAt:     article.publishedAt,
-      createdAt:       now,
-      updatedAt:       now,
-      confidenceScore: 80,
-      type:            'news',
-      hasVideo:        false,
-      socialPublished: false,
-      fingerprint:     `aa-${article.aaId}`,
-      editorType:      'aa-content',
-    })
-
-    return 'published'
-  } catch (err) {
-    console.error('[aaContent] write error:', err)
-    return 'error'
-  }
+  if (status === 'published' || status === 'updated') return 'published'
+  if (status === 'queued' || status === 'draft') return 'queued'
+  if (status === 'skipped') return 'skipped'
+  return 'error'
 }
 
 // ── Ana worker ────────────────────────────────────────────────────────────────
@@ -233,7 +209,7 @@ export async function runAaContentWorker(): Promise<NewsroomRunResult> {
   result.itemsFetched = urls.length
 
   // 2 — Makaleleri paralel çek (CONCURRENCY=4)
-  let published = 0, skipped = 0, failed = 0
+  let published = 0, skipped = 0, failed = 0, queued = 0
 
   for (let i = 0; i < urls.length; i += CONCURRENCY) {
     const batch = urls.slice(i, i + CONCURRENCY)
@@ -253,6 +229,8 @@ export async function runAaContentWorker(): Promise<NewsroomRunResult> {
       if (status === 'published') {
         published++
         console.log(`[aaContent] ✅ ${article.title.slice(0, 60)}`)
+      } else if (status === 'queued') {
+        queued++
       } else if (status === 'skipped') {
         skipped++
       } else {
@@ -262,12 +240,12 @@ export async function runAaContentWorker(): Promise<NewsroomRunResult> {
     }
   }
 
-  result.itemsNew       = published
+  result.itemsNew       = published + queued
   result.itemsSkipped   = skipped
   result.itemsFailed    = failed
   result.autoPublished  = published
   result.durationMs     = Date.now() - now
 
-  console.log(`[aaContent] Tamamlandı — yayınlandı:${published} atlandı:${skipped} hata:${failed}`)
+  console.log(`[aaContent] Tamamlandı — yayınlandı:${published} kuyruk:${queued} atlandı:${skipped} hata:${failed}`)
   return result
 }

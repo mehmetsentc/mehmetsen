@@ -19,6 +19,7 @@ import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { extractCityFromText } from '@/services/newsroom/geoEngine'
 import { normalizeCitySlug } from '@/constants/cities'
+import { publishScraperViaPipeline } from '@/services/newsroom/scraperPublishHelper'
 
 const FETCH_HEADERS = {
   'User-Agent':
@@ -213,66 +214,41 @@ async function scrapeArticle(url: string): Promise<AnkaLocalArticle | null> {
 async function publishArticle(
   db: FirebaseFirestore.Firestore,
   article: AnkaLocalArticle
-): Promise<'published' | 'skipped' | 'error'> {
-  try {
-    const docId = `anka-local-${article.ankaId}`
+): Promise<'published' | 'queued' | 'skipped' | 'error'> {
+  const slug = buildSlug(article.title, article.ankaId)
 
-    const existing = await db.collection('news').doc(docId).get()
-    if (existing.exists) return 'skipped'
+  const cityText = `${article.title} ${article.spot} ${article.content.slice(0, 500)}`
+  const detectedCity = extractCityFromText(cityText)
+  const detectedCitySlug = detectedCity
+    ? normalizeCitySlug(
+        detectedCity
+          .toLocaleLowerCase('tr-TR')
+          .replace(/ğ/g, 'g')
+          .replace(/ü/g, 'u')
+          .replace(/ş/g, 's')
+          .replace(/ı/g, 'i')
+          .replace(/ö/g, 'o')
+          .replace(/ç/g, 'c')
+      )
+    : ''
 
-    const slug = buildSlug(article.title, article.ankaId)
-    const now  = Date.now()
+  const status = await publishScraperViaPipeline(db, article, {
+    docId: `anka-local-${article.ankaId}`,
+    fingerprint: `anka-local-${article.ankaId}`,
+    editorId: 'anka-local',
+    editorType: 'local',
+    sourceLabel: 'Anka Haber Ajansı',
+    preferredSlug: slug,
+    forcedCategoryId: 'yerel-haber',
+    forcedCity: detectedCity ?? undefined,
+    forcedCitySlug: detectedCitySlug,
+    extraTags: article.keywords,
+  })
 
-    // Şehir tespiti — başlık + içerikten otomatik bul
-    const cityText = `${article.title} ${article.spot} ${article.content.slice(0, 500)}`
-    const detectedCity = extractCityFromText(cityText)
-    const detectedCitySlug = detectedCity ? normalizeCitySlug(
-      detectedCity.toLocaleLowerCase('tr-TR')
-        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-    ) : ''
-
-    const doc: Record<string, unknown> = {
-      title:           article.title,
-      spot:            article.spot,
-      content:         article.content,
-      summary:         article.spot,
-      thumbnail:       article.thumbnail,
-      coverImageUrl:   article.thumbnail,
-      status:          'published',
-      category:        'yerel-haber',
-      categoryId:      'yerel-haber',
-      source:          'anka-haber',
-      sourceLabel:     'Anka Haber Ajansı',
-      sourceUrl:       article.url,
-      slug,
-      url:             `https://www.nahaber.com/haber/${slug}`,
-      publishedAt:     article.publishedAt,
-      createdAt:       now,
-      updatedAt:       now,
-      confidenceScore: 80,
-      type:            'news',
-      isBreaking:      false,
-      hasVideo:        !!article.videoUrl,
-      socialPublished: false,
-      fingerprint:     `anka-local-${article.ankaId}`,
-      editorType:      'anka-local',
-      ...(detectedCity     ? { city: detectedCity, cityName: detectedCity } : {}),
-      ...(detectedCitySlug ? { citySlug: detectedCitySlug } : {}),
-    }
-
-    if (article.videoUrl) {
-      doc.videoUrl      = article.videoUrl
-      doc.videoEmbedUrl = article.videoEmbedUrl
-    }
-    if (article.keywords.length) doc.tags = article.keywords
-
-    await db.collection('news').doc(docId).set(doc)
-    return 'published'
-  } catch (err) {
-    console.error('[ankaLocal] write error:', err)
-    return 'error'
-  }
+  if (status === 'published' || status === 'updated') return 'published'
+  if (status === 'queued' || status === 'draft') return 'queued'
+  if (status === 'skipped') return 'skipped'
+  return 'error'
 }
 
 // ── Ana worker ────────────────────────────────────────────────────────────────
@@ -293,7 +269,7 @@ export async function runAnkaLocalWorker(): Promise<NewsroomRunResult> {
   result.sourcesChecked = 1
   result.itemsFetched   = urls.length
 
-  let published = 0, skipped = 0, failed = 0
+  let published = 0, skipped = 0, failed = 0, queued = 0
 
   for (let i = 0; i < urls.length; i += CONCURRENCY) {
     const batch    = urls.slice(i, i + CONCURRENCY)
@@ -312,6 +288,8 @@ export async function runAnkaLocalWorker(): Promise<NewsroomRunResult> {
       if (status === 'published') {
         published++
         console.log(`[ankaLocal] ✅ ${article.title.slice(0, 60)}`)
+      } else if (status === 'queued') {
+        queued++
       } else if (status === 'skipped') {
         skipped++
       } else {
@@ -321,12 +299,12 @@ export async function runAnkaLocalWorker(): Promise<NewsroomRunResult> {
     }
   }
 
-  result.itemsNew      = published
+  result.itemsNew      = published + queued
   result.itemsSkipped  = skipped
   result.itemsFailed   = failed
   result.autoPublished = published
   result.durationMs    = Date.now() - now
 
-  console.log(`[ankaLocal] Tamamlandı — yayınlandı:${published} atlandı:${skipped} hata:${failed}`)
+  console.log(`[ankaLocal] Tamamlandı — yayınlandı:${published} kuyruk:${queued} atlandı:${skipped} hata:${failed}`)
   return result
 }

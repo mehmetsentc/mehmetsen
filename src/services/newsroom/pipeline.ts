@@ -261,6 +261,10 @@ export interface PipelineOptions {
   changeType?: 'new' | 'updated'
   existingNewsId?: string
   queueJobId?: string
+  /** Scraper worker'lar için sabit Firestore doc ID */
+  targetNewsId?: string
+  publishedAt?: number
+  preferredSlug?: string
 }
 
 export interface PipelineResult {
@@ -484,6 +488,14 @@ export async function processNewsroomArticle(
 
     // AiRewriteResult uyumluluğu için tip cast
     const rewritten: AiRewriteResult & { gateDecision?: string; gateReasons?: string[]; publishScore?: number } = rewrittenRaw
+
+    const outputChars = (rewritten.description || '').trim().length
+    if (!workingInput.skipAiRewrite && outputChars < QUALITY_MIN_CHARS) {
+      console.warn(
+        `[newsroom/pipeline] AI çıktısı çok kısa (${outputChars} kar), atlandı: ${workingInput.sourceUrl?.slice(0, 80)}`
+      )
+      return { outcome: 'skipped' }
+    }
 
     const factCheck = await factChecker.check({
       sourceLabel: workingInput.sourceLabel,
@@ -748,7 +760,14 @@ export async function processNewsroomArticle(
     const canAutoPublish = !needsDraft && moderation.decision === 'approve'
 
     if (canAutoPublish) {
-      const { newsId } = await newsDraftService.publishFromPipeline(db, doc)
+      const publishOpts = options.targetNewsId
+        ? {
+            newsId: options.targetNewsId,
+            publishedAt: options.publishedAt,
+            preferredSlug: options.preferredSlug,
+          }
+        : undefined
+      const { newsId } = await newsDraftService.publishFromPipeline(db, doc, publishOpts)
       if (breakingFlags.shouldPushNotify) {
         await queueBreakingPushNotification(newsId, rewritten.title, breakingScore)
       }

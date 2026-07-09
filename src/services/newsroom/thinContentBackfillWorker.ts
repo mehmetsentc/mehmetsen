@@ -31,9 +31,20 @@ export interface ThinContentBackfillResult {
 }
 
 const THIN_CHARS = 500
-const SCAN_LIMIT = 80
-const MAX_PER_RUN = 6
+const SCAN_LIMIT = 100
+const MAX_PER_RUN = 8
 const RETRY_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
+const SCRAPER_RETRY_COOLDOWN_MS = 0
+
+function isScraperArticle(docId: string, data: Record<string, unknown>): boolean {
+  const editorType = String(data.editorType ?? '')
+  if (['anka-breaking', 'anka-local', 'aa-content'].includes(editorType)) return true
+  return (
+    docId.startsWith('anka-breaking-') ||
+    docId.startsWith('anka-local-') ||
+    docId.startsWith('aa-')
+  )
+}
 
 export async function runThinContentBackfillWorker(): Promise<ThinContentBackfillResult> {
   const started = Date.now()
@@ -65,15 +76,24 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
     return result
   }
 
-  const candidates = snap.docs.filter((doc) => {
-    const data = doc.data()
-    if (docContentLength(data) >= THIN_CHARS) return false
-    const sourceUrl = String(data.sourceUrl ?? '').trim()
-    if (!sourceUrl.startsWith('http')) return false
-    const lastAttempt = Number(data.contentBackfillAt ?? 0)
-    if (lastAttempt && now - lastAttempt < RETRY_COOLDOWN_MS) return false
-    return true
-  })
+  const candidates = snap.docs
+    .filter((doc) => {
+      const data = doc.data()
+      if (docContentLength(data) >= THIN_CHARS) return false
+      const sourceUrl = String(data.sourceUrl ?? '').trim()
+      if (!sourceUrl.startsWith('http')) return false
+      const lastAttempt = Number(data.contentBackfillAt ?? 0)
+      const cooldown = isScraperArticle(doc.id, data)
+        ? SCRAPER_RETRY_COOLDOWN_MS
+        : RETRY_COOLDOWN_MS
+      if (lastAttempt && now - lastAttempt < cooldown) return false
+      return true
+    })
+    .sort((a, b) => {
+      const aScraper = isScraperArticle(a.id, a.data()) ? 0 : 1
+      const bScraper = isScraperArticle(b.id, b.data()) ? 0 : 1
+      return aScraper - bScraper
+    })
 
   result.scanned = snap.size
   result.candidates = candidates.length
@@ -93,12 +113,15 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
     await doc.ref.update({ contentBackfillAt: now }).catch(() => {})
 
     const input: NewsroomArticleInput = {
-      editorId: 'thin-content-backfill',
-      editorType: 'national',
-      sourceLabel: String(data.source ?? data.author ?? 'NaHaber'),
+      editorId: (String(data.editorId ?? data.ingestionSourceId ?? 'national-news') as NewsroomArticleInput['editorId']),
+      editorType:
+        data.editorType === 'local' || data.editorType === 'breaking'
+          ? data.editorType
+          : 'national',
+      sourceLabel: String(data.sourceLabel ?? data.source ?? data.author ?? 'NaHaber'),
       sourceUrl,
       originalTitle: title,
-      originalSummary: String(data.summary ?? '').trim(),
+      originalSummary: String(data.summary ?? data.spot ?? '').trim(),
       originalContent: String(data.description ?? data.content ?? '').trim(),
       imageUrl: String(data.coverImageUrl ?? data.thumbnail ?? '').trim() || undefined,
       forcedCategoryId: String(data.categoryId ?? data.category ?? '').trim() || undefined,

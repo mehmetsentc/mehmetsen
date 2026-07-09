@@ -66,6 +66,14 @@ export interface NewsroomDraftFields {
   isPinned?: boolean
   isTrending?: boolean
   needsAdminReview?: boolean
+  spot?: string
+  content?: string
+  coverImageUrl?: string
+  seoTitle?: string
+  seoDescription?: string
+  htmlContent?: string
+  hasVideo?: boolean
+  videoEmbedUrl?: string
 }
 
 function draftToPublishedNews(
@@ -118,6 +126,20 @@ function draftToPublishedNews(
     breakingScore: 'breakingScore' in draft ? draft.breakingScore ?? draft.priorityScore ?? 0 : 0,
     isPinned: 'isPinned' in draft ? draft.isPinned ?? false : false,
     isTrending: 'isTrending' in draft ? draft.isTrending ?? false : false,
+    ...('spot' in draft && draft.spot ? { spot: draft.spot } : {}),
+    ...('content' in draft && draft.content ? { content: draft.content } : {}),
+    ...('coverImageUrl' in draft && draft.coverImageUrl
+      ? { coverImageUrl: draft.coverImageUrl }
+      : {}),
+    ...('seoTitle' in draft && draft.seoTitle ? { seoTitle: draft.seoTitle } : {}),
+    ...('seoDescription' in draft && draft.seoDescription
+      ? { seoDescription: draft.seoDescription }
+      : {}),
+    ...('htmlContent' in draft && draft.htmlContent ? { htmlContent: draft.htmlContent } : {}),
+    ...('hasVideo' in draft ? { hasVideo: draft.hasVideo ?? false } : {}),
+    ...('videoEmbedUrl' in draft && draft.videoEmbedUrl
+      ? { videoEmbedUrl: draft.videoEmbedUrl }
+      : {}),
   }
 }
 
@@ -125,12 +147,27 @@ export const newsDraftService = {
   /** Auto-publish high-confidence pipeline output (skips draft queue). */
   async publishFromPipeline(
     db: Firestore,
-    doc: NewsroomDraftFields
+    doc: NewsroomDraftFields,
+    options?: { newsId?: string; publishedAt?: number; preferredSlug?: string }
   ): Promise<{ newsId: string; slug: string }> {
     const now = Date.now()
     const draftId = doc.rssFingerprint.slice(0, 12)
-    const slug = await allocateUniqueSlug(db, doc.title, draftId)
-    const newsRef = await db.collection(Collections.NEWS).add(draftToPublishedNews(doc, slug, now))
+    let slug = options?.preferredSlug?.trim() || ''
+    if (slug && (await slugTaken(db, slug))) slug = ''
+    if (!slug) slug = await allocateUniqueSlug(db, doc.title, draftId)
+
+    const payload = {
+      ...draftToPublishedNews(doc, slug, now),
+      publishedAt: options?.publishedAt ?? now,
+      coverImageUrl: doc.coverImageUrl || doc.thumbnail || '',
+    }
+
+    if (options?.newsId) {
+      await db.collection(Collections.NEWS).doc(options.newsId).set(payload)
+      return { newsId: options.newsId, slug }
+    }
+
+    const newsRef = await db.collection(Collections.NEWS).add(payload)
     return { newsId: newsRef.id, slug }
   },
 
@@ -148,9 +185,12 @@ export const newsDraftService = {
 
     await ref.update({
       title: doc.title,
+      spot: doc.spot ?? snap.data()?.spot ?? '',
       summary: doc.summary,
       description: doc.description,
+      content: doc.content ?? doc.description,
       thumbnail: doc.thumbnail || snap.data()?.thumbnail || '',
+      coverImageUrl: doc.coverImageUrl || doc.thumbnail || snap.data()?.coverImageUrl || '',
       category: doc.category,
       categoryId: doc.categoryId,
       city: doc.city,

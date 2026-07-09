@@ -20,6 +20,7 @@ import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { extractCityFromText } from '@/services/newsroom/geoEngine'
 import { normalizeCitySlug } from '@/constants/cities'
 import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
+import { publishScraperViaPipeline } from '@/services/newsroom/scraperPublishHelper'
 
 /**
  * BEYAZ LİSTE: SADECE bu kategoriler son-dakika olabilir.
@@ -262,144 +263,128 @@ async function scrapeArticle(url: string): Promise<AnkaArticle | null> {
   return { ankaId, url, title, spot, content, thumbnail, videoUrl, videoEmbedUrl, publishedAt, keywords }
 }
 
+// ── Son-dakika kategori kararı ────────────────────────────────────────────────
+async function resolveBreakingCategory(
+  article: AnkaArticle
+): Promise<{
+  categoryId: string
+  isBreaking: boolean
+  priorityScore: number
+  detectedCity?: string
+  detectedCitySlug?: string
+}> {
+  const cityText = `${article.title} ${article.spot} ${article.content.slice(0, 500)}`
+  const detectedCity = extractCityFromText(cityText)
+  const detectedCitySlug = detectedCity
+    ? normalizeCitySlug(
+        detectedCity
+          .toLocaleLowerCase('tr-TR')
+          .replace(/ğ/g, 'g')
+          .replace(/ü/g, 'u')
+          .replace(/ş/g, 's')
+          .replace(/ı/g, 'i')
+          .replace(/ö/g, 'o')
+          .replace(/ç/g, 'c')
+      )
+    : ''
+
+  let categoryId = 'son-dakika'
+  let isBreaking = true
+  let priorityScore = 90
+
+  try {
+    const aiResult = await classifyArticleCategory(
+      article.title,
+      `${article.spot}\n${article.content}`,
+      'son-dakika'
+    )
+
+    if (aiResult) {
+      const aiCategory = aiResult.categoryId
+      const titleLower = article.title.toLocaleLowerCase('tr-TR')
+      const contentLower = `${article.spot} ${article.content.slice(0, 300)}`.toLocaleLowerCase('tr-TR')
+      const combinedText = `${titleLower} ${contentLower}`
+
+      if (TRULY_BREAKING_CATEGORIES.has(aiCategory)) {
+        console.log(`[ankaBreaking] 🚨 Son-dakika (${aiCategory}): "${article.title.slice(0, 55)}"`)
+      } else if (
+        aiCategory === 'gundem' &&
+        !detectedCity &&
+        GUNDEM_BREAKING_KEYWORDS.some((kw) => combinedText.includes(kw))
+      ) {
+        console.log(`[ankaBreaking] 🚨 Son-dakika (acil-gundem): "${article.title.slice(0, 55)}"`)
+      } else if (aiCategory === 'siyaset' && !detectedCity) {
+        console.log(`[ankaBreaking] 🚨 Son-dakika (ulusal siyaset): "${article.title.slice(0, 55)}"`)
+      } else {
+        categoryId = detectedCity ? 'yerel-haber' : aiCategory
+        isBreaking = false
+        priorityScore = 35
+        console.log(
+          `[ankaBreaking] ⬇️  Demote (AI=${aiCategory}, şehir=${detectedCity ?? 'yok'}): ` +
+            `"${article.title.slice(0, 55)}" → ${categoryId}`
+        )
+      }
+    } else {
+      const titleLower = article.title.toLocaleLowerCase('tr-TR')
+      const hasUrgentKeyword = GUNDEM_BREAKING_KEYWORDS.some((kw) => titleLower.includes(kw))
+      if (!hasUrgentKeyword || detectedCity) {
+        categoryId = detectedCity ? 'yerel-haber' : 'gundem'
+        isBreaking = false
+        priorityScore = 40
+        console.log(`[ankaBreaking] AI null → güvenli demote: "${article.title.slice(0, 55)}" → ${categoryId}`)
+      } else {
+        console.log(`[ankaBreaking] AI null + acil keyword → son-dakika: "${article.title.slice(0, 55)}"`)
+      }
+    }
+  } catch {
+    const titleLower = article.title.toLocaleLowerCase('tr-TR')
+    const hasUrgentKeyword = GUNDEM_BREAKING_KEYWORDS.some((kw) => titleLower.includes(kw))
+    if (!hasUrgentKeyword || detectedCity) {
+      categoryId = detectedCity ? 'yerel-haber' : 'gundem'
+      isBreaking = false
+      priorityScore = 40
+    }
+    console.warn(`[ankaBreaking] AI hatası → ${categoryId}: "${article.title.slice(0, 55)}"`)
+  }
+
+  return {
+    categoryId,
+    isBreaking,
+    priorityScore,
+    detectedCity: detectedCity ?? undefined,
+    detectedCitySlug: detectedCitySlug || undefined,
+  }
+}
+
 // ── Firestore'a yaz ───────────────────────────────────────────────────────────
 async function publishArticle(
   db: FirebaseFirestore.Firestore,
-  article: AnkaArticle
-): Promise<'published' | 'skipped' | 'error'> {
-  try {
-    const docId = `anka-breaking-${article.ankaId}`
+  article: AnkaArticle,
+  category: { categoryId: string; isBreaking: boolean; priorityScore: number },
+  detectedCity?: string,
+  detectedCitySlug?: string
+): Promise<'published' | 'queued' | 'skipped' | 'error'> {
+  const slug = buildSlug(article.title, article.ankaId)
 
-    const existing = await db.collection('news').doc(docId).get()
-    if (existing.exists) return 'skipped'
+  const status = await publishScraperViaPipeline(db, article, {
+    docId: `anka-breaking-${article.ankaId}`,
+    fingerprint: `anka-breaking-${article.ankaId}`,
+    editorId: 'anka-breaking',
+    editorType: 'breaking',
+    sourceLabel: 'Anka Haber Ajansı',
+    preferredSlug: slug,
+    forcedCategoryId: category.categoryId,
+    isBreaking: category.isBreaking,
+    priorityScore: category.priorityScore,
+    forcedCity: detectedCity,
+    forcedCitySlug: detectedCitySlug,
+    extraTags: article.keywords,
+  })
 
-    const slug = buildSlug(article.title, article.ankaId)
-    const now  = Date.now()
-
-    // Şehir tespiti — başlık + içerikten otomatik bul
-    const cityText = `${article.title} ${article.spot} ${article.content.slice(0, 500)}`
-    const detectedCity = extractCityFromText(cityText)
-    const detectedCitySlug = detectedCity ? normalizeCitySlug(
-      detectedCity.toLocaleLowerCase('tr-TR')
-        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-    ) : ''
-
-    // ── Son-dakika uygunluk kontrolü (BEYAZ LİSTE) ──────────────────────────
-    // Anka'nın son-dakika sayfası her şeyi son-dakika olarak işaret eder.
-    // BEYAZ LİSTE: Sadece TRULY_BREAKING_CATEGORIES son-dakika olabilir.
-    // Siyaset için ek kural: şehir tespiti yoksa ulusal siyaset → kabul.
-    //   Şehir tespiti varsa yerel siyaset (belediye haberi) → demote.
-    let finalCategory    = 'son-dakika'
-    let finalIsBreaking  = true
-    let finalBreakingScore = 90
-
-    try {
-      const aiResult = await classifyArticleCategory(
-        article.title,
-        `${article.spot}\n${article.content}`,
-        'son-dakika'
-      )
-
-      if (aiResult) {
-        const aiCategory = aiResult.categoryId
-        const titleLower = article.title.toLocaleLowerCase('tr-TR')
-        const contentLower = `${article.spot} ${article.content.slice(0, 300)}`.toLocaleLowerCase('tr-TR')
-        const combinedText = `${titleLower} ${contentLower}`
-
-        if (TRULY_BREAKING_CATEGORIES.has(aiCategory)) {
-          // ✅ Ulusal/küresel kapsam (dunya, ekonomi, saglik, meteoroloji) — son-dakika
-          console.log(`[ankaBreaking] 🚨 Son-dakika (${aiCategory}): "${article.title.slice(0, 55)}"`)
-
-        } else if (aiCategory === 'gundem' && !detectedCity && GUNDEM_BREAKING_KEYWORDS.some(kw => combinedText.includes(kw))) {
-          // ✅ Ulusal acil gündem: deprem/patlama/yangın/saldırı + şehir tespit edilmedi
-          console.log(`[ankaBreaking] 🚨 Son-dakika (acil-gundem): "${article.title.slice(0, 55)}"`)
-
-        } else if (aiCategory === 'siyaset' && !detectedCity) {
-          // ✅ Ulusal siyaset (şehir yok: TBMM, Cumhurbaşkanı, Bakan, MEB vb.)
-          console.log(`[ankaBreaking] 🚨 Son-dakika (ulusal siyaset): "${article.title.slice(0, 55)}"`)
-
-        } else {
-          // ❌ Demote: belediye/yerel gundem / yerel siyaset / spor / kültür / teknoloji / magazin / vb.
-          // Şehir tespiti varsa yerel-haber; yoksa AI kategorisi (ör. spor, teknoloji)
-          finalCategory    = detectedCity ? 'yerel-haber' : aiCategory
-          finalIsBreaking  = false
-          finalBreakingScore = 35
-          console.log(
-            `[ankaBreaking] ⬇️  Demote (AI=${aiCategory}, şehir=${detectedCity ?? 'yok'}): ` +
-            `"${article.title.slice(0, 55)}" → ${finalCategory}`
-          )
-        }
-      } else {
-        // aiResult null — AI dönmedi veya güven düşük.
-        // GÜVENSİZ FALLBACK (eski: son-dakika) kaldırıldı.
-        // Acil keyword yoksa gundem olarak yayınla; varsa son-dakika.
-        const titleLower = article.title.toLocaleLowerCase('tr-TR')
-        const hasUrgentKeyword = GUNDEM_BREAKING_KEYWORDS.some(kw => titleLower.includes(kw))
-        if (!hasUrgentKeyword || detectedCity) {
-          finalCategory    = detectedCity ? 'yerel-haber' : 'gundem'
-          finalIsBreaking  = false
-          finalBreakingScore = 40
-          console.log(`[ankaBreaking] AI null → güvenli demote: "${article.title.slice(0, 55)}" → ${finalCategory}`)
-        } else {
-          console.log(`[ankaBreaking] AI null + acil keyword → son-dakika: "${article.title.slice(0, 55)}"`)
-        }
-      }
-    } catch {
-      // AI hatası → acil keyword yoksa güvenli taraf: gundem olarak yayınla
-      const titleLower = article.title.toLocaleLowerCase('tr-TR')
-      const hasUrgentKeyword = GUNDEM_BREAKING_KEYWORDS.some(kw => titleLower.includes(kw))
-      if (!hasUrgentKeyword || detectedCity) {
-        finalCategory    = detectedCity ? 'yerel-haber' : 'gundem'
-        finalIsBreaking  = false
-        finalBreakingScore = 40
-      }
-      console.warn(`[ankaBreaking] AI hatası → ${finalCategory}: "${article.title.slice(0, 55)}"`)
-    }
-    // ────────────────────────────────────────────────────────────────────────
-
-    const doc: Record<string, unknown> = {
-      title:           article.title,
-      spot:            article.spot,
-      content:         article.content,
-      summary:         article.spot,
-      thumbnail:       article.thumbnail,
-      coverImageUrl:   article.thumbnail,
-      status:          'published',
-      category:        finalCategory,
-      categoryId:      finalCategory,
-      source:          'anka-haber',
-      sourceLabel:     'Anka Haber Ajansı',
-      sourceUrl:       article.url,
-      slug,
-      url:             `https://www.nahaber.com/haber/${slug}`,
-      publishedAt:     article.publishedAt,
-      createdAt:       now,
-      updatedAt:       now,
-      confidenceScore: 85,
-      type:            'news',
-      isBreaking:      finalIsBreaking,
-      breakingScore:   finalBreakingScore,
-      hasVideo:        !!article.videoUrl,
-      socialPublished: false,
-      fingerprint:     `anka-breaking-${article.ankaId}`,
-      editorType:      'anka-breaking',
-      ...(detectedCity     ? { city: detectedCity, cityName: detectedCity } : {}),
-      ...(detectedCitySlug ? { citySlug: detectedCitySlug } : {}),
-    }
-
-    if (article.videoUrl) {
-      doc.videoUrl      = article.videoUrl
-      doc.videoEmbedUrl = article.videoEmbedUrl
-    }
-    if (article.keywords.length) doc.tags = article.keywords
-
-    await db.collection('news').doc(docId).set(doc)
-    return 'published'
-  } catch (err) {
-    console.error('[ankaBreaking] write error:', err)
-    return 'error'
-  }
+  if (status === 'published' || status === 'updated') return 'published'
+  if (status === 'queued' || status === 'draft') return 'queued'
+  if (status === 'skipped') return 'skipped'
+  return 'error'
 }
 
 // ── Ana worker ────────────────────────────────────────────────────────────────
@@ -422,7 +407,7 @@ export async function runAnkaBreakingWorker(): Promise<NewsroomRunResult> {
   result.itemsFetched = urls.length
 
   // 2 — Makaleleri paralel çek (CONCURRENCY=4)
-  let published = 0, skipped = 0, failed = 0
+  let published = 0, skipped = 0, failed = 0, queued = 0
 
   for (let i = 0; i < urls.length; i += CONCURRENCY) {
     const batch = urls.slice(i, i + CONCURRENCY)
@@ -438,10 +423,19 @@ export async function runAnkaBreakingWorker(): Promise<NewsroomRunResult> {
         continue
       }
 
-      const status = await publishArticle(db, article)
+      const category = await resolveBreakingCategory(article)
+      const status = await publishArticle(
+        db,
+        article,
+        category,
+        category.detectedCity ?? undefined,
+        category.detectedCitySlug || undefined
+      )
       if (status === 'published') {
         published++
         console.log(`[ankaBreaking] 🚨 ${article.title.slice(0, 60)}`)
+      } else if (status === 'queued') {
+        queued++
       } else if (status === 'skipped') {
         skipped++
       } else {
@@ -451,12 +445,12 @@ export async function runAnkaBreakingWorker(): Promise<NewsroomRunResult> {
     }
   }
 
-  result.itemsNew       = published
+  result.itemsNew       = published + queued
   result.itemsSkipped   = skipped
   result.itemsFailed    = failed
   result.autoPublished  = published
   result.durationMs     = Date.now() - now
 
-  console.log(`[ankaBreaking] Tamamlandı — yayınlandı:${published} atlandı:${skipped} hata:${failed}`)
+  console.log(`[ankaBreaking] Tamamlandı — yayınlandı:${published} kuyruk:${queued} atlandı:${skipped} hata:${failed}`)
   return result
 }
