@@ -7,6 +7,8 @@ import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
 const NAV = getSiteNavItems()
+const FOOTER_PRIMARY = NAV.filter((item) => !item.indent && item.id !== 'teve')
+const FOOTER_GROUPED = NAV.filter((item) => item.indent)
 
 interface DesktopSiteNavLinksProps {
   variant: 'header' | 'footer'
@@ -17,6 +19,32 @@ function isActive(pathname: string, href: string, id: string): boolean {
   if (id === 'feed') return pathname === ROUTES.FEED
   if (href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function FooterNavLink({
+  item,
+  active,
+}: {
+  item: (typeof NAV)[number]
+  active: boolean
+}) {
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      title={`${item.label} haberleri`}
+      className={cn(
+        'whitespace-nowrap text-sm transition-colors hover:text-[rgb(var(--color-text))] hover:underline',
+        item.id === 'feed'
+          ? 'font-semibold text-[rgb(var(--color-text))]'
+          : active
+            ? 'font-semibold text-[rgb(var(--color-text))]'
+            : 'text-[rgb(var(--color-muted))]'
+      )}
+    >
+      {item.label}
+    </Link>
+  )
 }
 
 export function DesktopSiteNavLinks({ variant, className }: DesktopSiteNavLinksProps) {
@@ -60,29 +88,38 @@ export function DesktopSiteNavLinks({ variant, className }: DesktopSiteNavLinksP
   }
 
   return (
-    <ul className={cn('flex list-none flex-wrap gap-x-5 gap-y-2 p-0 m-0', className)}>
-      {NAV.map((item) => {
-        const active = isActive(pathname, item.href, item.id)
-        return (
-          <li key={item.id}>
-            <Link
-              href={item.href}
-              aria-current={active ? 'page' : undefined}
-              title={`${item.label} haberleri`}
-              className={cn(
-                'text-sm transition-colors hover:text-[rgb(var(--color-text))] hover:underline',
-                item.indent
-                  ? 'pl-3 text-[rgb(var(--color-muted))]'
-                  : item.id === 'feed'
-                    ? 'font-semibold text-[rgb(var(--color-text))]'
-                    : 'text-[rgb(var(--color-muted))]'
-              )}
-            >
-              {item.label}
-            </Link>
-          </li>
-        )
-      })}
-    </ul>
+    <div className={cn('w-full space-y-4', className)}>
+      <ul
+        className="flex list-none flex-wrap items-center gap-x-5 gap-y-2 p-0 m-0 xl:flex-nowrap xl:gap-x-6"
+        aria-label="Ana kategoriler"
+      >
+        {FOOTER_PRIMARY.map((item) => {
+          const active = isActive(pathname, item.href, item.id)
+          return (
+            <li key={item.id} className="shrink-0">
+              <FooterNavLink item={item} active={active} />
+            </li>
+          )
+        })}
+      </ul>
+
+      {FOOTER_GROUPED.length > 0 ? (
+        <div className="border-t border-[rgb(var(--color-border))] pt-4">
+          <p className="mb-2.5 text-[10px] font-black uppercase tracking-widest text-[rgb(var(--color-muted))]">
+            Kültür & Medya
+          </p>
+          <ul className="flex list-none flex-wrap items-center gap-x-5 gap-y-2 p-0 m-0">
+            {FOOTER_GROUPED.map((item) => {
+              const active = isActive(pathname, item.href, item.id)
+              return (
+                <li key={item.id} className="shrink-0">
+                  <FooterNavLink item={item} active={active} />
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   )
 }

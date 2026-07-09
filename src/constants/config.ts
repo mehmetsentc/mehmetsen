@@ -79,6 +79,42 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'etkinlikler',   name: 'Etkinlikler',   slug: 'etkinlikler',   iconName: 'calendar',    color: '#8B5CF6' },
 ]
 
+/** Admin CMS haber editörü — gruplu kategori seçici (tek kaynak: DEFAULT_CATEGORIES). */
+const ADMIN_CATEGORY_GROUP_DEFS: Array<{ label: string; ids: string[] }> = [
+  { label: 'Genel', ids: ['trend', 'gundem', 'yerel-haber', 'siyaset', 'dunya', 'asayis', 'son-dakika'] },
+  { label: 'Ekonomi', ids: ['ekonomi'] },
+  { label: 'Spor', ids: ['spor'] },
+  { label: 'Teknoloji & Bilim', ids: ['teknoloji', 'bilim'] },
+  { label: 'Yaşam & Turizm', ids: ['saglik', 'yasam', 'gastronomi', 'turizm', 'gezi', 'otomobil', 'meteoroloji'] },
+  { label: 'Kültür & Magazin', ids: ['kultur', 'magazin'] },
+  { label: 'Özel', ids: ['etkinlikler'] },
+]
+
+export function getAdminCategoryGroups(): Array<{ label: string; categories: CategoryDef[] }> {
+  const used = new Set<string>()
+
+  const groups = ADMIN_CATEGORY_GROUP_DEFS.map(({ label, ids }) => ({
+    label,
+    categories: ids.flatMap((id) => {
+      const parent = DEFAULT_CATEGORIES.find((c) => c.id === id)
+      if (!parent) return []
+      const items = [parent, ...getSubcategories(id)]
+      return items.filter((cat) => {
+        if (used.has(cat.id)) return false
+        used.add(cat.id)
+        return true
+      })
+    }),
+  })).filter((g) => g.categories.length > 0)
+
+  const remaining = DEFAULT_CATEGORIES.filter((c) => !used.has(c.id))
+  if (remaining.length > 0) {
+    groups.push({ label: 'Diğer', categories: remaining })
+  }
+
+  return groups
+}
+
 /** Returns subcategories of a given parent category id */
 export function getSubcategories(parentId: string): CategoryDef[] {
   return DEFAULT_CATEGORIES.filter((c) => c.parentId === parentId)

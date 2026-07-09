@@ -32,8 +32,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const { take, takeCategory } = createFeedAllocator(data)
 
     const heroLead = take(1)[0]
-    const heroRight = take(3)
-    const heroSidebarText = take(2)
+    const heroRight = take(2)
+    const heroSidebarText = take(3)
 
     const topFour = take(4)
     const quickHeadlines = take(5)
@@ -89,18 +89,18 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       {hasHero ? (
         <section
-          className="mb-10 grid grid-cols-12 gap-6 border-b border-[rgb(var(--color-border))] pb-10"
+          className="mb-10 grid grid-cols-12 items-start gap-x-8 gap-y-6 border-b border-[rgb(var(--color-border))] pb-10"
           aria-label="Manşet"
         >
-          <div className="col-span-12 flex flex-col justify-center lg:col-span-3">
+          <div className="col-span-12 min-w-0 lg:col-span-4 xl:col-span-4">
             <TextLeadStory item={layout.heroLead!} size="hero" />
           </div>
 
-          <div className="col-span-12 lg:col-span-5">
-            <HeroImageOnly item={layout.heroLead!} priority />
+          <div className="col-span-12 min-w-0 lg:col-span-5 xl:col-span-5">
+            <HeroImageOnly item={layout.heroLead!} priority aspect="hero" />
           </div>
 
-          <aside className="col-span-12 lg:col-span-4 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
+          <aside className="col-span-12 min-w-0 lg:col-span-3 xl:col-span-3 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
             {layout.heroRight.map((item, i) => (
               <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
             ))}
@@ -112,7 +112,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       ) : null}
 
       {layout.topFour.length > 0 ? (
-        <section className="mb-6 grid grid-cols-4 gap-6" aria-label="Öne çıkanlar">
+        <section className="mb-6 grid grid-cols-2 gap-6 xl:grid-cols-4" aria-label="Öne çıkanlar">
           {layout.topFour.map((item, i) => (
             <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
           ))}
@@ -124,7 +124,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.topicFour.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Spor">
           <DesktopSectionHeader title="Spor" href={ROUTES.CATEGORY('spor')} />
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
             {layout.topicFour.map((item) => (
               <ImageStory key={item.id} item={item} aspect="video" />
             ))}
@@ -136,13 +136,15 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Gündem">
           <DesktopSectionHeader title="Gündem" href={ROUTES.CATEGORY('gundem')} />
           <div className="grid grid-cols-12 gap-6">
-            {layout.moreGrid.map((item) => (
-              <div key={item.id} className="col-span-12 sm:col-span-6 lg:col-span-2">
-                <ImageStory item={item} aspect="video" />
+            <div className="col-span-12 min-w-0 xl:col-span-8">
+              <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
+                {layout.moreGrid.map((item) => (
+                  <ImageStory key={item.id} item={item} aspect="video" />
+                ))}
               </div>
-            ))}
+            </div>
             {layout.moreSidebar.length > 0 ? (
-              <aside className="col-span-12 lg:col-span-4">
+              <aside className="col-span-12 min-w-0 xl:col-span-4 xl:border-l xl:border-[rgb(var(--color-border))] xl:pl-6">
                 {layout.moreSidebar.map((item) => (
                   <SidebarTextStory key={item.id} item={item} />
                 ))}
@@ -160,17 +162,17 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editoryal">
           <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
           <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-12 flex flex-col justify-center lg:col-span-5">
+            <div className="col-span-12 flex min-w-0 flex-col justify-center lg:col-span-5">
               <TextLeadStory item={layout.featureLead} size="lg" />
             </div>
-            <div className="col-span-12 lg:col-span-7">
+            <div className="col-span-12 min-w-0 lg:col-span-7">
               <ImageStory item={layout.featureImage} aspect="wide" showSummary={false} />
             </div>
           </div>
         </section>
       ) : null}
 
-      <section className="mb-10 grid grid-cols-4 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Kategori haberleri">
+      <section className="mb-10 grid grid-cols-2 gap-6 border-b border-[rgb(var(--color-border))] pb-10 xl:grid-cols-4" aria-label="Kategori haberleri">
         {layout.catRow1.map(({ id, items }) =>
           items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
         )}
@@ -178,7 +180,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
 
-      <section className="mb-10 grid grid-cols-4 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Diğer kategoriler">
+      <section className="mb-10 grid grid-cols-2 gap-6 border-b border-[rgb(var(--color-border))] pb-10 xl:grid-cols-4" aria-label="Diğer kategoriler">
         {layout.catRow2.map(({ id, items }) =>
           items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
         )}

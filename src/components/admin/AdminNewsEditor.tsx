@@ -7,7 +7,7 @@ import {
   Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { getAdminCategoryGroups } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import { auth } from '@/lib/firebase/auth'
@@ -328,8 +328,14 @@ export function AdminNewsEditor({
           className={fieldInputCls}
         >
           <option value="">— seçin —</option>
-          {DEFAULT_CATEGORIES.map((cat) => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          {getAdminCategoryGroups().map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.parentId ? `↳ ${cat.name}` : cat.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </div>

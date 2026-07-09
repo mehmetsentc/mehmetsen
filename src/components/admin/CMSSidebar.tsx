@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -10,43 +10,64 @@ import {
   BrainCircuit, ChevronDown, Flame, MapPin, Landmark, Globe,
   Trophy, Cpu, TrendingUp as EkonomiIcon, Heart, FlaskConical,
   Palette, Star, Tag, Utensils, Car, CircleDot, Music, Film,
-  Theater, PartyPopper, Swords,
+  Theater, PartyPopper, Swords, Plane, Map, ShieldAlert, CloudRain,
+  Leaf, Calendar, Bitcoin, BarChart2, Megaphone, type LucideIcon,
 } from 'lucide-react'
+import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import type { CmsPermission } from '@/types/cms'
 import { CMS_ROLE_COLORS } from '@/types/cms'
 
-// ── Category definitions ──────────────────────────────────────────────────
-const CATEGORIES = [
-  { id: 'gundem',      label: 'Gündem',       icon: Newspaper,    color: 'text-red-400' },
-  { id: 'siyaset',     label: 'Siyaset',      icon: Landmark,     color: 'text-purple-400' },
-  { id: 'yerel-haber', label: 'Yerel Haber',  icon: MapPin,       color: 'text-emerald-400' },
-  { id: 'dunya',       label: 'Dünya',        icon: Globe,        color: 'text-slate-400' },
-  // Spor + alt kategoriler
-  { id: 'spor',        label: 'Spor',         icon: Trophy,       color: 'text-green-400' },
-  { id: 'futbol',      label: '↳ Futbol',     icon: CircleDot,    color: 'text-green-300' },
-  { id: 'basketbol',   label: '↳ Basketbol',  icon: CircleDot,    color: 'text-green-300' },
-  { id: 'voleybol',    label: '↳ Voleybol',   icon: CircleDot,    color: 'text-green-300' },
-  { id: 'hentbol',     label: '↳ Hentbol',    icon: CircleDot,    color: 'text-green-300' },
-  { id: 'atletizm',    label: '↳ Atletizm',   icon: Zap,          color: 'text-green-300' },
-  { id: 'gures',       label: '↳ Güreş',      icon: Swords,       color: 'text-green-300' },
-  { id: 'dunya-kupasi-2026', label: '↳ 2026 Dünya Kupası', icon: Trophy, color: 'text-amber-400' },
-  { id: 'teknoloji',   label: 'Teknoloji',    icon: Cpu,          color: 'text-blue-400' },
-  { id: 'ekonomi',     label: 'Ekonomi',      icon: EkonomiIcon,  color: 'text-yellow-400' },
-  { id: 'saglik',      label: 'Sağlık',       icon: Heart,        color: 'text-pink-400' },
-  { id: 'bilim',       label: 'Bilim',        icon: FlaskConical, color: 'text-teal-400' },
-  // Kültür + alt kategoriler
-  { id: 'kultur',      label: 'Kültür',       icon: Palette,      color: 'text-violet-400' },
-  { id: 'sinema',      label: '↳ Sinema',     icon: Film,         color: 'text-violet-300' },
-  { id: 'tiyatro',     label: '↳ Tiyatro',    icon: Theater,      color: 'text-violet-300' },
-  { id: 'konser',      label: '↳ Konser',     icon: Music,        color: 'text-violet-300' },
-  { id: 'festival',    label: '↳ Festival',   icon: PartyPopper,  color: 'text-violet-300' },
-  { id: 'gastronomi',  label: 'Gastronomi',   icon: Utensils,     color: 'text-orange-400' },
-  { id: 'otomobil',    label: 'Otomobil',     icon: Car,          color: 'text-slate-400' },
-  { id: 'magazin',     label: 'Magazin',      icon: Star,         color: 'text-fuchsia-400' },
-  { id: 'trend',       label: 'Trend',        icon: Flame,        color: 'text-orange-400' },
-]
+const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
+  trend: Flame,
+  gundem: Newspaper,
+  'yerel-haber': MapPin,
+  siyaset: Landmark,
+  dunya: Globe,
+  asayis: ShieldAlert,
+  'son-dakika': Zap,
+  ekonomi: EkonomiIcon,
+  borsa: BarChart2,
+  kripto: Bitcoin,
+  spor: Trophy,
+  futbol: CircleDot,
+  basketbol: CircleDot,
+  voleybol: CircleDot,
+  hentbol: CircleDot,
+  atletizm: Zap,
+  gures: Swords,
+  'dunya-kupasi-2026': Trophy,
+  teknoloji: Cpu,
+  saglik: Heart,
+  bilim: FlaskConical,
+  yasam: Leaf,
+  gastronomi: Utensils,
+  turizm: Plane,
+  gezi: Map,
+  otomobil: Car,
+  meteoroloji: CloudRain,
+  kultur: Palette,
+  sinema: Film,
+  tiyatro: Theater,
+  konser: Music,
+  festival: PartyPopper,
+  magazin: Star,
+  etkinlikler: Calendar,
+}
+
+function buildSidebarCategories() {
+  return getAdminCategoryGroups().flatMap((group) =>
+    group.categories.map((cat) => ({
+      id: cat.id,
+      label: cat.parentId ? `↳ ${cat.name}` : cat.name,
+      icon: CATEGORY_ICON_MAP[cat.id] ?? Tag,
+      color: cat.parentId ? 'text-slate-400' : 'text-slate-300',
+    }))
+  )
+}
+
+const CATEGORIES = buildSidebarCategories()
 
 // ── Nav types ─────────────────────────────────────────────────────────────
 interface NavItem {
@@ -77,6 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/news', label: 'Tüm Haberler', icon: Newspaper, requiredPermissions: ['news:read'] },
       { href: '/admin/videos', label: 'Videolar', icon: Video, requiredPermissions: ['video:read'] },
       { href: '/admin/seo', label: 'SEO Yönetimi', icon: Search, requiredPermissions: ['seo:read'] },
+      { href: '/admin/ads', label: 'Reklam Yönetimi', icon: Megaphone, requiredPermissions: ['seo:edit'] },
     ],
   },
   {
@@ -164,7 +186,7 @@ function CategoryMenu({ pathname }: { pathname: string }) {
       </button>
 
       {open && (
-        <div className="ml-3 mt-0.5 space-y-px border-l border-white/10 pl-3">
+        <div className="ml-3 mt-0.5 max-h-[min(420px,50vh)] space-y-px overflow-y-auto border-l border-white/10 pl-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
           {CATEGORIES.map(cat => {
             const Icon = cat.icon
             const active = isNewsPage && activeCategory === cat.id
@@ -196,12 +218,16 @@ export function CMSSidebar() {
   const pathname = usePathname()
   const { user, role, roleLabel, can } = useCmsAuth()
 
-  const visibleGroups = NAV_GROUPS.map(group => ({
-    ...group,
-    items: group.items.filter(item =>
-      !item.requiredPermissions || item.requiredPermissions.some(p => can(p))
-    ),
-  })).filter(group => group.items.length > 0)
+  const visibleGroups = useMemo(
+    () =>
+      NAV_GROUPS.map(group => ({
+        ...group,
+        items: group.items.filter(item =>
+          !item.requiredPermissions || item.requiredPermissions.some(p => can(p))
+        ),
+      })).filter(group => group.items.length > 0),
+    [can]
+  )
 
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col overflow-hidden bg-[#0d1117] text-white">
@@ -237,7 +263,6 @@ export function CMSSidebar() {
               {group.items.map(item => (
                 <NavItemRow key={item.href} item={item} pathname={pathname} />
               ))}
-              {/* Category submenu injected under İçerik Yönetimi */}
               {group.label === 'İçerik Yönetimi' && can('news:read') && (
                 <CategoryMenu pathname={pathname} />
               )}

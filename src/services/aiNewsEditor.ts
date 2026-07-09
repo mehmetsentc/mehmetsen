@@ -8,34 +8,9 @@ import {
 } from '@/lib/newsContentCleanup'
 import { slugifyCity } from '@/lib/location'
 
-/** AI-assigned news categories (slug → display name). */
+/** AI-assigned news categories (slug → display name). DEFAULT_CATEGORIES tek kaynak. */
 export const AI_NEWS_CATEGORIES: Record<string, string> = {
-  'son-dakika': 'Son Dakika',
-  'yerel-haber': 'Yerel Haber',
-  gundem: 'Gündem',
-  siyaset: 'Siyaset',
-  ekonomi: 'Ekonomi',
-  // Spor ana + alt kategoriler
-  spor: 'Spor',
-  futbol: 'Futbol',
-  basketbol: 'Basketbol',
-  voleybol: 'Voleybol',
-  hentbol: 'Hentbol',
-  atletizm: 'Atletizm',
-  gures: 'Güreş',
-  'dunya-kupasi-2026': '2026 Dünya Kupası',
-  // Ekonomi alt kategoriler
-  borsa: 'Borsa',
-  kripto: 'Kripto',
-  dunya: 'Dünya',
-  teknoloji: 'Teknoloji',
-  saglik: 'Sağlık',
-  kultur: 'Kültür',
-  gastronomi: 'Gastronomi',
-  magazin: 'Magazin',
-  bilim: 'Bilim',
-  meteoroloji: 'Meteoroloji',
-  trend: 'Trend',
+  ...Object.fromEntries(DEFAULT_CATEGORIES.map((c) => [c.id, c.name])),
   influencer: 'Influencer',
 }
 
@@ -278,6 +253,9 @@ ADIM 3 — UZMAN KATEGORİ KONTROLÜ (eşleşirse dur, devam etme)
   • Bilim (araştırma/keşif/NASA/uzay bilimi/iklim bilimi) → "bilim"
   • Hava durumu / MGM uyarısı / fırtına / sıcaklık rekoru → "meteoroloji"
   • Yemek/restoran/şef/tarif/Michelin/MasterChef → "gastronomi"
+  • Turizm/otel/tatil/sezon/uçak bileti/seyahat rehberi → "turizm"
+  • Gezi/rota/kamp/doğa yürüyüşü/seyahat deneyimi → "gezi"
+  • Asayiş/suç/operasyon/gözaltı/cinayet/hırsızlık (tek şehir değilse) → "asayis"
   • Araba/araç/TOGG/trafik/motosiklet → "otomobil" (KURAL: trafik kazası → yerel-haber veya gundem, otomobil değil)
   • Sinema/tiyatro/opera/müze/edebiyat/ödül töreni → "kultur"
   • Konser/müzik etkinliği/albüm çıkışı → "kultur"

@@ -50,9 +50,9 @@
 
   @media (min-width: 1024px) {
     :root {
-      --layout-gutter: 1rem;
+      --layout-gutter: 0.75rem;
       --layout-content-newspaper: min(
-        1440px,
+        1800px,
         calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
       );
       --layout-content: min(720px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
@@ -69,7 +69,7 @@
     }
 
     html[data-sidebar='closed'] {
-      --layout-content-newspaper: min(1440px, calc(100vw - var(--layout-gutter) * 2));
+      --layout-content-newspaper: min(1800px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content: min(720px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-reels: min(720px, calc(100vw - var(--layout-gutter) * 2));
@@ -289,14 +289,19 @@
 
   @media (min-width: 1024px) {
     .content-stage-newspaper {
-      @apply max-w-none px-3 py-4 sm:px-4;
+      @apply max-w-none px-2 py-4 sm:px-3;
     }
 
     .content-stage-newspaper > .content-main-newspaper {
-      @apply mx-auto w-full;
-      max-width: var(--layout-content-newspaper);
-      transition: max-width 300ms ease-in-out;
+      @apply mx-auto w-full max-w-none;
+      width: min(var(--layout-content-newspaper), 100%);
+      transition: width 300ms ease-in-out;
     }
+  }
+
+  .desktop-home-feed,
+  .desktop-category-page {
+    @apply w-full;
   }
 
   .desktop-newspaper {

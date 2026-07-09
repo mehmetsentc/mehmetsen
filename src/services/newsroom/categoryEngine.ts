@@ -2,7 +2,7 @@
  * Category Engine — normalizes AI-assigned categories, applies editor overrides,
  * and post-validates with keyword heuristics.
  */
-import { AI_NEWS_CATEGORIES } from '@/services/aiNewsEditor'
+import { DEFAULT_CATEGORIES } from '@/constants/config'
 import type { NewsroomEditorType } from '@/services/newsroom/types'
 
 const CATEGORY_ALIASES: Record<string, string> = {
@@ -60,25 +60,10 @@ const CATEGORY_ALIASES: Record<string, string> = {
   festival: 'festival',
 }
 
-/** Extended categories beyond aiNewsEditor defaults. */
+/** All newsroom categories — DEFAULT_CATEGORIES tek kaynak. */
 export const NEWSROOM_CATEGORIES: Record<string, string> = {
-  ...AI_NEWS_CATEGORIES,
-  trend: 'Trend',
+  ...Object.fromEntries(DEFAULT_CATEGORIES.map((c) => [c.id, c.name])),
   influencer: 'Influencer',
-  'yerel-haber': 'Yerel Haber',
-  gastronomi: 'Gastronomi',
-  otomobil: 'Otomobil',
-  futbol: 'Futbol',
-  basketbol: 'Basketbol',
-  voleybol: 'Voleybol',
-  hentbol: 'Hentbol',
-  atletizm: 'Atletizm',
-  gures: 'Güreş',
-  'dunya-kupasi-2026': '2026 Dünya Kupası',
-  sinema: 'Sinema',
-  tiyatro: 'Tiyatro',
-  konser: 'Konser',
-  festival: 'Festival',
 }
 
 const VALID_IDS = new Set(Object.keys(NEWSROOM_CATEGORIES))

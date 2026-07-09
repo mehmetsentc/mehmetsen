@@ -34,16 +34,16 @@ function Headline({
     md: 'text-base font-bold leading-snug',
     lg: 'text-lg font-bold leading-tight',
     xl: 'text-xl font-bold leading-tight',
-    hero: 'text-2xl font-bold leading-tight xl:text-[1.75rem] xl:leading-tight',
+    hero: 'text-2xl font-bold leading-tight xl:text-3xl xl:leading-tight',
   }
 
   return (
-    <Link href={newsItemDetailHref(item)} className="group block">
+    <Link href={newsItemDetailHref(item)} className="group block min-w-0">
       <h3
         className={cn(
           sizes[size],
           serif ? 'font-serif' : '',
-          'text-[rgb(var(--color-text))] group-hover:underline decoration-2 underline-offset-2'
+          'break-words text-[rgb(var(--color-text))] decoration-2 underline-offset-2 group-hover:underline'
         )}
       >
         {item.title}
@@ -78,17 +78,27 @@ export function HeroStory({ item, priority = false }: { item: NewsItem; priority
   )
 }
 
-/** BBC hero: sadece büyük dikey görsel (metin solda ayrı) */
-export function HeroImageOnly({ item, priority = false }: { item: NewsItem; priority?: boolean }) {
+/** BBC hero: geniş manşet görseli — satır yüksekliğine uzamaz */
+export function HeroImageOnly({
+  item,
+  priority = false,
+  aspect = 'hero',
+}: {
+  item: NewsItem
+  priority?: boolean
+  aspect?: 'hero' | 'wide'
+}) {
+  const aspectCls = aspect === 'wide' ? 'aspect-[16/9]' : 'aspect-[16/10]'
+
   return (
-    <article className="h-full">
-      <Link href={newsItemDetailHref(item)} className="group block h-full">
-        <div className="relative aspect-[3/4] overflow-hidden bg-[rgb(var(--color-border))] lg:aspect-auto lg:min-h-[420px] lg:h-full">
+    <article className="min-w-0">
+      <Link href={newsItemDetailHref(item)} className="group block">
+        <div className={cn('relative w-full overflow-hidden bg-[rgb(var(--color-border))]', aspectCls)}>
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
             fill
-            sizes="(max-width: 1280px) 40vw, 520px"
+            sizes="(max-width: 1280px) 55vw, 720px"
             priority={priority}
             className="object-cover transition-transform duration-300 group-hover:scale-[1.01]"
           />
@@ -98,33 +108,35 @@ export function HeroImageOnly({ item, priority = false }: { item: NewsItem; prio
   )
 }
 
-/** BBC hero sağ sütun: küçük görsel + başlık + özet */
+/** BBC hero sağ sütun: yatay kart — kompakt görsel + metin */
 export function RightFeatureStory({ item, live = false }: { item: NewsItem; live?: boolean }) {
   return (
-    <article className="border-b border-[rgb(var(--color-border))] py-4 last:border-b-0">
+    <article className="min-w-0 border-b border-[rgb(var(--color-border))] py-4 last:border-b-0">
       {live ? (
         <span className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-red-600">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-600" />
           Canlı
         </span>
       ) : null}
-      <Link href={newsItemDetailHref(item)} className="group block">
-        <div className="relative mb-2 aspect-[16/10] overflow-hidden bg-[rgb(var(--color-border))]">
+      <Link href={newsItemDetailHref(item)} className="group flex gap-4">
+        <div className="relative h-[88px] w-[132px] shrink-0 overflow-hidden bg-[rgb(var(--color-border))]">
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
             fill
-            sizes="280px"
+            sizes="132px"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
-        <Headline item={item} size="md" serif />
-        {item.description ? (
-          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
-            {item.description}
-          </p>
-        ) : null}
-        <StoryMeta item={item} className="mt-2" />
+        <div className="min-w-0 flex-1">
+          <Headline item={item} size="sm" serif />
+          {item.description ? (
+            <p className="mt-1.5 line-clamp-2 break-words text-xs leading-relaxed text-[rgb(var(--color-muted))]">
+              {item.description}
+            </p>
+          ) : null}
+          <StoryMeta item={item} className="mt-1.5" />
+        </div>
       </Link>
     </article>
   )
@@ -171,9 +183,9 @@ export function ImageStory({
   }[aspect]
 
   return (
-    <article>
-      <Link href={newsItemDetailHref(item)} className="group block">
-        <div className={cn('relative mb-3 overflow-hidden bg-[rgb(var(--color-border))]', aspectCls)}>
+    <article className="min-w-0">
+      <Link href={newsItemDetailHref(item)} className="group block min-w-0">
+        <div className={cn('relative mb-3 w-full overflow-hidden bg-[rgb(var(--color-border))]', aspectCls)}>
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
@@ -185,7 +197,7 @@ export function ImageStory({
         </div>
         <Headline item={item} size="md" />
         {showSummary && item.description ? (
-          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+          <p className="mt-2 line-clamp-3 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">
             {item.description}
           </p>
         ) : null}
@@ -197,10 +209,10 @@ export function ImageStory({
 
 export function TextLeadStory({ item, size = 'lg' }: { item: NewsItem; size?: 'md' | 'lg' | 'hero' }) {
   return (
-    <article>
+    <article className="min-w-0">
       <Headline item={item} size={size === 'hero' ? 'hero' : size} serif />
       {item.description ? (
-        <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+        <p className="mt-3 line-clamp-4 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">
           {item.description}
         </p>
       ) : null}
@@ -211,7 +223,7 @@ export function TextLeadStory({ item, size = 'lg' }: { item: NewsItem; size?: 'm
 
 export function SidebarTextStory({ item, live = false }: { item: NewsItem; live?: boolean }) {
   return (
-    <article className="border-b border-[rgb(var(--color-border))] py-3 last:border-b-0">
+    <article className="min-w-0 border-b border-[rgb(var(--color-border))] py-3 last:border-b-0">
       {live ? (
         <span className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-red-600">
           <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />

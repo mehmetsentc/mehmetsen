@@ -58,9 +58,9 @@ function GridStory({ post, size = 'md' }: { post: TimelinePost; size?: 'md' | 'l
     size === 'xl' ? 'text-2xl md:text-3xl' : size === 'lg' ? 'text-xl' : 'text-base'
 
   return (
-    <article>
-      <Link href={href} className="group block">
-        <div className={cn('relative mb-3 overflow-hidden bg-[rgb(var(--color-border))]', aspect)}>
+    <article className="min-w-0">
+      <Link href={href} className="group block min-w-0">
+        <div className={cn('relative mb-3 w-full overflow-hidden bg-[rgb(var(--color-border))]', aspect)}>
           <SafeNewsImage
             src={image}
             alt={post.title}
@@ -69,11 +69,11 @@ function GridStory({ post, size = 'md' }: { post: TimelinePost; size?: 'md' | 'l
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
-        <h3 className={cn('font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline', titleSize)}>
+        <h3 className={cn('break-words font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline', titleSize)}>
           {post.title}
         </h3>
         {summary ? (
-          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">{summary}</p>
+          <p className="mt-2 line-clamp-3 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">{summary}</p>
         ) : null}
       </Link>
     </article>
@@ -86,13 +86,15 @@ function StackedStory({ post }: { post: TimelinePost }) {
   const summary = categoryPostSummary(post)
 
   return (
-    <article className="border-b border-[rgb(var(--color-border))] pb-5 last:border-b-0 last:pb-0">
-      <Link href={href} className="group block">
-        <div className="relative mb-2 aspect-[16/10] overflow-hidden bg-[rgb(var(--color-border))]">
-          <SafeNewsImage src={image} alt={post.title} fill sizes="280px" className="object-cover group-hover:scale-[1.02] transition-transform" />
+    <article className="border-b border-[rgb(var(--color-border))] pb-4 last:border-b-0 last:pb-0">
+      <Link href={href} className="group flex gap-3">
+        <div className="relative h-[72px] w-[108px] shrink-0 overflow-hidden bg-[rgb(var(--color-border))]">
+          <SafeNewsImage src={image} alt={post.title} fill sizes="108px" className="object-cover transition-transform group-hover:scale-[1.02]" />
         </div>
-        <h3 className="text-sm font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline">{post.title}</h3>
-        {summary ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">{summary}</p> : null}
+        <div className="min-w-0 flex-1">
+          <h3 className="line-clamp-3 text-sm font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline">{post.title}</h3>
+          {summary ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">{summary}</p> : null}
+        </div>
       </Link>
     </article>
   )
@@ -102,7 +104,7 @@ function TextLinkStory({ post }: { post: TimelinePost }) {
   const href = categoryPostHref(post)
   return (
     <article className="border-t border-[rgb(var(--color-border))] py-3 first:border-t-0 first:pt-0">
-      <Link href={href} className="group block text-sm font-bold leading-snug text-[rgb(var(--color-text))] hover:underline">
+      <Link href={href} className="group block break-words text-sm font-bold leading-snug text-[rgb(var(--color-text))] hover:underline">
         {post.title}
       </Link>
     </article>
@@ -131,8 +133,8 @@ function ThemeColumn({
         <div className="relative mb-3 aspect-[4/3] overflow-hidden bg-[rgb(var(--color-border))]">
           <SafeNewsImage src={leadImage} alt={lead.title} fill sizes="320px" className="object-cover group-hover:scale-[1.02] transition-transform" />
         </div>
-        <h3 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline">{lead.title}</h3>
-        {leadSummary ? <p className="mt-2 line-clamp-3 text-sm text-[rgb(var(--color-muted))]">{leadSummary}</p> : null}
+        <h3 className="break-words text-base font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline">{lead.title}</h3>
+        {leadSummary ? <p className="mt-2 line-clamp-3 break-words text-sm text-[rgb(var(--color-muted))]">{leadSummary}</p> : null}
       </Link>
       {links.map((post) => (
         <TextLinkStory key={post.id} post={post} />
@@ -226,19 +228,19 @@ export function DesktopCategoryPage({
 
       {centerHero ? (
         <section
-          className="mb-10 grid grid-cols-12 gap-6 border-b border-[rgb(var(--color-border))] pb-10"
+          className="mb-10 grid grid-cols-12 items-start gap-x-8 gap-y-6 border-b border-[rgb(var(--color-border))] pb-10"
           aria-label="Öne çıkan haberler"
         >
           {leftHero ? (
-            <div className="col-span-12 md:col-span-3">
+            <div className="col-span-12 min-w-0 md:col-span-3 xl:col-span-3">
               <GridStory post={leftHero} />
             </div>
           ) : null}
-          <div className={cn('col-span-12', leftHero ? 'md:col-span-6' : 'md:col-span-9')}>
+          <div className={cn('col-span-12 min-w-0', leftHero ? 'md:col-span-6 xl:col-span-6' : 'md:col-span-9 xl:col-span-9')}>
             <GridStory post={centerHero} size="xl" />
           </div>
           {rightStack.length > 0 ? (
-            <aside className="col-span-12 md:col-span-3 flex flex-col gap-5" aria-label="Son haberler">
+            <aside className="col-span-12 flex min-w-0 flex-col gap-1 md:col-span-3 xl:col-span-3" aria-label="Son haberler">
               {rightStack.map((post) => (
                 <StackedStory key={post.id} post={post} />
               ))}
@@ -262,7 +264,7 @@ export function DesktopCategoryPage({
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editör seçimi">
           <DesktopSectionHeader title="Editörün Seçimi" href={ROUTES.CATEGORY(cat.slug)} />
           <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 lg:col-span-9">
+            <div className="col-span-12 min-w-0 lg:col-span-9">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                 {wellnessGrid.map((post) => (
                   <GridStory key={post.id} post={post} />
