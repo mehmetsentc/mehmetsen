@@ -20,12 +20,7 @@ import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
 import { cn } from '@/lib/utils'
-import { splitNewsParagraphs } from '@/lib/newsContent'
-import {
-  cleanupNewsBody,
-  cleanupNewsSummary,
-  cleanupNewsTitle,
-} from '@/lib/newsContentCleanup'
+import { parseArticleContent } from '@/lib/articleBodyUtils'
 import {
   useNetworkTier,
   imageQualityForTier,
@@ -35,30 +30,6 @@ import {
 interface NewsArticleLayoutProps {
   post: Post
   suggested: Post[]
-}
-
-function estimateReadMinutes(text: string): number {
-  const words = text.trim().split(/\s+/).filter(Boolean).length
-  return Math.max(1, Math.ceil(words / 200))
-}
-
-function normalizeForCompare(text: string): string {
-  return text.trim().replace(/\s+/g, ' ')
-}
-
-/** Sanitize extracted HTML for safe rendering */
-function sanitizeHtml(html: string): string {
-  // Strip all script/style/iframe/event handlers
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
-    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/<a\b[^>]*href\s*=\s*["'][^"']*["'][^>]*>([\s\S]*?)<\/a>/gi, '$1')
-    .replace(/<img[^>]+>/gi, '')
-    // Clean up empty tags
-    .replace(/<(\w+)[^>]*>\s*<\/\1>/gi, '')
 }
 
 export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
@@ -71,25 +42,16 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
     ? format(new Date(publishedAt), 'd MMMM yyyy, HH:mm', { locale: tr })
     : ''
 
-  const readText = [post.summary, post.content].filter(Boolean).join(' ')
-  const readMinutes = post.readingTimeMinutes ?? estimateReadMinutes(readText)
-
-  // Prefer AI spot (journalistic lead) → summary fallback
-  const spotText = post.spot?.trim() || ''
-  const summaryText = cleanupNewsSummary(post.summary?.trim() || '')
-  const leadText = spotText || summaryText
-  const bodyText = cleanupNewsBody(post.content?.trim() || '', { preserveSourceLine: false })
-  const articleTitle = cleanupNewsTitle(post.title)
-
-  const showLead = Boolean(leadText)
-  const showBody =
-    Boolean(bodyText) &&
-    (!leadText || normalizeForCompare(bodyText) !== normalizeForCompare(leadText))
-
-  // Prefer extracted HTML content; fallback to paragraphs
-  const hasHtmlContent = Boolean(post.htmlContent?.trim())
-  const sanitizedHtml = hasHtmlContent ? sanitizeHtml(post.htmlContent!) : ''
-  const paragraphs = (!hasHtmlContent && showBody) ? splitNewsParagraphs(bodyText) : []
+  const {
+    articleTitle,
+    leadText,
+    bodyText,
+    showLead,
+    hasHtmlContent,
+    sanitizedHtml,
+    paragraphs,
+    readMinutes,
+  } = parseArticleContent(post)
 
   const hasTags = post.tags.length > 0
   const hasCity = Boolean(post.city || post.citySlug)
