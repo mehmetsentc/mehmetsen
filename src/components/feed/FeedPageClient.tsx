@@ -7,6 +7,7 @@ import { DesktopFeedHeader } from '@/components/home/desktop/DesktopFeedHeader'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
 import { TrendFeed } from '@/components/feed/TrendFeed'
 import { FeedCategoryBar, type FeedTab } from '@/components/feed/FeedCategoryBar'
+import { AdSlotProvider } from '@/context/AdSlotContext'
 import type { HomeFeedInitialData } from '@/types/newsItem'
 
 interface FeedPageClientProps {
@@ -31,17 +32,19 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
 
       {/* Web (lg+) — BBC / NYT tarzı geniş düzen */}
       <div className="hidden lg:block desktop-newspaper">
-        <DesktopFeedHeader breakingItems={homeFeedData.breaking} />
-        {activeTab === 'home' && <DesktopHomeFeed data={homeFeedData} />}
-        {activeTab === 'trend' && (
-          <div className="pb-10">
-            <div className="mb-4 border-b-2 border-[rgb(var(--color-text))] pb-1">
-              <h2 className="font-serif text-xl font-bold text-[rgb(var(--color-text))]">Trend Haberler</h2>
+        <AdSlotProvider page="home">
+          <DesktopFeedHeader breakingItems={homeFeedData.breaking} />
+          {activeTab === 'home' && <DesktopHomeFeed data={homeFeedData} />}
+          {activeTab === 'trend' && (
+            <div className="pb-10">
+              <div className="mb-4 border-b-2 border-[rgb(var(--color-text))] pb-1">
+                <h2 className="font-serif text-xl font-bold text-[rgb(var(--color-text))]">Trend Haberler</h2>
+              </div>
+              <TrendFeed items={homeFeedData.trendFeed} hideHeader />
             </div>
-            <TrendFeed items={homeFeedData.trendFeed} hideHeader />
-          </div>
-        )}
-        {activeTab === 'home' ? null : <DesktopHomeFooter />}
+          )}
+          {activeTab === 'home' ? null : <DesktopHomeFooter />}
+        </AdSlotProvider>
       </div>
     </>
   )

@@ -46,6 +46,9 @@ export const Collections = {
   ANALYTICS_DAILY: 'analyticsDaily',
   /** Per-route Core Web Vitals aggregates */
   ANALYTICS_VITALS: 'analyticsVitals',
+
+  /** Site reklam bannerları — slotId ile eşleşir */
+  AD_BANNERS: 'adBanners',
 } as const
 
 /** Primary collection for the TikTok-style video feed */

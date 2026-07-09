@@ -9,6 +9,7 @@ import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
 import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
+import { AdSlotProvider } from '@/context/AdSlotContext'
 import type { WorldCup2026Data } from '@/services/sportsApi/worldCup2026'
 
 interface SubTab {
@@ -147,8 +148,21 @@ export function CategoryPageClient({
 
       {/* Web (lg+) — BBC kategori düzeni */}
       <div className="hidden lg:block desktop-newspaper">
-        {cat.id === 'dunya-kupasi-2026' && worldCupData ? (
-          <>
+        <AdSlotProvider page="category" categoryId={cat.id}>
+          {cat.id === 'dunya-kupasi-2026' && worldCupData ? (
+            <>
+              <DesktopCategoryPage
+                cat={cat}
+                headerCat={headerCat}
+                isSubcategory={isSubcategory}
+                parentCat={parentCat}
+                subTabs={subTabs}
+                tabParent={tabParent}
+                initialPosts={initialPosts}
+                topSlot={<WorldCupCategoryTabs initialPosts={initialPosts} data={worldCupData} />}
+              />
+            </>
+          ) : (
             <DesktopCategoryPage
               cat={cat}
               headerCat={headerCat}
@@ -157,21 +171,10 @@ export function CategoryPageClient({
               subTabs={subTabs}
               tabParent={tabParent}
               initialPosts={initialPosts}
-              topSlot={<WorldCupCategoryTabs initialPosts={initialPosts} data={worldCupData} />}
+              topSlot={borsaTop}
             />
-          </>
-        ) : (
-          <DesktopCategoryPage
-            cat={cat}
-            headerCat={headerCat}
-            isSubcategory={isSubcategory}
-            parentCat={parentCat}
-            subTabs={subTabs}
-            tabParent={tabParent}
-            initialPosts={initialPosts}
-            topSlot={borsaTop}
-          />
-        )}
+          )}
+        </AdSlotProvider>
       </div>
     </>
   )
