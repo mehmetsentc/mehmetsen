@@ -13,10 +13,19 @@ import { ROUTES } from '@/constants/routes'
 import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
 import { getAppleAuthErrorMessage } from '@/lib/appleAuthErrors'
 
+/** iOS Capacitor'da mı çalışıyoruz? (Safari'yi dış browser olarak açmaktan kaçın) */
+function isCapacitor(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof (window as unknown as Record<string, unknown>).Capacitor !== 'undefined'
+  )
+}
+
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isAppleLoading, setIsAppleLoading] = useState(false)
+  const onIos = isCapacitor()
   const { login, loginWithGoogle, loginWithApple } = useAuth()
   const router = useRouter()
 
@@ -129,19 +138,21 @@ export function LoginForm() {
         <div className="flex-1 border-t border-[rgb(var(--color-border))]" />
       </div>
 
-      <button
-        onClick={handleGoogle}
-        disabled={isGoogleLoading}
-        className="flex w-full items-center justify-center gap-3 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2.5 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface-hover,var(--color-surface)))] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <GoogleIcon />
-        {isGoogleLoading ? 'Yükleniyor...' : 'Google ile devam et'}
-      </button>
+      {!onIos && (
+        <button
+          onClick={handleGoogle}
+          disabled={isGoogleLoading}
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2.5 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface-hover,var(--color-surface)))] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <GoogleIcon />
+          {isGoogleLoading ? 'Yükleniyor...' : 'Google ile devam et'}
+        </button>
+      )}
 
       <button
         onClick={handleApple}
         disabled={isAppleLoading}
-        className="mt-3 flex w-full items-center justify-center gap-3 rounded-lg bg-black py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+        className={`${!onIos ? 'mt-3 ' : ''}flex w-full items-center justify-center gap-3 rounded-lg bg-black py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200`}
       >
         <AppleIcon />
         {isAppleLoading ? 'Yükleniyor...' : 'Apple ile devam et'}

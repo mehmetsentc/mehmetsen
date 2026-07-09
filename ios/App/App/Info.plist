@@ -55,5 +55,7 @@
 	<string>NaHaber fotoğrafları albümünüze kaydedebilmek için izin gerektirir.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>NaHaber'e video çekebilmek için mikrofon izni gereklidir.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>NaHaber, yakınındaki haberleri ve etkinlikleri gösterebilmek için konumunu kullanır.</string>
 </dict>
 </plist>

@@ -51,44 +51,28 @@ public class NativeAppleSignInPlugin: CAPPlugin, ASAuthorizationControllerDelega
     public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         // Bu delegate her zaman main thread'den çağrılır
 
-        // 1. Capacitor bridge view controller'ının penceresi (en güvenilir)
-        if let vc = self.bridge?.viewController,
-           let window = vc.view.window,
-           !window.isHidden {
+        // 1. Foreground active scene → key window (iOS 15+ scene-based approach)
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+
+        if let activeScene = scenes.first(where: { $0.activationState == .foregroundActive }) {
+            if let keyWindow = activeScene.keyWindow, !keyWindow.isHidden { return keyWindow }
+            if let visibleWindow = activeScene.windows.first(where: { !$0.isHidden }) { return visibleWindow }
+        }
+
+        // 2. Herhangi bir foreground scene
+        for scene in scenes where scene.activationState != .background {
+            if let keyWindow = scene.keyWindow, !keyWindow.isHidden { return keyWindow }
+            if let visibleWindow = scene.windows.first(where: { !$0.isHidden }) { return visibleWindow }
+        }
+
+        // 3. Capacitor bridge view controller'ının penceresi
+        if let window = self.bridge?.viewController?.view.window, !window.isHidden {
             return window
         }
 
-        // 2. Foreground active scene → key window
-        let scenes = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-
-        for scene in scenes where scene.activationState == .foregroundActive {
-            if let key = scene.keyWindow, !key.isHidden { return key }
-        }
-
-        // 3. Foreground inactive scene → key window
-        for scene in scenes where scene.activationState == .foregroundInactive {
-            if let key = scene.keyWindow, !key.isHidden { return key }
-        }
-
-        // 4. Herhangi bir scene → key window
+        // 4. Son çare — ilk görünür window
         for scene in scenes {
-            if let key = scene.keyWindow, !key.isHidden { return key }
-        }
-
-        // 5. Herhangi bir görünür window
-        for scene in scenes {
-            for window in scene.windows where !window.isHidden {
-                return window
-            }
-        }
-
-        // 6. Son çare — bridge'in root window'u
-        if let vc = self.bridge?.viewController {
-            let window = UIWindow(frame: UIScreen.main.bounds)
-            window.rootViewController = vc
-            window.makeKeyAndVisible()
-            return window
+            for window in scene.windows where !window.isHidden { return window }
         }
 
         return UIWindow()
