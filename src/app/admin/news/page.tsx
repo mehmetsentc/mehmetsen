@@ -316,8 +316,8 @@ function EditDrawer({
         }),
       })
       if (!res.ok) {
-        const err = await res.json() as { error?: string }
-        throw new Error(err.error ?? 'Kayıt başarısız')
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(err.error ?? `Kayıt başarısız (${res.status})`)
       }
       toast.success('Haber güncellendi')
       onSaved({
