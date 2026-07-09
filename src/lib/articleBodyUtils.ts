@@ -11,6 +11,8 @@ function normalizeForCompare(text: string): string {
 }
 
 const MIN_HTML_PLAIN_CHARS = 250
+/** Tam metin varsa kaynak HTML yerine düz paragraflar tercih edilir. */
+const PREFER_PLAIN_OVER_HTML_CHARS = 400
 
 /** Strip tags/scripts — rough plain-text length for HTML body quality checks. */
 function extractPlainTextFromHtml(html: string): string {
@@ -23,18 +25,21 @@ function extractPlainTextFromHtml(html: string): string {
 }
 
 /**
- * htmlContent is often a source-page shell (DHA byline, date) while the real
- * article lives in description/content. Only prefer HTML when it carries enough body.
+ * htmlContent is often a source-page shell (DHA byline, duplicate h1, video chrome)
+ * while the real article lives in description/content. Only prefer HTML when plain
+ * text is missing or very thin.
  */
 function shouldUseHtmlContent(html: string | undefined, plainBody: string): boolean {
+  const plainLen = plainBody.trim().length
+  if (plainLen >= PREFER_PLAIN_OVER_HTML_CHARS) return false
+
   const raw = html?.trim()
   if (!raw) return false
 
   const htmlPlain = extractPlainTextFromHtml(raw)
   if (htmlPlain.length < MIN_HTML_PLAIN_CHARS) return false
 
-  const bodyLen = plainBody.trim().length
-  if (bodyLen > 0 && htmlPlain.length < bodyLen * 0.4) return false
+  if (plainLen > 0 && htmlPlain.length < plainLen * 0.4) return false
 
   return true
 }
@@ -58,14 +63,20 @@ function stripLeadFromBody(body: string, lead: string): string {
 /** Strip unsafe HTML for server-rendered article bodies (no jsdom — Vercel-safe). */
 export function sanitizeArticleHtml(html: string): string {
   return html
+    .replace(/<\/?(?:html|body|head)[^>]*>/gi, '')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, '')
+    .replace(/\sstyle\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\sclass\s*=\s*["'][^"']*["']/gi, '')
     .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
     .replace(/javascript:/gi, '')
     .replace(/<a\b[^>]*href\s*=\s*["'][^"']*["'][^>]*>([\s\S]*?)<\/a>/gi, '$1')
     .replace(/<img[^>]+>/gi, '')
+    .replace(/<figure[^>]*>[\s\S]*?<\/figure>/gi, '')
     .replace(/<(\w+)[^>]*>\s*<\/\1>/gi, '')
+    .trim()
 }
 
 export function estimateReadMinutes(text: string): number {

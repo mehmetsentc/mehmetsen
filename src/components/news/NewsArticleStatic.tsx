@@ -232,7 +232,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
 
           {hasHtmlContent && sanitizedHtml && (
             <div
-              className="news-body prose prose-lg max-w-none text-[rgb(var(--color-text))]"
+              className="news-body prose prose-lg prose-invert max-w-none text-[rgb(var(--color-text))]"
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           )}

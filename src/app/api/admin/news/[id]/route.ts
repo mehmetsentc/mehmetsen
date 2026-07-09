@@ -58,7 +58,13 @@ export async function PUT(request: Request, context: RouteContext) {
   if (body.title?.trim())      update.title = body.title.trim()
   if (body.slug?.trim())       update.slug = body.slug.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
   if (body.summary?.trim())    update.summary = body.summary.trim()
-  if (body.content?.trim())    update.content = body.content.trim()
+  if (body.content?.trim()) {
+    const text = body.content.trim()
+    update.content = text
+    update.description = text
+    // Kaynak HTML eski kalmasın — canlıda düz metin gösterilsin
+    update.htmlContent = FieldValue.delete()
+  }
   if (body.spot?.trim())       update.spot = body.spot.trim()
   if (body.seoTitle?.trim())   update.seoTitle = body.seoTitle.trim()
   if (body.seoDescription?.trim()) update.seoDescription = body.seoDescription.trim()

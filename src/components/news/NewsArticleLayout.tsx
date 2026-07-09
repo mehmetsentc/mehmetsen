@@ -177,7 +177,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
           {/* Full HTML content (extracted from source) */}
           {hasHtmlContent && sanitizedHtml && (
             <div
-              className="news-body prose prose-lg max-w-none text-[rgb(var(--color-text))] [&>p]:mb-6 [&>p]:leading-[1.85] [&>h2]:mb-4 [&>h2]:mt-8 [&>h2]:text-xl [&>h2]:font-black [&>h3]:mb-3 [&>h3]:mt-6 [&>h3]:text-lg [&>h3]:font-bold [&>ul]:mb-6 [&>ul]:list-disc [&>ul]:pl-6 [&>li]:mb-2 [&>blockquote]:border-l-4 [&>blockquote]:border-[rgb(var(--color-brand))] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[rgb(var(--color-muted))]"
+              className="news-body prose prose-lg prose-invert max-w-none text-[rgb(var(--color-text))] [&>p]:mb-6 [&>p]:leading-[1.85] [&>h2]:mb-4 [&>h2]:mt-8 [&>h2]:text-xl [&>h2]:font-black [&>h3]:mb-3 [&>h3]:mt-6 [&>h3]:text-lg [&>h3]:font-bold [&>ul]:mb-6 [&>ul]:list-disc [&>ul]:pl-6 [&>li]:mb-2 [&>blockquote]:border-l-4 [&>blockquote]:border-[rgb(var(--color-brand))] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[rgb(var(--color-muted))]"
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           )}
