@@ -40,6 +40,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
         <div
           className="relative overflow-hidden rounded-none md:rounded-2xl"
           style={{ height: 'clamp(22rem, 62vw, 38rem)' }}
+          data-no-category-swipe
           onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null }}
           onTouchEnd={(e) => {
             if (touchStartX.current === null) return

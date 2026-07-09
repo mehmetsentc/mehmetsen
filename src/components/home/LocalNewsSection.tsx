@@ -186,7 +186,7 @@ export function LocalNewsSection() {
               </Link>
             </div>
           </div>
-          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide">
+          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide" data-no-category-swipe>
             {events.map((event) => (
               <EventMiniCard key={event.id} event={event} fallbackCity={cityName} />
             ))}

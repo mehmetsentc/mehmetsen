@@ -2,18 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ROUTES } from '@/constants/routes'
-import { getTopNavCategories } from '@/constants/config'
+import { getSwipeableFeedDestinations, resolveSwipeCategoryKey } from '@/constants/config'
 import { cn } from '@/lib/utils'
 
-const NAV_CATEGORIES = [
-  ...getTopNavCategories(),
-  // Yerel haber statik route — kategori id'sinden bağımsız
-  { id: 'yerel', label: 'Yerel', href: ROUTES.LOCAL },
-]
+const NAV_CATEGORIES = getSwipeableFeedDestinations()
 
 export function CategoryNav() {
   const pathname = usePathname()
+  const activeKey = resolveSwipeCategoryKey(pathname)
 
   const hide =
     pathname === '/reels' ||
@@ -32,7 +28,7 @@ export function CategoryNav() {
     >
       <div className="flex gap-0 overflow-x-auto scrollbar-none">
         {NAV_CATEGORIES.map((cat) => {
-          const isActive = pathname === cat.href || pathname.startsWith(`${cat.href}/`)
+          const isActive = activeKey === cat.id
           return (
             <Link
               key={cat.href}
@@ -52,6 +48,9 @@ export function CategoryNav() {
           )
         })}
       </div>
+      <p className="border-t border-[rgb(var(--color-border))]/60 px-4 py-1 text-[10px] text-[rgb(var(--color-muted))]">
+        Kategoriler arasında geçmek için ekranı sağa veya sola kaydırın
+      </p>
     </nav>
   )
 }

@@ -112,6 +112,7 @@ export function BreakingStories({ items }: BreakingStoriesProps) {
           initial="hidden"
           animate="show"
           className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide snap-x snap-mandatory"
+          data-no-category-swipe
         >
           <motion.div variants={ITEM_VARIANTS} className="shrink-0 snap-start">
             <Link

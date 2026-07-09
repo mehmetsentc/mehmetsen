@@ -23,7 +23,7 @@ export function CategoryRail({ categoryId, title, items }: CategoryRailProps) {
         <h2 className="text-lg font-black text-[rgb(var(--color-text))]">{heading}</h2>
       </div>
 
-      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide">
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide" data-no-category-swipe>
         {items.map((item) => {
           const image = item.imageUrl || FEED_FALLBACK_LOGO
           return (

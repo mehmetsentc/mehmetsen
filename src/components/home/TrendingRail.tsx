@@ -27,7 +27,7 @@ export function TrendingRail({ items }: TrendingRailProps) {
         </span>
       </div>
 
-      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide">
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide" data-no-category-swipe>
         {items.map((item, index) => {
           const image = item.imageUrl || FEED_FALLBACK_LOGO
           const rank = index + 1

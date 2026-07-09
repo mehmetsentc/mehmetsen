@@ -86,7 +86,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         </div>
       </header>
 
-      {!isFeed ? <CategoryNav /> : null}
+      <CategoryNav />
     </>
   )
 }

@@ -1,3 +1,5 @@
+import { ROUTES } from '@/constants/routes'
+
 // TODO: Implement in Phase 1
 export const APP_CONFIG = {
   NAME: 'NaHaber',
@@ -152,4 +154,45 @@ export function getTopNavCategories(): Array<{ id: string; label: string; href: 
       label: c!.name,
       href: `/kategori/${c!.slug ?? c!.id}`,
     }))
+}
+
+export interface SwipeDestination {
+  id: string
+  label: string
+  href: string
+}
+
+/** Ana feed + üst nav kategorileri + yerel — yatay kaydırma sırası (tek kaynak). */
+export function getSwipeableFeedDestinations(): SwipeDestination[] {
+  return [
+    { id: 'feed', label: 'Ana Sayfa', href: ROUTES.FEED },
+    ...getTopNavCategories(),
+    { id: 'yerel', label: 'Yerel', href: ROUTES.LOCAL },
+  ]
+}
+
+/** Aktif sayfayı swipe zincirindeki üst düzey kategori anahtarına çevirir. */
+export function resolveSwipeCategoryKey(pathname: string): string | null {
+  if (pathname === ROUTES.FEED) return 'feed'
+  if (pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)) return 'yerel'
+
+  const match = pathname.match(/^\/kategori\/([^/]+)/)
+  if (!match) return null
+
+  const slug = decodeURIComponent(match[1]!)
+  const cat = DEFAULT_CATEGORIES.find((c) => c.slug === slug || c.id === slug)
+  if (!cat) return null
+  if (cat.id === 'yerel-haber') return 'yerel'
+
+  const topNavSet = new Set<string>(TOP_NAV_CATEGORY_IDS)
+  if (topNavSet.has(cat.id)) return cat.id
+  if (cat.parentId && topNavSet.has(cat.parentId)) return cat.parentId
+
+  return null
+}
+
+export function getSwipeIndexFromPathname(pathname: string): number {
+  const key = resolveSwipeCategoryKey(pathname)
+  if (!key) return -1
+  return getSwipeableFeedDestinations().findIndex((d) => d.id === key)
 }

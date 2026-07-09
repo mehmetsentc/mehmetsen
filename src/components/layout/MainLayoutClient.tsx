@@ -19,6 +19,7 @@ import { usePlatformLayout } from '@/hooks/usePlatformLayout'
 import { logRouteChange } from '@/lib/navDiagnostics'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
 import { ROUTES, isPublicRoute } from '@/constants/routes'
+import { CategorySwipeNavigator } from '@/components/layout/CategorySwipeNavigator'
 import { cn } from '@/lib/utils'
 
 type ContentVariant = 'default' | 'wide' | 'reels' | 'messages'
@@ -133,6 +134,7 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
             <RouteEffects />
             <PageStateEffects />
             <UiEffects />
+            <CategorySwipeNavigator />
             <LayoutShell
               pathname={pathname}
               isReels={isReels}

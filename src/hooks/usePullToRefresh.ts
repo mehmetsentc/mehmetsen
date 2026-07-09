@@ -25,9 +25,21 @@ export function usePullToRefresh(options: UsePullToRefreshOptions = {}): PullToR
   const router = useRouter()
   const [state, setState] = useState<PullToRefreshState>({ pulling: false, pullY: 0, refreshing: false })
 
+  const startX = useRef(0)
   const startY = useRef(0)
   const currentY = useRef(0)
   const refreshing = useRef(false)
+  const horizontalLock = useRef(false)
+
+  useEffect(() => {
+    const onHorizontalLock = () => {
+      horizontalLock.current = true
+      startY.current = 0
+      setState((s) => ({ ...s, pulling: false, pullY: 0 }))
+    }
+    window.addEventListener('nahaber:category-swipe-lock', onHorizontalLock)
+    return () => window.removeEventListener('nahaber:category-swipe-lock', onHorizontalLock)
+  }, [])
 
   const getScrollTop = useCallback(() => {
     const el = options.containerRef?.current
@@ -37,20 +49,30 @@ export function usePullToRefresh(options: UsePullToRefreshOptions = {}): PullToR
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (touchOnly && !('ontouchstart' in window)) return
     if (getScrollTop() > 0) return
+    horizontalLock.current = false
+    startX.current = e.touches[0]!.clientX
     startY.current = e.touches[0]!.clientY
     currentY.current = startY.current
   }, [touchOnly, getScrollTop])
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (horizontalLock.current) return
     if (startY.current === 0) return
     if (getScrollTop() > 0) { startY.current = 0; return }
 
+    const x = e.touches[0]!.clientX
     const y = e.touches[0]!.clientY
-    const delta = Math.max(0, y - startY.current)
+    const deltaY = Math.max(0, y - startY.current)
+    const deltaX = Math.abs(x - startX.current)
     currentY.current = y
 
-    if (delta > 8) {
-      const clamped = Math.min(delta * 0.55, MAX_PULL)
+    if (deltaX > 12 && deltaX > deltaY * 1.1) {
+      startY.current = 0
+      return
+    }
+
+    if (deltaY > 8) {
+      const clamped = Math.min(deltaY * 0.55, MAX_PULL)
       setState((s) => ({ ...s, pulling: true, pullY: clamped }))
     }
   }, [getScrollTop])
