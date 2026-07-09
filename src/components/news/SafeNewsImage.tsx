@@ -44,7 +44,7 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
       <Image
         src={src}
         alt={alt ?? ''}
-        className={className}
+        className={cn(fill && 'object-cover', className)}
         fill={fill}
         loading={loading}
         onError={handleError}

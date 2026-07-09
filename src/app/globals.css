@@ -52,8 +52,8 @@
     :root {
       --layout-gutter: 0.75rem;
       --layout-content-newspaper: min(
-        1800px,
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
+        1920px,
+        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter))
       );
       --layout-content: min(720px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
       --layout-content-wide: min(960px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
@@ -69,7 +69,7 @@
     }
 
     html[data-sidebar='closed'] {
-      --layout-content-newspaper: min(1800px, calc(100vw - var(--layout-gutter) * 2));
+      --layout-content-newspaper: min(1920px, calc(100vw - var(--layout-gutter)));
       --layout-content: min(720px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-reels: min(720px, calc(100vw - var(--layout-gutter) * 2));
@@ -289,7 +289,7 @@
 
   @media (min-width: 1024px) {
     .content-stage-newspaper {
-      @apply max-w-none px-2 py-4 sm:px-3;
+      @apply max-w-none px-1 py-4 sm:px-2;
     }
 
     .content-stage-newspaper > .content-main-newspaper {

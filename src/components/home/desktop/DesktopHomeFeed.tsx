@@ -89,24 +89,25 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       {hasHero ? (
         <section
-          className="mb-10 grid grid-cols-12 items-start gap-x-8 gap-y-6 border-b border-[rgb(var(--color-border))] pb-10"
+          className="mb-10 grid grid-cols-12 items-start gap-6 border-b border-[rgb(var(--color-border))] pb-10"
           aria-label="Manşet"
         >
-          <div className="col-span-12 min-w-0 lg:col-span-4 xl:col-span-4">
-            <TextLeadStory item={layout.heroLead!} size="hero" />
+          <div className="col-span-12 min-w-0 lg:col-span-5">
+            <HeroImageOnly item={layout.heroLead!} priority aspect="wide" />
+            <div className="mt-4">
+              <TextLeadStory item={layout.heroLead!} size="hero" />
+            </div>
           </div>
 
-          <div className="col-span-12 min-w-0 lg:col-span-5 xl:col-span-5">
-            <HeroImageOnly item={layout.heroLead!} priority aspect="hero" />
-          </div>
-
-          <aside className="col-span-12 min-w-0 lg:col-span-3 xl:col-span-3 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
-            {layout.heroRight.map((item, i) => (
-              <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
-            ))}
-            {layout.heroSidebarText.map((item) => (
-              <SidebarTextStory key={item.id} item={item} />
-            ))}
+          <aside className="col-span-12 min-w-0 lg:col-span-7 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
+            <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+              {layout.heroRight.map((item, i) => (
+                <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
+              ))}
+              {layout.heroSidebarText.map((item) => (
+                <SidebarTextStory key={item.id} item={item} />
+              ))}
+            </div>
           </aside>
         </section>
       ) : null}
@@ -161,12 +162,12 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.featureLead && layout.featureImage ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editoryal">
           <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
-          <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-12 flex min-w-0 flex-col justify-center lg:col-span-5">
+          <div className="grid grid-cols-12 items-start gap-6">
+            <div className="col-span-12 min-w-0 lg:col-span-5">
               <TextLeadStory item={layout.featureLead} size="lg" />
             </div>
             <div className="col-span-12 min-w-0 lg:col-span-7">
-              <ImageStory item={layout.featureImage} aspect="wide" showSummary={false} />
+              <ImageStory item={layout.featureImage} aspect="wide" showSummary={false} priority />
             </div>
           </div>
         </section>

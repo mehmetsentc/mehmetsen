@@ -20,34 +20,51 @@ function StoryMeta({ item, className }: { item: NewsItem; className?: string }) 
   )
 }
 
+const HEADLINE_SIZES = {
+  sm: 'text-sm font-bold leading-snug',
+  md: 'text-base font-bold leading-snug',
+  lg: 'text-lg font-bold leading-tight',
+  xl: 'text-xl font-bold leading-tight',
+  hero: 'text-2xl font-bold leading-tight xl:text-3xl xl:leading-tight',
+} as const
+
+function HeadlineText({
+  item,
+  size = 'md',
+  serif = false,
+  className,
+}: {
+  item: NewsItem
+  size?: keyof typeof HEADLINE_SIZES
+  serif?: boolean
+  className?: string
+}) {
+  return (
+    <h3
+      className={cn(
+        HEADLINE_SIZES[size],
+        serif ? 'font-serif' : '',
+        'break-words text-[rgb(var(--color-text))] decoration-2 underline-offset-2 group-hover:underline',
+        className
+      )}
+    >
+      {item.title}
+    </h3>
+  )
+}
+
 function Headline({
   item,
   size = 'md',
   serif = false,
 }: {
   item: NewsItem
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'hero'
+  size?: keyof typeof HEADLINE_SIZES
   serif?: boolean
 }) {
-  const sizes = {
-    sm: 'text-sm font-bold leading-snug',
-    md: 'text-base font-bold leading-snug',
-    lg: 'text-lg font-bold leading-tight',
-    xl: 'text-xl font-bold leading-tight',
-    hero: 'text-2xl font-bold leading-tight xl:text-3xl xl:leading-tight',
-  }
-
   return (
     <Link href={newsItemDetailHref(item)} className="group block min-w-0">
-      <h3
-        className={cn(
-          sizes[size],
-          serif ? 'font-serif' : '',
-          'break-words text-[rgb(var(--color-text))] decoration-2 underline-offset-2 group-hover:underline'
-        )}
-      >
-        {item.title}
-      </h3>
+      <HeadlineText item={item} size={size} serif={serif} />
     </Link>
   )
 }
@@ -108,7 +125,7 @@ export function HeroImageOnly({
   )
 }
 
-/** BBC hero sağ sütun: yatay kart — kompakt görsel + metin */
+/** BBC hero yan sütun: dikey kart — tam genişlik görsel + metin */
 export function RightFeatureStory({ item, live = false }: { item: NewsItem; live?: boolean }) {
   return (
     <article className="min-w-0 border-b border-[rgb(var(--color-border))] py-4 last:border-b-0">
@@ -118,25 +135,23 @@ export function RightFeatureStory({ item, live = false }: { item: NewsItem; live
           Canlı
         </span>
       ) : null}
-      <Link href={newsItemDetailHref(item)} className="group flex gap-4">
-        <div className="relative h-[88px] w-[132px] shrink-0 overflow-hidden bg-[rgb(var(--color-border))]">
+      <Link href={newsItemDetailHref(item)} className="group block min-w-0">
+        <div className="relative mb-3 aspect-[3/2] w-full overflow-hidden bg-[rgb(var(--color-border))]">
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
             fill
-            sizes="132px"
+            sizes="(max-width: 1280px) 25vw, 320px"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
-        <div className="min-w-0 flex-1">
-          <Headline item={item} size="sm" serif />
-          {item.description ? (
-            <p className="mt-1.5 line-clamp-2 break-words text-xs leading-relaxed text-[rgb(var(--color-muted))]">
-              {item.description}
-            </p>
-          ) : null}
-          <StoryMeta item={item} className="mt-1.5" />
-        </div>
+        <HeadlineText item={item} size="sm" serif />
+        {item.description ? (
+          <p className="mt-1.5 line-clamp-2 break-words text-xs leading-relaxed text-[rgb(var(--color-muted))]">
+            {item.description}
+          </p>
+        ) : null}
+        <StoryMeta item={item} className="mt-1.5" />
       </Link>
     </article>
   )
@@ -178,7 +193,7 @@ export function ImageStory({
   const aspectCls = {
     video: 'aspect-video',
     square: 'aspect-square',
-    wide: 'aspect-[16/10]',
+    wide: 'aspect-[16/9]',
     portrait: 'aspect-[3/4]',
   }[aspect]
 
