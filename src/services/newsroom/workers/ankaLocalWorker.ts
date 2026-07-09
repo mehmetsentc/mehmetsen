@@ -240,8 +240,8 @@ async function publishArticle(
     sourceLabel: 'Anka Haber Ajansı',
     preferredSlug: slug,
     forcedCategoryId: 'yerel-haber',
-    forcedCity: detectedCity ?? undefined,
-    forcedCitySlug: detectedCitySlug,
+    ...(detectedCity ? { forcedCity: detectedCity } : {}),
+    ...(detectedCitySlug ? { forcedCitySlug: detectedCitySlug } : {}),
     extraTags: article.keywords,
   })
 

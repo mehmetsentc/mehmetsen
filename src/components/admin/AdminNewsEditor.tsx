@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
@@ -9,7 +9,7 @@ import {
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
-import { TURKISH_PROVINCES } from '@/constants/cities'
+import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import { auth } from '@/lib/firebase/auth'
 import type { Post } from '@/types/post'
 import type { AdminNewsItem } from '@/services/adminNewsService'
@@ -67,6 +67,8 @@ export function AdminNewsEditor({
   const [categoryId, setCategoryId] = useState(post?.categoryId ?? '')
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
   const [citySlug, setCitySlug] = useState((post as (Post & { citySlug?: string }) | undefined)?.citySlug ?? '')
+  const [districtSlug, setDistrictSlug] = useState((post as (Post & { districtSlug?: string }) | undefined)?.districtSlug ?? '')
+  const availableDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
   const [thumbnail, setThumbnail] = useState(post?.coverImageUrl ?? '')
   const [videoUrl, setVideoUrl] = useState(post?.mediaItems?.find((m) => m.type === 'video')?.url ?? '')
   const [additionalImages, setAdditionalImages] = useState<AdditionalImageItem[]>(
@@ -143,10 +145,11 @@ export function AdminNewsEditor({
     seoDescription,
     seoKeywords,
     isBreaking,
-    ...(categoryId === 'yerel-haber' && citySlug
+    ...(citySlug
       ? {
           citySlug,
           city: TURKISH_PROVINCES.find((p) => p.slug === citySlug)?.name ?? citySlug,
+          ...(districtSlug ? { districtSlug } : {}),
         }
       : {}),
   })
@@ -160,11 +163,6 @@ export function AdminNewsEditor({
       toast.error('Medya yüklemesi devam ediyor')
       return
     }
-    if (categoryId === 'yerel-haber' && !citySlug) {
-      toast.error('Yerel haber için şehir seçimi zorunludur')
-      return
-    }
-
     setSaving(true)
     try {
       const currentUser = auth.currentUser
@@ -350,27 +348,37 @@ export function AdminNewsEditor({
       </div>
     </div>
 
-    {categoryId === 'yerel-haber' && (
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
-          Şehir
-          <span className="ml-1 text-emerald-500">*</span>
-        </label>
+    <div className="space-y-2">
+      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+        Şehir
+        <span className="ml-1 text-[rgb(var(--color-muted))] font-normal">(isteğe bağlı · yerel akışta da görünür)</span>
+      </label>
+      <select
+        value={citySlug}
+        onChange={(e) => {
+          setCitySlug(e.target.value)
+          setDistrictSlug('')
+        }}
+        className={`${fieldInputCls} focus:ring-emerald-500`}
+      >
+        <option value="">— Şehir seçin (isteğe bağlı) —</option>
+        {TURKISH_PROVINCES.map((p) => (
+          <option key={p.slug} value={p.slug}>{p.name}</option>
+        ))}
+      </select>
+      {citySlug && availableDistricts.length > 0 && (
         <select
-          value={citySlug}
-          onChange={(e) => setCitySlug(e.target.value)}
+          value={districtSlug}
+          onChange={(e) => setDistrictSlug(e.target.value)}
           className={`${fieldInputCls} focus:ring-emerald-500`}
         >
-          <option value="">— şehir seçin —</option>
-          {TURKISH_PROVINCES.map((p) => (
-            <option key={p.slug} value={p.slug}>{p.name}</option>
+          <option value="">— İlçe seçin (isteğe bağlı) —</option>
+          {availableDistricts.map((d) => (
+            <option key={d.slug} value={d.slug}>{d.name}</option>
           ))}
         </select>
-        {!citySlug && (
-          <p className="mt-1 text-[11px] text-amber-500">Yerel haber için şehir seçimi zorunludur.</p>
-        )}
-      </div>
-    )}
+      )}
+    </div>
 
     <div className="flex items-center justify-between rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3">
       <div className="flex items-center gap-2">

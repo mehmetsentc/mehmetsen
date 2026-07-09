@@ -101,12 +101,12 @@ export async function publishScraperViaPipeline(
     rssGuid: enriched.url,
     ingestionSourceId: config.editorId,
     sourcePublishedAt: enriched.publishedAt ?? null,
-    forcedCategoryId: config.forcedCategoryId,
-    forcedCity: config.forcedCity,
-    forcedCitySlug: config.forcedCitySlug,
-    extraTags: config.extraTags ?? enriched.keywords,
-    isBreaking: config.isBreaking,
-    priorityScore: config.priorityScore,
+    ...(config.forcedCategoryId !== undefined ? { forcedCategoryId: config.forcedCategoryId } : {}),
+    ...(config.forcedCity !== undefined ? { forcedCity: config.forcedCity } : {}),
+    ...(config.forcedCitySlug !== undefined ? { forcedCitySlug: config.forcedCitySlug } : {}),
+    ...(config.extraTags ?? enriched.keywords ? { extraTags: config.extraTags ?? enriched.keywords } : {}),
+    ...(config.isBreaking !== undefined ? { isBreaking: config.isBreaking } : {}),
+    ...(config.priorityScore !== undefined ? { priorityScore: config.priorityScore } : {}),
   }
 
   if (textLen < SCRAPER_MIN_CHARS) {

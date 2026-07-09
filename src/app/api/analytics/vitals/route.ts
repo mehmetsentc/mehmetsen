@@ -26,8 +26,17 @@ function bucket(name: string, value: number): 'good' | 'ni' | 'poor' {
   return 'poor'
 }
 
-function sanitizeRoute(path: string): string {
-  return path.replace(/\./g, '_').replace(/\[/g, '_').replace(/\]/g, '_').slice(0, 120)
+function sanitizeRoute(rawPath: string): string {
+  // 1) Başındaki / kaldır (Firestore'a verilince boş segment oluşturuyor → odd path → hata)
+  // 2) Kalan / karakterlerini __ ile değiştir — doc ID içinde / olamaz
+  const stripped = rawPath.replace(/^\/+/, '') || 'home'
+  return stripped
+    .replace(/\//g, '__')
+    .replace(/\./g, '_')
+    .replace(/\[/g, '')
+    .replace(/\]/g, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 120)
 }
 
 export async function POST(request: Request) {
