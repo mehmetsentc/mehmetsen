@@ -70,6 +70,8 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'gastronomi',    name: 'Gastronomi',    slug: 'gastronomi',    iconName: 'utensils',    color: '#F97316' },
   { id: 'otomobil',      name: 'Otomobil',      slug: 'otomobil',      iconName: 'car',         color: '#64748B' },
   { id: 'meteoroloji',   name: 'Meteoroloji',   slug: 'meteoroloji',   iconName: 'cloud-rain',  color: '#0EA5E9' },
+  { id: 'turizm',        name: 'Turizm',        slug: 'turizm',        iconName: 'plane',       color: '#0284C7' },
+  { id: 'asayis',        name: '3. Sayfa',      slug: 'asayis',        iconName: 'shield-alert', color: '#B45309' },
 
   // ── Özel kategoriler ────────────────────────────────────────────────────────
   { id: 'son-dakika',    name: 'Son Dakika',    slug: 'son-dakika',    iconName: 'zap',         color: '#EF4444' },
@@ -119,6 +121,8 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'kultur',
   'gastronomi',
   'otomobil',
+  'turizm',
+  'asayis',
 ] as const
 
 /**
@@ -139,6 +143,8 @@ export const TOP_NAV_CATEGORY_IDS = [
   'gastronomi',
   'otomobil',
   'bilim',
+  'turizm',
+  'asayis',
 ] as const
 
 /**

@@ -18,3 +18,22 @@ export function formatNewsDateLong(): string {
     year: 'numeric',
   }).format(new Date())
 }
+
+/** BBC tarzı "3 sa önce | Gündem" meta satırı */
+export function formatNewsRelative(value?: string): string | null {
+  if (!value) return null
+  const parsed = Date.parse(value)
+  if (!Number.isFinite(parsed)) return null
+
+  const diffMin = Math.floor((Date.now() - parsed) / 60_000)
+  if (diffMin < 1) return 'Az önce'
+  if (diffMin < 60) return `${diffMin} dk önce`
+
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr} sa önce`
+
+  const diffDay = Math.floor(diffHr / 24)
+  if (diffDay < 7) return `${diffDay} gün önce`
+
+  return formatNewsDate(value)
+}

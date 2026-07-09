@@ -38,6 +38,8 @@ export type HomeCategorySlug =
   | 'otomobil'
   | 'gastronomi'
   | 'kultur'
+  | 'turizm'
+  | 'asayis'
 
 export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'gundem',
@@ -53,6 +55,8 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'otomobil',
   'gastronomi',
   'kultur',
+  'turizm',
+  'asayis',
 ]
 
 export interface HomeFeedInitialData {

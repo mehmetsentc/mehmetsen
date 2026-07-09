@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin, Flame, User } from 'lucide-react'
+import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin, Flame, User, PanelLeftClose } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
@@ -16,7 +16,9 @@ import toast from 'react-hot-toast'
 interface SidebarProps {
   className?: string
   mobileOpen?: boolean
+  desktopOpen?: boolean
   onMobileClose?: () => void
+  onDesktopClose?: () => void
 }
 
 const APP_NAV = [
@@ -34,7 +36,7 @@ const MAIN_CATEGORIES = SIDEBAR_MAIN_CATEGORY_IDS
   .map((id) => DEFAULT_CATEGORIES.find((c) => c.id === id))
   .filter(Boolean) as typeof DEFAULT_CATEGORIES[number][]
 
-function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
+function SidebarInner({ className, mobileOpen, desktopOpen = true, onMobileClose, onDesktopClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout, loading } = useAuth()
@@ -78,19 +80,28 @@ function SidebarInner({ className, mobileOpen, onMobileClose }: SidebarProps) {
           'fixed inset-y-0 left-0 z-[200] flex flex-col',
           'w-[var(--sidebar-width-collapsed)]',
           'border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
-          'transition-transform duration-300',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          'transition-transform duration-300 ease-in-out',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          desktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full',
           className,
         )}
       >
         {/* Logo header */}
-        <div className="flex h-14 shrink-0 items-center gap-3 border-b border-[rgb(var(--color-border))] px-4">
-          <Link href={ROUTES.FEED} onClick={onMobileClose} className="flex items-center gap-2">
+        <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[rgb(var(--color-border))] px-4">
+          <Link href={ROUTES.FEED} onClick={onMobileClose} className="flex min-w-0 items-center gap-2">
             <BrandLogo size="md" priority />
-            <span className="text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
+            <span className="truncate text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
               NaHaber
             </span>
           </Link>
+          <button
+            type="button"
+            onClick={onDesktopClose}
+            aria-label="Kenar çubuğunu kapat"
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] lg:flex"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Search */}

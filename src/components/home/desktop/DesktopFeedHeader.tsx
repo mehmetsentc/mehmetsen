@@ -2,74 +2,118 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getSwipeableFeedDestinations } from '@/constants/config'
+import { getTopNavCategories } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
+import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
 import type { FeedTab } from '@/components/feed/FeedCategoryBar'
+import type { NewsItem } from '@/types/newsItem'
 
-const NAV = getSwipeableFeedDestinations()
+const CATEGORY_LINKS = getTopNavCategories()
 
 interface DesktopFeedHeaderProps {
   activeTab: FeedTab
   onTabChange: (tab: FeedTab) => void
+  breakingItems: NewsItem[]
 }
 
-export function DesktopFeedHeader({ activeTab, onTabChange }: DesktopFeedHeaderProps) {
+export function DesktopFeedHeader({ activeTab, onTabChange, breakingItems }: DesktopFeedHeaderProps) {
   const pathname = usePathname()
   const isFeed = pathname === ROUTES.FEED
 
   if (!isFeed) return null
 
   return (
-    <header className="desktop-news-header mb-6 border-b border-[rgb(var(--color-border))] pb-4">
+    <header className="desktop-news-header mb-6 border-b border-[rgb(var(--color-border))] pb-0">
       <div className="mb-3 flex items-center justify-between text-xs text-[rgb(var(--color-muted))]">
         <span className="font-medium capitalize">{formatNewsDateLong()}</span>
         <span>Türkiye · NaHaber Web</span>
       </div>
 
-      <nav className="mb-3 flex items-center gap-1 border-b border-[rgb(var(--color-border))]" aria-label="Ana bölümler">
-        {([
-          { id: 'home' as FeedTab, label: 'Ana Sayfa' },
-          { id: 'trend' as FeedTab, label: 'Trend' },
-        ]).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onTabChange(tab.id)}
-            className={cn(
-              'relative px-4 py-2.5 text-sm font-semibold transition-colors',
-              activeTab === tab.id
-                ? 'text-[rgb(var(--color-text))]'
-                : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
-            )}
-          >
-            {tab.label}
-            {activeTab === tab.id && (
-              <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[rgb(var(--color-text))]" />
-            )}
-          </button>
-        ))}
-      </nav>
+      <DesktopBreakingTicker items={breakingItems} />
 
-      <nav className="flex flex-wrap items-center gap-x-1 gap-y-1" aria-label="Kategoriler">
-        {NAV.map((cat) => {
-          const active = cat.id === 'feed' ? pathname === ROUTES.FEED && activeTab === 'home' : pathname.startsWith(cat.href)
-          return (
+      <nav
+        className="flex items-stretch overflow-x-auto scrollbar-hide border-t border-[rgb(var(--color-border))]"
+        aria-label="Bölümler ve kategoriler"
+      >
+        <div className="flex min-w-max items-stretch">
+          {([
+            { id: 'home' as FeedTab, label: 'Ana Sayfa' },
+            { id: 'trend' as FeedTab, label: 'Trend' },
+          ]).map((tab, tabIndex) => {
+            const active = activeTab === tab.id
+            return (
+              <div key={tab.id} className="flex items-stretch">
+                {tabIndex > 0 ? (
+                  <span className="my-3 w-px shrink-0 bg-[rgb(var(--color-border))]" aria-hidden />
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => onTabChange(tab.id)}
+                  className={cn(
+                    'shrink-0 px-4 py-3 text-[13px] font-semibold transition-colors',
+                    active
+                      ? 'text-[rgb(var(--color-text))]'
+                      : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+                  )}
+                >
+                  <span className="relative inline-block">
+                    {tab.label}
+                    {active ? (
+                      <span className="absolute -bottom-3 left-0 right-0 h-0.5 bg-[rgb(var(--color-text))]" />
+                    ) : null}
+                  </span>
+                </button>
+              </div>
+            )
+          })}
+
+          {CATEGORY_LINKS.map((cat) => {
+            const active = pathname.startsWith(cat.href)
+            return (
+              <div key={cat.id} className="flex items-stretch">
+                <span className="my-3 w-px shrink-0 bg-[rgb(var(--color-border))]" aria-hidden />
+                <Link
+                  href={cat.href}
+                  className={cn(
+                    'shrink-0 px-4 py-3 text-[13px] font-medium transition-colors',
+                    active
+                      ? 'font-semibold text-[rgb(var(--color-text))]'
+                      : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+                  )}
+                >
+                  <span className="relative inline-block whitespace-nowrap">
+                    {cat.label}
+                    {active ? (
+                      <span className="absolute -bottom-3 left-0 right-0 h-0.5 bg-[rgb(var(--color-text))]" />
+                    ) : null}
+                  </span>
+                </Link>
+              </div>
+            )
+          })}
+
+          <div className="flex items-stretch">
+            <span className="my-3 w-px shrink-0 bg-[rgb(var(--color-border))]" aria-hidden />
             <Link
-              key={cat.id}
-              href={cat.href}
+              href={ROUTES.LOCAL}
               className={cn(
-                'rounded px-3 py-1.5 text-[13px] font-medium transition-colors',
-                active
-                  ? 'bg-[rgb(var(--color-text))] text-[rgb(var(--color-card))]'
-                  : 'text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))]'
+                'shrink-0 px-4 py-3 text-[13px] font-medium transition-colors',
+                pathname.startsWith(ROUTES.LOCAL)
+                  ? 'font-semibold text-[rgb(var(--color-text))]'
+                  : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
               )}
             >
-              {cat.label}
+              <span className="relative inline-block whitespace-nowrap">
+                Yerel
+                {pathname.startsWith(ROUTES.LOCAL) ? (
+                  <span className="absolute -bottom-3 left-0 right-0 h-0.5 bg-[rgb(var(--color-text))]" />
+                ) : null}
+              </span>
             </Link>
-          )
-        })}
+          </div>
+        </div>
       </nav>
     </header>
   )

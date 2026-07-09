@@ -20,6 +20,7 @@ import { logRouteChange } from '@/lib/navDiagnostics'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
 import { ROUTES, isPublicRoute } from '@/constants/routes'
 import { CategorySwipeNavigator } from '@/components/layout/CategorySwipeNavigator'
+import { DesktopSidebarToggle } from '@/components/layout/DesktopSidebarToggle'
 import { cn } from '@/lib/utils'
 
 type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
@@ -59,13 +60,18 @@ const LayoutShell = memo(function LayoutShell({
 }) {
   const drawerOpen = useUiStore((s) => s.mobileDrawerOpen)
   const setMobileDrawerOpen = useUiStore((s) => s.setMobileDrawerOpen)
+  const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
+  const setDesktopSidebarOpen = useUiStore((s) => s.setDesktopSidebarOpen)
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]" data-platform={platform}>
       <Sidebar
         mobileOpen={drawerOpen}
+        desktopOpen={desktopSidebarOpen}
         onMobileClose={() => setMobileDrawerOpen(false)}
+        onDesktopClose={() => setDesktopSidebarOpen(false)}
       />
+      <DesktopSidebarToggle />
 
       <div
         className={cn(

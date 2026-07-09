@@ -6,9 +6,12 @@ import { STORE_KEYS } from '@/lib/stateKeys'
 
 interface UiStore {
   mobileDrawerOpen: boolean
+  desktopSidebarOpen: boolean
   feedPolicyOpen: boolean
   setMobileDrawerOpen: (open: boolean) => void
   toggleMobileDrawer: () => void
+  setDesktopSidebarOpen: (open: boolean) => void
+  toggleDesktopSidebar: () => void
   setFeedPolicyOpen: (open: boolean) => void
 }
 
@@ -16,17 +19,20 @@ export const useUiStore = create<UiStore>()(
   persist(
     (set, get) => ({
       mobileDrawerOpen: false,
+      desktopSidebarOpen: true,
       feedPolicyOpen: false,
       setMobileDrawerOpen: (mobileDrawerOpen) => set({ mobileDrawerOpen }),
       toggleMobileDrawer: () => set({ mobileDrawerOpen: !get().mobileDrawerOpen }),
+      setDesktopSidebarOpen: (desktopSidebarOpen) => set({ desktopSidebarOpen }),
+      toggleDesktopSidebar: () => set({ desktopSidebarOpen: !get().desktopSidebarOpen }),
       setFeedPolicyOpen: (feedPolicyOpen) => set({ feedPolicyOpen }),
     }),
     {
       name: STORE_KEYS.UI,
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        // Drawer should not reopen after reload; only persist modal if needed.
         feedPolicyOpen: state.feedPolicyOpen,
+        desktopSidebarOpen: state.desktopSidebarOpen,
       }),
     }
   )

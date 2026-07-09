@@ -1,263 +1,199 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
-import { SafeNewsImage } from '@/components/news/SafeNewsImage'
-import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
-import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
-import { getCategoryLabel } from '@/lib/newsMapper'
 import { ROUTES } from '@/constants/routes'
-import { HOME_CATEGORY_RAILS, type HomeFeedInitialData } from '@/types/newsItem'
-import type { NewsItem } from '@/types/newsItem'
-import { formatNewsDate } from '@/components/home/desktop/formatNewsDate'
+import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
+import { DesktopCategoryColumn } from '@/components/home/desktop/DesktopCategoryColumn'
+import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
+import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
+import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
+import {
+  DualImageStory,
+  HeroStory,
+  ImageStory,
+  NumberedStory,
+  SidebarTextStory,
+  TextLeadStory,
+} from '@/components/home/desktop/DesktopStoryBlocks'
+import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
+import type { HomeFeedInitialData } from '@/types/newsItem'
+
+const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
+const CATEGORY_ROW_2 = ['saglik', 'kultur', 'turizm', 'asayis'] as const
 
 interface DesktopHomeFeedProps {
   data: HomeFeedInitialData
 }
 
-function HeadlineLink({ item, size = 'md' }: { item: NewsItem; size?: 'sm' | 'md' | 'lg' | 'hero' }) {
-  const titleCls = {
-    sm: 'text-sm font-semibold leading-snug',
-    md: 'text-base font-bold leading-snug',
-    lg: 'text-xl font-bold leading-tight',
-    hero: 'text-2xl font-bold leading-tight xl:text-3xl',
-  }[size]
-
-  return (
-    <Link href={newsItemDetailHref(item)} className="group block">
-      <h3 className={`${titleCls} text-[rgb(var(--color-text))] group-hover:underline decoration-2 underline-offset-2`}>
-        {item.title}
-      </h3>
-    </Link>
-  )
-}
-
-function ImageStory({
-  item,
-  priority = false,
-  aspect = 'video',
-}: {
-  item: NewsItem
-  priority?: boolean
-  aspect?: 'video' | 'square' | 'wide'
-}) {
-  const image = item.imageUrl || FEED_FALLBACK_LOGO
-  const aspectCls = aspect === 'square' ? 'aspect-[4/3]' : aspect === 'wide' ? 'aspect-[16/10]' : 'aspect-video'
-
-  return (
-    <article>
-      <Link href={newsItemDetailHref(item)} className="group block">
-        <div className={`relative mb-3 overflow-hidden bg-[rgb(var(--color-border))] ${aspectCls}`}>
-          <SafeNewsImage
-            src={image}
-            alt={item.title}
-            fill
-            sizes="(max-width: 1280px) 33vw, 400px"
-            priority={priority}
-            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-          />
-        </div>
-        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
-          {newsItemCategoryLabel(item)}
-        </p>
-        <HeadlineLink item={item} size="md" />
-        {item.description ? (
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
-            {item.description}
-          </p>
-        ) : null}
-        {formatNewsDate(item.publishedAt ?? item.createdAt) ? (
-          <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
-            {formatNewsDate(item.publishedAt ?? item.createdAt)}
-          </p>
-        ) : null}
-      </Link>
-    </article>
-  )
-}
-
-function SidebarHeadline({ item, live = false }: { item: NewsItem; live?: boolean }) {
-  return (
-    <article className="border-b border-[rgb(var(--color-border))] py-3 last:border-b-0">
-      {live ? (
-        <span className="mb-1 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-red-600">
-          <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
-          Canlı
-        </span>
-      ) : (
-        <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-          {newsItemCategoryLabel(item)}
-        </p>
-      )}
-      <HeadlineLink item={item} size="sm" />
-    </article>
-  )
-}
-
 export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
-  const { breaking, featured, latest, trending, mostRead, categoryRails } = data
+  const layout = useMemo(() => {
+    const { take, takeCategory } = createFeedAllocator(data)
 
-  const breakingIds = useMemo(() => new Set(breaking.map((b) => b.id)), [breaking])
-  const trendingIds = useMemo(() => new Set(trending.map((t) => t.id)), [trending])
-  const featuredIds = useMemo(() => new Set(featured.map((f) => f.id)), [featured])
+    const heroLeft = take(1)[0]
+    const heroCenter = take(1)[0]
+    const heroSidebar = take(5)
 
-  const pool = useMemo(() => {
-    const seen = new Set<string>()
-    const merged = [...featured, ...latest]
-    const out: NewsItem[] = []
-    for (const item of merged) {
-      if (seen.has(item.id) || breakingIds.has(item.id)) continue
-      seen.add(item.id)
-      out.push(item)
+    const moreLead = take(1)[0]
+    const moreCenter = take(2)
+    const moreRight = take(1)[0]
+    const moreGrid = take(3)
+    const moreSidebar = take(2)
+
+    const topFour = take(4)
+    const featureLead = take(1)[0]
+    const featureImage = take(1)[0]
+
+    const catRow1 = CATEGORY_ROW_1.map((id) => ({
+      id,
+      items: takeCategory(id, 4),
+    }))
+    const catRow2 = CATEGORY_ROW_2.map((id) => ({
+      id,
+      items: takeCategory(id, 4),
+    }))
+
+    const mostRead = data.mostRead.slice(0, 6)
+    const trending = data.trending.slice(0, 8)
+
+    return {
+      heroLeft,
+      heroCenter,
+      heroSidebar,
+      moreLead,
+      moreCenter,
+      moreRight,
+      moreGrid,
+      moreSidebar,
+      topFour,
+      featureLead,
+      featureImage,
+      catRow1,
+      catRow2,
+      mostRead,
+      trending,
     }
-    return out
-  }, [featured, latest, breakingIds])
+  }, [data])
 
-  const hero = pool[0]
-  const leftFeature = pool[1]
-  const sidebarItems = pool.slice(2, 8)
-  const secondaryRow = pool.slice(8, 11)
-  const lowerStream = useMemo(
-    () =>
-      latest.filter(
-        (item) =>
-          !breakingIds.has(item.id) &&
-          !trendingIds.has(item.id) &&
-          !featuredIds.has(item.id) &&
-          item.category !== 'son-dakika'
-      ).slice(0, 8),
-    [latest, breakingIds, trendingIds, featuredIds]
-  )
-
-  const topBreaking = breaking[0]
+  const hasHero = layout.heroCenter
 
   return (
-    <div className="desktop-home-feed pb-10">
-      {topBreaking ? (
-        <Link
-          href={newsItemDetailHref(topBreaking)}
-          className="mb-5 flex items-center gap-3 border-y border-red-200 bg-red-50 px-4 py-2.5 dark:border-red-900/40 dark:bg-red-950/30"
+    <div className="desktop-home-feed">
+      {/* ── Üst reklam ── */}
+      <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
+
+      {/* ── Manşet (BBC hero: sol + merkez + sağ liste) ── */}
+      {hasHero ? (
+        <section
+          className="mb-10 grid grid-cols-12 gap-6 border-b border-[rgb(var(--color-border))] pb-10"
+          aria-label="Manşet"
         >
-          <span className="shrink-0 rounded bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
-            Son Dakika
-          </span>
-          <span className="line-clamp-1 text-sm font-semibold text-[rgb(var(--color-text))]">
-            {topBreaking.title}
-          </span>
-        </Link>
-      ) : null}
-
-      {hero ? (
-        <section className="mb-8 grid grid-cols-12 gap-6 border-b border-[rgb(var(--color-border))] pb-8" aria-label="Manşet">
-          <div className="col-span-12 xl:col-span-3">
-            {leftFeature ? <ImageStory item={leftFeature} aspect="square" /> : null}
+          <div className="col-span-12 lg:col-span-3">
+            {layout.heroLeft ? (
+              <ImageStory item={layout.heroLeft} aspect="portrait" priority showSummary />
+            ) : null}
           </div>
 
-          <div className="col-span-12 xl:col-span-6">
-            <article>
-              <Link href={newsItemDetailHref(hero)} className="group block">
-                <div className="relative mb-4 aspect-[16/10] overflow-hidden bg-[rgb(var(--color-border))]">
-                  <SafeNewsImage
-                    src={hero.imageUrl || FEED_FALLBACK_LOGO}
-                    alt={hero.title}
-                    fill
-                    sizes="(max-width: 1280px) 50vw, 640px"
-                    priority
-                    className="object-cover transition-transform duration-300 group-hover:scale-[1.01]"
-                  />
-                </div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[rgb(var(--color-brand))]">
-                  {newsItemCategoryLabel(hero)}
-                </p>
-                <HeadlineLink item={hero} size="hero" />
-                {hero.description ? (
-                  <p className="mt-3 max-w-2xl text-base leading-relaxed text-[rgb(var(--color-muted))]">
-                    {hero.description}
-                  </p>
-                ) : null}
-              </Link>
-            </article>
+          <div className="col-span-12 lg:col-span-6">
+            <HeroStory item={layout.heroCenter!} priority />
           </div>
 
-          <aside className="col-span-12 xl:col-span-3 xl:border-l xl:border-[rgb(var(--color-border))] xl:pl-6" aria-label="Gündem">
-            <h2 className="mb-2 text-xs font-black uppercase tracking-widest text-[rgb(var(--color-muted))]">
-              Gündem
-            </h2>
-            {sidebarItems.map((item, i) => (
-              <SidebarHeadline key={item.id} item={item} live={i === 0 && !!item.breaking} />
+          <aside className="col-span-12 lg:col-span-3 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
+            {layout.heroSidebar.map((item, i) => (
+              <SidebarTextStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
             ))}
           </aside>
         </section>
       ) : null}
 
-      {secondaryRow.length > 0 ? (
-        <section className="mb-10 grid grid-cols-3 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Öne çıkanlar">
-          {secondaryRow.map((item) => (
-            <ImageStory key={item.id} item={item} aspect="wide" />
+      {/* ── 4'lü öne çıkan grid ── */}
+      {layout.topFour.length > 0 ? (
+        <section className="mb-10 grid grid-cols-4 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Öne çıkanlar">
+          {layout.topFour.map((item, i) => (
+            <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
           ))}
         </section>
       ) : null}
 
-      {mostRead.length > 0 ? (
-        <section className="mb-10" aria-label="Çok okunanlar">
-          <div className="mb-4 flex items-end justify-between border-b border-[rgb(var(--color-border))] pb-2">
-            <h2 className="font-serif text-xl font-bold text-[rgb(var(--color-text))]">Çok Okunanlar</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-            {mostRead.slice(0, 6).map((item, index) => (
-              <div key={item.id} className="flex gap-3 border-b border-[rgb(var(--color-border))]/60 pb-4">
-                <span className="w-6 shrink-0 text-2xl font-light text-[rgb(var(--color-muted))]">
-                  {index + 1}
-                </span>
-                <HeadlineLink item={item} size="sm" />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {/* ── Daha fazla haber (asimetrik BBC grid) ── */}
+      <DesktopSectionHeader title="Daha Fazla Haber" href={ROUTES.CATEGORY('gundem')} />
 
-      <section className="mb-10 grid grid-cols-2 gap-8 xl:grid-cols-3" aria-label="Kategoriler">
-        {HOME_CATEGORY_RAILS.slice(0, 6).map((categoryId) => {
-          const items = categoryRails[categoryId]
-          if (!items?.length) return null
-          return (
-            <div key={categoryId} className="min-w-0">
-              <div className="mb-3 flex items-center justify-between border-b-2 border-[rgb(var(--color-text))] pb-1">
-                <h2 className="font-serif text-lg font-bold text-[rgb(var(--color-text))]">
-                  {getCategoryLabel(categoryId)}
-                </h2>
-                <Link
-                  href={ROUTES.CATEGORY(categoryId)}
-                  className="text-xs font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]"
-                >
-                  Tümü →
-                </Link>
-              </div>
-              <div className="space-y-4">
-                {items.slice(0, 1).map((item) => (
-                  <ImageStory key={item.id} item={item} aspect="video" />
-                ))}
-                {items.slice(1, 4).map((item) => (
-                  <SidebarHeadline key={item.id} item={item} />
-                ))}
-              </div>
-            </div>
-          )
-        })}
+      <section className="mb-8 grid grid-cols-12 gap-6" aria-label="Gündem haberleri">
+        <div className="col-span-12 lg:col-span-3">
+          {layout.moreLead ? <TextLeadStory item={layout.moreLead} size="lg" /> : null}
+        </div>
+        <div className="col-span-12 lg:col-span-6">
+          {layout.moreCenter.length > 0 ? <DualImageStory items={layout.moreCenter} /> : null}
+        </div>
+        <div className="col-span-12 lg:col-span-3">
+          {layout.moreRight ? <ImageStory item={layout.moreRight} aspect="wide" /> : null}
+        </div>
       </section>
 
-      {lowerStream.length > 0 ? (
-        <section aria-label="Son haberler">
-          <div className="mb-4 border-b-2 border-[rgb(var(--color-text))] pb-1">
-            <h2 className="font-serif text-xl font-bold text-[rgb(var(--color-text))]">Son Haberler</h2>
+      <section className="mb-10 grid grid-cols-12 gap-6 border-b border-[rgb(var(--color-border))] pb-10">
+        {layout.moreGrid.map((item) => (
+          <div key={item.id} className="col-span-12 sm:col-span-6 lg:col-span-3">
+            <ImageStory item={item} aspect="video" />
           </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-6 xl:grid-cols-4">
-            {lowerStream.map((item) => (
-              <ImageStory key={item.id} item={item} aspect="video" />
+        ))}
+        <aside className="col-span-12 lg:col-span-3 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
+          {layout.moreSidebar.map((item) => (
+            <SidebarTextStory key={item.id} item={item} />
+          ))}
+        </aside>
+      </section>
+
+      {/* ── Orta reklam ── */}
+      <DesktopAdBanner slot="leaderboard-mid" className="mb-10" />
+
+      {/* ── Trend / Must Watch (koyu bant) ── */}
+      <DesktopMustWatch items={layout.trending} />
+
+      {/* ── Öne çıkan feature (metin + görsel) ── */}
+      {layout.featureLead && layout.featureImage ? (
+        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editoryal">
+          <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
+          <div className="grid grid-cols-12 gap-8">
+            <div className="col-span-12 lg:col-span-5 flex flex-col justify-center">
+              <TextLeadStory item={layout.featureLead} size="lg" />
+            </div>
+            <div className="col-span-12 lg:col-span-7">
+              <ImageStory item={layout.featureImage} aspect="wide" showSummary={false} />
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── Kategori sütunları (satır 1) ── */}
+      <section className="mb-10 grid grid-cols-4 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Kategori haberleri">
+        {layout.catRow1.map(({ id, items }) =>
+          items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
+        )}
+      </section>
+
+      {/* ── Alt reklam ── */}
+      <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
+
+      {/* ── Kategori sütunları (satır 2 — Turizm, 3. Sayfa vb.) ── */}
+      <section className="mb-10 grid grid-cols-4 gap-6 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Diğer kategoriler">
+        {layout.catRow2.map(({ id, items }) =>
+          items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
+        )}
+      </section>
+
+      {/* ── Çok okunanlar ── */}
+      {layout.mostRead.length > 0 ? (
+        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Çok okunanlar">
+          <DesktopSectionHeader title="Çok Okunanlar" />
+          <div className="grid grid-cols-2 gap-x-10 gap-y-0">
+            {layout.mostRead.map((item, index) => (
+              <NumberedStory key={item.id} item={item} rank={index + 1} />
             ))}
           </div>
         </section>
       ) : null}
+
+      {/* ── Footer ── */}
+      <DesktopHomeFooter />
     </div>
   )
 }

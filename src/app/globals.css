@@ -66,6 +66,14 @@
         var(--reels-stage-available)
       );
     }
+
+    html[data-sidebar='closed'] {
+      --layout-content-newspaper: min(1200px, calc(100vw - var(--layout-gutter) * 2));
+      --layout-content: min(720px, calc(100vw - var(--layout-gutter) * 2));
+      --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 2));
+      --layout-content-reels: min(720px, calc(100vw - var(--layout-gutter) * 2));
+      --reels-stage-available: calc(100vw - var(--layout-rail) - var(--layout-gutter) * 4);
+    }
   }
 
   @media (min-width: 1280px) {
@@ -90,6 +98,15 @@
         calc(var(--reels-viewport-h) * 9 / 16),
         var(--reels-stage-available)
       );
+    }
+
+    html[data-sidebar='closed'] {
+      --layout-content: min(
+        var(--layout-feed),
+        calc(100vw - var(--layout-rail) - var(--layout-gutter) * 4)
+      );
+      --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 4));
+      --layout-content-reels: min(720px, calc(100vw - var(--layout-gutter) * 2));
     }
   }
 
@@ -161,7 +178,8 @@
   }
 
   .app-shell {
-    @apply min-h-screen w-full pb-0 lg:pl-[var(--sidebar-width-collapsed)];
+    @apply min-h-screen w-full pb-0;
+    transition: padding-left 300ms ease-in-out;
   }
 
   html[data-platform='mobile'] .app-shell-mobile {
@@ -171,6 +189,10 @@
 
   html[data-platform='desktop'] .app-shell-desktop {
     @apply pl-[var(--sidebar-width-collapsed)];
+  }
+
+  html[data-sidebar='closed'][data-platform='desktop'] .app-shell-desktop {
+    @apply pl-0;
   }
 
   .content-stage {
@@ -272,6 +294,7 @@
     .content-stage-newspaper > .content-main-newspaper {
       @apply mx-auto w-full;
       max-width: var(--layout-content-newspaper);
+      transition: max-width 300ms ease-in-out;
     }
   }
 
@@ -282,8 +305,20 @@
   .desktop-newspaper .desktop-news-header,
   .desktop-newspaper nav,
   .desktop-newspaper button,
-  .desktop-newspaper aside {
+  .desktop-newspaper aside,
+  .desktop-newspaper footer {
     font-family: var(--font-inter, Inter, system-ui, sans-serif);
+  }
+
+  .desktop-newspaper .desktop-home-feed {
+    @apply w-full;
+  }
+
+  .desktop-newspaper .desktop-must-watch .desktop-section-header,
+  .desktop-newspaper .desktop-must-watch h2,
+  .desktop-newspaper .desktop-must-watch a {
+    color: inherit;
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .content-main-reels {

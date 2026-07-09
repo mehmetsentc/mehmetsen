@@ -220,7 +220,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // preference client-side from the `lang` cookie, so the SSR shell can
   // safely render with the default language and let the client adjust.
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="tr" suppressHydrationWarning data-sidebar="open">
       <head>
         <link rel="alternate" type="application/rss+xml" title={`${appName} RSS`} href="/rss.xml" />
         <link rel="alternate" type="application/rss+xml" title={`${appName} Son Dakika`} href="/breaking-news.xml" />

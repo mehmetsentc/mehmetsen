@@ -11,6 +11,11 @@ export function UiEffects() {
   const pathname = usePathname()
   const setMobileDrawerOpen = useUiStore((s) => s.setMobileDrawerOpen)
   const setFeedPolicyOpen = useUiStore((s) => s.setFeedPolicyOpen)
+  const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
+
+  useEffect(() => {
+    document.documentElement.dataset.sidebar = desktopSidebarOpen ? 'open' : 'closed'
+  }, [desktopSidebarOpen])
 
   useEffect(() => {
     setMobileDrawerOpen(false)
