@@ -72,11 +72,11 @@ export async function POST(request: Request) {
 
     await ref.set(update, { merge: true })
 
-    // Also increment viewCount on the article if postId is provided
+    // Also increment viewsCount on the article if postId is provided
     if (body.postId) {
       try {
         await db.collection(Collections.NEWS).doc(body.postId).update({
-          viewCount: FieldValue.increment(1),
+          viewsCount: FieldValue.increment(1),
         })
       } catch {
         // Article may not exist in news collection — ignore

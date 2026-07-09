@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 
 /**
  * Fires a pageview event to /api/analytics/track on every route change.
- * Pass postId when on an article page to also increment the article's viewCount.
+ * Pass postId when on an article page to also increment the article's viewsCount.
  */
 export function useTrackPageview(postId?: string) {
   const pathname = usePathname()

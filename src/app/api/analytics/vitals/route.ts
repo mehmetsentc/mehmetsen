@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
+import { Collections } from '@/lib/firebase/collections'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     const routeKey = sanitizeRoute(path)
 
     const db = getAdminFirestore()
-    const ref = db.collection('analyticsVitals').doc(routeKey)
+    const ref = db.collection(Collections.ANALYTICS_VITALS).doc(routeKey)
 
     await ref.set({
       path,

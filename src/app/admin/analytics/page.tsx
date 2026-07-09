@@ -158,21 +158,34 @@ export default function AnalyticsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    try {
-      const dates = dateRange(period)
+    const dates = dateRange(period)
 
-      // Fetch all daily docs in parallel
+    // Firebase counts — independent of analytics collections
+    const [usersSnap, postsSnap, topPostsSnap] = await Promise.all([
+      getCountFromServer(query(collection(db, 'users'))).catch(() => null),
+      getCountFromServer(query(collection(db, Collections.NEWS), where('status', '==', 'published'))).catch(() => null),
+      getDocs(query(collection(db, Collections.NEWS), where('status', '==', 'published'), orderBy('viewsCount', 'desc'), limit(10))).catch(() => null),
+    ])
+
+    const topPosts: TopPost[] = (topPostsSnap?.docs ?? []).map(d => {
+      const dd = d.data()
+      return { id: d.id, title: dd.title as string ?? '', views: (dd.viewsCount as number) ?? 0, category: dd.categoryId as string, slug: dd.slug as string }
+    })
+
+    let totalViews = 0
+    const pageMap = new Map<string, number>()
+    const refMap = new Map<string, number>()
+    let mobile = 0; let desktop = 0
+    const osMap = new Map<string, number>()
+    let days = dates.map(date => ({ date, views: 0 }))
+    let vitals: RouteVitals[] = []
+
+    try {
       const dailyDocs = await Promise.all(
         dates.map(d => getDoc(doc(db, Collections.ANALYTICS_DAILY, d)).then(s => ({ date: d, data: s.data() as DailyDoc | undefined })))
       )
 
-      // Aggregate
-      let totalViews = 0
-      const pageMap = new Map<string, number>()
-      const refMap = new Map<string, number>()
-      let mobile = 0; let desktop = 0
-      const osMap = new Map<string, number>()
-      const days = dailyDocs.map(({ date, data: d }) => {
+      days = dailyDocs.map(({ date, data: d }) => {
         const v = d?.total ?? 0
         totalViews += v
         Object.entries(d?.pages ?? {}).forEach(([p, n]) => pageMap.set(p, (pageMap.get(p) ?? 0) + n))
@@ -183,21 +196,8 @@ export default function AnalyticsPage() {
         return { date, views: v }
       })
 
-      // Top pages — exclude admin paths
-      const topPages = [...pageMap.entries()]
-        .filter(([p]) => !p.startsWith('/admin') && !p.startsWith('/api'))
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([path, views]) => ({ path: path.replace(/_/g, '.'), views }))
-
-      const referrers = [...refMap.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 8)
-        .map(([domain, views]) => ({ domain: unSanitizeDomain(domain), views }))
-
-      // Vitals
-      const vitalsSnap = await getDocs(collection(db, 'analyticsVitals')).catch(() => null)
-      const vitals: RouteVitals[] = (vitalsSnap?.docs ?? []).map(d => {
+      const vitalsSnap = await getDocs(collection(db, Collections.ANALYTICS_VITALS)).catch(() => null)
+      vitals = (vitalsSnap?.docs ?? []).map(d => {
         const v = d.data() as VitalsDoc
         return {
           path: v.path ?? d.id,
@@ -210,36 +210,34 @@ export default function AnalyticsPage() {
           samples: v.LCP?.count ?? v.FCP?.count ?? 0,
         }
       }).filter(r => r.samples > 0).sort((a, b) => b.samples - a.samples)
-
-      // Firebase counts
-      const [usersSnap, postsSnap, topPostsSnap] = await Promise.all([
-        getCountFromServer(query(collection(db, 'users'))).catch(() => null),
-        getCountFromServer(query(collection(db, Collections.NEWS), where('status', '==', 'published'))).catch(() => null),
-        getDocs(query(collection(db, Collections.NEWS), where('status', '==', 'published'), orderBy('viewCount', 'desc'), limit(10))).catch(() => null),
-      ])
-
-      const topPosts: TopPost[] = (topPostsSnap?.docs ?? []).map(d => {
-        const dd = d.data()
-        return { id: d.id, title: dd.title as string ?? '', views: (dd.viewCount as number) ?? 0, category: dd.categoryId as string, slug: dd.slug as string }
-      })
-
-      setData({
-        totalViews,
-        totalUsers: usersSnap?.data().count ?? 0,
-        totalPosts: postsSnap?.data().count ?? 0,
-        days,
-        topPages,
-        referrers,
-        devices: { mobile, desktop },
-        os: Object.fromEntries(osMap),
-        topPosts,
-        vitals,
-      })
     } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
+      console.error('[admin/analytics] analyticsDaily read failed:', e)
     }
+
+    const topPages = [...pageMap.entries()]
+      .filter(([p]) => !p.startsWith('/admin') && !p.startsWith('/api'))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([path, views]) => ({ path: path.replace(/_/g, '.'), views }))
+
+    const referrers = [...refMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([domain, views]) => ({ domain: unSanitizeDomain(domain), views }))
+
+    setData({
+      totalViews,
+      totalUsers: usersSnap?.data().count ?? 0,
+      totalPosts: postsSnap?.data().count ?? 0,
+      days,
+      topPages,
+      referrers,
+      devices: { mobile, desktop },
+      os: Object.fromEntries(osMap),
+      topPosts,
+      vitals,
+    })
+    setLoading(false)
   }, [period])
 
   useEffect(() => { load() }, [load])

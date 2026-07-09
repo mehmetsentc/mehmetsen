@@ -44,6 +44,8 @@ export const Collections = {
   // ── Analytics ─────────────────────────────────────────────────────────────
   /** Daily aggregated page-view counters — doc id: YYYY-MM-DD */
   ANALYTICS_DAILY: 'analyticsDaily',
+  /** Per-route Core Web Vitals aggregates */
+  ANALYTICS_VITALS: 'analyticsVitals',
 } as const
 
 /** Primary collection for the TikTok-style video feed */

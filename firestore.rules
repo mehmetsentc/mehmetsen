@@ -111,6 +111,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Custom pageview analytics — written by /api/analytics/track (Admin SDK).
+    match /analyticsDaily/{dateId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Core Web Vitals — written by /api/analytics/vitals (Admin SDK).
+    match /analyticsVitals/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /reports/{reportId} {
       allow create: if isSignedIn()
         && request.resource.data.reporterId == request.auth.uid;
