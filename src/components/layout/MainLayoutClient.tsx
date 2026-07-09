@@ -22,12 +22,13 @@ import { ROUTES, isPublicRoute } from '@/constants/routes'
 import { CategorySwipeNavigator } from '@/components/layout/CategorySwipeNavigator'
 import { cn } from '@/lib/utils'
 
-type ContentVariant = 'default' | 'wide' | 'reels' | 'messages'
+type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
 
 function getContentVariant(pathname: string): ContentVariant {
   if (pathname === ROUTES.REELS) return 'reels'
   if (pathname.startsWith('/messages')) return 'messages'
   if (pathname.startsWith('/profile/')) return 'wide'
+  if (pathname === ROUTES.FEED) return 'newspaper'
   return 'default'
 }
 
@@ -35,6 +36,7 @@ function getStageClass(pathname: string, isReels: boolean, variant: ContentVaria
   if (isReels) return 'content-stage-reels'
   if (variant === 'messages') return 'content-stage-messages'
   if (variant === 'wide') return 'content-stage-wide'
+  if (variant === 'newspaper') return 'content-stage-newspaper'
   return ''
 }
 
@@ -85,6 +87,7 @@ const LayoutShell = memo(function LayoutShell({
               className={cn(
                 'content-main',
                 variant === 'wide' && 'content-main-wide',
+                variant === 'newspaper' && 'content-main-newspaper',
                 variant === 'reels' && 'content-main-reels',
                 variant === 'messages' && 'content-main-messages'
               )}

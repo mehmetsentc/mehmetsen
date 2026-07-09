@@ -7,6 +7,8 @@ import type { NewsItem } from '@/types/newsItem'
 
 interface TrendFeedProps {
   items: NewsItem[]
+  /** Web gazete düzeninde üst başlık dışarıdan verilir */
+  hideHeader?: boolean
 }
 
 function compactCount(value: number): string {
@@ -27,7 +29,7 @@ function formatDate(value?: string): string | null {
   }).format(parsed)
 }
 
-export function TrendFeed({ items }: TrendFeedProps) {
+export function TrendFeed({ items, hideHeader = false }: TrendFeedProps) {
   if (items.length === 0) {
     return (
       <div className="surface-card border-dashed py-16 text-center">
@@ -43,7 +45,8 @@ export function TrendFeed({ items }: TrendFeedProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl pb-6">
+    <div className={hideHeader ? 'w-full pb-6' : 'mx-auto w-full max-w-3xl pb-6'}>
+      {!hideHeader ? (
       <div className="mb-4 flex items-center gap-2 px-1">
         <Flame className="h-5 w-5 text-[rgb(var(--color-brand))]" />
         <h2 className="text-lg font-black text-[rgb(var(--color-text))]">Trend Haberler</h2>
@@ -51,8 +54,9 @@ export function TrendFeed({ items }: TrendFeedProps) {
           Canlı
         </span>
       </div>
+      ) : null}
 
-      <div className="space-y-4">
+      <div className={hideHeader ? 'grid grid-cols-2 gap-6 xl:grid-cols-3' : 'space-y-4'}>
         {items.map((item, index) => {
           const image = item.imageUrl || FEED_FALLBACK_LOGO
           const rank = index + 1

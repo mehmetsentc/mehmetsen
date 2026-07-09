@@ -50,6 +50,10 @@
 
   @media (min-width: 1024px) {
     :root {
+      --layout-content-newspaper: min(
+        1200px,
+        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
+      );
       --layout-content: min(720px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
       --layout-content-wide: min(960px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
       --layout-content-reels: min(
@@ -254,6 +258,32 @@
 
   .content-main-wide {
     max-width: var(--layout-content-wide);
+  }
+
+  .content-main-newspaper {
+    max-width: var(--layout-content-newspaper, min(1200px, 100%));
+  }
+
+  @media (min-width: 1024px) {
+    .content-stage-newspaper {
+      @apply max-w-none px-[var(--layout-gutter)] py-4;
+    }
+
+    .content-stage-newspaper > .content-main-newspaper {
+      @apply mx-auto w-full;
+      max-width: var(--layout-content-newspaper);
+    }
+  }
+
+  .desktop-newspaper {
+    font-family: Georgia, 'Times New Roman', 'Iowan Old Style', serif;
+  }
+
+  .desktop-newspaper .desktop-news-header,
+  .desktop-newspaper nav,
+  .desktop-newspaper button,
+  .desktop-newspaper aside {
+    font-family: var(--font-inter, Inter, system-ui, sans-serif);
   }
 
   .content-main-reels {
