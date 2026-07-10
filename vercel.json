@@ -346,10 +346,6 @@
     {
       "path": "/api/cron/sports/worldcup-sync",
       "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/youtube-rss",
-      "schedule": "*/30 * * * *"
     }
   ]
 }
