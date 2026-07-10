@@ -1,4 +1,9 @@
 import { transliterateTurkish } from '@/lib/location'
+import {
+  DISTRICT_NAMES_FROM_DATA,
+  DISTRICT_TO_PROVINCE_FROM_DATA,
+  PROVINCE_DISTRICTS,
+} from '@/constants/turkishDistricts'
 
 /** Turkish province (il) — slug, display name, approximate centroid for geo sorting. */
 export interface TurkishProvince {
@@ -160,103 +165,28 @@ export function isTurkishProvinceSlug(citySlug: string): boolean {
   return PROVINCE_BY_SLUG.has(normalizeCitySlug(citySlug))
 }
 
-/** Major districts (ilçe) → parent province slug for local news matching. */
-export const DISTRICT_TO_PROVINCE_SLUG: Readonly<Record<string, string>> = {
-  manavgat: 'antalya',
-  alanya: 'antalya',
-  serik: 'antalya',
-  kas: 'antalya',
-  kemer: 'antalya',
-  muratpasa: 'antalya',
-  kepez: 'antalya',
-  konyaalti: 'antalya',
-  aksu: 'antalya',
-  kadikoy: 'istanbul',
-  besiktas: 'istanbul',
-  uskudar: 'istanbul',
-  bakirkoy: 'istanbul',
-  sisli: 'istanbul',
-  beyoglu: 'istanbul',
-  pendik: 'istanbul',
-  bagcilar: 'istanbul',
-  esenyurt: 'istanbul',
-  cankaya: 'ankara',
-  kecioren: 'ankara',
-  yenimahalle: 'ankara',
-  mamak: 'ankara',
-  karsiyaka: 'izmir',
-  bornova: 'izmir',
-  konak: 'izmir',
-  buca: 'izmir',
-  cesme: 'izmir',
-  fethiye: 'mugla',
-  bodrum: 'mugla',
-  marmaris: 'mugla',
-  datca: 'mugla',
-  merkezefendi: 'denizli',
-  pamukkale: 'denizli',
-  meram: 'konya',
-  selcuklu: 'konya',
-  karatay: 'konya',
-  mezitli: 'mersin',
+/** Legacy district slug aliases (typos / older ingested news). */
+const LEGACY_DISTRICT_ALIASES: Readonly<Record<string, string>> = {
   yenishehir: 'mersin',
-  toroslar: 'mersin',
-  akdeniz: 'mersin',
-  tarsus: 'mersin',
-  osmangazi: 'bursa',
-  nilufer: 'bursa',
-  gemlik: 'bursa',
-  inegeul: 'bursa',
-  corlu: 'tekirdag',
-  cerkezkoy: 'tekirdag',
-  iskenderun: 'hatay',
-  antakya: 'hatay',
-  defne: 'hatay',
-  safranbolu: 'karabuk',
-  // Çanakkale ilçeleri
-  biga: 'canakkale',
-  can: 'canakkale',
-  yenice: 'canakkale',
-  bayramic: 'canakkale',
-  ezine: 'canakkale',
-  ayvacik: 'canakkale',
-  gokceada: 'canakkale',
-  bozcaada: 'canakkale',
-  gelibolu: 'canakkale',
-  eceabat: 'canakkale',
-  lapseki: 'canakkale',
 }
 
-/** Proper Turkish display names for districts in DISTRICT_TO_PROVINCE_SLUG. */
+/** District slug → parent province slug (973 ilçe). */
+export const DISTRICT_TO_PROVINCE_SLUG: Readonly<Record<string, string>> = {
+  ...DISTRICT_TO_PROVINCE_FROM_DATA,
+  ...LEGACY_DISTRICT_ALIASES,
+}
+
+/** District slug → Turkish display name. */
 export const DISTRICT_DISPLAY_NAMES: Readonly<Record<string, string>> = {
-  manavgat: 'Manavgat', alanya: 'Alanya', serik: 'Serik', kas: 'Kaş',
-  kemer: 'Kemer', muratpasa: 'Muratpaşa', kepez: 'Kepez', konyaalti: 'Konyaaltı', aksu: 'Aksu',
-  kadikoy: 'Kadıköy', besiktas: 'Beşiktaş', uskudar: 'Üsküdar', bakirkoy: 'Bakırköy',
-  sisli: 'Şişli', beyoglu: 'Beyoğlu', pendik: 'Pendik', bagcilar: 'Bağcılar', esenyurt: 'Esenyurt',
-  cankaya: 'Çankaya', kecioren: 'Keçiören', yenimahalle: 'Yenimahalle', mamak: 'Mamak',
-  karsiyaka: 'Karşıyaka', bornova: 'Bornova', konak: 'Konak', buca: 'Buca', cesme: 'Çeşme',
-  fethiye: 'Fethiye', bodrum: 'Bodrum', marmaris: 'Marmaris', datca: 'Datça',
-  merkezefendi: 'Merkezefendi', pamukkale: 'Pamukkale',
-  meram: 'Meram', selcuklu: 'Selçuklu', karatay: 'Karatay',
-  mezitli: 'Mezitli', yenishehir: 'Yenişehir', toroslar: 'Toroslar', akdeniz: 'Akdeniz', tarsus: 'Tarsus',
-  osmangazi: 'Osmangazi', nilufer: 'Nilüfer', gemlik: 'Gemlik', inegeul: 'İnegöl',
-  corlu: 'Çorlu', cerkezkoy: 'Çerkezköy',
-  iskenderun: 'İskenderun', antakya: 'Antakya', defne: 'Defne',
-  safranbolu: 'Safranbolu',
-  biga: 'Biga', can: 'Çan', yenice: 'Yenice', bayramic: 'Bayramiç', ezine: 'Ezine',
-  ayvacik: 'Ayvacık', gokceada: 'Gökçeada', bozcaada: 'Bozcaada', gelibolu: 'Gelibolu',
-  eceabat: 'Eceabat', lapseki: 'Lapseki',
+  ...DISTRICT_NAMES_FROM_DATA,
+  yenishehir: 'Yenişehir',
 }
 
 /** Returns all districts for a given province slug, sorted by display name. */
 export function getDistrictsForProvince(provinceSlug: string): Array<{ slug: string; name: string }> {
-  const result: Array<{ slug: string; name: string }> = []
-  for (const [distSlug, provSlug] of Object.entries(DISTRICT_TO_PROVINCE_SLUG)) {
-    if (provSlug === provinceSlug) {
-      result.push({ slug: distSlug, name: DISTRICT_DISPLAY_NAMES[distSlug] ?? distSlug })
-    }
-  }
-  return result.sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+  const districts = PROVINCE_DISTRICTS[normalizeCitySlug(provinceSlug)]
+  if (!districts?.length) return []
+  return districts.map((d) => ({ slug: d.slug, name: d.name }))
 }
 
 /** Map user district or province slug to province slug used on ingested news. */
