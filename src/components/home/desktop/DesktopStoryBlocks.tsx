@@ -115,7 +115,7 @@ export function HeroImageOnly({
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
             fill
-            sizes="(max-width: 1280px) 55vw, 720px"
+            sizes="(max-width: 1280px) 50vw, 960px"
             priority={priority}
             className="object-cover transition-transform duration-300 group-hover:scale-[1.01]"
           />
@@ -141,7 +141,7 @@ export function RightFeatureStory({ item, live = false }: { item: NewsItem; live
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
             fill
-            sizes="(max-width: 1280px) 25vw, 320px"
+            sizes="(max-width: 1280px) 22vw, 400px"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
@@ -205,7 +205,7 @@ export function ImageStory({
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
             fill
-            sizes="(max-width: 1280px) 25vw, 300px"
+            sizes="(max-width: 1280px) 20vw, 380px"
             priority={priority}
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />

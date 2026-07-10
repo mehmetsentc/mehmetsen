@@ -65,7 +65,7 @@ function GridStory({ post, size = 'md' }: { post: TimelinePost; size?: 'md' | 'l
             src={image}
             alt={post.title}
             fill
-            sizes="(max-width: 1280px) 33vw, 400px"
+            sizes="(max-width: 1280px) 33vw, 480px"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
@@ -228,7 +228,7 @@ export function DesktopCategoryPage({
 
       {centerHero ? (
         <section
-          className="mb-10 grid grid-cols-12 items-start gap-x-8 gap-y-6 border-b border-[rgb(var(--color-border))] pb-10"
+          className="mb-10 grid grid-cols-12 items-start gap-4 border-b border-[rgb(var(--color-border))] pb-10"
           aria-label="Öne çıkan haberler"
         >
           {leftHero ? (
@@ -252,7 +252,7 @@ export function DesktopCategoryPage({
       {heatPair.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Gündem">
           <DesktopSectionHeader title={`${sectionLead} Gündem`} href={ROUTES.CATEGORY(cat.slug)} />
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {heatPair.map((post) => (
               <GridStory key={post.id} post={post} size="lg" />
             ))}
@@ -263,15 +263,15 @@ export function DesktopCategoryPage({
       {wellnessGrid.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editör seçimi">
           <DesktopSectionHeader title="Editörün Seçimi" href={ROUTES.CATEGORY(cat.slug)} />
-          <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 min-w-0 lg:col-span-9">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-12 min-w-0 xl:col-span-10">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {wellnessGrid.map((post) => (
                   <GridStory key={post.id} post={post} />
                 ))}
               </div>
             </div>
-            <div className="col-span-12 lg:col-span-3">
+            <div className="col-span-12 xl:col-span-2">
               <DesktopAdBanner slot={`category-${cat.id}-skyscraper`} size="skyscraper" />
             </div>
           </div>
@@ -283,7 +283,7 @@ export function DesktopCategoryPage({
       {featurePair.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Derinlemesine">
           <DesktopSectionHeader title="Derinlemesine" href={ROUTES.CATEGORY(cat.slug)} />
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {featurePair.map((post) => (
               <GridStory key={post.id} post={post} size="lg" />
             ))}
@@ -293,7 +293,7 @@ export function DesktopCategoryPage({
 
       {themeColumns.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Konu başlıkları">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {themeColumns.map((col) => (
               <ThemeColumn
                 key={col.title}

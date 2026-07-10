@@ -89,18 +89,18 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       {hasHero ? (
         <section
-          className="mb-10 grid grid-cols-12 items-start gap-6 border-b border-[rgb(var(--color-border))] pb-10"
+          className="mb-10 grid grid-cols-12 items-start gap-4 border-b border-[rgb(var(--color-border))] pb-10"
           aria-label="Manşet"
         >
-          <div className="col-span-12 min-w-0 lg:col-span-5">
+          <div className="col-span-12 min-w-0 lg:col-span-6">
             <HeroImageOnly item={layout.heroLead!} priority aspect="wide" />
             <div className="mt-4">
               <TextLeadStory item={layout.heroLead!} size="hero" />
             </div>
           </div>
 
-          <aside className="col-span-12 min-w-0 lg:col-span-7 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6">
-            <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+          <aside className="col-span-12 min-w-0 lg:col-span-6 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-5">
+            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
               {layout.heroRight.map((item, i) => (
                 <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
               ))}
@@ -113,7 +113,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       ) : null}
 
       {layout.topFour.length > 0 ? (
-        <section className="mb-6 grid grid-cols-2 gap-6 xl:grid-cols-4" aria-label="Öne çıkanlar">
+        <section className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4 2xl:grid-cols-5" aria-label="Öne çıkanlar">
           {layout.topFour.map((item, i) => (
             <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
           ))}
@@ -125,7 +125,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.topicFour.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Spor">
           <DesktopSectionHeader title="Spor" href={ROUTES.CATEGORY('spor')} />
-          <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4 2xl:grid-cols-5">
             {layout.topicFour.map((item) => (
               <ImageStory key={item.id} item={item} aspect="video" />
             ))}
@@ -136,22 +136,21 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.moreGrid.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Gündem">
           <DesktopSectionHeader title="Gündem" href={ROUTES.CATEGORY('gundem')} />
-          <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 min-w-0 xl:col-span-8">
-              <div className="grid grid-cols-2 gap-6 xl:grid-cols-4">
-                {layout.moreGrid.map((item) => (
-                  <ImageStory key={item.id} item={item} aspect="video" />
-                ))}
-              </div>
-            </div>
-            {layout.moreSidebar.length > 0 ? (
-              <aside className="col-span-12 min-w-0 xl:col-span-4 xl:border-l xl:border-[rgb(var(--color-border))] xl:pl-6">
-                {layout.moreSidebar.map((item) => (
-                  <SidebarTextStory key={item.id} item={item} />
-                ))}
-              </aside>
-            ) : null}
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4 2xl:grid-cols-5">
+            {layout.moreGrid.map((item) => (
+              <ImageStory key={item.id} item={item} aspect="video" />
+            ))}
           </div>
+          {layout.moreSidebar.length > 0 ? (
+            <aside
+              className="mt-6 grid grid-cols-1 gap-x-6 border-t border-[rgb(var(--color-border))] pt-6 sm:grid-cols-2"
+              aria-label="Gündem yan haberler"
+            >
+              {layout.moreSidebar.map((item) => (
+                <SidebarTextStory key={item.id} item={item} />
+              ))}
+            </aside>
+          ) : null}
         </section>
       ) : null}
 
@@ -162,18 +161,18 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.featureLead && layout.featureImage ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editoryal">
           <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
-          <div className="grid grid-cols-12 items-start gap-6">
-            <div className="col-span-12 min-w-0 lg:col-span-5">
+          <div className="grid grid-cols-12 items-start gap-4">
+            <div className="col-span-12 min-w-0 lg:col-span-6">
               <TextLeadStory item={layout.featureLead} size="lg" />
             </div>
-            <div className="col-span-12 min-w-0 lg:col-span-7">
+            <div className="col-span-12 min-w-0 lg:col-span-6">
               <ImageStory item={layout.featureImage} aspect="wide" showSummary={false} priority />
             </div>
           </div>
         </section>
       ) : null}
 
-      <section className="mb-10 grid grid-cols-2 gap-6 border-b border-[rgb(var(--color-border))] pb-10 xl:grid-cols-4" aria-label="Kategori haberleri">
+      <section className="mb-10 grid grid-cols-2 gap-4 border-b border-[rgb(var(--color-border))] pb-10 xl:grid-cols-4" aria-label="Kategori haberleri">
         {layout.catRow1.map(({ id, items }) =>
           items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
         )}
@@ -181,7 +180,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
 
-      <section className="mb-10 grid grid-cols-2 gap-6 border-b border-[rgb(var(--color-border))] pb-10 xl:grid-cols-4" aria-label="Diğer kategoriler">
+      <section className="mb-10 grid grid-cols-2 gap-4 border-b border-[rgb(var(--color-border))] pb-10 xl:grid-cols-4" aria-label="Diğer kategoriler">
         {layout.catRow2.map(({ id, items }) =>
           items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
         )}

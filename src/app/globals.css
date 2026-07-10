@@ -82,6 +82,10 @@
       --layout-gutter: 1.75rem;
       --layout-rail: 320px;
       --layout-feed: 720px;
+      --layout-content-newspaper: min(
+        1920px,
+        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
+      );
       --layout-content: min(
         var(--layout-feed),
         calc(100vw - var(--sidebar-width-collapsed) - var(--layout-rail) - var(--layout-gutter) * 4)
@@ -102,6 +106,7 @@
     }
 
     html[data-sidebar='closed'] {
+      --layout-content-newspaper: min(1920px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content: min(
         var(--layout-feed),
         calc(100vw - var(--layout-rail) - var(--layout-gutter) * 4)
@@ -221,7 +226,7 @@
       grid-column: 3;
     }
 
-    .content-stage:not(.content-stage-with-rail):not(.content-stage-reels):not(.content-stage-messages) {
+    .content-stage:not(.content-stage-with-rail):not(.content-stage-reels):not(.content-stage-messages):not(.content-stage-newspaper) {
       @apply grid max-w-none items-start gap-0 px-[var(--layout-gutter)] py-6;
       grid-template-columns:
         minmax(var(--layout-gutter), 1fr)
@@ -229,12 +234,22 @@
         minmax(var(--layout-gutter), 1fr);
     }
 
-    .content-stage:not(.content-stage-with-rail):not(.content-stage-reels):not(.content-stage-messages) > .content-main {
+    .content-stage:not(.content-stage-with-rail):not(.content-stage-reels):not(.content-stage-messages):not(.content-stage-newspaper) > .content-main {
       grid-column: 2;
       max-width: none;
       width: 100%;
       margin-left: 0;
       margin-right: 0;
+    }
+
+    .content-stage-newspaper {
+      @apply max-w-none px-1 py-4 sm:px-2;
+    }
+
+    .content-stage-newspaper > .content-main-newspaper {
+      @apply mx-auto w-full max-w-none;
+      width: min(var(--layout-content-newspaper), 100%);
+      transition: width 300ms ease-in-out;
     }
 
     .content-stage-wide:not(.content-stage-with-rail) {
@@ -283,7 +298,7 @@
     max-width: var(--layout-content-wide);
   }
 
-  .content-main-newspaper {
+  .content-main.content-main-newspaper {
     max-width: var(--layout-content-newspaper, min(1200px, 100%));
   }
 
