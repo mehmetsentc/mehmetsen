@@ -83,11 +83,11 @@ const FAQ: FaqEntry[] = [
     a: (
       <>
         Uygulamada{' '}
-        <Link href="/settings/account/delete" className="font-semibold text-[rgb(var(--color-brand))] underline">
+        <Link href="/settings/account/delete" className="font-semibold text-brand-600 underline dark:text-brand-400">
           Ayarlar → Oturum → Hesabı Sil
         </Link>
         {' '}menüsünden hesabınızı doğrudan silebilirsiniz. Sorun yaşarsanız{' '}
-        <a className="font-semibold text-[rgb(var(--color-brand))] underline" href={mailto('Hesap Silme Talebi')}>
+        <a className="font-semibold text-brand-600 underline dark:text-brand-400" href={mailto('Hesap Silme Talebi')}>
           {CONTACT_EMAIL}
         </a>
         {' '}adresine yazın.
@@ -98,8 +98,8 @@ const FAQ: FaqEntry[] = [
     q: 'Şifremi unuttum, nasıl sıfırlarım?',
     a: (
       <>
-        Giriş ekranındaki <strong>Şifremi Unuttum</strong> bağlantısına tıklayın; e-posta
-        adresinize gönderilen bağlantı ile yeni şifrenizi belirleyebilirsiniz.
+        Giriş ekranındaki <strong className="text-gray-900 dark:text-gray-100">Şifremi Unuttum</strong> bağlantısına
+        tıklayın; e-posta adresinize gönderilen bağlantı ile yeni şifrenizi belirleyebilirsiniz.
       </>
     ),
   },
@@ -107,7 +107,7 @@ const FAQ: FaqEntry[] = [
     q: 'Bir haberde yanlış bilgi var, nasıl bildirebilirim?',
     a: (
       <>
-        <a className="font-semibold text-[rgb(var(--color-brand))] underline" href={mailto('Haber Düzeltme')}>
+        <a className="font-semibold text-brand-600 underline dark:text-brand-400" href={mailto('Haber Düzeltme')}>
           {CONTACT_EMAIL}
         </a>
         {' '}adresine haberin URL&apos;sini, hatalı kısmı ve doğru bilgiyi yazın.
@@ -119,11 +119,11 @@ const FAQ: FaqEntry[] = [
     a: (
       <>
         KVKK kapsamındaki talepleriniz için{' '}
-        <a className="font-semibold text-[rgb(var(--color-brand))] underline" href={mailto('KVKK Talebi')}>
+        <a className="font-semibold text-brand-600 underline dark:text-brand-400" href={mailto('KVKK Talebi')}>
           {CONTACT_EMAIL}
         </a>
         {' '}adresine yazın. Detaylar için{' '}
-        <Link className="font-semibold text-[rgb(var(--color-brand))] underline" href="/aydinlatma-metni">
+        <Link className="font-semibold text-brand-600 underline dark:text-brand-400" href="/aydinlatma-metni">
           Aydınlatma Metni
         </Link>
         {' '}sayfasına bakabilirsiniz.
@@ -135,7 +135,7 @@ const FAQ: FaqEntry[] = [
     a: (
       <>
         Reklam ve iş birliği talepleri için{' '}
-        <a className="font-semibold text-[rgb(var(--color-brand))] underline" href={mailto('Reklam ve İş Birliği')}>
+        <a className="font-semibold text-brand-600 underline dark:text-brand-400" href={mailto('Reklam ve İş Birliği')}>
           {CONTACT_EMAIL}
         </a>
         {' '}adresine ulaşın.
@@ -146,12 +146,12 @@ const FAQ: FaqEntry[] = [
 
 function TopicCard({ title, description, subject }: { title: string; description: string; subject: string }) {
   return (
-    <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
-      <h3 className="text-base font-bold text-[rgb(var(--color-text))]">{title}</h3>
-      <p className="mt-1.5 text-sm leading-relaxed text-[rgb(var(--color-muted))]">{description}</p>
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900/60">
+      <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{title}</h3>
+      <p className="mt-1.5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{description}</p>
       <a
         href={mailto(subject)}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[rgb(var(--color-brand))] hover:underline"
+        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400"
       >
         <Mail className="h-4 w-4" />
         {CONTACT_EMAIL}
@@ -167,16 +167,16 @@ export default function IletisimPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
+      <main className="mx-auto w-full max-w-3xl px-4 py-10 text-gray-900 sm:px-6">
         <header className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight text-[rgb(var(--color-text))]">
+          <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-gray-100">
             Destek ve İletişim
           </h1>
-          <p className="mt-3 text-base leading-relaxed text-[rgb(var(--color-muted))]">
+          <p className="mt-3 text-base leading-relaxed text-gray-700 dark:text-gray-300">
             Tüm talepleriniz için tek iletişim adresimiz{' '}
             <a
               href={mailto()}
-              className="font-semibold text-[rgb(var(--color-brand))] hover:underline"
+              className="font-semibold text-brand-600 hover:underline dark:text-brand-400"
             >
               {CONTACT_EMAIL}
             </a>
@@ -185,25 +185,25 @@ export default function IletisimPage() {
         </header>
 
         <section
-          className="mb-10 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-6"
+          className="mb-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
           aria-label="E-posta iletişim"
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[rgb(var(--color-muted))]">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                 E-posta
               </p>
               <a
                 href={mailto()}
-                className="mt-1 inline-flex items-center gap-2 text-xl font-bold text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
+                className="mt-1 inline-flex items-center gap-2 text-xl font-bold text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400"
               >
-                <Mail className="h-5 w-5 text-[rgb(var(--color-brand))]" />
+                <Mail className="h-5 w-5 text-brand-600 dark:text-brand-400" />
                 {CONTACT_EMAIL}
               </a>
             </div>
             <a
               href={mailto()}
-              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
             >
               E-posta Gönder
             </a>
@@ -211,17 +211,17 @@ export default function IletisimPage() {
         </section>
 
         <section className="mb-10" aria-labelledby="contact-form-heading">
-          <h2 id="contact-form-heading" className="mb-2 text-xl font-bold text-[rgb(var(--color-text))]">
+          <h2 id="contact-form-heading" className="mb-2 text-xl font-bold text-gray-900 dark:text-gray-100">
             İletişim Formu
           </h2>
-          <p className="mb-4 text-sm text-[rgb(var(--color-muted))]">
+          <p className="mb-4 text-sm text-gray-700 dark:text-gray-300">
             Mesajınız doğrudan {CONTACT_EMAIL} adresine iletilir.
           </p>
           <ContactForm />
         </section>
 
         <section className="mb-10" aria-label="İletişim konuları">
-          <h2 className="mb-4 text-xl font-bold text-[rgb(var(--color-text))]">Konuya Göre Yazın</h2>
+          <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">Konuya Göre Yazın</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {TOPIC_CHANNELS.map((channel) => (
               <TopicCard key={channel.title} {...channel} />
@@ -230,20 +230,20 @@ export default function IletisimPage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="mb-4 text-xl font-bold text-[rgb(var(--color-text))]">Sıkça Sorulan Sorular</h2>
+          <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">Sıkça Sorulan Sorular</h2>
           <div className="space-y-3">
             {FAQ.map((entry, idx) => (
               <details
                 key={idx}
-                className="group rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4"
+                className="group rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
               >
-                <summary className="cursor-pointer list-none text-sm font-semibold text-[rgb(var(--color-text))] marker:hidden">
-                  <span className="mr-2 inline-block text-[rgb(var(--color-brand))] transition-transform group-open:rotate-90">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-gray-900 marker:hidden dark:text-gray-100">
+                  <span className="mr-2 inline-block text-brand-600 transition-transform group-open:rotate-90 dark:text-brand-400">
                     ▸
                   </span>
                   {entry.q}
                 </summary>
-                <div className="mt-3 pl-5 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+                <div className="mt-3 pl-5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                   {entry.a}
                 </div>
               </details>
@@ -251,11 +251,13 @@ export default function IletisimPage() {
           </div>
         </section>
 
-        <section className="mb-10 rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-900/40 dark:bg-red-950/20">
-          <h2 className="mb-2 text-base font-bold text-[rgb(var(--color-text))]">Hesabınızı Silmek mi İstiyorsunuz?</h2>
-          <p className="mb-3 text-sm text-[rgb(var(--color-muted))]">
-            <strong className="text-[rgb(var(--color-text))]">Ayarlar → Oturum → Hesabı Sil</strong> menüsünden
-            hesabınızı kalıcı olarak silebilirsiniz.
+        <section className="mb-10 rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-900/50 dark:bg-red-950/30">
+          <h2 className="mb-2 text-base font-bold text-red-950 dark:text-red-100">
+            Hesabınızı Silmek mi İstiyorsunuz?
+          </h2>
+          <p className="mb-3 text-sm text-red-900/90 dark:text-red-100/90">
+            <strong className="font-semibold text-red-950 dark:text-red-50">Ayarlar → Oturum → Hesabı Sil</strong>{' '}
+            menüsünden hesabınızı kalıcı olarak silebilirsiniz.
           </p>
           <Link
             href="/settings/account/delete"
@@ -263,9 +265,9 @@ export default function IletisimPage() {
           >
             Hesap Silme Sayfasına Git →
           </Link>
-          <p className="text-xs text-[rgb(var(--color-muted))]">
+          <p className="text-xs text-red-900/80 dark:text-red-200/90">
             Uygulamaya erişiminiz yoksa{' '}
-            <a className="font-semibold text-[rgb(var(--color-brand))] underline" href={mailto('Hesap Silme Talebi')}>
+            <a className="font-semibold text-red-800 underline dark:text-red-200" href={mailto('Hesap Silme Talebi')}>
               {CONTACT_EMAIL}
             </a>
             {' '}adresine yazın.
@@ -273,7 +275,7 @@ export default function IletisimPage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="mb-3 text-lg font-bold text-[rgb(var(--color-text))]">Sosyal Medya</h2>
+          <h2 className="mb-3 text-lg font-bold text-gray-900 dark:text-gray-100">Sosyal Medya</h2>
           <div className="flex flex-wrap gap-3">
             {[
               { label: 'X / Twitter', href: 'https://twitter.com/nahabercom' },
@@ -285,7 +287,7 @@ export default function IletisimPage() {
                 href={s.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-sm font-semibold text-[rgb(var(--color-brand))] hover:bg-[rgb(var(--color-surface))]"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900/60 dark:text-brand-400 dark:hover:bg-gray-800"
               >
                 {s.label}
               </a>
@@ -293,8 +295,8 @@ export default function IletisimPage() {
           </div>
         </section>
 
-        <section className="border-t border-[rgb(var(--color-border))] pt-6">
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+        <section className="border-t border-gray-200 pt-6 dark:border-gray-700">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Yasal Belgeler ve Politikalar
           </h2>
           <ul className="grid gap-2 text-sm sm:grid-cols-2">
@@ -302,7 +304,7 @@ export default function IletisimPage() {
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="font-medium text-[rgb(var(--color-brand))] underline hover:no-underline"
+                  className="font-medium text-brand-600 underline hover:no-underline dark:text-brand-400"
                 >
                   {link.label}
                 </Link>

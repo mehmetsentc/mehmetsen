@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { ROUTES } from '@/constants/routes'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
-import { DesktopCategoryColumn } from '@/components/home/desktop/DesktopCategoryColumn'
+import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID } from '@/components/home/desktop/desktopLayout'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
 import { DesktopMoreList } from '@/components/home/desktop/DesktopMoreList'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
@@ -18,10 +18,55 @@ import {
   TextLeadStory,
 } from '@/components/home/desktop/DesktopStoryBlocks'
 import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
-import type { HomeFeedInitialData } from '@/types/newsItem'
+import { getCategoryLabel } from '@/lib/newsMapper'
+import type { HomeFeedInitialData, NewsItem } from '@/types/newsItem'
 
 const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
 const CATEGORY_ROW_2 = ['saglik', 'kultur', 'turizm', 'gezi'] as const
+
+function padToFour(
+  items: NewsItem[],
+  takeFeatured: (count: number) => NewsItem[]
+): NewsItem[] {
+  if (items.length >= 4) return items.slice(0, 4)
+  if (items.length === 0) return []
+  return [...items, ...takeFeatured(4 - items.length)]
+}
+
+function rowGapFiller(
+  rows: { id: string; items: NewsItem[] }[],
+  takeFeatured: (count: number) => NewsItem[]
+): NewsItem[] {
+  const emptySlots = rows.filter((row) => row.items.length === 0).length
+  if (emptySlots === 0 || rows.every((row) => row.items.length === 0)) return []
+  return takeFeatured(4)
+}
+
+function DesktopCategoryGridSection({
+  categoryId,
+  title,
+  items,
+  href,
+}: {
+  categoryId: string
+  title: string
+  items: NewsItem[]
+  href?: string
+}) {
+  const cards = items.slice(0, 4)
+  if (cards.length === 0) return null
+
+  return (
+    <section className={DESKTOP_SECTION_DIVIDER} aria-label={title}>
+      <DesktopSectionHeader title={title} href={href ?? ROUTES.CATEGORY(categoryId)} />
+      <div className={FOUR_CARD_GRID}>
+        {cards.map((item) => (
+          <ImageStory key={item.id} item={item} aspect="video" />
+        ))}
+      </div>
+    </section>
+  )
+}
 
 interface DesktopHomeFeedProps {
   data: HomeFeedInitialData
@@ -29,7 +74,7 @@ interface DesktopHomeFeedProps {
 
 export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
   const layout = useMemo(() => {
-    const { take, takeCategory } = createFeedAllocator(data)
+    const { take, takeCategory, takeFeatured } = createFeedAllocator(data)
 
     const heroLead = take(1)[0]
     const heroRight = take(2)
@@ -47,12 +92,14 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
     const catRow1 = CATEGORY_ROW_1.map((id) => ({
       id,
-      items: takeCategory(id, 4),
+      items: padToFour(takeCategory(id, 4), takeFeatured),
     }))
     const catRow2 = CATEGORY_ROW_2.map((id) => ({
       id,
-      items: takeCategory(id, 4),
+      items: padToFour(takeCategory(id, 4), takeFeatured),
     }))
+    const catRow1Filler = rowGapFiller(catRow1, takeFeatured)
+    const catRow2Filler = rowGapFiller(catRow2, takeFeatured)
 
     const mostRead = data.mostRead.slice(0, 6)
     const trending = data.trending.slice(0, 8)
@@ -71,6 +118,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       featureImage,
       catRow1,
       catRow2,
+      catRow1Filler,
+      catRow2Filler,
       mostRead,
       trending,
       moreList,
@@ -113,7 +162,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       ) : null}
 
       {layout.topFour.length > 0 ? (
-        <section className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4" aria-label="Öne çıkanlar">
+        <section className={`mb-6 ${FOUR_CARD_GRID}`} aria-label="Öne çıkanlar">
           {layout.topFour.map((item, i) => (
             <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
           ))}
@@ -123,9 +172,9 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       <QuickHeadlineStrip items={layout.quickHeadlines} />
 
       {layout.topicFour.length > 0 ? (
-        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Spor">
+        <section className={DESKTOP_SECTION_DIVIDER} aria-label="Spor">
           <DesktopSectionHeader title="Spor" href={ROUTES.CATEGORY('spor')} />
-          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <div className={FOUR_CARD_GRID}>
             {layout.topicFour.map((item) => (
               <ImageStory key={item.id} item={item} aspect="video" />
             ))}
@@ -134,9 +183,9 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       ) : null}
 
       {layout.moreGrid.length > 0 ? (
-        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Gündem">
+        <section className={DESKTOP_SECTION_DIVIDER} aria-label="Gündem">
           <DesktopSectionHeader title="Gündem" href={ROUTES.CATEGORY('gundem')} />
-          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <div className={FOUR_CARD_GRID}>
             {layout.moreGrid.map((item) => (
               <ImageStory key={item.id} item={item} aspect="video" />
             ))}
@@ -159,7 +208,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       <DesktopMustWatch items={layout.trending} />
 
       {layout.featureLead && layout.featureImage ? (
-        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editoryal">
+        <section className={DESKTOP_SECTION_DIVIDER} aria-label="Editoryal">
           <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
           <div className="grid grid-cols-12 items-start gap-4">
             <div className="col-span-12 min-w-0 lg:col-span-6">
@@ -172,22 +221,46 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         </section>
       ) : null}
 
-      <section className="mb-10 grid grid-cols-2 gap-4 border-b border-[rgb(var(--color-border))] pb-10 xl:grid-cols-4" aria-label="Kategori haberleri">
-        {layout.catRow1.map(({ id, items }) =>
-          items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
-        )}
-      </section>
+      {layout.catRow1.map(({ id, items }) => (
+        <DesktopCategoryGridSection
+          key={id}
+          categoryId={id}
+          title={getCategoryLabel(id)}
+          items={items}
+        />
+      ))}
+
+      {layout.catRow1Filler.length > 0 ? (
+        <DesktopCategoryGridSection
+          categoryId="gundem"
+          title="Öne Çıkan"
+          items={layout.catRow1Filler}
+          href={ROUTES.CATEGORY('gundem')}
+        />
+      ) : null}
 
       <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
 
-      <section className="mb-10 grid grid-cols-2 gap-4 border-b border-[rgb(var(--color-border))] pb-10 xl:grid-cols-4" aria-label="Diğer kategoriler">
-        {layout.catRow2.map(({ id, items }) =>
-          items.length > 0 ? <DesktopCategoryColumn key={id} categoryId={id} items={items} /> : null
-        )}
-      </section>
+      {layout.catRow2.map(({ id, items }) => (
+        <DesktopCategoryGridSection
+          key={id}
+          categoryId={id}
+          title={getCategoryLabel(id)}
+          items={items}
+        />
+      ))}
+
+      {layout.catRow2Filler.length > 0 ? (
+        <DesktopCategoryGridSection
+          categoryId="gundem"
+          title="Öne Çıkan"
+          items={layout.catRow2Filler}
+          href={ROUTES.CATEGORY('gundem')}
+        />
+      ) : null}
 
       {layout.mostRead.length > 0 ? (
-        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Çok okunanlar">
+        <section className={DESKTOP_SECTION_DIVIDER} aria-label="Çok okunanlar">
           <DesktopSectionHeader title="Çok Okunanlar" />
           <div className="grid grid-cols-2 gap-x-10 gap-y-0">
             {layout.mostRead.map((item, index) => (

@@ -5,6 +5,9 @@ import { Loader2, Send } from 'lucide-react'
 import { CONTACT_FORM_SUBJECTS } from '@/constants/siteLegalLinks'
 import { cn } from '@/lib/utils'
 
+const fieldClass =
+  'w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm outline-none placeholder:text-gray-500 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20'
+
 interface ContactFormProps {
   className?: string
 }
@@ -52,18 +55,18 @@ export function ContactForm({ className }: ContactFormProps) {
     return (
       <div
         className={cn(
-          'rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center',
+          'rounded-2xl border border-emerald-300 bg-emerald-50 p-6 text-center dark:border-emerald-800 dark:bg-emerald-950/40',
           className
         )}
       >
-        <p className="text-base font-semibold text-[rgb(var(--color-text))]">Mesajınız alındı</p>
-        <p className="mt-2 text-sm text-[rgb(var(--color-muted))]">
+        <p className="text-base font-semibold text-gray-900 dark:text-gray-100">Mesajınız alındı</p>
+        <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
           En kısa sürede e-posta adresinize dönüş yapacağız.
         </p>
         <button
           type="button"
           onClick={() => setSent(false)}
-          className="mt-4 text-sm font-semibold text-[rgb(var(--color-brand))] hover:underline"
+          className="mt-4 text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400"
         >
           Yeni mesaj gönder
         </button>
@@ -76,13 +79,15 @@ export function ContactForm({ className }: ContactFormProps) {
       id="iletisim-formu"
       onSubmit={onSubmit}
       className={cn(
-        'rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 sm:p-6',
+        'rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6',
         className
       )}
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block sm:col-span-1">
-          <span className="mb-1.5 block text-sm font-semibold text-[rgb(var(--color-text))]">Ad Soyad</span>
+          <span className="mb-1.5 block text-sm font-semibold text-gray-900">
+            Ad Soyad <span className="text-brand-600">*</span>
+          </span>
           <input
             type="text"
             required
@@ -90,30 +95,32 @@ export function ContactForm({ className }: ContactFormProps) {
             maxLength={120}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] outline-none ring-[rgb(var(--color-brand))] focus:ring-2"
+            className={fieldClass}
             autoComplete="name"
           />
         </label>
 
         <label className="block sm:col-span-1">
-          <span className="mb-1.5 block text-sm font-semibold text-[rgb(var(--color-text))]">E-posta</span>
+          <span className="mb-1.5 block text-sm font-semibold text-gray-900">
+            E-posta <span className="text-brand-600">*</span>
+          </span>
           <input
             type="email"
             required
             maxLength={200}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] outline-none ring-[rgb(var(--color-brand))] focus:ring-2"
+            className={fieldClass}
             autoComplete="email"
           />
         </label>
 
         <label className="block sm:col-span-2">
-          <span className="mb-1.5 block text-sm font-semibold text-[rgb(var(--color-text))]">Konu</span>
+          <span className="mb-1.5 block text-sm font-semibold text-gray-900">Konu</span>
           <select
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] outline-none ring-[rgb(var(--color-brand))] focus:ring-2"
+            className={fieldClass}
           >
             {CONTACT_FORM_SUBJECTS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -124,7 +131,9 @@ export function ContactForm({ className }: ContactFormProps) {
         </label>
 
         <label className="block sm:col-span-2">
-          <span className="mb-1.5 block text-sm font-semibold text-[rgb(var(--color-text))]">Mesajınız</span>
+          <span className="mb-1.5 block text-sm font-semibold text-gray-900">
+            Mesajınız <span className="text-brand-600">*</span>
+          </span>
           <textarea
             required
             minLength={10}
@@ -132,7 +141,7 @@ export function ContactForm({ className }: ContactFormProps) {
             rows={6}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full resize-y rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm leading-relaxed text-[rgb(var(--color-text))] outline-none ring-[rgb(var(--color-brand))] focus:ring-2"
+            className={cn(fieldClass, 'resize-y leading-relaxed')}
             placeholder="Mesajınızı buraya yazın..."
           />
         </label>
@@ -149,12 +158,12 @@ export function ContactForm({ className }: ContactFormProps) {
         aria-hidden
       />
 
-      {error ? <p className="mt-3 text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-400">{error}</p> : null}
 
       <button
         type="submit"
         disabled={loading}
-        className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[rgb(var(--color-brand))] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="mt-5 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:bg-brand-700 disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         Gönder

@@ -39,5 +39,11 @@ export function createFeedAllocator(data: HomeFeedInitialData) {
     return [...fromRail, ...take(count - fromRail.length)]
   }
 
-  return { take, takeCategory }
+  /** Featured / trending / popular — fills sparse category rows without duplicating used items. */
+  function takeFeatured(count: number): NewsItem[] {
+    if (count <= 0) return []
+    return takeFrom([...data.featured, ...data.trending, ...data.mostRead], count)
+  }
+
+  return { take, takeCategory, takeFeatured }
 }
