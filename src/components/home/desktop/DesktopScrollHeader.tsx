@@ -29,7 +29,7 @@ interface DesktopScrollHeaderProps {
  * üstte sabit kompakt kategori çubuğu.
  */
 export function DesktopScrollHeader({
-  threshold = 80,
+  threshold = 120,
   ...headerProps
 }: DesktopScrollHeaderProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)

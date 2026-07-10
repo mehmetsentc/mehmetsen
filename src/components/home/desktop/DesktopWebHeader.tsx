@@ -5,6 +5,7 @@ import { Search } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
+import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import type { CategoryDef } from '@/constants/config'
@@ -114,12 +115,12 @@ export function DesktopWebHeader({
 
   return (
     <header
-      className={cn('desktop-web-header mb-6 border-b border-[rgb(var(--color-border))] pb-0', className)}
+      className={cn('desktop-web-header desktop-web-header--full mb-6 border-b border-[rgb(var(--color-border))] pb-0', className)}
       itemScope
       itemType="https://schema.org/WPHeader"
     >
-      {/* Logo bar — BBC tarzı ortalanmış marka */}
-      <div className="relative mb-4 flex items-center justify-center border-b border-[rgb(var(--color-border))] pb-4 pt-1">
+      {/* NYT tarzı üst çubuk: arama sol, logo orta, hesap sağ */}
+      <div className="relative flex items-center justify-center border-b border-[rgb(var(--color-border))] py-4">
         <Link
           href={ROUTES.SEARCH}
           className="absolute left-0 flex h-9 w-9 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))]"
@@ -130,15 +131,44 @@ export function DesktopWebHeader({
 
         <Link
           href={ROUTES.FEED}
-          className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
+          className="flex flex-col items-center gap-1 transition-opacity hover:opacity-90"
           aria-label="NaHaber Ana Sayfa"
           itemProp="url"
         >
-          <BrandLogo size="lg" priority />
-          <span className="text-2xl font-black tracking-tight" itemProp="name">
+          <BrandLogo size="lg" priority className="h-10 w-10" />
+          <span
+            className="font-serif text-[2rem] font-bold leading-none tracking-tight md:text-[2.35rem]"
+            itemProp="name"
+          >
             <span className="text-[rgb(var(--color-brand))]">Na</span>
             <span className="text-[rgb(var(--color-text))]">Haber</span>
           </span>
+        </Link>
+
+        <div className="absolute right-0 flex items-center gap-3 text-[12px] font-semibold">
+          <Link
+            href={ROUTES.LOGIN}
+            className="text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
+          >
+            Giriş
+          </Link>
+          <Link
+            href={ROUTES.APP}
+            className="text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
+          >
+            Uygulama
+          </Link>
+        </div>
+      </div>
+
+      {/* Tarih + son dakika — NYT "Today's Paper" satırı */}
+      <div className="flex items-center justify-between border-b border-[rgb(var(--color-border))] py-2 text-[12px]">
+        <p className="m-0 capitalize text-[rgb(var(--color-muted))]">{formatNewsDateLong()}</p>
+        <Link
+          href={ROUTES.CATEGORY('son-dakika')}
+          className="font-semibold text-[rgb(var(--color-text))] transition-colors hover:underline"
+        >
+          Son Dakika →
         </Link>
       </div>
 
@@ -147,12 +177,12 @@ export function DesktopWebHeader({
       ) : null}
 
       <nav
-        className="flex items-stretch overflow-x-auto scrollbar-hide border-t border-[rgb(var(--color-border))]"
+        className="flex items-center justify-center overflow-x-auto scrollbar-hide border-t border-[rgb(var(--color-border))] py-0.5"
         aria-label="Haber kategorileri"
         itemScope
         itemType="https://schema.org/SiteNavigationElement"
       >
-        <DesktopSiteNavLinks variant="header" />
+        <DesktopSiteNavLinks variant="header" layout="masthead" />
       </nav>
 
       {showSubTabs ? (

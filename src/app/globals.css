@@ -346,6 +346,10 @@
     font-family: var(--font-inter, Inter, system-ui, sans-serif);
   }
 
+  .desktop-web-header--full .font-serif {
+    font-family: Georgia, 'Times New Roman', 'Iowan Old Style', serif;
+  }
+
   .desktop-scroll-header-compact {
     left: var(--sidebar-width-collapsed);
     right: 0;
