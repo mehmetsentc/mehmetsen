@@ -49,6 +49,9 @@ export const Collections = {
 
   /** Site reklam bannerları — slotId ile eşleşir */
   AD_BANNERS: 'adBanners',
+
+  /** İletişim formu gönderileri */
+  CONTACT_SUBMISSIONS: 'contactSubmissions',
 } as const
 
 /** Primary collection for the TikTok-style video feed */

@@ -47,6 +47,9 @@ interface DesktopCategoryPageProps {
   topSlot?: React.ReactNode
 }
 
+/** Ana sayfa ile aynı — satırda en fazla 4 kart. */
+const FOUR_CARD_GRID = 'grid grid-cols-2 gap-4 xl:grid-cols-4'
+
 function GridStory({ post, size = 'md' }: { post: TimelinePost; size?: 'md' | 'lg' | 'xl' }) {
   const href = categoryPostHref(post)
   const image = categoryPostImage(post) || FEED_FALLBACK_LOGO
@@ -65,7 +68,7 @@ function GridStory({ post, size = 'md' }: { post: TimelinePost; size?: 'md' | 'l
             src={image}
             alt={post.title}
             fill
-            sizes="(max-width: 1280px) 33vw, 480px"
+            sizes="(max-width: 1280px) 50vw, 300px"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
@@ -97,49 +100,6 @@ function StackedStory({ post }: { post: TimelinePost }) {
         </div>
       </Link>
     </article>
-  )
-}
-
-function TextLinkStory({ post }: { post: TimelinePost }) {
-  const href = categoryPostHref(post)
-  return (
-    <article className="border-t border-[rgb(var(--color-border))] py-3 first:border-t-0 first:pt-0">
-      <Link href={href} className="group block break-words text-sm font-bold leading-snug text-[rgb(var(--color-text))] hover:underline">
-        {post.title}
-      </Link>
-    </article>
-  )
-}
-
-function ThemeColumn({
-  title,
-  href,
-  lead,
-  links,
-}: {
-  title: string
-  href: string
-  lead: TimelinePost
-  links: TimelinePost[]
-}) {
-  const leadHref = categoryPostHref(lead)
-  const leadImage = categoryPostImage(lead) || FEED_FALLBACK_LOGO
-  const leadSummary = categoryPostSummary(lead)
-
-  return (
-    <div className="min-w-0">
-      <DesktopSectionHeader title={title} href={href} />
-      <Link href={leadHref} className="group mb-1 block">
-        <div className="relative mb-3 aspect-[4/3] overflow-hidden bg-[rgb(var(--color-border))]">
-          <SafeNewsImage src={leadImage} alt={lead.title} fill sizes="320px" className="object-cover group-hover:scale-[1.02] transition-transform" />
-        </div>
-        <h3 className="break-words text-base font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline">{lead.title}</h3>
-        {leadSummary ? <p className="mt-2 line-clamp-3 break-words text-sm text-[rgb(var(--color-muted))]">{leadSummary}</p> : null}
-      </Link>
-      {links.map((post) => (
-        <TextLinkStory key={post.id} post={post} />
-      ))}
-    </div>
   )
 }
 
@@ -189,30 +149,11 @@ export function DesktopCategoryPage({
   const centerHero = rankedPosts[0]
   const leftHero = rankedPosts[1]
   const rightStack = rankedPosts.slice(2, 4)
-  const heatPair = rankedPosts.slice(4, 6)
-  const wellnessGrid = rankedPosts.slice(6, 9)
-  const featurePair = rankedPosts.slice(9, 11)
-  const themePosts = rankedPosts.slice(11, 23)
-  const moreList = rankedPosts.slice(23)
-
-  const themeColumns = useMemo(() => {
-    const tabs = subTabs.filter((t) => !t.active).slice(0, 4)
-    if (tabs.length >= 4) {
-      return tabs.map((tab, i) => ({
-        title: tab.name.toLocaleUpperCase('tr-TR'),
-        href: tab.href,
-        lead: themePosts[i * 4] ?? themePosts[i],
-        links: themePosts.slice(i * 4 + 1, i * 4 + 4).filter(Boolean),
-      })).filter((col) => col.lead)
-    }
-    const fallbackTitles = ['Öne Çıkan', 'Gündem', 'Analiz', 'Son Gelişmeler']
-    return fallbackTitles.map((title, i) => ({
-      title,
-      href: ROUTES.CATEGORY(cat.slug),
-      lead: themePosts[i * 3],
-      links: themePosts.slice(i * 3 + 1, i * 3 + 4).filter(Boolean),
-    })).filter((col) => col.lead)
-  }, [subTabs, themePosts, cat.slug])
+  const topFour = rankedPosts.slice(4, 8)
+  const editorFour = rankedPosts.slice(8, 12)
+  const featureFour = rankedPosts.slice(12, 16)
+  const topicFour = rankedPosts.slice(16, 20)
+  const moreList = rankedPosts.slice(20)
 
   return (
     <div className="desktop-category-page pb-10">
@@ -249,59 +190,47 @@ export function DesktopCategoryPage({
         </section>
       ) : null}
 
-      {heatPair.length > 0 ? (
-        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Gündem">
+      {topFour.length > 0 ? (
+        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Öne çıkanlar">
           <DesktopSectionHeader title={`${sectionLead} Gündem`} href={ROUTES.CATEGORY(cat.slug)} />
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {heatPair.map((post) => (
-              <GridStory key={post.id} post={post} size="lg" />
+          <div className={FOUR_CARD_GRID}>
+            {topFour.map((post) => (
+              <GridStory key={post.id} post={post} />
             ))}
           </div>
         </section>
       ) : null}
 
-      {wellnessGrid.length > 0 ? (
+      {editorFour.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editör seçimi">
           <DesktopSectionHeader title="Editörün Seçimi" href={ROUTES.CATEGORY(cat.slug)} />
-          <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-12 min-w-0 xl:col-span-10">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {wellnessGrid.map((post) => (
-                  <GridStory key={post.id} post={post} />
-                ))}
-              </div>
-            </div>
-            <div className="col-span-12 xl:col-span-2">
-              <DesktopAdBanner slot={`category-${cat.id}-skyscraper`} size="skyscraper" />
-            </div>
+          <div className={FOUR_CARD_GRID}>
+            {editorFour.map((post) => (
+              <GridStory key={post.id} post={post} />
+            ))}
           </div>
         </section>
       ) : null}
 
       <DesktopCategoryWatch posts={rankedPosts} categorySlug={cat.slug} />
 
-      {featurePair.length > 0 ? (
+      {featureFour.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Derinlemesine">
           <DesktopSectionHeader title="Derinlemesine" href={ROUTES.CATEGORY(cat.slug)} />
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {featurePair.map((post) => (
-              <GridStory key={post.id} post={post} size="lg" />
+          <div className={FOUR_CARD_GRID}>
+            {featureFour.map((post) => (
+              <GridStory key={post.id} post={post} />
             ))}
           </div>
         </section>
       ) : null}
 
-      {themeColumns.length > 0 ? (
-        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Konu başlıkları">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {themeColumns.map((col) => (
-              <ThemeColumn
-                key={col.title}
-                title={col.title}
-                href={col.href}
-                lead={col.lead}
-                links={col.links}
-              />
+      {topicFour.length > 0 ? (
+        <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Öne çıkan haberler">
+          <DesktopSectionHeader title="Öne Çıkan" href={ROUTES.CATEGORY(cat.slug)} />
+          <div className={FOUR_CARD_GRID}>
+            {topicFour.map((post) => (
+              <GridStory key={post.id} post={post} />
             ))}
           </div>
         </section>

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ContactForm } from '@/components/contact/ContactForm'
+import { CONTACT_EMAIL, FOOTER_LEGAL_LINKS } from '@/constants/siteLegalLinks'
 import { getSiteUrl } from '@/lib/seo'
 
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -30,7 +32,7 @@ const jsonLd = {
       {
         '@type': 'ContactPoint',
         contactType: 'customer support',
-        email: 'destek@nahaber.com',
+        email: CONTACT_EMAIL,
         availableLanguage: ['Turkish', 'English'],
       },
       {
@@ -196,7 +198,7 @@ export default function IletisimPage() {
       <main className="mx-auto max-w-3xl px-4 py-10">
         {/* ── Başlık ────────────────────────────────────────────────────── */}
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Destek ve İletişim</h1>
+          <h1 className="text-3xl font-bold text-[rgb(var(--color-text))]">Destek ve İletişim</h1>
           <p className="mt-2 text-sm text-[rgb(var(--color-muted))]">
             Sorularınız ve geri bildirimleriniz için aşağıdaki kanallardan bize ulaşabilir veya
             sıkça sorulan sorulara göz atabilirsiniz. Tüm e-postalara hafta içi 24 saat içinde
@@ -204,8 +206,28 @@ export default function IletisimPage() {
           </p>
         </header>
 
+        {/* ── İletişim Formu ───────────────────────────────────────────── */}
+        <section className="mb-10" aria-labelledby="contact-form-heading">
+          <h2 id="contact-form-heading" className="mb-2 text-xl font-bold text-[rgb(var(--color-text))]">
+            Bize Yazın
+          </h2>
+          <p className="mb-4 text-sm text-[rgb(var(--color-muted))]">
+            Formu doldurun; mesajınız{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-[rgb(var(--color-brand))] hover:underline">
+              {CONTACT_EMAIL}
+            </a>
+            {' '}adresine iletilir.
+          </p>
+          <ContactForm />
+        </section>
+
         {/* ── İletişim Kanalları ───────────────────────────────────────── */}
         <section className="mb-10 grid gap-4 sm:grid-cols-2">
+          <SupportChannel
+            title="Genel İletişim"
+            description="Sorularınız, önerileriniz ve geri bildirimleriniz."
+            email={CONTACT_EMAIL}
+          />
           <SupportChannel
             title="Müşteri Destek"
             description="Hesap, ödeme, teknik sorun ve genel destek talepleri."
@@ -309,41 +331,18 @@ export default function IletisimPage() {
         </section>
 
         {/* ── Yasal Sayfa Linkleri ─────────────────────────────────────── */}
-        <section className="border-t border-white/10 pt-6">
+        <section className="border-t border-[rgb(var(--color-border))] pt-6">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-            Yasal Bilgiler
+            Yasal Belgeler ve Politikalar
           </h2>
-          <ul className="grid gap-2 text-sm sm:grid-cols-2">
-            <li>
-              <Link href="/hukuk/gizlilik" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
-                Gizlilik Politikası
-              </Link>
-            </li>
-            <li>
-              <Link href="/hukuk/kullanim-kosullari" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
-                Kullanım Koşulları
-              </Link>
-            </li>
-            <li>
-              <Link href="/hukuk/kvkk" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
-                KVKK Aydınlatma Metni
-              </Link>
-            </li>
-            <li>
-              <Link href="/hukuk/cerez-politikasi" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
-                Çerez Politikası
-              </Link>
-            </li>
-            <li>
-              <Link href="/editoryal-ilkeler" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
-                Editöryal İlkeler
-              </Link>
-            </li>
-            <li>
-              <Link href="/kunye" className="text-[rgb(var(--color-brand))] underline hover:no-underline">
-                Künye
-              </Link>
-            </li>
+          <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {FOOTER_LEGAL_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className="text-[rgb(var(--color-brand))] underline hover:no-underline">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </section>
       </main>

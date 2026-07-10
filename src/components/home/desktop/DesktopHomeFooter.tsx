@@ -1,18 +1,11 @@
 import Link from 'next/link'
+import { Mail } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
+import { CONTACT_EMAIL, FOOTER_LEGAL_LINKS } from '@/constants/siteLegalLinks'
 import { getSitemapLinks } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl } from '@/lib/seo'
-
-const LEGAL = [
-  { label: 'Hakkımızda', href: '/hakkimizda' },
-  { label: 'İletişim', href: '/iletisim' },
-  { label: 'Gizlilik', href: '/hukuk/gizlilik' },
-  { label: 'Kullanım Koşulları', href: '/hukuk/kullanim-kosullari' },
-  { label: 'Editoryal İlkeler', href: '/editoryal-ilkeler' },
-  { label: 'Kurallar', href: ROUTES.FEED_CONTENT_POLICY },
-] as const
 
 const SOCIAL = [
   { label: 'X', href: process.env.NEXT_PUBLIC_X_URL ?? 'https://x.com/nahabercom' },
@@ -49,6 +42,48 @@ export function DesktopHomeFooter() {
       <nav aria-label="Haber kategorileri" itemScope itemType="https://schema.org/SiteNavigationElement">
         <DesktopSiteNavLinks variant="footer" className="mb-6" />
       </nav>
+
+      <div className="mb-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <section aria-label="İletişim bilgileri">
+          <h2 className="mb-3 text-xs font-black uppercase tracking-widest text-[rgb(var(--color-muted))]">
+            İletişim
+          </h2>
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[rgb(var(--color-text))] transition-colors hover:text-[rgb(var(--color-brand))]"
+          >
+            <Mail className="h-4 w-4 shrink-0" />
+            {CONTACT_EMAIL}
+          </a>
+          <p className="mt-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">
+            Sorularınız ve geri bildirimleriniz için bize yazın.
+          </p>
+          <Link
+            href="/iletisim#iletisim-formu"
+            className="mt-3 inline-block text-sm font-semibold text-[rgb(var(--color-brand))] hover:underline"
+          >
+            İletişim formu →
+          </Link>
+        </section>
+
+        <section aria-label="Yasal belgeler" className="sm:col-span-1 lg:col-span-2">
+          <h2 className="mb-3 text-xs font-black uppercase tracking-widest text-[rgb(var(--color-muted))]">
+            Yasal Belgeler ve Politikalar
+          </h2>
+          <ul className="grid list-none grid-cols-1 gap-x-6 gap-y-2 p-0 m-0 sm:grid-cols-2 lg:grid-cols-3">
+            {FOOTER_LEGAL_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="text-sm text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
 
       <nav aria-label="Site haritası" className="mb-6">
         <h2 className="mb-3 text-xs font-black uppercase tracking-widest text-[rgb(var(--color-muted))]">
@@ -95,18 +130,6 @@ export function DesktopHomeFooter() {
           >
             {s.label}
           </a>
-        ))}
-      </nav>
-
-      <nav aria-label="Yasal bilgiler" className="mb-6 flex flex-wrap gap-x-4 gap-y-2">
-        {LEGAL.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="text-xs text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:underline"
-          >
-            {link.label}
-          </Link>
         ))}
       </nav>
 
