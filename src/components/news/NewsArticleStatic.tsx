@@ -16,6 +16,7 @@ import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
 import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
 import { ArticleRelatedGrid } from '@/components/news/ArticleRelatedGrid'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
+import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
 
 interface NewsArticleStaticProps {
   post: Post
@@ -69,7 +70,7 @@ function VideoHero({ item, title, posterFallback }: {
 function ImageHero({ item, title }: { item: MediaItem; title: string }) {
   return (
     <figure className="relative">
-      <div className="relative aspect-[16/9] max-h-[min(70vh,560px)] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
+      <div className="relative news-article-hero aspect-[16/9] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
         <SliderImage src={item.url} alt={item.alt ?? title} priority />
         <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/70">
           nahaber.com
@@ -132,8 +133,8 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
   } = parseArticleContent(post)
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-4 sm:px-0" id="news-article-static">
-      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[rgb(var(--color-muted))]">
+    <NewsArticlePage id="news-article-static">
+      <nav aria-label="Breadcrumb" className="news-article-breadcrumb mb-4 text-sm text-[rgb(var(--color-muted))]">
         <ol className="flex flex-wrap items-center gap-1">
           <li>
             <Link href={ROUTES.FEED} className="hover:text-[rgb(var(--color-text))]">
@@ -164,8 +165,8 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
         </ol>
       </nav>
 
-      <article className="overflow-hidden rounded-none border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] sm:rounded-2xl">
-        <header className="border-b border-[rgb(var(--color-border))] px-4 py-6 sm:px-8 sm:py-8">
+      <NewsArticleCard>
+        <header className="news-article-header">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="inline-flex rounded-full bg-[rgb(var(--color-brand))]/10 px-2.5 py-0.5 text-xs font-semibold text-[rgb(var(--color-brand))]">
               {categoryLabel}
@@ -177,7 +178,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
             )}
           </div>
 
-          <h1 className="font-serif text-2xl font-black leading-tight tracking-tight text-[rgb(var(--color-text))] sm:text-3xl lg:text-4xl">
+          <h1 className="news-article-title font-serif font-black text-[rgb(var(--color-text))]">
             {articleTitle}
           </h1>
 
@@ -227,7 +228,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
           return null
         })()}
 
-        <div className="px-4 py-6 sm:px-8 sm:py-8">
+        <NewsArticleBody>
           <ArticleAudioPlayer post={post} />
 
           {showLead && (
@@ -318,7 +319,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
                 {hasCity && post.citySlug && (
                   <Link
                     href={`${ROUTES.FEED}?category=${encodeURIComponent(cityCategoryId(post.citySlug))}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"
+                    className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/25 dark:text-emerald-400"
                   >
                     <MapPin className="h-3 w-3" />
                     {post.city ?? post.citySlug}
@@ -328,7 +329,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
                   <Link
                     key={tag}
                     href={`${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}&tag=1`}
-                    className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--color-surface))] px-2.5 py-1 text-xs font-semibold text-blue-600 ring-1 ring-[rgb(var(--color-border))]"
+                    className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--color-surface))] px-2.5 py-1 text-xs font-semibold text-[rgb(var(--color-brand))] ring-1 ring-[rgb(var(--color-border))]"
                   >
                     <Hash className="h-3 w-3" />
                     {formatTagLabel(tag).slice(1)}
@@ -337,8 +338,8 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
               </div>
             </section>
           )}
-        </div>
-      </article>
-    </div>
+        </NewsArticleBody>
+      </NewsArticleCard>
+    </NewsArticlePage>
   )
 }

@@ -16,13 +16,12 @@ import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
 import { formatCount } from '@/lib/postUtils'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
+import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
 import type { Post } from '@/types/post'
 
 interface NewsArticleInteractiveProps {
   post: Post
 }
-
-/** Client-only actions loaded after server article HTML (likes, comments, related). */
 export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
   const [suggested, setSuggested] = useState<Post[]>([])
   const [latest, setLatest] = useState<Post[]>([])
@@ -53,22 +52,19 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
   }, [post.id, post.categoryId])
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-10 sm:px-0">
-      {/* ── F2: Premium reader layer ──────────────────────────────── */}
+    <NewsArticlePage className="pb-10">
       <ArticleTOC postId={post.id} />
       <ArticleReaderTools post={post} />
 
-      <div className="-mt-4 overflow-hidden rounded-none border border-t-0 border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] sm:rounded-b-2xl sm:border-t">
-        <div className="px-4 py-6 sm:px-8">
-          {/* Source verification badge */}
-          <div className="-mt-2 mb-3 flex flex-wrap items-center gap-2">
+      <NewsArticleCard continued className="-mt-4">
+        <NewsArticleBody>
+          <div className="-mt-2 mb-3 flex w-full flex-wrap items-center gap-2">
             <ArticleSourceBadge post={post} />
           </div>
 
-          {/* Emoji reactions */}
           <ArticleReactions postId={post.id} />
 
-          <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[rgb(var(--color-border))] pt-5">
+          <div className="mt-5 flex w-full flex-wrap items-center gap-2 border-t border-[rgb(var(--color-border))] pt-5">
             <LikeButton
               liked={liked}
               count={likesCount}
@@ -96,11 +92,11 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
           </div>
 
           <PostComments postId={post.id} initialCount={post.commentsCount} />
-        </div>
-      </div>
+        </NewsArticleBody>
+      </NewsArticleCard>
 
       {suggested.length > 0 && (
-        <section className="mt-8">
+        <section className="news-article-rail mt-8 w-full">
           <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
             İlgili Haberler
           </h2>
@@ -109,7 +105,7 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
       )}
 
       {suggested.length > 6 && (
-        <section className="mt-8">
+        <section className="news-article-rail mt-8 w-full">
           <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
             Benzer Haberler
           </h2>
@@ -118,7 +114,7 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
       )}
 
       {latest.length > 0 && (
-        <section className="mt-8">
+        <section className="news-article-rail mt-8 w-full">
           <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
             Son Haberler
           </h2>
@@ -128,10 +124,10 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
 
       {/* ── Sıradaki Haber kartı — ilgili veya son haberden ilki ── */}
       {(suggested[0] ?? latest[0]) && (
-        <section className="mt-4">
+        <section className="news-article-rail mt-4 w-full">
           <NextArticleCard nextPost={suggested[0] ?? latest[0]} />
         </section>
       )}
-    </div>
+    </NewsArticlePage>
   )
 }
