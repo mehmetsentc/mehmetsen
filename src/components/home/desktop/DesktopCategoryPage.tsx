@@ -23,6 +23,7 @@ import { getCache } from '@/lib/clientCache'
 import { PAGE_CACHE_KEYS, PAGE_CACHE_TTL } from '@/lib/pageCache'
 import { rankFeedPosts } from '@/lib/feedRanking'
 import { useAuth } from '@/hooks/useAuth'
+import { FOUR_CARD_GRID } from '@/components/home/desktop/desktopLayout'
 import { cn } from '@/lib/utils'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
@@ -48,7 +49,6 @@ interface DesktopCategoryPageProps {
 }
 
 /** Ana sayfa ile aynı — satırda en fazla 4 kart. */
-const FOUR_CARD_GRID = 'grid grid-cols-2 gap-4 xl:grid-cols-4'
 
 function GridStory({ post, size = 'md' }: { post: TimelinePost; size?: 'md' | 'lg' | 'xl' }) {
   const href = categoryPostHref(post)

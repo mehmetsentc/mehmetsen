@@ -221,14 +221,16 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         </section>
       ) : null}
 
-      {layout.catRow1.map(({ id, items }) => (
-        <DesktopCategoryGridSection
-          key={id}
-          categoryId={id}
-          title={getCategoryLabel(id)}
-          items={items}
-        />
-      ))}
+      {layout.catRow1
+        .filter(({ items }) => items.length > 0)
+        .map(({ id, items }) => (
+          <DesktopCategoryGridSection
+            key={id}
+            categoryId={id}
+            title={getCategoryLabel(id)}
+            items={items}
+          />
+        ))}
 
       {layout.catRow1Filler.length > 0 ? (
         <DesktopCategoryGridSection
@@ -241,14 +243,16 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
 
-      {layout.catRow2.map(({ id, items }) => (
-        <DesktopCategoryGridSection
-          key={id}
-          categoryId={id}
-          title={getCategoryLabel(id)}
-          items={items}
-        />
-      ))}
+      {layout.catRow2
+        .filter(({ items }) => items.length > 0)
+        .map(({ id, items }) => (
+          <DesktopCategoryGridSection
+            key={id}
+            categoryId={id}
+            title={getCategoryLabel(id)}
+            items={items}
+          />
+        ))}
 
       {layout.catRow2Filler.length > 0 ? (
         <DesktopCategoryGridSection
