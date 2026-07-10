@@ -34,6 +34,11 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    function isValidAdMedia() {
+      return request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|video/.*');
+    }
+
     // User post media — posts/{userId}/{postId}/...
     match /posts/{userId}/{postId}/{allPaths=**} {
       allow read: if true;
@@ -44,6 +49,12 @@ service firebase.storage {
     match /events/{eventId}/{allPaths=**} {
       allow read: if true;
       allow write: if isAdmin() && isValidEventImage();
+    }
+
+    // Admin ad creatives — ads/{bannerId}/...
+    match /ads/{bannerId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidAdMedia();
     }
 
     // Legacy user media paths (existing uploads)

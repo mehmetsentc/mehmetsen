@@ -1,15 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { auth } from '@/lib/firebase/auth'
 import { useAuth } from '@/hooks/useAuth'
 import { AD_SLOT_MAP, getAdminAdSlotGroups } from '@/constants/adSlots'
 import type { AdBanner, AdBannerFormat } from '@/types/adBanner'
+import { storageService } from '@/services/storageService'
 import {
   Plus, Loader2, Pencil, Trash2, Megaphone, Image as ImageIcon, Video, Code,
-  ToggleLeft, ToggleRight, ExternalLink,
+  ToggleLeft, ToggleRight, ExternalLink, Upload,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
@@ -39,8 +40,14 @@ export default function AdminAdsPage() {
   const [editing, setEditing] = useState<AdBanner | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [filterSlot, setFilterSlot] = useState('')
+  const [uploadDraftId, setUploadDraftId] = useState(() => crypto.randomUUID())
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
 
   const slotGroups = useMemo(() => getAdminAdSlotGroups(), [])
+  const bannerStorageId = editing?.id ?? uploadDraftId
 
   const authHeaders = useCallback(async () => {
     const token = await auth.currentUser?.getIdToken()
@@ -71,11 +78,13 @@ export default function AdminAdsPage() {
   const openCreate = () => {
     setEditing(null)
     setForm(EMPTY_FORM)
+    setUploadDraftId(crypto.randomUUID())
     setShowForm(true)
   }
 
   const openEdit = (banner: AdBanner) => {
     setEditing(banner)
+    setUploadDraftId(banner.id)
     setForm({
       name: banner.name,
       slotId: banner.slotId,
@@ -93,8 +102,46 @@ export default function AdminAdsPage() {
     setShowForm(true)
   }
 
+  const handleMediaUpload = async (file: File, kind: 'image' | 'video') => {
+    const isImage = file.type.startsWith('image/')
+    const isVideo = file.type.startsWith('video/')
+
+    if (kind === 'image' && !isImage) {
+      toast.error('Sadece görsel dosyaları (JPG, PNG, WebP, GIF) desteklenir')
+      return
+    }
+    if (kind === 'video' && !isVideo) {
+      toast.error('Sadece video dosyaları (MP4, WebM) desteklenir')
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Maksimum dosya boyutu 50 MB')
+      return
+    }
+
+    setUploading(true)
+    setUploadProgress(0)
+    try {
+      const url =
+        kind === 'image'
+          ? await storageService.uploadAdImage(file, bannerStorageId, setUploadProgress)
+          : await storageService.uploadAdVideo(file, bannerStorageId, setUploadProgress)
+
+      setForm((f) => ({
+        ...f,
+        ...(kind === 'image' ? { imageUrl: url } : { videoUrl: url }),
+      }))
+      toast.success(kind === 'image' ? 'Görsel yüklendi' : 'Video yüklendi')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Yükleme başarısız')
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
   const handleSave = async () => {
-    if (!user) return
+    if (!user || uploading) return
     setSaving(true)
     try {
       const headers = await authHeaders()
@@ -320,26 +367,132 @@ export default function AdminAdsPage() {
               </div>
 
               {form.format === 'image' ? (
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">Görsel URL</label>
-                  <input
-                    value={form.imageUrl}
-                    onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                    className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm"
-                    placeholder="https://..."
-                  />
+                <div className="space-y-2">
+                  <label className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+                    Görsel
+                  </label>
+
+                  {form.imageUrl ? (
+                    <div className="relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={form.imageUrl}
+                        alt={form.altText || form.name || 'Reklam önizleme'}
+                        className="max-h-40 w-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, imageUrl: '' }))}
+                        className="absolute right-2 top-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+                      >
+                        Kaldır
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={uploading}
+                      className="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-card))] disabled:opacity-60"
+                    >
+                      {uploading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      Bilgisayardan yükle
+                    </button>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) void handleMediaUpload(file, 'image')
+                        e.target.value = ''
+                      }}
+                    />
+                  </div>
+
+                  {uploading ? (
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[rgb(var(--color-border))]">
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-all"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <label className="mb-1 block text-xs text-[rgb(var(--color-muted))]">
+                      veya görsel URL&apos;si
+                    </label>
+                    <input
+                      value={form.imageUrl}
+                      onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                      className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm"
+                      placeholder="https://..."
+                    />
+                  </div>
                 </div>
               ) : null}
 
               {form.format === 'video' ? (
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">Video URL (MP4/WebM)</label>
-                  <input
-                    value={form.videoUrl}
-                    onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-                    className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm"
-                    placeholder="https://..."
-                  />
+                <div className="space-y-2">
+                  <label className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+                    Video (MP4/WebM)
+                  </label>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => videoInputRef.current?.click()}
+                      disabled={uploading}
+                      className="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-card))] disabled:opacity-60"
+                    >
+                      {uploading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      Bilgisayardan yükle
+                    </button>
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/mp4,video/webm"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) void handleMediaUpload(file, 'video')
+                        e.target.value = ''
+                      }}
+                    />
+                  </div>
+
+                  {uploading ? (
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[rgb(var(--color-border))]">
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-all"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <label className="mb-1 block text-xs text-[rgb(var(--color-muted))]">
+                      veya video URL&apos;si
+                    </label>
+                    <input
+                      value={form.videoUrl}
+                      onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                      className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm"
+                      placeholder="https://..."
+                    />
+                  </div>
                 </div>
               ) : null}
 
@@ -430,7 +583,7 @@ export default function AdminAdsPage() {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || uploading}
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

@@ -16,4 +16,6 @@ export const StoragePaths = {
   /** Legacy paths — existing uploads only; new writes use POST_MEDIA. */
   NEWS_IMAGE: (userId: string, fileName: string) => `news-images/${userId}/${fileName}`,
   NEWS_VIDEO: (userId: string, fileName: string) => `news-videos/${userId}/${fileName}`,
+  /** Admin banner creatives — ads/{bannerId}/... */
+  AD_MEDIA: (bannerId: string, fileName: string) => `ads/${bannerId}/${fileName}`,
 } as const

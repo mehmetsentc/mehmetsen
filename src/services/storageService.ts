@@ -93,4 +93,22 @@ export const storageService = {
     const path = StoragePaths.AVATAR(userId, buildFileName(file))
     return uploadToPath(file, path, onProgress)
   },
+
+  async uploadAdImage(
+    file: File,
+    bannerId: string,
+    onProgress?: (percent: number) => void
+  ): Promise<string> {
+    const path = StoragePaths.AD_MEDIA(bannerId, buildFileName(file))
+    return uploadToPath(file, path, onProgress)
+  },
+
+  async uploadAdVideo(
+    file: File,
+    bannerId: string,
+    onProgress?: (percent: number) => void
+  ): Promise<string> {
+    const path = StoragePaths.AD_MEDIA(bannerId, buildFileName(file))
+    return uploadToPath(file, path, onProgress)
+  },
 }
