@@ -211,6 +211,7 @@ export function getSiteNavItems(): SiteNavItem[] {
   const items: Array<SiteNavItem | null> = [
     { id: 'feed', label: 'Ana Sayfa', href: ROUTES.FEED },
     categoryLink('gundem'),
+    { id: 'yerel', label: 'Yerel Haber', href: ROUTES.LOCAL },
     categoryLink('asayis', '3. Sayfa'),
     categoryLink('spor'),
     categoryLink('dunya'),

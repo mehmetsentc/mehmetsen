@@ -14,6 +14,7 @@ import {
   writeStoredUserLocation,
 } from '@/lib/userLocationStorage'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import { useUserLocation } from '@/hooks/useUserLocation'
 import { cn } from '@/lib/utils'
 import { TimelineItem } from '@/components/feed/TimelineItem'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
@@ -42,6 +43,7 @@ const ALL_CITIES: LocalCity[] = TURKISH_PROVINCES.map(p => ({
 }))
 
 export function LocalNewsClient() {
+  const userLocation = useUserLocation()
   const [locationState, setLocationState] = useState<LocationState>('idle')
   const [activeTab, setActiveTab]     = useState<ActiveTab>('haberler')
   const [city, setCity]               = useState<LocalCity | null>(null)
@@ -52,6 +54,7 @@ export function LocalNewsClient() {
   const [loading, setLoading]         = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError]             = useState<string | null>(null)
+  const [showingGeneralFallback, setShowingGeneralFallback] = useState(false)
   const [storedCitySlug, setStoredCitySlug] = usePageState<string | null>(
     PAGE_STATE_KEYS.localCitySlug,
     null
@@ -82,6 +85,17 @@ export function LocalNewsClient() {
     }
   }, [city?.slug])
 
+  const applyCity = useCallback((province: (typeof TURKISH_PROVINCES)[number], state: LocationState) => {
+    setCity({
+      slug: province.slug,
+      name: province.name,
+      lat: province.lat,
+      lng: province.lng,
+    })
+    setLocationState(state)
+    requestedRef.current = true
+  }, [])
+
   const fetchFirst = useCallback(async (citySlug: string) => {
     citySlugRef.current = citySlug
     setLoading(true)
@@ -89,13 +103,22 @@ export function LocalNewsClient() {
     setPosts([])
     setLastDoc(null)
     setHasMore(false)
+    setShowingGeneralFallback(false)
 
     try {
-      const result = citySlug === '__all__'
-        ? await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
-        : await postService.getNewsTimeline(undefined, { citySlug })
+      let result =
+        citySlug === '__all__'
+          ? await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
+          : await postService.getNewsTimeline(undefined, { citySlug })
 
       if (citySlugRef.current !== citySlug) return
+
+      if (citySlug !== '__all__' && result.posts.length === 0) {
+        setShowingGeneralFallback(true)
+        result = await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
+        if (citySlugRef.current !== citySlug) return
+      }
+
       setPosts(result.posts as TimelinePost[])
       setLastDoc(result.lastDoc ?? null)
       setHasMore(result.hasMore)
@@ -112,7 +135,10 @@ export function LocalNewsClient() {
     if (!lastDoc || loadingMore || !hasMore) return
     setLoadingMore(true)
     try {
-      const params = city ? { citySlug: city.slug } : { categoryId: 'yerel-haber' }
+      const params =
+        showingGeneralFallback || !city
+          ? { categoryId: 'yerel-haber' as const }
+          : { citySlug: city.slug }
       const result = await postService.getNewsTimeline(lastDoc, params)
       setPosts(prev => [...prev, ...result.posts as TimelinePost[]])
       setLastDoc(result.lastDoc ?? null)
@@ -120,7 +146,7 @@ export function LocalNewsClient() {
     } catch { /* sessiz */ } finally {
       setLoadingMore(false)
     }
-  }, [city, lastDoc, loadingMore, hasMore])
+  }, [city, lastDoc, loadingMore, hasMore, showingGeneralFallback])
 
   const { sentinelRef } = useInfiniteScroll({ onLoadMore: loadMore, hasMore, loading: loadingMore })
 
@@ -149,16 +175,36 @@ export function LocalNewsClient() {
   useEffect(() => {
     const slug = storedCitySlug ?? readStoredUserLocation()?.citySlug
     if (slug && slug !== '__all__') {
-      const province = TURKISH_PROVINCES.find(p => p.slug === slug)
+      const province = TURKISH_PROVINCES.find((p) => p.slug === slug)
       if (province) {
-        setCity({ slug: province.slug, name: province.name, lat: province.lat, lng: province.lng })
-        setLocationState('stored')
-        requestedRef.current = true
+        applyCity(province, 'stored')
         return
       }
     }
-    void requestGeolocation()
-  }, [requestGeolocation, storedCitySlug])
+
+    if (
+      userLocation.ready &&
+      userLocation.source !== 'fallback' &&
+      userLocation.citySlug
+    ) {
+      const province = TURKISH_PROVINCES.find((p) => p.slug === userLocation.citySlug)
+      if (province) {
+        applyCity(province, userLocation.source === 'geolocation' ? 'granted' : 'stored')
+        return
+      }
+    }
+
+    if (!requestedRef.current) {
+      void requestGeolocation()
+    }
+  }, [
+    applyCity,
+    requestGeolocation,
+    storedCitySlug,
+    userLocation.citySlug,
+    userLocation.ready,
+    userLocation.source,
+  ])
 
   useEffect(() => {
     if (city) void fetchFirst(city.slug)
@@ -305,6 +351,13 @@ export function LocalNewsClient() {
 
       {/* ── Haber akışı ── */}
       <div className={cn('mt-1', city && activeTab !== 'haberler' && 'hidden')}>
+        {showingGeneralFallback && city && !loading ? (
+          <p className="mx-3 mb-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">
+            <span className="font-semibold text-[rgb(var(--color-text))]">{city.name}</span> için yerel haber
+            bulunamadı — Türkiye geneli yerel haberler gösteriliyor.
+          </p>
+        ) : null}
+
         {loading ? (
           <div className="space-y-0">
             {[...Array(4)].map((_, i) => <TimelineItemSkeleton key={i} />)}
