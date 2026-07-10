@@ -25,6 +25,7 @@ interface DesktopWebHeaderProps {
   subcategories?: SubTab[]
   tabParent?: CategoryDef | null
   className?: string
+  variant?: 'full' | 'compact'
 }
 
 export function DesktopWebHeader({
@@ -33,8 +34,83 @@ export function DesktopWebHeader({
   subcategories,
   tabParent,
   className,
+  variant = 'full',
 }: DesktopWebHeaderProps) {
   const showSubTabs = subcategories && subcategories.length > 0
+
+  if (variant === 'compact') {
+    return (
+      <header
+        className={cn('desktop-web-header desktop-web-header--compact py-0', className)}
+        itemScope
+        itemType="https://schema.org/WPHeader"
+      >
+        <div className="flex items-stretch gap-2">
+          <Link
+            href={ROUTES.FEED}
+            className="flex shrink-0 items-center gap-1.5 py-2 pr-2 transition-opacity hover:opacity-90"
+            aria-label="NaHaber Ana Sayfa"
+          >
+            <BrandLogo size="sm" />
+            <span className="hidden text-sm font-black tracking-tight text-[rgb(var(--color-text))] xl:inline">
+              <span className="text-[rgb(var(--color-brand))]">Na</span>Haber
+            </span>
+          </Link>
+
+          <nav
+            className="min-w-0 flex-1 overflow-x-auto scrollbar-hide border-l border-[rgb(var(--color-border))] pl-2"
+            aria-label="Haber kategorileri"
+          >
+            <DesktopSiteNavLinks variant="header" />
+          </nav>
+
+          <Link
+            href={ROUTES.SEARCH}
+            className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-lg text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))]"
+            aria-label="Haber ara"
+          >
+            <Search className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {showSubTabs ? (
+          <nav
+            className="flex items-stretch overflow-x-auto scrollbar-hide border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/60"
+            aria-label={`${tabParent?.name ?? 'Kategori'} alt bölümleri`}
+          >
+            <div className="flex min-w-max items-stretch">
+              <Link
+                href={`/kategori/${tabParent!.slug}`}
+                className={cn(
+                  'shrink-0 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide transition-colors',
+                  subcategories.every((s) => !s.active)
+                    ? 'border-b-2 border-[rgb(var(--color-text))] text-[rgb(var(--color-text))]'
+                    : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+                )}
+              >
+                Tümü
+              </Link>
+              {subcategories.map((sub) => (
+                <Link
+                  key={sub.id}
+                  href={sub.href}
+                  aria-current={sub.active ? 'page' : undefined}
+                  className={cn(
+                    'shrink-0 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide transition-colors',
+                    sub.active
+                      ? 'border-b-2 border-[rgb(var(--color-text))] text-[rgb(var(--color-text))]'
+                      : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+                  )}
+                >
+                  {sub.name}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        ) : null}
+      </header>
+    )
+  }
 
   return (
     <header

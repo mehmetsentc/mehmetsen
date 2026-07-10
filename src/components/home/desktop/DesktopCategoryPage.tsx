@@ -8,7 +8,7 @@ import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopCategoryWatch } from '@/components/home/desktop/DesktopCategoryWatch'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
-import { DesktopWebHeader } from '@/components/home/desktop/DesktopWebHeader'
+import { DesktopScrollHeader } from '@/components/home/desktop/DesktopScrollHeader'
 import {
   categoryPostHref,
   categoryPostImage,
@@ -157,7 +157,7 @@ export function DesktopCategoryPage({
 
   return (
     <div className="desktop-category-page pb-10">
-      <DesktopWebHeader subcategories={subTabs} tabParent={tabParent} />
+      <DesktopScrollHeader subcategories={subTabs} tabParent={tabParent} />
 
       <h1 className="mb-6 text-center font-serif text-3xl font-bold text-[rgb(var(--color-text))] md:text-4xl">
         {pageTitle}

@@ -1,6 +1,6 @@
 'use client'
 
-import { DesktopWebHeader } from '@/components/home/desktop/DesktopWebHeader'
+import { DesktopScrollHeader } from '@/components/home/desktop/DesktopScrollHeader'
 import type { NewsItem } from '@/types/newsItem'
 
 interface DesktopFeedHeaderProps {
@@ -8,5 +8,5 @@ interface DesktopFeedHeaderProps {
 }
 
 export function DesktopFeedHeader({ breakingItems }: DesktopFeedHeaderProps) {
-  return <DesktopWebHeader breakingItems={breakingItems} showBreaking />
+  return <DesktopScrollHeader breakingItems={breakingItems} showBreaking />
 }

@@ -346,6 +346,33 @@
     font-family: var(--font-inter, Inter, system-ui, sans-serif);
   }
 
+  .desktop-scroll-header-compact {
+    left: var(--sidebar-width-collapsed);
+    right: 0;
+    border-bottom: 1px solid rgb(var(--color-border));
+    background: color-mix(in srgb, rgb(var(--color-surface)) 98%, transparent);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 1px 0 rgb(var(--color-border) / 0.6);
+  }
+
+  html[data-sidebar='closed'][data-platform='desktop'] .desktop-scroll-header-compact {
+    left: 0;
+  }
+
+  .desktop-scroll-header-compact-inner {
+    margin-inline: auto;
+    width: min(var(--layout-content-newspaper), 100%);
+    padding-inline: var(--layout-gutter);
+  }
+
+  .desktop-web-header--compact nav ul {
+    @apply gap-0;
+  }
+
+  .desktop-web-header--compact nav a {
+    @apply px-3 py-2.5 text-[12px];
+  }
+
   .desktop-newspaper .desktop-must-watch .desktop-section-header,
   .desktop-newspaper .desktop-must-watch h2,
   .desktop-newspaper .desktop-must-watch a {
