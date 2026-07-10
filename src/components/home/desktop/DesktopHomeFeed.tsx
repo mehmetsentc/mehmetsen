@@ -113,7 +113,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       ) : null}
 
       {layout.topFour.length > 0 ? (
-        <section className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4 2xl:grid-cols-5" aria-label="Öne çıkanlar">
+        <section className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4" aria-label="Öne çıkanlar">
           {layout.topFour.map((item, i) => (
             <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
           ))}
@@ -125,7 +125,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.topicFour.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Spor">
           <DesktopSectionHeader title="Spor" href={ROUTES.CATEGORY('spor')} />
-          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4 2xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             {layout.topicFour.map((item) => (
               <ImageStory key={item.id} item={item} aspect="video" />
             ))}
@@ -136,7 +136,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.moreGrid.length > 0 ? (
         <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Gündem">
           <DesktopSectionHeader title="Gündem" href={ROUTES.CATEGORY('gundem')} />
-          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4 2xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             {layout.moreGrid.map((item) => (
               <ImageStory key={item.id} item={item} aspect="video" />
             ))}
