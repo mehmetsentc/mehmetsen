@@ -17,6 +17,8 @@ import type { VideoFeedItem as VideoFeedItemType } from '@/hooks/useVideoFeed'
 
 const DOUBLE_TAP_MS = 300
 const SEEN_THRESHOLD_MS = 2_500
+// YouTube iframe postMessage target — must match embed host (youtube-nocookie.com).
+const YT_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
 
 interface VideoFeedItemProps {
   video: VideoFeedItemType
@@ -100,6 +102,22 @@ function VideoFeedItemInner({
     (el: HTMLDivElement | null) => setItemRef(index, el),
     [index, setItemRef]
   )
+
+  const postToYT = useCallback((payload: object) => {
+    iframeRef.current?.contentWindow?.postMessage(JSON.stringify(payload), YT_EMBED_ORIGIN)
+  }, [])
+
+  const sendYTCmd = useCallback(
+    (func: string, args: string | unknown[] = '') => {
+      postToYT({ event: 'command', func, args })
+    },
+    [postToYT]
+  )
+
+  // Required before YouTube emits onReady/onStateChange back to the parent page.
+  const sendYTListening = useCallback(() => {
+    postToYT({ event: 'listening', id: null, channel: 'widget' })
+  }, [postToYT])
 
   // ── All hooks MUST be declared before any conditional return (Rules of Hooks) ──
 
@@ -266,23 +284,22 @@ function VideoFeedItemInner({
   useEffect(() => {
     if (virtualized || !isYouTube) return
 
-    const sendCmd = (func: string) => {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'command', func, args: [] }),
-        '*'
-      )
-    }
-
     const muteCmd = muted ? 'mute' : 'unMute'
 
-    if (isActive) {
-      sendCmd('playVideo')
-      sendCmd(muteCmd)
-    } else {
-      sendCmd('pauseVideo')
+    const playActive = () => {
+      sendYTListening()
+      if (isActive) {
+        sendYTCmd('playVideo')
+        sendYTCmd(muteCmd)
+      } else {
+        sendYTCmd('pauseVideo')
+      }
     }
 
+    playActive()
+
     const handleMessage = (e: MessageEvent) => {
+      if (e.origin !== YT_EMBED_ORIGIN && e.origin !== 'https://www.youtube.com') return
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
         if (!data) return
@@ -292,17 +309,15 @@ function VideoFeedItemInner({
 
         // Player hazır olduğunda hemen oynat (veya duraklat)
         if (data?.event === 'onReady') {
-          if (isActive) {
-            sendCmd('playVideo')
-            sendCmd(muteCmd)
-          } else {
-            sendCmd('pauseVideo')
-          }
+          playActive()
         }
 
-        // Ses senkronizasyonu (state değişince mute durumunu koru)
-        if (isActive && data?.event === 'onStateChange') {
-          sendCmd(muteCmd)
+        // Sync UI pause state with actual player state (tap overlay relies on this).
+        if (data?.event === 'onStateChange') {
+          const state = typeof data.info === 'number' ? data.info : data.info?.playerState
+          if (state === 1) setPaused(false)
+          else if (state === 2 || state === 0) setPaused(true)
+          if (isActive) sendYTCmd(muteCmd)
         }
 
         // Embedding engeli tespiti:
@@ -321,9 +336,9 @@ function VideoFeedItemInner({
 
     window.addEventListener('message', handleMessage)
     // Yeniden deneme: player henüz hazır değilse gecikmiş komutlar
-    const t1 = setTimeout(() => { if (isActive) { sendCmd('playVideo'); sendCmd(muteCmd) } }, 600)
-    const t2 = setTimeout(() => { if (isActive) { sendCmd('playVideo'); sendCmd(muteCmd) } }, 1500)
-    const t3 = setTimeout(() => { if (isActive) { sendCmd('playVideo'); sendCmd(muteCmd) } }, 3000)
+    const t1 = setTimeout(playActive, 600)
+    const t2 = setTimeout(playActive, 1500)
+    const t3 = setTimeout(playActive, 3000)
 
     return () => {
       window.removeEventListener('message', handleMessage)
@@ -331,7 +346,7 @@ function VideoFeedItemInner({
       clearTimeout(t2)
       clearTimeout(t3)
     }
-  }, [muted, isYouTube, isActive, virtualized])
+  }, [muted, isYouTube, isActive, virtualized, sendYTCmd, sendYTListening])
 
   // ── YouTube API timeout kaldırıldı ─────────────────────────────────────────
   // Eski mantık: iOS/WebKit'te postMessage gelmezse 7s sonra ytBlocked=true yapıyordu.
@@ -339,10 +354,15 @@ function VideoFeedItemInner({
   // Yeni mantık: ytBlocked yalnızca gerçek hata kodlarında (100/101/150) set edilir.
   // ytApiConnected state'i artık kullanılmıyor ama kaldırılmadı (ref için güvenli).
 
-  // Video değiştiğinde ytApiConnected sıfırla
+  // Video değiştiğinde YouTube player state sıfırla
   useEffect(() => {
     setYtApiConnected(false)
-  }, [video.id])
+    if (isYouTube) {
+      setPaused(true)
+      setYtBlocked(false)
+      setLoading(true)
+    }
+  }, [video.id, isYouTube])
 
   // Virtual window: render only scroll-snap anchor outside ± render window.
   // IMPORTANT: this return must come AFTER ALL hooks above — Rules of Hooks.
@@ -520,12 +540,6 @@ function VideoFeedItemInner({
     const baseEmbed = `https://www.youtube-nocookie.com/embed/${videoId}`
     const embedSrc = `${baseEmbed}?mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
 
-    const sendYTCmd = (func: string) => {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'command', func, args: [] }), '*'
-      )
-    }
-
     const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl
       ?? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 
@@ -602,18 +616,32 @@ function VideoFeedItemInner({
                 className="absolute inset-0 h-full w-full border-0"
                 allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share"
                 allowFullScreen
-                onLoad={() => setLoading(false)}
+                onLoad={() => {
+                  sendYTListening()
+                  if (isActive) {
+                    sendYTCmd('playVideo')
+                    sendYTCmd(muted ? 'mute' : 'unMute')
+                  }
+                  setLoading(false)
+                }}
               />
 
               {/* YouTube üst başlık/kanal overlay'ini gizle — siyah bant */}
               <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-16 bg-black" />
 
-              {/* Tap interceptor */}
+              {/* Tap interceptor — iframe controls hidden; play/pause via postMessage */}
               <div
                 className="absolute inset-0 z-[1]"
                 onClick={() => {
-                  sendYTCmd(paused ? 'playVideo' : 'pauseVideo')
-                  setPaused((p) => !p)
+                  sendYTListening()
+                  if (paused) {
+                    sendYTCmd('playVideo')
+                    sendYTCmd(muted ? 'mute' : 'unMute')
+                    setPaused(false)
+                  } else {
+                    sendYTCmd('pauseVideo')
+                    setPaused(true)
+                  }
                 }}
               />
 
