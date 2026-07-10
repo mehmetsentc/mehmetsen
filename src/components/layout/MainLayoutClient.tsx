@@ -21,6 +21,8 @@ import { pauseAllPageVideos } from '@/lib/videoPlayback'
 import { ROUTES, isPublicRoute } from '@/constants/routes'
 import { CategorySwipeNavigator } from '@/components/layout/CategorySwipeNavigator'
 import { DesktopSidebarToggle } from '@/components/layout/DesktopSidebarToggle'
+import { DesktopGlobalScrollHeader } from '@/components/layout/DesktopGlobalScrollHeader'
+import { ScrollHeaderProvider } from '@/context/ScrollHeaderContext'
 import { cn } from '@/lib/utils'
 
 type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
@@ -32,6 +34,14 @@ function getContentVariant(pathname: string): ContentVariant {
   if (pathname === ROUTES.FEED) return 'newspaper'
   if (pathname.startsWith('/kategori/')) return 'newspaper'
   if (pathname.startsWith('/haber/')) return 'newspaper'
+  if (pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)) return 'newspaper'
+  if (pathname.startsWith('/hukuk/')) return 'newspaper'
+  if (pathname === '/kunye') return 'newspaper'
+  if (pathname.startsWith('/iletisim')) return 'newspaper'
+  if (pathname.startsWith('/hakkimizda')) return 'newspaper'
+  if (pathname.startsWith('/editoryal-ilkeler')) return 'newspaper'
+  if (pathname.startsWith('/aydinlatma-metni')) return 'newspaper'
+  if (pathname === ROUTES.SITE_MAP) return 'newspaper'
   return 'default'
 }
 
@@ -95,11 +105,12 @@ const LayoutShell = memo(function LayoutShell({
               className={cn(
                 'content-main',
                 variant === 'wide' && 'content-main-wide',
-                variant === 'newspaper' && 'content-main-newspaper',
+                variant === 'newspaper' && 'content-main-newspaper desktop-newspaper',
                 variant === 'reels' && 'content-main-reels',
                 variant === 'messages' && 'content-main-messages'
               )}
             >
+              <DesktopGlobalScrollHeader />
               {children}
             </main>
           </div>
@@ -141,21 +152,23 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
       <UserLocationProvider>
         <AppStateProvider>
           <NetworkProvider>
-            <ReelsRouteTheme active={isReels} />
-            <RouteEffects />
-            <PageStateEffects />
-            <UiEffects />
-            <CategorySwipeNavigator />
-            <LayoutShell
-              pathname={pathname}
-              isReels={isReels}
-              variant={variant}
-              platform={platform}
-              isMobile={isMobile}
-              isDesktop={isDesktop}
-            >
-              {children}
-            </LayoutShell>
+            <ScrollHeaderProvider>
+              <ReelsRouteTheme active={isReels} />
+              <RouteEffects />
+              <PageStateEffects />
+              <UiEffects />
+              <CategorySwipeNavigator />
+              <LayoutShell
+                pathname={pathname}
+                isReels={isReels}
+                variant={variant}
+                platform={platform}
+                isMobile={isMobile}
+                isDesktop={isDesktop}
+              >
+                {children}
+              </LayoutShell>
+            </ScrollHeaderProvider>
           </NetworkProvider>
         </AppStateProvider>
       </UserLocationProvider>

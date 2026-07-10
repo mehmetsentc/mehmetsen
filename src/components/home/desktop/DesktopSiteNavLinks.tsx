@@ -60,7 +60,7 @@ export function DesktopSiteNavLinks({ variant, layout = 'default', className }: 
       <ul
         className={cn(
           'flex min-w-max list-none items-stretch p-0 m-0',
-          isMasthead ? 'justify-center gap-0' : '',
+          isMasthead ? 'justify-start gap-0' : '',
           className
         )}
       >

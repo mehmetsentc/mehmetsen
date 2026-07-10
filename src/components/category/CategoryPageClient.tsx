@@ -150,7 +150,7 @@ export function CategoryPageClient({
       </div>
 
       {/* Web (lg+) — BBC kategori düzeni */}
-      <div className="hidden lg:block desktop-newspaper">
+      <div className="hidden lg:block">
         <AdSlotProvider page="category" categoryId={cat.id}>
           {cat.id === 'dunya-kupasi-2026' && worldCupData ? (
             <>

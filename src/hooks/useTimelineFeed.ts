@@ -1,24 +1,20 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import toast from 'react-hot-toast'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { annotateTimelinePosts } from '@/lib/newsMapper'
 import { isFirestoreInternalError } from '@/lib/firestoreQueue'
+import {
+  FEED_BREAKING_POLL_MS,
+  FEED_LIVE_DEFER_MS,
+  FEED_LIVE_POLL_MS,
+  notifyFeedUpdated,
+} from '@/lib/feedLiveToast'
 import type { FeedSource } from '@/lib/feedSource'
 import { resolveLocalNewsCitySlug } from '@/constants/cities'
 import { YEREL_HABER_CATEGORY } from '@/lib/feedRanking'
 import { useAuth } from '@/hooks/useAuth'
 import type { TimelinePost } from '@/types/post'
-
-// Longer poll interval on mobile to save battery & Firestore reads.
-// These intervals are also pause-on-hidden (see visibilitychange handler
-// below) so a backgrounded tab never bills Firestore at all.
-const LIVE_POLL_MS = typeof window !== 'undefined' && window.innerWidth < 768 ? 180_000 : 120_000
-/** Son Dakika kategorisi için daha kısa poll süresi — breaking news gerçek zamanlı olmalı. */
-const BREAKING_POLL_MS = 30_000
-/** Defer Firestore live subscription until well after the LCP window. */
-const LIVE_SUBSCRIBE_DEFER_MS = 8_000
 
 let postServiceModule: Promise<typeof import('@/services/postService')> | null = null
 function loadPostService() {
@@ -136,10 +132,7 @@ export function useTimelineFeed(
         newestSeenAtRef.current = maxTs
 
         if (shouldNotify) {
-          toast.success(
-            fresh.length === 1 ? 'Yeni haber eklendi' : 'Yeni haberler eklendi',
-            { duration: 3500, id: 'feed-new-posts' }
-          )
+          notifyFeedUpdated(fresh.length)
         }
 
         return [...fresh, ...prev].sort((a, b) => postTimestamp(b) - postTimestamp(a))
@@ -279,7 +272,7 @@ export function useTimelineFeed(
         .catch((err) => console.warn('[useTimelineFeed] poll failed:', err))
     }
 
-    const pollMs = categoryRef.current === 'son-dakika' ? BREAKING_POLL_MS : LIVE_POLL_MS
+    const pollMs = categoryRef.current === 'son-dakika' ? FEED_BREAKING_POLL_MS : FEED_LIVE_POLL_MS
     const startPolling = () => {
       if (pollTimer || cancelled) return
       pollTimer = setInterval(runPoll, pollMs)
@@ -289,13 +282,14 @@ export function useTimelineFeed(
       if (document.hidden) {
         if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
       } else if (!cancelled) {
+        runPoll()
         startPolling()
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
 
     // Firestore canlı abone yerine ertelenmiş polling — Firestore okuma maliyetini düşürür.
-    deferTimer = setTimeout(startPolling, LIVE_SUBSCRIBE_DEFER_MS)
+    deferTimer = setTimeout(startPolling, FEED_LIVE_DEFER_MS)
 
     return () => {
       cancelled = true

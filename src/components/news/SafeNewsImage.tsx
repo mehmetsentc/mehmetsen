@@ -20,6 +20,10 @@ function parseHostname(src: string): string | null {
   }
 }
 
+function hasObjectFitClass(className?: string): boolean {
+  return Boolean(className && /\bobject-(contain|cover|fill|none|scale-down)\b/.test(className))
+}
+
 /**
  * Renders RSS/news thumbnails with next/image for known CDNs and falls back to
  * a native lazy-loaded <img> for unknown external hosts — prevents runtime
@@ -44,7 +48,7 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
       <Image
         src={src}
         alt={alt ?? ''}
-        className={cn(fill && 'object-cover', className)}
+        className={cn(fill && !hasObjectFitClass(className) && 'object-cover', className)}
         fill={fill}
         loading={loading}
         onError={handleError}
@@ -63,7 +67,11 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
         alt={alt ?? ''}
         loading={lazy ? 'lazy' : 'eager'}
         decoding="async"
-        className={cn('absolute inset-0 h-full w-full object-cover', className)}
+        className={cn(
+          'absolute inset-0 h-full w-full object-center',
+          !hasObjectFitClass(className) && 'object-cover',
+          className
+        )}
         onError={handleError}
       />
     )

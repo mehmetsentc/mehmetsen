@@ -52,6 +52,7 @@
     :root {
       --layout-gutter: 0.75rem;
       --layout-newspaper-max: 1280px;
+      --desktop-compact-header-height: 3.25rem;
       --layout-content-newspaper: min(
         var(--layout-newspaper-max),
         calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 6)
@@ -323,7 +324,19 @@
 
   .desktop-home-feed,
   .desktop-category-page {
-    @apply w-full;
+    @apply w-full min-w-0 max-w-full;
+  }
+
+  .desktop-ad-banner,
+  .desktop-ad-banner img,
+  .desktop-ad-banner video {
+    max-width: 100%;
+  }
+
+  .desktop-ad-banner img,
+  .desktop-ad-banner video {
+    object-fit: contain;
+    object-position: center;
   }
 
   .desktop-newspaper {

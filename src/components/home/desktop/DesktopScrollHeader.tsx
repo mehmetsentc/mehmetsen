@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
+import { useScrollCompact } from '@/hooks/useScrollCompact'
 import { DesktopWebHeader } from '@/components/home/desktop/DesktopWebHeader'
-import { cn } from '@/lib/utils'
 import type { CategoryDef } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -33,28 +33,20 @@ export function DesktopScrollHeader({
   ...headerProps
 }: DesktopScrollHeaderProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const [compact, setCompact] = useState(false)
-
-  useEffect(() => {
-    const onScroll = () => setCompact((window.scrollY || 0) > threshold)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [threshold])
+  const compact = useScrollCompact(threshold)
 
   return (
     <>
-      <div
-        className={cn(
-          'desktop-scroll-header-compact pointer-events-none fixed top-0 z-50 hidden -translate-y-full opacity-0 transition-all duration-300 ease-out lg:block',
-          compact && 'pointer-events-auto translate-y-0 opacity-100'
-        )}
-        aria-hidden={!compact}
-      >
-        <div className="desktop-scroll-header-compact-inner">
-          <DesktopWebHeader {...headerProps} variant="compact" className="mb-0 border-b-0" />
+      {compact ? (
+        <div
+          className="desktop-scroll-header-compact pointer-events-auto fixed top-0 z-50 hidden translate-y-0 opacity-100 transition-all duration-300 ease-out lg:block"
+          aria-hidden={false}
+        >
+          <div className="desktop-scroll-header-compact-inner">
+            <DesktopWebHeader {...headerProps} variant="compact" className="mb-0 border-b-0" />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div ref={sentinelRef} className="hidden lg:block">
         <DesktopWebHeader {...headerProps} variant="full" />

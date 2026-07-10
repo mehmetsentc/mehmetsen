@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
+import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
 import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import { ROUTES } from '@/constants/routes'
@@ -59,7 +60,7 @@ export function DesktopWebHeader({
         </Link>
 
           <nav
-            className="min-w-0 flex-1 overflow-x-auto scrollbar-hide border-l border-[rgb(var(--color-border))] pl-2"
+            className="min-w-0 flex-1 overflow-x-auto scroll-px-3 scrollbar-hide border-l border-[rgb(var(--color-border))] pl-2"
             aria-label="Haber kategorileri"
           >
             <DesktopSiteNavLinks variant="header" />
@@ -72,6 +73,8 @@ export function DesktopWebHeader({
           >
             <Search className="h-4 w-4" />
           </Link>
+
+          <DesktopHeaderAuth className="shrink-0 self-center" />
         </div>
 
         {showSubTabs ? (
@@ -79,7 +82,7 @@ export function DesktopWebHeader({
             className="flex items-stretch overflow-x-auto scrollbar-hide border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/60"
             aria-label={`${tabParent?.name ?? 'Kategori'} alt bölümleri`}
           >
-            <div className="flex min-w-max items-stretch">
+            <div className="flex min-w-max items-stretch scroll-px-3">
               <Link
                 href={`/kategori/${tabParent!.slug}`}
                 className={cn(
@@ -120,10 +123,10 @@ export function DesktopWebHeader({
       itemType="https://schema.org/WPHeader"
     >
       {/* NYT tarzı üst çubuk: arama sol, logo orta, hesap sağ */}
-      <div className="relative flex items-center justify-center border-b border-[rgb(var(--color-border))] py-4">
+      <div className="relative z-20 flex items-center justify-center border-b border-[rgb(var(--color-border))] py-4">
         <Link
           href={ROUTES.SEARCH}
-          className="absolute left-0 flex h-9 w-9 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))]"
+          className="absolute left-0 z-20 flex h-9 w-9 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))]"
           aria-label="Haber ara"
         >
           <Search className="h-5 w-5" />
@@ -131,7 +134,7 @@ export function DesktopWebHeader({
 
         <Link
           href={ROUTES.FEED}
-          className="flex items-center gap-3 transition-opacity hover:opacity-90"
+          className="relative z-10 flex items-center gap-3 transition-opacity hover:opacity-90"
           aria-label="NaHaber Ana Sayfa"
           itemProp="url"
         >
@@ -145,20 +148,7 @@ export function DesktopWebHeader({
           </span>
         </Link>
 
-        <div className="absolute right-0 flex items-center gap-3 text-[12px] font-semibold">
-          <Link
-            href={ROUTES.LOGIN}
-            className="text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
-          >
-            Giriş
-          </Link>
-          <Link
-            href={ROUTES.APP}
-            className="text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
-          >
-            Uygulama
-          </Link>
-        </div>
+        <DesktopHeaderAuth className="absolute right-0" />
       </div>
 
       {/* Tarih + son dakika — NYT "Today's Paper" satırı */}
@@ -177,7 +167,7 @@ export function DesktopWebHeader({
       ) : null}
 
       <nav
-        className="flex items-center justify-center overflow-x-auto scrollbar-hide border-t border-[rgb(var(--color-border))] py-0.5"
+        className="flex items-center justify-start overflow-x-auto scroll-px-[var(--layout-gutter)] scrollbar-hide border-t border-[rgb(var(--color-border))] py-0.5"
         aria-label="Haber kategorileri"
         itemScope
         itemType="https://schema.org/SiteNavigationElement"
@@ -190,7 +180,7 @@ export function DesktopWebHeader({
           className="mt-0 flex items-stretch overflow-x-auto scrollbar-hide border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/40"
           aria-label={`${tabParent?.name ?? 'Kategori'} alt bölümleri`}
         >
-          <div className="flex min-w-max items-stretch">
+          <div className="flex min-w-max items-stretch scroll-px-3">
             <Link
               href={`/kategori/${tabParent!.slug}`}
               className={cn(

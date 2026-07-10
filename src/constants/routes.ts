@@ -103,5 +103,7 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname.startsWith('/aydinlatma-metni')) return true
   if (pathname.startsWith('/editoryal-ilkeler')) return true
   if (pathname === '/kunye') return true
+  if (pathname === ROUTES.LOGIN || pathname === ROUTES.REGISTER) return true
+  if (pathname === ROUTES.APP) return true
   return false
 }

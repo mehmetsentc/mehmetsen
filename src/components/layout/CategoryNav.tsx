@@ -11,14 +11,6 @@ export function CategoryNav() {
   const pathname = usePathname()
   const activeKey = resolveSwipeCategoryKey(pathname)
 
-  const hide =
-    pathname === '/reels' ||
-    pathname.startsWith('/messages') ||
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/haber/') ||
-    pathname.startsWith('/post/') ||
-    pathname.startsWith('/profile/')
-
   if (hide) return null
 
   return (
@@ -26,7 +18,7 @@ export function CategoryNav() {
       className="sticky top-14 z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] lg:hidden"
       aria-label="Kategoriler"
     >
-      <div className="flex gap-0 overflow-x-auto scrollbar-none">
+      <div className="flex gap-0 overflow-x-auto scroll-px-4 scrollbar-none">
         {NAV_CATEGORIES.map((cat) => {
           const isActive = activeKey === cat.id
           return (
