@@ -79,7 +79,7 @@ function SidebarInner({ className, mobileOpen, desktopOpen = true, onMobileClose
         className={cn(
           'fixed inset-y-0 left-0 z-[200] flex flex-col',
           'w-[var(--sidebar-width-collapsed)]',
-          'border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
+          'border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]',
           'transition-transform duration-300 ease-in-out',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           desktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full',
@@ -98,7 +98,7 @@ function SidebarInner({ className, mobileOpen, desktopOpen = true, onMobileClose
             type="button"
             onClick={onDesktopClose}
             aria-label="Kenar çubuğunu kapat"
-            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] lg:flex"
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--bg-subtle))] hover:text-[rgb(var(--color-text))] lg:flex"
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -115,7 +115,7 @@ function SidebarInner({ className, mobileOpen, desktopOpen = true, onMobileClose
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Haber Arayın"
-              className="min-w-0 flex-1 rounded-xl bg-[rgb(var(--color-surface))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] outline-none"
+              className="min-w-0 flex-1 rounded-xl border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-subtle))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] outline-none"
             />
             <button
               type="submit"

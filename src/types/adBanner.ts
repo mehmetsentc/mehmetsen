@@ -14,6 +14,8 @@ export interface AdBanner {
   format: AdBannerFormat
   size: AdBannerSize
   imageUrl?: string | null
+  imageUrlLight?: string | null
+  imageUrlDark?: string | null
   videoUrl?: string | null
   htmlContent?: string | null
   clickUrl?: string | null
@@ -35,6 +37,8 @@ export interface AdBannerPublic {
   format: AdBannerFormat
   size: AdBannerSize
   imageUrl?: string | null
+  imageUrlLight?: string | null
+  imageUrlDark?: string | null
   videoUrl?: string | null
   htmlContent?: string | null
   clickUrl?: string | null

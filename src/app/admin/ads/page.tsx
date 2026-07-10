@@ -10,7 +10,7 @@ import type { AdBanner, AdBannerFormat } from '@/types/adBanner'
 import { storageService } from '@/services/storageService'
 import {
   Plus, Loader2, Pencil, Trash2, Megaphone, Image as ImageIcon, Video, Code,
-  ToggleLeft, ToggleRight, ExternalLink, Upload,
+  ToggleLeft, ToggleRight, ExternalLink, Upload, Sun, Moon,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,8 @@ const EMPTY_FORM = {
   slotId: 'leaderboard-top',
   format: 'image' as AdBannerFormat,
   imageUrl: '',
+  imageUrlLight: '',
+  imageUrlDark: '',
   videoUrl: '',
   htmlContent: '',
   clickUrl: '',
@@ -29,6 +31,8 @@ const EMPTY_FORM = {
   startsAt: '',
   endsAt: '',
 }
+
+type ImageThemeVariant = 'light' | 'dark'
 
 export default function AdminAdsPage() {
   const { can } = useCmsAuth()
@@ -42,8 +46,10 @@ export default function AdminAdsPage() {
   const [filterSlot, setFilterSlot] = useState('')
   const [uploadDraftId, setUploadDraftId] = useState(() => crypto.randomUUID())
   const [uploading, setUploading] = useState(false)
+  const [uploadingVariant, setUploadingVariant] = useState<ImageThemeVariant | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const imageInputRef = useRef<HTMLInputElement>(null)
+  const imageLightInputRef = useRef<HTMLInputElement>(null)
+  const imageDarkInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
   const slotGroups = useMemo(() => getAdminAdSlotGroups(), [])
@@ -90,6 +96,8 @@ export default function AdminAdsPage() {
       slotId: banner.slotId,
       format: banner.format,
       imageUrl: banner.imageUrl ?? '',
+      imageUrlLight: banner.imageUrlLight ?? banner.imageUrl ?? '',
+      imageUrlDark: banner.imageUrlDark ?? banner.imageUrl ?? '',
       videoUrl: banner.videoUrl ?? '',
       htmlContent: banner.htmlContent ?? '',
       clickUrl: banner.clickUrl ?? '',
@@ -102,7 +110,11 @@ export default function AdminAdsPage() {
     setShowForm(true)
   }
 
-  const handleMediaUpload = async (file: File, kind: 'image' | 'video') => {
+  const handleMediaUpload = async (
+    file: File,
+    kind: 'image' | 'video',
+    variant?: ImageThemeVariant
+  ) => {
     const isImage = file.type.startsWith('image/')
     const isVideo = file.type.startsWith('video/')
 
@@ -120,6 +132,7 @@ export default function AdminAdsPage() {
     }
 
     setUploading(true)
+    setUploadingVariant(kind === 'image' ? variant ?? null : null)
     setUploadProgress(0)
     try {
       const url =
@@ -127,15 +140,26 @@ export default function AdminAdsPage() {
           ? await storageService.uploadAdImage(file, bannerStorageId, setUploadProgress)
           : await storageService.uploadAdVideo(file, bannerStorageId, setUploadProgress)
 
-      setForm((f) => ({
-        ...f,
-        ...(kind === 'image' ? { imageUrl: url } : { videoUrl: url }),
-      }))
-      toast.success(kind === 'image' ? 'Görsel yüklendi' : 'Video yüklendi')
+      setForm((f) => {
+        if (kind === 'video') return { ...f, videoUrl: url }
+        if (variant === 'light') return { ...f, imageUrlLight: url }
+        if (variant === 'dark') return { ...f, imageUrlDark: url }
+        return { ...f, imageUrl: url }
+      })
+      toast.success(
+        kind === 'image'
+          ? variant === 'light'
+            ? 'Açık tema görseli yüklendi'
+            : variant === 'dark'
+              ? 'Koyu tema görseli yüklendi'
+              : 'Görsel yüklendi'
+          : 'Video yüklendi'
+      )
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Yükleme başarısız')
     } finally {
       setUploading(false)
+      setUploadingVariant(null)
       setUploadProgress(0)
     }
   }
@@ -147,6 +171,9 @@ export default function AdminAdsPage() {
       const headers = await authHeaders()
       const payload = {
         ...form,
+        imageUrl: form.imageUrlLight || form.imageUrlDark || form.imageUrl || null,
+        imageUrlLight: form.imageUrlLight || null,
+        imageUrlDark: form.imageUrlDark || null,
         startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
         endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
       }
@@ -367,76 +394,106 @@ export default function AdminAdsPage() {
               </div>
 
               {form.format === 'image' ? (
-                <div className="space-y-2">
-                  <label className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">
-                    Görsel
-                  </label>
+                <div className="space-y-4">
+                  <p className="text-xs text-[rgb(var(--color-muted))]">
+                    Açık ve koyu tema için ayrı banner yükleyebilirsiniz. Sistem, kullanıcının konumuna göre
+                    gündüz/gece durumunu belirleyip uygun görseli gösterir. Sadece birini yüklerseniz her iki
+                    temada da o görsel kullanılır.
+                  </p>
 
-                  {form.imageUrl ? (
-                    <div className="relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={form.imageUrl}
-                        alt={form.altText || form.name || 'Reklam önizleme'}
-                        className="max-h-40 w-full object-contain"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setForm((f) => ({ ...f, imageUrl: '' }))}
-                        className="absolute right-2 top-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
-                      >
-                        Kaldır
-                      </button>
-                    </div>
-                  ) : null}
+                  {([
+                    {
+                      variant: 'light' as const,
+                      label: 'Açık Tema Görseli',
+                      icon: Sun,
+                      field: 'imageUrlLight' as const,
+                      inputRef: imageLightInputRef,
+                    },
+                    {
+                      variant: 'dark' as const,
+                      label: 'Koyu Tema Görseli',
+                      icon: Moon,
+                      field: 'imageUrlDark' as const,
+                      inputRef: imageDarkInputRef,
+                    },
+                  ]).map(({ variant, label, icon: Icon, field, inputRef }) => {
+                    const value = form[field]
+                    const isUploadingThis = uploading && uploadingVariant === variant
+                    return (
+                      <div key={variant} className="space-y-2 rounded-xl border border-[rgb(var(--color-border))] p-3">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-muted))]">
+                          <Icon className="h-3.5 w-3.5" />
+                          {label}
+                        </label>
 
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => imageInputRef.current?.click()}
-                      disabled={uploading}
-                      className="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-card))] disabled:opacity-60"
-                    >
-                      {uploading ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Upload className="h-3.5 w-3.5" />
-                      )}
-                      Bilgisayardan yükle
-                    </button>
-                    <input
-                      ref={imageInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) void handleMediaUpload(file, 'image')
-                        e.target.value = ''
-                      }}
-                    />
-                  </div>
+                        {value ? (
+                          <div className="relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={value}
+                              alt={form.altText || form.name || `${label} önizleme`}
+                              className="max-h-32 w-full object-contain"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setForm((f) => ({ ...f, [field]: '' }))}
+                              className="absolute right-2 top-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+                            >
+                              Kaldır
+                            </button>
+                          </div>
+                        ) : null}
 
-                  {uploading ? (
-                    <div className="h-1.5 overflow-hidden rounded-full bg-[rgb(var(--color-border))]">
-                      <div
-                        className="h-full rounded-full bg-blue-600 transition-all"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  ) : null}
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => inputRef.current?.click()}
+                            disabled={uploading}
+                            className="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-card))] disabled:opacity-60"
+                          >
+                            {isUploadingThis ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Upload className="h-3.5 w-3.5" />
+                            )}
+                            Bilgisayardan yükle
+                          </button>
+                          <input
+                            ref={inputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) void handleMediaUpload(file, 'image', variant)
+                              e.target.value = ''
+                            }}
+                          />
+                        </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs text-[rgb(var(--color-muted))]">
-                      veya görsel URL&apos;si
-                    </label>
-                    <input
-                      value={form.imageUrl}
-                      onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                      className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm"
-                      placeholder="https://..."
-                    />
-                  </div>
+                        {isUploadingThis ? (
+                          <div className="h-1.5 overflow-hidden rounded-full bg-[rgb(var(--color-border))]">
+                            <div
+                              className="h-full rounded-full bg-blue-600 transition-all"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        ) : null}
+
+                        <div>
+                          <label className="mb-1 block text-xs text-[rgb(var(--color-muted))]">
+                            veya görsel URL&apos;si
+                          </label>
+                          <input
+                            value={value}
+                            onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                            className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm"
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               ) : null}
 

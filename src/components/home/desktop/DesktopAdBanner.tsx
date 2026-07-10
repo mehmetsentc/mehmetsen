@@ -1,6 +1,8 @@
 'use client'
 
 import { useAdSlot } from '@/context/AdSlotContext'
+import { useAdDisplayTheme } from '@/hooks/useAdDisplayTheme'
+import { hasAdImageContent, resolveAdImageUrl } from '@/lib/adBannerUtils'
 import { cn } from '@/lib/utils'
 import type { AdBannerPublic } from '@/types/adBanner'
 
@@ -60,7 +62,15 @@ function AdBannerImage({ src, alt }: { src: string; alt: string }) {
   )
 }
 
-function AdContent({ ad, size }: { ad: AdBannerPublic; size: SizeKey }) {
+function AdContent({
+  ad,
+  size,
+  imageUrl,
+}: {
+  ad: AdBannerPublic
+  size: SizeKey
+  imageUrl: string | null
+}) {
   const sizeKey = (ad.size ?? size) as SizeKey
 
   if (ad.format === 'html' && ad.htmlContent) {
@@ -104,10 +114,10 @@ function AdContent({ ad, size }: { ad: AdBannerPublic; size: SizeKey }) {
     )
   }
 
-  if (ad.imageUrl) {
+  if (imageUrl) {
     const img = (
       <AdFrame sizeKey={sizeKey}>
-        <AdBannerImage src={ad.imageUrl} alt={ad.altText ?? 'Reklam'} />
+        <AdBannerImage src={imageUrl} alt={ad.altText ?? 'Reklam'} />
       </AdFrame>
     )
     if (ad.clickUrl) {
@@ -128,20 +138,17 @@ function AdContent({ ad, size }: { ad: AdBannerPublic; size: SizeKey }) {
   return null
 }
 
-function Placeholder({ size }: { size: SizeKey }) {
-  const config = SIZE_CONFIG[size]
-  return (
-    <AdFrame sizeKey={size}>
-      <div className="flex h-full w-full items-center justify-center border border-dashed border-[rgb(var(--color-border))]">
-        <span className="text-xs text-[rgb(var(--color-muted))]">{config.label}</span>
-      </div>
-    </AdFrame>
-  )
+function hasAdContent(ad: AdBannerPublic | null | undefined): ad is AdBannerPublic {
+  if (!ad) return false
+  return Boolean(hasAdImageContent(ad) || ad.videoUrl || ad.htmlContent)
 }
 
 export function DesktopAdBanner({ slot, size = 'leaderboard', className }: DesktopAdBannerProps) {
   const ad = useAdSlot(slot)
-  const hasContent = ad && (ad.imageUrl || ad.videoUrl || ad.htmlContent)
+  const displayTheme = useAdDisplayTheme()
+  const imageUrl = ad ? resolveAdImageUrl(ad, displayTheme) : null
+
+  if (!hasAdContent(ad)) return null
 
   return (
     <aside
@@ -150,12 +157,12 @@ export function DesktopAdBanner({ slot, size = 'leaderboard', className }: Deskt
         className
       )}
       data-ad-slot={slot}
-      aria-label="Reklam alanı"
+      aria-label="Reklam"
     >
       <p className="mb-1 text-right text-[10px] font-medium uppercase tracking-widest text-[rgb(var(--color-muted))]">
         Reklam
       </p>
-      {hasContent ? <AdContent ad={ad} size={size} /> : <Placeholder size={size} />}
+      <AdContent ad={ad} size={size} imageUrl={imageUrl} />
     </aside>
   )
 }

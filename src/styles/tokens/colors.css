@@ -82,9 +82,9 @@
   .dark {
     /* Dark — koyu lacivert, mevcut sürümün gece tonu */
     --bg-base:         8  12  28;
-    --bg-subtle:      11  16  38;
+    --bg-subtle:      10  14  32;
     --bg-muted:       18  26  56;
-    --bg-card:        13  19  44;
+    --bg-card:        10  15  34;
     --bg-elevated:    20  28  64;
     --bg-inverse:    248 250 252;
     --bg-overlay:      0   0   0;

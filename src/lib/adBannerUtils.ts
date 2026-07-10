@@ -1,3 +1,4 @@
+import type { AdDisplayTheme } from '@/lib/solarTime'
 import type { AdBanner, AdBannerPublic } from '@/types/adBanner'
 
 export function isAdBannerActive(banner: Pick<AdBanner, 'active' | 'startsAt' | 'endsAt'>, now = Date.now()): boolean {
@@ -20,11 +21,29 @@ export function toPublicAdBanner(banner: AdBanner): AdBannerPublic {
     format: banner.format,
     size: banner.size,
     imageUrl: banner.imageUrl,
+    imageUrlLight: banner.imageUrlLight,
+    imageUrlDark: banner.imageUrlDark,
     videoUrl: banner.videoUrl,
     htmlContent: banner.htmlContent,
     clickUrl: banner.clickUrl,
     altText: banner.altText,
   }
+}
+
+export function resolveAdImageUrl(
+  ad: Pick<AdBannerPublic, 'imageUrl' | 'imageUrlLight' | 'imageUrlDark'>,
+  theme: AdDisplayTheme
+): string | null {
+  if (theme === 'light') {
+    return ad.imageUrlLight?.trim() || ad.imageUrl?.trim() || ad.imageUrlDark?.trim() || null
+  }
+  return ad.imageUrlDark?.trim() || ad.imageUrl?.trim() || ad.imageUrlLight?.trim() || null
+}
+
+export function hasAdImageContent(
+  ad: Pick<AdBannerPublic, 'imageUrl' | 'imageUrlLight' | 'imageUrlDark'>
+): boolean {
+  return Boolean(ad.imageUrl?.trim() || ad.imageUrlLight?.trim() || ad.imageUrlDark?.trim())
 }
 
 /** Aynı slota birden fazla banner — en yüksek priority kazanır */
@@ -65,6 +84,8 @@ export function docToAdBanner(id: string, raw: Record<string, unknown>): AdBanne
     format: (raw.format as AdBanner['format']) ?? 'image',
     size: (raw.size as AdBanner['size']) ?? 'leaderboard',
     imageUrl: raw.imageUrl != null ? String(raw.imageUrl) : null,
+    imageUrlLight: raw.imageUrlLight != null ? String(raw.imageUrlLight) : null,
+    imageUrlDark: raw.imageUrlDark != null ? String(raw.imageUrlDark) : null,
     videoUrl: raw.videoUrl != null ? String(raw.videoUrl) : null,
     htmlContent: raw.htmlContent != null ? String(raw.htmlContent) : null,
     clickUrl: raw.clickUrl != null ? String(raw.clickUrl) : null,

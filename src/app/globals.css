@@ -576,7 +576,7 @@
 
   .sidebar-rail {
     /* kept for any legacy references; new sidebar is inline-styled via Sidebar.tsx */
-    @apply flex h-screen w-[var(--sidebar-width-collapsed)] flex-col border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))];
+    @apply flex h-screen w-[var(--sidebar-width-collapsed)] flex-col border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))];
   }
 
   .nav-tap-target {

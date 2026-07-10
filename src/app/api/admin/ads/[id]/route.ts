@@ -42,6 +42,8 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
   if (body.format != null) updates.format = body.format
   if (body.imageUrl !== undefined) updates.imageUrl = body.imageUrl ? String(body.imageUrl).trim() : null
+  if (body.imageUrlLight !== undefined) updates.imageUrlLight = body.imageUrlLight ? String(body.imageUrlLight).trim() : null
+  if (body.imageUrlDark !== undefined) updates.imageUrlDark = body.imageUrlDark ? String(body.imageUrlDark).trim() : null
   if (body.videoUrl !== undefined) updates.videoUrl = body.videoUrl ? String(body.videoUrl).trim() : null
   if (body.htmlContent !== undefined) updates.htmlContent = body.htmlContent ? String(body.htmlContent).trim() : null
   if (body.clickUrl !== undefined) updates.clickUrl = body.clickUrl ? String(body.clickUrl).trim() : null

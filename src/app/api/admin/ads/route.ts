@@ -25,8 +25,13 @@ function parseBody(raw: Record<string, unknown>) {
   const name = String(raw.name ?? '').trim()
   if (!name) return { error: 'Reklam adı gerekli' as const }
 
-  if (format === 'image' && !String(raw.imageUrl ?? '').trim()) {
-    return { error: 'Görsel URL gerekli' as const }
+  if (format === 'image') {
+    const imageUrl = String(raw.imageUrl ?? '').trim()
+    const imageUrlLight = String(raw.imageUrlLight ?? '').trim()
+    const imageUrlDark = String(raw.imageUrlDark ?? '').trim()
+    if (!imageUrl && !imageUrlLight && !imageUrlDark) {
+      return { error: 'En az bir görsel (açık veya koyu tema) gerekli' as const }
+    }
   }
   if (format === 'video' && !String(raw.videoUrl ?? '').trim()) {
     return { error: 'Video URL gerekli' as const }
@@ -45,6 +50,8 @@ function parseBody(raw: Record<string, unknown>) {
       format,
       size: (slot?.size ?? raw.size ?? 'leaderboard') as AdBannerSize,
       imageUrl: raw.imageUrl ? String(raw.imageUrl).trim() : null,
+      imageUrlLight: raw.imageUrlLight ? String(raw.imageUrlLight).trim() : null,
+      imageUrlDark: raw.imageUrlDark ? String(raw.imageUrlDark).trim() : null,
       videoUrl: raw.videoUrl ? String(raw.videoUrl).trim() : null,
       htmlContent: raw.htmlContent ? String(raw.htmlContent).trim() : null,
       clickUrl: raw.clickUrl ? String(raw.clickUrl).trim() : null,
