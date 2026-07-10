@@ -238,6 +238,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="msapplication-tap-highlight" content="no" />
         {/* iOS Safari kaydırma bounce'unu PWA modunda kapatır */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+        {/* Google AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2018428956792076"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className={`${inter.variable} ${inter.className} font-sans antialiased`}>
         <script
