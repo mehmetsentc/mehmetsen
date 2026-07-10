@@ -9,7 +9,12 @@ export function isPubliclyVisibleStatus(status?: string): boolean {
 }
 
 export function getPrimaryVideo(post: Post): MediaItem | null {
-  return post.mediaItems?.find((m) => m.type === 'video') ?? null
+  const fromMedia = post.mediaItems?.find((m) => m.type === 'video') ?? null
+  if (fromMedia) return fromMedia
+  // Fallback: eski YouTube RSS dokümanlarında videoUrl top-level field olarak kaydedildi
+  const legacyUrl = (post as Post & { videoUrl?: string }).videoUrl?.trim()
+  if (legacyUrl) return { type: 'video', url: legacyUrl, thumbnailUrl: post.coverImageUrl ?? null }
+  return null
 }
 
 /** YouTube embed veya watch URL'si mi? */

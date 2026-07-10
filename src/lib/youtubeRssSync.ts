@@ -72,6 +72,7 @@ export async function syncYouTubeRss(channelId: string): Promise<YouTubeRssSyncR
     const publishedMs = Date.parse(entry.publishedAt)
     const embedUrl = `https://www.youtube.com/embed/${entry.videoId}`
 
+    const thumbnailUrl = `https://i.ytimg.com/vi/${entry.videoId}/hqdefault.jpg`
     await db.collection(Collections.NEWS).add({
       title: entry.title,
       slug,
@@ -80,9 +81,10 @@ export async function syncYouTubeRss(channelId: string): Promise<YouTubeRssSyncR
       status: 'published',
       source: 'YouTube',
       sourceUrl: `https://www.youtube.com/watch?v=${entry.videoId}`,
-      videoUrl: embedUrl,
+      // mediaItems: VideoFeedItem ve hasVideoContent bu array'i okur
+      mediaItems: [{ type: 'video', url: embedUrl, thumbnailUrl }],
       hasVideo: true,
-      coverImageUrl: `https://i.ytimg.com/vi/${entry.videoId}/hqdefault.jpg`,
+      coverImageUrl: thumbnailUrl,
       rssFingerprint: fingerprint,
       publishedAt: Number.isFinite(publishedMs) ? publishedMs : Date.now(),
       createdAt: Date.now(),
