@@ -43,6 +43,8 @@ export type EditorId =
   | 'hackernews'
   | 'freenews'
   | 'thin-content-backfill'
+  | 'turizm-news'
+  | 'gezi-news'
 
 export type EditorSchedule = '1m' | '2m' | '5m' | '10m' | '15m' | '30m' | '1h' | '6h' | 'weekly' | 'daily' | 'pipeline'
 

@@ -34,12 +34,10 @@ export function createFeedAllocator(data: HomeFeedInitialData) {
 
   function takeCategory(categoryId: string, count: number): NewsItem[] {
     const rail = data.categoryRails[categoryId as HomeCategorySlug] ?? []
-    const fromRail = takeFrom(rail, count)
-    if (fromRail.length >= count) return fromRail
-    return [...fromRail, ...take(count - fromRail.length)]
+    return takeFrom(rail, count)
   }
 
-  /** Featured / trending / popular — fills sparse category rows without duplicating used items. */
+  /** Featured / trending / popular — used only for row-gap filler sections labeled "Öne Çıkan". */
   function takeFeatured(count: number): NewsItem[] {
     if (count <= 0) return []
     return takeFrom([...data.featured, ...data.trending, ...data.mostRead], count)
