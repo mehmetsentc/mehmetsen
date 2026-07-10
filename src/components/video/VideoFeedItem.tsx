@@ -320,6 +320,22 @@ function VideoFeedItemInner({
           if (isActive) sendYTCmd(muteCmd)
         }
 
+        // infoDelivery: video gerçekte oynuyor (autoplay=1 ile başladı) ama
+        // onStateChange listener kurulmadan önce geldi → React hâlâ paused=true sanıyor.
+        // currentTime > 0 ise video çalışıyor — React state'ini güncelle.
+        if (data?.event === 'infoDelivery' && isActive) {
+          const info = data.info
+          if (typeof info?.currentTime === 'number' && info.currentTime > 0) {
+            setPaused(false)
+            setLoading(false)
+            // Mute senkronizasyonu: YouTube'dan muted durumu gelirse React ile eşitle
+            if (typeof info.muted === 'boolean') {
+              if (info.muted && !muted) sendYTCmd('unMute')
+              else if (!info.muted && muted) sendYTCmd('mute')
+            }
+          }
+        }
+
         // Embedding engeli tespiti:
         // 101/150 = video sahibi embedding'i kapattı, 100 = video kaldırıldı
         if (data?.event === 'onError') {
