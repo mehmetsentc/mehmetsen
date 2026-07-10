@@ -409,7 +409,7 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     id: 'gezi-news',
     name: 'Gezi Worker',
     nameTr: 'Gezi Worker',
-    schedule: '60m',
+    schedule: '1h',
     description: 'Gezginler.net, Milliyet/CNN Türk Seyahat, Lonely Planet — destinasyon, rota, seyahat rehberi haberleri.',
     cronPath: '/api/cron/newsroom/gezi',
   },
