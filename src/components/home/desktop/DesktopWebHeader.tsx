@@ -10,6 +10,7 @@ import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLin
 import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
+import { useUiStore } from '@/store/uiStore'
 import type { CategoryDef } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -40,6 +41,8 @@ export function DesktopWebHeader({
   variant = 'full',
 }: DesktopWebHeaderProps) {
   const showSubTabs = subcategories && subcategories.length > 0
+  const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
+  const showHeaderBrand = !desktopSidebarOpen
 
   if (variant === 'compact') {
     return (
@@ -49,6 +52,7 @@ export function DesktopWebHeader({
         itemType="https://schema.org/WPHeader"
       >
         <div className="flex items-stretch gap-2">
+        {showHeaderBrand ? (
         <Link
           href={ROUTES.FEED}
           className="flex shrink-0 items-center gap-2 py-2 pr-2 transition-opacity hover:opacity-90"
@@ -59,9 +63,13 @@ export function DesktopWebHeader({
             <span className="text-[rgb(var(--color-brand))]">Na</span>Haber
           </span>
         </Link>
+        ) : null}
 
           <nav
-            className="min-w-0 flex-1 overflow-x-auto scroll-px-3 scrollbar-hide border-l border-[rgb(var(--color-border))] pl-2"
+            className={cn(
+              'min-w-0 flex-1 overflow-x-auto scroll-px-3 scrollbar-hide pl-2',
+              showHeaderBrand ? 'border-l border-[rgb(var(--color-border))]' : ''
+            )}
             aria-label="Haber kategorileri"
           >
             <DesktopSiteNavLinks variant="header" />
@@ -133,6 +141,7 @@ export function DesktopWebHeader({
           <Search className="h-5 w-5" />
         </Link>
 
+        {showHeaderBrand ? (
         <Link
           href={ROUTES.FEED}
           className="relative z-10 flex items-center gap-3 transition-opacity hover:opacity-90"
@@ -148,6 +157,7 @@ export function DesktopWebHeader({
             <span className="text-[rgb(var(--color-text))]">Haber</span>
           </span>
         </Link>
+        ) : null}
 
         <DesktopHeaderAuth className="absolute right-0" />
       </div>

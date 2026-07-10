@@ -35,9 +35,13 @@ export function resolveAdImageUrl(
   theme: AdDisplayTheme
 ): string | null {
   if (theme === 'light') {
-    return ad.imageUrlLight?.trim() || ad.imageUrl?.trim() || ad.imageUrlDark?.trim() || null
+    return ad.imageUrlLight?.trim() || ad.imageUrl?.trim() || null
   }
-  return ad.imageUrlDark?.trim() || ad.imageUrl?.trim() || ad.imageUrlLight?.trim() || null
+  const dark = ad.imageUrlDark?.trim()
+  if (dark) return dark
+  // Açık tema görseli yüklüyse koyu temada karşıt görsel gösterme
+  if (ad.imageUrlLight?.trim()) return null
+  return ad.imageUrl?.trim() || null
 }
 
 export function hasAdImageContent(
