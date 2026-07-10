@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
+import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { DesktopCategoryPage } from '@/components/home/desktop/DesktopCategoryPage'
 import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
@@ -34,68 +34,33 @@ interface CategoryPageClientProps {
   worldCupData?: WorldCup2026Data | null
 }
 
-function MobileCategoryHeader({
-  headerCat,
+function CategoryTopExtras({
   cat,
-  isSubcategory,
-  parentCat,
-  showTabs,
-  subTabs,
-  tabParent,
-}: Pick<
-  CategoryPageClientProps,
-  'headerCat' | 'cat' | 'isSubcategory' | 'parentCat' | 'showTabs' | 'subTabs' | 'tabParent'
->) {
-  return (
-    <>
-      <div
-        className="mb-3 flex items-center gap-3 rounded-2xl px-4 py-2.5"
-        style={{ backgroundColor: `${headerCat.color}18`, borderLeft: `4px solid ${headerCat.color}` }}
-      >
-        <div>
-          <h1 className="text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
-            {isSubcategory ? `${parentCat?.name} · ${cat.name}` : cat.name}
-          </h1>
-          <p className="text-[11px] text-[rgb(var(--color-muted))]">{cat.name} kategorisindeki son gelişmeler</p>
-        </div>
-      </div>
-
-      {showTabs ? (
-        <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
-          <Link
-            href={`/kategori/${tabParent!.slug}`}
-            className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors"
-            style={
-              !isSubcategory
-                ? { backgroundColor: `${tabParent!.color}25`, color: tabParent!.color, borderColor: `${tabParent!.color}50` }
-                : { borderColor: 'rgb(var(--color-border))', color: 'rgb(var(--color-muted))' }
-            }
-          >
-            Tümü
-          </Link>
-          {subTabs.map((sub) => (
-            <Link
-              key={sub.id}
-              href={sub.href}
-              className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors"
-              style={
-                sub.active
-                  ? { backgroundColor: `${sub.color}25`, color: sub.color, borderColor: `${sub.color}50` }
-                  : { borderColor: 'rgb(var(--color-border))', color: 'rgb(var(--color-muted))' }
-              }
-            >
-              {sub.name}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-    </>
-  )
+  worldCupData,
+  wcTab,
+  onWcTabChange,
+}: {
+  cat: CategoryDef
+  worldCupData?: WorldCup2026Data | null
+  wcTab: string
+  onWcTabChange: (tab: string) => void
+}) {
+  if (cat.id === 'dunya-kupasi-2026' && worldCupData) {
+    return (
+      <WorldCupCategoryTabs
+        data={worldCupData}
+        activeTab={wcTab}
+        onTabChange={onWcTabChange}
+      />
+    )
+  }
+  if (cat.id === 'spor') return <SporCategoryExtras />
+  if (cat.id === 'borsa') return <BorsaWidgetClient />
+  return null
 }
 
 export function CategoryPageClient({
   cat,
-  headerCat,
   isSubcategory,
   parentCat,
   subTabs,
@@ -104,79 +69,67 @@ export function CategoryPageClient({
   initialPosts,
   worldCupData,
 }: CategoryPageClientProps) {
-  const borsaTop = cat.id === 'borsa' ? <BorsaWidgetClient /> : null
-  const sporExtras = cat.id === 'spor' ? <SporCategoryExtras /> : null
+  const [wcTab, setWcTab] = useState('haberler')
+  const isWorldCup = cat.id === 'dunya-kupasi-2026' && Boolean(worldCupData)
+  const showNewsFeed = !isWorldCup || wcTab === 'haberler'
+
+  const pageTitle =
+    isSubcategory && parentCat ? `${parentCat.name} · ${cat.name}` : cat.name
+
+  const topExtras = (
+    <CategoryTopExtras
+      cat={cat}
+      worldCupData={worldCupData}
+      wcTab={wcTab}
+      onWcTabChange={setWcTab}
+    />
+  )
+
+  const feedFallback = (
+    <div className="space-y-4">
+      {[...Array(4)].map((_, i) => (
+        <TimelineItemSkeleton key={i} />
+      ))}
+    </div>
+  )
 
   return (
     <>
-      {/* Mobil + tablet — mevcut akış */}
-      <div className="lg:hidden w-full">
-        <MobileCategoryHeader
-          headerCat={headerCat}
-          cat={cat}
+      {/* Mobil + tablet — BBC kategori şablonu */}
+      <div className="bbc-category-page lg:hidden w-full">
+        <CategoryBbcPageHeader
+          pageTitle={pageTitle}
+          subTabs={showTabs ? subTabs : []}
+          tabParentSlug={tabParent?.slug}
           isSubcategory={isSubcategory}
-          parentCat={parentCat}
-          showTabs={showTabs}
-          subTabs={subTabs}
-          tabParent={tabParent}
+          className="mb-6 px-1"
         />
 
-        {cat.id === 'dunya-kupasi-2026' && worldCupData ? (
-          <WorldCupCategoryTabs initialPosts={initialPosts} data={worldCupData} />
-        ) : (
-          <>
-            {sporExtras}
-            {borsaTop}
-            {cat.id === 'borsa' ? (
-              <div className="mb-4 flex items-center gap-2">
-                <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
-                <span className="text-xs font-semibold text-[rgb(var(--color-muted))]">Borsa Haberleri</span>
-                <div className="h-px flex-1 bg-[rgb(var(--color-border))]" />
-              </div>
-            ) : null}
-            <Suspense
-              fallback={
-                <div className="space-y-4">
-                  {[...Array(4)].map((_, i) => (
-                    <TimelineItemSkeleton key={i} />
-                  ))}
-                </div>
-              }
-            >
-              <CategoryFeed categoryId={cat.id} initialPosts={initialPosts} />
-            </Suspense>
-          </>
-        )}
+        {topExtras ? <div className="mb-6">{topExtras}</div> : null}
+
+        {showNewsFeed ? (
+          <Suspense fallback={feedFallback}>
+            <CategoryFeed categoryId={cat.id} initialPosts={initialPosts} />
+          </Suspense>
+        ) : null}
       </div>
 
-      {/* Web (lg+) — BBC kategori düzeni */}
+      {/* Desktop — BBC kategori şablonu */}
       <div className="hidden lg:block">
         <AdSlotProvider page="category" categoryId={cat.id}>
-          {cat.id === 'dunya-kupasi-2026' && worldCupData ? (
-            <>
-              <DesktopCategoryPage
-                cat={cat}
-                headerCat={headerCat}
-                isSubcategory={isSubcategory}
-                parentCat={parentCat}
-                subTabs={subTabs}
-                tabParent={tabParent}
-                initialPosts={initialPosts}
-                topSlot={<WorldCupCategoryTabs initialPosts={initialPosts} data={worldCupData} />}
-              />
-            </>
-          ) : (
-            <DesktopCategoryPage
-              cat={cat}
-              headerCat={headerCat}
-              isSubcategory={isSubcategory}
-              parentCat={parentCat}
-              subTabs={subTabs}
-              tabParent={tabParent}
-              initialPosts={initialPosts}
-              topSlot={sporExtras ?? borsaTop}
-            />
-          )}
+          <DesktopCategoryPage
+            cat={cat}
+            headerCat={cat}
+            isSubcategory={isSubcategory}
+            parentCat={parentCat}
+            subTabs={subTabs}
+            tabParent={tabParent}
+            initialPosts={initialPosts}
+            topSlot={topExtras}
+            showFeed={showNewsFeed}
+            pageTitle={pageTitle}
+            showTabs={showTabs}
+          />
         </AdSlotProvider>
       </div>
     </>

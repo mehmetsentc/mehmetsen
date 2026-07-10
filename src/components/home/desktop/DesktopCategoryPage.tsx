@@ -3,6 +3,7 @@
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
 import { CategoryThemedFeed } from '@/components/category/CategoryThemedFeed'
+import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import { getCache } from '@/lib/clientCache'
 import { PAGE_CACHE_KEYS } from '@/lib/pageCache'
@@ -27,6 +28,9 @@ interface DesktopCategoryPageProps {
   tabParent: CategoryDef | null
   initialPosts: TimelinePost[]
   topSlot?: React.ReactNode
+  showFeed?: boolean
+  pageTitle?: string
+  showTabs?: boolean
 }
 
 export function DesktopCategoryPage({
@@ -37,33 +41,45 @@ export function DesktopCategoryPage({
   tabParent,
   initialPosts,
   topSlot,
+  showFeed = true,
+  pageTitle: pageTitleProp,
+  showTabs = false,
 }: DesktopCategoryPageProps) {
   useScrollHeaderConfig({ subcategories: subTabs, tabParent })
 
   const cacheKey = PAGE_CACHE_KEYS.category(cat.id)
   const cachedPosts = initialPosts.length ? initialPosts : (getCache<TimelinePost[]>(cacheKey) ?? [])
 
-  const pageTitle = isSubcategory && parentCat ? `${parentCat.name} · ${cat.name}` : cat.name
+  const pageTitle =
+    pageTitleProp ??
+    (isSubcategory && parentCat ? `${parentCat.name} · ${cat.name}` : cat.name)
 
   return (
-    <div className="desktop-category-page desktop-category-page--bbc mx-auto max-w-[1280px] pb-10">
-      <header className="mb-6 border-b border-[rgb(var(--color-border))] pb-4">
-        <h1 className="text-3xl font-bold tracking-tight text-[rgb(var(--color-text))] md:text-4xl">
-          {pageTitle}
-        </h1>
-      </header>
-
-      {topSlot ? <div className="mb-8">{topSlot}</div> : null}
-
-      <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mb-8" />
-
-      <CategoryThemedFeed
-        parentCategoryId={cat.id}
-        initialPosts={cachedPosts}
-        variant="desktop"
+    <div className="desktop-category-page bbc-category-page mx-auto max-w-[1280px] pb-10">
+      <CategoryBbcPageHeader
+        pageTitle={pageTitle}
+        subTabs={showTabs ? subTabs : []}
+        tabParentSlug={tabParent?.slug}
+        isSubcategory={isSubcategory}
+        className="mb-8"
       />
 
-      <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mb-10" />
+      {topSlot ? <div className="bbc-category-top-slot mb-8">{topSlot}</div> : null}
+
+      {showFeed ? (
+        <>
+          <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mb-8" />
+
+          <CategoryThemedFeed
+            parentCategoryId={cat.id}
+            initialPosts={cachedPosts}
+            variant="desktop"
+          />
+
+          <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mb-10" />
+        </>
+      ) : null}
+
       <DesktopHomeFooter />
     </div>
   )

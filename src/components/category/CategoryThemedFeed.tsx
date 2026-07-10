@@ -175,9 +175,7 @@ function MobileSectionBlock({
       <SectionVisibilityTrigger onVisible={onEnsureLoaded} enabled={scrollActivated} />
 
       {showHeader || isFirstSection ? (
-        <h2 className="mb-4 border-t-4 border-[rgb(var(--color-text))] pt-3 text-xl font-bold text-[rgb(var(--color-text))]">
-          {showHeader ? title : 'Öne çıkanlar'}
-        </h2>
+        <h2 className="bbc-section-label mb-4">{showHeader ? title : 'Öne çıkanlar'}</h2>
       ) : null}
 
       {loading && posts.length === 0 ? (
@@ -233,7 +231,7 @@ export function CategoryThemedFeed({
   const multiSection = sectionIds.length > 1
 
   return (
-    <div className="category-themed-feed">
+    <div className="category-themed-feed bbc-category-feed">
       {sectionIds.map((sectionId, index) => {
         const state = sections[sectionId]
         if (!state) return null

@@ -23,24 +23,20 @@ function postIso(post: TimelinePost): string {
 function CategoryBadge({ post }: { post: TimelinePost }) {
   const label = getCategoryLabel(post.categoryId)
   if (!label) return null
-  return (
-    <span className="inline-block text-[11px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
-      {label}
-    </span>
-  )
+  return <span className="bbc-story-badge">{label}</span>
 }
 
 function StoryMeta({ post, className }: { post: TimelinePost; className?: string }) {
   const time = formatNewsRelative(postIso(post))
   if (!time) return null
-  return <p className={cn('text-xs text-[rgb(var(--color-muted))]', className)}>{time}</p>
+  return <p className={cn('bbc-story-meta', className)}>{time}</p>
 }
 
 const TITLE = {
-  hero: 'font-serif text-2xl font-bold leading-tight md:text-3xl',
-  lg: 'text-lg font-bold leading-snug',
-  md: 'text-base font-bold leading-snug',
-  sm: 'text-sm font-bold leading-snug',
+  hero: 'bbc-story-title bbc-story-title--hero',
+  lg: 'bbc-story-title bbc-story-title--lg',
+  md: 'bbc-story-title bbc-story-title--md',
+  sm: 'bbc-story-title bbc-story-title--sm',
 } as const
 
 function StoryLink({
@@ -89,19 +85,8 @@ export function CategoryHeroStory({
           ) : null}
         </div>
         <CategoryBadge post={post} />
-        <h3
-          className={cn(
-            TITLE.hero,
-            'mt-2 break-words text-[rgb(var(--color-text))] group-hover:underline'
-          )}
-        >
-          {post.title}
-        </h3>
-        {summary ? (
-          <p className="mt-3 line-clamp-3 text-[15px] leading-relaxed text-[rgb(var(--color-muted))]">
-            {summary}
-          </p>
-        ) : null}
+        <h3 className={cn(TITLE.hero, 'mt-2 break-words group-hover:underline')}>{post.title}</h3>
+        {summary ? <p className="bbc-story-summary mt-3 line-clamp-3">{summary}</p> : null}
         <StoryMeta post={post} className="mt-3" />
       </StoryLink>
     </article>
@@ -126,19 +111,8 @@ export function CategoryFeatureStory({ post }: { post: TimelinePost }) {
           />
         </div>
         <CategoryBadge post={post} />
-        <h3
-          className={cn(
-            TITLE.sm,
-            'mt-1.5 break-words text-[rgb(var(--color-text))] group-hover:underline'
-          )}
-        >
-          {post.title}
-        </h3>
-        {summary ? (
-          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">
-            {summary}
-          </p>
-        ) : null}
+        <h3 className={cn(TITLE.sm, 'mt-1.5 break-words group-hover:underline')}>{post.title}</h3>
+        {summary ? <p className="bbc-story-summary bbc-story-summary--sm mt-1.5 line-clamp-2">{summary}</p> : null}
         <StoryMeta post={post} className="mt-1.5" />
       </StoryLink>
     </article>
@@ -151,14 +125,7 @@ export function CategoryTextStory({ post }: { post: TimelinePost }) {
     <article className="min-w-0 border-b border-[rgb(var(--color-border))] py-3 last:border-b-0">
       <StoryLink post={post}>
         <CategoryBadge post={post} />
-        <h3
-          className={cn(
-            TITLE.sm,
-            'mt-1 break-words text-[rgb(var(--color-text))] group-hover:underline'
-          )}
-        >
-          {post.title}
-        </h3>
+        <h3 className={cn(TITLE.sm, 'mt-1 break-words group-hover:underline')}>{post.title}</h3>
         <StoryMeta post={post} className="mt-1.5" />
       </StoryLink>
     </article>
@@ -189,16 +156,9 @@ export function CategoryGridStory({
           />
         </div>
         <CategoryBadge post={post} />
-        <h3
-          className={cn(
-            TITLE.md,
-            'mt-1.5 break-words text-[rgb(var(--color-text))] group-hover:underline'
-          )}
-        >
-          {post.title}
-        </h3>
+        <h3 className={cn(TITLE.md, 'mt-1.5 break-words group-hover:underline')}>{post.title}</h3>
         {showSummary && summary ? (
-          <p className="mt-2 line-clamp-2 text-sm text-[rgb(var(--color-muted))]">{summary}</p>
+          <p className="bbc-story-summary bbc-story-summary--sm mt-2 line-clamp-2">{summary}</p>
         ) : null}
         <StoryMeta post={post} className="mt-2" />
       </StoryLink>

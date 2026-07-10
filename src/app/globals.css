@@ -327,6 +327,137 @@
     @apply w-full min-w-0 max-w-full;
   }
 
+  /* ── BBC kategori sayfası — tüm şablonlar (okunabilirlik) ── */
+  .bbc-category-page {
+    font-family: var(--font-inter, Inter, system-ui, sans-serif);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .bbc-category-header {
+    border-bottom: 4px solid rgb(var(--color-text));
+    padding-bottom: 1rem;
+  }
+
+  .bbc-category-title {
+    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+    color: rgb(var(--color-text));
+  }
+
+  .bbc-category-subnav-item {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    margin-bottom: -1px;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: rgb(var(--color-muted));
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+    text-decoration: none;
+  }
+
+  .bbc-category-subnav-item:hover {
+    color: rgb(var(--color-text));
+  }
+
+  .bbc-category-subnav-item.is-active {
+    color: rgb(var(--color-text));
+    border-bottom-color: rgb(var(--color-text));
+  }
+
+  .bbc-section-label {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: rgb(var(--color-text));
+    padding-top: 1rem;
+    border-top: 4px solid rgb(var(--color-text));
+  }
+
+  .bbc-story-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #b45309;
+  }
+
+  .dark .bbc-story-badge {
+    color: #fbbf24;
+  }
+
+  .bbc-story-title {
+    font-weight: 700;
+    color: rgb(var(--color-text));
+    line-height: 1.25;
+  }
+
+  .bbc-story-title--hero {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.5rem, 2.8vw, 2rem);
+    line-height: 1.15;
+  }
+
+  .bbc-story-title--lg {
+    font-size: 1.125rem;
+  }
+
+  .bbc-story-title--md {
+    font-size: 1rem;
+  }
+
+  .bbc-story-title--sm {
+    font-size: 0.9375rem;
+    line-height: 1.35;
+  }
+
+  .bbc-story-summary {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: color-mix(in srgb, rgb(var(--color-text)) 82%, transparent);
+  }
+
+  .bbc-story-summary--sm {
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  .bbc-story-meta {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: rgb(var(--color-muted));
+  }
+
+  .bbc-more-date {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: rgb(var(--color-muted));
+  }
+
+  .bbc-more-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    font-weight: 700;
+    line-height: 1.3;
+    color: rgb(var(--color-text));
+  }
+
+  .bbc-category-feed .bbc-category-block + .bbc-category-block {
+    margin-top: 2.5rem;
+    padding-top: 0.5rem;
+  }
+
   .desktop-ad-banner,
   .desktop-ad-banner img,
   .desktop-ad-banner video {

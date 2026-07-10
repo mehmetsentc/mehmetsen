@@ -58,19 +58,17 @@ function fieldsFromNewsItem(item: NewsItem): MoreRowFields {
 
 function MoreRow({ fields }: { fields: MoreRowFields }) {
   return (
-    <article className="grid grid-cols-12 gap-x-6 gap-y-3 border-b border-[rgb(var(--color-border))] py-6 last:border-b-0">
+    <article className="bbc-more-row grid grid-cols-12 gap-x-6 gap-y-3 border-b border-[rgb(var(--color-border))] py-6 last:border-b-0">
       <div className="col-span-12 sm:col-span-2 lg:col-span-2">
-        <time className="text-sm text-[rgb(var(--color-muted))]" dateTime={fields.iso}>
+        <time className="bbc-more-date" dateTime={fields.iso}>
           {fields.dateLabel ?? '—'}
         </time>
       </div>
-      <div className="col-span-12 sm:col-span-7 lg:col-span-7 min-w-0">
+      <div className="col-span-12 min-w-0 sm:col-span-7 lg:col-span-7">
         <Link href={fields.href} className="group block">
-          <h3 className="font-serif text-lg font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline md:text-xl">
-            {fields.title}
-          </h3>
+          <h3 className="bbc-more-title group-hover:underline">{fields.title}</h3>
           {fields.summary ? (
-            <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">{fields.summary}</p>
+            <p className="bbc-story-summary mt-2 line-clamp-3">{fields.summary}</p>
           ) : null}
         </Link>
       </div>
