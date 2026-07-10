@@ -112,7 +112,15 @@ function getCategoryMeta(id: string) {
 function getCategoryPageTitle(cat: CategoryDef): string {
   if (cat.id === 'yerel-haber') return 'Şehrinizden Haberler'
   if (cat.id === 'son-dakika') return 'Son Dakika Haberleri'
+  if (cat.id === 'spor') return 'Spor Haberleri'
   return `${cat.name} Haberleri`
+}
+
+function getCategoryDescription(cat: CategoryDef, siteName: string): string {
+  if (cat.id === 'spor') {
+    return `NaHaber'de son dakika spor haberleri, maç sonuçları ve Dünya Kupası gelişmeleri`
+  }
+  return `${cat.name} kategorisindeki son dakika haberler, güncel gelişmeler ve editoryal içerik — ${siteName}`
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -123,7 +131,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
   const pageTitle = getCategoryPageTitle(cat)
-  const description = `${cat.name} kategorisindeki son dakika haberler, güncel gelişmeler ve editoryal içerik — ${siteName}`
+  const description = getCategoryDescription(cat, siteName)
 
   return {
     title: `${pageTitle} | ${siteName}`,

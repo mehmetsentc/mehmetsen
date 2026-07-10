@@ -51,9 +51,10 @@
   @media (min-width: 1024px) {
     :root {
       --layout-gutter: 0.75rem;
+      --layout-newspaper-max: 1680px;
       --layout-content-newspaper: min(
-        1920px,
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter))
+        var(--layout-newspaper-max),
+        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 4)
       );
       --layout-content: min(720px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
       --layout-content-wide: min(960px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
@@ -69,7 +70,10 @@
     }
 
     html[data-sidebar='closed'] {
-      --layout-content-newspaper: min(1920px, calc(100vw - var(--layout-gutter)));
+      --layout-content-newspaper: min(
+        var(--layout-newspaper-max),
+        calc(100vw - var(--layout-gutter) * 4)
+      );
       --layout-content: min(720px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-reels: min(720px, calc(100vw - var(--layout-gutter) * 2));
@@ -83,8 +87,8 @@
       --layout-rail: 320px;
       --layout-feed: 720px;
       --layout-content-newspaper: min(
-        1920px,
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
+        var(--layout-newspaper-max),
+        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 4)
       );
       --layout-content: min(
         var(--layout-feed),
@@ -106,7 +110,10 @@
     }
 
     html[data-sidebar='closed'] {
-      --layout-content-newspaper: min(1920px, calc(100vw - var(--layout-gutter) * 2));
+      --layout-content-newspaper: min(
+        var(--layout-newspaper-max),
+        calc(100vw - var(--layout-gutter) * 4)
+      );
       --layout-content: min(
         var(--layout-feed),
         calc(100vw - var(--layout-rail) - var(--layout-gutter) * 4)
@@ -243,7 +250,7 @@
     }
 
     .content-stage-newspaper {
-      @apply max-w-none px-1 py-4 sm:px-2;
+      @apply max-w-none px-[var(--layout-gutter)] py-4;
     }
 
     .content-stage-newspaper > .content-main-newspaper {
@@ -304,7 +311,7 @@
 
   @media (min-width: 1024px) {
     .content-stage-newspaper {
-      @apply max-w-none px-1 py-4 sm:px-2;
+      @apply max-w-none px-[var(--layout-gutter)] py-4;
     }
 
     .content-stage-newspaper > .content-main-newspaper {

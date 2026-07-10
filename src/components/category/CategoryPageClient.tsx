@@ -6,6 +6,7 @@ import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { DesktopCategoryPage } from '@/components/home/desktop/DesktopCategoryPage'
 import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
+import { SporCategoryExtras } from '@/components/sports/SporCategoryExtras'
 import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
@@ -104,6 +105,7 @@ export function CategoryPageClient({
   worldCupData,
 }: CategoryPageClientProps) {
   const borsaTop = cat.id === 'borsa' ? <BorsaWidgetClient /> : null
+  const sporExtras = cat.id === 'spor' ? <SporCategoryExtras /> : null
 
   return (
     <>
@@ -123,6 +125,7 @@ export function CategoryPageClient({
           <WorldCupCategoryTabs initialPosts={initialPosts} data={worldCupData} />
         ) : (
           <>
+            {sporExtras}
             {borsaTop}
             {cat.id === 'borsa' ? (
               <div className="mb-4 flex items-center gap-2">
@@ -171,7 +174,7 @@ export function CategoryPageClient({
               subTabs={subTabs}
               tabParent={tabParent}
               initialPosts={initialPosts}
-              topSlot={borsaTop}
+              topSlot={sporExtras ?? borsaTop}
             />
           )}
         </AdSlotProvider>
