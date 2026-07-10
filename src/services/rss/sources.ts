@@ -1803,6 +1803,193 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     maxItemsPerRun: 12,
     enabled: true,
   },
+
+  // ══════════════════════════════════════════════════════════════════
+  // TURİZM — Otel, havalimanı, tur operatörü, seyahat haberleri
+  // ══════════════════════════════════════════════════════════════════
+  {
+    id: 'turizm-google-news',
+    label: 'Turizm (Google News)',
+    feedUrl: 'https://news.google.com/rss/search?q=turizm+otel+tatil+sezon&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=turizm+havalimanı+tur+operatörü&hl=tr&gl=TR&ceid=TR:tr',
+      'https://news.google.com/rss/search?q=türkiye+turizm+ziyaretçi+rekor&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'turizmgazetesi',
+    label: 'Turizm Gazetesi',
+    feedUrl: 'https://www.turizmgazetesi.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:turizmgazetesi.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'turizaktuel',
+    label: 'Turizm Aktüel',
+    feedUrl: 'https://www.turizaktuel.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:turizaktuel.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'aa-turizm',
+    label: 'AA Turizm / Yaşam',
+    feedUrl: 'https://www.aa.com.tr/tr/rss/default?cat=yasam',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:aa.com.tr+turizm+otel+tatil&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'hurriyet-seyahat',
+    label: 'Hürriyet Seyahat',
+    feedUrl: 'https://www.hurriyet.com.tr/rss/seyahat',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:hurriyet.com.tr+seyahat+tatil+turizm&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'ntv-seyahat',
+    label: 'NTV Seyahat',
+    feedUrl: 'https://www.ntv.com.tr/seyahat.rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:ntv.com.tr+seyahat+turizm&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'sabah-turizm',
+    label: 'Sabah Turizm',
+    feedUrl: 'https://www.sabah.com.tr/rss/turizm.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:sabah.com.tr+turizm+otel+tatil&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'turizmekonomi',
+    label: 'Turizm Ekonomi',
+    feedUrl: 'https://www.turizmekonomi.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:turizmekonomi.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'tourismtoday',
+    label: 'Tourism Today',
+    feedUrl: 'https://www.tourismtoday.net/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:tourismtoday.net+turkey+tourism&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'turizmajansi',
+    label: 'Turizm Ajansı',
+    feedUrl: 'https://www.turizmajansi.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:turizmajansi.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'turizmnews',
+    label: 'Turizm News',
+    feedUrl: 'https://www.turizmnews.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:turizmnews.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'turizmaktuel',
+    label: 'Turizm Aktüel',
+    feedUrl: 'https://www.turizmaktuel.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:turizmaktuel.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'turizmguncel',
+    label: 'Turizm Güncel',
+    feedUrl: 'https://www.turizmguncel.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:turizmguncel.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // GEZİ — Seyahat rotaları, destinasyon, keşif, gezi rehberi
+  // ══════════════════════════════════════════════════════════════════
+  {
+    id: 'gezi-google-news',
+    label: 'Gezi (Google News)',
+    feedUrl: 'https://news.google.com/rss/search?q=gezi+seyahat+tatil+destinasyon&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=gezi+rehberi+keşfet+rota+türkiye&hl=tr&gl=TR&ceid=TR:tr',
+      'https://news.google.com/rss/search?q=tatil+önerileri+seyahat+rotası+gezi&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'gezginler',
+    label: 'Gezginler.net',
+    feedUrl: 'https://www.gezginler.net/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:gezginler.net+gezi+seyahat&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'milliyet-seyahat',
+    label: 'Milliyet Seyahat',
+    feedUrl: 'https://www.milliyet.com.tr/rss/rssnew/seyahatrss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:milliyet.com.tr+seyahat+gezi+tatil&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'cnnturk-seyahat',
+    label: 'CNN Türk Seyahat',
+    feedUrl: 'https://www.cnnturk.com/feed/rss/seyahat/news',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:cnnturk.com+seyahat+gezi&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'lonely-planet-tr',
+    label: 'Lonely Planet Türkiye (Google News)',
+    feedUrl: 'https://news.google.com/rss/search?q=lonely+planet+türkiye+gezi+destinasyon&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
 ]
 
 function envFeedOverride(sourceId: string): string | undefined {

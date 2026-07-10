@@ -160,6 +160,21 @@ export const OTOMOBIL_SOURCE_IDS = [
   'sozcu-otomotiv',
 ] as const
 
+/** Turizm kaynakları — otel, tatil, tur operatörü, havalimanı, sezon haberleri. */
+export const TURIZM_SOURCE_IDS = [
+  'turizm-google-news',
+  'turizmgazetesi', 'turizaktuel', 'turizmekonomi',
+  'turizmajansi', 'turizmnews', 'turizmaktuel', 'turizmguncel',
+  'tourismtoday',
+  'aa-turizm', 'hurriyet-seyahat', 'ntv-seyahat', 'sabah-turizm',
+] as const
+
+/** Gezi kaynakları — destinasyon, rota, seyahat rehberi, keşif haberleri. */
+export const GEZI_SOURCE_IDS = [
+  'gezi-google-news', 'gezginler', 'milliyet-seyahat',
+  'cnnturk-seyahat', 'lonely-planet-tr',
+] as const
+
 export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
   'local-news': {
     id: 'local-news',
@@ -381,6 +396,22 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     schedule: '30m',
     description: 'Oto.com.tr, OtomobilHaber, Arabalar.com.tr, Hürriyet/Milliyet Otomobil — araç ve trafik haberleri.',
     cronPath: '/api/cron/newsroom/otomobil',
+  },
+  'turizm-news': {
+    id: 'turizm-news',
+    name: 'Turizm Worker',
+    nameTr: 'Turizm Worker',
+    schedule: '30m',
+    description: 'Turizm Gazetesi, Turizm Aktüel, AA Turizm, Hürriyet/NTV/Sabah Seyahat — otel, tatil, tur operatörü haberleri.',
+    cronPath: '/api/cron/newsroom/turizm',
+  },
+  'gezi-news': {
+    id: 'gezi-news',
+    name: 'Gezi Worker',
+    nameTr: 'Gezi Worker',
+    schedule: '60m',
+    description: 'Gezginler.net, Milliyet/CNN Türk Seyahat, Lonely Planet — destinasyon, rota, seyahat rehberi haberleri.',
+    cronPath: '/api/cron/newsroom/gezi',
   },
   'aa-content': {
     id: 'aa-content',

@@ -11,6 +11,8 @@ export { runHealthWorker } from '@/services/newsroom/workers/healthWorker'
 export { runPoliticsWorker } from '@/services/newsroom/workers/politicsWorker'
 export { runMagazineWorker } from '@/services/newsroom/workers/magazineWorker'
 export { runGundemWorker } from '@/services/newsroom/workers/gundemWorker'
+export { runTurizmWorker } from '@/services/newsroom/workers/turizmWorker'
+export { runGeziWorker } from '@/services/newsroom/workers/geziWorker'
 
 import { runBreakingWorker } from '@/services/newsroom/workers/breakingWorker'
 import { runNationalWorker } from '@/services/newsroom/workers/nationalWorker'
