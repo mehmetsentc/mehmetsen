@@ -19,19 +19,17 @@ import {
 } from '@/components/home/desktop/DesktopStoryBlocks'
 import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import type { HomeFeedInitialData, NewsItem } from '@/types/newsItem'
+import type { HomeCategorySlug, HomeFeedInitialData, NewsItem } from '@/types/newsItem'
 
 const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
 const CATEGORY_ROW_2 = ['saglik', 'kultur', 'turizm', 'gezi'] as const
 
-function padToFour(
-  items: NewsItem[],
-  takeFeatured: (count: number) => NewsItem[]
+function sliceCategoryRail(
+  rails: HomeFeedInitialData['categoryRails'],
+  categoryId: string,
+  count: number
 ): NewsItem[] {
-  if (items.length >= 4) return items.slice(0, 4)
-  const needed = 4 - items.length
-  const filler = takeFeatured(needed)
-  return [...items, ...filler]
+  return (rails[categoryId as HomeCategorySlug] ?? []).slice(0, count)
 }
 
 function rowGapFiller(
@@ -75,7 +73,7 @@ interface DesktopHomeFeedProps {
 
 export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
   const layout = useMemo(() => {
-    const { take, takeCategory, takeFeatured } = createFeedAllocator(data)
+    const { take, takeFeatured } = createFeedAllocator(data)
 
     const heroLead = take(1)[0]
     const heroRight = take(2)
@@ -83,21 +81,20 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
     const topFour = take(4)
     const quickHeadlines = take(5)
-    const topicFour = takeCategory('spor', 4)
 
-    const moreGrid = takeCategory('gundem', 4)
-    const moreSidebar = takeCategory('gundem', 2)
+    const moreGrid = sliceCategoryRail(data.categoryRails, 'gundem', 4)
+    const moreSidebar = sliceCategoryRail(data.categoryRails, 'gundem', 6).slice(4, 6)
 
     const featureLead = take(1)[0]
     const featureImage = take(1)[0]
 
     const catRow1 = CATEGORY_ROW_1.map((id) => ({
       id,
-      items: padToFour(takeCategory(id, 4), takeFeatured),
+      items: sliceCategoryRail(data.categoryRails, id, 4),
     }))
     const catRow2 = CATEGORY_ROW_2.map((id) => ({
       id,
-      items: padToFour(takeCategory(id, 4), takeFeatured),
+      items: sliceCategoryRail(data.categoryRails, id, 4),
     }))
     const catRow1Filler = rowGapFiller(catRow1, takeFeatured)
     const catRow2Filler = rowGapFiller(catRow2, takeFeatured)
@@ -112,7 +109,6 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       heroSidebarText,
       topFour,
       quickHeadlines,
-      topicFour,
       moreGrid,
       moreSidebar,
       featureLead,
@@ -171,17 +167,6 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       ) : null}
 
       <QuickHeadlineStrip items={layout.quickHeadlines} />
-
-      {layout.topicFour.length > 0 ? (
-        <section className={DESKTOP_SECTION_DIVIDER} aria-label="Spor">
-          <DesktopSectionHeader title="Spor" href={ROUTES.CATEGORY('spor')} />
-          <div className={FOUR_CARD_GRID}>
-            {layout.topicFour.map((item) => (
-              <ImageStory key={item.id} item={item} aspect="video" />
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       {layout.moreGrid.length > 0 ? (
         <section className={DESKTOP_SECTION_DIVIDER} aria-label="Gündem">

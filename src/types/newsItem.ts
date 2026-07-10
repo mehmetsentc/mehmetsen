@@ -61,6 +61,19 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'asayis',
 ]
 
+/** Ana sayfa kategori bölümleri — Firestore'dan ayrı sorgulanır. */
+export const FEED_PRIORITY_RAILS: HomeCategorySlug[] = [
+  'gundem',
+  'spor',
+  'ekonomi',
+  'teknoloji',
+  'dunya',
+  'saglik',
+  'kultur',
+  'turizm',
+  'gezi',
+]
+
 export interface HomeFeedInitialData {
   breaking: NewsItem[]
   featured: NewsItem[]

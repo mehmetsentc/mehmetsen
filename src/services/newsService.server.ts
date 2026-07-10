@@ -11,7 +11,7 @@ import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking
 import type { Post } from '@/types/post'
 import type { FeedSliderItem } from '@/types/feedSlider'
 import type { HomeFeedInitialData, HomeCategorySlug, NewsItem } from '@/types/newsItem'
-import { HOME_CATEGORY_RAILS } from '@/types/newsItem'
+import { FEED_PRIORITY_RAILS, HOME_CATEGORY_RAILS } from '@/types/newsItem'
 
 export type { FeedSliderItem }
 
@@ -300,6 +300,20 @@ function bucketCategoryRails(pool: NewsItem[], perCategory = 10): Partial<Record
   return rails
 }
 
+/** Feed bölümleri için kategori raylerini Firestore'dan doğrudan doldurur (150'lük havuz yetersiz kalmasın). */
+async function enrichPriorityCategoryRails(
+  poolRails: Partial<Record<HomeCategorySlug, NewsItem[]>>
+): Promise<Partial<Record<HomeCategorySlug, NewsItem[]>>> {
+  const rails = { ...poolRails }
+  await Promise.all(
+    FEED_PRIORITY_RAILS.map(async (category) => {
+      const items = await getHomeCategoryItems(category, 12)
+      if (items.length > 0) rails[category] = items
+    })
+  )
+  return rails
+}
+
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   const pool = await getHomeNewsPool(150)
 
@@ -316,6 +330,8 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 
   const now = Date.now()
+  const poolRails = bucketCategoryRails(pool, 12)
+  const categoryRails = await enrichPriorityCategoryRails(poolRails)
 
   return {
     breaking: bucketBreaking(pool, 12),
@@ -324,7 +340,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
     trending: bucketTrending(pool, 6, now),
     trendFeed: bucketTrendFeed(pool, 24, now),
     mostRead: bucketMostRead(pool, 6),
-    categoryRails: bucketCategoryRails(pool, 10),
+    categoryRails,
   }
 }
 

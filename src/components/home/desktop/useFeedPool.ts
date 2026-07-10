@@ -1,7 +1,16 @@
 import type { HomeCategorySlug, HomeFeedInitialData, NewsItem } from '@/types/newsItem'
 
+/** Kategori raylerindeki haberler bölüm slotları için ayrılmış kalsın. */
+function reserveRailIds(data: HomeFeedInitialData): Set<string> {
+  const ids = new Set<string>()
+  for (const items of Object.values(data.categoryRails)) {
+    for (const item of items ?? []) ids.add(item.id)
+  }
+  return ids
+}
+
 export function createFeedAllocator(data: HomeFeedInitialData) {
-  const used = new Set<string>()
+  const used = reserveRailIds(data)
 
   const masterPool: NewsItem[] = []
   const seen = new Set<string>()
