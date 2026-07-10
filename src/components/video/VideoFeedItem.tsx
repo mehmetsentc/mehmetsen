@@ -531,14 +531,15 @@ function VideoFeedItemInner({
   // ytBlocked=true: video sahibi embedding'i kapatmış (101/150) → fallback UI göster.
   if (isYouTube && stableSrc) {
     const videoId = stableSrc.split('/embed/')[1]?.split('?')[0] ?? ''
-    const origin = typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
 
     // youtube-nocookie.com: gizlilik modu + iOS WebKit'te postMessage daha güvenilir
+    // autoplay=1 + mute=1: browser autoplay politikasını bypass eder (sesli → postMessage ile aç)
     // Tek sabit src — key değişmez, iframe yeniden yüklenmez.
     // Oynatma/durdurma postMessage (playVideo/pauseVideo) ile yönetilir.
     const baseEmbed = `https://www.youtube-nocookie.com/embed/${videoId}`
-    const embedSrc = `${baseEmbed}?mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
+    const embedSrc = `${baseEmbed}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
 
     const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl
       ?? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`

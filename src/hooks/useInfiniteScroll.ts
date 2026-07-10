@@ -54,10 +54,18 @@ export function useActiveSnapItem({
 }: UseActiveSnapItemOptions = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const observerRef = useRef<IntersectionObserver | null>(null)
 
   const setItemRef = useCallback((index: number, el: HTMLDivElement | null) => {
-    if (el) itemRefs.current.set(index, el)
-    else itemRefs.current.delete(index)
+    if (el) {
+      itemRefs.current.set(index, el)
+      // Yeni öğe mount edilince hemen observe et (observer zaten aktifse)
+      observerRef.current?.observe(el)
+    } else {
+      const old = itemRefs.current.get(index)
+      if (old) observerRef.current?.unobserve(old)
+      itemRefs.current.delete(index)
+    }
   }, [])
 
   useEffect(() => {
@@ -85,9 +93,13 @@ export function useActiveSnapItem({
       { root: container, threshold: [0.25, 0.5, 0.75, 1] }
     )
 
+    observerRef.current = observer
     itemRefs.current.forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
-  }, [onActiveChange, itemCount, suspend])
+    return () => {
+      observer.disconnect()
+      observerRef.current = null
+    }
+  }, [onActiveChange, suspend])
 
   const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior = 'smooth') => {
     const el = itemRefs.current.get(index)
