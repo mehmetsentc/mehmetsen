@@ -24,8 +24,14 @@ import type { HomeFeedInitialData, NewsItem } from '@/types/newsItem'
 const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
 const CATEGORY_ROW_2 = ['saglik', 'kultur', 'turizm', 'gezi'] as const
 
-function trimToFour(items: NewsItem[]): NewsItem[] {
-  return items.slice(0, 4)
+function padToFour(
+  items: NewsItem[],
+  takeFeatured: (count: number) => NewsItem[]
+): NewsItem[] {
+  if (items.length >= 4) return items.slice(0, 4)
+  const needed = 4 - items.length
+  const filler = takeFeatured(needed)
+  return [...items, ...filler]
 }
 
 function rowGapFiller(
@@ -87,11 +93,11 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
     const catRow1 = CATEGORY_ROW_1.map((id) => ({
       id,
-      items: trimToFour(takeCategory(id, 4)),
+      items: padToFour(takeCategory(id, 4), takeFeatured),
     }))
     const catRow2 = CATEGORY_ROW_2.map((id) => ({
       id,
-      items: trimToFour(takeCategory(id, 4)),
+      items: padToFour(takeCategory(id, 4), takeFeatured),
     }))
     const catRow1Filler = rowGapFiller(catRow1, takeFeatured)
     const catRow2Filler = rowGapFiller(catRow2, takeFeatured)
