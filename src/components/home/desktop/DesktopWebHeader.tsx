@@ -47,16 +47,16 @@ export function DesktopWebHeader({
         itemType="https://schema.org/WPHeader"
       >
         <div className="flex items-stretch gap-2">
-          <Link
-            href={ROUTES.FEED}
-            className="flex shrink-0 items-center gap-1.5 py-2 pr-2 transition-opacity hover:opacity-90"
-            aria-label="NaHaber Ana Sayfa"
-          >
-            <BrandLogo size="sm" />
-            <span className="hidden text-sm font-black tracking-tight text-[rgb(var(--color-text))] xl:inline">
-              <span className="text-[rgb(var(--color-brand))]">Na</span>Haber
-            </span>
-          </Link>
+        <Link
+          href={ROUTES.FEED}
+          className="flex shrink-0 items-center gap-2 py-2 pr-2 transition-opacity hover:opacity-90"
+          aria-label="NaHaber Ana Sayfa"
+        >
+          <BrandLogo size="sm" className="h-7 w-7" />
+          <span className="text-[1.75rem] font-bold leading-none tracking-tight text-[rgb(var(--color-text))]">
+            <span className="text-[rgb(var(--color-brand))]">Na</span>Haber
+          </span>
+        </Link>
 
           <nav
             className="min-w-0 flex-1 overflow-x-auto scrollbar-hide border-l border-[rgb(var(--color-border))] pl-2"
@@ -131,13 +131,13 @@ export function DesktopWebHeader({
 
         <Link
           href={ROUTES.FEED}
-          className="flex flex-col items-center gap-1 transition-opacity hover:opacity-90"
+          className="flex items-center gap-3 transition-opacity hover:opacity-90"
           aria-label="NaHaber Ana Sayfa"
           itemProp="url"
         >
-          <BrandLogo size="lg" priority className="h-10 w-10" />
+          <BrandLogo size="lg" priority className="h-10 w-10 shrink-0" />
           <span
-            className="font-serif text-[2rem] font-bold leading-none tracking-tight md:text-[2.35rem]"
+            className="font-serif text-[2.5rem] font-bold leading-none tracking-tight"
             itemProp="name"
           >
             <span className="text-[rgb(var(--color-brand))]">Na</span>
