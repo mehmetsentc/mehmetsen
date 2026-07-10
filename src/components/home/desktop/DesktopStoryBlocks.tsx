@@ -8,14 +8,29 @@ import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
 import { cn } from '@/lib/utils'
 import type { NewsItem } from '@/types/newsItem'
 
+function StoryCategoryBadge({ item, className }: { item: NewsItem; className?: string }) {
+  const label = newsItemCategoryLabel(item)
+  if (!label) return null
+
+  return (
+    <span
+      className={cn(
+        'inline-block text-[11px] font-black uppercase tracking-[0.1em] text-[rgb(var(--color-brand))]',
+        className
+      )}
+    >
+      {label}
+    </span>
+  )
+}
+
 function StoryMeta({ item, className }: { item: NewsItem; className?: string }) {
   const time = formatNewsRelative(item.publishedAt ?? item.createdAt)
-  const category = newsItemCategoryLabel(item)
-  if (!time && !category) return null
+  if (!time) return null
 
   return (
     <p className={cn('text-xs text-[rgb(var(--color-muted))]', className)}>
-      {[time, category].filter(Boolean).join(' | ')}
+      {time}
     </p>
   )
 }
@@ -83,6 +98,7 @@ export function HeroStory({ item, priority = false }: { item: NewsItem; priority
             className="object-cover transition-transform duration-300 group-hover:scale-[1.01]"
           />
         </div>
+        <StoryCategoryBadge item={item} className="mb-2" />
         <Headline item={item} size="hero" serif />
         {item.description ? (
           <p className="mt-3 line-clamp-3 text-[15px] leading-relaxed text-[rgb(var(--color-muted))]">
@@ -145,6 +161,7 @@ export function RightFeatureStory({ item, live = false }: { item: NewsItem; live
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
+        <StoryCategoryBadge item={item} className="mb-1.5" />
         <HeadlineText item={item} size="sm" serif />
         {item.description ? (
           <p className="mt-1.5 line-clamp-2 break-words text-xs leading-relaxed text-[rgb(var(--color-muted))]">
@@ -210,6 +227,7 @@ export function ImageStory({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
+        <StoryCategoryBadge item={item} className="mb-1.5" />
         <Headline item={item} size="md" />
         {showSummary && item.description ? (
           <p className="mt-2 line-clamp-3 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">
@@ -225,6 +243,7 @@ export function ImageStory({
 export function TextLeadStory({ item, size = 'lg' }: { item: NewsItem; size?: 'md' | 'lg' | 'hero' }) {
   return (
     <article className="min-w-0">
+      <StoryCategoryBadge item={item} className="mb-1.5" />
       <Headline item={item} size={size === 'hero' ? 'hero' : size} serif />
       {item.description ? (
         <p className="mt-3 line-clamp-4 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">
@@ -245,6 +264,7 @@ export function SidebarTextStory({ item, live = false }: { item: NewsItem; live?
           Canlı
         </span>
       ) : null}
+      <StoryCategoryBadge item={item} className="mb-1" />
       <Headline item={item} size="sm" />
       <StoryMeta item={item} className="mt-1.5" />
     </article>
@@ -258,6 +278,7 @@ export function NumberedStory({ item, rank }: { item: NewsItem; rank: number }) 
         {rank}
       </span>
       <div className="min-w-0">
+        <StoryCategoryBadge item={item} className="mb-1" />
         <Headline item={item} size="sm" />
         <StoryMeta item={item} className="mt-1" />
       </div>

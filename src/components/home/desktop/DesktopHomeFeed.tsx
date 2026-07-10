@@ -79,8 +79,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const quickHeadlines = take(5)
     const topicFour = takeCategory('spor', 4)
 
-    const moreGrid = take(4)
-    const moreSidebar = take(2)
+    const moreGrid = takeCategory('gundem', 4)
+    const moreSidebar = takeCategory('gundem', 2)
 
     const featureLead = take(1)[0]
     const featureImage = take(1)[0]
