@@ -8,6 +8,9 @@ interface UseInfiniteScrollOptions {
   loading: boolean
   rootMargin?: string
   threshold?: number
+  /** Firestore sorgusu kullanıcı kaydırmadan tetiklenmesin */
+  requireUserScroll?: boolean
+  userScrolled?: boolean
 }
 
 export function useInfiniteScroll({
@@ -16,12 +19,15 @@ export function useInfiniteScroll({
   loading,
   rootMargin = '400px',
   threshold = 0.1,
+  requireUserScroll = false,
+  userScrolled = true,
 }: UseInfiniteScrollOptions) {
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   const handleLoadMore = useCallback(() => {
+    if (requireUserScroll && !userScrolled) return
     if (!loading && hasMore) onLoadMore()
-  }, [loading, hasMore, onLoadMore])
+  }, [loading, hasMore, onLoadMore, requireUserScroll, userScrolled])
 
   useEffect(() => {
     const sentinel = sentinelRef.current

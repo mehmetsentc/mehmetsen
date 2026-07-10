@@ -58,6 +58,13 @@ const CATEGORY_ALIASES: Record<string, string> = {
   konser: 'konser',
   concert: 'konser',
   festival: 'festival',
+  'kibris-haberleri': 'kibris-haberleri',
+  kibris: 'kibris-haberleri',
+  'kibris haberleri': 'kibris-haberleri',
+  'kıbrıs haberleri': 'kibris-haberleri',
+  kktc: 'kibris-haberleri',
+  'kuzey kibris': 'kibris-haberleri',
+  'kuzey kıbrıs': 'kibris-haberleri',
 }
 
 /** All newsroom categories — DEFAULT_CATEGORIES tek kaynak. */
@@ -135,6 +142,50 @@ const DUNYA_KEYWORDS = [
   'filipinler', 'avustralya', 'almanya', 'fransa',
   'ingiltere', 'kanada', 'brezilya', 'meksika',
   'güney kore', 'kuzey kore', 'taiwan',
+] as const
+
+/** KKTC / Kuzey Kıbrıs haber sinyalleri */
+const KIBRIS_KEYWORDS = [
+  'kktc',
+  'k.k.t.c',
+  'kuzey kibris',
+  'kuzey kıbrıs',
+  'kuzey kibris turk cumhuriyeti',
+  'kuzey kıbrıs türk cumhuriyeti',
+  'kibris turk cumhuriyeti',
+  'kıbrıs türk cumhuriyeti',
+  'kibris cumhuriyeti',
+  'kıbrıs cumhuriyeti',
+  'kibris haberleri',
+  'kıbrıs haberleri',
+  'northern cyprus',
+  'turkish republic of northern cyprus',
+  'lefkoşa',
+  'lefkosa',
+  'gazimagusa',
+  'gazimağusa',
+  'gazi magusa',
+  'gazi mağusa',
+  'girne',
+  'guzelyurt',
+  'güzelyurt',
+  'iskele',
+  'karpaz',
+  'magusa',
+  'mağusa',
+  'famagusta',
+  'lapta',
+  'alsancak',
+  'kibris meclis',
+  'kıbrıs meclis',
+  'kibris cumhuriyet meclisi',
+  'kktc cumhuriyet meclisi',
+  'kktc basbakan',
+  'kktc başbakan',
+  'kktc cumhurbaskani',
+  'kktc cumhurbaşkanı',
+  'kibris turk',
+  'kıbrıs türk',
 ] as const
 
 const EKONOMI_KEYWORDS = [
@@ -447,6 +498,10 @@ function hasDunyaKeywords(text: string): boolean {
   return containsKeyword(text, DUNYA_KEYWORDS)
 }
 
+function hasKibrisKeywords(text: string): boolean {
+  return containsKeyword(text, KIBRIS_KEYWORDS)
+}
+
 function hasSportsKeywords(text: string): boolean {
   return containsKeyword(text, SPOR_KEYWORDS)
 }
@@ -668,6 +723,7 @@ export function validateCategoryClassification(
   const siyaset = hasSiyasetKeywords(text)
   const ekonomi = hasEkonomiKeywords(text)
   const dunya = hasDunyaKeywords(text)
+  const kibris = hasKibrisKeywords(text)
   const bilim = hasBilimKeywords(text)
   const gastronomi = hasGastronomiKeywords(text)
   const otomobil = hasOtomobilKeywords(text)
@@ -697,12 +753,23 @@ export function validateCategoryClassification(
     }
   }
 
+  // ── KKTC / Kuzey Kıbrıs — gündem/dünya/yerel'e düşmesin ─────────────────
+  if (kibris && categoryId !== 'kibris-haberleri') {
+    overrides.push(`kibris-keywords → kibris-haberleri (was ${categoryId})`)
+    categoryId = 'kibris-haberleri'
+    categoryConfidence = Math.max(categoryConfidence, 91)
+  }
+
   const isAnySportCategory = categoryId === 'spor' || SPOR_SUBS.has(categoryId)
   if (isAnySportCategory && !sports) {
     const prevCat = categoryId
     if (siyaset) {
       overrides.push(`${prevCat}-source ama siyaset-keywords → siyaset`)
       categoryId = 'siyaset'
+      categoryConfidence = Math.max(categoryConfidence, 90)
+    } else if (kibris) {
+      overrides.push(`${prevCat}-source ama kibris-keywords → kibris-haberleri`)
+      categoryId = 'kibris-haberleri'
       categoryConfidence = Math.max(categoryConfidence, 90)
     } else if (dunya) {
       overrides.push(`${prevCat}-source ama dunya-keywords → dunya`)
@@ -838,6 +905,7 @@ export function validateCategoryClassification(
     hasYerelKeywords(text) &&
     mentionsSingleCity(text) &&
     !nationalScope &&
+    !kibris &&
     YEREL_OVERRIDE_CATEGORIES.has(categoryId)
   ) {
     overrides.push(`yerel-keywords + single-city → yerel-haber (was ${categoryId})`)

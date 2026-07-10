@@ -6,22 +6,25 @@ interface DesktopSectionHeaderProps {
   title: string
   href?: string
   className?: string
-  variant?: 'default' | 'brand'
+  variant?: 'default' | 'brand' | 'bbc'
 }
 
 export function DesktopSectionHeader({ title, href, className, variant = 'default' }: DesktopSectionHeaderProps) {
   const content = (
     <>
       <span>{title}</span>
-      {href ? <ChevronRight className="h-4 w-4" aria-hidden /> : null}
+      {href ? <ChevronRight className="h-5 w-5 shrink-0" aria-hidden /> : null}
     </>
   )
 
   const cls = cn(
-    'mb-5 flex items-center gap-1 pt-3 text-sm font-black uppercase tracking-wide',
-    variant === 'brand'
-      ? 'border-t-2 border-[rgb(var(--color-brand))] text-[rgb(var(--color-brand))]'
-      : 'border-t border-[rgb(var(--color-text))] text-[rgb(var(--color-text))]',
+    'mb-5 flex items-center gap-1',
+    variant === 'brand' &&
+      'border-t-2 border-[rgb(var(--color-brand))] pt-3 text-sm font-black uppercase tracking-wide text-[rgb(var(--color-brand))]',
+    variant === 'default' &&
+      'border-t border-[rgb(var(--color-text))] pt-3 text-sm font-black uppercase tracking-wide text-[rgb(var(--color-text))]',
+    variant === 'bbc' &&
+      'border-t-4 border-[rgb(var(--color-text))] pt-4 text-2xl font-bold normal-case tracking-tight text-[rgb(var(--color-text))]',
     className
   )
 

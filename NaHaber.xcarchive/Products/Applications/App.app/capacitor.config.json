@@ -9,8 +9,7 @@
 	"ios": {
 		"contentInset": "automatic",
 		"backgroundColor": "#0a0a0a",
-		"scrollEnabled": true,
-		"limitsNavigationsToAppBoundDomains": true
+		"scrollEnabled": true
 	},
 	"packageClassList": []
 }

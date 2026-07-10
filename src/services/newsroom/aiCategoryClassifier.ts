@@ -17,6 +17,7 @@ const CATEGORIES = [
   'gundem',
   'siyaset',
   'dunya',
+  'kibris-haberleri',
   'ekonomi',
   'spor',
   'futbol',
@@ -44,7 +45,8 @@ export type NewsCategory = (typeof CATEGORIES)[number]
 const CATEGORY_DESCRIPTIONS: Record<NewsCategory, string> = {
   gundem:        'Türkiye genelini veya birden fazla ili etkileyen genel gündem, sosyal, turizm, çevre haberleri. Tek bir ile/ilçeye ait belediye kararı veya yerel yönetim haberleri için ASLA kullanma — o tür haberler yerel-haber kategorisine girer.',
   siyaset:       'Siyasi partiler, seçimler, meclis, hükümet, cumhurbaşkanı, CHP, AKP, MHP politikası',
-  dunya:         'Uluslararası haberler, yabancı ülkeler, savaş, diplomasi, NATO, AB, BM',
+  dunya:         'Uluslararası haberler, yabancı ülkeler, savaş, diplomasi, NATO, AB, BM (KKTC haberleri için kullanma)',
+  'kibris-haberleri': 'Kuzey Kıbrıs Türk Cumhuriyeti (KKTC): Lefkoşa, Gazimağusa, Girne, KKTC siyaseti, cumhurbaşkanı, meclis, kuzey kıbrıs yerel haberleri. Güney Kıbrıs/Yunan haberleri değil.',
   ekonomi:       'Ekonomi, borsa, döviz, faiz, enflasyon, şirket, finans, kripto para',
   spor:          'Genel spor haberleri (hangi branş olduğu belli değilse), olimpiyat açılış/kapanış',
   futbol:        'SADECE futbol: top, gol, penaltı, offside, Süper Lig, Şampiyonlar Ligi, FIFA, UEFA, futbol transferi. Basketbol/voleybol haberleri için ASLA kullanma.',
@@ -64,7 +66,7 @@ const CATEGORY_DESCRIPTIONS: Record<NewsCategory, string> = {
   festival:      'Kültür/sanat festivalleri, film festivali (Cannes, Berlin, İstanbul Film Festivali)',
   gastronomi:    'Yemek, tarif, restoran haberleri, şef, Michelin yıldızı, mutfak kültürü, foodie',
   otomobil:      'Araba, araç, otomobil, motosiklet, trafik, elektrikli araç, TOGG, yeni model tanıtımı',
-  'yerel-haber': 'Yalnızca TÜRKİYE\'deki tek bir il/ilçeyi kapsayan yerel olay: belediye kararı, belediye başkanı açıklaması, zabıta uygulaması, yerel kaza, yerel yangın, ilçe etkinliği, karne töreni, mahalle haberi. YURT DIŞI haberler için ASLA kullanma.',
+  'yerel-haber': 'Yalnızca TÜRKİYE\'deki tek bir il/ilçeyi kapsayan yerel olay: belediye kararı, belediye başkanı açıklaması, zabıta uygulaması, yerel kaza, yerel yangın, ilçe etkinliği, karne töreni, mahalle haberi. YURT DIŞI ve KKTC haberleri için ASLA kullanma.',
 }
 
 export interface ClassifierResult {

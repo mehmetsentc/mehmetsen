@@ -69,8 +69,14 @@ export function useTimelineFeed(
     initialPosts?: TimelinePost[]
     initialCategoryId?: string
     initialFeedSource?: FeedSource
+    /** SSR seed varken mount'ta Firestore çağrısı yapma */
+    deferClientFetch?: boolean
+    /** Canlı polling — kategori sayfalarında kapalı tutulabilir */
+    enableLivePoll?: boolean
   }
 ) {
+  const deferClientFetch = options?.deferClientFetch ?? false
+  const enableLivePoll = options?.enableLivePoll ?? true
   const { user } = useAuth()
   const canUseServerSeed =
     Boolean(options?.initialPosts?.length) &&
@@ -80,7 +86,7 @@ export function useTimelineFeed(
   const [posts, setPosts] = useState<TimelinePost[]>(
     canUseServerSeed ? options!.initialPosts! : []
   )
-  const [loading, setLoading] = useState(!canUseServerSeed)
+  const [loading, setLoading] = useState(!canUseServerSeed && !deferClientFetch)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
@@ -98,7 +104,7 @@ export function useTimelineFeed(
       : 0
   )
   const liveReadyRef = useRef(false)
-  const skipInitialFetchRef = useRef(canUseServerSeed)
+  const skipInitialFetchRef = useRef(canUseServerSeed || deferClientFetch)
 
   categoryRef.current = categoryId
   feedSourceRef.current = feedSource
@@ -249,7 +255,7 @@ export function useTimelineFeed(
   }, [categoryId, feedSource, user?.uid, userCitySlug, loadFollowing])
 
   useEffect(() => {
-    if (!initialLoadDoneRef.current || loading) return
+    if (!enableLivePoll || !initialLoadDoneRef.current || loading) return
 
     const timelineOptions = toTimelineOptions(categoryRef.current, feedSourceRef.current, userCityRef.current)
     let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -298,7 +304,7 @@ export function useTimelineFeed(
       if (deferTimer) clearTimeout(deferTimer)
       if (pollTimer) clearInterval(pollTimer)
     }
-  }, [categoryId, feedSource, userCitySlug, loading, prependLivePosts])
+  }, [categoryId, feedSource, userCitySlug, loading, prependLivePosts, enableLivePoll])
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore && !loading) {

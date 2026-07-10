@@ -104,7 +104,9 @@ function VideoFeedItemInner({
   )
 
   const postToYT = useCallback((payload: object) => {
-    iframeRef.current?.contentWindow?.postMessage(JSON.stringify(payload), YT_EMBED_ORIGIN)
+    // '*' kullanılıyor: YouTube iframe yüklenirken origin değişebilir (nocookie→youtube.com).
+    // Hedefli postMessage sessizce düşer → player komutlarımızı almaz → event göndermez.
+    iframeRef.current?.contentWindow?.postMessage(JSON.stringify(payload), '*')
   }, [])
 
   const sendYTCmd = useCallback(
@@ -320,11 +322,18 @@ function VideoFeedItemInner({
           if (isActive) sendYTCmd(muteCmd)
         }
 
-        // infoDelivery: video gerçekte oynuyor (autoplay=1 ile başladı) ama
-        // onStateChange listener kurulmadan önce geldi → React hâlâ paused=true sanıyor.
-        // currentTime > 0 ise video çalışıyor — React state'ini güncelle.
+        // infoDelivery: video gerçekte oynuyor veya buffer'a aldı → paused=false yap.
+        // Neden '*' ile postMessage? YouTube iframe yüklenince origin değişebiliyor.
+        // Hedefli postMessage (YT_EMBED_ORIGIN) sessizce düşüyor → 'listening' ulaşmıyor
+        // → YouTube event göndermez → onStateChange hiç gelmez → siyah ekran.
+        // '*' ile gönderince listening ulaşıyor ve bu infoDelivery'ler dönüyor.
         if (data?.event === 'infoDelivery' && isActive) {
           const info = data.info
+          const pState = info?.playerState
+          // 1=oynuyor, 3=buffer → her iki durumda da oynatma başladı say
+          if (pState === 1 || pState === 3) {
+            setPaused(false)
+          }
           if (typeof info?.currentTime === 'number' && info.currentTime > 0) {
             setPaused(false)
             setLoading(false)

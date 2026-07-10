@@ -33,6 +33,9 @@ function timelinePostToNewsItem(post: TimelinePost): NewsItem | null {
         ? raw
         : undefined
 
+  const videoUrl =
+    post.mediaItems?.find((m) => m.type === 'video')?.url?.trim() || undefined
+
   const isBreaking = Boolean(post.isBreaking) || categoryId === 'son-dakika'
 
   return {
@@ -41,11 +44,11 @@ function timelinePostToNewsItem(post: TimelinePost): NewsItem | null {
     title,
     description: post.summary?.trim() || post.spot?.trim() || undefined,
     imageUrl: imageUrl && imageUrl.length > 5 ? imageUrl : undefined,
-    videoUrl: post.videoUrl?.trim() || undefined,
+    videoUrl,
     category: categoryId || undefined,
     publishedAt,
     breaking: isBreaking,
-    featured: post.featured,
+    featured: post.isEditorPick,
   }
 }
 

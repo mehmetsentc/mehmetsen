@@ -11,6 +11,14 @@ export function CategoryNav() {
   const pathname = usePathname()
   const activeKey = resolveSwipeCategoryKey(pathname)
 
+  const hide =
+    pathname === '/reels' ||
+    pathname.startsWith('/messages') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/haber/') ||
+    pathname.startsWith('/post/') ||
+    pathname.startsWith('/profile/')
+
   if (hide) return null
 
   return (

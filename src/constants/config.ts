@@ -40,6 +40,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'yerel-haber', name: 'Yerel Haber', slug: 'yerel-haber', iconName: 'map-pin',      color: '#059669' },
   { id: 'siyaset',     name: 'Siyaset',     slug: 'siyaset',     iconName: 'landmark',     color: '#7C3AED' },
   { id: 'dunya',       name: 'Dünya',       slug: 'dunya',       iconName: 'globe',        color: '#6B7280' },
+  { id: 'kibris-haberleri', name: 'Kıbrıs Haberleri', slug: 'kibris-haberleri', iconName: 'flag', color: '#0E7490' },
   { id: 'ekonomi',     name: 'Ekonomi',     slug: 'ekonomi',     iconName: 'trending-up',  color: '#F59E0B' },
   { id: 'borsa',       name: 'Borsa',       slug: 'borsa',       iconName: 'bar-chart-2',  color: '#22C55E', parentId: 'ekonomi', standalone: true },
   { id: 'kripto',      name: 'Kripto',      slug: 'kripto',      iconName: 'bitcoin',      color: '#F7931A', parentId: 'ekonomi', standalone: true },
@@ -81,7 +82,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
 
 /** Admin CMS haber editörü — gruplu kategori seçici (tek kaynak: DEFAULT_CATEGORIES). */
 const ADMIN_CATEGORY_GROUP_DEFS: Array<{ label: string; ids: string[] }> = [
-  { label: 'Genel', ids: ['trend', 'gundem', 'yerel-haber', 'siyaset', 'dunya', 'asayis', 'son-dakika'] },
+  { label: 'Genel', ids: ['trend', 'gundem', 'yerel-haber', 'siyaset', 'dunya', 'kibris-haberleri', 'asayis', 'son-dakika'] },
   { label: 'Ekonomi', ids: ['ekonomi'] },
   { label: 'Spor', ids: ['spor'] },
   { label: 'Teknoloji & Bilim', ids: ['teknoloji', 'bilim'] },
@@ -149,6 +150,7 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'gundem',
   'siyaset',
   'dunya',
+  'kibris-haberleri',
   'spor',
   'teknoloji',
   'ekonomi',
@@ -172,6 +174,7 @@ export const TOP_NAV_CATEGORY_IDS = [
   'asayis',
   'spor',
   'dunya',
+  'kibris-haberleri',
   'siyaset',
   'ekonomi',
   'turizm',
@@ -215,6 +218,7 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('asayis', '3. Sayfa'),
     categoryLink('spor'),
     categoryLink('dunya'),
+    categoryLink('kibris-haberleri'),
     categoryLink('siyaset'),
     categoryLink('ekonomi'),
     categoryLink('turizm'),

@@ -38,7 +38,7 @@
 		</data>
 		<key>Frameworks/Capacitor.framework/Capacitor</key>
 		<data>
-		fqgsij2J8xZOpO3bOP5/ecy7/fA=
+		z6qZpNzPeqivaFB/jjsazuDlyd8=
 		</data>
 		<key>Frameworks/Capacitor.framework/Info.plist</key>
 		<data>
@@ -58,7 +58,7 @@
 		</data>
 		<key>Frameworks/Cordova.framework/Cordova</key>
 		<data>
-		mDEw37tGl/biw9E+rBxEOR3zI2w=
+		boviqIHQR6wSA8olKJ9Shy9q6fM=
 		</data>
 		<key>Frameworks/Cordova.framework/Info.plist</key>
 		<data>
@@ -74,7 +74,7 @@
 		</data>
 		<key>Info.plist</key>
 		<data>
-		++7sMwg57IPEhslayFlHGO/ROqU=
+		AJQbbsXvUdUgr0t66n+ceuZjTaU=
 		</data>
 		<key>PkgInfo</key>
 		<data>
@@ -82,7 +82,7 @@
 		</data>
 		<key>capacitor.config.json</key>
 		<data>
-		E0erOPy3+W8vl5LBOIGE5EMOX8s=
+		YAZn2+XXviDSRyFxub2ifweBRXk=
 		</data>
 		<key>config.xml</key>
 		<data>
@@ -90,7 +90,7 @@
 		</data>
 		<key>embedded.mobileprovision</key>
 		<data>
-		PYodJSmE8WycoDh0EMMHgS9vqHA=
+		iL7r8g1YbxEX8T6kQaRf8UPJXyU=
 		</data>
 		<key>public/cordova.js</key>
 		<data>
@@ -163,7 +163,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			MvAcGz++Dk6s4M5baCaSP5fjBfFMMM680Ev5C4Sl0qk=
+			0Ju8xTn2h91RlRqCvv7ykxixXfdqUADzjTIvwUed380=
 			</data>
 		</dict>
 		<key>Frameworks/Capacitor.framework/Info.plist</key>
@@ -198,7 +198,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			6SxFCp9u7m45ajqE5s4WzlqfDz6nOITljw+Sk3loVVU=
+			mVNIhjTv5bE4OKPYds8BPQA5QGIrpbf+tJtrLMrLQHY=
 			</data>
 		</dict>
 		<key>Frameworks/Cordova.framework/Info.plist</key>
@@ -226,7 +226,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			xBfGHdNo170WgNLdRgDOjBn/a00O1TsKVNS8MX+jHHI=
+			q9qZ+haeFES+/rR/FgEiX9Ub/ZX6Yj/6ok67p9bTsFk=
 			</data>
 		</dict>
 		<key>config.xml</key>
@@ -240,7 +240,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			QAWPGsn+33RVcyY7JgeYSnoOlUO1eFhpHyQhYGwy608=
+			/wL6fjHy8G5968/n5MoEpx4/3WUrIUoPeOVQ8mEH83g=
 			</data>
 		</dict>
 		<key>public/cordova.js</key>
