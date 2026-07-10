@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import type { Metadata } from 'next'
 import { permanentRedirect, notFound } from 'next/navigation'
+import { ArticlePageChrome } from '@/components/news/ArticlePageChrome'
 import { NewsArticleStatic } from '@/components/news/NewsArticleStatic'
 import { NewsArticleInteractive } from '@/components/news/NewsArticleInteractive'
 import {
@@ -81,6 +82,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(videoJsonLd) }}
         />
       )}
+      <ArticlePageChrome post={post} />
       <NewsArticleStatic post={post} />
       <NewsArticleInteractive post={post} />
     </>

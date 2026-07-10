@@ -11,17 +11,15 @@ import type { Post } from '@/types/post'
 
 interface ArticleStickyHeaderProps {
   post: Post
-  /** Bu eşik px aşılınca header görünür olur (varsayılan: hero yüksekliği). */
+  /** Scroll sonrası mobil başlık çubuğu eşiği (px). */
   threshold?: number
 }
 
 /**
- * ArticleStickyHeader — F2
- *
- * Kullanıcı hero'yu geçtikten sonra üstte daralan bir başlık çubuğu görür
- * (Apple News tarzı). Geri butonu + kategori rozeti + kısa başlık.
+ * Mobil: scroll sonrası sabit kompakt başlık çubuğu.
+ * Masaüstünde ArticlePageChrome içindeki site header kullanılır.
  */
-export function ArticleStickyHeader({ post, threshold = 280 }: ArticleStickyHeaderProps) {
+export function ArticleStickyHeader({ post, threshold = 120 }: ArticleStickyHeaderProps) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -35,19 +33,19 @@ export function ArticleStickyHeader({ post, threshold = 280 }: ArticleStickyHead
 
   return (
     <AnimatePresence>
-      {visible && (
+      {visible ? (
         <motion.div
           initial={{ y: -48, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -48, opacity: 0 }}
           transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed inset-x-0 top-0 z-sticky border-b border-border-subtle bg-bg-card/95 backdrop-blur-xl"
+          className="fixed inset-x-0 top-0 z-50 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/95 backdrop-blur-xl lg:hidden"
         >
-          <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4 sm:px-6">
+          <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4">
             <Link
               href={post.categoryId ? ROUTES.CATEGORY(post.categoryId) : ROUTES.FEED}
               aria-label="Geri"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-bg-subtle"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))]"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -56,12 +54,10 @@ export function ArticleStickyHeader({ post, threshold = 280 }: ArticleStickyHead
                 {categoryLabel}
               </Badge>
             ) : null}
-            <h2 className="truncate text-sm font-bold text-text-primary">
-              {post.title}
-            </h2>
+            <h2 className="truncate text-sm font-bold text-[rgb(var(--color-text))]">{post.title}</h2>
           </div>
         </motion.div>
-      )}
+      ) : null}
     </AnimatePresence>
   )
 }

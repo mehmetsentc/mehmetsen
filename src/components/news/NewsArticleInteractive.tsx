@@ -8,8 +8,6 @@ import { ShareButton } from '@/components/post/ShareButton'
 import { PostComments } from '@/components/post/PostComments'
 import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
 import { NextArticleCard } from '@/components/news/NextArticleCard'
-import { ArticleScrollProgress } from '@/components/news/ArticleScrollProgress'
-import { ArticleStickyHeader } from '@/components/news/ArticleStickyHeader'
 import { ArticleTOC } from '@/components/news/ArticleTOC'
 import { ArticleReaderTools } from '@/components/news/ArticleReaderTools'
 import { ArticleReactions } from '@/components/news/ArticleReactions'
@@ -57,8 +55,6 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-10 sm:px-0">
       {/* ── F2: Premium reader layer ──────────────────────────────── */}
-      <ArticleScrollProgress />
-      <ArticleStickyHeader post={post} />
       <ArticleTOC postId={post.id} />
       <ArticleReaderTools post={post} />
 
