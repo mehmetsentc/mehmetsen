@@ -31,6 +31,8 @@ export interface LocalCity {
   lng: number
 }
 
+export const LOCAL_NEWS_PAGE_SIZE = 20
+
 export const LOCAL_NEWS_CITIES: LocalCity[] = TURKISH_PROVINCES.map((p) => ({
   slug: p.slug,
   name: p.name,
@@ -109,15 +111,24 @@ export function useLocalNewsPage() {
     try {
       let result =
         citySlug === '__all__'
-          ? await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
-          : await postService.getNewsTimeline(undefined, { citySlug })
+          ? await postService.getNewsTimeline(undefined, {
+              categoryId: 'yerel-haber',
+              limit: LOCAL_NEWS_PAGE_SIZE,
+            })
+          : await postService.getNewsTimeline(undefined, {
+              citySlug,
+              limit: LOCAL_NEWS_PAGE_SIZE,
+            })
 
       if (citySlugRef.current !== citySlug) return
 
       if (citySlug !== '__all__' && result.posts.length === 0) {
         setShowingGeneralFallback(true)
         showingFallbackRef.current = true
-        result = await postService.getNewsTimeline(undefined, { categoryId: 'yerel-haber' })
+        result = await postService.getNewsTimeline(undefined, {
+          categoryId: 'yerel-haber',
+          limit: LOCAL_NEWS_PAGE_SIZE,
+        })
         if (citySlugRef.current !== citySlug) return
       }
 
@@ -150,10 +161,9 @@ export function useLocalNewsPage() {
     if (!lastDoc || loadingMore || !hasMore) return
     setLoadingMore(true)
     try {
-      const params =
-        showingGeneralFallback || !city
-          ? { categoryId: 'yerel-haber' as const }
-          : { citySlug: city.slug }
+      const params = showingGeneralFallback || !city
+        ? { categoryId: 'yerel-haber' as const, limit: LOCAL_NEWS_PAGE_SIZE }
+        : { citySlug: city.slug, limit: LOCAL_NEWS_PAGE_SIZE }
       const result = await postService.getNewsTimeline(lastDoc, params)
       setPosts((prev) => [...prev, ...(result.posts as TimelinePost[])])
       setLastDoc(result.lastDoc ?? null)

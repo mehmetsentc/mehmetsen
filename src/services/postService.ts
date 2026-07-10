@@ -109,6 +109,8 @@ export type NewsTimelineOptions = {
   categoryId?: string
   preferredCitySlug?: string
   feedSource?: 'nahaber' | 'user'
+  /** Varsayılan PAGE_SIZE (10); yerel haber gibi sayfalarda artırılabilir */
+  limit?: number
 }
 
 function buildNewsTimelineQueryConstraints(
@@ -271,8 +273,9 @@ export const postService = {
       feedSource: options?.feedSource,
     })
 
+    const pageLimit = options?.limit ?? PAGE_SIZE
     const { constraints: baseConstraints, filterAuthorOnServer } =
-      buildNewsTimelineQueryConstraints(options, PAGE_SIZE)
+      buildNewsTimelineQueryConstraints(options, pageLimit)
 
     try {
       const constraints = [...baseConstraints]
@@ -299,7 +302,7 @@ export const postService = {
       return {
         posts,
         lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length === PAGE_SIZE,
+        hasMore: snap.docs.length === pageLimit,
       }
     } catch (newsError) {
       // RESOURCE_EXHAUSTED (code 8): Firestore quota doldu — fallback query da başarısız olur,

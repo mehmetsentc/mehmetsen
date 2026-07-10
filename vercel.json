@@ -165,6 +165,9 @@
     "src/app/api/ai/pipeline/route.ts": {
       "maxDuration": 300,
       "memory": 1024
+    },
+    "src/app/api/cron/youtube-rss/route.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -257,6 +260,10 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/api/cron/youtube-rss",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/api/cron/weather-news",
       "schedule": "0 */4 * * *"
     },
@@ -339,6 +346,10 @@
     {
       "path": "/api/cron/sports/worldcup-sync",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/youtube-rss",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

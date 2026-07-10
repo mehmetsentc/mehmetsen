@@ -9,7 +9,7 @@ interface DesktopSectionHeaderProps {
   variant?: 'default' | 'brand' | 'bbc'
 }
 
-export function DesktopSectionHeader({ title, href, className, variant = 'default' }: DesktopSectionHeaderProps) {
+export function DesktopSectionHeader({ title, href, className, variant = 'bbc' }: DesktopSectionHeaderProps) {
   const content = (
     <>
       <span>{title}</span>

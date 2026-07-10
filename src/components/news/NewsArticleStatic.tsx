@@ -12,6 +12,10 @@ import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
 import { planMediaPlacement } from '@/lib/mediaPlacement'
 import { SliderImage } from '@/components/widgets/SliderImage'
+import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
+import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
+import { ArticleRelatedGrid } from '@/components/news/ArticleRelatedGrid'
+import { InfographicBlock } from '@/components/news/InfographicBlock'
 
 interface NewsArticleStaticProps {
   post: Post
@@ -173,7 +177,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
             )}
           </div>
 
-          <h1 className="text-2xl font-black leading-tight tracking-tight text-[rgb(var(--color-text))] sm:text-3xl lg:text-4xl">
+          <h1 className="font-serif text-2xl font-black leading-tight tracking-tight text-[rgb(var(--color-text))] sm:text-3xl lg:text-4xl">
             {articleTitle}
           </h1>
 
@@ -224,15 +228,25 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
         })()}
 
         <div className="px-4 py-6 sm:px-8 sm:py-8">
+          <ArticleAudioPlayer post={post} />
+
           {showLead && (
             <p className="news-lead mb-8 border-l-4 border-[rgb(var(--color-brand))] bg-[rgb(var(--color-surface))] px-5 py-4 text-lg font-medium leading-relaxed text-[rgb(var(--color-text))] sm:text-xl">
               {leadText}
             </p>
           )}
 
+          {post.infographic && post.infographic.stats.length > 0 ? (
+            <InfographicBlock
+              title={post.infographic.title}
+              stats={post.infographic.stats}
+              source={post.infographic.source}
+            />
+          ) : null}
+
           {hasHtmlContent && sanitizedHtml && (
             <div
-              className="news-body prose prose-lg prose-invert max-w-none text-[rgb(var(--color-text))]"
+              className="article-prose news-body prose prose-lg prose-invert max-w-none text-[rgb(var(--color-text))]"
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           )}
@@ -240,7 +254,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
           {!hasHtmlContent && paragraphs.length > 0 && (() => {
             const placement = planMediaPlacement(post.mediaItems, paragraphs.length)
             return (
-              <div className="news-body space-y-6 text-[17px] leading-[1.85] text-[rgb(var(--color-text))] sm:text-[18px]">
+              <div className="article-prose news-body space-y-6 text-[17px] leading-[1.85] text-[rgb(var(--color-text))] sm:text-[18px]">
                 {paragraphs.map((paragraph, index) => {
                   const inline = placement.inlineAfter.get(index)
                   return (
@@ -276,6 +290,10 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
           {!showLead && !hasHtmlContent && paragraphs.length === 0 && (
             <p className="text-[rgb(var(--color-muted))]">Bu haber için içerik bulunamadı.</p>
           )}
+
+          <ArticleAuthorBox post={post} />
+
+          <ArticleRelatedGrid postId={post.id} categoryId={post.categoryId ?? 'gundem'} />
 
           {/* Kaynak satırı */}
           {post.source && (

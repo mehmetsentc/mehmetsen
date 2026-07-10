@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Source_Serif_4 } from 'next/font/google'
 import { ToastViewport } from '@/components/ui/Toast'
 
 import { Analytics } from '@vercel/analytics/react'
@@ -19,6 +19,12 @@ const inter = Inter({
   preload: true,
   adjustFontFallback: true,
   variable: '--font-inter',
+})
+
+const sourceSerif = Source_Serif_4({
+  subsets: ['latin', 'latin-ext'],
+  display: 'swap',
+  variable: '--font-serif-display',
 })
 
 import { CookieConsentBanner } from '@/components/legal/CookieConsentBanner'
@@ -245,7 +251,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           crossOrigin="anonymous"
         />
       </head>
-      <body className={`${inter.variable} ${inter.className} font-sans antialiased`}>
+      <body className={`${inter.variable} ${sourceSerif.variable} ${inter.className} font-sans antialiased`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}

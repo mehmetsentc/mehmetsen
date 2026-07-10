@@ -404,7 +404,7 @@
   }
 
   .bbc-story-title--hero {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--font-serif-display, Georgia, 'Times New Roman', serif);
     font-size: clamp(1.5rem, 2.8vw, 2rem);
     line-height: 1.15;
   }
@@ -446,7 +446,7 @@
   }
 
   .bbc-more-title {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--font-serif-display, Georgia, 'Times New Roman', serif);
     font-size: clamp(1.125rem, 2vw, 1.375rem);
     font-weight: 700;
     line-height: 1.3;
@@ -471,7 +471,7 @@
   }
 
   .desktop-newspaper {
-    font-family: Georgia, 'Times New Roman', 'Iowan Old Style', serif;
+    font-family: var(--font-serif-display, Georgia, 'Times New Roman', 'Iowan Old Style', serif);
   }
 
   .desktop-newspaper .desktop-news-header,
@@ -491,7 +491,63 @@
   }
 
   .desktop-web-header--full .font-serif {
-    font-family: Georgia, 'Times New Roman', 'Iowan Old Style', serif;
+    font-family: var(--font-serif-display, Georgia, 'Times New Roman', 'Iowan Old Style', serif);
+  }
+
+  /* Desktop newspaper headlines use serif display font */
+  @media (min-width: 1024px) {
+    .desktop-newspaper .bbc-story-title,
+    .desktop-newspaper .bbc-story-title--hero,
+    .desktop-newspaper .bbc-story-title--lg,
+    .desktop-newspaper .bbc-story-title--md,
+    .desktop-newspaper .bbc-more-title,
+    .desktop-newspaper h1,
+    .desktop-newspaper article h2,
+    .desktop-newspaper article h3 {
+      font-family: var(--font-serif-display, Georgia, 'Times New Roman', serif);
+    }
+  }
+
+  /* Article body typography */
+  .article-prose {
+    max-width: 42rem;
+    line-height: 1.7;
+    font-size: 1.0625rem;
+    color: rgb(var(--color-text));
+  }
+
+  .article-prose > p:first-of-type::first-letter {
+    float: left;
+    font-family: var(--font-serif-display, Georgia, serif);
+    font-size: 3.5rem;
+    line-height: 0.85;
+    font-weight: 700;
+    padding-right: 0.5rem;
+    padding-top: 0.15rem;
+    color: rgb(var(--color-brand));
+  }
+
+  .article-prose blockquote,
+  .news-body blockquote {
+    margin: 2rem 0;
+    padding: 1.25rem 1.5rem;
+    border-left: 4px solid rgb(var(--color-brand));
+    background: color-mix(in srgb, rgb(var(--color-brand)) 6%, rgb(var(--color-surface)));
+    font-family: var(--font-serif-display, Georgia, serif);
+    font-size: 1.25rem;
+    font-style: italic;
+    line-height: 1.55;
+    color: rgb(var(--color-text));
+  }
+
+  .article-prose blockquote::before,
+  .news-body blockquote::before {
+    content: '\201C';
+    display: block;
+    font-size: 2rem;
+    line-height: 1;
+    color: rgb(var(--color-brand));
+    margin-bottom: 0.25rem;
   }
 
   .desktop-scroll-header-compact {

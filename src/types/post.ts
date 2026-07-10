@@ -7,6 +7,18 @@ export type PostVisibility = 'public' | 'followers' | 'private'
 export type MediaType = 'image' | 'video'
 export type PostType = 'news' | 'video' | 'photo' | 'user_post'
 
+export interface InfographicStat {
+  label: string
+  value: string
+  unit?: string
+}
+
+export interface PostInfographic {
+  title?: string
+  stats: InfographicStat[]
+  source?: string
+}
+
 export interface MediaItem {
   type: MediaType
   url: string
@@ -112,6 +124,12 @@ export interface Post {
   audioStoragePath?: string
   /** True when TTS audio has been generated successfully */
   audioReady?: boolean
+  /** Optional data-story infographic block for article pages */
+  infographic?: PostInfographic
+  /** Live blog mode — renders timeline of updates at /canli/[slug] */
+  isLiveBlog?: boolean
+  /** Chronological live blog updates (newest first in storage, rendered oldest-first) */
+  liveUpdates?: LiveBlogUpdate[]
   /**
    * Additional inline images placed between article paragraphs.
    * Stored in order; rendered evenly distributed across paragraphs.
@@ -120,6 +138,13 @@ export interface Post {
   publishedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface LiveBlogUpdate {
+  id: string
+  content: string
+  timestamp: string
+  author?: string
 }
 
 export interface TimelinePost extends Post {

@@ -4,10 +4,15 @@ import { useMemo } from 'react'
 import { ROUTES } from '@/constants/routes'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID } from '@/components/home/desktop/desktopLayout'
+import { DesktopCategoryGridSection } from '@/components/home/desktop/DesktopCategoryGridSection'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
-import { DesktopMoreList } from '@/components/home/desktop/DesktopMoreList'
+import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGridChunks'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
+import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
+import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStrip'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
+import { NewspaperMasthead } from '@/components/home/desktop/NewspaperMasthead'
+import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
 import {
   HeroImageOnly,
   ImageStory,
@@ -18,6 +23,7 @@ import {
   TextLeadStory,
 } from '@/components/home/desktop/DesktopStoryBlocks'
 import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
+import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import type { HomeCategorySlug, HomeFeedInitialData, NewsItem } from '@/types/newsItem'
 
@@ -39,32 +45,6 @@ function rowGapFiller(
   const emptySlots = rows.filter((row) => row.items.length === 0).length
   if (emptySlots === 0 || rows.every((row) => row.items.length === 0)) return []
   return takeFeatured(4)
-}
-
-function DesktopCategoryGridSection({
-  categoryId,
-  title,
-  items,
-  href,
-}: {
-  categoryId: string
-  title: string
-  items: NewsItem[]
-  href?: string
-}) {
-  const cards = items.slice(0, 4)
-  if (cards.length === 0) return null
-
-  return (
-    <section className={DESKTOP_SECTION_DIVIDER} aria-label={title}>
-      <DesktopSectionHeader title={title} href={href ?? ROUTES.CATEGORY(categoryId)} />
-      <div className={FOUR_CARD_GRID}>
-        {cards.map((item) => (
-          <ImageStory key={item.id} item={item} aspect="video" />
-        ))}
-      </div>
-    </section>
-  )
 }
 
 interface DesktopHomeFeedProps {
@@ -103,6 +83,12 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const trending = data.trending.slice(0, 8)
     const moreList = take(8)
 
+    const opinionItems = data.featured.slice(0, 3).length >= 3
+      ? data.featured.slice(0, 3)
+      : data.latest.slice(0, 3)
+
+    const lastUpdated = data.latest[0]?.publishedAt ?? data.latest[0]?.createdAt
+
     return {
       heroLead,
       heroRight,
@@ -120,18 +106,23 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       mostRead,
       trending,
       moreList,
+      opinionItems,
+      lastUpdated,
     }
   }, [data])
 
+  const { items: moreItems, loadingMore, sentinelRef } = useHomeFeedInfinite(layout.moreList)
   const hasHero = layout.heroLead
 
   return (
     <div className="desktop-home-feed">
       <h1 className="sr-only">NaHaber — Türkiye Gündem, Son Dakika ve Güncel Haberler</h1>
 
+      <NewspaperMasthead lastUpdated={layout.lastUpdated} />
+
       <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
 
-      <DesktopSectionHeader title="Haberler" variant="brand" href={ROUTES.CATEGORY('gundem')} />
+      <DesktopSectionHeader title="Haberler" href={ROUTES.CATEGORY('gundem')} />
 
       {hasHero ? (
         <section
@@ -193,6 +184,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       <DesktopMustWatch items={layout.trending} />
 
+      <DesktopOpinionStrip items={layout.opinionItems} />
+
       {layout.featureLead && layout.featureImage ? (
         <section className={DESKTOP_SECTION_DIVIDER} aria-label="Editoryal">
           <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
@@ -227,6 +220,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         />
       ) : null}
 
+      <OnThisDayArchive />
+
       <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
 
       {layout.catRow2
@@ -260,7 +255,17 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         </section>
       ) : null}
 
-      <DesktopMoreList newsItems={layout.moreList} title="Daha Fazla" href={ROUTES.CATEGORY('gundem')} />
+      <DesktopMoreGridChunks
+        items={moreItems}
+        title="Daha Fazla"
+        href={ROUTES.CATEGORY('gundem')}
+        loadingMore={loadingMore}
+        sentinelRef={sentinelRef}
+      />
+
+      <div className="xl:hidden">
+        <DesktopNewsletterSignup />
+      </div>
 
       <DesktopHomeFooter />
     </div>

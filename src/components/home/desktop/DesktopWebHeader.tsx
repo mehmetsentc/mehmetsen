@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
+import { BreakingNewsBand } from '@/components/home/desktop/BreakingNewsBand'
 import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
 import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
@@ -163,7 +164,10 @@ export function DesktopWebHeader({
       </div>
 
       {showBreaking && breakingItems.length > 0 ? (
-        <DesktopBreakingTicker items={breakingItems} />
+        <>
+          <BreakingNewsBand items={breakingItems} />
+          <DesktopBreakingTicker items={breakingItems} />
+        </>
       ) : null}
 
       <nav

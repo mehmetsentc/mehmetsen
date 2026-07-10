@@ -1,10 +1,11 @@
 'use client'
 
 import { MapPin, AlertCircle } from 'lucide-react'
-import { TimelineItem } from '@/components/feed/TimelineItem'
+import { CategoryGridStory, CategoryHeroStory } from '@/components/category/CategoryPostStories'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { PharmacyWidget } from '@/components/local/PharmacyWidget'
+import { chunkPosts } from '@/components/local/localNewsLayout'
 import { cn } from '@/lib/utils'
 import type { useLocalNewsPage } from '@/hooks/useLocalNewsPage'
 
@@ -28,6 +29,9 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
   } = state
 
   const pageTitle = city ? `${city.name} Yerel Haber` : 'Yerel Haber'
+  const hero = posts[0]
+  const gridPosts = posts.slice(1)
+  const gridChunks = chunkPosts(gridPosts, 4)
 
   return (
     <div className="w-full pb-8 lg:hidden">
@@ -56,10 +60,13 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
         ) : null}
 
         {loading ? (
-          <div className="space-y-0">
-            {[...Array(4)].map((_, i) => (
-              <TimelineItemSkeleton key={i} />
-            ))}
+          <div className="space-y-4 px-3">
+            <div className="aspect-[16/10] animate-pulse rounded-xl bg-[rgb(var(--color-border))]" />
+            <div className="grid grid-cols-2 gap-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="aspect-video animate-pulse rounded-lg bg-[rgb(var(--color-border))]" />
+              ))}
+            </div>
           </div>
         ) : error ? (
           <div className="mx-3 mt-4 rounded-2xl border border-[rgb(var(--color-border))] p-8 text-center">
@@ -84,11 +91,30 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
             </p>
           </div>
         ) : (
-          <div className="timeline-list">
-            {posts.map((post, i) => (
-              <TimelineItem key={post.id} post={post} isLast={i === posts.length - 1} />
+          <div className="px-3">
+            {hero ? (
+              <div className="mb-6">
+                <CategoryHeroStory post={hero} priority />
+              </div>
+            ) : null}
+
+            {gridChunks.map((chunk, index) => (
+              <section key={`mobile-chunk-${index}`} className="mb-6">
+                <div className="grid grid-cols-2 gap-3">
+                  {chunk.map((post) => (
+                    <CategoryGridStory key={post.id} post={post} />
+                  ))}
+                </div>
+              </section>
             ))}
-            {loadingMore ? <TimelineItemSkeleton key="sk-more" /> : null}
+
+            {loadingMore ? (
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="aspect-video animate-pulse rounded-lg bg-[rgb(var(--color-border))]" />
+                ))}
+              </div>
+            ) : null}
           </div>
         )}
       </div>

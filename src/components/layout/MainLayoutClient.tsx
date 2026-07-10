@@ -34,6 +34,7 @@ function getContentVariant(pathname: string): ContentVariant {
   if (pathname === ROUTES.FEED) return 'newspaper'
   if (pathname.startsWith('/kategori/')) return 'newspaper'
   if (pathname.startsWith('/haber/')) return 'newspaper'
+  if (pathname.startsWith('/canli/')) return 'newspaper'
   if (pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)) return 'newspaper'
   if (pathname.startsWith('/hukuk/')) return 'newspaper'
   if (pathname === '/kunye') return 'newspaper'

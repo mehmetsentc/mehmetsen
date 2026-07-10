@@ -1,4 +1,4 @@
-import type { MediaItem, Post, PostType, TimelinePost } from '@/types/post'
+import type { MediaItem, Post, PostInfographic, PostType, TimelinePost } from '@/types/post'
 import type { PostLocation } from '@/lib/location'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { getCityCategoryName } from '@/constants/cities'
@@ -86,6 +86,14 @@ export interface NewsDocument {
   isBreaking?: boolean
   priorityScore?: number
   createdAt?: number | string | { toDate?: () => Date }
+  isLiveBlog?: boolean
+  liveUpdates?: Array<{ id?: string; content?: string; timestamp?: string | number; author?: string }>
+  infographic?: {
+    title?: string
+    stats?: Array<{ label?: string; value?: string; unit?: string }>
+    source?: string
+  }
+  audioReady?: boolean
 }
 
 export const DEFAULT_CATEGORY_LABEL = 'Genel'
@@ -249,6 +257,23 @@ function toYouTubeEmbed(url: string): string {
   return url
 }
 
+function normalizeInfographic(data: NewsDocument['infographic']): PostInfographic | undefined {
+  if (!data || !Array.isArray(data.stats)) return undefined
+  const stats = data.stats
+    .filter((s) => s?.label?.trim() && s?.value?.trim())
+    .map((s) => ({
+      label: String(s.label).trim(),
+      value: String(s.value).trim(),
+      unit: s.unit?.trim() || undefined,
+    }))
+  if (stats.length === 0) return undefined
+  return {
+    title: data.title?.trim() || undefined,
+    stats,
+    source: data.source?.trim() || undefined,
+  }
+}
+
 export function isDisplayableNews(data: NewsDocument): boolean {
   return Boolean(
     data.title?.trim() ||
@@ -345,6 +370,19 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     readingTimeMinutes: data.readingTimeMinutes,
     sourceUrl: data.sourceUrl?.trim() || undefined,
     audioUrl: data.audioUrl?.trim() || undefined,
+    audioReady: data.audioReady,
+    infographic: normalizeInfographic(data.infographic),
+    isLiveBlog: data.isLiveBlog === true,
+    liveUpdates: Array.isArray(data.liveUpdates)
+      ? data.liveUpdates
+          .filter((u) => u?.content)
+          .map((u, i) => ({
+            id: String(u.id ?? `update-${i}`),
+            content: String(u.content ?? ''),
+            timestamp: String(u.timestamp ?? publishedAt ?? createdAt),
+            author: u.author ? String(u.author) : undefined,
+          }))
+      : undefined,
     publishedAt,
     createdAt,
     updatedAt,

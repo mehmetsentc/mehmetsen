@@ -398,3 +398,79 @@ export async function getHomeLocalNews(citySlug: string, limitCount = 8): Promis
   if (!normalized) return []
   return getHomeLocalNewsCached(normalized, limitCount)
 }
+
+export interface HomeFeedMoreResult {
+  items: NewsItem[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
+/** Paginated home feed items for infinite scroll. */
+export async function getHomeFeedMore(
+  cursor?: string,
+  limitCount = 8
+): Promise<HomeFeedMoreResult> {
+  try {
+    const db = getAdminFirestore()
+    let query = db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .limit(limitCount + 1)
+
+    if (cursor) {
+      const cursorMs = Number(cursor)
+      if (Number.isFinite(cursorMs)) {
+        query = db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .orderBy('publishedAt', 'desc')
+          .startAfter(cursorMs)
+          .limit(limitCount + 1)
+      }
+    }
+
+    const snap = await query.get()
+    const all = mapAdminDocs(snap.docs)
+    const hasMore = all.length > limitCount
+    const items = all.slice(0, limitCount)
+    const last = items[items.length - 1]
+    const nextCursor = hasMore && last
+      ? String(Date.parse(last.publishedAt ?? last.createdAt ?? '') || '')
+      : null
+
+    return { items, nextCursor: nextCursor && nextCursor !== 'NaN' ? nextCursor : null, hasMore }
+  } catch (error) {
+    console.warn('[newsService.server] getHomeFeedMore failed:', error)
+    return { items: [], nextCursor: null, hasMore: false }
+  }
+}
+
+/** Archive items published on the same calendar day (any year). */
+export async function getOnThisDayNews(
+  month: number,
+  day: number,
+  limitCount = 5
+): Promise<NewsItem[]> {
+  try {
+    const db = getAdminFirestore()
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .limit(200)
+      .get()
+
+    const items = mapAdminDocs(snap.docs).filter((item) => {
+      const iso = item.publishedAt ?? item.createdAt
+      if (!iso) return false
+      const d = new Date(iso)
+      return d.getMonth() + 1 === month && d.getDate() === day
+    })
+
+    return items.slice(0, limitCount)
+  } catch (error) {
+    console.warn('[newsService.server] getOnThisDayNews failed:', error)
+    return []
+  }
+}

@@ -6,11 +6,10 @@ import { MapPin, AlertCircle } from 'lucide-react'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopCategoryWatch } from '@/components/home/desktop/DesktopCategoryWatch'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
-import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
-import { DesktopMoreList } from '@/components/home/desktop/DesktopMoreList'
 import { GridStory, StackedStory } from '@/components/home/desktop/desktopGridStories'
-import { FOUR_CARD_GRID } from '@/components/home/desktop/desktopLayout'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
+import { LocalNewsMagazineGrids } from '@/components/local/LocalNewsMagazineGrids'
+import { buildLocalNewsMagazineLayout } from '@/components/local/localNewsLayout'
 import { PharmacyWidget } from '@/components/local/PharmacyWidget'
 import { ROUTES } from '@/constants/routes'
 import { rankFeedPosts } from '@/lib/feedRanking'
@@ -51,14 +50,12 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
   const pageTitle = city ? `${city.name} Yerel Haber` : 'Yerel Haber'
   const sectionLead = city ? city.name.toLocaleUpperCase('tr-TR') : 'YEREL'
 
-  const centerHero = rankedPosts[0]
-  const leftHero = rankedPosts[1]
-  const rightStack = rankedPosts.slice(2, 4)
-  const topFour = rankedPosts.slice(4, 8)
-  const editorFour = rankedPosts.slice(8, 12)
-  const featureFour = rankedPosts.slice(12, 16)
-  const topicFour = rankedPosts.slice(16, 20)
-  const moreList = rankedPosts.slice(20)
+  const layout = useMemo(
+    () => buildLocalNewsMagazineLayout(rankedPosts, sectionLead),
+    [rankedPosts, sectionLead]
+  )
+
+  const { centerHero, leftHero, rightStack, namedSections, overflowChunks } = layout
 
   const showNews = activeTab === 'haberler'
 
@@ -137,57 +134,15 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
                 </section>
               ) : null}
 
-              {topFour.length > 0 ? (
-                <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Öne çıkanlar">
-                  <DesktopSectionHeader title={`${sectionLead} Gündem`} href={ROUTES.LOCAL} />
-                  <div className={FOUR_CARD_GRID}>
-                    {topFour.map((post) => (
-                      <GridStory key={post.id} post={post} />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {editorFour.length > 0 ? (
-                <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Editör seçimi">
-                  <DesktopSectionHeader title="Editörün Seçimi" href={ROUTES.LOCAL} />
-                  <div className={FOUR_CARD_GRID}>
-                    {editorFour.map((post) => (
-                      <GridStory key={post.id} post={post} />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
+              <LocalNewsMagazineGrids namedSections={namedSections} overflowChunks={[]} />
 
               <DesktopCategoryWatch posts={rankedPosts} categorySlug="yerel-haber" />
 
-              {featureFour.length > 0 ? (
-                <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Derinlemesine">
-                  <DesktopSectionHeader title="Derinlemesine" href={ROUTES.LOCAL} />
-                  <div className={FOUR_CARD_GRID}>
-                    {featureFour.map((post) => (
-                      <GridStory key={post.id} post={post} />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {topicFour.length > 0 ? (
-                <section className="mb-10 border-b border-[rgb(var(--color-border))] pb-10" aria-label="Öne çıkan haberler">
-                  <DesktopSectionHeader title="Öne Çıkan" href={ROUTES.LOCAL} />
-                  <div className={FOUR_CARD_GRID}>
-                    {topicFour.map((post) => (
-                      <GridStory key={post.id} post={post} />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
               <DesktopAdBanner slot="category-yerel-haber-mid" className="mb-10" />
 
-              <DesktopMoreList
-                posts={moreList}
-                href={ROUTES.LOCAL}
+              <LocalNewsMagazineGrids
+                namedSections={[]}
+                overflowChunks={overflowChunks}
                 loadingMore={loadingMore}
                 sentinelRef={sentinelRef}
               />
