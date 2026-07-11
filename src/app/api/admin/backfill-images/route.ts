@@ -11,6 +11,9 @@ import { Collections } from '@/lib/firebase/firestore'
 import { isSyncSecretAuthorized } from '@/lib/eventSyncAuth'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
+export const runtime = 'nodejs'
+export const maxDuration = 300
+
 const JINA_TIMEOUT_MS = 15_000
 const DEFAULT_BATCH = 30
 
