@@ -52,6 +52,8 @@ export interface NewsDocument {
    * Older RSS-ingested docs may use this; we merge it into `mediaItems`.
    */
   galleryImages?: string[]
+  /** Admin editöründe paragraflar arasına eklenen görseller */
+  additionalImages?: Array<{ url?: string; caption?: string }>
   type?: PostType
   source?: string
   sourceUrl?: string
@@ -172,6 +174,7 @@ export function resolveSource(data: NewsDocument, author: string): string {
 function buildMediaItems(input: {
   storedMediaItems?: NewsDocument['mediaItems']
   galleryImages?: string[]
+  additionalImages?: NewsDocument['additionalImages']
   coverImage: string | null
   videoUrl: string | null
 }): MediaItem[] {
@@ -239,6 +242,19 @@ function buildMediaItems(input: {
           caption: null,
         })
       }
+    }
+  }
+
+  // ── 5) Admin editörü: additionalImages[] ───────────────────────────────
+  if (Array.isArray(input.additionalImages)) {
+    for (const img of input.additionalImages) {
+      if (!img?.url?.trim()) continue
+      pushItem({
+        type: 'image',
+        url: img.url.trim(),
+        thumbnailUrl: img.url.trim(),
+        caption: img.caption?.trim() || null,
+      })
     }
   }
 
@@ -319,9 +335,19 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
   const source = resolveSource(data, author)
 
   const imageUrl = thumbnail || null
+  const additionalImages = Array.isArray(data.additionalImages)
+    ? data.additionalImages
+        .filter((img) => img?.url?.trim())
+        .map((img) => ({
+          url: img.url!.trim(),
+          caption: img.caption?.trim() ?? '',
+        }))
+    : undefined
+
   const mediaItems = buildMediaItems({
     storedMediaItems: data.mediaItems,
     galleryImages: data.galleryImages,
+    additionalImages: data.additionalImages,
     coverImage: imageUrl,
     videoUrl: videoUrl || null,
   })
@@ -349,6 +375,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     postType,
     source,
     mediaItems,
+    additionalImages,
     coverImageUrl: imageUrl,
     status: (data.status as Post['status']) ?? 'published',
     visibility: 'public',

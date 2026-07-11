@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { TrendingUp } from 'lucide-react'
 import type { FinanceRates } from '@/app/api/finance/rates/route'
 import { ROUTES } from '@/constants/routes'
+import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
+import { WeatherMini } from '@/components/widgets/WeatherMini'
 
 function fmt(n: number, decimals = 4) {
   return n.toLocaleString('tr-TR', {
@@ -130,6 +132,13 @@ export function DesktopMarketSidebar() {
       <p className="mt-3 text-[10px] leading-relaxed text-[rgb(var(--color-muted))]">
         Veriler gecikmeli olabilir · 60 sn&apos;de bir güncellenir
       </p>
+
+      <div className="mt-5 space-y-5 border-t border-[rgb(var(--color-border))] pt-5">
+        <DesktopNewsletterSignup />
+        <div className="min-h-[100px]">
+          <WeatherMini />
+        </div>
+      </div>
     </div>
   )
 }

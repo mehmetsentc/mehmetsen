@@ -369,12 +369,6 @@
       position: sticky;
       top: 5rem;
     }
-
-    /* En çok okunanlar bandı — ana sütundan rail alanına taşarak tam kabuk genişliği */
-    .desktop-newspaper-shell--with-rail .desktop-most-read-band {
-      width: calc(100% + var(--layout-rail) + var(--layout-gutter));
-      max-width: var(--layout-content-newspaper);
-    }
   }
 
   .desktop-home-feed,

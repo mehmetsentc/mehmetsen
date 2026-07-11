@@ -5,6 +5,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import type { Firestore } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
+import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,11 @@ interface CreatePayload {
   tags?: string[]
   citySlug?: string
   city?: string
+  districtSlug?: string
+  district?: string
+  countrySlug?: string
+  country?: string
+  location?: { city?: string; district?: string; country: string; lat: number; lng: number }
   thumbnail?: string
   videoUrl?: string
   additionalImages?: Array<{ url: string; caption?: string }>
@@ -116,9 +122,24 @@ export async function POST(request: Request) {
       postType: 'news',
     }
 
-    if (body.citySlug?.trim()) {
+    if (body.countrySlug?.trim() || body.country?.trim()) {
+      const countryName = body.country?.trim()
+        || body.countrySlug?.trim()
+        || ''
+      payload.country = countryName
+      payload.countrySlug = body.countrySlug?.trim() || countryName.toLowerCase().replace(/\s+/g, '-')
+      payload.location = body.location ?? {
+        city: body.city?.trim() ?? '',
+        country: countryName,
+        lat: 0,
+        lng: 0,
+      }
+      payload.citySlug = ''
+      payload.city = body.city?.trim() ?? ''
+    } else if (body.citySlug?.trim()) {
       payload.citySlug = body.citySlug.trim()
       payload.city = body.city?.trim() ?? body.citySlug.trim()
+      payload.country = 'Türkiye'
       payload.location = {
         city: payload.city as string,
         country: 'Türkiye',
@@ -127,18 +148,16 @@ export async function POST(request: Request) {
       }
     }
 
-    if (body.videoUrl?.trim()) {
-      payload.mediaItems = [{
-        type: 'video',
-        url: body.videoUrl.trim(),
-        thumbnailUrl: body.thumbnail?.trim() || '',
-      }]
-    }
+    const additionalImages = sanitizeAdditionalImages(body.additionalImages)
+    payload.additionalImages = additionalImages
 
-    if (Array.isArray(body.additionalImages) && body.additionalImages.length > 0) {
-      payload.additionalImages = body.additionalImages
-        .filter((img) => img.url?.trim())
-        .map((img) => ({ url: img.url.trim(), caption: img.caption?.trim() ?? '' }))
+    const editorMediaItems = buildEditorMediaItems({
+      thumbnail: body.thumbnail,
+      videoUrl: body.videoUrl,
+      additionalImages,
+    })
+    if (editorMediaItems.length > 0) {
+      payload.mediaItems = editorMediaItems
     }
 
     await newsRef.set(payload)

@@ -5,6 +5,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
 import { newsDraftService } from '@/services/newsDraftService'
+import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,9 @@ interface UpdatePayload {
   city?: string
   districtSlug?: string
   district?: string
+  countrySlug?: string
+  country?: string
+  location?: { city?: string; district?: string; country: string; lat: number; lng: number }
   thumbnail?: string
   videoUrl?: string
   additionalImages?: Array<{ url: string; caption?: string }>
@@ -75,25 +79,26 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
   if (body.city != null) update.city = String(body.city).trim()
   if (body.districtSlug != null) update.districtSlug = String(body.districtSlug).trim()
   if (body.district != null) update.district = String(body.district).trim()
+  if (body.countrySlug != null) update.countrySlug = String(body.countrySlug).trim()
+  if (body.country != null) update.country = String(body.country).trim()
+  if (body.location != null) update.location = body.location
   if (body.thumbnail?.trim()) {
     const thumb = body.thumbnail.trim()
     update.thumbnail = thumb
     update.coverImageUrl = thumb
     update.imageUrl = thumb
   }
-  if (body.videoUrl?.trim()) {
-    update.mediaItems = [
-      {
-        type: 'video',
-        url: body.videoUrl.trim(),
-        thumbnailUrl: body.thumbnail?.trim() || '',
-      },
-    ]
-  }
-  if (Array.isArray(body.additionalImages) && body.additionalImages.length > 0) {
-    update.additionalImages = body.additionalImages
-      .filter((img) => img.url?.trim())
-      .map((img) => ({ url: img.url.trim(), caption: img.caption?.trim() ?? '' }))
+  if (Array.isArray(body.additionalImages) || body.thumbnail?.trim() || body.videoUrl?.trim()) {
+    if (Array.isArray(body.additionalImages)) {
+      update.additionalImages = sanitizeAdditionalImages(body.additionalImages)
+    }
+    update.mediaItems = buildEditorMediaItems({
+      thumbnail: body.thumbnail,
+      videoUrl: body.videoUrl,
+      additionalImages: Array.isArray(body.additionalImages)
+        ? sanitizeAdditionalImages(body.additionalImages)
+        : [],
+    })
   }
 
   return stripUndefined(update)

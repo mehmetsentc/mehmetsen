@@ -15,7 +15,7 @@ export function DesktopMostReadGrid({ items }: DesktopMostReadGridProps) {
 
   return (
     <section
-      className={`desktop-most-read-band ${DESKTOP_SECTION_DIVIDER}`}
+      className={DESKTOP_SECTION_DIVIDER}
       aria-label="Çok okunanlar"
     >
       <DesktopSectionHeader title="Çok Okunanlar" />

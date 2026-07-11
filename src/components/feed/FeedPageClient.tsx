@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { HomeFeed } from '@/components/home/HomeFeed'
 import { DesktopHomeFeed } from '@/components/home/desktop/DesktopHomeFeed'
 import { DesktopNewspaperShell } from '@/components/home/desktop/DesktopNewspaperShell'
-import { DesktopRightRail } from '@/components/home/desktop/DesktopRightRail'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
 import { TrendFeed } from '@/components/feed/TrendFeed'
 import { FeedCategoryBar, type FeedTab } from '@/components/feed/FeedCategoryBar'
@@ -48,10 +47,7 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
       <div className="hidden lg:block">
         <AdSlotProvider page="home">
           {activeTab === 'home' ? (
-            <DesktopNewspaperShell
-              rail={<DesktopRightRail mostRead={liveFeedData.mostRead} />}
-              footer={<DesktopHomeFooter />}
-            >
+            <DesktopNewspaperShell footer={<DesktopHomeFooter />}>
               <DesktopHomeFeed data={liveFeedData} />
             </DesktopNewspaperShell>
           ) : null}

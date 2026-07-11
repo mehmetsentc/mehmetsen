@@ -119,6 +119,14 @@ function adminNewsDocToPost(id: string, data: NewsDocument): Post {
     postType: 'news',
     source: 'NaHaber',
     mediaItems: [],
+    additionalImages: Array.isArray(data.additionalImages)
+      ? data.additionalImages
+          .filter((img) => img?.url?.trim())
+          .map((img) => ({
+            url: img.url!.trim(),
+            caption: img.caption?.trim() ?? '',
+          }))
+      : [],
     coverImageUrl: data.thumbnail?.trim() || null,
     status: (data.status as PostStatus) ?? 'draft',
     visibility: 'public',

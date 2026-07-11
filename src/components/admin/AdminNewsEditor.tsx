@@ -10,6 +10,7 @@ import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/E
 import { getAdminCategoryGroups } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
+import { WORLD_COUNTRIES, findCountryBySlug, resolveCountrySlug } from '@/constants/countries'
 import { auth } from '@/lib/firebase/auth'
 import type { Post } from '@/types/post'
 import type { AdminNewsItem } from '@/services/adminNewsService'
@@ -68,6 +69,14 @@ export function AdminNewsEditor({
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
   const [citySlug, setCitySlug] = useState((post as (Post & { citySlug?: string }) | undefined)?.citySlug ?? '')
   const [districtSlug, setDistrictSlug] = useState((post as (Post & { districtSlug?: string }) | undefined)?.districtSlug ?? '')
+  const [countrySlug, setCountrySlug] = useState(() =>
+    resolveCountrySlug(
+      (post as (Post & { countrySlug?: string }) | undefined)?.countrySlug,
+      (post as (Post & { country?: string; location?: { country?: string } }) | undefined)?.country
+        ?? (post as (Post & { location?: { country?: string } }) | undefined)?.location?.country
+    )
+  )
+  const isWorldCategory = categoryId === 'dunya'
   const availableDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
   const [thumbnail, setThumbnail] = useState(post?.coverImageUrl ?? '')
   const [videoUrl, setVideoUrl] = useState(post?.mediaItems?.find((m) => m.type === 'video')?.url ?? '')
@@ -129,7 +138,14 @@ export function AdminNewsEditor({
     }
   }
 
-  const buildPayload = () => ({
+  const buildPayload = () => {
+    const country = countrySlug ? findCountryBySlug(countrySlug) : undefined
+    const payloadTags =
+      isWorldCategory && country
+        ? mergeTags(tags, [country.slug, normalizeTag(country.name)])
+        : tags
+
+    return {
     title,
     slug: slug.trim() || undefined,
     summary,
@@ -140,19 +156,32 @@ export function AdminNewsEditor({
     thumbnail,
     videoUrl,
     additionalImages,
-    tags,
+    tags: payloadTags,
     seoTitle,
     seoDescription,
     seoKeywords,
     isBreaking,
-    ...(citySlug
+    ...(isWorldCategory && countrySlug
       ? {
-          citySlug,
-          city: TURKISH_PROVINCES.find((p) => p.slug === citySlug)?.name ?? citySlug,
-          ...(districtSlug ? { districtSlug } : {}),
+          countrySlug,
+          country: country?.name ?? countrySlug,
+          location: {
+            country: country?.name ?? countrySlug,
+            city: '',
+            lat: 0,
+            lng: 0,
+          },
         }
-      : {}),
-  })
+      : citySlug
+        ? {
+            citySlug,
+            city: TURKISH_PROVINCES.find((p) => p.slug === citySlug)?.name ?? citySlug,
+            country: 'Türkiye',
+            ...(districtSlug ? { districtSlug } : {}),
+          }
+        : {}),
+  }
+  }
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -324,7 +353,16 @@ export function AdminNewsEditor({
         <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Kategori</label>
         <select
           value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value
+            setCategoryId(next)
+            if (next === 'dunya') {
+              setCitySlug('')
+              setDistrictSlug('')
+            } else {
+              setCountrySlug('')
+            }
+          }}
           className={fieldInputCls}
         >
           <option value="">— seçin —</option>
@@ -355,34 +393,57 @@ export function AdminNewsEditor({
     </div>
 
     <div className="space-y-2">
-      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
-        Şehir
-        <span className="ml-1 text-[rgb(var(--color-muted))] font-normal">(isteğe bağlı · yerel akışta da görünür)</span>
-      </label>
-      <select
-        value={citySlug}
-        onChange={(e) => {
-          setCitySlug(e.target.value)
-          setDistrictSlug('')
-        }}
-        className={`${fieldInputCls} focus:ring-emerald-500`}
-      >
-        <option value="">— Şehir seçin (isteğe bağlı) —</option>
-        {TURKISH_PROVINCES.map((p) => (
-          <option key={p.slug} value={p.slug}>{p.name}</option>
-        ))}
-      </select>
-      {citySlug && availableDistricts.length > 0 && (
-        <select
-          value={districtSlug}
-          onChange={(e) => setDistrictSlug(e.target.value)}
-          className={`${fieldInputCls} focus:ring-emerald-500`}
-        >
-          <option value="">— İlçe seçin (isteğe bağlı) —</option>
-          {availableDistricts.map((d) => (
-            <option key={d.slug} value={d.slug}>{d.name}</option>
-          ))}
-        </select>
+      {isWorldCategory ? (
+        <>
+          <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+            Ülke
+            <span className="ml-1 font-normal">(dünya haberleri için)</span>
+          </label>
+          <select
+            value={countrySlug}
+            onChange={(e) => setCountrySlug(e.target.value)}
+            className={`${fieldInputCls} focus:ring-emerald-500`}
+          >
+            <option value="">— Ülke seçin —</option>
+            {WORLD_COUNTRIES.map((country) => (
+              <option key={country.slug} value={country.slug}>
+                {country.name}
+              </option>
+            ))}
+          </select>
+        </>
+      ) : (
+        <>
+          <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+            Şehir
+            <span className="ml-1 text-[rgb(var(--color-muted))] font-normal">(isteğe bağlı · yerel akışta da görünür)</span>
+          </label>
+          <select
+            value={citySlug}
+            onChange={(e) => {
+              setCitySlug(e.target.value)
+              setDistrictSlug('')
+            }}
+            className={`${fieldInputCls} focus:ring-emerald-500`}
+          >
+            <option value="">— Şehir seçin (isteğe bağlı) —</option>
+            {TURKISH_PROVINCES.map((p) => (
+              <option key={p.slug} value={p.slug}>{p.name}</option>
+            ))}
+          </select>
+          {citySlug && availableDistricts.length > 0 && (
+            <select
+              value={districtSlug}
+              onChange={(e) => setDistrictSlug(e.target.value)}
+              className={`${fieldInputCls} focus:ring-emerald-500`}
+            >
+              <option value="">— İlçe seçin (isteğe bağlı) —</option>
+              {availableDistricts.map((d) => (
+                <option key={d.slug} value={d.slug}>{d.name}</option>
+              ))}
+            </select>
+          )}
+        </>
       )}
     </div>
 
