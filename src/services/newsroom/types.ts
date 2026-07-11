@@ -42,6 +42,7 @@ export type EditorId =
   | 'gundem'
   | 'hackernews'
   | 'freenews'
+  | 'kibris-haberleri'
   | 'thin-content-backfill'
   | 'turizm-news'
   | 'gezi-news'

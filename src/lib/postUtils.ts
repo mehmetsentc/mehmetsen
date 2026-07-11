@@ -13,7 +13,14 @@ export function getPrimaryVideo(post: Post): MediaItem | null {
   if (fromMedia) return fromMedia
   // Fallback: eski YouTube RSS dokümanlarında videoUrl top-level field olarak kaydedildi
   const legacyUrl = (post as Post & { videoUrl?: string }).videoUrl?.trim()
-  if (legacyUrl) return { type: 'video', url: legacyUrl, thumbnailUrl: post.coverImageUrl ?? null }
+  if (legacyUrl) {
+    return {
+      type: 'video',
+      url: legacyUrl,
+      thumbnailUrl: post.coverImageUrl ?? null,
+      caption: null,
+    }
+  }
   return null
 }
 
