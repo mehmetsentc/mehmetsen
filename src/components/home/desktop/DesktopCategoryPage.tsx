@@ -55,7 +55,7 @@ export function DesktopCategoryPage({
     (isSubcategory && parentCat ? `${parentCat.name} · ${cat.name}` : cat.name)
 
   return (
-    <div className="desktop-category-page bbc-category-page mx-auto max-w-[1280px] pb-10">
+    <div className="desktop-category-page bbc-category-page desktop-newspaper-shell pb-10">
       <CategoryBbcPageHeader
         pageTitle={pageTitle}
         subTabs={showTabs ? subTabs : []}

@@ -17,7 +17,7 @@ export function DesktopRightRail({ mostRead, className }: DesktopRightRailProps)
 
   return (
     <aside className={className} aria-label="Yan sütun">
-      <div className="sticky top-20 space-y-5">
+      <div className="desktop-newspaper-rail-sticky space-y-5">
         {top.length > 0 ? (
           <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
             <h3 className="mb-3 border-t-4 border-[rgb(var(--color-text))] pt-3 text-lg font-bold text-[rgb(var(--color-text))]">

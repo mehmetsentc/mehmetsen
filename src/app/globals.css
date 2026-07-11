@@ -323,6 +323,38 @@
     }
   }
 
+  /* Desktop gazete kabuğu — ana sayfa, kategori ve tüm newspaper rotalarında tutarlı genişlik */
+  @media (min-width: 1024px) {
+    .desktop-newspaper-shell {
+      width: 100%;
+      max-width: var(--layout-content-newspaper);
+      margin-inline: auto;
+    }
+
+    .desktop-newspaper-shell--with-rail {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) var(--layout-rail);
+      column-gap: var(--layout-gutter);
+      align-items: stretch;
+    }
+
+    .desktop-newspaper-main {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .desktop-newspaper-rail {
+      width: var(--layout-rail);
+      min-width: var(--layout-rail);
+      align-self: stretch;
+    }
+
+    .desktop-newspaper-rail-sticky {
+      position: sticky;
+      top: 5rem;
+    }
+  }
+
   .desktop-home-feed,
   .desktop-category-page {
     @apply w-full min-w-0 max-w-full;
@@ -512,7 +544,7 @@
   /* Article body typography */
   .news-article-page {
     --article-measure: min(42rem, 100%);
-    --article-shell-max: 100%;
+    --article-shell-max: var(--layout-content-newspaper, 100%);
     width: 100%;
     max-width: var(--article-shell-max);
     margin-inline: auto;
@@ -523,30 +555,19 @@
 
   @media (min-width: 640px) {
     .news-article-page {
-      --article-shell-max: 40rem;
+      padding-inline: var(--layout-gutter);
     }
   }
 
   @media (min-width: 768px) {
     .news-article-page {
-      --article-shell-max: 46rem;
       padding-inline: 0;
     }
   }
 
   @media (min-width: 1024px) {
     .news-article-page {
-      --article-shell-max: 52rem;
-    }
-
-    html[data-sidebar='closed'][data-platform='desktop'] .news-article-page {
-      --article-shell-max: min(64rem, calc(100vw - var(--layout-gutter) * 4));
-    }
-  }
-
-  @media (min-width: 1280px) {
-    html[data-sidebar='closed'][data-platform='desktop'] .news-article-page {
-      --article-shell-max: min(68rem, calc(100vw - var(--layout-gutter) * 4));
+      --article-shell-max: var(--layout-content-newspaper);
     }
   }
 
@@ -554,7 +575,6 @@
   @media (min-width: 1920px) {
     .news-article-page {
       --article-measure: 44rem;
-      --article-shell-max: min(72rem, calc(100vw - var(--layout-gutter) * 6));
     }
 
     .news-article-title {
