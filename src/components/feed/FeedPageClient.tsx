@@ -50,6 +50,7 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
           {activeTab === 'home' ? (
             <DesktopNewspaperShell
               rail={<DesktopRightRail mostRead={liveFeedData.mostRead} />}
+              footer={<DesktopHomeFooter />}
             >
               <DesktopHomeFeed data={liveFeedData} />
             </DesktopNewspaperShell>

@@ -5,7 +5,6 @@ import { ROUTES } from '@/constants/routes'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID } from '@/components/home/desktop/desktopLayout'
 import { DesktopCategoryGridSection } from '@/components/home/desktop/DesktopCategoryGridSection'
-import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
 import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGridChunks'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
@@ -266,8 +265,6 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       <div className="xl:hidden">
         <DesktopNewsletterSignup />
       </div>
-
-      <DesktopHomeFooter />
     </div>
   )
 }

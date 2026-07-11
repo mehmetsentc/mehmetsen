@@ -338,6 +338,22 @@
       align-items: stretch;
     }
 
+    .desktop-newspaper-shell--with-rail > .desktop-newspaper-main {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .desktop-newspaper-shell--with-rail > .desktop-newspaper-rail {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .desktop-newspaper-shell-footer {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+    }
+
     .desktop-newspaper-main {
       min-width: 0;
       width: 100%;
