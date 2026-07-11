@@ -11,7 +11,10 @@ import {
   type StoredUserLocation,
 } from '@/lib/userLocationStorage'
 
-const PROMPT_KEY = 'nahaber-location-prompted'
+// v2: önceki sürümlerde markPrompted() Devam'a basıldığında anında çağrılıyordu
+// (iOS dialog açılmadan önce). Eski key set edilmiş reviewer cihazları için
+// yeni key kullanıyoruz — eski 'prompted' kaydı artık engel değil.
+const PROMPT_KEY = 'nahaber-location-prompted-v2'
 
 function markPrompted(): void {
   try {
@@ -29,6 +32,13 @@ function wasPrompted(): boolean {
   }
 }
 
+function isCapacitorApp(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof (window as unknown as Record<string, unknown>).Capacitor !== 'undefined'
+  )
+}
+
 /** One-time soft location prompt — non-blocking, does not delay homepage render. */
 export function LocationPermission() {
   const [visible, setVisible] = useState(false)
@@ -43,10 +53,22 @@ export function LocationPermission() {
   }, [])
 
   const accept = async () => {
-    markPrompted()
     setVisible(false)
 
     try {
+      // iOS Capacitor: CLLocationManager üzerinden native dialog göster.
+      // Remote URL modunda navigator.geolocation WKWebView pipeline'ından geçer ve
+      // iOS 17+ cihazlarda WKUIDelegate olmadan sessizce başarısız olabilir.
+      if (isCapacitorApp()) {
+        const { default: NativeGeolocation } = await import('@/plugins/NativeGeolocation')
+        const { status } = await NativeGeolocation.requestPermission()
+        if (status === 'denied') {
+          markPrompted()
+          return
+        }
+        // status === 'granted' → get actual position
+      }
+
       const position = await getCurrentPosition()
       const { latitude: lat, longitude: lng } = position.coords
       const citySlug = nearestProvinceSlug(lat, lng)
@@ -60,8 +82,10 @@ export function LocationPermission() {
       }
       writeStoredUserLocation(record)
       window.dispatchEvent(new CustomEvent('nahaber:location-updated', { detail: record }))
+      markPrompted() // Sadece başarılı olunca işaretle
     } catch {
-      // user denied or unavailable — page continues with default content
+      // permission denied veya unavailable — sayfa default içerikle devam eder
+      // markPrompted çağrılmıyor → kullanıcı uygulamayı yeniden açarsa tekrar sorar
     }
   }
 

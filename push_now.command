@@ -9,21 +9,39 @@ git add -A
 
 echo "💬 Commit yapılıyor..."
 git diff --cached --quiet && echo "ℹ️  Commit yok (staging boş)" || \
-git commit -m "[deploy] fix: video shaking + play button stuck; add Kibris worker
+git commit -m "[deploy] fix(build9): Apple Sign In + geolocation + localStorage key fix
 
-- VideoFeedItem: e.source check — her handler sadece kendi iframe'inden mesaj alır
-  (sanal penceredeki coklu YouTube iframe'leri birbirinin state'ini bozuyordu → shaking)
-- VideoFeedItem: onLoad'da setPaused(false) — play butonu artik takilmiyor
-- sources.ts: 8 yeni Kibris kaynagi (bugunkibris, detaykibris, sondakikacyprus,
-  kibrisgercek, gundemkibris, haberkibris, sondakika-kibris, polis-kktc)
-- config.ts: KIBRIS_SOURCE_IDS (17 kaynak toplamda) + EDITOR_REGISTRY kibris-haberleri
-- kibrisWorker.ts + cron/newsroom/kibris/route.ts + vercel.json cron girisi"
+App Store Rejection 2.1(a) — Kök nedeni ve düzeltmeleri (Build 9):
+
+[APPLE SIGN IN - KÖK NEDEN ÇÖZÜLDÜ]
+- Firebase projesinde iOS uygulaması kayıtlıydı: Firebase sadece
+  'com.nahaber.service' (web Service ID) kabul ediyordu, ancak native iOS
+  Apple Sign In JWT'leri 'aud: com.nahaber.app' (Bundle ID) içeriyor.
+  → Firebase Console'da iOS uygulaması (com.nahaber.app) kaydedildi.
+
+[KONUM İZNİ - KRİTİK LOCALSTORAGE HATASI DÜZELTİLDİ]
+- ESKİ HATA: markPrompted() 'Devam' butonuna basılır basılmaz çağrılıyordu
+  (iOS dialog açılmadan önce). Sonuç: localStorage'da 'nahaber-location-prompted'='1'
+  kalıyordu → uygulamayı bir daha açınca dialog hiç çıkmıyordu.
+  Apple reviewer cihazlarında bu key set edilmiş durumda.
+- YENİ DÜZELTME: localStorage key 'nahaber-location-prompted-v2' oldu.
+  Eski key artık engel değil → reviewer cihazlarında da dialog çıkacak.
+- NativeGeolocationPlugin.swift: CLLocationManager.requestWhenInUseAuthorization()
+  garantili native dialog (WKWebView bypass)
+- NativeGeolocation.ts: Capacitor plugin wrapper
+- project.pbxproj: NativeGeolocationPlugin.swift Xcode'a eklendi
+
+[VİDEO - Shaking / Play butonu takılması]
+- VideoFeedItem.tsx: e.source check + onLoad setPaused(false)
+
+[KIBRIS WORKER]
+- sources.ts + config.ts + kibrisWorker.ts + cron route + vercel.json"
 
 echo ""
 echo "📤 Push ediliyor → claude/nahabber-project-architecture-NZhLO"
 git push origin claude/nahabber-project-architecture-NZhLO
 echo ""
-echo "✅ Tamamlandi! Vercel ~2 dk icinde deploy eder."
+echo "✅ Tamamlandı! Vercel ~2 dk içinde deploy eder."
 echo "   https://vercel.com/shenteam1/nahaber/deployments"
 echo ""
-read -p "Kapatmak icin Enter'a bas..."
+read -p "Kapatmak için Enter'a bas..."
