@@ -124,13 +124,14 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: [
               'accelerometer=()',
-              'autoplay=(self)',
+              // YouTube reels embeds need cross-origin autoplay + EME (encrypted-media).
+              'autoplay=(self "https://www.youtube.com" "https://www.youtube-nocookie.com")',
               'camera=()',
               'clipboard-read=(self)',
               'clipboard-write=(self)',
               'display-capture=()',
               'document-domain=()',
-              'encrypted-media=(self)',
+              'encrypted-media=(self "https://www.youtube.com" "https://www.youtube-nocookie.com")',
               'fullscreen=(self)',
               'gamepad=()',
               'geolocation=(self)',

@@ -24,14 +24,29 @@ export function getPrimaryVideo(post: Post): MediaItem | null {
   return null
 }
 
+/** YouTube video ID çıkar (watch, embed, shorts, youtu.be). */
+export function parseYouTubeVideoId(url: string | null | undefined): string | null {
+  if (!url?.trim()) return null
+  try {
+    const u = new URL(url.trim())
+    if (u.hostname.includes('youtube.com') && u.searchParams.get('v')) {
+      return u.searchParams.get('v')
+    }
+    if (u.hostname === 'youtu.be') {
+      return u.pathname.slice(1).split('?')[0] || null
+    }
+    const m = u.pathname.match(/\/(shorts|embed|v|live)\/([a-zA-Z0-9_-]{11})/)
+    if (m) return m[2]
+  } catch {
+    // fall through to regex
+  }
+  const m = url.match(/(?:youtube-nocookie\.com\/embed\/|youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return m?.[1] ?? null
+}
+
 /** YouTube embed veya watch URL'si mi? */
 export function isYouTubeUrl(url: string | null | undefined): boolean {
-  if (!url) return false
-  return (
-    url.includes('youtube.com/embed/') ||
-    url.includes('youtube.com/watch') ||
-    url.includes('youtu.be/')
-  )
+  return Boolean(parseYouTubeVideoId(url))
 }
 
 export function hasVideoContent(post: Post): boolean {

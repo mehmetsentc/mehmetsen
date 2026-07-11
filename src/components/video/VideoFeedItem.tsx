@@ -2,7 +2,7 @@
 
 import { memo, useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Heart, Loader2, Play } from 'lucide-react'
-import { getPrimaryVideo } from '@/lib/postUtils'
+import { getPrimaryVideo, isYouTubeUrl, parseYouTubeVideoId } from '@/lib/postUtils'
 import { markReelSeen } from '@/lib/reelsSeen'
 import { postService } from '@/services/postService'
 import { useAuth } from '@/hooks/useAuth'
@@ -78,8 +78,12 @@ function VideoFeedItemInner({
     return getVideoUrl(video.id) ?? media.url
   }, [getVideoUrl, video.id, media?.url])
 
-  // YouTube embed tespiti — youtube-nocookie.com/embed veya youtube.com/embed
-  const isYouTube = Boolean(stableSrc && /youtube[^/]*\/embed\//.test(stableSrc))
+  // YouTube: embed, watch, shorts, youtu.be — iframe gerekir (<video> YouTube oynatamaz).
+  const youtubeVideoId = useMemo(
+    () => (stableSrc && isYouTubeUrl(stableSrc) ? parseYouTubeVideoId(stableSrc) : null),
+    [stableSrc]
+  )
+  const isYouTube = Boolean(youtubeVideoId)
 
   // Audio-only mode: AI-generated news audio without video file
   const audioUrl = (video as VideoFeedItemType & { audioUrl?: string }).audioUrl
@@ -559,8 +563,8 @@ function VideoFeedItemInner({
   // Browser autoplay politikası: sesli autoplay engellenir → mute=1 başlar.
   // origin parametresi: YouTube JS API cross-origin postMessage güvenliği için zorunlu.
   // ytBlocked=true: video sahibi embedding'i kapatmış (101/150) → fallback UI göster.
-  if (isYouTube && stableSrc) {
-    const videoId = stableSrc.split('/embed/')[1]?.split('?')[0] ?? ''
+  if (isYouTube && youtubeVideoId) {
+    const videoId = youtubeVideoId
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
 
