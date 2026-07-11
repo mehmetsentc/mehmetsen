@@ -13,6 +13,7 @@ import {
 import { getCityCategoryName, nearestProvinceSlug } from '@/constants/cities'
 import { useAuth } from '@/hooks/useAuth'
 import { useConsent } from '@/hooks/useConsent'
+import { fetchIpLocation } from '@/lib/ipGeolocation'
 import { getCurrentPosition, slugifyCity } from '@/lib/location'
 import { getPrivacyPreferences } from '@/lib/userPreferences'
 import {
@@ -78,6 +79,32 @@ function persistLocation(
   }
   writeStoredUserLocation(record)
   return record
+}
+
+async function resolveIpOrFallback(
+  applyLocation: (
+    citySlug: string,
+    cityName: string,
+    source: UserLocationSource,
+    coords?: UserCoords | null
+  ) => void
+): Promise<void> {
+  const ip = await fetchIpLocation()
+  if (ip?.citySlug) {
+    applyLocation(
+      ip.citySlug,
+      ip.cityName,
+      'ip',
+      ip.lat != null && ip.lng != null ? { lat: ip.lat, lng: ip.lng } : null
+    )
+    return
+  }
+
+  applyLocation(
+    DEFAULT_USER_CITY_SLUG,
+    getCityCategoryName(DEFAULT_USER_CITY_SLUG),
+    'fallback'
+  )
 }
 
 export function UserLocationProvider({ children }: { children: ReactNode }) {
@@ -158,11 +185,7 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
     const privacy = getPrivacyPreferences()
     const mayUseGeolocation = privacy.shareLocation || marketingAllowed
     if (!mayUseGeolocation) {
-      applyLocation(
-        DEFAULT_USER_CITY_SLUG,
-        getCityCategoryName(DEFAULT_USER_CITY_SLUG),
-        'fallback'
-      )
+      void resolveIpOrFallback(applyLocation)
       return
     }
 
@@ -175,11 +198,7 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
         const slug = nearestProvinceSlug(lat, lng)
         applyLocation(slug, getCityCategoryName(slug), 'geolocation', { lat, lng })
       } catch {
-        applyLocation(
-          DEFAULT_USER_CITY_SLUG,
-          getCityCategoryName(DEFAULT_USER_CITY_SLUG),
-          'fallback'
-        )
+        await resolveIpOrFallback(applyLocation)
       }
     })()
   }, [authLoading, consentReady, marketingAllowed, user, applyLocation])

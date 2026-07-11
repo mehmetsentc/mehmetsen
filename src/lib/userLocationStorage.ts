@@ -4,7 +4,7 @@ const LOCATION_STORAGE_KEY = 'nahaber-user-location'
 const LOCAL_NEWS_CITY_KEY = 'nahaber-local-news-city'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
-export type UserLocationSource = 'profile' | 'geolocation' | 'cookie' | 'fallback' | 'manual'
+export type UserLocationSource = 'profile' | 'geolocation' | 'ip' | 'cookie' | 'fallback' | 'manual'
 
 export interface StoredUserLocation {
   citySlug: string
