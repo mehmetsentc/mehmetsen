@@ -1990,6 +1990,178 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     maxItemsPerRun: 4,
     enabled: true,
   },
+
+  // KIBRIS / KKTC — Yerel haberler, kazalar, gündem, Lefkoşa
+  // ══════════════════════════════════════════════════════════════════
+  {
+    id: 'kibris-google-news',
+    label: 'Kıbrıs Haberleri (Google News)',
+    feedUrl: 'https://news.google.com/rss/search?q=kıbrıs+KKTC+haber&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=kuzey+kıbrıs+son+dakika&hl=tr&gl=TR&ceid=TR:tr',
+      'https://news.google.com/rss/search?q=KKTC+gündem+lefkoşa&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 10,
+    enabled: true,
+  },
+  {
+    id: 'kibris-kaza-google-news',
+    label: 'Kıbrıs Kaza/Asayiş (Google News)',
+    feedUrl: 'https://news.google.com/rss/search?q=kıbrıs+kaza+asayiş+polis&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=KKTC+trafik+kazası+yaralı&hl=tr&gl=TR&ceid=TR:tr',
+      'https://news.google.com/rss/search?q=kuzey+kıbrıs+yangın+olay&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'kibrisgazetesi',
+    label: 'Kıbrıs Gazetesi',
+    feedUrl: 'https://www.kibrisgazetesi.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:kibrisgazetesi.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'havadiskibris',
+    label: 'Havadis Kıbrıs',
+    feedUrl: 'https://www.havadiskibris.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:havadiskibris.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'kibrispostasi',
+    label: 'Kıbrıs Postası',
+    feedUrl: 'https://www.kibrispostasi.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:kibrispostasi.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 7,
+    enabled: true,
+  },
+  {
+    id: 'yeniduzen-kibris',
+    label: 'Yeni Düzen (KKTC)',
+    feedUrl: 'https://www.yeniduzen.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:yeniduzen.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 7,
+    enabled: true,
+  },
+  {
+    id: 'diyalog-kibris',
+    label: 'Diyalog Gazetesi (KKTC)',
+    feedUrl: 'https://www.diyalog.com/rss',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:diyalog.com+kıbrıs&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'starkibris',
+    label: 'Star Kıbrıs',
+    feedUrl: 'https://www.starkibris.net/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:starkibris.net&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'kibrisbulteni',
+    label: 'Kıbrıs Bülteni',
+    feedUrl: 'https://www.kibrisbulteni.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:kibrisbulteni.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'bugunkibris',
+    label: 'Bugün Kıbrıs',
+    feedUrl: 'https://bugunkibris.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:bugunkibris.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'detaykibris',
+    label: 'Detay Kıbrıs',
+    feedUrl: 'https://www.detaykibris.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:detaykibris.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 7,
+    enabled: true,
+  },
+  {
+    id: 'sondakikacyprus',
+    label: 'Son Dakika Cyprus',
+    feedUrl: 'https://sondakikacyprus.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:sondakikacyprus.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'kibrisgercek',
+    label: 'Kıbrıs Gerçek',
+    feedUrl: 'https://www.kibrisgercek.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:kibrisgercek.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 7,
+    enabled: true,
+  },
+  {
+    id: 'gundemkibris',
+    label: 'Gündem Kıbrıs',
+    feedUrl: 'https://www.gundemkibris.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:gundemkibris.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 7,
+    enabled: true,
+  },
+  {
+    id: 'haberkibris',
+    label: 'Haber Kıbrıs',
+    feedUrl: 'https://haberkibris.com/feed',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:haberkibris.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 7,
+    enabled: true,
+  },
+  {
+    id: 'sondakika-kibris',
+    label: 'Son Dakika Kıbrıs (Sondakika.com)',
+    feedUrl: 'https://www.sondakika.com/kibris/rss/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:sondakika.com+kıbrıs&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'polis-kktc',
+    label: 'KKTC Polis Teşkilatı',
+    feedUrl: 'https://news.google.com/rss/search?q=site:polis.gov.ct.tr&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
 ]
 
 function envFeedOverride(sourceId: string): string | undefined {

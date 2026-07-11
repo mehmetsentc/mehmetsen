@@ -1,9 +1,10 @@
 import { CITY_COOKIE } from '@/lib/i18n'
 
 const LOCATION_STORAGE_KEY = 'nahaber-user-location'
+const LOCAL_NEWS_CITY_KEY = 'nahaber-local-news-city'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
-export type UserLocationSource = 'profile' | 'geolocation' | 'cookie' | 'fallback'
+export type UserLocationSource = 'profile' | 'geolocation' | 'cookie' | 'fallback' | 'manual'
 
 export interface StoredUserLocation {
   citySlug: string
@@ -54,5 +55,34 @@ export function writeStoredUserLocation(location: StoredUserLocation): void {
     setCityCookie(location.citySlug)
   } catch {
     // memory-only fallback
+  }
+}
+
+/** Yerel haber sayfasında kullanıcının elle seçtiği şehir — global konumdan bağımsız. */
+export function readLocalNewsCitySlug(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(LOCAL_NEWS_CITY_KEY)?.trim().toLowerCase()
+    return raw || null
+  } catch {
+    return null
+  }
+}
+
+export function writeLocalNewsCitySlug(citySlug: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(LOCAL_NEWS_CITY_KEY, citySlug.trim().toLowerCase())
+  } catch {
+    // ignore
+  }
+}
+
+export function clearLocalNewsCitySlug(): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(LOCAL_NEWS_CITY_KEY)
+  } catch {
+    // ignore
   }
 }

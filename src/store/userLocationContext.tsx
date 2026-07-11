@@ -153,7 +153,7 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
     if (resolveProfileCity(user)) return
 
     const stored = readStoredUserLocation()
-    if (stored?.source === 'profile' || stored?.source === 'geolocation') return
+    if (stored?.source === 'profile' || stored?.source === 'geolocation' || stored?.source === 'manual') return
 
     const privacy = getPrivacyPreferences()
     const mayUseGeolocation = privacy.shareLocation || marketingAllowed

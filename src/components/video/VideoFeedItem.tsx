@@ -301,6 +301,11 @@ function VideoFeedItemInner({
     playActive()
 
     const handleMessage = (e: MessageEvent) => {
+      // Sadece BU iframe'den gelen mesajlar işlenir.
+      // Sayfada birden fazla YouTube iframe olduğunda (virtual window) tüm handleMessage
+      // callback'leri tüm mesajları alır → yanlış iframe'in onStateChange'i aktif
+      // videonun pause/play state'ini bozar (shaking + play butonu takılması).
+      if (e.source !== iframeRef.current?.contentWindow) return
       if (e.origin !== YT_EMBED_ORIGIN && e.origin !== 'https://www.youtube.com') return
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
@@ -647,6 +652,8 @@ function VideoFeedItemInner({
                   if (isActive) {
                     sendYTCmd('playVideo')
                     sendYTCmd(muted ? 'mute' : 'unMute')
+                    // autoplay=1&mute=1 iframe başlayınca oynar — overlay'i hemen kaldır
+                    setPaused(false)
                   }
                   setLoading(false)
                 }}

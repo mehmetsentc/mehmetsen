@@ -169,6 +169,16 @@ export const TURIZM_SOURCE_IDS = [
   'aa-turizm', 'hurriyet-seyahat', 'ntv-seyahat', 'sabah-turizm',
 ] as const
 
+/** Kıbrıs / KKTC kaynakları — yerel haberler, kaza/asayiş, gündem, Lefkoşa. */
+export const KIBRIS_SOURCE_IDS = [
+  'kibris-google-news', 'kibris-kaza-google-news',
+  'kibrisgazetesi', 'havadiskibris', 'kibrispostasi',
+  'yeniduzen-kibris', 'diyalog-kibris', 'starkibris', 'kibrisbulteni',
+  'bugunkibris', 'detaykibris', 'sondakikacyprus',
+  'kibrisgercek', 'gundemkibris', 'haberkibris',
+  'sondakika-kibris', 'polis-kktc',
+] as const
+
 /** Gezi kaynakları — destinasyon, rota, seyahat rehberi, keşif haberleri. */
 export const GEZI_SOURCE_IDS = [
   'gezi-google-news', 'gezginler', 'milliyet-seyahat',
@@ -524,6 +534,14 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     schedule: '30m',
     description: 'freenewsapi.io üzerinden Türkçe (language=tr) haberler çeker, AI ile yeniden yazar ve yayınlar.',
     cronPath: '/api/cron/newsroom/freenews',
+  },
+  'kibris-haberleri': {
+    id: 'kibris-haberleri',
+    name: 'Kıbrıs Haberleri Worker',
+    nameTr: 'Kıbrıs / KKTC Haber Worker',
+    schedule: '30m',
+    description: 'Kıbrıs Gazetesi, Yeni Düzen, Havadis, Bugün Kıbrıs, Detay, Gündem Kıbrıs, KKTC Polis ve diğer KKTC kaynakları — kibris-haberleri kategorisine yayınlar.',
+    cronPath: '/api/cron/newsroom/kibris',
   },
 }
 

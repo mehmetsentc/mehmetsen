@@ -29,6 +29,7 @@ export const PAGE_STATE_KEYS = {
   weatherCity: 'weatherCity',
   weatherSearchOpen: 'weatherSearchOpen',
   localCitySlug: 'localCitySlug',
+  localUserPickedCity: 'localUserPickedCity',
   localCitySheetOpen: 'localCitySheetOpen',
   sidebarSearch: 'sidebarSearch',
 } as const

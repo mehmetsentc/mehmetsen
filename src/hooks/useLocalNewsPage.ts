@@ -1,18 +1,24 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { TURKISH_PROVINCES } from '@/constants/cities'
+import { ROUTES } from '@/constants/routes'
 import { postService } from '@/services/postService'
 import { getCurrentPosition } from '@/lib/location'
 import { nearestProvinceSlug, getCityCategoryName } from '@/constants/cities'
 import {
+  clearLocalNewsCitySlug,
+  readLocalNewsCitySlug,
   readStoredUserLocation,
+  writeLocalNewsCitySlug,
   writeStoredUserLocation,
 } from '@/lib/userLocationStorage'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
+import { usePageStateStore } from '@/store/pageStateStore'
 import {
   FEED_LIVE_DEFER_MS,
   FEED_LIVE_POLL_MS,
@@ -40,11 +46,53 @@ export const LOCAL_NEWS_CITIES: LocalCity[] = TURKISH_PROVINCES.map((p) => ({
   lng: p.lng,
 }))
 
+function provinceToCity(province: (typeof TURKISH_PROVINCES)[number]): LocalCity {
+  return {
+    slug: province.slug,
+    name: province.name,
+    lat: province.lat,
+    lng: province.lng,
+  }
+}
+
+function cityFromSlug(slug: string | null | undefined): LocalCity | null {
+  if (!slug || slug === '__all__') return null
+  const province = TURKISH_PROVINCES.find((p) => p.slug === slug)
+  return province ? provinceToCity(province) : null
+}
+
+/** Sync read — page state hydrate öncesi de çalışır. */
+function resolvePersistedLocalCitySlug(pathname: string): string | null {
+  const fromPage = usePageStateStore.getState().pages[pathname]?.values[
+    PAGE_STATE_KEYS.localCitySlug
+  ] as string | null | undefined
+  if (fromPage) return fromPage
+
+  const fromLocalNews = readLocalNewsCitySlug()
+  if (fromLocalNews) return fromLocalNews
+
+  const stored = readStoredUserLocation()
+  if (stored?.source === 'manual' && stored.citySlug) return stored.citySlug
+
+  return null
+}
+
+function hasUserPickedCity(pathname: string): boolean {
+  const fromPage = usePageStateStore.getState().pages[pathname]?.values[
+    PAGE_STATE_KEYS.localUserPickedCity
+  ] as boolean | undefined
+  if (fromPage) return true
+  return Boolean(readLocalNewsCitySlug())
+}
+
 export function useLocalNewsPage() {
+  const pathname = usePathname()
   const userLocation = useUserLocation()
   const [locationState, setLocationState] = useState<LocalNewsLocationState>('idle')
   const [activeTab, setActiveTab] = useState<LocalNewsActiveTab>('haberler')
-  const [city, setCity] = useState<LocalCity | null>(null)
+  const [city, setCity] = useState<LocalCity | null>(() =>
+    cityFromSlug(resolvePersistedLocalCitySlug(ROUTES.LOCAL))
+  )
   const [query, setQuery] = useState('')
   const [posts, setPosts] = useState<TimelinePost[]>([])
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
@@ -57,10 +105,15 @@ export function useLocalNewsPage() {
     PAGE_STATE_KEYS.localCitySlug,
     null
   )
+  const [userPickedCity, setUserPickedCity] = usePageState(
+    PAGE_STATE_KEYS.localUserPickedCity,
+    hasUserPickedCity(ROUTES.LOCAL)
+  )
 
   const requestedRef = useRef(false)
   const citySlugRef = useRef<string | null>(null)
   const geoAbortRef = useRef(false)
+  const userPickedRef = useRef(userPickedCity)
   const chipsScrollRef = useRef<HTMLDivElement>(null)
   const selectedChipRef = useRef<HTMLButtonElement>(null)
   const liveReadyRef = useRef(false)
@@ -86,12 +139,7 @@ export function useLocalNewsPage() {
   }, [city?.slug])
 
   const applyCity = useCallback((province: (typeof TURKISH_PROVINCES)[number], state: LocalNewsLocationState) => {
-    setCity({
-      slug: province.slug,
-      name: province.name,
-      lat: province.lat,
-      lng: province.lng,
-    })
+    setCity(provinceToCity(province))
     setLocationState(state)
     requestedRef.current = true
   }, [])
@@ -178,18 +226,18 @@ export function useLocalNewsPage() {
   const { sentinelRef } = useInfiniteScroll({ onLoadMore: loadMore, hasMore, loading: loadingMore })
 
   const requestGeolocation = useCallback(async () => {
-    if (requestedRef.current) return
+    if (requestedRef.current || userPickedRef.current) return
     requestedRef.current = true
     geoAbortRef.current = false
     setLocationState('requesting')
     try {
       const pos = await getCurrentPosition()
-      if (geoAbortRef.current) return
+      if (geoAbortRef.current || userPickedRef.current) return
       const { latitude: lat, longitude: lng } = pos.coords
       const slug = nearestProvinceSlug(lat, lng)
       const name = getCityCategoryName(slug)
       const province = TURKISH_PROVINCES.find((p) => p.slug === slug)!
-      setCity({ slug, name, lat: province.lat, lng: province.lng })
+      setCity(provinceToCity(province))
       setLocationState('granted')
       writeStoredUserLocation({
         citySlug: slug,
@@ -200,20 +248,40 @@ export function useLocalNewsPage() {
         updatedAt: Date.now(),
       })
     } catch {
-      if (geoAbortRef.current) return
+      if (geoAbortRef.current || userPickedRef.current) return
       setLocationState('denied')
       void fetchFirst('__all__')
     }
   }, [fetchFirst])
 
   useEffect(() => {
-    const slug = storedCitySlug ?? readStoredUserLocation()?.citySlug
-    if (slug && slug !== '__all__') {
-      const province = TURKISH_PROVINCES.find((p) => p.slug === slug)
-      if (province) {
-        applyCity(province, 'stored')
-        return
+    userPickedRef.current = userPickedCity
+  }, [userPickedCity])
+
+  useEffect(() => {
+    const persistedSlug =
+      storedCitySlug ??
+      resolvePersistedLocalCitySlug(pathname) ??
+      readLocalNewsCitySlug()
+
+    if (persistedSlug) {
+      const persistedCity = cityFromSlug(persistedSlug)
+      if (persistedCity && city?.slug !== persistedSlug) {
+        setCity(persistedCity)
+        setLocationState('stored')
+        requestedRef.current = true
       }
+      if (!userPickedCity && (readLocalNewsCitySlug() || storedCitySlug)) {
+        setUserPickedCity(true)
+      }
+      return
+    }
+
+    if (userPickedRef.current || userPickedCity) return
+
+    if (city) {
+      requestedRef.current = true
+      return
     }
 
     if (userLocation.ready && userLocation.source !== 'fallback' && userLocation.citySlug) {
@@ -229,11 +297,15 @@ export function useLocalNewsPage() {
     }
   }, [
     applyCity,
+    city,
+    pathname,
     requestGeolocation,
     storedCitySlug,
     userLocation.citySlug,
     userLocation.ready,
     userLocation.source,
+    userPickedCity,
+    setUserPickedCity,
   ])
 
   useEffect(() => {
@@ -300,21 +372,24 @@ export function useLocalNewsPage() {
   const handleSelectCity = useCallback(
     (selected: LocalCity) => {
       geoAbortRef.current = true
+      userPickedRef.current = true
       setCity(selected)
       setStoredCitySlug(selected.slug)
+      setUserPickedCity(true)
       setLocationState('stored')
       setQuery('')
+      writeLocalNewsCitySlug(selected.slug)
       writeStoredUserLocation({
         citySlug: selected.slug,
         cityName: selected.name,
         lat: selected.lat,
         lng: selected.lng,
-        source: 'geolocation',
+        source: 'manual',
         updatedAt: Date.now(),
       })
       requestedRef.current = true
     },
-    [setStoredCitySlug]
+    [setStoredCitySlug, setUserPickedCity]
   )
 
   const retryFetch = useCallback(() => {
@@ -322,9 +397,14 @@ export function useLocalNewsPage() {
   }, [city, fetchFirst])
 
   const resetGeolocation = useCallback(() => {
+    userPickedRef.current = false
+    setUserPickedCity(false)
+    setStoredCitySlug(null)
+    clearLocalNewsCitySlug()
     requestedRef.current = false
+    setCity(null)
     void requestGeolocation()
-  }, [requestGeolocation])
+  }, [requestGeolocation, setStoredCitySlug, setUserPickedCity])
 
   return {
     locationState,

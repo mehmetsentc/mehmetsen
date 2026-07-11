@@ -168,6 +168,9 @@
     },
     "src/app/api/cron/youtube-rss/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/cron/newsroom/kibris/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -346,6 +349,10 @@
     {
       "path": "/api/cron/sports/worldcup-sync",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/kibris",
+      "schedule": "*/30 * * * *"
     }
   ]
 }
