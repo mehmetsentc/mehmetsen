@@ -12,6 +12,10 @@ function reserveRailIds(data: HomeFeedInitialData): Set<string> {
 export function createFeedAllocator(data: HomeFeedInitialData) {
   const used = reserveRailIds(data)
 
+  for (const item of data.mostRead.slice(0, 8)) {
+    used.add(item.id)
+  }
+
   const masterPool: NewsItem[] = []
   const seen = new Set<string>()
 

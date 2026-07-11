@@ -27,6 +27,7 @@ const MOCK_RATES: FinanceRates = {
   eurTry: { label: 'Euro', value: 37.12, unit: '₺', change: -0.42, format: 'currency' },
   btcUsd: { label: 'Bitcoin', value: 64327, unit: '$', change: -1.85, format: 'price' },
   goldTryGram: { label: 'Gram Altın', value: 2850.5, unit: '₺', change: -0.65, format: 'currency' },
+  bist100: { label: 'BIST 100', value: 9842.5, unit: '', change: 0.42, format: 'price' },
   updatedAt: Date.now(),
 }
 

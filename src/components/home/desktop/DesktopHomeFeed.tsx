@@ -3,9 +3,11 @@
 import { useMemo } from 'react'
 import { ROUTES } from '@/constants/routes'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
-import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID } from '@/components/home/desktop/desktopLayout'
+import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID, HERO_SPLIT_ASIDE, HERO_SPLIT_MAIN, HERO_SPLIT_SECTION } from '@/components/home/desktop/desktopLayout'
 import { DesktopCategoryGridSection } from '@/components/home/desktop/DesktopCategoryGridSection'
+import { DesktopMarketSidebar } from '@/components/home/desktop/DesktopMarketSidebar'
 import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGridChunks'
+import { DesktopMostReadGrid } from '@/components/home/desktop/DesktopMostReadGrid'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
 import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStrip'
@@ -15,7 +17,6 @@ import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
 import {
   HeroImageOnly,
   ImageStory,
-  NumberedStory,
   QuickHeadlineStrip,
   RightFeatureStory,
   SidebarTextStory,
@@ -56,7 +57,6 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
     const heroLead = take(1)[0]
     const heroRight = take(2)
-    const heroSidebarText = take(3)
 
     const topFour = take(4)
     const quickHeadlines = take(5)
@@ -78,7 +78,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const catRow1Filler = rowGapFiller(catRow1, takeFeatured)
     const catRow2Filler = rowGapFiller(catRow2, takeFeatured)
 
-    const mostRead = data.mostRead.slice(0, 6)
+    const mostRead = data.mostRead.slice(0, 8)
     const trending = data.trending.slice(0, 8)
     const moreList = take(8)
 
@@ -91,7 +91,6 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     return {
       heroLead,
       heroRight,
-      heroSidebarText,
       topFour,
       quickHeadlines,
       moreGrid,
@@ -125,34 +124,40 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       {hasHero ? (
         <section
-          className="mb-10 grid grid-cols-12 items-start gap-4 border-b border-[rgb(var(--color-border))] pb-10"
+          className={`mb-10 ${HERO_SPLIT_SECTION} border-b border-[rgb(var(--color-border))] pb-10`}
           aria-label="Manşet"
         >
-          <div className="col-span-12 min-w-0 lg:col-span-6">
+          <div className={HERO_SPLIT_MAIN}>
             <HeroImageOnly item={layout.heroLead!} priority aspect="wide" />
             <div className="mt-4">
               <TextLeadStory item={layout.heroLead!} size="hero" />
             </div>
           </div>
 
-          <aside className="col-span-12 min-w-0 lg:col-span-6 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-5">
+          <aside className={HERO_SPLIT_ASIDE}>
             <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
               {layout.heroRight.map((item, i) => (
                 <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
-              ))}
-              {layout.heroSidebarText.map((item) => (
-                <SidebarTextStory key={item.id} item={item} />
               ))}
             </div>
           </aside>
         </section>
       ) : null}
 
+      {layout.mostRead.length > 0 ? <DesktopMostReadGrid items={layout.mostRead} /> : null}
+
       {layout.topFour.length > 0 ? (
-        <section className={`mb-6 ${FOUR_CARD_GRID}`} aria-label="Öne çıkanlar">
-          {layout.topFour.map((item, i) => (
-            <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
-          ))}
+        <section className={`mb-6 ${HERO_SPLIT_SECTION}`} aria-label="Öne çıkanlar">
+          <div className={HERO_SPLIT_MAIN}>
+            <div className="grid grid-cols-2 gap-4">
+              {layout.topFour.map((item, i) => (
+                <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
+              ))}
+            </div>
+          </div>
+          <aside className={HERO_SPLIT_ASIDE}>
+            <DesktopMarketSidebar />
+          </aside>
         </section>
       ) : null}
 
@@ -241,17 +246,6 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
           items={layout.catRow2Filler}
           href={ROUTES.CATEGORY('gundem')}
         />
-      ) : null}
-
-      {layout.mostRead.length > 0 ? (
-        <section className={DESKTOP_SECTION_DIVIDER} aria-label="Çok okunanlar">
-          <DesktopSectionHeader title="Çok Okunanlar" />
-          <div className="grid grid-cols-2 gap-x-10 gap-y-0">
-            {layout.mostRead.map((item, index) => (
-              <NumberedStory key={item.id} item={item} rank={index + 1} />
-            ))}
-          </div>
-        </section>
       ) : null}
 
       <DesktopMoreGridChunks

@@ -339,7 +339,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
     latest: bucketLatest(pool, 28, now),
     trending: bucketTrending(pool, 6, now),
     trendFeed: bucketTrendFeed(pool, 24, now),
-    mostRead: bucketMostRead(pool, 6),
+    mostRead: bucketMostRead(pool, 8),
     categoryRails,
   }
 }

@@ -16,6 +16,7 @@ export interface FinanceRates {
   eurTry: FinanceRate
   goldTryGram: FinanceRate
   btcUsd: FinanceRate
+  bist100: FinanceRate
   updatedAt: number
 }
 
@@ -67,11 +68,12 @@ function pct(now: number, prev: number): number {
 export async function GET() {
   try {
     // Paralel fetch — 4 sembol aynı anda
-    const [usdTry, eurTry, gold, btc] = await Promise.all([
+    const [usdTry, eurTry, gold, btc, bist] = await Promise.all([
       fetchYahoo('USDTRY=X'),   // Dolar/TL
       fetchYahoo('EURTRY=X'),   // Euro/TL
       fetchYahoo('GC=F'),       // Altın vadeli (USD/troy oz)
       fetchYahoo('BTC-USD'),    // Bitcoin/USD
+      fetchYahoo('XU100.IS'),   // BIST 100
     ])
 
     const usdVal  = usdTry?.regularMarketPrice ?? 0
@@ -88,6 +90,9 @@ export async function GET() {
 
     const btcVal  = btc?.regularMarketPrice ?? 0
     const btcPrev = btc?.previousClose      ?? btcVal
+
+    const bistVal  = bist?.regularMarketPrice ?? 0
+    const bistPrev = bist?.previousClose      ?? bistVal
 
     const rates: FinanceRates = {
       usdTry: {
@@ -116,6 +121,13 @@ export async function GET() {
         value:  btcVal > 0 ? Math.round(btcVal) : 0,
         unit:   '$',
         change: pct(btcVal, btcPrev),
+        format: 'price',
+      },
+      bist100: {
+        label:  'BIST 100',
+        value:  Math.round(bistVal * 100) / 100,
+        unit:   '',
+        change: pct(bistVal, bistPrev),
         format: 'price',
       },
       updatedAt: Date.now(),
