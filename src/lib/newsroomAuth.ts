@@ -21,6 +21,15 @@ export async function isNewsroomAuthorized(request: Request): Promise<boolean> {
   if (newsroomSecret) {
     const authHeader = request.headers.get('authorization')
     if (authHeader === `Bearer ${newsroomSecret}`) return true
+
+    // cron-job.org ve benzeri servisler secret'ı query param olarak gönderebilir
+    try {
+      const url = new URL(request.url)
+      const qSecret = url.searchParams.get('secret') || url.searchParams.get('cron_secret')
+      if (qSecret === newsroomSecret) return true
+    } catch {
+      // invalid URL — ignore
+    }
   }
 
   const cms = await verifyCmsToken(request, 'cron:trigger')
