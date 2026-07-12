@@ -232,6 +232,10 @@
     {
       "path": "/api/cron/on-this-day",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/football-sync",
+      "schedule": "0 6 * * *"
     }
   ]
 }
