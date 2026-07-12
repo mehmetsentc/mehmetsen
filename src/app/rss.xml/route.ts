@@ -41,11 +41,13 @@ export async function GET() {
       const slug = d.slug?.trim() || doc.id
       const path = slug !== doc.id ? ROUTES.NEWS_DETAIL(slug) : ROUTES.POST_DETAIL(doc.id)
       const url = `${base}${path}`
+      const summary = d.summary?.trim() || d.content?.slice(0, 300) || ''
       return {
         title: d.title?.trim() || 'Haber',
         link: url,
         guid: url,
-        description: d.summary?.trim() || d.content?.slice(0, 300) || '',
+        description: summary,
+        contentEncoded: summary,
         pubDate: new Date(d.publishedAt ?? Date.now()).toISOString(),
         category: d.categoryId ? getCategoryLabel(d.categoryId) : undefined,
         imageUrl: d.coverImageUrl?.trim() || undefined,

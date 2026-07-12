@@ -105,6 +105,7 @@ const softwareApplicationJsonLd = {
 
 const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim()
 const yandexSiteVerification = process.env.NEXT_PUBLIC_YANDEX_SITE_VERIFICATION?.trim()
+const bingSiteVerification = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim()
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
@@ -217,6 +218,9 @@ export const metadata: Metadata = {
   verification: {
     ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
     ...(yandexSiteVerification ? { yandex: yandexSiteVerification } : {}),
+    ...(bingSiteVerification
+      ? { other: { 'msvalidate.01': bingSiteVerification } }
+      : {}),
   },
 }
 
