@@ -135,6 +135,8 @@ export interface Post {
    * Stored in order; rendered evenly distributed across paragraphs.
    */
   additionalImages?: Array<{ url: string; caption?: string }>
+  /** Kapak görseli SEO açıklaması (image sitemap + alt text) */
+  imageCaption?: string | null
   publishedAt: string | null
   createdAt: string
   updatedAt: string

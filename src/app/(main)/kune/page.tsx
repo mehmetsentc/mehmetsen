@@ -5,7 +5,7 @@ const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 const siteUrl = getSiteUrl()
 
 export const metadata: Metadata = {
-  title: `Künye | ${siteName}`,
+  title: 'Künye',
   description: `${siteName} yayın bilgileri, sorumlu müdür ve iletişim bilgileri.`,
   alternates: { canonical: `${siteUrl}/kune` },
 }

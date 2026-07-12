@@ -24,6 +24,10 @@ export function getPrimaryVideo(post: Post): MediaItem | null {
   return null
 }
 
+export function getPostCoverAlt(post: Pick<Post, 'title' | 'imageCaption'>): string {
+  return post.imageCaption?.trim() || post.title.trim() || 'Haber görseli'
+}
+
 /** YouTube video ID çıkar (watch, embed, shorts, youtu.be). */
 export function parseYouTubeVideoId(url: string | null | undefined): string | null {
   if (!url?.trim()) return null

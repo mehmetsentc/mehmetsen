@@ -49,6 +49,9 @@ const nextConfig: NextConfig = {
       { source: '/mesajlar', destination: '/messages', permanent: true },
       { source: '/mesajlar/:path*', destination: '/messages/:path*', permanent: true },
       { source: '/bildirimler', destination: '/notifications', permanent: true },
+      { source: '/ara', destination: '/search', permanent: true },
+      { source: '/ara/:path*', destination: '/search/:path*', permanent: true },
+      { source: '/hukuk/gizlilik', destination: '/gizlilik', permanent: true },
     ]
   },
 

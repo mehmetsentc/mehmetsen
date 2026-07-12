@@ -177,7 +177,19 @@ export function cleanupNewsTitle(title: string): string {
   let result = decodeHtmlEntities(title).trim()
   if (!result) return result
 
-  result = result.replace(TITLE_PIPE_SPAM_RE, '')
+  const pipeIdx = result.indexOf('|')
+  if (pipeIdx > 0) {
+    const left = result.slice(0, pipeIdx).trim()
+    const right = result.slice(pipeIdx + 1).trim()
+    // "SON DAKİKA | Gerçek manşet" — sol etiket, sağ asıl başlık
+    if (right.length > left.length && right.length >= 15) {
+      result = right
+    } else {
+      result = result.replace(TITLE_PIPE_SPAM_RE, '')
+    }
+  } else {
+    result = result.replace(TITLE_PIPE_SPAM_RE, '')
+  }
   result = result.replace(TITLE_CLICKBAIT_RE, '')
   result = result.replace(/\s+/g, ' ').trim()
 

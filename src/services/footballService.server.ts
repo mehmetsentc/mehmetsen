@@ -7,9 +7,9 @@ export const LEAGUES: Record<number, string> = {
   203: 'Süper Lig',
   204: 'TFF 1. Lig',
   205: 'TFF 2. Lig',
-  206: 'TFF 3. Lig',
+  552: 'TFF 3. Lig',  // Group 1 — league 206 is Türkiye Kupası, not 3. Lig
 }
-export const LEAGUE_IDS = [203, 204, 205, 206] as const
+export const LEAGUE_IDS = [203, 204, 205, 552] as const
 export type LeagueId = typeof LEAGUE_IDS[number]
 
 export const CURRENT_SEASON = 2024
@@ -140,6 +140,7 @@ export async function getTodayFixtures(leagueId = 203): Promise<Fixture[]> {
 }
 
 // ─── Yaklaşan Maçlar ─────────────────────────────────────────────────────────
+// Free plan: `next` parametresi yok — from/to aralığı kullanılır
 export async function getUpcomingFixtures(leagueId = 203, next = 10): Promise<Fixture[]> {
   const db  = getAdminFirestore()
   const ref = db.collection(CACHE_COL).doc(`fixtures-upcoming-${leagueId}`)
@@ -148,16 +149,23 @@ export async function getUpcomingFixtures(leagueId = 203, next = 10): Promise<Fi
     const d = doc.data() as { fixtures: Fixture[]; cachedAt: number }
     if (Date.now() - d.cachedAt < FIXTURES_TTL) return d.fixtures.slice(0, next)
   }
+  const today  = new Date().toISOString().slice(0, 10)
+  const future = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = await apiFetch<any>(
-    `/fixtures?league=${leagueId}&season=${CURRENT_SEASON}&next=${next}`
+    `/fixtures?league=${leagueId}&season=${CURRENT_SEASON}&from=${today}&to=${future}`
   )
-  const fixtures = raw.map(mapFixture)
+  const fixtures = raw
+    .map(mapFixture)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .sort((a: Fixture, b: Fixture) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, next)
   await ref.set({ fixtures, cachedAt: Date.now() })
   return fixtures
 }
 
 // ─── Geçmiş Maçlar ───────────────────────────────────────────────────────────
+// Free plan: `last` parametresi yok — sezonun son ayları (Mart–Temmuz) çekilir
 export async function getPastFixtures(leagueId = 203, season = CURRENT_SEASON, last = 20): Promise<Fixture[]> {
   const db  = getAdminFirestore()
   const ref = db.collection(CACHE_COL).doc(`fixtures-past-${leagueId}-${season}`)
@@ -166,11 +174,20 @@ export async function getPastFixtures(leagueId = 203, season = CURRENT_SEASON, l
     const d = doc.data() as { fixtures: Fixture[]; cachedAt: number }
     if (Date.now() - d.cachedAt < PAST_TTL) return d.fixtures.slice(0, last)
   }
+  // season=2024 → 2024-25 sezonu → bitiş Mart-Temmuz 2025
+  const endYear = season + 1
+  const from = `${endYear}-03-01`
+  const to   = `${endYear}-07-31`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = await apiFetch<any>(
-    `/fixtures?league=${leagueId}&season=${season}&last=${last}`
+    `/fixtures?league=${leagueId}&season=${season}&from=${from}&to=${to}`
   )
-  const fixtures = raw.map(mapFixture)
+  // En yeni maçlar önce
+  const fixtures = raw
+    .map(mapFixture)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .sort((a: Fixture, b: Fixture) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, last)
   await ref.set({ fixtures, cachedAt: Date.now() })
   return fixtures
 }

@@ -8,7 +8,7 @@ const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 const siteUrl = getSiteUrl()
 
 export const metadata: Metadata = {
-  title: `Site Haritası | ${siteName}`,
+  title: 'Site Haritası',
   description: `${siteName} site haritası — tüm haber kategorileri, sayfalar ve XML site haritaları.`,
   alternates: { canonical: `${siteUrl}${ROUTES.SITE_MAP}` },
   robots: { index: true, follow: true },
@@ -28,7 +28,7 @@ const UTILITY_PAGES = [
   { label: 'Yerel Haberler', href: ROUTES.LOCAL },
   { label: 'Teve', href: ROUTES.REELS },
   { label: 'Arama', href: ROUTES.SEARCH },
-  { label: 'Gizlilik Politikası', href: '/hukuk/gizlilik' },
+  { label: 'Gizlilik Politikası', href: '/gizlilik' },
   { label: 'Kullanım Koşulları', href: '/hukuk/kullanim-kosullari' },
   { label: 'Editoryal İlkeler', href: '/editoryal-ilkeler' },
 ] as const

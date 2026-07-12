@@ -101,7 +101,7 @@ export function parseArticleContent(post: Post): ParsedArticleContent {
   const summaryText = cleanupNewsSummary(post.summary?.trim() || '')
   const leadText = spotText || summaryText
   const bodyText = cleanupNewsBody(post.content?.trim() || '', { preserveSourceLine: false })
-  const articleTitle = cleanupNewsTitle(post.title)
+  const articleTitle = post.seoTitle?.trim() || cleanupNewsTitle(post.title)
 
   const displayBodyText = stripLeadFromBody(bodyText, leadText)
   const showLead = Boolean(leadText)

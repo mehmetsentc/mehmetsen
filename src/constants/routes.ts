@@ -15,6 +15,9 @@ export const ROUTES = {
   SAVED: '/saved',
   BOOKMARKS: '/saved',
   SEARCH: '/search',
+  /** Türkçe arama alias'ı — /search'e yönlendirilir */
+  SEARCH_TR: '/ara',
+  TAG: (slug: string) => `/etiket/${encodeURIComponent(slug)}`,
   DISCOVER: '/discover',
   APP: '/uygulama',
   INFLUENCER: '/influencer',
@@ -97,6 +100,8 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname.startsWith('/weather')) return true
   if (pathname.startsWith('/discover')) return true
   if (pathname.startsWith('/search')) return true
+  if (pathname.startsWith('/ara')) return true
+  if (pathname.startsWith('/etiket/')) return true
   if (pathname.startsWith('/influencer')) return true
   if (pathname.startsWith('/futbol-canli')) return true
   if (pathname.startsWith('/muzeler')) return true

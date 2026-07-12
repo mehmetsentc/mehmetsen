@@ -5,7 +5,7 @@ const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 const siteUrl = getSiteUrl()
 
 export const metadata: Metadata = {
-  title: `Gizlilik Politikası | ${siteName}`,
+  title: 'Gizlilik Politikası',
   description: `${siteName} gizlilik politikası. Kişisel verilerinizin nasıl toplandığı, işlendiği ve korunduğu hakkında bilgi edinin.`,
   alternates: { canonical: `${siteUrl}/gizlilik` },
   robots: { index: true, follow: true },

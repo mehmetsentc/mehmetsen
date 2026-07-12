@@ -35,7 +35,7 @@ const LEAGUES: { id: number; label: string; short: string }[] = [
   { id: 203, label: 'Süper Lig',  short: 'Süper Lig' },
   { id: 204, label: 'TFF 1. Lig', short: '1. Lig' },
   { id: 205, label: 'TFF 2. Lig', short: '2. Lig' },
-  { id: 206, label: 'TFF 3. Lig', short: '3. Lig' },
+  { id: 552, label: 'TFF 3. Lig', short: '3. Lig' },
 ]
 
 const CONTENT_TABS = [

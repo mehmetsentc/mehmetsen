@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic'
  *
  * Kullanıcı başka bir uygulamadan (X, WhatsApp, Twitter vs.) bir URL/text
  * paylaştığında ve NaHaber PWA yüklüyse, hedef olarak bu route'a POST eder.
- * Bizim de bunu /ara veya /post/create'e yönlendirmemiz gerek.
+ * Bizim de bunu /search veya /post/create'e yönlendirmemiz gerek.
  *
  * Form params (multipart/form-data, manifest'ten):
  *   title  → paylaşılan başlık
@@ -16,8 +17,8 @@ export const dynamic = 'force-dynamic'
  *   url    → paylaşılan URL (varsa)
  *
  * Akış:
- *   - URL varsa: /ara?q=<url>  → arama ile haber bul
- *   - Sadece text/title varsa: /ara?q=<text>
+ *   - URL varsa: /search?q=<url>  → arama ile haber bul
+ *   - Sadece text/title varsa: /search?q=<text>
  *   - Login kullanıcı için ileride /post/create?prefill=... destekleyebiliriz
  */
 export async function POST(req: Request) {
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL('/feed', req.url))
   }
 
-  const target = new URL('/ara', req.url)
+  const target = new URL(ROUTES.SEARCH, req.url)
   target.searchParams.set('q', query.slice(0, 256))
   target.searchParams.set('utm_source', 'share-target')
 

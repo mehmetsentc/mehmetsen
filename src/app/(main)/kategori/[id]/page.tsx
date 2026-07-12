@@ -134,7 +134,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = getCategoryDescription(cat, siteName)
 
   return {
-    title: `${pageTitle} | ${siteName}`,
+    title: pageTitle,
     description,
     keywords: [cat.name, `${cat.name} haberleri`, 'son dakika', siteName, 'Türkiye haberleri'],
     robots: { index: true, follow: true },
@@ -142,7 +142,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       canonical: `${siteUrl}${ROUTES.CATEGORY(cat.slug ?? cat.id)}`,
     },
     openGraph: {
-      title: `${pageTitle} | ${siteName}`,
+      title: pageTitle,
       description,
       url: `${siteUrl}${ROUTES.CATEGORY(cat.slug ?? cat.id)}`,
       type: 'website',
@@ -152,7 +152,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     twitter: {
       card: 'summary_large_image',
       site: '@nahabercom',
-      title: `${pageTitle} | ${siteName}`,
+      title: pageTitle,
       description,
     },
   }

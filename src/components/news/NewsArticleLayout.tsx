@@ -8,7 +8,7 @@ import { ChevronRight, Clock, Eye, Hash, MapPin, User } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { formatCount, getArticleBylineName } from '@/lib/postUtils'
+import { formatCount, getArticleBylineName, getPostCoverAlt } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { Badge } from '@/components/ui/Badge'
@@ -154,7 +154,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
             <div className="relative aspect-[16/9] max-h-[min(70vh,560px)] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
               <SafeNewsImage
                 src={imageUrl}
-                alt={post.title}
+                alt={getPostCoverAlt(post)}
                 fill
                 quality={imageQualityForTier(tier)}
                 className="object-cover"
@@ -214,7 +214,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
                 {post.tags.map((tag) => (
                   <Link
                     key={tag}
-                    href={`${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}&tag=1`}
+                    href={ROUTES.TAG(tag)}
                     className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--color-surface))] px-2.5 py-1 text-xs font-semibold text-blue-600 ring-1 ring-[rgb(var(--color-border))] hover:bg-[rgb(var(--color-nav-hover))] dark:text-blue-400"
                   >
                     <Hash className="h-3 w-3" />

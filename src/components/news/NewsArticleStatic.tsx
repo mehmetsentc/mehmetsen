@@ -6,7 +6,7 @@ import { ChevronRight, Clock, Eye, Hash, MapPin, User } from 'lucide-react'
 import type { MediaItem, Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { formatCount, getArticleBylineName } from '@/lib/postUtils'
+import { formatCount, getArticleBylineName, getPostCoverAlt } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
@@ -71,7 +71,7 @@ function ImageHero({ item, title }: { item: MediaItem; title: string }) {
   return (
     <figure className="relative">
       <div className="relative news-article-hero aspect-[16/9] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
-        <SliderImage src={item.url} alt={item.alt ?? title} priority />
+        <SliderImage src={item.url} alt={item.alt ?? item.caption ?? title} priority />
         <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/70">
           nahaber.com
         </span>
@@ -121,6 +121,8 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
   const bylineName = getArticleBylineName(post)
   const hasTags = post.tags.length > 0
   const hasCity = Boolean(post.city || post.citySlug)
+
+  const coverAlt = getPostCoverAlt(post)
 
   const {
     articleTitle,
@@ -223,7 +225,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
             return <VideoHero item={placement.hero} title={post.title} posterFallback={imageUrl} />
           }
           if (placement.hero?.type === 'image') {
-            return <ImageHero item={placement.hero} title={post.title} />
+            return <ImageHero item={placement.hero} title={coverAlt} />
           }
           return null
         })()}
@@ -328,7 +330,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
                 {post.tags.map((tag) => (
                   <Link
                     key={tag}
-                    href={`${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}&tag=1`}
+                    href={ROUTES.TAG(tag)}
                     className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--color-surface))] px-2.5 py-1 text-xs font-semibold text-[rgb(var(--color-brand))] ring-1 ring-[rgb(var(--color-border))]"
                   >
                     <Hash className="h-3 w-3" />

@@ -59,14 +59,14 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
     for (const doc of latestForSeo.docs) {
       const data = doc.data() as { tags?: string[] }
       for (const tag of data.tags ?? []) {
-        const normalized = tag?.trim()
+        const normalized = tag?.trim().toLocaleLowerCase('tr-TR')
         if (normalized) tagSlugs.add(normalized)
         if (tagSlugs.size >= 100) break
       }
     }
 
     const tagRoutes: MetadataRoute.Sitemap = Array.from(tagSlugs).map((tag) => ({
-      url: `${base}${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}`,
+      url: `${base}${ROUTES.TAG(tag)}`,
       changeFrequency: 'daily',
       priority: 0.5,
     }))

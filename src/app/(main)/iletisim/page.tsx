@@ -14,7 +14,7 @@ function mailto(subject?: string) {
 }
 
 export const metadata: Metadata = {
-  title: `Destek ve İletişim | ${siteName}`,
+  title: 'Destek ve İletişim',
   description: `${siteName} iletişim sayfası. ${CONTACT_EMAIL} üzerinden bize ulaşın.`,
   alternates: { canonical: `${siteUrl}/iletisim` },
   openGraph: {

@@ -5,7 +5,7 @@ const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 const siteUrl = getSiteUrl()
 
 export const metadata: Metadata = {
-  title: `Editoryal İlkeler | ${siteName}`,
+  title: 'Editoryal İlkeler',
   description: `${siteName}'in haber doğrulama, kaynak standartları ve editoryal bağımsızlık ilkeleri.`,
   alternates: { canonical: `${siteUrl}/editoryal-ilkeler` },
 }

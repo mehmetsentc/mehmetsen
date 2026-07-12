@@ -84,7 +84,7 @@
     {
       "name": "Ara",
       "short_name": "Ara",
-      "url": "/ara?utm_source=pwa-shortcut",
+      "url": "/search?utm_source=pwa-shortcut",
       "description": "Haber ara",
       "icons": [{ "src": "/brand/icon-192.png", "sizes": "192x192" }]
     }

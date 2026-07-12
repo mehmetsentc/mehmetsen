@@ -54,6 +54,8 @@ export interface NewsDocument {
   galleryImages?: string[]
   /** Admin editöründe paragraflar arasına eklenen görseller */
   additionalImages?: Array<{ url?: string; caption?: string }>
+  /** Kapak görseli SEO açıklaması */
+  imageCaption?: string
   type?: PostType
   source?: string
   sourceUrl?: string
@@ -177,6 +179,7 @@ function buildMediaItems(input: {
   additionalImages?: NewsDocument['additionalImages']
   coverImage: string | null
   videoUrl: string | null
+  imageCaption?: string | null
 }): MediaItem[] {
   const result: MediaItem[] = []
   const seenUrls = new Set<string>()
@@ -223,11 +226,13 @@ function buildMediaItems(input: {
 
   // ── 3) Legacy fallback: cover image ──────────────────────────────────
   if (input.coverImage) {
+    const coverCaption = input.imageCaption?.trim() || null
     pushItem({
       type: 'image',
       url: input.coverImage,
       thumbnailUrl: input.coverImage,
-      caption: null,
+      caption: coverCaption,
+      alt: coverCaption,
     })
   }
 
@@ -255,6 +260,18 @@ function buildMediaItems(input: {
         thumbnailUrl: img.url.trim(),
         caption: img.caption?.trim() || null,
       })
+    }
+  }
+
+  if (input.imageCaption?.trim() && input.coverImage) {
+    const caption = input.imageCaption.trim()
+    const cover = input.coverImage.trim()
+    for (const item of result) {
+      if (item.type === 'image' && item.url === cover) {
+        if (!item.caption) item.caption = caption
+        if (!item.alt) item.alt = caption
+        break
+      }
     }
   }
 
@@ -335,6 +352,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
   const source = resolveSource(data, author)
 
   const imageUrl = thumbnail || null
+  const imageCaption = data.imageCaption?.trim() || null
   const additionalImages = Array.isArray(data.additionalImages)
     ? data.additionalImages
         .filter((img) => img?.url?.trim())
@@ -350,6 +368,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     additionalImages: data.additionalImages,
     coverImage: imageUrl,
     videoUrl: videoUrl || null,
+    imageCaption,
   })
 
   return {
@@ -376,6 +395,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     source,
     mediaItems,
     additionalImages,
+    imageCaption,
     coverImageUrl: imageUrl,
     status: (data.status as Post['status']) ?? 'published',
     visibility: 'public',

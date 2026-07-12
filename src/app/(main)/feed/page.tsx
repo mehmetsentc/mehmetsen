@@ -15,7 +15,7 @@ export const revalidate = 120
 const siteUrl = getSiteUrl()
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 
-const FEED_TITLE = `${siteName} — Türkiye Gündem, Son Dakika ve Haberler`
+const FEED_TITLE = 'Türkiye Gündem, Son Dakika ve Haberler'
 const FEED_DESCRIPTION =
   'Gündem, 3. sayfa, spor, dünya, siyaset, ekonomi, turizm, gezi, teknoloji, bilim, otomotiv, kültür, sinema, tiyatro ve magazin haberleri. Türkiye\'nin güncel haber platformu.'
 
@@ -47,6 +47,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'tr_TR',
     siteName,
+    images: [
+      {
+        url: `${siteUrl}/brand/og-default.png`,
+        width: 1200,
+        height: 630,
+        alt: siteName,
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',

@@ -478,3 +478,53 @@ export async function getOnThisDayNews(
     return []
   }
 }
+
+function tagVariants(raw: string): string[] {
+  const term = raw.trim()
+  if (!term) return []
+  const lower = term.toLocaleLowerCase('tr-TR')
+  const variants = new Set<string>([lower, term])
+  if (lower.length > 0) {
+    variants.add(lower.charAt(0).toLocaleUpperCase('tr-TR') + lower.slice(1))
+  }
+  return [...variants]
+}
+
+/** Published posts matching a tag slug (indexable /etiket/[slug] pages). */
+export async function getPostsByTag(rawTag: string, limitCount = 40): Promise<Post[]> {
+  const variants = tagVariants(rawTag)
+  if (variants.length === 0) return []
+
+  try {
+    const db = getAdminFirestore()
+    const seen = new Set<string>()
+    const posts: Post[] = []
+
+    await Promise.allSettled(
+      variants.map(async (variant) => {
+        const snap = await db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where('tags', 'array-contains', variant)
+          .limit(limitCount)
+          .get()
+
+        for (const doc of snap.docs) {
+          if (seen.has(doc.id)) continue
+          const post = newsDocToPost(doc.id, doc.data() as NewsDocument)
+          if (post) {
+            seen.add(doc.id)
+            posts.push(post)
+          }
+        }
+      })
+    )
+
+    return posts.sort(
+      (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt)
+    )
+  } catch (error) {
+    console.warn('[newsService.server] getPostsByTag failed:', error)
+    return []
+  }
+}

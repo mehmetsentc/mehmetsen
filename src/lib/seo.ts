@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import type { Post } from '@/types/post'
 import type { NewsItem } from '@/types/newsItem'
-import { getPrimaryVideo } from '@/lib/postUtils'
+import { getPrimaryVideo, getPostCoverAlt } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { ROUTES } from '@/constants/routes'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
@@ -144,6 +144,7 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
   const siteUrl = getSiteUrl()
   const url = buildPostShareUrl(post)
   const image = getPostShareImage(post)
+  const coverAlt = getPostCoverAlt(post)
   const datePublished = post.publishedAt || post.createdAt
   const dateModified = post.updatedAt || datePublished
   const description =
@@ -195,6 +196,7 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
             url: image,
             width: 1200,
             height: 630,
+            ...(coverAlt ? { caption: coverAlt } : {}),
           },
         }
       : {}),
@@ -326,6 +328,7 @@ export function buildPostMetadata(post: Post): Metadata {
     `${title} — ${siteName}'de oku.`
   ).slice(0, 165)
   const coverImage = getPostShareImage(post)
+  const coverAlt = getPostCoverAlt(post)
   const section = getCategoryLabel(post.categoryId)
 
   // Build dynamic OG image URL — use cover if available, fallback to generated card
@@ -373,7 +376,7 @@ export function buildPostMetadata(post: Post): Metadata {
                 secureUrl: image.startsWith('https://') ? image : undefined,
                 width: 1200,
                 height: 630,
-                alt: title,
+                alt: coverAlt,
                 type: 'image/jpeg',
               },
             ],
@@ -386,14 +389,14 @@ export function buildPostMetadata(post: Post): Metadata {
       creator: '@nahabercom',
       title,
       description,
-      ...(image ? { images: [{ url: image, alt: `${title} - ${siteName}` }] } : {}),
+      ...(image ? { images: [{ url: image, alt: coverAlt }] } : {}),
     },
     other: {
       'article:published_time': datePublished,
       'article:modified_time': dateModified,
       ...(section ? { 'article:section': section } : {}),
       ...(post.tags?.length ? { 'article:tag': post.tags.join(',') } : {}),
-      'twitter:image:alt': `${title} - ${siteName}`,
+      'twitter:image:alt': coverAlt,
       'twitter:label1': 'Okuma Süresi',
       'twitter:data1': `${Math.max(1, post.readingTimeMinutes ?? 1)} dk`,
     },
