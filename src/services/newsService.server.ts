@@ -454,17 +454,21 @@ export async function getOnThisDayNews(
 ): Promise<NewsItem[]> {
   try {
     const db = getAdminFirestore()
+    // Only show articles from PREVIOUS years — exclude current year
+    const startOfCurrentYear = new Date(new Date().getFullYear(), 0, 1).getTime()
+
     const snap = await db
       .collection(NEWS_COLLECTION)
       .where('status', '==', 'published')
+      .where('publishedAt', '<', startOfCurrentYear)
       .orderBy('publishedAt', 'desc')
-      .limit(200)
+      .limit(1000)
       .get()
 
     const items = mapAdminDocs(snap.docs).filter((item) => {
-      const iso = item.publishedAt ?? item.createdAt
-      if (!iso) return false
-      const d = new Date(iso)
+      const ts = item.publishedAt ?? item.createdAt
+      if (!ts) return false
+      const d = new Date(ts)
       return d.getMonth() + 1 === month && d.getDate() === day
     })
 
