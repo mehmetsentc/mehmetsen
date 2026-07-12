@@ -29,7 +29,7 @@ export interface GeoDetectResult {
 
 export async function GET(req: NextRequest) {
   const forwarded = req.headers.get('x-forwarded-for')
-  const ip = (forwarded ? forwarded.split(',')[0] : req.ip ?? '').trim()
+  const ip = (forwarded ? forwarded.split(',')[0] : '').trim()
 
   // Localhost'ta çalışmaz
   if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168') || ip.startsWith('10.')) {
