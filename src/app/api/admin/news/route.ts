@@ -32,6 +32,7 @@ interface CreatePayload {
   country?: string
   location?: { city?: string; district?: string; country: string; lat: number; lng: number }
   thumbnail?: string
+  imageCaption?: string
   videoUrl?: string
   additionalImages?: Array<{ url: string; caption?: string }>
 }
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
       thumbnail: body.thumbnail?.trim() ?? '',
       coverImageUrl: body.thumbnail?.trim() ?? '',
       imageUrl: body.thumbnail?.trim() ?? '',
+      imageCaption: body.imageCaption?.trim() ?? '',
       videoUrl: body.videoUrl?.trim() ?? '',
       tags: Array.isArray(body.tags) ? body.tags : [],
       isBreaking: body.isBreaking ?? false,
@@ -153,6 +155,7 @@ export async function POST(request: Request) {
 
     const editorMediaItems = buildEditorMediaItems({
       thumbnail: body.thumbnail,
+      thumbnailCaption: body.imageCaption,
       videoUrl: body.videoUrl,
       additionalImages,
     })

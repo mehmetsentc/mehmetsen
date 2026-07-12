@@ -8,6 +8,7 @@ export interface EditorMediaItem {
   url: string
   thumbnailUrl: string | null
   caption: string | null
+  alt?: string | null
   order: number
 }
 
@@ -26,12 +27,14 @@ export function sanitizeAdditionalImages(
 /** Admin editöründen gelen medyayı Firestore mediaItems şemasına çevirir. */
 export function buildEditorMediaItems(input: {
   thumbnail?: string
+  thumbnailCaption?: string
   videoUrl?: string
   additionalImages?: EditorAdditionalImage[]
 }): EditorMediaItem[] {
   const items: EditorMediaItem[] = []
   const thumb = input.thumbnail?.trim() ?? ''
   const video = input.videoUrl?.trim() ?? ''
+  const thumbCaption = input.thumbnailCaption?.trim() ?? ''
   let order = 0
 
   if (video) {
@@ -49,18 +52,21 @@ export function buildEditorMediaItems(input: {
       type: 'image',
       url: thumb,
       thumbnailUrl: thumb,
-      caption: null,
+      caption: thumbCaption || null,
+      alt: thumbCaption || null,
       order: order++,
     })
   }
 
   for (const img of sanitizeAdditionalImages(input.additionalImages)) {
     if (img.url === thumb) continue
+    const caption = img.caption || null
     items.push({
       type: 'image',
       url: img.url,
       thumbnailUrl: img.url,
-      caption: img.caption || null,
+      caption,
+      alt: caption,
       order: order++,
     })
   }

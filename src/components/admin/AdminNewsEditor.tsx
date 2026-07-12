@@ -79,6 +79,11 @@ export function AdminNewsEditor({
   const isWorldCategory = categoryId === 'dunya'
   const availableDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
   const [thumbnail, setThumbnail] = useState(post?.coverImageUrl ?? '')
+  const [imageCaption, setImageCaption] = useState(
+    (post as (Post & { imageCaption?: string }) | undefined)?.imageCaption?.trim()
+      || post?.mediaItems?.find((m) => m.type === 'image')?.caption?.trim()
+      || ''
+  )
   const [videoUrl, setVideoUrl] = useState(post?.mediaItems?.find((m) => m.type === 'video')?.url ?? '')
   const [additionalImages, setAdditionalImages] = useState<AdditionalImageItem[]>(
     (post as (Post & { additionalImages?: AdditionalImageItem[] }) | undefined)?.additionalImages ?? []
@@ -154,6 +159,7 @@ export function AdminNewsEditor({
     categoryId,
     status,
     thumbnail,
+    imageCaption,
     videoUrl,
     additionalImages,
     tags: payloadTags,
@@ -339,9 +345,14 @@ export function AdminNewsEditor({
         postId={mediaPostId}
         userId={userId}
         thumbnail={thumbnail}
+        thumbnailCaption={imageCaption}
         videoUrl={videoUrl}
         additionalImages={additionalImages}
+        articleTitle={title}
+        articleContent={content}
+        articleSummary={summary}
         onThumbnailChange={setThumbnail}
+        onThumbnailCaptionChange={setImageCaption}
         onVideoUrlChange={setVideoUrl}
         onAdditionalImagesChange={setAdditionalImages}
         onUploadingChange={setMediaUploading}

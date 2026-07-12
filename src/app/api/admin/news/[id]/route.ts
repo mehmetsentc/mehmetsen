@@ -33,6 +33,7 @@ interface UpdatePayload {
   country?: string
   location?: { city?: string; district?: string; country: string; lat: number; lng: number }
   thumbnail?: string
+  imageCaption?: string
   videoUrl?: string
   additionalImages?: Array<{ url: string; caption?: string }>
 }
@@ -88,12 +89,16 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     update.coverImageUrl = thumb
     update.imageUrl = thumb
   }
+  if (body.imageCaption != null) {
+    update.imageCaption = body.imageCaption.trim()
+  }
   if (Array.isArray(body.additionalImages) || body.thumbnail?.trim() || body.videoUrl?.trim()) {
     if (Array.isArray(body.additionalImages)) {
       update.additionalImages = sanitizeAdditionalImages(body.additionalImages)
     }
     update.mediaItems = buildEditorMediaItems({
       thumbnail: body.thumbnail,
+      thumbnailCaption: body.imageCaption,
       videoUrl: body.videoUrl,
       additionalImages: Array.isArray(body.additionalImages)
         ? sanitizeAdditionalImages(body.additionalImages)

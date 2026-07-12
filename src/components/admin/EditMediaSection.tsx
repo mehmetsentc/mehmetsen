@@ -20,9 +20,14 @@ interface EditMediaSectionProps {
   postId: string
   userId: string
   thumbnail: string
+  thumbnailCaption: string
   videoUrl: string
   additionalImages: AdditionalImageItem[]
+  articleTitle?: string
+  articleContent?: string
+  articleSummary?: string
   onThumbnailChange: (url: string) => void
+  onThumbnailCaptionChange: (caption: string) => void
   onVideoUrlChange: (url: string) => void
   onAdditionalImagesChange: (items: AdditionalImageItem[]) => void
   /** uploading durumunu dışarıya bildir (kaydet butonunu disable etmek için) */
@@ -33,15 +38,21 @@ export function EditMediaSection({
   postId,
   userId,
   thumbnail,
+  thumbnailCaption,
   videoUrl,
   additionalImages,
+  articleTitle = '',
+  articleContent = '',
+  articleSummary = '',
   onThumbnailChange,
+  onThumbnailCaptionChange,
   onVideoUrlChange,
   onAdditionalImagesChange,
   onUploadingChange,
 }: EditMediaSectionProps) {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [seoGeneratingUrl, setSeoGeneratingUrl] = useState<string | null>(null)
   /** 'replace' = ana görseli değiştir, 'additional' = ek görsel ekle, null = kapalı */
   const [uploadMode, setUploadMode] = useState<'replace' | 'additional' | null>(null)
   const [linkInput, setLinkInput] = useState('')
@@ -52,6 +63,59 @@ export function EditMediaSection({
     setUploading(v)
     onUploadingChange?.(v)
   }
+
+  const generateImageSeo = useCallback(
+    async (
+      imageUrl: string,
+      target: 'thumbnail' | 'additional',
+      additionalSnapshot?: AdditionalImageItem[]
+    ) => {
+      if (!imageUrl.trim()) return
+      setSeoGeneratingUrl(imageUrl)
+      try {
+        const token = await auth.currentUser?.getIdToken()
+        if (!token) return
+
+        const res = await fetch('/api/admin/news/ai-image-seo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            imageUrl,
+            title: articleTitle,
+            content: articleContent,
+            summary: articleSummary,
+          }),
+        })
+        const data = await res.json() as { caption?: string; error?: string }
+        if (!res.ok || !data.caption?.trim()) return
+
+        const caption = data.caption.trim()
+        if (target === 'thumbnail') {
+          onThumbnailCaptionChange(caption)
+        } else {
+          const source = additionalSnapshot ?? additionalImages
+          onAdditionalImagesChange(
+            source.map((img) =>
+              img.url === imageUrl && !img.caption?.trim() ? { ...img, caption } : img
+            )
+          )
+        }
+        toast.success('Görsel SEO açıklaması yazıldı')
+      } catch {
+        // Sessizce geç — kullanıcı manuel yazabilir
+      } finally {
+        setSeoGeneratingUrl((current) => (current === imageUrl ? null : current))
+      }
+    },
+    [
+      additionalImages,
+      articleContent,
+      articleSummary,
+      articleTitle,
+      onAdditionalImagesChange,
+      onThumbnailCaptionChange,
+    ]
+  )
 
   const handleFiles = useCallback(
     async (files: File[], mode: 'replace' | 'additional') => {
@@ -80,10 +144,13 @@ export function EditMediaSection({
           const url = await storageService.uploadPostImage(file, userId, postId, setProgress)
           if (mode === 'replace' || !thumbnail) {
             onThumbnailChange(url)
-            toast.success('Ana görsel güncellendi')
+            toast.success(mode === 'replace' && thumbnail ? 'Ana görsel güncellendi' : 'Ana görsel eklendi')
+            void generateImageSeo(url, 'thumbnail')
           } else {
-            onAdditionalImagesChange([...additionalImages, { url, caption: '' }])
+            const nextAdditional = [...additionalImages, { url, caption: '' }]
+            onAdditionalImagesChange(nextAdditional)
             toast.success('Ek görsel eklendi')
+            void generateImageSeo(url, 'additional', nextAdditional)
           }
         }
       } catch (err) {
@@ -94,8 +161,7 @@ export function EditMediaSection({
         setUploadMode(null)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [postId, userId, thumbnail, additionalImages, onThumbnailChange, onVideoUrlChange, onAdditionalImagesChange]
+    [postId, userId, thumbnail, additionalImages, onThumbnailChange, onVideoUrlChange, onAdditionalImagesChange, generateImageSeo]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -150,9 +216,12 @@ export function EditMediaSection({
         if (!thumbnail) {
           onThumbnailChange(data.url)
           toast.success('Ana görsel eklendi')
+          void generateImageSeo(data.url, 'thumbnail')
         } else {
-          onAdditionalImagesChange([...additionalImages, { url: data.url, caption: '' }])
+          const nextAdditional = [...additionalImages, { url: data.url, caption: '' }]
+          onAdditionalImagesChange(nextAdditional)
           toast.success('Ek görsel eklendi')
+          void generateImageSeo(data.url, 'additional', nextAdditional)
         }
       }
       setLinkInput('')
@@ -208,40 +277,56 @@ export function EditMediaSection({
         </p>
 
         {thumbnail ? (
-          <div className="relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={thumbnail}
-              alt="Kapak görseli"
-              className="max-h-48 w-full rounded-xl object-cover"
-            />
-            <div className="absolute right-2 top-2 flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => triggerUpload('replace')}
-                disabled={uploading}
-                className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
-                title="Ana görseli değiştir"
-              >
-                <Pencil className="h-3 w-3" />
-                Değiştir
-              </button>
-              <button
-                type="button"
-                onClick={() => onThumbnailChange('')}
-                disabled={uploading}
-                className="rounded-full bg-black/60 p-1.5 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
-                title="Ana görseli kaldır"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+          <>
+            <div className="relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={thumbnail}
+                alt="Kapak görseli"
+                className="max-h-48 w-full rounded-xl object-cover"
+              />
+              <div className="absolute right-2 top-2 flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => triggerUpload('replace')}
+                  disabled={uploading}
+                  className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+                  title="Ana görseli değiştir"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Değiştir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onThumbnailChange('')}
+                  disabled={uploading}
+                  className="rounded-full bg-black/60 p-1.5 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                  title="Ana görseli kaldır"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="absolute left-2 top-2">
+                <span className="flex items-center gap-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white">
+                  <Star className="h-2.5 w-2.5" /> Ana Görsel
+                </span>
+              </div>
             </div>
-            <div className="absolute left-2 top-2">
-              <span className="flex items-center gap-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white">
-                <Star className="h-2.5 w-2.5" /> Ana Görsel
-              </span>
+            <div className="mt-2 px-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={thumbnailCaption}
+                  onChange={(e) => onThumbnailCaptionChange(e.target.value)}
+                  placeholder="SEO görsel açıklaması"
+                  className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 pr-9 text-xs text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {seoGeneratingUrl === thumbnail && (
+                  <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-blue-500" />
+                )}
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           <button
             type="button"
@@ -348,13 +433,18 @@ export function EditMediaSection({
                 </div>
                 {/* Görsel açıklaması */}
                 <div className="px-3 py-2">
-                  <input
-                    type="text"
-                    value={img.caption ?? ''}
-                    onChange={(e) => updateCaption(index, e.target.value)}
-                    placeholder="Görsel açıklaması (isteğe bağlı)"
-                    className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-xs text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={img.caption ?? ''}
+                      onChange={(e) => updateCaption(index, e.target.value)}
+                      placeholder="SEO görsel açıklaması"
+                      className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 pr-9 text-xs text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {seoGeneratingUrl === img.url && (
+                      <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-blue-500" />
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
