@@ -12,8 +12,8 @@ export const LEAGUES: Record<number, string> = {
 export const LEAGUE_IDS = [203, 204, 205, 206] as const
 export type LeagueId = typeof LEAGUE_IDS[number]
 
-export const CURRENT_SEASON = 2025
-export const PREV_SEASON    = 2024
+export const CURRENT_SEASON = 2024
+export const PREV_SEASON    = 2023
 
 // Eski backward-compat export
 export const SUPER_LIG_ID = 203
