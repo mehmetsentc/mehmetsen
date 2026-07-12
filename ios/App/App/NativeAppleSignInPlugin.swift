@@ -51,7 +51,18 @@ public class NativeAppleSignInPlugin: CAPPlugin, ASAuthorizationControllerDelega
     public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         // Bu delegate her zaman main thread'den çağrılır
 
-        // 1. Foreground active scene → key window (iOS 15+ scene-based approach)
+        // 1. Capacitor bridge view controller'ının penceresi — EN GÜVENİLİR
+        //    iPad'de Stage Manager veya Split View ile birden fazla foregroundActive
+        //    sahne bulunabilir; bu kontrolör hangi sahnede olduğu bilinmez.
+        //    bridge.viewController.view.window ise her zaman uygulamanın kendi penceresidir.
+        if let vc = self.bridge?.viewController,
+           let window = vc.view.window,
+           !window.isHidden,
+           window.windowScene != nil {
+            return window
+        }
+
+        // 2. Foreground active scene → key window (sahne bazlı fallback)
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
 
         if let activeScene = scenes.first(where: { $0.activationState == .foregroundActive }) {
@@ -59,15 +70,10 @@ public class NativeAppleSignInPlugin: CAPPlugin, ASAuthorizationControllerDelega
             if let visibleWindow = activeScene.windows.first(where: { !$0.isHidden }) { return visibleWindow }
         }
 
-        // 2. Herhangi bir foreground scene
+        // 3. Herhangi bir foreground scene
         for scene in scenes where scene.activationState != .background {
             if let keyWindow = scene.keyWindow, !keyWindow.isHidden { return keyWindow }
             if let visibleWindow = scene.windows.first(where: { !$0.isHidden }) { return visibleWindow }
-        }
-
-        // 3. Capacitor bridge view controller'ının penceresi
-        if let window = self.bridge?.viewController?.view.window, !window.isHidden {
-            return window
         }
 
         // 4. Son çare — ilk görünür window
@@ -75,6 +81,7 @@ public class NativeAppleSignInPlugin: CAPPlugin, ASAuthorizationControllerDelega
             for window in scene.windows where !window.isHidden { return window }
         }
 
+        // Çalışan bir uygulamada bu satıra ulaşılmamalı
         return UIWindow()
     }
 
