@@ -52,6 +52,29 @@ export function LocationPermission() {
     return () => window.clearTimeout(timer)
   }, [])
 
+  /** GPS başarısız olunca IP üzerinden yaklaşık şehir tespit et */
+  const fallbackToIpGeo = async () => {
+    try {
+      const res = await fetch('/api/geo/detect')
+      if (!res.ok) return
+      const geo = await res.json() as { lat?: number; lng?: number; city?: string }
+      if (!geo.lat || !geo.lng) return
+      const citySlug = nearestProvinceSlug(geo.lat, geo.lng)
+      const record: StoredUserLocation = {
+        citySlug,
+        cityName: getCityCategoryName(citySlug),
+        lat: geo.lat,
+        lng: geo.lng,
+        source: 'geolocation', // 'ip' yerine 'geolocation' — aynı tip kabul edilsin
+        updatedAt: Date.now(),
+      }
+      writeStoredUserLocation(record)
+      window.dispatchEvent(new CustomEvent('nahaber:location-updated', { detail: record }))
+    } catch {
+      // IP geo başarısız → sorun değil, default içerik gösterilir
+    }
+  }
+
   const accept = async () => {
     setVisible(false)
 
@@ -64,6 +87,7 @@ export function LocationPermission() {
         const { status } = await NativeGeolocation.requestPermission()
         if (status === 'denied') {
           markPrompted()
+          await fallbackToIpGeo() // GPS reddedildi → IP fallback
           return
         }
         // status === 'granted' → get actual position
@@ -84,8 +108,9 @@ export function LocationPermission() {
       window.dispatchEvent(new CustomEvent('nahaber:location-updated', { detail: record }))
       markPrompted() // Sadece başarılı olunca işaretle
     } catch {
-      // permission denied veya unavailable — sayfa default içerikle devam eder
-      // markPrompted çağrılmıyor → kullanıcı uygulamayı yeniden açarsa tekrar sorar
+      // GPS permission denied veya unavailable → IP fallback ile dene
+      await fallbackToIpGeo()
+      markPrompted()
     }
   }
 
