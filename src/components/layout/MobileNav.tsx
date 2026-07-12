@@ -19,7 +19,7 @@ function isNavActive(pathname: string, item: MobileNavItem): boolean {
   if (item.href === ROUTES.FEED) return pathname === ROUTES.FEED
   if (item.href === ROUTES.LOCAL) return pathname.startsWith(ROUTES.LOCAL)
   if (item.href === ROUTES.EVENTS) return pathname.startsWith('/events')
-  if (item.href === ROUTES.SPOR) return pathname.startsWith('/kategori/spor')
+  if (item.href === ROUTES.FOOTBALL) return pathname.startsWith('/futbol-canli')
   return pathname.startsWith(item.href)
 }
 
@@ -64,7 +64,7 @@ function MobileNavInner() {
   const items = useMemo<MobileNavItem[]>(
     () => [
       { icon: Home,        label: 'Ana Sayfa', href: ROUTES.FEED },
-      { icon: Trophy,      label: 'Spor',      href: ROUTES.SPOR },
+      { icon: Trophy,      label: 'Süper Lig', href: ROUTES.FOOTBALL },
       { icon: CalendarDays,label: 'Etkinlik',  href: ROUTES.EVENTS },
       { icon: MapPin,      label: 'Yerel',     href: ROUTES.LOCAL },
     ],

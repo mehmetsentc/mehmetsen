@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin, Flame, User, PanelLeftClose } from 'lucide-react'
+import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin, Flame, User, PanelLeftClose, Trophy, Building2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
@@ -22,13 +22,15 @@ interface SidebarProps {
 }
 
 const APP_NAV = [
-  { label: 'Yerel Haber', href: ROUTES.LOCAL,        icon: MapPin       },
-  { label: 'Magazin',     href: '/kategori/magazin', icon: Star         },
-  { label: 'Etkinlikler', href: ROUTES.EVENTS,       icon: CalendarDays },
-  { label: 'Trending',    href: '/kategori/trend',   icon: Flame        },
-  { label: 'Teve',        href: ROUTES.REELS,        icon: Clapperboard },
-  { label: 'Influencer',  href: ROUTES.INFLUENCER,   icon: Star         },
-  { label: 'Hava Durumu', href: ROUTES.WEATHER,      icon: Cloud        },
+  { label: 'Yerel Haber', href: ROUTES.LOCAL,         icon: MapPin       },
+  { label: 'Süper Lig',   href: ROUTES.FOOTBALL,      icon: Trophy       },
+  { label: 'Müzeler',     href: ROUTES.MUZELER,       icon: Building2    },
+  { label: 'Magazin',     href: '/kategori/magazin',  icon: Star         },
+  { label: 'Etkinlikler', href: ROUTES.EVENTS,        icon: CalendarDays },
+  { label: 'Trending',    href: '/kategori/trend',    icon: Flame        },
+  { label: 'Teve',        href: ROUTES.REELS,         icon: Clapperboard },
+  { label: 'Influencer',  href: ROUTES.INFLUENCER,    icon: Star         },
+  { label: 'Hava Durumu', href: ROUTES.WEATHER,       icon: Cloud        },
 ]
 
 /** Main categories shown in top nav (user-defined order, Trending/Magazin excluded). */

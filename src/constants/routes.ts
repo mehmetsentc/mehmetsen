@@ -23,6 +23,8 @@ export const ROUTES = {
   CATEGORY: (slug: string) => `/kategori/${slug}`,
   TEKNOLOJI: '/kategori/teknoloji',
   SPOR: '/kategori/spor',
+  FOOTBALL: '/futbol-canli',
+  MUZELER: '/muzeler',
   DUNYA: '/kategori/dunya',
   SAGLIK: '/kategori/saglik',
   EKONOMI: '/kategori/ekonomi',
@@ -96,6 +98,8 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname.startsWith('/discover')) return true
   if (pathname.startsWith('/search')) return true
   if (pathname.startsWith('/influencer')) return true
+  if (pathname.startsWith('/futbol-canli')) return true
+  if (pathname.startsWith('/muzeler')) return true
   if (pathname === ROUTES.SITE_MAP) return true
   if (pathname.startsWith('/hakkimizda')) return true
   if (pathname.startsWith('/iletisim')) return true

@@ -11,6 +11,7 @@ import { LocalNewsSection } from '@/components/home/LocalNewsSection'
 import { LocationPermission } from '@/components/home/LocationPermission'
 import { TrendingRail } from '@/components/home/TrendingRail'
 import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
+import { FootballWidget } from '@/components/football/FootballWidget'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { HOME_CATEGORY_RAILS, type HomeFeedInitialData } from '@/types/newsItem'
@@ -62,6 +63,7 @@ export function HomeFeed({ data }: HomeFeedProps) {
       <MustReadSection items={mostRead} />
 
       <OnThisDayArchive />
+      <FootballWidget />
 
       {HOME_CATEGORY_RAILS.map((categoryId) => {
         const items = categoryRails[categoryId]
