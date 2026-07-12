@@ -96,7 +96,7 @@ export function FootballWidget() {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/football/fixtures?type=${type}`)
+    fetch(`/api/football/fixtures?type=${type}&league=203`)
       .then((r) => r.json())
       .then((d) => setFixtures(d.fixtures ?? []))
       .catch(() => {})

@@ -1,15 +1,22 @@
 /**
- * Günlük futbol verisi senkronizasyonu
- * Her gün 06:00 UTC'de çalışır, 3 API isteği kullanır (standings + today + upcoming)
- * 100 req/gün limitinde güvenli kalır
+ * Günlük futbol senkronizasyonu — tüm ligler
+ * Her gün 06:00 UTC çalışır
+ * 4 lig × 3 endpoint = 12 API isteği/gün (100 req/gün limitinde güvenli)
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { getStandings, getTodayFixtures, getUpcomingFixtures } from '@/services/footballService.server'
+import {
+  getStandings,
+  getTodayFixtures,
+  getUpcomingFixtures,
+  getPastFixtures,
+  LEAGUE_IDS,
+  CURRENT_SEASON,
+} from '@/services/footballService.server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
-export const maxDuration = 30
+export const runtime    = 'nodejs'
+export const dynamic    = 'force-dynamic'
+export const maxDuration = 60
 
 const CRON_SECRET = process.env.CRON_SECRET?.trim()
 
@@ -26,32 +33,34 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const db    = getAdminFirestore()
+  const today = new Date().toISOString().slice(0, 10)
   const results: Record<string, unknown> = {}
 
-  try {
-    // Cache'i sıfırla — taze veri çek
-    const db = getAdminFirestore()
-    const today = new Date().toISOString().slice(0, 10)
-    await db.collection('footballCache').doc(`fixtures-today-${today}`).delete().catch(() => {})
-    await db.collection('footballCache').doc('fixtures-upcoming-203').delete().catch(() => {})
-    await db.collection('footballCache').doc('standings-203-2025').delete().catch(() => {})
+  for (const leagueId of LEAGUE_IDS) {
+    // Firestore cache temizle
+    await db.collection('footballCache').doc(`standings-${leagueId}-${CURRENT_SEASON}`).delete().catch(() => {})
+    await db.collection('footballCache').doc(`fixtures-today-${leagueId}-${today}`).delete().catch(() => {})
+    await db.collection('footballCache').doc(`fixtures-upcoming-${leagueId}`).delete().catch(() => {})
+    await db.collection('footballCache').doc(`fixtures-past-${leagueId}-${CURRENT_SEASON}`).delete().catch(() => {})
 
-    // 3 ayrı fetch (3 API isteği)
-    const [standings, todayFixtures, upcoming] = await Promise.allSettled([
-      getStandings(),
-      getTodayFixtures(),
-      getUpcomingFixtures(5),
+    // Taze veri çek (4 API isteği per lig = 16 total)
+    const [standings, todayFix, upcoming, past] = await Promise.allSettled([
+      getStandings(leagueId, CURRENT_SEASON),
+      getTodayFixtures(leagueId),
+      getUpcomingFixtures(leagueId, 10),
+      getPastFixtures(leagueId, CURRENT_SEASON, 20),
     ])
 
-    results.standings = standings.status === 'fulfilled' ? standings.value.length : String((standings as PromiseRejectedResult).reason)
-    results.today     = todayFixtures.status === 'fulfilled' ? todayFixtures.value.length : String((todayFixtures as PromiseRejectedResult).reason)
-    results.upcoming  = upcoming.status === 'fulfilled' ? upcoming.value.length : String((upcoming as PromiseRejectedResult).reason)
-
-    return NextResponse.json({ ok: true, date: today, results })
-  } catch (err) {
-    console.error('[cron/football-sync]', err)
-    return NextResponse.json({ error: String(err) }, { status: 502 })
+    results[leagueId] = {
+      standings: standings.status === 'fulfilled' ? standings.value.length : String((standings as PromiseRejectedResult).reason),
+      today:     todayFix.status  === 'fulfilled' ? todayFix.value.length  : String((todayFix  as PromiseRejectedResult).reason),
+      upcoming:  upcoming.status  === 'fulfilled' ? upcoming.value.length  : String((upcoming  as PromiseRejectedResult).reason),
+      past:      past.status      === 'fulfilled' ? past.value.length      : String((past      as PromiseRejectedResult).reason),
+    }
   }
+
+  return NextResponse.json({ ok: true, date: today, results })
 }
 
 export const POST = GET
