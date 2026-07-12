@@ -80,7 +80,7 @@ const websiteJsonLd = {
     '@type': 'SearchAction',
     target: {
       '@type': 'EntryPoint',
-      urlTemplate: `${appUrl}/ara?q={search_term_string}`,
+      urlTemplate: `${appUrl}/search?q={search_term_string}`,
     },
     'query-input': 'required name=search_term_string',
   },
@@ -101,13 +101,10 @@ const softwareApplicationJsonLd = {
     price: '0',
     priceCurrency: 'TRY',
   },
-  aggregateRating: {
-    '@type': 'AggregateRating',
-    ratingValue: '4.8',
-    ratingCount: '1284',
-    bestRating: '5',
-  },
 }
+
+const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim()
+const yandexSiteVerification = process.env.NEXT_PUBLIC_YANDEX_SITE_VERIFICATION?.trim()
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
@@ -213,7 +210,8 @@ export const metadata: Metadata = {
     address: false,
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '',
+    ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
+    ...(yandexSiteVerification ? { yandex: yandexSiteVerification } : {}),
   },
 }
 
