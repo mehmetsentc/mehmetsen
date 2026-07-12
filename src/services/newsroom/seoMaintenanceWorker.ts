@@ -11,6 +11,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { pingSitemaps } from '@/lib/seo'
+import { buildNewsIndexNowUrl, submitIndexNowUrls } from '@/lib/indexNow'
 
 export interface SeoMaintenanceResult {
   slugsGenerated: number
@@ -24,7 +25,7 @@ export interface SeoMaintenanceResult {
 const STALE_DRAFT_DAYS = 30
 const THIN_CONTENT_CHARS = 200
 const BATCH_LIMIT = 50
-const SEO_SCAN_LIMIT = 200
+const SEO_SCAN_LIMIT = 500
 
 export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
   const started = Date.now()
@@ -155,7 +156,27 @@ export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
 
     console.log(`[seo-maintenance] slugs=${result.slugsGenerated} seo=${result.seoFieldsBackfilled} thin=${result.thinDraftsRemoved} stale=${result.staleDraftsArchived}`)
 
-    await pingSitemaps()
+    // Ping sitemaps + submit recent article URLs to IndexNow (Bing/Yandex fast indexing)
+    try {
+      const recentUrlsSnap = await getAdminFirestore()
+        .collection(Collections.NEWS)
+        .where('status', '==', 'published')
+        .orderBy('publishedAt', 'desc')
+        .select('slug')
+        .limit(25)
+        .get()
+
+      const urls = recentUrlsSnap.docs
+        .map((doc) => {
+          const slug = (doc.data().slug as string | undefined)?.trim()
+          return slug ? buildNewsIndexNowUrl(slug) : null
+        })
+        .filter((url): url is string => Boolean(url))
+
+      await Promise.allSettled([pingSitemaps(), submitIndexNowUrls(urls)])
+    } catch (err) {
+      result.errors.push(`indexnow: ${err instanceof Error ? err.message : String(err)}`)
+    }
   } catch (err) {
     result.errors.push(`worker failed: ${err instanceof Error ? err.message : String(err)}`)
   }

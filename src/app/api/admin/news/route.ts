@@ -6,6 +6,7 @@ import type { Firestore } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
+import { notifyPublishedArticle } from '@/lib/indexNow'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -181,6 +182,9 @@ export async function POST(request: Request) {
       revalidatePath('/')
       if (categoryId) revalidatePath(`/kategori/${categoryId}`)
       revalidatePath(`/haber/${slug}`)
+      if (status === 'published') {
+        void notifyPublishedArticle(slug).catch(() => {})
+      }
     } catch { /* best-effort */ }
 
     return NextResponse.json({ ok: true, id: newsRef.id, slug })

@@ -6,6 +6,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
 import { newsDraftService } from '@/services/newsDraftService'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
+import { notifyPublishedArticle } from '@/lib/indexNow'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -143,11 +144,31 @@ function revalidateNewsPaths(
     revalidatePath('/kategori/son-dakika')
     if (oldCategoryId) revalidatePath(`/kategori/${oldCategoryId}`)
     if (newCategoryId && newCategoryId !== oldCategoryId) revalidatePath(`/kategori/${newCategoryId}`)
-    const slug = prevData?.slug as string | undefined
+    const slug = (body.slug?.trim() || (prevData?.slug as string | undefined))?.trim()
     if (slug) revalidatePath(`/haber/${slug}`)
-    if (body.slug?.trim() && body.slug.trim() !== slug) revalidatePath(`/haber/${body.slug.trim()}`)
+    if (body.slug?.trim() && body.slug.trim() !== prevData?.slug) {
+      revalidatePath(`/haber/${body.slug.trim()}`)
+    }
+    for (const tag of [...(prevData?.tags as string[] | undefined) ?? [], ...(body.tags ?? [])]) {
+      const normalized = tag?.trim().toLocaleLowerCase('tr-TR')
+      if (normalized) revalidatePath(`/etiket/${encodeURIComponent(normalized)}`)
+    }
   } catch {
     /* best-effort */
+  }
+}
+
+async function notifyIfPublished(
+  prevData: Record<string, unknown> | undefined,
+  body: UpdatePayload
+) {
+  const wasPublished = prevData?.status === 'published'
+  const isPublished = body.status === 'published' || wasPublished
+  if (!isPublished) return
+
+  const slug = (body.slug?.trim() || (prevData?.slug as string | undefined))?.trim()
+  if (slug) {
+    void notifyPublishedArticle(slug).catch(() => {})
   }
 }
 
@@ -193,6 +214,7 @@ export async function PUT(request: Request, context: RouteContext) {
       }
 
       revalidateNewsPaths(prevData, body)
+      void notifyIfPublished(prevData, body)
       return NextResponse.json({ ok: true, collection: 'news' })
     }
 
@@ -208,6 +230,7 @@ export async function PUT(request: Request, context: RouteContext) {
         }
         const result = await newsDraftService.approveDraft(id)
         revalidateNewsPaths(draftSnap.data(), body)
+        void notifyIfPublished(draftSnap.data(), body)
         return NextResponse.json({ ok: true, collection: 'newsDrafts', ...result })
       }
 

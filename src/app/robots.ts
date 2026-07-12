@@ -29,7 +29,7 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: 'Googlebot-News',
-        allow: ['/haber/', '/kategori/', '/feed'],
+        allow: ['/haber/', '/kategori/', '/feed', '/etiket/'],
         disallow: ['/admin/', '/api/', '/settings', '/login', '/register'],
       },
       {

@@ -55,13 +55,19 @@ export async function pingSitemaps(siteUrl: string = getSiteUrl()): Promise<void
   const targets = [
     `${siteUrl}/sitemap.xml`,
     `${siteUrl}/news-sitemap.xml`,
+    `${siteUrl}/images-sitemap.xml`,
   ]
   await Promise.allSettled(
     targets.map(async (sitemap) => {
       const encoded = encodeURIComponent(sitemap)
-      await fetch(`https://www.bing.com/ping?sitemap=${encoded}`, {
-        signal: AbortSignal.timeout(10_000),
-      })
+      await Promise.allSettled([
+        fetch(`https://www.bing.com/ping?sitemap=${encoded}`, {
+          signal: AbortSignal.timeout(10_000),
+        }),
+        fetch(`https://webmaster.yandex.com/ping?sitemap=${encoded}`, {
+          signal: AbortSignal.timeout(10_000),
+        }),
+      ])
     })
   )
 }
@@ -202,6 +208,10 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
       : {}),
     ...(post.tags?.length ? { keywords: post.tags.join(', ') } : {}),
     ...(post.city ? { contentLocation: { '@type': 'Place', name: post.city } } : {}),
+    speakable: {
+      '@type': 'SpeakableSpecification',
+      cssSelector: ['#news-article-static h1', '#news-article-static .news-lead'],
+    },
   }
 }
 

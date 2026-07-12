@@ -131,6 +131,11 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
+    canonical: appUrl,
+    languages: {
+      'tr-TR': appUrl,
+      tr: appUrl,
+    },
     types: {
       'application/rss+xml': [
           { url: `${appUrl}/rss.xml`,          title: `${appName} RSS` },

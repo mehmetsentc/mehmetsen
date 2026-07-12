@@ -14,12 +14,13 @@ import { planMediaPlacement } from '@/lib/mediaPlacement'
 import { SliderImage } from '@/components/widgets/SliderImage'
 import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
 import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
-import { ArticleRelatedGrid } from '@/components/news/ArticleRelatedGrid'
+import { ArticleRelatedGridStatic } from '@/components/news/ArticleRelatedGridStatic'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
 
 interface NewsArticleStaticProps {
   post: Post
+  relatedPosts?: Post[]
 }
 
 /** YouTube veya MP4 hero player. Tek bir component'te toplandı. */
@@ -106,7 +107,7 @@ function InlineImage({ item, title }: { item: MediaItem; title: string }) {
 }
 
 /** Server-rendered article — crawlable before client JS. */
-export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
+export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStaticProps) {
   const imageUrl = post.coverImageUrl?.trim() || null
   const categoryLabel = getCategoryLabel(post.categoryId)
   const publishedAt = post.publishedAt ?? post.createdAt
@@ -296,7 +297,7 @@ export function NewsArticleStatic({ post }: NewsArticleStaticProps) {
 
           <ArticleAuthorBox post={post} />
 
-          <ArticleRelatedGrid postId={post.id} categoryId={post.categoryId ?? 'gundem'} />
+          <ArticleRelatedGridStatic posts={relatedPosts} />
 
           {/* Kaynak satırı */}
           {post.source && (

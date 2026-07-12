@@ -479,6 +479,36 @@ export async function getOnThisDayNews(
   }
 }
 
+/** Published posts in the same category for crawlable internal links. */
+export async function getSuggestedPostsServer(
+  excludeId: string,
+  options?: { categoryId?: string; limit?: number }
+): Promise<Post[]> {
+  const limitCount = options?.limit ?? 4
+  const categoryId = options?.categoryId?.trim()
+
+  try {
+    const db = getAdminFirestore()
+    const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
+
+    const snap = categoryId
+      ? await base
+          .where('categoryId', '==', categoryId)
+          .orderBy('publishedAt', 'desc')
+          .limit(limitCount + 5)
+          .get()
+      : await base.orderBy('publishedAt', 'desc').limit(limitCount + 5).get()
+
+    return snap.docs
+      .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+      .filter((post): post is Post => post !== null && post.id !== excludeId)
+      .slice(0, limitCount)
+  } catch (error) {
+    console.warn('[newsService.server] getSuggestedPostsServer failed:', error)
+    return []
+  }
+}
+
 function tagVariants(raw: string): string[] {
   const term = raw.trim()
   if (!term) return []

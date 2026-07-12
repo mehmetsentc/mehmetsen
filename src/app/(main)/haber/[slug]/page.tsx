@@ -10,7 +10,7 @@ import {
   buildVideoObjectJsonLd,
   buildPostMetadata,
 } from '@/lib/seo'
-import { getNewsBySlug } from '@/services/newsService.server'
+import { getNewsBySlug, getSuggestedPostsServer } from '@/services/newsService.server'
 import { ROUTES } from '@/constants/routes'
 
 // ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
@@ -65,6 +65,10 @@ export default async function NewsDetailPage({ params }: PageProps) {
   const jsonLd = buildNewsArticleJsonLd(post)
   const breadcrumbJsonLd = buildNewsBreadcrumbJsonLd(post)
   const videoJsonLd = buildVideoObjectJsonLd(post)
+  const relatedPosts = await getSuggestedPostsServer(post.id, {
+    categoryId: post.categoryId ?? 'gundem',
+    limit: 4,
+  })
 
   return (
     <>
@@ -83,7 +87,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
         />
       )}
       <ArticlePageChrome post={post} />
-      <NewsArticleStatic post={post} />
+      <NewsArticleStatic post={post} relatedPosts={relatedPosts} />
       <NewsArticleInteractive post={post} />
     </>
   )
