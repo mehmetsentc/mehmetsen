@@ -53,8 +53,8 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Son Dakika', href: '/kategori/son-dakika' },
       { label: 'Dünya', href: '/kategori/dunya' },
       { label: 'Siyaset', href: '/kategori/siyaset' },
-      { label: 'Yerel', href: '/yerel' },
-      { label: 'Etkinlikler', href: '/kategori/etkinlikler' },
+      { label: 'Yerel Haberler', href: '/yerel' },
+      { label: 'Tarihte Bugün', href: '/feed' },
     ],
   },
   {
@@ -66,6 +66,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Ekonomi', href: '/kategori/ekonomi' },
       { label: 'Borsa', href: '/kategori/borsa' },
       { label: 'Kripto', href: '/kategori/kripto' },
+      { label: 'Döviz', href: '/kategori/ekonomi' },
     ],
   },
   {
@@ -77,6 +78,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Yaşam', href: '/kategori/yasam' },
       { label: 'Gastronomi', href: '/kategori/gastronomi' },
       { label: 'Magazin', href: '/kategori/magazin' },
+      { label: 'Müzeler', href: '/kategori/kultur' },
     ],
   },
   {
@@ -88,6 +90,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Konser', href: '/kategori/konser' },
       { label: 'Teve', href: '/reels' },
       { label: 'Keşfet', href: '/discover' },
+      { label: 'Eğitim', href: '/kategori/egitim' },
     ],
   },
   {
@@ -98,6 +101,19 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Otomobil', href: '/kategori/otomobil' },
       { label: 'Meteoroloji', href: '/kategori/meteoroloji' },
       { label: 'Hava Durumu', href: '/weather' },
+      { label: 'Uzay', href: '/kategori/bilim' },
+    ],
+  },
+  {
+    title: 'Kurumsal',
+    links: [
+      { label: 'Hakkımızda', href: '/hakkimizda' },
+      { label: 'Künye', href: '/kunye' },
+      { label: 'Editoryal İlkeler', href: '/editoryal-ilkeler' },
+      { label: 'İletişim', href: '/iletisim' },
+      { label: 'Reklam', href: '/iletisim' },
+      { label: 'RSS Beslemeleri', href: '/rss.xml', external: true },
+      { label: 'Haberler RSS', href: '/rss.xml', external: true },
     ],
   },
 ] as const

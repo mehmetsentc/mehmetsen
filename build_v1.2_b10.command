@@ -3,13 +3,32 @@ set -e
 cd "$(dirname "$0")"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  NaHaber v1.2 Build 9 — App Store Rejection Fix Build"
+echo "  NaHaber v1.2 Build 10 — Apple Sign In iPad Fix"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Düzeltilen sorunlar (Guideline 2.1a):"
-echo "  • Apple Sign In: Firebase iOS app (com.nahaber.app) kayıtlı"
-echo "  • Konum izni: CLLocationManager native dialog + localStorage key-v2"
-echo "  • Video shaking: YouTube iframe e.source filtresi + play butonu"
+echo "Düzeltilen sorun (Guideline 2.1a — Build 9 reddi):"
+echo "  • NativeAppleSignInPlugin.swift — presentationAnchor öncelik düzeltmesi"
+echo "    iPad Stage Manager / Split View'da birden fazla foregroundActive sahne"
+echo "    olduğunda yanlış pencere seçiliyordu → ASAuthorizationError"
+echo "    Düzeltme: bridge.viewController.view.window her zaman 1. öncelik"
+echo ""
+
+# ── Git commit ─────────────────────────────────────────────────────────────────
+echo "📝 Swift değişikliği commit ediliyor..."
+rm -f .git/HEAD.lock .git/index.lock 2>/dev/null || true
+git add ios/App/App/NativeAppleSignInPlugin.swift
+git diff --cached --stat
+git commit -m "fix(iOS): Apple Sign In iPad presentationAnchor öncelik düzeltmesi
+
+- bridge.viewController.view.window 3. sıradan 1. sıraya taşındı
+- iPad Stage Manager / Split View'da foregroundActive sahne sayısı > 1
+  olduğunda yanlış pencere seçiliyordu → ASAuthorizationController hata veriyordu
+- window.windowScene != nil kontrolü eklendi (detached window koruması)
+- Guideline 2.1a — Build 9 reddini giderir
+
+Fixes: 6e704c80-3e2d-4b85-b6c8-632c83974037"
+git push origin claude/nahabber-project-architecture-NZhLO
+echo "   ✅ Push tamamlandı"
 echo ""
 
 # ── API key ────────────────────────────────────────────────────────────────────
@@ -32,9 +51,7 @@ echo "🗑️  Eski archive temizleniyor..."
 rm -rf NaHaber.xcarchive ipa/
 
 echo ""
-echo "🏗️  Xcode archive (Build 9)..."
-# NOT: Proje CocoaPods kullanmıyor (SPM) → App.xcworkspace YOK.
-# Doğru yol: App.xcodeproj (SPM bağımlılıkları otomatik çözülür)
+echo "🏗️  Xcode archive (Build 10)..."
 xcodebuild archive \
   -project ios/App/App.xcodeproj \
   -scheme App \
@@ -42,7 +59,7 @@ xcodebuild archive \
   -destination "generic/platform=iOS" \
   -archivePath "NaHaber.xcarchive" \
   MARKETING_VERSION=1.2 \
-  CURRENT_PROJECT_VERSION=9 \
+  CURRENT_PROJECT_VERSION=10 \
   CODE_SIGN_STYLE=Manual \
   CODE_SIGN_IDENTITY="Apple Distribution" \
   PROVISIONING_PROFILE_SPECIFIER="NaHaber AppStore 2026" \
@@ -69,12 +86,12 @@ xcrun altool --upload-app \
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  ✅ Build 9 yüklendi!"
+echo "  ✅ Build 10 yüklendi!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Sonraki adımlar:"
-echo "  1. appstoreconnect.apple.com → NaHaber → v1.2"
-echo "  2. Build 9'u seç"
-echo "  3. Submit for Review / Resubmit to App Review"
+echo "  1. appstoreconnect.apple.com → NaHaber → App Review"
+echo "  2. 'Resubmit to App Review' butonuna tıkla"
+echo "  3. Build 10'u seç → Submit"
 echo ""
 read -p "Kapatmak için Enter'a bas..."

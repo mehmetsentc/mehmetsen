@@ -24,13 +24,79 @@ function StoryCategoryBadge({ item, className }: { item: NewsItem; className?: s
   )
 }
 
-function StoryMeta({ item, className }: { item: NewsItem; className?: string }) {
-  const time = formatNewsRelative(item.publishedAt ?? item.createdAt)
-  if (!time) return null
+type NewsBadgeType = 'breaking' | 'featured' | 'analiz' | 'sorusturma'
+
+function detectBadge(item: NewsItem): NewsBadgeType | null {
+  if (item.breaking) return 'breaking'
+  if (item.featured) return 'featured'
+  const title = (item.title ?? '').toLowerCase()
+  const desc = (item.description ?? '').toLowerCase()
+  const text = `${title} ${desc}`
+  if (text.includes('soruşturma') || text.includes('araştırma') || text.includes('inceleme')) return 'sorusturma'
+  if (text.includes('analiz') || text.includes('yorum') || text.includes('değerlendirme') || text.includes('köşe')) return 'analiz'
+  return null
+}
+
+const BADGE_CONFIG: Record<NewsBadgeType, { label: string; className: string }> = {
+  breaking: {
+    label: 'Son Dakika',
+    className: 'bg-red-600 text-white',
+  },
+  featured: {
+    label: 'Özel Haber',
+    className: 'bg-[rgb(var(--color-brand))] text-white',
+  },
+  sorusturma: {
+    label: 'Soruşturma',
+    className: 'bg-amber-700 text-white',
+  },
+  analiz: {
+    label: 'Analiz',
+    className: 'bg-slate-700 text-white dark:bg-slate-600',
+  },
+}
+
+function NewsTypeBadge({ item, className }: { item: NewsItem; className?: string }) {
+  const type = detectBadge(item)
+  if (!type) return null
+  const { label, className: badgeCls } = BADGE_CONFIG[type]
 
   return (
-    <p className={cn('text-xs text-[rgb(var(--color-muted))]', className)}>
-      {time}
+    <span
+      className={cn(
+        'inline-block rounded-sm px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em]',
+        badgeCls,
+        className
+      )}
+    >
+      {label}
+    </span>
+  )
+}
+
+function estimateReadingMinutes(item: NewsItem): number | null {
+  const text = item.content ?? item.description ?? ''
+  if (!text) return null
+  const wordCount = text.trim().split(/\s+/).length
+  const minutes = Math.ceil(wordCount / 200)
+  return minutes >= 1 ? minutes : null
+}
+
+function StoryMeta({ item, className }: { item: NewsItem; className?: string }) {
+  const time = formatNewsRelative(item.publishedAt ?? item.createdAt)
+  const mins = estimateReadingMinutes(item)
+
+  if (!time && !mins) return null
+
+  return (
+    <p className={cn('flex items-center gap-2 text-xs text-[rgb(var(--color-muted))]', className)}>
+      {time ? <span>{time}</span> : null}
+      {time && mins ? <span aria-hidden>·</span> : null}
+      {mins ? (
+        <span className="font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          {mins} dk okuma
+        </span>
+      ) : null}
     </p>
   )
 }
@@ -98,7 +164,10 @@ export function HeroStory({ item, priority = false }: { item: NewsItem; priority
             className="object-cover transition-transform duration-300 group-hover:scale-[1.01]"
           />
         </div>
-        <StoryCategoryBadge item={item} className="mb-2" />
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <NewsTypeBadge item={item} />
+          <StoryCategoryBadge item={item} />
+        </div>
         <Headline item={item} size="hero" serif />
         {item.description ? (
           <p className="mt-3 line-clamp-3 text-[15px] leading-relaxed text-[rgb(var(--color-muted))]">
@@ -161,7 +230,10 @@ export function RightFeatureStory({ item, live = false }: { item: NewsItem; live
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
-        <StoryCategoryBadge item={item} className="mb-1.5" />
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+          <NewsTypeBadge item={item} />
+          <StoryCategoryBadge item={item} />
+        </div>
         <HeadlineText item={item} size="sm" serif />
         {item.description ? (
           <p className="mt-1.5 line-clamp-2 break-words text-xs leading-relaxed text-[rgb(var(--color-muted))]">
@@ -227,7 +299,10 @@ export function ImageStory({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         </div>
-        <StoryCategoryBadge item={item} className="mb-1.5" />
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+          <NewsTypeBadge item={item} />
+          <StoryCategoryBadge item={item} />
+        </div>
         <Headline item={item} size="md" />
         {showSummary && item.description ? (
           <p className="mt-2 line-clamp-3 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">
@@ -243,7 +318,10 @@ export function ImageStory({
 export function TextLeadStory({ item, size = 'lg' }: { item: NewsItem; size?: 'md' | 'lg' | 'hero' }) {
   return (
     <article className="min-w-0">
-      <StoryCategoryBadge item={item} className="mb-1.5" />
+      <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+        <NewsTypeBadge item={item} />
+        <StoryCategoryBadge item={item} />
+      </div>
       <Headline item={item} size={size === 'hero' ? 'hero' : size} serif />
       {item.description ? (
         <p className="mt-3 line-clamp-4 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">
@@ -264,7 +342,10 @@ export function SidebarTextStory({ item, live = false }: { item: NewsItem; live?
           Canlı
         </span>
       ) : null}
-      <StoryCategoryBadge item={item} className="mb-1" />
+      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+        <NewsTypeBadge item={item} />
+        <StoryCategoryBadge item={item} />
+      </div>
       <Headline item={item} size="sm" />
       <StoryMeta item={item} className="mt-1.5" />
     </article>

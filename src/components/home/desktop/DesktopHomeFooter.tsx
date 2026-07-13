@@ -88,7 +88,7 @@ export function DesktopHomeFooter() {
       </div>
 
       <div className="mb-8 border-t border-[rgb(var(--color-border))] pt-8">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-7">
           {FOOTER_NAV_COLUMNS.map((column) => (
             <FooterColumn key={column.title} title={column.title} links={column.links} />
           ))}

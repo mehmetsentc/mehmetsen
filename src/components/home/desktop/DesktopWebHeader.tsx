@@ -7,6 +7,7 @@ import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreaking
 import { BreakingNewsBand } from '@/components/home/desktop/BreakingNewsBand'
 import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
+import { DesktopThemeToggle } from '@/components/home/desktop/DesktopThemeToggle'
 import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
@@ -159,7 +160,10 @@ export function DesktopWebHeader({
         </Link>
         ) : null}
 
-        <DesktopHeaderAuth className="absolute right-0" />
+        <div className="absolute right-0 flex items-center gap-1">
+          <DesktopThemeToggle />
+          <DesktopHeaderAuth />
+        </div>
       </div>
 
       {/* Tarih + son dakika — NYT "Today's Paper" satırı */}
