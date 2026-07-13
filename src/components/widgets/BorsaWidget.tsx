@@ -29,8 +29,9 @@ function TVWidget({ src, config }: { src: string; config: TVConfig }) {
     script.type = 'text/javascript'
     script.src = src
     script.async = true
-    // TradingView inline config — innerText olarak geçmeli
-    script.innerHTML = JSON.stringify(config)
+    // TradingView config: innerHTML değil text kullanılmalı
+    // (src + innerHTML birlikte bazı browserlarda çalışmaz)
+    script.text = JSON.stringify(config)
     el.appendChild(script)
 
     return () => {
