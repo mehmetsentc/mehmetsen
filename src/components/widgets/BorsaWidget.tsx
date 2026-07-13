@@ -1,219 +1,250 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { TrendingUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
+import type { BistData, BistQuote } from '@/app/api/finance/bist/route'
 
-// ── TradingView temeli ─────────────────────────────────────────────────────────
-// colorTheme: dark — uygulama dark navy temasıyla uyumlu
-const TV_THEME = 'dark'
+// ── Yardımcı ──────────────────────────────────────────────────────────────────
 
-interface TVConfig {
-  [key: string]: unknown
+function fmt(value: number, decimals = 2): string {
+  if (!value || isNaN(value)) return '—'
+  return value.toLocaleString('tr-TR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
 }
 
-function TVWidget({ src, config }: { src: string; config: TVConfig }) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    // Önceki içeriği temizle
-    el.innerHTML = ''
-
-    const inner = document.createElement('div')
-    inner.className = 'tradingview-widget-container__widget'
-    el.appendChild(inner)
-
-    const script = document.createElement('script')
-    script.type = 'text/javascript'
-    script.src = src
-    script.async = true
-    // TradingView config: innerHTML değil text kullanılmalı
-    // (src + innerHTML birlikte bazı browserlarda çalışmaz)
-    script.text = JSON.stringify(config)
-    el.appendChild(script)
-
-    return () => {
-      el.innerHTML = ''
-    }
-    // config değiştiğinde yeniden yükle — stringify ile referans karşılaştırması yapılıyor
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, JSON.stringify(config)])
-
-  return <div className="tradingview-widget-container w-full overflow-hidden" ref={ref} />
+function fmtPrice(q: BistQuote): string {
+  if (!q.price) return '—'
+  if (q.type === 'index') return fmt(q.price, 0)
+  if (q.type === 'fx') return fmt(q.price, 4)
+  if (q.type === 'commodity') {
+    if (q.ticker === 'BTC') return '$' + fmt(q.price, 0)
+    return '$' + fmt(q.price, 2)
+  }
+  return fmt(q.price, 2) + ' ₺'
 }
 
-// ── Endeks mini kart ───────────────────────────────────────────────────────────
-function IndexMiniChart({ symbol, name }: { symbol: string; name: string }) {
+function Change({ q }: { q: BistQuote }) {
+  const up = q.changePct >= 0
+  const cls = up
+    ? 'text-emerald-500 dark:text-emerald-400'
+    : 'text-red-500 dark:text-red-400'
+  const Icon = up ? TrendingUp : TrendingDown
+  const sign = up ? '+' : ''
   return (
-    <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 overflow-hidden">
-      <p className="mb-1 px-1 text-[11px] font-semibold text-[rgb(var(--color-muted))] uppercase tracking-wide">
-        {name}
+    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${cls}`}>
+      <Icon className="h-3 w-3" />
+      {sign}{fmt(q.changePct, 2)}%
+    </span>
+  )
+}
+
+// ── Endeks kartı ───────────────────────────────────────────────────────────────
+
+function IndexCard({ q }: { q: BistQuote }) {
+  const up = q.changePct >= 0
+  const borderCls = up ? 'border-emerald-500/30' : 'border-red-500/30'
+  const bgCls = up ? 'bg-emerald-500/5' : 'bg-red-500/5'
+
+  return (
+    <div className={`rounded-xl border ${borderCls} ${bgCls} p-3`}>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--color-muted))]">
+        {q.ticker}
       </p>
-      <TVWidget
-        src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js"
-        config={{
-          symbol,
-          width: '100%',
-          height: 150,
-          locale: 'tr',
-          dateRange: '1D',
-          colorTheme: TV_THEME,
-          isTransparent: true,
-          autosize: true,
-          largeChartUrl: '',
-          noTimeScale: false,
-          chartOnly: false,
-          valuesTracking: '1',
-          changeMode: 'price-and-percent',
-          lineType: 0,
-          lineWidth: 2,
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif',
-        }}
-      />
+      <p className="mt-1 text-xs font-semibold text-[rgb(var(--color-muted))] truncate">
+        {q.name}
+      </p>
+      <p className="mt-2 text-lg font-bold leading-none text-[rgb(var(--color-text))]">
+        {q.type === 'index' ? fmt(q.price, 0) : fmtPrice(q)}
+      </p>
+      <div className="mt-1.5">
+        <Change q={q} />
+      </div>
     </div>
   )
 }
 
-// ── Ana widget bileşeni ────────────────────────────────────────────────────────
-export function BorsaWidget() {
+// ── Hisse satırı ───────────────────────────────────────────────────────────────
+
+function StockRow({ q, rank }: { q: BistQuote; rank: number }) {
+  const up = q.changePct >= 0
+  const priceCls = up ? 'text-emerald-500' : 'text-red-500'
+
   return (
-    <div className="mb-6 space-y-4">
-      {/* Başlık */}
-      <div className="flex items-center gap-2">
-        <TrendingUp className="h-4 w-4 text-[#22C55E]" />
-        <span className="text-sm font-bold text-[rgb(var(--color-text))]">Canlı Piyasa Verileri</span>
-        <span className="flex items-center gap-1 rounded-full bg-[#22C55E]/15 px-2 py-0.5 text-[10px] font-semibold text-[#22C55E]">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#22C55E]" />
-          CANLI
-        </span>
-      </div>
+    <tr className="border-b border-[rgb(var(--color-border))] last:border-0 hover:bg-[rgb(var(--color-surface))] transition-colors">
+      <td className="py-2.5 pr-2 pl-3 text-xs font-light text-[rgb(var(--color-muted))] w-6">{rank}</td>
+      <td className="py-2.5 pr-4">
+        <p className="text-xs font-bold text-[rgb(var(--color-text))]">{q.ticker}</p>
+        <p className="text-[10px] text-[rgb(var(--color-muted))] truncate max-w-[130px]">{q.name}</p>
+      </td>
+      <td className={`py-2.5 pr-4 text-right text-sm font-semibold ${priceCls}`}>
+        {fmt(q.price, 2)}
+      </td>
+      <td className="py-2.5 pr-3 text-right">
+        <Change q={q} />
+      </td>
+    </tr>
+  )
+}
 
-      {/* ── Hisse bandı (ticker tape) ── */}
-      <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] overflow-hidden">
-        <TVWidget
-          src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js"
-          config={{
-            symbols: [
-              { proName: 'BIST:XU100',  description: 'BIST 100' },
-              { proName: 'BIST:XU030',  description: 'BIST 30' },
-              { proName: 'BIST:XBANK',  description: 'Banka' },
-              { proName: 'BIST:THYAO',  description: 'THY' },
-              { proName: 'BIST:GARAN',  description: 'Garanti' },
-              { proName: 'BIST:AKBNK',  description: 'Akbank' },
-              { proName: 'BIST:EREGL',  description: 'Ereğli' },
-              { proName: 'BIST:ASELS',  description: 'Aselsan' },
-              { proName: 'BIST:KCHOL',  description: 'Koç Holding' },
-              { proName: 'BIST:BIMAS',  description: 'BİM' },
-              { proName: 'BIST:TCELL',  description: 'Turkcell' },
-              { proName: 'BIST:TUPRS',  description: 'Tüpraş' },
-              { proName: 'BIST:ISCTR',  description: 'İş Bankası' },
-              { proName: 'BIST:SASA',   description: 'Sasa' },
-              { proName: 'BIST:FROTO',  description: 'Ford Otosan' },
-              { proName: 'BIST:TOASO',  description: 'Tofaş' },
-              { proName: 'FOREXCOM:USDTRY', description: 'Dolar/TL' },
-              { proName: 'FOREXCOM:EURTRY', description: 'Euro/TL' },
-              { proName: 'COMEX:GC1!',      description: 'Altın' },
-              { proName: 'TVC:BRENTOIL',    description: 'Brent' },
-            ],
-            showSymbolLogo: false,
-            isTransparent: true,
-            displayMode: 'adaptive',
-            colorTheme: TV_THEME,
-            locale: 'tr',
-          }}
-        />
-      </div>
+// ── Döviz / Emtia satırı ───────────────────────────────────────────────────────
 
-      {/* ── Endeks mini grafik kartları ── */}
+function FxRow({ q }: { q: BistQuote }) {
+  const up = q.changePct >= 0
+  const priceCls = up ? 'text-emerald-500' : 'text-red-500'
+  return (
+    <tr className="border-b border-[rgb(var(--color-border))] last:border-0 hover:bg-[rgb(var(--color-surface))] transition-colors">
+      <td className="py-2.5 pr-4 pl-3">
+        <p className="text-xs font-bold text-[rgb(var(--color-text))]">{q.ticker}</p>
+        <p className="text-[10px] text-[rgb(var(--color-muted))]">{q.name}</p>
+      </td>
+      <td className={`py-2.5 pr-4 text-right text-sm font-semibold ${priceCls}`}>
+        {fmtPrice(q)}
+      </td>
+      <td className="py-2.5 pr-3 text-right">
+        <Change q={q} />
+      </td>
+    </tr>
+  )
+}
+
+// ── Tab bileşeni ───────────────────────────────────────────────────────────────
+
+type TabKey = 'stocks' | 'fx' | 'commodities'
+
+function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => void }) {
+  const tabs: { key: TabKey; label: string }[] = [
+    { key: 'stocks', label: 'Hisseler' },
+    { key: 'fx', label: 'Döviz' },
+    { key: 'commodities', label: 'Emtia' },
+  ]
+  return (
+    <div className="flex gap-1 border-b border-[rgb(var(--color-border))] px-3 pt-2">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          onClick={() => onChange(t.key)}
+          className={`pb-2 px-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
+            active === t.key
+              ? 'border-[rgb(var(--color-brand))] text-[rgb(var(--color-brand))]'
+              : 'border-transparent text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Skeleton ───────────────────────────────────────────────────────────────────
+
+function Skeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
       <div className="grid grid-cols-3 gap-3">
-        <IndexMiniChart symbol="BIST:XU100" name="BIST 100" />
-        <IndexMiniChart symbol="BIST:XU030" name="BIST 30" />
-        <IndexMiniChart symbol="BIST:XBANK" name="Banka Endeksi" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-24 rounded-xl bg-[rgb(var(--color-border))]" />
+        ))}
       </div>
+      <div className="h-64 rounded-xl bg-[rgb(var(--color-border))]" />
+    </div>
+  )
+}
 
-      {/* ── Piyasa özeti — endeksler + popüler hisseler ── */}
-      <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] overflow-hidden">
-        <div className="px-4 pt-3 pb-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-            Piyasa Özeti
-          </p>
+// ── Ana widget ─────────────────────────────────────────────────────────────────
+
+export function BorsaWidget() {
+  const [data, setData] = useState<BistData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<TabKey>('stocks')
+  const [lastFetch, setLastFetch] = useState<Date | null>(null)
+
+  const load = () => {
+    setLoading(true)
+    fetch('/api/finance/bist')
+      .then((r) => r.json())
+      .then((d: BistData) => { setData(d); setLastFetch(new Date()) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
+    const id = setInterval(load, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  if (loading && !data) return <Skeleton />
+
+  const indices    = data?.indices    ?? []
+  const stocks     = data?.stocks     ?? []
+  const fx         = data?.fx         ?? []
+  const commodities = data?.commodities ?? []
+
+  const topIndices = indices.slice(0, 3)
+
+  return (
+    <div className="space-y-4">
+      {/* Başlık */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-[rgb(var(--color-brand))]" />
+          <span className="text-sm font-bold text-[rgb(var(--color-text))]">Canlı Piyasa Verileri</span>
+          <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-500">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+            CANLI
+          </span>
         </div>
-        <TVWidget
-          src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js"
-          config={{
-            colorTheme: TV_THEME,
-            dateRange: '1D',
-            showChart: true,
-            locale: 'tr',
-            largeChartUrl: '',
-            isTransparent: true,
-            showSymbolLogo: false,
-            showFloatingTooltip: false,
-            width: '100%',
-            height: 500,
-            plotLineColorGrowing: 'rgba(41, 98, 255, 1)',
-            plotLineColorFalling: 'rgba(41, 98, 255, 1)',
-            gridLineColor: 'rgba(42, 46, 57, 0)',
-            scaleFontColor: 'rgba(134, 137, 147, 1)',
-            belowLineFillColorGrowing: 'rgba(41, 98, 255, 0.12)',
-            belowLineFillColorFalling: 'rgba(41, 98, 255, 0.12)',
-            belowLineFillColorGrowingBottom: 'rgba(41, 98, 255, 0)',
-            belowLineFillColorFallingBottom: 'rgba(41, 98, 255, 0)',
-            symbolActiveColor: 'rgba(41, 98, 255, 0.12)',
-            tabs: [
-              {
-                title: 'BIST Endeksler',
-                symbols: [
-                  { s: 'BIST:XU100',  d: 'BIST 100' },
-                  { s: 'BIST:XU030',  d: 'BIST 30' },
-                  { s: 'BIST:XBANK',  d: 'Banka Endeksi' },
-                  { s: 'BIST:XUSIN',  d: 'Sınai Endeksi' },
-                  { s: 'BIST:XUTEK',  d: 'Teknoloji Endeksi' },
-                  { s: 'BIST:XGIDA',  d: 'Gıda Endeksi' },
-                  { s: 'BIST:XHOLD',  d: 'Holding Endeksi' },
-                ],
-                originalTitle: 'Indices',
-              },
-              {
-                title: 'Popüler Hisseler',
-                symbols: [
-                  { s: 'BIST:THYAO', d: 'Türk Hava Yolları' },
-                  { s: 'BIST:GARAN', d: 'Garanti BBVA' },
-                  { s: 'BIST:AKBNK', d: 'Akbank' },
-                  { s: 'BIST:EREGL', d: 'Ereğli Demir Çelik' },
-                  { s: 'BIST:ASELS', d: 'Aselsan' },
-                  { s: 'BIST:KCHOL', d: 'Koç Holding' },
-                  { s: 'BIST:BIMAS', d: 'BİM Mağazalar' },
-                  { s: 'BIST:TCELL', d: 'Turkcell' },
-                  { s: 'BIST:ISCTR', d: 'İş Bankası C' },
-                  { s: 'BIST:TUPRS', d: 'Tüpraş' },
-                ],
-                originalTitle: 'Stocks',
-              },
-              {
-                title: 'Döviz & Emtia',
-                symbols: [
-                  { s: 'FOREXCOM:USDTRY', d: 'Dolar / TL' },
-                  { s: 'FOREXCOM:EURTRY', d: 'Euro / TL' },
-                  { s: 'FOREXCOM:GBPTRY', d: 'Sterlin / TL' },
-                  { s: 'COMEX:GC1!',      d: 'Altın (Vadeli)' },
-                  { s: 'COMEX:SI1!',      d: 'Gümüş (Vadeli)' },
-                  { s: 'TVC:BRENTOIL',    d: 'Brent Petrol' },
-                  { s: 'NYMEX:CL1!',      d: 'Ham Petrol (WTI)' },
-                ],
-                originalTitle: 'Commodities',
-              },
-            ],
-          }}
-        />
+        <button
+          type="button"
+          onClick={load}
+          title="Yenile"
+          className="rounded-lg p-1.5 text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-border))] hover:text-[rgb(var(--color-text))] transition-colors"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      {/* Kaynak notu */}
+      {/* Endeks kartları */}
+      {topIndices.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          {topIndices.map((q) => <IndexCard key={q.symbol} q={q} />)}
+        </div>
+      )}
+
+      {/* Diğer endeksler (XU030 sonrası) */}
+      {indices.length > 3 && (
+        <div className="grid grid-cols-2 gap-3">
+          {indices.slice(3).map((q) => <IndexCard key={q.symbol} q={q} />)}
+        </div>
+      )}
+
+      {/* Tab tablosu */}
+      <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] overflow-hidden">
+        <Tabs active={activeTab} onChange={setActiveTab} />
+
+        <table className="w-full">
+          <tbody>
+            {activeTab === 'stocks' && stocks.map((q, i) => (
+              <StockRow key={q.symbol} q={q} rank={i + 1} />
+            ))}
+            {activeTab === 'fx' && fx.map((q) => (
+              <FxRow key={q.symbol} q={q} />
+            ))}
+            {activeTab === 'commodities' && commodities.map((q) => (
+              <FxRow key={q.symbol} q={q} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Kaynak + güncelleme zamanı */}
       <p className="text-center text-[10px] text-[rgb(var(--color-muted))]">
-        Veriler TradingView üzerinden sağlanmaktadır · Gecikmeli olabilir
+        Yahoo Finance · Gecikmeli olabilir
+        {lastFetch && ` · ${lastFetch.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`}
       </p>
     </div>
   )
