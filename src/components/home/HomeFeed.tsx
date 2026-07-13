@@ -42,12 +42,11 @@ export function HomeFeed({ data }: HomeFeedProps) {
 
   const { items: moreItems, loadingMore, sentinelRef } = useHomeFeedInfinite(feedTail)
 
-  const hasFeatured = featured.length > 0
-
   return (
     <div className="home-feed mx-auto w-full max-w-3xl pb-6">
-      {/* First viewport: one clear hero, then the main news stream */}
-      {hasFeatured ? <FeaturedSlider items={featured} /> : <BreakingStories items={breaking} />}
+      {/* Stories stay above the fold; featured is the main hero; ticker/trend after Akış */}
+      <BreakingStories items={breaking} />
+      <FeaturedSlider items={featured} />
 
       <section className="home-section" aria-label="Son haberler">
         <div className="home-rail-title">
@@ -57,8 +56,6 @@ export function HomeFeed({ data }: HomeFeedProps) {
         <MobileMagazineFeed items={feedHead} />
       </section>
 
-      {/* Secondary discovery — below the fold */}
-      {hasFeatured ? <BreakingStories items={breaking} /> : null}
       <TrendingRail items={trending} />
       <MarketTicker />
       <LocationPermission />
