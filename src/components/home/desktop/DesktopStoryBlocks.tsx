@@ -62,9 +62,12 @@ function NewsTypeBadge({ item, className }: { item: NewsItem; className?: string
 }
 
 function estimateReadingMinutes(item: NewsItem): number | null {
+  if (typeof item.readingMinutes === 'number' && item.readingMinutes > 0) {
+    return item.readingMinutes
+  }
   const text = item.content ?? item.description ?? ''
   if (!text) return null
-  const wordCount = text.trim().split(/\s+/).length
+  const wordCount = text.replace(/<[^>]+>/g, ' ').trim().split(/\s+/).filter(Boolean).length
   const minutes = Math.ceil(wordCount / 200)
   return minutes >= 1 ? minutes : null
 }

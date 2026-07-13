@@ -2,15 +2,13 @@ import type { Metadata } from 'next'
 import { Inter, Source_Serif_4 } from 'next/font/google'
 import { ToastViewport } from '@/components/ui/Toast'
 
-import { Analytics } from '@vercel/analytics/react'
-
-import { SpeedInsights } from '@vercel/speed-insights/next'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { LanguageProvider } from '@/store/languageContext'
 import { ThemeProvider } from '@/store/themeContext'
 import { ThemeScript } from '@/components/theme/ThemeScript'
 import { PlatformScript } from '@/components/layout/PlatformScript'
 import { AnalyticsTracker } from '@/components/layout/AnalyticsTracker'
+import { DeferredThirdParty } from '@/components/layout/DeferredThirdParty'
 import './globals.css'
 
 const inter = Inter({
@@ -24,6 +22,7 @@ const inter = Inter({
 const sourceSerif = Source_Serif_4({
   subsets: ['latin', 'latin-ext'],
   display: 'swap',
+  preload: false,
   variable: '--font-serif-display',
 })
 
@@ -251,12 +250,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="msapplication-tap-highlight" content="no" />
         {/* iOS Safari kaydırma bounce'unu PWA modunda kapatır */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
-        {/* Google AdSense */}
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2018428956792076"
-          crossOrigin="anonymous"
-        />
       </head>
       <body className={`${inter.variable} ${sourceSerif.variable} ${inter.className} font-sans antialiased`}>
         <script
@@ -290,8 +283,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   (react-hot-toast webpack alias ile shim'e yönlendirildi) */}
               <ToastViewport />
               <AnalyticsTracker />
-              <Analytics />
-              <SpeedInsights />
+              <DeferredThirdParty />
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>

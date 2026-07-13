@@ -68,7 +68,7 @@ export function DesktopMustWatch({ items }: DesktopMustWatchProps) {
                 alt={item.title}
                 fill
                 sizes="280px"
-                priority={index === 0}
+                priority={false}
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               />
             </div>

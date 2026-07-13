@@ -150,8 +150,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         <section className={`mb-6 ${HERO_SPLIT_SECTION}`} aria-label="Öne çıkanlar">
           <div className={HERO_SPLIT_MAIN}>
             <div className="grid grid-cols-2 gap-4">
-              {layout.topFour.map((item, i) => (
-                <ImageStory key={item.id} item={item} priority={i === 0} aspect="video" />
+              {layout.topFour.map((item) => (
+                <ImageStory key={item.id} item={item} aspect="video" />
               ))}
             </div>
           </div>
@@ -198,7 +198,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
               <TextLeadStory item={layout.featureLead} size="lg" />
             </div>
             <div className="col-span-12 min-w-0 lg:col-span-6">
-              <ImageStory item={layout.featureImage} aspect="wide" showSummary={false} priority />
+              <ImageStory item={layout.featureImage} aspect="wide" showSummary={false} />
             </div>
           </div>
         </section>

@@ -34,7 +34,12 @@ export function parseFirestoreTimestamp(value: TimestampLike): string | undefine
   return undefined
 }
 
-export function docToNewsItem(id: string, raw: Record<string, unknown>): NewsItem | null {
+export function docToNewsItem(
+  id: string,
+  raw: Record<string, unknown>,
+  options?: { mode?: 'full' | 'list' }
+): NewsItem | null {
+  const mode = options?.mode ?? 'full'
   const title = String(raw.title ?? '').trim()
   if (!title) return null
 
@@ -51,16 +56,30 @@ export function docToNewsItem(id: string, raw: Record<string, unknown>): NewsIte
     raw.breaking === true ||
     categoryId === 'son-dakika'
 
+  const descriptionRaw =
+    String(raw.description ?? '').trim() ||
+    String(raw.summary ?? '').trim() ||
+    String(raw.spot ?? '').trim() ||
+    ''
+  const contentRaw = String(raw.content ?? '').trim()
+  const readingSource = contentRaw || descriptionRaw
+  const readingMinutes =
+    typeof raw.readingTimeMinutes === 'number' && raw.readingTimeMinutes > 0
+      ? Math.max(1, Math.round(raw.readingTimeMinutes))
+      : readingSource
+        ? Math.max(1, Math.round(readingSource.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length / 200))
+        : undefined
+
   return {
     id,
     slug: String(raw.slug ?? id).trim() || id,
     title,
-    description:
-      String(raw.description ?? '').trim() ||
-      String(raw.summary ?? '').trim() ||
-      String(raw.spot ?? '').trim() ||
-      undefined,
-    content: String(raw.content ?? '').trim() || undefined,
+    description: descriptionRaw
+      ? (mode === 'list' ? descriptionRaw.slice(0, 180) : descriptionRaw)
+      : undefined,
+    // List/feed payloads must stay small — full body only for detail pages.
+    content: mode === 'list' ? undefined : contentRaw || undefined,
+    readingMinutes,
     imageUrl: imageUrl && imageUrl.length > 5 ? imageUrl : undefined,
     videoUrl: String(raw.videoUrl ?? '').trim() || undefined,
     category: categoryId || undefined,

@@ -5,6 +5,8 @@ export type NewsItem = {
   title: string
   description?: string
   content?: string
+  /** Precomputed on the server for list payloads (content is stripped). */
+  readingMinutes?: number
   imageUrl?: string
   videoUrl?: string
   category?: string

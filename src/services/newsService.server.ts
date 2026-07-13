@@ -195,7 +195,7 @@ export async function getNewsBySlug(slug: string): Promise<Post | null> {
 
 function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
   return docs
-    .map((doc) => docToNewsItem(doc.id, doc.data() as Record<string, unknown>))
+    .map((doc) => docToNewsItem(doc.id, doc.data() as Record<string, unknown>, { mode: 'list' }))
     .filter((item): item is NewsItem => item !== null)
 }
 
@@ -335,7 +335,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
 
   return {
     breaking: bucketBreaking(pool, 12),
-    featured: bucketFeatured(pool, 20),
+    featured: bucketFeatured(pool, 8),
     latest: bucketLatest(pool, 28, now),
     trending: bucketTrending(pool, 6, now),
     trendFeed: bucketTrendFeed(pool, 24, now),

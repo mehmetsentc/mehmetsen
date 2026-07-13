@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
@@ -12,27 +12,40 @@ interface FeaturedSliderProps {
   items: NewsItem[]
 }
 
+/** Only keep current ±1 slides in the DOM to avoid loading 8–20 full-bleed images. */
+function visibleSlideIndexes(current: number, length: number): number[] {
+  if (length <= 1) return [0]
+  const set = new Set<number>([
+    current,
+    (current - 1 + length) % length,
+    (current + 1) % length,
+  ])
+  return [...set]
+}
+
 export function FeaturedSlider({ items }: FeaturedSliderProps) {
+  const slides = useMemo(() => items.slice(0, 8), [items])
   const [current, setCurrent] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   const goTo = useCallback(
     (idx: number) => {
-      if (items.length === 0 || transitioning) return
+      if (slides.length === 0 || transitioning) return
       setTransitioning(true)
-      setCurrent((idx + items.length) % items.length)
+      setCurrent((idx + slides.length) % slides.length)
       setTimeout(() => setTransitioning(false), 500)
     },
-    [items.length, transitioning]
+    [slides.length, transitioning]
   )
 
   const next = useCallback(() => goTo(current + 1), [current, goTo])
   const prev = useCallback(() => goTo(current - 1), [current, goTo])
 
-  if (items.length === 0) return null
+  if (slides.length === 0) return null
 
-  const item = items[current]
+  const item = slides[current]
+  const visible = visibleSlideIndexes(current, slides.length)
 
   return (
     <section aria-label="Öne Çıkan Haberler" className="home-section">
@@ -41,7 +54,9 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
           className="relative overflow-hidden rounded-none md:rounded-2xl"
           style={{ height: 'clamp(22rem, 62vw, 38rem)' }}
           data-no-category-swipe
-          onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null }}
+          onTouchStart={(e) => {
+            touchStartX.current = e.touches[0]?.clientX ?? null
+          }}
           onTouchEnd={(e) => {
             if (touchStartX.current === null) return
             const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current
@@ -49,8 +64,8 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
             touchStartX.current = null
           }}
         >
-          {/* ── Slaytlar ── */}
-          {items.map((s, index) => {
+          {visible.map((index) => {
+            const s = slides[index]
             const image = s.imageUrl || FEED_FALLBACK_LOGO
             const isActive = index === current
             return (
@@ -61,7 +76,6 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
                 }`}
                 aria-hidden={!isActive}
               >
-                {/* Görsel — hafif zoom animasyonu */}
                 <div
                   className={`absolute inset-0 transition-transform duration-[6000ms] ease-out ${
                     isActive ? 'scale-[1.05]' : 'scale-100'
@@ -72,19 +86,16 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
                     alt={s.title}
                     fill
                     sizes="(max-width: 768px) 100vw, 860px"
-                    priority={index === 0}
+                    priority={index === 0 && current === 0}
                     className="object-cover object-center"
                   />
                 </div>
-
-                {/* Degrade: üstten hafif, alttan siyah */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/5" />
               </div>
             )
           })}
 
-          {/* ── Sol ok ── */}
-          {items.length > 1 && (
+          {slides.length > 1 && (
             <button
               type="button"
               aria-label="Önceki"
@@ -95,8 +106,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
             </button>
           )}
 
-          {/* ── Sağ ok ── */}
-          {items.length > 1 && (
+          {slides.length > 1 && (
             <button
               type="button"
               aria-label="Sonraki"
@@ -107,31 +117,28 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
             </button>
           )}
 
-          {/* ── İçerik ── tüm slayt tıklanabilir, içerik altta */}
           <Link
             href={newsItemDetailHref(item)}
             className="absolute inset-0 z-10 flex flex-col justify-end focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <div className="px-4 pb-4 pt-6 sm:px-6 sm:pb-5">
-              {/* Kategori rozeti */}
               <span className="mb-2.5 inline-flex items-center rounded-md bg-[rgb(var(--color-brand))] px-2.5 py-[5px] text-[10px] font-black uppercase tracking-widest text-white">
                 {newsItemCategoryLabel(item)}
               </span>
-
-              {/* Başlık */}
               <h2 className="line-clamp-3 text-[1.5rem] font-black leading-[1.18] tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] sm:text-[1.85rem]">
                 {item.title}
               </h2>
-
-              {/* Dot göstergeler */}
-              {items.length > 1 && (
+              {slides.length > 1 && (
                 <div className="mt-4 flex items-center justify-center gap-2">
-                  {items.map((_, i) => (
+                  {slides.map((_, i) => (
                     <button
                       key={i}
                       type="button"
                       aria-label={`Slayt ${i + 1}`}
-                      onClick={(e) => { e.preventDefault(); goTo(i) }}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        goTo(i)
+                      }}
                       className={`rounded-full transition-all duration-300 ${
                         i === current
                           ? 'h-2.5 w-2.5 bg-white scale-110'

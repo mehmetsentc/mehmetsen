@@ -74,8 +74,8 @@ export function NewsFeedList({ items }: NewsFeedListProps) {
 
   return (
     <div className="space-y-4">
-      {items.map((item, index) => (
-        <NewsFeedCard key={item.id} item={item} priority={index === 0} />
+      {items.map((item) => (
+        <NewsFeedCard key={item.id} item={item} />
       ))}
     </div>
   )
