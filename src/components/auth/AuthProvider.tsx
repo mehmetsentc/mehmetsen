@@ -6,41 +6,42 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
+import { usePathname } from 'next/navigation'
 import type { User as FirebaseUser } from 'firebase/auth'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth, ensureAuthReady } from '@/lib/firebase/auth'
-import { completeGoogleRedirectSignIn } from '@/lib/googleAuth'
-import { authService, finalizeGoogleSignIn } from '@/services/authService'
-// Apple redirect aynı getRedirectResult'ı paylaşır; ekstra çağrı gerekmez.
-import { devLog, withTimeout } from '@/lib/asyncUtils'
 import type { LoginFormData, RegisterFormData } from '@/lib/validators/auth'
 import type { User } from '@/types/user'
-import {
-  applyAdminBootstrap,
-  syncCmsRoleFromServer,
-} from '@/lib/admin'
+import { applyAdminBootstrap, syncCmsRoleFromServer } from '@/lib/admin'
 import { EulaModal } from '@/components/auth/EulaModal'
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db, Collections } from '@/lib/firebase/firestore'
+import { isPublicRoute, ROUTES } from '@/constants/routes'
+import { devLog, withTimeout } from '@/lib/asyncUtils'
 
 const PROFILE_TIMEOUT_MS = 8_000
+const PUBLIC_AUTH_IDLE_TIMEOUT_MS = 2_500
 
 interface AuthContextValue {
   user: User | null
   /** True until persisted Firebase session is restored on first load. */
   loading: boolean
-  login: (data: LoginFormData) => ReturnType<typeof authService.login>
-  register: (data: RegisterFormData) => ReturnType<typeof authService.register>
-  loginWithGoogle: () => ReturnType<typeof authService.loginWithGoogle>
-  loginWithApple: () => ReturnType<typeof authService.loginWithApple>
-  logout: () => ReturnType<typeof authService.logout>
+  login: (data: LoginFormData) => Promise<unknown>
+  register: (data: RegisterFormData) => Promise<unknown>
+  loginWithGoogle: () => Promise<unknown>
+  loginWithApple: () => Promise<unknown>
+  logout: () => Promise<unknown>
   refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+function shouldDeferAuthBootstrap(pathname: string): boolean {
+  if (pathname === ROUTES.LOGIN || pathname === ROUTES.REGISTER) return false
+  if (pathname === ROUTES.ONBOARDING) return false
+  if (pathname.startsWith('/admin')) return false
+  return isPublicRoute(pathname)
+}
 
 function buildFallbackUser(firebaseUser: FirebaseUser): User {
   const email = firebaseUser.email ?? ''
@@ -78,6 +79,7 @@ async function refreshProfileAfterCmsSync(
   setUser: (user: User | null) => void
 ): Promise<void> {
   try {
+    const { authService } = await import('@/services/authService')
     const token = await firebaseUser.getIdToken()
     await syncCmsRoleFromServer(token)
     if (!mounted) return
@@ -91,95 +93,169 @@ async function refreshProfileAfterCmsSync(
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const resumeBootstrapRef = useRef<(() => void) | null>(null)
+
+  // If the user navigates to login/admin while public auth is still deferred, start immediately.
+  useEffect(() => {
+    if (!shouldDeferAuthBootstrap(pathname)) {
+      resumeBootstrapRef.current?.()
+    }
+  }, [pathname])
 
   useEffect(() => {
     let mounted = true
     let unsubscribe: (() => void) | undefined
-
-    const handleAuthUser = async (firebaseUser: FirebaseUser | null) => {
-      if (!mounted) return
-
-      if (!firebaseUser) {
-        setUser(null)
-        return
-      }
-
-      setUser(applyAdminBootstrap(buildFallbackUser(firebaseUser)))
-
-      try {
-        const profile = await withTimeout(
-          authService.getUserProfile(firebaseUser.uid),
-          PROFILE_TIMEOUT_MS,
-          'getUserProfile'
-        )
-        if (mounted && profile) {
-          setUser(applyAdminBootstrap(profile))
-        }
-        void refreshProfileAfterCmsSync(firebaseUser, mounted, setUser)
-        devLog('AuthProvider', 'profile loaded', {
-          uid: firebaseUser.uid,
-          found: !!profile,
-        })
-      } catch (error) {
-        console.error('[AuthProvider] Failed to load user profile:', error)
-      }
-    }
+    const initialPath = pathname
 
     void (async () => {
-      try {
-        const redirectResult = await completeGoogleRedirectSignIn(auth)
-        if (redirectResult?.user) {
-          void finalizeGoogleSignIn(redirectResult.user)
-        }
+      if (shouldDeferAuthBootstrap(initialPath)) {
+        await new Promise<void>((resolve) => {
+          let settled = false
+          const finish = () => {
+            if (settled) return
+            settled = true
+            resumeBootstrapRef.current = null
+            window.removeEventListener('pointerdown', finish)
+            window.removeEventListener('keydown', finish)
+            window.removeEventListener('touchstart', finish)
+            if (idleId != null && typeof window.cancelIdleCallback === 'function') {
+              window.cancelIdleCallback(idleId)
+            }
+            if (timer != null) clearTimeout(timer)
+            resolve()
+          }
 
-        await ensureAuthReady()
-      } catch (error) {
-        console.error('[AuthProvider] Auth bootstrap failed:', error)
-      }
+          resumeBootstrapRef.current = finish
+          window.addEventListener('pointerdown', finish, { once: true })
+          window.addEventListener('keydown', finish, { once: true })
+          window.addEventListener('touchstart', finish, { once: true, passive: true })
 
-      if (!mounted) return
-
-      // Keep loading=true until the first handleAuthUser call fully completes (profile
-      // fetched from Firestore). This prevents AdminGuard from briefly seeing the
-      // fallback user (role='user') and firing the "admin yetkisi gerekli" toast.
-      let firstHandled = false
-      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        devLog('AuthProvider', 'auth state changed', { uid: firebaseUser?.uid ?? null })
-        void handleAuthUser(firebaseUser).finally(() => {
-          if (mounted && !firstHandled) {
-            firstHandled = true
-            setLoading(false)
+          let idleId: number | null = null
+          let timer: ReturnType<typeof setTimeout> | null = null
+          if (typeof window.requestIdleCallback === 'function') {
+            idleId = window.requestIdleCallback(finish, { timeout: PUBLIC_AUTH_IDLE_TIMEOUT_MS })
+          } else {
+            timer = setTimeout(finish, Math.min(PUBLIC_AUTH_IDLE_TIMEOUT_MS, 1500))
           }
         })
-      })
+      }
+      if (!mounted) return
+
+      try {
+        const [
+          { onAuthStateChanged },
+          { auth, ensureAuthReady },
+          { completeGoogleRedirectSignIn },
+          { authService, finalizeGoogleSignIn },
+        ] = await Promise.all([
+          import('firebase/auth'),
+          import('@/lib/firebase/auth'),
+          import('@/lib/googleAuth'),
+          import('@/services/authService'),
+        ])
+
+        const handleAuthUser = async (firebaseUser: FirebaseUser | null) => {
+          if (!mounted) return
+
+          if (!firebaseUser) {
+            setUser(null)
+            return
+          }
+
+          setUser(applyAdminBootstrap(buildFallbackUser(firebaseUser)))
+
+          try {
+            const profile = await withTimeout(
+              authService.getUserProfile(firebaseUser.uid),
+              PROFILE_TIMEOUT_MS,
+              'getUserProfile'
+            )
+            if (mounted && profile) {
+              setUser(applyAdminBootstrap(profile))
+            }
+            void refreshProfileAfterCmsSync(firebaseUser, mounted, setUser)
+            devLog('AuthProvider', 'profile loaded', {
+              uid: firebaseUser.uid,
+              found: !!profile,
+            })
+          } catch (error) {
+            console.error('[AuthProvider] Failed to load user profile:', error)
+          }
+        }
+
+        try {
+          const redirectResult = await completeGoogleRedirectSignIn(auth)
+          if (redirectResult?.user) {
+            void finalizeGoogleSignIn(redirectResult.user)
+          }
+          await ensureAuthReady()
+        } catch (error) {
+          console.error('[AuthProvider] Auth bootstrap failed:', error)
+        }
+
+        if (!mounted) return
+
+        // Keep loading=true until the first handleAuthUser call fully completes (profile
+        // fetched from Firestore). This prevents AdminGuard from briefly seeing the
+        // fallback user (role='user') and firing the "admin yetkisi gerekli" toast.
+        let firstHandled = false
+        unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+          devLog('AuthProvider', 'auth state changed', { uid: firebaseUser?.uid ?? null })
+          void handleAuthUser(firebaseUser).finally(() => {
+            if (mounted && !firstHandled) {
+              firstHandled = true
+              setLoading(false)
+            }
+          })
+        })
+      } catch (error) {
+        console.error('[AuthProvider] Failed to load auth runtime:', error)
+        if (mounted) setLoading(false)
+      }
     })()
 
     return () => {
       mounted = false
+      resumeBootstrapRef.current = null
       unsubscribe?.()
     }
+    // Bootstrap once per mount — intentional empty deps; pathname only gates deferral.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const login = useCallback(
-    (data: LoginFormData) => authService.login(data.email, data.password),
-    []
-  )
+  const login = useCallback(async (data: LoginFormData) => {
+    const { authService } = await import('@/services/authService')
+    return authService.login(data.email, data.password)
+  }, [])
 
-  const register = useCallback(
-    (data: RegisterFormData) =>
-      authService.register(data.email, data.password, data.username, data.displayName),
-    []
-  )
+  const register = useCallback(async (data: RegisterFormData) => {
+    const { authService } = await import('@/services/authService')
+    return authService.register(data.email, data.password, data.username, data.displayName)
+  }, [])
 
-  const loginWithGoogle = useCallback(() => authService.loginWithGoogle(), [])
+  const loginWithGoogle = useCallback(async () => {
+    const { authService } = await import('@/services/authService')
+    return authService.loginWithGoogle()
+  }, [])
 
-  const loginWithApple = useCallback(() => authService.loginWithApple(), [])
+  const loginWithApple = useCallback(async () => {
+    const { authService } = await import('@/services/authService')
+    return authService.loginWithApple()
+  }, [])
 
-  const logout = useCallback(() => authService.logout(), [])
+  const logout = useCallback(async () => {
+    const { authService } = await import('@/services/authService')
+    return authService.logout()
+  }, [])
 
   const refreshUser = useCallback(async () => {
+    const [{ auth }, { authService }] = await Promise.all([
+      import('@/lib/firebase/auth'),
+      import('@/services/authService'),
+    ])
     const current = auth.currentUser
     if (!current) {
       setUser(null)
@@ -211,6 +287,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const needsEula = !!user && !loading && !user.termsAcceptedAt
 
   const acceptTerms = async () => {
+    const [{ auth }, { db, Collections }, { doc, updateDoc, serverTimestamp }] = await Promise.all([
+      import('@/lib/firebase/auth'),
+      import('@/lib/firebase/firestore'),
+      import('firebase/firestore'),
+    ])
     const current = auth.currentUser
     if (!current) return
     const now = new Date().toISOString()
@@ -219,7 +300,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     // Firestore refresh beklemeden local state'i anında güncelle —
     // needsEula false'a döner ve modal unmount edilir.
-    setUser(prev => prev ? { ...prev, termsAcceptedAt: now } : null)
+    setUser((prev) => (prev ? { ...prev, termsAcceptedAt: now } : null))
   }
 
   return (

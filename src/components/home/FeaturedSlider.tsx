@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
+import { LCP_IMAGE_QUALITY, LCP_IMAGE_SIZES } from '@/lib/lcpImage'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -27,11 +28,31 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
   const slides = useMemo(() => items.slice(0, 8), [items])
   const [current, setCurrent] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
+  /** Delay neighbour slides so LCP only contends with slide 0. */
+  const [extrasReady, setExtrasReady] = useState(false)
   const touchStartX = useRef<number | null>(null)
+
+  useEffect(() => {
+    let idleId: number | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const enable = () => setExtrasReady(true)
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(enable, { timeout: 3_000 })
+    } else {
+      timer = setTimeout(enable, 1_800)
+    }
+    return () => {
+      if (idleId != null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      }
+      if (timer) clearTimeout(timer)
+    }
+  }, [])
 
   const goTo = useCallback(
     (idx: number) => {
       if (slides.length === 0 || transitioning) return
+      setExtrasReady(true)
       setTransitioning(true)
       setCurrent((idx + slides.length) % slides.length)
       setTimeout(() => setTransitioning(false), 500)
@@ -45,7 +66,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
   if (slides.length === 0) return null
 
   const item = slides[current]
-  const visible = visibleSlideIndexes(current, slides.length)
+  const visible = extrasReady ? visibleSlideIndexes(current, slides.length) : [current]
 
   return (
     <section aria-label="Öne Çıkan Haberler" className="home-section">
@@ -76,17 +97,15 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
                 }`}
                 aria-hidden={!isActive}
               >
-                <div
-                  className={`absolute inset-0 transition-transform duration-[6000ms] ease-out ${
-                    isActive ? 'scale-[1.05]' : 'scale-100'
-                  }`}
-                >
+                <div className="absolute inset-0">
                   <SafeNewsImage
                     src={image}
                     alt={s.title}
                     fill
-                    sizes="(max-width: 768px) 100vw, 860px"
+                    sizes={LCP_IMAGE_SIZES}
+                    quality={index === 0 ? LCP_IMAGE_QUALITY : 70}
                     priority={index === 0 && current === 0}
+                    fetchPriority={index === 0 && current === 0 ? 'high' : 'auto'}
                     className="object-cover object-center"
                   />
                 </div>

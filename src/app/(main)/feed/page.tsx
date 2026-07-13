@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { FeedPageClient } from '@/components/feed/FeedPageClient'
 import { FeedStructuredData } from '@/components/home/desktop/FeedStructuredData'
 import { getSiteUrl } from '@/lib/seo'
-import { getLcpPreloadHref } from '@/lib/lcpImage'
+import { getLcpPreload } from '@/lib/lcpImage'
 import { getHomeFeedInitialData } from '@/services/newsService.server'
 import { ROUTES } from '@/constants/routes'
 
@@ -72,7 +72,7 @@ export default async function FeedPage() {
     data.breaking[0]?.imageUrl ??
     data.latest[0]?.imageUrl ??
     null
-  const lcpPreload = lcpImage ? getLcpPreloadHref(lcpImage) : null
+  const lcpPreload = lcpImage ? getLcpPreload(lcpImage) : null
 
   const headlinePool = [...data.featured, ...data.latest, ...data.breaking]
 
@@ -80,7 +80,15 @@ export default async function FeedPage() {
     <>
       <FeedStructuredData headlines={headlinePool} />
       {lcpPreload ? (
-        <link rel="preload" as="image" href={lcpPreload} fetchPriority="high" />
+        <link
+          rel="preload"
+          as="image"
+          href={lcpPreload.href}
+          // React 19: imageSrcSet / imageSizes map to imagesrcset / imagesizes
+          imageSrcSet={lcpPreload.imagesrcset}
+          imageSizes={lcpPreload.imagesizes}
+          fetchPriority="high"
+        />
       ) : null}
       <FeedPageClient homeFeedData={data} />
     </>
