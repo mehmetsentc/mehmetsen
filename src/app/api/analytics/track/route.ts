@@ -29,16 +29,31 @@ function extractDomain(referrer: string): string {
 }
 
 function sanitizePath(path: string): string {
-  // Normalize: remove query string, keep max 80 chars, replace dots with _ for Firestore field names
-  return (path.split('?')[0] || '/').slice(0, 80).replace(/\./g, '_')
+  // Firestore dotted field paths cannot safely use `/` or `.` as map keys.
+  // /haber/foo → haber__foo  (restored in admin analytics API)
+  const cleaned = (path.split('?')[0] || '/').trim() || '/'
+  return cleaned
+    .replace(/^\/+/, '')
+    .replace(/\/+/g, '__')
+    .replace(/\./g, '_')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 80) || 'home'
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as {
-      path?: string
-      referrer?: string
-      postId?: string
+    const contentType = request.headers.get('content-type') ?? ''
+    let body: { path?: string; referrer?: string; postId?: string } = {}
+    if (contentType.includes('application/json')) {
+      body = await request.json() as typeof body
+    } else {
+      // sendBeacon sometimes arrives as text/plain
+      const text = await request.text()
+      try {
+        body = JSON.parse(text) as typeof body
+      } catch {
+        body = {}
+      }
     }
 
     const ua = request.headers.get('user-agent') ?? ''

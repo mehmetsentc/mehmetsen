@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
-import { db } from '@/lib/firebase/firestore'
-import { Collections } from '@/lib/firebase/collections'
-import { collection, query, where, orderBy, limit, getDocs, getCountFromServer, doc, getDoc } from 'firebase/firestore'
+import { auth } from '@/lib/firebase/auth'
 import {
   TrendingUp, Eye, Users, Newspaper, RefreshCw, BarChart3,
   Globe, Monitor, Smartphone, ExternalLink, Activity, Zap,
@@ -12,23 +10,7 @@ import {
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────
-interface DailyDoc {
-  total?: number
-  devices?: Record<string, number>
-  os?: Record<string, number>
-  pages?: Record<string, number>
-  referrers?: Record<string, number>
-}
-
 interface TopPost { id: string; title: string; views: number; category?: string; slug?: string }
-
-// ── Vitals types ───────────────────────────────────────────────────────────
-interface MetricBuckets { good?: number; ni?: number; poor?: number; sum?: number; count?: number }
-interface VitalsDoc {
-  path: string
-  FCP?: MetricBuckets; LCP?: MetricBuckets; INP?: MetricBuckets
-  CLS?: MetricBuckets; TTFB?: MetricBuckets
-}
 interface RouteVitals { path: string; score: number; lcp: number; fcp: number; inp: number; cls: number; ttfb: number; samples: number }
 
 interface DashData {
@@ -42,45 +24,11 @@ interface DashData {
   os: Record<string, number>
   topPosts: TopPost[]
   vitals: RouteVitals[]
+  meta?: { hasDailyDocs?: boolean; deviceRecords?: number }
 }
 
 type Period = '7d' | '30d' | 'today'
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function dateRange(period: Period): string[] {
-  const days: string[] = []
-  const n = period === 'today' ? 1 : period === '7d' ? 7 : 30
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    days.push(d.toISOString().slice(0, 10))
-  }
-  return days
-}
-
-function unSanitizeDomain(s: string) {
-  return s.replace(/_/g, '.')
-}
-
-// ── Vitals helpers ─────────────────────────────────────────────────────────
-function avg(m?: MetricBuckets): number {
-  if (!m?.count || !m?.sum) return 0
-  return Math.round(m.sum / m.count)
-}
-function goodPct(m?: MetricBuckets): number {
-  const total = (m?.good ?? 0) + (m?.ni ?? 0) + (m?.poor ?? 0)
-  return total > 0 ? Math.round(((m?.good ?? 0) / total) * 100) : 0
-}
-/** Compute a 0-100 score from LCP + CLS + INP good% (weighted) */
-function computeScore(doc: VitalsDoc): number {
-  const lcpPct = goodPct(doc.LCP)
-  const clsPct = goodPct(doc.CLS)
-  const inpPct = goodPct(doc.INP)
-  const fcpPct = goodPct(doc.FCP)
-  const count = [doc.LCP, doc.CLS, doc.INP, doc.FCP].filter(Boolean).length
-  if (count === 0) return 0
-  return Math.round((lcpPct * 0.4 + clsPct * 0.2 + inpPct * 0.2 + fcpPct * 0.2))
-}
 function scoreBadge(score: number) {
   if (score >= 90) return { label: 'İyi', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' }
   if (score >= 50) return { label: 'Orta', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' }
@@ -158,86 +106,31 @@ export default function AnalyticsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const dates = dateRange(period)
-
-    // Firebase counts — independent of analytics collections
-    const [usersSnap, postsSnap, topPostsSnap] = await Promise.all([
-      getCountFromServer(query(collection(db, 'users'))).catch(() => null),
-      getCountFromServer(query(collection(db, Collections.NEWS), where('status', '==', 'published'))).catch(() => null),
-      getDocs(query(collection(db, Collections.NEWS), where('status', '==', 'published'), orderBy('viewsCount', 'desc'), limit(10))).catch(() => null),
-    ])
-
-    const topPosts: TopPost[] = (topPostsSnap?.docs ?? []).map(d => {
-      const dd = d.data()
-      return { id: d.id, title: dd.title as string ?? '', views: (dd.viewsCount as number) ?? 0, category: dd.categoryId as string, slug: dd.slug as string }
-    })
-
-    let totalViews = 0
-    const pageMap = new Map<string, number>()
-    const refMap = new Map<string, number>()
-    let mobile = 0; let desktop = 0
-    const osMap = new Map<string, number>()
-    let days = dates.map(date => ({ date, views: 0 }))
-    let vitals: RouteVitals[] = []
-
     try {
-      const dailyDocs = await Promise.all(
-        dates.map(d => getDoc(doc(db, Collections.ANALYTICS_DAILY, d)).then(s => ({ date: d, data: s.data() as DailyDoc | undefined })))
-      )
+      const token = await auth.currentUser?.getIdToken()
+      if (!token) {
+        setData(null)
+        return
+      }
 
-      days = dailyDocs.map(({ date, data: d }) => {
-        const v = d?.total ?? 0
-        totalViews += v
-        Object.entries(d?.pages ?? {}).forEach(([p, n]) => pageMap.set(p, (pageMap.get(p) ?? 0) + n))
-        Object.entries(d?.referrers ?? {}).forEach(([r, n]) => refMap.set(r, (refMap.get(r) ?? 0) + n))
-        mobile += d?.devices?.mobile ?? 0
-        desktop += d?.devices?.desktop ?? 0
-        Object.entries(d?.os ?? {}).forEach(([o, n]) => osMap.set(o, (osMap.get(o) ?? 0) + n))
-        return { date, views: v }
+      const res = await fetch(`/api/admin/analytics?period=${period}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
       })
+      if (!res.ok) {
+        console.error('[admin/analytics] API failed:', res.status)
+        setData(null)
+        return
+      }
 
-      const vitalsSnap = await getDocs(collection(db, Collections.ANALYTICS_VITALS)).catch(() => null)
-      vitals = (vitalsSnap?.docs ?? []).map(d => {
-        const v = d.data() as VitalsDoc
-        return {
-          path: v.path ?? d.id,
-          score: computeScore(v),
-          lcp: avg(v.LCP),
-          fcp: avg(v.FCP),
-          inp: avg(v.INP),
-          cls: avg(v.CLS),
-          ttfb: avg(v.TTFB),
-          samples: v.LCP?.count ?? v.FCP?.count ?? 0,
-        }
-      }).filter(r => r.samples > 0).sort((a, b) => b.samples - a.samples)
+      const json = await res.json() as DashData
+      setData(json)
     } catch (e) {
-      console.error('[admin/analytics] analyticsDaily read failed:', e)
+      console.error('[admin/analytics] load failed:', e)
+      setData(null)
+    } finally {
+      setLoading(false)
     }
-
-    const topPages = [...pageMap.entries()]
-      .filter(([p]) => !p.startsWith('/admin') && !p.startsWith('/api'))
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([path, views]) => ({ path: path.replace(/_/g, '.'), views }))
-
-    const referrers = [...refMap.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([domain, views]) => ({ domain: unSanitizeDomain(domain), views }))
-
-    setData({
-      totalViews,
-      totalUsers: usersSnap?.data().count ?? 0,
-      totalPosts: postsSnap?.data().count ?? 0,
-      days,
-      topPages,
-      referrers,
-      devices: { mobile, desktop },
-      os: Object.fromEntries(osMap),
-      topPosts,
-      vitals,
-    })
-    setLoading(false)
   }, [period])
 
   useEffect(() => { load() }, [load])
@@ -271,6 +164,13 @@ export default function AnalyticsPage() {
       />
 
       <div className="p-6 space-y-6">
+
+        {!loading && data && (data.topPages.length === 0 || totalDevice === 0) && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Sayfa / cihaz / kaynak dağılımı henüz dolmamış. Haber görüntülenmeleri ayrı kaydediliyor;
+            yeni ziyaretler bu panelleri doldurmaya başlar. Birkaç sayfa gezindikten sonra yenileyin.
+          </div>
+        )}
 
         {/* KPIs */}
         <div className="grid gap-4 sm:grid-cols-3">

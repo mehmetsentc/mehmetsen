@@ -12,18 +12,30 @@ export function useTrackPageview(postId?: string) {
   const lastTracked = useRef<string>('')
 
   useEffect(() => {
+    if (!pathname || pathname.startsWith('/admin') || pathname.startsWith('/api')) return
+
     const key = `${pathname}__${postId ?? ''}`
     if (lastTracked.current === key) return
     lastTracked.current = key
 
-    // Fire and forget — don't block render
     const referrer = typeof document !== 'undefined' ? document.referrer : ''
+    const payload = JSON.stringify({ path: pathname, referrer, postId })
+
+    // Prefer sendBeacon so navigations / tab closes still record the hit
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        const blob = new Blob([payload], { type: 'application/json' })
+        if (navigator.sendBeacon('/api/analytics/track', blob)) return
+      }
+    } catch {
+      /* fall through to fetch */
+    }
 
     fetch('/api/analytics/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: pathname, referrer, postId }),
+      body: payload,
       keepalive: true,
-    }).catch(() => { /* ignore network errors */ })
+    }).catch(() => {})
   }, [pathname, postId])
 }
