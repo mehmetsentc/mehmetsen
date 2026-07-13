@@ -47,6 +47,7 @@ export function HomeFeed({ data }: HomeFeedProps) {
       {/* Stories stay above the fold; featured is the main hero; ticker/trend after Akış */}
       <BreakingStories items={breaking} />
       <FeaturedSlider items={featured} />
+      <MarketTicker />
 
       <section className="home-section" aria-label="Son haberler">
         <div className="home-rail-title">
@@ -57,7 +58,6 @@ export function HomeFeed({ data }: HomeFeedProps) {
       </section>
 
       <TrendingRail items={trending} />
-      <MarketTicker />
       <LocationPermission />
 
       <MustReadSection items={mostRead} />
