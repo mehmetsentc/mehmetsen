@@ -273,7 +273,44 @@ function bucketLatest(pool: NewsItem[], limit: number, now: number): NewsItem[] 
 }
 
 function bucketTrending(pool: NewsItem[], limit: number, now: number): NewsItem[] {
-  return pickTrending(pool, limit, undefined, now)
+  // 1) Gerçek trend haberleri: görüntülenme/etkileşim skoruna göre
+  const trending = pickTrending(pool, limit, undefined, now)
+
+  if (trending.length >= limit) return trending
+
+  // 2) Etkileşim verisi yetersizse (yeni site) — daha düşük eşikle dene
+  const relaxed = pickTrending(pool, limit, {
+    minEngagement: 1,
+    requireImage: true,
+    excludeBreaking: true,
+    maxAgeHours: 72,
+  }, now)
+
+  const seen = new Set(trending.map((i) => i.id))
+  const merged = [...trending]
+  for (const item of relaxed) {
+    if (merged.length >= limit) break
+    if (!seen.has(item.id)) { seen.add(item.id); merged.push(item) }
+  }
+
+  if (merged.length >= limit) return merged
+
+  // 3) Hâlâ yetersizse gündem haberlerinden tamamla (en yeniden en eskiye)
+  const gundemFallback = pool
+    .filter((item) => item.category === 'gundem' && !!item.imageUrl && !seen.has(item.id))
+    .sort((a, b) => {
+      const ta = a.publishedAt ? Date.parse(a.publishedAt) : 0
+      const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0
+      return tb - ta
+    })
+
+  for (const item of gundemFallback) {
+    if (merged.length >= limit) break
+    seen.add(item.id)
+    merged.push(item)
+  }
+
+  return merged
 }
 
 function bucketTrendFeed(pool: NewsItem[], limit: number, now: number): NewsItem[] {
@@ -339,7 +376,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
     breaking: bucketBreaking(pool, 12),
     featured: bucketFeatured(pool, 8),
     latest: bucketLatest(pool, 28, now),
-    trending: bucketTrending(pool, 6, now),
+    trending: bucketTrending(pool, 8, now),
     trendFeed: bucketTrendFeed(pool, 24, now),
     mostRead: bucketMostRead(pool, 8),
     categoryRails,
