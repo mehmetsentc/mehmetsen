@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { ChevronRight, Clock, Eye, Hash, MapPin, User } from 'lucide-react'
+import { ChevronRight, Clock, Hash, MapPin, User } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -136,15 +136,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
               <Clock className="h-3.5 w-3.5" />
               {readMinutes} dk okuma
             </span>
-            {post.viewsCount > 0 && (
-              <>
-                <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
-                <span className="inline-flex items-center gap-1">
-                  <Eye className="h-3.5 w-3.5" />
-                  {formatCount(post.viewsCount)} görüntülenme
-                </span>
-              </>
-            )}
+            {/* görüntülenme sayısı kaldırıldı */}
           </div>
         </header>
 
