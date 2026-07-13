@@ -55,14 +55,17 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
   const layout = useMemo(() => {
     const { take, takeFeatured } = createFeedAllocator(data)
 
-    const heroLead = take(1)[0]
-    const heroRight = take(2)
+    // Hero ve üst bölümler sadece Gündem rayinden beslenir
+    const gundemRail = data.categoryRails.gundem ?? []
+    const heroLead = gundemRail[0]
+    const heroRight = gundemRail.slice(1, 3)
 
-    const topFour = take(4)
-    const quickHeadlines = take(5)
+    const topFour = gundemRail.slice(3, 7)
+    const quickHeadlines = gundemRail.slice(7, 12)
 
-    const moreGrid = sliceCategoryRail(data.categoryRails, 'gundem', 4)
-    const moreSidebar = sliceCategoryRail(data.categoryRails, 'gundem', 6).slice(4, 6)
+    // Alt Gündem bölümü: rail'den kalan haberler (12. index sonrası)
+    const moreGrid = gundemRail.slice(12, 16)
+    const moreSidebar = gundemRail.slice(16, 18)
 
     const featureLead = take(1)[0]
     const featureImage = take(1)[0]

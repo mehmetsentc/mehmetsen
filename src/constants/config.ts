@@ -75,6 +75,9 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'gezi',          name: 'Gezi',          slug: 'gezi',          iconName: 'map',         color: '#0891B2' },
   { id: 'asayis',        name: '3. Sayfa',      slug: 'asayis',        iconName: 'shield-alert', color: '#B45309' },
 
+  // ── Tarih ───────────────────────────────────────────────────────────────────
+  { id: 'tarih',         name: 'Tarih',         slug: 'tarih',         iconName: 'book-open',   color: '#92400E' },
+
   // ── Özel kategoriler ────────────────────────────────────────────────────────
   { id: 'son-dakika',    name: 'Son Dakika',    slug: 'son-dakika',    iconName: 'zap',         color: '#EF4444' },
   { id: 'etkinlikler',   name: 'Etkinlikler',   slug: 'etkinlikler',   iconName: 'calendar',    color: '#8B5CF6' },
@@ -88,6 +91,7 @@ const ADMIN_CATEGORY_GROUP_DEFS: Array<{ label: string; ids: string[] }> = [
   { label: 'Teknoloji & Bilim', ids: ['teknoloji', 'bilim'] },
   { label: 'Yaşam & Turizm', ids: ['saglik', 'yasam', 'gastronomi', 'turizm', 'gezi', 'otomobil', 'meteoroloji'] },
   { label: 'Kültür & Magazin', ids: ['kultur', 'magazin'] },
+  { label: 'Tarih', ids: ['tarih'] },
   { label: 'Özel', ids: ['etkinlikler'] },
 ]
 
@@ -161,6 +165,7 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'gastronomi',
   'otomobil',
   'turizm',
+  'tarih',
   'asayis',
 ] as const
 
@@ -186,6 +191,7 @@ export const TOP_NAV_CATEGORY_IDS = [
   'sinema',
   'tiyatro',
   'magazin',
+  'tarih',
 ] as const
 
 export interface SiteNavItem {
@@ -231,6 +237,7 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('tiyatro') ? { ...categoryLink('tiyatro')!, indent: true } : null,
     { id: 'teve-sub', label: 'Teve', href: ROUTES.REELS, indent: true },
     categoryLink('magazin'),
+    categoryLink('tarih'),
     { id: 'teve', label: 'Teve', href: ROUTES.REELS },
   ]
 

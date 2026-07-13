@@ -307,7 +307,9 @@ async function enrichPriorityCategoryRails(
   const rails = { ...poolRails }
   await Promise.all(
     FEED_PRIORITY_RAILS.map(async (category) => {
-      const items = await getHomeCategoryItems(category, 12)
+      // gündem: hero + alt bölüm için daha fazla haber gerekli
+      const limit = category === 'gundem' ? 20 : 12
+      const items = await getHomeCategoryItems(category, limit)
       if (items.length > 0) rails[category] = items
     })
   )

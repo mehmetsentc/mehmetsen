@@ -43,6 +43,7 @@ export type HomeCategorySlug =
   | 'turizm'
   | 'gezi'
   | 'asayis'
+  | 'tarih'
 
 export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'gundem',
@@ -61,6 +62,7 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'turizm',
   'gezi',
   'asayis',
+  'tarih',
 ]
 
 /** Ana sayfa kategori bölümleri — Firestore'dan ayrı sorgulanır. */
