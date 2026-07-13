@@ -6,7 +6,6 @@ import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Navbar } from '@/components/layout/Navbar'
 import { MobileNav } from '@/components/layout/MobileNav'
-import { ConsentStrip } from '@/components/consent/ConsentStrip'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
 import { PageStateEffects } from '@/components/layout/PageStateEffects'
@@ -117,8 +116,6 @@ const LayoutShell = memo(function LayoutShell({
           </div>
         </PullToRefresh>
       </div>
-
-      <ConsentStrip />
 
       {/* Bottom navigation — mobile only, hidden on reels */}
       {!isReels && (

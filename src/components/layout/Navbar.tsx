@@ -58,26 +58,24 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           </Link>
 
           <div className="flex items-center gap-1">
-            {!isFeed ? (
-              <button
-                type="button"
-                onClick={() => router.push(ROUTES.DISCOVER)}
-                className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
-                aria-label="Ara"
-              >
-                <Search className="h-5 w-5" strokeWidth={2} />
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => router.push(ROUTES.DISCOVER)}
+              className="flex h-10 w-10 items-center justify-center text-[rgb(var(--color-text))]"
+              aria-label="Ara"
+            >
+              <Search className="h-5 w-5" strokeWidth={2} />
+            </button>
             <Link
               href={ROUTES.NOTIFICATIONS}
-              className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
+              className="flex h-10 w-10 items-center justify-center text-[rgb(var(--color-text))]"
               aria-label="Bildirimler"
             >
               <Bell className="h-5 w-5" strokeWidth={2} />
             </Link>
             <Link
               href={profileHref}
-              className="flex h-9 w-9 items-center justify-center text-[rgb(var(--color-text))]"
+              className="flex h-10 w-10 items-center justify-center text-[rgb(var(--color-text))]"
               aria-label="Profil"
             >
               <User className="h-5 w-5" strokeWidth={2} />

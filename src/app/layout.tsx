@@ -26,11 +26,11 @@ const sourceSerif = Source_Serif_4({
   variable: '--font-serif-display',
 })
 
-import { CookieConsentBanner } from '@/components/legal/CookieConsentBanner'
 import { getSiteUrl } from '@/lib/seo'
 import Script from 'next/script'
 import { OneSignalProvider } from '@/components/OneSignalProvider'
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt'
+import { ConsentStrip } from '@/components/consent/ConsentStrip'
 
 const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -276,7 +276,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <LanguageProvider>
             <AuthProvider>
               {children}
-              <CookieConsentBanner />
+              {/* Single cookie/KVKK consent UI (replaces CookieConsentBanner strip) */}
+              <ConsentStrip />
               {/* F5: PWA "Ana ekrana ekle" prompt */}
               <PWAInstallPrompt />
               {/* F2.5: tüm toast'lar artık sonner ToastViewport üzerinden çıkar

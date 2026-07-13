@@ -3,13 +3,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getSwipeableFeedDestinations, resolveSwipeCategoryKey } from '@/constants/config'
+import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
 const NAV_CATEGORIES = getSwipeableFeedDestinations()
 
+/** Must match Navbar feed height (`h-[72px]`). */
+const FEED_NAV_TOP = 'top-[72px]'
+const DEFAULT_NAV_TOP = 'top-14'
+
 export function CategoryNav() {
   const pathname = usePathname()
   const activeKey = resolveSwipeCategoryKey(pathname)
+  const isFeed = pathname === ROUTES.FEED
 
   const hide =
     pathname === '/reels' ||
@@ -23,10 +29,13 @@ export function CategoryNav() {
 
   return (
     <nav
-      className="sticky top-14 z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] lg:hidden"
+      className={cn(
+        'sticky z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] lg:hidden',
+        isFeed ? FEED_NAV_TOP : DEFAULT_NAV_TOP
+      )}
       aria-label="Kategoriler"
     >
-      <div className="flex gap-0 overflow-x-auto scroll-px-4 scrollbar-none">
+      <div className="flex gap-0 overflow-x-auto scroll-px-3 scrollbar-none">
         {NAV_CATEGORIES.map((cat) => {
           const isActive = activeKey === cat.id
           return (
@@ -34,7 +43,7 @@ export function CategoryNav() {
               key={cat.href}
               href={cat.href}
               className={cn(
-                'relative shrink-0 px-4 py-2.5 text-[13px] font-semibold transition-colors',
+                'relative flex min-h-11 shrink-0 items-center px-3.5 text-sm font-semibold transition-colors',
                 isActive
                   ? 'text-[rgb(var(--color-brand))]'
                   : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
@@ -48,9 +57,6 @@ export function CategoryNav() {
           )
         })}
       </div>
-      <p className="border-t border-[rgb(var(--color-border))]/60 px-4 py-1 text-[10px] text-[rgb(var(--color-muted))]">
-        Kategoriler arasında geçmek için ekranı sağa veya sola kaydırın
-      </p>
     </nav>
   )
 }

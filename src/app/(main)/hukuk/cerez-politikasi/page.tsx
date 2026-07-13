@@ -72,7 +72,7 @@ export default function CerezPolitikasiPage() {
       <Section title="5. Onayınızı Geri Alma">
         <p>
           Daha önce verdiğiniz çerez onayını tarayıcınızın yerel depolamasından
-          <code className="mx-1 rounded bg-[rgb(var(--color-surface))] px-1 py-0.5 text-xs">nahaber-cookie-consent</code>
+          <code className="mx-1 rounded bg-[rgb(var(--color-surface))] px-1 py-0.5 text-xs">nahaber-consent</code>
           anahtarını silerek geri alabilirsiniz. Sayfayı yenilediğinizde onay ekranı tekrar gösterilecektir.
         </p>
       </Section>

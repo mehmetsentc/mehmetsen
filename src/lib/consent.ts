@@ -3,6 +3,8 @@ import { COUNTRY_COOKIE } from '@/lib/i18n'
 // Cookie + localStorage key for the stored consent decision. Mirrors the
 // pattern used by feedConsent.ts / userPreferences.ts.
 const CONSENT_KEY = 'nahaber-consent'
+/** Legacy legal banner key — migrated once into {@link CONSENT_KEY}. */
+const LEGACY_CONSENT_KEY = 'nahaber-cookie-consent'
 
 // Bump this when the consent categories or legal copy change in a way that
 // requires re-asking the user. A stored decision with an older version is
@@ -108,11 +110,32 @@ function parseRecord(raw: string | null): ConsentRecord | null {
 }
 
 /**
- * Read the stored consent decision. Returns `null` when there is no decision,
- * the stored version is outdated, or the decision has expired — in all of those
- * cases the banner should be shown again. SSR-safe (returns `null` on server).
+ * One-shot migration from the old bottom strip (`nahaber-cookie-consent`)
+ * into the category-based `nahaber-consent` record so users are not asked twice.
  */
-export function getConsent(): ConsentRecord | null {
+export function migrateLegacyConsent(): void {
+  if (typeof window === 'undefined') return
+  if (getConsentWithoutMigration()) return
+
+  let legacy: string | null = null
+  try {
+    legacy = localStorage.getItem(LEGACY_CONSENT_KEY)
+  } catch {
+    legacy = null
+  }
+  if (legacy !== 'accepted' && legacy !== 'rejected') return
+
+  setConsent(legacy === 'accepted' ? CONSENT_ACCEPT_ALL : CONSENT_REJECT_ALL)
+  try {
+    localStorage.removeItem(LEGACY_CONSENT_KEY)
+    localStorage.removeItem(`${LEGACY_CONSENT_KEY}-version`)
+    localStorage.removeItem(`${LEGACY_CONSENT_KEY}-date`)
+  } catch {
+    // ignore
+  }
+}
+
+function getConsentWithoutMigration(): ConsentRecord | null {
   if (typeof window === 'undefined') return null
 
   let raw: string | null = null
@@ -129,6 +152,17 @@ export function getConsent(): ConsentRecord | null {
   if (record.version !== CONSENT_VERSION) return null
   if (isExpired(record)) return null
   return record
+}
+
+/**
+ * Read the stored consent decision. Returns `null` when there is no decision,
+ * the stored version is outdated, or the decision has expired — in all of those
+ * cases the banner should be shown again. SSR-safe (returns `null` on server).
+ */
+export function getConsent(): ConsentRecord | null {
+  if (typeof window === 'undefined') return null
+  migrateLegacyConsent()
+  return getConsentWithoutMigration()
 }
 
 /** Whether the user has an active, valid consent decision. SSR-safe. */
