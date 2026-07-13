@@ -24,16 +24,11 @@ function StoryCategoryBadge({ item, className }: { item: NewsItem; className?: s
   )
 }
 
-type NewsBadgeType = 'breaking' | 'featured' | 'analiz' | 'sorusturma'
+type NewsBadgeType = 'breaking' | 'featured'
 
 function detectBadge(item: NewsItem): NewsBadgeType | null {
   if (item.breaking) return 'breaking'
   if (item.featured) return 'featured'
-  const title = (item.title ?? '').toLowerCase()
-  const desc = (item.description ?? '').toLowerCase()
-  const text = `${title} ${desc}`
-  if (text.includes('soruşturma') || text.includes('araştırma') || text.includes('inceleme')) return 'sorusturma'
-  if (text.includes('analiz') || text.includes('yorum') || text.includes('değerlendirme') || text.includes('köşe')) return 'analiz'
   return null
 }
 
@@ -45,14 +40,6 @@ const BADGE_CONFIG: Record<NewsBadgeType, { label: string; className: string }> 
   featured: {
     label: 'Özel Haber',
     className: 'bg-[rgb(var(--color-brand))] text-white',
-  },
-  sorusturma: {
-    label: 'Soruşturma',
-    className: 'bg-amber-700 text-white',
-  },
-  analiz: {
-    label: 'Analiz',
-    className: 'bg-slate-700 text-white dark:bg-slate-600',
   },
 }
 
