@@ -24,7 +24,7 @@ export function DesktopMustWatch({ items }: DesktopMustWatchProps) {
   }
 
   return (
-    <section className="desktop-must-watch mb-10 bg-[rgb(var(--color-text))] py-6 text-white" aria-label="Trend haberler">
+    <section className="desktop-must-watch mb-10 bg-neutral-900 py-6 text-white" aria-label="Trend haberler">
       <div className="mb-4 flex items-center justify-between px-1">
         <DesktopSectionHeader
           title="Trend Haberler"
