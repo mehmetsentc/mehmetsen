@@ -107,6 +107,8 @@ export default function AnalyticsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
+      const { ensureAuthReady } = await import('@/lib/firebase/auth')
+      await ensureAuthReady()
       const token = await auth.currentUser?.getIdToken()
       if (!token) {
         setData(null)
@@ -164,6 +166,12 @@ export default function AnalyticsPage() {
       />
 
       <div className="p-6 space-y-6">
+
+        {!loading && !data && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            Analitik verisi yüklenemedi. Oturumunuzun açık olduğundan emin olun ve yenileyin.
+          </div>
+        )}
 
         {!loading && data && (data.topPages.length === 0 || totalDevice === 0) && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">

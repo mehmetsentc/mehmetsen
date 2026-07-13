@@ -12,10 +12,20 @@ interface VitalReport {
 }
 
 function sendVital(report: VitalReport) {
+  const payload = JSON.stringify(report)
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([payload], { type: 'application/json' })
+      if (navigator.sendBeacon('/api/analytics/vitals', blob)) return
+    }
+  } catch {
+    /* fall through */
+  }
+
   fetch('/api/analytics/vitals', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(report),
+    body: payload,
     keepalive: true,
   }).catch(() => {})
 }
@@ -25,6 +35,7 @@ function normalizePath(path: string): string {
   return path
     .replace(/\/haber\/[^/]+/, '/haber/[slug]')
     .replace(/\/kategori\/[^/]+/, '/kategori/[slug]')
+    .replace(/\/etiket\/[^/]+/, '/etiket/[slug]')
     .replace(/\/profil\/[^/]+/, '/profil/[username]')
     .replace(/\/yerel\/[^/]+/, '/yerel/[slug]')
     .split('?')[0]
@@ -35,7 +46,9 @@ export function useWebVitals() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (pathname.startsWith('/admin') || pathname.startsWith('/api')) return
     const path = normalizePath(pathname)
+    let reported = false
 
     // ── TTFB (Time to First Byte) ─────────────────────────────────────────
     try {
@@ -101,19 +114,28 @@ export function useWebVitals() {
       ;(inpObserver as any).observe({ type: 'event', durationThreshold: 40, buffered: true })
     } catch {}
 
-    // Report LCP + CLS + INP on page hide (most accurate timing)
-    const onHide = () => {
+    // Report LCP + CLS + INP on hide / unload (most accurate timing)
+    const flush = () => {
+      if (reported) return
+      reported = true
       if (lcpValue > 0) sendVital({ name: 'LCP', value: lcpValue, path })
-      sendVital({ name: 'CLS', value: Math.round(clsValue * 1000) / 1000, path })
+      // Store CLS as integer millis (×1000) to match /api/analytics/vitals bucket logic
+      sendVital({ name: 'CLS', value: Math.round(clsValue * 1000), path })
       if (inpMax > 0) sendVital({ name: 'INP', value: Math.round(inpMax), path })
       lcpObserver?.disconnect()
       clsObserver?.disconnect()
       inpObserver?.disconnect()
     }
 
-    document.addEventListener('visibilitychange', onHide, { once: true })
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
     return () => {
-      document.removeEventListener('visibilitychange', onHide)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
       lcpObserver?.disconnect()
       clsObserver?.disconnect()
       inpObserver?.disconnect()

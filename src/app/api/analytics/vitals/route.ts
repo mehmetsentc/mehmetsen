@@ -44,7 +44,19 @@ export async function POST(request: Request) {
     const ua = request.headers.get('user-agent') ?? ''
     if (/bot|crawler|spider/i.test(ua)) return NextResponse.json({ ok: true })
 
-    const body = await request.json() as { name?: string; value?: number; path?: string }
+    const contentType = request.headers.get('content-type') ?? ''
+    let body: { name?: string; value?: number; path?: string } = {}
+    if (contentType.includes('application/json')) {
+      body = await request.json() as typeof body
+    } else {
+      const text = await request.text()
+      try {
+        body = JSON.parse(text) as typeof body
+      } catch {
+        return NextResponse.json({ ok: false }, { status: 400 })
+      }
+    }
+
     const { name, value, path } = body
     if (!name || value === undefined || !path) return NextResponse.json({ ok: false }, { status: 400 })
 
