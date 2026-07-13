@@ -11,12 +11,6 @@ interface TrendFeedProps {
   hideHeader?: boolean
 }
 
-function compactCount(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace('.0', '')}M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace('.0', '')}B`
-  return value.toLocaleString('tr-TR')
-}
-
 function formatDate(value?: string): string | null {
   if (!value) return null
   const parsed = Date.parse(value)
@@ -60,7 +54,6 @@ export function TrendFeed({ items, hideHeader = false }: TrendFeedProps) {
         {items.map((item, index) => {
           const image = item.imageUrl || FEED_FALLBACK_LOGO
           const rank = index + 1
-          const views = typeof item.views === 'number' && item.views > 0 ? item.views : null
           const dateLabel = formatDate(item.publishedAt ?? item.createdAt)
 
           return (
@@ -91,9 +84,6 @@ export function TrendFeed({ items, hideHeader = false }: TrendFeedProps) {
                       {newsItemCategoryLabel(item)}
                     </span>
                     {dateLabel ? <span>{dateLabel}</span> : null}
-                    {views ? (
-                      <span className="ml-auto">{compactCount(views)} okunma</span>
-                    ) : null}
                   </div>
                   <h3 className="line-clamp-3 text-lg font-black leading-snug text-[rgb(var(--color-text))] md:text-xl">
                     {item.title}

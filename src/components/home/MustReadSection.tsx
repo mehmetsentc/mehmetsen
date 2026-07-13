@@ -34,11 +34,6 @@ export function MustReadSection({ items }: MustReadSectionProps) {
                 <h3 className="line-clamp-3 text-base font-black leading-snug text-[rgb(var(--color-text))]">
                   {item.title}
                 </h3>
-                {typeof item.views === 'number' && item.views > 0 ? (
-                  <p className="mt-1 text-xs font-semibold text-[rgb(var(--color-muted))]">
-                    {item.views.toLocaleString('tr-TR')} görüntülenme
-                  </p>
-                ) : null}
               </div>
             </Link>
           )

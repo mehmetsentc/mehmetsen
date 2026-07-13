@@ -31,7 +31,6 @@ export function TrendingRail({ items }: TrendingRailProps) {
         {items.map((item, index) => {
           const image = item.imageUrl || FEED_FALLBACK_LOGO
           const rank = index + 1
-          const views = typeof item.views === 'number' && item.views > 0 ? item.views : null
           return (
             <Link
               key={item.id}
@@ -48,16 +47,9 @@ export function TrendingRail({ items }: TrendingRailProps) {
                 </span>
               </div>
               <div className="p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
-                    {newsItemCategoryLabel(item)}
-                  </span>
-                  {views ? (
-                    <span className="text-[10px] font-semibold text-[rgb(var(--color-muted))]">
-                      {compactCount(views)} okunma
-                    </span>
-                  ) : null}
-                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
+                  {newsItemCategoryLabel(item)}
+                </span>
                 <p className="mt-1 line-clamp-3 text-sm font-bold leading-snug text-[rgb(var(--color-text))]">
                   {item.title}
                 </p>
