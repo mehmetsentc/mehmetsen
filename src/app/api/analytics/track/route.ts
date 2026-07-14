@@ -71,7 +71,11 @@ export async function POST(request: Request) {
     const db = getAdminFirestore()
     const ref = db.collection(Collections.ANALYTICS_DAILY).doc(today)
 
-    const update: Record<string, unknown> = {
+    // IMPORTANT: use update() NOT set({ merge: true }) for dot-notation field paths.
+    // The Admin SDK's set() treats 'pages.home' as a LITERAL top-level field name
+    // (with a literal dot), not a nested path. update() correctly resolves them as
+    // nested field paths → { pages: { home: N } }.
+    const updateData: Record<string, unknown> = {
       total: FieldValue.increment(1),
       [`devices.${device}`]: FieldValue.increment(1),
       [`os.${os}`]: FieldValue.increment(1),
@@ -79,13 +83,31 @@ export async function POST(request: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     }
 
+    let safeRef = ''
     if (referrerDomain) {
-      // Sanitize domain for Firestore field name
-      const safeRef = referrerDomain.replace(/\./g, '_').replace(/[^a-zA-Z0-9_-]/g, '')
-      if (safeRef) update[`referrers.${safeRef}`] = FieldValue.increment(1)
+      safeRef = referrerDomain.replace(/\./g, '_').replace(/[^a-zA-Z0-9_-]/g, '')
+      if (safeRef) updateData[`referrers.${safeRef}`] = FieldValue.increment(1)
     }
 
-    await ref.set(update, { merge: true })
+    // update() fails with NOT_FOUND if the doc doesn't exist (first hit of a new day).
+    // Fall back to set() with proper nested structure.
+    try {
+      await ref.update(updateData)
+    } catch (updateErr: unknown) {
+      const e = updateErr as { code?: number; message?: string }
+      if (e?.code === 5 || (typeof e?.message === 'string' && e.message.includes('NOT_FOUND'))) {
+        await ref.set({
+          total: 1,
+          devices: { [device]: 1 },
+          os: { [os]: 1 },
+          pages: { [path]: 1 },
+          ...(safeRef ? { referrers: { [safeRef]: 1 } } : {}),
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+      } else {
+        throw updateErr
+      }
+    }
 
     // Also increment viewsCount on the article if postId is provided
     if (body.postId) {
