@@ -43,13 +43,21 @@ export default function CerezPolitikasiPage() {
           Platformumuzda aşağıdaki üçüncü taraf hizmetleri çerez veya benzeri teknolojiler kullanmaktadır:
         </p>
         <ul>
+          <li>
+            <strong>Google AdSense (Google LLC)</strong> — reklamların gösterilmesi ve kişiselleştirilmesi;
+            DoubleClick DART çerezi dahil. Kişiselleştirilmiş reklamları devre dışı bırakmak için{' '}
+            <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer"
+              className="underline">Google Reklam Ayarları</a>&apos;nı ziyaret edin.
+          </li>
           <li><strong>Google Analytics (Google LLC)</strong> — anonim kullanım istatistiği</li>
           <li><strong>Firebase / Firestore (Google LLC)</strong> — kimlik doğrulama ve veritabanı</li>
           <li><strong>Vercel Inc.</strong> — hosting ve performans izleme</li>
         </ul>
         <p>
           Bu hizmetlerin çerez politikaları için ilgili şirketlerin gizlilik belgelerine
-          başvurmanızı öneririz.
+          başvurmanızı öneririz. Google&apos;ın gizlilik politikasına{' '}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer"
+            className="underline">buradan</a> ulaşabilirsiniz.
         </p>
       </Section>
 

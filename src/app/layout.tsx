@@ -234,6 +234,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="tr" suppressHydrationWarning data-sidebar="open">
       <head>
+        {/* Google Consent Mode v2 — default to denied BEFORE any Google scripts.
+            DeferredThirdParty upgrades to 'granted' once the user accepts. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+window.dataLayer=window.dataLayer||[];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent','default',{
+  ad_storage:'denied',
+  ad_user_data:'denied',
+  ad_personalization:'denied',
+  analytics_storage:'denied',
+  wait_for_update:500
+});
+`.trim()
+          }}
+        />
         <link rel="alternate" type="application/rss+xml" title={`${appName} RSS`} href="/rss.xml" />
         <link rel="alternate" type="application/rss+xml" title={`${appName} Son Dakika`} href="/breaking-news.xml" />
         <link rel="alternate" type="application/rss+xml" title={`${appName} Video`} href="/video-feed.xml" />
