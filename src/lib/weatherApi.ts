@@ -9,12 +9,29 @@ function getApiKey(): string {
 }
 
 /**
+ * Normalize a WeatherAPI `q` value. High-precision `lat,lng` coordinates can
+ * resolve to a specific WeatherAPI station that intermittently returns stale
+ * data (observed: exact Istanbul coords stuck on the previous night's reading,
+ * while nearby rounded coords were fresh). Rounding coordinates to 2 decimals
+ * (~1.1 km) avoids those broken exact-station matches and improves cache hits.
+ * Non-coordinate queries (city names) are returned unchanged.
+ */
+function normalizeWeatherQuery(city: string): string {
+  const match = city.trim().match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/)
+  if (!match) return city.trim()
+  const lat = Math.round(parseFloat(match[1]) * 100) / 100
+  const lng = Math.round(parseFloat(match[2]) * 100) / 100
+  return `${lat},${lng}`
+}
+
+/**
  * Fetch current weather + n-day forecast + alerts for a city.
  * Server-side only (uses WEATHER_API_KEY).
  */
 export async function fetchWeather(city: string, days = 7): Promise<WeatherData> {
   const key = getApiKey()
-  const url = `${BASE_URL}/forecast.json?key=${key}&q=${encodeURIComponent(city)}&days=${days}&aqi=no&alerts=yes&lang=tr`
+  const q = normalizeWeatherQuery(city)
+  const url = `${BASE_URL}/forecast.json?key=${key}&q=${encodeURIComponent(q)}&days=${days}&aqi=no&alerts=yes&lang=tr`
 
   const res = await fetch(url, { next: { revalidate: 900 } }) // 15-min ISR
   if (!res.ok) {
