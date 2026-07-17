@@ -18,6 +18,8 @@ export default function AdminSettingsPage() {
   )
   const [migrating, setMigrating] = useState(false)
   const [migrateLog, setMigrateLog] = useState<string | null>(null)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillLog, setBackfillLog] = useState<string | null>(null)
 
   const handleSave = () => {
     toast.success('Ayarlar kaydedildi (yerel önizleme — kalıcı kayıt için env güncelleyin)')
@@ -54,6 +56,40 @@ export default function AdminSettingsPage() {
       toast.error('Migrasyon başarısız')
     } finally {
       setMigrating(false)
+    }
+  }
+
+  const runPublishedAtBackfill = async () => {
+    if (!confirm('publishedAt backfill başlatılsın mı? Yayında olup tarihi eksik haberler düzeltilir.')) return
+    setBackfilling(true)
+    setBackfillLog('Başlatılıyor…')
+    let cursor: string | undefined
+    let totalFixed = 0
+    let batch = 0
+
+    try {
+      const token = await auth.currentUser?.getIdToken()
+      while (true) {
+        batch++
+        const res = await fetch('/api/admin/migrate/backfill-published-at', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+          body: JSON.stringify({ cursor }),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as { fixed: number; scanned: number; done: boolean; cursor?: string }
+        totalFixed += data.fixed
+        setBackfillLog(`Batch ${batch}: ${data.scanned} tarandı, ${data.fixed} düzeltildi — toplam: ${totalFixed}`)
+        if (data.done) break
+        cursor = data.cursor
+      }
+      setBackfillLog(`✅ Tamamlandı — ${totalFixed} haber düzeltildi`)
+      toast.success(`Backfill tamamlandı: ${totalFixed} haber`)
+    } catch (e) {
+      setBackfillLog(`❌ Hata: ${e instanceof Error ? e.message : 'bilinmeyen'}`)
+      toast.error('Backfill başarısız')
+    } finally {
+      setBackfilling(false)
     }
   }
 
@@ -120,6 +156,26 @@ export default function AdminSettingsPage() {
           {migrateLog && (
             <p className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-xs font-mono text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
               {migrateLog}
+            </p>
+          )}
+
+          <p className="mb-4 mt-6 text-xs text-amber-700 dark:text-amber-400">
+            Bazı yayınlanmış haberlerde <code>publishedAt</code> tamamen boş —
+            liste sorguları (<code>orderBy(&apos;publishedAt&apos;)</code>) bu kayıtları
+            gizlediği için haber kategoride görünmez. Bu araç eksik tarihleri
+            <code> createdAt</code>&apos;ten doldurur ve <code>category</code>↔
+            <code>categoryId</code> alanlarını eşitler.
+          </p>
+          <button
+            onClick={() => void runPublishedAtBackfill()}
+            disabled={backfilling}
+            className="flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+          >
+            {backfilling ? '⏳ Çalışıyor…' : '🩹 publishedAt Backfill Çalıştır'}
+          </button>
+          {backfillLog && (
+            <p className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-xs font-mono text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+              {backfillLog}
             </p>
           )}
         </div>

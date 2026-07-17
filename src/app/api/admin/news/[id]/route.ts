@@ -73,7 +73,13 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
   if (Array.isArray(body.seoKeywords)) {
     update.seoKeywords = body.seoKeywords.map((k) => k.trim().toLowerCase()).filter(Boolean)
   }
-  if (body.categoryId?.trim()) update.categoryId = body.categoryId.trim()
+  if (body.categoryId?.trim()) {
+    const categoryId = body.categoryId.trim()
+    update.categoryId = categoryId
+    // Keep the legacy `category` mirror in sync so home-pool bucketing (which reads
+    // `category`) and category listing queries (which read `categoryId`) agree.
+    update.category = categoryId
+  }
   if (typeof body.isBreaking === 'boolean') update.isBreaking = body.isBreaking
   if (body.status?.trim()) update.status = body.status.trim()
   if (Array.isArray(body.tags)) update.tags = body.tags
@@ -207,6 +213,21 @@ export async function PUT(request: Request, context: RouteContext) {
     if (newsSnap.exists) {
       const prevData = newsSnap.data()
       applyBreakingToggle(update, body, prevData)
+
+      // Guarantee published articles always carry a numeric `publishedAt`. Category
+      // and home listings order by `publishedAt`, and Firestore's orderBy silently
+      // DROPS documents missing that field — the root cause of "published article
+      // not showing in its category". Only backfill when it's actually missing, so
+      // we never bump the sort position of an already-dated article.
+      const willBePublished = (body.status?.trim() || prevData?.status) === 'published'
+      const existingPublishedAt = prevData?.publishedAt
+      const hasValidPublishedAt =
+        typeof existingPublishedAt === 'number' ||
+        (existingPublishedAt != null && typeof existingPublishedAt === 'object')
+      if (willBePublished && !hasValidPublishedAt && update.publishedAt == null) {
+        update.publishedAt = Date.now()
+      }
+
       await newsRef.update(update)
 
       if (prevData?.status === 'published' || body.status === 'published') {

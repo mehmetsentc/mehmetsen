@@ -182,7 +182,8 @@ function docCreatedAtMs(data: NewsDocument): number {
 
 function mapAdminNewsDocs(
   docs: QueryDocumentSnapshot[],
-  filter: AdminNewsFilter
+  filter: AdminNewsFilter,
+  categoryId?: string
 ): AdminNewsItem[] {
   const sorted = [...docs].sort(
     (a, b) =>
@@ -193,6 +194,13 @@ function mapAdminNewsDocs(
     ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
     adminSource: 'news' as const,
   }))
+
+  // Enforce the category filter in-memory. The query fallbacks below may drop the
+  // `where('categoryId', ...)` clause (composite-index gaps), which would otherwise
+  // leak other categories into a category-filtered admin view.
+  if (categoryId) {
+    posts = posts.filter((p) => p.categoryId === categoryId)
+  }
 
   if (filter === 'removed') {
     posts = posts.filter((p) => p.status === 'archived' || p.status === 'banned')
@@ -242,7 +250,7 @@ export const adminNewsService = {
     for (const constraints of queryAttempts) {
       try {
         const snap = await fetchAdminNewsSnap(constraints)
-        const posts = mapAdminNewsDocs(snap.docs, filter).slice(0, pageSize)
+        const posts = mapAdminNewsDocs(snap.docs, filter, categoryId).slice(0, pageSize)
         return {
           posts,
           lastDoc: snap.docs[snap.docs.length - 1] ?? null,

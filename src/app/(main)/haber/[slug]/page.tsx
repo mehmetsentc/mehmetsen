@@ -11,6 +11,7 @@ import {
   buildPostMetadata,
 } from '@/lib/seo'
 import { getNewsBySlug, getSuggestedPostsServer } from '@/services/newsService.server'
+import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { ROUTES } from '@/constants/routes'
 
 // ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
@@ -55,6 +56,14 @@ export default async function NewsDetailPage({ params }: PageProps) {
   }
 
   if (!post) {
+    notFound()
+  }
+
+  // Never render draft/pending articles on the public detail page. `getNewsBySlug`
+  // fetches by slug/id without a status filter, so an in-moderation article could
+  // otherwise be viewed directly (and would still be absent from category lists —
+  // a confusing mismatch). Treat non-public statuses as not found.
+  if (!isPubliclyVisibleStatus(post.status)) {
     notFound()
   }
 
