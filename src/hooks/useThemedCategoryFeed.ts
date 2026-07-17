@@ -4,7 +4,6 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { annotateTimelinePosts } from '@/lib/newsMapper'
 import { isFirestoreInternalError } from '@/lib/firestoreQueue'
-import { useScrollActivated } from '@/hooks/useScrollActivated'
 import type { TimelinePost } from '@/types/post'
 
 let postServiceModule: Promise<typeof import('@/services/postService')> | null = null
@@ -79,7 +78,6 @@ function buildInitialSectionState(
 }
 
 export function useThemedCategoryFeed(sectionIds: string[], initialPosts: TimelinePost[] = []) {
-  const activated = useScrollActivated()
   const lastDocsRef = useRef<Record<string, QueryDocumentSnapshot | null>>({})
   const fetchingRef = useRef<Set<string>>(new Set())
 
@@ -163,17 +161,17 @@ export function useThemedCategoryFeed(sectionIds: string[], initialPosts: Timeli
 
   const ensureSectionLoaded = useCallback(
     (sectionId: string) => {
-      if (!activated || !stableSectionIds.includes(sectionId)) return
+      if (!stableSectionIds.includes(sectionId)) return
       const state = sections[sectionId]
       if (!state || state.loading || state.loaded) return
       void fetchSection(sectionId, false)
     },
-    [activated, stableSectionIds, sections, fetchSection]
+    [stableSectionIds, sections, fetchSection]
   )
 
   const loadMoreSection = useCallback(
     (sectionId: string) => {
-      if (!activated || !stableSectionIds.includes(sectionId)) return
+      if (!stableSectionIds.includes(sectionId)) return
       const state = sections[sectionId]
       if (!state || state.loading || state.loadingMore || !state.hasMore) return
       if (!state.loaded) {
@@ -182,11 +180,14 @@ export function useThemedCategoryFeed(sectionIds: string[], initialPosts: Timeli
       }
       void fetchSection(sectionId, true)
     },
-    [activated, stableSectionIds, sections, fetchSection]
+    [stableSectionIds, sections, fetchSection]
   )
 
   return {
-    activated,
+    // Category pages load their sections eagerly via IntersectionObserver
+    // (near-viewport lazy load) — no scroll gesture required. `activated` stays
+    // true so observers attach on mount instead of waiting for the first scroll.
+    activated: true,
     sections,
     ensureSectionLoaded,
     loadMoreSection,

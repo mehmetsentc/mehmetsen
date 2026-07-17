@@ -97,6 +97,7 @@ function DesktopSectionBlock({
   sectionId,
   posts,
   loading,
+  loaded,
   loadingMore,
   hasMore,
   onEnsureLoaded,
@@ -108,6 +109,7 @@ function DesktopSectionBlock({
   sectionId: string
   posts: TimelinePost[]
   loading: boolean
+  loaded: boolean
   loadingMore: boolean
   hasMore: boolean
   onEnsureLoaded: () => void
@@ -129,7 +131,7 @@ function DesktopSectionBlock({
         posts={posts}
         showHeader={showHeader}
         isFirstSection={isFirstSection}
-        loading={loading}
+        loading={loading || !loaded}
         loadingMore={loadingMore}
       />
 
@@ -147,6 +149,7 @@ function MobileSectionBlock({
   sectionId,
   posts,
   loading,
+  loaded,
   loadingMore,
   hasMore,
   onEnsureLoaded,
@@ -158,6 +161,7 @@ function MobileSectionBlock({
   sectionId: string
   posts: TimelinePost[]
   loading: boolean
+  loaded: boolean
   loadingMore: boolean
   hasMore: boolean
   onEnsureLoaded: () => void
@@ -178,7 +182,9 @@ function MobileSectionBlock({
         <h2 className="bbc-section-label mb-4">{showHeader ? title : 'Öne çıkanlar'}</h2>
       ) : null}
 
-      {loading && posts.length === 0 ? (
+      {/* Show a skeleton until the section has actually attempted to load, so we
+          never flash "Henüz haber yok" before the fetch runs. */}
+      {posts.length === 0 && !loaded ? (
         <div className="space-y-4">
           {[...Array(2)].map((_, i) => (
             <TimelineItemSkeleton key={i} />
@@ -186,7 +192,7 @@ function MobileSectionBlock({
         </div>
       ) : null}
 
-      {!loading && posts.length === 0 ? (
+      {loaded && !loading && posts.length === 0 ? (
         <p className="py-4 text-center text-sm text-[rgb(var(--color-muted))]">Henüz haber yok</p>
       ) : null}
 
@@ -224,6 +230,18 @@ export function CategoryThemedFeed({
     initialPosts
   )
 
+  // Eagerly load the first section on mount so the top of the category page has
+  // content immediately, without requiring a scroll gesture. Subsequent sections
+  // lazy-load as they scroll near the viewport.
+  const bootedRef = useRef(false)
+  useEffect(() => {
+    if (bootedRef.current) return
+    const first = sectionIds[0]
+    if (!first) return
+    bootedRef.current = true
+    ensureSectionLoaded(first)
+  }, [sectionIds, ensureSectionLoaded])
+
   if (sectionIds.length === 0) return null
 
   const Block = variant === 'desktop' ? DesktopSectionBlock : MobileSectionBlock
@@ -241,6 +259,7 @@ export function CategoryThemedFeed({
             sectionId={sectionId}
             posts={state.posts}
             loading={state.loading}
+            loaded={state.loaded}
             loadingMore={state.loadingMore}
             hasMore={state.hasMore}
             onEnsureLoaded={() => ensureSectionLoaded(sectionId)}
