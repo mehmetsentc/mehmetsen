@@ -100,6 +100,17 @@ export function AdminNewsEditor({
   const seoTitleUsesFallback = mode === 'edit' && !storedSeoTitle
   const seoDescriptionUsesFallback = mode === 'edit' && !storedSeoDescription
   const [isBreaking, setIsBreaking] = useState<boolean>(post?.isBreaking ?? false)
+  const [isLiveBlog, setIsLiveBlog] = useState<boolean>(post?.isLiveBlog ?? false)
+  const [liveUpdateDraft, setLiveUpdateDraft] = useState('')
+  const [liveUpdates, setLiveUpdates] = useState(
+    () =>
+      (post?.liveUpdates ?? []).map((u, i) => ({
+        id: u.id || `u-${i + 1}`,
+        content: u.content,
+        timestamp: u.timestamp || new Date().toISOString(),
+        author: u.author,
+      }))
+  )
   const [mediaUploading, setMediaUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -163,6 +174,8 @@ export function AdminNewsEditor({
     seoDescription,
     seoKeywords,
     isBreaking,
+    isLiveBlog,
+    liveUpdates: isLiveBlog ? liveUpdates : [],
     ...(isWorldCategory && countrySlug
       ? {
           countrySlug,
@@ -475,6 +488,85 @@ export function AdminNewsEditor({
           }`}
         />
       </button>
+    </div>
+
+    <div className="space-y-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Canlı Blog</p>
+          <p className="text-[11px] text-[rgb(var(--color-muted))]">
+            Açıkken /canli/{'{slug}'} sayfasında güncelleme akışı gösterilir
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsLiveBlog((v) => !v)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            isLiveBlog ? 'bg-emerald-500' : 'bg-[rgb(var(--color-border))]'
+          }`}
+          aria-pressed={isLiveBlog}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              isLiveBlog ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+      {isLiveBlog ? (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              value={liveUpdateDraft}
+              onChange={(e) => setLiveUpdateDraft(e.target.value)}
+              placeholder="Yeni canlı güncelleme ekle..."
+              className={`${fieldInputCls} flex-1`}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const content = liveUpdateDraft.trim()
+                if (!content) return
+                setLiveUpdates((prev) => [
+                  {
+                    id: `u-${Date.now()}`,
+                    content,
+                    timestamp: new Date().toISOString(),
+                    author: 'Editör',
+                  },
+                  ...prev,
+                ])
+                setLiveUpdateDraft('')
+              }}
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+            >
+              Ekle
+            </button>
+          </div>
+          {liveUpdates.length > 0 ? (
+            <ul className="max-h-48 space-y-2 overflow-y-auto text-xs text-[rgb(var(--color-text))]">
+              {liveUpdates.map((u) => (
+                <li
+                  key={u.id}
+                  className="flex items-start justify-between gap-2 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2"
+                >
+                  <span className="min-w-0 flex-1">{u.content}</span>
+                  <button
+                    type="button"
+                    onClick={() => setLiveUpdates((prev) => prev.filter((x) => x.id !== u.id))}
+                    className="shrink-0 text-[rgb(var(--color-muted))] hover:text-red-500"
+                    aria-label="Güncellemeyi sil"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11px] text-[rgb(var(--color-muted))]">Henüz güncelleme yok.</p>
+          )}
+        </div>
+      ) : null}
     </div>
 
     <div>

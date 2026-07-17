@@ -14,6 +14,7 @@ import { planMediaPlacement } from '@/lib/mediaPlacement'
 import { SliderImage } from '@/components/widgets/SliderImage'
 import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
 import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
+import { ArticleGallery } from '@/components/news/ArticleGallery'
 import { ArticleRelatedGridStatic } from '@/components/news/ArticleRelatedGridStatic'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
@@ -269,11 +270,9 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
                   )
                 })}
                 {placement.trailing.length > 0 && (
-                  <section aria-label="Galeri" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {placement.trailing.map((item, i) => (
-                      <InlineImage key={`trail-${i}`} item={item} title={post.title} />
-                    ))}
-                  </section>
+                  <div className="mt-2">
+                    <ArticleGallery items={placement.trailing} title={post.title} />
+                  </div>
                 )}
               </div>
             )
@@ -282,13 +281,12 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
           {/* HTML content modunda inline yerleştirme zor — paragraflar tek string olarak gelir.
               Bu nedenle ekstra görseller HTML body'nin altında bir galeri olarak gösterilir. */}
           {hasHtmlContent && post.mediaItems && post.mediaItems.filter((m, i) => i > 0 && m.type === 'image').length > 0 && (
-            <section aria-label="Galeri" className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {post.mediaItems
-                .filter((m, i) => i > 0 && m.type === 'image')
-                .map((item, i) => (
-                  <InlineImage key={`htmlgal-${i}`} item={item} title={post.title} />
-                ))}
-            </section>
+            <div className="mt-6">
+              <ArticleGallery
+                items={post.mediaItems.filter((m, i) => i > 0 && m.type === 'image')}
+                title={post.title}
+              />
+            </div>
           )}
 
           {!showLead && !hasHtmlContent && paragraphs.length === 0 && (
