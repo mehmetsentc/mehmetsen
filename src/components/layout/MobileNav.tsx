@@ -3,7 +3,7 @@
 import { memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, MapPin, CalendarDays, Trophy } from 'lucide-react'
+import { Home, MapPin, CalendarDays, Tv } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { ROUTES } from '@/constants/routes'
@@ -19,7 +19,7 @@ function isNavActive(pathname: string, item: MobileNavItem): boolean {
   if (item.href === ROUTES.FEED) return pathname === ROUTES.FEED
   if (item.href === ROUTES.LOCAL) return pathname.startsWith(ROUTES.LOCAL)
   if (item.href === ROUTES.EVENTS) return pathname.startsWith('/events')
-  if (item.href === ROUTES.FOOTBALL) return pathname.startsWith('/futbol-canli')
+  if (item.href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
   return pathname.startsWith(item.href)
 }
 
@@ -63,10 +63,10 @@ function MobileNavInner() {
 
   const items = useMemo<MobileNavItem[]>(
     () => [
-      { icon: Home,        label: 'Ana Sayfa', href: ROUTES.FEED },
-      { icon: Trophy,      label: 'Süper Lig', href: ROUTES.FOOTBALL },
-      { icon: CalendarDays,label: 'Etkinlik',  href: ROUTES.EVENTS },
-      { icon: MapPin,      label: 'Yerel',     href: ROUTES.LOCAL },
+      { icon: Home,         label: 'Ana Sayfa', href: ROUTES.FEED },
+      { icon: Tv,           label: 'Teve',      href: ROUTES.REELS },
+      { icon: CalendarDays, label: 'Etkinlik',  href: ROUTES.EVENTS },
+      { icon: MapPin,       label: 'Yerel',     href: ROUTES.LOCAL },
     ],
     []
   )
