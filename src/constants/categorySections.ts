@@ -18,6 +18,7 @@ const CUSTOM_SECTION_ORDER: Partial<Record<string, readonly string[]>> = {
   ],
   kultur: ['sinema', 'tiyatro', 'konser', 'festival', 'kultur'],
   ekonomi: ['borsa', 'kripto', 'ekonomi'],
+  yasam: ['astroloji', 'yasam'],
 }
 
 /** Tüm kategori sayfaları temalı lazy-load akışını kullanır. */

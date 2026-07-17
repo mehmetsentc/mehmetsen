@@ -66,8 +66,9 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'konser',      name: 'Konser',      slug: 'konser',      iconName: 'music',        color: '#8B5CF6', parentId: 'kultur' },
   { id: 'festival',    name: 'Festival',    slug: 'festival',    iconName: 'party-popper', color: '#8B5CF6', parentId: 'kultur' },
 
-  // ── Yeni kategoriler ────────────────────────────────────────────────────────
+  // ── Yaşam + alt kategoriler ─────────────────────────────────────────────────
   { id: 'yasam',         name: 'Yaşam',         slug: 'yasam',         iconName: 'leaf',        color: '#16A34A' },
+  { id: 'astroloji',     name: 'Astroloji',     slug: 'astroloji',     iconName: 'sparkles',    color: '#7C3AED', parentId: 'yasam' },
   { id: 'gastronomi',    name: 'Gastronomi',    slug: 'gastronomi',    iconName: 'utensils',    color: '#F97316' },
   { id: 'otomobil',      name: 'Otomobil',      slug: 'otomobil',      iconName: 'car',         color: '#64748B' },
   { id: 'meteoroloji',   name: 'Meteoroloji',   slug: 'meteoroloji',   iconName: 'cloud-rain',  color: '#0EA5E9' },
@@ -89,7 +90,7 @@ const ADMIN_CATEGORY_GROUP_DEFS: Array<{ label: string; ids: string[] }> = [
   { label: 'Ekonomi', ids: ['ekonomi'] },
   { label: 'Spor', ids: ['spor'] },
   { label: 'Teknoloji & Bilim', ids: ['teknoloji', 'bilim'] },
-  { label: 'Yaşam & Turizm', ids: ['saglik', 'yasam', 'gastronomi', 'turizm', 'gezi', 'otomobil', 'meteoroloji'] },
+  { label: 'Yaşam & Turizm', ids: ['saglik', 'yasam', 'astroloji', 'gastronomi', 'turizm', 'gezi', 'otomobil', 'meteoroloji'] },
   { label: 'Kültür & Magazin', ids: ['kultur', 'magazin'] },
   { label: 'Tarih', ids: ['tarih'] },
   { label: 'Özel', ids: ['etkinlikler'] },
@@ -159,6 +160,7 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'teknoloji',
   'ekonomi',
   'saglik',
+  'yasam',
   'bilim',
   'meteoroloji',
   'kultur',
@@ -186,6 +188,7 @@ export const TOP_NAV_CATEGORY_IDS = [
   'gezi',
   'teknoloji',
   'bilim',
+  'yasam',
   'otomobil',
   'kultur',
   'sinema',
@@ -231,6 +234,8 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('gezi'),
     categoryLink('teknoloji'),
     categoryLink('bilim'),
+    categoryLink('yasam'),
+    categoryLink('astroloji') ? { ...categoryLink('astroloji')!, indent: true } : null,
     categoryLink('otomobil', 'Otomotiv'),
     categoryLink('kultur'),
     categoryLink('sinema') ? { ...categoryLink('sinema')!, indent: true } : null,
@@ -302,6 +307,7 @@ export function resolveSwipeCategoryKey(pathname: string): string | null {
   if (topNavSet.has(cat.id)) return cat.id
   if (cat.parentId && topNavSet.has(cat.parentId)) return cat.parentId
   if (cat.id === 'sinema' || cat.id === 'tiyatro') return cat.id
+  if (cat.id === 'astroloji') return 'yasam'
 
   return null
 }
