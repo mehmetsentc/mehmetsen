@@ -31,7 +31,11 @@ export function WeatherMini() {
   const loadWeather = useCallback(async (slug: string, coords: { lat: number; lng: number } | null) => {
     const query = buildWeatherQuery(slug, coords)
     try {
-      const res = await fetch(`/api/weather?city=${encodeURIComponent(query)}&days=1`)
+      // no-store: the widget must reflect current conditions, so bypass the
+      // browser HTTP cache (the API/CDN still caches server-side ~15 min).
+      const res = await fetch(`/api/weather?city=${encodeURIComponent(query)}&days=1`, {
+        cache: 'no-store',
+      })
       if (!res.ok) return
       const data = (await res.json()) as WeatherData
       setWeather(data)
@@ -43,6 +47,22 @@ export function WeatherMini() {
   useEffect(() => {
     if (!userLocation.ready && !manualSlug) return
     void loadWeather(activeSlug, activeCoords)
+  }, [activeSlug, activeCoords, userLocation.ready, manualSlug, loadWeather])
+
+  // Keep the widget fresh: refresh every 15 min and when the tab regains focus,
+  // so it never lingers on old data (e.g. showing last night's weather).
+  useEffect(() => {
+    if (!userLocation.ready && !manualSlug) return
+    const REFRESH_MS = 15 * 60 * 1000
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void loadWeather(activeSlug, activeCoords)
+    }
+    const id = window.setInterval(refresh, REFRESH_MS)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', refresh)
+    }
   }, [activeSlug, activeCoords, userLocation.ready, manualSlug, loadWeather])
 
   useEffect(() => {

@@ -3,7 +3,7 @@
  * Handles FCM push messages and background sync.
  */
 
-const CACHE_VERSION = 'nahaber-v3'
+const CACHE_VERSION = 'nahaber-v4'
 const STATIC_CACHE = [
   '/offline',
   '/favicon.ico',
@@ -88,6 +88,13 @@ self.addEventListener('fetch', (event) => {
   // Only cache same-origin GET requests
   if (event.request.method !== 'GET') return
   if (!event.request.url.startsWith(self.location.origin)) return
+
+  // Never intercept/cache dynamic API responses (weather, finance rates, etc.).
+  // These must always hit the network so the data stays current — serving a
+  // stale cached API response (e.g. last night's weather) is worse than a
+  // transient failure. Let the browser handle them with their own Cache-Control.
+  const requestPath = new URL(event.request.url).pathname
+  if (requestPath.startsWith('/api/')) return
 
   const isNavigation =
     event.request.mode === 'navigate' ||
