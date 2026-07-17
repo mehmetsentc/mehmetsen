@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keyboard / screen-reader skip link — visible only on focus */
+.skip-to-content {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 1000;
+  transform: translateY(-200%);
+  border-radius: 0.5rem;
+  background: rgb(var(--color-brand));
+  color: #fff;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.skip-to-content:focus {
+  transform: translateY(0);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* ── Design Token sistemi — F1 (2026) ──────────────────────────────────────
  * Yeni componentler @/styles/tokens'tan beslenir. Aşağıdaki --color-* alias'ları
  * eski component kodu kırılmasın diye bridge olarak korunur; yavaş yavaş yeni

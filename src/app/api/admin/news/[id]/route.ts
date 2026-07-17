@@ -37,6 +37,9 @@ interface UpdatePayload {
   imageCaption?: string
   videoUrl?: string
   additionalImages?: Array<{ url: string; caption?: string }>
+  /** Explicit live-blog mode for /canli/[slug] */
+  isLiveBlog?: boolean
+  liveUpdates?: Array<{ id?: string; content?: string; timestamp?: string | number; author?: string }>
 }
 
 function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
@@ -111,6 +114,21 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
         ? sanitizeAdditionalImages(body.additionalImages)
         : [],
     })
+  }
+
+  if (typeof body.isLiveBlog === 'boolean') {
+    update.isLiveBlog = body.isLiveBlog
+  }
+  if (Array.isArray(body.liveUpdates)) {
+    update.liveUpdates = body.liveUpdates
+      .map((u, index) => ({
+        id: (u.id?.trim() || `u-${index + 1}`).slice(0, 64),
+        content: (u.content ?? '').trim().slice(0, 4000),
+        timestamp: u.timestamp ?? Date.now(),
+        author: (u.author ?? '').trim().slice(0, 120) || undefined,
+      }))
+      .filter((u) => u.content.length > 0)
+      .slice(0, 200)
   }
 
   return stripUndefined(update)

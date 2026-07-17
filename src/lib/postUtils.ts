@@ -71,8 +71,16 @@ export function formatCount(count: number): string {
 /** Public byline — syndicated news shows the site brand, not upstream RSS labels. */
 export function getArticleBylineName(post: Post): string {
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  if (post.postType === 'user_post' && post.authorDisplayName.trim() && post.authorDisplayName !== 'nahaber') {
-    return post.authorDisplayName
-  }
+  const display = post.authorDisplayName?.trim()
+  const username = post.authorUsername?.trim()
+  const isRealPerson =
+    Boolean(display) &&
+    display !== 'nahaber' &&
+    display.toLocaleLowerCase('tr-TR') !== siteName.toLocaleLowerCase('tr-TR') &&
+    post.authorId !== 'nahaber' &&
+    username !== 'nahaber'
+
+  if (isRealPerson) return display!
+  if (post.postType === 'user_post' && display && display !== 'nahaber') return display
   return siteName
 }

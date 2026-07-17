@@ -3,6 +3,7 @@
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID } from '@/components/home/desktop/desktopLayout'
 import { NumberedStory } from '@/components/home/desktop/DesktopStoryBlocks'
+import { ROUTES } from '@/constants/routes'
 import type { NewsItem } from '@/types/newsItem'
 
 interface DesktopMostReadGridProps {
@@ -18,7 +19,7 @@ export function DesktopMostReadGrid({ items }: DesktopMostReadGridProps) {
       className={DESKTOP_SECTION_DIVIDER}
       aria-label="Çok okunanlar"
     >
-      <DesktopSectionHeader title="Çok Okunanlar" />
+      <DesktopSectionHeader title="Çok Okunanlar" href={ROUTES.MOST_READ} />
       <div className={FOUR_CARD_GRID}>
         {items.map((item, index) => (
           <NumberedStory key={item.id} item={item} rank={index + 1} />

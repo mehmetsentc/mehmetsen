@@ -52,6 +52,9 @@ export const Collections = {
 
   /** İletişim formu gönderileri */
   CONTACT_SUBMISSIONS: 'contactSubmissions',
+
+  /** E-posta bülteni aboneleri — doc id: normalize edilmiş e-posta */
+  NEWSLETTER_SUBSCRIBERS: 'newsletterSubscribers',
 } as const
 
 /** Primary collection for the TikTok-style video feed */

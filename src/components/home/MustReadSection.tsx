@@ -1,7 +1,9 @@
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
+import { ROUTES } from '@/constants/routes'
 import type { NewsItem } from '@/types/newsItem'
 
 interface MustReadSectionProps {
@@ -13,9 +15,18 @@ export function MustReadSection({ items }: MustReadSectionProps) {
 
   return (
     <section className="home-section" aria-label="Gözden Kaçmasın">
-      <div className="home-rail-title">
-        <span className="home-rail-accent" aria-hidden />
-        <h2 className="text-lg font-black text-[rgb(var(--color-text))]">Gözden Kaçmasın</h2>
+      <div className="home-rail-title justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="home-rail-accent shrink-0" aria-hidden />
+          <h2 className="truncate text-lg font-black text-[rgb(var(--color-text))]">Gözden Kaçmasın</h2>
+        </div>
+        <Link
+          href={ROUTES.MOST_READ}
+          className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[rgb(var(--color-brand))]"
+        >
+          Tümünü gör
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+        </Link>
       </div>
 
       <div className="space-y-3">

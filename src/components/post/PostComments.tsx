@@ -6,6 +6,8 @@ import toast from 'react-hot-toast'
 import { commentService } from '@/services/commentService'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCount } from '@/lib/postUtils'
+import { moderate } from '@/lib/moderationClient'
+import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import type { Comment } from '@/types/comment'
 
@@ -49,6 +51,18 @@ export function PostComments({ postId, initialCount }: PostCommentsProps) {
 
     setSubmitting(true)
     try {
+      const idToken = await auth.currentUser?.getIdToken()
+      if (!idToken) {
+        toast.error('Oturum doğrulanamadı. Tekrar giriş yapın.')
+        return
+      }
+
+      const moderation = await moderate({ text: content, idToken })
+      if (moderation.decision !== 'approve') {
+        toast.error('Yorumunuz yayın kurallarına uymuyor. Lütfen düzenleyip tekrar deneyin.')
+        return
+      }
+
       await commentService.create({
         postId,
         content,

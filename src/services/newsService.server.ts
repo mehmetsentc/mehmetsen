@@ -1,6 +1,7 @@
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { unstable_cache } from 'next/cache'
 import { getAdminFirestore } from '@/lib/firebase/admin'
+import { Collections } from '@/lib/firebase/collections'
 import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
@@ -606,4 +607,116 @@ export async function getPostsByTag(rawTag: string, limitCount = 40): Promise<Po
     console.warn('[newsService.server] getPostsByTag failed:', error)
     return []
   }
+}
+
+export type PublicAuthorProfile = {
+  uid: string
+  username: string
+  displayName: string
+  photoURL: string | null
+  bio: string | null
+  website: string | null
+  location: string | null
+  department?: string
+  isVerified: boolean
+  postsCount: number
+}
+
+/** Public author profile resolved by username (Admin SDK). */
+export async function getAuthorByUsername(username: string): Promise<PublicAuthorProfile | null> {
+  const normalized = username.trim().toLocaleLowerCase('tr-TR')
+  if (!normalized) return null
+
+  try {
+    const db = getAdminFirestore()
+    const snap = await db
+      .collection(Collections.USERS)
+      .where('username', '==', normalized)
+      .limit(1)
+      .get()
+
+    if (snap.empty) return null
+    const doc = snap.docs[0]!
+    const data = doc.data()
+    if (data.isBlocked === true) return null
+
+    return {
+      uid: doc.id,
+      username: String(data.username ?? normalized),
+      displayName: String(data.displayName ?? data.username ?? 'Yazar'),
+      photoURL: (data.photoURL as string | null | undefined) ?? null,
+      bio: (data.bio as string | null | undefined) ?? null,
+      website: (data.website as string | null | undefined) ?? null,
+      location: (data.location as string | null | undefined) ?? null,
+      department: data.department as string | undefined,
+      isVerified: Boolean(data.isVerified),
+      postsCount: typeof data.postsCount === 'number' ? data.postsCount : 0,
+    }
+  } catch (error) {
+    console.warn('[newsService.server] getAuthorByUsername failed:', error)
+    return null
+  }
+}
+
+/** Published news authored by a user id (for /yazar/[username]). */
+export async function getPostsByAuthorId(authorId: string, limitCount = 40): Promise<Post[]> {
+  const id = authorId.trim()
+  if (!id) return []
+
+  try {
+    const db = getAdminFirestore()
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('authorId', '==', id)
+      .orderBy('publishedAt', 'desc')
+      .limit(limitCount)
+      .get()
+
+    return snap.docs
+      .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+      .filter((post): post is Post => post !== null)
+  } catch (error) {
+    // Fallback without composite index: filter in memory from recent published docs.
+    console.warn('[newsService.server] getPostsByAuthorId indexed query failed, falling back:', error)
+    try {
+      const db = getAdminFirestore()
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .orderBy('publishedAt', 'desc')
+        .limit(200)
+        .get()
+
+      return snap.docs
+        .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+        .filter((post): post is Post => post !== null && post.authorId === id)
+        .slice(0, limitCount)
+    } catch (fallbackError) {
+      console.warn('[newsService.server] getPostsByAuthorId fallback failed:', fallbackError)
+      return []
+    }
+  }
+}
+
+/** All-time most-read published articles for the public /cok-okunanlar page. */
+export async function getMostReadPosts(limitCount = 40): Promise<NewsItem[]> {
+  try {
+    const db = getAdminFirestore()
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .orderBy('viewsCount', 'desc')
+      .limit(limitCount)
+      .get()
+
+    const items = mapAdminDocs(snap.docs)
+    if (items.length > 0) return items
+  } catch (error) {
+    console.warn('[newsService.server] getMostReadPosts viewsCount query failed:', error)
+  }
+
+  // Fallback: reuse the home pool's most-read bucket.
+  const home = await getHomeFeedInitialData()
+  return home.mostRead.slice(0, limitCount)
 }

@@ -101,7 +101,12 @@ const LayoutShell = memo(function LayoutShell({
               getStageClass(pathname, isReels, variant)
             )}
           >
+            <a href="#main-content" className="skip-to-content">
+              İçeriğe atla
+            </a>
             <main
+              id="main-content"
+              tabIndex={-1}
               className={cn(
                 'content-main',
                 variant === 'wide' && 'content-main-wide',

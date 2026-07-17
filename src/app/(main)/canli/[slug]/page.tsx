@@ -14,10 +14,11 @@ export default async function LiveBlogPage({ params }: PageProps) {
 
   if (!post) notFound()
 
+  // Only explicit live-blog flag (or non-empty liveUpdates) opens this surface.
+  // Auto-promoting every son-dakika / "canli" tag caused false positives.
   const isLiveBlog =
     post.isLiveBlog === true ||
-    post.categoryId === 'son-dakika' ||
-    (post.tags ?? []).includes('canli')
+    (Array.isArray(post.liveUpdates) && post.liveUpdates.length > 0)
 
   if (!isLiveBlog) notFound()
 
