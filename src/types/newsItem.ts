@@ -65,18 +65,23 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'tarih',
 ]
 
-/** Ana sayfa kategori bölümleri — Firestore'dan ayrı sorgulanır. */
-export const FEED_PRIORITY_RAILS: HomeCategorySlug[] = [
-  'gundem',
-  'spor',
-  'ekonomi',
-  'teknoloji',
-  'dunya',
-  'saglik',
-  'kultur',
-  'turizm',
-  'gezi',
-]
+/**
+ * Mobil kaydırmalı kategori şeritleri — her kategoriden aynı sayıda en son haber.
+ * Fetch: Firestore'dan çekilen üst sınır. Display: mobilde gösterilen kart sayısı.
+ * Min: bundan az haber varsa şerit hiç render edilmez (tek kartlı boş şerit olmasın).
+ */
+export const HOME_CATEGORY_RAIL_FETCH = 8
+export const HOME_CATEGORY_RAIL_DISPLAY = 6
+export const HOME_CATEGORY_RAIL_MIN = 3
+
+/**
+ * Masaüstü hero/alt bölümler için Gündem'den ekstra haber gerekir.
+ * Mobil şerit yine DISPLAY ile kesilir.
+ */
+export const HOME_CATEGORY_RAIL_GUNDEM_FETCH = 20
+
+/** @deprecated Artık tüm HOME_CATEGORY_RAILS ayrı sorgulanıyor; geriye dönük importlar için tutuluyor. */
+export const FEED_PRIORITY_RAILS: HomeCategorySlug[] = HOME_CATEGORY_RAILS
 
 export interface HomeFeedInitialData {
   breaking: NewsItem[]

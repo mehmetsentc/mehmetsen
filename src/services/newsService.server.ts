@@ -11,7 +11,11 @@ import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking
 import type { Post } from '@/types/post'
 import type { FeedSliderItem } from '@/types/feedSlider'
 import type { HomeFeedInitialData, HomeCategorySlug, NewsItem } from '@/types/newsItem'
-import { FEED_PRIORITY_RAILS, HOME_CATEGORY_RAILS } from '@/types/newsItem'
+import {
+  HOME_CATEGORY_RAILS,
+  HOME_CATEGORY_RAIL_FETCH,
+  HOME_CATEGORY_RAIL_GUNDEM_FETCH,
+} from '@/types/newsItem'
 
 export type { FeedSliderItem }
 
@@ -337,17 +341,23 @@ function bucketCategoryRails(pool: NewsItem[], perCategory = 10): Partial<Record
   return rails
 }
 
-/** Feed bölümleri için kategori raylerini Firestore'dan doğrudan doldurur (150'lük havuz yetersiz kalmasın). */
-async function enrichPriorityCategoryRails(
+/**
+ * Her ana sayfa kategori şeridini Firestore'dan ayrı doldurur.
+ * Böylece 150'lik genel havuzda az temsil edilen kategoriler (otomobil, gastronomi…)
+ * tek kartla kalmaz; hepsi aynı fetch limitine yükseltilir.
+ */
+async function enrichAllCategoryRails(
   poolRails: Partial<Record<HomeCategorySlug, NewsItem[]>>
 ): Promise<Partial<Record<HomeCategorySlug, NewsItem[]>>> {
   const rails = { ...poolRails }
   await Promise.all(
-    FEED_PRIORITY_RAILS.map(async (category) => {
-      // gündem: hero + alt bölüm için daha fazla haber gerekli
-      const limit = category === 'gundem' ? 20 : 12
+    HOME_CATEGORY_RAILS.map(async (category) => {
+      const limit =
+        category === 'gundem' ? HOME_CATEGORY_RAIL_GUNDEM_FETCH : HOME_CATEGORY_RAIL_FETCH
       const items = await getHomeCategoryItems(category, limit)
-      if (items.length > 0) rails[category] = items
+      if (items.length > 0) {
+        rails[category] = items
+      }
     })
   )
   return rails
@@ -369,8 +379,8 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 
   const now = Date.now()
-  const poolRails = bucketCategoryRails(pool, 12)
-  const categoryRails = await enrichPriorityCategoryRails(poolRails)
+  const poolRails = bucketCategoryRails(pool, HOME_CATEGORY_RAIL_FETCH)
+  const categoryRails = await enrichAllCategoryRails(poolRails)
 
   return {
     breaking: bucketBreaking(pool, 12),
@@ -403,7 +413,7 @@ const getHomeCategoryItemsCached = unstable_cache(
       return []
     }
   },
-  ['home-category-items-v1'],
+  ['home-category-items-v2'],
   { revalidate: 300, tags: ['home-feed'] }
 )
 
