@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { ArrowRight, ChevronRight } from 'lucide-react'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { formatTimelineRelative } from '@/lib/timelineUtils'
-import { hasVideoContent } from '@/lib/postUtils'
+import { getPrimaryVideo, hasVideoContent } from '@/lib/postUtils'
 import type { Post } from '@/types/post'
 
 interface NextArticleCardProps {
@@ -39,7 +39,16 @@ export function NextArticleCard({ nextPost }: NextArticleCardProps) {
       ? ROUTES.NEWS_DETAIL(nextPost.slug)
       : ROUTES.POST_DETAIL(nextPost.id)
 
-  const image = nextPost.coverImageUrl ?? nextPost.mediaItems?.find(m => m.type === 'image')?.url ?? null
+  // Same image resolution as SuggestedNewsRail — include video thumbnails.
+  // Use SafeNewsImage (not raw next/image): many RSS cover URLs come from
+  // hosts outside next.config remotePatterns; next/image then fails and leaves
+  // an empty aspect-ratio box with a tiny broken icon — which is exactly the
+  // "Sıradaki Haber" bug on article pages.
+  const image =
+    nextPost.coverImageUrl?.trim() ||
+    getPrimaryVideo(nextPost)?.thumbnailUrl ||
+    nextPost.mediaItems?.find((m) => m.type === 'image')?.url ||
+    null
   const catLabel = getCategoryLabel(nextPost.categoryId ?? 'gundem')
   const timeLabel = formatTimelineRelative(nextPost.publishedAt)
 
@@ -66,9 +75,9 @@ export function NextArticleCard({ nextPost }: NextArticleCardProps) {
         className="group block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] transition-all hover:border-[rgb(var(--color-brand))] hover:shadow-lg"
       >
         {/* Görsel */}
-        {image && (
+        {image ? (
           <div className="relative aspect-[16/7] w-full overflow-hidden bg-[rgb(var(--color-border))]">
-            <Image
+            <SafeNewsImage
               src={image}
               alt={nextPost.title}
               fill
@@ -81,22 +90,22 @@ export function NextArticleCard({ nextPost }: NextArticleCardProps) {
               {catLabel}
             </span>
           </div>
-        )}
+        ) : null}
 
         <div className="p-5">
-          {!image && (
+          {!image ? (
             <span className="mb-2 inline-block rounded-full bg-[rgb(var(--color-brand))]/15 px-3 py-0.5 text-xs font-bold text-[rgb(var(--color-brand))]">
               {catLabel}
             </span>
-          )}
+          ) : null}
           <h3 className="text-xl font-black leading-snug text-[rgb(var(--color-text))] group-hover:text-[rgb(var(--color-brand))] transition-colors line-clamp-3">
             {nextPost.title}
           </h3>
-          {nextPost.summary && (
+          {nextPost.summary ? (
             <p className="mt-2 line-clamp-2 text-sm text-[rgb(var(--color-muted))]">
               {nextPost.summary}
             </p>
-          )}
+          ) : null}
           <div className="mt-4 flex items-center justify-between">
             <span className="text-xs text-[rgb(var(--color-muted))]">{timeLabel}</span>
             <span className="flex items-center gap-1 text-sm font-semibold text-[rgb(var(--color-brand))]">
