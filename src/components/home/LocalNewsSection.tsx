@@ -33,6 +33,7 @@ function EventMiniCard({ event, fallbackCity }: { event: NaEvent; fallbackCity?:
             src={imgUrl}
             alt={event.title}
             loading="lazy"
+            decoding="async"
             onError={() => setImgFailed(true)}
             className="h-full w-full object-cover"
           />

@@ -49,6 +49,9 @@ export function ArticleReaderTools({
   const [playing, setPlaying] = useState(false)
   const [audioReady, setAudioReady] = useState(false)
   const [usingTTS, setUsingTTS] = useState(false)
+  // Hide the floating tools near the page foot so they don't cover the
+  // like/share/save actions and related rails at the end of the article.
+  const [nearBottom, setNearBottom] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const utterRef = useRef<SpeechSynthesisUtterance | null>(null)
 
@@ -131,6 +134,28 @@ export function ArticleReaderTools({
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel()
       }
+    }
+  }, [])
+
+  // ── FAB'ı sayfa sonunda gizle ─────────────────────────────────────
+  useEffect(() => {
+    let raf = 0
+    const check = () => {
+      raf = 0
+      const doc = document.documentElement
+      const reachedEnd = window.innerHeight + window.scrollY >= doc.scrollHeight - 220
+      setNearBottom(reachedEnd)
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(check)
+    }
+    check()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
     }
   }, [])
 
@@ -225,11 +250,15 @@ export function ArticleReaderTools({
           FAB → bottom nav üstünde
           Panel → bottom sheet
       ═══════════════════════════════════════════════════════════ */}
-      <div className="lg:hidden">
-        {/* FAB — bottom nav'ın tam üstünde */}
+      <div className={cn('lg:hidden', nearBottom && !open && 'pointer-events-none')}>
+        {/* FAB — bottom nav'ın tam üstünde; sayfa sonunda gizlenir */}
         <div
-          className="fixed right-4 z-[110] flex items-center gap-2"
+          className={cn(
+            'fixed right-4 z-[110] flex items-center gap-2 transition-opacity duration-200',
+            nearBottom && !open ? 'opacity-0' : 'opacity-100'
+          )}
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+          aria-hidden={nearBottom && !open}
         >
           {/* Dinle FAB — panel kapalıyken göster */}
           <AnimatePresence>

@@ -148,22 +148,27 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
                 {item.title}
               </h2>
               {slides.length > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-2">
+                <div className="mt-3 flex items-center justify-center">
                   {slides.map((_, i) => (
                     <button
                       key={i}
                       type="button"
                       aria-label={`Slayt ${i + 1}`}
+                      aria-current={i === current}
                       onClick={(e) => {
                         e.preventDefault()
                         goTo(i)
                       }}
-                      className={`rounded-full transition-all duration-300 ${
-                        i === current
-                          ? 'h-2.5 w-2.5 bg-white scale-110'
-                          : 'h-2 w-2 bg-white/40 hover:bg-white/70'
-                      }`}
-                    />
+                      className="flex h-7 w-7 items-center justify-center"
+                    >
+                      <span
+                        className={`rounded-full transition-all duration-300 ${
+                          i === current
+                            ? 'h-2.5 w-2.5 bg-white scale-110'
+                            : 'h-2 w-2 bg-white/40'
+                        }`}
+                      />
+                    </button>
                   ))}
                 </div>
               )}

@@ -33,8 +33,6 @@ function StatusBadge({ status, elapsed }: { status: string; elapsed: number | nu
     )
   }
   if (isFinished) return <span className="text-xs text-[rgb(var(--color-muted))]">MS</span>
-  // Not started — show time
-  const d = new Date(status === 'NS' ? '' : '')
   return <span className="text-xs text-[rgb(var(--color-muted))]">-</span>
 }
 
@@ -62,7 +60,7 @@ function FixtureRow({ fixture }: FixtureRowProps) {
           {fixture.homeTeam}
         </span>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={fixture.homeLogo} alt="" className="h-5 w-5 object-contain" />
+        <img src={fixture.homeLogo} alt="" width={20} height={20} loading="lazy" decoding="async" className="h-5 w-5 object-contain" />
       </div>
 
       {/* Skor / Saat */}
@@ -80,7 +78,7 @@ function FixtureRow({ fixture }: FixtureRowProps) {
       {/* Deplasman */}
       <div className="flex flex-1 items-center gap-1.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={fixture.awayLogo} alt="" className="h-5 w-5 object-contain" />
+        <img src={fixture.awayLogo} alt="" width={20} height={20} loading="lazy" decoding="async" className="h-5 w-5 object-contain" />
         <span className="truncate font-medium text-[rgb(var(--color-text))]">
           {fixture.awayTeam}
         </span>
@@ -103,13 +101,13 @@ export function FootballWidget() {
       .finally(() => setLoading(false))
   }, [type])
 
-  if (!loading && fixtures.length === 0 && type === 'today') {
-    // Bugün maç yoksa yaklaşanları göster
-    if (type === 'today') {
+  // Bugün maç yoksa otomatik olarak "yaklaşan" sekmesine geç (render sırasında
+  // setState yerine effect ile — ekstra render/uyarı olmadan).
+  useEffect(() => {
+    if (!loading && type === 'today' && fixtures.length === 0) {
       setType('upcoming')
-      return null
     }
-  }
+  }, [loading, type, fixtures.length])
 
   return (
     <section className="mb-8 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">

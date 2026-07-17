@@ -19,6 +19,9 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const pathname = usePathname()
   const [hydrated, setHydrated] = useState(false)
   const isFeed = pathname === ROUTES.FEED
+  // Article pages get a dedicated compact sticky header (ArticleStickyHeader).
+  // Keep this site header in normal flow there so we don't stack two top bars.
+  const isArticle = pathname.startsWith('/haber/')
 
   useEffect(() => {
     setHydrated(true)
@@ -33,23 +36,24 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     <>
       <header
         className={cn(
-          'sticky top-0 z-40 lg:hidden',
+          'z-40 lg:hidden',
+          isArticle ? 'relative' : 'sticky top-0',
           'border-b border-[rgb(var(--color-brand))]/30 bg-[rgb(var(--color-card))]',
           isFeed && 'h-[72px]'
         )}
       >
-        <div className={cn('flex items-center gap-3 px-4', isFeed ? 'h-[72px]' : 'h-14')}>
+        <div className={cn('flex items-center gap-2 px-3', isFeed ? 'h-[72px]' : 'h-14')}>
           <button
             type="button"
             onClick={onMenuClick}
-            className="text-[rgb(var(--color-text))]"
+            className="flex h-11 w-11 items-center justify-center text-[rgb(var(--color-text))]"
             aria-label="Menü"
           >
             <Menu className="h-6 w-6" strokeWidth={2} />
           </button>
 
           {/* Logo — logo renklerine uyarlanmış: Na=kırmızı, Haber=beyaz, .com=muted */}
-          <Link href={ROUTES.FEED} className="flex-1" aria-label="NaHaber">
+          <Link href={ROUTES.FEED} className="flex-1 px-1" aria-label="NaHaber">
             <span className="text-[1.45rem] font-black leading-none tracking-tight">
               <span className="text-[rgb(var(--color-brand))]">Na</span>
               <span className="text-[rgb(var(--color-text))]">Haber</span>
@@ -57,25 +61,25 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             </span>
           </Link>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <button
               type="button"
-              onClick={() => router.push(ROUTES.DISCOVER)}
-              className="flex h-10 w-10 items-center justify-center text-[rgb(var(--color-text))]"
+              onClick={() => router.push(ROUTES.SEARCH)}
+              className="flex h-11 w-11 items-center justify-center text-[rgb(var(--color-text))]"
               aria-label="Ara"
             >
               <Search className="h-5 w-5" strokeWidth={2} />
             </button>
             <Link
               href={ROUTES.NOTIFICATIONS}
-              className="flex h-10 w-10 items-center justify-center text-[rgb(var(--color-text))]"
+              className="flex h-11 w-11 items-center justify-center text-[rgb(var(--color-text))]"
               aria-label="Bildirimler"
             >
               <Bell className="h-5 w-5" strokeWidth={2} />
             </Link>
             <Link
               href={profileHref}
-              className="flex h-10 w-10 items-center justify-center text-[rgb(var(--color-text))]"
+              className="flex h-11 w-11 items-center justify-center text-[rgb(var(--color-text))]"
               aria-label="Profil"
             >
               <User className="h-5 w-5" strokeWidth={2} />

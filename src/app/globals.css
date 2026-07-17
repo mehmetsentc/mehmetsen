@@ -198,7 +198,6 @@
 
   html[data-platform='mobile'] .app-shell-mobile {
     @apply pl-0;
-    padding-bottom: calc(3.5rem + var(--safe-bottom));
   }
 
   html[data-platform='desktop'] .app-shell-desktop {
@@ -1735,8 +1734,12 @@ video.reels-video {
   animation: marquee 18s linear infinite;
 }
 
-html[data-platform='mobile'] .app-shell-mobile .content-main {
-  padding-bottom: calc(4.5rem + var(--safe-bottom, 0px));
+/* Clear the fixed bottom nav on mobile + tablet. Keyed on data-platform (set
+   pre-hydration by PlatformScript) instead of the .app-shell-mobile class, so
+   the spacing is correct on first paint and doesn't wait for hydration. */
+html[data-platform='mobile'] .content-main,
+html[data-platform='tablet'] .content-main {
+  padding-bottom: calc(3.5rem + var(--safe-bottom, 0px) + 0.5rem);
 }
 
 /* FeaturedSlider progress bar animation */

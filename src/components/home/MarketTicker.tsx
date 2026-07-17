@@ -13,11 +13,21 @@ function MarketCell({ label, value, change }: MarketCellProps) {
   const up = change >= 0
   return (
     <div className="flex flex-col gap-0.5 border-r border-[rgb(var(--color-border))] px-3 py-2.5 last:border-r-0">
-      <span className="truncate text-[9px] font-bold uppercase tracking-wider text-[rgb(var(--color-muted))]">{label}</span>
+      <span className="truncate text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--color-muted))]">{label}</span>
       <span className="text-[13px] font-black tabular-nums leading-tight text-[rgb(var(--color-text))]">{value}</span>
-      <span className={`text-[10px] font-semibold tabular-nums ${up ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+      <span className={`text-[11px] font-semibold tabular-nums ${up ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
         {up ? '+' : ''}{change.toFixed(2)}%
       </span>
+    </div>
+  )
+}
+
+function MarketCellSkeleton({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col gap-1 border-r border-[rgb(var(--color-border))] px-3 py-2.5 last:border-r-0">
+      <span className="truncate text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--color-muted))]">{label}</span>
+      <span className="h-[15px] w-3/4 animate-pulse rounded bg-[rgb(var(--color-border))]" />
+      <span className="h-[12px] w-1/2 animate-pulse rounded bg-[rgb(var(--color-border))]" />
     </div>
   )
 }
@@ -39,26 +49,41 @@ function fmt(n: number, decimals = 4) {
 }
 
 export function MarketTicker() {
-  const [rates, setRates] = useState<FinanceRates>(MOCK_RATES)
+  // Start empty so we never flash fabricated rates; show a skeleton until the
+  // real quotes arrive (MOCK_RATES is only an error fallback).
+  const [rates, setRates] = useState<FinanceRates | null>(null)
 
   useEffect(() => {
+    let active = true
     fetch('/api/finance/rates')
       .then((r) => (r.ok ? r.json() : MOCK_RATES))
-      .then((d: FinanceRates) => setRates(d))
-      .catch(() => setRates(MOCK_RATES))
+      .then((d: FinanceRates) => { if (active) setRates(d) })
+      .catch(() => { if (active) setRates(MOCK_RATES) })
+    return () => { active = false }
   }, [])
 
   return (
     <section className="home-full-bleed bg-[rgb(var(--color-card))] md:home-contained md:rounded-xl" aria-label="Piyasalar" style={{borderTop:'1px solid rgb(var(--color-brand)/0.4)',borderBottom:'1px solid rgb(var(--color-border))'}}>
       <div className="grid grid-cols-4">
-        <MarketCell label="Dolar" value={fmt(rates.usdTry.value, 4)} change={rates.usdTry.change} />
-        <MarketCell label="Euro" value={fmt(rates.eurTry.value, 4)} change={rates.eurTry.change} />
-        <MarketCell
-          label="Bitcoin"
-          value={`$${rates.btcUsd.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`}
-          change={rates.btcUsd.change}
-        />
-        <MarketCell label="Gram Altın" value={fmt(rates.goldTryGram.value, 2)} change={rates.goldTryGram.change} />
+        {rates ? (
+          <>
+            <MarketCell label="Dolar" value={fmt(rates.usdTry.value, 4)} change={rates.usdTry.change} />
+            <MarketCell label="Euro" value={fmt(rates.eurTry.value, 4)} change={rates.eurTry.change} />
+            <MarketCell
+              label="Bitcoin"
+              value={`$${rates.btcUsd.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`}
+              change={rates.btcUsd.change}
+            />
+            <MarketCell label="Gram Altın" value={fmt(rates.goldTryGram.value, 2)} change={rates.goldTryGram.change} />
+          </>
+        ) : (
+          <>
+            <MarketCellSkeleton label="Dolar" />
+            <MarketCellSkeleton label="Euro" />
+            <MarketCellSkeleton label="Bitcoin" />
+            <MarketCellSkeleton label="Gram Altın" />
+          </>
+        )}
       </div>
     </section>
   )

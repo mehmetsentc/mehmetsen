@@ -48,12 +48,16 @@ interface MobileMagazineFeedProps {
   sentinelRef?: React.RefObject<HTMLDivElement | null>
 }
 
-/** 2-column magazine-style feed cards for mobile home. */
+/**
+ * 2-column magazine-style feed cards for mobile home.
+ * Renders a plain wrapper — the caller owns section spacing (`home-section`)
+ * so we avoid nested padding/margin.
+ */
 export function MobileMagazineFeed({ items, loadingMore, sentinelRef }: MobileMagazineFeedProps) {
   if (items.length === 0 && !loadingMore) return null
 
   return (
-    <div className="home-section">
+    <div>
       <div className="grid grid-cols-2 gap-3">
         {items.map((item) => (
           <MobileGridStory key={item.id} item={item} />
