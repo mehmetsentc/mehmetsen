@@ -117,6 +117,8 @@ export const ROLE_PERMISSIONS: Record<CmsRole, CmsPermission[]> = {
     'seo:read','seo:edit',
     'analytics:read','analytics:export',
     'cron:read','cron:trigger',
+    // Data-maintenance tools (publishedAt backfill, timestamp migrate) — not API keys.
+    'system:settings',
     'ai:use',
   ],
   editor: [
