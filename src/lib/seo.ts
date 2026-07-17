@@ -163,11 +163,22 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
   const rawContent = post.content?.trim() || ''
   const articleBody = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 5000)
 
-  // Author — NaHaber for syndicated news; real person only for user posts.
-  const author =
-    post.postType === 'user_post' && post.authorDisplayName.trim() && post.authorDisplayName !== 'nahaber'
-      ? { '@type': 'Person', name: post.authorDisplayName }
-      : { '@type': 'Organization', name: siteName, url: siteUrl }
+  // Author — real person when CMS/user byline exists; otherwise NaHaber org.
+  const bylineName = post.authorDisplayName?.trim()
+  const bylineSlug = post.authorUsername?.trim()
+  const isPersonAuthor =
+    Boolean(bylineName) &&
+    bylineName !== 'nahaber' &&
+    bylineName.toLocaleLowerCase('tr-TR') !== siteName.toLocaleLowerCase('tr-TR') &&
+    post.authorId !== 'nahaber' &&
+    bylineSlug !== 'nahaber'
+  const author = isPersonAuthor
+    ? {
+        '@type': 'Person',
+        name: bylineName!,
+        ...(bylineSlug ? { url: `${siteUrl}/yazar/${encodeURIComponent(bylineSlug)}` } : {}),
+      }
+    : { '@type': 'Organization', name: siteName, url: siteUrl }
 
   return {
     '@context': 'https://schema.org',

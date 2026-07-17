@@ -105,7 +105,7 @@ ${input.forcedCategoryId ? `\nÖnerilen kategori: ${input.forcedCategoryId} (do�
 
 JSON formatında kategori bilgisi döndür:
 {
-  "categoryId": "string (dunya-kupasi-2026|futbol|basketbol|voleybol|hentbol|atletizm|gures|spor|son-dakika|siyaset|ekonomi|borsa|kripto|teknoloji|saglik|bilim|dunya|magazin|kultur|gastronomi|otomobil|meteoroloji|yerel-haber|gundem)",
+  "categoryId": "string (dunya-kupasi-2026|futbol|basketbol|voleybol|hentbol|atletizm|gures|spor|son-dakika|siyaset|ekonomi|borsa|kripto|finans-piyasa|emlak-konut|enerji|is-kariyer|teknoloji|saglik|bilim|egitim|cevre-iklim|oyun-espor|din-inanc|dunya|kibris-haberleri|magazin|kultur|sinema|tiyatro|konser|festival|yasam|astroloji|moda|anne-cocuk|dekorasyon|iliskiler|gastronomi|otomobil|meteoroloji|turizm|gezi|tarih|asayis|yerel-haber|gundem)",
   "isBreaking": boolean,
   "confidence": number (0-100),
   "city": "string veya null (haberin geçtiği Türk şehri, kaynak gazete şehri DEĞİL)",
@@ -117,10 +117,13 @@ JSON formatında kategori bilgisi döndür:
 }
 
 const VALID_CATEGORIES = new Set([
-  'son-dakika', 'siyaset', 'gundem', 'yerel-haber', 'dunya', 'ekonomi', 'borsa', 'kripto',
-  'teknoloji', 'saglik', 'bilim', 'spor', 'futbol', 'basketbol', 'voleybol', 'hentbol',
-  'atletizm', 'gures', 'magazin', 'kultur', 'gastronomi', 'otomobil', 'meteoroloji',
-  'dunya-kupasi-2026',
+  'son-dakika', 'siyaset', 'gundem', 'yerel-haber', 'dunya', 'kibris-haberleri',
+  'ekonomi', 'borsa', 'kripto', 'finans-piyasa', 'emlak-konut', 'enerji', 'is-kariyer',
+  'teknoloji', 'saglik', 'bilim', 'egitim', 'cevre-iklim', 'oyun-espor', 'din-inanc',
+  'spor', 'futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures', 'dunya-kupasi-2026',
+  'magazin', 'kultur', 'sinema', 'tiyatro', 'konser', 'festival',
+  'yasam', 'astroloji', 'moda', 'anne-cocuk', 'dekorasyon', 'iliskiler',
+  'gastronomi', 'otomobil', 'meteoroloji', 'turizm', 'gezi', 'tarih', 'asayis',
 ])
 
 function normalizeCategoryId(raw: string): string {

@@ -208,6 +208,7 @@ export const TOP_NAV_CATEGORY_IDS = [
   'bilim',
   'cevre-iklim',
   'oyun-espor',
+  'din-inanc',
   'yasam',
   'otomobil',
   'kultur',

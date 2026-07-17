@@ -279,7 +279,7 @@ JSON şeması (tüm alanları doldur):
   "summary": "string (haber özeti, 120-160 karakter)",
   "spot": "string (gazetecilik lideri, Kim/Ne/Nerede/Ne zaman/Neden/Nasıl, 60-120 kelime)",
   "content": "string (tam haber, 400-1000 kelime, paragraflar \\n\\n ile)",
-  "category": "string (son-dakika|gundem|siyaset|ekonomi|spor|futbol|basketbol|voleybol|hentbol|atletizm|gures|teknoloji|saglik|dunya|kultur|sinema|tiyatro|konser|festival|magazin|bilim|yerel-haber|gastronomi|otomobil|trend|canakkale)",
+  "category": "string (son-dakika|gundem|siyaset|ekonomi|finans-piyasa|emlak-konut|enerji|is-kariyer|spor|futbol|basketbol|voleybol|hentbol|atletizm|gures|teknoloji|oyun-espor|saglik|egitim|cevre-iklim|din-inanc|dunya|kibris-haberleri|kultur|sinema|tiyatro|konser|festival|magazin|bilim|yasam|moda|anne-cocuk|dekorasyon|iliskiler|tarih|yerel-haber|gastronomi|otomobil|trend)",
   "subCategory": "string veya null",
   "newsType": "string (breaking|feature|analysis|report|opinion|update)",
   "sentiment": "string (positive|negative|neutral)",

@@ -13,10 +13,11 @@ interface ArticleAuthorBoxProps {
 
 function hasPublicAuthorProfile(post: Post): boolean {
   const username = post.authorUsername?.trim()
-  if (!username) return false
-  if (username === 'nahaber') return false
-  if (post.authorId === 'nahaber') return false
-  return post.postType === 'user_post' || Boolean(post.authorDisplayName?.trim())
+  if (!username || username === 'nahaber') return false
+  // Syndicated/RSS often stores agency names in `author` — those are not profile slugs.
+  if (/\s/.test(username) || username.length < 2 || username.length > 40) return false
+  if (!post.authorId || post.authorId === 'nahaber') return false
+  return true
 }
 
 export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {

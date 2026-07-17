@@ -16,6 +16,9 @@ export interface NewsDocument {
   summary?: string
   author?: string
   authorId?: string
+  authorUsername?: string
+  authorDisplayName?: string
+  authorPhotoURL?: string | null
   category?: string
   categoryId?: string
   slug?: string
@@ -331,7 +334,17 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
   const createdAt = normalizeTimestamp(data.createdAt)
   const publishedAt = normalizeTimestamp(data.publishedAt ?? data.createdAt)
   const updatedAt = normalizeTimestamp(data.updatedAt ?? data.publishedAt ?? data.createdAt)
-  const author = (data.author?.trim() || 'nahaber').slice(0, 64)
+  // Prefer explicit identity fields written by the CMS/admin create path.
+  // Never invent an authorId from a display name — that broke /yazar links.
+  const authorId = (data.authorId?.trim() || 'nahaber').slice(0, 128)
+  const authorUsername = (data.authorUsername?.trim() || data.author?.trim() || 'nahaber').slice(0, 64)
+  const authorDisplayName = (
+    data.authorDisplayName?.trim() ||
+    data.author?.trim() ||
+    authorUsername ||
+    'nahaber'
+  ).slice(0, 120)
+  const author = authorDisplayName
   // YouTube watch URL → embed URL (iframe oynatma için)
   // Firestore'da videoUrl = watch URL, videoEmbedUrl = embed URL olabilir.
   const rawVideoUrl = data.videoUrl?.trim() ?? ''
@@ -382,10 +395,10 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     seoTitle: data.seoTitle?.trim() || '',
     seoDescription: data.seoDescription?.trim() || '',
     seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
-    authorId: author,
-    authorUsername: author,
-    authorDisplayName: author,
-    authorPhotoURL: null,
+    authorId,
+    authorUsername,
+    authorDisplayName,
+    authorPhotoURL: (data as { authorPhotoURL?: string | null }).authorPhotoURL?.trim() || null,
     categoryId: data.categoryId?.trim() || data.category?.trim() || '',
     city: data.city?.trim() || null,
     citySlug: data.citySlug?.trim() || null,
