@@ -34,7 +34,13 @@ export type HomeCategorySlug =
   | 'magazin'
   | 'ekonomi'
   | 'dunya'
+  | 'kibris-haberleri'
   | 'teknoloji'
+  | 'bilim'
+  | 'egitim'
+  | 'cevre-iklim'
+  | 'oyun-espor'
+  | 'din-inanc'
   | 'saglik'
   | 'yasam'
   | 'otomobil'
@@ -53,7 +59,13 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'magazin',
   'ekonomi',
   'dunya',
+  'kibris-haberleri',
   'teknoloji',
+  'bilim',
+  'egitim',
+  'cevre-iklim',
+  'oyun-espor',
+  'din-inanc',
   'saglik',
   'yasam',
   'otomobil',
