@@ -92,14 +92,29 @@ export default async function TagPage({ params }: Props) {
         <header className="mb-8 border-b border-[rgb(var(--color-border))] pb-6">
           <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[rgb(var(--color-brand))]">
             <Hash className="h-4 w-4" />
-            Etiket
+            Konu Dosyası
           </p>
           <h1 className="text-3xl font-black tracking-tight text-[rgb(var(--color-text))]">
             {label} Haberleri
           </h1>
-          <p className="mt-2 text-sm text-[rgb(var(--color-muted))]">
-            {posts.length} haber listeleniyor
+          <p className="mt-2 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+            {label} konusunda yayımlanan son gelişmeler, arşiv ve ilgili haberler.
+            Bu sayfada {posts.length} haber listeleniyor.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+            <Link
+              href={ROUTES.MOST_READ}
+              className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1.5 text-[rgb(var(--color-text))] hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))]"
+            >
+              En çok okunanlar
+            </Link>
+            <Link
+              href={ROUTES.FEED}
+              className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1.5 text-[rgb(var(--color-text))] hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))]"
+            >
+              Ana sayfa
+            </Link>
+          </div>
         </header>
 
         <div className="divide-y divide-[rgb(var(--color-border))]">
