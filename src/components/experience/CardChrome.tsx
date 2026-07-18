@@ -237,7 +237,7 @@ export function QuickReadSurface({ post }: { post: TimelinePost }) {
         {label ? <CardBadge tone="muted">{label}</CardBadge> : <span />}
         <Bookmark className="h-4 w-4 text-[rgb(var(--color-muted))] opacity-0 transition group-hover:opacity-100" />
       </div>
-      <h3 className="exp-card__title exp-card__title--ink mt-2 line-clamp-3">{post.title}</h3>
+      <h3 className="exp-card__title exp-card__title--ink mt-2">{post.title}</h3>
       <div className="exp-card__meta-row mt-auto">
         {time ? <span>{time}</span> : null}
         <span>{reading ? `${reading} dk` : 'Hızlı oku'}</span>
@@ -246,7 +246,11 @@ export function QuickReadSurface({ post }: { post: TimelinePost }) {
   )
 }
 
-export function variantLabel(variant: CardVariant): string | undefined {
+/**
+ * Editorial status labels only. Layout roles (magazine / gallery / photoStory)
+ * must NEVER appear as badges — they were misread as category tags.
+ */
+export function editorialKicker(variant: CardVariant): string | undefined {
   switch (variant) {
     case 'recommended':
       return 'Editörün seçimi'
@@ -254,15 +258,12 @@ export function variantLabel(variant: CardVariant): string | undefined {
       return 'Trend'
     case 'popular':
       return 'Popüler'
-    case 'magazine':
-      return 'Magazin'
-    case 'photoStory':
-      return 'Foto hikâye'
-    case 'gallery':
-      return 'Galeri'
     case 'podcast':
       return 'Dinle'
     default:
       return undefined
   }
 }
+
+/** @deprecated Use editorialKicker — kept briefly for any leftover imports. */
+export const variantLabel = editorialKicker

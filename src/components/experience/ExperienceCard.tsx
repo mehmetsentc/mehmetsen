@@ -10,8 +10,7 @@ import {
   MediaOverlay,
   QuoteSurface,
   QuickReadSurface,
-  variantLabel,
-  CardBadge,
+  editorialKicker,
 } from './CardChrome'
 import { slotSizeClass } from './feedRhythm'
 import { cn } from '@/lib/utils'
@@ -23,7 +22,8 @@ interface ExperienceCardProps {
 
 function CardBody({ slot, priority }: ExperienceCardProps) {
   const { post, variant, aspect } = slot
-  const kicker = variantLabel(variant)
+  // Editorial kickers only — never layout names like "Magazin" / "Galeri"
+  const kicker = editorialKicker(variant)
 
   switch (variant) {
     case 'hero':
@@ -33,7 +33,7 @@ function CardBody({ slot, priority }: ExperienceCardProps) {
           aspect="16/9"
           priority={priority}
           showSummary
-          titleClassName="text-[1.35rem] sm:text-2xl lg:text-3xl"
+          titleClassName="exp-card__title--hero"
         />
       )
     case 'breaking':
@@ -44,9 +44,8 @@ function CardBody({ slot, priority }: ExperienceCardProps) {
       return (
         <MediaOverlay
           post={post}
-          aspect="9/16"
-          badge={kicker ? <CardBadge>{kicker}</CardBadge> : undefined}
-          titleClassName="text-base"
+          aspect="16/9"
+          titleClassName="text-base sm:text-lg"
         />
       )
     case 'quote':
@@ -62,8 +61,7 @@ function CardBody({ slot, priority }: ExperienceCardProps) {
       return (
         <MediaOverlay
           post={post}
-          aspect="4/5"
-          badge={kicker ? <CardBadge>{kicker}</CardBadge> : undefined}
+          aspect="3/2"
           showSummary={variant === 'magazine'}
           titleClassName="text-lg sm:text-xl"
         />
@@ -72,10 +70,9 @@ function CardBody({ slot, priority }: ExperienceCardProps) {
       return (
         <MediaBelow
           post={post}
-          aspect="1/1"
-          kicker={kicker}
+          aspect="3/2"
           showSummary={false}
-          titleClassName="text-base"
+          titleClassName="text-base sm:text-lg"
         />
       )
     case 'large':
@@ -99,10 +96,10 @@ function CardBody({ slot, priority }: ExperienceCardProps) {
       return (
         <MediaBelow
           post={post}
-          aspect={aspect}
+          aspect={aspect === '9/16' || aspect === '4/5' || aspect === '1/1' ? '3/2' : aspect}
           kicker={kicker}
           showSummary={variant !== 'medium'}
-          titleClassName="text-[1.05rem]"
+          titleClassName="text-[1.05rem] sm:text-lg"
         />
       )
   }
@@ -114,10 +111,10 @@ export function ExperienceCard({ slot, priority = false }: ExperienceCardProps) 
   return (
     <motion.div
       className={cn(slotSizeClass(slot.size), 'exp-card-shell')}
-      initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 14 }}
       whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '0px 0px -40px 0px' }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
     >
       <CardBody slot={slot} priority={priority} />
     </motion.div>

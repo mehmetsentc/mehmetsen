@@ -976,7 +976,7 @@
     text-decoration: underline;
   }
 
-  /* Masonry — adaptive columns */
+  /* Masonry — readable column counts (max 3 on desktop) */
   .exp-masonry {
     column-count: 1;
     column-gap: var(--exp-gap);
@@ -995,26 +995,21 @@
   @media (min-width: 768px) {
     .exp-masonry {
       column-count: 2;
-      --exp-gap: 1rem;
+      --exp-gap: 1.1rem;
     }
   }
 
   @media (min-width: 1024px) {
     .exp-masonry {
       column-count: 3;
-      --exp-gap: 1.15rem;
-    }
-  }
-
-  @media (min-width: 1440px) {
-    .exp-masonry {
-      column-count: 4;
+      --exp-gap: 1.25rem;
     }
   }
 
   @media (min-width: 1920px) {
     .exp-masonry {
-      column-count: 5;
+      column-count: 3;
+      --exp-gap: 1.35rem;
     }
   }
 
@@ -1048,9 +1043,10 @@
     inset: 0;
     background: linear-gradient(
       to top,
-      rgba(0, 0, 0, 0.92) 8%,
-      rgba(0, 0, 0, 0.35) 48%,
-      rgba(0, 0, 0, 0) 72%
+      rgba(0, 0, 0, 0.94) 0%,
+      rgba(0, 0, 0, 0.72) 38%,
+      rgba(0, 0, 0, 0.2) 68%,
+      rgba(0, 0, 0, 0) 100%
     );
   }
 
@@ -1059,28 +1055,36 @@
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 1rem;
+    padding: 1.1rem 1rem 1rem;
   }
 
   .exp-card__title {
     color: #fff;
+    font-size: clamp(1rem, 1.4vw, 1.2rem);
     font-weight: var(--exp-title-weight, 800);
-    line-height: 1.22;
+    line-height: 1.28;
     letter-spacing: -0.015em;
+    text-wrap: pretty;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
 
+  .exp-card__title--hero {
+    font-size: clamp(1.25rem, 2.2vw, 1.85rem);
+    -webkit-line-clamp: 4;
+  }
+
   .exp-card__title--ink {
     color: rgb(var(--color-text));
+    -webkit-line-clamp: 4;
   }
 
   .exp-card__summary {
-    margin-top: 0.4rem;
-    color: rgba(255, 255, 255, 0.86);
-    font-size: 0.875rem;
+    margin-top: 0.45rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -1089,14 +1093,14 @@
   }
 
   .exp-card__summary--ink {
-    color: color-mix(in srgb, rgb(var(--color-text)) 78%, transparent);
+    color: color-mix(in srgb, rgb(var(--color-text)) 82%, transparent);
   }
 
   .exp-card__meta {
     display: block;
-    margin-top: 0.45rem;
-    color: rgba(255, 255, 255, 0.78);
-    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.8125rem;
     font-weight: 600;
   }
 
@@ -1109,19 +1113,19 @@
     flex-wrap: wrap;
     gap: 0.55rem;
     margin-top: 0.55rem;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: rgb(var(--color-muted));
   }
 
   .exp-card__stack-body {
-    padding: 0.75rem 0.15rem 0.25rem;
+    padding: 0.85rem 0.2rem 0.35rem;
   }
 
   .exp-card__kicker {
     display: inline-block;
-    margin-bottom: 0.3rem;
-    font-size: 0.7rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
     font-weight: 800;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -1150,11 +1154,11 @@
     z-index: 2;
     display: inline-flex;
     align-items: center;
-    padding: 0.22rem 0.55rem;
+    padding: 0.28rem 0.65rem;
     border-radius: 999px;
     background: rgb(var(--cat-accent, 37 99 235));
     color: #fff;
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 800;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -1214,18 +1218,24 @@
 
   .exp-card__quote-title {
     font-family: var(--font-serif-display, Georgia, serif);
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 700;
     line-height: 1.35;
     color: rgb(var(--color-text));
+    text-wrap: pretty;
     display: -webkit-box;
-    -webkit-line-clamp: 5;
+    -webkit-line-clamp: 6;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
 
   .exp-card--quick {
-    min-height: 9.5rem;
+    min-height: 10.5rem;
+  }
+
+  .exp-card--quick .exp-card__title {
+    font-size: 1.05rem;
+    -webkit-line-clamp: 5;
   }
 
   .exp-card--ai {

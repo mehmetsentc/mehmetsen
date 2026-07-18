@@ -11,58 +11,58 @@ const RHYTHM_CYCLES: CardVariant[][] = [
   [
     'hero',
     'medium',
-    'small',
-    'video',
-    'magazine',
+    'large',
     'quickRead',
-    'gallery',
     'trending',
+    'medium',
     'large',
     'quote',
-    'photoStory',
     'recommended',
+    'medium',
+    'aiSummary',
+    'quickRead',
   ],
   [
     'breaking',
     'large',
-    'small',
-    'small',
+    'medium',
+    'quickRead',
     'video',
     'aiSummary',
-    'magazine',
     'medium',
-    'gallery',
+    'large',
     'popular',
     'timeline',
     'quickRead',
+    'recommended',
   ],
   [
-    'photoStory',
+    'large',
     'trending',
     'medium',
     'video',
     'quote',
     'large',
-    'small',
-    'magazine',
+    'quickRead',
+    'medium',
     'live',
     'recommended',
-    'gallery',
+    'medium',
     'opinion',
   ],
   [
     'hero',
-    'gallery',
+    'medium',
     'quickRead',
     'trending',
     'large',
-    'small',
+    'medium',
     'video',
     'aiSummary',
-    'magazine',
+    'large',
     'medium',
-    'photoStory',
     'popular',
+    'quickRead',
   ],
 ]
 
@@ -89,27 +89,28 @@ const SIZE_BY_VARIANT: Record<CardVariant, SlotSize> = {
   quote: 'md',
 }
 
+/** Keep desktop-readable ratios only — avoid extreme 9:16 / tiny 1:1 crops. */
 const ASPECT_BY_VARIANT: Record<CardVariant, AspectRatio> = {
   hero: '16/9',
   breaking: '16/9',
-  video: '9/16',
+  video: '16/9',
   live: '16/9',
   timeline: '3/2',
-  opinion: '4/5',
-  gallery: '1/1',
-  photoStory: '4/5',
+  opinion: '3/2',
+  gallery: '3/2',
+  photoStory: '3/2',
   aiSummary: '3/2',
-  podcast: '1/1',
+  podcast: '3/2',
   map: '16/9',
   trending: '3/2',
-  magazine: '4/5',
-  quickRead: '1/1',
+  magazine: '3/2',
+  quickRead: '3/2',
   popular: '3/2',
   recommended: '3/2',
   large: '16/9',
   medium: '3/2',
-  small: '1/1',
-  quote: '4/5',
+  small: '3/2',
+  quote: '3/2',
 }
 
 function preferVariant(post: TimelinePost, suggested: CardVariant): CardVariant {
@@ -131,7 +132,7 @@ function preferVariant(post: TimelinePost, suggested: CardVariant): CardVariant 
 /** Avoid stacking identical variants back-to-back. */
 function diversify(prev: CardVariant | null, next: CardVariant): CardVariant {
   if (!prev || prev !== next) return next
-  const fallback: CardVariant[] = ['medium', 'small', 'quickRead', 'magazine', 'quote', 'large']
+  const fallback: CardVariant[] = ['medium', 'quickRead', 'quote', 'large', 'recommended']
   return fallback.find((v) => v !== next) ?? 'medium'
 }
 
