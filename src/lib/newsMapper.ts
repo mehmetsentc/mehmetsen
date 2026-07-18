@@ -5,6 +5,7 @@ import { getCityCategoryName } from '@/constants/cities'
 import { formatCityLabel } from '@/lib/location'
 import { buildFeedTeaser } from '@/lib/newsContentCleanup'
 import { shouldShowBreakingBadge } from '@/lib/newsBreaking'
+import { sanitizeArticleBlocks, type ArticleBlock } from '@/lib/articleBlocks'
 
 /** Matches the live Firestore `news` collection schema. */
 export interface NewsDocument {
@@ -89,6 +90,8 @@ export interface NewsDocument {
   seoDescription?: string
   seoKeywords?: string[]
   htmlContent?: string
+  bodyBlocks?: ArticleBlock[]
+  articleLayout?: 'standard' | 'longform'
   readingTimeMinutes?: number
   isBreaking?: boolean
   priorityScore?: number
@@ -427,6 +430,8 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     editorType: data.editorType,
     confidenceScore: data.confidenceScore,
     htmlContent: data.htmlContent?.trim() || undefined,
+    bodyBlocks: sanitizeArticleBlocks(data.bodyBlocks),
+    articleLayout: data.articleLayout === 'longform' ? 'longform' : 'standard',
     readingTimeMinutes: data.readingTimeMinutes,
     sourceUrl: data.sourceUrl?.trim() || undefined,
     audioUrl: data.audioUrl?.trim() || undefined,

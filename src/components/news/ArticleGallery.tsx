@@ -8,9 +8,10 @@ import type { MediaItem } from '@/types/post'
 interface ArticleGalleryProps {
   items: MediaItem[]
   title: string
+  columns?: 2 | 3
 }
 
-export function ArticleGallery({ items, title }: ArticleGalleryProps) {
+export function ArticleGallery({ items, title, columns = 2 }: ArticleGalleryProps) {
   const images = items.filter((m) => m.type === 'image' && m.url?.trim())
   const [active, setActive] = useState<number | null>(null)
 
@@ -44,7 +45,10 @@ export function ArticleGallery({ items, title }: ArticleGalleryProps) {
 
   return (
     <>
-      <section aria-label="Galeri" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <section
+        aria-label="Galeri"
+        className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${columns === 3 ? 'lg:grid-cols-3' : ''}`}
+      >
         {images.map((item, i) => (
           <button
             key={`${item.url}-${i}`}
@@ -58,7 +62,7 @@ export function ArticleGallery({ items, title }: ArticleGalleryProps) {
               alt={item.alt || item.caption || title}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"
-              sizes="(max-width: 640px) 100vw, 50vw"
+              sizes={columns === 3 ? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw' : '(max-width: 640px) 100vw, 50vw'}
             />
             {item.caption ? (
               <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 text-xs text-white">

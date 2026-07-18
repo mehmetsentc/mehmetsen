@@ -15,6 +15,7 @@ import { SliderImage } from '@/components/widgets/SliderImage'
 import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
 import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
 import { ArticleGallery } from '@/components/news/ArticleGallery'
+import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
 import { ArticleRelatedGridStatic } from '@/components/news/ArticleRelatedGridStatic'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
@@ -123,6 +124,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
   const bylineName = getArticleBylineName(post)
   const hasTags = post.tags.length > 0
   const hasCity = Boolean(post.city || post.citySlug)
+  const hasBodyBlocks = Boolean(post.bodyBlocks && post.bodyBlocks.length > 0)
 
   const coverAlt = getPostCoverAlt(post)
 
@@ -249,14 +251,22 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
             />
           ) : null}
 
-          {hasHtmlContent && sanitizedHtml && (
+          {hasBodyBlocks && (
+            <ArticleBlocksRenderer
+              blocks={post.bodyBlocks!}
+              title={post.title}
+              longform={post.articleLayout === 'longform'}
+            />
+          )}
+
+          {!hasBodyBlocks && hasHtmlContent && sanitizedHtml && (
             <div
               className="article-prose news-body prose prose-lg prose-invert max-w-none text-[rgb(var(--color-text))]"
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           )}
 
-          {!hasHtmlContent && paragraphs.length > 0 && (() => {
+          {!hasBodyBlocks && !hasHtmlContent && paragraphs.length > 0 && (() => {
             const placement = planMediaPlacement(post.mediaItems, paragraphs.length)
             return (
               <div className="article-prose news-body space-y-6 text-[17px] leading-[1.85] text-[rgb(var(--color-text))] sm:text-[18px]">
@@ -280,7 +290,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
 
           {/* HTML content modunda inline yerleştirme zor — paragraflar tek string olarak gelir.
               Bu nedenle ekstra görseller HTML body'nin altında bir galeri olarak gösterilir. */}
-          {hasHtmlContent && post.mediaItems && post.mediaItems.filter((m, i) => i > 0 && m.type === 'image').length > 0 && (
+          {!hasBodyBlocks && hasHtmlContent && post.mediaItems && post.mediaItems.filter((m, i) => i > 0 && m.type === 'image').length > 0 && (
             <div className="mt-6">
               <ArticleGallery
                 items={post.mediaItems.filter((m, i) => i > 0 && m.type === 'image')}
@@ -289,7 +299,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
             </div>
           )}
 
-          {!showLead && !hasHtmlContent && paragraphs.length === 0 && (
+          {!showLead && !hasBodyBlocks && !hasHtmlContent && paragraphs.length === 0 && (
             <p className="text-[rgb(var(--color-muted))]">Bu haber için içerik bulunamadı.</p>
           )}
 

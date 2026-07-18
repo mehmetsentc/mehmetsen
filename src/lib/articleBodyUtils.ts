@@ -101,7 +101,9 @@ export function parseArticleContent(post: Post): ParsedArticleContent {
   const summaryText = cleanupNewsSummary(post.summary?.trim() || '')
   const leadText = spotText || summaryText
   const bodyText = cleanupNewsBody(post.content?.trim() || '', { preserveSourceLine: false })
-  const articleTitle = post.seoTitle?.trim() || cleanupNewsTitle(post.title)
+  // The editorial headline is the single visible H1. `seoTitle` belongs only
+  // in metadata and must not silently replace the on-page headline.
+  const articleTitle = cleanupNewsTitle(post.title)
 
   const displayBodyText = stripLeadFromBody(bodyText, leadText)
   const showLead = Boolean(leadText)
@@ -110,7 +112,12 @@ export function parseArticleContent(post: Post): ParsedArticleContent {
   const hasHtmlContent = shouldUseHtmlContent(post.htmlContent, displayBodyText || bodyText)
   const sanitizedHtml = hasHtmlContent ? sanitizeArticleHtml(post.htmlContent!) : ''
   const paragraphs = !hasHtmlContent && showBody ? splitNewsParagraphs(displayBodyText) : []
-  const readText = [post.summary, post.content].filter(Boolean).join(' ')
+  const blockText = post.bodyBlocks?.flatMap((block) => {
+    if (block.type === 'heading' || block.type === 'paragraph') return [block.text]
+    if (block.type === 'list') return block.items
+    return []
+  }).join(' ') ?? ''
+  const readText = [post.summary, blockText || post.content].filter(Boolean).join(' ')
 
   return {
     articleTitle,

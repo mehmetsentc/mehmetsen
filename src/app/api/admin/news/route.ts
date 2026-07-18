@@ -7,6 +7,11 @@ import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
+import {
+  articleBlocksToPlainText,
+  sanitizeArticleBlocks,
+  type ArticleBlock,
+} from '@/lib/articleBlocks'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,6 +41,8 @@ interface CreatePayload {
   imageCaption?: string
   videoUrl?: string
   additionalImages?: Array<{ url: string; caption?: string }>
+  bodyBlocks?: ArticleBlock[]
+  articleLayout?: 'standard' | 'longform'
 }
 
 async function slugTaken(db: Firestore, slug: string): Promise<boolean> {
@@ -64,7 +71,8 @@ export async function POST(request: Request) {
     const now = Date.now()
     const status = body.status?.trim() || 'pending'
     const categoryId = body.categoryId?.trim() ?? ''
-    const content = body.content?.trim() ?? ''
+    const bodyBlocks = sanitizeArticleBlocks(body.bodyBlocks)
+    const content = body.content?.trim() || articleBlocksToPlainText(bodyBlocks)
     const summary = body.summary?.trim() ?? content.slice(0, 280)
 
     let slug = body.slug?.trim()
@@ -89,6 +97,8 @@ export async function POST(request: Request) {
       summary,
       description: content,
       content,
+      bodyBlocks,
+      articleLayout: body.articleLayout === 'longform' ? 'longform' : 'standard',
       spot: body.spot?.trim() ?? '',
       seoTitle: body.seoTitle?.trim() ?? '',
       seoDescription: body.seoDescription?.trim() ?? '',

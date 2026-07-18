@@ -676,6 +676,9 @@ export async function processNewsroomArticle(
       videoUrl: '',
       category: resolvedCategory,
       categoryId: resolvedCategory,
+      // Travel guides use the wider editorial rhythm even when they still
+      // arrive as legacy plain text. Editors can later enrich them with blocks.
+      articleLayout: resolvedCategory === 'gezi' ? 'longform' : 'standard',
       city: location?.city ?? '',
       district: location?.district ?? '',
       citySlug: resolvedCitySlug,

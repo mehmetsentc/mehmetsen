@@ -7,6 +7,11 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { newsDraftService } from '@/services/newsDraftService'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
+import {
+  articleBlocksToPlainText,
+  sanitizeArticleBlocks,
+  type ArticleBlock,
+} from '@/lib/articleBlocks'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,6 +42,8 @@ interface UpdatePayload {
   imageCaption?: string
   videoUrl?: string
   additionalImages?: Array<{ url: string; caption?: string }>
+  bodyBlocks?: ArticleBlock[]
+  articleLayout?: 'standard' | 'longform'
   /** Explicit live-blog mode for /canli/[slug] */
   isLiveBlog?: boolean
   liveUpdates?: Array<{ id?: string; content?: string; timestamp?: string | number; author?: string }>
@@ -69,6 +76,19 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     update.content = text
     update.description = text
     update.htmlContent = FieldValue.delete()
+  }
+  if (Array.isArray(body.bodyBlocks)) {
+    const bodyBlocks = sanitizeArticleBlocks(body.bodyBlocks)
+    update.bodyBlocks = bodyBlocks
+    const plainText = articleBlocksToPlainText(bodyBlocks)
+    if (plainText) {
+      update.content = plainText
+      update.description = plainText
+      update.htmlContent = FieldValue.delete()
+    }
+  }
+  if (body.articleLayout === 'standard' || body.articleLayout === 'longform') {
+    update.articleLayout = body.articleLayout
   }
   if (body.spot?.trim()) update.spot = body.spot.trim()
   if (body.seoTitle?.trim()) update.seoTitle = body.seoTitle.trim()

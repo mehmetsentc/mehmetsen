@@ -7,12 +7,14 @@ import {
   Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
+import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import { WORLD_COUNTRIES, findCountryBySlug, resolveCountrySlug } from '@/constants/countries'
 import { auth } from '@/lib/firebase/auth'
 import type { Post } from '@/types/post'
+import type { ArticleBlock } from '@/lib/articleBlocks'
 import type { AdminNewsItem } from '@/services/adminNewsService'
 
 export type AdminNewsEditorMode = 'create' | 'edit'
@@ -64,6 +66,10 @@ export function AdminNewsEditor({
   const [slug, setSlug] = useState((post as (Post & { slug?: string }) | undefined)?.slug ?? '')
   const [summary, setSummary] = useState(post?.summary ?? '')
   const [content, setContent] = useState(post?.content ?? '')
+  const [bodyBlocks, setBodyBlocks] = useState<ArticleBlock[]>(post?.bodyBlocks ?? [])
+  const [articleLayout, setArticleLayout] = useState<'standard' | 'longform'>(
+    post?.articleLayout === 'longform' ? 'longform' : 'standard'
+  )
   const [spot, setSpot] = useState(post?.spot ?? '')
   const [categoryId, setCategoryId] = useState(post?.categoryId ?? '')
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
@@ -162,6 +168,8 @@ export function AdminNewsEditor({
     slug: slug.trim() || undefined,
     summary,
     content,
+    bodyBlocks,
+    articleLayout,
     spot,
     categoryId,
     status,
@@ -253,6 +261,8 @@ export function AdminNewsEditor({
         title,
         summary,
         content,
+        bodyBlocks,
+        articleLayout,
         spot,
         categoryId,
         status: status as AdminNewsItem['status'],
@@ -346,6 +356,9 @@ export function AdminNewsEditor({
         className={`${fieldInputCls} resize-y font-mono`}
         placeholder="Haber metni..."
       />
+      <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">
+        Zengin gövde blokları varsa bu alan geriye dönük düz metin özeti olarak saklanır.
+      </p>
     </div>
 
     <div>
@@ -366,6 +379,30 @@ export function AdminNewsEditor({
         onAdditionalImagesChange={setAdditionalImages}
         onUploadingChange={setMediaUploading}
       />
+    </div>
+
+    <ArticleBlockEditor
+      value={bodyBlocks}
+      onChange={setBodyBlocks}
+      sourceContent={content}
+      availableImages={[
+        ...(thumbnail ? [{ url: thumbnail, caption: imageCaption }] : []),
+        ...additionalImages,
+      ]}
+    />
+
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+        Makale görünümü
+      </label>
+      <select
+        value={articleLayout}
+        onChange={(event) => setArticleLayout(event.target.value === 'longform' ? 'longform' : 'standard')}
+        className={fieldInputCls}
+      >
+        <option value="standard">Standart haber</option>
+        <option value="longform">Gezi / longform (geniş ve ferah)</option>
+      </select>
     </div>
 
     <div className="grid grid-cols-2 gap-3">

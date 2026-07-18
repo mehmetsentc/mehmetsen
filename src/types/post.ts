@@ -1,4 +1,5 @@
 import type { PostLocation } from '@/lib/location'
+import type { ArticleBlock } from '@/lib/articleBlocks'
 
 // 'pending' = held for moderation/admin approval (AI flagged or uncertain).
 // Like 'draft', pending posts MUST be excluded from all public feeds.
@@ -83,6 +84,10 @@ export interface Post {
   confidenceScore?: number
   /** Full HTML article content from page extraction */
   htmlContent?: string
+  /** Ordered long-form body blocks authored in the CMS. */
+  bodyBlocks?: ArticleBlock[]
+  /** Optional presentation style; longform uses wider editorial spacing. */
+  articleLayout?: 'standard' | 'longform'
   /** Estimated reading time in minutes */
   readingTimeMinutes?: number
   /** Original source article URL */

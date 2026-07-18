@@ -5,6 +5,7 @@ import { getPrimaryVideo, getPostCoverAlt } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { ROUTES } from '@/constants/routes'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
+import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i
 
@@ -140,7 +141,8 @@ export function getPostShareImage(post: Post): string | undefined {
 }
 
 function estimateWordCount(post: Post): number {
-  const text = [post.title, post.summary, post.content].filter(Boolean).join(' ')
+  const blockText = post.bodyBlocks?.length ? articleBlocksToPlainText(post.bodyBlocks) : ''
+  const text = [post.title, post.summary, blockText || post.content].filter(Boolean).join(' ')
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
@@ -160,7 +162,10 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
   const articleSection = getCategoryLabel(post.categoryId)
 
   // Derive a plain-text articleBody (strip HTML tags, cap at 5000 chars)
-  const rawContent = post.content?.trim() || ''
+  const rawContent =
+    (post.bodyBlocks?.length ? articleBlocksToPlainText(post.bodyBlocks) : '') ||
+    post.content?.trim() ||
+    ''
   const articleBody = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 5000)
 
   // Author — real person when CMS/user byline exists; otherwise NaHaber org.
