@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CategoryThemedFeed } from '@/components/category/CategoryThemedFeed'
+import { CategoryExperience } from '@/components/experience/CategoryExperience'
 import { getCache } from '@/lib/clientCache'
 import { PAGE_CACHE_KEYS } from '@/lib/pageCache'
 import type { TimelinePost } from '@/types/post'
@@ -15,14 +15,14 @@ export function CategoryFeed({ categoryId, initialPosts: serverPosts }: Category
   const cacheKey = PAGE_CACHE_KEYS.category(categoryId)
 
   const [cachedPosts] = useState<TimelinePost[]>(
-    () => serverPosts?.length ? serverPosts : (getCache<TimelinePost[]>(cacheKey) ?? [])
+    () => (serverPosts?.length ? serverPosts : (getCache<TimelinePost[]>(cacheKey) ?? []))
   )
 
   return (
-    <CategoryThemedFeed
-      parentCategoryId={categoryId}
+    <CategoryExperience
+      categoryId={categoryId}
       initialPosts={cachedPosts}
-      variant="mobile"
+      breakpoint="mobile"
     />
   )
 }

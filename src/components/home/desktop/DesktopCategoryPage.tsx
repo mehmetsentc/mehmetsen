@@ -2,7 +2,7 @@
 
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
-import { CategoryThemedFeed } from '@/components/category/CategoryThemedFeed'
+import { CategoryExperience } from '@/components/experience/CategoryExperience'
 import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import { getCache } from '@/lib/clientCache'
@@ -71,10 +71,10 @@ export function DesktopCategoryPage({
         <>
           <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mb-8" />
 
-          <CategoryThemedFeed
-            parentCategoryId={cat.id}
+          <CategoryExperience
+            categoryId={cat.id}
             initialPosts={cachedPosts}
-            variant="desktop"
+            breakpoint="desktop"
           />
 
           <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mb-10" />
