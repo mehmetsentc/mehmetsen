@@ -13,9 +13,13 @@ export async function runWorldWorker(): Promise<NewsroomRunResult> {
     workerId: 'world-news',
     editorType: 'national',
     sourceIds: WORLD_NEWS_SOURCE_IDS,
+    // Hint only: categoryEngine.validate can reclassify TR domestic gezi/plaj
+    // stories that Euronews etc. publish alongside real world news.
     forcedCategoryId: 'dunya',
     enrichInput: () => ({
-      extraTags: ['dünya', 'uluslararası', 'dış-politika'],
+      // Do not stamp "uluslararası/dış-politika" on every item — those tags
+      // mislabel Turkish domestic pieces that ride the same RSS feed.
+      extraTags: ['dünya'],
     }),
   })
 }

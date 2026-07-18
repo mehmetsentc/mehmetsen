@@ -530,6 +530,30 @@ function hasDunyaKeywords(text: string): boolean {
   return containsKeyword(text, DUNYA_KEYWORDS)
 }
 
+/** TR yerel gezi / plaj / sahil / seyahat sinyalleri (dünya worker yanlış sınıflandırmasını düzeltmek için). */
+const GEZI_DOMESTIC_KEYWORDS = [
+  'plaj', 'plajlar', 'plajın', 'plajlari', 'plajları',
+  'deniz suyu', 'yüzme suyu', 'yuzme suyu', 'yüzme kalite',
+  'mavi bayrak', 'sahil', 'koy ', 'koyu', 'plaj kalite',
+  'gezi rehberi', 'gezi rota', 'seyahat rehberi', 'tatil destinasyon',
+  'gezilecek yer', 'gezilecek yerler', 'keşfedilecek',
+  'kamp alanı', 'kamp alani', 'doğa yürüyüş', 'doga yuruyus',
+] as const
+
+const TR_COASTAL_PLACE_KEYWORDS = [
+  'istanbul', 'antalya', 'bodrum', 'marmaris', 'çeşme', 'cesme',
+  'alaçatı', 'alacati', 'kuşadası', 'kusadasi', 'fethiye', 'kaş', 'kas ',
+  'datça', 'datca', 'ayvalık', 'ayvalik', 'şile', 'sile', 'adalar',
+  'silivri', 'florya', 'kadıköy', 'kadikoy', 'büyükada', 'buyukada',
+] as const
+
+function hasGeziDomesticKeywords(text: string): boolean {
+  const hasGeziSignal = containsKeyword(text, GEZI_DOMESTIC_KEYWORDS)
+  if (!hasGeziSignal) return false
+  // Yerel TR sahil/destinasyon bağlamı yoksa (ör. Maldivler plajı) dünya kalabilir.
+  return containsKeyword(text, TR_COASTAL_PLACE_KEYWORDS)
+}
+
 function hasKibrisKeywords(text: string): boolean {
   return containsKeyword(text, KIBRIS_KEYWORDS)
 }
@@ -995,6 +1019,22 @@ export function validateCategoryClassification(
     overrides.push(`gastronomi-keywords → gastronomi (was ${categoryId})`)
     categoryId = 'gastronomi'
     categoryConfidence = Math.max(categoryConfidence, 84)
+  }
+
+  // ── Gezi override: Euronews/world worker TR plaj-seyahat haberlerini dunya'ya basmasın ──
+  // Örn: "İstanbul'da 67 plajın deniz suyu mükemmel" → kaynak euronews-tr + forced dunya.
+  // Gerçek uluslararası sinyal yoksa ve TR sahil/gezi sinyali varsa → gezi.
+  if (
+    hasGeziDomesticKeywords(text) &&
+    !dunya &&
+    !siyaset &&
+    !sports &&
+    !kibris &&
+    (categoryId === 'dunya' || categoryId === 'gundem' || categoryId === 'yasam')
+  ) {
+    overrides.push(`tr-gezi/plaj-keywords → gezi (was ${categoryId})`)
+    categoryId = 'gezi'
+    categoryConfidence = Math.max(categoryConfidence, 88)
   }
 
   // ── son-dakika içine sızan uygunsuz kategorileri geri çek ─────────────────

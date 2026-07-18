@@ -541,10 +541,15 @@ export async function processNewsroomArticle(
     // ── AI Final Editor: category sanity check ──────────────────────────────
     // Local worker'dan gelen haberler categoryEngine.resolve() tarafından
     // zaten 'yerel-haber' olarak atanır — AI kontrolü bu kararı ezmemeli.
-    // forcedCategoryId atanmış haberler de atlar (editör kararı kesin).
+    // Çoğu forcedCategoryId da editör kararı sayılır; ancak world worker'ın
+    // forced 'dunya' hint'i TR yerel/gezi haberlerini kilitlemesin diye
+    // dunya için AI kontrolüne izin verilir.
     const skipAiCategoryCheck =
       workingInput.editorType === 'local' ||
-      !!workingInput.forcedCategoryId
+      workingInput.editorType === 'trend' ||
+      workingInput.editorType === 'influencer' ||
+      (!!workingInput.forcedCategoryId &&
+        workingInput.forcedCategoryId !== 'dunya')
 
     if (!skipAiCategoryCheck) {
       try {
