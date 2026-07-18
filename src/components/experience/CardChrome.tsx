@@ -157,12 +157,14 @@ export function MediaBelow({
           ) : null}
         </AspectBox>
         <div className="exp-card__stack-body">
-          {badge ?? (label ? <CardBadge>{label}</CardBadge> : null)}
-          {kicker ? <span className="exp-card__kicker">{kicker}</span> : null}
+          <div className="exp-card__chips">
+            {badge ?? (label ? <CardBadge>{label}</CardBadge> : null)}
+          </div>
           <h3 className={cn('exp-card__title exp-card__title--ink', titleClassName)}>{post.title}</h3>
           {showSummary && summary ? <p className="exp-card__summary exp-card__summary--ink">{summary}</p> : null}
           <div className="exp-card__meta-row">
             {time ? <span>{time}</span> : null}
+            {kicker ? <span>{kicker}</span> : null}
             {reading ? <span>{reading} dk okuma</span> : null}
           </div>
         </div>
@@ -178,7 +180,9 @@ export function QuoteSurface({ post }: { post: TimelinePost }) {
       <span className="exp-card__quote-mark" aria-hidden>
         “
       </span>
-      {label ? <CardBadge tone="muted">{label}</CardBadge> : null}
+      <div className="exp-card__chips">
+        {label ? <CardBadge tone="muted">{label}</CardBadge> : null}
+      </div>
       <h3 className="exp-card__quote-title">{post.title}</h3>
       {time ? <span className="exp-card__meta exp-card__meta--ink">{time}</span> : null}
     </Link>
@@ -189,11 +193,13 @@ export function AiSurface({ post }: { post: TimelinePost }) {
   const { href, summary, time } = useCardMeta(post)
   return (
     <Link href={href} className="exp-card exp-card--ai group">
-      <CardBadge tone="ai">
-        <Sparkles className="mr-1 inline h-3 w-3" />
-        AI Özet
-      </CardBadge>
-      <h3 className="exp-card__title exp-card__title--ink mt-2">{post.title}</h3>
+      <div className="exp-card__chips">
+        <CardBadge tone="ai">
+          <Sparkles className="mr-1 inline h-3 w-3" />
+          NaHaber Özet
+        </CardBadge>
+      </div>
+      <h3 className="exp-card__title exp-card__title--ink">{post.title}</h3>
       {summary ? <p className="exp-card__summary exp-card__summary--ink mt-2 line-clamp-4">{summary}</p> : null}
       {time ? <span className="exp-card__meta exp-card__meta--ink mt-3 block">{time}</span> : null}
     </Link>
@@ -233,11 +239,11 @@ export function QuickReadSurface({ post }: { post: TimelinePost }) {
   const { href, label, time, reading } = useCardMeta(post)
   return (
     <Link href={href} className="exp-card exp-card--quick group">
-      <div className="flex items-start justify-between gap-2">
-        {label ? <CardBadge tone="muted">{label}</CardBadge> : <span />}
-        <Bookmark className="h-4 w-4 text-[rgb(var(--color-muted))] opacity-0 transition group-hover:opacity-100" />
+      <div className="exp-card__chips">
+        {label ? <CardBadge tone="muted">{label}</CardBadge> : null}
+        <Bookmark className="ml-auto h-4 w-4 text-[rgb(var(--color-muted))] opacity-0 transition group-hover:opacity-100" />
       </div>
-      <h3 className="exp-card__title exp-card__title--ink mt-2">{post.title}</h3>
+      <h3 className="exp-card__title exp-card__title--ink">{post.title}</h3>
       <div className="exp-card__meta-row mt-auto">
         {time ? <span>{time}</span> : null}
         <span>{reading ? `${reading} dk` : 'Hızlı oku'}</span>
