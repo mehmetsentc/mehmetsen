@@ -65,7 +65,7 @@ export const TERMS_OF_USE: LegalDocument = {
       title: '5. Moderasyon ve hesap sonlandırma',
       paragraphs: [
         'Platform, Koşulları ihlal eden içerikleri önceden bildirmeksizin kaldırma, hesapları geçici veya kalıcı olarak askıya alma hakkını saklı tutar.',
-        'İçerik moderasyonu otomatik sistemler ve insan incelemesi yoluyla yapılabilir. Moderasyon kararlarına itiraz için destek@nahaber.app adresine başvurabilirsiniz.',
+        'İçerik moderasyonu otomatik sistemler ve insan incelemesi yoluyla yapılabilir. Moderasyon kararlarına itiraz için bilgi@nahaber.com adresine başvurabilirsiniz.',
         'Hesabınızı dilediğiniz zaman Ayarlar bölümünden kapatabilirsiniz. Hesap kapatıldığında profil bilgileriniz silinir; yasal yükümlülüklerimiz kapsamında bazı veriler sınırlı süre saklanabilir.',
       ],
     },
@@ -99,7 +99,7 @@ export const TERMS_OF_USE: LegalDocument = {
       title: '9. Uygulanacak hukuk ve iletişim',
       paragraphs: [
         'Bu Koşullar Türkiye Cumhuriyeti kanunlarına tabidir. Uyuşmazlıklarda İstanbul (Merkez) mahkeme ve icra daireleri yetkilidir.',
-        'Sorularınız için destek@nahaber.app adresine yazabilirsiniz.',
+        'Sorularınız için bilgi@nahaber.com adresine yazabilirsiniz.',
       ],
     },
   ],
@@ -115,7 +115,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       title: '1. Veri sorumlusu',
       paragraphs: [
         `6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında veri sorumlusu ${APP_CONFIG.NAME} platformudur.`,
-        'Gizlilik ile ilgili sorularınız için destek@nahaber.app adresine başvurabilirsiniz.',
+        'Gizlilik ile ilgili sorularınız için bilgi@nahaber.com adresine başvurabilirsiniz.',
       ],
     },
     {
@@ -177,7 +177,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       title: '7. Haklarınız (KVKK madde 11)',
       paragraphs: [
         'KVKK kapsamında aşağıdaki haklara sahipsiniz:',
-        'Haklarınızı kullanmak için destek@nahaber.app adresine kimliğinizi doğrulayıcı bilgilerle birlikte başvurabilirsiniz. Talebiniz en geç 30 gün içinde yanıtlanır.',
+        'Haklarınızı kullanmak için bilgi@nahaber.com adresine kimliğinizi doğrulayıcı bilgilerle birlikte başvurabilirsiniz. Talebiniz en geç 30 gün içinde yanıtlanır.',
       ],
       bullets: [
         'Kişisel verilerinizin işlenip işlenmediğini öğrenme',
@@ -225,7 +225,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       id: 'contact',
       title: '12. İletişim',
       paragraphs: [
-        'Gizlilik ve kişisel verilerinizle ilgili tüm sorularınız için: destek@nahaber.app',
+        'Gizlilik ve kişisel verilerinizle ilgili tüm sorularınız için: bilgi@nahaber.com',
       ],
     },
   ],
@@ -340,7 +340,7 @@ export const FEED_CONTENT_POLICY: LegalDocument = {
       title: '6. Uygulama ve bildirim',
       paragraphs: [
         'İhlal tespit edilen içerikler otomatik sistemler ve moderasyon ekibi tarafından incelenir; onay beklemeden kaldırılabilir.',
-        'Şüpheli içerik gördüğünüzde gönderi üzerinden bildirim yapabilir veya destek@nahaber.app adresine yazabilirsiniz.',
+        'Şüpheli içerik gördüğünüzde gönderi üzerinden bildirim yapabilir veya bilgi@nahaber.com adresine yazabilirsiniz.',
         'Kayıt olmadan akışı kullanmaya devam ederek bu kuralları okuduğunuzu ve kabul ettiğinizi beyan etmiş olursunuz.',
       ],
     },

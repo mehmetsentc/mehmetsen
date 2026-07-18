@@ -115,8 +115,8 @@ export default function KVKKPage() {
       <h2>9. İletişim</h2>
       <p>
         Haklarınızı kullanmak veya sorularınız için:{' '}
-        <a href="mailto:kvkk@nahaber.com" className="text-[rgb(var(--color-brand))]">
-          kvkk@nahaber.com
+        <a href="mailto:bilgi@nahaber.com" className="text-[rgb(var(--color-brand))]">
+          bilgi@nahaber.com
         </a>
       </p>
       <p>

@@ -39,9 +39,9 @@ export default function KunyePage() {
             </a>
           </Row>
           <Row label="İletişim">
-            <a href="mailto:iletisim@nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline inline-flex items-center gap-1">
+            <a href="mailto:bilgi@nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline inline-flex items-center gap-1">
               <Mail className="h-3.5 w-3.5" />
-              iletisim@nahaber.com
+              bilgi@nahaber.com
             </a>
           </Row>
           <Row label="Yayın Dili" value="Türkçe" />

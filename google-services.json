@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "57680735589",
+    "project_id": "nahaberapp",
+    "storage_bucket": "nahaberapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:57680735589:android:756c61502e1c9fd89f058c",
+        "android_client_info": {
+          "package_name": "com.nahaber.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "57680735589-r80gmbas2624onjdomk206d5ag86200a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRTNXuigUDfe_tFSkI12pqE6XoQRtZ_BU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "57680735589-r80gmbas2624onjdomk206d5ag86200a.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "57680735589-s2gosdfki4dpcluaqr4o3epdgap2j7s0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.nahaber.app",
+                "app_store_id": "6784465855"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

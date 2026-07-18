@@ -108,8 +108,8 @@ export default function KullanimKosullariPage() {
       <Section title="11. İletişim">
         <p>
           Kullanım koşullarına ilişkin sorularınız için:{' '}
-          <a href="mailto:iletisim@nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline">
-            iletisim@nahaber.com
+          <a href="mailto:bilgi@nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline">
+            bilgi@nahaber.com
           </a>
         </p>
       </Section>

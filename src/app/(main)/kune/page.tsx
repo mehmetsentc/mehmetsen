@@ -22,8 +22,8 @@ export default function KunePage() {
           { label: 'Yayın Dili',         value: 'Türkçe' },
           { label: 'Yayın Adresi',       value: siteUrl },
           { label: 'Genel Yayın Yönetmeni', value: 'NaHaber Editörya' },
-          { label: 'İletişim',           value: 'iletisim@nahaber.com' },
-          { label: 'Haber İletişim',     value: 'haber@nahaber.com' },
+          { label: 'İletişim',           value: 'bilgi@nahaber.com' },
+          { label: 'Haber İletişim',     value: 'bilgi@nahaber.com' },
           { label: 'Kuruluş Yılı',       value: '2024' },
           { label: 'Yayın Bölgesi',      value: 'Türkiye' },
         ].map(({ label, value }) => (

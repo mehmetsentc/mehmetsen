@@ -10,8 +10,15 @@ type Period = 'today' | '7d' | '30d'
 
 interface DailyDoc {
   total?: number
+  uniqueVisitors?: number
+  sessions?: number
   devices?: Record<string, number>
   os?: Record<string, number>
+  browsers?: Record<string, number>
+  countries?: Record<string, number>
+  languages?: Record<string, number>
+  timezones?: Record<string, number>
+  sources?: Record<string, number>
   pages?: Record<string, number>
   referrers?: Record<string, number>
 }
@@ -87,7 +94,8 @@ export async function GET(request: Request) {
   try {
     const db = getAdminFirestore()
 
-    const [usersCountSnap, postsCountSnap, topPostsSnap, ...dailySnaps] = await Promise.all([
+    const periodStart = new Date(`${dates[0]}T00:00:00.000Z`)
+    const [usersCountSnap, postsCountSnap, topPostsSnap, recentEventsSnap, recentSessionsSnap, ...dailySnaps] = await Promise.all([
       db.collection('users').count().get().catch(() => null),
       db.collection(Collections.NEWS).where('status', '==', 'published').count().get().catch(() => null),
       db
@@ -97,27 +105,54 @@ export async function GET(request: Request) {
         .limit(10)
         .get()
         .catch(() => null),
+      db.collection(Collections.ANALYTICS_EVENTS)
+        .where('createdAt', '>=', periodStart)
+        .orderBy('createdAt', 'desc')
+        .limit(500)
+        .get()
+        .catch(() => null),
+      db.collection(Collections.ANALYTICS_SESSIONS)
+        .orderBy('lastSeenAt', 'desc')
+        .limit(1000)
+        .get()
+        .catch(() => null),
       ...dates.map((date) => db.collection(Collections.ANALYTICS_DAILY).doc(date).get()),
     ])
 
     let totalViews = 0
+    let uniqueVisitors = 0
+    let sessions = 0
     let mobile = 0
     let desktop = 0
+    let tablet = 0
     const pageMap = new Map<string, number>()
     const refMap = new Map<string, number>()
     const osMap = new Map<string, number>()
+    const browserMap = new Map<string, number>()
+    const countryMap = new Map<string, number>()
+    const languageMap = new Map<string, number>()
+    const timezoneMap = new Map<string, number>()
+    const sourceMap = new Map<string, number>()
 
     const days = dates.map((date, index) => {
       const snap = dailySnaps[index]
       const d = (snap?.exists ? snap.data() : undefined) as DailyDoc | undefined
       const views = d?.total ?? 0
       totalViews += views
+      uniqueVisitors += d?.uniqueVisitors ?? 0
+      sessions += d?.sessions ?? 0
       mobile += d?.devices?.mobile ?? 0
       desktop += d?.devices?.desktop ?? 0
+      tablet += d?.devices?.tablet ?? 0
       Object.entries(d?.pages ?? {}).forEach(([p, n]) => pageMap.set(p, (pageMap.get(p) ?? 0) + n))
       Object.entries(d?.referrers ?? {}).forEach(([r, n]) => refMap.set(r, (refMap.get(r) ?? 0) + n))
       Object.entries(d?.os ?? {}).forEach(([o, n]) => osMap.set(o, (osMap.get(o) ?? 0) + n))
-      return { date, views }
+      Object.entries(d?.browsers ?? {}).forEach(([k, n]) => browserMap.set(k, (browserMap.get(k) ?? 0) + n))
+      Object.entries(d?.countries ?? {}).forEach(([k, n]) => countryMap.set(k, (countryMap.get(k) ?? 0) + n))
+      Object.entries(d?.languages ?? {}).forEach(([k, n]) => languageMap.set(k, (languageMap.get(k) ?? 0) + n))
+      Object.entries(d?.timezones ?? {}).forEach(([k, n]) => timezoneMap.set(k, (timezoneMap.get(k) ?? 0) + n))
+      Object.entries(d?.sources ?? {}).forEach(([k, n]) => sourceMap.set(k, (sourceMap.get(k) ?? 0) + n))
+      return { date, views, visitors: d?.uniqueVisitors ?? 0, sessions: d?.sessions ?? 0 }
     })
 
     const topPages = [...pageMap.entries()]
@@ -131,6 +166,10 @@ export async function GET(request: Request) {
       .slice(0, 8)
       .map(([domain, views]) => ({ domain: restoreDomain(domain) || '(direkt)', views }))
 
+    const topDimensions = (map: Map<string, number>, limit = 10) =>
+      [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit)
+        .map(([label, views]) => ({ label, views }))
+
     const topPosts = (topPostsSnap?.docs ?? []).map((doc) => {
       const data = doc.data()
       return {
@@ -141,6 +180,57 @@ export async function GET(request: Request) {
         slug: data.slug as string | undefined,
       }
     })
+
+    const sessionDocs = (recentSessionsSnap?.docs ?? []).filter((doc) => {
+      const lastSeen = doc.data().lastSeenAt?.toDate?.() as Date | undefined
+      return lastSeen ? lastSeen >= periodStart : false
+    })
+    const bouncedSessions = sessionDocs.filter((doc) => Number(doc.data().pageViews ?? 0) <= 1).length
+    const bounceRate = sessionDocs.length > 0 ? Math.round((bouncedSessions / sessionDocs.length) * 100) : 0
+
+    const eventDocs = recentEventsSnap?.docs ?? []
+    const identifiedUserIds = [...new Set(eventDocs.map((doc) => doc.data().userId as string | null).filter(Boolean))]
+      .slice(0, 25) as string[]
+    const userSnaps = identifiedUserIds.length
+      ? await db.getAll(...identifiedUserIds.map((uid) => db.collection(Collections.USERS).doc(uid)))
+      : []
+    const userMap = new Map(userSnaps.filter((snap) => snap.exists).map((snap) => {
+      const user = snap.data() ?? {}
+      return [snap.id, {
+        uid: snap.id,
+        displayName: String(user.displayName ?? user.name ?? ''),
+        username: String(user.username ?? ''),
+        email: String(user.email ?? ''),
+      }]
+    }))
+    const recentVisits = eventDocs.slice(0, 100).map((doc) => {
+      const event = doc.data()
+      const createdAt = event.createdAt?.toDate?.() as Date | undefined
+      return {
+        id: doc.id,
+        path: String(event.path ?? '/'),
+        createdAt: createdAt?.toISOString() ?? null,
+        country: String(event.country ?? 'unknown'),
+        city: String(event.city ?? ''),
+        language: String(event.language ?? 'unknown'),
+        device: String(event.device ?? 'unknown'),
+        os: String(event.os ?? 'unknown'),
+        browser: String(event.browser ?? 'unknown'),
+        source: String(event.source ?? 'direct'),
+        referrer: String(event.referrer ?? 'direct'),
+        maskedIp: String(event.maskedIp ?? ''),
+        durationMs: Number(event.durationMs ?? 0),
+        scrollDepth: Number(event.scrollDepth ?? 0),
+        user: event.userId ? userMap.get(String(event.userId)) ?? { uid: String(event.userId) } : null,
+      }
+    })
+    const engagedEvents = recentVisits.filter((visit) => visit.durationMs > 0)
+    const averageDurationMs = engagedEvents.length
+      ? Math.round(engagedEvents.reduce((sum, visit) => sum + visit.durationMs, 0) / engagedEvents.length)
+      : 0
+    const averageScrollDepth = engagedEvents.length
+      ? Math.round(engagedEvents.reduce((sum, visit) => sum + visit.scrollDepth, 0) / engagedEvents.length)
+      : 0
 
     let vitals: Array<{
       path: string
@@ -179,14 +269,25 @@ export async function GET(request: Request) {
       period,
       dates,
       totalViews,
+      uniqueVisitors,
+      sessions,
+      bounceRate,
+      averageDurationMs,
+      averageScrollDepth,
       totalUsers: usersCountSnap?.data().count ?? 0,
       totalPosts: postsCountSnap?.data().count ?? 0,
       days,
       topPages,
       referrers,
-      devices: { mobile, desktop },
+      sources: topDimensions(sourceMap),
+      countries: topDimensions(countryMap).map((item) => ({ ...item, label: item.label.toUpperCase() })),
+      languages: topDimensions(languageMap),
+      browsers: topDimensions(browserMap),
+      timezones: topDimensions(timezoneMap),
+      devices: { mobile, tablet, desktop },
       os: Object.fromEntries(osMap),
       topPosts,
+      recentVisits,
       vitals,
       meta: {
         hasDailyDocs: dailySnaps.some((s) => s?.exists),

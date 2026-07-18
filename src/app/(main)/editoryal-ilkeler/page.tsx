@@ -55,8 +55,8 @@ export default function EditoryelIlkelerPage() {
           <p>
             Yayınlanan haberlerdeki hatalar en kısa sürede düzeltilir. Önemli hatalar için
             makalenin başında açık bir düzeltme notu yayınlanır. Düzeltme taleplerini{' '}
-            <a href="mailto:haber@nahaber.com" className="text-[rgb(var(--color-brand))] underline">
-              haber@nahaber.com
+            <a href="mailto:bilgi@nahaber.com" className="text-[rgb(var(--color-brand))] underline">
+              bilgi@nahaber.com
             </a>{' '}
             adresine iletebilirsiniz.
           </p>

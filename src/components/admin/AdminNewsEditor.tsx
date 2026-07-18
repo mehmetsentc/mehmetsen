@@ -385,6 +385,8 @@ export function AdminNewsEditor({
       value={bodyBlocks}
       onChange={setBodyBlocks}
       sourceContent={content}
+      articleTitle={title}
+      articleSummary={summary}
       availableImages={[
         ...(thumbnail ? [{ url: thumbnail, caption: imageCaption }] : []),
         ...additionalImages,

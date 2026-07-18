@@ -16,6 +16,10 @@ const config: CapacitorConfig = {
     // limitsNavigationsToAppBoundDomains kaldırıldı — remote URL modunda
     // WKAppBoundDomains kısıtlaması Firebase/API çağrılarını engelleyebilir
   },
+  android: {
+    backgroundColor: '#0a0a0a',
+    allowMixedContent: false,
+  },
 };
 
 export default config;

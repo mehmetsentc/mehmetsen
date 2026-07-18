@@ -6,23 +6,53 @@ import { auth } from '@/lib/firebase/auth'
 import {
   TrendingUp, Eye, Users, Newspaper, RefreshCw, BarChart3,
   Globe, Monitor, Smartphone, ExternalLink, Activity, Zap,
+  Clock3, Languages, MapPin, MousePointer2, UserRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface TopPost { id: string; title: string; views: number; category?: string; slug?: string }
 interface RouteVitals { path: string; score: number; lcp: number; fcp: number; inp: number; cls: number; ttfb: number; samples: number }
+interface DimensionItem { label: string; views: number }
+interface RecentVisit {
+  id: string
+  path: string
+  createdAt: string | null
+  country: string
+  city: string
+  language: string
+  device: string
+  os: string
+  browser: string
+  source: string
+  referrer: string
+  maskedIp: string
+  durationMs: number
+  scrollDepth: number
+  user: null | { uid: string; displayName?: string; username?: string; email?: string }
+}
 
 interface DashData {
   totalViews: number
+  uniqueVisitors: number
+  sessions: number
+  bounceRate: number
+  averageDurationMs: number
+  averageScrollDepth: number
   totalUsers: number
   totalPosts: number
-  days: { date: string; views: number }[]
+  days: { date: string; views: number; visitors: number; sessions: number }[]
   topPages: { path: string; views: number }[]
   referrers: { domain: string; views: number }[]
-  devices: { mobile: number; desktop: number }
+  sources: DimensionItem[]
+  countries: DimensionItem[]
+  languages: DimensionItem[]
+  browsers: DimensionItem[]
+  timezones: DimensionItem[]
+  devices: { mobile: number; tablet: number; desktop: number }
   os: Record<string, number>
   topPosts: TopPost[]
+  recentVisits: RecentVisit[]
   vitals: RouteVitals[]
   meta?: { hasDailyDocs?: boolean; deviceRecords?: number }
 }
@@ -87,6 +117,47 @@ function KpiCard({ label, value, icon: Icon, color }: { label: string; value: st
   )
 }
 
+function formatDuration(ms: number): string {
+  if (!ms) return '—'
+  const seconds = Math.round(ms / 1000)
+  return seconds < 60 ? `${seconds} sn` : `${Math.floor(seconds / 60)} dk ${seconds % 60} sn`
+}
+
+function DimensionCard({
+  title,
+  icon: Icon,
+  items,
+}: {
+  title: string
+  icon: React.ElementType
+  items: DimensionItem[]
+}) {
+  const max = items[0]?.views ?? 1
+  return (
+    <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <Icon className="h-4 w-4 text-[rgb(var(--color-muted))]" />
+        <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">{title}</h2>
+      </div>
+      {items.length === 0 ? (
+        <p className="py-6 text-center text-sm text-[rgb(var(--color-muted))]">Veri yok</p>
+      ) : (
+        <div className="space-y-2.5">
+          {items.slice(0, 8).map((item, index) => (
+            <BarRow
+              key={item.label}
+              label={item.label.replace(/_/g, '.')}
+              value={item.views}
+              max={max}
+              color={['bg-blue-500', 'bg-indigo-500', 'bg-violet-500', 'bg-emerald-500'][index % 4]}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 const PERIODS: { id: Period; label: string }[] = [
   { id: 'today', label: 'Bugün' },
@@ -137,7 +208,10 @@ export default function AnalyticsPage() {
 
   useEffect(() => { load() }, [load])
 
-  const totalDevice = (data?.devices.mobile ?? 0) + (data?.devices.desktop ?? 0)
+  const totalDevice =
+    (data?.devices.mobile ?? 0) +
+    (data?.devices.tablet ?? 0) +
+    (data?.devices.desktop ?? 0)
   const osEntries = Object.entries(data?.os ?? {}).sort((a, b) => b[1] - a[1])
   const maxOs = Math.max(...osEntries.map(e => e[1]), 1)
 
@@ -181,15 +255,23 @@ export default function AnalyticsPage() {
         )}
 
         {/* KPIs */}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {loading
-            ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-[rgb(var(--color-card))]" />)
+            ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-[rgb(var(--color-card))]" />)
             : <>
               <KpiCard label="Sayfa Görüntülenme" value={(data?.totalViews ?? 0).toLocaleString('tr-TR')} icon={Eye} color="text-blue-600" />
-              <KpiCard label="Toplam Kullanıcı" value={(data?.totalUsers ?? 0).toLocaleString('tr-TR')} icon={Users} color="text-emerald-600" />
+              <KpiCard label="Tekil Ziyaretçi" value={(data?.uniqueVisitors ?? 0).toLocaleString('tr-TR')} icon={Users} color="text-cyan-600" />
+              <KpiCard label="Oturum" value={(data?.sessions ?? 0).toLocaleString('tr-TR')} icon={Activity} color="text-emerald-600" />
+              <KpiCard label="Kayıtlı Kullanıcı" value={(data?.totalUsers ?? 0).toLocaleString('tr-TR')} icon={UserRound} color="text-amber-600" />
               <KpiCard label="Yayınlanan Haber" value={(data?.totalPosts ?? 0).toLocaleString('tr-TR')} icon={Newspaper} color="text-purple-600" />
             </>
           }
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <KpiCard label="Ort. Sayfada Kalma" value={formatDuration(data?.averageDurationMs ?? 0)} icon={Clock3} color="text-indigo-600" />
+          <KpiCard label="Ort. Kaydırma" value={`${data?.averageScrollDepth ?? 0}%`} icon={MousePointer2} color="text-fuchsia-600" />
+          <KpiCard label="Hemen Çıkma" value={`${data?.bounceRate ?? 0}%`} icon={ExternalLink} color="text-rose-600" />
         </div>
 
         {/* Traffic chart */}
@@ -334,6 +416,21 @@ export default function AnalyticsPage() {
                     </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-3">
+                  <Monitor className="h-4 w-4 text-violet-500" />
+                  <div className="flex-1">
+                    <div className="mb-1 flex justify-between text-xs">
+                      <span className="text-[rgb(var(--color-text))]">Tablet</span>
+                      <span className="font-bold text-violet-600">
+                        {totalDevice > 0 ? Math.round((data!.devices.tablet / totalDevice) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-[rgb(var(--color-surface))]">
+                      <div className="h-full rounded-full bg-violet-500"
+                        style={{ width: `${totalDevice > 0 ? (data!.devices.tablet / totalDevice) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+                </div>
                 <div className="mt-4 border-t border-[rgb(var(--color-border))] pt-3 text-center">
                   <p className="text-[10px] text-[rgb(var(--color-muted))]">Toplam kayıtlı: {totalDevice.toLocaleString('tr-TR')}</p>
                 </div>
@@ -358,6 +455,87 @@ export default function AnalyticsPage() {
                 </div>
             }
           </div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <DimensionCard title="Trafik Kaynağı / Kampanya" icon={ExternalLink} items={data?.sources ?? []} />
+          <DimensionCard title="Ülkeler" icon={MapPin} items={data?.countries ?? []} />
+          <DimensionCard title="Diller" icon={Languages} items={data?.languages ?? []} />
+          <DimensionCard title="Tarayıcılar" icon={Globe} items={data?.browsers ?? []} />
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+          <div className="flex items-center gap-2 border-b border-[rgb(var(--color-border))] px-5 py-3">
+            <Activity className="h-4 w-4 text-blue-500" />
+            <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">Son Sayfa Görüntülemeleri</h2>
+            <span className="ml-auto text-[10px] text-[rgb(var(--color-muted))]">
+              IP adresleri KVKK/GDPR için maskelenir; ham IP saklanmaz
+            </span>
+          </div>
+          {loading ? (
+            <div className="space-y-2 p-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="h-10 animate-pulse rounded bg-[rgb(var(--color-surface))]" />
+              ))}
+            </div>
+          ) : !data?.recentVisits.length ? (
+            <p className="py-10 text-center text-sm text-[rgb(var(--color-muted))]">
+              Ayrıntılı ziyaret verisi henüz yok
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1050px] text-xs">
+                <thead className="bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left">Zaman</th>
+                    <th className="px-4 py-2.5 text-left">Sayfa</th>
+                    <th className="px-4 py-2.5 text-left">Kullanıcı</th>
+                    <th className="px-4 py-2.5 text-left">Konum / IP</th>
+                    <th className="px-4 py-2.5 text-left">Dil</th>
+                    <th className="px-4 py-2.5 text-left">Cihaz</th>
+                    <th className="px-4 py-2.5 text-left">Kaynak</th>
+                    <th className="px-4 py-2.5 text-right">Etkileşim</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[rgb(var(--color-border))]">
+                  {data.recentVisits.map((visit) => (
+                    <tr key={visit.id} className="hover:bg-[rgb(var(--color-surface))]">
+                      <td className="whitespace-nowrap px-4 py-3 text-[rgb(var(--color-muted))]">
+                        {visit.createdAt
+                          ? new Date(visit.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+                          : '—'}
+                      </td>
+                      <td className="max-w-64 truncate px-4 py-3 font-mono text-[rgb(var(--color-text))]">{visit.path}</td>
+                      <td className="max-w-48 px-4 py-3">
+                        {visit.user ? (
+                          <>
+                            <p className="truncate font-semibold">{visit.user.displayName || visit.user.username || 'Kayıtlı kullanıcı'}</p>
+                            <p className="truncate text-[10px] text-[rgb(var(--color-muted))]">{visit.user.email || visit.user.uid}</p>
+                          </>
+                        ) : (
+                          <span className="text-[rgb(var(--color-muted))]">Anonim</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <p>{[visit.city, visit.country].filter(Boolean).join(', ') || 'Bilinmiyor'}</p>
+                        <p className="font-mono text-[10px] text-[rgb(var(--color-muted))]">{visit.maskedIp || '—'}</p>
+                      </td>
+                      <td className="px-4 py-3">{visit.language}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <p>{visit.device} · {visit.os}</p>
+                        <p className="text-[10px] text-[rgb(var(--color-muted))]">{visit.browser}</p>
+                      </td>
+                      <td className="max-w-40 truncate px-4 py-3">{visit.source.replace(/_/g, '.')}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        <p>{formatDuration(visit.durationMs)}</p>
+                        <p className="text-[10px] text-[rgb(var(--color-muted))]">%{visit.scrollDepth} kaydırma</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* ── Speed Insights ── */}

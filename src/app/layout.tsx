@@ -57,7 +57,7 @@ const organizationJsonLd = {
   contactPoint: {
     '@type': 'ContactPoint',
     contactType: 'editorial',
-    email: 'iletisim@nahaber.com',
+    email: 'bilgi@nahaber.com',
     availableLanguage: 'Turkish',
   },
   foundingDate: '2024',

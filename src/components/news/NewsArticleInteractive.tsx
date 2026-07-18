@@ -52,7 +52,7 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
   }, [post.id, post.categoryId])
 
   return (
-    <NewsArticlePage className="pb-10">
+    <NewsArticlePage className="pb-10" articleId={post.id}>
       <ArticleTOC postId={post.id} />
       <ArticleReaderTools post={post} />
 

@@ -21,7 +21,7 @@ const helpTopics = [
   {
     icon: Mail,
     label: 'Destek',
-    description: 'Sorun bildirmek için destek@nahaber.app adresine yazabilirsiniz.',
+    description: 'Sorun bildirmek için bilgi@nahaber.com adresine yazabilirsiniz.',
   },
 ]
 

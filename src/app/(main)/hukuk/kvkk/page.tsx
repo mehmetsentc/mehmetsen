@@ -35,7 +35,7 @@ export default function KVKKPage() {
           <tbody>
             <TR label="Ünvan" value="Shen Medya" />
             <TR label="Platform" value="NaHaber (nahaber.com)" />
-            <TR label="İletişim" value="iletisim@nahaber.com" />
+            <TR label="İletişim" value="bilgi@nahaber.com" />
             <TR label="Adres" value="Türkiye" />
           </tbody>
         </table>
@@ -132,8 +132,8 @@ export default function KVKKPage() {
         </ul>
         <p className="mt-3">
           Başvurularınızı{' '}
-          <a href="mailto:iletisim@nahaber.com" className="font-semibold text-[rgb(var(--color-brand))] hover:underline">
-            iletisim@nahaber.com
+          <a href="mailto:bilgi@nahaber.com" className="font-semibold text-[rgb(var(--color-brand))] hover:underline">
+            bilgi@nahaber.com
           </a>{' '}
           adresine e-posta ile iletebilirsiniz. Talebiniz 30 gün içinde ücretsiz yanıtlanır.
           Yanıt yetersiz bulunursa <b>Kişisel Verileri Koruma Kurulu</b>'na şikâyette bulunabilirsiniz.
@@ -149,8 +149,8 @@ export default function KVKKPage() {
 
       <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3 text-xs text-[rgb(var(--color-muted))]">
         Sorularınız için:{' '}
-        <a href="mailto:iletisim@nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline">
-          iletisim@nahaber.com
+        <a href="mailto:bilgi@nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline">
+          bilgi@nahaber.com
         </a>
       </div>
     </div>

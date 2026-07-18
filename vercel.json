@@ -236,6 +236,10 @@
     {
       "path": "/api/cron/football-sync",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/analytics-cleanup",
+      "schedule": "15 3 * * *"
     }
   ]
 }

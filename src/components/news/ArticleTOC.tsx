@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 interface TOCEntry {
   id: string
   text: string
-  level: 2 | 3
+  level: 1 | 2 | 3 | 4
 }
 
 interface ArticleTOCProps {
@@ -21,7 +21,7 @@ interface ArticleTOCProps {
 /**
  * ArticleTOC — F2
  *
- * Article body içindeki h2/h3'ten otomatik içindekiler oluşturur.
+ * Article body içindeki h1-h4'ten otomatik içindekiler oluşturur.
  * Aktif başlığı IntersectionObserver ile izler.
  *
  * Davranış:
@@ -43,7 +43,7 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
       return
     }
 
-    const headings = Array.from(root.querySelectorAll<HTMLHeadingElement>('h2, h3'))
+    const headings = Array.from(root.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4'))
     const items: TOCEntry[] = headings.map((h, i) => {
       const text = (h.textContent || '').trim()
       const id =
@@ -55,7 +55,7 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
       return {
         id,
         text,
-        level: h.tagName === 'H2' ? 2 : 3,
+        level: Number(h.tagName.slice(1)) as 1 | 2 | 3 | 4,
       }
     })
     setEntries(items)
@@ -116,7 +116,7 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
           </p>
           <ol className="space-y-1.5">
             {entries.map((e) => (
-              <li key={e.id} className={e.level === 3 ? 'ml-3' : ''}>
+              <li key={e.id} className={e.level >= 3 ? 'ml-3' : ''}>
                 <a
                   href={`#${e.id}`}
                   className={cn(
@@ -173,7 +173,7 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
               </header>
               <ol className="px-3 pb-3 space-y-1">
                 {entries.map((e) => (
-                  <li key={e.id} className={e.level === 3 ? 'ml-4' : ''}>
+                  <li key={e.id} className={e.level >= 3 ? 'ml-4' : ''}>
                     <a
                       href={`#${e.id}`}
                       onClick={() => setOpen(false)}

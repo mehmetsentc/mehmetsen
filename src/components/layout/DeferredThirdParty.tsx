@@ -76,8 +76,12 @@ export function DeferredThirdParty() {
         strategy="lazyOnload"
         crossOrigin="anonymous"
       />
-      <Analytics />
-      <SpeedInsights />
+      {analyticsAllowed ? (
+        <>
+          <Analytics />
+          <SpeedInsights />
+        </>
+      ) : null}
     </>
   )
 }

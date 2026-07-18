@@ -29,7 +29,7 @@ export function buildRssFeed({
   description,
   link,
   items,
-  publisherEmail = 'iletisim@nahaber.com',
+  publisherEmail = 'bilgi@nahaber.com',
 }: {
   title: string
   description: string

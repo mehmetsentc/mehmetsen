@@ -4,12 +4,13 @@ interface NewsArticlePageProps {
   children: React.ReactNode
   className?: string
   id?: string
+  articleId?: string
 }
 
 /** Responsive article column — phone → TV, sidebar open/closed aware via CSS. */
-export function NewsArticlePage({ children, className, id }: NewsArticlePageProps) {
+export function NewsArticlePage({ children, className, id, articleId }: NewsArticlePageProps) {
   return (
-    <div id={id} className={cn('news-article-page', className)}>
+    <div id={id} className={cn('news-article-page', className)} data-article-id={articleId}>
       {children}
     </div>
   )

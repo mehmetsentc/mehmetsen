@@ -88,8 +88,8 @@ export default function CerezPolitikasiPage() {
       <Section title="6. İletişim">
         <p>
           Çerez uygulamalarımız hakkında sorularınız için{' '}
-          <a href="mailto:iletisim@nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline">
-            iletisim@nahaber.com
+          <a href="mailto:bilgi@nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline">
+            bilgi@nahaber.com
           </a>{' '}
           adresiyle iletişime geçebilir veya{' '}
           <Link href="/hukuk/kvkk" className="text-[rgb(var(--color-brand))] hover:underline">

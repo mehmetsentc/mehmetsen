@@ -46,6 +46,12 @@ export const Collections = {
   ANALYTICS_DAILY: 'analyticsDaily',
   /** Per-route Core Web Vitals aggregates */
   ANALYTICS_VITALS: 'analyticsVitals',
+  /** Privacy-safe individual page-view events (recommended TTL: 90 days). */
+  ANALYTICS_EVENTS: 'analyticsEvents',
+  /** Pseudonymous browsing sessions. */
+  ANALYTICS_SESSIONS: 'analyticsSessions',
+  /** One document per visitor/day, used for exact unique visitor counts. */
+  ANALYTICS_UNIQUES: 'analyticsUniques',
 
   /** Site reklam bannerları — slotId ile eşleşir */
   AD_BANNERS: 'adBanners',

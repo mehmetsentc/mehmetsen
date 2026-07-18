@@ -139,7 +139,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
   } = parseArticleContent(post)
 
   return (
-    <NewsArticlePage id="news-article-static">
+    <NewsArticlePage id="news-article-static" articleId={post.id}>
       <nav aria-label="Breadcrumb" className="news-article-breadcrumb mb-4 text-sm text-[rgb(var(--color-muted))]">
         <ol className="flex flex-wrap items-center gap-1">
           <li>

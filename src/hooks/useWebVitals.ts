@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import { getConsent } from '@/lib/consent'
 
 type MetricName = 'FCP' | 'LCP' | 'CLS' | 'TTFB' | 'INP'
 
@@ -47,6 +48,7 @@ export function useWebVitals() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (pathname.startsWith('/admin') || pathname.startsWith('/api')) return
+    if (!getConsent()?.categories.analytics) return
     const path = normalizePath(pathname)
     let reported = false
 

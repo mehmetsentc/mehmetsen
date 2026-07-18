@@ -183,8 +183,8 @@ export default function DeleteAccountPage() {
 
         <p className="mt-6 text-center text-xs text-[rgb(var(--color-muted))]">
           Sorularınız için{' '}
-          <a href="mailto:destek@nahaber.com" className="text-[rgb(var(--color-brand))] underline">
-            destek@nahaber.com
+          <a href="mailto:bilgi@nahaber.com" className="text-[rgb(var(--color-brand))] underline">
+            bilgi@nahaber.com
           </a>
         </p>
       </main>

@@ -68,14 +68,17 @@ export async function POST(request: Request) {
 
     const db = getAdminFirestore()
     const ref = db.collection(Collections.ANALYTICS_VITALS).doc(routeKey)
+    const now = FieldValue.serverTimestamp()
 
-    await ref.set({
-      path,
+    // update() resolves dotted paths into nested maps; set({merge}) would store
+    // literal keys like "FCP.good" and leave the dashboard empty.
+    await ref.set({ path, updatedAt: now }, { merge: true })
+    await ref.update({
       [`${name}.${b}`]: FieldValue.increment(1),
       [`${name}.sum`]: FieldValue.increment(value),
       [`${name}.count`]: FieldValue.increment(1),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true })
+      updatedAt: now,
+    })
 
     return NextResponse.json({ ok: true })
   } catch (err) {
