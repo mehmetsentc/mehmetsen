@@ -3,151 +3,168 @@ import Capacitor
 import AuthenticationServices
 import CryptoKit
 
+// MARK: - AppleSignInPresentationViewController
+//
+// Transparent UIViewController that presents ASAuthorizationController from viewDidAppear.
+// This ensures performRequests() is called from a true UIKit lifecycle event rather than
+// a WKWebView JavaScript callback — which is the root cause of ASAuthorizationError.notInteractive
+// (code 1004) on iPad with iPadOS 26.
+//
+private class AppleSignInPresentationViewController: UIViewController,
+    ASAuthorizationControllerDelegate,
+    ASAuthorizationControllerPresentationContextProviding {
+
+    var rawNonce: String = ""
+    var onSuccess: (([String: Any]) -> Void)?
+    var onFailure: ((Error) -> Void)?
+
+    private var authController: ASAuthorizationController?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Nearly transparent — user sees the existing UI beneath
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.01)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Called from UIKit lifecycle → proper interactive context on all iPadOS versions
+        startAppleSignIn()
+    }
+
+    private func startAppleSignIn() {
+        let provider = ASAuthorizationAppleIDProvider()
+        let request = provider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = sha256(rawNonce)
+
+        let ctrl = ASAuthorizationController(authorizationRequests: [request])
+        ctrl.delegate = self
+        ctrl.presentationContextProvider = self
+        self.authController = ctrl
+        ctrl.performRequests()
+    }
+
+    // MARK: - ASAuthorizationControllerPresentationContextProviding
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        // At this point we are a fully presented UIViewController — view.window is guaranteed.
+        if let w = view.window { return w }
+        // Fallback: foreground active scene
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        if let scene = scenes.first(where: { $0.activationState == .foregroundActive }),
+           let w = scene.keyWindow ?? scene.windows.first(where: { !$0.isHidden }) {
+            return w
+        }
+        return UIWindow()
+    }
+
+    // MARK: - ASAuthorizationControllerDelegate
+
+    func authorizationController(controller: ASAuthorizationController,
+                                  didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let cred = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            onFailure?(ASAuthorizationError(.failed))
+            return
+        }
+        guard
+            let tokenData = cred.identityToken,
+            let identityToken = String(data: tokenData, encoding: .utf8)
+        else {
+            onFailure?(ASAuthorizationError(.invalidResponse))
+            return
+        }
+
+        var result: [String: Any] = [
+            "user": cred.user,
+            "identityToken": identityToken,
+            "nonce": rawNonce,
+        ]
+        if let authCodeData = cred.authorizationCode,
+           let authCode = String(data: authCodeData, encoding: .utf8) {
+            result["authorizationCode"] = authCode
+        }
+        if let email = cred.email { result["email"] = email }
+        if let name = cred.fullName {
+            result["givenName"] = name.givenName ?? ""
+            result["familyName"] = name.familyName ?? ""
+        }
+        onSuccess?(result)
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        onFailure?(error)
+    }
+
+    // MARK: - Helpers
+
+    private func sha256(_ input: String) -> String {
+        let data = Data(input.utf8)
+        let hash = SHA256.hash(data: data)
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
+    }
+}
+
 // MARK: - NativeAppleSignInPlugin
 
 @objc(NativeAppleSignInPlugin)
-public class NativeAppleSignInPlugin: CAPPlugin, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+public class NativeAppleSignInPlugin: CAPPlugin {
 
     private var signInCall: CAPPluginCall?
-    private var currentNonce: String?
-    /// Strong reference — local var olarak tutulursa ARC performRequests'ten önce serbest bırakır
-    private var authorizationController: ASAuthorizationController?
 
     // MARK: - Public API
 
     @objc func authorize(_ call: CAPPluginCall) {
-        // Tüm ASAuthorization setup'ı main thread'de çalışmalı
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
                 call.reject("Plugin deallocated", "SIGN_IN_FAILED")
                 return
             }
 
-            // Önceki takılmış oturumu temizle (yeniden deneme senaryosu)
-            if self.signInCall != nil {
-                self.signInCall?.reject("Cancelled by new request", "SIGN_IN_CANCELED")
-                self.reset()
+            // Cancel any pending sign-in
+            if let prev = self.signInCall {
+                prev.reject("Cancelled by new request", "SIGN_IN_CANCELED")
+                self.signInCall = nil
             }
 
-            let rawNonce = self.randomNonceString()
-            self.currentNonce = rawNonce
             self.signInCall = call
+            let rawNonce = self.randomNonceString()
 
-            let appleIDProvider = ASAuthorizationAppleIDProvider()
-            let request = appleIDProvider.createRequest()
-            request.requestedScopes = [.fullName, .email]
-            request.nonce = self.sha256(rawNonce)
+            let vc = AppleSignInPresentationViewController()
+            vc.rawNonce = rawNonce
+            vc.modalPresentationStyle = .overCurrentContext
+            vc.modalTransitionStyle = .crossDissolve
 
-            let controller = ASAuthorizationController(authorizationRequests: [request])
-            controller.delegate = self
-            controller.presentationContextProvider = self
-            self.authorizationController = controller
-            controller.performRequests()
+            vc.onSuccess = { [weak self] result in
+                self?.signInCall?.resolve(result)
+                self?.signInCall = nil
+                vc.dismiss(animated: false)
+            }
+
+            vc.onFailure = { [weak self] error in
+                let asError = error as? ASAuthorizationError
+                if asError?.code == .canceled {
+                    self?.signInCall?.reject("Sign in cancelled", "SIGN_IN_CANCELED")
+                } else {
+                    // Encode iOS error code in the message so JavaScript can surface it
+                    // even if Capacitor doesn't propagate the custom code string.
+                    let errNum = asError.map { "\($0.code.rawValue)" } ?? "0"
+                    let msg = "SIGN_IN_FAILED:\(errNum):\(error.localizedDescription)"
+                    self?.signInCall?.reject(msg, "SIGN_IN_FAILED")
+                }
+                self?.signInCall = nil
+                vc.dismiss(animated: false)
+            }
+
+            guard let rootVC = self.bridge?.viewController else {
+                call.reject("No root view controller", "SIGN_IN_FAILED")
+                return
+            }
+            rootVC.present(vc, animated: false)
         }
-    }
-
-    // MARK: - ASAuthorizationControllerPresentationContextProviding
-
-    public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        // Bu delegate her zaman main thread'den çağrılır
-
-        // 1. Capacitor bridge view controller'ının penceresi — EN GÜVENİLİR
-        //    iPad'de Stage Manager veya Split View ile birden fazla foregroundActive
-        //    sahne bulunabilir; bu kontrolör hangi sahnede olduğu bilinmez.
-        //    bridge.viewController.view.window ise her zaman uygulamanın kendi penceresidir.
-        if let vc = self.bridge?.viewController,
-           let window = vc.view.window,
-           !window.isHidden,
-           window.windowScene != nil {
-            return window
-        }
-
-        // 2. Foreground active scene → key window (sahne bazlı fallback)
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-
-        if let activeScene = scenes.first(where: { $0.activationState == .foregroundActive }) {
-            if let keyWindow = activeScene.keyWindow, !keyWindow.isHidden { return keyWindow }
-            if let visibleWindow = activeScene.windows.first(where: { !$0.isHidden }) { return visibleWindow }
-        }
-
-        // 3. Herhangi bir foreground scene
-        for scene in scenes where scene.activationState != .background {
-            if let keyWindow = scene.keyWindow, !keyWindow.isHidden { return keyWindow }
-            if let visibleWindow = scene.windows.first(where: { !$0.isHidden }) { return visibleWindow }
-        }
-
-        // 4. Son çare — ilk görünür window
-        for scene in scenes {
-            for window in scene.windows where !window.isHidden { return window }
-        }
-
-        // Çalışan bir uygulamada bu satıra ulaşılmamalı
-        return UIWindow()
-    }
-
-    // MARK: - ASAuthorizationControllerDelegate
-
-    public func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithAuthorization authorization: ASAuthorization
-    ) {
-        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-            signInCall?.reject("Invalid credential type", "INVALID_CREDENTIAL")
-            reset()
-            return
-        }
-
-        guard
-            let identityTokenData = appleIDCredential.identityToken,
-            let identityToken = String(data: identityTokenData, encoding: .utf8)
-        else {
-            signInCall?.reject("Could not get identity token", "NO_IDENTITY_TOKEN")
-            reset()
-            return
-        }
-
-        var result: [String: Any] = [
-            "user": appleIDCredential.user,
-            "identityToken": identityToken,
-            "nonce": currentNonce ?? "",
-        ]
-
-        if let authCodeData = appleIDCredential.authorizationCode,
-           let authCode = String(data: authCodeData, encoding: .utf8) {
-            result["authorizationCode"] = authCode
-        }
-        if let email = appleIDCredential.email {
-            result["email"] = email
-        }
-        if let fullName = appleIDCredential.fullName {
-            result["givenName"] = fullName.givenName ?? ""
-            result["familyName"] = fullName.familyName ?? ""
-        }
-
-        signInCall?.resolve(result)
-        reset()
-    }
-
-    public func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithError error: Error
-    ) {
-        let asError = error as? ASAuthorizationError
-        if asError?.code == .canceled {
-            signInCall?.reject("Sign in cancelled", "SIGN_IN_CANCELED")
-        } else {
-            signInCall?.reject(error.localizedDescription, "SIGN_IN_FAILED")
-        }
-        reset()
     }
 
     // MARK: - Helpers
-
-    private func reset() {
-        signInCall = nil
-        currentNonce = nil
-        authorizationController = nil
-    }
 
     private func randomNonceString(length: Int = 32) -> String {
         precondition(length > 0)
@@ -158,11 +175,5 @@ public class NativeAppleSignInPlugin: CAPPlugin, ASAuthorizationControllerDelega
         }
         let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
         return String(randomBytes.map { charset[Int($0) % charset.count] })
-    }
-
-    private func sha256(_ input: String) -> String {
-        let inputData = Data(input.utf8)
-        let hashed = SHA256.hash(data: inputData)
-        return hashed.compactMap { String(format: "%02x", $0) }.joined()
     }
 }

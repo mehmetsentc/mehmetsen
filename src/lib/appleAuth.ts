@@ -46,11 +46,18 @@ async function signInWithNativeApple(auth: Auth): Promise<UserCredential> {
     const code = (err as { code?: string }).code ?? ''
     const msg = (err as { message?: string }).message ?? ''
     // Kullanıcı iptal etti — sessizce rethrow
-    if (code === 'SIGN_IN_CANCELED' || msg.includes('cancelled') || msg.includes('canceled')) {
+    // Note: Capacitor 8 may not propagate custom codes, so also check the message string.
+    if (
+      code === 'SIGN_IN_CANCELED' ||
+      msg === 'SIGN_IN_CANCELED' ||
+      msg.includes('SIGN_IN_CANCELED') ||
+      msg.includes('cancelled') ||
+      msg.includes('canceled')
+    ) {
       throw Object.assign(new Error('Sign in cancelled'), { code: 'auth/cancelled-popup-request' })
     }
     // Devam eden istek
-    if (code === 'SIGN_IN_IN_PROGRESS') {
+    if (code === 'SIGN_IN_IN_PROGRESS' || msg.includes('SIGN_IN_IN_PROGRESS')) {
       throw Object.assign(new Error('Sign in already in progress'), { code: 'auth/popup-blocked' })
     }
     throw err
