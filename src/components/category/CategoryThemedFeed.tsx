@@ -8,11 +8,13 @@ import {
   getThemedCategorySectionIds,
 } from '@/constants/categorySections'
 import { CategoryBbcSection } from '@/components/category/CategoryBbcSection'
-import { CategoryHeroStory } from '@/components/category/CategoryPostStories'
+import { CategoryHeroCarousel } from '@/components/category/CategoryHeroCarousel'
+import { CategoryStoryRail } from '@/components/category/CategoryStoryRail'
 import { DESKTOP_SECTION_DIVIDER } from '@/components/home/desktop/desktopLayout'
 import { TimelineItem } from '@/components/feed/TimelineItem'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { useThemedCategoryFeed } from '@/hooks/useThemedCategoryFeed'
+import { getCategoryAccent } from '@/constants/categoryTheme'
 import type { TimelinePost } from '@/types/post'
 
 interface CategoryThemedFeedProps {
@@ -105,6 +107,7 @@ function DesktopSectionBlock({
   scrollActivated,
   showHeader,
   isFirstSection,
+  accentRgb,
 }: {
   sectionId: string
   posts: TimelinePost[]
@@ -117,6 +120,7 @@ function DesktopSectionBlock({
   scrollActivated: boolean
   showHeader: boolean
   isFirstSection: boolean
+  accentRgb?: string
 }) {
   const title = sectionTitle(sectionId)
   const href = getCategorySectionHref(sectionId)
@@ -133,6 +137,7 @@ function DesktopSectionBlock({
         isFirstSection={isFirstSection}
         loading={loading || !loaded}
         loadingMore={loadingMore}
+        accentRgb={accentRgb}
       />
 
       <SectionLoadMoreSentinel
@@ -157,6 +162,7 @@ function MobileSectionBlock({
   scrollActivated,
   showHeader,
   isFirstSection = false,
+  accentRgb,
 }: {
   sectionId: string
   posts: TimelinePost[]
@@ -169,17 +175,26 @@ function MobileSectionBlock({
   scrollActivated: boolean
   showHeader: boolean
   isFirstSection?: boolean
+  accentRgb?: string
 }) {
   const title = sectionTitle(sectionId)
-  const hero = posts[0]
-  const rest = posts.slice(1)
+
+  // First section leads with a swipeable hero carousel (top 5). Other sections
+  // keep a single hero. A horizontal "discover" rail sits between the hero and
+  // the vertical timeline to break the monotony of stacked cards.
+  const heroCount = isFirstSection ? Math.min(posts.length, 5) : posts.length > 0 ? 1 : 0
+  const heroPosts = posts.slice(0, heroCount)
+  const railPosts = posts.slice(heroCount, heroCount + 6)
+  const rest = posts.slice(heroCount + railPosts.length)
 
   return (
     <section className="mb-10" aria-label={title}>
       <SectionVisibilityTrigger onVisible={onEnsureLoaded} enabled={scrollActivated} />
 
       {showHeader || isFirstSection ? (
-        <h2 className="bbc-section-label mb-4">{showHeader ? title : 'Öne çıkanlar'}</h2>
+        <h2 className="bbc-section-label bbc-section-label--accent mb-4" style={
+          accentRgb ? ({ ['--cat-accent' as string]: accentRgb } as React.CSSProperties) : undefined
+        }>{showHeader ? title : 'Öne çıkanlar'}</h2>
       ) : null}
 
       {/* Show a skeleton until the section has actually attempted to load, so we
@@ -196,10 +211,23 @@ function MobileSectionBlock({
         <p className="py-4 text-center text-sm text-[rgb(var(--color-muted))]">Henüz haber yok</p>
       ) : null}
 
-      {hero ? (
+      {heroPosts.length > 0 ? (
         <div className="mb-6">
-          <CategoryHeroStory post={hero} priority={isFirstSection} />
+          <CategoryHeroCarousel
+            posts={heroPosts}
+            accentRgb={accentRgb}
+            priority={isFirstSection}
+          />
         </div>
+      ) : null}
+
+      {railPosts.length > 0 ? (
+        <CategoryStoryRail
+          title="Keşfet"
+          posts={railPosts}
+          accentRgb={accentRgb}
+          className="mb-6"
+        />
       ) : null}
 
       <div className="timeline-list">
@@ -247,6 +275,7 @@ export function CategoryThemedFeed({
   const Block = variant === 'desktop' ? DesktopSectionBlock : MobileSectionBlock
 
   const multiSection = sectionIds.length > 1
+  const accent = getCategoryAccent(parentCategoryId)
 
   return (
     <div className="category-themed-feed bbc-category-feed">
@@ -267,6 +296,7 @@ export function CategoryThemedFeed({
             scrollActivated={activated}
             showHeader={multiSection}
             isFirstSection={index === 0}
+            accentRgb={accent.rgb}
           />
         )
       })}

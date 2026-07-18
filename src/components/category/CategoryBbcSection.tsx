@@ -8,6 +8,7 @@ import {
   CategoryHeroStory,
   CategoryTextStory,
 } from '@/components/category/CategoryPostStories'
+import { CategoryStoryRail } from '@/components/category/CategoryStoryRail'
 import type { TimelinePost } from '@/types/post'
 
 interface CategoryBbcSectionProps {
@@ -18,6 +19,7 @@ interface CategoryBbcSectionProps {
   isFirstSection: boolean
   loading: boolean
   loadingMore: boolean
+  accentRgb?: string
 }
 
 export function CategoryBbcSection({
@@ -28,6 +30,7 @@ export function CategoryBbcSection({
   isFirstSection,
   loading,
   loadingMore,
+  accentRgb,
 }: CategoryBbcSectionProps) {
   const hero = posts[0]
   const sideFeatures = posts.slice(1, 3)
@@ -37,8 +40,12 @@ export function CategoryBbcSection({
 
   const sectionLabel = showHeader ? title : isFirstSection ? 'Öne çıkanlar' : title
 
+  const blockStyle = accentRgb
+    ? ({ ['--cat-accent' as string]: accentRgb } as React.CSSProperties)
+    : undefined
+
   return (
-    <div className="bbc-category-block">
+    <div className="bbc-category-block bbc-category-block--accent" style={blockStyle}>
       {showHeader || isFirstSection ? (
         <DesktopSectionHeader
           title={sectionLabel}
@@ -97,14 +104,12 @@ export function CategoryBbcSection({
       ) : null}
 
       {gridStories.length > 0 ? (
-        <section className="mb-10" aria-label="Keşfet">
-          <DesktopSectionHeader title="Keşfet" variant="bbc" className="text-xl" />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {gridStories.map((post) => (
-              <CategoryGridStory key={post.id} post={post} />
-            ))}
-          </div>
-        </section>
+        <CategoryStoryRail
+          title="Keşfet"
+          posts={gridStories}
+          accentRgb={accentRgb}
+          className="mb-10"
+        />
       ) : null}
 
       {archive.length > 0 ? (

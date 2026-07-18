@@ -61,6 +61,7 @@ export function DesktopCategoryPage({
         subTabs={showTabs ? subTabs : []}
         tabParentSlug={tabParent?.slug}
         isSubcategory={isSubcategory}
+        categoryId={cat.id}
         className="mb-8"
       />
 

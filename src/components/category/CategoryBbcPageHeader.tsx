@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { getCategoryAccent } from '@/constants/categoryTheme'
 
 interface SubTab {
   id: string
@@ -17,6 +18,10 @@ interface CategoryBbcPageHeaderProps {
   tabParentSlug?: string
   isSubcategory?: boolean
   className?: string
+  /** Category id used to derive the accent colour + kicker. */
+  categoryId?: string
+  /** Sticky sub-nav (mobile) — chips pin under the app header on scroll. */
+  stickySubnav?: boolean
 }
 
 export function CategoryBbcPageHeader({
@@ -25,20 +30,28 @@ export function CategoryBbcPageHeader({
   tabParentSlug,
   isSubcategory = false,
   className,
+  categoryId,
+  stickySubnav = false,
 }: CategoryBbcPageHeaderProps) {
   const showSubNav = subTabs.length > 0 && tabParentSlug
+  const accent = getCategoryAccent(categoryId ?? '')
+  const style = { ['--cat-accent' as string]: accent.rgb } as React.CSSProperties
 
   return (
-    <header className={cn('bbc-category-header', className)}>
+    <header className={cn('bbc-category-header bbc-category-header--accent', className)} style={style}>
+      <span className="bbc-category-kicker">{accent.kicker}</span>
       <h1 className="bbc-category-title">{pageTitle}</h1>
       {showSubNav ? (
         <nav
-          className="bbc-category-subnav mt-5 flex gap-0 overflow-x-auto scrollbar-hide"
+          className={cn(
+            'bbc-category-subnav mt-4 flex gap-2 overflow-x-auto scrollbar-hide',
+            stickySubnav && 'bbc-category-subnav--sticky'
+          )}
           aria-label="Alt kategoriler"
         >
           <Link
             href={`/kategori/${tabParentSlug}`}
-            className={cn('bbc-category-subnav-item', !isSubcategory && 'is-active')}
+            className={cn('bbc-category-chip', !isSubcategory && 'is-active')}
           >
             Tümü
           </Link>
@@ -46,7 +59,7 @@ export function CategoryBbcPageHeader({
             <Link
               key={sub.id}
               href={sub.href}
-              className={cn('bbc-category-subnav-item', sub.active && 'is-active')}
+              className={cn('bbc-category-chip', sub.active && 'is-active')}
             >
               {sub.name}
             </Link>

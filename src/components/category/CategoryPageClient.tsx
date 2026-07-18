@@ -102,6 +102,8 @@ export function CategoryPageClient({
           subTabs={showTabs ? subTabs : []}
           tabParentSlug={tabParent?.slug}
           isSubcategory={isSubcategory}
+          categoryId={cat.id}
+          stickySubnav
           className="mb-6 px-1"
         />
 
