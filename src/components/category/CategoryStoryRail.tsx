@@ -108,7 +108,7 @@ export function CategoryStoryRail({
     : undefined
 
   return (
-    <section className={cn('category-rail', className)} style={style} aria-label={title}>
+    <section className={cn('category-rail', className)} style={style} aria-label={title} data-no-category-swipe>
       {title ? (
         <div className="category-rail__head">
           <h3 className="category-rail__title">{title}</h3>

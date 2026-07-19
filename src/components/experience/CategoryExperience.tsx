@@ -94,6 +94,7 @@ export function CategoryExperience({
       className={cn('exp-shell', `exp-shell--${theme.mood}`, `exp-shell--${breakpoint}`, className)}
       style={style}
       data-mood={theme.mood}
+      data-no-category-swipe
     >
       {sectionIds.map((sectionId, index) => {
         const state = sections[sectionId]

@@ -93,7 +93,7 @@ export function CategoryHeroCarousel({
     : undefined
 
   return (
-    <div className="category-hero-carousel" style={style}>
+    <div className="category-hero-carousel" style={style} data-no-category-swipe>
       <div ref={scrollerRef} className="category-hero-carousel__scroller scrollbar-hide">
         {posts.map((post, i) => (
           <div key={post.id} className="category-hero-carousel__item">

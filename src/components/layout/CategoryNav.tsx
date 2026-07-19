@@ -35,7 +35,7 @@ export function CategoryNav() {
       )}
       aria-label="Kategoriler"
     >
-      <div className="flex gap-0 overflow-x-auto scroll-px-3 scrollbar-none">
+      <div className="flex gap-0 overflow-x-auto scroll-px-3 scrollbar-none" data-no-category-swipe>
         {NAV_CATEGORIES.map((cat) => {
           const isActive = activeKey === cat.id
           return (

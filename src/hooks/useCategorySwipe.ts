@@ -4,12 +4,33 @@ import { useCallback, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { getSwipeableFeedDestinations, getSwipeIndexFromPathname } from '@/constants/config'
 
-const SWIPE_THRESHOLD_PX = 56
-const HORIZONTAL_INTENT_PX = 14
+const SWIPE_THRESHOLD_PX = 72
+const HORIZONTAL_INTENT_PX = 18
+/** Category change only from screen edges — mid-screen card/rail pans stay local. */
+const EDGE_ZONE_PX = 28
+
+function isHorizontallyScrollable(el: Element): boolean {
+  if (!(el instanceof HTMLElement)) return false
+  const style = window.getComputedStyle(el)
+  const ox = style.overflowX
+  if (ox !== 'auto' && ox !== 'scroll' && ox !== 'overlay') return false
+  return el.scrollWidth > el.clientWidth + 4
+}
 
 function isSwipeBlockedTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false
-  return !!target.closest('[data-no-category-swipe]')
+  let node: Element | null = target
+  while (node && node !== document.documentElement) {
+    if (node.hasAttribute('data-no-category-swipe')) return true
+    if (isHorizontallyScrollable(node)) return true
+    node = node.parentElement
+  }
+  return false
+}
+
+function isEdgeStart(clientX: number): boolean {
+  const w = window.innerWidth || 0
+  return clientX <= EDGE_ZONE_PX || clientX >= w - EDGE_ZONE_PX
 }
 
 export function useCategorySwipe(enabled: boolean) {
@@ -26,6 +47,7 @@ export function useCategorySwipe(enabled: boolean) {
       if (index < 0) return
 
       const destinations = getSwipeableFeedDestinations()
+      // Finger moves left (negative dx) → next category; right → previous
       const nextIndex = deltaX < 0 ? index + 1 : index - 1
       if (nextIndex < 0 || nextIndex >= destinations.length) return
 
@@ -53,9 +75,13 @@ export function useCategorySwipe(enabled: boolean) {
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) return
       if (isSwipeBlockedTarget(e.target)) return
-      if (window.scrollY > 2) return
 
-      startX.current = e.touches[0]!.clientX
+      const x = e.touches[0]!.clientX
+      // Only edge gestures change category — avoids fighting card / rail pans.
+      if (!isEdgeStart(x)) return
+      if (window.scrollY > 8) return
+
+      startX.current = x
       startY.current = e.touches[0]!.clientY
       tracking.current = true
       horizontalLock.current = false
@@ -69,7 +95,8 @@ export function useCategorySwipe(enabled: boolean) {
 
       if (!horizontalLock.current) {
         if (Math.abs(dx) < HORIZONTAL_INTENT_PX && Math.abs(dy) < HORIZONTAL_INTENT_PX) return
-        if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+        // Require clearly horizontal intent (stricter than before).
+        if (Math.abs(dx) > Math.abs(dy) * 1.6) {
           horizontalLock.current = true
         } else {
           tracking.current = false

@@ -63,6 +63,7 @@ export function CategoryBbcPageHeader({
             stickySubnav && 'bbc-category-subnav--sticky'
           )}
           aria-label="Alt kategoriler"
+          data-no-category-swipe
         >
           <Link
             href={`/kategori/${tabParentSlug}`}
