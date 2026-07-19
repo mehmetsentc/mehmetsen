@@ -733,6 +733,7 @@ export async function processNewsroomArticle(
       type: 'news' as const,
       source: workingInput.sourceLabel,
       sourceUrl: workingInput.sourceUrl,
+      researchSources: workingInput.researchSources ?? [],
       readingTimeMinutes,
       draftStatus: 'pending_review' as const,
       moderationReasons: moderation.decision === 'review' ? moderation.reasons : [],

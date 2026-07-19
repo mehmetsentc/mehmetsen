@@ -67,6 +67,8 @@ export interface NewsroomArticleInput {
   editorType: NewsroomEditorType
   sourceLabel: string
   sourceUrl: string
+  /** Auditable sources returned by live Google Search grounding. */
+  researchSources?: Array<{ title: string; url: string }>
   originalTitle: string
   originalSummary: string
   originalContent: string

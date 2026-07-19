@@ -3,11 +3,12 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { generateImageAnalysis, type ImageAnalysis } from '@/lib/ai/imageSeo'
+import { researchLiveNews } from '@/lib/ai/liveResearch'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
+export const maxDuration = 90
 
 type AssistMode =
   | 'create'
@@ -39,6 +40,9 @@ Kurallar:
 - summary en fazla 280 karakter olsun.
 - content özgün, akıcı ve ayrıntılı olsun; ## H2 ve gerektiğinde ### H3 kullan. # H1 ASLA kullanma.
 - Ham metinde bulunmayan kişi, sayı, tarih, yer, alıntı veya iddia ekleme.
+- CANLI ARAŞTIRMA NOTLARI varsa yalnızca bu notlarda açıkça kaynaklandırılmış olguları kullan.
+- Çelişkili veya tek kaynağa dayanan iddiaları kesin bilgi gibi sunma.
+- Araştırma notundaki ham URL'leri haber gövdesine yapıştırma; gerektiğinde kaynağı kurum adıyla belirt.
 - Görsel analizlerini yalnızca yerleşim ve açıklama için kullan; yeni haber olgusu üretmek için kullanma.
 - seoTitle 50-65, seoDescription 140-165 karakter olsun.
 - categoryId aşağıdaki geçerli kimliklerden tam biri olsun.
@@ -119,28 +123,45 @@ export async function POST(request: Request) {
       .filter((url, index, all) => url && all.indexOf(url) === index)
       .slice(0, 6)
 
-    let imageAnalyses: Array<ImageAnalysis & { url: string }> = []
-    if (mode === 'publish-ready' && requestedUrls.length > 0) {
-      const settled = await Promise.all(
-        requestedUrls.map(async (url) => {
-          const analysis = await generateImageAnalysis({
-            imageUrl: url,
-            title: '',
-            content: input.slice(0, 2500),
-          })
-          return analysis ? { url, ...analysis } : null
-        })
-      )
-      imageAnalyses = settled.filter(
-        (item): item is ImageAnalysis & { url: string } => item !== null
-      )
-    }
+    const researchPromise =
+      mode === 'publish-ready'
+        ? researchLiveNews({ query: input.slice(0, 500), context: input })
+        : Promise.resolve(null)
+    const imagePromise =
+      mode === 'publish-ready' && requestedUrls.length > 0
+        ? Promise.all(
+            requestedUrls.map(async (url) => {
+              const analysis = await generateImageAnalysis({
+                imageUrl: url,
+                title: '',
+                content: input.slice(0, 2500),
+              })
+              return analysis ? { url, ...analysis } : null
+            })
+          )
+        : Promise.resolve([])
+    const [research, settledImages] = await Promise.all([researchPromise, imagePromise])
+    const imageAnalyses: Array<ImageAnalysis & { url: string }> = settledImages.filter(
+      (item): item is ImageAnalysis & { url: string } => item !== null
+    )
 
     const enrichedUserMessage =
       mode === 'publish-ready'
         ? [
             'HAM HABER METNİ:',
             userMessage.slice(0, 18_000),
+            '',
+            'CANLI GOOGLE ARAŞTIRMA NOTLARI:',
+            research
+              ? [
+                  research.brief,
+                  '',
+                  'DOĞRULANABİLİR KAYNAKLAR:',
+                  ...research.sources.map(
+                    (source, index) => `[${index + 1}] ${source.title}: ${source.url}`
+                  ),
+                ].join('\n')
+              : 'Canlı araştırma yapılamadı. Ham metnin dışına çıkma.',
             '',
             'GÖRSEL ANALİZLERİ:',
             imageAnalyses.length > 0
@@ -198,9 +219,13 @@ export async function POST(request: Request) {
         tags.length >= 5,
         String(parsed.seoTitle ?? '').trim().length >= 40,
         String(parsed.seoDescription ?? '').trim().length >= 120,
+        (research?.sources.length ?? 0) >= 2,
       ]
       const qualityScore = Math.round((checks.filter(Boolean).length / checks.length) * 100)
-      const gateDecision = qualityScore >= 78 ? 'publish' : 'review'
+      const gateDecision =
+        qualityScore >= 78 && (research?.sources.length ?? 0) >= 2
+          ? 'publish'
+          : 'review'
       return NextResponse.json({
         success: true,
         mode,
@@ -220,6 +245,9 @@ export async function POST(request: Request) {
         additionalImages: orderedImages.slice(1),
         qualityScore,
         gateDecision,
+        researchSources: research?.sources ?? [],
+        researchQueries: research?.searchQueries ?? [],
+        liveResearchUsed: Boolean(research),
       })
     }
 

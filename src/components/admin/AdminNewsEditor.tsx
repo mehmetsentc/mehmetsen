@@ -34,6 +34,8 @@ interface ProfessionalAiResult {
   additionalImages?: AdditionalImageItem[]
   qualityScore?: number
   gateDecision?: 'publish' | 'review'
+  researchSources?: Array<{ title: string; url: string }>
+  liveResearchUsed?: boolean
   error?: string
 }
 
@@ -141,6 +143,14 @@ export function AdminNewsEditor({
   const [saving, setSaving] = useState(false)
   const [aiPreparing, setAiPreparing] = useState(false)
   const [aiQualityScore, setAiQualityScore] = useState<number | null>(null)
+  const [aiResearchSources, setAiResearchSources] = useState<
+    Array<{ title: string; url: string }>
+  >(
+    (post as (Post & {
+      aiResearchSources?: Array<{ title: string; url: string }>
+    }) | undefined)?.aiResearchSources ?? []
+  )
+  const [aiGateDecision, setAiGateDecision] = useState<'publish' | 'review' | null>(null)
   const [showAiPreview, setShowAiPreview] = useState(false)
 
   const headerTitle = mode === 'create' ? 'Yeni Haber' : 'Haberi Düzenle'
@@ -204,6 +214,7 @@ export function AdminNewsEditor({
     seoTitle,
     seoDescription,
     seoKeywords,
+    aiResearchSources,
     isBreaking,
     isLiveBlog,
     liveUpdates: isLiveBlog ? liveUpdates : [],
@@ -279,6 +290,10 @@ export function AdminNewsEditor({
       setImageCaption(data.imageCaption?.trim() || imageCaption || nextTitle)
       setAdditionalImages(nextAdditional)
       setAiQualityScore(data.qualityScore ?? null)
+      setAiGateDecision(data.gateDecision ?? 'review')
+      setAiResearchSources(
+        Array.isArray(data.researchSources) ? data.researchSources : []
+      )
       setStatus(nextStatus)
       setShowAiPreview(true)
 
@@ -306,6 +321,7 @@ export function AdminNewsEditor({
         thumbnail: nextThumbnail,
         imageCaption: data.imageCaption?.trim() || imageCaption || nextTitle,
         additionalImages: nextAdditional,
+        aiResearchSources: Array.isArray(data.researchSources) ? data.researchSources : [],
         status: nextStatus,
       }
       const saveUrl = mode === 'create' ? '/api/admin/news' : `/api/admin/news/${post?.id}`
@@ -553,7 +569,8 @@ export function AdminNewsEditor({
             {aiQualityScore !== null && (
               <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
                 Kalite puanı: %{aiQualityScore} ·{' '}
-                {aiQualityScore >= 78 ? 'yayıma hazır' : 'editör incelemesi gerekli'}
+                {aiGateDecision === 'publish' ? 'yayıma hazır' : 'editör incelemesi gerekli'}
+                {' · '}Canlı kaynak: {aiResearchSources.length}
               </p>
             )}
           </div>

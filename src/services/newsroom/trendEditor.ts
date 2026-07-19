@@ -7,6 +7,7 @@ import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import { getTrendTopics, MAX_AI_CALLS_PER_EDITOR } from '@/services/newsroom/config'
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
+import { researchLiveNews, type GroundingSource } from '@/lib/ai/liveResearch'
 
 const GOOGLE_TRENDS_RSS =
   process.env.NEWSROOM_TRENDS_RSS_URL?.trim() ||
@@ -43,15 +44,15 @@ async function fetchTrendTopics(): Promise<TrendTopic[]> {
 
 /**
  * Trend makalesi üretir.
- * Önce Gemini 2.0 Flash dener (ücretsiz, built-in Google Search ile güncel bilgi alır).
- * Gemini başarısız olursa OpenAI'ya düşer.
- * Her ikisi de yoksa/başarısız olursa null döner → konu atlanır (uydurma içerik YASAK).
+ * Gemini Google Search grounding ile araştırır; DeepSeek yalnızca kaynaklı
+ * araştırma notlarından yayın metnini üretir.
  */
 async function generateTrendArticle(topic: string): Promise<{
   title: string
   summary: string
   content: string
   category: string
+  researchSources: GroundingSource[]
 } | null> {
   const today = new Date().toLocaleDateString('tr-TR', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -95,11 +96,24 @@ Haberin içeriğine göre EN UYGUN kategoriyi seç:
 Yanıtı YALNIZCA geçerli JSON olarak ver:
 {"title":"...","summary":"...","content":"...","category":"gundem"}`
 
+  const research = await researchLiveNews({
+    query: `${topic} neden bugün gündemde ${today}`,
+    context: `Google Trends Türkiye konusu: ${topic}`,
+  })
+  if (!research || research.sources.length < 2) {
+    console.warn(`[trendEditor] yeterli canlı kaynak bulunamadı, konu atlanıyor: ${topic}`)
+    return null
+  }
+
   const USER_MSG = `Trend konusu: "${topic}"
 
-Bu konu ${today} tarihi itibarıyla Türkiye'de Google'ın en çok aranan konuları arasına girdi.
+CANLI GOOGLE ARAŞTIRMA NOTLARI:
+${research.brief}
 
-Google Search grounding aracını kullanarak bu konunun NEDEN bugün gündemde olduğunu araştır ve kapsamlı bir "neden trend?" haberi yaz. İçerik kısa veya belirsiz kalacaksa makale yazma, bunun yerine boş content döndür.`
+KAYNAKLAR:
+${research.sources.map((source, index) => `[${index + 1}] ${source.title}: ${source.url}`).join('\n')}
+
+Yalnızca yukarıdaki kaynaklı araştırmayı kullanarak bu konunun NEDEN bugün gündemde olduğunu anlatan kapsamlı haber yaz. Kaynaklarda bulunmayan bilgi ekleme.`
 
   // ── DeepSeek ile trend analizi ────────────────────────────────────────────
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
@@ -136,6 +150,7 @@ Google Search grounding aracını kullanarak bu konunun NEDEN bugün gündemde o
               summary:  parsed.summary?.trim()  || '',
               content,
               category: parsed.category?.trim() || 'gundem',
+              researchSources: research.sources,
             }
           }
           console.warn(`[trendEditor] DeepSeek içerik çok kısa (${content.length} karakter), konu atlanıyor: ${topic}`)
@@ -186,8 +201,10 @@ export const trendEditor = {
       const { outcome, lowConfidence } = await processNewsroomArticle(db, {
         editorId: 'trend',
         editorType: 'trend',   // ← trending badge için kalır
-        sourceLabel: 'Google Trends',
-        sourceUrl: topic.link ?? `https://trends.google.com/trends/explore?q=${encodeURIComponent(topic.title)}`,
+        sourceLabel: 'Google Search Grounding',
+        sourceUrl: generated.researchSources[0]?.url
+          ?? topic.link
+          ?? `https://trends.google.com/trends/explore?q=${encodeURIComponent(topic.title)}`,
         originalTitle: generated.title,
         originalSummary: generated.summary,
         originalContent: generated.content,
@@ -196,6 +213,7 @@ export const trendEditor = {
         ingestionSourceId: 'google-trends',
         forcedCategoryId: generated.category,  // ← AI'ın belirlediği gerçek kategori
         extraTags: ['trending', 'trend'],
+        researchSources: generated.researchSources,
         skipAiRewrite: true,
       })
 

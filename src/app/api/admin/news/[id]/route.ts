@@ -5,6 +5,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
 import { hasPermission } from '@/types/cms'
+import { sanitizeGroundingSources, type GroundingSource } from '@/lib/ai/liveResearch'
 import { newsDraftService } from '@/services/newsDraftService'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
@@ -48,6 +49,7 @@ interface UpdatePayload {
   /** Explicit live-blog mode for /canli/[slug] */
   isLiveBlog?: boolean
   liveUpdates?: Array<{ id?: string; content?: string; timestamp?: string | number; author?: string }>
+  aiResearchSources?: GroundingSource[]
 }
 
 function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
@@ -96,6 +98,9 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
   if (body.seoDescription?.trim()) update.seoDescription = body.seoDescription.trim()
   if (Array.isArray(body.seoKeywords)) {
     update.seoKeywords = body.seoKeywords.map((k) => k.trim().toLowerCase()).filter(Boolean)
+  }
+  if (Array.isArray(body.aiResearchSources)) {
+    update.aiResearchSources = sanitizeGroundingSources(body.aiResearchSources)
   }
   if (body.categoryId?.trim()) {
     const categoryId = body.categoryId.trim()

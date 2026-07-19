@@ -4,6 +4,7 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import type { Firestore } from 'firebase-admin/firestore'
 import { hasPermission } from '@/types/cms'
+import { sanitizeGroundingSources, type GroundingSource } from '@/lib/ai/liveResearch'
 import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
@@ -44,6 +45,7 @@ interface CreatePayload {
   additionalImages?: Array<{ url: string; caption?: string }>
   bodyBlocks?: ArticleBlock[]
   articleLayout?: 'standard' | 'longform'
+  aiResearchSources?: GroundingSource[]
 }
 
 async function slugTaken(db: Firestore, slug: string): Promise<boolean> {
@@ -112,6 +114,7 @@ export async function POST(request: Request) {
       seoKeywords: Array.isArray(body.seoKeywords)
         ? body.seoKeywords.map((k) => k.trim().toLowerCase()).filter(Boolean)
         : [],
+      aiResearchSources: sanitizeGroundingSources(body.aiResearchSources),
       categoryId,
       category: categoryId,
       status,
