@@ -173,9 +173,9 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
     await log({ level: 'warn', agent: 'deepseek', message: `[${itemId}] GYY hatası, fallback: ${String(err)}`, queueItemId: itemId })
   }
 
-  if (chiefResult.decision === 'rejected') {
+  if (chiefResult.decision === 'rejected' || chiefResult.decision === 'needs_revision') {
     await updateQueueItem(itemId, { status: 'rejected' as AiQueueStatus })
-    return { queueItemId: itemId, success: false, stage: 'gpt', decision: 'rejected', error: chiefResult.issues.join('; '), durationMs: Date.now() - startTime }
+    return { queueItemId: itemId, success: false, stage: 'gpt', decision: chiefResult.decision, error: chiefResult.issues.join('; '), durationMs: Date.now() - startTime }
   }
 
   // ── Stage 4: Publish to Firestore ─────────────────────────────────────────

@@ -1,8 +1,8 @@
 /**
  * GET|POST /api/cron/newsroom/ai-pipeline
  *
- * 5 dakikada bir çalışan AI pipeline cron job.
- * Bekleyen kuyruk öğelerini işler (batch: 5 haber/çalışma).
+ * Parallel aiQueue publisher. Disabled unless AI_QUEUE_PUBLISH_ENABLED=1
+ * so RSS newsQueue remains the canonical publish path.
  *
  * Auth: Bearer CRON_SECRET
  */
@@ -13,5 +13,21 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-const { GET, POST } = createNewsroomCronHandler('ai-pipeline', processPipelineQueue)
+async function runAiPipeline() {
+  if (process.env.AI_QUEUE_PUBLISH_ENABLED !== '1') {
+    return {
+      skipped: true,
+      reason: 'AI_QUEUE_PUBLISH_ENABLED is not 1 — use newsQueue process-queue instead',
+      processed: 0,
+      published: 0,
+      rejected: 0,
+      failed: 0,
+      durationMs: 0,
+      items: [],
+    }
+  }
+  return processPipelineQueue()
+}
+
+const { GET, POST } = createNewsroomCronHandler('ai-pipeline', runAiPipeline)
 export { GET, POST }

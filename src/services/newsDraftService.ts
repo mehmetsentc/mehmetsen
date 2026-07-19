@@ -68,6 +68,8 @@ export interface NewsroomDraftFields {
   needsAdminReview?: boolean
   spot?: string
   content?: string
+  bodyBlocks?: import('@/lib/articleBlocks').ArticleBlock[]
+  articleLayout?: 'standard' | 'longform'
   coverImageUrl?: string
   seoTitle?: string
   seoDescription?: string
@@ -128,6 +130,12 @@ function draftToPublishedNews(
     isTrending: 'isTrending' in draft ? draft.isTrending ?? false : false,
     ...('spot' in draft && draft.spot ? { spot: draft.spot } : {}),
     ...('content' in draft && draft.content ? { content: draft.content } : {}),
+    ...('bodyBlocks' in draft && Array.isArray(draft.bodyBlocks) && draft.bodyBlocks.length > 0
+      ? { bodyBlocks: draft.bodyBlocks }
+      : {}),
+    ...('articleLayout' in draft && draft.articleLayout
+      ? { articleLayout: draft.articleLayout }
+      : {}),
     ...('coverImageUrl' in draft && draft.coverImageUrl
       ? { coverImageUrl: draft.coverImageUrl }
       : {}),
@@ -189,6 +197,10 @@ export const newsDraftService = {
       summary: doc.summary,
       description: doc.description,
       content: doc.content ?? doc.description,
+      ...(Array.isArray(doc.bodyBlocks) && doc.bodyBlocks.length > 0
+        ? { bodyBlocks: doc.bodyBlocks, htmlContent: '' }
+        : {}),
+      ...(doc.articleLayout ? { articleLayout: doc.articleLayout } : {}),
       thumbnail: doc.thumbnail || snap.data()?.thumbnail || '',
       coverImageUrl: doc.coverImageUrl || doc.thumbnail || snap.data()?.coverImageUrl || '',
       category: doc.category,

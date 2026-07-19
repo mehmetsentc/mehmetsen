@@ -356,6 +356,53 @@ export function AdminNewsEditor({
         className={`${fieldInputCls} resize-y font-mono`}
         placeholder="Haber metni..."
       />
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={async () => {
+            if (!title.trim() && !content.trim()) {
+              toast.error('AI için başlık veya içerik girin')
+              return
+            }
+            try {
+              const token = await auth.currentUser?.getIdToken() ?? ''
+              const res = await fetch('/api/admin/ai-assist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  mode: content.trim().length > 80 ? 'rewrite' : 'create',
+                  input: [title, spot, summary, content].filter(Boolean).join('\n\n'),
+                  imageUrl: thumbnail || undefined,
+                }),
+              })
+              const data = await res.json() as {
+                title?: string
+                spot?: string
+                summary?: string
+                content?: string
+                bodyBlocks?: ArticleBlock[]
+                error?: string
+              }
+              if (!res.ok) throw new Error(data.error || 'AI başarısız')
+              if (data.title?.trim()) setTitle(data.title.trim())
+              if (data.spot?.trim()) setSpot(data.spot.trim())
+              if (data.summary?.trim()) setSummary(data.summary.trim())
+              if (data.content?.trim()) setContent(data.content.trim())
+              if (Array.isArray(data.bodyBlocks) && data.bodyBlocks.length > 0) {
+                setBodyBlocks(data.bodyBlocks)
+                toast.success('AI zengin gövde (H2/H3 + görsel blokları) oluşturuldu')
+              } else {
+                toast.success('AI metin üretti — bloklara dönüştürebilirsiniz')
+              }
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : 'AI isteği başarısız')
+            }
+          }}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+        >
+          AI ile zengin gövde oluştur
+        </button>
+      </div>
       <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">
         Zengin gövde blokları varsa bu alan geriye dönük düz metin özeti olarak saklanır.
       </p>

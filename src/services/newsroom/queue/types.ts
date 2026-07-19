@@ -15,6 +15,11 @@ export interface NewsQueueDocument {
   maxAttempts: number
   lastError?: string | null
   publishedNewsId?: string | null
+  /** Lease owner id (process instance) while status=processing */
+  leaseOwner?: string | null
+  /** Epoch ms when lease expires; stale processing can be reclaimed */
+  leaseExpiresAt?: number | null
+  claimedAt?: number | null
   createdAt: number
   scheduledAt: number
   updatedAt: number

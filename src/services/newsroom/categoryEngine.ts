@@ -678,8 +678,9 @@ export function resolveCategoryForEditor(
   editorType: NewsroomEditorType,
   forcedCategoryId?: string
 ): string {
-  // Hard locks — editor type always wins for these
-  if (editorType === 'local') return 'yerel-haber'
+  // Hard locks — only trend / influencer stay locked to their feed identity.
+  // Local was previously hard-locked to yerel-haber; that trapped foreign/national
+  // stories from local RSS. Treat local forcedCategoryId as a prior instead.
   if (editorType === 'trend') {
     // AI'ın belirlediği gerçek kategoriyi kullan (futbol, magazin, vb.)
     // forcedCategoryId yoksa veya 'trend' ise fallback olarak 'trend' kategorisine düş
@@ -693,6 +694,16 @@ export function resolveCategoryForEditor(
   const normalizedForced = forcedCategoryId?.trim()
     ? normalizeNewsroomCategory(forcedCategoryId)
     : null
+
+  // Local prior: prefer AI when it found a specific non-local category
+  if (editorType === 'local') {
+    if (normalizedAi && normalizedAi !== 'gundem' && normalizedAi !== 'yerel-haber') {
+      return normalizedAi
+    }
+    return normalizedForced && normalizedForced !== 'gundem'
+      ? normalizedForced
+      : 'yerel-haber'
+  }
 
   if (!normalizedForced) return normalizedAi
 

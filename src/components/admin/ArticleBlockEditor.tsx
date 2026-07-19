@@ -26,6 +26,7 @@ function newId(): string {
 
 function createBlock(type: ArticleBlock['type']): ArticleBlock {
   const id = newId()
+  // Default H2 — page title is the only H1
   if (type === 'heading') return { id, type, level: 2, text: '' }
   if (type === 'paragraph') return { id, type, text: '' }
   if (type === 'list') return { id, type, style: 'unordered', items: [''] }
@@ -43,12 +44,16 @@ type EditorBlockType =
   | Exclude<ArticleBlock['type'], 'heading'>
 
 function editorBlockType(block: ArticleBlock): EditorBlockType {
-  return block.type === 'heading' ? `heading-${block.level}` : block.type
+  if (block.type !== 'heading') return block.type
+  const level = block.level === 1 ? 2 : block.level
+  return `heading-${level}` as EditorBlockType
 }
 
 function convertBlock(block: ArticleBlock, nextType: EditorBlockType): ArticleBlock {
   if (nextType.startsWith('heading-')) {
-    const level = Number(nextType.slice(-1)) as 1 | 2 | 3 | 4
+    const requested = Number(nextType.slice(-1)) as 1 | 2 | 3 | 4
+    // Coerce H1 → H2 (page title owns H1)
+    const level = (requested === 1 ? 2 : requested) as 2 | 3 | 4
     const text = block.type === 'heading' || block.type === 'paragraph' ? block.text : ''
     return { id: block.id, type: 'heading', level, text }
   }
@@ -176,7 +181,7 @@ export function ArticleBlockEditor({
           </button>
         )}
         {([
-          ['heading', 'Başlık H1–H4'],
+          ['heading', 'Başlık H2–H4'],
           ['paragraph', 'Paragraf'],
           ['list', 'Liste'],
           ['image', 'Görsel'],
@@ -218,7 +223,6 @@ export function ArticleBlockEditor({
                     className="min-w-0 rounded-md border border-violet-500/30 bg-[rgb(var(--color-card))] px-2 py-1 text-xs font-semibold text-[rgb(var(--color-text))]"
                     aria-label={`${index + 1}. blok türü`}
                   >
-                    <option value="heading-1">H1 başlık</option>
                     <option value="heading-2">H2 başlık</option>
                     <option value="heading-3">H3 başlık</option>
                     <option value="heading-4">H4 başlık</option>
@@ -298,19 +302,43 @@ export function ArticleBlockEditor({
                   )}
                   <input value={block.alt ?? ''} onChange={(event) => update(index, { ...block, alt: event.target.value })} className={inputClass} placeholder="SEO / erişilebilirlik alt metni" />
                   <input value={block.caption ?? ''} onChange={(event) => update(index, { ...block, caption: event.target.value })} className={inputClass} placeholder="Görsel altyazısı" />
-                  <button
-                    type="button"
-                    onClick={() => void generateImageCaption(block.id, block.url)}
-                    disabled={!block.url.trim() || captionGeneratingId !== null}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {captionGeneratingId === block.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3.5 w-3.5" />
-                    )}
-                    AI altyazı oluştur
-                  </button>
+                  <input value={block.credit ?? ''} onChange={(event) => update(index, { ...block, credit: event.target.value })} className={inputClass} placeholder="Görsel kredisi / kaynak" />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void generateImageCaption(block.id, block.url)}
+                      disabled={!block.url.trim() || captionGeneratingId !== null}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {captionGeneratingId === block.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      AI altyazı oluştur
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const headingText =
+                          block.caption?.trim() ||
+                          block.alt?.trim() ||
+                          articleTitle.trim() ||
+                          'Görsel başlığı'
+                        insertAfter(index, 'heading')
+                        const current = blocksRef.current
+                        const headingIndex = index + 1
+                        const heading = current[headingIndex]
+                        if (heading?.type === 'heading') {
+                          update(headingIndex, { ...heading, level: 2, text: headingText.slice(0, 90) })
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/40 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-500/10 dark:text-violet-300"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Görsel altı H2 ekle
+                    </button>
+                  </div>
                 </div>
               )}
 

@@ -76,8 +76,15 @@ service cloud.firestore {
     // username range/limit queries). `read` covers both `get` and `list`.
     match /users/{userId} {
       allow read: if true;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && (!('role' in request.resource.data)
+            || request.resource.data.role == 'user'
+            || request.resource.data.role == null);
+      // Owners may update profile fields but cannot escalate role / privileged keys.
+      allow update: if isAdmin()
+        || (isOwner(userId)
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['role', 'permissions', 'isAdmin', 'admin']));
       allow delete: if false;
     }
 

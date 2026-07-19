@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
+import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 
 type AssistMode = 'create' | 'rewrite' | 'seo' | 'tags' | 'headline' | 'trends' | 'keywords'
 
 const SYSTEM_PROMPTS: Record<AssistMode, string> = {
   create: `Sen deneyimli bir Türk gazetecisisin. Verilen konuda profesyonel bir haber metni yaz.
 JSON formatında yanıt ver: {"title":"...","content":"...","summary":"...","spot":"..."}
-spot: 5W+1H (Kim,Ne,Nerede,Ne Zaman,Neden,Nasıl) yanıtlayan 2-4 cümlelik haber girizgahı.`,
+spot: 5W+1H (Kim,Ne,Nerede,Ne Zaman,Neden,Nasıl) yanıtlayan 2-4 cümlelik haber girizgahı.
+content içinde ## H2 ve ### H3 markdown başlıkları kullan. # H1 KULLANMA (sayfa başlığı H1'dir).`,
 
   rewrite: `Sen deneyimli bir Türk gazete editörüsün. Verilen haberi yeniden yaz, daha akıcı ve profesyonel yap.
-JSON: {"title":"...","content":"...","summary":"...","spot":"..."}`,
+JSON: {"title":"...","content":"...","summary":"...","spot":"..."}
+content içinde ## / ### başlıklar kullan; # H1 yazma.`,
 
   seo: `Sen bir SEO uzmanısın. Verilen haber başlığı için SEO meta verisi oluştur.
 JSON: {"seoTitle":"...","seoDescription":"..."}
@@ -30,7 +34,6 @@ Kişi adları, yer adları, konu başlıkları ve arama niyetiyle eşleşen teri
 }
 
 async function callAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
-  // DeepSeek (tek sağlayıcı)
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (deepseekKey) {
     const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
@@ -42,9 +45,9 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
         response_format: { type: 'json_object' },
         temperature: 0.7,
-        max_tokens: 1500,
+        max_tokens: 2500,
       }),
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(35_000),
     })
     if (!res.ok) throw new Error(`DeepSeek error ${res.status}`)
     const json = await res.json() as { choices: Array<{ message: { content: string } }> }
@@ -58,17 +61,42 @@ export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'ai:use')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { mode: AssistMode; input?: string }
-  try { body = await request.json() as { mode: AssistMode; input?: string } }
+  let body: { mode: AssistMode; input?: string; imageUrl?: string }
+  try { body = await request.json() as { mode: AssistMode; input?: string; imageUrl?: string } }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
-  const { mode, input = '' } = body
+  const { mode, input = '', imageUrl } = body
   if (!mode || !SYSTEM_PROMPTS[mode]) return NextResponse.json({ error: 'Invalid mode' }, { status: 400 })
 
   const userMessage = mode === 'trends' ? 'Türkiye gündemini analiz et.' : input.trim() || 'Haber içeriği sağlanmadı.'
 
   try {
     const parsed = await callAi(SYSTEM_PROMPTS[mode], userMessage)
+
+    if (mode === 'create' || mode === 'rewrite') {
+      const title = String(parsed.title ?? '').trim()
+      const content = String(parsed.content ?? '').trim()
+      const spot = String(parsed.spot ?? '').trim()
+      const summary = String(parsed.summary ?? '').trim()
+      const bodyBlocks = buildBodyBlocksFromAi({
+        title: title || 'Haber',
+        spot,
+        summary,
+        content,
+        imageUrl: imageUrl?.trim(),
+        imageCaption: title || undefined,
+      })
+      return NextResponse.json({
+        success: true,
+        mode,
+        title,
+        spot,
+        summary,
+        content: articleBlocksToPlainText(bodyBlocks) || content,
+        bodyBlocks,
+      })
+    }
+
     return NextResponse.json({ success: true, mode, ...parsed })
   } catch (error) {
     console.error('[ai-assist]', error)

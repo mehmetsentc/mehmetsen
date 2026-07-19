@@ -9,6 +9,7 @@ import {
   markQueueFailed,
   markQueuePublished,
   markQueueSkipped,
+  releaseQueueClaim,
 } from '@/services/newsroom/queue/newsQueueService'
 import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
@@ -50,6 +51,15 @@ export async function processNewsQueue(
   for (const job of batch) {
     if (Date.now() - startTime > WALL_CLOCK_BUDGET_MS) {
       console.warn(`[processNewsQueue] wall-clock budget (${WALL_CLOCK_BUDGET_MS / 1000}s) aşıldı, kalan job'lar sonraki çalışmaya bırakıldı`)
+      // Release unprocessed claimed jobs so they are not stuck in processing
+      const remaining = batch.slice(batch.indexOf(job))
+      for (const leftover of remaining) {
+        try {
+          await releaseQueueClaim(db, leftover.id)
+        } catch (err) {
+          console.error(`[processNewsQueue] releaseQueueClaim failed for ${leftover.id}:`, err)
+        }
+      }
       break
     }
     const { data } = job

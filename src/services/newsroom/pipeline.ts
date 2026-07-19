@@ -31,6 +31,8 @@ import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similari
 import { factChecker } from '@/services/newsroom/factChecker'
 import { geoEngine } from '@/services/newsroom/geoEngine'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
+import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
+import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
 
 /** Minimum total content length (chars) to proceed to AI rewrite. */
@@ -502,6 +504,7 @@ export async function processNewsroomArticle(
       sourceUrl: workingInput.sourceUrl,
       originalTitle: workingInput.originalTitle,
       originalSummary: workingInput.originalSummary,
+      originalContent: workingInput.originalContent,
       rewritten,
     })
 
@@ -539,17 +542,11 @@ export async function processNewsroomArticle(
     }
 
     // ── AI Final Editor: category sanity check ──────────────────────────────
-    // Local worker'dan gelen haberler categoryEngine.resolve() tarafından
-    // zaten 'yerel-haber' olarak atanır — AI kontrolü bu kararı ezmemeli.
-    // Çoğu forcedCategoryId da editör kararı sayılır; ancak world worker'ın
-    // forced 'dunya' hint'i TR yerel/gezi haberlerini kilitlemesin diye
-    // dunya için AI kontrolüne izin verilir.
+    // Worker forcedCategoryId is a prior/hint, not a hard lock (except trend/influencer).
+    // Local feeds also go through AI so foreign/national stories aren't stuck as yerel-haber.
     const skipAiCategoryCheck =
-      workingInput.editorType === 'local' ||
       workingInput.editorType === 'trend' ||
-      workingInput.editorType === 'influencer' ||
-      (!!workingInput.forcedCategoryId &&
-        workingInput.forcedCategoryId !== 'dunya')
+      workingInput.editorType === 'influencer'
 
     if (!skipAiCategoryCheck) {
       try {
@@ -565,6 +562,24 @@ export async function processNewsroomArticle(
           )
           classification.categoryId = aiCheck.categoryId
           classification.categoryConfidence = aiCheck.confidence
+          // Re-run heuristic validation so AI cannot undo sport/local/breaking guards
+          const revalidated = categoryEngine.validate({
+            aiCategoryId: classification.categoryId,
+            categoryConfidence: classification.categoryConfidence,
+            aiIsBreaking: classification.isBreaking,
+            title: rewritten.title,
+            body: rewritten.description,
+            editorType: workingInput.editorType,
+          })
+          classification.categoryId = revalidated.categoryId
+          classification.categoryConfidence = revalidated.categoryConfidence
+          classification.isBreaking = revalidated.isBreaking
+          if (revalidated.overrides.length > 0) {
+            classification.overrides.push(...revalidated.overrides)
+            console.log(
+              `[newsroom/category] post-AI revalidate: ${revalidated.overrides.join('; ')}`
+            )
+          }
         }
       } catch {
         // Non-blocking — if AI check fails, keep the rule-based category
@@ -597,10 +612,15 @@ export async function processNewsroomArticle(
       text: `${rewritten.title}\n\n${rewritten.description}`,
       mediaUrls: workingInput.imageUrl ? [{ url: workingInput.imageUrl, type: 'image' }] : [],
     })
-    // Güvenilir haber kaynaklarından gelen içerik — moderation hatası olsa bile approve et
-    const moderation = moderationRaw.reasons.some(r => r.startsWith('error:'))
-      ? { ...moderationRaw, decision: 'approve' as const }
-      : moderationRaw
+    // Fail-closed: moderation API errors stay as review → draft (never auto-approve)
+    const moderationFailClosed =
+      process.env.NEWSROOM_MODERATION_FAIL_CLOSED !== '0'
+    const moderation =
+      moderationFailClosed
+        ? moderationRaw
+        : moderationRaw.reasons.some((r) => r.startsWith('error:'))
+          ? { ...moderationRaw, decision: 'approve' as const }
+          : moderationRaw
 
     const now = Date.now()
     const locationRaw = toLocation(city, district, country)
@@ -632,13 +652,17 @@ export async function processNewsroomArticle(
     const factCheckFailedBadly =
       factCheck.confidenceScore < 35 ||
       factCheck.flags.includes('speculation') ||
-      factCheck.flags.includes('title_mismatch')
+      factCheck.flags.includes('title_mismatch') ||
+      factCheck.flags.includes('unsupported_claims')
 
     // ── YAYINLAMA KARARI ─────────────────────────────────────────────────────────
     // Gate keeper 'draft' kararı → ham içerik / kalite sorunu → taslağa al
     // Gate keeper 'publish' kararı → AI yazdı, kalite geçti → eski fact-check koşulları geçerlir
     const gateDraft = !workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'draft'
     const isFallbackContent = !workingInput.skipAiRewrite && rewritten.categoryConfidence === 0
+    const providerFallbackDraft =
+      factCheck.flags.includes('provider_fallback') ||
+      factCheck.flags.includes('factcheck_heuristic')
 
     if (gateDraft) {
       console.warn(
@@ -653,24 +677,38 @@ export async function processNewsroomArticle(
     const needsDraft =
       gateDraft ||
       isFallbackContent ||
+      providerFallbackDraft ||
       factCheck.confidenceScore < NEWSROOM_AUTO_PUBLISH_THRESHOLD ||
       factCheckFailedBadly ||
-      moderation.decision === 'review'
+      moderation.decision === 'review' ||
+      moderation.decision !== 'approve'
 
     // Estimate reading time from AI-written content
     const readingWords = (rewritten.description || '').trim().split(/\s+/).filter(Boolean).length
     const readingTimeMinutes = workingInput.readingTimeMinutes ?? Math.max(1, Math.ceil(readingWords / 200))
+
+    const bodyBlocks = buildBodyBlocksFromAi({
+      title: rewritten.title,
+      spot: (rewritten as AiRewriteResult).spot ?? rewritten.summary,
+      summary: rewritten.summary,
+      content: rewritten.description,
+      imageUrl: workingInput.imageUrl,
+      imageCaption: rewritten.title,
+    })
+    const plainFromBlocks = articleBlocksToPlainText(bodyBlocks)
+    const contentBody = plainFromBlocks || rewritten.description
 
     const doc = {
       title: rewritten.title,
       // Journalistic lead paragraph (2-4 sentences, answers 5W+H)
       spot: (rewritten as AiRewriteResult).spot ?? rewritten.summary,
       summary: rewritten.summary,
-      description: rewritten.description,
-      // Full AI-written article body
-      content: rewritten.description,
-      // Extracted HTML from source page (for rich rendering)
-      htmlContent: workingInput.htmlContent ?? '',
+      description: contentBody,
+      // Full AI-written article body (plain fallback)
+      content: contentBody,
+      bodyBlocks,
+      // Extracted HTML from source page (for rich rendering) — clear when bodyBlocks present
+      htmlContent: bodyBlocks.length > 0 ? '' : (workingInput.htmlContent ?? ''),
       // SEO fields — generated by AI, optimized for search
       seoTitle: (rewritten as AiRewriteResult).seoTitle ?? rewritten.title,
       seoDescription: (rewritten as AiRewriteResult).seoDescription ?? rewritten.summary,
@@ -683,7 +721,9 @@ export async function processNewsroomArticle(
       categoryId: resolvedCategory,
       // Travel guides use the wider editorial rhythm even when they still
       // arrive as legacy plain text. Editors can later enrich them with blocks.
-      articleLayout: resolvedCategory === 'gezi' ? 'longform' : 'standard',
+      articleLayout: (resolvedCategory === 'gezi' ? 'longform' : 'standard') as
+        | 'standard'
+        | 'longform',
       city: location?.city ?? '',
       district: location?.district ?? '',
       citySlug: resolvedCitySlug,

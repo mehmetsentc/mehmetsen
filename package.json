@@ -13,6 +13,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "sync-events": "node scripts/sync-events.mjs",
     "ingest-news": "node scripts/ingest-news.mjs",
     "ingest-news-batch": "node scripts/ingest-news-batch.mjs",
@@ -80,6 +82,7 @@
     "prettier": "^3.4.0",
     "prettier-plugin-tailwindcss": "^0.6.9",
     "tailwindcss": "^3.4.0",
-    "tsx": "^4.22.4"
+    "tsx": "^4.22.4",
+    "vitest": "3.2.4"
   }
 }

@@ -9,6 +9,8 @@ export interface FactCheckInput {
   sourceUrl: string
   originalTitle: string
   originalSummary: string
+  /** Full source body when available — preferred over summary-only checks. */
+  originalContent?: string
   rewritten: AiRewriteResult
 }
 
@@ -35,11 +37,16 @@ function getDeepSeekConfig(): { apiKey: string; model: string } | null {
   return { apiKey, model }
 }
 
-function heuristicFactCheck(input: FactCheckInput): FactCheckResult {
-  const flags: string[] = []
-  let score = 72
+function extractNumbers(text: string): string[] {
+  return (text.match(/\d+(?:[.,]\d+)?/g) ?? []).slice(0, 40)
+}
 
-  const origLen = input.originalSummary.length + input.originalTitle.length
+function heuristicFactCheck(input: FactCheckInput): FactCheckResult {
+  const flags: string[] = ['factcheck_heuristic']
+  let score = 55
+
+  const sourceBody = (input.originalContent || input.originalSummary || '').trim()
+  const origLen = sourceBody.length + input.originalTitle.length
   const newLen = input.rewritten.description.length + input.rewritten.title.length
 
   if (newLen < origLen * 0.3 && origLen > 200) {
@@ -52,16 +59,28 @@ function heuristicFactCheck(input: FactCheckInput): FactCheckResult {
     score -= 8
   }
 
-  const combined = `${input.rewritten.title} ${input.rewritten.description}`.toLowerCase()
-  for (const kw of URGENCY_KEYWORDS) {
-    if (combined.includes(kw)) {
-      score += 5
-      break
+  const sourceNumbers = new Set(extractNumbers(sourceBody))
+  const rewriteNumbers = extractNumbers(input.rewritten.description)
+  if (rewriteNumbers.length > 0 && sourceNumbers.size > 0) {
+    const unsupported = rewriteNumbers.filter((n) => !sourceNumbers.has(n))
+    if (unsupported.length >= 3) {
+      flags.push('unsupported_claims')
+      score -= 20
     }
   }
 
-  // AI-rewritten content doesn't embed "kaynak:" inline — attribution is stored
-  // in the article's source field, not body text. Skipping this penalty.
+  if (sourceBody.length > 400 && input.rewritten.description.length > sourceBody.length * 2.2) {
+    flags.push('thin_vs_source')
+    score -= 12
+  }
+
+  const combined = `${input.rewritten.title} ${input.rewritten.description}`.toLowerCase()
+  for (const kw of URGENCY_KEYWORDS) {
+    if (combined.includes(kw)) {
+      score += 3
+      break
+    }
+  }
 
   return {
     confidenceScore: Math.min(100, Math.max(0, score)),
@@ -72,6 +91,11 @@ function heuristicFactCheck(input: FactCheckInput): FactCheckResult {
 async function deepSeekFactCheck(input: FactCheckInput): Promise<FactCheckResult> {
   const config = getDeepSeekConfig()
   if (!config) return heuristicFactCheck(input)
+
+  const useFullSource = process.env.NEWSROOM_FACTCHECK_FULL_SOURCE !== '0'
+  const sourceBody = useFullSource
+    ? (input.originalContent || input.originalSummary || '').slice(0, 8000)
+    : input.originalSummary.slice(0, 800)
 
   const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -89,22 +113,24 @@ async function deepSeekFactCheck(input: FactCheckInput): Promise<FactCheckResult
           content: `Sen bir haber doğruluk denetçisisin. Kaynak haber ile yeniden yazılmış metni karşılaştır.
 Yanıtı YALNIZCA JSON ver:
 {"confidenceScore":0-100,"flags":["..."]}
-confidenceScore: yeniden yazımın kaynakla tutarlılığı, spekülasyon yokluğu, atıf varlığı.
-flags: sorun varsa kısa İngilizce kodlar (speculation, missing_attribution, title_mismatch, thin_rewrite).`,
+confidenceScore: yeniden yazımın kaynakla tutarlılığı, spekülasyon yokluğu, sayı/isim/alıntı korunumu.
+flags: speculation, missing_attribution, title_mismatch, thin_rewrite, unsupported_claims.
+Kaynakta olmayan sayı, kişi adı, alıntı veya nedensellik varsa unsupported_claims ekle ve skoru düşür.`,
         },
         {
           role: 'user',
           content: `Kaynak: ${input.sourceLabel}
 URL: ${input.sourceUrl}
 Orijinal başlık: ${input.originalTitle}
-Orijinal özet: ${input.originalSummary.slice(0, 800)}
+Orijinal içerik:
+${sourceBody}
 ---
 Yeniden yazılmış başlık: ${input.rewritten.title}
-Yeniden yazılmış metin: ${input.rewritten.description.slice(0, 1200)}`,
+Yeniden yazılmış metin: ${input.rewritten.description.slice(0, 2500)}`,
         },
       ],
     }),
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(25_000),
   })
 
   if (!res.ok) {
@@ -120,7 +146,7 @@ Yeniden yazılmış metin: ${input.rewritten.description.slice(0, 1200)}`,
 
   try {
     const parsed = JSON.parse(content) as { confidenceScore?: number; flags?: string[] }
-    const score = Math.min(100, Math.max(0, Number(parsed.confidenceScore) || 72))
+    const score = Math.min(100, Math.max(0, Number(parsed.confidenceScore) || 60))
     const flags = Array.isArray(parsed.flags) ? parsed.flags.map(String).filter(Boolean) : []
     return { confidenceScore: score, flags }
   } catch {

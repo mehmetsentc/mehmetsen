@@ -39,7 +39,9 @@ ALAN TANIMLARI:
 - title: Gazete manşeti, max 70 karakter, sadece ilk harf büyük
 - spot: Lider paragraf. Kim+Ne+Nerede+Ne zaman+Neden. 2-4 cümle, 60-120 kelime
 - summary: Feed teaser, max 120 karakter, title'dan FARKLI bilgi
-- content: Haber gövdesi, min 200 kelime, 4-6 paragraf. Giriş + olgular + arka plan
+- content: Haber gövdesi, min 200 kelime. Bölümleri ## H2 ve ### H3 markdown başlıklarıyla ayır.
+  Sayfa başlığı H1 olduğu için content içinde # H1 KULLANMA. Görsel anlatımı için kısa ## başlıklar kullan.
+  Paragraflar arası boş satır (\\n\\n) kullan. 4-6 paragraf + 2-4 başlık idealdir.
 - seoTitle: SEO başlık, 55-65 karakter
 - seoDescription: Meta description, 145-160 karakter
 

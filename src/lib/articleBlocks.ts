@@ -50,7 +50,9 @@ export function sanitizeArticleBlocks(value: unknown): ArticleBlock[] {
     if (block.type === 'heading') {
       const text = cleanText(block.text, 300)
       if (!text) return []
-      const level = block.level === 1 || block.level === 3 || block.level === 4 ? block.level : 2
+      // Page title owns the only H1 — coerce body H1 → H2 for SEO/accessibility.
+      const rawLevel = block.level === 1 || block.level === 3 || block.level === 4 ? block.level : 2
+      const level = rawLevel === 1 ? 2 : rawLevel
       return [{ id, type: 'heading', level, text }]
     }
 
@@ -176,7 +178,8 @@ export function textToArticleBlocks(text: string): ArticleBlock[] {
       return { id, type: 'heading', level: 2, text: chunk.slice(3).trim() }
     }
     if (chunk.startsWith('# ')) {
-      return { id, type: 'heading', level: 1, text: chunk.slice(2).trim() }
+      // Body must not emit H1 — treat as H2
+      return { id, type: 'heading', level: 2, text: chunk.slice(2).trim() }
     }
     const lines = chunk.split('\n').map((line) => line.trim()).filter(Boolean)
     if (lines.length > 0 && lines.every((line) => /^[-*]\s+/.test(line))) {
