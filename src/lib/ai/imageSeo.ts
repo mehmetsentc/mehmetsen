@@ -1,10 +1,17 @@
-const SYSTEM_PROMPT = `Sen NaHaber'in görsel SEO editörüsün. Haber görselleri için Türkçe SEO açıklaması (alt text / image caption) yazıyorsun.
+import { isKnownNewsImageHost } from '@/constants/imageHosts'
+
+const SYSTEM_PROMPT = `Sen NaHaber'in görsel editörüsün. Haber görsellerini analiz edip Türkçe yayın metadatası hazırlıyorsun.
 
 Kurallar:
-- 10-20 kelime, doğal ve akıcı Türkçe
-- Haberin konusu ve görselin içeriğiyle uyumlu olsun
+- caption 10-20 kelime, doğal ve akıcı Türkçe
+- alt erişilebilirlik için görselde gerçekten görüleni en fazla 120 karakterle anlatsın
+- Haberin konusu ve görselin içeriğiyle uyumlu ol
+- Görselde açıkça görünmeyen kişi, yer, tarih veya olayı uydurma
 - Clickbait, klişe veya "görsel temsilidir" gibi boş ifadeler kullanma
-- Yalnızca JSON döndür: {"caption": "..."}`
+- role: hero, inline, gallery veya skip
+- relevanceScore: haberle ilgisini 0-100 puanla
+- Yalnızca JSON döndür:
+{"caption":"...","alt":"...","creditHint":null,"role":"hero|inline|gallery|skip","relevanceScore":0}`
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -14,6 +21,14 @@ export interface ImageSeoInput {
   title: string
   content?: string
   summary?: string
+}
+
+export interface ImageAnalysis {
+  caption: string
+  alt: string
+  creditHint: string | null
+  role: 'hero' | 'inline' | 'gallery' | 'skip'
+  relevanceScore: number
 }
 
 function buildUserPrompt(input: ImageSeoInput, hasVision: boolean): string {
@@ -33,21 +48,61 @@ function buildUserPrompt(input: ImageSeoInput, hasVision: boolean): string {
   return lines.join('\n')
 }
 
-function parseCaption(raw: string): string | null {
+function parseAnalysis(raw: string): ImageAnalysis | null {
   try {
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-    const parsed = JSON.parse(cleaned) as { caption?: unknown }
+    const parsed = JSON.parse(cleaned) as Record<string, unknown>
     const caption = typeof parsed.caption === 'string' ? parsed.caption.trim() : ''
-    return caption ? caption.slice(0, 200) : null
+    if (!caption) return null
+    const alt = typeof parsed.alt === 'string' ? parsed.alt.trim() : caption
+    const role =
+      parsed.role === 'hero' || parsed.role === 'gallery' || parsed.role === 'skip'
+        ? parsed.role
+        : 'inline'
+    const score = Number(parsed.relevanceScore)
+    return {
+      caption: caption.slice(0, 200),
+      alt: (alt || caption).slice(0, 120),
+      creditHint:
+        typeof parsed.creditHint === 'string' && parsed.creditHint.trim()
+          ? parsed.creditHint.trim().slice(0, 120)
+          : null,
+      role,
+      relevanceScore: Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 50,
+    }
   } catch {
     const trimmed = raw.trim()
-    return trimmed ? trimmed.slice(0, 200) : null
+    return trimmed
+      ? {
+          caption: trimmed.slice(0, 200),
+          alt: trimmed.slice(0, 120),
+          creditHint: null,
+          role: 'inline',
+          relevanceScore: 50,
+        }
+      : null
+  }
+}
+
+export function isAllowedVisionImageUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl)
+    if (url.protocol !== 'https:') return false
+    const host = url.hostname.toLowerCase()
+    return (
+      host === 'storage.googleapis.com' ||
+      host.endsWith('.storage.googleapis.com') ||
+      isKnownNewsImageHost(host)
+    )
+  } catch {
+    return false
   }
 }
 
 async function fetchImageAsBase64(
   url: string
 ): Promise<{ data: string; mimeType: string } | null> {
+  if (!isAllowedVisionImageUrl(url)) return null
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(12_000) })
     if (!res.ok) return null
@@ -61,7 +116,7 @@ async function fetchImageAsBase64(
   }
 }
 
-async function generateWithGeminiVision(input: ImageSeoInput): Promise<string | null> {
+async function generateWithGeminiVision(input: ImageSeoInput): Promise<ImageAnalysis | null> {
   const apiKey = process.env.GEMINI_API_KEY?.trim()
   if (!apiKey) return null
 
@@ -84,7 +139,7 @@ async function generateWithGeminiVision(input: ImageSeoInput): Promise<string | 
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         generationConfig: {
           temperature: 0.35,
-          maxOutputTokens: 220,
+          maxOutputTokens: 350,
           responseMimeType: 'application/json',
         },
       }),
@@ -95,13 +150,13 @@ async function generateWithGeminiVision(input: ImageSeoInput): Promise<string | 
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
     }
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-    return raw ? parseCaption(raw) : null
+    return raw ? parseAnalysis(raw) : null
   } catch {
     return null
   }
 }
 
-async function generateWithDeepSeek(input: ImageSeoInput): Promise<string | null> {
+async function generateWithDeepSeek(input: ImageSeoInput): Promise<ImageAnalysis | null> {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
@@ -118,21 +173,25 @@ async function generateWithDeepSeek(input: ImageSeoInput): Promise<string | null
         ],
         response_format: { type: 'json_object' },
         temperature: 0.35,
-        max_tokens: 220,
+        max_tokens: 350,
       }),
       signal: AbortSignal.timeout(20_000),
     })
     if (!res.ok) return null
     const json = await res.json() as { choices: Array<{ message: { content: string } }> }
     const raw = json.choices[0]?.message?.content?.trim()
-    return raw ? parseCaption(raw) : null
+    return raw ? parseAnalysis(raw) : null
   } catch {
     return null
   }
 }
 
-export async function generateImageSeoCaption(input: ImageSeoInput): Promise<string | null> {
+export async function generateImageAnalysis(input: ImageSeoInput): Promise<ImageAnalysis | null> {
   const vision = await generateWithGeminiVision(input)
   if (vision) return vision
   return generateWithDeepSeek(input)
+}
+
+export async function generateImageSeoCaption(input: ImageSeoInput): Promise<string | null> {
+  return (await generateImageAnalysis(input))?.caption ?? null
 }

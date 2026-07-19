@@ -4,6 +4,7 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
+import { hasPermission } from '@/types/cms'
 import { newsDraftService } from '@/services/newsDraftService'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
@@ -240,6 +241,12 @@ export async function PUT(request: Request, context: RouteContext) {
     body = await request.json() as UpdatePayload
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+  if (body.status?.trim() === 'published' && !hasPermission(auth.role, 'news:publish')) {
+    return NextResponse.json(
+      { error: 'Bu hesabın doğrudan yayınlama yetkisi yok; haber incelemeye gönderilmeli' },
+      { status: 403 }
+    )
   }
 
   try {

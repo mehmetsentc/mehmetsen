@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import type { Firestore } from 'firebase-admin/firestore'
+import { hasPermission } from '@/types/cms'
 import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
@@ -64,6 +65,12 @@ export async function POST(request: Request) {
 
   if (!body.title?.trim()) {
     return NextResponse.json({ error: 'Başlık gerekli' }, { status: 400 })
+  }
+  if (body.status?.trim() === 'published' && !hasPermission(auth.role, 'news:publish')) {
+    return NextResponse.json(
+      { error: 'Bu hesabın doğrudan yayınlama yetkisi yok; haber incelemeye gönderilmeli' },
+      { status: 403 }
+    )
   }
 
   try {

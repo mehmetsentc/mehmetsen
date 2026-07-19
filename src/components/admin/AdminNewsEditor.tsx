@@ -4,10 +4,11 @@ import { useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus,
+  Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
+import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
@@ -16,6 +17,25 @@ import { auth } from '@/lib/firebase/auth'
 import type { Post } from '@/types/post'
 import type { ArticleBlock } from '@/lib/articleBlocks'
 import type { AdminNewsItem } from '@/services/adminNewsService'
+
+interface ProfessionalAiResult {
+  title?: string
+  spot?: string
+  summary?: string
+  content?: string
+  bodyBlocks?: ArticleBlock[]
+  seoTitle?: string
+  seoDescription?: string
+  categoryId?: string
+  tags?: string[]
+  seoKeywords?: string[]
+  imageOrder?: string[]
+  imageCaption?: string
+  additionalImages?: AdditionalImageItem[]
+  qualityScore?: number
+  gateDecision?: 'publish' | 'review'
+  error?: string
+}
 
 export type AdminNewsEditorMode = 'create' | 'edit'
 export type AdminNewsEditorVariant = 'drawer' | 'page'
@@ -119,6 +139,9 @@ export function AdminNewsEditor({
   )
   const [mediaUploading, setMediaUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [aiPreparing, setAiPreparing] = useState(false)
+  const [aiQualityScore, setAiQualityScore] = useState<number | null>(null)
+  const [showAiPreview, setShowAiPreview] = useState(false)
 
   const headerTitle = mode === 'create' ? 'Yeni Haber' : 'Haberi Düzenle'
   const saveLabel = mode === 'create' ? 'Yayınla' : 'Kaydet'
@@ -203,7 +226,112 @@ export function AdminNewsEditor({
             ...(districtSlug ? { districtSlug } : {}),
           }
         : {}),
+    }
   }
+
+  const runProfessionalAi = async (autoPublish: boolean) => {
+    const rawInput = [title, spot, summary, content].filter(Boolean).join('\n\n').trim()
+    if (rawInput.length < 80) {
+      toast.error('AI editör için en az 80 karakter ham haber metni girin')
+      return
+    }
+    if (mediaUploading) {
+      toast.error('Önce görsel yüklemesinin tamamlanmasını bekleyin')
+      return
+    }
+
+    setAiPreparing(true)
+    try {
+      const currentUser = auth.currentUser
+      if (!currentUser) throw new Error('Giriş gerekli')
+      const token = await currentUser.getIdToken()
+      const imageUrls = [thumbnail, ...additionalImages.map((image) => image.url)].filter(Boolean)
+      const res = await fetch('/api/admin/ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mode: 'publish-ready', input: rawInput, imageUrls }),
+      })
+      const data = await res.json() as ProfessionalAiResult
+      if (!res.ok) throw new Error(data.error || 'AI editör haberi hazırlayamadı')
+
+      const nextTitle = data.title?.trim() || title
+      const nextSpot = data.spot?.trim() || spot
+      const nextSummary = data.summary?.trim() || summary
+      const nextContent = data.content?.trim() || content
+      const nextBlocks = Array.isArray(data.bodyBlocks) ? data.bodyBlocks : bodyBlocks
+      const nextThumbnail = data.imageOrder?.[0] || thumbnail
+      const nextAdditional = Array.isArray(data.additionalImages)
+        ? data.additionalImages
+        : additionalImages
+      const nextStatus = data.gateDecision === 'publish' ? 'published' : 'pending'
+
+      setTitle(nextTitle)
+      setSpot(nextSpot)
+      setSummary(nextSummary)
+      setContent(nextContent)
+      setBodyBlocks(nextBlocks)
+      setSeoTitle(data.seoTitle?.trim() || nextTitle)
+      setSeoDescription(data.seoDescription?.trim() || nextSummary)
+      if (data.categoryId?.trim()) setCategoryId(data.categoryId.trim())
+      if (Array.isArray(data.tags)) setTags(data.tags)
+      if (Array.isArray(data.seoKeywords)) setSeoKeywords(data.seoKeywords)
+      setThumbnail(nextThumbnail)
+      setImageCaption(data.imageCaption?.trim() || imageCaption || nextTitle)
+      setAdditionalImages(nextAdditional)
+      setAiQualityScore(data.qualityScore ?? null)
+      setStatus(nextStatus)
+      setShowAiPreview(true)
+
+      if (!autoPublish) {
+        toast.success(
+          data.gateDecision === 'publish'
+            ? 'Haber yayıma hazırlandı'
+            : 'Haber hazırlandı; kalite kontrolü nedeniyle incelemeye alındı'
+        )
+        return
+      }
+
+      const payload = {
+        ...buildPayload(),
+        title: nextTitle,
+        spot: nextSpot,
+        summary: nextSummary,
+        content: nextContent,
+        bodyBlocks: nextBlocks,
+        seoTitle: data.seoTitle?.trim() || nextTitle,
+        seoDescription: data.seoDescription?.trim() || nextSummary,
+        categoryId: data.categoryId?.trim() || categoryId,
+        tags: Array.isArray(data.tags) ? data.tags : tags,
+        seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : seoKeywords,
+        thumbnail: nextThumbnail,
+        imageCaption: data.imageCaption?.trim() || imageCaption || nextTitle,
+        additionalImages: nextAdditional,
+        status: nextStatus,
+      }
+      const saveUrl = mode === 'create' ? '/api/admin/news' : `/api/admin/news/${post?.id}`
+      const saveRes = await fetch(saveUrl, {
+        method: mode === 'create' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(
+          mode === 'create' ? { ...payload, draftId: mediaPostId } : payload
+        ),
+      })
+      if (!saveRes.ok) {
+        const error = await saveRes.json().catch(() => ({})) as { error?: string }
+        throw new Error(error.error || `Kayıt başarısız (${saveRes.status})`)
+      }
+      toast.success(
+        nextStatus === 'published'
+          ? 'AI haberi hazırladı ve yayımladı'
+          : 'Haber kalite kontrolü için taslağa kaydedildi'
+      )
+      if (variant === 'drawer') onClose?.()
+      else router.push(ROUTES.ADMIN.NEWS)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'AI editör isteği başarısız')
+    } finally {
+      setAiPreparing(false)
+    }
   }
 
   const handleSave = async () => {
@@ -359,52 +487,26 @@ export function AdminNewsEditor({
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={async () => {
-            if (!title.trim() && !content.trim()) {
-              toast.error('AI için başlık veya içerik girin')
-              return
-            }
-            try {
-              const token = await auth.currentUser?.getIdToken() ?? ''
-              const res = await fetch('/api/admin/ai-assist', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                  mode: content.trim().length > 80 ? 'rewrite' : 'create',
-                  input: [title, spot, summary, content].filter(Boolean).join('\n\n'),
-                  imageUrl: thumbnail || undefined,
-                }),
-              })
-              const data = await res.json() as {
-                title?: string
-                spot?: string
-                summary?: string
-                content?: string
-                bodyBlocks?: ArticleBlock[]
-                error?: string
-              }
-              if (!res.ok) throw new Error(data.error || 'AI başarısız')
-              if (data.title?.trim()) setTitle(data.title.trim())
-              if (data.spot?.trim()) setSpot(data.spot.trim())
-              if (data.summary?.trim()) setSummary(data.summary.trim())
-              if (data.content?.trim()) setContent(data.content.trim())
-              if (Array.isArray(data.bodyBlocks) && data.bodyBlocks.length > 0) {
-                setBodyBlocks(data.bodyBlocks)
-                toast.success('AI zengin gövde (H2/H3 + görsel blokları) oluşturuldu')
-              } else {
-                toast.success('AI metin üretti — bloklara dönüştürebilirsiniz')
-              }
-            } catch (err) {
-              toast.error(err instanceof Error ? err.message : 'AI isteği başarısız')
-            }
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+          onClick={() => void runProfessionalAi(false)}
+          disabled={aiPreparing || mediaUploading}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
         >
-          AI ile zengin gövde oluştur
+          {aiPreparing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+          AI ile profesyonel hazırla
+        </button>
+        <button
+          type="button"
+          onClick={() => void runProfessionalAi(true)}
+          disabled={aiPreparing || mediaUploading}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+        >
+          {aiPreparing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+          AI hazırla ve yayınla
         </button>
       </div>
       <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">
-        Zengin gövde blokları varsa bu alan geriye dönük düz metin özeti olarak saklanır.
+        Gemini görselleri analiz eder; DeepSeek manşet, SEO, kategori ve H2/H3 gövdeyi hazırlar.
+        Kalite eşiğini geçmeyen haber otomatik olarak incelemeye alınır.
       </p>
     </div>
 
@@ -439,6 +541,48 @@ export function AdminNewsEditor({
         ...additionalImages,
       ]}
     />
+
+    {showAiPreview && bodyBlocks.length > 0 && (
+      <section className="rounded-2xl border border-violet-500/30 bg-[rgb(var(--color-card))] p-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-1.5 text-sm font-bold text-[rgb(var(--color-text))]">
+              <Eye className="h-4 w-4 text-violet-500" />
+              AI yayın önizlemesi
+            </p>
+            {aiQualityScore !== null && (
+              <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                Kalite puanı: %{aiQualityScore} ·{' '}
+                {aiQualityScore >= 78 ? 'yayıma hazır' : 'editör incelemesi gerekli'}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAiPreview(false)}
+            className="rounded-lg p-1.5 text-[rgb(var(--color-muted))] hover:bg-black/5"
+            aria-label="Önizlemeyi kapat"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <article className="mx-auto max-h-[720px] max-w-3xl overflow-y-auto rounded-xl bg-[rgb(var(--color-surface))] p-5">
+          <h1 className="mb-3 text-2xl font-black leading-tight text-[rgb(var(--color-text))]">
+            {title}
+          </h1>
+          {spot && (
+            <p className="mb-5 text-base font-medium leading-relaxed text-[rgb(var(--color-muted))]">
+              {spot}
+            </p>
+          )}
+          <ArticleBlocksRenderer
+            blocks={bodyBlocks}
+            title={title}
+            longform={articleLayout === 'longform'}
+          />
+        </article>
+      </section>
+    )}
 
     <div>
       <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">

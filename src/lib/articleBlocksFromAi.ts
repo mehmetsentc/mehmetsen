@@ -15,7 +15,13 @@ export interface BodyBlocksFromAiInput {
   content: string
   imageUrl?: string
   imageCaption?: string
-  additionalImages?: Array<{ url: string; caption?: string; alt?: string }>
+  additionalImages?: Array<{
+    url: string
+    caption?: string
+    alt?: string
+    credit?: string
+    insertAfterParagraph?: number
+  }>
   /** Optional short heading placed under the lead image (H2). */
   imageSectionHeading?: string
 }
@@ -139,28 +145,46 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
     }
   }
 
-  const extras = input.additionalImages ?? []
-  extras.forEach((image, idx) => {
+  const extras = (input.additionalImages ?? []).filter(
+    (image) => image.url?.trim() && image.url.trim() !== coverUrl
+  )
+  const paragraphIndexes = blocks.flatMap((block, index) =>
+    block.type === 'paragraph' ? [index] : []
+  )
+  const insertions = extras.map((image, idx) => {
     const url = image.url?.trim()
-    if (!url || url === coverUrl) return
     const caption =
       image.caption?.trim() ||
       image.alt?.trim() ||
       headingFromImageContext(undefined, input.title, `Ek görsel ${idx + 1}`)
-    blocks.push({
+    const requested = image.insertAfterParagraph
+    const paragraphNumber =
+      typeof requested === 'number' && Number.isFinite(requested)
+        ? Math.max(1, Math.min(paragraphIndexes.length, Math.round(requested)))
+        : Math.max(1, Math.floor(((idx + 1) * paragraphIndexes.length) / (extras.length + 1)))
+    const insertAt =
+      paragraphIndexes.length > 0
+        ? paragraphIndexes[paragraphNumber - 1] + 1
+        : blocks.length
+    const imageBlock: ArticleBlock = {
       id: newId('ximg', i++),
       type: 'image',
       url,
       alt: image.alt?.trim() || caption,
       caption,
-    })
-    blocks.push({
+      ...(image.credit?.trim() ? { credit: image.credit.trim() } : {}),
+    }
+    const headingBlock: ArticleBlock = {
       id: newId('ximg-h', i++),
       type: 'heading',
       level: 3,
       text: headingFromImageContext(caption, input.title, `Görsel ${idx + 2}`),
-    })
+    }
+    return { insertAt, blocks: [imageBlock, headingBlock] }
   })
+  insertions
+    .sort((a, b) => b.insertAt - a.insertAt)
+    .forEach((entry) => blocks.splice(entry.insertAt, 0, ...entry.blocks))
 
   return sanitizeArticleBlocks(blocks)
 }

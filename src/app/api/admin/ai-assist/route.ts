@@ -2,8 +2,25 @@ import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
+import { generateImageAnalysis, type ImageAnalysis } from '@/lib/ai/imageSeo'
+import { DEFAULT_CATEGORIES } from '@/constants/config'
 
-type AssistMode = 'create' | 'rewrite' | 'seo' | 'tags' | 'headline' | 'trends' | 'keywords'
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
+
+type AssistMode =
+  | 'create'
+  | 'rewrite'
+  | 'publish-ready'
+  | 'seo'
+  | 'tags'
+  | 'headline'
+  | 'trends'
+  | 'keywords'
+
+const CATEGORY_IDS = new Set(DEFAULT_CATEGORIES.map((category) => category.id))
+const CATEGORY_LIST = DEFAULT_CATEGORIES.map((category) => `${category.id}: ${category.name}`).join(', ')
 
 const SYSTEM_PROMPTS: Record<AssistMode, string> = {
   create: `Sen deneyimli bir Türk gazetecisisin. Verilen konuda profesyonel bir haber metni yaz.
@@ -14,6 +31,22 @@ content içinde ## H2 ve ### H3 markdown başlıkları kullan. # H1 KULLANMA (sa
   rewrite: `Sen deneyimli bir Türk gazete editörüsün. Verilen haberi yeniden yaz, daha akıcı ve profesyonel yap.
 JSON: {"title":"...","content":"...","summary":"...","spot":"..."}
 content içinde ## / ### başlıklar kullan; # H1 yazma.`,
+
+  'publish-ready': `Sen NaHaber'in deneyimli genel yayın yönetmenisin. Kullanıcının verdiği ham metni, hiçbir olgu uydurmadan, yayıma hazır profesyonel bir Türkçe habere dönüştür.
+Kurallar:
+- Ana başlık güçlü, doğru ve clickbait olmayan bir manşet olsun.
+- spot 5W+1H'yi karşılayan 2-4 cümle olsun.
+- summary en fazla 280 karakter olsun.
+- content özgün, akıcı ve ayrıntılı olsun; ## H2 ve gerektiğinde ### H3 kullan. # H1 ASLA kullanma.
+- Ham metinde bulunmayan kişi, sayı, tarih, yer, alıntı veya iddia ekleme.
+- Görsel analizlerini yalnızca yerleşim ve açıklama için kullan; yeni haber olgusu üretmek için kullanma.
+- seoTitle 50-65, seoDescription 140-165 karakter olsun.
+- categoryId aşağıdaki geçerli kimliklerden tam biri olsun.
+- tags 5-8, seoKeywords 8-15 Türkçe ifade olsun.
+- imageOrder yalnızca verilen görsel URL'lerini içersin; en ilgili kapak görseli ilk sırada olsun.
+Geçerli kategoriler: ${CATEGORY_LIST}
+Yalnızca şu JSON şemasını döndür:
+{"title":"...","spot":"...","summary":"...","content":"...","seoTitle":"...","seoDescription":"...","categoryId":"...","tags":["..."],"seoKeywords":["..."],"imageOrder":["..."]}`,
 
   seo: `Sen bir SEO uzmanısın. Verilen haber başlığı için SEO meta verisi oluştur.
 JSON: {"seoTitle":"...","seoDescription":"..."}
@@ -45,7 +78,7 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
         response_format: { type: 'json_object' },
         temperature: 0.7,
-        max_tokens: 2500,
+        max_tokens: 5000,
       }),
       signal: AbortSignal.timeout(35_000),
     })
@@ -61,8 +94,15 @@ export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'ai:use')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { mode: AssistMode; input?: string; imageUrl?: string }
-  try { body = await request.json() as { mode: AssistMode; input?: string; imageUrl?: string } }
+  let body: { mode: AssistMode; input?: string; imageUrl?: string; imageUrls?: string[] }
+  try {
+    body = await request.json() as {
+      mode: AssistMode
+      input?: string
+      imageUrl?: string
+      imageUrls?: string[]
+    }
+  }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
   const { mode, input = '', imageUrl } = body
@@ -71,21 +111,96 @@ export async function POST(request: Request) {
   const userMessage = mode === 'trends' ? 'Türkiye gündemini analiz et.' : input.trim() || 'Haber içeriği sağlanmadı.'
 
   try {
-    const parsed = await callAi(SYSTEM_PROMPTS[mode], userMessage)
+    const requestedUrls = [
+      ...(imageUrl?.trim() ? [imageUrl.trim()] : []),
+      ...(Array.isArray(body.imageUrls) ? body.imageUrls : []),
+    ]
+      .map((url) => url.trim())
+      .filter((url, index, all) => url && all.indexOf(url) === index)
+      .slice(0, 6)
 
-    if (mode === 'create' || mode === 'rewrite') {
+    let imageAnalyses: Array<ImageAnalysis & { url: string }> = []
+    if (mode === 'publish-ready' && requestedUrls.length > 0) {
+      const settled = await Promise.all(
+        requestedUrls.map(async (url) => {
+          const analysis = await generateImageAnalysis({
+            imageUrl: url,
+            title: '',
+            content: input.slice(0, 2500),
+          })
+          return analysis ? { url, ...analysis } : null
+        })
+      )
+      imageAnalyses = settled.filter(
+        (item): item is ImageAnalysis & { url: string } => item !== null
+      )
+    }
+
+    const enrichedUserMessage =
+      mode === 'publish-ready'
+        ? [
+            'HAM HABER METNİ:',
+            userMessage.slice(0, 18_000),
+            '',
+            'GÖRSEL ANALİZLERİ:',
+            imageAnalyses.length > 0
+              ? JSON.stringify(imageAnalyses)
+              : 'Görsel yok veya analiz edilemedi.',
+          ].join('\n')
+        : userMessage
+    const parsed = await callAi(SYSTEM_PROMPTS[mode], enrichedUserMessage)
+
+    if (mode === 'create' || mode === 'rewrite' || mode === 'publish-ready') {
       const title = String(parsed.title ?? '').trim()
       const content = String(parsed.content ?? '').trim()
       const spot = String(parsed.spot ?? '').trim()
       const summary = String(parsed.summary ?? '').trim()
+      const requestedOrder = Array.isArray(parsed.imageOrder)
+        ? parsed.imageOrder.map(String).filter((url) => requestedUrls.includes(url))
+        : []
+      const orderedUrls = [
+        ...requestedOrder,
+        ...requestedUrls.filter((url) => !requestedOrder.includes(url)),
+      ]
+      const orderedImages = orderedUrls.map((url) => {
+        const analysis = imageAnalyses.find((item) => item.url === url)
+        return {
+          url,
+          caption: analysis?.caption,
+          alt: analysis?.alt,
+          credit: analysis?.creditHint ?? undefined,
+        }
+      })
       const bodyBlocks = buildBodyBlocksFromAi({
         title: title || 'Haber',
         spot,
         summary,
         content,
-        imageUrl: imageUrl?.trim(),
-        imageCaption: title || undefined,
+        imageUrl: orderedImages[0]?.url || imageUrl?.trim(),
+        imageCaption: orderedImages[0]?.caption || title || undefined,
+        additionalImages: orderedImages.slice(1),
       })
+      const categoryCandidate = String(parsed.categoryId ?? '').trim()
+      const categoryId = CATEGORY_IDS.has(categoryCandidate) ? categoryCandidate : 'gundem'
+      const tags = Array.isArray(parsed.tags)
+        ? parsed.tags.map(String).map((tag) => tag.trim().toLowerCase()).filter(Boolean).slice(0, 8)
+        : []
+      const seoKeywords = Array.isArray(parsed.seoKeywords)
+        ? parsed.seoKeywords.map(String).map((word) => word.trim().toLowerCase()).filter(Boolean).slice(0, 15)
+        : []
+      const checks = [
+        title.length >= 20,
+        spot.length >= 80,
+        summary.length >= 60,
+        content.length >= 600,
+        /^##\s+\S/m.test(content),
+        CATEGORY_IDS.has(categoryCandidate),
+        tags.length >= 5,
+        String(parsed.seoTitle ?? '').trim().length >= 40,
+        String(parsed.seoDescription ?? '').trim().length >= 120,
+      ]
+      const qualityScore = Math.round((checks.filter(Boolean).length / checks.length) * 100)
+      const gateDecision = qualityScore >= 78 ? 'publish' : 'review'
       return NextResponse.json({
         success: true,
         mode,
@@ -94,6 +209,17 @@ export async function POST(request: Request) {
         summary,
         content: articleBlocksToPlainText(bodyBlocks) || content,
         bodyBlocks,
+        seoTitle: String(parsed.seoTitle ?? title).trim(),
+        seoDescription: String(parsed.seoDescription ?? summary).trim(),
+        categoryId,
+        tags,
+        seoKeywords,
+        imageOrder: orderedUrls,
+        imageAnalyses,
+        imageCaption: orderedImages[0]?.caption ?? '',
+        additionalImages: orderedImages.slice(1),
+        qualityScore,
+        gateDecision,
       })
     }
 

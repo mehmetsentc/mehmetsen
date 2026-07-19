@@ -84,4 +84,24 @@ describe('buildBodyBlocksFromAi', () => {
     )
     expect(blocks[secondImgIdx + 1]).toMatchObject({ type: 'heading', level: 3 })
   })
+
+  it('places an additional image after the requested paragraph', () => {
+    const blocks = buildBodyBlocksFromAi({
+      title: 'Yerleşim testi',
+      content:
+        'Birinci paragraf görselden önce bulunması gereken yeterince uzun haber metnidir.\n\n' +
+        'İkinci paragraf haberin devamını anlatan yeterince uzun bir metin parçasıdır.\n\n' +
+        'Üçüncü paragraf haberin son ayrıntılarını veren yeterince uzun bir metindir.',
+      additionalImages: [{
+        url: 'https://cdn.example.com/placed.jpg',
+        caption: 'Olay yerinden ayrıntı',
+        insertAfterParagraph: 1,
+      }],
+    })
+    const firstParagraph = blocks.findIndex((block) => block.type === 'paragraph')
+    expect(blocks[firstParagraph + 1]).toMatchObject({
+      type: 'image',
+      url: 'https://cdn.example.com/placed.jpg',
+    })
+  })
 })

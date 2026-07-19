@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
-import { generateImageSeoCaption } from '@/lib/ai/imageSeo'
+import { generateImageAnalysis } from '@/lib/ai/imageSeo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,16 +29,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const caption = await generateImageSeoCaption({
+    const analysis = await generateImageAnalysis({
       imageUrl,
       title: body.title?.trim() ?? '',
       content: body.content?.trim(),
       summary: body.summary?.trim(),
     })
-    if (!caption) {
-      return NextResponse.json({ error: 'AI caption üretilemedi' }, { status: 500 })
+    if (!analysis) {
+      return NextResponse.json({ error: 'AI görsel analizi üretilemedi' }, { status: 500 })
     }
-    return NextResponse.json({ caption })
+    return NextResponse.json(analysis)
   } catch (error) {
     console.error('[ai-image-seo]', error)
     return NextResponse.json({ error: 'AI request failed' }, { status: 500 })

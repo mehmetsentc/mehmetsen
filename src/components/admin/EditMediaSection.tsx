@@ -120,38 +120,57 @@ export function EditMediaSection({
   const handleFiles = useCallback(
     async (files: File[], mode: 'replace' | 'additional') => {
       if (files.length === 0) return
-      const file = files[0]
-      const isVideo = file.type.startsWith('video/')
-      const isImage = file.type.startsWith('image/')
-
-      if (!isVideo && !isImage) {
+      const selected = files.slice(0, 6)
+      const invalid = selected.some(
+        (file) => !file.type.startsWith('video/') && !file.type.startsWith('image/')
+      )
+      if (invalid) {
         toast.error('Sadece görsel (JPG, PNG, WebP, GIF) veya video (MP4, WebM) desteklenir')
         return
       }
-      if (file.size > 50 * 1024 * 1024) {
+      if (selected.some((file) => file.size > 50 * 1024 * 1024)) {
         toast.error('Maksimum dosya boyutu 50MB')
+        return
+      }
+      if (selected.length > 1 && selected.some((file) => file.type.startsWith('video/'))) {
+        toast.error('Çoklu yüklemede yalnızca görsel seçin')
         return
       }
 
       setUploadingState(true)
       setProgress(0)
       try {
-        if (isVideo) {
+        const file = selected[0]
+        if (file.type.startsWith('video/')) {
           const url = await storageService.uploadPostVideo(file, userId, postId, setProgress)
           onVideoUrlChange(url)
           toast.success('Video yüklendi')
         } else {
-          const url = await storageService.uploadPostImage(file, userId, postId, setProgress)
-          if (mode === 'replace' || !thumbnail) {
-            onThumbnailChange(url)
-            toast.success(mode === 'replace' && thumbnail ? 'Ana görsel güncellendi' : 'Ana görsel eklendi')
-            void generateImageSeo(url, 'thumbnail')
-          } else {
-            const nextAdditional = [...additionalImages, { url, caption: '' }]
-            onAdditionalImagesChange(nextAdditional)
-            toast.success('Ek görsel eklendi')
-            void generateImageSeo(url, 'additional', nextAdditional)
+          const uploaded: string[] = []
+          for (let index = 0; index < selected.length; index += 1) {
+            const url = await storageService.uploadPostImage(
+              selected[index],
+              userId,
+              postId,
+              (fileProgress) =>
+                setProgress(((index + fileProgress / 100) / selected.length) * 100)
+            )
+            uploaded.push(url)
           }
+          const useFirstAsCover = mode === 'replace' || !thumbnail
+          const coverUrl = useFirstAsCover ? uploaded[0] : ''
+          if (coverUrl) {
+            onThumbnailChange(coverUrl)
+            void generateImageSeo(coverUrl, 'thumbnail')
+          }
+          const extraUrls = useFirstAsCover ? uploaded.slice(1) : uploaded
+          if (extraUrls.length > 0) {
+            onAdditionalImagesChange([
+              ...additionalImages,
+              ...extraUrls.map((url) => ({ url, caption: '' })),
+            ])
+          }
+          toast.success(`${uploaded.length} görsel yüklendi`)
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Yükleme başarısız')
@@ -172,7 +191,7 @@ export function EditMediaSection({
       'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
       'video/*': ['.mp4', '.webm'],
     },
-    maxFiles: 1,
+    maxFiles: 6,
     disabled: uploading || !uploadMode,
     noClick: true,
   })
@@ -261,6 +280,7 @@ export function EditMediaSection({
       <input
         ref={fileInputRef}
         type="file"
+        multiple={uploadMode === 'additional'}
         accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
         className="hidden"
         onChange={(e) => {
