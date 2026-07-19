@@ -6,9 +6,13 @@ import CryptoKit
 // MARK: - AppleSignInPresentationViewController
 //
 // Transparent UIViewController that presents ASAuthorizationController from viewDidAppear.
-// This ensures performRequests() is called from a true UIKit lifecycle event rather than
-// a WKWebView JavaScript callback — which is the root cause of ASAuthorizationError.notInteractive
-// (code 1004) on iPad with iPadOS 26.
+//
+// Key fix for iPadOS 26: use .overFullScreen (not .overCurrentContext).
+// On iPad, .overCurrentContext only covers the presenting VC's column in a split-view
+// hierarchy, so viewDidAppear fires in a partial/non-interactive context and
+// ASAuthorizationController raises error 1005 (notInteractive).
+// .overFullScreen guarantees the VC covers the entire key window on all devices,
+// making view.window reliable and satisfying the interactive-context requirement.
 //
 private class AppleSignInPresentationViewController: UIViewController,
     ASAuthorizationControllerDelegate,
@@ -28,8 +32,11 @@ private class AppleSignInPresentationViewController: UIViewController,
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // Called from UIKit lifecycle → proper interactive context on all iPadOS versions
-        startAppleSignIn()
+        // Wait one run-loop pass so the UIKit interactive context is fully established
+        // before calling performRequests(). Required on iPadOS 26.x.
+        DispatchQueue.main.async {
+            self.startAppleSignIn()
+        }
     }
 
     private func startAppleSignIn() {
@@ -48,9 +55,9 @@ private class AppleSignInPresentationViewController: UIViewController,
     // MARK: - ASAuthorizationControllerPresentationContextProviding
 
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        // At this point we are a fully presented UIViewController — view.window is guaranteed.
+        // With .overFullScreen, view.window is always the key window — prefer it.
         if let w = view.window { return w }
-        // Fallback: foreground active scene
+        // Fallback: foreground active scene's key window
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         if let scene = scenes.first(where: { $0.activationState == .foregroundActive }),
            let w = scene.keyWindow ?? scene.windows.first(where: { !$0.isHidden }) {
@@ -132,7 +139,10 @@ public class NativeAppleSignInPlugin: CAPPlugin {
 
             let vc = AppleSignInPresentationViewController()
             vc.rawNonce = rawNonce
-            vc.modalPresentationStyle = .overCurrentContext
+            // .overFullScreen ensures the VC covers the ENTIRE key window on iPad
+            // (not just a split-view column as .overCurrentContext would on iPad).
+            // This satisfies iPadOS 26's stricter interactive-context requirement.
+            vc.modalPresentationStyle = .overFullScreen
             vc.modalTransitionStyle = .crossDissolve
 
             vc.onSuccess = { [weak self] result in
@@ -160,7 +170,14 @@ public class NativeAppleSignInPlugin: CAPPlugin {
                 call.reject("No root view controller", "SIGN_IN_FAILED")
                 return
             }
-            rootVC.present(vc, animated: false)
+            // Walk the presented-VC chain to find the topmost VC.
+            // On iPad, Capacitor's rootVC may have other VCs presented on top of it;
+            // presenting on rootVC directly would fail if another VC is already presented.
+            var topVC: UIViewController = rootVC
+            while let presented = topVC.presentedViewController {
+                topVC = presented
+            }
+            topVC.present(vc, animated: false)
         }
     }
 
