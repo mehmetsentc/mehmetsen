@@ -1,12 +1,9 @@
-import { ROUTES } from '@/constants/routes'
 import { resolveTimelineImageUrl } from '@/lib/feedMediaUtils'
-import { hasVideoContent } from '@/lib/postUtils'
+import { getPostDetailHref } from '@/lib/postUtils'
 import type { TimelinePost } from '@/types/post'
 
 export function categoryPostHref(post: TimelinePost): string {
-  if (hasVideoContent(post)) return ROUTES.REELS_VIDEO(post.id)
-  if (post.slug && post.slug !== post.id) return ROUTES.NEWS_DETAIL(post.slug)
-  return ROUTES.POST_DETAIL(post.id)
+  return getPostDetailHref(post)
 }
 
 export function categoryPostImage(post: TimelinePost): string {

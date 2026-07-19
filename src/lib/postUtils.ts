@@ -1,4 +1,5 @@
 import type { MediaItem, Post, PostStatus } from '@/types/post'
+import { ROUTES } from '@/constants/routes'
 
 // Statuses that must NEVER appear in public surfaces (feeds, trending, search).
 // `draft` = in-progress; `pending` = held for moderation/admin approval.
@@ -60,6 +61,45 @@ export function hasVideoContent(post: Post): boolean {
       // AI-generated audio articles (TTS): no video file but playable in Teve feed
       post.audioUrl?.trim()
   )
+}
+
+/** True when the post is a dedicated Teve/reels item — not a news article that merely includes a video. */
+export function isReelsVideoPost(post: Pick<Post, 'postType' | 'slug' | 'content' | 'summary' | 'bodyBlocks'> & {
+  description?: string
+  spot?: string
+}): boolean {
+  if (post.postType === 'video') return true
+  if (post.postType === 'news' || post.postType === 'photo' || post.postType === 'user_post') {
+    return false
+  }
+  if (post.slug?.startsWith('video-')) return true
+  if (Array.isArray(post.bodyBlocks) && post.bodyBlocks.length > 0) return false
+  const body = (
+    post.content ||
+    post.description ||
+    post.spot ||
+    post.summary ||
+    ''
+  ).trim()
+  // Legacy docs without postType: treat short video-only items as reels.
+  return body.length < 200
+}
+
+/** Canonical public URL for opening a post from feeds/cards. */
+export function getPostDetailHref(
+  post: Pick<Post, 'id' | 'slug' | 'postType' | 'content' | 'summary' | 'bodyBlocks' | 'mediaItems'> & {
+    description?: string
+    spot?: string
+    audioUrl?: string | null
+  }
+): string {
+  if (isReelsVideoPost(post) && hasVideoContent(post as Post)) {
+    return ROUTES.REELS_VIDEO(post.id)
+  }
+  if (post.slug?.trim() && post.slug !== post.id) {
+    return ROUTES.NEWS_DETAIL(post.slug)
+  }
+  return ROUTES.POST_DETAIL(post.id)
 }
 
 export function formatCount(count: number): string {

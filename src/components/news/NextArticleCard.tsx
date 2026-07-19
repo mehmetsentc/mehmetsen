@@ -4,10 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, ChevronRight } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
-import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { formatTimelineRelative } from '@/lib/timelineUtils'
-import { getPrimaryVideo, hasVideoContent } from '@/lib/postUtils'
+import { getPrimaryVideo, getPostDetailHref } from '@/lib/postUtils'
 import type { Post } from '@/types/post'
 
 interface NextArticleCardProps {
@@ -33,11 +32,7 @@ export function NextArticleCard({ nextPost }: NextArticleCardProps) {
     return () => obs.disconnect()
   }, [])
 
-  const href = hasVideoContent(nextPost)
-    ? ROUTES.REELS_VIDEO(nextPost.id)
-    : nextPost.slug?.trim() && nextPost.slug !== nextPost.id
-      ? ROUTES.NEWS_DETAIL(nextPost.slug)
-      : ROUTES.POST_DETAIL(nextPost.id)
+  const href = getPostDetailHref(nextPost)
 
   // Same image resolution as SuggestedNewsRail — include video thumbnails.
   // Use SafeNewsImage (not raw next/image): many RSS cover URLs come from

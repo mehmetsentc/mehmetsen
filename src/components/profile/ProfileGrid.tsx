@@ -4,8 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Clapperboard, Newspaper } from 'lucide-react'
 import type { Post } from '@/types/post'
-import { ROUTES } from '@/constants/routes'
-import { getPrimaryVideo, hasVideoContent } from '@/lib/postUtils'
+import { getPrimaryVideo, getPostDetailHref, hasVideoContent } from '@/lib/postUtils'
 
 interface ProfileGridProps {
   posts: Post[]
@@ -37,7 +36,7 @@ export function ProfileGrid({ posts, loading, emptyMessage = 'Henüz içerik yok
     <div className="grid grid-cols-3 gap-0.5 p-0.5 sm:grid-cols-3">
       {posts.map((post) => {
         const isVideo = hasVideoContent(post)
-        const href = isVideo ? ROUTES.REELS_VIDEO(post.id) : ROUTES.POST_DETAIL(post.id)
+        const href = getPostDetailHref(post)
         const videoMedia = getPrimaryVideo(post)
         const imageUrl =
           post.coverImageUrl ||

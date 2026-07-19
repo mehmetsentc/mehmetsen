@@ -21,7 +21,7 @@ import { useSearch } from '@/hooks/useSearch'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { Avatar } from '@/components/ui/Avatar'
-import { hasVideoContent } from '@/lib/postUtils'
+import { getPostDetailHref, hasVideoContent } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import type { Post } from '@/types/post'
 import type { User } from '@/types/user'
@@ -34,7 +34,7 @@ type SearchTab = 'all' | 'news' | 'users' | 'videos' | 'categories'
 
 function PostResult({ post }: { post: Post }) {
   const isVideo = hasVideoContent(post)
-  const href = isVideo ? ROUTES.REELS_VIDEO(post.id) : ROUTES.POST_DETAIL(post.id)
+  const href = getPostDetailHref(post)
 
   return (
     <Link href={href} className="flex gap-3 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))]">

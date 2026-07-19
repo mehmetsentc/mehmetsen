@@ -7,7 +7,7 @@ import { tr } from 'date-fns/locale'
 import { Clapperboard, Eye, Heart, Play } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
-import { getPrimaryVideo, hasVideoContent, isYouTubeUrl } from '@/lib/postUtils'
+import { getPrimaryVideo, hasVideoContent, isReelsVideoPost, isYouTubeUrl } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
   formatTimelineRelative,
@@ -246,25 +246,39 @@ export function PostDetail({ post, suggested }: PostDetailProps) {
             <div
               className={cn(
                 'relative mx-auto w-full overflow-hidden bg-black',
-                isVideo ? 'aspect-[9/16] max-h-[min(80dvh,960px)]' : 'aspect-video max-h-[70vh]'
+                isVideo && isReelsVideoPost(post)
+                  ? 'aspect-[9/16] max-h-[min(80dvh,960px)]'
+                  : 'aspect-video max-h-[70vh]'
               )}
             >
               {isVideo && videoUrl ? (
-                <Link href={ROUTES.REELS_VIDEO(post.id)} className="group block h-full w-full">
+                isReelsVideoPost(post) ? (
+                  <Link href={ROUTES.REELS_VIDEO(post.id)} className="group block h-full w-full">
+                    <video
+                      src={videoUrl}
+                      poster={imageUrl ?? undefined}
+                      muted
+                      playsInline
+                      preload={tier === 'low' ? 'none' : 'metadata'}
+                      className="h-full w-full object-cover"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/40">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                        <Play className="h-7 w-7 fill-white text-white" />
+                      </span>
+                    </span>
+                  </Link>
+                ) : (
+                  // eslint-disable-next-line jsx-a11y/media-has-caption
                   <video
                     src={videoUrl}
                     poster={imageUrl ?? undefined}
-                    muted
+                    controls
                     playsInline
                     preload={tier === 'low' ? 'none' : 'metadata'}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/40">
-                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                      <Play className="h-7 w-7 fill-white text-white" />
-                    </span>
-                  </span>
-                </Link>
+                )
               ) : imageUrl ? (
                 <Image
                   src={imageUrl}

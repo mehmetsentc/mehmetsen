@@ -24,7 +24,7 @@ import { ROUTES } from '@/constants/routes'
 import { useTrendingTopics } from '@/hooks/useTrendingTopics'
 import { postService } from '@/services/postService'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { hasVideoContent } from '@/lib/postUtils'
+import { getPostDetailHref, hasVideoContent } from '@/lib/postUtils'
 import { resolveTimelineImageUrl } from '@/lib/feedMediaUtils'
 import { formatTimelineRelative } from '@/lib/timelineUtils'
 import { cn } from '@/lib/utils'
@@ -145,7 +145,7 @@ function NewsCardCompact({ post }: { post: Post }) {
 
 function VideoCardCompact({ post }: { post: Post }) {
   const { url: imageUrl, isFallback } = resolveTimelineImageUrl(post)
-  const href = hasVideoContent(post) ? ROUTES.REELS_VIDEO(post.id) : ROUTES.POST_DETAIL(post.id)
+  const href = getPostDetailHref(post)
 
   return (
     <Link href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">

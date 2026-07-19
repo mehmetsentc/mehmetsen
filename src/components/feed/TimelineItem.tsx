@@ -3,8 +3,7 @@
 import Link from 'next/link'
 import { Play } from 'lucide-react'
 import type { TimelinePost } from '@/types/post'
-import { ROUTES } from '@/constants/routes'
-import { getPrimaryVideo, hasVideoContent } from '@/lib/postUtils'
+import { getPrimaryVideo, getPostDetailHref, hasVideoContent } from '@/lib/postUtils'
 import { formatTimelineTime, formatTimelineRelative } from '@/lib/timelineUtils'
 import { TimelineItemActions } from './TimelineItemActions'
 import { isLocalFeedItem } from '@/lib/feedRanking'
@@ -30,11 +29,7 @@ export function TimelineItem({ post, featured = false, isLast = false }: Timelin
   const timeLabel = formatTimelineTime(post.publishedAt)
   const relative = formatTimelineRelative(post.publishedAt)
   const isVideo = hasVideoContent(post)
-  const detailHref = isVideo
-    ? ROUTES.REELS_VIDEO(post.id)
-    : post.slug && post.slug !== post.id
-      ? ROUTES.NEWS_DETAIL(post.slug)
-      : ROUTES.POST_DETAIL(post.id)
+  const detailHref = getPostDetailHref(post)
 
   const videoMedia = getPrimaryVideo(post)
   const { url: imageUrl, isFallback: isFallbackImage } = resolveTimelineImageUrl(post)

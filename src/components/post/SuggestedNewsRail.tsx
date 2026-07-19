@@ -5,7 +5,7 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { ChevronRight } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
-import { getPrimaryVideo, hasVideoContent } from '@/lib/postUtils'
+import { getPrimaryVideo, getPostDetailHref } from '@/lib/postUtils'
 import { formatTimelineTime, getPostTypeLabel } from '@/lib/timelineUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
@@ -19,12 +19,8 @@ interface SuggestedNewsRailProps {
   preferSlugLinks?: boolean
 }
 
-function suggestedNewsHref(post: Post, preferSlugLinks: boolean): string {
-  if (hasVideoContent(post)) return ROUTES.REELS_VIDEO(post.id)
-  if (preferSlugLinks && post.slug?.trim() && post.slug !== post.id) {
-    return ROUTES.NEWS_DETAIL(post.slug)
-  }
-  return ROUTES.POST_DETAIL(post.id)
+function suggestedNewsHref(post: Post, _preferSlugLinks: boolean): string {
+  return getPostDetailHref(post)
 }
 
 export function SuggestedNewsRail({ posts, preferSlugLinks = false }: SuggestedNewsRailProps) {
