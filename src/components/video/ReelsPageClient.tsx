@@ -20,7 +20,8 @@ export function ReelsPageClient() {
   return (
     // `dark` class forces Tailwind dark-mode variants for this entire subtree
     <div className="dark" style={{ colorScheme: 'dark' }}>
-      <div className="min-h-screen bg-black">
+      <div className="relative min-h-screen bg-black">
+        {/* Back is provided globally via GlobalBackNav; keep page immersive. */}
         <Suspense fallback={<ReelsLoadingFallback />}>
           <VideoFeed />
         </Suspense>

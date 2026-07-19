@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { getCategoryAccent } from '@/constants/categoryTheme'
+import { BackNavButton } from '@/components/layout/BackNavButton'
+import { ROUTES } from '@/constants/routes'
 
 interface SubTab {
   id: string
@@ -37,10 +39,23 @@ export function CategoryBbcPageHeader({
   const accent = getCategoryAccent(categoryId ?? '')
   const style = { ['--cat-accent' as string]: accent.rgb } as React.CSSProperties
 
+  const backFallback =
+    isSubcategory && tabParentSlug
+      ? ROUTES.CATEGORY(tabParentSlug)
+      : ROUTES.FEED
+
   return (
     <header className={cn('bbc-category-header bbc-category-header--accent', className)} style={style}>
-      <span className="bbc-category-kicker">{accent.kicker}</span>
-      <h1 className="bbc-category-title">{pageTitle}</h1>
+      <div className="bbc-category-header__top">
+        <BackNavButton
+          fallbackHref={backFallback}
+          className="back-nav-btn--inline max-lg:hidden"
+        />
+        <div className="min-w-0 flex-1">
+          <span className="bbc-category-kicker">{accent.kicker}</span>
+          <h1 className="bbc-category-title">{pageTitle}</h1>
+        </div>
+      </div>
       {showSubNav ? (
         <nav
           className={cn(

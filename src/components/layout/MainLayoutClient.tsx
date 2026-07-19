@@ -21,6 +21,7 @@ import { ROUTES, isPublicRoute } from '@/constants/routes'
 import { CategorySwipeNavigator } from '@/components/layout/CategorySwipeNavigator'
 import { DesktopSidebarToggle } from '@/components/layout/DesktopSidebarToggle'
 import { DesktopGlobalScrollHeader } from '@/components/layout/DesktopGlobalScrollHeader'
+import { GlobalBackNav } from '@/components/layout/BackNavButton'
 import { ScrollHeaderProvider } from '@/context/ScrollHeaderContext'
 import { cn } from '@/lib/utils'
 
@@ -83,6 +84,7 @@ const LayoutShell = memo(function LayoutShell({
         onMobileClose={() => setMobileDrawerOpen(false)}
         onDesktopClose={() => setDesktopSidebarOpen(false)}
       />
+      <GlobalBackNav />
       <DesktopSidebarToggle />
 
       <div
@@ -92,7 +94,8 @@ const LayoutShell = memo(function LayoutShell({
           isDesktop && 'app-shell-desktop'
         )}
       >
-        <Navbar onMenuClick={() => setMobileDrawerOpen(true)} />
+        {/* Reels is immersive — floating GlobalBackNav replaces the top chrome. */}
+        {!isReels ? <Navbar onMenuClick={() => setMobileDrawerOpen(true)} /> : null}
 
         <PullToRefresh>
           <div

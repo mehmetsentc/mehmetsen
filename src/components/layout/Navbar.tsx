@@ -7,6 +7,7 @@ import { Search, Menu, Bell, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
+import { BackNavButton } from '@/components/layout/BackNavButton'
 import { cn } from '@/lib/utils'
 
 interface NavbarProps {
@@ -19,6 +20,12 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const pathname = usePathname()
   const [hydrated, setHydrated] = useState(false)
   const isFeed = pathname === ROUTES.FEED
+  // Reels uses the floating GlobalBackNav (immersive). Elsewhere show inline back.
+  const showBack =
+    !isFeed &&
+    pathname !== ROUTES.HOME &&
+    pathname !== '/' &&
+    pathname !== ROUTES.REELS
   // Article pages get a dedicated compact sticky header (ArticleStickyHeader).
   // Keep this site header in normal flow there so we don't stack two top bars.
   const isArticle = pathname.startsWith('/haber/')
@@ -42,7 +49,10 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           isFeed && 'h-[72px]'
         )}
       >
-        <div className={cn('flex items-center gap-2 px-3', isFeed ? 'h-[72px]' : 'h-14')}>
+        <div className={cn('flex items-center gap-1.5 px-2 sm:px-3', isFeed ? 'h-[72px]' : 'h-14')}>
+          {showBack ? (
+            <BackNavButton className="back-nav-btn--navbar" />
+          ) : null}
           <button
             type="button"
             onClick={onMenuClick}
