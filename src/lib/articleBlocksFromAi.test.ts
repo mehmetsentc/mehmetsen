@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
-import { sanitizeArticleBlocks } from '@/lib/articleBlocks'
+import { sanitizeArticleBlocks, textToArticleBlocks } from '@/lib/articleBlocks'
 
 describe('sanitizeArticleBlocks', () => {
   it('coerces body H1 headings to H2', () => {
@@ -11,6 +11,20 @@ describe('sanitizeArticleBlocks', () => {
     expect(blocks).toHaveLength(2)
     expect(blocks[0]).toMatchObject({ type: 'heading', level: 2, text: 'Sayfa içi H1' })
     expect(blocks[1]).toMatchObject({ type: 'heading', level: 3 })
+  })
+
+  it('splits oversized headings into short title + paragraph', () => {
+    const blocks = sanitizeArticleBlocks([
+      {
+        id: 'long',
+        type: 'heading',
+        level: 3,
+        text: 'Dev Panda Araştırmanın ilk sırasında dev panda yer aldı katılımcıların yüzde kırkı seçti',
+      },
+    ])
+    expect(blocks[0]).toMatchObject({ type: 'heading', level: 3 })
+    expect(blocks[0].type === 'heading' && blocks[0].text.split(' ').length).toBeLessThanOrEqual(8)
+    expect(blocks.some((block) => block.type === 'paragraph')).toBe(true)
   })
 
   it('preserves image credit and caption', () => {
@@ -27,6 +41,19 @@ describe('sanitizeArticleBlocks', () => {
       type: 'image',
       caption: 'Açıklama',
       credit: 'AA',
+    })
+  })
+})
+
+describe('textToArticleBlocks', () => {
+  it('keeps heading and following paragraph separate with single newline', () => {
+    const blocks = textToArticleBlocks(
+      '### Dev Panda\nAraştırmanın ilk sırasında dev panda yer aldı ve katılımcılar bunu seçti.'
+    )
+    expect(blocks[0]).toMatchObject({ type: 'heading', level: 3, text: 'Dev Panda' })
+    expect(blocks[1]).toMatchObject({
+      type: 'paragraph',
+      text: expect.stringContaining('Araştırmanın ilk sırasında'),
     })
   })
 })
@@ -58,6 +85,20 @@ describe('buildBodyBlocksFromAi', () => {
     expect(blocks[imageIdx + 1]).toMatchObject({ type: 'heading', level: 2 })
   })
 
+  it('does not invent H2/H3 from plain paragraph first words', () => {
+    const blocks = buildBodyBlocksFromAi({
+      title: 'Liste',
+      content:
+        'Birinci hayvan hakkındaki yeterince uzun paragraf burada yer alır ve okunur.\n\n' +
+        'İkinci hayvan hakkındaki yeterince uzun paragraf burada yer alır ve okunur.\n\n' +
+        'Üçüncü hayvan hakkındaki yeterince uzun paragraf burada yer alır ve okunur.\n\n' +
+        'Dördüncü hayvan hakkındaki yeterince uzun paragraf burada yer alır ve okunur.',
+    })
+    const bodyHeadings = blocks.filter((b) => b.type === 'heading')
+    expect(bodyHeadings).toHaveLength(0)
+    expect(blocks.filter((b) => b.type === 'paragraph')).toHaveLength(4)
+  })
+
   it('converts markdown # headings to H2 and keeps ## / ###', () => {
     const blocks = buildBodyBlocksFromAi({
       title: 'Başlık',
@@ -68,6 +109,27 @@ describe('buildBodyBlocksFromAi', () => {
     expect(headings.some((h) => h.type === 'heading' && h.level === 2 && h.text.includes('Yanlış'))).toBe(true)
     expect(headings.some((h) => h.type === 'heading' && h.level === 2 && h.text === 'Bölüm')).toBe(true)
     expect(headings.some((h) => h.type === 'heading' && h.level === 3 && h.text === 'Alt')).toBe(true)
+  })
+
+  it('repairs glued heading+paragraph markdown like the CMS bug', () => {
+    const blocks = buildBodyBlocksFromAi({
+      title: 'Hayvanlar',
+      content:
+        '### Dev Panda\nAraştırmanın ilk sırasında dev panda yer aldı. Katılımcıların yüzde 41\'i pandaları seçti.\n\n' +
+        '### Fil\nListenin ikinci sırasında yer alan filler yeni sıralamaya girdi.',
+    })
+    expect(blocks.some((b) => b.type === 'heading' && b.level === 3 && b.text === 'Dev Panda')).toBe(true)
+    expect(blocks.some((b) => b.type === 'heading' && b.level === 3 && b.text === 'Fil')).toBe(true)
+    expect(
+      blocks.some(
+        (b) => b.type === 'paragraph' && b.text.includes('Araştırmanın ilk sırasında')
+      )
+    ).toBe(true)
+    expect(
+      blocks.every(
+        (b) => !(b.type === 'heading' && b.text.includes('Araştırmanın'))
+      )
+    ).toBe(true)
   })
 
   it('adds H3 under additional images', () => {

@@ -27,18 +27,29 @@ const SYSTEM_PROMPTS: Record<AssistMode, string> = {
   create: `Sen deneyimli bir Türk gazetecisisin. Verilen konuda profesyonel bir haber metni yaz.
 JSON formatında yanıt ver: {"title":"...","content":"...","summary":"...","spot":"..."}
 spot: 5W+1H (Kim,Ne,Nerede,Ne Zaman,Neden,Nasıl) yanıtlayan 2-4 cümlelik haber girizgahı.
-content içinde ## H2 ve ### H3 markdown başlıkları kullan. # H1 KULLANMA (sayfa başlığı H1'dir).`,
+content kuralları:
+- ## H2 ve ### H3 kullan; # H1 KULLANMA
+- Her başlık kendi satırında olsun, en fazla 6 kelime
+- Başlıktan sonra boş satır bırak, sonra paragrafı yaz
+- Başlık ile paragrafı aynı satıra veya bitişik yapıştırma
+- Paragrafları yarım bırakma; cümleleri tamamla`,
 
   rewrite: `Sen deneyimli bir Türk gazete editörüsün. Verilen haberi yeniden yaz, daha akıcı ve profesyonel yap.
 JSON: {"title":"...","content":"...","summary":"...","spot":"..."}
-content içinde ## / ### başlıklar kullan; # H1 yazma.`,
+content kuralları: ## / ### başlıklar kendi satırında (max 6 kelime), ardından boş satır + tam paragraf; # H1 yok; metinleri kesme.`,
 
   'publish-ready': `Sen NaHaber'in deneyimli genel yayın yönetmenisin. Kullanıcının verdiği ham metni, hiçbir olgu uydurmadan, yayıma hazır profesyonel bir Türkçe habere dönüştür.
 Kurallar:
 - Ana başlık güçlü, doğru ve clickbait olmayan bir manşet olsun.
 - spot 5W+1H'yi karşılayan 2-4 cümle olsun.
 - summary en fazla 280 karakter olsun.
-- content özgün, akıcı ve ayrıntılı olsun; ## H2 ve gerektiğinde ### H3 kullan. # H1 ASLA kullanma.
+- content özgün, akıcı ve ayrıntılı olsun.
+- content markdown yapısı ZORUNLU:
+  * ## H2 ve gerektiğinde ### H3 kullan; # H1 ASLA kullanma
+  * Her başlık ayrı satırda, en fazla 6 kelime, paragraf metni içermesin
+  * Başlıktan sonra bir boş satır, sonra tam paragraf
+  * "### BaşlıkParagraf" gibi bitişik yazım YASAK
+  * Paragrafları yarım bırakma; her cümleyi tamamla
 - Ham metinde bulunmayan kişi, sayı, tarih, yer, alıntı veya iddia ekleme.
 - CANLI ARAŞTIRMA NOTLARI varsa yalnızca bu notlarda açıkça kaynaklandırılmış olguları kullan.
 - Çelişkili veya tek kaynağa dayanan iddiaları kesin bilgi gibi sunma.
@@ -81,8 +92,8 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
         model,
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
         response_format: { type: 'json_object' },
-        temperature: 0.7,
-        max_tokens: 5000,
+        temperature: 0.45,
+        max_tokens: 8000,
       }),
       signal: AbortSignal.timeout(35_000),
     })

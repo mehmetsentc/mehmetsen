@@ -17,6 +17,8 @@ export type ArticleBlock =
 const MAX_BLOCKS = 200
 const MAX_TEXT = 20_000
 const MAX_IMAGES_PER_GALLERY = 9
+const HEADING_MAX_WORDS = 8
+const HEADING_MAX_CHARS = 90
 
 function cleanText(value: unknown, max = MAX_TEXT): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : ''
@@ -39,6 +41,30 @@ function cleanId(value: unknown, index: number): string {
   return id || `block-${index + 1}`
 }
 
+/**
+ * Keep headings short. If AI glued a title and paragraph onto one markdown line,
+ * peel a short title and return the remainder as paragraph text.
+ */
+export function splitOversizedHeading(text: string): {
+  heading: string
+  overflow: string
+} {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (!normalized) return { heading: '', overflow: '' }
+
+  const words = normalized.split(' ')
+  if (words.length <= HEADING_MAX_WORDS && normalized.length <= HEADING_MAX_CHARS) {
+    return { heading: normalized, overflow: '' }
+  }
+
+  const short = words.slice(0, Math.min(4, words.length)).join(' ')
+  const overflow = words.slice(Math.min(4, words.length)).join(' ').trim()
+  if (short.length < 3) {
+    return { heading: '', overflow: normalized }
+  }
+  return { heading: short.slice(0, HEADING_MAX_CHARS), overflow }
+}
+
 export function sanitizeArticleBlocks(value: unknown): ArticleBlock[] {
   if (!Array.isArray(value)) return []
 
@@ -48,12 +74,22 @@ export function sanitizeArticleBlocks(value: unknown): ArticleBlock[] {
     const id = cleanId(block.id, index)
 
     if (block.type === 'heading') {
-      const text = cleanText(block.text, 300)
+      const text = cleanText(block.text, 500).replace(/\s+/g, ' ')
       if (!text) return []
       // Page title owns the only H1 — coerce body H1 → H2 for SEO/accessibility.
       const rawLevel = block.level === 1 || block.level === 3 || block.level === 4 ? block.level : 2
       const level = rawLevel === 1 ? 2 : rawLevel
-      return [{ id, type: 'heading', level, text }]
+      const { heading, overflow } = splitOversizedHeading(text)
+      const out: ArticleBlock[] = []
+      if (heading) out.push({ id, type: 'heading', level, text: heading })
+      if (overflow) {
+        out.push({
+          id: `${id}-p`,
+          type: 'paragraph',
+          text: overflow.slice(0, MAX_TEXT),
+        })
+      }
+      return out
     }
 
     if (block.type === 'paragraph') {
@@ -163,41 +199,112 @@ export function headingAnchor(text: string, fallback: string): string {
   return anchor || fallback
 }
 
+function parseMarkdownHeadingLine(
+  line: string
+): { level: 1 | 2 | 3 | 4; text: string } | null {
+  const match = line.match(/^(#{1,4})\s+(.+)$/)
+  if (!match) return null
+  const level = Math.min(4, match[1].length) as 1 | 2 | 3 | 4
+  return { level, text: match[2].trim() }
+}
+
 /** Convert lightweight Markdown/plain text into editable blocks in the CMS. */
 export function textToArticleBlocks(text: string): ArticleBlock[] {
-  const chunks = text.trim().split(/\n{2,}/).map((chunk) => chunk.trim()).filter(Boolean)
-  return chunks.map((chunk, index): ArticleBlock => {
-    const id = `block-${Date.now()}-${index + 1}`
-    if (chunk.startsWith('#### ')) {
-      return { id, type: 'heading', level: 4, text: chunk.slice(5).trim() }
+  const lines = text.replace(/\r\n/g, '\n').split('\n')
+  const blocks: ArticleBlock[] = []
+  let paragraphLines: string[] = []
+  let listItems: string[] | null = null
+  let listStyle: 'unordered' | 'ordered' | null = null
+  let index = 0
+
+  const flushParagraph = () => {
+    const textValue = paragraphLines.join(' ').replace(/\s+/g, ' ').trim()
+    paragraphLines = []
+    if (!textValue) return
+    blocks.push({
+      id: `block-${Date.now()}-${index++}`,
+      type: 'paragraph',
+      text: textValue,
+    })
+  }
+
+  const flushList = () => {
+    if (!listItems || listItems.length === 0 || !listStyle) {
+      listItems = null
+      listStyle = null
+      return
     }
-    if (chunk.startsWith('### ')) {
-      return { id, type: 'heading', level: 3, text: chunk.slice(4).trim() }
+    blocks.push({
+      id: `block-${Date.now()}-${index++}`,
+      type: 'list',
+      style: listStyle,
+      items: listItems,
+    })
+    listItems = null
+    listStyle = null
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) {
+      flushList()
+      flushParagraph()
+      continue
     }
-    if (chunk.startsWith('## ')) {
-      return { id, type: 'heading', level: 2, text: chunk.slice(3).trim() }
-    }
-    if (chunk.startsWith('# ')) {
-      // Body must not emit H1 — treat as H2
-      return { id, type: 'heading', level: 2, text: chunk.slice(2).trim() }
-    }
-    const lines = chunk.split('\n').map((line) => line.trim()).filter(Boolean)
-    if (lines.length > 0 && lines.every((line) => /^[-*]\s+/.test(line))) {
-      return {
-        id,
-        type: 'list',
-        style: 'unordered',
-        items: lines.map((line) => line.replace(/^[-*]\s+/, '')),
+
+    const heading = parseMarkdownHeadingLine(line)
+    if (heading) {
+      flushList()
+      flushParagraph()
+      const { heading: title, overflow } = splitOversizedHeading(heading.text)
+      const level = (heading.level === 1 ? 2 : heading.level) as 2 | 3 | 4
+      if (title) {
+        blocks.push({
+          id: `block-${Date.now()}-${index++}`,
+          type: 'heading',
+          level,
+          text: title,
+        })
       }
-    }
-    if (lines.length > 0 && lines.every((line) => /^\d+[.)]\s+/.test(line))) {
-      return {
-        id,
-        type: 'list',
-        style: 'ordered',
-        items: lines.map((line) => line.replace(/^\d+[.)]\s+/, '')),
+      if (overflow) {
+        blocks.push({
+          id: `block-${Date.now()}-${index++}`,
+          type: 'paragraph',
+          text: overflow,
+        })
       }
+      continue
     }
-    return { id, type: 'paragraph', text: chunk.replace(/\n+/g, ' ') }
-  })
+
+    const unordered = line.match(/^[-*]\s+(.+)$/)
+    if (unordered) {
+      flushParagraph()
+      if (listStyle !== 'unordered') {
+        flushList()
+        listStyle = 'unordered'
+        listItems = []
+      }
+      listItems!.push(unordered[1].trim())
+      continue
+    }
+
+    const ordered = line.match(/^\d+[.)]\s+(.+)$/)
+    if (ordered) {
+      flushParagraph()
+      if (listStyle !== 'ordered') {
+        flushList()
+        listStyle = 'ordered'
+        listItems = []
+      }
+      listItems!.push(ordered[1].trim())
+      continue
+    }
+
+    flushList()
+    paragraphLines.push(line)
+  }
+
+  flushList()
+  flushParagraph()
+  return blocks
 }

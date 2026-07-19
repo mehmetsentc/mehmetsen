@@ -43,6 +43,22 @@ function looksLikeMarkdownHeadings(text: string): boolean {
 }
 
 /**
+ * Normalize AI markdown so headings are never glued to the next sentence.
+ * Handles both "### Title\\nParagraph" and "### TitleParagraph".
+ */
+export function normalizeAiMarkdown(content: string): string {
+  return content
+    .replace(/\r\n/g, '\n')
+    // Mid-line markdown heading (not splitting ### into # + ##)
+    .replace(/([^#\n])(#{1,4}\s+\S)/g, '$1\n\n$2')
+    // If heading + sentence were glued without space: "### Dev PandaAraştırma"
+    .replace(/^(#{1,4}\s+.+?[a-zçğıöşü])([A-ZÇĞİÖŞÜ])/gm, '$1\n\n$2')
+    // Blank line after a short heading line when the next line is body text
+    .replace(/^(#{1,4}\s+[^\n]{1,90})\n(?!\n|#)/gm, '$1\n\n')
+    .trim()
+}
+
+/**
  * Derive a short H2/H3 under an image from caption or article title.
  */
 function headingFromImageContext(
@@ -92,7 +108,7 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
     })
   }
 
-  const content = (input.content || '').trim()
+  const content = normalizeAiMarkdown((input.content || '').trim())
   if (content) {
     if (looksLikeMarkdownHeadings(content)) {
       const fromMd = textToArticleBlocks(content).map((block) => {
@@ -101,7 +117,6 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
         }
         return block
       })
-      // Avoid duplicating spot if first paragraph matches
       for (const block of fromMd) {
         if (
           block.type === 'paragraph' &&
@@ -113,35 +128,12 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
         blocks.push({ ...block, id: newId('md', i++) })
       }
     } else {
-      const paragraphs = splitParagraphs(content)
-      const sectionEvery = Math.max(2, Math.ceil(paragraphs.length / 4))
-      let sectionIndex = 0
-      paragraphs.forEach((paragraph, idx) => {
-        if (spot && idx === 0 && paragraph.slice(0, 80) === spot.slice(0, 80)) {
-          return
-        }
-        if (idx > 0 && idx % sectionEvery === 0) {
-          sectionIndex += 1
-          const words = paragraph.split(/\s+/).slice(0, 8).join(' ')
-          blocks.push({
-            id: newId('h2', i++),
-            type: 'heading',
-            level: 2,
-            text: words.length > 12 ? `${words}…` : `Bölüm ${sectionIndex}`,
-          })
-        } else if (idx > 0 && idx % sectionEvery === Math.floor(sectionEvery / 2) && sectionIndex > 0) {
-          const words = paragraph.split(/\s+/).slice(0, 6).join(' ')
-          if (words.length > 15) {
-            blocks.push({
-              id: newId('h3', i++),
-              type: 'heading',
-              level: 3,
-              text: words,
-            })
-          }
-        }
+      // Plain text: keep paragraphs intact. Do NOT invent H2/H3 from first words —
+      // that produced truncated fake headings and incomplete-looking copy.
+      for (const paragraph of splitParagraphs(content)) {
+        if (spot && paragraph.slice(0, 80) === spot.slice(0, 80)) continue
         blocks.push({ id: newId('p', i++), type: 'paragraph', text: paragraph })
-      })
+      }
     }
   }
 
@@ -169,7 +161,7 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
     const imageBlock: ArticleBlock = {
       id: newId('ximg', i++),
       type: 'image',
-      url,
+      url: url!,
       alt: image.alt?.trim() || caption,
       caption,
       ...(image.credit?.trim() ? { credit: image.credit.trim() } : {}),
