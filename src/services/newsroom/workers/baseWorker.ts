@@ -8,7 +8,7 @@ import { fetchRssItems, type RssFeedItem } from '@/services/rss/rssFetcher'
 import { getRssSourceById, type RssSourceDefinition } from '@/services/rss/sources'
 import { detectArticleChanges } from '@/services/newsroom/detection/changeDetector'
 import {
-  loadSourceFingerprints,
+  loadFingerprintsForHashes,
   markFingerprintRemoved,
   upsertSourceFingerprint,
 } from '@/services/newsroom/detection/sourceFingerprint'
@@ -85,9 +85,13 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
 
     result.itemsFetched += items.length
 
-    let stored: Awaited<ReturnType<typeof loadSourceFingerprints>>
+    // Point-read only the hashes currently in the RSS feed instead of a
+    // full 600-doc range scan. Cuts Firestore reads from ~600 → ~N_items
+    // per source per run (typically 20–60). "Removed" detection is skipped
+    // (stored only contains current hashes) — stale fingerprints age out.
+    let stored: Awaited<ReturnType<typeof loadFingerprintsForHashes>>
     try {
-      stored = await loadSourceFingerprints(db, source.id)
+      stored = await loadFingerprintsForHashes(db, source.id, items.map((i) => i.fingerprint))
     } catch (fsErr) {
       const code = (fsErr as { code?: number }).code
       const msg = `[${options.workerId}:${source.id}] Firestore read failed${code === 8 ? ' (RESOURCE_EXHAUSTED)' : ''}: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`

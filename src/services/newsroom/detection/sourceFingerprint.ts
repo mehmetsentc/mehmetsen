@@ -74,6 +74,33 @@ export async function loadSourceFingerprints(
   return map
 }
 
+/**
+ * Efficiently load fingerprints for ONLY the hashes currently in the RSS feed.
+ *
+ * Uses db.getAll() for point reads instead of a range scan — O(N_items) reads
+ * (typically 20–60) instead of O(FINGERPRINT_SCAN_LIMIT = 600). This is the
+ * hot-path replacement for loadSourceFingerprints in the per-run pipeline.
+ *
+ * Trade-off: "removed" detection is a no-op with this approach (stored only
+ * contains hashes from the current feed, so nothing appears missing). Stale
+ * fingerprints age out naturally; run a separate cleanup job to hard-delete them.
+ */
+export async function loadFingerprintsForHashes(
+  db: Firestore,
+  sourceId: string,
+  hashes: string[]
+): Promise<Map<string, SourceArticleFingerprint>> {
+  if (hashes.length === 0) return new Map()
+  const col = articlesCollection(db, sourceId)
+  const refs = hashes.map((h) => col.doc(h))
+  const snaps = await db.getAll(...refs)
+  const map = new Map<string, SourceArticleFingerprint>()
+  for (const snap of snaps) {
+    if (snap.exists) map.set(snap.id, snap.data() as SourceArticleFingerprint)
+  }
+  return map
+}
+
 export async function upsertSourceFingerprint(
   db: Firestore,
   sourceId: string,
