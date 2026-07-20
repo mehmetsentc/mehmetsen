@@ -133,7 +133,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
         title: post.title,
         spot: post.spot,
         summary: post.summary,
-        coverImageUrl: post.coverImageUrl,
+        coverImageUrl: post.coverImageUrl ?? undefined,
       })
     : []
 
