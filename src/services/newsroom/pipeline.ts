@@ -23,6 +23,7 @@ import {
 } from '@/services/newsroom/breakingPriority'
 import { categoryEngine } from '@/services/newsroom/categoryEngine'
 import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
+import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import {
   NEWSROOM_AUTO_PUBLISH_THRESHOLD,
   NEWSROOM_LOW_CONFIDENCE_THRESHOLD,
@@ -584,6 +585,20 @@ export async function processNewsroomArticle(
       } catch {
         // Non-blocking — if AI check fails, keep the rule-based category
       }
+    }
+
+    const astrologyFixed = applyAstrologyCategoryOverride(
+      classification.categoryId,
+      rewritten.title,
+      rewritten.description ?? rewritten.summary ?? '',
+      (rewritten as AiRewriteResult).tags ?? []
+    )
+    if (astrologyFixed !== classification.categoryId) {
+      console.log(
+        `[newsroom/category] burç override: ${classification.categoryId} → ${astrologyFixed}`
+      )
+      classification.categoryId = astrologyFixed
+      classification.overrides.push('burç/astroloji → astroloji')
     }
 
     // ── forcedCitySlug override — SADECE yerel-haber + içerikten şehir bulunamadıysa ──

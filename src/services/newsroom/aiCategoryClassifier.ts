@@ -13,6 +13,8 @@
  * - Kaynak adı bazlı zorunlu kategori atamasının içeriği ezmesi
  */
 
+import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+
 const CATEGORIES = [
   'gundem',
   'siyaset',
@@ -44,6 +46,7 @@ const CATEGORIES = [
   'konser',
   'festival',
   'yasam',
+  'astroloji',
   'moda',
   'anne-cocuk',
   'dekorasyon',
@@ -86,11 +89,12 @@ const CATEGORY_DESCRIPTIONS: Record<NewsCategory, string> = {
   tiyatro:       'Tiyatro oyunları, sahne, piyes, opera, bale haberleri',
   konser:        'Konser, müzik etkinlikleri, turne, albüm çıkışları, müzik festivallerine katılım',
   festival:      'Kültür/sanat festivalleri, film festivali (Cannes, Berlin, İstanbul Film Festivali)',
-  yasam:         'Genel yaşam tarzı (alt dal belli değilse)',
+  yasam:         'Genel yaşam tarzı — alt dal belli değilse. Burç/astroloji içerikleri için ASLA kullanma → astroloji.',
+  astroloji:     'Burç yorumu, günlük/haftalık burç, zodyak, yükselen, gezegen retrosu, astroloji rehberi. Koç/Boğa/İkizler/Yengeç/Aslan/Başak/Terazi/Akrep/Yay/Oğlak/Kova/Balık burcu yazıları. ASLA yasam değil.',
   moda:          'Moda, giyim, defile, stil, güzellik ürünü (ünlü skandalı değil)',
   'anne-cocuk':  'Ebeveynlik, çocuk bakımı, hamilelik, okul öncesi',
   dekorasyon:    'Ev dekorasyonu, iç mimari, mobilya',
-  iliskiler:     'İlişki tavsiyeleri, evlilik rehberi (ünlü dedikodusu → magazin)',
+  iliskiler:     'İlişki tavsiyeleri, evlilik rehberi (ünlü dedikodusu → magazin; burç ilişki yorumu → astroloji)',
   gastronomi:    'Yemek, tarif, restoran haberleri, şef, Michelin yıldızı, mutfak kültürü, foodie',
   otomobil:      'Araba, araç, otomobil, motosiklet, trafik, elektrikli araç, TOGG, yeni model tanıtımı',
   tarih:         'Tarih, arkeoloji, tarihi yıldönümü, Osmanlı/Cumhuriyet tarihi',
@@ -147,7 +151,10 @@ TEMEL KURALLAR (hepsini uygula):
 8. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil"
 9. Sinema filmi/vizyona girenler → "sinema", tiyatro oyunu → "tiyatro", konser haberi → "konser"
 10. Magazin = SADECE ünlülerin kişisel hayatı, ilişkisi, skandalı, dedikodu
-11. Mevcut kategori doğruysa onayla, yanlışsa düzelt
+11. ASTROLOJİ / BURÇ — KESİN:
+   - Günlük/haftalık burç yorumu, burç adı (Yay, Koç, …), yükselen, retrosu, zodyak → "astroloji"
+   - Bu içerikler için ASLA "yasam" veya "iliskiler" seçme
+12. Mevcut kategori doğruysa onayla, yanlışsa düzelt
 
 JSON formatında yanıt ver:
 {"categoryId": "kategori-adı", "confidence": 85, "reason": "kısa açıklama"}`
@@ -186,7 +193,20 @@ JSON formatında yanıt ver:
 
     if (!CATEGORIES.includes(categoryId) || confidence < 75) return null
 
-    return { categoryId, confidence, reason: parsed.reason ?? '' }
+    const resolvedId = applyAstrologyCategoryOverride(
+      categoryId,
+      title,
+      content
+    ) as NewsCategory
+
+    return {
+      categoryId: resolvedId,
+      confidence,
+      reason:
+        resolvedId !== categoryId
+          ? `${parsed.reason ?? ''} [override→astroloji]`.trim()
+          : parsed.reason ?? '',
+    }
   } catch {
     return null
   }

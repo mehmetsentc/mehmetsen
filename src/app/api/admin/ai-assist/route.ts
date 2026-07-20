@@ -5,6 +5,7 @@ import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { generateImageAnalysis, type ImageAnalysis } from '@/lib/ai/imageSeo'
 import { researchLiveNews } from '@/lib/ai/liveResearch'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,6 +61,10 @@ Kurallar:
 - Görsel analizlerini yalnızca yerleşim ve açıklama için kullan; yeni haber olgusu üretmek için kullanma.
 - seoTitle 50-65, seoDescription 140-165 karakter olsun.
 - categoryId aşağıdaki geçerli kimliklerden tam biri olsun.
+- Kategori seçiminde EN SPESİFİK alt kategoriyi kullan:
+  * Burç / günlük burç / haftalık burç / zodyak / yükselen / Koç|Boğa|İkizler|Yengeç|Aslan|Başak|Terazi|Akrep|Yay|Oğlak|Kova|Balık burcu → categoryId: "astroloji" (ASLA "yasam" değil)
+  * Moda/giyim → "moda"; anne-çocuk → "anne-cocuk"; dekorasyon → "dekorasyon"; ilişki rehberi → "iliskiler"
+  * "yasam" yalnızca yaşam alt dalı belirsizse
 - tags 5-8, seoKeywords 8-15 Türkçe ifade olsun.
 - imageOrder yalnızca verilen görsel URL'lerini içersin; en ilgili kapak görseli ilk sırada olsun.
 Geçerli kategoriler: ${CATEGORY_LIST}
@@ -216,10 +221,15 @@ export async function POST(request: Request) {
         additionalImages: orderedImages.slice(1),
       })
       const categoryCandidate = String(parsed.categoryId ?? '').trim()
-      const categoryId = CATEGORY_IDS.has(categoryCandidate) ? categoryCandidate : 'gundem'
       const tags = Array.isArray(parsed.tags)
         ? parsed.tags.map(String).map((tag) => tag.trim().toLowerCase()).filter(Boolean).slice(0, 8)
         : []
+      const categoryId = applyAstrologyCategoryOverride(
+        CATEGORY_IDS.has(categoryCandidate) ? categoryCandidate : 'gundem',
+        title,
+        content,
+        tags
+      )
       const seoKeywords = Array.isArray(parsed.seoKeywords)
         ? parsed.seoKeywords.map(String).map((word) => word.trim().toLowerCase()).filter(Boolean).slice(0, 15)
         : []
@@ -229,7 +239,7 @@ export async function POST(request: Request) {
         summary.length >= 60,
         content.length >= 600,
         /^##\s+\S/m.test(content),
-        CATEGORY_IDS.has(categoryCandidate),
+        CATEGORY_IDS.has(categoryCandidate) || categoryId === 'astroloji',
         tags.length >= 5,
         String(parsed.seoTitle ?? '').trim().length >= 40,
         String(parsed.seoDescription ?? '').trim().length >= 120,

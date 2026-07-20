@@ -12,6 +12,7 @@
  */
 
 import type { WrittenArticle } from './stage1_contentWriter'
+import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 
 export interface CategoryResult {
   categoryId: string
@@ -77,6 +78,14 @@ DİĞER KATEGORİLER:
 - meteoroloji: Hava durumu, MGM uyarısı, fırtına, don, sel (Türkiye geneli uyarılar)
 - yerel-haber: Tek il/ilçeye özgü olay. isBreaking: false ZORUNLU. Yerel kaza/olay/tören → burada, son-dakika DEĞİL.
 - gundem: Türkiye geneli, yukarıdakilere girmeyen ulusal haberler. Slider/ana sayfada öne çıkan kategori.
+
+YAŞAM ALT DALLARI (EN SPESİFİK OLANI SEÇ — ebeveyn yasam'ı yalnızca alt dal belirsizse kullan):
+- astroloji: Günlük/haftalık burç yorumu, burç adı (Koç, Boğa, İkizler, Yengeç, Aslan, Başak, Terazi, Akrep, Yay, Oğlak, Kova, Balık), yükselen, gezegen retrosu, zodyak. ASLA yasam DEĞİL.
+- moda: Giyim, defile, stil, güzellik
+- anne-cocuk: Ebeveynlik, çocuk bakımı, hamilelik
+- dekorasyon: Ev dekorasyonu, mobilya, iç mimari
+- iliskiler: İlişki/evlilik rehberi (burç ilişki yorumu → astroloji; ünlü dedikodu → magazin)
+- yasam: Genel yaşam — yalnızca yukarıdaki alt dallara uymuyorsa
 
 YERELLİK TESTİ:
 Aşağıdakilerin hepsi doğruysa → yerel-haber:
@@ -220,7 +229,8 @@ function heuristicCategory(input: CategoryInput): CategoryResult {
 
   let categoryId = input.forcedCategoryId || 'gundem'
 
-  if (/futbol|maç|gol|transfer|süper lig|tff|uefa|fifa/.test(text)) categoryId = 'futbol'
+  if (/burç|astroloji|horoscope|zodiac|zodyak|yükselen|günlük\s*burç/.test(text)) categoryId = 'astroloji'
+  else if (/futbol|maç|gol|transfer|süper lig|tff|uefa|fifa/.test(text)) categoryId = 'futbol'
   else if (/basketbol|nba|euroleague/.test(text)) categoryId = 'basketbol'
   else if (/voleybol/.test(text)) categoryId = 'voleybol'
   else if (/teknoloji|yapay zeka|chatgpt|iphone|android|siber/.test(text)) categoryId = 'teknoloji'
@@ -228,6 +238,8 @@ function heuristicCategory(input: CategoryInput): CategoryResult {
   else if (/deprem|afet|sel/.test(text) && !/^\w+('da|'de|'ta|'te|'ın|'in)\s/.test(input.title)) categoryId = 'son-dakika'
   else if (/siyaset|cumhurbaşkan|tbmm|meclis|seçim|parti/.test(text)) categoryId = 'siyaset'
   else if (/dünya|rusya|abd|almanya|fransa|ukrayna|gazze|savaş/.test(text)) categoryId = 'dunya'
+
+  categoryId = applyAstrologyCategoryOverride(categoryId, input.title, input.content)
 
   const isBreaking = categoryId === 'son-dakika'
 
@@ -271,8 +283,22 @@ export async function classifyArticle(
 
   const deepseekResult = await callDeepSeek(input)
   if (deepseekResult) {
-    console.log(`[stage3] DeepSeek → ${deepseekResult.categoryId} (güven: ${deepseekResult.confidence}) — ${deepseekResult.reason.slice(0, 80)}`)
-    return deepseekResult
+    const categoryId = applyAstrologyCategoryOverride(
+      deepseekResult.categoryId,
+      input.title,
+      input.content,
+      deepseekResult.tags
+    )
+    const result =
+      categoryId === deepseekResult.categoryId
+        ? deepseekResult
+        : {
+            ...deepseekResult,
+            categoryId,
+            reason: `${deepseekResult.reason} [override→astroloji]`.trim(),
+          }
+    console.log(`[stage3] DeepSeek → ${result.categoryId} (güven: ${result.confidence}) — ${result.reason.slice(0, 80)}`)
+    return result
   }
 
   const fallback = heuristicCategory(input)
