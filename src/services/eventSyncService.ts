@@ -1,4 +1,4 @@
-import type { Firestore } from 'firebase-admin/firestore'
+import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { buildEventFingerprint, dedupeEvents } from '@/lib/eventDedupe'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
@@ -217,16 +217,24 @@ async function markPastEvents(db: Firestore): Promise<number> {
   const nowIso = new Date().toISOString()
   let markedPast = 0
 
-  // Query only by startsAt — no composite index needed.
-  // Skip docs already marked past to avoid unnecessary writes.
+  // Cursor-based pagination prevents re-reading the same docs when nothing
+  // needs updating (e.g. all past events already marked as 'past').
+  let lastDoc: QueryDocumentSnapshot | null = null
+
   while (true) {
-    const snap = await db
+    let q = db
       .collection(Collections.EVENTS)
       .where('startsAt', '<', nowIso)
+      .orderBy('startsAt')
       .limit(MARK_PAST_BATCH_SIZE)
-      .get()
+
+    if (lastDoc) q = q.startAfter(lastDoc)
+
+    const snap = await q.get()
 
     if (snap.empty) break
+
+    lastDoc = snap.docs[snap.docs.length - 1]
 
     const batch = db.batch()
     let batchHasOps = false
@@ -260,16 +268,27 @@ async function markRemovedEvents(
   let markedRemoved = 0
 
   for (const providerId of successfulProviders) {
+    // Use cursor-based pagination so we never re-read the same docs.
+    // Without startAfter, the loop reads the same first 400 forever when
+    // nothing is being cancelled — causing an infinite read loop.
+    let lastDoc: QueryDocumentSnapshot | null = null
+
     while (true) {
-      const snap = await db
+      let q = db
         .collection(Collections.EVENTS)
         .where('source', '==', providerId)
         .where('status', '==', 'published')
         .where('timelineStatus', '==', 'upcoming')
+        .orderBy('__name__')
         .limit(MARK_REMOVED_BATCH_SIZE)
-        .get()
+
+      if (lastDoc) q = q.startAfter(lastDoc)
+
+      const snap = await q.get()
 
       if (snap.empty) break
+
+      lastDoc = snap.docs[snap.docs.length - 1]
 
       const batch = db.batch()
       let batchCount = 0
