@@ -19,7 +19,7 @@ describe('sanitizeArticleBlocks', () => {
         id: 'long',
         type: 'heading',
         level: 3,
-        text: 'Dev Panda Araştırmanın ilk sırasında dev panda yer aldı katılımcıların yüzde kırkı seçti',
+        text: 'Dev Panda Araştırmanın ilk sırasında dev panda yer aldı katılımcılar seçti',
       },
     ])
     expect(blocks[0]).toMatchObject({ type: 'heading', level: 3 })
@@ -56,10 +56,39 @@ describe('textToArticleBlocks', () => {
       text: expect.stringContaining('Araştırmanın ilk sırasında'),
     })
   })
+
+  it('demotes a long sentence wrongly marked as heading to one paragraph', () => {
+    const blocks = textToArticleBlocks(
+      '### Kastamonu ve Rize\'de yerel sağanak beklenirken, yurdun büyük bölümünde sıcak hava etkili olacak.'
+    )
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]).toMatchObject({ type: 'paragraph' })
+    expect(blocks[0].type === 'paragraph' && blocks[0].text).toContain('etkili olacak')
+  })
 })
 
 describe('buildBodyBlocksFromAi', () => {
-  it('never emits body H1 and adds image + under-image H2', () => {
+  it('never emits body H1; cover and spot stay outside bodyBlocks by default', () => {
+    const blocks = buildBodyBlocksFromAi({
+      title: 'Deprem sonrası yardım çalışması',
+      spot: 'Ekipler bölgede arama kurtarma sürdürüyor.',
+      content:
+        '## Sahada çalışmalar\n\n' +
+        'İlk paragraf yeterince uzun olmalı ki bloğa dönüşsün ve haberin bağlamı anlaşılsın burada.\n\n' +
+        '## Yardım sevkiyatı\n\n' +
+        'İkinci paragraf da uzun tutulmalı çünkü bölüm başlıkları buna göre üretilir ve okunur burada.',
+      imageUrl: 'https://cdn.example.com/cover.jpg',
+      imageCaption: 'Sahadan görüntü',
+    })
+
+    const headings = blocks.filter((b) => b.type === 'heading')
+    expect(headings.every((h) => h.type === 'heading' && h.level !== 1)).toBe(true)
+    expect(blocks.some((b) => b.type === 'image')).toBe(false)
+    expect(blocks.some((b) => b.text === 'Ekipler bölgede arama kurtarma sürdürüyor.')).toBe(false)
+    expect(headings.some((h) => h.type === 'heading' && h.text === 'Sahada çalışmalar')).toBe(true)
+  })
+
+  it('can embed spot and cover when externalLeadAndCover is false', () => {
     const blocks = buildBodyBlocksFromAi({
       title: 'Deprem sonrası yardım çalışması',
       spot: 'Ekipler bölgede arama kurtarma sürdürüyor.',
@@ -70,18 +99,11 @@ describe('buildBodyBlocksFromAi', () => {
         'Dördüncü paragraf son bölüm için yeterli uzunlukta bir metin parçasıdır burada.',
       imageUrl: 'https://cdn.example.com/cover.jpg',
       imageCaption: 'Sahadan görüntü',
+      externalLeadAndCover: false,
     })
-
-    const headings = blocks.filter((b) => b.type === 'heading')
-    expect(headings.every((h) => h.type === 'heading' && h.level !== 1)).toBe(true)
 
     const imageIdx = blocks.findIndex((b) => b.type === 'image')
     expect(imageIdx).toBeGreaterThanOrEqual(0)
-    expect(blocks[imageIdx]).toMatchObject({
-      type: 'image',
-      url: 'https://cdn.example.com/cover.jpg',
-      caption: 'Sahadan görüntü',
-    })
     expect(blocks[imageIdx + 1]).toMatchObject({ type: 'heading', level: 2 })
   })
 
@@ -132,7 +154,7 @@ describe('buildBodyBlocksFromAi', () => {
     ).toBe(true)
   })
 
-  it('adds H3 under additional images', () => {
+  it('adds H3 under additional in-body images', () => {
     const blocks = buildBodyBlocksFromAi({
       title: 'Ana haber',
       content: 'Tek paragraf yeterince uzun bir gövde metni olarak burada yer alır ve okunur.',
@@ -140,11 +162,51 @@ describe('buildBodyBlocksFromAi', () => {
       additionalImages: [{ url: 'https://cdn.example.com/b.jpg', caption: 'İkinci kare' }],
     })
     const images = blocks.filter((b) => b.type === 'image')
-    expect(images).toHaveLength(2)
+    expect(images).toHaveLength(1)
+    expect(images[0]?.url).toContain('b.jpg')
     const secondImgIdx = blocks.findIndex(
       (b) => b.type === 'image' && b.url.includes('b.jpg')
     )
     expect(blocks[secondImgIdx + 1]).toMatchObject({ type: 'heading', level: 3 })
+  })
+
+  it('dedupes spot-like paragraphs and demotes sentence-like fake headings', () => {
+    const spot =
+      'Meteoroloji Genel Müdürlüğü, yurdun büyük bölümünde sıcak ve açık havanın etkisini sürdüreceğini açıkladı.'
+    const blocks = buildBodyBlocksFromAi({
+      title: 'İki ilde sağanak bekleniyor, yurt genelinde sıcak hava sürüyor',
+      spot,
+      content:
+        `${spot}\n\n` +
+        '### Kastamonu ve Rize\'de yerel sağanak beklenirken, yurdun büyük bölümünde sıcak hava etkili olacak.\n\n' +
+        '## Sıcak hava yurt genelinde etkili\n\n' +
+        'Meteoroloji Genel Müdürlüğü\'nün son değerlendirmelerine göre, yurt genelinde hava sıcaklıklarında önemli bir değişiklik beklenmiyor.\n\n' +
+        '## Rüzgar kuzey yönlerden esecek\n\n' +
+        'Rüzgârın yurt genelinde ağırlıklı olarak kuzey yönlerden eseceği tahmin ediliyor.\n\n' +
+        '## Kastamonu ve Rize\'de sağanak uyarısı\n\n' +
+        'Kastamonu ile Rize\'nin iç kesimlerinde yerel sağanak bekleniyor.',
+    })
+
+    expect(blocks.some((b) => b.type === 'paragraph' && b.text.includes(spot.slice(0, 40)))).toBe(false)
+    expect(
+      blocks.some(
+        (b) =>
+          b.type === 'heading' &&
+          b.text.includes('Kastamonu ve Rize') &&
+          b.text.includes('sağanak beklenirken')
+      )
+    ).toBe(false)
+    expect(
+      blocks.some(
+        (b) =>
+          b.type === 'paragraph' &&
+          b.text.includes('Kastamonu ve Rize') &&
+          b.text.includes('sağanak beklenirken')
+      )
+    ).toBe(true)
+    expect(
+      blocks.some((b) => b.type === 'heading' && b.text === 'Sıcak hava yurt genelinde etkili')
+    ).toBe(true)
   })
 
   it('places an additional image after the requested paragraph', () => {

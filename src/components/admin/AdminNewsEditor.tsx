@@ -9,6 +9,7 @@ import {
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
+import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
@@ -152,6 +153,17 @@ export function AdminNewsEditor({
   )
   const [aiGateDecision, setAiGateDecision] = useState<'publish' | 'review' | null>(null)
   const [showAiPreview, setShowAiPreview] = useState(false)
+
+  const aiPreviewBlocks = useMemo(
+    () =>
+      filterBodyBlocksForArticleDisplay(bodyBlocks, {
+        title,
+        spot,
+        summary,
+        coverImageUrl: thumbnail || undefined,
+      }),
+    [bodyBlocks, title, spot, summary, thumbnail]
+  )
 
   const headerTitle = mode === 'create' ? 'Yeni Haber' : 'Haberi Düzenle'
   const saveLabel = mode === 'create' ? 'Yayınla' : 'Kaydet'
@@ -587,13 +599,28 @@ export function AdminNewsEditor({
           <h1 className="mb-3 text-2xl font-black leading-tight text-[rgb(var(--color-text))]">
             {title}
           </h1>
+          {thumbnail && (
+            <figure className="mb-4 overflow-hidden rounded-xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={thumbnail}
+                alt={imageCaption || title || 'Kapak görseli'}
+                className="aspect-[16/9] w-full object-cover"
+              />
+              {imageCaption && (
+                <figcaption className="mt-2 text-xs text-[rgb(var(--color-muted))]">
+                  {imageCaption}
+                </figcaption>
+              )}
+            </figure>
+          )}
           {spot && (
-            <p className="mb-5 text-base font-medium leading-relaxed text-[rgb(var(--color-muted))]">
+            <p className="mb-5 border-l-4 border-violet-500/60 bg-black/[0.03] px-4 py-3 text-base font-medium leading-relaxed text-[rgb(var(--color-text))]">
               {spot}
             </p>
           )}
           <ArticleBlocksRenderer
-            blocks={bodyBlocks}
+            blocks={aiPreviewBlocks}
             title={title}
             longform={articleLayout === 'longform'}
           />

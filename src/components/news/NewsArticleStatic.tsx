@@ -10,6 +10,7 @@ import { formatCount, getArticleBylineName, getPostCoverAlt } from '@/lib/postUt
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
+import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
 import { planMediaPlacement } from '@/lib/mediaPlacement'
 import { SliderImage } from '@/components/widgets/SliderImage'
 import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
@@ -127,6 +128,14 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
   const hasBodyBlocks = Boolean(post.bodyBlocks && post.bodyBlocks.length > 0)
 
   const coverAlt = getPostCoverAlt(post)
+  const displayBodyBlocks = hasBodyBlocks
+    ? filterBodyBlocksForArticleDisplay(post.bodyBlocks!, {
+        title: post.title,
+        spot: post.spot,
+        summary: post.summary,
+        coverImageUrl: post.coverImageUrl,
+      })
+    : []
 
   const {
     articleTitle,
@@ -251,9 +260,9 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
             />
           ) : null}
 
-          {hasBodyBlocks && (
+          {hasBodyBlocks && displayBodyBlocks.length > 0 && (
             <ArticleBlocksRenderer
-              blocks={post.bodyBlocks!}
+              blocks={displayBodyBlocks}
               title={post.title}
               longform={post.articleLayout === 'longform'}
             />

@@ -45,6 +45,32 @@ function cleanId(value: unknown, index: number): string {
  * Keep headings short. If AI glued a title and paragraph onto one markdown line,
  * peel a short title and return the remainder as paragraph text.
  */
+/**
+ * Long markdown lines that look like lead sentences should become paragraphs, not H2/H3.
+ */
+export function resolveMarkdownHeadingText(text: string): {
+  asHeading: boolean
+  heading: string
+  overflow: string
+} {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (!normalized) return { asHeading: false, heading: '', overflow: '' }
+
+  const words = normalized.split(/\s+/).filter(Boolean)
+  const looksLikeLeadSentence =
+    words.length > 12 ||
+    normalized.length > 100 ||
+    (words.length > 8 && /[,;]/.test(normalized)) ||
+    (words.length > 6 && /[.!?…]/.test(normalized))
+
+  if (looksLikeLeadSentence) {
+    return { asHeading: false, heading: '', overflow: normalized }
+  }
+
+  const { heading, overflow } = splitOversizedHeading(normalized)
+  return { asHeading: Boolean(heading), heading, overflow }
+}
+
 export function splitOversizedHeading(text: string): {
   heading: string
   overflow: string
@@ -57,8 +83,17 @@ export function splitOversizedHeading(text: string): {
     return { heading: normalized, overflow: '' }
   }
 
-  const short = words.slice(0, Math.min(4, words.length)).join(' ')
-  const overflow = words.slice(Math.min(4, words.length)).join(' ').trim()
+  const commaIdx = normalized.search(/[,;]/)
+  if (commaIdx > 12 && commaIdx <= HEADING_MAX_CHARS) {
+    const heading = normalized.slice(0, commaIdx).trim()
+    const overflow = normalized.slice(commaIdx + 1).trim()
+    if (heading.split(/\s+/).length <= HEADING_MAX_WORDS && overflow.length > 8) {
+      return { heading, overflow }
+    }
+  }
+
+  const short = words.slice(0, HEADING_MAX_WORDS).join(' ')
+  const overflow = words.slice(HEADING_MAX_WORDS).join(' ').trim()
   if (short.length < 3) {
     return { heading: '', overflow: normalized }
   }
@@ -79,9 +114,12 @@ export function sanitizeArticleBlocks(value: unknown): ArticleBlock[] {
       // Page title owns the only H1 — coerce body H1 → H2 for SEO/accessibility.
       const rawLevel = block.level === 1 || block.level === 3 || block.level === 4 ? block.level : 2
       const level = rawLevel === 1 ? 2 : rawLevel
-      const { heading, overflow } = splitOversizedHeading(text)
+      const resolved = resolveMarkdownHeadingText(text)
       const out: ArticleBlock[] = []
-      if (heading) out.push({ id, type: 'heading', level, text: heading })
+      if (resolved.asHeading && resolved.heading) {
+        out.push({ id, type: 'heading', level, text: resolved.heading })
+      }
+      const overflow = resolved.asHeading ? resolved.overflow : resolved.overflow || text
       if (overflow) {
         out.push({
           id: `${id}-p`,
@@ -256,21 +294,22 @@ export function textToArticleBlocks(text: string): ArticleBlock[] {
     if (heading) {
       flushList()
       flushParagraph()
-      const { heading: title, overflow } = splitOversizedHeading(heading.text)
+      const resolved = resolveMarkdownHeadingText(heading.text)
       const level = (heading.level === 1 ? 2 : heading.level) as 2 | 3 | 4
-      if (title) {
+      if (resolved.asHeading && resolved.heading) {
         blocks.push({
           id: `block-${Date.now()}-${index++}`,
           type: 'heading',
           level,
-          text: title,
+          text: resolved.heading,
         })
       }
-      if (overflow) {
+      const bodyText = resolved.asHeading ? resolved.overflow : resolved.overflow || heading.text
+      if (bodyText) {
         blocks.push({
           id: `block-${Date.now()}-${index++}`,
           type: 'paragraph',
-          text: overflow,
+          text: bodyText,
         })
       }
       continue
