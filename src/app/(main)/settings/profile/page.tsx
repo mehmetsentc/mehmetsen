@@ -129,10 +129,11 @@ export default function SettingsProfilePage() {
     return () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview) }
   }, [avatarPreview])
 
-  if (!user) {
-    router.replace(ROUTES.LOGIN)
-    return null
-  }
+  useEffect(() => {
+    if (!user) router.replace(ROUTES.LOGIN)
+  }, [user, router])
+
+  if (!user) return null
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
