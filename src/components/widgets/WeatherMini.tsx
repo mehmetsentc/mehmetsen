@@ -4,26 +4,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { getCityCategoryName } from '@/constants/cities'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { buildWeatherQuery } from '@/lib/weatherQuery'
+import { conditionEmoji, getEffectiveIsDay } from '@/lib/weatherApi'
 import type { StoredUserLocation } from '@/lib/userLocationStorage'
 import type { WeatherData } from '@/types/weather'
 
 const POPULAR_CITY_SLUGS = ['istanbul', 'ankara', 'izmir', 'antalya', 'bursa'] as const
 
-function weatherEmoji(code: number, isDay: number): string {
-  if (code === 1000) return isDay ? '☀️' : '🌙'
-  if (code <= 1009) return '⛅'
-  if (code <= 1030) return '🌤️'
-  if ([1063, 1180, 1183].includes(code)) return '🌦️'
-  if (code <= 1201) return '🌧️'
-  if (code <= 1237) return '❄️'
-  if ([1273, 1276, 1087].includes(code)) return '⛈️'
-  return '🌡️'
-}
-
 export function WeatherMini() {
   const userLocation = useUserLocation()
   const [manualSlug, setManualSlug] = useState<string | null>(null)
   const [weather, setWeather] = useState<WeatherData | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   const activeSlug = manualSlug ?? userLocation.citySlug
   const activeCoords = manualSlug ? null : userLocation.coords
@@ -31,14 +22,16 @@ export function WeatherMini() {
   const loadWeather = useCallback(async (slug: string, coords: { lat: number; lng: number } | null) => {
     const query = buildWeatherQuery(slug, coords)
     try {
-      // no-store: the widget must reflect current conditions, so bypass the
-      // browser HTTP cache (the API/CDN still caches server-side ~15 min).
-      const res = await fetch(`/api/weather?city=${encodeURIComponent(query)}&days=1`, {
-        cache: 'no-store',
-      })
+      // Bust CDN night caches every 5 minutes; no-store skips browser HTTP cache.
+      const bucket = Math.floor(Date.now() / (5 * 60 * 1000))
+      const res = await fetch(
+        `/api/weather?city=${encodeURIComponent(query)}&days=1&t=${bucket}`,
+        { cache: 'no-store' }
+      )
       if (!res.ok) return
       const data = (await res.json()) as WeatherData
       setWeather(data)
+      setNowMs(Date.now())
     } catch {
       // keep skeleton on failure
     }
@@ -49,11 +42,11 @@ export function WeatherMini() {
     void loadWeather(activeSlug, activeCoords)
   }, [activeSlug, activeCoords, userLocation.ready, manualSlug, loadWeather])
 
-  // Keep the widget fresh: refresh every 15 min and when the tab regains focus,
+  // Keep the widget fresh: refresh every 5 min and when the tab regains focus,
   // so it never lingers on old data (e.g. showing last night's weather).
   useEffect(() => {
     if (!userLocation.ready && !manualSlug) return
-    const REFRESH_MS = 15 * 60 * 1000
+    const REFRESH_MS = 5 * 60 * 1000
     const refresh = () => {
       if (document.visibilityState === 'visible') void loadWeather(activeSlug, activeCoords)
     }
@@ -64,6 +57,12 @@ export function WeatherMini() {
       document.removeEventListener('visibilitychange', refresh)
     }
   }, [activeSlug, activeCoords, userLocation.ready, manualSlug, loadWeather])
+
+  // Tick every minute so day/night emoji flips even if the payload is CDN-stale.
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
 
   useEffect(() => {
     const onLocationUpdated = (event: Event) => {
@@ -87,7 +86,8 @@ export function WeatherMini() {
   }
 
   const cur = weather.current
-  const emoji = weatherEmoji(cur.condition.code, cur.is_day)
+  const isDay = getEffectiveIsDay(weather, nowMs)
+  const emoji = conditionEmoji(cur.condition.code, isDay)
   const cityOptions = [...new Set([activeSlug, ...POPULAR_CITY_SLUGS])]
 
   return (

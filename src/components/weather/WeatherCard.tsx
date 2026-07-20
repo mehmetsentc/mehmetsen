@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { Droplets, Wind, Eye, Thermometer, Sun, Sunset, Gauge, UmbrellaOff } from 'lucide-react'
-import { conditionEmoji, turkishDayName } from '@/lib/weatherApi'
+import { conditionEmoji, getEffectiveIsDay, turkishDayName } from '@/lib/weatherApi'
 import type { WeatherData } from '@/types/weather'
 
 interface WeatherCardProps {
@@ -30,10 +30,11 @@ function StatPill({
 export function WeatherCard({ data }: WeatherCardProps) {
   const { location, current, forecast } = data
   const today = forecast[0]
-  const emoji = conditionEmoji(current.condition.code, current.is_day)
+  const isDay = getEffectiveIsDay(data)
+  const emoji = conditionEmoji(current.condition.code, isDay)
 
   // Background gradient based on time/condition
-  const isNight = !current.is_day
+  const isNight = !isDay
   const isRain = [1180, 1183, 1186, 1189, 1192, 1195, 1063, 1150, 1153].includes(current.condition.code)
   const isStorm = [1087, 1273, 1276].includes(current.condition.code)
   const isSnow = current.condition.code >= 1210 && current.condition.code <= 1264

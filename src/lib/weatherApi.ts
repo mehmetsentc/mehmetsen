@@ -33,19 +33,29 @@ export async function fetchWeather(city: string, days = 7): Promise<WeatherData>
   const q = normalizeWeatherQuery(city)
   const url = `${BASE_URL}/forecast.json?key=${key}&q=${encodeURIComponent(q)}&days=${days}&aqi=no&alerts=yes&lang=tr`
 
-  const res = await fetch(url, { next: { revalidate: 900 } }) // 15-min ISR
+  const res = await fetch(url, { next: { revalidate: 300 } }) // 5-min ISR
   if (!res.ok) {
     throw new Error(`WeatherAPI error ${res.status}: ${await res.text()}`)
   }
 
   const data: WeatherApiResponse = await res.json()
+  const forecast = data.forecast?.forecastday ?? []
+  const today = forecast[0]
+  const fetchedAt = Date.now()
+  const isDay = resolveIsDay({
+    localtime: data.location?.localtime,
+    sunrise: today?.astro?.sunrise,
+    sunset: today?.astro?.sunset,
+    apiIsDay: data.current?.is_day,
+    conditionIcon: data.current?.condition?.icon,
+  })
 
   return {
     location: data.location,
-    current: data.current,
-    forecast: data.forecast?.forecastday ?? [],
+    current: { ...data.current, is_day: isDay },
+    forecast,
     alerts: data.alerts?.alert ?? [],
-    fetchedAt: Date.now(),
+    fetchedAt,
   }
 }
 
@@ -98,6 +108,95 @@ export function getWindAlert(windKph: number): string | null {
   if (windKph >= 60) return 'Kuvvetli Rüzgar'
   if (windKph >= 40) return 'Sert Rüzgar'
   return null
+}
+
+/** Parse WeatherAPI localtime: "2026-07-20 17:00" as a wall-clock Date. */
+export function parseWeatherLocaltime(localtime: string): Date | null {
+  const match = localtime.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})/)
+  if (!match) return null
+  return new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+    0,
+    0
+  )
+}
+
+/** Parse WeatherAPI astro clock: "05:53 AM" / "08:13 PM" on a given YMD date. */
+export function parseWeatherAstroTime(astroTime: string, dateYmd: string): Date | null {
+  const match = astroTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  const dateMatch = dateYmd.trim().match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match || !dateMatch) return null
+
+  let hour = Number(match[1])
+  const minute = Number(match[2])
+  const meridiem = match[3].toUpperCase()
+  if (meridiem === 'PM' && hour !== 12) hour += 12
+  if (meridiem === 'AM' && hour === 12) hour = 0
+
+  return new Date(
+    Number(dateMatch[1]),
+    Number(dateMatch[2]) - 1,
+    Number(dateMatch[3]),
+    hour,
+    minute,
+    0,
+    0
+  )
+}
+
+/**
+ * Authoritative day/night flag for icons and gradients.
+ * Prefer sunrise/sunset + local wall clock over a possibly stale API `is_day`
+ * (CDN can keep a night response for several minutes after sunrise).
+ */
+export function resolveIsDay(options: {
+  localtime?: string
+  sunrise?: string
+  sunset?: string
+  apiIsDay?: number
+  conditionIcon?: string
+  /** Advance localtime by elapsed ms since fetch (keeps CDN-stale payloads fresh). */
+  advanceMs?: number
+}): number {
+  const { localtime, sunrise, sunset, apiIsDay, conditionIcon, advanceMs = 0 } = options
+
+  if (localtime && sunrise && sunset) {
+    const base = parseWeatherLocaltime(localtime)
+    const dateYmd = localtime.trim().slice(0, 10)
+    const rise = parseWeatherAstroTime(sunrise, dateYmd)
+    const set = parseWeatherAstroTime(sunset, dateYmd)
+    if (base && rise && set) {
+      const now = new Date(base.getTime() + Math.max(0, advanceMs))
+      return now >= rise && now < set ? 1 : 0
+    }
+  }
+
+  if (conditionIcon?.includes('/night/')) return 0
+  if (conditionIcon?.includes('/day/')) return 1
+
+  return apiIsDay ? 1 : 0
+}
+
+/** Effective is_day for a WeatherData payload, correcting stale CDN night flags. */
+export function getEffectiveIsDay(data: WeatherData, nowMs = Date.now()): number {
+  const today = data.forecast?.[0]
+  const advanceMs =
+    typeof data.fetchedAt === 'number' && data.fetchedAt > 0
+      ? Math.max(0, nowMs - data.fetchedAt)
+      : 0
+
+  return resolveIsDay({
+    localtime: data.location?.localtime,
+    sunrise: today?.astro?.sunrise,
+    sunset: today?.astro?.sunset,
+    apiIsDay: data.current?.is_day,
+    conditionIcon: data.current?.condition?.icon,
+    advanceMs,
+  })
 }
 
 /**
