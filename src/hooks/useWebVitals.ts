@@ -37,8 +37,10 @@ function normalizePath(path: string): string {
     .replace(/\/haber\/[^/]+/, '/haber/[slug]')
     .replace(/\/kategori\/[^/]+/, '/kategori/[slug]')
     .replace(/\/etiket\/[^/]+/, '/etiket/[slug]')
-    .replace(/\/profil\/[^/]+/, '/profil/[username]')
+    .replace(/\/profile\/[^/]+/, '/profile/[username]')
+    .replace(/\/profil\/[^/]+/, '/profile/[username]')
     .replace(/\/yerel\/[^/]+/, '/yerel/[slug]')
+    .replace(/\/oyunlar\/[^/]+/, '/oyunlar/[slug]')
     .split('?')[0]
 }
 
@@ -136,11 +138,11 @@ export function useWebVitals() {
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pagehide', flush)
     return () => {
+      // SPA route değişiminde de metrikleri gönder — aksi halde LCP/CLS/INP kaybolur
+      // ve CMS skoru yalnızca FCP ile ~20'ye düşer.
+      flush()
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', flush)
-      lcpObserver?.disconnect()
-      clsObserver?.disconnect()
-      inpObserver?.disconnect()
     }
   }, [pathname])
 }

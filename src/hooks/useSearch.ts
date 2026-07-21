@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, startTransition } from 'react'
 import { searchService, type SearchOptions, type SearchResults } from '@/services/searchService'
 
-const DEBOUNCE_MS = 350
+const DEBOUNCE_MS = 450
 
 const emptyResults: SearchResults = {
   posts: [],
@@ -41,13 +41,17 @@ export function useSearch(initialQuery = '', initialTagOnly = false) {
         tagOnly: options?.tagOnly ?? tagOnly,
       })
       if (requestId !== requestIdRef.current) return
-      setResults(next)
-      setSearched(true)
+      startTransition(() => {
+        setResults(next)
+        setSearched(true)
+      })
     } catch (err) {
       if (requestId !== requestIdRef.current) return
-      setError(err instanceof Error ? err.message : 'Arama başarısız')
-      setResults(emptyResults)
-      setSearched(true)
+      startTransition(() => {
+        setError(err instanceof Error ? err.message : 'Arama başarısız')
+        setResults(emptyResults)
+        setSearched(true)
+      })
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false)

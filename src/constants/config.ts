@@ -266,10 +266,9 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('kultur'),
     categoryLink('sinema') ? { ...categoryLink('sinema')!, indent: true } : null,
     categoryLink('tiyatro') ? { ...categoryLink('tiyatro')!, indent: true } : null,
-    { id: 'teve-sub', label: 'Teve', href: ROUTES.REELS, indent: true },
+    { id: 'teve', label: 'Teve', href: ROUTES.REELS, indent: true },
     categoryLink('magazin'),
     categoryLink('tarih'),
-    { id: 'teve', label: 'Teve', href: ROUTES.REELS },
   ]
 
   return items.filter((item): item is SiteNavItem => item !== null)

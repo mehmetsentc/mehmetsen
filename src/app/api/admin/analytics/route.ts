@@ -62,13 +62,17 @@ function goodPct(m?: MetricBuckets): number {
 }
 
 function computeScore(doc: VitalsDoc): number {
-  const lcpPct = goodPct(doc.LCP)
-  const clsPct = goodPct(doc.CLS)
-  const inpPct = goodPct(doc.INP)
-  const fcpPct = goodPct(doc.FCP)
-  const count = [doc.LCP, doc.CLS, doc.INP, doc.FCP].filter(Boolean).length
-  if (count === 0) return 0
-  return Math.round(lcpPct * 0.4 + clsPct * 0.2 + inpPct * 0.2 + fcpPct * 0.2)
+  // Eksik metrikleri 0 saymak skoru yapay olarak düşürüyordu
+  // (örn. LCP/INP gelmeden çıkan ziyaretlerde FCP iyi olsa bile skor ~20).
+  const parts: Array<{ pct: number; weight: number }> = []
+  if (doc.LCP) parts.push({ pct: goodPct(doc.LCP), weight: 0.4 })
+  if (doc.CLS) parts.push({ pct: goodPct(doc.CLS), weight: 0.25 })
+  if (doc.INP) parts.push({ pct: goodPct(doc.INP), weight: 0.2 })
+  if (doc.FCP) parts.push({ pct: goodPct(doc.FCP), weight: 0.15 })
+  if (parts.length === 0) return 0
+  const weightSum = parts.reduce((s, p) => s + p.weight, 0)
+  const weighted = parts.reduce((s, p) => s + p.pct * p.weight, 0)
+  return Math.round(weighted / weightSum)
 }
 
 function restorePath(key: string): string {
