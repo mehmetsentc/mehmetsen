@@ -34,6 +34,23 @@ interface CategoryInput {
 
 const SYSTEM_PROMPT = `Sen NaHaber'in kategori editörüsün. Verilen haber başlığı ve içeriğini analiz ederek kategori, son-dakika durumu ve konum bilgisi belirliyorsun.
 
+BİRİNCİL KONU KURALI — EN ÖNEMLİ KURAL:
+Haberin ANA KONUSUNU belirle, YAN ATIFLAR ve GEÇİCİ ANAHTAR KELİMELER seni yanıltmasın.
+
+YANLIŞ → DOĞRU örnekleri:
+• Erdoğan İspanya başbakanıyla görüştü, görüşmede Dünya Kupası tebriği geçti → SİYASET (ana konu: diplomasi/görüşme), FUTBOL değil
+• Bakan istihdam rakamlarını açıkladı, metinde "teknoloji sektörü" geçti → EKONOMİ, TEKNOLOJİ değil
+• Şehirde fuar düzenlendi, fuarda teknoloji ürünleri sergilendi → YERELHaber veya GÜNDEM, TEKNOLOJİ değil
+• Meclis çevre yasasını görüştü, haberde "iklim" geçti → SİYASET, CEVRE-IKLİM değil
+• Sporcunun kişisel hayatı haberi, teknik direktör evlendi → MAGAZİN, FUTBOL değil
+• Şirket işçi çıkardı, şirket teknoloji sektöründe → EKONOMİ veya GÜNDEM, TEKNOLOJİ değil
+
+TESTİ: "Bu haberin BAŞLIĞI hangi kategoriyi işaret ediyor?" — İçerik değil, başlığa odaklan.
+Başlıkta cumhurbaşkanı/bakan/diplomatik → SİYASET veya DUNYA
+Başlıkta maç/gol/transfer/şampiyon → FUTBOL/SPOR
+Başlıkta ekonomi/piyasa/enflasyon → EKONOMİ
+Başlıkta iPhone/yapay zeka/yazılım/siber saldırı → TEKNOLOJİ
+
 KATEGORİ KURALLARI (EN SPESİFİK KATEGORİYİ SEÇ):
 
 SPOR alt kategorileri:
@@ -225,19 +242,20 @@ function parseResult(raw: string, forcedCategoryId?: string): CategoryResult | n
  * Heuristik fallback — AI başarısız olduğunda kural tabanlı kategori.
  */
 function heuristicCategory(input: CategoryInput): CategoryResult {
-  const text = `${input.title} ${input.content}`.toLocaleLowerCase('tr-TR')
+  // Heuristik yalnızca BAŞLIĞA bakar — içerikteki yan atıflar kategoriye dahil olmaz
+  const title = input.title.toLocaleLowerCase('tr-TR')
 
   let categoryId = input.forcedCategoryId || 'gundem'
 
-  if (/burç|astroloji|horoscope|zodiac|zodyak|yükselen|günlük\s*burç/.test(text)) categoryId = 'astroloji'
-  else if (/futbol|maç|gol|transfer|süper lig|tff|uefa|fifa/.test(text)) categoryId = 'futbol'
-  else if (/basketbol|nba|euroleague/.test(text)) categoryId = 'basketbol'
-  else if (/voleybol/.test(text)) categoryId = 'voleybol'
-  else if (/teknoloji|yapay zeka|chatgpt|iphone|android|siber/.test(text)) categoryId = 'teknoloji'
-  else if (/ekonomi|borsa|döviz|enflasyon|tcmb/.test(text)) categoryId = 'ekonomi'
-  else if (/deprem|afet|sel/.test(text) && !/^\w+('da|'de|'ta|'te|'ın|'in)\s/.test(input.title)) categoryId = 'son-dakika'
-  else if (/siyaset|cumhurbaşkan|tbmm|meclis|seçim|parti/.test(text)) categoryId = 'siyaset'
-  else if (/dünya|rusya|abd|almanya|fransa|ukrayna|gazze|savaş/.test(text)) categoryId = 'dunya'
+  if (/burç|astroloji|horoscope|zodiac|zodyak|yükselen|günlük\s*burç/.test(title)) categoryId = 'astroloji'
+  else if (/maç|gol|transfer|süper lig|tff|şampiyon.*ligi|derbi/.test(title)) categoryId = 'futbol'
+  else if (/basketbol|nba|euroleague/.test(title)) categoryId = 'basketbol'
+  else if (/voleybol/.test(title)) categoryId = 'voleybol'
+  else if (/iphone|android|chatgpt|siber saldırı|yapay zeka.*ürün|yazılım.*güncelleme/.test(title)) categoryId = 'teknoloji'
+  else if (/enflasyon|döviz|faiz kararı|borsa.*kapandı|tcmb|asgari ücret/.test(title)) categoryId = 'ekonomi'
+  else if (/deprem|sel felaketi|büyük afet/.test(title)) categoryId = 'son-dakika'
+  else if (/cumhurbaşkanı|tbmm|meclis.*kabul|seçim|bakan.*açıkladı/.test(title)) categoryId = 'siyaset'
+  else if (/rusya|ukrayna|gazze|abd.*savaş|almanya.*açıkladı/.test(title)) categoryId = 'dunya'
 
   categoryId = applyAstrologyCategoryOverride(categoryId, input.title, input.content)
 
