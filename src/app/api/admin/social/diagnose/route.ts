@@ -34,25 +34,45 @@ export async function GET(request: Request) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const steps: DiagStep[] = []
-  const fbToken   = process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? ''
-  const igToken   = process.env.INSTAGRAM_ACCESS_TOKEN?.trim() || fbToken
-  const pageId    = process.env.FACEBOOK_PAGE_ID?.trim() ?? ''
-  const igBizId   = process.env.INSTAGRAM_BUSINESS_ID?.trim() ?? ''
+  const envFbToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? ''
+  const pageId     = process.env.FACEBOOK_PAGE_ID?.trim() ?? ''
+  const igBizId    = process.env.INSTAGRAM_BUSINESS_ID?.trim() ?? ''
 
-  // ── 1. Env vars mevcut mu? ────────────────────────────────────────────────
+  // ── 0. Firestore token kontrolü (cron'un gerçekte kullandığı token) ───────
+  let fsFbToken = ''
+  let fsIgToken = ''
+  let fsTokenSource = 'env'
+  try {
+    const { getAdminFirestore } = await import('@/lib/firebase/admin')
+    const db = getAdminFirestore()
+    const doc = await db.collection('config').doc('socialMedia').get()
+    const d = doc.data() ?? {}
+    fsFbToken = (d.facebookPageToken as string | undefined)?.trim() ?? ''
+    fsIgToken = (d.instagramToken    as string | undefined)?.trim() ?? ''
+    if (fsFbToken) fsTokenSource = 'firestore'
+  } catch (e) {
+    steps.push({ name: 'Firestore Token Okuma', ok: false, detail: `Firestore erişim hatası: ${String(e)}` })
+  }
+
+  // Cron'un kullandığı gerçek token (tokenStore mantığı)
+  const fbToken = fsFbToken || envFbToken
+  const igToken = fsIgToken || process.env.INSTAGRAM_ACCESS_TOKEN?.trim() || fbToken
+
   steps.push({
-    name: 'Env Değişkenleri',
+    name: 'Token Kaynağı',
     ok: !!(fbToken && pageId && igBizId),
     detail: [
-      `FACEBOOK_PAGE_ACCESS_TOKEN: ${fbToken ? `✓ (${fbToken.length} karakter)` : '✗ EKSİK'}`,
+      `Kaynak: ${fsTokenSource === 'firestore' ? '⚠️ Firestore (env\'i override ediyor)' : '✓ Env var'}`,
+      `FACEBOOK_PAGE_ACCESS_TOKEN (env): ${envFbToken ? `${envFbToken.length} karakter` : '✗ EKSİK'}`,
+      `Firestore facebookPageToken: ${fsFbToken ? `${fsFbToken.length} karakter` : 'boş'}`,
+      `Aktif token: ${fbToken ? `✓ (${fbToken.length} karakter, kaynak: ${fsTokenSource})` : '✗ YOK'}`,
       `FACEBOOK_PAGE_ID: ${pageId ? `✓ ${pageId}` : '✗ EKSİK'}`,
       `INSTAGRAM_BUSINESS_ID: ${igBizId ? `✓ ${igBizId}` : '✗ EKSİK'}`,
-      `INSTAGRAM_ACCESS_TOKEN: ${process.env.INSTAGRAM_ACCESS_TOKEN ? '✓ (ayrı)' : '(FB token kullanılıyor)'}`,
     ].join(' | '),
   })
 
   if (!fbToken) {
-    return NextResponse.json({ steps, summary: 'FACEBOOK_PAGE_ACCESS_TOKEN eksik — Vercel env ayarlayın.' })
+    return NextResponse.json({ steps, summary: 'Facebook token bulunamadı — Firestore veya Vercel env ayarlayın.' })
   }
 
   // ── 2. Token geçerliliği (/me) ────────────────────────────────────────────

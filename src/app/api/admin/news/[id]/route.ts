@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -9,6 +10,7 @@ import { sanitizeGroundingSources, type GroundingSource } from '@/lib/ai/liveRes
 import { newsDraftService } from '@/services/newsDraftService'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
+import { isCanakkaleArticle, publishOneSocial } from '@/lib/social/publishOneSocial'
 import {
   articleBlocksToPlainText,
   sanitizeArticleBlocks,
@@ -286,6 +288,17 @@ export async function PUT(request: Request, context: RouteContext) {
 
       revalidateNewsPaths(prevData, body)
       void notifyIfPublished(prevData, body)
+
+      // ── Anında sosyal paylaşım: Çanakkale haberi ilk kez yayınlandığında ──
+      // after() → response döndükten sonra arka planda çalışır (Next.js 15)
+      const justPublished = prevData?.status !== 'published' && body.status === 'published'
+      if (justPublished) {
+        const mergedData = { ...prevData, ...update }
+        if (isCanakkaleArticle(mergedData)) {
+          after(() => publishOneSocial(id))
+        }
+      }
+
       return NextResponse.json({ ok: true, collection: 'news' })
     }
 
@@ -302,6 +315,11 @@ export async function PUT(request: Request, context: RouteContext) {
         const result = await newsDraftService.approveDraft(id)
         revalidateNewsPaths(draftSnap.data(), body)
         void notifyIfPublished(draftSnap.data(), body)
+        // Draft onaylandığında da anında paylaş
+        const draftData = { ...draftSnap.data(), ...draftUpdate }
+        if (isCanakkaleArticle(draftData)) {
+          after(() => publishOneSocial(id))
+        }
         return NextResponse.json({ ok: true, collection: 'newsDrafts', ...result })
       }
 
