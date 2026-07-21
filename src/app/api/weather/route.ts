@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchWeather } from '@/lib/weatherApi'
 
 export const runtime = 'edge'
-/** Keep edge revalidation short so day/night icons flip soon after sunrise/sunset. */
-export const revalidate = 300
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -14,8 +13,9 @@ export async function GET(req: NextRequest) {
     const data = await fetchWeather(city, days)
     return NextResponse.json(data, {
       headers: {
-        // 5 min CDN cache — longer TTLs kept night icons past sunrise.
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+        'CDN-Cache-Control': 'no-store',
+        'Vercel-CDN-Cache-Control': 'no-store',
       },
     })
   } catch (err) {

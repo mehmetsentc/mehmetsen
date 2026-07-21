@@ -31,7 +31,7 @@ export function WeatherCard({ data }: WeatherCardProps) {
   const { location, current, forecast } = data
   const today = forecast[0]
   const isDay = getEffectiveIsDay(data)
-  const emoji = conditionEmoji(current.condition.code, isDay)
+  const emoji = conditionEmoji(current.condition.code, isDay, current.condition.icon)
 
   // Background gradient based on time/condition
   const isNight = !isDay

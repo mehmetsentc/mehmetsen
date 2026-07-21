@@ -22,11 +22,9 @@ export function WeatherMini() {
   const loadWeather = useCallback(async (slug: string, coords: { lat: number; lng: number } | null) => {
     const query = buildWeatherQuery(slug, coords)
     try {
-      // Bust CDN night caches every 5 minutes; no-store skips browser HTTP cache.
-      const bucket = Math.floor(Date.now() / (5 * 60 * 1000))
       const res = await fetch(
-        `/api/weather?city=${encodeURIComponent(query)}&days=1&t=${bucket}`,
-        { cache: 'no-store' }
+        `/api/weather?city=${encodeURIComponent(query)}&days=1&_=${Date.now()}`,
+        { cache: 'no-store', headers: { Pragma: 'no-cache' } }
       )
       if (!res.ok) return
       const data = (await res.json()) as WeatherData
@@ -46,7 +44,7 @@ export function WeatherMini() {
   // so it never lingers on old data (e.g. showing last night's weather).
   useEffect(() => {
     if (!userLocation.ready && !manualSlug) return
-    const REFRESH_MS = 5 * 60 * 1000
+    const REFRESH_MS = 2 * 60 * 1000
     const refresh = () => {
       if (document.visibilityState === 'visible') void loadWeather(activeSlug, activeCoords)
     }
@@ -87,7 +85,7 @@ export function WeatherMini() {
 
   const cur = weather.current
   const isDay = getEffectiveIsDay(weather, nowMs)
-  const emoji = conditionEmoji(cur.condition.code, isDay)
+  const emoji = conditionEmoji(cur.condition.code, isDay, cur.condition.icon)
   const cityOptions = [...new Set([activeSlug, ...POPULAR_CITY_SLUGS])]
 
   return (

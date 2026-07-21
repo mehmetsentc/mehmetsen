@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  conditionEmoji,
   getEffectiveIsDay,
   parseWeatherAstroTime,
   parseWeatherLocaltime,
@@ -50,6 +51,12 @@ describe('resolveIsDay', () => {
         conditionIcon: '//cdn.weatherapi.com/weather/64x64/day/113.png',
       })
     ).toBe(1)
+  })
+
+  it('uses day icon URL for clear sky emoji when is_day is stale', () => {
+    expect(
+      conditionEmoji(1000, 0, '//cdn.weatherapi.com/weather/64x64/day/113.png')
+    ).toBe('☀️')
   })
 })
 

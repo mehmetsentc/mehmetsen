@@ -33,7 +33,7 @@ export async function fetchWeather(city: string, days = 7): Promise<WeatherData>
   const q = normalizeWeatherQuery(city)
   const url = `${BASE_URL}/forecast.json?key=${key}&q=${encodeURIComponent(q)}&days=${days}&aqi=no&alerts=yes&lang=tr`
 
-  const res = await fetch(url, { next: { revalidate: 300 } }) // 5-min ISR
+  const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) {
     throw new Error(`WeatherAPI error ${res.status}: ${await res.text()}`)
   }
@@ -110,48 +110,54 @@ export function getWindAlert(windKph: number): string | null {
   return null
 }
 
-/** Parse WeatherAPI localtime: "2026-07-20 17:00" as a wall-clock Date. */
-export function parseWeatherLocaltime(localtime: string): Date | null {
-  const match = localtime.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})/)
+/** Parse "2026-07-21 11:42" → date + minutes since midnight (location wall clock, TZ-agnostic). */
+export function parseWeatherWallClock(localtime: string): {
+  ymd: string
+  minutes: number
+} | null {
+  const match = localtime.trim().match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})/)
   if (!match) return null
-  return new Date(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]),
-    Number(match[4]),
-    Number(match[5]),
-    0,
-    0
-  )
+  const hour = Number(match[2])
+  const minute = Number(match[3])
+  if (hour > 23 || minute > 59) return null
+  return { ymd: match[1], minutes: hour * 60 + minute }
 }
 
-/** Parse WeatherAPI astro clock: "05:53 AM" / "08:13 PM" on a given YMD date. */
-export function parseWeatherAstroTime(astroTime: string, dateYmd: string): Date | null {
+/** Parse WeatherAPI astro clock: "05:53 AM" / "08:13 PM" → minutes since midnight. */
+export function astroTimeToMinutes(astroTime: string): number | null {
   const match = astroTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
-  const dateMatch = dateYmd.trim().match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (!match || !dateMatch) return null
-
+  if (!match) return null
   let hour = Number(match[1])
   const minute = Number(match[2])
   const meridiem = match[3].toUpperCase()
   if (meridiem === 'PM' && hour !== 12) hour += 12
   if (meridiem === 'AM' && hour === 12) hour = 0
+  return hour * 60 + minute
+}
 
-  return new Date(
-    Number(dateMatch[1]),
-    Number(dateMatch[2]) - 1,
-    Number(dateMatch[3]),
-    hour,
-    minute,
-    0,
-    0
-  )
+/** Parse WeatherAPI localtime: "2026-07-20 17:00" as a wall-clock Date (legacy). */
+export function parseWeatherLocaltime(localtime: string): Date | null {
+  const wall = parseWeatherWallClock(localtime)
+  if (!wall) return null
+  const [y, m, d] = wall.ymd.split('-').map(Number)
+  const hour = Math.floor(wall.minutes / 60)
+  const minute = wall.minutes % 60
+  return new Date(y, m - 1, d, hour, minute, 0, 0)
+}
+
+/** @deprecated use astroTimeToMinutes */
+export function parseWeatherAstroTime(astroTime: string, dateYmd: string): Date | null {
+  void dateYmd
+  const minutes = astroTimeToMinutes(astroTime)
+  if (minutes == null) return null
+  const hour = Math.floor(minutes / 60)
+  const minute = minutes % 60
+  return new Date(2000, 0, 1, hour, minute, 0, 0)
 }
 
 /**
  * Authoritative day/night flag for icons and gradients.
- * Prefer sunrise/sunset + local wall clock over a possibly stale API `is_day`
- * (CDN can keep a night response for several minutes after sunrise).
+ * Uses location wall-clock + sunrise/sunset (not browser/server TZ).
  */
 export function resolveIsDay(options: {
   localtime?: string
@@ -159,24 +165,24 @@ export function resolveIsDay(options: {
   sunset?: string
   apiIsDay?: number
   conditionIcon?: string
-  /** Advance localtime by elapsed ms since fetch (keeps CDN-stale payloads fresh). */
+  /** Advance wall clock when CDN payload is older than fetchedAt. */
   advanceMs?: number
 }): number {
   const { localtime, sunrise, sunset, apiIsDay, conditionIcon, advanceMs = 0 } = options
 
   if (localtime && sunrise && sunset) {
-    const base = parseWeatherLocaltime(localtime)
-    const dateYmd = localtime.trim().slice(0, 10)
-    const rise = parseWeatherAstroTime(sunrise, dateYmd)
-    const set = parseWeatherAstroTime(sunset, dateYmd)
-    if (base && rise && set) {
-      const now = new Date(base.getTime() + Math.max(0, advanceMs))
-      return now >= rise && now < set ? 1 : 0
+    const wall = parseWeatherWallClock(localtime)
+    const riseMin = astroTimeToMinutes(sunrise)
+    const setMin = astroTimeToMinutes(sunset)
+    if (wall && riseMin != null && setMin != null) {
+      let nowMin = wall.minutes + Math.floor(Math.max(0, advanceMs) / 60_000)
+      nowMin = ((nowMin % 1440) + 1440) % 1440
+      return nowMin >= riseMin && nowMin < setMin ? 1 : 0
     }
   }
 
-  if (conditionIcon?.includes('/night/')) return 0
   if (conditionIcon?.includes('/day/')) return 1
+  if (conditionIcon?.includes('/night/')) return 0
 
   return apiIsDay ? 1 : 0
 }
@@ -201,9 +207,18 @@ export function getEffectiveIsDay(data: WeatherData, nowMs = Date.now()): number
 
 /**
  * Get weather description emoji for a condition code.
+ * When icon URL is present, day/night clear-sky uses the API icon path (avoids stale is_day).
  */
-export function conditionEmoji(conditionCode: number, isDay: number): string {
-  if (conditionCode === 1000) return isDay ? '☀️' : '🌙'
+export function conditionEmoji(
+  conditionCode: number,
+  isDay: number,
+  conditionIcon?: string
+): string {
+  if (conditionCode === 1000) {
+    if (conditionIcon?.includes('/day/')) return '☀️'
+    if (conditionIcon?.includes('/night/')) return '🌙'
+    return isDay ? '☀️' : '🌙'
+  }
   if (conditionCode <= 1009) return '⛅'
   if (conditionCode <= 1030) return '🌤️'
   if ([1063, 1180, 1183].includes(conditionCode)) return '🌦️'
