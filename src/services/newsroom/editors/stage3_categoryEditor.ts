@@ -266,7 +266,7 @@ function heuristicCategory(input: CategoryInput): CategoryResult {
     'kayseri', 'mersin', 'gaziantep', 'diyarbakır', 'samsun', 'trabzon', 'erzurum']
   let city: string | null = null
   for (const c of TR_CITIES) {
-    if (text.includes(c)) { city = c.charAt(0).toUpperCase() + c.slice(1); break }
+    if (title.includes(c)) { city = c.charAt(0).toUpperCase() + c.slice(1); break }
   }
 
   return {
