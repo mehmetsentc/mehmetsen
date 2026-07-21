@@ -58,15 +58,25 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
 
 const SUPPORTED_EXTS = /\.(jpe?g|png|gif|webp|avif)(\?|$)/i
 
+/** Bozuk/eksik thumbnail URL'leri reddet — Satori fetch hatası yapmasın */
+function isValidImageUrl(url: string | undefined): url is string {
+  if (!url || !url.startsWith('http')) return false
+  if (url.endsWith('/')) return false          // klasör URL — dosya adı eksik
+  if (url.endsWith('-') || url.endsWith('_')) return false  // truncated URL
+  const lastSegment = url.split('/').pop() ?? ''
+  if (lastSegment.length < 4) return false    // son segment çok kısa
+  return true
+}
+
 function bestImage(a: ArticleOGData): string {
   const candidates = [a.thumbnail, a.coverImageUrl, a.imageUrl, a.featuredImage, a.image]
-  // Önce bilinen uzantılı görselleri dene (webp/avif dahil — Edge runtime destekler)
+  // Önce bilinen uzantılı + geçerli görselleri dene (webp/avif dahil — Edge runtime destekler)
   for (const c of candidates) {
-    if (c && SUPPORTED_EXTS.test(c)) return c
+    if (isValidImageUrl(c) && SUPPORTED_EXTS.test(c)) return c
   }
-  // Uzantısız URL'leri de kabul et (CDN query-string URL'leri)
+  // Uzantısız ama geçerli URL'leri de kabul et (CDN query-string URL'leri)
   for (const c of candidates) {
-    if (c && c.startsWith('http')) return c
+    if (isValidImageUrl(c)) return c
   }
   return ''
 }
@@ -81,12 +91,34 @@ const TITLE_H = 200   // kırmızı başlık bandı
 const DESC_H  = 220   // lacivert açıklama + footer (tek alan)
 const FOOT_H  = 60    // DESC_H içinde kullanılan virtual footer yüksekliği (ref)
 
+/** Fallback: görsel yüklenemediğinde koyu lacivert gradient PNG döndür */
+function fallbackImageResponse(): ImageResponse {
+  return new ImageResponse(
+    (
+      <div style={{
+        width: 1080, height: 1080, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(150deg, #1a3a6e 0%, #0f2347 50%, #071528 100%)',
+      }}>
+        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 32, display: 'flex' }}>NaHaber</span>
+      </div>
+    ),
+    { width: 1080, height: 1080 }
+  )
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const article = await fetchArticle(id)
+
+  let article: ArticleOGData | null = null
+  try {
+    article = await fetchArticle(id)
+  } catch {
+    return fallbackImageResponse()
+  }
+
   if (!article || !article.title) {
     return new Response('Haber bulunamadi', { status: 404 })
   }
@@ -257,5 +289,8 @@ export async function GET(
       width: 1080, height: 1080,
       headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600' },
     }
-  )
+  ) } catch {
+    // Satori görsel fetch hatası — sıfır byte yerine geçerli fallback PNG döndür
+    return fallbackImageResponse()
+  }
 }
