@@ -289,8 +289,5 @@ export async function GET(
       width: 1080, height: 1080,
       headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600' },
     }
-  ) } catch {
-    // Satori görsel fetch hatası — sıfır byte yerine geçerli fallback PNG döndür
-    return fallbackImageResponse()
-  }
+  )
 }
