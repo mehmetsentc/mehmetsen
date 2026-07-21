@@ -37,11 +37,13 @@ MUTLAK KURALLAR:
 
 ALAN TANIMLARI:
 - title: Gazete manşeti, max 70 karakter, sadece ilk harf büyük
-- spot: Lider paragraf. Kim+Ne+Nerede+Ne zaman+Neden. 2-4 cümle, 60-120 kelime
+- spot: Lider paragraf. Kim+Ne+Nerede+Ne zaman+Neden. 3-5 cümle, 80-150 kelime
 - summary: Feed teaser, max 120 karakter, title'dan FARKLI bilgi
-- content: Haber gövdesi, min 200 kelime. Bölümleri ## H2 ve ### H3 markdown başlıklarıyla ayır.
-  Sayfa başlığı H1 olduğu için content içinde # H1 KULLANMA. Görsel anlatımı için kısa ## başlıklar kullan.
-  Paragraflar arası boş satır (\\n\\n) kullan. 4-6 paragraf + 2-4 başlık idealdir.
+- content: Haber gövdesi, MİNİMUM 500 KELIME. Bölümleri ## H2 ve ### H3 markdown başlıklarıyla ayır.
+  Sayfa başlığı H1 olduğu için content içinde # H1 KULLANMA. Her bölüm için anlamlı ## başlıklar kullan.
+  Paragraflar arası boş satır (\\n\\n) kullan. 6-8 paragraf + 3-5 başlık hedefle.
+  İçeriği zenginleştirmek için: olayın arka planını, önemini, etkilenecek tarafları, uzman görüşleri (kaynak metinde varsa) ve tarihsel bağlamı (kaynak metinde varsa) ekle.
+  500 kelime altındaki içerikler KABUL EDİLMEZ.
 - seoTitle: SEO başlık, 55-65 karakter
 - seoDescription: Meta description, 145-160 karakter
 
@@ -49,11 +51,16 @@ ALAN TANIMLARI:
 
 function buildPrompt(input: WriterInput): string {
   const content = input.originalContent || input.originalSummary || ''
-  return `Kaynak: ${input.sourceLabel}
+  const sourceNote = input.sourceUrl
+    ? `Kaynak URL: ${input.sourceUrl}`
+    : `Kaynak: ${input.sourceLabel}`
+  return `${sourceNote}
 Başlık: ${input.originalTitle}
 Özet: ${input.originalSummary || ''}
 İçerik:
-${content.slice(0, 5000)}
+${content.slice(0, 6000)}
+
+HATIRLATMA: content alanı minimum 500 kelime olmalı. Haberi genişlet, arka planını açıkla, bağlamı ve önemini belirt.
 
 Haberi yaz. JSON formatı:
 {
@@ -123,8 +130,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
 
     const content = p.content?.trim() || ''
     const wordCount = content.split(/\s+/).filter(Boolean).length
-    if (wordCount < 100) {
-      console.warn(`[stage1/deepseek] çok kısa içerik (${wordCount} kelime, min 100)`)
+    if (wordCount < 400) {
+      console.warn(`[stage1/deepseek] çok kısa içerik (${wordCount} kelime, min 400)`)
       return null
     }
 

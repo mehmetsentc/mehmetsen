@@ -317,15 +317,20 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
           <ArticleRelatedGridStatic posts={relatedPosts} />
 
           {/* Kaynak satırı */}
-          {post.source && (
+          {(post.source || post.sourceUrl) && (
             <div className="mt-6 border-t border-[rgb(var(--color-border))] pt-4 text-sm text-[rgb(var(--color-muted))]">
               <span className="font-semibold">Kaynak: </span>
-              <span>{post.source}</span>
-              {categoryLabel && (
-                <>
-                  <span className="mx-1 text-[rgb(var(--color-border))]">/</span>
-                  <span>{categoryLabel}</span>
-                </>
+              {post.sourceUrl ? (
+                <a
+                  href={post.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="underline hover:text-[rgb(var(--color-text))]"
+                >
+                  {post.source || new URL(post.sourceUrl).hostname.replace(/^www\./, '')}
+                </a>
+              ) : (
+                <span>{post.source}</span>
               )}
             </div>
           )}
