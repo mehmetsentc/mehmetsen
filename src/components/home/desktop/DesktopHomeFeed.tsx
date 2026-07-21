@@ -9,7 +9,6 @@ import { DesktopMarketSidebar } from '@/components/home/desktop/DesktopMarketSid
 import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGridChunks'
 import { DesktopMostReadGrid } from '@/components/home/desktop/DesktopMostReadGrid'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
-import { GamesRail } from '@/components/home/GamesRail'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
 import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStrip'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
@@ -191,8 +190,6 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       <DesktopAdBanner slot="leaderboard-mid" className="mb-10" />
 
       <DesktopMustWatch items={layout.trending} />
-
-      <GamesRail variant="desktop" />
 
       <DesktopOpinionStrip items={layout.opinionItems} />
 

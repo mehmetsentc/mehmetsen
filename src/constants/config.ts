@@ -254,7 +254,6 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('egitim'),
     categoryLink('cevre-iklim'),
     categoryLink('oyun-espor'),
-    { id: 'oyunlar', label: 'Oyunlar', href: ROUTES.GAMES },
     categoryLink('din-inanc'),
     categoryLink('turizm'),
     categoryLink('gezi'),
@@ -307,28 +306,19 @@ export function getSitemapLinks(siteUrl: string) {
   ] as const
 }
 
-/** Ana feed + üst nav kategorileri + oyunlar + yerel — yatay kaydırma sırası (tek kaynak). */
+/** Ana feed + üst nav kategorileri + yerel — yatay kaydırma sırası (tek kaynak). */
 export function getSwipeableFeedDestinations(): SwipeDestination[] {
-  const destinations: SwipeDestination[] = [
+  return [
     { id: 'feed', label: 'Ana Sayfa', href: ROUTES.FEED },
+    ...getTopNavCategories(),
+    { id: 'yerel', label: 'Yerel', href: ROUTES.LOCAL },
   ]
-
-  for (const cat of getTopNavCategories()) {
-    destinations.push(cat)
-    if (cat.id === 'oyun-espor') {
-      destinations.push({ id: 'oyunlar', label: 'Oyunlar', href: ROUTES.GAMES })
-    }
-  }
-
-  destinations.push({ id: 'yerel', label: 'Yerel', href: ROUTES.LOCAL })
-  return destinations
 }
 
 /** Aktif sayfayı swipe zincirindeki üst düzey kategori anahtarına çevirir. */
 export function resolveSwipeCategoryKey(pathname: string): string | null {
   if (pathname === ROUTES.FEED) return 'feed'
   if (pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)) return 'yerel'
-  if (pathname === ROUTES.GAMES || pathname.startsWith(`${ROUTES.GAMES}/`)) return 'oyunlar'
 
   const match = pathname.match(/^\/kategori\/([^/]+)/)
   if (!match) return null
