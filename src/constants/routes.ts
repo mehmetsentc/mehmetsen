@@ -25,6 +25,8 @@ export const ROUTES = {
   APP: '/uygulama',
   INFLUENCER: '/influencer',
   WEATHER: '/weather',
+  GAMES: '/oyunlar',
+  GAME: (slug: string) => `/oyunlar/${encodeURIComponent(slug)}`,
   LOCAL: '/yerel',
   CATEGORY: (slug: string) => `/kategori/${slug}`,
   TEKNOLOJI: '/kategori/teknoloji',
@@ -111,6 +113,7 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname.startsWith('/influencer')) return true
   if (pathname.startsWith('/futbol-canli')) return true
   if (pathname.startsWith('/muzeler')) return true
+  if (pathname.startsWith('/oyunlar')) return true
   if (pathname === ROUTES.SITE_MAP) return true
   if (pathname.startsWith('/hakkimizda')) return true
   if (pathname.startsWith('/iletisim')) return true
