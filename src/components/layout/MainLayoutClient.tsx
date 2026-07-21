@@ -146,12 +146,24 @@ function RouteEffects() {
   return null
 }
 
+function isSlimAppShell(pathname: string): boolean {
+  return (
+    pathname.startsWith('/saved') ||
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/notifications') ||
+    pathname.startsWith('/search') ||
+    pathname.startsWith('/ara') ||
+    pathname.startsWith('/oyunlar')
+  )
+}
+
 export function MainLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { platform, isMobile, isDesktop } = usePlatformLayout()
   const isPublic = isPublicRoute(pathname)
   const isReels = pathname === ROUTES.REELS
   const variant = getContentVariant(pathname)
+  const slim = isSlimAppShell(pathname)
 
   return (
     <AuthGuard requireAuth={!isPublic}>
@@ -163,7 +175,7 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
               <RouteEffects />
               <PageStateEffects />
               <UiEffects />
-              <CategorySwipeNavigator />
+              {!slim ? <CategorySwipeNavigator /> : null}
               <LayoutShell
                 pathname={pathname}
                 isReels={isReels}

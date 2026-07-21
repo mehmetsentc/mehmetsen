@@ -10,6 +10,7 @@ import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGrid
 import { DesktopMostReadGrid } from '@/components/home/desktop/DesktopMostReadGrid'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
 import { GamesRail } from '@/components/home/GamesRail'
+import { LazySection } from '@/components/home/LazySection'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
 import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStrip'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
@@ -192,7 +193,9 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
       <DesktopMustWatch items={layout.trending} />
 
-      <GamesRail variant="desktop" />
+      <LazySection minHeight={240}>
+        <GamesRail variant="desktop" />
+      </LazySection>
 
       <DesktopOpinionStrip items={layout.opinionItems} />
 
@@ -213,45 +216,53 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.catRow1
         .filter(({ items }) => items.length > 0)
         .map(({ id, items }) => (
-          <DesktopCategoryGridSection
-            key={id}
-            categoryId={id}
-            title={getCategoryLabel(id)}
-            items={items}
-          />
+          <LazySection key={id} minHeight={320}>
+            <DesktopCategoryGridSection
+              categoryId={id}
+              title={getCategoryLabel(id)}
+              items={items}
+            />
+          </LazySection>
         ))}
 
       {layout.catRow1Filler.length > 0 ? (
-        <DesktopCategoryGridSection
-          categoryId="gundem"
-          title="Öne Çıkan"
-          items={layout.catRow1Filler}
-          href={ROUTES.CATEGORY('gundem')}
-        />
+        <LazySection minHeight={320}>
+          <DesktopCategoryGridSection
+            categoryId="gundem"
+            title="Öne Çıkan"
+            items={layout.catRow1Filler}
+            href={ROUTES.CATEGORY('gundem')}
+          />
+        </LazySection>
       ) : null}
 
-      <OnThisDayArchive />
+      <LazySection minHeight={200}>
+        <OnThisDayArchive />
+      </LazySection>
 
       <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
 
       {layout.catRow2
         .filter(({ items }) => items.length > 0)
         .map(({ id, items }) => (
-          <DesktopCategoryGridSection
-            key={id}
-            categoryId={id}
-            title={getCategoryLabel(id)}
-            items={items}
-          />
+          <LazySection key={id} minHeight={320}>
+            <DesktopCategoryGridSection
+              categoryId={id}
+              title={getCategoryLabel(id)}
+              items={items}
+            />
+          </LazySection>
         ))}
 
       {layout.catRow2Filler.length > 0 ? (
-        <DesktopCategoryGridSection
-          categoryId="gundem"
-          title="Öne Çıkan"
-          items={layout.catRow2Filler}
-          href={ROUTES.CATEGORY('gundem')}
-        />
+        <LazySection minHeight={320}>
+          <DesktopCategoryGridSection
+            categoryId="gundem"
+            title="Öne Çıkan"
+            items={layout.catRow2Filler}
+            href={ROUTES.CATEGORY('gundem')}
+          />
+        </LazySection>
       ) : null}
 
       <DesktopMoreGridChunks

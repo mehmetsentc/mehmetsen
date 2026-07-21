@@ -10,6 +10,10 @@ function shouldShowGlobalScrollHeader(pathname: string): boolean {
   if (pathname.startsWith('/messages')) return false
   if (pathname.startsWith('/admin')) return false
   if (pathname.startsWith('/login') || pathname.startsWith('/register')) return false
+  // App shell pages — skip heavy desktop news header (duplicate nav + INP)
+  if (pathname.startsWith('/search') || pathname.startsWith('/ara')) return false
+  if (pathname.startsWith('/saved') || pathname.startsWith('/settings')) return false
+  if (pathname.startsWith('/notifications') || pathname.startsWith('/oyunlar')) return false
   return true
 }
 

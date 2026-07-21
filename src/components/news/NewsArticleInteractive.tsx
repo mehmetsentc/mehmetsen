@@ -1,5 +1,6 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { postService } from '@/services/postService'
 import { LikeButton } from '@/components/post/LikeButton'
@@ -8,9 +9,7 @@ import { ShareButton } from '@/components/post/ShareButton'
 import { PostComments } from '@/components/post/PostComments'
 import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
 import { NextArticleCard } from '@/components/news/NextArticleCard'
-import { ArticleTOC } from '@/components/news/ArticleTOC'
 import { ArticleReaderTools } from '@/components/news/ArticleReaderTools'
-import { ArticleReactions } from '@/components/news/ArticleReactions'
 import { ArticleSourceBadge } from '@/components/news/ArticleSourceBadge'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
@@ -19,9 +18,19 @@ import { parseArticleContent } from '@/lib/articleBodyUtils'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
 import type { Post } from '@/types/post'
 
+const ArticleTOC = dynamic(
+  () => import('@/components/news/ArticleTOC').then((m) => m.ArticleTOC),
+  { ssr: false }
+)
+const ArticleReactions = dynamic(
+  () => import('@/components/news/ArticleReactions').then((m) => m.ArticleReactions),
+  { ssr: false }
+)
+
 interface NewsArticleInteractiveProps {
   post: Post
 }
+
 export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
   const [suggested, setSuggested] = useState<Post[]>([])
   const [latest, setLatest] = useState<Post[]>([])
@@ -39,16 +48,39 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
 
   useEffect(() => {
     postService.incrementViews(post.id).catch(() => {})
-    void postService
-      .getSuggestedNews(post.id, { categoryId: post.categoryId ?? 'gundem', limit: 10 })
-      .then(setSuggested)
-      .catch(() => {})
-    void postService
-      .getNewsTimeline(undefined, { feedSource: 'nahaber' })
-      .then((result) => {
-        setLatest(result.posts.filter((item) => item.id !== post.id).slice(0, 8))
-      })
-      .catch(() => {})
+
+    let cancelled = false
+    const loadRelated = () => {
+      if (cancelled) return
+      void postService
+        .getSuggestedNews(post.id, { categoryId: post.categoryId ?? 'gundem', limit: 10 })
+        .then((items) => {
+          if (!cancelled) setSuggested(items)
+        })
+        .catch(() => {})
+      void postService
+        .getNewsTimeline(undefined, { feedSource: 'nahaber' })
+        .then((result) => {
+          if (!cancelled) {
+            setLatest(result.posts.filter((item) => item.id !== post.id).slice(0, 8))
+          }
+        })
+        .catch(() => {})
+    }
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(loadRelated, { timeout: 2500 })
+      return () => {
+        cancelled = true
+        window.cancelIdleCallback(id)
+      }
+    }
+
+    const t = globalThis.setTimeout(loadRelated, 1200)
+    return () => {
+      cancelled = true
+      globalThis.clearTimeout(t)
+    }
   }, [post.id, post.categoryId])
 
   return (
@@ -122,7 +154,6 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
         </section>
       )}
 
-      {/* ── Sıradaki Haber kartı — ilgili veya son haberden ilki ── */}
       {(suggested[0] ?? latest[0]) && (
         <section className="news-article-rail mt-4 w-full">
           <NextArticleCard nextPost={suggested[0] ?? latest[0]} />

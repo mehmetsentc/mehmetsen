@@ -14,7 +14,7 @@ import {
   X,
   AlertCircle,
 } from 'lucide-react'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, TOP_NAV_CATEGORY_IDS } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { useSearch } from '@/hooks/useSearch'
@@ -196,7 +196,12 @@ function SearchPageContent() {
     if (trimmed) params.set('q', trimmed)
     if (tag) params.set('tag', '1')
     const next = trimmed ? `${ROUTES.SEARCH}?${params.toString()}` : ROUTES.SEARCH
-    router.replace(next)
+    // URL güncellemesini düşük öncelikli yap — her tuşta router.replace INP'yi şişiriyordu
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(() => router.replace(next), { timeout: 800 })
+    } else {
+      globalThis.setTimeout(() => router.replace(next), 0)
+    }
   }
 
   const tabs: { id: SearchTab; label: string; icon: typeof Search }[] = [
@@ -305,11 +310,18 @@ function SearchPageContent() {
             <section className="surface-card-padded">
               <h2 className="section-heading mb-3">Kategoriler</h2>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {DEFAULT_CATEGORIES.map((cat) => (
-                  <Link key={cat.id} href={`${ROUTES.FEED}?category=${cat.id}`} className="category-link">
-                    {cat.name}
-                  </Link>
-                ))}
+                {TOP_NAV_CATEGORY_IDS.slice(0, 12)
+                  .map((id) => DEFAULT_CATEGORIES.find((c) => c.id === id))
+                  .filter(Boolean)
+                  .map((cat) => (
+                    <Link
+                      key={cat!.id}
+                      href={ROUTES.CATEGORY(cat!.slug)}
+                      className="category-link"
+                    >
+                      {cat!.name}
+                    </Link>
+                  ))}
               </div>
             </section>
           )}

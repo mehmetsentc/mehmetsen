@@ -13,6 +13,7 @@ import { TrendingRail } from '@/components/home/TrendingRail'
 import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
 import { FootballWidget } from '@/components/football/FootballWidget'
 import { GamesRail } from '@/components/home/GamesRail'
+import { LazySection } from '@/components/home/LazySection'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { HOME_CATEGORY_RAILS, type HomeFeedInitialData } from '@/types/newsItem'
@@ -64,23 +65,30 @@ export function HomeFeed({ data }: HomeFeedProps) {
       <MustReadSection items={mostRead} />
 
       <OnThisDayArchive />
-      <FootballWidget />
-      <GamesRail />
+      <LazySection minHeight={320}>
+        <FootballWidget />
+      </LazySection>
+      <LazySection minHeight={220}>
+        <GamesRail />
+      </LazySection>
 
       {HOME_CATEGORY_RAILS.map((categoryId) => {
         const items = categoryRails[categoryId]
         if (!items?.length) return null
         return (
-          <CategoryRail
-            key={categoryId}
-            categoryId={categoryId}
-            title={getCategoryLabel(categoryId)}
-            items={items}
-          />
+          <LazySection key={categoryId} minHeight={260}>
+            <CategoryRail
+              categoryId={categoryId}
+              title={getCategoryLabel(categoryId)}
+              items={items}
+            />
+          </LazySection>
         )
       })}
 
-      <LocalNewsSection />
+      <LazySection minHeight={280}>
+        <LocalNewsSection />
+      </LazySection>
 
       {moreItems.length > 0 ? (
         <section className="home-section" aria-label="Daha fazla haber">
