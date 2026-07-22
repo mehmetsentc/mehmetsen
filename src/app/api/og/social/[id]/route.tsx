@@ -56,7 +56,10 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
   } catch { return null }
 }
 
-const SUPPORTED_EXTS = /\.(jpe?g|png|gif|webp|avif)(\?|$)/i
+// Edge runtime: yalnızca JPEG ve PNG güvenli şekilde render edilir
+// webp/avif Satori'de "Unsupported image type" hatasına yol açıyor
+const SUPPORTED_EXTS = /\.(jpe?g|png|gif)(\?|$)/i
+const UNSUPPORTED_EXTS = /\.(webp|avif|svg|bmp|tiff?)(\?|$)/i
 
 /** Bozuk/eksik thumbnail URL'leri reddet — Satori fetch hatası yapmasın */
 function isValidImageUrl(url: string | undefined): url is string {
@@ -65,12 +68,13 @@ function isValidImageUrl(url: string | undefined): url is string {
   if (url.endsWith('-') || url.endsWith('_')) return false  // truncated URL
   const lastSegment = url.split('/').pop() ?? ''
   if (lastSegment.length < 4) return false    // son segment çok kısa
+  if (UNSUPPORTED_EXTS.test(url)) return false  // Edge runtime desteklemez
   return true
 }
 
 function bestImage(a: ArticleOGData): string {
   const candidates = [a.thumbnail, a.coverImageUrl, a.imageUrl, a.featuredImage, a.image]
-  // Önce bilinen uzantılı + geçerli görselleri dene (webp/avif dahil — Edge runtime destekler)
+  // Önce bilinen uzantılı + geçerli görselleri dene
   for (const c of candidates) {
     if (isValidImageUrl(c) && SUPPORTED_EXTS.test(c)) return c
   }
@@ -135,6 +139,7 @@ export async function GET(
     title.length > 40  ? 48 :
     title.length > 28  ? 54 : 62
 
+  try {
   return new ImageResponse(
     (
       <div style={{
@@ -153,7 +158,8 @@ export async function GET(
         }}>
           {photo ? (
             <img src={photo} alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'flex' }} />
+              width={1080} height={PHOTO_H}
+              style={{ width: 1080, height: PHOTO_H, objectFit: 'cover', display: 'flex' }} />
           ) : (
             /* Fotoğraf yoksa: koyu mavi gradyan + geometrik desen */
             <div style={{
@@ -290,4 +296,8 @@ export async function GET(
       headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600' },
     }
   )
+  } catch {
+    // Görsel yüklenemezse (webp, erişilemez URL vb.) fallback döndür
+    return fallbackImageResponse()
+  }
 }

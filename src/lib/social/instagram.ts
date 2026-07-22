@@ -16,6 +16,9 @@ import { getSocialTokens } from './tokenStore'
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
 
+// Instagram caption limiti 2200 karakter
+const IG_CAPTION_LIMIT = 2200
+
 /** Build the caption text for an Instagram post. */
 function buildInstagramCaption(payload: SocialPublishPayload): string {
   const lines: string[] = []
@@ -30,7 +33,9 @@ function buildInstagramCaption(payload: SocialPublishPayload): string {
   }
   lines.push('')
   lines.push('#NaHaber #Çanakkale #SonDakika')
-  return lines.join('\n')
+  const caption = lines.join('\n')
+  // Instagram 2200 karakter limitini aşma
+  return caption.length > IG_CAPTION_LIMIT ? caption.slice(0, IG_CAPTION_LIMIT - 1) + '…' : caption
 }
 
 /**
