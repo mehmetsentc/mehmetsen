@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { MapPin, AlertCircle } from 'lucide-react'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopCategoryWatch } from '@/components/home/desktop/DesktopCategoryWatch'
-import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
 import { GridStory, StackedStory } from '@/components/home/desktop/desktopGridStories'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { LocalNewsMagazineGrids } from '@/components/local/LocalNewsMagazineGrids'
@@ -168,7 +167,6 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
         </>
       ) : null}
 
-      <DesktopHomeFooter />
     </div>
   )
 }

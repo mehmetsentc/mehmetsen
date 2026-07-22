@@ -1,7 +1,6 @@
 'use client'
 
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
-import { DesktopHomeFooter } from '@/components/home/desktop/DesktopHomeFooter'
 import { CategoryExperience } from '@/components/experience/CategoryExperience'
 import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
@@ -81,7 +80,6 @@ export function DesktopCategoryPage({
         </>
       ) : null}
 
-      <DesktopHomeFooter />
     </div>
   )
 }

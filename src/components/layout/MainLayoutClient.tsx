@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useEffect, Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -24,6 +25,11 @@ import { DesktopGlobalScrollHeader } from '@/components/layout/DesktopGlobalScro
 import { GlobalBackNav } from '@/components/layout/BackNavButton'
 import { ScrollHeaderProvider } from '@/context/ScrollHeaderContext'
 import { cn } from '@/lib/utils'
+
+const SiteFooter = dynamic(
+  () => import('@/components/home/desktop/DesktopHomeFooter').then((m) => m.DesktopHomeFooter),
+  { ssr: false, loading: () => null }
+)
 
 type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
 
@@ -120,6 +126,7 @@ const LayoutShell = memo(function LayoutShell({
             >
               <DesktopGlobalScrollHeader />
               {children}
+              {variant === 'newspaper' && <SiteFooter />}
             </main>
           </div>
         </PullToRefresh>

@@ -19,10 +19,6 @@ const DesktopNewspaperShell = dynamic(
     import('@/components/home/desktop/DesktopNewspaperShell').then((m) => m.DesktopNewspaperShell),
   { ssr: false, loading: () => null }
 )
-const DesktopHomeFooter = dynamic(
-  () => import('@/components/home/desktop/DesktopHomeFooter').then((m) => m.DesktopHomeFooter),
-  { ssr: false, loading: () => null }
-)
 
 interface FeedPageClientProps {
   homeFeedData: HomeFeedInitialData
@@ -117,7 +113,7 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
       {showDesktop ? (
         <AdSlotProvider page="home">
           {activeTab === 'home' ? (
-            <DesktopNewspaperShell footer={<DesktopHomeFooter />}>
+            <DesktopNewspaperShell>
               <DesktopHomeFeed data={liveFeedData} />
             </DesktopNewspaperShell>
           ) : null}
@@ -131,7 +127,6 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
               <TrendFeed items={liveFeedData.trendFeed} hideHeader />
             </div>
           )}
-          {activeTab === 'home' ? null : <DesktopHomeFooter />}
         </AdSlotProvider>
       ) : null}
     </>
