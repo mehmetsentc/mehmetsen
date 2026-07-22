@@ -10,10 +10,9 @@
  */
 
 import { getAdminFirestore } from '@/lib/firebase/admin'
-import { FieldValue } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
-import { ROUTES } from '@/constants/routes'
-import { getSiteUrl } from '@/lib/seo'
+import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
+import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { deepseekCollect, deepseekEditArticle, deepseekQaFallback, isDeepSeekConfigured } from './deepseek'
 import { runChiefEditor, isChiefEditorConfigured } from './chiefEditor'
 import type {
@@ -178,130 +177,144 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
     return { queueItemId: itemId, success: false, stage: 'gpt', decision: chiefResult.decision, error: chiefResult.issues.join('; '), durationMs: Date.now() - startTime }
   }
 
-  // ── Stage 4: Publish to Firestore ─────────────────────────────────────────
+  // ── Stage 4: Draft only (no direct auto-publish) ──────────────────────────
+  // P0: aiQueue must not bypass newsroom moderation/gates. Write structured
+  // bodyBlocks into newsDrafts for CMS review.
   try {
     const db = getAdminFirestore()
-    const newsRef = db.collection(Collections.NEWS).doc()
-    const newsId = newsRef.id
+    const draftRef = db.collection(Collections.NEWS_DRAFTS).doc()
+    const draftId = draftRef.id
+    const now = Date.now()
 
-    // Chief Editor'ın nihai içeriği kullan (Gemini'yi override edebilir)
     const finalTitle = chiefResult.finalTitle || geminiResult.title
     const finalDescription = chiefResult.finalDescription || geminiResult.description
     const finalCategory = chiefResult.finalCategory || geminiResult.category
     const finalTags = chiefResult.finalTags.length > 0 ? chiefResult.finalTags : geminiResult.tags
+    const finalSummary = chiefResult.finalSummary || geminiResult.summary
+    const spot = geminiResult.spot || finalSummary
+    const slug = geminiResult.slug || generateSlug(finalTitle, draftId)
 
-    const slug = geminiResult.slug || generateSlug(finalTitle, newsId)
+    const bodyBlocks = buildBodyBlocksFromAi({
+      title: finalTitle,
+      spot,
+      summary: finalSummary,
+      content: finalDescription,
+      imageUrl: item.imageUrl || undefined,
+      imageCaption: finalTitle,
+    })
+    const plainFromBlocks = articleBlocksToPlainText(bodyBlocks)
+    const contentBody = plainFromBlocks || finalDescription
 
-    await newsRef.set({
-      // Core
+    await draftRef.set({
       title: finalTitle,
       shortTitle: geminiResult.shortTitle,
       slug,
-      description: finalDescription,
-      summary: chiefResult.finalSummary || geminiResult.summary,
-      spot: geminiResult.spot,
-      content: finalDescription,
+      description: contentBody,
+      summary: finalSummary,
+      spot,
+      content: contentBody,
+      bodyBlocks,
+      htmlContent: '',
+      articleLayout: bodyBlocks.some((b) => b.type === 'heading') ? 'longform' : 'standard',
 
-      // Classification (Chief Editor onaylı)
       category: finalCategory,
+      categoryId: finalCategory,
       subCategory: geminiResult.subCategory || null,
       newsType: geminiResult.newsType,
       sentiment: geminiResult.sentiment,
       categoryConfidence: chiefResult.categoryConfidence,
       categoryReason: chiefResult.categoryReason || null,
 
-      // Geo
       location: geminiResult.location || null,
       city: geminiResult.location || null,
       country: geminiResult.country,
       language: 'tr',
 
-      // Taxonomy
       tags: finalTags,
       keywords: geminiResult.keywords,
       relatedTopics: geminiResult.relatedTopics,
 
-      // SEO
       metaTitle: geminiResult.metaTitle,
       metaDescription: geminiResult.metaDescription,
       seoScore: geminiResult.seoScore,
-      canonical: `${getSiteUrl()}${ROUTES.NEWS_DETAIL(slug)}`,
+      seoTitle: geminiResult.metaTitle || finalTitle,
+      seoDescription: geminiResult.metaDescription || finalSummary,
 
-      // Media
       imageUrl: item.imageUrl || null,
       coverImageUrl: item.imageUrl || null,
+      thumbnail: item.imageUrl || '',
 
-      // Scores
       qualityScore: chiefResult.contentQuality || geminiResult.qualityScore,
       factCheckScore: geminiResult.factCheckScore,
       readingTime: geminiResult.readingTime,
       aiConfidence: chiefResult.overallScore,
       chiefEditorScore: chiefResult.overallScore,
+      confidenceScore: chiefResult.overallScore,
 
-      // Flags
       breakingNews: geminiResult.breakingNews,
       featured: geminiResult.featured,
       isBreaking: geminiResult.isBreaking,
-      published: true,
       aiGenerated: true,
+      draftStatus: 'pending_review',
+      moderationReasons: [
+        'ai_queue_requires_cms_review',
+        ...(chiefResult.issues ?? []),
+      ],
 
-      // Web arama meta
       webSearchUsed: chiefResult.webSearchUsed,
       webSearchQueries: chiefResult.searchQueries.length > 0 ? chiefResult.searchQueries : null,
 
-      // Social
       socialCaption: geminiResult.socialCaption,
       twitterText: geminiResult.twitterText,
       facebookText: geminiResult.facebookText,
       instagramCaption: geminiResult.instagramCaption,
-
-      // Push (Chief Editor'ın yazdığı)
       pushTitle: chiefResult.pushTitle,
       pushBody: chiefResult.pushBody,
 
-      // Source
       sourceLabel: item.sourceLabel,
       sourceUrl: item.sourceUrl,
+      source: item.sourceLabel,
       rssFingerprint: item.rssFingerprint || null,
+      originalTitle: item.originalTitle,
 
-      // Pipeline metadata
       aiPipeline: true,
       pipelineQueueId: itemId,
       aiEditor: 'deepseek-only-v3',
       deepseekModel: geminiResult.modelUsed,
       chiefEditorModel: chiefResult.modelUsed,
 
-      // Timestamps
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      publishedAt: FieldValue.serverTimestamp(),
+      type: 'news',
+      status: 'draft',
+      createdAt: now,
+      updatedAt: now,
+      ingestedAt: now,
     })
 
     await updateQueueItem(itemId, {
       status: 'done' as AiQueueStatus,
-      finalNewsId: newsId,
+      finalNewsId: draftId,
       processedAt: Date.now(),
     })
 
     await log({
       level: 'info', agent: 'pipeline',
-      message: `[${itemId}] ✓ Yayınlandı: "${finalTitle}" → news/${newsId}`,
-      queueItemId: itemId, newsId,
+      message: `[${itemId}] ✓ Draft kaydedildi (CMS inceleme): "${finalTitle}" → newsDrafts/${draftId}`,
+      queueItemId: itemId, newsId: draftId,
       durationMs: Date.now() - startTime,
     })
 
     return {
       queueItemId: itemId,
       success: true,
-      newsId,
+      newsId: draftId,
       stage: 'publish',
-      decision: chiefResult.decision,
+      decision: 'needs_revision',
       durationMs: Date.now() - startTime,
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
     await updateQueueItem(itemId, { status: 'failed' as AiQueueStatus, errorLog: [errMsg] })
-    await log({ level: 'error', agent: 'pipeline', message: `[${itemId}] Yayın hatası: ${errMsg}`, queueItemId: itemId })
+    await log({ level: 'error', agent: 'pipeline', message: `[${itemId}] Draft kayıt hatası: ${errMsg}`, queueItemId: itemId })
     return { queueItemId: itemId, success: false, stage: 'publish', error: errMsg, durationMs: Date.now() - startTime }
   }
 }
@@ -340,14 +353,16 @@ export async function processPipelineQueue(): Promise<AiCronRunResult> {
   for (const item of items) {
     const pResult = await runPipelineForItem(item)
 
-    if (pResult.success) result.published++
-    else if (pResult.decision === 'rejected') result.rejected++
-    else result.failed++
+    // Stage 4 writes newsDrafts only — never count CMS-review drafts as live publishes.
+    if (pResult.success && pResult.decision === 'approved') result.published++
+    else if (pResult.decision === 'rejected' || pResult.decision === 'needs_revision') result.rejected++
+    else if (!pResult.success) result.failed++
+    else result.rejected++
 
     result.items.push({
       queueItemId: item.id,
       title: item.originalTitle,
-      decision: pResult.success ? (pResult.decision ?? 'approved') : (pResult.decision ?? 'error'),
+      decision: pResult.success ? (pResult.decision ?? 'needs_revision') : (pResult.decision ?? 'error'),
       newsId: pResult.newsId,
     })
 

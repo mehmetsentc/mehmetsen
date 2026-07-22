@@ -734,11 +734,11 @@ export async function processNewsroomArticle(
       videoUrl: '',
       category: resolvedCategory,
       categoryId: resolvedCategory,
-      // Travel guides use the wider editorial rhythm even when they still
-      // arrive as legacy plain text. Editors can later enrich them with blocks.
-      articleLayout: (resolvedCategory === 'gezi' ? 'longform' : 'standard') as
-        | 'standard'
-        | 'longform',
+      // Structured AI body (H2/H3 + captions) uses longform rhythm for every
+      // category / subcategory — not only gezi.
+      articleLayout: (bodyBlocks.some((b) => b.type === 'heading')
+        ? 'longform'
+        : 'standard') as 'standard' | 'longform',
       city: location?.city ?? '',
       district: location?.district ?? '',
       citySlug: resolvedCitySlug,

@@ -216,6 +216,7 @@ MUTLAK KURALLAR — ASLA İHLAL ETME:
 - Başlıkta BÜYÜK HARF spam, "FLAŞ", "SON DAKİKA" ifadeleri YASAK
 - title, summary, content birbirinden FARKLI olmalı
 - Paragraflar arasında \\n\\n kullan
+- content/description gövdesini TÜM kategoriler ve alt kategorilerde ## H2 / ### H3 markdown bölümleriyle yaz (sayfa başlığı H1 olduğu için # H1 KULLANMA)
 - Google News ve Google Discover uyumlu yaz
 
 KATEGORİ KURALLARI — KAYNAK ADI DEĞİL, İÇERİK BELİRLER:
@@ -275,10 +276,10 @@ JSON şeması (tüm alanları doldur):
   "title": "string (60-90 karakter, clickbait olmayan, SEO uyumlu)",
   "shortTitle": "string (40-55 karakter, mobil için)",
   "slug": "string (URL-safe, Türkçe karakter yok)",
-  "description": "string (tam haber içeriği, 400-800 kelime, HTML paragraflar \\n\\n ile ayrılmış)",
+  "description": "string (tam haber, 400-800 kelime; ## H2 / ### H3 bölümleri; paragraflar \\n\\n; # H1 yok)",
   "summary": "string (haber özeti, 120-160 karakter)",
   "spot": "string (gazetecilik lideri, Kim/Ne/Nerede/Ne zaman/Neden/Nasıl, 60-120 kelime)",
-  "content": "string (tam haber, 400-1000 kelime, paragraflar \\n\\n ile)",
+  "content": "string (tam haber, 400-1000 kelime; ## / ### markdown; paragraflar \\n\\n; tüm kategori/alt kategorilerde aynı yapı)",
   "category": "string (son-dakika|gundem|siyaset|ekonomi|finans-piyasa|emlak-konut|enerji|is-kariyer|spor|futbol|basketbol|voleybol|hentbol|atletizm|gures|teknoloji|oyun-espor|saglik|egitim|cevre-iklim|din-inanc|dunya|kibris-haberleri|kultur|sinema|tiyatro|konser|festival|magazin|bilim|yasam|moda|anne-cocuk|dekorasyon|iliskiler|tarih|yerel-haber|gastronomi|otomobil|trend)",
   "subCategory": "string veya null",
   "newsType": "string (breaking|feature|analysis|report|opinion|update)",

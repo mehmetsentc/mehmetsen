@@ -228,4 +228,21 @@ describe('buildBodyBlocksFromAi', () => {
       url: 'https://cdn.example.com/placed.jpg',
     })
   })
+
+  it('produces the same H2/H3 structure for any category or subcategory content', () => {
+    const md =
+      '## Maç özeti\n\n' +
+      'Takımlar ilk yarıda dengeli bir mücadele ortaya koydu ve seyirci tribünlerde yoğun ilgi gösterdi.\n\n' +
+      '### Kritik gol\n\n' +
+      'İkinci yarıdaki hızlı atak sonucunda skoru değiştiren gol geldi ve maçın dengesi bozuldu.'
+    const sport = buildBodyBlocksFromAi({ title: 'Derbi özeti', content: md })
+    const tech = buildBodyBlocksFromAi({ title: 'Yeni telefon çıktı', content: md })
+    const cinema = buildBodyBlocksFromAi({ title: 'Film vizyonda', content: md })
+    for (const blocks of [sport, tech, cinema]) {
+      expect(blocks.filter((b) => b.type === 'heading').map((b) => b.type === 'heading' && b.level)).toEqual([
+        2, 3,
+      ])
+      expect(blocks.some((b) => b.type === 'heading' && b.level === 1)).toBe(false)
+    }
+  })
 })

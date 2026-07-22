@@ -1,5 +1,7 @@
 /**
  * Build CMS-compatible ArticleBlock[] from AI / newsroom plain text.
+ * Category-agnostic: same H2/H3 + image caption rules for every category
+ * and subcategory (gundem, spor/futbol, kultur/sinema, gezi, yerel-haber, …).
  * Page title owns the only H1 — body never emits heading level 1.
  * Spot and cover hero live outside bodyBlocks (title, spot field, thumbnail/mediaItems).
  */

@@ -204,7 +204,7 @@ export function AdminNewsEditor({
   const buildPayload = () => {
     const country = countrySlug ? findCountryBySlug(countrySlug) : undefined
     const payloadTags =
-      isWorldCategory && country
+      country
         ? mergeTags(tags, [country.slug, normalizeTag(country.name)])
         : tags
 
@@ -230,7 +230,7 @@ export function AdminNewsEditor({
     isBreaking,
     isLiveBlog,
     liveUpdates: isLiveBlog ? liveUpdates : [],
-    ...(isWorldCategory && countrySlug
+    ...(countrySlug
       ? {
           countrySlug,
           country: country?.name ?? countrySlug,
@@ -688,6 +688,7 @@ export function AdminNewsEditor({
 
     <div className="space-y-2">
       {isWorldCategory ? (
+        /* Dünya kategorisi: sadece ülke seçici */
         <>
           <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
             Ülke
@@ -707,6 +708,7 @@ export function AdminNewsEditor({
           </select>
         </>
       ) : (
+        /* Diğer kategoriler: şehir (Türkiye içi) + ülke (yurt dışı) — birbirini dışlar */
         <>
           <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
             Şehir
@@ -717,6 +719,7 @@ export function AdminNewsEditor({
             onChange={(e) => {
               setCitySlug(e.target.value)
               setDistrictSlug('')
+              if (e.target.value) setCountrySlug('')
             }}
             className={`${fieldInputCls} focus:ring-emerald-500`}
           >
@@ -737,6 +740,30 @@ export function AdminNewsEditor({
               ))}
             </select>
           )}
+          <div className="border-t border-[rgb(var(--color-border))] pt-2">
+            <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+              Ülke
+              <span className="ml-1 font-normal text-[rgb(var(--color-muted))]">(isteğe bağlı · yurt dışı haber ise şehri boş bırakıp seçin)</span>
+            </label>
+            <select
+              value={countrySlug}
+              onChange={(e) => {
+                setCountrySlug(e.target.value)
+                if (e.target.value) {
+                  setCitySlug('')
+                  setDistrictSlug('')
+                }
+              }}
+              className={`${fieldInputCls} focus:ring-emerald-500`}
+            >
+              <option value="">— Ülke seçin (isteğe bağlı) —</option>
+              {WORLD_COUNTRIES.map((country) => (
+                <option key={country.slug} value={country.slug}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </>
       )}
     </div>

@@ -37,7 +37,6 @@ function createBlock(type: ArticleBlock['type']): ArticleBlock {
 }
 
 type EditorBlockType =
-  | 'heading-1'
   | 'heading-2'
   | 'heading-3'
   | 'heading-4'
@@ -46,14 +45,15 @@ type EditorBlockType =
 function editorBlockType(block: ArticleBlock): EditorBlockType {
   if (block.type !== 'heading') return block.type
   const level = block.level === 1 ? 2 : block.level
-  return `heading-${level}` as EditorBlockType
+  if (level === 4) return 'heading-4'
+  if (level === 3) return 'heading-3'
+  return 'heading-2'
 }
 
 function convertBlock(block: ArticleBlock, nextType: EditorBlockType): ArticleBlock {
   if (nextType.startsWith('heading-')) {
-    const requested = Number(nextType.slice(-1)) as 1 | 2 | 3 | 4
-    // Coerce H1 → H2 (page title owns H1)
-    const level = (requested === 1 ? 2 : requested) as 2 | 3 | 4
+    const requested = Number(nextType.slice(-1)) as 2 | 3 | 4
+    const level = requested
     const text = block.type === 'heading' || block.type === 'paragraph' ? block.text : ''
     return { id: block.id, type: 'heading', level, text }
   }

@@ -40,6 +40,7 @@ ALAN TANIMLARI:
 - spot: Lider paragraf. Kim+Ne+Nerede+Ne zaman+Neden. 3-5 cümle, 80-150 kelime
 - summary: Feed teaser, max 120 karakter, title'dan FARKLI bilgi
 - content: Haber gövdesi, MİNİMUM 500 KELIME. Bölümleri ## H2 ve ### H3 markdown başlıklarıyla ayır.
+  Bu yapı TÜM kategoriler ve alt kategoriler için aynıdır (gündem, spor/futbol, teknoloji, kültür/sinema, sağlık, magazin, dünya, yerel-haber, gezi vb.).
   Sayfa başlığı H1 olduğu için content içinde # H1 KULLANMA. Her bölüm için anlamlı ## başlıklar kullan.
   Paragraflar arası boş satır (\\n\\n) kullan. 6-8 paragraf + 3-5 başlık hedefle.
   İçeriği zenginleştirmek için: olayın arka planını, önemini, etkilenecek tarafları, uzman görüşleri (kaynak metinde varsa) ve tarihsel bağlamı (kaynak metinde varsa) ekle.
