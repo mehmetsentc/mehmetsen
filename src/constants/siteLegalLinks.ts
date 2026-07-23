@@ -91,6 +91,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Teve', href: '/reels' },
       { label: 'Keşfet', href: '/discover' },
       { label: 'Eğitim', href: '/kategori/egitim' },
+      { label: 'Etkinlikler', href: '/kategori/etkinlikler' },
     ],
   },
   {
