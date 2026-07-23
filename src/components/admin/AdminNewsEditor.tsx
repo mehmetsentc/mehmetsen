@@ -19,6 +19,20 @@ import type { Post } from '@/types/post'
 import type { ArticleBlock } from '@/lib/articleBlocks'
 import type { AdminNewsItem } from '@/services/adminNewsService'
 
+/** {"caption":"..."} formatındaki bozuk değerleri temizler */
+function sanitizeCaptionValue(v: string | undefined | null): string {
+  const s = v?.trim() ?? ''
+  if (!s.startsWith('{')) return s
+  try {
+    const obj = JSON.parse(s) as Record<string, unknown>
+    if (typeof obj.caption === 'string' && obj.caption.trim()) return obj.caption.trim()
+  } catch {
+    const m = s.match(/"caption"\s*:\s*"((?:[^"\\]|\\.)*?)(?:"|$)/)
+    if (m?.[1]?.trim()) return m[1].trim()
+  }
+  return s
+}
+
 interface ProfessionalAiResult {
   title?: string
   spot?: string
@@ -108,7 +122,7 @@ export function AdminNewsEditor({
   const isWorldCategory = categoryId === 'dunya'
   const availableDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
   const [thumbnail, setThumbnail] = useState(post?.coverImageUrl ?? '')
-  const [imageCaption, setImageCaption] = useState(post?.imageCaption?.trim() || '')
+  const [imageCaption, setImageCaption] = useState(sanitizeCaptionValue(post?.imageCaption) || '')
   const [videoUrl, setVideoUrl] = useState(post?.mediaItems?.find((m) => m.type === 'video')?.url ?? '')
   const [additionalImages, setAdditionalImages] = useState<AdditionalImageItem[]>(
     (post as (Post & { additionalImages?: AdditionalImageItem[] }) | undefined)?.additionalImages ?? []
@@ -299,7 +313,7 @@ export function AdminNewsEditor({
       if (Array.isArray(data.tags)) setTags(data.tags)
       if (Array.isArray(data.seoKeywords)) setSeoKeywords(data.seoKeywords)
       setThumbnail(nextThumbnail)
-      setImageCaption(data.imageCaption?.trim() || imageCaption || nextTitle)
+      setImageCaption(sanitizeCaptionValue(data.imageCaption) || imageCaption || nextTitle)
       setAdditionalImages(nextAdditional)
       setAiQualityScore(data.qualityScore ?? null)
       setAiGateDecision(data.gateDecision ?? 'review')
@@ -331,7 +345,7 @@ export function AdminNewsEditor({
         tags: Array.isArray(data.tags) ? data.tags : tags,
         seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : seoKeywords,
         thumbnail: nextThumbnail,
-        imageCaption: data.imageCaption?.trim() || imageCaption || nextTitle,
+        imageCaption: sanitizeCaptionValue(data.imageCaption) || imageCaption || nextTitle,
         additionalImages: nextAdditional,
         aiResearchSources: Array.isArray(data.researchSources) ? data.researchSources : [],
         status: nextStatus,

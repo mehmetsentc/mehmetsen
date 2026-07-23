@@ -72,15 +72,28 @@ function parseAnalysis(raw: string): ImageAnalysis | null {
     }
   } catch {
     const trimmed = raw.trim()
-    return trimmed
-      ? {
-          caption: trimmed.slice(0, 200),
-          alt: trimmed.slice(0, 120),
+    if (!trimmed) return null
+    // Truncated JSON like {"caption":"..." — try to extract the value via regex
+    if (trimmed.startsWith('{')) {
+      const m = trimmed.match(/"caption"\s*:\s*"((?:[^"\\]|\\.)*?)(?:"|$)/)
+      const extracted = m?.[1]?.trim()
+      if (extracted) {
+        return {
+          caption: extracted.slice(0, 200),
+          alt: extracted.slice(0, 120),
           creditHint: null,
           role: 'inline',
           relevanceScore: 50,
         }
-      : null
+      }
+    }
+    return {
+      caption: trimmed.slice(0, 200),
+      alt: trimmed.slice(0, 120),
+      creditHint: null,
+      role: 'inline',
+      relevanceScore: 50,
+    }
   }
 }
 
