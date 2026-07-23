@@ -3,8 +3,8 @@ import { isKnownNewsImageHost } from '@/constants/imageHosts'
 const SYSTEM_PROMPT = `Sen NaHaber'in görsel editörüsün. Haber görsellerini analiz edip Türkçe yayın metadatası hazırlıyorsun.
 
 Kurallar:
-- caption EN FAZLA 12 kelime, 80-110 karakter arası, doğal ve akıcı Türkçe; kelimenin ortasında bırakma
-- alt erişilebilirlik için görselde gerçekten görüleni en fazla 100 karakterle anlatsın
+- caption 8-12 kelime, doğal ve akıcı Türkçe
+- alt erişilebilirlik için görselde gerçekten görüleni kısaca anlatsın
 - Haberin konusu ve görselin içeriğiyle uyumlu ol
 - Görselde açıkça görünmeyen kişi, yer, tarih veya olayı uydurma
 - Clickbait, klişe veya "görsel temsilidir" gibi boş ifadeler kullanma
