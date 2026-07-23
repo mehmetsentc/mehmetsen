@@ -48,17 +48,18 @@ Kurallar:
 - content özgün, akıcı ve ayrıntılı olsun; kapak görseli veya manşet açıklamasını content'e ekleme.
 - content markdown yapısı ZORUNLU:
   * ## H2 ve gerektiğinde ### H3 kullan; # H1 ASLA kullanma
-  * Her başlık ayrı satırda, en fazla 6 kelime, paragraf metni içermesin; uzun cümleyi ### başlık yapma
-  * Başlıktan sonra bir boş satır, sonra tam paragraf
+  * Her başlık haber konusunu özetleyen bağımsız bir etiket olsun; ZORUNLU: en fazla 6 kelime
+  * Görsel açıklaması (caption/alt), kişi-yer adı listesi veya uzun cümle başlık OLAMAZ
+  * Başlıktan sonra bir boş satır, sonra tam ve eksiksiz paragraf
   * "### BaşlıkParagraf" gibi bitişik yazım YASAK
-  * Paragrafları yarım bırakma; her cümleyi tamamla
+  * ZORUNLU: Her cümle ve paragraf tam ve eksiksiz bitsin; yarım cümle veya kesilmiş kelime bırakma
   * Aynı paragrafı veya spot cümlesini content içinde iki kez yazma
   * İlk satır doğrudan ## ile başlayan ilk bölüm olsun (giriş/spot paragrafı content'te olmasın)
 - Ham metinde bulunmayan kişi, sayı, tarih, yer, alıntı veya iddia ekleme.
 - CANLI ARAŞTIRMA NOTLARI varsa yalnızca bu notlarda açıkça kaynaklandırılmış olguları kullan.
 - Çelişkili veya tek kaynağa dayanan iddiaları kesin bilgi gibi sunma.
 - Araştırma notundaki ham URL'leri haber gövdesine yapıştırma; gerektiğinde kaynağı kurum adıyla belirt.
-- Görsel analizlerini yalnızca yerleşim ve açıklama için kullan; yeni haber olgusu üretmek için kullanma.
+- GÖRSEL YASAĞI: Görsel analizindeki caption veya alt metni haber gövdesinde H2/H3 başlık, paragraf veya alıntı olarak ASLA yazma; bu veriler yalnızca imageOrder sıralaması içindir.
 - seoTitle 50-65, seoDescription 140-165 karakter olsun.
 - categoryId aşağıdaki geçerli kimliklerden tam biri olsun.
 - Kategori seçiminde EN SPESİFİK alt kategoriyi kullan:
@@ -182,9 +183,11 @@ export async function POST(request: Request) {
                 ].join('\n')
               : 'Canlı araştırma yapılamadı. Ham metnin dışına çıkma.',
             '',
-            'GÖRSEL ANALİZLERİ:',
+            'GÖRSEL ANALİZLERİ (YALNIZCA imageOrder sıralaması için — caption/alt metni haber gövdesine YAZMA):',
             imageAnalyses.length > 0
-              ? JSON.stringify(imageAnalyses)
+              ? imageAnalyses.map((img, i) =>
+                  `[Görsel ${i + 1}] url:${img.url} | role:${img.role} | alaka:${img.relevanceScore}/100 | caption(sadece imageOrder için):"${img.caption}"`
+                ).join('\n')
               : 'Görsel yok veya analiz edilemedi.',
           ].join('\n')
         : userMessage
