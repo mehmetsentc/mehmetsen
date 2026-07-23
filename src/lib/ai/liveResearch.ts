@@ -5,7 +5,7 @@
  */
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
-const DEFAULT_MODEL = 'gemini-2.5-flash'
+const DEFAULT_MODEL = 'gemini-3.6-flash'
 
 export interface GroundingSource {
   title: string
