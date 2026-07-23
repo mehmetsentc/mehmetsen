@@ -298,7 +298,10 @@ export function AdminNewsEditor({
       const nextBlocks = Array.isArray(data.bodyBlocks) ? data.bodyBlocks : bodyBlocks
       const nextThumbnail = data.imageOrder?.[0] || thumbnail
       const nextAdditional = Array.isArray(data.additionalImages)
-        ? data.additionalImages
+        ? data.additionalImages.map((img) => ({
+            ...img,
+            caption: img.caption ? sanitizeCaptionValue(img.caption) || img.caption : img.caption,
+          }))
         : additionalImages
       const nextStatus = data.gateDecision === 'publish' ? 'published' : 'pending'
 

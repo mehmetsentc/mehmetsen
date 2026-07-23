@@ -147,18 +147,21 @@ export async function POST(request: Request) {
       mode === 'publish-ready'
         ? researchLiveNews({ query: input.slice(0, 500), context: input })
         : Promise.resolve(null)
+    // Görselleri sırayla işle — paralel Gemini istekleri rate limit'e çarpıyor
     const imagePromise =
       mode === 'publish-ready' && requestedUrls.length > 0
-        ? Promise.all(
-            requestedUrls.map(async (url) => {
+        ? (async () => {
+            const results: Array<(ImageAnalysis & { url: string }) | null> = []
+            for (const url of requestedUrls) {
               const analysis = await generateImageAnalysis({
                 imageUrl: url,
                 title: '',
                 content: input.slice(0, 2500),
               })
-              return analysis ? { url, ...analysis } : null
-            })
-          )
+              results.push(analysis ? { url, ...analysis } : null)
+            }
+            return results
+          })()
         : Promise.resolve([])
     const [research, settledImages] = await Promise.all([researchPromise, imagePromise])
     const imageAnalyses: Array<ImageAnalysis & { url: string }> = settledImages.filter(

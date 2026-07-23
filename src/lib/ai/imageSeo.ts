@@ -3,8 +3,8 @@ import { isKnownNewsImageHost } from '@/constants/imageHosts'
 const SYSTEM_PROMPT = `Sen NaHaber'in görsel editörüsün. Haber görsellerini analiz edip Türkçe yayın metadatası hazırlıyorsun.
 
 Kurallar:
-- caption 10-20 kelime, doğal ve akıcı Türkçe
-- alt erişilebilirlik için görselde gerçekten görüleni en fazla 120 karakterle anlatsın
+- caption EN FAZLA 12 kelime, 80-110 karakter arası, doğal ve akıcı Türkçe; kelimenin ortasında bırakma
+- alt erişilebilirlik için görselde gerçekten görüleni en fazla 100 karakterle anlatsın
 - Haberin konusu ve görselin içeriğiyle uyumlu ol
 - Görselde açıkça görünmeyen kişi, yer, tarih veya olayı uydurma
 - Clickbait, klişe veya "görsel temsilidir" gibi boş ifadeler kullanma
@@ -48,6 +48,14 @@ function buildUserPrompt(input: ImageSeoInput, hasVision: boolean): string {
   return lines.join('\n')
 }
 
+/** Kelime ortasında kesmez; max karakter sınırından önceki son boşlukta keser */
+function sliceAtWord(s: string, max: number): string {
+  if (s.length <= max) return s
+  const cut = s.slice(0, max)
+  const lastSpace = cut.lastIndexOf(' ')
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim()
+}
+
 function parseAnalysis(raw: string): ImageAnalysis | null {
   try {
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
@@ -61,8 +69,8 @@ function parseAnalysis(raw: string): ImageAnalysis | null {
         : 'inline'
     const score = Number(parsed.relevanceScore)
     return {
-      caption: caption.slice(0, 200),
-      alt: (alt || caption).slice(0, 120),
+      caption: sliceAtWord(caption, 160),
+      alt: sliceAtWord(alt || caption, 110),
       creditHint:
         typeof parsed.creditHint === 'string' && parsed.creditHint.trim()
           ? parsed.creditHint.trim().slice(0, 120)
@@ -79,8 +87,8 @@ function parseAnalysis(raw: string): ImageAnalysis | null {
       const extracted = m?.[1]?.trim()
       if (extracted) {
         return {
-          caption: extracted.slice(0, 200),
-          alt: extracted.slice(0, 120),
+          caption: sliceAtWord(extracted, 160),
+          alt: sliceAtWord(extracted, 110),
           creditHint: null,
           role: 'inline',
           relevanceScore: 50,
@@ -88,8 +96,8 @@ function parseAnalysis(raw: string): ImageAnalysis | null {
       }
     }
     return {
-      caption: trimmed.slice(0, 200),
-      alt: trimmed.slice(0, 120),
+      caption: sliceAtWord(trimmed, 160),
+      alt: sliceAtWord(trimmed, 110),
       creditHint: null,
       role: 'inline',
       relevanceScore: 50,
@@ -188,7 +196,7 @@ async function generateWithDeepSeek(input: ImageSeoInput): Promise<ImageAnalysis
         ],
         response_format: { type: 'json_object' },
         temperature: 0.35,
-        max_tokens: 350,
+        max_tokens: 600,
       }),
       signal: AbortSignal.timeout(20_000),
     })
