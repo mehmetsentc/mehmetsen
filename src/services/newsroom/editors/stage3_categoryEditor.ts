@@ -45,6 +45,15 @@ YANLIŞ → DOĞRU örnekleri:
 • Sporcunun kişisel hayatı haberi, teknik direktör evlendi → MAGAZİN, FUTBOL değil
 • Şirket işçi çıkardı, şirket teknoloji sektöründe → EKONOMİ veya GÜNDEM, TEKNOLOJİ değil
 
+⚠️ "YARIŞ" KELİMESİ TUZAĞI — ÇOK SIKÇA YANLIŞLANIYOR:
+"yarış" yalnızca GERÇEK SPOR YARIŞLARI için spor/futbol/atletizm kategorisine girer:
+• F1 yarışı, ata yarışı, maraton, kros, motosiklet yarışı → spor/atletizm ✓
+"yarış" şu bağlamlarda KESİNLİKLE SPOR DEĞİL:
+• "Nükleer yarış", "silah yarışı" → DUNYA (uluslararası güvenlik)
+• "Uzay yarışı" → TEKNOLOJİ veya DUNYA
+• "Seçim yarışı", "siyasi yarış" → SİYASET
+• "Ekonomik yarış", "ticaret savaşı" → EKONOMİ
+
 TESTİ: "Bu haberin BAŞLIĞI hangi kategoriyi işaret ediyor?" — İçerik değil, başlığa odaklan.
 Başlıkta cumhurbaşkanı/bakan/diplomatik → SİYASET veya DUNYA
 Başlıkta maç/gol/transfer/şampiyon → FUTBOL/SPOR
@@ -125,9 +134,9 @@ KESİN YASAKLAR (son-dakika olamaz):
 function buildPrompt(input: CategoryInput): string {
   return `Kaynak: ${input.sourceLabel}
 Başlık: ${input.title}
-İçerik:
-${input.content.slice(0, 3000)}
-${input.forcedCategoryId ? `\nÖnerilen kategori: ${input.forcedCategoryId} (doğru değilse değiştir)` : ''}
+İçerik (tamamını oku — kategori kararını YALNIZCA içeriğe göre ver, kaynak adına veya başlıktaki tek bir kelimeye değil):
+${input.content.slice(0, 6000)}
+${input.forcedCategoryId ? `\nÖnerilen kategori: ${input.forcedCategoryId} (içerik farklı bir kategoriyi işaret ediyorsa mutlaka düzelt — bu yalnızca öneri)` : ''}
 
 JSON formatında kategori bilgisi döndür:
 {
@@ -206,6 +215,23 @@ function parseResult(raw: string, forcedCategoryId?: string): CategoryResult | n
     // son-dakika değilse isBreaking kesinlikle false
     if (categoryId !== 'son-dakika') isBreaking = false
 
+    // Hard override: spor kategorisine düştüyse ama içerik uluslararası/nükleer ise düzelt
+    // "nükleer yarış", "silah yarışı" gibi ifadelerde "yarış" AI'yı yanıltıyor
+    if (categoryId === 'spor' || categoryId === 'futbol' || categoryId === 'atletizm') {
+      const titleCheck = (p as Record<string, unknown>)['reason']
+        ? '' // reason varsa AI kendinden emin, dokunma
+        : ''
+      const rawLower = raw.toLocaleLowerCase('tr-TR')
+      const INTERNATIONAL_SIGNALS = [
+        'nükleer', 'silahlanma', 'silah yarış', 'ortadoğu', 'israil', 'iran',
+        'nato', 'bm ', 'uluslararası', 'abd ', 'rusya', 'ukrayna', 'çin ', 'gazze',
+      ]
+      const isInternational = INTERNATIONAL_SIGNALS.some((s) => rawLower.includes(s))
+      if (isInternational) {
+        categoryId = 'dunya'
+      }
+    }
+
     // Kutlama/tören kelimesi varsa son-dakika olamaz
     const titleAndContent = raw.toLocaleLowerCase('tr-TR')
     const CELEBRATION_TERMS = [
@@ -255,7 +281,8 @@ function heuristicCategory(input: CategoryInput): CategoryResult {
   else if (/enflasyon|döviz|faiz kararı|borsa.*kapandı|tcmb|asgari ücret/.test(title)) categoryId = 'ekonomi'
   else if (/deprem|sel felaketi|büyük afet/.test(title)) categoryId = 'son-dakika'
   else if (/cumhurbaşkanı|tbmm|meclis.*kabul|seçim|bakan.*açıkladı/.test(title)) categoryId = 'siyaset'
-  else if (/rusya|ukrayna|gazze|abd.*savaş|almanya.*açıkladı/.test(title)) categoryId = 'dunya'
+  else if (/nükleer yarış|silah yarışı|uzay yarışı|nükleer program|nükleer tehdit|nükleer silah/.test(title)) categoryId = 'dunya'
+  else if (/rusya|ukrayna|gazze|abd.*savaş|almanya.*açıkladı|ortadoğu|israil|iran|nato|bm karar/.test(title)) categoryId = 'dunya'
 
   categoryId = applyAstrologyCategoryOverride(categoryId, input.title, input.content)
 

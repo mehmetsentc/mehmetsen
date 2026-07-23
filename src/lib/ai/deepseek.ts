@@ -459,6 +459,28 @@ Başlık: "İzmir'de zincirleme kaza: 3 yaralı"
 Başlık: "TOGG T10X ikinci seri üretimde"
 → KATEGORİ: otomobil ✓ (araç haberi — teknoloji değil)
 
+**ÖRNEK 8** — "yarış" kelimesi tuzağı:
+Başlık: "Ortadoğu'da nükleer yarış: Kim silaha ne kadar yakın?"
+→ KATEGORİ: dunya ✓ (uluslararası güvenlik — "yarış" burada silahlanma yarışı, spor DEĞİL)
+
+**ÖRNEK 9** — "yarış" gerçek spor:
+Başlık: "F1 Monako yarışını Verstappen kazandı"
+→ KATEGORİ: spor ✓ (gerçek araç yarışı)
+
+**ÖRNEK 10** — Zodiac kelimesi tuzağı (finansal):
+Başlık: "Boğa piyasası sinyalleri güçleniyor: BİST 100 rekor kırdı"
+İçerik: borsa, hisse, yatırım, BİST, piyasa analizi...
+→ KATEGORİ: borsa ✓ ("boğa" burada bull market, burç DEĞİL — içeriğe bak)
+
+**ÖRNEK 11** — Zodiac kelimesi tuzağı (spor):
+Başlık: "Aslan takımı ligde zirveye yerleşti"
+İçerik: futbol maçı, gol, puan tablosu...
+→ KATEGORİ: futbol ✓ ("aslan" takma adı, burç DEĞİL — içeriğe bak)
+
+⚠️ GENEL KURAL: Tek bir kelimeyle değil, HABERİN TAMAMI ile karar ver.
+"boğa", "aslan", "yay", "terazi", "akrep" gibi kelimeler astroloji sinyali DEĞİLDİR;
+"burç", "astroloji", "yükselen burç", "günlük burç" gibi açık ifadeler gereklidir.
+
 ## ÇIKTI FORMAT (yalnızca JSON):
 {
   "decision": "approved|needs_revision|rejected",

@@ -3,8 +3,37 @@
  * Astrology is a Yaşam child — burç content must never stay on `yasam`.
  */
 
-const ASTROLOGY_SIGNAL =
-  /astroloji|astrology|horoscope|burç|burclar|günlük\s*burç|haftalık\s*burç|aylık\s*burç|yükselen|retrosu|zodiac|zodyak|koç\s*burcu|boğa\s*burcu|ikizler\s*burcu|yengeç\s*burcu|aslan\s*burcu|başak\s*burcu|terazi\s*burcu|akrep\s*burcu|yay\s*burcu|oğlak\s*burcu|kova\s*burcu|balık\s*burcu|\b(koç|boğa|ikizler|yengeç|aslan|başak|terazi|akrep|yay|oğlak|kova|balık)\b.*\bburc|\bburc.*\b(koç|boğa|ikizler|yengeç|aslan|başak|terazi|akrep|yay|oğlak|kova|balık)\b/i
+/**
+ * Kategoriler ki asla astroloji'ye çevrilmemeli.
+ * Örn: "boğa piyasası" (bull market) borsa haberi ama "boğa" kelimesi
+ * zodiac sinyali olarak algılanıp astroloji'ye düşüyordu.
+ */
+const NON_ASTROLOGY_CATEGORIES = new Set([
+  'ekonomi', 'borsa', 'kripto', 'finans-piyasa', 'emlak-konut', 'enerji', 'is-kariyer',
+  'siyaset', 'son-dakika', 'gundem', 'dunya', 'kibris-haberleri', 'yerel-haber',
+  'teknoloji', 'saglik', 'bilim', 'egitim', 'cevre-iklim', 'din-inanc',
+  'spor', 'futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures', 'dunya-kupasi-2026',
+  'magazin', 'kultur', 'sinema', 'tiyatro', 'konser', 'festival',
+  'gastronomi', 'otomobil', 'meteoroloji', 'turizm', 'gezi', 'tarih', 'asayis',
+  'moda', 'anne-cocuk', 'dekorasyon', 'iliskiler', 'oyun-espor',
+])
+
+/**
+ * Birincil astroloji sinyali — bunlardan biri varsa kesinlikle astroloji içeriği.
+ * "burç", "astroloji", "horoscope", "retrosu", "zodyak" gibi açık sinyaller.
+ */
+const ASTROLOGY_ANCHOR =
+  /astroloji|astrology|horoscope|burçlar?|günlük\s+burç|haftalık\s+burç|aylık\s+burç|yıllık\s+burç|retrosu|retrograde|zodiac|zodyak/i
+
+/**
+ * Zodiac işareti + "burcu/yorumu/rasali" kombinasyonu — burç bağlamı zorunlu.
+ * "boğa" veya "yay" tek başına yetmez; "boğa burcu", "yay yorumu" gibi
+ * bağlamsal kombinasyon gerekiyor.
+ * Bu sayede "boğa piyasası", "aslan payı", "yay çekti" gibi finansal/gündelik
+ * ifadeler astroloji olarak sınıflandırılmıyor.
+ */
+const ZODIAC_IN_CONTEXT =
+  /\b(koç|boğa|ikizler|yengeç|aslan|başak|terazi|akrep|yay|oğlak|kova|balık)\s+(burcu?|yorumu?|rasali|transiti|etkisi|güne?|haftay?a|aya?)\b|\bburc\w*\s+(koç|boğa|ikizler|yengeç|aslan|başak|terazi|akrep|yay|oğlak|kova|balık)\b|\byükselen\s+(koç|boğa|ikizler|yengeç|aslan|başak|terazi|akrep|yay|oğlak|kova|balık)\b/i
 
 export function looksLikeAstrologyContent(
   title: string,
@@ -13,12 +42,23 @@ export function looksLikeAstrologyContent(
 ): boolean {
   const tagBlob = tags.join(' ')
   const text = `${title} ${content.slice(0, 2000)} ${tagBlob}`.toLocaleLowerCase('tr-TR')
-  return ASTROLOGY_SIGNAL.test(text)
+
+  // Birincil sinyal varsa kesinlikle astroloji
+  if (ASTROLOGY_ANCHOR.test(text)) return true
+
+  // Zodiac adı + burç/yorum bağlamı varsa astroloji
+  if (ZODIAC_IN_CONTEXT.test(text)) return true
+
+  return false
 }
 
 /**
  * If the article is clearly astrology/horoscope, force `astroloji`
  * (never leave it on parent `yasam` or nearby lifestyle buckets).
+ *
+ * ANCAK: ekonomi/borsa/siyaset/spor gibi kategoriler asla astroloji'ye çevrilmez.
+ * "boğa piyasası", "aslan payı", "yay çekti" gibi ifadeler zodiac kelimesi içerse
+ * de bu kategorilerin içeriği astroloji DEĞİLDİR.
  */
 export function applyAstrologyCategoryOverride(
   categoryId: string,
@@ -26,6 +66,9 @@ export function applyAstrologyCategoryOverride(
   content = '',
   tags: string[] = []
 ): string {
+  // Finansal/siyasi/spor kategoriler hiçbir zaman astroloji'ye dönmez
+  if (NON_ASTROLOGY_CATEGORIES.has(categoryId)) return categoryId
+
   if (!looksLikeAstrologyContent(title, content, tags)) return categoryId
   return 'astroloji'
 }
