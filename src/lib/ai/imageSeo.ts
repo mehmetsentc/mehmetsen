@@ -139,17 +139,20 @@ async function generateWithGeminiVision(input: ImageSeoInput): Promise<ImageAnal
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         generationConfig: {
           temperature: 0.35,
-          maxOutputTokens: 350,
+          maxOutputTokens: 800,
           responseMimeType: 'application/json',
         },
+        thinkingConfig: { thinkingBudget: 0 },
       }),
       signal: AbortSignal.timeout(25_000),
     })
     if (!res.ok) return null
     const data = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>
     }
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+    // thinking models may put thoughts in parts[0]; find first non-thought text part
+    const parts = data.candidates?.[0]?.content?.parts ?? []
+    const raw = parts.find(p => !p.thought && typeof p.text === 'string')?.text?.trim()
     return raw ? parseAnalysis(raw) : null
   } catch {
     return null
