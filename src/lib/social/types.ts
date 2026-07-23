@@ -33,6 +33,7 @@ export interface SocialCronItemResult {
   title: string
   facebook: SocialPublishResult
   instagram: SocialPublishResult
+  twitter?: SocialPublishResult
   markedDone: boolean
 }
 
