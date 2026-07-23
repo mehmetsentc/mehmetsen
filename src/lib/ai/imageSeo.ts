@@ -142,7 +142,6 @@ async function generateWithGeminiVision(input: ImageSeoInput): Promise<ImageAnal
           maxOutputTokens: 800,
           responseMimeType: 'application/json',
         },
-        thinkingConfig: { thinkingBudget: 0 },
       }),
       signal: AbortSignal.timeout(25_000),
     })
