@@ -51,27 +51,32 @@ export async function POST(request: Request) {
   const db = getAdminFirestore()
   const startMs = Date.now()
 
+  // Avoid composite-index requirement: filter by categoryId, sort in memory.
   const snap = await db
     .collection('news')
     .where('categoryId', '==', 'dunya-kupasi-2026')
-    .orderBy('publishedAt', 'desc')
-    .limit(limit)
+    .limit(Math.min(limit * 2, 3000))
     .get()
+
+  const docs = snap.docs
+    .map((doc) => {
+      const data = doc.data()
+      const publishedAt =
+        typeof data.publishedAt === 'number'
+          ? data.publishedAt
+          : Date.parse(String(data.publishedAt ?? '')) || 0
+      return { doc, data, publishedAt, title: (data.title as string) ?? '' }
+    })
+    .sort((a, b) => b.publishedAt - a.publishedAt)
+    .slice(0, limit)
 
   let updated = 0
   let unchanged = 0
   let failed = 0
   const changes: Array<{ id: string; title: string; publishedAt: number }> = []
 
-  for (const doc of snap.docs) {
-    const data = doc.data()
-    const title = (data.title as string) ?? ''
-    const publishedAt =
-      typeof data.publishedAt === 'number'
-        ? data.publishedAt
-        : Date.parse(String(data.publishedAt ?? '')) || 0
-
-    if (!moveAll && publishedAt > 0 && publishedAt < sinceMs) {
+  for (const { doc, publishedAt, title } of docs) {
+    if (!moveAll && (!(publishedAt > 0) || publishedAt < sinceMs)) {
       unchanged++
       continue
     }
@@ -106,7 +111,8 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    checked: snap.size,
+    checked: docs.length,
+    scanned: snap.size,
     updated,
     unchanged,
     failed,
