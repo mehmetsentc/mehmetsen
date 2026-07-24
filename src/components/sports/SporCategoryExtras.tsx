@@ -1,16 +1,16 @@
 'use client'
 
-import { SuperLigTable } from '@/components/sports/SuperLigTable'
+import { MackolikScoreboard } from '@/components/sports/MackolikScoreboard'
 import { TransferStrip } from '@/components/sports/TransferStrip'
 
 /**
- * Spor üst sayfası — genel skorlar artık Futbol/Basketbol/Voleybol bölümlerinin
- * altında (CategoryThemedFeed). Burada yalnızca futbol bağlamı (puan / transfer).
+ * /kategori/spor üst slot — Maçkolik tarzı canlı skor + transfer şeridi.
+ * Alt kategori haber bölümleri CategoryThemedFeed’de ayrı kalır.
  */
 export function SporCategoryExtras() {
   return (
     <div className="space-y-6">
-      <SuperLigTable />
+      <MackolikScoreboard />
       <TransferStrip />
     </div>
   )
