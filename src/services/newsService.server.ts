@@ -6,7 +6,7 @@ import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
-import { docToNewsItem } from '@/lib/newsItemUtils'
+import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { getCategoryFamily } from '@/constants/config'
 import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
 import type { Post } from '@/types/post'
@@ -375,14 +375,19 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   const now = Date.now()
   const categoryRails = bucketCategoryRails(pool, HOME_CATEGORY_RAIL_FETCH, HOME_FEED_SSR_RAILS)
 
+  const slimRails: HomeFeedInitialData['categoryRails'] = {}
+  for (const [key, items] of Object.entries(categoryRails)) {
+    slimRails[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])
+  }
+
   return {
-    breaking: bucketBreaking(pool, 8),
-    featured: bucketFeatured(pool, 6),
-    latest: bucketLatest(pool, 16, now),
-    trending: bucketTrending(pool, 6, now),
-    trendFeed: bucketTrendFeed(pool, 12, now),
-    mostRead: bucketMostRead(pool, 6),
-    categoryRails,
+    breaking: slimNewsItemsForFeed(bucketBreaking(pool, 8)),
+    featured: slimNewsItemsForFeed(bucketFeatured(pool, 6)),
+    latest: slimNewsItemsForFeed(bucketLatest(pool, 16, now)),
+    trending: slimNewsItemsForFeed(bucketTrending(pool, 6, now)),
+    trendFeed: slimNewsItemsForFeed(bucketTrendFeed(pool, 12, now)),
+    mostRead: slimNewsItemsForFeed(bucketMostRead(pool, 6)),
+    categoryRails: slimRails,
   }
 }
 
@@ -398,7 +403,12 @@ export async function getHomeCategoryRailsLazy(
           (HOME_CATEGORY_RAILS as readonly string[]).includes(c)
         )
       : HOME_CATEGORY_RAILS.filter((c) => !HOME_FEED_SSR_RAILS.includes(c))
-  return bucketCategoryRails(pool, HOME_CATEGORY_RAIL_FETCH, wanted)
+  const rails = bucketCategoryRails(pool, HOME_CATEGORY_RAIL_FETCH, wanted)
+  const slim: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
+  for (const [key, items] of Object.entries(rails)) {
+    slim[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])
+  }
+  return slim
 }
 
 const getHomeCategoryItemsCached = unstable_cache(
@@ -490,13 +500,17 @@ export async function getHomeFeedMore(
     const snap = await query.get()
     const all = mapAdminDocs(snap.docs)
     const hasMore = all.length > limitCount
-    const items = all.slice(0, limitCount)
-    const last = items[items.length - 1]
+    const page = all.slice(0, limitCount)
+    const last = page[page.length - 1]
     const nextCursor = hasMore && last
       ? String(Date.parse(last.publishedAt ?? last.createdAt ?? '') || '')
       : null
 
-    return { items, nextCursor: nextCursor && nextCursor !== 'NaN' ? nextCursor : null, hasMore }
+    return {
+      items: page.map(slimNewsItemForFeed),
+      nextCursor: nextCursor && nextCursor !== 'NaN' ? nextCursor : null,
+      hasMore,
+    }
   } catch (error) {
     console.warn('[newsService.server] getHomeFeedMore failed:', error)
     return { items: [], nextCursor: null, hasMore: false }

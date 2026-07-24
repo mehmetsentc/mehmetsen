@@ -26,11 +26,17 @@ import {
 } from '@/components/home/desktop/DesktopStoryBlocks'
 import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
+import { useMergedCategoryRails } from '@/hooks/useMergedCategoryRails'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import type { HomeCategorySlug, HomeFeedInitialData, NewsItem } from '@/types/newsItem'
+import {
+  HOME_FEED_DESKTOP_LAZY_RAILS,
+  type HomeCategorySlug,
+  type HomeFeedInitialData,
+  type NewsItem,
+} from '@/types/newsItem'
 
 const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
-const CATEGORY_ROW_2 = ['saglik', 'kultur', 'turizm', 'gezi'] as const
+const CATEGORY_ROW_2 = HOME_FEED_DESKTOP_LAZY_RAILS
 
 function sliceCategoryRail(
   rails: HomeFeedInitialData['categoryRails'],
@@ -54,11 +60,18 @@ interface DesktopHomeFeedProps {
 }
 
 export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
+  const categoryRails = useMergedCategoryRails(
+    data.categoryRails,
+    HOME_FEED_DESKTOP_LAZY_RAILS,
+    1200
+  )
+
   const layout = useMemo(() => {
-    const { take, takeFeatured } = createFeedAllocator(data)
+    const feedData = { ...data, categoryRails }
+    const { take, takeFeatured } = createFeedAllocator(feedData)
 
     // Hero ve üst bölümler sadece Gündem rayinden beslenir
-    const gundemRail = data.categoryRails.gundem ?? []
+    const gundemRail = categoryRails.gundem ?? []
     const heroLead = gundemRail[0]
     const heroRight = gundemRail.slice(1, 3)
 
@@ -74,11 +87,11 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
     const catRow1 = CATEGORY_ROW_1.map((id) => ({
       id,
-      items: sliceCategoryRail(data.categoryRails, id, 4),
+      items: sliceCategoryRail(categoryRails, id, 4),
     }))
     const catRow2 = CATEGORY_ROW_2.map((id) => ({
       id,
-      items: sliceCategoryRail(data.categoryRails, id, 4),
+      items: sliceCategoryRail(categoryRails, id, 4),
     }))
     const catRow1Filler = rowGapFiller(catRow1, takeFeatured)
     const catRow2Filler = rowGapFiller(catRow2, takeFeatured)
@@ -112,7 +125,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       opinionItems,
       lastUpdated,
     }
-  }, [data])
+  }, [data, categoryRails])
 
   const { items: moreItems, loadingMore, sentinelRef } = useHomeFeedInfinite(layout.moreList)
   const hasHero = layout.heroLead

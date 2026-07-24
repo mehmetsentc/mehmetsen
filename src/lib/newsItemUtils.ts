@@ -112,6 +112,41 @@ export function docToNewsItem(
   }
 }
 
+/**
+ * Strip feed-card payloads for RSC / JSON APIs.
+ * Ranking must run on the full list item before calling this.
+ */
+export function slimNewsItemForFeed(item: NewsItem): NewsItem {
+  const slim: NewsItem = {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+  }
+
+  const description = item.description?.trim()
+  if (description) slim.description = description.slice(0, 120)
+
+  if (typeof item.readingMinutes === 'number' && item.readingMinutes > 0) {
+    slim.readingMinutes = item.readingMinutes
+  }
+  if (item.imageUrl) slim.imageUrl = item.imageUrl
+  if (item.videoUrl) slim.videoUrl = item.videoUrl
+  if (item.category) slim.category = item.category
+
+  const publishedAt = item.publishedAt ?? item.createdAt
+  if (publishedAt) slim.publishedAt = publishedAt
+
+  if (typeof item.views === 'number' && item.views > 0) slim.views = item.views
+  if (item.featured === true) slim.featured = true
+  if (item.breaking === true) slim.breaking = true
+
+  return slim
+}
+
+export function slimNewsItemsForFeed(items: NewsItem[]): NewsItem[] {
+  return items.map(slimNewsItemForFeed)
+}
+
 export function newsItemDetailHref(item: Pick<NewsItem, 'id' | 'slug'>): string {
   const slug = item.slug?.trim()
   if (slug && slug !== item.id) return ROUTES.NEWS_DETAIL(slug)

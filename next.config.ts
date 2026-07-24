@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     remotePatterns: [
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
+      { protocol: 'https', hostname: 'storage.googleapis.com' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: 'www.biletix.com' },
       { protocol: 'https', hostname: 'cdn.bubilet.com.tr' },
@@ -77,6 +78,25 @@ const nextConfig: NextConfig = {
       {
         source: '/api/news/top',
         headers: [{ key: 'Cache-Control', value: 's-maxage=120, stale-while-revalidate=60' }],
+      },
+      // Home feed pagination + lazy category rails
+      {
+        source: '/api/feed/more',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=120, stale-while-revalidate=300',
+          },
+        ],
+      },
+      {
+        source: '/api/feed/category-rails',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=120, stale-while-revalidate=300',
+          },
+        ],
       },
       // OG images: 24h CDN cache
       {

@@ -94,7 +94,7 @@ export const HOME_CATEGORY_RAIL_GUNDEM_FETCH = 20
 
 /**
  * SSR’da gömülecek kategori rayları — kalanlar istemci lazy API ile gelir.
- * Desktop hero + 2 kategori satırı için yeterli.
+ * Desktop: hero (gundem) + ilk kategori satırı. İkinci satır lazy.
  */
 export const HOME_FEED_SSR_RAILS: HomeCategorySlug[] = [
   'gundem',
@@ -102,6 +102,10 @@ export const HOME_FEED_SSR_RAILS: HomeCategorySlug[] = [
   'ekonomi',
   'teknoloji',
   'dunya',
+]
+
+/** Desktop ikinci kategori satırı — lazy fetch. */
+export const HOME_FEED_DESKTOP_LAZY_RAILS: HomeCategorySlug[] = [
   'saglik',
   'kultur',
   'turizm',
