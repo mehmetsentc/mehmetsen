@@ -97,7 +97,7 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (deepseekKey) {
     try {
-      const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+      const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
       const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
