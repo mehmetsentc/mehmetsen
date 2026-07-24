@@ -56,13 +56,28 @@ function sliceAtWord(s: string, max: number): string {
   return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim()
 }
 
+/** JSON içine gömülü başka bir JSON ise iç caption'ı çıkarır */
+function extractCaption(raw: string): string {
+  const s = raw.trim()
+  if (!s.startsWith('{')) return s
+  try {
+    const obj = JSON.parse(s) as Record<string, unknown>
+    if (typeof obj.caption === 'string') return obj.caption.trim()
+  } catch { /* truncated — try regex */ }
+  const m = s.match(/"caption"\s*:\s*"((?:[^"\\]|\\.)*?)(?:"|$)/)
+  return m?.[1]?.trim() || s
+}
+
 function parseAnalysis(raw: string): ImageAnalysis | null {
   try {
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
     const parsed = JSON.parse(cleaned) as Record<string, unknown>
-    const caption = typeof parsed.caption === 'string' ? parsed.caption.trim() : ''
+    let caption = typeof parsed.caption === 'string' ? parsed.caption.trim() : ''
+    // Thinking model bazen caption değerine iç içe JSON koyuyor — çöz
+    if (caption.startsWith('{')) caption = extractCaption(caption)
     if (!caption) return null
-    const alt = typeof parsed.alt === 'string' ? parsed.alt.trim() : caption
+    let alt = typeof parsed.alt === 'string' ? parsed.alt.trim() : caption
+    if (alt.startsWith('{')) alt = extractCaption(alt)
     const role =
       parsed.role === 'hero' || parsed.role === 'gallery' || parsed.role === 'skip'
         ? parsed.role
@@ -160,8 +175,7 @@ async function generateWithGeminiVision(input: ImageSeoInput): Promise<ImageAnal
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         generationConfig: {
           temperature: 0.35,
-          maxOutputTokens: 800,
-          responseMimeType: 'application/json',
+          maxOutputTokens: 3000,
         },
       }),
       signal: AbortSignal.timeout(25_000),

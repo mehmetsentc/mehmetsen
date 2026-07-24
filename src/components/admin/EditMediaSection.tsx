@@ -89,7 +89,18 @@ export function EditMediaSection({
         const data = await res.json() as { caption?: string; error?: string }
         if (!res.ok || !data.caption?.trim()) return
 
-        const caption = data.caption.trim()
+        // JSON fragment gelirse temizle
+        let caption = data.caption.trim()
+        if (caption.startsWith('{')) {
+          try {
+            const obj = JSON.parse(caption) as Record<string, unknown>
+            if (typeof obj.caption === 'string') caption = obj.caption.trim()
+          } catch {
+            const m = caption.match(/"caption"\s*:\s*"((?:[^"\\]|\\.)*?)(?:"|$)/)
+            if (m?.[1]?.trim()) caption = m[1].trim()
+          }
+        }
+        if (!caption) return
         if (target === 'thumbnail') {
           onThumbnailCaptionChange(caption)
         } else {
