@@ -10,12 +10,13 @@ import type {
 } from '@/services/footballService.server'
 import { cn } from '@/lib/utils'
 
-type TabId = 'live' | 'today' | 'results' | 'standings'
+type TabId = 'live' | 'today' | 'results' | 'program' | 'standings'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'live', label: 'Canlı' },
   { id: 'today', label: 'Bugün' },
   { id: 'results', label: 'Sonuçlar' },
+  { id: 'program', label: 'Program' },
   { id: 'standings', label: 'Puan' },
 ]
 
@@ -391,6 +392,7 @@ export function MackolikScoreboard() {
   const [groups, setGroups] = useState<ScoreboardLeagueGroup[]>([])
   const [liveCount, setLiveCount] = useState(0)
   const [dateLabel, setDateLabel] = useState('')
+  const [emptyReason, setEmptyReason] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [standingsLeague, setStandingsLeague] = useState<{ id: number; title: string } | null>(
     null
@@ -410,12 +412,15 @@ export function MackolikScoreboard() {
         groups?: ScoreboardLeagueGroup[]
         liveCount?: number
         date?: string
+        emptyReason?: string | null
       }
       setGroups(data.groups ?? [])
       setLiveCount(data.liveCount ?? 0)
       setDateLabel(data.date ?? '')
+      setEmptyReason(data.emptyReason ?? null)
     } catch {
       setGroups([])
+      setEmptyReason(null)
     } finally {
       setLoading(false)
     }
@@ -517,8 +522,14 @@ export function MackolikScoreboard() {
       ) : groups.length === 0 ? (
         <p className="px-1 text-xs text-[rgb(var(--color-muted))]">
           {tab === 'live'
-            ? 'Şu an canlı maç yok — Bugün veya Sonuçlar sekmesine bakın.'
-            : 'Bu gün için maç bulunamadı.'}
+            ? 'Şu an canlı maç yok — Bugün veya Program sekmesine bakın.'
+            : tab === 'today' || emptyReason === 'no_matches_today'
+              ? 'Bugün oynanan / oynanacak maç yok. Yaklaşan fikstür için Program sekmesine bakın.'
+              : tab === 'results'
+                ? 'Son günlerde sonuç bulunamadı.'
+                : tab === 'program'
+                  ? 'Yaklaşan program bulunamadı.'
+                  : 'Maç bulunamadı.'}
         </p>
       ) : (
         <div className="space-y-3">
