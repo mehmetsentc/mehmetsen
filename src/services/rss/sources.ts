@@ -315,42 +315,43 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   // ── Sözcü — İzole Kategori Akışları ─────────────────────────────────────
   // Bu kaynaklar forcedCategoryId ile kendi worker'larında kullanılır.
   // Ana feed'e düşmez.
+  // Post-tournament (final 19 Tem 2026): WC ingest kapalı — arşiv kategori kalır.
   {
     id: 'sozcu-world-cup',
-    label: 'Sözcü — 2026 FIFA Dünya Kupası',
+    label: 'Sözcü — 2026 FIFA Dünya Kupası (arşiv)',
     feedUrl: 'https://www.sozcu.com.tr/feeds-rss-category-2026-fifa-dunya-kupasi',
     alternateFeedUrls: [
       'https://news.google.com/rss/search?q=2026+dünya+kupası+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 10,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'gnews-world-cup-tr',
-    label: 'Google News — 2026 Dünya Kupası (Türkçe)',
+    label: 'Google News — 2026 Dünya Kupası (Türkçe, arşiv)',
     feedUrl:
       'https://news.google.com/rss/search?q=%222026+D%C3%BCnya+Kupas%C4%B1%22+OR+%22FIFA+Dünya+Kupası%22&hl=tr&gl=TR&ceid=TR:tr',
     alternateFeedUrls: [
       'https://news.google.com/rss/search?q=d%C3%BCnya+kupas%C4%B1+2026&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 12,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'gnews-milli-takim-wc',
-    label: 'Google News — Milli Takım Dünya Kupası',
+    label: 'Google News — Milli Takım Dünya Kupası (arşiv)',
     feedUrl:
       'https://news.google.com/rss/search?q=%22A+Milli+Tak%C4%B1m%22+%22D%C3%BCnya+Kupas%C4%B1%22&hl=tr&gl=TR&ceid=TR:tr',
     maxItemsPerRun: 8,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'gnews-world-cup-results',
-    label: 'Google News — Dünya Kupası Maç Sonuçları',
+    label: 'Google News — Dünya Kupası Maç Sonuçları (arşiv)',
     feedUrl:
       'https://news.google.com/rss/search?q=%22d%C3%BCnya+kupas%C4%B1%22+%28ma%C3%A7+sonucu+OR+%22ma%C3%A7%C4%B1%22+OR+%22golleri%22+OR+%22kazand%C4%B1%22+OR+%22elendi%22%29&hl=tr&gl=TR&ceid=TR:tr',
     maxItemsPerRun: 10,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'sozcu-voleybol',

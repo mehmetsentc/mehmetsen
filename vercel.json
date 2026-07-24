@@ -182,10 +182,6 @@
       "schedule": "0 3,13,15,21 * * *"
     },
     {
-      "path": "/api/cron/newsroom/world-cup",
-      "schedule": "55 */2 * * *"
-    },
-    {
       "path": "/api/cron/newsroom/voleybol",
       "schedule": "15 * * * *"
     },
@@ -220,10 +216,6 @@
     {
       "path": "/api/cron/newsroom/freenews",
       "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/sports/worldcup-sync",
-      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/kibris",

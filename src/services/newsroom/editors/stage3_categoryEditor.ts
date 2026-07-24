@@ -63,8 +63,8 @@ Başlıkta iPhone/yapay zeka/yazılım/siber saldırı → TEKNOLOJİ
 KATEGORİ KURALLARI (EN SPESİFİK KATEGORİYİ SEÇ):
 
 SPOR alt kategorileri:
-- dunya-kupasi-2026: 2026 FIFA Dünya Kupası — grup, maç, skor, puan tablosu, kadro, elenme, final, dünya kupası haberleri
-- futbol: Futbol maçı, gol, transfer, teknik direktör, Süper Lig, UEFA, FIFA, TFF, derbi
+- dunya-kupasi-2026: YALNIZCA arşiv — 2026 FIFA Dünya Kupası turnuva arşivi. Yeni haberler için KULLANMA
+- futbol: Süper Lig, Avrupa kupaları, Premier/La Liga, milli takım, transfer, dünya futbolu (Dünya Kupası sonrası dahil), FIFA/UEFA/TFF, derbi, gol
 - basketbol: Basketbol maçı, NBA, EuroLeague, transfer
 - voleybol: Voleybol maçı, Efeler/Sultanlar Ligi
 - hentbol: Hentbol haberleri

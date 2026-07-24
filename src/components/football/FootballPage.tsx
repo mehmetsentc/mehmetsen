@@ -196,7 +196,7 @@ function EmptyState({ tab }: { tab: ContentTab }) {
 export function FootballPage() {
   const [leagueId,    setLeagueId]    = useState(203)
   const [contentTab,  setContentTab]  = useState<ContentTab>('today')
-  const [season,      setSeason]      = useState(2024)
+  const [season,      setSeason]      = useState(2025)
 
   const [standings, setStandings] = useState<Standing[]>([])
   const [fixtures,  setFixtures]  = useState<Fixture[]>([])
@@ -290,7 +290,7 @@ export function FootballPage() {
       {showSeasonPicker && (
         <div className="mb-4 flex items-center gap-2">
           <span className="text-xs text-[rgb(var(--color-muted))]">Sezon:</span>
-          {[2023, 2024].map((s) => (
+          {[2024, 2025].map((s) => (
             <button
               key={s}
               onClick={() => setSeason(s)}

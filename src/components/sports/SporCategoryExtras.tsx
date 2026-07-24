@@ -3,12 +3,11 @@
 import { MatchResults } from '@/components/sports/MatchResults'
 import { SuperLigTable } from '@/components/sports/SuperLigTable'
 import { TransferStrip } from '@/components/sports/TransferStrip'
-import { WorldCupStrip } from '@/components/sports/WorldCupStrip'
 
+/** Spor kategori sayfası ekstra widget'ları — post-WC: futbol skorları önde. */
 export function SporCategoryExtras() {
   return (
     <div className="space-y-6">
-      <WorldCupStrip />
       <MatchResults />
       <SuperLigTable />
       <TransferStrip />

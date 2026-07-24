@@ -76,11 +76,24 @@ const CATEGORY_ALIASES: Record<string, string> = {
   gures: 'gures',
   wrestling: 'gures',
   'dunya-kupasi-2026': 'dunya-kupasi-2026',
-  'dünya kupası': 'dunya-kupasi-2026',
-  'dunya kupasi': 'dunya-kupasi-2026',
-  'world cup': 'dunya-kupasi-2026',
-  'world cup 2026': 'dunya-kupasi-2026',
-  'fifa 2026': 'dunya-kupasi-2026',
+  // Post-tournament: generic WC labels → futbol (normalize uses hyphenated slugs)
+  'dunya-kupasi': 'futbol',
+  'dünya-kupası': 'futbol',
+  'world-cup': 'futbol',
+  'world-cup-2026': 'futbol',
+  'fifa-2026': 'futbol',
+  'fifa-dunya-kupasi': 'futbol',
+  'fifa-world-cup': 'futbol',
+  'fifa-world-cup-2026': 'futbol',
+  // Legacy spaced keys (if called before normalize)
+  'dünya kupası': 'futbol',
+  'dunya kupasi': 'futbol',
+  'world cup': 'futbol',
+  'world cup 2026': 'futbol',
+  'fifa 2026': 'futbol',
+  'fifa dünya kupası': 'futbol',
+  'fifa dunya kupasi': 'futbol',
+  'fifa world cup': 'futbol',
   sinema: 'sinema',
   cinema: 'sinema',
   film: 'sinema',
@@ -306,9 +319,10 @@ const VOLEYBOL_KEYWORDS = [
   'hentbol', // hentbol da spor'un alt kategorisi
 ] as const
 
-// ── 2026 FIFA Dünya Kupası keyword'leri ──────────────────────────────────────
+// ── 2026 FIFA Dünya Kupası keyword'leri (post-tournament → futbol) ───────────
+// Turnuva bitti (19 Tem 2026). Bu sinyaller artık `futbol` altına gider;
+// `dunya-kupasi-2026` yalnızca mevcut arşiv içerik için kategori id olarak kalır.
 const DUNYA_KUPASI_2026_KEYWORDS = [
-  // Türkçe terimler
   'dünya kupası 2026', 'dunya kupasi 2026',
   '2026 dünya kupası', '2026 dunya kupasi',
   'fifa 2026', 'fifa dünya kupası',
@@ -324,14 +338,18 @@ const DUNYA_KUPASI_2026_KEYWORDS = [
   'dünya kupası puan', 'dünya kupası sıralama',
   'dünya kupası skorları', 'dünya kupası sonuçları',
   'milli takım dünya kupası', 'türkiye dünya kupası',
-  // İngilizce terimler
+  'dünya kupası', 'dunya kupasi',
   'world cup 2026', '2026 world cup',
   'fifa world cup 2026', 'world cup 2026 group',
   'world cup group stage', 'world cup knockout',
   'world cup standings', 'world cup results',
   'world cup squad', 'world cup goal',
   'world cup match', 'world cup score',
+  'world cup',
 ] as const
+
+/** Post-tournament: WC keyword matches classify as futbol, not dunya-kupasi-2026. */
+export const WORLD_CUP_ROUTES_TO_FUTBOL = true
 
 // ── Gastronomi keyword'leri ───────────────────────────────────────────────────
 const GASTRONOMI_KEYWORDS = [
@@ -422,11 +440,11 @@ function hasDunyaKupasi2026Keywords(text: string): boolean {
 
 /**
  * Spor haberinde hangi alt dal olduğunu tespit eder.
- * Öncelik sırası: dunya-kupasi-2026 > futbol > basketbol > voleybol > genel spor
+ * Post-tournament: WC sinyalleri → futbol (arşiv kategorisine yeni yazılmaz).
+ * Öncelik: futbol (WC dahil) > basketbol > voleybol > genel spor
  */
 function detectSportSubcategory(text: string): 'dunya-kupasi-2026' | 'futbol' | 'basketbol' | 'voleybol' | null {
-  if (hasDunyaKupasi2026Keywords(text)) return 'dunya-kupasi-2026'
-  if (hasFutbolKeywords(text)) return 'futbol'
+  if (hasDunyaKupasi2026Keywords(text) || hasFutbolKeywords(text)) return 'futbol'
   if (hasBasketbolKeywords(text)) return 'basketbol'
   if (hasVoleybolKeywords(text)) return 'voleybol'
   return null
@@ -804,19 +822,27 @@ export function validateCategoryClassification(
   //
   // KURAL: spor alt kategorileri dahil (futbol, basketbol, voleybol, hentbol...) —
   // metinde spor sinyali yoksa kaynak zorlaması GEÇERSİZ.
-  // Dünya Kupası 2026 haberleri: spor keyword kontrolünden önce değerlendir
+  // Dünya Kupası 2026 — post-tournament: yeni içerik futbol'a gider.
+  // AI / kaynak hâlâ dunya-kupasi-2026 dönerse futbol'a remap.
   const isDunyaKupasi = hasDunyaKupasi2026Keywords(text)
-  if (isDunyaKupasi) {
-    if (categoryId !== 'dunya-kupasi-2026') {
+  if (isDunyaKupasi || categoryId === 'dunya-kupasi-2026') {
+    if (WORLD_CUP_ROUTES_TO_FUTBOL) {
+      if (categoryId !== 'futbol') {
+        overrides.push(`post-wc → futbol (was ${categoryId}; WC archive ingest closed)`)
+        categoryId = 'futbol'
+        categoryConfidence = Math.max(categoryConfidence, 90)
+      }
+      // Continue — do not early-return; other sport guards still apply lightly
+    } else if (categoryId !== 'dunya-kupasi-2026') {
       overrides.push(`dunya-kupasi-2026-keywords → dunya-kupasi-2026 (was ${categoryId})`)
       categoryId = 'dunya-kupasi-2026'
       categoryConfidence = Math.max(categoryConfidence, 92)
-    }
-    return {
-      categoryId,
-      categoryConfidence,
-      isBreaking: false, // Dünya Kupası haberleri rutin; final maçı son-dakika değil
-      overrides,
+      return {
+        categoryId,
+        categoryConfidence,
+        isBreaking: false,
+        overrides,
+      }
     }
   }
 

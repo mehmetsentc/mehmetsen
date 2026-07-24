@@ -7,7 +7,6 @@ import { ROUTES } from '@/constants/routes'
  */
 const CUSTOM_SECTION_ORDER: Partial<Record<string, readonly string[]>> = {
   spor: [
-    'dunya-kupasi-2026',
     'futbol',
     'basketbol',
     'voleybol',
@@ -15,6 +14,7 @@ const CUSTOM_SECTION_ORDER: Partial<Record<string, readonly string[]>> = {
     'hentbol',
     'atletizm',
     'spor',
+    'dunya-kupasi-2026',
   ],
   kultur: ['sinema', 'tiyatro', 'konser', 'festival', 'kultur'],
   ekonomi: ['borsa', 'kripto', 'finans-piyasa', 'emlak-konut', 'enerji', 'is-kariyer', 'ekonomi'],

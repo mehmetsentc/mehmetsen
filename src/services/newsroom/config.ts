@@ -451,10 +451,11 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
   },
   'world-cup-2026': {
     id: 'world-cup-2026',
-    name: '2026 World Cup Worker',
-    nameTr: '2026 FIFA Dünya Kupası Worker',
-    schedule: '1h',
-    description: 'Sözcü 2026 FIFA Dünya Kupası RSS — sadece dunya-kupasi-2026 kategorisine kaydeder.',
+    name: '2026 World Cup Worker (archive)',
+    nameTr: '2026 FIFA Dünya Kupası Worker (arşiv — ingest kapalı)',
+    schedule: 'off',
+    description:
+      'Post-tournament archive. Yeni ingest kapalı; dünya futbolu → futbol kategorisi.',
     cronPath: '/api/cron/newsroom/world-cup',
   },
   voleybol: {

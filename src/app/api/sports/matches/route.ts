@@ -2,7 +2,8 @@
  * GET /api/sports/matches
  * ESPN public scoreboard API — canlı maç skorları + bugünün programı
  * API key gerektirmez.
- * Öncelik: Dünya Kupası → Türk takımlar → Avrupa ligleri
+ * Öncelik: Süper Lig / Avrupa kupaları → Türk takımlar → diğer ligler
+ * (Dünya Kupası post-tournament: en düşük öncelik)
  */
 import { NextResponse } from 'next/server'
 
@@ -12,20 +13,21 @@ export const dynamic = 'force-dynamic'
 // ── ESPN lig slug listesi ──────────────────────────────────────────────────
 // priority = gösterim önceliği (düşük = üste)
 const LEAGUES: { slug: string; label: string; priority: number }[] = [
-  { slug: 'FIFA.World',           label: 'FIFA Dünya Kupası',    priority: 1 },
-  { slug: 'UEFA.EURO',            label: 'Avrupa Şampiyonası',   priority: 2 },
-  { slug: 'UEFA.NATIONS',         label: 'Uluslar Ligi',         priority: 3 },
-  { slug: 'UEFA.CHAMPIONS',       label: 'Şampiyonlar Ligi',     priority: 4 },
-  { slug: 'UEFA.EUROPA',          label: 'Avrupa Ligi',          priority: 5 },
-  { slug: 'UEFA.CONFERENCE',      label: 'Konferans Ligi',       priority: 6 },
-  { slug: 'TUR.1',                label: 'Süper Lig',            priority: 7 },
-  { slug: 'TUR.CUP',              label: 'Türkiye Kupası',       priority: 8 },
-  { slug: 'ENG.1',                label: 'Premier League',       priority: 9 },
-  { slug: 'ESP.1',                label: 'La Liga',              priority: 10 },
-  { slug: 'GER.1',                label: 'Bundesliga',           priority: 11 },
-  { slug: 'ITA.1',                label: 'Serie A',              priority: 12 },
-  { slug: 'FRA.1',                label: 'Ligue 1',              priority: 13 },
-  { slug: 'NED.1',                label: 'Eredivisie',           priority: 14 },
+  { slug: 'TUR.1',                label: 'Süper Lig',            priority: 1 },
+  { slug: 'UEFA.CHAMPIONS',       label: 'Şampiyonlar Ligi',     priority: 2 },
+  { slug: 'UEFA.EUROPA',          label: 'Avrupa Ligi',          priority: 3 },
+  { slug: 'UEFA.CONFERENCE',      label: 'Konferans Ligi',       priority: 4 },
+  { slug: 'TUR.CUP',              label: 'Türkiye Kupası',       priority: 5 },
+  { slug: 'ENG.1',                label: 'Premier League',       priority: 6 },
+  { slug: 'ESP.1',                label: 'La Liga',              priority: 7 },
+  { slug: 'GER.1',                label: 'Bundesliga',           priority: 8 },
+  { slug: 'ITA.1',                label: 'Serie A',              priority: 9 },
+  { slug: 'FRA.1',                label: 'Ligue 1',              priority: 10 },
+  { slug: 'NED.1',                label: 'Eredivisie',           priority: 11 },
+  { slug: 'UEFA.NATIONS',         label: 'Uluslar Ligi',         priority: 12 },
+  { slug: 'UEFA.EURO',            label: 'Avrupa Şampiyonası',   priority: 13 },
+  // Post-tournament archive — lowest priority so club football surfaces first
+  { slug: 'FIFA.World',           label: 'FIFA Dünya Kupası',    priority: 99 },
 ]
 
 export interface MatchResult {
