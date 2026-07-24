@@ -91,27 +91,90 @@ Kişi adları, yer adları, konu başlıkları ve arama niyetiyle eşleşen teri
 }
 
 async function callAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
+  const errors: string[] = []
+
+  // --- DeepSeek (primary) ---
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (deepseekKey) {
-    const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
-    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
-        response_format: { type: 'json_object' },
-        temperature: 0.45,
-        max_tokens: 8000,
-      }),
-      signal: AbortSignal.timeout(35_000),
-    })
-    if (!res.ok) throw new Error(`DeepSeek error ${res.status}`)
-    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-    return JSON.parse(json.choices[0]?.message?.content ?? '{}') as Record<string, unknown>
+    try {
+      const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+      const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
+          response_format: { type: 'json_object' },
+          temperature: 0.45,
+          max_tokens: 8000,
+        }),
+        signal: AbortSignal.timeout(35_000),
+      })
+      if (res.ok) {
+        const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+        const content = json.choices[0]?.message?.content?.trim() ?? '{}'
+        try {
+          return JSON.parse(content) as Record<string, unknown>
+        } catch {
+          errors.push(`DeepSeek JSON parse hatası (${content.length} karakter)`)
+        }
+      } else {
+        const body = await res.text().catch(() => '')
+        errors.push(`DeepSeek HTTP ${res.status}: ${body.slice(0, 200)}`)
+      }
+    } catch (e) {
+      errors.push(`DeepSeek bağlantı hatası: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
-  throw new Error('No AI key configured (DEEPSEEK_API_KEY required)')
+  // --- Gemini (fallback) ---
+  const geminiKey = process.env.GEMINI_API_KEY?.trim()
+  if (geminiKey) {
+    try {
+      const geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: {
+              temperature: 0.45,
+              maxOutputTokens: 8000,
+              responseMimeType: 'application/json',
+            },
+          }),
+          signal: AbortSignal.timeout(50_000),
+        }
+      )
+      if (res.ok) {
+        const data = await res.json() as {
+          candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>
+        }
+        const parts = data.candidates?.[0]?.content?.parts ?? []
+        const raw = parts.find(p => !p.thought && typeof p.text === 'string')?.text?.trim()
+        if (raw) {
+          const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+          try {
+            return JSON.parse(cleaned) as Record<string, unknown>
+          } catch {
+            errors.push(`Gemini JSON parse hatası`)
+          }
+        } else {
+          errors.push('Gemini: boş yanıt')
+        }
+      } else {
+        const body = await res.text().catch(() => '')
+        errors.push(`Gemini HTTP ${res.status}: ${body.slice(0, 200)}`)
+      }
+    } catch (e) {
+      errors.push(`Gemini bağlantı hatası: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  throw new Error(errors.length ? errors.join(' | ') : 'AI anahtarı yapılandırılmamış')
 }
 
 export async function POST(request: Request) {
@@ -280,7 +343,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, mode, ...parsed })
   } catch (error) {
-    console.error('[ai-assist]', error)
-    return NextResponse.json({ error: 'AI request failed' }, { status: 500 })
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('[ai-assist]', msg)
+    return NextResponse.json({ error: `AI isteği başarısız: ${msg}` }, { status: 500 })
   }
 }
