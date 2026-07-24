@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getHomeFeedMore } from '@/services/newsService.server'
 
 export const runtime = 'nodejs'
-export const revalidate = 60
+export const revalidate = 120
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   try {
     const result = await getHomeFeedMore(cursor, limit)
     return NextResponse.json(result, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+      headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' },
     })
   } catch (err) {
     console.error('[api/feed/more]', err)

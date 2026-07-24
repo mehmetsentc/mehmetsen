@@ -51,31 +51,31 @@
   "crons": [
     {
       "path": "/api/cron/newsroom/afad",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/breaking",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/local",
-      "schedule": "*/45 * * * *"
+      "schedule": "0 */1 * * *"
     },
     {
       "path": "/api/cron/newsroom/ai-pipeline",
-      "schedule": "*/30 * * * *"
+      "schedule": "10,40 * * * *"
     },
     {
       "path": "/api/cron/newsroom/process-queue",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/national",
-      "schedule": "*/45 * * * *"
+      "schedule": "0 */1 * * *"
     },
     {
       "path": "/api/cron/newsroom/gundem",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/newsroom/finans",
@@ -87,7 +87,7 @@
     },
     {
       "path": "/api/cron/newsroom/sports",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/newsroom/world",
@@ -111,35 +111,35 @@
     },
     {
       "path": "/api/cron/newsroom/entertainment",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/magazine",
-      "schedule": "30 */3 * * *"
+      "schedule": "30 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/gastronomi",
-      "schedule": "15 */3 * * *"
+      "schedule": "15 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/otomobil",
-      "schedule": "45 */3 * * *"
+      "schedule": "45 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/trend",
-      "schedule": "50 */2 * * *"
+      "schedule": "50 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/video-process",
-      "schedule": "25 */2 * * *"
+      "schedule": "25 */3 * * *"
     },
     {
       "path": "/api/cron/social",
-      "schedule": "*/30 * * * *"
+      "schedule": "15,45 * * * *"
     },
     {
       "path": "/api/cron/youtube-rss",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/weather-news",
@@ -151,15 +151,15 @@
     },
     {
       "path": "/api/cron/newsroom/thin-content-backfill",
-      "schedule": "30 */6 * * *"
+      "schedule": "30 2,14 * * *"
     },
     {
       "path": "/api/cron/newsroom/influencer",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 */8 * * *"
     },
     {
       "path": "/api/cron/newsroom/video-queue",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/events/sync",
@@ -175,7 +175,7 @@
     },
     {
       "path": "/api/cron/newsroom/anka-breaking",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/newsroom/anka-local",
@@ -183,31 +183,31 @@
     },
     {
       "path": "/api/cron/newsroom/voleybol",
-      "schedule": "15 * * * *"
+      "schedule": "15 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/basketbol",
-      "schedule": "25 * * * *"
+      "schedule": "25 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/futbol",
-      "schedule": "5,35 * * * *"
+      "schedule": "5 * * * *"
     },
     {
       "path": "/api/cron/newsroom/borsa",
-      "schedule": "0 */2 * * *"
+      "schedule": "0 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/bilim-teknoloji",
-      "schedule": "45 */2 * * *"
+      "schedule": "45 */3 * * *"
     },
     {
       "path": "/api/cron/newsroom/saglik-sozcu",
-      "schedule": "55 */3 * * *"
+      "schedule": "55 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/sozcu-breaking",
-      "schedule": "*/20 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/newsroom/expire-breaking",
@@ -215,11 +215,11 @@
     },
     {
       "path": "/api/cron/newsroom/freenews",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/newsroom/kibris",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/on-this-day",

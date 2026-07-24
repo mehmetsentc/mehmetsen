@@ -16,6 +16,7 @@ import {
   HOME_CATEGORY_RAILS,
   HOME_CATEGORY_RAIL_FETCH,
   HOME_CATEGORY_RAIL_GUNDEM_FETCH,
+  HOME_FEED_SSR_RAILS,
 } from '@/types/newsItem'
 
 export type { FeedSliderItem }
@@ -238,11 +239,11 @@ async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
 
 const getHomeNewsPoolCached = unstable_cache(
   async (poolSize: number) => fetchHomeNewsPool(poolSize),
-  ['home-news-pool-v2'],
+  ['home-news-pool-v3'],
   { revalidate: 300, tags: ['home-feed'] }
 )
 
-async function getHomeNewsPool(poolSize = 150): Promise<NewsItem[]> {
+async function getHomeNewsPool(poolSize = 120): Promise<NewsItem[]> {
   return getHomeNewsPoolCached(poolSize)
 }
 
@@ -332,42 +333,32 @@ function bucketMostRead(pool: NewsItem[], limit: number): NewsItem[] {
     .slice(0, limit)
 }
 
-function bucketCategoryRails(pool: NewsItem[], perCategory = 10): Partial<Record<HomeCategorySlug, NewsItem[]>> {
+function bucketCategoryRails(
+  pool: NewsItem[],
+  perCategory = HOME_CATEGORY_RAIL_FETCH,
+  categories: readonly HomeCategorySlug[] = HOME_CATEGORY_RAILS
+): Partial<Record<HomeCategorySlug, NewsItem[]>> {
   const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
-  for (const category of HOME_CATEGORY_RAILS) {
+  for (const category of categories) {
     const family = new Set(getCategoryFamily(category))
+    const limit = category === 'gundem' ? HOME_CATEGORY_RAIL_GUNDEM_FETCH : perCategory
     const items = pool
       .filter((item) => item.category && family.has(item.category))
-      .slice(0, perCategory)
+      .slice(0, limit)
     if (items.length > 0) rails[category] = items
   }
   return rails
 }
 
 /**
- * Her ana sayfa kategori şeridini Firestore'dan ayrı doldurur.
- * Böylece 150'lik genel havuzda az temsil edilen kategoriler (otomobil, gastronomi…)
- * tek kartla kalmaz; hepsi aynı fetch limitine yükseltilir.
+ * Category rails are filled from the home news pool only (single Firestore read).
+ * Per-category enrich queries were removed — they caused ~24 reads on every cache miss.
  */
-async function enrichAllCategoryRails(
-  poolRails: Partial<Record<HomeCategorySlug, NewsItem[]>>
-): Promise<Partial<Record<HomeCategorySlug, NewsItem[]>>> {
-  const rails = { ...poolRails }
-  await Promise.all(
-    HOME_CATEGORY_RAILS.map(async (category) => {
-      const limit =
-        category === 'gundem' ? HOME_CATEGORY_RAIL_GUNDEM_FETCH : HOME_CATEGORY_RAIL_FETCH
-      const items = await getHomeCategoryItems(category, limit)
-      if (items.length > 0) {
-        rails[category] = items
-      }
-    })
-  )
-  return rails
-}
 
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
-  const pool = await getHomeNewsPool(150)
+  // Single Firestore read (cached). Category rails filled from the same pool —
+  // no N+1 enrich queries under load.
+  const pool = await getHomeNewsPool(120)
 
   if (pool.length === 0) {
     return {
@@ -382,18 +373,32 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 
   const now = Date.now()
-  const poolRails = bucketCategoryRails(pool, HOME_CATEGORY_RAIL_FETCH)
-  const categoryRails = await enrichAllCategoryRails(poolRails)
+  const categoryRails = bucketCategoryRails(pool, HOME_CATEGORY_RAIL_FETCH, HOME_FEED_SSR_RAILS)
 
   return {
-    breaking: bucketBreaking(pool, 12),
-    featured: bucketFeatured(pool, 8),
-    latest: bucketLatest(pool, 28, now),
-    trending: bucketTrending(pool, 8, now),
-    trendFeed: bucketTrendFeed(pool, 24, now),
-    mostRead: bucketMostRead(pool, 8),
+    breaking: bucketBreaking(pool, 8),
+    featured: bucketFeatured(pool, 6),
+    latest: bucketLatest(pool, 16, now),
+    trending: bucketTrending(pool, 6, now),
+    trendFeed: bucketTrendFeed(pool, 12, now),
+    mostRead: bucketMostRead(pool, 6),
     categoryRails,
   }
+}
+
+/** Pool-only rails for lazy client sections (same cache as home pool). */
+export async function getHomeCategoryRailsLazy(
+  categories?: HomeCategorySlug[]
+): Promise<Partial<Record<HomeCategorySlug, NewsItem[]>>> {
+  const pool = await getHomeNewsPool(120)
+  if (pool.length === 0) return {}
+  const wanted =
+    categories && categories.length > 0
+      ? categories.filter((c): c is HomeCategorySlug =>
+          (HOME_CATEGORY_RAILS as readonly string[]).includes(c)
+        )
+      : HOME_CATEGORY_RAILS.filter((c) => !HOME_FEED_SSR_RAILS.includes(c))
+  return bucketCategoryRails(pool, HOME_CATEGORY_RAIL_FETCH, wanted)
 }
 
 const getHomeCategoryItemsCached = unstable_cache(

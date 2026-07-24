@@ -25,9 +25,11 @@ export function notifyFeedUpdated(count: number) {
   })
 }
 
+/** Canlı poll — yük altında Firestore baskısını azaltmak için seyrek */
 export const FEED_LIVE_POLL_MS =
-  typeof window !== 'undefined' && window.innerWidth < 768 ? 90_000 : 60_000
+  typeof window !== 'undefined' && window.innerWidth < 768 ? 180_000 : 120_000
+
+/** İlk poll’u LCP/hydrate sonrasına ertele */
+export const FEED_LIVE_DEFER_MS = 20_000
 
 export const FEED_BREAKING_POLL_MS = 30_000
-
-export const FEED_LIVE_DEFER_MS = 8_000

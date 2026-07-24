@@ -5,7 +5,6 @@ import { BreakingStories } from '@/components/home/BreakingStories'
 import { FeaturedSlider } from '@/components/home/FeaturedSlider'
 import { MarketTicker } from '@/components/home/MarketTicker'
 import { MobileMagazineFeed } from '@/components/home/MobileMagazineFeed'
-import { CategoryRail } from '@/components/home/CategoryRail'
 import { MustReadSection } from '@/components/home/MustReadSection'
 import { LocalNewsSection } from '@/components/home/LocalNewsSection'
 import { LocationPermission } from '@/components/home/LocationPermission'
@@ -14,9 +13,9 @@ import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
 import { FootballWidget } from '@/components/football/FootballWidget'
 import { GamesRail } from '@/components/home/GamesRail'
 import { LazySection } from '@/components/home/LazySection'
+import { LazyCategoryRails } from '@/components/home/LazyCategoryRails'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
-import { getCategoryLabel } from '@/lib/newsMapper'
-import { HOME_CATEGORY_RAILS, type HomeFeedInitialData } from '@/types/newsItem'
+import type { HomeFeedInitialData } from '@/types/newsItem'
 
 interface HomeFeedProps {
   data: HomeFeedInitialData
@@ -72,19 +71,7 @@ export function HomeFeed({ data }: HomeFeedProps) {
         <GamesRail />
       </LazySection>
 
-      {HOME_CATEGORY_RAILS.map((categoryId) => {
-        const items = categoryRails[categoryId]
-        if (!items?.length) return null
-        return (
-          <LazySection key={categoryId} minHeight={260}>
-            <CategoryRail
-              categoryId={categoryId}
-              title={getCategoryLabel(categoryId)}
-              items={items}
-            />
-          </LazySection>
-        )
-      })}
+      <LazyCategoryRails initialRails={categoryRails} />
 
       <LazySection minHeight={280}>
         <LocalNewsSection />
