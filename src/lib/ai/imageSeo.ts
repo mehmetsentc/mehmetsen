@@ -175,10 +175,10 @@ async function generateWithGeminiVision(input: ImageSeoInput): Promise<ImageAnal
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         generationConfig: {
           temperature: 0.35,
-          maxOutputTokens: 3000,
+          maxOutputTokens: 1200,
         },
       }),
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(18_000),
     })
     if (!res.ok) return null
     const data = (await res.json()) as {
