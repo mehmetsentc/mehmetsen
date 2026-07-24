@@ -255,9 +255,11 @@ function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
 }
 
 function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
-  // Slider: SADECE featured=true veya kategori=gundem olan haberler
+  // Slider: featured=true (any category: siyaset, dunya, …) first, then gundem fill
   const featured = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
-  const gundem = pool.filter((p) => p.category === 'gundem' && !isBreakingPoolItem(p))
+  const gundem = pool.filter(
+    (p) => p.category === 'gundem' && p.featured !== true && !isBreakingPoolItem(p)
+  )
   const candidates = [...featured, ...gundem]
   const seen = new Set<string>()
   const withImg: NewsItem[] = []

@@ -31,6 +31,7 @@ interface CreatePayload {
   categoryId?: string
   status?: string
   isBreaking?: boolean
+  featured?: boolean
   tags?: string[]
   citySlug?: string
   city?: string
@@ -131,6 +132,8 @@ export async function POST(request: Request) {
       videoUrl: body.videoUrl?.trim() ?? '',
       tags: Array.isArray(body.tags) ? body.tags : [],
       isBreaking: body.isBreaking ?? false,
+      featured: body.featured === true,
+      isEditorPick: body.featured === true,
       manuallyEdited: true,
       manualEditedBy: auth.uid,
       createdAt: now,

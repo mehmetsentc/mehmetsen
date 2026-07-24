@@ -94,6 +94,8 @@ export interface NewsDocument {
   articleLayout?: 'standard' | 'longform'
   readingTimeMinutes?: number
   isBreaking?: boolean
+  featured?: boolean
+  isEditorPick?: boolean
   priorityScore?: number
   createdAt?: number | string | { toDate?: () => Date }
   isLiveBlog?: boolean
@@ -420,7 +422,8 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     savesCount: data.savesCount ?? 0,
     sharesCount: data.sharesCount ?? 0,
     viewsCount: data.viewsCount ?? 0,
-    isEditorPick: false,
+    isEditorPick: data.featured === true || data.isEditorPick === true,
+    featured: data.featured === true || data.isEditorPick === true,
     isTrending: data.editorType === 'trend' || (data.tags ?? []).includes('trending'),
     isBreaking: shouldShowBreakingBadge({
       isBreaking: data.isBreaking ?? data.categoryId === 'son-dakika',

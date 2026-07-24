@@ -4,7 +4,7 @@ import { useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye,
+  Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
@@ -143,6 +143,9 @@ export function AdminNewsEditor({
   const seoTitleUsesFallback = mode === 'edit' && !storedSeoTitle
   const seoDescriptionUsesFallback = mode === 'edit' && !storedSeoDescription
   const [isBreaking, setIsBreaking] = useState<boolean>(post?.isBreaking ?? false)
+  const [featured, setFeatured] = useState<boolean>(
+    post?.featured === true || post?.isEditorPick === true
+  )
   const [isLiveBlog, setIsLiveBlog] = useState<boolean>(post?.isLiveBlog ?? false)
   const [liveUpdateDraft, setLiveUpdateDraft] = useState('')
   const [liveUpdates, setLiveUpdates] = useState(
@@ -242,6 +245,7 @@ export function AdminNewsEditor({
     seoKeywords,
     aiResearchSources,
     isBreaking,
+    featured,
     isLiveBlog,
     liveUpdates: isLiveBlog ? liveUpdates : [],
     ...(countrySlug
@@ -445,6 +449,7 @@ export function AdminNewsEditor({
         seoDescription,
         seoKeywords,
         isBreaking,
+        featured,
       }
 
       if (variant === 'drawer') {
@@ -803,6 +808,33 @@ export function AdminNewsEditor({
         <span
           className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
             isBreaking ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+
+    <div className="flex items-center justify-between rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Star className={`h-4 w-4 ${featured ? 'text-amber-500' : 'text-[rgb(var(--color-muted))]'}`} />
+        <div>
+          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Öne Çıkan</p>
+          <p className="text-[11px] text-[rgb(var(--color-muted))]">
+            Kategoriden bağımsız — ana sayfa başındaki öne çıkanlar slider&apos;ında görünür
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setFeatured((v) => !v)}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          featured ? 'bg-amber-500' : 'bg-[rgb(var(--color-border))]'
+        }`}
+        aria-pressed={featured}
+        aria-label="Öne çıkan"
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+            featured ? 'translate-x-6' : 'translate-x-1'
           }`}
         />
       </button>

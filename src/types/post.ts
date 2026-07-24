@@ -79,6 +79,11 @@ export interface Post {
   isTrending: boolean
   /** Breaking news pin — sorted by priorityScore in feed. */
   isBreaking?: boolean
+  /**
+   * Editorial “Öne Çıkan” — any category can appear in the homepage featured slider
+   * (FeaturedSlider), independent of gundem / son-dakika.
+   */
+  featured?: boolean
   priorityScore?: number
   editorType?: string
   confidenceScore?: number

@@ -34,6 +34,8 @@ interface UpdatePayload {
   categoryId?: string
   status?: string
   isBreaking?: boolean
+  /** Homepage featured slider — any category */
+  featured?: boolean
   tags?: string[]
   citySlug?: string
   city?: string
@@ -112,6 +114,11 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     update.category = categoryId
   }
   if (typeof body.isBreaking === 'boolean') update.isBreaking = body.isBreaking
+  if (typeof body.featured === 'boolean') {
+    update.featured = body.featured
+    // Keep live-feed / editor-pick consumers in sync
+    update.isEditorPick = body.featured
+  }
   if (body.status?.trim()) update.status = body.status.trim()
   if (Array.isArray(body.tags)) update.tags = body.tags
   if (body.citySlug != null) update.citySlug = String(body.citySlug).trim()

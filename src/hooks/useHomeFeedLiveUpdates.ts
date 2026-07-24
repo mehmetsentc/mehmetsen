@@ -48,7 +48,7 @@ function timelinePostToNewsItem(post: TimelinePost): NewsItem | null {
     category: categoryId || undefined,
     publishedAt,
     breaking: isBreaking,
-    featured: post.isEditorPick,
+    featured: post.featured === true || post.isEditorPick === true,
   }
 }
 
