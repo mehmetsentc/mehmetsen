@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { DesktopMoreList } from '@/components/home/desktop/DesktopMoreList'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import {
@@ -20,6 +21,7 @@ interface CategoryBbcSectionProps {
   loading: boolean
   loadingMore: boolean
   accentRgb?: string
+  beforeContent?: ReactNode
 }
 
 export function CategoryBbcSection({
@@ -31,6 +33,7 @@ export function CategoryBbcSection({
   loading,
   loadingMore,
   accentRgb,
+  beforeContent,
 }: CategoryBbcSectionProps) {
   const hero = posts[0]
   const sideFeatures = posts.slice(1, 3)
@@ -53,6 +56,8 @@ export function CategoryBbcSection({
           variant="bbc"
         />
       ) : null}
+
+      {beforeContent}
 
       {loading && posts.length === 0 ? (
         <div className="mb-10 grid grid-cols-12 gap-6">

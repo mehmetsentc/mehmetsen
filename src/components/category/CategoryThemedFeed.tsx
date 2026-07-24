@@ -13,6 +13,10 @@ import { CategoryStoryRail } from '@/components/category/CategoryStoryRail'
 import { DESKTOP_SECTION_DIVIDER } from '@/components/home/desktop/desktopLayout'
 import { TimelineItem } from '@/components/feed/TimelineItem'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
+import {
+  MatchResults,
+  sportMatchKindForSection,
+} from '@/components/sports/MatchResults'
 import { useThemedCategoryFeed } from '@/hooks/useThemedCategoryFeed'
 import { getCategoryAccent } from '@/constants/categoryTheme'
 import type { TimelinePost } from '@/types/post'
@@ -95,6 +99,19 @@ function sectionTitle(sectionId: string): string {
   return def.name
 }
 
+function SportScoresForSection({
+  sectionId,
+  enabled,
+}: {
+  sectionId: string
+  enabled: boolean
+}) {
+  if (!enabled) return null
+  const sport = sportMatchKindForSection(sectionId)
+  if (!sport) return null
+  return <MatchResults sport={sport} className="mb-5" />
+}
+
 function DesktopSectionBlock({
   sectionId,
   posts,
@@ -108,6 +125,7 @@ function DesktopSectionBlock({
   showHeader,
   isFirstSection,
   accentRgb,
+  showSportScores,
 }: {
   sectionId: string
   posts: TimelinePost[]
@@ -121,6 +139,7 @@ function DesktopSectionBlock({
   showHeader: boolean
   isFirstSection: boolean
   accentRgb?: string
+  showSportScores: boolean
 }) {
   const title = sectionTitle(sectionId)
   const href = getCategorySectionHref(sectionId)
@@ -138,6 +157,9 @@ function DesktopSectionBlock({
         loading={loading || !loaded}
         loadingMore={loadingMore}
         accentRgb={accentRgb}
+        beforeContent={
+          <SportScoresForSection sectionId={sectionId} enabled={showSportScores} />
+        }
       />
 
       <SectionLoadMoreSentinel
@@ -163,6 +185,7 @@ function MobileSectionBlock({
   showHeader,
   isFirstSection = false,
   accentRgb,
+  showSportScores,
 }: {
   sectionId: string
   posts: TimelinePost[]
@@ -176,6 +199,7 @@ function MobileSectionBlock({
   showHeader: boolean
   isFirstSection?: boolean
   accentRgb?: string
+  showSportScores: boolean
 }) {
   const title = sectionTitle(sectionId)
 
@@ -196,6 +220,8 @@ function MobileSectionBlock({
           accentRgb ? ({ ['--cat-accent' as string]: accentRgb } as React.CSSProperties) : undefined
         }>{showHeader ? title : 'Öne çıkanlar'}</h2>
       ) : null}
+
+      <SportScoresForSection sectionId={sectionId} enabled={showSportScores} />
 
       {/* Show a skeleton until the section has actually attempted to load, so we
           never flash "Henüz haber yok" before the fetch runs. */}
@@ -276,6 +302,9 @@ export function CategoryThemedFeed({
 
   const multiSection = sectionIds.length > 1
   const accent = getCategoryAccent(parentCategoryId)
+  // Skor şeritleri yalnızca /kategori/spor alt bölümlerinde; alt kategori
+  // sayfalarında CategoryTopExtras zaten MatchResults basıyor.
+  const showSportScores = parentCategoryId === 'spor'
 
   return (
     <div className="category-themed-feed bbc-category-feed">
@@ -297,6 +326,7 @@ export function CategoryThemedFeed({
             showHeader={multiSection}
             isFirstSection={index === 0}
             accentRgb={accent.rgb}
+            showSportScores={showSportScores}
           />
         )
       })}

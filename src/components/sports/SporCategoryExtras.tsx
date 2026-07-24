@@ -1,14 +1,15 @@
 'use client'
 
-import { MatchResults } from '@/components/sports/MatchResults'
 import { SuperLigTable } from '@/components/sports/SuperLigTable'
 import { TransferStrip } from '@/components/sports/TransferStrip'
 
-/** Spor kategori sayfası ekstra widget'ları — post-WC: futbol skorları önde. */
+/**
+ * Spor üst sayfası — genel skorlar artık Futbol/Basketbol/Voleybol bölümlerinin
+ * altında (CategoryThemedFeed). Burada yalnızca futbol bağlamı (puan / transfer).
+ */
 export function SporCategoryExtras() {
   return (
     <div className="space-y-6">
-      <MatchResults />
       <SuperLigTable />
       <TransferStrip />
     </div>

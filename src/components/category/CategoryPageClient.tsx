@@ -7,6 +7,7 @@ import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { DesktopCategoryPage } from '@/components/home/desktop/DesktopCategoryPage'
 import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
 import { SporCategoryExtras } from '@/components/sports/SporCategoryExtras'
+import { MatchResults, sportMatchKindForSection } from '@/components/sports/MatchResults'
 import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
@@ -55,6 +56,8 @@ function CategoryTopExtras({
     )
   }
   if (cat.id === 'spor') return <SporCategoryExtras />
+  const sportKind = sportMatchKindForSection(cat.id)
+  if (sportKind) return <MatchResults sport={sportKind} />
   if (cat.id === 'borsa') return <BorsaWidgetClient />
   return null
 }

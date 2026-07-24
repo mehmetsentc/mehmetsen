@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import type { MatchResult } from '@/app/api/sports/matches/route'
+import type { MatchResult } from '@/lib/sports/matchTypes'
 
 function MatchChip({ match }: { match: MatchResult }) {
   const isLive   = match.status === 'live'
