@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Keyboard / screen-reader skip link — visible only on focus */
+/* Keyboard / screen-reader skip link — desktop only; hidden on mobile nav */
 .skip-to-content {
   position: absolute;
   left: 0.75rem;
@@ -21,6 +21,11 @@
   transform: translateY(0);
   outline: 2px solid #fff;
   outline-offset: 2px;
+}
+@media (max-width: 1023px) {
+  .skip-to-content {
+    display: none !important;
+  }
 }
 
 /* ── Design Token sistemi — F1 (2026) ──────────────────────────────────────

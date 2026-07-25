@@ -110,7 +110,10 @@ const LayoutShell = memo(function LayoutShell({
               getStageClass(pathname, isReels, variant)
             )}
           >
-            <a href="#main-content" className="skip-to-content">
+            <a
+              href="#main-content"
+              className="skip-to-content hidden lg:inline-block"
+            >
               İçeriğe atla
             </a>
             <main
