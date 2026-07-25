@@ -9,6 +9,7 @@ import {
   limit,
   startAfter,
   updateDoc,
+  getCountFromServer,
   type QueryDocumentSnapshot,
   type QueryConstraint,
 } from 'firebase/firestore'
@@ -489,30 +490,38 @@ export const adminNewsService = {
   },
 
   async countByStatus(): Promise<Record<string, number>> {
+    // Eski yaklaşım: getDocs(limit(500)) → 500 döküman tam okuma
+    // Yeni yaklaşım: getCountFromServer — sadece index taraması, döküman okumaz
     const statuses = ['published', 'pending', 'draft', 'archived', 'banned'] as const
     const counts: Record<string, number> = { total: 0 }
 
     try {
-      const snap = await getDocs(query(collection(db, VIDEO_FEED_COLLECTION), limit(500)))
-      counts.total = snap.size
-      for (const status of statuses) counts[status] = 0
-      for (const d of snap.docs) {
-        const s = (d.data() as NewsDocument).status ?? 'published'
-        counts[s] = (counts[s] ?? 0) + 1
-      }
+      const snaps = await Promise.all(
+        statuses.map((s) =>
+          getCountFromServer(
+            query(collection(db, VIDEO_FEED_COLLECTION), where('status', '==', s))
+          ).catch(() => null)
+        )
+      )
+      let total = 0
+      statuses.forEach((s, i) => {
+        const n = snaps[i]?.data().count ?? 0
+        counts[s] = n
+        total += n
+      })
+      counts.total = total
     } catch {
       counts.total = 0
     }
     try {
-      const draftSnap = await getDocs(
+      const draftSnap = await getCountFromServer(
         query(
           collection(db, Collections.NEWS_DRAFTS),
-          where('draftStatus', '==', 'pending_review'),
-          limit(200)
+          where('draftStatus', '==', 'pending_review')
         )
       )
-      counts.pending_review = draftSnap.size
-      counts.pending = (counts.pending ?? 0) + draftSnap.size
+      counts.pending_review = draftSnap.data().count
+      counts.pending = (counts.pending ?? 0) + draftSnap.data().count
     } catch {
       counts.pending_review = 0
     }

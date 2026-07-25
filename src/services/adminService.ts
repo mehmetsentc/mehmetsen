@@ -12,6 +12,7 @@ import {
   getCountFromServer,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
+
 import { db, Collections, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
 import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
 import { userService } from '@/services/userService'
@@ -78,25 +79,36 @@ export interface DashboardOverview {
   }>
 }
 
+// ── Module-level caches — survive across component mounts ─────────────────
+let _statsCache: { data: AdminDashboardStats; t: number } | null = null
+let _overviewCache: { data: DashboardOverview; t: number } | null = null
+const STATS_TTL    = 5  * 60 * 1000  // 5 min
+const OVERVIEW_TTL = 10 * 60 * 1000  // 10 min
+
 export const adminService = {
   async getDashboardStats(): Promise<AdminDashboardStats> {
+    if (_statsCache && Date.now() - _statsCache.t < STATS_TTL) return _statsCache.data
+
+    // Use getCountFromServer everywhere — reads index entries, not full docs
     const [newsSnap, pendingSnap, usersSnap, reportsSnap] = await Promise.all([
       getCountFromServer(collection(db, VIDEO_FEED_COLLECTION)).catch(() => null),
-      getDocs(
-        query(collection(db, VIDEO_FEED_COLLECTION), where('status', '==', 'pending'), limit(200))
+      getCountFromServer(
+        query(collection(db, VIDEO_FEED_COLLECTION), where('status', '==', 'pending'))
       ).catch(() => null),
       getCountFromServer(collection(db, Collections.USERS)).catch(() => null),
-      getDocs(
-        query(collection(db, Collections.REPORTS), where('status', '==', 'pending'), limit(200))
+      getCountFromServer(
+        query(collection(db, Collections.REPORTS), where('status', '==', 'pending'))
       ).catch(() => null),
     ])
 
-    return {
+    const data: AdminDashboardStats = {
       totalNews: newsSnap?.data().count ?? 0,
-      pendingNews: pendingSnap?.size ?? 0,
+      pendingNews: pendingSnap?.data().count ?? 0,
       totalUsers: usersSnap?.data().count ?? 0,
-      pendingReports: reportsSnap?.size ?? 0,
+      pendingReports: reportsSnap?.data().count ?? 0,
     }
+    _statsCache = { data, t: Date.now() }
+    return data
   },
 
   async listUsers(options?: {
@@ -220,11 +232,31 @@ export const adminService = {
    * Hata yutar — kısmi başarısızlıkta diğer kısımları döndürür.
    */
   async getDashboardOverview(): Promise<DashboardOverview> {
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    const sevenDaysAgoIso = sevenDaysAgo.toISOString()
+    if (_overviewCache && Date.now() - _overviewCache.t < OVERVIEW_TTL) return _overviewCache.data
 
-    const [stats, topNewsSnap, recentSnap] = await Promise.all([
+    // 7-gün publish serisi için gün başına COUNT sorgusu — 400 dok okumak yerine
+    // Her gün için [gün_başlangıcı, gün_sonu) aralığında COUNT çekiyoruz (index-only)
+    const dayCountPromises: Promise<number>[] = []
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date()
+      dayStart.setDate(dayStart.getDate() - i)
+      dayStart.setHours(0, 0, 0, 0)
+      const dayEnd = new Date(dayStart)
+      dayEnd.setDate(dayEnd.getDate() + 1)
+      dayCountPromises.push(
+        getCountFromServer(
+          query(
+            collection(db, VIDEO_FEED_COLLECTION),
+            where('createdAt', '>=', dayStart.toISOString()),
+            where('createdAt', '<', dayEnd.toISOString())
+          )
+        )
+          .then((s) => s.data().count)
+          .catch(() => 0)
+      )
+    }
+
+    const [stats, topNewsSnap, recentActivitySnap, ...dayCounts] = await Promise.all([
       this.getDashboardStats().catch(() => ({
         totalNews: 0,
         pendingNews: 0,
@@ -241,16 +273,17 @@ export const adminService = {
           )
         )
       ).catch(() => null),
+      // Sadece en son 12 haber — aktivite feed için yeterli (12 dok okuma)
       enqueueFirestoreRead(() =>
         getDocs(
           query(
             collection(db, VIDEO_FEED_COLLECTION),
-            where('createdAt', '>=', sevenDaysAgoIso),
             orderBy('createdAt', 'desc'),
-            limit(400)
+            limit(12)
           )
         )
       ).catch(() => null),
+      ...dayCountPromises,
     ])
 
     // Top news mapping
@@ -268,28 +301,20 @@ export const adminService = {
         }
       }) ?? []
 
-    // 7-day publish series (bucket by yyyy-mm-dd)
-    const bucket = new Map<string, number>()
+    // 7-day publish series — count sorgularından oluşturuldu (dok okuma yok)
+    const publishSeries: PublishSeriesPoint[] = []
     for (let i = 6; i >= 0; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
-      bucket.set(key, 0)
+      publishSeries.push({
+        date: d.toISOString().slice(0, 10),
+        count: dayCounts[6 - i] ?? 0,
+      })
     }
-    recentSnap?.docs.forEach((d) => {
-      const data = d.data() as Record<string, unknown>
-      const createdAt = (data.createdAt as string) ?? null
-      if (!createdAt) return
-      const key = createdAt.slice(0, 10)
-      if (bucket.has(key)) bucket.set(key, (bucket.get(key) ?? 0) + 1)
-    })
-    const publishSeries: PublishSeriesPoint[] = Array.from(bucket.entries()).map(
-      ([date, count]) => ({ date, count })
-    )
 
-    // Recent activity feed (latest 12)
+    // Recent activity feed (latest 12 — sadece 12 dok)
     const recentActivity =
-      recentSnap?.docs.slice(0, 12).map((d) => {
+      recentActivitySnap?.docs.map((d) => {
         const data = d.data() as Record<string, unknown>
         const status = (data.status as string) ?? 'published'
         return {
@@ -301,7 +326,9 @@ export const adminService = {
         }
       }) ?? []
 
-    return { stats, publishSeries, topNews, recentActivity }
+    const result: DashboardOverview = { stats, publishSeries, topNews, recentActivity }
+    _overviewCache = { data: result, t: Date.now() }
+    return result
   },
 
   async getEventsCount(): Promise<number> {

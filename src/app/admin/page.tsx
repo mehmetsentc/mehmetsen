@@ -22,6 +22,10 @@ import { DashboardChart } from '@/components/admin/DashboardChart'
 import { PopularNewsTable } from '@/components/admin/PopularNewsTable'
 import { adminService, type DashboardOverview } from '@/services/adminService'
 
+// ── Module-level count cache (admin/page.tsx mount başına tekrar sorgulanmaz) ──
+let _pageStatsCache: { data: DashStats; t: number } | null = null
+const PAGE_STATS_TTL = 5 * 60 * 1000 // 5 dakika
+
 /** Handle Firestore Timestamp objects (serverTimestamp) OR plain ms numbers */
 function tsToMs(val: unknown): number {
   if (typeof val === 'number') return val
@@ -122,6 +126,12 @@ export default function AdminIndexPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
 
   const loadStats = useCallback(async () => {
+    // Cache: 5 dakika boyunca Firestore sorgusu yapmaz
+    if (_pageStatsCache && Date.now() - _pageStatsCache.t < PAGE_STATS_TTL) {
+      setStats(_pageStatsCache.data)
+      setLoading(false)
+      return
+    }
     try {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
       const [publishedSnap, pendingSnap, todaySnap, usersSnap] = await Promise.all([
@@ -130,14 +140,16 @@ export default function AdminIndexPage() {
         getCountFromServer(query(collection(db, Collections.NEWS), where('status', '==', 'published'), where('createdAt', '>=', startOfDay.getTime()))).catch(() => null),
         getCountFromServer(collection(db, 'users')).catch(() => null),
       ])
-      setStats({
+      const newStats: DashStats = {
         totalPublished: publishedSnap?.data().count ?? 0,
         pendingReview: pendingSnap?.data().count ?? 0,
         publishedToday: todaySnap?.data().count ?? 0,
         totalUsers: usersSnap?.data().count ?? 0,
         videoQueue: 0,
         breakingActive: 0,
-      })
+      }
+      _pageStatsCache = { data: newStats, t: Date.now() }
+      setStats(newStats)
     } catch (e) {
       console.error(e)
     } finally {

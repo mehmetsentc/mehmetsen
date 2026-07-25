@@ -9,8 +9,8 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-// force-dynamic kaldırıldı — her bot isteğinde 1000 doc okutuyordu; ISR 5 dk yeterli
-export const revalidate = 300
+// ISR 30 dk — bot trafiği başına yeniden oluşturmayı engeller; Google News için yeterli
+export const revalidate = 1800
 
 function escapeXml(s: string): string {
   return s
@@ -33,7 +33,7 @@ export async function GET() {
       .where('status', '==', 'published')
       .where('publishedAt', '>=', cutoff)
       .orderBy('publishedAt', 'desc')
-      .limit(1000)
+      .limit(200)
       .get()
 
     for (const doc of snap.docs) {
