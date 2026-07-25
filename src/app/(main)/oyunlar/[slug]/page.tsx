@@ -2,9 +2,14 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BackgammonClient } from '@/components/games/BackgammonClient'
 import { ChessClient } from '@/components/games/ChessClient'
+import { HangmanClient } from '@/components/games/HangmanClient'
+import { KelimeClient } from '@/components/games/KelimeClient'
+import { MemoryClient } from '@/components/games/MemoryClient'
+import { MinesClient } from '@/components/games/MinesClient'
 import { SnakeClient } from '@/components/games/SnakeClient'
 import { SudokuClient } from '@/components/games/SudokuClient'
 import { TetrisClient } from '@/components/games/TetrisClient'
+import { Twenty48Client } from '@/components/games/Twenty48Client'
 import { getGameBySlug } from '@/constants/games'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
@@ -28,25 +33,28 @@ export default async function GamePlayPage({ params }: Props) {
   const game = getGameBySlug(slug)
   if (!game || game.provider !== 'native') notFound()
 
-  if (slug === 'tavla') {
-    return <BackgammonClient />
+  switch (slug) {
+    case 'tavla':
+      return <BackgammonClient />
+    case 'yilan':
+      return <SnakeClient />
+    case 'satranc':
+      return <ChessClient />
+    case 'sudoku':
+      return <SudokuClient />
+    case 'tetris':
+      return <TetrisClient />
+    case 'kelime':
+      return <KelimeClient />
+    case 'adam-asmaca':
+      return <HangmanClient />
+    case 'hafiza':
+      return <MemoryClient />
+    case 'mayin':
+      return <MinesClient />
+    case '2048':
+      return <Twenty48Client />
+    default:
+      notFound()
   }
-
-  if (slug === 'yilan') {
-    return <SnakeClient />
-  }
-
-  if (slug === 'satranc') {
-    return <ChessClient />
-  }
-
-  if (slug === 'sudoku') {
-    return <SudokuClient />
-  }
-
-  if (slug === 'tetris') {
-    return <TetrisClient />
-  }
-
-  notFound()
 }

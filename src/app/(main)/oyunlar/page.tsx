@@ -6,7 +6,7 @@ import { ROUTES } from '@/constants/routes'
 export const metadata: Metadata = {
   title: 'Online Oyunlar',
   description:
-    'Tavla, satranç, sudoku, neon yılan ve tetris — NaHaber’de ücretsiz online oyna.',
+    'Tavla, satranç, sudoku, kelime günü, adam asmaca, hafıza, mayın tarlası, 2048 ve daha fazlası — NaHaber’de ücretsiz online oyna.',
   alternates: { canonical: `${getSiteUrl()}${ROUTES.GAMES}` },
   robots: { index: true, follow: true },
 }

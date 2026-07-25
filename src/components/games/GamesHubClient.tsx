@@ -15,8 +15,8 @@ export function GamesHubClient() {
         </div>
         <h1 className="text-3xl font-black text-[rgb(var(--color-text))]">Online Oyunlar</h1>
         <p className="mt-2 max-w-2xl text-[rgb(var(--color-muted))]">
-          Haber arası molada oynayabileceğiniz oyunlar. Tavla, satranç, sudoku, yılan ve tetris
-          hazır; yakında daha fazlası.
+          Haber arası molada oynayın — tavla, satranç, sudoku, kelime günü, adam asmaca, hafıza,
+          mayın tarlası, 2048 ve daha fazlası.
         </p>
       </header>
 
@@ -48,13 +48,6 @@ export function GamesHubClient() {
             </div>
           </Link>
         ))}
-
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/50 p-8 text-center">
-          <p className="text-sm font-medium text-[rgb(var(--color-muted))]">
-            Daha fazla oyun yakında
-          </p>
-          <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">Bulmaca, arcade, mini spor</p>
-        </div>
       </div>
 
       <p className="mt-8 text-center text-xs text-[rgb(var(--color-muted))]">

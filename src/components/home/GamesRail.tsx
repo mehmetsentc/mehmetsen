@@ -12,6 +12,11 @@ const GAME_ACCENTS: Record<string, string> = {
   satranc: 'from-emerald-700 to-teal-900',
   sudoku: 'from-teal-500 to-cyan-700',
   tetris: 'from-cyan-500 to-fuchsia-600',
+  kelime: 'from-rose-500 to-orange-600',
+  'adam-asmaca': 'from-orange-500 to-amber-700',
+  hafiza: 'from-sky-500 to-indigo-700',
+  mayin: 'from-stone-500 to-stone-800',
+  '2048': 'from-yellow-400 to-orange-600',
 }
 
 function GameCard({ game }: { game: GameCatalogItem }) {
