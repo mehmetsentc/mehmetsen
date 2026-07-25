@@ -161,6 +161,16 @@ export function getCategoryFamily(parentId: string): string[] {
 }
 
 /**
+ * Ana sayfa kategori rayları — standalone alt kategoriler dahil
+ * (ör. Spor rayında futbol/basketbol haberleri de görünsün).
+ * Firestore `in` limiti: en fazla 10 id.
+ */
+export function getHomeFeedCategoryFamily(parentId: string): string[] {
+  const ids = [parentId, ...getSubcategories(parentId).map((c) => c.id)]
+  return [...new Set(ids)].slice(0, 10)
+}
+
+/**
  * Categories shown in the main sidebar nav (in order).
  * Subcategories are shown inside their parent's page, not here.
  */

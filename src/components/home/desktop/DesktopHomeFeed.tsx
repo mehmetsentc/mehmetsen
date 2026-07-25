@@ -29,6 +29,7 @@ import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import { useMergedCategoryRails } from '@/hooks/useMergedCategoryRails'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
+  HOME_CATEGORY_DESKTOP_CARDS,
   HOME_FEED_DESKTOP_LAZY_RAILS,
   type HomeCategorySlug,
   type HomeFeedInitialData,
@@ -87,11 +88,11 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
     const catRow1 = CATEGORY_ROW_1.map((id) => ({
       id,
-      items: sliceCategoryRail(categoryRails, id, 4),
+      items: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS),
     }))
     const catRow2 = CATEGORY_ROW_2.map((id) => ({
       id,
-      items: sliceCategoryRail(categoryRails, id, 4),
+      items: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS),
     }))
     const catRow1Filler = rowGapFiller(catRow1, takeFeatured)
     const catRow2Filler = rowGapFiller(catRow2, takeFeatured)

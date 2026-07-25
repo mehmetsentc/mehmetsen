@@ -82,15 +82,18 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
  * Fetch: Firestore'dan çekilen üst sınır. Display: mobilde gösterilen kart sayısı.
  * Min: bundan az haber varsa şerit hiç render edilmez (tek kartlı boş şerit olmasın).
  */
-export const HOME_CATEGORY_RAIL_FETCH = 6
-export const HOME_CATEGORY_RAIL_DISPLAY = 6
-export const HOME_CATEGORY_RAIL_MIN = 3
+export const HOME_CATEGORY_RAIL_FETCH = 5
+export const HOME_CATEGORY_RAIL_DISPLAY = 5
+export const HOME_CATEGORY_RAIL_MIN = 4
 
 /**
  * Masaüstü hero/alt bölümler için Gündem'den ekstra haber gerekir.
  * Mobil şerit yine DISPLAY ile kesilir.
  */
 export const HOME_CATEGORY_RAIL_GUNDEM_FETCH = 20
+
+/** Masaüstü kategori grid’inde kart sayısı — her kategoride eşit. */
+export const HOME_CATEGORY_DESKTOP_CARDS = 4
 
 /**
  * SSR’da gömülecek kategori rayları — kalanlar istemci lazy API ile gelir.

@@ -5,6 +5,7 @@ import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID } from '@/components/home/deskt
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import { ImageStory } from '@/components/home/desktop/DesktopStoryBlocks'
 import { getCategoryAccentColor } from '@/lib/categoryAccent'
+import { HOME_CATEGORY_DESKTOP_CARDS } from '@/types/newsItem'
 import type { NewsItem } from '@/types/newsItem'
 
 interface DesktopCategoryGridSectionProps {
@@ -20,7 +21,7 @@ export function DesktopCategoryGridSection({
   items,
   href,
 }: DesktopCategoryGridSectionProps) {
-  const cards = items.slice(0, 4)
+  const cards = items.slice(0, HOME_CATEGORY_DESKTOP_CARDS)
   if (cards.length === 0) return null
 
   const accent = getCategoryAccentColor(categoryId)
