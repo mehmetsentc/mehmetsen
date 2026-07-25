@@ -9,6 +9,7 @@ import { DesktopMarketSidebar } from '@/components/home/desktop/DesktopMarketSid
 import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGridChunks'
 import { DesktopMostReadGrid } from '@/components/home/desktop/DesktopMostReadGrid'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
+import { FeaturedSlider } from '@/components/home/FeaturedSlider'
 import { GamesRail } from '@/components/home/GamesRail'
 import { LazySection } from '@/components/home/LazySection'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
@@ -101,6 +102,11 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const trending = data.trending.slice(0, 8)
     const moreList = take(8)
 
+    // CMS “Öne Çıkan” — only items marked featured (not gundem filler)
+    const featuredSlider = data.featured
+      .filter((p) => p.featured === true)
+      .slice(0, 6)
+
     const opinionItems = data.featured.slice(0, 3).length >= 3
       ? data.featured.slice(0, 3)
       : data.latest.slice(0, 3)
@@ -108,6 +114,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const lastUpdated = data.latest[0]?.publishedAt ?? data.latest[0]?.createdAt
 
     return {
+      featuredSlider,
       heroLead,
       heroRight,
       topFour,
@@ -138,6 +145,13 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       <NewspaperMasthead lastUpdated={layout.lastUpdated} />
 
       <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
+
+      {layout.featuredSlider.length > 0 ? (
+        <div className="mb-10 border-b border-[rgb(var(--color-border))] pb-10">
+          <DesktopSectionHeader title="Öne Çıkan" href={ROUTES.CATEGORY('gundem')} />
+          <FeaturedSlider items={layout.featuredSlider} variant="desktop" />
+        </div>
+      ) : null}
 
       <DesktopSectionHeader title="Haberler" href={ROUTES.CATEGORY('gundem')} />
 

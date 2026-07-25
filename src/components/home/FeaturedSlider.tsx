@@ -11,6 +11,8 @@ import type { NewsItem } from '@/types/newsItem'
 
 interface FeaturedSliderProps {
   items: NewsItem[]
+  /** Desktop newspaper shell — contained, slightly shorter hero */
+  variant?: 'default' | 'desktop'
 }
 
 /** Only keep current ±1 slides in the DOM to avoid loading 8–20 full-bleed images. */
@@ -24,8 +26,9 @@ function visibleSlideIndexes(current: number, length: number): number[] {
   return [...set]
 }
 
-export function FeaturedSlider({ items }: FeaturedSliderProps) {
+export function FeaturedSlider({ items, variant = 'default' }: FeaturedSliderProps) {
   const slides = useMemo(() => items.slice(0, 8), [items])
+  const isDesktop = variant === 'desktop'
   const [current, setCurrent] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
   /** Delay neighbour slides so LCP only contends with slide 0. */
@@ -69,11 +72,16 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
   const visible = extrasReady ? visibleSlideIndexes(current, slides.length) : [current]
 
   return (
-    <section aria-label="Öne Çıkan Haberler" className="home-section">
-      <div className="home-full-bleed md:home-contained">
+    <section
+      aria-label="Öne Çıkan Haberler"
+      className={isDesktop ? undefined : 'home-section'}
+    >
+      <div className={isDesktop ? undefined : 'home-full-bleed md:home-contained'}>
         <div
-          className="relative overflow-hidden rounded-none md:rounded-2xl"
-          style={{ height: 'clamp(22rem, 62vw, 38rem)' }}
+          className={`relative overflow-hidden ${isDesktop ? 'rounded-2xl' : 'rounded-none md:rounded-2xl'}`}
+          style={{
+            height: isDesktop ? 'clamp(18rem, 36vh, 28rem)' : 'clamp(22rem, 62vw, 38rem)',
+          }}
           data-no-category-swipe
           onTouchStart={(e) => {
             touchStartX.current = e.touches[0]?.clientX ?? null
