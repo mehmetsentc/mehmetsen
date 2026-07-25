@@ -1,6 +1,5 @@
 'use client'
 
-import { motion, useReducedMotion } from 'framer-motion'
 import type { ExperienceSlot } from './types'
 import {
   AiSurface,
@@ -106,17 +105,11 @@ function CardBody({ slot, priority }: ExperienceCardProps) {
 }
 
 export function ExperienceCard({ slot, priority = false }: ExperienceCardProps) {
-  const reduceMotion = useReducedMotion()
-
+  // Avoid opacity/translate entrance animations — they inflate INP and CLS on
+  // category masonry (field: /kategori CLS ~1.0, INP ~1.2s).
   return (
-    <motion.div
-      className={cn(slotSizeClass(slot.size), 'exp-card-shell')}
-      initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '0px 0px -40px 0px' }}
-      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-    >
+    <div className={cn(slotSizeClass(slot.size), 'exp-card-shell')}>
       <CardBody slot={slot} priority={priority} />
-    </motion.div>
+    </div>
   )
 }

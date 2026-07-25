@@ -153,12 +153,35 @@ export function useHomeFeedLiveUpdates(initial: HomeFeedInitialData): HomeFeedIn
     }
 
     document.addEventListener('visibilitychange', handleVisibility)
-    deferTimer = setTimeout(startPolling, FEED_LIVE_DEFER_MS)
+
+    const startAfterInteraction = () => {
+      if (cancelled) return
+      startPolling()
+      window.removeEventListener('pointerdown', startAfterInteraction)
+      window.removeEventListener('keydown', startAfterInteraction)
+      window.removeEventListener('scroll', startAfterInteraction)
+    }
+
+    // Defer live poll until after LCP budget; start earlier on first user input.
+    deferTimer = setTimeout(() => {
+      if (cancelled) return
+      startPolling()
+      window.removeEventListener('pointerdown', startAfterInteraction)
+      window.removeEventListener('keydown', startAfterInteraction)
+      window.removeEventListener('scroll', startAfterInteraction)
+    }, FEED_LIVE_DEFER_MS)
+
+    window.addEventListener('pointerdown', startAfterInteraction, { once: true, passive: true })
+    window.addEventListener('keydown', startAfterInteraction, { once: true })
+    window.addEventListener('scroll', startAfterInteraction, { once: true, passive: true })
 
     return () => {
       cancelled = true
       liveReadyRef.current = false
       document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('pointerdown', startAfterInteraction)
+      window.removeEventListener('keydown', startAfterInteraction)
+      window.removeEventListener('scroll', startAfterInteraction)
       if (deferTimer) clearTimeout(deferTimer)
       if (pollTimer) clearInterval(pollTimer)
     }

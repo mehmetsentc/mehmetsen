@@ -5,11 +5,22 @@ import { userService } from '@/services/userService'
 import { followService } from '@/services/followService'
 import type { User } from '@/types/user'
 
-export function useProfile(username: string, currentUserId?: string) {
-  const [profile, setProfile] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export function useProfile(
+  username: string,
+  currentUserId?: string,
+  options?: { initialProfile?: User | null; fromServer?: boolean }
+) {
+  const fromServer = options?.fromServer === true
+  const initialProfile = options?.initialProfile ?? null
+
+  const [profile, setProfile] = useState<User | null>(initialProfile)
+  const [loading, setLoading] = useState(!fromServer)
+  const [error, setError] = useState<string | null>(
+    fromServer && !initialProfile ? 'Kullanıcı bulunamadı' : null
+  )
   const [isFollowing, setIsFollowing] = useState(false)
+  const skipFirstFetch = useRef(fromServer)
+  const lastUsername = useRef(username)
 
   // Profil yüklemesi auth state'ten bağımsız — sadece username değişince tekrar çalışır.
   // Bu sayede auth geç geldiğinde (uid undefined→uid) ikinci bir yükleme tetiklenmez.
@@ -34,8 +45,14 @@ export function useProfile(username: string, currentUserId?: string) {
   }, [username])
 
   useEffect(() => {
+    if (skipFirstFetch.current && lastUsername.current === username) {
+      skipFirstFetch.current = false
+      setLoading(false)
+      return
+    }
+    lastUsername.current = username
     loadProfile()
-  }, [loadProfile])
+  }, [loadProfile, username])
 
   // Takip durumu ayrı bir effect — profil ve auth hazır olunca bir kez çalışır.
   // Profile load'u tetiklemez, sadece isFollowing günceller.
@@ -50,7 +67,8 @@ export function useProfile(username: string, currentUserId?: string) {
     if (followChecked.current === key) return
     followChecked.current = key
 
-    followService.isFollowing(currentUserId, profile.uid)
+    followService
+      .isFollowing(currentUserId, profile.uid)
       .then((following) => setIsFollowing(following))
       .catch(() => setIsFollowing(false))
   }, [profile, currentUserId])

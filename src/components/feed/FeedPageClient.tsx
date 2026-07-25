@@ -34,7 +34,7 @@ function FeedScrollHeaderConfig({ homeFeedData }: FeedPageClientProps) {
 
 /**
  * Desktop shell is heavy (TBT). Keep the SSR mobile tree as LCP until idle,
- * then swap to the desktop newspaper layout.
+ * then reveal desktop without unmounting the mobile tree (avoids CLS/INP spikes).
  */
 function useDesktopFeedReady() {
   const [isLg, setIsLg] = useState(false)
@@ -60,9 +60,9 @@ function useDesktopFeedReady() {
       clearIdle()
       const enable = () => setDesktopReady(true)
       if ('requestIdleCallback' in window) {
-        idleId = window.requestIdleCallback(enable, { timeout: 2_000 })
+        idleId = window.requestIdleCallback(enable, { timeout: 3_500 })
       } else {
-        timer = setTimeout(enable, 1_200)
+        timer = setTimeout(enable, 2_000)
       }
     }
 
@@ -97,18 +97,16 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
     <>
       <FeedScrollHeaderConfig homeFeedData={homeFeedData} />
 
-      {/* Mobile/SSR tree — also the LCP path for desktop until idle swap. */}
-      {!showDesktop ? (
-        <div>
-          <FeedCategoryBar activeTab={activeTab} onTabChange={setActiveTab} />
-          {activeTab === 'home' && <HomeFeed data={liveFeedData} />}
-          {activeTab === 'trend' && (
-            <div className="mt-4">
-              <TrendFeed items={liveFeedData.trendFeed} />
-            </div>
-          )}
-        </div>
-      ) : null}
+      {/* Mobile/SSR tree — stay mounted; hide when desktop shell is ready. */}
+      <div className={showDesktop ? 'hidden' : undefined} aria-hidden={showDesktop || undefined}>
+        <FeedCategoryBar activeTab={activeTab} onTabChange={setActiveTab} />
+        {activeTab === 'home' && <HomeFeed data={liveFeedData} />}
+        {activeTab === 'trend' && (
+          <div className="mt-4">
+            <TrendFeed items={liveFeedData.trendFeed} />
+          </div>
+        )}
+      </div>
 
       {showDesktop ? (
         <AdSlotProvider page="home">

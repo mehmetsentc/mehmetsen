@@ -1103,6 +1103,9 @@
     margin-bottom: var(--exp-gap);
     display: inline-block;
     width: 100%;
+    /* Reserve vertical space before images hydrate — cuts masonry CLS */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 280px;
   }
 
   .exp-slot--xl {

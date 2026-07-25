@@ -29,7 +29,7 @@ export function notifyFeedUpdated(count: number) {
 export const FEED_LIVE_POLL_MS =
   typeof window !== 'undefined' && window.innerWidth < 768 ? 180_000 : 120_000
 
-/** İlk poll’u LCP/hydrate sonrasına ertele */
-export const FEED_LIVE_DEFER_MS = 20_000
+/** İlk poll’u LCP/hydrate + ilk etkileşim sonrasına ertele */
+export const FEED_LIVE_DEFER_MS = 45_000
 
 export const FEED_BREAKING_POLL_MS = 30_000

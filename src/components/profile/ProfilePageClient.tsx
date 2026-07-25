@@ -11,16 +11,25 @@ import { ProfileBadges } from './ProfileBadges'
 import { ProfileReadingStats } from './ProfileReadingStats'
 import { ROUTES } from '@/constants/routes'
 import { Button } from '@/components/ui/Button'
+import type { User } from '@/types/user'
+import type { Post } from '@/types/post'
 
 interface ProfilePageClientProps {
   username: string
+  initialProfile?: User | null
+  initialPosts?: Post[]
 }
 
-export function ProfilePageClient({ username }: ProfilePageClientProps) {
+export function ProfilePageClient({
+  username,
+  initialProfile = null,
+  initialPosts = [],
+}: ProfilePageClientProps) {
   const { user: authUser } = useAuth()
   const { profile, loading, error, isFollowing, setIsFollowing, refreshCounts } = useProfile(
     username,
-    authUser?.uid
+    authUser?.uid,
+    { initialProfile, fromServer: true }
   )
 
   if (loading) {
@@ -73,6 +82,7 @@ export function ProfilePageClient({ username }: ProfilePageClientProps) {
         userId={profile.uid}
         username={profile.username}
         isOwnProfile={isOwnProfile}
+        initialPosts={initialPosts}
       />
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { Grid3X3, Clapperboard, Bookmark, Heart, Lock } from 'lucide-react'
@@ -18,6 +18,7 @@ interface ProfileTabsProps {
   username: string
   isOwnProfile: boolean
   initialTab?: Tab
+  initialPosts?: Post[]
 }
 
 export function ProfileTabs({
@@ -25,10 +26,13 @@ export function ProfileTabs({
   username,
   isOwnProfile,
   initialTab = 'posts',
+  initialPosts = [],
 }: ProfileTabsProps) {
   const [activeTab, setActiveTab] = usePageState<Tab>(PAGE_STATE_KEYS.profileTab, initialTab)
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
+  const seedOk = activeTab === 'posts' && initialPosts.length > 0
+  const [posts, setPosts] = useState<Post[]>(() => (seedOk ? initialPosts : []))
+  const [loading, setLoading] = useState(!seedOk)
+  const seededPostsRef = useRef(seedOk)
 
   const tabs: { id: Tab; label: string; icon: typeof Grid3X3; private?: boolean }[] = [
     { id: 'posts', label: 'Gönderiler', icon: Grid3X3 },
@@ -40,6 +44,13 @@ export function ProfileTabs({
   const loadTab = useCallback(async () => {
     if ((activeTab === 'saved' || activeTab === 'liked') && !isOwnProfile) {
       setPosts([])
+      setLoading(false)
+      return
+    }
+
+    // SSR seeded posts: skip first posts-tab fetch to avoid LCP waterfall.
+    if (activeTab === 'posts' && seededPostsRef.current) {
+      seededPostsRef.current = false
       setLoading(false)
       return
     }
