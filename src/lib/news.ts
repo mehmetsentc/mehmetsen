@@ -111,30 +111,15 @@ export async function getBreakingNews(limitCount = 12): Promise<NewsItem[]> {
   }
 }
 
-/** Featured agenda slider — featured flag or gundem category. */
-export async function getFeaturedNews(limitCount = 8): Promise<NewsItem[]> {
+/** Featured agenda slider — yalnızca CMS Öne Çıkan (kategori filler yok). */
+export async function getFeaturedNews(limitCount = 10): Promise<NewsItem[]> {
   const scanLimit = Math.max(limitCount * 3, 24)
 
   const fromFeatured = await queryPublished(
     [where('featured', '==', true), orderBy('publishedAt', 'desc')],
     scanLimit
   )
-  if (fromFeatured.length >= limitCount) {
-    return fromFeatured.slice(0, limitCount)
-  }
-
-  const fromGundem = await queryPublished(
-    [where('categoryId', '==', 'gundem'), orderBy('publishedAt', 'desc')],
-    scanLimit
-  )
-
-  const merged = sortNewsByDate(
-    [...fromFeatured, ...fromGundem].filter(
-      (item, index, arr) => arr.findIndex((x) => x.id === item.id) === index
-    )
-  )
-
-  return merged.slice(0, limitCount)
+  return fromFeatured.slice(0, limitCount)
 }
 
 /** Category rail items. */

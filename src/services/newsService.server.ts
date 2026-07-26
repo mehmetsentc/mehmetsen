@@ -17,12 +17,14 @@ import {
   HOME_CATEGORY_RAIL_GUNDEM_FETCH,
   HOME_CATEGORY_DESKTOP_CARDS,
   HOME_FEED_SSR_RAILS,
+  HOME_FEATURED_LIMIT,
   type HomeCategorySlug,
   type HomeFeedInitialData,
   type NewsItem,
 } from '@/types/newsItem'
 
 export type { FeedSliderItem }
+export { HOME_FEATURED_LIMIT }
 
 function mapSliderItem(id: string, data: NewsDocument): FeedSliderItem | null {
   const title = data.title?.trim()
@@ -268,28 +270,23 @@ function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
   return bPub - aPub
 }
 
+/**
+ * CMS “Öne Çıkan” — kategori bağımsız, yalnızca `featured === true`.
+ * Gündem filler yok; haber kendi kategori rayında ayrıca kalır.
+ */
 function bucketFeatured(pool: NewsItem[], limit: number, pinned: NewsItem[] = []): NewsItem[] {
-  // CMS “Öne Çıkan” — son dakika da olsa featured kalır (önceki filtre Bryan’ı öne düşürüyordu)
-  const featuredPinned = pinned
-    .filter((p) => p.featured === true)
-    .sort(compareFeaturedPriority)
-  const featuredPool = pool
-    .filter((p) => p.featured === true)
-    .sort(compareFeaturedPriority)
-  const gundem = pool.filter(
-    (p) => p.category === 'gundem' && p.featured !== true && !isBreakingPoolItem(p)
-  )
-  const candidates = [...featuredPinned, ...featuredPool, ...gundem]
+  const featuredPinned = pinned.filter((p) => p.featured === true)
+  const featuredPool = pool.filter((p) => p.featured === true)
+  const candidates = [...featuredPinned, ...featuredPool].sort(compareFeaturedPriority)
   const seen = new Set<string>()
-  const withImg: NewsItem[] = []
-  const withoutImg: NewsItem[] = []
+  const ordered: NewsItem[] = []
   for (const item of candidates) {
     if (seen.has(item.id)) continue
     seen.add(item.id)
-    if (item.imageUrl) withImg.push(item)
-    else withoutImg.push(item)
+    ordered.push(item)
+    if (ordered.length >= limit) break
   }
-  return [...withImg, ...withoutImg].slice(0, limit)
+  return ordered
 }
 
 async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
@@ -326,7 +323,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v2'],
+  ['home-featured-v3'],
   { revalidate: 30, tags: ['home-feed'] }
 )
 
@@ -469,10 +466,10 @@ async function getHomeFeedRailItems(category: string, limitCount: number): Promi
  */
 
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
-  // Pool + dedicated featured query (CMS “Öne Çıkan” son 160 dışına düşmesin)
+  // Pool + dedicated featured query (CMS “Öne Çıkan” — kategori bağımsız ilk 10)
   const [pool, featuredPinned] = await Promise.all([
     getHomeNewsPool(160),
-    getFeaturedNewsCached(10),
+    getFeaturedNewsCached(HOME_FEATURED_LIMIT),
   ])
 
   if (pool.length === 0 && featuredPinned.length === 0) {
@@ -488,6 +485,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 
   const now = Date.now()
+  // Kategori rayları featured’ı dışlamaz — haber hem Öne Çıkan’da hem kendi kategorisinde.
   const categoryRails = await fillCategoryRails(pool, HOME_FEED_SSR_RAILS, HOME_CATEGORY_RAIL_FETCH)
 
   const slimRails: HomeFeedInitialData['categoryRails'] = {}
@@ -497,7 +495,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
 
   return {
     breaking: slimNewsItemsForFeed(bucketBreaking(pool, 8)),
-    featured: slimNewsItemsForFeed(bucketFeatured(pool, 6, featuredPinned)),
+    featured: slimNewsItemsForFeed(bucketFeatured(pool, HOME_FEATURED_LIMIT, featuredPinned)),
     latest: slimNewsItemsForFeed(bucketLatest(pool, 16, now)),
     trending: slimNewsItemsForFeed(bucketTrending(pool, 6, now)),
     trendFeed: slimNewsItemsForFeed(bucketTrendFeed(pool, 12, now)),

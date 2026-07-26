@@ -120,8 +120,12 @@ export const HOME_FEED_DESKTOP_LAZY_RAILS: HomeCategorySlug[] = [
 /** @deprecated Artık pool-first; geriye dönük importlar için tutuluyor. */
 export const FEED_PRIORITY_RAILS: HomeCategorySlug[] = HOME_CATEGORY_RAILS
 
+/** Ana sayfa Öne Çıkan — web + mobil ortak limit. */
+export const HOME_FEATURED_LIMIT = 10
+
 export interface HomeFeedInitialData {
   breaking: NewsItem[]
+  /** CMS Öne Çıkan — kategori bağımsız, en fazla HOME_FEATURED_LIMIT. */
   featured: NewsItem[]
   /** Hot-aware sıralanmış akış (son 72 saat hot skoru ile, eski haberler kronolojik). */
   latest: NewsItem[]

@@ -32,6 +32,7 @@ import { getCategoryLabel } from '@/lib/newsMapper'
 import {
   HOME_CATEGORY_DESKTOP_CARDS,
   HOME_FEED_DESKTOP_LAZY_RAILS,
+  HOME_FEATURED_LIMIT,
   type HomeCategorySlug,
   type HomeFeedInitialData,
   type NewsItem,
@@ -102,14 +103,15 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const trending = data.trending.slice(0, 8)
     const moreList = take(8)
 
-    // CMS “Öne Çıkan” — only items marked featured (not gundem filler)
+    // CMS “Öne Çıkan” — kategori bağımsız ilk 10
     const featuredSlider = data.featured
       .filter((p) => p.featured === true)
-      .slice(0, 6)
+      .slice(0, HOME_FEATURED_LIMIT)
 
-    const opinionItems = data.featured.slice(0, 3).length >= 3
-      ? data.featured.slice(0, 3)
-      : data.latest.slice(0, 3)
+    const opinionItems =
+      featuredSlider.length >= 3
+        ? featuredSlider.slice(0, 3)
+        : data.latest.slice(0, 3)
 
     const lastUpdated = data.latest[0]?.publishedAt ?? data.latest[0]?.createdAt
 
@@ -257,7 +259,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         <LazySection minHeight={320}>
           <DesktopCategoryGridSection
             categoryId="gundem"
-            title="Öne Çıkan"
+            title="Gündemden"
             items={layout.catRow1Filler}
             href={ROUTES.CATEGORY('gundem')}
           />
@@ -286,7 +288,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         <LazySection minHeight={320}>
           <DesktopCategoryGridSection
             categoryId="gundem"
-            title="Öne Çıkan"
+            title="Daha Fazla"
             items={layout.catRow2Filler}
             href={ROUTES.CATEGORY('gundem')}
           />

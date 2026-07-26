@@ -7,7 +7,7 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { LCP_IMAGE_QUALITY, LCP_IMAGE_SIZES } from '@/lib/lcpImage'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
-import type { NewsItem } from '@/types/newsItem'
+import { HOME_FEATURED_LIMIT, type NewsItem } from '@/types/newsItem'
 
 interface FeaturedSliderProps {
   items: NewsItem[]
@@ -25,7 +25,10 @@ function visibleSlideIndexes(current: number, length: number): number[] {
 }
 
 export function FeaturedSlider({ items }: FeaturedSliderProps) {
-  const slides = useMemo(() => items.slice(0, 8), [items])
+  const slides = useMemo(
+    () => items.filter((i) => i.featured === true).slice(0, HOME_FEATURED_LIMIT),
+    [items]
+  )
   const [current, setCurrent] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
   /** Delay neighbour slides so LCP only contends with slide 0. */
@@ -70,6 +73,10 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
 
   return (
     <section aria-label="Öne Çıkan Haberler" className="home-section">
+      <div className="home-rail-title mb-3 px-4 md:px-0">
+        <span className="home-rail-accent" aria-hidden />
+        <p className="text-lg font-black text-[rgb(var(--color-text))]">Öne Çıkan</p>
+      </div>
       <div className="home-full-bleed md:home-contained">
         <div
           className="relative aspect-[16/10] overflow-hidden rounded-none md:rounded-2xl"

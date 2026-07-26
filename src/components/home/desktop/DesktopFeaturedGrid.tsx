@@ -5,24 +5,25 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
 import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
-import type { NewsItem } from '@/types/newsItem'
+import { HOME_FEATURED_LIMIT, type NewsItem } from '@/types/newsItem'
 
 /**
- * Desktop “Öne Çıkan” — 5–6 haber bir arada görünür.
- * Tek büyük slider yerine grid: yüz/üst kırpma azaltılır (aspect + object-top).
+ * Desktop “Öne Çıkan” — CMS’de işaretli ilk 10 haber (kategori bağımsız).
+ * Lead + yan + alt satırlar; yüz/üst kırpma azaltılır (object-top).
  */
 export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
-  const slides = items.slice(0, 6)
+  const slides = items.slice(0, HOME_FEATURED_LIMIT)
   if (slides.length === 0) return null
 
   const [lead, ...rest] = slides
-  const side = rest.slice(0, 2)
-  const bottom = rest.slice(2, 5)
+  const side = rest.slice(0, 3)
+  const mid = rest.slice(3, 7)
+  const bottom = rest.slice(7, 10)
 
   return (
     <section aria-label="Öne Çıkan Haberler" className="space-y-4">
       <div className="grid grid-cols-12 items-stretch gap-4">
-        <article className="col-span-12 min-w-0 lg:col-span-8">
+        <article className="col-span-12 min-w-0 lg:col-span-7">
           <Link href={newsItemDetailHref(lead!)} className="group block h-full">
             <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[rgb(var(--color-border))]">
               <SafeNewsImage
@@ -52,7 +53,7 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
         </article>
 
         {side.length > 0 ? (
-          <div className="col-span-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1">
+          <div className="col-span-12 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-5 lg:grid-cols-1">
             {side.map((item) => (
               <FeaturedSideCard key={item.id} item={item} />
             ))}
@@ -60,8 +61,16 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
         ) : null}
       </div>
 
+      {mid.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {mid.map((item) => (
+            <FeaturedBottomCard key={item.id} item={item} />
+          ))}
+        </div>
+      ) : null}
+
       {bottom.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {bottom.map((item) => (
             <FeaturedBottomCard key={item.id} item={item} />
           ))}
@@ -78,7 +87,7 @@ function FeaturedSideCard({ item }: { item: NewsItem }) {
       href={newsItemDetailHref(item)}
       className="group flex h-full flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
     >
-      <div className="relative aspect-[16/9] overflow-hidden bg-[rgb(var(--color-border))]">
+      <div className="relative aspect-[16/9] overflow-hidden bg-[rgb(var(--color-border))] lg:aspect-[21/9]">
         <SafeNewsImage
           src={item.imageUrl || FEED_FALLBACK_LOGO}
           alt={item.title}

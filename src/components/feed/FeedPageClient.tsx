@@ -95,7 +95,7 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
 
   return (
     <>
-      <FeedScrollHeaderConfig homeFeedData={homeFeedData} />
+      <FeedScrollHeaderConfig homeFeedData={liveFeedData} />
 
       {/* Mobile/SSR tree — stay mounted; hide when desktop shell is ready. */}
       <div className={showDesktop ? 'hidden' : undefined} aria-hidden={showDesktop || undefined}>

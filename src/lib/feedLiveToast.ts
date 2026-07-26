@@ -25,11 +25,11 @@ export function notifyFeedUpdated(count: number) {
   })
 }
 
-/** Canlı poll — yük altında Firestore baskısını azaltmak için seyrek */
+/** Canlı poll — yeni haberleri hızlı yakala (Firestore yükü makul) */
 export const FEED_LIVE_POLL_MS =
-  typeof window !== 'undefined' && window.innerWidth < 768 ? 180_000 : 120_000
+  typeof window !== 'undefined' && window.innerWidth < 768 ? 45_000 : 30_000
 
-/** İlk poll’u LCP/hydrate + ilk etkileşim sonrasına ertele */
-export const FEED_LIVE_DEFER_MS = 45_000
+/** İlk poll — LCP sonrası kısa gecikme */
+export const FEED_LIVE_DEFER_MS = 8_000
 
 export const FEED_BREAKING_POLL_MS = 30_000

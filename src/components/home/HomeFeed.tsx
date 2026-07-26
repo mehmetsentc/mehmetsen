@@ -16,6 +16,7 @@ import { LazySection } from '@/components/home/LazySection'
 import { LazyCategoryRails } from '@/components/home/LazyCategoryRails'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import type { HomeFeedInitialData } from '@/types/newsItem'
+import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 
 interface HomeFeedProps {
   data: HomeFeedInitialData
@@ -26,6 +27,10 @@ export function HomeFeed({ data }: HomeFeedProps) {
 
   const breakingIds = useMemo(() => new Set(breaking.map((b) => b.id)), [breaking])
   const trendingIds = useMemo(() => new Set(trending.map((t) => t.id)), [trending])
+  const featuredItems = useMemo(
+    () => featured.filter((item) => item.featured === true).slice(0, HOME_FEATURED_LIMIT),
+    [featured]
+  )
 
   const dedupedLatest = useMemo(
     () =>
@@ -45,9 +50,8 @@ export function HomeFeed({ data }: HomeFeedProps) {
 
   return (
     <div className="home-feed mx-auto w-full max-w-3xl pb-6">
-      {/* Stories stay above the fold; featured is the main hero; ticker/trend after Akış */}
       <BreakingStories items={breaking} />
-      <FeaturedSlider items={featured} />
+      <FeaturedSlider items={featuredItems} />
       <MarketTicker />
 
       <section className="home-section" aria-label="Son haberler">
@@ -71,6 +75,7 @@ export function HomeFeed({ data }: HomeFeedProps) {
         <GamesRail />
       </LazySection>
 
+      {/* Kategori rayları — Öne Çıkan haberler burada da kendi kategorilerinde görünür */}
       <LazyCategoryRails initialRails={categoryRails} />
 
       <LazySection minHeight={280}>
