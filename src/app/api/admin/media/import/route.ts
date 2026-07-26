@@ -13,8 +13,8 @@ export const maxDuration = 60
  * Dış URL'den medya (görsel veya video) indirir, Firebase Storage'a yükler
  * ve public download URL döndürür.
  *
- * YouTube URL'leri bu endpoint'e gelmez — client tarafında embed URL'ye
- * dönüştürülür, storage'a yüklenmez.
+ * YouTube / HTML sayfa URL'leri → video scrap fallback.
+ * Doğrudan görsel/video dosyaları Storage'a yüklenir.
  */
 export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'news:edit')
@@ -46,6 +46,26 @@ export async function POST(request: Request) {
   const contentType = response.headers.get('content-type') ?? ''
   const isImage = contentType.startsWith('image/')
   const isVideo = contentType.startsWith('video/')
+  const isHtml = contentType.includes('text/html') || contentType.includes('application/xhtml')
+
+  // HTML sayfa → video scrap'e yönlendir (haber siteleri vb.)
+  if (isHtml || (!isImage && !isVideo && !urlPathLooksLikeMedia(url))) {
+    const { scrapeVideoFromUrl } = await import('@/lib/videoScrape')
+    const scraped = await scrapeVideoFromUrl(url)
+    if (scraped.ok) {
+      return NextResponse.json({
+        url: scraped.video.playUrl,
+        type: 'video',
+        provider: scraped.video.provider,
+        thumbnailUrl: scraped.video.thumbnailUrl,
+        title: scraped.video.title,
+        scraped: true,
+      })
+    }
+    if (isHtml) {
+      return NextResponse.json({ error: scraped.error }, { status: 422 })
+    }
+  }
 
   // URL'den uzantı tahmin et
   const urlPath = new URL(url).pathname
@@ -105,5 +125,14 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error('[media/import] Storage upload failed:', err)
     return NextResponse.json({ error: 'Storage yükleme başarısız' }, { status: 500 })
+  }
+}
+
+function urlPathLooksLikeMedia(url: string): boolean {
+  try {
+    const path = new URL(url).pathname.toLowerCase()
+    return /\.(jpe?g|png|gif|webp|svg|avif|mp4|webm|mov|m4v)$/.test(path)
+  } catch {
+    return false
   }
 }

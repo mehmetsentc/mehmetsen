@@ -57,7 +57,7 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
     filteredCities,
     locationState,
     handleSelectCity,
-    resetGeolocation,
+    startAutoLocation,
     chipsScrollRef,
     selectedChipRef,
   } = state
@@ -97,7 +97,7 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
 
           <button
             type="button"
-            onClick={resetGeolocation}
+            onClick={startAutoLocation}
             title="GPS ile tespit et"
             className={cn(
               'inline-flex shrink-0 items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-xs font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]',

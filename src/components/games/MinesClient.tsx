@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
-import { ArrowLeft, Flag, RotateCcw, Trophy } from 'lucide-react'
+import { Flag, RotateCcw, Trophy } from 'lucide-react'
 import {
   MINES_DIFFICULTIES,
   countFlags,
@@ -16,9 +15,10 @@ import {
   type MinesDifficulty,
 } from '@/lib/games/mines/engine'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { GameBoardFrame, GameShell } from '@/components/games/GameShell'
 import { useGameLevels } from '@/hooks/useGameLevels'
+import { useGameScores } from '@/hooks/useGameScores'
 import { difficultyKeyFromLevel } from '@/lib/games/progress'
-import { ROUTES } from '@/constants/routes'
 
 const NUM_COLORS = [
   '',
@@ -33,6 +33,7 @@ const NUM_COLORS = [
 ]
 
 export function MinesClient() {
+  const { submitScore } = useGameScores('mayin')
   const { level, unlocked, selectLevel, completeLevel } = useGameLevels('mayin')
   const difficulty = difficultyKeyFromLevel(level) as MinesDifficulty
   const config = MINES_DIFFICULTIES.find((d) => d.id === difficulty)!
@@ -62,7 +63,8 @@ export function MinesClient() {
     if (status !== 'won' || advancedRef.current) return
     advancedRef.current = true
     completeLevel()
-  }, [status, completeLevel])
+    void submitScore(seconds, { won: true })
+  }, [status, completeLevel, seconds, submitScore])
 
   useEffect(() => {
     if (status !== 'playing' || !started) return
@@ -104,30 +106,21 @@ export function MinesClient() {
   const remaining = config.mines - flags
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-6 pb-20">
-      <Link
-        href={ROUTES.GAMES}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
-
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Mayın Tarlası</h1>
-          <p className="text-sm text-[rgb(var(--color-muted))]">
-            Sol tık aç · sağ tık / bayrak modu işaretle
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm font-semibold tabular-nums">
-          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5">
+    <GameShell
+      gameSlug="mayin"
+      title="Mayın Tarlası"
+      subtitle="Sol tık aç · sağ tık / bayrak modu işaretle"
+      stats={
+        <>
+          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
             💣 {remaining}
           </span>
-          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5">{seconds}s</span>
-        </div>
-      </header>
-
+          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
+            {seconds}s
+          </span>
+        </>
+      }
+    >
       <GameLevelBar
         current={level}
         unlocked={unlocked}
@@ -139,21 +132,21 @@ export function MinesClient() {
         <button
           type="button"
           onClick={() => setFlagMode((f) => !f)}
-          className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold ${
+          className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold ${
             flagMode
               ? 'bg-amber-500 text-white'
               : 'border border-[rgb(var(--color-border))]'
           }`}
         >
-          <Flag className="h-3.5 w-3.5" />
+          <Flag className="h-4 w-4" />
           Bayrak
         </button>
         <button
           type="button"
           onClick={() => restart()}
-          className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-semibold"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[rgb(var(--color-border))] px-4 py-2 text-sm font-semibold"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
+          <RotateCcw className="h-4 w-4" />
           Yeni
         </button>
       </div>
@@ -170,41 +163,50 @@ export function MinesClient() {
         </div>
       )}
 
-      <div
-        className="mx-auto inline-grid gap-0.5 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-1"
-        style={{ gridTemplateColumns: `repeat(${config.cols}, minmax(0, 1fr))` }}
+      <GameBoardFrame
+        cols={config.cols}
+        rows={config.rows}
+        className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-1 sm:p-1.5"
       >
-        {board.map((row, r) =>
-          row.map((cell, c) => {
-            const show = cell.revealed
-            return (
-              <button
-                key={`${r}-${c}`}
-                type="button"
-                onClick={() => onCell(r, c)}
-                onContextMenu={(e) => onRightClick(e, r, c)}
-                className={`flex h-7 w-7 items-center justify-center text-xs font-black sm:h-8 sm:w-8 ${
-                  show
+        <div
+          className="grid h-full w-full gap-0.5 sm:gap-1"
+          style={{
+            gridTemplateColumns: `repeat(${config.cols}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${config.rows}, minmax(0, 1fr))`,
+          }}
+        >
+          {board.map((row, r) =>
+            row.map((cell, c) => {
+              const show = cell.revealed
+              return (
+                <button
+                  key={`${r}-${c}`}
+                  type="button"
+                  onClick={() => onCell(r, c)}
+                  onContextMenu={(e) => onRightClick(e, r, c)}
+                  className={`flex min-h-0 min-w-0 items-center justify-center rounded-sm text-[clamp(0.65rem,2.8vmin,1.25rem)] font-black sm:rounded-md ${
+                    show
+                      ? cell.mine
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-[rgb(var(--color-card))]'
+                      : 'bg-stone-400/40 hover:bg-stone-400/60 active:bg-stone-400/70'
+                  } ${show && cell.adjacent > 0 ? NUM_COLORS[cell.adjacent] : ''}`}
+                >
+                  {show
                     ? cell.mine
-                      ? 'bg-rose-600 text-white'
-                      : 'bg-[rgb(var(--color-card))]'
-                    : 'bg-stone-400/40 hover:bg-stone-400/60'
-                } ${show && cell.adjacent > 0 ? NUM_COLORS[cell.adjacent] : ''}`}
-              >
-                {show
-                  ? cell.mine
-                    ? '💣'
-                    : cell.adjacent > 0
-                      ? cell.adjacent
-                      : ''
-                  : cell.flagged
-                    ? '🚩'
-                    : ''}
-              </button>
-            )
-          })
-        )}
-      </div>
-    </div>
+                      ? '💣'
+                      : cell.adjacent > 0
+                        ? cell.adjacent
+                        : ''
+                    : cell.flagged
+                      ? '🚩'
+                      : ''}
+                </button>
+              )
+            })
+          )}
+        </div>
+      </GameBoardFrame>
+    </GameShell>
   )
 }

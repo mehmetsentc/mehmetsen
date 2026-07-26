@@ -8,8 +8,9 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { storageService } from '@/services/storageService'
-import { toYouTubeEmbed } from '@/components/admin/MediaLinkSection'
 import { auth } from '@/lib/firebase/auth'
+import { isDirectImageUrl, scrapeVideoUrl } from '@/lib/adminVideoScrapeClient'
+import { isEmbedPlayerUrl } from '@/lib/videoEmbed'
 
 export interface AdditionalImageItem {
   url: string
@@ -217,32 +218,21 @@ export function EditMediaSection({
     const url = linkInput.trim()
     if (!url) return
 
-    const ytEmbed = toYouTubeEmbed(url)
-    if (ytEmbed) {
-      onVideoUrlChange(ytEmbed)
-      setLinkInput('')
-      toast.success('YouTube videosu eklendi')
-      return
-    }
-
     setLinkLoading(true)
     try {
-      const token = await auth.currentUser?.getIdToken()
-      if (!token) { toast.error('Giriş gerekli'); return }
+      // Doğrudan görsel → Storage import
+      if (isDirectImageUrl(url)) {
+        const token = await auth.currentUser?.getIdToken()
+        if (!token) { toast.error('Giriş gerekli'); return }
 
-      const res = await fetch('/api/admin/media/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ url }),
-      })
-      const data = await res.json() as { url?: string; type?: string; error?: string }
-      if (!res.ok || !data.url) throw new Error(data.error ?? 'Medya yüklenemedi')
+        const res = await fetch('/api/admin/media/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ url }),
+        })
+        const data = await res.json() as { url?: string; type?: string; error?: string }
+        if (!res.ok || !data.url) throw new Error(data.error ?? 'Medya yüklenemedi')
 
-      if (data.type === 'video') {
-        onVideoUrlChange(data.url)
-        toast.success('Video eklendi')
-      } else {
-        // URL ile ekleme → ek görsel olarak işle (thumbnail yoksa ana görsel)
         if (!thumbnail) {
           onThumbnailChange(data.url)
           toast.success('Ana görsel eklendi')
@@ -253,8 +243,20 @@ export function EditMediaSection({
           toast.success('Ek görsel eklendi')
           void generateImageSeo(data.url, 'additional', nextAdditional)
         }
+        setLinkInput('')
+        return
+      }
+
+      // YouTube / sayfa / MP4 → video scrap
+      const scraped = await scrapeVideoUrl(url, { download: true })
+      onVideoUrlChange(scraped.playUrl)
+      if (scraped.thumbnailUrl && !thumbnail) {
+        onThumbnailChange(scraped.thumbnailUrl)
       }
       setLinkInput('')
+      toast.success(
+        scraped.source === 'page' ? 'Sayfadan video alındı' : 'Video eklendi'
+      )
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Medya yüklenemedi')
     } finally {
@@ -283,7 +285,7 @@ export function EditMediaSection({
     onAdditionalImagesChange(updated)
   }
 
-  const isYouTube = videoUrl.includes('youtube.com/embed')
+  const isYouTube = isEmbedPlayerUrl(videoUrl)
 
   return (
     <div className="space-y-4">
@@ -499,7 +501,7 @@ export function EditMediaSection({
             {isYouTube ? (
               <div className="aspect-video w-full">
                 <iframe
-                  src={`${videoUrl}?rel=0&modestbranding=1`}
+                  src={videoUrl.includes('?') ? `${videoUrl}&rel=0` : `${videoUrl}?rel=0&modestbranding=1`}
                   title="Video önizleme"
                   className="h-full w-full border-0"
                   allow="autoplay; encrypted-media; fullscreen"
@@ -544,9 +546,9 @@ export function EditMediaSection({
         <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-text))]">
             <Link2 className="h-3.5 w-3.5 text-[rgb(var(--color-muted))]" />
-            URL&apos;den ekle
+            URL&apos;den video scrap
             <span className="font-normal text-[rgb(var(--color-muted))]">
-              · görsel URL, video URL veya YouTube
+              · YouTube, haber sayfası veya video
             </span>
           </p>
           <div className="flex gap-2">
@@ -556,7 +558,7 @@ export function EditMediaSection({
               onChange={(e) => setLinkInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleLinkAdd() } }}
               disabled={linkLoading}
-              placeholder="https://youtube.com/watch?v=... veya görsel/video URL"
+              placeholder="YouTube, haber sayfası veya video URL yapıştır…"
               className="flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
             />
             <button
@@ -565,11 +567,11 @@ export function EditMediaSection({
               disabled={!linkInput.trim() || linkLoading}
               className="flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {linkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Ekle'}
+              {linkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Scrap'}
             </button>
           </div>
           <p className="mt-1.5 text-[10px] text-[rgb(var(--color-muted))]">
-            YouTube linki direkt oynatılır · Diğer linkler Firebase Storage&apos;a kopyalanır
+            YouTube / Vimeo embed · Sayfadan video çıkar · MP4 Storage&apos;a kopyalanır
           </p>
         </div>
       </div>

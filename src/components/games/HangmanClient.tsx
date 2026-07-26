@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react'
+import { RotateCcw, Trophy } from 'lucide-react'
 import {
   CATEGORY_LABEL,
   MAX_WRONG,
@@ -16,8 +15,9 @@ import {
 } from '@/lib/games/hangman/engine'
 import { TURKISH_LETTERS } from '@/lib/games/kelime/engine'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { GameShell } from '@/components/games/GameShell'
 import { useGameLevels } from '@/hooks/useGameLevels'
-import { ROUTES } from '@/constants/routes'
+import { useGameScores } from '@/hooks/useGameScores'
 
 const FIGURE = [
   '',
@@ -30,6 +30,7 @@ const FIGURE = [
 ]
 
 export function HangmanClient() {
+  const { submitScore } = useGameScores('adam-asmaca')
   const { level, unlocked, selectLevel, completeLevel } = useGameLevels('adam-asmaca')
   const [category, setCategory] = useState<HangmanCategory | 'hepsi'>('hepsi')
   const [puzzle, setPuzzle] = useState<HangmanPuzzle>(() => pickPuzzle('hepsi', 1))
@@ -62,7 +63,8 @@ export function HangmanClient() {
     if (!won || advancedRef.current) return
     advancedRef.current = true
     completeLevel()
-  }, [won, completeLevel])
+    void submitScore(1, { won: true })
+  }, [won, completeLevel, submitScore])
 
   const guess = (letter: string) => {
     if (won || lost || guessed.has(letter)) return
@@ -70,22 +72,11 @@ export function HangmanClient() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-6 pb-20">
-      <Link
-        href={ROUTES.GAMES}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
-
-      <header className="mb-5">
-        <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Adam Asmaca</h1>
-        <p className="text-sm text-[rgb(var(--color-muted))]">
-          Harf tahmin et · {livesLeft} can · seviye {level}/3
-        </p>
-      </header>
-
+    <GameShell
+      gameSlug="adam-asmaca"
+      title="Adam Asmaca"
+      subtitle={`Harf tahmin et · ${livesLeft} can · seviye ${level}/3`}
+    >
       <GameLevelBar
         current={level}
         unlocked={unlocked}
@@ -125,7 +116,7 @@ export function HangmanClient() {
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-orange-600">
           {CATEGORY_LABEL[puzzle.category]} · {puzzle.hint}
         </p>
-        <div className="flex flex-wrap justify-center gap-2 text-2xl font-black tracking-[0.35em] text-[rgb(var(--color-text))]">
+        <div className="flex flex-wrap justify-center gap-2 text-[clamp(1.25rem,4vw,1.75rem)] font-black tracking-[0.35em] text-[rgb(var(--color-text))]">
           {mask.map((ch, i) => (
             <span key={i} className="min-w-[1.25rem]">
               {ch}
@@ -147,7 +138,7 @@ export function HangmanClient() {
         </div>
       )}
 
-      <div className="flex flex-wrap justify-center gap-1.5">
+      <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
         {TURKISH_LETTERS.map((letter) => {
           const used = guessed.has(letter)
           const hit = puzzle.word.includes(letter)
@@ -157,7 +148,7 @@ export function HangmanClient() {
               type="button"
               disabled={used || won || lost}
               onClick={() => guess(letter)}
-              className={`min-w-[2rem] rounded-md px-2 py-2 text-sm font-bold disabled:opacity-40 ${
+              className={`min-w-[2rem] rounded-md px-2 py-2 text-sm font-bold sm:min-w-[2.5rem] sm:px-3 sm:py-2.5 sm:text-base disabled:opacity-40 ${
                 used
                   ? hit
                     ? 'bg-emerald-600 text-white'
@@ -170,6 +161,6 @@ export function HangmanClient() {
           )
         })}
       </div>
-    </div>
+    </GameShell>
   )
 }

@@ -284,5 +284,10 @@ service cloud.firestore {
           && resource.data.senderId == request.auth.uid;
       }
     }
+    match /gameScores/{scoreId} {
+      allow read: if true;
+      // Yazma yalnızca Admin SDK (API /api/games/scores)
+      allow write: if false;
+    }
   }
 }

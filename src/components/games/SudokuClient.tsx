@@ -1,9 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowLeft,
   Eraser,
   Lightbulb,
   Pause,
@@ -23,15 +21,17 @@ import {
   type SudokuPuzzle,
 } from '@/lib/games/sudoku/engine'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { GameBoardFrame, GameShell } from '@/components/games/GameShell'
 import { useGameLevels } from '@/hooks/useGameLevels'
+import { useGameScores } from '@/hooks/useGameScores'
 import { difficultyKeyFromLevel } from '@/lib/games/progress'
-import { ROUTES } from '@/constants/routes'
 
 function newGame(difficulty: SudokuDifficulty): SudokuPuzzle {
   return generatePuzzle(difficulty)
 }
 
 export function SudokuClient() {
+  const { submitScore } = useGameScores('sudoku')
   const { level, unlocked, selectLevel, completeLevel } = useGameLevels('sudoku')
   const difficulty = difficultyKeyFromLevel(level) as SudokuDifficulty
   const [pack, setPack] = useState<SudokuPuzzle | null>(null)
@@ -68,7 +68,8 @@ export function SudokuClient() {
     if (!won || advancedRef.current) return
     advancedRef.current = true
     completeLevel()
-  }, [won, completeLevel])
+    void submitScore(seconds, { won: true })
+  }, [won, completeLevel, seconds, submitScore])
 
   useEffect(() => {
     if (!pack || paused || won) return
@@ -206,7 +207,7 @@ export function SudokuClient() {
 
   if (!pack) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[rgb(var(--color-muted))]">
+      <div className="mx-auto flex min-h-[40vh] max-w-lg items-center justify-center px-4 py-16 text-center text-sm text-[rgb(var(--color-muted))]">
         Puzzle hazırlanıyor…
       </div>
     )
@@ -215,40 +216,27 @@ export function SudokuClient() {
   const selectedValue = selected !== null ? grid[selected] : 0
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-6 pb-20">
-      <Link
-        href={ROUTES.GAMES}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
-
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-[rgb(var(--color-text))]">
-            Sudoku
-          </h1>
-          <p className="text-sm text-[rgb(var(--color-muted))]">
-            Online oyna · 9×9 · ipucu ve not modu
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm font-semibold tabular-nums text-[rgb(var(--color-text))]">
-          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5">
+    <GameShell
+      gameSlug="sudoku"
+      title="Sudoku"
+      subtitle="Online oyna · 9×9 · ipucu ve not modu"
+      stats={
+        <>
+          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums text-[rgb(var(--color-text))]">
             {formatTime(seconds)}
           </span>
           <button
             type="button"
             onClick={() => setPaused((p) => !p)}
-            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 hover:bg-[rgb(var(--color-surface))]"
+            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm font-semibold hover:bg-[rgb(var(--color-surface))]"
             disabled={won}
           >
             {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
             {paused ? 'Devam' : 'Duraklat'}
           </button>
-        </div>
-      </header>
-
+        </>
+      }
+    >
       <GameLevelBar
         current={level}
         unlocked={unlocked}
@@ -281,15 +269,19 @@ export function SudokuClient() {
       )}
 
       {!paused && (
-        <div
-          className="mx-auto aspect-square w-full max-w-[min(100vw-2rem,420px)] overflow-hidden rounded-2xl border-2 border-teal-900/40 bg-teal-950 shadow-lg"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(9, 1fr)',
-            gridTemplateRows: 'repeat(9, 1fr)',
-            gap: 0,
-          }}
+        <GameBoardFrame
+          cols={9}
+          rows={9}
+          className="overflow-hidden rounded-2xl border-2 border-teal-900/40 bg-teal-950 shadow-lg"
         >
+          <div
+            className="grid h-full w-full"
+            style={{
+              gridTemplateColumns: 'repeat(9, 1fr)',
+              gridTemplateRows: 'repeat(9, 1fr)',
+              gap: 0,
+            }}
+          >
           {grid.map((value, i) => {
             const row = Math.floor(i / 9)
             const col = i % 9
@@ -305,7 +297,7 @@ export function SudokuClient() {
                 key={i}
                 type="button"
                 onClick={() => setSelected(i)}
-                className={`relative flex items-center justify-center text-lg font-bold sm:text-xl ${
+                className={`relative flex min-h-0 min-w-0 items-center justify-center text-[clamp(0.85rem,3.2vmin,1.5rem)] font-bold ${
                   isSelected
                     ? 'bg-teal-400/35'
                     : sameNum
@@ -330,7 +322,7 @@ export function SudokuClient() {
                     {value}
                   </span>
                 ) : notes[i].size > 0 ? (
-                  <span className="grid grid-cols-3 gap-0 p-0.5 text-[8px] leading-none text-teal-700/70 sm:text-[9px]">
+                  <span className="grid grid-cols-3 gap-0 p-0.5 text-[clamp(0.4rem,1.5vmin,0.65rem)] leading-none text-teal-700/70">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
                       <span key={n} className="text-center">
                         {notes[i].has(n) ? n : ''}
@@ -341,17 +333,18 @@ export function SudokuClient() {
               </button>
             )
           })}
-        </div>
+          </div>
+        </GameBoardFrame>
       )}
 
-      <div className="mt-5 grid grid-cols-5 gap-2">
+      <div className="mt-5 grid grid-cols-5 gap-2 sm:gap-3">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
           <button
             key={n}
             type="button"
             onClick={() => placeNumber(n)}
             disabled={paused || won}
-            className="rounded-xl bg-teal-600 py-3 text-lg font-black text-white shadow hover:bg-teal-700 disabled:opacity-40"
+            className="rounded-xl bg-teal-600 py-3 text-lg font-black text-white shadow hover:bg-teal-700 disabled:opacity-40 sm:py-4 sm:text-xl"
           >
             {n}
           </button>
@@ -360,7 +353,7 @@ export function SudokuClient() {
           type="button"
           onClick={erase}
           disabled={paused || won}
-          className="inline-flex items-center justify-center rounded-xl border border-[rgb(var(--color-border))] py-3 hover:bg-[rgb(var(--color-surface))] disabled:opacity-40"
+          className="inline-flex items-center justify-center rounded-xl border border-[rgb(var(--color-border))] py-3 hover:bg-[rgb(var(--color-surface))] disabled:opacity-40 sm:py-4"
           aria-label="Sil"
         >
           <Eraser className="h-5 w-5" />
@@ -393,6 +386,6 @@ export function SudokuClient() {
       <p className="mt-4 text-center text-xs text-[rgb(var(--color-muted))]">
         Klavye: 1–9 yaz · oklarla gez · sil için Backspace
       </p>
-    </div>
+    </GameShell>
   )
 }

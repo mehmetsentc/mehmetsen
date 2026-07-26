@@ -12,6 +12,7 @@ import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
 import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
 import { planMediaPlacement } from '@/lib/mediaPlacement'
+import { isEmbedPlayerUrl } from '@/lib/videoEmbed'
 import { SliderImage } from '@/components/widgets/SliderImage'
 import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
 import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
@@ -26,19 +27,19 @@ interface NewsArticleStaticProps {
   relatedPosts?: Post[]
 }
 
-/** YouTube veya MP4 hero player. Tek bir component'te toplandı. */
+/** YouTube veya embed / MP4 hero player. */
 function VideoHero({ item, title, posterFallback }: {
   item: MediaItem
   title: string
   posterFallback: string | null
 }) {
-  const isYouTube = /youtube[^/]*\/embed\//.test(item.url)
+  const isEmbed = isEmbedPlayerUrl(item.url)
   return (
     <figure className="relative bg-black">
       <div className="relative aspect-[16/9] w-full overflow-hidden">
-        {isYouTube ? (
+        {isEmbed ? (
           <iframe
-            src={`${item.url}?rel=0&modestbranding=1&playsinline=1`}
+            src={item.url.includes('?') ? `${item.url}&playsinline=1` : `${item.url}?rel=0&modestbranding=1&playsinline=1`}
             title={title}
             className="absolute inset-0 h-full w-full border-0"
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"

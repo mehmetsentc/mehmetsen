@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDown,
@@ -35,9 +34,10 @@ import {
   type TetrisState,
 } from '@/lib/games/tetris/engine'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { GameBoardFrame, GameShell } from '@/components/games/GameShell'
 import { useGameLevels } from '@/hooks/useGameLevels'
+import { useGameScores } from '@/hooks/useGameScores'
 import { difficultyKeyFromLevel } from '@/lib/games/progress'
-import { ROUTES } from '@/constants/routes'
 
 const PREVIEW: Record<PieceType, { x: number; y: number }[]> = {
   I: [
@@ -111,6 +111,7 @@ function PiecePreview({ type, label }: { type: PieceType | null; label: string }
 }
 
 export function TetrisClient() {
+  const { submitScore } = useGameScores('tetris')
   const { level, unlocked, selectLevel, completeLevel } = useGameLevels('tetris')
   const difficulty = difficultyKeyFromLevel(level) as TetrisDifficulty
   const [state, setState] = useState<TetrisState>(() => createInitialState())
@@ -120,6 +121,7 @@ export function TetrisClient() {
   const softRef = useRef(false)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
   const advancedRef = useRef(false)
+  const scoreSubmittedRef = useRef(false)
 
   const diff = useMemo(
     () => TETRIS_DIFFICULTIES.find((d) => d.id === difficulty)!,
@@ -154,6 +156,7 @@ export function TetrisClient() {
     setPaused(false)
     setRunning(true)
     advancedRef.current = false
+    scoreSubmittedRef.current = false
   }, [])
 
   useEffect(() => {
@@ -166,6 +169,17 @@ export function TetrisClient() {
     advancedRef.current = true
     completeLevel()
   }, [state.lines, linesTarget, completeLevel])
+
+  useEffect(() => {
+    if (scoreSubmittedRef.current) return
+    if (state.lines >= linesTarget) {
+      scoreSubmittedRef.current = true
+      void submitScore(state.score, { won: true })
+    } else if (state.gameOver) {
+      scoreSubmittedRef.current = true
+      void submitScore(state.score, { won: false })
+    }
+  }, [state.lines, state.score, state.gameOver, linesTarget, submitScore])
 
   useEffect(() => {
     if (!running || paused || state.gameOver) return
@@ -240,32 +254,26 @@ export function TetrisClient() {
       <div className="pointer-events-none absolute -left-20 top-20 h-64 w-64 rounded-full bg-cyan-500/20 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 bottom-32 h-72 w-72 rounded-full bg-fuchsia-500/20 blur-3xl" />
 
-      <div className="relative mx-auto max-w-lg px-4 py-6 pb-24">
-        <Link
-          href={ROUTES.GAMES}
-          className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-white/60 hover:text-white"
-        >
-          ← Tüm oyunlar
-        </Link>
-
-        <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight">
-              Neon{' '}
-              <span className="bg-gradient-to-r from-cyan-300 to-fuchsia-400 bg-clip-text text-transparent">
-                Tetris
-              </span>
-            </h1>
-            <p className="text-sm text-white/60">
-              Seviye {level}/3 · hedef {linesTarget} satır
-            </p>
-          </div>
+      <GameShell
+        gameSlug="tetris"
+        dark
+        className="relative min-h-0 pb-24"
+        title={
+          <>
+            Neon{' '}
+            <span className="bg-gradient-to-r from-cyan-300 to-fuchsia-400 bg-clip-text text-transparent">
+              Tetris
+            </span>
+          </>
+        }
+        subtitle={`Seviye ${level}/3 · hedef ${linesTarget} satır`}
+        stats={
           <span className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1.5 text-sm font-semibold">
             <Trophy className="h-3.5 w-3.5 text-amber-300" />
             {best}
           </span>
-        </header>
-
+        }
+      >
         <div className="mb-4">
           <GameLevelBar
             current={level}
@@ -288,9 +296,10 @@ export function TetrisClient() {
           </div>
         </div>
 
-        <div
-          className="relative mx-auto overflow-hidden rounded-2xl border border-white/15 bg-black/50 p-1.5 shadow-2xl shadow-fuchsia-500/10"
-          style={{ width: 'min(100%, 320px)' }}
+        <GameBoardFrame
+          cols={COLS}
+          rows={ROWS}
+          className="relative overflow-hidden rounded-2xl border border-white/15 bg-black/50 p-1.5 shadow-2xl shadow-fuchsia-500/10"
           onTouchStart={(e) => {
             const t = e.touches[0]
             touchStart.current = { x: t.clientX, y: t.clientY }
@@ -315,11 +324,10 @@ export function TetrisClient() {
           }}
         >
           <div
-            className="grid gap-px rounded-xl bg-slate-900/80 p-px"
+            className="grid h-full w-full gap-px rounded-xl bg-slate-900/80 p-px"
             style={{
-              gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-              gridTemplateRows: `repeat(${ROWS}, 1fr)`,
-              aspectRatio: `${COLS} / ${ROWS}`,
+              gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${ROWS}, minmax(0, 1fr))`,
             }}
           >
             {Array.from({ length: ROWS * COLS }, (_, i) => {
@@ -329,7 +337,7 @@ export function TetrisClient() {
               return (
                 <div
                   key={i}
-                  className="rounded-[2px]"
+                  className="min-h-0 min-w-0 rounded-[2px]"
                   style={{
                     background: color
                       ? isGhost
@@ -387,7 +395,7 @@ export function TetrisClient() {
               )}
             </div>
           )}
-        </div>
+        </GameBoardFrame>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <button
@@ -443,7 +451,7 @@ export function TetrisClient() {
           ← → hareket · ↑ / Z döndür · ↓ yumuşak · Space sert düşüş · C tut · P duraklat
         </p>
         <p className="mt-1 text-center text-[11px] text-white/35">{diff.description}</p>
-      </div>
+      </GameShell>
     </div>
   )
 }

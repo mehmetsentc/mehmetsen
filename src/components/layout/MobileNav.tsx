@@ -3,7 +3,7 @@
 import { memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Tv, Bookmark, Bell } from 'lucide-react'
+import { Home, Search, Tv, Bookmark, MapPin } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { ROUTES } from '@/constants/routes'
@@ -22,7 +22,9 @@ function isNavActive(pathname: string, item: MobileNavItem): boolean {
   }
   if (item.href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
   if (item.href === ROUTES.SAVED) return pathname.startsWith(ROUTES.SAVED)
-  if (item.href === ROUTES.NOTIFICATIONS) return pathname.startsWith(ROUTES.NOTIFICATIONS)
+  if (item.href === ROUTES.LOCAL) {
+    return pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)
+  }
   return pathname.startsWith(item.href)
 }
 
@@ -67,7 +69,7 @@ function MobileNavInner() {
       { icon: Search, label: 'Ara', href: ROUTES.SEARCH },
       { icon: Tv, label: 'Reels', href: ROUTES.REELS },
       { icon: Bookmark, label: 'Kayıtlı', href: ROUTES.SAVED },
-      { icon: Bell, label: 'Bildirim', href: ROUTES.NOTIFICATIONS },
+      { icon: MapPin, label: 'Yerel Haber', href: ROUTES.LOCAL },
     ],
     []
   )

@@ -61,6 +61,9 @@ export const Collections = {
 
   /** E-posta bülteni aboneleri — doc id: normalize edilmiş e-posta */
   NEWSLETTER_SUBSCRIBERS: 'newsletterSubscribers',
+
+  /** Oyun skorları / sıralama — doc id: `${gameSlug}__${userId}` */
+  GAME_SCORES: 'gameScores',
 } as const
 
 /** Primary collection for the TikTok-style video feed */

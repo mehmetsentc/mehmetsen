@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Bot, Dices, RotateCcw, Users } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Bot, Dices, RotateCcw, Users } from 'lucide-react'
 import { chooseAiMove, CPU_PLAYER_ID } from '@/lib/games/backgammon/ai'
 import {
   applyMove,
@@ -15,7 +14,8 @@ import {
   type Move,
   type MoveFrom,
 } from '@/lib/games/backgammon/engine'
-import { ROUTES } from '@/constants/routes'
+import { GameShell } from '@/components/games/GameShell'
+import { useGameScores } from '@/hooks/useGameScores'
 
 type Selection = MoveFrom | null
 type PlayMode = 'local' | 'cpu'
@@ -25,9 +25,11 @@ function pointLabel(index: number): string {
 }
 
 export function BackgammonClient() {
+  const { submitScore } = useGameScores('tavla')
   const [mode, setMode] = useState<PlayMode>('cpu')
   const [state, setState] = useState<BackgammonState>(() => createInitialState())
   const [selected, setSelected] = useState<Selection>(null)
+  const scoreSubmittedRef = useRef(false)
 
   const vsCpu = mode === 'cpu'
   const isHumanTurn = !vsCpu || state.turn === 1
@@ -51,6 +53,7 @@ export function BackgammonClient() {
   const reset = () => {
     setState(createInitialState())
     setSelected(null)
+    scoreSubmittedRef.current = false
   }
 
   const setPlayMode = (next: PlayMode) => {
@@ -74,6 +77,13 @@ export function BackgammonClient() {
 
     return () => window.clearTimeout(id)
   }, [state, vsCpu])
+
+  useEffect(() => {
+    if (!state.winner || scoreSubmittedRef.current) return
+    if (vsCpu && state.winner !== 1) return
+    scoreSubmittedRef.current = true
+    void submitScore(1, { won: true })
+  }, [state.winner, vsCpu, submitScore])
 
   const onRoll = () => {
     if (!isHumanTurn) return
@@ -130,22 +140,13 @@ export function BackgammonClient() {
   ))
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 pb-16">
-      <Link
-        href={ROUTES.GAMES}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
-
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Tavla</h1>
-          <p className="text-sm text-[rgb(var(--color-muted))]">
-            {vsCpu ? 'Bilgisayara karşı veya iki oyuncu · Beta' : 'Aynı cihazda iki oyuncu · Beta'}
-          </p>
-        </div>
+    <GameShell
+      gameSlug="tavla"
+      title="Tavla"
+      subtitle={
+        vsCpu ? 'Bilgisayara karşı veya iki oyuncu · Beta' : 'Aynı cihazda iki oyuncu · Beta'
+      }
+      stats={
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-[rgb(var(--color-border))] p-0.5">
             <button
@@ -170,16 +171,16 @@ export function BackgammonClient() {
             </button>
           </div>
           <button
-          type="button"
-          onClick={reset}
-          className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-sm font-medium hover:bg-[rgb(var(--color-surface))]"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Yeniden
-        </button>
+            type="button"
+            onClick={reset}
+            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-sm font-medium hover:bg-[rgb(var(--color-surface))]"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Yeniden
+          </button>
         </div>
-      </header>
-
+      }
+    >
       {state.winner ? (
         <div className="mb-4 rounded-xl bg-emerald-500/15 px-4 py-3 text-center font-semibold text-emerald-700">
           {playerLabel(state.winner, vsCpu)} kazandı!
@@ -207,8 +208,8 @@ export function BackgammonClient() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-amber-900/30 bg-gradient-to-b from-amber-800 to-amber-950 p-3 shadow-inner">
-        <div className="flex min-w-[640px] gap-1">
+      <div className="w-full overflow-x-auto rounded-2xl border border-amber-900/30 bg-gradient-to-b from-amber-800 to-amber-950 p-2 shadow-inner sm:p-3">
+        <div className="flex w-full min-w-0 gap-0.5 sm:gap-1">
           {/* Üst yarı — p2 yönü */}
           <div className="grid flex-1 grid-cols-12 gap-0.5">
             {Array.from({ length: 12 }, (_, i) => 12 + i).map((idx) => (
@@ -262,7 +263,7 @@ export function BackgammonClient() {
           <span>Dışarı P2: {state.off.p2}</span>
         </div>
 
-        <div className="flex min-w-[640px] gap-1">
+        <div className="flex w-full min-w-0 gap-0.5 sm:gap-1">
           <div className="grid flex-1 grid-cols-12 gap-0.5">
             {Array.from({ length: 12 }, (_, i) => i).map((idx) => (
               <BoardPoint
@@ -275,7 +276,7 @@ export function BackgammonClient() {
               />
             ))}
           </div>
-          <div className="w-10" />
+          <div className="w-8 shrink-0 sm:w-10" />
           <div className="grid flex-1 grid-cols-12 gap-0.5">
             {Array.from({ length: 12 }, (_, i) => 23 - i).map((idx) => (
               <BoardPoint
@@ -294,7 +295,7 @@ export function BackgammonClient() {
       <p className="mt-4 text-center text-xs text-[rgb(var(--color-muted))]">
         Nokta {pointLabel(0)}–{pointLabel(23)} · Klasik tavla kuralları (MVP)
       </p>
-    </div>
+    </GameShell>
   )
 }
 
@@ -311,7 +312,7 @@ function BarColumn({
     <button
       type="button"
       onClick={onBarClick}
-      className={`flex w-10 flex-col items-center justify-center gap-1 rounded border border-amber-950/50 bg-amber-900/40 text-[10px] text-amber-100 ${
+      className={`flex w-8 shrink-0 flex-col items-center justify-center gap-1 rounded border border-amber-950/50 bg-amber-900/40 text-[10px] text-amber-100 sm:w-10 ${
         selected ? 'ring-2 ring-white' : ''
       }`}
     >
@@ -347,7 +348,7 @@ function BoardPoint({
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex h-24 flex-col items-center border border-amber-950/20 ${
+      className={`relative flex min-h-[4.5rem] flex-1 flex-col items-center border border-amber-950/20 sm:min-h-[6rem] ${
         flip ? 'justify-start' : 'justify-end'
       } ${
         index % 2 === 0 ? 'bg-amber-700/40' : 'bg-amber-800/50'
@@ -356,7 +357,7 @@ function BoardPoint({
       <span className="absolute left-0.5 top-0.5 text-[8px] text-amber-200/60">{index + 1}</span>
       <div className={`flex flex-col gap-0.5 p-1 ${flip ? 'flex-col-reverse' : ''}`}>
         {Array.from({ length: Math.min(count, 5) }, (_, i) => (
-          <span key={i} className="text-lg leading-none">
+          <span key={i} className="text-[clamp(0.75rem,2.5vw,1.125rem)] leading-none">
             {isP1 ? '⬜' : '⬛'}
           </span>
         ))}

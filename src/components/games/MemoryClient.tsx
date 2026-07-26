@@ -1,12 +1,12 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react'
+import { RotateCcw, Trophy } from 'lucide-react'
 import { createDeck, type MemoryCard } from '@/lib/games/memory/engine'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { GameBoardFrame, GameShell } from '@/components/games/GameShell'
 import { useGameLevels } from '@/hooks/useGameLevels'
-import { ROUTES } from '@/constants/routes'
+import { useGameScores } from '@/hooks/useGameScores'
 import type { GameLevelId } from '@/lib/games/progress'
 
 function formatTime(seconds: number): string {
@@ -22,6 +22,7 @@ function pairsForLevel(level: GameLevelId): number {
 }
 
 export function MemoryClient() {
+  const { submitScore } = useGameScores('hafiza')
   const { level, unlocked, selectLevel, completeLevel } = useGameLevels('hafiza')
   const pairCount = pairsForLevel(level)
   const [cards, setCards] = useState<MemoryCard[]>(() => createDeck(4))
@@ -60,7 +61,8 @@ export function MemoryClient() {
     if (!won || advancedRef.current) return
     advancedRef.current = true
     completeLevel()
-  }, [won, completeLevel])
+    void submitScore(seconds, { won: true })
+  }, [won, completeLevel, seconds, submitScore])
 
   const flip = (index: number) => {
     if (lock || won) return
@@ -91,28 +93,19 @@ export function MemoryClient() {
     }
   }
 
-  return (
-    <div className="mx-auto max-w-md px-4 py-6 pb-20">
-      <Link
-        href={ROUTES.GAMES}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
+  const gridRows = Math.ceil(cards.length / 4)
 
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Hafıza</h1>
-          <p className="text-sm text-[rgb(var(--color-muted))]">
-            Eşleşen kartları bul · {pairCount} çift
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm font-semibold tabular-nums">
-          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5">
+  return (
+    <GameShell
+      gameSlug="hafiza"
+      title="Hafıza"
+      subtitle={`Eşleşen kartları bul · ${pairCount} çift`}
+      stats={
+        <>
+          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
             {formatTime(seconds)}
           </span>
-          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5">
+          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
             {moves} hamle
           </span>
           <button
@@ -123,9 +116,9 @@ export function MemoryClient() {
             <RotateCcw className="h-3.5 w-3.5" />
             Yeni
           </button>
-        </div>
-      </header>
-
+        </>
+      }
+    >
       <GameLevelBar
         current={level}
         unlocked={unlocked}
@@ -141,27 +134,35 @@ export function MemoryClient() {
         </div>
       )}
 
-      <div className={`grid gap-2 ${pairCount <= 4 ? 'grid-cols-4' : 'grid-cols-4'}`}>
-        {cards.map((card, index) => {
-          const open = card.matched || flipped.includes(index)
-          return (
-            <button
-              key={`${card.id}-${index}`}
-              type="button"
-              onClick={() => flip(index)}
-              disabled={open || lock || won}
-              className={`aspect-square rounded-xl border text-3xl transition ${
-                open
-                  ? 'border-sky-500/40 bg-sky-500/10'
-                  : 'border-[rgb(var(--color-border))] bg-gradient-to-br from-sky-600 to-indigo-800 text-white'
-              }`}
-              aria-label={open ? card.emoji : 'Kapalı kart'}
-            >
-              {open ? card.emoji : '?'}
-            </button>
-          )
-        })}
-      </div>
-    </div>
+      <GameBoardFrame cols={4} rows={gridRows}>
+        <div
+          className="grid h-full w-full gap-2"
+          style={{
+            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            gridTemplateRows: `repeat(${gridRows}, minmax(0, 1fr))`,
+          }}
+        >
+          {cards.map((card, index) => {
+            const open = card.matched || flipped.includes(index)
+            return (
+              <button
+                key={`${card.id}-${index}`}
+                type="button"
+                onClick={() => flip(index)}
+                disabled={open || lock || won}
+                className={`flex min-h-0 min-w-0 items-center justify-center rounded-xl border text-[clamp(1.25rem,6vmin,2.25rem)] transition ${
+                  open
+                    ? 'border-sky-500/40 bg-sky-500/10'
+                    : 'border-[rgb(var(--color-border))] bg-gradient-to-br from-sky-600 to-indigo-800 text-white'
+                }`}
+                aria-label={open ? card.emoji : 'Kapalı kart'}
+              >
+                {open ? card.emoji : '?'}
+              </button>
+            )
+          })}
+        </div>
+      </GameBoardFrame>
+    </GameShell>
   )
 }

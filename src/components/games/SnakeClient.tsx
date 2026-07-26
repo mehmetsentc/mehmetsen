@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Pause, Play, RotateCcw, Trophy } from 'lucide-react'
+import { Pause, Play, RotateCcw, Trophy } from 'lucide-react'
 import {
   GRID_COLS,
   GRID_ROWS,
@@ -12,9 +11,10 @@ import {
   type SnakeDifficulty,
 } from '@/lib/games/snake/config'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { GameBoardFrame, GameShell } from '@/components/games/GameShell'
 import { useGameLevels } from '@/hooks/useGameLevels'
+import { useGameScores } from '@/hooks/useGameScores'
 import { difficultyKeyFromLevel } from '@/lib/games/progress'
-import { ROUTES } from '@/constants/routes'
 
 type Point = { x: number; y: number }
 
@@ -45,6 +45,7 @@ const START_SNAKE: Point[] = [
 ]
 
 export function SnakeClient() {
+  const { submitScore } = useGameScores('yilan')
   const { level, unlocked, selectLevel, completeLevel } = useGameLevels('yilan')
   const difficulty = difficultyKeyFromLevel(level) as SnakeDifficulty
   const [snake, setSnake] = useState<Point[]>(START_SNAKE)
@@ -60,6 +61,8 @@ export function SnakeClient() {
   const dirRef = useRef(direction)
   const pendingRef = useRef(pendingDir)
   const foodRef = useRef(food)
+  const advancedRef = useRef(false)
+  const scoreSubmittedRef = useRef(false)
   dirRef.current = direction
   pendingRef.current = pendingDir
   foodRef.current = food
@@ -87,6 +90,7 @@ export function SnakeClient() {
     setGameOver(false)
     setPaused(false)
     setRunning(true)
+    scoreSubmittedRef.current = false
   }, [])
 
   const queueDirection = useCallback((next: Direction) => {
@@ -213,7 +217,6 @@ export function SnakeClient() {
   }, [difficulty])
 
   const scoreTarget = level === 1 ? 50 : level === 2 ? 100 : 150
-  const advancedRef = useRef(false)
   useEffect(() => {
     if (score < scoreTarget || advancedRef.current) return
     advancedRef.current = true
@@ -221,48 +224,42 @@ export function SnakeClient() {
   }, [score, scoreTarget, completeLevel])
 
   useEffect(() => {
+    if (scoreSubmittedRef.current) return
+    if (score >= scoreTarget) {
+      scoreSubmittedRef.current = true
+      void submitScore(score, { won: true })
+    } else if (gameOver) {
+      scoreSubmittedRef.current = true
+      void submitScore(score, { won: false })
+    }
+  }, [score, scoreTarget, gameOver, submitScore])
+
+  useEffect(() => {
     advancedRef.current = false
+    scoreSubmittedRef.current = false
   }, [level])
 
   const cellKey = (x: number, y: number) => `${x}-${y}`
   const snakeSet = useMemo(() => new Set(snake.map((p) => cellKey(p.x, p.y))), [snake])
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-6 pb-16">
-      <Link
-        href={ROUTES.GAMES}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
-
-      <header className="mb-4">
-        <h1 className="bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-3xl font-black text-transparent">
+    <GameShell
+      gameSlug="yilan"
+      title={
+        <span className="bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
           Neon Yılan
-        </h1>
-        <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-          Seviye {level}/3 · hedef skor {scoreTarget} · ok tuşları veya kaydır
-        </p>
-      </header>
-
-      <GameLevelBar
-        current={level}
-        unlocked={unlocked}
-        onSelect={selectLevel}
-        hint={`Hedef: ${scoreTarget} puan`}
-      />
-
-      <div className="mb-3 flex items-center justify-between rounded-xl bg-[rgb(var(--color-surface))] px-4 py-3">
-        <div>
-          <p className="text-xs text-[rgb(var(--color-muted))]">Skor</p>
-          <p className="text-2xl font-black tabular-nums text-[rgb(var(--color-text))]">{score}</p>
-        </div>
-        <div className="flex items-center gap-1 text-[rgb(var(--color-muted))]">
-          <Trophy className="h-4 w-4 text-amber-500" />
-          <span className="text-sm font-semibold tabular-nums">{best}</span>
-        </div>
-        <div className="flex gap-2">
+        </span>
+      }
+      subtitle={`Seviye ${level}/3 · hedef skor ${scoreTarget} · ok tuşları veya kaydır`}
+      stats={
+        <>
+          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
+            Skor {score}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
+            <Trophy className="h-4 w-4 text-amber-500" />
+            {best}
+          </span>
           {!gameOver && running && (
             <button
               type="button"
@@ -281,19 +278,28 @@ export function SnakeClient() {
           >
             <RotateCcw className="h-4 w-4" />
           </button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <GameLevelBar
+        current={level}
+        unlocked={unlocked}
+        onSelect={selectLevel}
+        hint={`Hedef: ${scoreTarget} puan`}
+      />
 
-      <div
+      <GameBoardFrame
+        cols={GRID_COLS}
+        rows={GRID_ROWS}
         className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 p-2 shadow-[0_0_40px_rgba(139,92,246,0.25)]"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
         <div
-          className="grid gap-[2px] rounded-xl bg-black/40 p-1"
+          className="grid h-full w-full gap-[2px] rounded-xl bg-black/40 p-1"
           style={{
             gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
-            aspectRatio: `${GRID_COLS} / ${GRID_ROWS}`,
+            gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
           }}
         >
           {Array.from({ length: GRID_ROWS * GRID_COLS }, (_, i) => {
@@ -306,7 +312,7 @@ export function SnakeClient() {
             return (
               <div
                 key={key}
-                className={`aspect-square rounded-[2px] ${
+                className={`min-h-0 min-w-0 rounded-[2px] ${
                   isHead
                     ? 'bg-gradient-to-br from-cyan-300 to-violet-400 shadow-[0_0_8px_rgba(34,211,238,0.9)]'
                     : isBody
@@ -354,11 +360,11 @@ export function SnakeClient() {
             </button>
           </div>
         )}
-      </div>
+      </GameBoardFrame>
 
       <p className="mt-3 text-center text-xs text-[rgb(var(--color-muted))]">
         WASD / ok tuşları · Mobilde kaydır · Her yem +10 puan
       </p>
-    </div>
+    </GameShell>
   )
 }

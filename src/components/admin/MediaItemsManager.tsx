@@ -17,6 +17,8 @@ import toast from 'react-hot-toast'
 import { auth } from '@/lib/firebase/auth'
 import { storageService } from '@/services/storageService'
 import { postService } from '@/services/postService'
+import { isDirectImageUrl, scrapeVideoUrl } from '@/lib/adminVideoScrapeClient'
+import { parseYouTubeVideoId } from '@/lib/postUtils'
 import type { MediaItem } from '@/types/post'
 
 /**
@@ -28,7 +30,7 @@ import type { MediaItem } from '@/types/post'
  *
  * Davranış:
  *   - Birden fazla görsel eklenebilir (gallery)
- *   - Tek video desteklenir (YouTube embed veya MP4)
+ *   - Tek video desteklenir (YouTube embed, Vimeo, sayfa scrape veya MP4)
  *   - Her item için caption + alt + credit girilebilir
  *   - ↑/↓ ile manuel sıra, çöp kutusu ile silme
  *   - "AI ile Sırala" → /api/admin/news/ai-image-placement
@@ -36,36 +38,12 @@ import type { MediaItem } from '@/types/post'
  * Item çıkışı stabil sıralıdır; render tarafı sıraya göre yerleştirir.
  */
 
-// ── URL detection ───────────────────────────────────────────────────────
-function parseYouTubeId(url: string): string | null {
-  try {
-    const u = new URL(url)
-    if (u.hostname.includes('youtube.com') && u.searchParams.get('v')) return u.searchParams.get('v')
-    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0] || null
-    const m = u.pathname.match(/\/(shorts|embed|v)\/([a-zA-Z0-9_-]{11})/)
-    if (m) return m[2]
-  } catch { /* ignore */ }
-  return null
-}
-
-function toYouTubeEmbed(url: string): string | null {
-  const id = parseYouTubeId(url)
-  return id ? `https://www.youtube.com/embed/${id}` : null
-}
-
-function isYouTubeUrl(url: string): boolean {
-  try {
-    const u = new URL(url)
-    return u.hostname.includes('youtube.com') || u.hostname === 'youtu.be'
-  } catch { return false }
-}
-
-function guessMediaType(url: string): 'image' | 'video' | 'youtube' | 'unknown' {
-  if (isYouTubeUrl(url)) return 'youtube'
+function guessMediaType(url: string): 'image' | 'video' | 'page' {
+  if (isDirectImageUrl(url)) return 'image'
   const lower = url.toLowerCase().split('?')[0]
-  if (/\.(jpe?g|png|gif|webp|svg|avif)$/.test(lower)) return 'image'
   if (/\.(mp4|webm|mov|m4v)$/.test(lower)) return 'video'
-  return 'unknown'
+  if (parseYouTubeVideoId(url)) return 'video'
+  return 'page'
 }
 
 // ── Props ───────────────────────────────────────────────────────────────
@@ -193,37 +171,46 @@ export function MediaItemsManager({
       if (!url) return null
       const kind = guessMediaType(url)
 
-      if (kind === 'youtube') {
-        const embedUrl = toYouTubeEmbed(url)
-        if (!embedUrl) {
-          toast.error(`Geçerli bir YouTube linki değil: ${url.slice(0, 40)}`)
+      // Görsel → mevcut import endpoint
+      if (kind === 'image') {
+        if (!token) {
+          toast.error('Giriş gerekli')
           return null
         }
-        return { type: 'video', url: embedUrl, thumbnailUrl: null, caption: null, alt: null, credit: null }
+        const res = await fetch('/api/admin/media/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ url }),
+        })
+        const data = (await res.json()) as { url?: string; type?: string; error?: string }
+        if (!res.ok || !data.url) {
+          toast.error(data.error ?? `Yüklenemedi: ${url.slice(0, 40)}`)
+          return null
+        }
+        return {
+          type: 'image',
+          url: data.url,
+          thumbnailUrl: data.url,
+          caption: null,
+          alt: null,
+          credit: null,
+        }
       }
 
-      if (!token) {
-        toast.error('Giriş gerekli')
+      // YouTube, Vimeo, haber sayfası, MP4… → video scrap
+      try {
+        const scraped = await scrapeVideoUrl(url, { download: true })
+        return {
+          type: 'video',
+          url: scraped.playUrl,
+          thumbnailUrl: scraped.thumbnailUrl,
+          caption: scraped.title,
+          alt: null,
+          credit: scraped.provider !== 'unknown' ? scraped.provider : null,
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : `Video alınamadı: ${url.slice(0, 40)}`)
         return null
-      }
-      const res = await fetch('/api/admin/media/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ url }),
-      })
-      const data = (await res.json()) as { url?: string; type?: string; error?: string }
-      if (!res.ok || !data.url) {
-        toast.error(data.error ?? `Yüklenemedi: ${url.slice(0, 40)}`)
-        return null
-      }
-      const storedType = data.type === 'video' ? 'video' : 'image'
-      return {
-        type: storedType,
-        url: data.url,
-        thumbnailUrl: storedType === 'image' ? data.url : null,
-        caption: null,
-        alt: null,
-        credit: null,
       }
     },
     []
@@ -496,8 +483,8 @@ export function MediaItemsManager({
         <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3">
           <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-[rgb(var(--color-text))]">
             <Link2 className="h-3.5 w-3.5" />
-            URL/YouTube ile ekle
-            <span className="font-normal text-[rgb(var(--color-muted))]">· tek veya çoklu</span>
+            URL / video scrap
+            <span className="font-normal text-[rgb(var(--color-muted))]">· YouTube, sayfa veya MP4</span>
           </label>
           <div className="flex flex-col gap-2">
             <textarea
@@ -511,7 +498,7 @@ export function MediaItemsManager({
                 }
               }}
               disabled={linkLoading}
-              placeholder={'https://...\nhttps://...\nveya virgülle ayırarak'}
+              placeholder={'YouTube / haber sayfası / video URL\n(çoklu satır desteklenir)'}
               rows={3}
               className="w-full resize-y rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))]"
             />
@@ -524,15 +511,15 @@ export function MediaItemsManager({
               {linkLoading ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Yükleniyor…
+                  Scrap ediliyor…
                 </>
               ) : (
-                'Hepsini Ekle'
+                'Scrap / Ekle'
               )}
             </button>
           </div>
           <p className="mt-1.5 text-[10px] text-[rgb(var(--color-muted))]">
-            Her satıra bir URL, veya virgül/boşlukla ayır · YouTube embed gömülür · Diğer linkler Storage'a kopyalanır
+            YouTube / Vimeo embed · Haber sayfasından video scrap · MP4 Storage&apos;a kopyalanır
           </p>
         </div>
       </div>

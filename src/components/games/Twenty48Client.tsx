@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, type TouchEvent } from 'react'
-import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react'
+import { RotateCcw, Trophy } from 'lucide-react'
 import {
   canMove,
   maxTile,
@@ -13,8 +12,9 @@ import {
   type Grid,
 } from '@/lib/games/twenty48/engine'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { GameBoardFrame, GameShell } from '@/components/games/GameShell'
 import { useGameLevels } from '@/hooks/useGameLevels'
-import { ROUTES } from '@/constants/routes'
+import { useGameScores } from '@/hooks/useGameScores'
 
 const TILE_CLASS: Record<number, string> = {
   0: 'bg-[rgb(var(--color-surface))]',
@@ -37,6 +37,7 @@ function tileClass(v: number): string {
 }
 
 export function Twenty48Client() {
+  const { submitScore } = useGameScores('2048')
   const { level, unlocked, selectLevel, completeLevel } = useGameLevels('2048')
   const targetTile = level === 1 ? 256 : level === 2 ? 512 : 2048
   const [grid, setGrid] = useState<Grid>(() => newGame())
@@ -46,6 +47,7 @@ export function Twenty48Client() {
   const [over, setOver] = useState(false)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
   const advancedRef = useRef(false)
+  const scoreSubmittedRef = useRef(false)
 
   useEffect(() => {
     try {
@@ -62,6 +64,7 @@ export function Twenty48Client() {
     setWon(false)
     setOver(false)
     advancedRef.current = false
+    scoreSubmittedRef.current = false
   }, [])
 
   useEffect(() => {
@@ -73,6 +76,17 @@ export function Twenty48Client() {
     advancedRef.current = true
     completeLevel()
   }, [won, completeLevel])
+
+  useEffect(() => {
+    if (scoreSubmittedRef.current) return
+    if (won) {
+      scoreSubmittedRef.current = true
+      void submitScore(score, { won: true })
+    } else if (over) {
+      scoreSubmittedRef.current = true
+      void submitScore(score, { won: false })
+    }
+  }, [won, over, score, submitScore])
 
   const applyMove = useCallback(
     (dir: Dir) => {
@@ -133,27 +147,16 @@ export function Twenty48Client() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-6 pb-20">
-      <Link
-        href={ROUTES.GAMES}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
-
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">2048</h1>
-          <p className="text-sm text-[rgb(var(--color-muted))]">
-            Seviye {level}/3 · hedef {targetTile} · kaydır
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm font-semibold tabular-nums">
-          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5">
+    <GameShell
+      gameSlug="2048"
+      title="2048"
+      subtitle={`Seviye ${level}/3 · hedef ${targetTile} · kaydır`}
+      stats={
+        <>
+          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
             Skor {score}
           </span>
-          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5">
+          <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
             En iyi {best}
           </span>
           <button
@@ -164,9 +167,9 @@ export function Twenty48Client() {
             <RotateCcw className="h-3.5 w-3.5" />
             Yeni
           </button>
-        </div>
-      </header>
-
+        </>
+      }
+    >
       <GameLevelBar
         current={level}
         unlocked={unlocked}
@@ -187,22 +190,32 @@ export function Twenty48Client() {
         </div>
       )}
 
-      <div
-        className="grid grid-cols-4 gap-2 rounded-2xl bg-stone-400/30 p-2 touch-none"
+      <GameBoardFrame
+        cols={4}
+        rows={4}
+        className="touch-none rounded-2xl bg-stone-400/30 p-2"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        {grid.map((row, r) =>
-          row.map((v, c) => (
-            <div
-              key={`${r}-${c}`}
-              className={`flex aspect-square items-center justify-center rounded-lg text-xl font-black sm:text-2xl ${tileClass(v)}`}
-            >
-              {v || ''}
-            </div>
-          ))
-        )}
-      </div>
+        <div
+          className="grid h-full w-full gap-2"
+          style={{
+            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            gridTemplateRows: 'repeat(4, minmax(0, 1fr))',
+          }}
+        >
+          {grid.map((row, r) =>
+            row.map((v, c) => (
+              <div
+                key={`${r}-${c}`}
+                className={`flex min-h-0 min-w-0 items-center justify-center rounded-lg font-black text-[clamp(0.85rem,4.5vmin,1.75rem)] ${tileClass(v)}`}
+              >
+                {v || ''}
+              </div>
+            ))
+          )}
+        </div>
+      </GameBoardFrame>
 
       <div className="mt-4 grid grid-cols-3 gap-2 sm:hidden">
         <div />
@@ -236,6 +249,6 @@ export function Twenty48Client() {
           →
         </button>
       </div>
-    </div>
+    </GameShell>
   )
 }

@@ -64,5 +64,5 @@ export default async function GamePlayPage({ params }: Props) {
   const client = gameClient(slug)
   if (!client) notFound()
 
-  return <GameAuthGate>{client}</GameAuthGate>
+  return <GameAuthGate gameSlug={slug}>{client}</GameAuthGate>
 }

@@ -72,7 +72,14 @@ function resolvePersistedLocalCitySlug(pathname: string): string | null {
   if (fromLocalNews) return fromLocalNews
 
   const stored = readStoredUserLocation()
-  if (stored?.source === 'manual' && stored.citySlug) return stored.citySlug
+  if (
+    stored?.citySlug &&
+    (stored.source === 'manual' ||
+      stored.source === 'geolocation' ||
+      stored.source === 'profile')
+  ) {
+    return stored.citySlug
+  }
 
   return null
 }
@@ -83,6 +90,18 @@ function hasUserPickedCity(pathname: string): boolean {
   ] as boolean | undefined
   if (fromPage) return true
   return Boolean(readLocalNewsCitySlug())
+}
+
+/** Kullanıcı yerel konumunu bilinçli seçti mi? (IP/fallback sayılmaz) */
+function hasExplicitLocationChoice(): boolean {
+  if (readLocalNewsCitySlug()) return true
+  const stored = readStoredUserLocation()
+  if (!stored?.citySlug) return false
+  return (
+    stored.source === 'manual' ||
+    stored.source === 'geolocation' ||
+    stored.source === 'profile'
+  )
 }
 
 export function useLocalNewsPage() {
@@ -225,34 +244,41 @@ export function useLocalNewsPage() {
 
   const { sentinelRef } = useInfiniteScroll({ onLoadMore: loadMore, hasMore, loading: loadingMore })
 
-  const requestGeolocation = useCallback(async () => {
-    if (requestedRef.current || userPickedRef.current) return
-    requestedRef.current = true
-    geoAbortRef.current = false
-    setLocationState('requesting')
-    try {
-      const pos = await getCurrentPosition()
-      if (geoAbortRef.current || userPickedRef.current) return
-      const { latitude: lat, longitude: lng } = pos.coords
-      const slug = nearestProvinceSlug(lat, lng)
-      const name = getCityCategoryName(slug)
-      const province = TURKISH_PROVINCES.find((p) => p.slug === slug)!
-      setCity(provinceToCity(province))
-      setLocationState('granted')
-      writeStoredUserLocation({
-        citySlug: slug,
-        cityName: name,
-        lat,
-        lng,
-        source: 'geolocation',
-        updatedAt: Date.now(),
-      })
-    } catch {
-      if (geoAbortRef.current || userPickedRef.current) return
-      setLocationState('denied')
-      void fetchFirst('__all__')
-    }
-  }, [fetchFirst])
+  const requestGeolocation = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (!opts?.force && (requestedRef.current || userPickedRef.current)) return
+      requestedRef.current = true
+      geoAbortRef.current = false
+      setLocationState('requesting')
+      try {
+        const pos = await getCurrentPosition()
+        if (geoAbortRef.current) return
+        const { latitude: lat, longitude: lng } = pos.coords
+        const slug = nearestProvinceSlug(lat, lng)
+        const name = getCityCategoryName(slug)
+        const province = TURKISH_PROVINCES.find((p) => p.slug === slug)!
+        setCity(provinceToCity(province))
+        setLocationState('granted')
+        userPickedRef.current = true
+        setUserPickedCity(true)
+        setStoredCitySlug(slug)
+        writeLocalNewsCitySlug(slug)
+        writeStoredUserLocation({
+          citySlug: slug,
+          cityName: name,
+          lat,
+          lng,
+          source: 'geolocation',
+          updatedAt: Date.now(),
+        })
+      } catch {
+        if (geoAbortRef.current) return
+        requestedRef.current = false
+        setLocationState('denied')
+      }
+    },
+    [setStoredCitySlug, setUserPickedCity]
+  )
 
   useEffect(() => {
     userPickedRef.current = userPickedCity
@@ -271,35 +297,36 @@ export function useLocalNewsPage() {
         setLocationState('stored')
         requestedRef.current = true
       }
-      if (!userPickedCity && (readLocalNewsCitySlug() || storedCitySlug)) {
+      if (!userPickedCity && (readLocalNewsCitySlug() || storedCitySlug || hasExplicitLocationChoice())) {
         setUserPickedCity(true)
       }
       return
     }
 
-    if (userPickedRef.current || userPickedCity) return
-
-    if (city) {
+    // Bilinçli seçim yoksa GPS/IP otomatik çalıştırma — kullanıcıya seçenek sunulur.
+    if (userPickedRef.current || userPickedCity || city) {
       requestedRef.current = true
       return
     }
 
-    if (userLocation.ready && userLocation.source !== 'fallback' && userLocation.citySlug) {
+    if (
+      userLocation.ready &&
+      (userLocation.source === 'geolocation' ||
+        userLocation.source === 'manual' ||
+        userLocation.source === 'profile') &&
+      userLocation.citySlug
+    ) {
       const province = TURKISH_PROVINCES.find((p) => p.slug === userLocation.citySlug)
       if (province) {
         applyCity(province, userLocation.source === 'geolocation' ? 'granted' : 'stored')
-        return
+        setUserPickedCity(true)
+        writeLocalNewsCitySlug(province.slug)
       }
-    }
-
-    if (!requestedRef.current) {
-      void requestGeolocation()
     }
   }, [
     applyCity,
     city,
     pathname,
-    requestGeolocation,
     storedCitySlug,
     userLocation.citySlug,
     userLocation.ready,
@@ -396,6 +423,14 @@ export function useLocalNewsPage() {
     if (city) void fetchFirst(city.slug)
   }, [city, fetchFirst])
 
+  const startAutoLocation = useCallback(() => {
+    userPickedRef.current = false
+    geoAbortRef.current = false
+    requestedRef.current = false
+    void requestGeolocation({ force: true })
+  }, [requestGeolocation])
+
+  /** Konumu sıfırla ve tekrar seçim iste (mobil sheet / desktop chip). */
   const resetGeolocation = useCallback(() => {
     userPickedRef.current = false
     setUserPickedCity(false)
@@ -403,8 +438,15 @@ export function useLocalNewsPage() {
     clearLocalNewsCitySlug()
     requestedRef.current = false
     setCity(null)
-    void requestGeolocation()
-  }, [requestGeolocation, setStoredCitySlug, setUserPickedCity])
+    setLocationState('idle')
+  }, [setStoredCitySlug, setUserPickedCity])
+
+  const needsLocationSetup =
+    !city &&
+    locationState !== 'requesting' &&
+    locationState !== 'granted' &&
+    !userPickedCity &&
+    !hasExplicitLocationChoice()
 
   return {
     locationState,
@@ -425,5 +467,8 @@ export function useLocalNewsPage() {
     handleSelectCity,
     retryFetch,
     resetGeolocation,
+    needsLocationSetup,
+    startAutoLocation,
+    requestingGps: locationState === 'requesting',
   }
 }

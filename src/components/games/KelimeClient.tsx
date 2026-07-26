@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react'
+import { RotateCcw, Trophy } from 'lucide-react'
 import {
   MAX_GUESSES,
   TURKISH_LETTERS,
@@ -15,8 +14,9 @@ import {
   type LetterState,
 } from '@/lib/games/kelime/engine'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { GameShell } from '@/components/games/GameShell'
 import { useGameLevels } from '@/hooks/useGameLevels'
-import { ROUTES } from '@/constants/routes'
+import { useGameScores } from '@/hooks/useGameScores'
 
 const STATE_CLASS: Record<LetterState, string> = {
   empty: 'border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
@@ -28,6 +28,7 @@ const STATE_CLASS: Record<LetterState, string> = {
 type Row = { guess: string; states: LetterState[] | null }
 
 export function KelimeClient() {
+  const { submitScore } = useGameScores('kelime')
   const { level, unlocked, selectLevel, completeLevel } = useGameLevels('kelime')
   const maxGuesses = level === 1 ? 8 : level === 2 ? 6 : 5
   const [answer, setAnswer] = useState('')
@@ -61,7 +62,8 @@ export function KelimeClient() {
     if (status !== 'won' || advancedRef.current) return
     advancedRef.current = true
     completeLevel()
-  }, [status, completeLevel])
+    void submitScore(1, { won: true })
+  }, [status, completeLevel, submitScore])
 
   const keyStates = useMemo(() => {
     const map: Partial<Record<string, LetterState>> = {}
@@ -153,22 +155,11 @@ export function KelimeClient() {
   }, [onKey])
 
   return (
-    <div className="mx-auto max-w-md px-4 py-6 pb-20">
-      <Link
-        href={ROUTES.GAMES}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
-
-      <header className="mb-5">
-        <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Kelime Günü</h1>
-        <p className="text-sm text-[rgb(var(--color-muted))]">
-          5 harfli Türkçe · seviye {level}/3 · {maxGuesses} deneme
-        </p>
-      </header>
-
+    <GameShell
+      gameSlug="kelime"
+      title="Kelime Günü"
+      subtitle={`5 harfli Türkçe · seviye ${level}/3 · ${maxGuesses} deneme`}
+    >
       <GameLevelBar
         current={level}
         unlocked={unlocked}
@@ -224,21 +215,21 @@ export function KelimeClient() {
         <p className="mb-3 text-center text-sm font-medium text-amber-600">{message}</p>
       )}
 
-      <div className="mb-6 grid gap-1.5">
+      <div className="mx-auto mb-6 w-full max-w-[min(100%,28rem)] grid gap-1.5 sm:gap-2 sm:max-w-[min(100%,32rem)]">
         {rows.map((row, ri) => {
           const letters =
             ri === rowIndex && status === 'playing'
               ? current.padEnd(WORD_LENGTH).slice(0, WORD_LENGTH).split('')
               : (row.guess || '').padEnd(WORD_LENGTH).slice(0, WORD_LENGTH).split('')
           return (
-            <div key={ri} className="grid grid-cols-5 gap-1.5">
+            <div key={ri} className="grid grid-cols-5 gap-1.5 sm:gap-2">
               {letters.map((ch, ci) => {
                 const state = row.states?.[ci] ?? 'empty'
                 const display = ch === ' ' ? '' : ch
                 return (
                   <div
                     key={ci}
-                    className={`flex aspect-square items-center justify-center rounded-md border-2 text-lg font-black uppercase ${STATE_CLASS[state]}`}
+                    className={`flex min-h-0 aspect-square items-center justify-center rounded-md border-2 text-[clamp(1rem,4.5vmin,1.35rem)] font-black uppercase ${STATE_CLASS[state]}`}
                   >
                     {display}
                   </div>
@@ -249,18 +240,18 @@ export function KelimeClient() {
         })}
       </div>
 
-      <div className="space-y-1.5">
+      <div className="mx-auto w-full max-w-[min(100%,36rem)] space-y-1.5 sm:space-y-2 lg:max-w-[min(100%,42rem)]">
         {[
           TURKISH_LETTERS.slice(0, 10),
           TURKISH_LETTERS.slice(10, 20),
           TURKISH_LETTERS.slice(20),
         ].map((row, i) => (
-          <div key={i} className="flex flex-wrap justify-center gap-1">
+          <div key={i} className="flex flex-wrap justify-center gap-1 sm:gap-1.5">
             {i === 2 && (
               <button
                 type="button"
                 onClick={() => onKey('ENTER')}
-                className="rounded-md bg-[rgb(var(--color-text))] px-2 py-2 text-[10px] font-bold text-[rgb(var(--color-bg))]"
+                className="rounded-md bg-[rgb(var(--color-text))] px-2 py-2 text-[10px] font-bold text-[rgb(var(--color-bg))] sm:px-3 sm:py-2.5 sm:text-xs"
               >
                 GİR
               </button>
@@ -272,7 +263,7 @@ export function KelimeClient() {
                   key={letter}
                   type="button"
                   onClick={() => onKey(letter)}
-                  className={`min-w-[1.7rem] rounded-md px-1.5 py-2 text-xs font-bold ${STATE_CLASS[st]}`}
+                  className={`min-w-[1.7rem] rounded-md px-1.5 py-2 text-xs font-bold sm:min-w-[2.25rem] sm:px-2 sm:py-2.5 sm:text-sm ${STATE_CLASS[st]}`}
                 >
                   {letter}
                 </button>
@@ -282,7 +273,7 @@ export function KelimeClient() {
               <button
                 type="button"
                 onClick={() => onKey('BACK')}
-                className="rounded-md bg-[rgb(var(--color-surface))] px-2 py-2 text-[10px] font-bold"
+                className="rounded-md bg-[rgb(var(--color-surface))] px-2 py-2 text-[10px] font-bold sm:px-3 sm:py-2.5 sm:text-xs"
               >
                 ⌫
               </button>
@@ -290,6 +281,6 @@ export function KelimeClient() {
           </div>
         ))}
       </div>
-    </div>
+    </GameShell>
   )
 }
