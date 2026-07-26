@@ -10,6 +10,10 @@ import {
   textToArticleBlocks,
   type ArticleBlock,
 } from '@/lib/articleBlocks'
+import {
+  shortHeadingFromCaption,
+  textLooksIncomplete,
+} from '@/lib/ai/textCompleteness'
 
 export interface BodyBlocksFromAiInput {
   title: string
@@ -192,24 +196,8 @@ function dedupeBlocks(blocks: ArticleBlock[], refs: string[]): ArticleBlock[] {
 }
 
 /**
- * Derive a short H2/H3 under an in-body image from caption or article title.
- */
-function headingFromImageContext(
-  caption: string | undefined,
-  title: string,
-  fallback: string
-): string {
-  const raw = (caption || title || fallback).trim()
-  if (!raw) return fallback
-  const cleaned = raw
-    .replace(/^(fotoğraf|görsel|image)\s*[:\-–—]?\s*/i, '')
-    .slice(0, 90)
-    .trim()
-  return cleaned || fallback
-}
-
-/**
  * Convert AI rewrite output into rich body blocks for AdminNewsEditor / public renderer.
+ * Image captions stay on the image block — never auto-copied into H2/H3 (mid-slice bug).
  */
 export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBlock[] {
   const externalLeadAndCover = input.externalLeadAndCover !== false
@@ -228,7 +216,7 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
   if (coverUrl && !externalLeadAndCover) {
     const caption =
       input.imageCaption?.trim() ||
-      headingFromImageContext(undefined, input.title, 'Haber görseli')
+      shortHeadingFromCaption(undefined, input.title, 'Haber görseli')
     blocks.push({
       id: newId('img', i++),
       type: 'image',
@@ -236,15 +224,20 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
       alt: caption,
       caption,
     })
-    const underHeading =
-      input.imageSectionHeading?.trim() ||
-      headingFromImageContext(input.imageCaption, input.title, 'Görselden')
-    blocks.push({
-      id: newId('img-h', i++),
-      type: 'heading',
-      level: 2,
-      text: underHeading,
-    })
+    // Only an explicit short section heading — never truncate caption into H2
+    const underHeading = input.imageSectionHeading?.trim()
+    if (
+      underHeading &&
+      !textLooksIncomplete(underHeading, { allowShortHeading: true }) &&
+      !textsSimilar(underHeading, caption)
+    ) {
+      blocks.push({
+        id: newId('img-h', i++),
+        type: 'heading',
+        level: 2,
+        text: underHeading.split(/\s+/).slice(0, 6).join(' '),
+      })
+    }
   }
 
   let content = normalizeAiMarkdown((input.content || '').trim())
@@ -281,7 +274,7 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
     const caption =
       image.caption?.trim() ||
       image.alt?.trim() ||
-      headingFromImageContext(undefined, input.title, `Ek görsel ${idx + 1}`)
+      shortHeadingFromCaption(undefined, input.title, `Ek görsel ${idx + 1}`)
     const requested = image.insertAfterParagraph
     const paragraphNumber =
       typeof requested === 'number' && Number.isFinite(requested)
@@ -299,18 +292,32 @@ export function buildBodyBlocksFromAi(input: BodyBlocksFromAiInput): ArticleBloc
       caption,
       ...(image.credit?.trim() ? { credit: image.credit.trim() } : {}),
     }
-    const headingBlock: ArticleBlock = {
-      id: newId('ximg-h', i++),
-      type: 'heading',
-      level: 3,
-      text: headingFromImageContext(caption, input.title, `Görsel ${idx + 2}`),
-    }
-    return { insertAt, blocks: [imageBlock, headingBlock] }
+    // Caption already shows under the image — do not invent a truncated H3 from it
+    return { insertAt, blocks: [imageBlock] }
   })
   insertions
     .sort((a, b) => b.insertAt - a.insertAt)
     .forEach((entry) => blocks.splice(entry.insertAt, 0, ...entry.blocks))
 
   const cleaned = dedupeBlocks(blocks, dedupeRefs)
-  return sanitizeArticleBlocks(cleaned)
+  return sanitizeArticleBlocks(stripIncompleteOrCaptionHeadings(cleaned))
+}
+
+/** Drop H2/H3 that look truncated or merely echo a nearby image caption. */
+function stripIncompleteOrCaptionHeadings(blocks: ArticleBlock[]): ArticleBlock[] {
+  const captions = blocks
+    .filter((b): b is ArticleBlock & { type: 'image'; caption?: string } => b.type === 'image')
+    .map((b) => (b.caption || '').trim())
+    .filter(Boolean)
+
+  return blocks.filter((block) => {
+    if (block.type !== 'heading') return true
+    const text = block.text?.trim() || ''
+    if (!text) return false
+    if (textLooksIncomplete(text, { allowShortHeading: true })) return false
+    if (captions.some((c) => textsSimilar(text, c) || c.startsWith(text) || text.startsWith(c.slice(0, Math.min(40, c.length))))) {
+      return false
+    }
+    return true
+  })
 }

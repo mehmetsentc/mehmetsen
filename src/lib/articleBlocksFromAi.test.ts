@@ -104,7 +104,53 @@ describe('buildBodyBlocksFromAi', () => {
 
     const imageIdx = blocks.findIndex((b) => b.type === 'image')
     expect(imageIdx).toBeGreaterThanOrEqual(0)
-    expect(blocks[imageIdx + 1]).toMatchObject({ type: 'heading', level: 2 })
+    // Caption stays on the image — no auto H2 from caption
+    expect(blocks[imageIdx + 1]?.type).not.toBe('heading')
+  })
+
+  it('uses explicit imageSectionHeading under cover when provided', () => {
+    const blocks = buildBodyBlocksFromAi({
+      title: 'Deprem sonrası yardım çalışması',
+      content:
+        'İlk paragraf yeterince uzun olmalı ki bloğa dönüşsün ve haberin bağlamı anlaşılsın burada.\n\n' +
+        'İkinci paragraf da uzun tutulmalı çünkü bölüm başlıkları buna göre üretilir ve okunur.',
+      imageUrl: 'https://cdn.example.com/cover.jpg',
+      imageCaption:
+        "Güney Kore'deki bir sağlık merkezinde akıllı cihazlar ve dijital ekranlar eşliğinde gerçekleştirilen check-up süreci.",
+      imageSectionHeading: 'Sağlık turizmi',
+      externalLeadAndCover: false,
+    })
+    const imageIdx = blocks.findIndex((b) => b.type === 'image')
+    expect(blocks[imageIdx + 1]).toMatchObject({ type: 'heading', level: 2, text: 'Sağlık turizmi' })
+    expect(
+      blocks.every(
+        (b) => !(b.type === 'heading' && b.text.includes('akıllı cihazlar'))
+      )
+    ).toBe(true)
+  })
+
+  it('does not invent H3 from long image captions (no mid-word slice)', () => {
+    const longCaption =
+      "Güney Kore'deki bir sağlık merkezinde görevli personel, check-up programına katılan yabancı hastaları bilgilendiriyor."
+    const blocks = buildBodyBlocksFromAi({
+      title: 'Ana haber',
+      content: 'Tek paragraf yeterince uzun bir gövde metni olarak burada yer alır ve okunur.',
+      imageUrl: 'https://cdn.example.com/a.jpg',
+      additionalImages: [{ url: 'https://cdn.example.com/b.jpg', caption: longCaption }],
+    })
+    const images = blocks.filter((b) => b.type === 'image')
+    expect(images).toHaveLength(1)
+    expect(images[0]?.url).toContain('b.jpg')
+    expect(images[0]).toMatchObject({ caption: longCaption })
+    const secondImgIdx = blocks.findIndex(
+      (b) => b.type === 'image' && b.url.includes('b.jpg')
+    )
+    expect(blocks[secondImgIdx + 1]?.type).not.toBe('heading')
+    expect(
+      blocks.every(
+        (b) => !(b.type === 'heading' && (b.text.includes('yabancı') || b.text.includes('gerçek')))
+      )
+    ).toBe(true)
   })
 
   it('does not invent H2/H3 from plain paragraph first words', () => {
@@ -152,22 +198,6 @@ describe('buildBodyBlocksFromAi', () => {
         (b) => !(b.type === 'heading' && b.text.includes('Araştırmanın'))
       )
     ).toBe(true)
-  })
-
-  it('adds H3 under additional in-body images', () => {
-    const blocks = buildBodyBlocksFromAi({
-      title: 'Ana haber',
-      content: 'Tek paragraf yeterince uzun bir gövde metni olarak burada yer alır ve okunur.',
-      imageUrl: 'https://cdn.example.com/a.jpg',
-      additionalImages: [{ url: 'https://cdn.example.com/b.jpg', caption: 'İkinci kare' }],
-    })
-    const images = blocks.filter((b) => b.type === 'image')
-    expect(images).toHaveLength(1)
-    expect(images[0]?.url).toContain('b.jpg')
-    const secondImgIdx = blocks.findIndex(
-      (b) => b.type === 'image' && b.url.includes('b.jpg')
-    )
-    expect(blocks[secondImgIdx + 1]).toMatchObject({ type: 'heading', level: 3 })
   })
 
   it('dedupes spot-like paragraphs and demotes sentence-like fake headings', () => {

@@ -6,6 +6,7 @@ import { generateImageAnalysis, type ImageAnalysis } from '@/lib/ai/imageSeo'
 import { researchLiveNews } from '@/lib/ai/liveResearch'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import { contentHasIncompleteSegments } from '@/lib/ai/textCompleteness'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,15 +31,16 @@ JSON formatında yanıt ver: {"title":"...","content":"...","summary":"...","spo
 spot: 5W+1H (Kim,Ne,Nerede,Ne Zaman,Neden,Nasıl) yanıtlayan 2-4 cümlelik haber girizgahı; spot yalnızca bu alanda, content içinde TEKRAR etme.
 content kuralları:
 - ## H2 ve ### H3 kullan; # H1 KULLANMA
-- Her başlık kendi satırında olsun, en fazla 6 kelime; manşet cümlesi veya spot metnini başlık yapma
+- Her başlık kendi satırında olsun, en fazla 6 kelime; manşet cümlesi, spot veya görsel caption'ını başlık yapma
 - Başlıktan sonra boş satır bırak, sonra tam paragraf
 - Başlık ile paragrafı aynı satıra veya bitişik yapıştırma
 - content içinde kapak görseli veya spot/giriş paragrafı tekrarı yazma; gövde doğrudan ilk ## bölümüyle başlasın
-- Paragrafları yarım bırakma; cümleleri tamamla`,
+- MUTLAK TAMLIK: Her cümle/paragraf/başlık eksiksiz bitsin. Kelime ortasında kesme. "ve/ile/için/olan" ile bitirme. "..." ile başlayan yarım paragraf yasak. Token sınırında yeni bölüm açma; son cümleyi nokta ile tamamla.`,
 
   rewrite: `Sen deneyimli bir Türk gazete editörüsün. Verilen haberi yeniden yaz, daha akıcı ve profesyonel yap.
 JSON: {"title":"...","content":"...","summary":"...","spot":"..."}
-content kuralları: ## / ### başlıklar kendi satırında (max 6 kelime), ardından boş satır + tam paragraf; # H1 yok; spot ve giriş paragrafını content'e kopyalama; metinleri kesme.`,
+content kuralları: ## / ### başlıklar kendi satırında (max 6 kelime), ardından boş satır + tam paragraf; # H1 yok; spot ve giriş paragrafını content'e kopyalama; görsel caption'ını H2/H3 yapma.
+MUTLAK: Yarım cümle, kesilmiş kelime veya bağlaçla biten paragraf bırakma; her birimi noktalama ile tamamla.`,
 
   'publish-ready': `Sen NaHaber'in deneyimli genel yayın yönetmenisin. Kullanıcının verdiği ham metni yayıma hazır, kapsamlı ve bilgilendirici bir Türkçe habere dönüştür.
 Kurallar:
@@ -57,7 +59,8 @@ Kurallar:
   * Görsel açıklaması (caption/alt), kişi-yer adı listesi veya uzun cümle başlık OLAMAZ
   * Başlıktan sonra bir boş satır, sonra tam ve eksiksiz paragraf
   * "### BaşlıkParagraf" gibi bitişik yazım YASAK
-  * ZORUNLU: Her cümle ve paragraf tam ve eksiksiz bitsin; yarım cümle veya kesilmiş kelime bırakma
+  * ZORUNLU TAMLIK: Her cümle nokta/ünlem/soru ile bitsin. Kelime ortasında kesme ("gerçek", "yabanc") yasak. "ve/ile/için/olan" ile bitirme. "..." ile başlayan paragraf yasak.
+  * Token sınırına yaklaşırsan yeni H2 açma; son cümleyi tamamlayıp bitir.
   * Aynı paragrafı veya spot cümlesini content içinde iki kez yazma
   * İlk satır doğrudan ## ile başlayan ilk bölüm olsun (giriş/spot paragrafı content'te olmasın)
 - Ham metindeki spesifik iddiaları (alıntı, sayı, tarih) olduğu gibi koru; genel bağlam ve arka plan bilgisini zenginleştirerek ekle.
@@ -304,6 +307,10 @@ export async function POST(request: Request) {
       const seoKeywords = Array.isArray(parsed.seoKeywords)
         ? parsed.seoKeywords.map(String).map((word) => word.trim().toLowerCase()).filter(Boolean).slice(0, 15)
         : []
+      const textComplete =
+        !contentHasIncompleteSegments(content) &&
+        !contentHasIncompleteSegments(title) &&
+        !contentHasIncompleteSegments(spot)
       const checks = [
         title.length >= 20,
         spot.length >= 80,
@@ -315,10 +322,13 @@ export async function POST(request: Request) {
         String(parsed.seoTitle ?? '').trim().length >= 40,
         String(parsed.seoDescription ?? '').trim().length >= 120,
         (research?.sources.length ?? 0) >= 2,
+        textComplete,
       ]
-      const qualityScore = Math.round((checks.filter(Boolean).length / checks.length) * 100)
+      let qualityScore = Math.round((checks.filter(Boolean).length / checks.length) * 100)
+      // Yarım cümle / kesik başlık varsa puanı sert düşür (screenshot'taki %90 yanılgısını önle)
+      if (!textComplete) qualityScore = Math.min(qualityScore, 45)
       const gateDecision =
-        qualityScore >= 78 && (research?.sources.length ?? 0) >= 2
+        qualityScore >= 78 && textComplete && (research?.sources.length ?? 0) >= 2
           ? 'publish'
           : 'review'
       return NextResponse.json({

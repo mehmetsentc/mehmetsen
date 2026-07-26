@@ -217,6 +217,8 @@ MUTLAK KURALLAR — ASLA İHLAL ETME:
 - title, summary, content birbirinden FARKLI olmalı
 - Paragraflar arasında \\n\\n kullan
 - content/description gövdesini TÜM kategoriler ve alt kategorilerde ## H2 / ### H3 markdown bölümleriyle yaz (sayfa başlığı H1 olduğu için # H1 KULLANMA)
+- H2/H3 en fazla 6 kelime; görsel caption/alt metnini başlık yapma
+- MUTLAK TAMLIK: Her cümle, paragraf ve başlık eksiksiz bitsin. Kelime ortasında kesme. "ve/ile/için/olan" ile bitirme. "..." ile başlayan yarım paragraf yasak. Token sınırında yeni bölüm açma; son cümleyi nokta ile tamamla. Yarım metin varsa qualityScore ≤ 40 ver.
 - Google News ve Google Discover uyumlu yaz
 
 KATEGORİ KURALLARI — KAYNAK ADI DEĞİL, İÇERİK BELİRLER:
@@ -373,7 +375,7 @@ export async function deepseekEditArticle(input: GeminiEditInput): Promise<Gemin
       { role: 'system', content: EDITOR_SYSTEM_PROMPT },
       { role: 'user', content: prompt },
     ],
-    { temperature: 0.3, max_tokens: 3000 }
+    { temperature: 0.3, max_tokens: 6000 }
   )
   return parseEditorJson(raw, DEEPSEEK_MODEL)
 }
@@ -402,6 +404,7 @@ const QA_SYSTEM_PROMPT = `Sen NaHaber'in Genel Yayın Yönetmeni'sin. DeepSeek e
 - Haberin şehri belirsizse şehir bilgisi EKLEME — belirsiz bırak veya REJECTED ver
 - Habere yorum, kanaat, değerlendirme veya duygu yüklü ifade ekleme ("maalesef", "şaşırtıcı" vb. yasak)
 - Dramatik, propagandistik veya partizan dil kullanma
+- Yarım cümle, kesilmiş kelime, bağlaçla biten paragraf veya görsel caption'ının H2/H3 olarak kopyası → needs_revision
 
 ## KATEGORİ KURALLARI
 
