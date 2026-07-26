@@ -252,7 +252,10 @@ export async function runPipelineForItem(item: AiQueueItem): Promise<PipelineRes
       confidenceScore: chiefResult.overallScore,
 
       breakingNews: geminiResult.breakingNews,
-      featured: geminiResult.featured,
+      // Never auto-pin homepage Öne Çıkan — editor toggle (+ featuredAt) only
+      featured: false,
+      isEditorPick: false,
+      aiSuggestedFeatured: geminiResult.featured === true,
       isBreaking: geminiResult.isBreaking,
       aiGenerated: true,
       draftStatus: 'pending_review',

@@ -258,10 +258,24 @@ function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
   return pool.filter(isBreakingPoolItem).slice(0, limit)
 }
 
+/** CMS pin time first, then publish time — newly toggled “Öne Çıkan” rises above older flags. */
+function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
+  const aPin = Date.parse(a.featuredAt ?? '') || 0
+  const bPin = Date.parse(b.featuredAt ?? '') || 0
+  if (aPin !== bPin) return bPin - aPin
+  const aPub = Date.parse(a.publishedAt ?? a.createdAt ?? '') || 0
+  const bPub = Date.parse(b.publishedAt ?? b.createdAt ?? '') || 0
+  return bPub - aPub
+}
+
 function bucketFeatured(pool: NewsItem[], limit: number, pinned: NewsItem[] = []): NewsItem[] {
-  // CMS’de işaretlenen featured’lar (ayrı sorgu) önce — pool dışı eski haberler de gelsin
-  const featuredPinned = pinned.filter((p) => p.featured === true && !isBreakingPoolItem(p))
-  const featuredPool = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
+  // CMS “Öne Çıkan” — son dakika da olsa featured kalır (önceki filtre Bryan’ı öne düşürüyordu)
+  const featuredPinned = pinned
+    .filter((p) => p.featured === true)
+    .sort(compareFeaturedPriority)
+  const featuredPool = pool
+    .filter((p) => p.featured === true)
+    .sort(compareFeaturedPriority)
   const gundem = pool.filter(
     (p) => p.category === 'gundem' && p.featured !== true && !isBreakingPoolItem(p)
   )
@@ -280,15 +294,18 @@ function bucketFeatured(pool: NewsItem[], limit: number, pinned: NewsItem[] = []
 
 async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
   const db = getAdminFirestore()
+  // Fetch a wider window then re-rank by featuredAt (CMS toggle) so older
+  // publish dates don't bury newly pinned Öne Çıkan items.
+  const scan = Math.max(limit * 4, 24)
   try {
     const snap = await db
       .collection(NEWS_COLLECTION)
       .where('status', '==', 'published')
       .where('featured', '==', true)
       .orderBy('publishedAt', 'desc')
-      .limit(limit)
+      .limit(scan)
       .get()
-    return mapAdminDocs(snap.docs)
+    return mapAdminDocs(snap.docs).sort(compareFeaturedPriority).slice(0, limit)
   } catch (error) {
     console.warn('[newsService.server] featured query failed, trying isEditorPick:', error)
     try {
@@ -297,9 +314,9 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
         .where('status', '==', 'published')
         .where('isEditorPick', '==', true)
         .orderBy('publishedAt', 'desc')
-        .limit(limit)
+        .limit(scan)
         .get()
-      return mapAdminDocs(snap.docs)
+      return mapAdminDocs(snap.docs).sort(compareFeaturedPriority).slice(0, limit)
     } catch (err2) {
       console.warn('[newsService.server] isEditorPick featured query failed:', err2)
       return []
@@ -309,8 +326,8 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v1'],
-  { revalidate: 60, tags: ['home-feed'] }
+  ['home-featured-v2'],
+  { revalidate: 30, tags: ['home-feed'] }
 )
 
 function bucketLatest(pool: NewsItem[], limit: number, now: number): NewsItem[] {

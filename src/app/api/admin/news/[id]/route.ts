@@ -119,6 +119,12 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     update.featured = body.featured
     // Keep live-feed / editor-pick consumers in sync
     update.isEditorPick = body.featured
+    // Pin time so newly marked Öne Çıkan rises above older featured flags
+    if (body.featured) {
+      update.featuredAt = FieldValue.serverTimestamp()
+    } else {
+      update.featuredAt = FieldValue.delete()
+    }
   }
   if (body.status?.trim()) update.status = body.status.trim()
   if (Array.isArray(body.tags)) update.tags = body.tags

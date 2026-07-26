@@ -135,6 +135,7 @@ export async function POST(request: Request) {
       isBreaking: body.isBreaking ?? false,
       featured: body.featured === true,
       isEditorPick: body.featured === true,
+      ...(body.featured === true ? { featuredAt: now } : {}),
       manuallyEdited: true,
       manualEditedBy: auth.uid,
       createdAt: now,

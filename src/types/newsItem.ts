@@ -23,6 +23,8 @@ export type NewsItem = {
   likesCount?: number
   commentsCount?: number
   featured?: boolean
+  /** ISO — set when editor toggles Öne Çıkan; drives featured sort priority. */
+  featuredAt?: string
   breaking?: boolean
 }
 

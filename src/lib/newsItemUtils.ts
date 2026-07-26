@@ -108,6 +108,7 @@ export function docToNewsItem(
           ? raw.commentCount
           : undefined,
     featured: raw.featured === true || raw.isEditorPick === true,
+    featuredAt: parseFirestoreTimestamp(raw.featuredAt as TimestampLike),
     breaking: isBreaking,
   }
 }
@@ -138,6 +139,7 @@ export function slimNewsItemForFeed(item: NewsItem): NewsItem {
 
   if (typeof item.views === 'number' && item.views > 0) slim.views = item.views
   if (item.featured === true) slim.featured = true
+  if (item.featuredAt) slim.featuredAt = item.featuredAt
   if (item.breaking === true) slim.breaking = true
 
   return slim

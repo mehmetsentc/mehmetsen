@@ -10,7 +10,7 @@ import { ROUTES } from '@/constants/routes'
  * Vercel CDN cache: 5 dakika tazelik + tek Firestore havuz sorgusu (pool-first).
  * Eski: 19–25 paralel sorgu → TTFB 5–15s; enrichAllCategoryRails kaldırıldı.
  */
-export const revalidate = 60
+export const revalidate = 30
 
 const siteUrl = getSiteUrl()
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
