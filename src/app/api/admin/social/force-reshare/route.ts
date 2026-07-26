@@ -13,7 +13,7 @@ import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, DocumentSnapshot } from 'firebase-admin/firestore'
 import { publishToFacebook } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
 import { publishToTwitter } from '@/lib/social/twitter'
@@ -84,34 +84,48 @@ export async function POST(request: Request) {
   }
 
   let requestedLimit = 2
+  let specificIds: string[] = []
   try {
-    const body = await request.json() as { limit?: number }
+    const body = await request.json() as { limit?: number; ids?: string[] }
     if (body.limit && typeof body.limit === 'number') {
       requestedLimit = Math.min(Math.max(1, body.limit), 5)
+    }
+    if (Array.isArray(body.ids) && body.ids.length > 0) {
+      specificIds = body.ids.slice(0, 5)
     }
   } catch { /* varsayılan 2 */ }
 
   const db = getAdminFirestore()
 
-  // Son N Çanakkale haberini bul (socialPublished olup olmadığına bakılmaz)
-  const snap = await db
-    .collection(Collections.NEWS)
-    .where('citySlug', '==', 'canakkale')
-    .where('status', '==', 'published')
-    .orderBy('publishedAt', 'desc')
-    .limit(30)
-    .get()
+  let targets: DocumentSnapshot[]
 
-  // Görseli olan haberleri önceliklendir
-  const candidates = snap.docs
-    .filter(d => {
-      const data = d.data() as Record<string, unknown>
-      return !data.hasVideo && !data.isVideo && isCanakkale(data)
-    })
+  if (specificIds.length > 0) {
+    // Belirli ID'leri direkt getir — Çanakkale filtresi yok
+    const docs = await Promise.all(
+      specificIds.map(id => db.collection(Collections.NEWS).doc(id).get())
+    )
+    targets = docs.filter(d => d.exists)
+  } else {
+    // Son N Çanakkale haberini bul (socialPublished olup olmadığına bakılmaz)
+    const snap = await db
+      .collection(Collections.NEWS)
+      .where('citySlug', '==', 'canakkale')
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .limit(30)
+      .get()
 
-  const withImage = candidates.filter(d => !!extractImageUrl(d.data() as Record<string, unknown>))
-  const pool = withImage.length >= requestedLimit ? withImage : candidates
-  const targets = pool.slice(0, requestedLimit)
+    // Görseli olan haberleri önceliklendir
+    const candidates = snap.docs
+      .filter(d => {
+        const data = d.data() as Record<string, unknown>
+        return !data.hasVideo && !data.isVideo && isCanakkale(data)
+      })
+
+    const withImage = candidates.filter(d => !!extractImageUrl(d.data() as Record<string, unknown>))
+    const pool = withImage.length >= requestedLimit ? withImage : candidates
+    targets = pool.slice(0, requestedLimit)
+  }
 
   if (targets.length === 0) {
     return NextResponse.json({ error: 'Çanakkale haberi bulunamadı' }, { status: 404 })
