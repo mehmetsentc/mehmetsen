@@ -9,8 +9,8 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-// force-dynamic kaldırıldı — ISR 1 saat yeterli
-export const revalidate = 3600
+// ISR 6 saat — image sitemap Google tarafından nadiren çekiliyor
+export const revalidate = 21600
 
 function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -25,7 +25,7 @@ export async function GET() {
       .collection(Collections.NEWS)
       .where('status', '==', 'published')
       .orderBy('publishedAt', 'desc')
-      .limit(1000)
+      .limit(300)
       .get()
 
     for (const doc of snap.docs) {
@@ -68,7 +68,7 @@ ${items}
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
+      'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=43200',
     },
   })
 }

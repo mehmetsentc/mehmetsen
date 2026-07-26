@@ -10,8 +10,8 @@ import { buildRssFeed } from '@/lib/rss'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
-export const revalidate = 600
+// force-dynamic kaldırıldı — her istekte 50 dok okutuyordu; ISR 30 dk yeterli
+export const revalidate = 1800
 
 export async function GET() {
   const base = getSiteUrl()
@@ -60,7 +60,7 @@ export async function GET() {
     return new NextResponse(xml, {
       headers: {
         'Content-Type': 'application/rss+xml; charset=utf-8',
-        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
+        'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=3600',
       },
     })
   } catch (err) {

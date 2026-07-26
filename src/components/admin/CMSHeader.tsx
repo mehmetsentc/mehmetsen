@@ -6,7 +6,7 @@ import { Bell, Search, Plus, ExternalLink, ChevronDown } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { cn } from '@/lib/utils'
 import { db } from '@/lib/firebase/firestore'
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer } from 'firebase/firestore'
 import type { CmsNotification } from '@/types/cms'
 import { getSiteUrl } from '@/lib/seo'
 import { formatDistanceToNow } from 'date-fns'
@@ -120,22 +120,21 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
     } catch {}
   }, [])
 
+  // Badge count: getCountFromServer + 2 dakika polling (onSnapshot yerine — reads azaltır)
   useEffect(() => {
-    const q = query(
-      collection(db, 'newsDrafts'),
-      where('draftStatus', '==', 'pending_review'),
-      limit(99)
-    )
-    const unsub = onSnapshot(q, snap => {
-      // Only count items newer than last seen time
-      const unseen = snap.docs.filter(doc => {
-        const d = doc.data()
-        const createdAt = typeof d.createdAt === 'number' ? d.createdAt : 0
-        return createdAt > seenAt
-      })
-      setPendingCount(unseen.length)
-    }, () => {})
-    return unsub
+    let cancelled = false
+    const fetchCount = async () => {
+      try {
+        const q = seenAt > 0
+          ? query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'), where('createdAt', '>', seenAt))
+          : query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))
+        const snap = await getCountFromServer(q)
+        if (!cancelled) setPendingCount(snap.data().count)
+      } catch { /* sessizce atla */ }
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 2 * 60 * 1000)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [seenAt])
 
   function openNotifications() {

@@ -12,8 +12,8 @@ import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
 
 export const runtime = 'nodejs'
-// force-dynamic kaldırıldı — ISR ile cache edilecek
-export const revalidate = 300
+// ISR 1 saat — kategori RSS'leri için yeterli; N kategori × 5dk = çok okuma
+export const revalidate = 3600
 
 export async function generateStaticParams() {
   return DEFAULT_CATEGORIES.map((cat) => ({ category: cat.slug }))
@@ -78,7 +78,7 @@ export async function GET(
     return new NextResponse(xml, {
       headers: {
         'Content-Type': 'application/rss+xml; charset=utf-8',
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
       },
     })
   } catch (err) {
