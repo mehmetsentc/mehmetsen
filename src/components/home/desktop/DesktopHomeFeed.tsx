@@ -9,7 +9,7 @@ import { DesktopMarketSidebar } from '@/components/home/desktop/DesktopMarketSid
 import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGridChunks'
 import { DesktopMostReadGrid } from '@/components/home/desktop/DesktopMostReadGrid'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
-import { FeaturedSlider } from '@/components/home/FeaturedSlider'
+import { DesktopFeaturedGrid } from '@/components/home/desktop/DesktopFeaturedGrid'
 import { GamesRail } from '@/components/home/GamesRail'
 import { LazySection } from '@/components/home/LazySection'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
@@ -149,7 +149,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.featuredSlider.length > 0 ? (
         <div className="mb-10 border-b border-[rgb(var(--color-border))] pb-10">
           <DesktopSectionHeader title="Öne Çıkan" href={ROUTES.CATEGORY('gundem')} />
-          <FeaturedSlider items={layout.featuredSlider} variant="desktop" />
+          <DesktopFeaturedGrid items={layout.featuredSlider} />
         </div>
       ) : null}
 

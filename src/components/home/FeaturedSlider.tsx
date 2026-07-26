@@ -11,8 +11,6 @@ import type { NewsItem } from '@/types/newsItem'
 
 interface FeaturedSliderProps {
   items: NewsItem[]
-  /** Desktop newspaper shell — contained, slightly shorter hero */
-  variant?: 'default' | 'desktop'
 }
 
 /** Only keep current ±1 slides in the DOM to avoid loading 8–20 full-bleed images. */
@@ -26,9 +24,8 @@ function visibleSlideIndexes(current: number, length: number): number[] {
   return [...set]
 }
 
-export function FeaturedSlider({ items, variant = 'default' }: FeaturedSliderProps) {
+export function FeaturedSlider({ items }: FeaturedSliderProps) {
   const slides = useMemo(() => items.slice(0, 8), [items])
-  const isDesktop = variant === 'desktop'
   const [current, setCurrent] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
   /** Delay neighbour slides so LCP only contends with slide 0. */
@@ -72,16 +69,10 @@ export function FeaturedSlider({ items, variant = 'default' }: FeaturedSliderPro
   const visible = extrasReady ? visibleSlideIndexes(current, slides.length) : [current]
 
   return (
-    <section
-      aria-label="Öne Çıkan Haberler"
-      className={isDesktop ? undefined : 'home-section'}
-    >
-      <div className={isDesktop ? undefined : 'home-full-bleed md:home-contained'}>
+    <section aria-label="Öne Çıkan Haberler" className="home-section">
+      <div className="home-full-bleed md:home-contained">
         <div
-          className={`relative overflow-hidden ${isDesktop ? 'rounded-2xl' : 'rounded-none md:rounded-2xl'}`}
-          style={{
-            height: isDesktop ? 'clamp(18rem, 36vh, 28rem)' : 'clamp(22rem, 62vw, 38rem)',
-          }}
+          className="relative aspect-[16/10] overflow-hidden rounded-none md:rounded-2xl"
           data-no-category-swipe
           onTouchStart={(e) => {
             touchStartX.current = e.touches[0]?.clientX ?? null
@@ -114,7 +105,7 @@ export function FeaturedSlider({ items, variant = 'default' }: FeaturedSliderPro
                     quality={index === 0 ? LCP_IMAGE_QUALITY : 70}
                     priority={index === 0 && current === 0}
                     fetchPriority={index === 0 && current === 0 ? 'high' : 'auto'}
-                    className="object-cover object-center"
+                    className="object-cover object-top"
                   />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/5" />
