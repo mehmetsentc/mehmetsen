@@ -181,9 +181,9 @@ export async function POST(request: Request) {
       articleUrl,
     }
 
-    let fbResult = { success: false, error: 'not attempted' }
-    let igResult = { success: false, error: 'not attempted' }
-    let twResult = { success: false, error: 'not attempted' }
+    let fbResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
+    let igResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
+    let twResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
 
     try { fbResult = await publishToFacebook(payload) }
     catch (e) { fbResult = { success: false, error: String(e) } }
