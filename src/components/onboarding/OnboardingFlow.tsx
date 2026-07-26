@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { CITY_CATEGORIES } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
+import { consumeReturnPath } from '@/lib/auth/returnTo'
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024
 const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -127,7 +128,9 @@ export function OnboardingFlow() {
   })
 
   useEffect(() => {
-    if (user && user.onboardingCompleted) router.replace(ROUTES.FEED)
+    if (user && user.onboardingCompleted) {
+      router.replace(consumeReturnPath() ?? ROUTES.FEED)
+    }
   }, [user, router])
 
   useEffect(() => {
@@ -212,7 +215,7 @@ export function OnboardingFlow() {
 
       await refreshUser()
       toast.success('NaHaber\'e hoş geldin! 🎉')
-      router.replace(ROUTES.FEED)
+      router.replace(consumeReturnPath() ?? ROUTES.FEED)
     } catch (error) {
       console.error('[OnboardingFlow] Failed:', error)
       toast.error('Profil kaydedilemedi, lütfen tekrar deneyin')

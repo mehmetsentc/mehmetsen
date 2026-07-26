@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Eraser,
@@ -22,6 +22,9 @@ import {
   type SudokuDifficulty,
   type SudokuPuzzle,
 } from '@/lib/games/sudoku/engine'
+import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { useGameLevels } from '@/hooks/useGameLevels'
+import { difficultyKeyFromLevel } from '@/lib/games/progress'
 import { ROUTES } from '@/constants/routes'
 
 function newGame(difficulty: SudokuDifficulty): SudokuPuzzle {
@@ -29,7 +32,8 @@ function newGame(difficulty: SudokuDifficulty): SudokuPuzzle {
 }
 
 export function SudokuClient() {
-  const [difficulty, setDifficulty] = useState<SudokuDifficulty>('medium')
+  const { level, unlocked, selectLevel, completeLevel } = useGameLevels('sudoku')
+  const difficulty = difficultyKeyFromLevel(level) as SudokuDifficulty
   const [pack, setPack] = useState<SudokuPuzzle | null>(null)
   const [grid, setGrid] = useState<number[]>(() => Array.from({ length: 81 }, () => 0))
   const [selected, setSelected] = useState<number | null>(null)
@@ -41,6 +45,7 @@ export function SudokuClient() {
   const [notes, setNotes] = useState<Set<number>[]>(() =>
     Array.from({ length: 81 }, () => new Set())
   )
+  const advancedRef = useRef(false)
 
   const startPuzzle = useCallback((diff: SudokuDifficulty) => {
     const next = newGame(diff)
@@ -52,12 +57,18 @@ export function SudokuClient() {
     setWon(false)
     setHintsLeft(SUDOKU_DIFFICULTIES.find((d) => d.id === diff)!.hintLimit)
     setNotes(Array.from({ length: 81 }, () => new Set()))
-    setDifficulty(diff)
+    advancedRef.current = false
   }, [])
 
   useEffect(() => {
-    startPuzzle('medium')
-  }, [startPuzzle])
+    startPuzzle(difficulty)
+  }, [startPuzzle, difficulty])
+
+  useEffect(() => {
+    if (!won || advancedRef.current) return
+    advancedRef.current = true
+    completeLevel()
+  }, [won, completeLevel])
 
   useEffect(() => {
     if (!pack || paused || won) return
@@ -238,21 +249,14 @@ export function SudokuClient() {
         </div>
       </header>
 
+      <GameLevelBar
+        current={level}
+        unlocked={unlocked}
+        onSelect={selectLevel}
+        hint="Kazanınca sonraki seviye açılır"
+      />
+
       <div className="mb-4 flex flex-wrap gap-2">
-        {SUDOKU_DIFFICULTIES.map((d) => (
-          <button
-            key={d.id}
-            type="button"
-            onClick={() => startPuzzle(d.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-              difficulty === d.id
-                ? 'bg-teal-600 text-white'
-                : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))]'
-            }`}
-          >
-            {d.label}
-          </button>
-        ))}
         <button
           type="button"
           onClick={() => startPuzzle(difficulty)}

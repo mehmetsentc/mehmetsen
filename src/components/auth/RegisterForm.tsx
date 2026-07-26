@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { BrandLogo } from '@/components/brand/BrandLogo'
@@ -12,6 +12,12 @@ import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
 import { getAppleAuthErrorMessage } from '@/lib/appleAuthErrors'
+import {
+  consumeReturnPath,
+  loginHrefWithNext,
+  rememberReturnPath,
+  sanitizeReturnPath,
+} from '@/lib/auth/returnTo'
 
 function isCapacitor(): boolean {
   return (
@@ -27,6 +33,20 @@ export function RegisterForm() {
     const onIos = isCapacitor()
     const { register: registerUser, loginWithGoogle, loginWithApple } = useAuth()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const nextFromQuery = sanitizeReturnPath(searchParams.get('next'))
+
+    useEffect(() => {
+      if (nextFromQuery) rememberReturnPath(nextFromQuery)
+    }, [nextFromQuery])
+
+    const goAfterAuth = (needsOnboarding: boolean) => {
+      if (needsOnboarding) {
+        router.push(ROUTES.ONBOARDING)
+        return
+      }
+      router.push(consumeReturnPath() ?? ROUTES.FEED)
+    }
 
     const {
         register,
@@ -39,7 +59,7 @@ export function RegisterForm() {
         try {
             await registerUser(data)
             toast.success('Hesabın başarıyla oluşturuldu!')
-            router.push(ROUTES.ONBOARDING)
+            goAfterAuth(true)
         } catch (err: unknown) {
             const code = (err as { code?: string }).code ?? ''
             toast.error(getFirebaseErrorMessage(code))
@@ -58,7 +78,7 @@ export function RegisterForm() {
                 isRedirecting = true
                 return
             }
-            router.push(ROUTES.FEED)
+            goAfterAuth(false)
         } catch (err: unknown) {
             console.error('[RegisterForm] Google sign-in failed:', err)
             const message = getGoogleAuthErrorMessage(err)
@@ -78,7 +98,7 @@ export function RegisterForm() {
                 isRedirecting = true
                 return
             }
-            router.push(ROUTES.FEED)
+            goAfterAuth(false)
         } catch (err: unknown) {
             console.error('[RegisterForm] Apple sign-in failed:', err)
             const message = getAppleAuthErrorMessage(err)
@@ -95,7 +115,11 @@ export function RegisterForm() {
                     <BrandLogo size="lg" priority />
                 </div>
                 <h1 className="auth-title">Hesap Oluştur</h1>
-                <p className="auth-subtitle">NaHaber topluluğuna katıl</p>
+                <p className="auth-subtitle">
+                  {nextFromQuery?.startsWith('/oyunlar')
+                    ? 'Oyuna devam etmek için üye ol'
+                    : 'NaHaber topluluğuna katıl'}
+                </p>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -200,7 +224,7 @@ export function RegisterForm() {
 
             <p className="mt-6 text-center text-sm text-[rgb(var(--color-muted))]">
                 Zaten hesabın var mı?{' '}
-                <Link href={ROUTES.LOGIN} className="font-medium text-brand-600 hover:underline">
+                <Link href={loginHrefWithNext(nextFromQuery)} className="font-medium text-brand-600 hover:underline">
                     Giriş yap
                 </Link>
             </p>

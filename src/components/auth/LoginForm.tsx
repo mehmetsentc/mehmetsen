@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { BrandLogo } from '@/components/brand/BrandLogo'
@@ -12,6 +12,12 @@ import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
 import { getAppleAuthErrorMessage } from '@/lib/appleAuthErrors'
+import {
+  consumeReturnPath,
+  registerHrefWithNext,
+  rememberReturnPath,
+  sanitizeReturnPath,
+} from '@/lib/auth/returnTo'
 
 /** iOS Capacitor'da mı çalışıyoruz? (Safari'yi dış browser olarak açmaktan kaçın) */
 function isCapacitor(): boolean {
@@ -28,6 +34,16 @@ export function LoginForm() {
   const onIos = isCapacitor()
   const { login, loginWithGoogle, loginWithApple } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const nextFromQuery = sanitizeReturnPath(searchParams.get('next'))
+
+  useEffect(() => {
+    if (nextFromQuery) rememberReturnPath(nextFromQuery)
+  }, [nextFromQuery])
+
+  const goHome = () => {
+    router.push(consumeReturnPath() ?? ROUTES.FEED)
+  }
 
   const {
     register,
@@ -39,7 +55,7 @@ export function LoginForm() {
     setIsLoading(true)
     try {
       await login(data)
-      router.push(ROUTES.FEED)
+      goHome()
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? ''
       toast.error(getFirebaseErrorMessage(code))
@@ -58,7 +74,7 @@ export function LoginForm() {
         isRedirecting = true
         return
       }
-      router.push(ROUTES.FEED)
+      goHome()
     } catch (err: unknown) {
       console.error('[LoginForm] Google sign-in failed:', err)
       const message = getGoogleAuthErrorMessage(err)
@@ -78,7 +94,7 @@ export function LoginForm() {
         isRedirecting = true
         return
       }
-      router.push(ROUTES.FEED)
+      goHome()
     } catch (err: unknown) {
       console.error('[LoginForm] Apple sign-in failed:', err)
       const message = getAppleAuthErrorMessage(err)
@@ -160,7 +176,10 @@ export function LoginForm() {
 
       <p className="mt-6 text-center text-sm text-[rgb(var(--color-muted))]">
         Hesabın yok mu?{' '}
-        <Link href={ROUTES.REGISTER} className="font-medium text-brand-600 hover:underline">
+        <Link
+          href={registerHrefWithNext(nextFromQuery ?? '')}
+          className="font-medium text-brand-600 hover:underline"
+        >
           Kayıt ol
         </Link>
       </p>

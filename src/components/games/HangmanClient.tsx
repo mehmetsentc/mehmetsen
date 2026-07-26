@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react'
 import {
   CATEGORY_LABEL,
@@ -15,6 +15,8 @@ import {
   type HangmanPuzzle,
 } from '@/lib/games/hangman/engine'
 import { TURKISH_LETTERS } from '@/lib/games/kelime/engine'
+import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { useGameLevels } from '@/hooks/useGameLevels'
 import { ROUTES } from '@/constants/routes'
 
 const FIGURE = [
@@ -28,29 +30,44 @@ const FIGURE = [
 ]
 
 export function HangmanClient() {
+  const { level, unlocked, selectLevel, completeLevel } = useGameLevels('adam-asmaca')
   const [category, setCategory] = useState<HangmanCategory | 'hepsi'>('hepsi')
-  const [puzzle, setPuzzle] = useState<HangmanPuzzle>(() => pickPuzzle('hepsi'))
+  const [puzzle, setPuzzle] = useState<HangmanPuzzle>(() => pickPuzzle('hepsi', 1))
   const [guessed, setGuessed] = useState<Set<string>>(() => new Set())
+  const advancedRef = useRef(false)
+
+  const restart = useCallback(
+    (cat: HangmanCategory | 'hepsi' = category, lvl = level) => {
+      setCategory(cat)
+      setPuzzle(pickPuzzle(cat, lvl))
+      setGuessed(new Set())
+      advancedRef.current = false
+    },
+    [category, level]
+  )
+
+  useEffect(() => {
+    restart(category, level)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when level changes
+  }, [level])
 
   const wrong = countWrong(puzzle.word, guessed)
   const won = isWon(puzzle.word, guessed)
   const lost = isLost(wrong)
   const mask = revealMask(puzzle.word, guessed)
+  const livesLeft = MAX_WRONG - wrong
+  const figure = useMemo(() => FIGURE[Math.min(wrong, MAX_WRONG)] ?? FIGURE[MAX_WRONG], [wrong])
 
-  const restart = useCallback((cat: HangmanCategory | 'hepsi' = category) => {
-    setCategory(cat)
-    setPuzzle(pickPuzzle(cat))
-    setGuessed(new Set())
-  }, [category])
+  useEffect(() => {
+    if (!won || advancedRef.current) return
+    advancedRef.current = true
+    completeLevel()
+  }, [won, completeLevel])
 
   const guess = (letter: string) => {
     if (won || lost || guessed.has(letter)) return
     setGuessed((prev) => new Set(prev).add(letter))
   }
-
-  const livesLeft = MAX_WRONG - wrong
-
-  const figure = useMemo(() => FIGURE[Math.min(wrong, MAX_WRONG)] ?? FIGURE[MAX_WRONG], [wrong])
 
   return (
     <div className="mx-auto max-w-md px-4 py-6 pb-20">
@@ -65,16 +82,23 @@ export function HangmanClient() {
       <header className="mb-5">
         <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Adam Asmaca</h1>
         <p className="text-sm text-[rgb(var(--color-muted))]">
-          Harf tahmin et · {livesLeft} can · gazete klasik
+          Harf tahmin et · {livesLeft} can · seviye {level}/3
         </p>
       </header>
+
+      <GameLevelBar
+        current={level}
+        unlocked={unlocked}
+        onSelect={(lvl) => selectLevel(lvl)}
+        hint="Kazanınca sonraki seviye açılır"
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {(['hepsi', 'haber', 'spor', 'sehir', 'genel'] as const).map((cat) => (
           <button
             key={cat}
             type="button"
-            onClick={() => restart(cat)}
+            onClick={() => restart(cat, level)}
             className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
               category === cat
                 ? 'bg-orange-600 text-white'
@@ -114,6 +138,7 @@ export function HangmanClient() {
         <div className="mb-4 flex items-center justify-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-3 font-semibold text-emerald-700">
           <Trophy className="h-5 w-5" />
           Bildin: {puzzle.word}
+          {level < 3 ? ' · Sonraki seviye açıldı!' : ' · Tüm seviyeler tamam'}
         </div>
       )}
       {lost && (

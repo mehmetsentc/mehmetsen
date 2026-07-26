@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BackgammonClient } from '@/components/games/BackgammonClient'
 import { ChessClient } from '@/components/games/ChessClient'
+import { GameAuthGate } from '@/components/games/GameAuthGate'
 import { HangmanClient } from '@/components/games/HangmanClient'
 import { KelimeClient } from '@/components/games/KelimeClient'
 import { MemoryClient } from '@/components/games/MemoryClient'
@@ -28,11 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function GamePlayPage({ params }: Props) {
-  const { slug } = await params
-  const game = getGameBySlug(slug)
-  if (!game || game.provider !== 'native') notFound()
-
+function gameClient(slug: string) {
   switch (slug) {
     case 'tavla':
       return <BackgammonClient />
@@ -55,6 +52,17 @@ export default async function GamePlayPage({ params }: Props) {
     case '2048':
       return <Twenty48Client />
     default:
-      notFound()
+      return null
   }
+}
+
+export default async function GamePlayPage({ params }: Props) {
+  const { slug } = await params
+  const game = getGameBySlug(slug)
+  if (!game || game.provider !== 'native') notFound()
+
+  const client = gameClient(slug)
+  if (!client) notFound()
+
+  return <GameAuthGate>{client}</GameAuthGate>
 }

@@ -11,6 +11,9 @@ import {
   type Direction,
   type SnakeDifficulty,
 } from '@/lib/games/snake/config'
+import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { useGameLevels } from '@/hooks/useGameLevels'
+import { difficultyKeyFromLevel } from '@/lib/games/progress'
 import { ROUTES } from '@/constants/routes'
 
 type Point = { x: number; y: number }
@@ -42,7 +45,8 @@ const START_SNAKE: Point[] = [
 ]
 
 export function SnakeClient() {
-  const [difficulty, setDifficulty] = useState<SnakeDifficulty>('medium')
+  const { level, unlocked, selectLevel, completeLevel } = useGameLevels('yilan')
+  const difficulty = difficultyKeyFromLevel(level) as SnakeDifficulty
   const [snake, setSnake] = useState<Point[]>(START_SNAKE)
   const [food, setFood] = useState<Point>(() => randomFood(START_SNAKE))
   const [direction, setDirection] = useState<Direction>('right')
@@ -192,8 +196,7 @@ export function SnakeClient() {
     touchStart.current = null
   }
 
-  const changeDifficulty = (id: SnakeDifficulty) => {
-    setDifficulty(id)
+  const changeDifficulty = (_id: SnakeDifficulty) => {
     setSnake(START_SNAKE)
     setFood(randomFood(START_SNAKE))
     setDirection('right')
@@ -203,6 +206,23 @@ export function SnakeClient() {
     setPaused(false)
     setRunning(false)
   }
+
+  useEffect(() => {
+    changeDifficulty(difficulty)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [difficulty])
+
+  const scoreTarget = level === 1 ? 50 : level === 2 ? 100 : 150
+  const advancedRef = useRef(false)
+  useEffect(() => {
+    if (score < scoreTarget || advancedRef.current) return
+    advancedRef.current = true
+    completeLevel()
+  }, [score, scoreTarget, completeLevel])
+
+  useEffect(() => {
+    advancedRef.current = false
+  }, [level])
 
   const cellKey = (x: number, y: number) => `${x}-${y}`
   const snakeSet = useMemo(() => new Set(snake.map((p) => cellKey(p.x, p.y))), [snake])
@@ -222,27 +242,16 @@ export function SnakeClient() {
           Neon Yılan
         </h1>
         <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-          Renkli, hızlı, üç zorlukta — ok tuşları veya kaydır
+          Seviye {level}/3 · hedef skor {scoreTarget} · ok tuşları veya kaydır
         </p>
       </header>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {SNAKE_DIFFICULTIES.map((d) => (
-          <button
-            key={d.id}
-            type="button"
-            onClick={() => changeDifficulty(d.id)}
-            className={`rounded-xl px-3 py-2 text-left transition ${
-              difficulty === d.id
-                ? `bg-gradient-to-r ${d.accent} text-white shadow-lg`
-                : 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-text))]'
-            }`}
-          >
-            <span className="block text-xs font-bold uppercase tracking-wide">{d.label}</span>
-            <span className="block text-[10px] opacity-90">{d.description}</span>
-          </button>
-        ))}
-      </div>
+      <GameLevelBar
+        current={level}
+        unlocked={unlocked}
+        onSelect={selectLevel}
+        hint={`Hedef: ${scoreTarget} puan`}
+      />
 
       <div className="mb-3 flex items-center justify-between rounded-xl bg-[rgb(var(--color-surface))] px-4 py-3">
         <div>

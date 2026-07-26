@@ -34,6 +34,9 @@ import {
   type TetrisDifficulty,
   type TetrisState,
 } from '@/lib/games/tetris/engine'
+import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { useGameLevels } from '@/hooks/useGameLevels'
+import { difficultyKeyFromLevel } from '@/lib/games/progress'
 import { ROUTES } from '@/constants/routes'
 
 const PREVIEW: Record<PieceType, { x: number; y: number }[]> = {
@@ -108,13 +111,15 @@ function PiecePreview({ type, label }: { type: PieceType | null; label: string }
 }
 
 export function TetrisClient() {
-  const [difficulty, setDifficulty] = useState<TetrisDifficulty>('medium')
+  const { level, unlocked, selectLevel, completeLevel } = useGameLevels('tetris')
+  const difficulty = difficultyKeyFromLevel(level) as TetrisDifficulty
   const [state, setState] = useState<TetrisState>(() => createInitialState())
   const [running, setRunning] = useState(false)
   const [paused, setPaused] = useState(false)
   const [best, setBest] = useState(0)
   const softRef = useRef(false)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const advancedRef = useRef(false)
 
   const diff = useMemo(
     () => TETRIS_DIFFICULTIES.find((d) => d.id === difficulty)!,
@@ -144,12 +149,23 @@ export function TetrisClient() {
     setRunning(false)
   }, [state.gameOver, state.score, difficulty])
 
-  const reset = useCallback((diffId?: TetrisDifficulty) => {
-    if (diffId) setDifficulty(diffId)
+  const reset = useCallback((_diffId?: TetrisDifficulty) => {
     setState(createInitialState())
     setPaused(false)
     setRunning(true)
+    advancedRef.current = false
   }, [])
+
+  useEffect(() => {
+    reset()
+  }, [difficulty, reset])
+
+  const linesTarget = level === 1 ? 5 : level === 2 ? 10 : 15
+  useEffect(() => {
+    if (state.lines < linesTarget || advancedRef.current) return
+    advancedRef.current = true
+    completeLevel()
+  }, [state.lines, linesTarget, completeLevel])
 
   useEffect(() => {
     if (!running || paused || state.gameOver) return
@@ -240,7 +256,9 @@ export function TetrisClient() {
                 Tetris
               </span>
             </h1>
-            <p className="text-sm text-white/60">Modern blok düşürme · 3 zorluk</p>
+            <p className="text-sm text-white/60">
+              Seviye {level}/3 · hedef {linesTarget} satır
+            </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1.5 text-sm font-semibold">
             <Trophy className="h-3.5 w-3.5 text-amber-300" />
@@ -248,21 +266,13 @@ export function TetrisClient() {
           </span>
         </header>
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          {TETRIS_DIFFICULTIES.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => reset(d.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                difficulty === d.id
-                  ? `bg-gradient-to-r ${d.accent} text-white shadow-lg`
-                  : 'bg-white/10 text-white/70 hover:bg-white/15'
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
+        <div className="mb-4">
+          <GameLevelBar
+            current={level}
+            unlocked={unlocked}
+            onSelect={selectLevel}
+            hint={`Hedef: ${linesTarget} satır`}
+          />
         </div>
 
         <div className="mb-3 flex items-center justify-between gap-3">

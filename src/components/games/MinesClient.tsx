@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState, type MouseEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { ArrowLeft, Flag, RotateCcw, Trophy } from 'lucide-react'
 import {
   MINES_DIFFICULTIES,
@@ -15,6 +15,9 @@ import {
   type Board,
   type MinesDifficulty,
 } from '@/lib/games/mines/engine'
+import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { useGameLevels } from '@/hooks/useGameLevels'
+import { difficultyKeyFromLevel } from '@/lib/games/progress'
 import { ROUTES } from '@/constants/routes'
 
 const NUM_COLORS = [
@@ -30,22 +33,36 @@ const NUM_COLORS = [
 ]
 
 export function MinesClient() {
-  const [difficulty, setDifficulty] = useState<MinesDifficulty>('easy')
+  const { level, unlocked, selectLevel, completeLevel } = useGameLevels('mayin')
+  const difficulty = difficultyKeyFromLevel(level) as MinesDifficulty
   const config = MINES_DIFFICULTIES.find((d) => d.id === difficulty)!
-  const [board, setBoard] = useState<Board>(() => createEmptyBoard(config.rows, config.cols))
+  const [board, setBoard] = useState<Board>(() =>
+    createEmptyBoard(MINES_DIFFICULTIES[0]!.rows, MINES_DIFFICULTIES[0]!.cols)
+  )
   const [started, setStarted] = useState(false)
   const [status, setStatus] = useState<'playing' | 'won' | 'lost'>('playing')
   const [flagMode, setFlagMode] = useState(false)
   const [seconds, setSeconds] = useState(0)
+  const advancedRef = useRef(false)
 
   const restart = useCallback((diff: MinesDifficulty = difficulty) => {
     const cfg = MINES_DIFFICULTIES.find((d) => d.id === diff)!
-    setDifficulty(diff)
     setBoard(createEmptyBoard(cfg.rows, cfg.cols))
     setStarted(false)
     setStatus('playing')
     setSeconds(0)
+    advancedRef.current = false
   }, [difficulty])
+
+  useEffect(() => {
+    restart(difficulty)
+  }, [difficulty, restart])
+
+  useEffect(() => {
+    if (status !== 'won' || advancedRef.current) return
+    advancedRef.current = true
+    completeLevel()
+  }, [status, completeLevel])
 
   useEffect(() => {
     if (status !== 'playing' || !started) return
@@ -111,21 +128,14 @@ export function MinesClient() {
         </div>
       </header>
 
+      <GameLevelBar
+        current={level}
+        unlocked={unlocked}
+        onSelect={selectLevel}
+        hint="Kazanınca sonraki seviye açılır"
+      />
+
       <div className="mb-4 flex flex-wrap gap-2">
-        {MINES_DIFFICULTIES.map((d) => (
-          <button
-            key={d.id}
-            type="button"
-            onClick={() => restart(d.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-              difficulty === d.id
-                ? 'bg-stone-700 text-white'
-                : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))]'
-            }`}
-          >
-            {d.label}
-          </button>
-        ))}
         <button
           type="button"
           onClick={() => setFlagMode((f) => !f)}

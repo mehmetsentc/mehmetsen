@@ -15,8 +15,8 @@ export function GamesHubClient() {
         </div>
         <h1 className="text-3xl font-black text-[rgb(var(--color-text))]">Online Oyunlar</h1>
         <p className="mt-2 max-w-2xl text-[rgb(var(--color-muted))]">
-          Haber arası molada oynayın — tavla, satranç, sudoku, kelime günü, adam asmaca, hafıza,
-          mayın tarlası, 2048 ve daha fazlası.
+          Haber arası molada oynayın — tavla, satranç, sudoku, kelime günü, adam asmaca ve daha
+          fazlası. Oynamak için üye girişi gerekir; seviyeler kolaydan zora ilerler.
         </p>
       </header>
 

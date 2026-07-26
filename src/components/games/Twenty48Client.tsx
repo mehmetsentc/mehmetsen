@@ -12,6 +12,8 @@ import {
   type Dir,
   type Grid,
 } from '@/lib/games/twenty48/engine'
+import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { useGameLevels } from '@/hooks/useGameLevels'
 import { ROUTES } from '@/constants/routes'
 
 const TILE_CLASS: Record<number, string> = {
@@ -35,12 +37,15 @@ function tileClass(v: number): string {
 }
 
 export function Twenty48Client() {
+  const { level, unlocked, selectLevel, completeLevel } = useGameLevels('2048')
+  const targetTile = level === 1 ? 256 : level === 2 ? 512 : 2048
   const [grid, setGrid] = useState<Grid>(() => newGame())
   const [score, setScore] = useState(0)
   const [best, setBest] = useState(0)
   const [won, setWon] = useState(false)
   const [over, setOver] = useState(false)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const advancedRef = useRef(false)
 
   useEffect(() => {
     try {
@@ -56,7 +61,18 @@ export function Twenty48Client() {
     setScore(0)
     setWon(false)
     setOver(false)
+    advancedRef.current = false
   }, [])
+
+  useEffect(() => {
+    restart()
+  }, [level, restart])
+
+  useEffect(() => {
+    if (!won || advancedRef.current) return
+    advancedRef.current = true
+    completeLevel()
+  }, [won, completeLevel])
 
   const applyMove = useCallback(
     (dir: Dir) => {
@@ -75,10 +91,10 @@ export function Twenty48Client() {
           /* ignore */
         }
       }
-      if (!won && maxTile(withSpawn) >= 2048) setWon(true)
+      if (!won && maxTile(withSpawn) >= targetTile) setWon(true)
       if (!canMove(withSpawn)) setOver(true)
     },
-    [best, grid, over, score, won]
+    [best, grid, over, score, won, targetTile]
   )
 
   useEffect(() => {
@@ -130,7 +146,7 @@ export function Twenty48Client() {
         <div>
           <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">2048</h1>
           <p className="text-sm text-[rgb(var(--color-muted))]">
-            Ok tuşları veya kaydır · 2048’e birleştir
+            Seviye {level}/3 · hedef {targetTile} · kaydır
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm font-semibold tabular-nums">
@@ -151,10 +167,18 @@ export function Twenty48Client() {
         </div>
       </header>
 
+      <GameLevelBar
+        current={level}
+        unlocked={unlocked}
+        onSelect={selectLevel}
+        hint={`Hedef taş: ${targetTile}`}
+      />
+
       {won && !over && (
         <div className="mb-4 flex items-center justify-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-3 font-semibold text-emerald-700">
           <Trophy className="h-5 w-5" />
-          2048’e ulaştın! Devam edebilirsin.
+          {targetTile}’e ulaştın!
+          {level < 3 ? ' Sonraki seviye açıldı.' : ''}
         </div>
       )}
       {over && (

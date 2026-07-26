@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react'
 import {
   MAX_GUESSES,
@@ -14,6 +14,8 @@ import {
   scoreGuess,
   type LetterState,
 } from '@/lib/games/kelime/engine'
+import { GameLevelBar } from '@/components/games/GameLevelBar'
+import { useGameLevels } from '@/hooks/useGameLevels'
 import { ROUTES } from '@/constants/routes'
 
 const STATE_CLASS: Record<LetterState, string> = {
@@ -26,6 +28,8 @@ const STATE_CLASS: Record<LetterState, string> = {
 type Row = { guess: string; states: LetterState[] | null }
 
 export function KelimeClient() {
+  const { level, unlocked, selectLevel, completeLevel } = useGameLevels('kelime')
+  const maxGuesses = level === 1 ? 8 : level === 2 ? 6 : 5
   const [answer, setAnswer] = useState('')
   const [rows, setRows] = useState<Row[]>(() =>
     Array.from({ length: MAX_GUESSES }, () => ({ guess: '', states: null }))
@@ -35,21 +39,29 @@ export function KelimeClient() {
   const [status, setStatus] = useState<'playing' | 'won' | 'lost'>('playing')
   const [message, setMessage] = useState('')
   const [mode, setMode] = useState<'gunluk' | 'rastgele'>('gunluk')
+  const advancedRef = useRef(false)
 
   const start = useCallback((m: 'gunluk' | 'rastgele') => {
     const next = m === 'gunluk' ? pickDailyAnswer() : pickRandomAnswer()
     setAnswer(next)
-    setRows(Array.from({ length: MAX_GUESSES }, () => ({ guess: '', states: null })))
+    setRows(Array.from({ length: maxGuesses }, () => ({ guess: '', states: null })))
     setRowIndex(0)
     setCurrent('')
     setStatus('playing')
     setMessage('')
     setMode(m)
-  }, [])
+    advancedRef.current = false
+  }, [maxGuesses])
 
   useEffect(() => {
-    start('gunluk')
-  }, [start])
+    start('rastgele')
+  }, [start, level])
+
+  useEffect(() => {
+    if (status !== 'won' || advancedRef.current) return
+    advancedRef.current = true
+    completeLevel()
+  }, [status, completeLevel])
 
   const keyStates = useMemo(() => {
     const map: Partial<Record<string, LetterState>> = {}
@@ -89,12 +101,12 @@ export function KelimeClient() {
       setStatus('won')
       return
     }
-    if (rowIndex + 1 >= MAX_GUESSES) {
+    if (rowIndex + 1 >= maxGuesses) {
       setStatus('lost')
       return
     }
     setRowIndex((i) => i + 1)
-  }, [answer, current, rowIndex, status])
+  }, [answer, current, rowIndex, status, maxGuesses])
 
   const onKey = useCallback(
     (key: string) => {
@@ -153,9 +165,16 @@ export function KelimeClient() {
       <header className="mb-5">
         <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Kelime Günü</h1>
         <p className="text-sm text-[rgb(var(--color-muted))]">
-          5 harfli Türkçe kelime · 6 deneme · gazete molası
+          5 harfli Türkçe · seviye {level}/3 · {maxGuesses} deneme
         </p>
       </header>
+
+      <GameLevelBar
+        current={level}
+        unlocked={unlocked}
+        onSelect={selectLevel}
+        hint="Kazanınca sonraki seviye açılır"
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
         <button
