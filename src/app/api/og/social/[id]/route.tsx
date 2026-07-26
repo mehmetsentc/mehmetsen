@@ -38,7 +38,7 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
   if (!apiKey) return null
   try {
     const res = await fetch(`${FIREBASE_URL}/${id}?key=${apiKey}`, {
-      next: { revalidate: 300 },
+      next: { revalidate: 60 },  // 1 dk — admin görseli düzeltince hızlı yansıt
     })
     if (!res.ok) return null
     const data = await res.json() as { fields?: Record<string, { stringValue?: string }> }
@@ -293,7 +293,7 @@ export async function GET(
     ),
     {
       width: 1080, height: 1080,
-      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600' },
+      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=300' },
     }
   )
   } catch {
