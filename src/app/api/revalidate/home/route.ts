@@ -10,7 +10,7 @@
  *   GET /api/revalidate/home?secret=<REVALIDATE_SECRET>
  */
 import { NextResponse, type NextRequest } from 'next/server'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,11 +24,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    revalidateTag('home-feed')
-    revalidatePath('/feed')
-    revalidatePath('/(main)/feed', 'page')
+    revalidateHomeFeedCaches()
     return NextResponse.json(
-      { ok: true, revalidated: ['home-feed', '/feed'] },
+      { ok: true, revalidated: ['home-feed', 'feed-slider', 'feed-timeline', 'breaking-news', '/feed'] },
       { headers: { 'Cache-Control': 'no-store' } }
     )
   } catch (error) {

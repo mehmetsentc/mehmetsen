@@ -9,6 +9,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
+import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
 import {
   articleBlocksToPlainText,
   sanitizeArticleBlocks,
@@ -201,8 +202,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      revalidatePath('/feed')
-      revalidatePath('/')
+      revalidateHomeFeedCaches()
       if (categoryId) revalidatePath(`/kategori/${categoryId}`)
       revalidatePath(`/haber/${slug}`)
       if (status === 'published') {

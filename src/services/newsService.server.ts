@@ -242,8 +242,8 @@ async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
 
 const getHomeNewsPoolCached = unstable_cache(
   async (poolSize: number) => fetchHomeNewsPool(poolSize),
-  ['home-news-pool-v3'],
-  { revalidate: 300, tags: ['home-feed'] }
+  ['home-news-pool-v4'],
+  { revalidate: 120, tags: ['home-feed'] }
 )
 
 async function getHomeNewsPool(poolSize = 120): Promise<NewsItem[]> {
@@ -258,13 +258,14 @@ function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
   return pool.filter(isBreakingPoolItem).slice(0, limit)
 }
 
-function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
-  // Slider: featured=true (any category: siyaset, dunya, …) first, then gundem fill
-  const featured = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
+function bucketFeatured(pool: NewsItem[], limit: number, pinned: NewsItem[] = []): NewsItem[] {
+  // CMS’de işaretlenen featured’lar (ayrı sorgu) önce — pool dışı eski haberler de gelsin
+  const featuredPinned = pinned.filter((p) => p.featured === true && !isBreakingPoolItem(p))
+  const featuredPool = pool.filter((p) => p.featured === true && !isBreakingPoolItem(p))
   const gundem = pool.filter(
     (p) => p.category === 'gundem' && p.featured !== true && !isBreakingPoolItem(p)
   )
-  const candidates = [...featured, ...gundem]
+  const candidates = [...featuredPinned, ...featuredPool, ...gundem]
   const seen = new Set<string>()
   const withImg: NewsItem[] = []
   const withoutImg: NewsItem[] = []
@@ -274,9 +275,43 @@ function bucketFeatured(pool: NewsItem[], limit: number): NewsItem[] {
     if (item.imageUrl) withImg.push(item)
     else withoutImg.push(item)
   }
-  // Resimli haberler önce, resimsiz sonra
   return [...withImg, ...withoutImg].slice(0, limit)
 }
+
+async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
+  const db = getAdminFirestore()
+  try {
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('featured', '==', true)
+      .orderBy('publishedAt', 'desc')
+      .limit(limit)
+      .get()
+    return mapAdminDocs(snap.docs)
+  } catch (error) {
+    console.warn('[newsService.server] featured query failed, trying isEditorPick:', error)
+    try {
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where('isEditorPick', '==', true)
+        .orderBy('publishedAt', 'desc')
+        .limit(limit)
+        .get()
+      return mapAdminDocs(snap.docs)
+    } catch (err2) {
+      console.warn('[newsService.server] isEditorPick featured query failed:', err2)
+      return []
+    }
+  }
+}
+
+const getFeaturedNewsCached = unstable_cache(
+  async (limit: number) => fetchFeaturedNews(limit),
+  ['home-featured-v1'],
+  { revalidate: 60, tags: ['home-feed'] }
+)
 
 function bucketLatest(pool: NewsItem[], limit: number, now: number): NewsItem[] {
   const fresh = pool.filter((item) => !isBreakingPoolItem(item))
@@ -417,10 +452,13 @@ async function getHomeFeedRailItems(category: string, limitCount: number): Promi
  */
 
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
-  // Single Firestore read (cached). Thin category rails topped up separately.
-  const pool = await getHomeNewsPool(160)
+  // Pool + dedicated featured query (CMS “Öne Çıkan” son 160 dışına düşmesin)
+  const [pool, featuredPinned] = await Promise.all([
+    getHomeNewsPool(160),
+    getFeaturedNewsCached(10),
+  ])
 
-  if (pool.length === 0) {
+  if (pool.length === 0 && featuredPinned.length === 0) {
     return {
       breaking: [],
       featured: [],
@@ -442,7 +480,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
 
   return {
     breaking: slimNewsItemsForFeed(bucketBreaking(pool, 8)),
-    featured: slimNewsItemsForFeed(bucketFeatured(pool, 6)),
+    featured: slimNewsItemsForFeed(bucketFeatured(pool, 6, featuredPinned)),
     latest: slimNewsItemsForFeed(bucketLatest(pool, 16, now)),
     trending: slimNewsItemsForFeed(bucketTrending(pool, 6, now)),
     trendFeed: slimNewsItemsForFeed(bucketTrendFeed(pool, 12, now)),

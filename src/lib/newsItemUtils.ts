@@ -107,7 +107,7 @@ export function docToNewsItem(
         : typeof raw.commentCount === 'number'
           ? raw.commentCount
           : undefined,
-    featured: raw.featured === true,
+    featured: raw.featured === true || raw.isEditorPick === true,
     breaking: isBreaking,
   }
 }

@@ -11,6 +11,7 @@ import { newsDraftService } from '@/services/newsDraftService'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { isCanakkaleArticle, publishOneSocial } from '@/lib/social/publishOneSocial'
+import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
 import {
   articleBlocksToPlainText,
   sanitizeArticleBlocks,
@@ -198,8 +199,7 @@ function revalidateNewsPaths(
   try {
     const oldCategoryId = prevData?.categoryId as string | undefined
     const newCategoryId = body.categoryId?.trim()
-    revalidatePath('/feed')
-    revalidatePath('/')
+    revalidateHomeFeedCaches()
     revalidatePath('/kategori/son-dakika')
     if (oldCategoryId) revalidatePath(`/kategori/${oldCategoryId}`)
     if (newCategoryId && newCategoryId !== oldCategoryId) revalidatePath(`/kategori/${newCategoryId}`)
@@ -399,8 +399,7 @@ export async function DELETE(request: Request, context: RouteContext) {
     }
 
     try {
-      revalidatePath('/feed')
-      revalidatePath('/')
+      revalidateHomeFeedCaches()
       revalidatePath('/kategori/son-dakika')
       if (categoryId) revalidatePath(`/kategori/${categoryId}`)
     } catch { /* best-effort */ }
