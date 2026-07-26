@@ -22,11 +22,11 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
   const below = rest.slice(sideCount)
 
   return (
-    <section aria-label="Öne Çıkan Haberler" className="space-y-4">
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-12">
-        <article className="min-w-0 lg:col-span-8">
-          <Link href={newsItemDetailHref(lead!)} className="group block h-full">
-            <div className="relative aspect-[16/10] h-full min-h-[280px] overflow-hidden rounded-xl bg-[rgb(var(--color-border))] lg:min-h-0 lg:aspect-auto">
+    <section aria-label="Öne Çıkan Haberler" className="space-y-3">
+      <div className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-12 lg:gap-4">
+        <article className="relative min-h-[260px] min-w-0 lg:col-span-8 lg:min-h-0">
+          <Link href={newsItemDetailHref(lead!)} className="group absolute inset-0 block max-lg:relative max-lg:min-h-[260px]">
+            <div className="relative h-full min-h-[260px] overflow-hidden rounded-xl bg-[rgb(var(--color-border))] max-lg:aspect-[16/10] lg:min-h-0">
               <SafeNewsImage
                 src={lead!.imageUrl || FEED_FALLBACK_LOGO}
                 alt={lead!.title}
@@ -57,10 +57,10 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
           <div
             className={
               side.length === 1
-                ? 'grid grid-cols-1 gap-4 lg:col-span-4'
+                ? 'flex h-full flex-col gap-4 lg:col-span-4'
                 : side.length === 2
-                  ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1'
-                  : 'grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-4 lg:grid-cols-1'
+                  ? 'grid h-full grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1'
+                  : 'flex h-full flex-col gap-4 sm:grid sm:grid-cols-3 lg:col-span-4 lg:flex lg:flex-col'
             }
           >
             {side.map((item) => (
@@ -99,9 +99,9 @@ function FeaturedSideCard({ item }: { item: NewsItem }) {
   return (
     <Link
       href={newsItemDetailHref(item)}
-      className="group flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
+      className="group flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
     >
-      <div className="relative aspect-[16/9] min-h-[88px] flex-1 overflow-hidden bg-[rgb(var(--color-border))] lg:aspect-auto lg:min-h-[96px]">
+      <div className="relative min-h-[72px] flex-[1.15] overflow-hidden bg-[rgb(var(--color-border))]">
         <SafeNewsImage
           src={item.imageUrl || FEED_FALLBACK_LOGO}
           alt={item.title}
@@ -110,15 +110,15 @@ function FeaturedSideCard({ item }: { item: NewsItem }) {
           className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
         />
       </div>
-      <div className="flex shrink-0 flex-col p-3">
-        <span className="mb-1 text-[10px] font-black uppercase tracking-wide text-[rgb(var(--color-brand))]">
+      <div className="flex shrink-0 flex-col px-3 py-2.5">
+        <span className="mb-0.5 text-[10px] font-black uppercase tracking-wide text-[rgb(var(--color-brand))]">
           {newsItemCategoryLabel(item)}
         </span>
         <h3 className="line-clamp-2 text-sm font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline">
           {item.title}
         </h3>
         {time ? (
-          <p className="mt-1.5 text-xs text-[rgb(var(--color-muted))]">{time}</p>
+          <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">{time}</p>
         ) : null}
       </div>
     </Link>

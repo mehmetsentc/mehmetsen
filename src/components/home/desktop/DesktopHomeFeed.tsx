@@ -149,7 +149,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
 
       {layout.featuredSlider.length > 0 ? (
-        <div className="mb-10 border-b border-[rgb(var(--color-border))] pb-10">
+        <div className="mb-8 border-b border-[rgb(var(--color-border))] pb-8">
           <DesktopSectionHeader title="Öne Çıkan" href={ROUTES.CATEGORY('gundem')} />
           <DesktopFeaturedGrid items={layout.featuredSlider} />
         </div>
