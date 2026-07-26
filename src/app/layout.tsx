@@ -27,7 +27,6 @@ const sourceSerif = Source_Serif_4({
 })
 
 import { getSiteUrl } from '@/lib/seo'
-import Script from 'next/script'
 import { OneSignalProvider } from '@/components/OneSignalProvider'
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt'
 import { ConsentStrip } from '@/components/consent/ConsentStrip'
@@ -283,11 +282,6 @@ gtag('consent','default',{
         />
         <ThemeScript />
         <PlatformScript />
-        {/* OneSignal Web Push SDK */}
-        <Script
-          src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
-          strategy="lazyOnload"
-        />
         <OneSignalProvider />
         <ThemeProvider>
           <LanguageProvider>

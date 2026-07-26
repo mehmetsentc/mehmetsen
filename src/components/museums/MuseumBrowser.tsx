@@ -20,21 +20,26 @@ interface Museum {
   district: string
 }
 
-export function MuseumBrowser() {
-  const [cities, setCities] = useState<MuseumCity[]>([])
+export function MuseumBrowser({
+  initialCities = [],
+}: {
+  initialCities?: MuseumCity[]
+}) {
+  const [cities, setCities] = useState<MuseumCity[]>(initialCities)
   const [selectedCity, setSelectedCity] = useState('')
   const [museums, setMuseums] = useState<Museum[]>([])
-  const [loadingCities, setLoadingCities] = useState(true)
+  const [loadingCities, setLoadingCities] = useState(initialCities.length === 0)
   const [loadingMuseums, setLoadingMuseums] = useState(false)
   const [search, setSearch] = useState('')
 
   useEffect(() => {
+    if (initialCities.length > 0) return
     fetch('/api/museums/cities')
       .then((r) => r.json())
       .then((d) => setCities(d.cities ?? []))
       .catch(() => {})
       .finally(() => setLoadingCities(false))
-  }, [])
+  }, [initialCities.length])
 
   const handleCityChange = (slug: string) => {
     setSelectedCity(slug)
@@ -59,7 +64,7 @@ export function MuseumBrowser() {
   const selectedCityName = cities.find((c) => c.slug === selectedCity)?.cities ?? ''
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto min-h-[50vh] max-w-4xl px-4 py-8">
       <div className="mb-6 flex items-center gap-3">
         <Building2 className="h-6 w-6 text-[rgb(var(--color-brand))]" aria-hidden />
         <h1 className="text-2xl font-bold text-[rgb(var(--color-text))]">Türkiye Müzeleri</h1>

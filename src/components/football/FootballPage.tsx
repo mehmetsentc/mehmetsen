@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trophy, RefreshCw } from 'lucide-react'
 
 interface Standing {
@@ -91,7 +91,7 @@ function StandingsTable({ standings }: { standings: Standing[] }) {
               <td className="py-1.5">
                 <div className="flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={s.teamLogo} alt="" className="h-5 w-5 object-contain" />
+                  <img src={s.teamLogo} alt="" width={20} height={20} className="h-5 w-5 object-contain" />
                   <span className="text-[13px] font-medium text-[rgb(var(--color-text))]">{s.teamName}</span>
                 </div>
               </td>
@@ -157,7 +157,7 @@ function FixtureCard({ f, leagueName }: { f: Fixture; leagueName: string }) {
         <div className="flex flex-1 items-center justify-end gap-2">
           <span className="text-right text-sm font-semibold text-[rgb(var(--color-text))]">{f.homeTeam}</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={f.homeLogo} alt="" className="h-7 w-7 shrink-0 object-contain" />
+          <img src={f.homeLogo} alt="" width={28} height={28} className="h-7 w-7 shrink-0 object-contain" />
         </div>
         <div className="w-16 shrink-0 text-center">
           {hasScore ? (
@@ -170,7 +170,7 @@ function FixtureCard({ f, leagueName }: { f: Fixture; leagueName: string }) {
         </div>
         <div className="flex flex-1 items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={f.awayLogo} alt="" className="h-7 w-7 shrink-0 object-contain" />
+          <img src={f.awayLogo} alt="" width={28} height={28} className="h-7 w-7 shrink-0 object-contain" />
           <span className="text-sm font-semibold text-[rgb(var(--color-text))]">{f.awayTeam}</span>
         </div>
       </div>
@@ -193,17 +193,24 @@ function EmptyState({ tab }: { tab: ContentTab }) {
   )
 }
 
-export function FootballPage() {
-  const [leagueId,    setLeagueId]    = useState(203)
-  const [contentTab,  setContentTab]  = useState<ContentTab>('today')
-  const [season,      setSeason]      = useState(2025)
+export function FootballPage({
+  initialFixtures = [],
+}: {
+  initialFixtures?: Fixture[]
+}) {
+  const [leagueId, setLeagueId] = useState(203)
+  const [contentTab, setContentTab] = useState<ContentTab>('today')
+  const [season, setSeason] = useState(2025)
 
   const [standings, setStandings] = useState<Standing[]>([])
-  const [fixtures,  setFixtures]  = useState<Fixture[]>([])
-  const [loading,   setLoading]   = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [fixtures, setFixtures] = useState<Fixture[]>(initialFixtures)
+  const [loading, setLoading] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(
+    initialFixtures.length > 0 ? new Date() : null
+  )
+  const skipFirstFetch = useRef(initialFixtures.length > 0)
 
-  const leagueName = LEAGUES.find(l => l.id === leagueId)?.label ?? 'Lig'
+  const leagueName = LEAGUES.find((l) => l.id === leagueId)?.label ?? 'Lig'
 
   const load = (tab: ContentTab, lid: number, s: number) => {
     setLoading(true)
@@ -214,8 +221,8 @@ export function FootballPage() {
       url = `/api/football/fixtures?type=${tab}&league=${lid}&season=${s}`
     }
     fetch(url)
-      .then(r => r.json())
-      .then(d => {
+      .then((r) => r.json())
+      .then((d) => {
         if (tab === 'standings') setStandings(d.standings ?? [])
         else setFixtures(d.fixtures ?? [])
         setLastUpdate(new Date())
@@ -225,6 +232,11 @@ export function FootballPage() {
   }
 
   useEffect(() => {
+    if (skipFirstFetch.current && contentTab === 'today' && leagueId === 203) {
+      skipFirstFetch.current = false
+      return
+    }
+    skipFirstFetch.current = false
     setStandings([])
     setFixtures([])
     load(contentTab, leagueId, season)

@@ -32,14 +32,14 @@ export function DeferredThirdParty() {
     }
 
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(enable, { timeout: 4000 })
+      const id = window.requestIdleCallback(enable, { timeout: 10_000 })
       return () => {
         cancelled = true
         window.cancelIdleCallback(id)
       }
     }
 
-    const t = globalThis.setTimeout(enable, 2500)
+    const t = globalThis.setTimeout(enable, 6_000)
     return () => {
       cancelled = true
       globalThis.clearTimeout(t)

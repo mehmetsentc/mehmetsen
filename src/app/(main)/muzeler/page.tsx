@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { MuseumBrowser } from '@/components/museums/MuseumBrowser'
+import { getCities } from '@/services/museumService.server'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default function MuzelerPage() {
-  return <MuseumBrowser />
+export default async function MuzelerPage() {
+  const cities = await getCities().catch(() => [])
+  return <MuseumBrowser initialCities={cities} />
 }

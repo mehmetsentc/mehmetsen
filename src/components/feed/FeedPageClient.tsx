@@ -12,13 +12,37 @@ import type { HomeFeedInitialData } from '@/types/newsItem'
 
 const DesktopHomeFeed = dynamic(
   () => import('@/components/home/desktop/DesktopHomeFeed').then((m) => m.DesktopHomeFeed),
-  { ssr: false, loading: () => null }
+  { ssr: false, loading: () => <DesktopFeedPlaceholder /> }
 )
 const DesktopNewspaperShell = dynamic(
   () =>
     import('@/components/home/desktop/DesktopNewspaperShell').then((m) => m.DesktopNewspaperShell),
-  { ssr: false, loading: () => null }
+  { ssr: false, loading: () => <DesktopFeedPlaceholder /> }
 )
+
+function DesktopFeedPlaceholder() {
+  return (
+    <div
+      className="mx-auto hidden min-h-[70vh] w-full max-w-6xl animate-pulse space-y-4 px-4 py-6 lg:block"
+      aria-hidden
+    >
+      <div className="h-8 w-40 rounded bg-[rgb(var(--color-border))]" />
+      <div className="grid grid-cols-12 gap-4">
+        <div className="col-span-8 aspect-[16/10] rounded-xl bg-[rgb(var(--color-border))]" />
+        <div className="col-span-4 space-y-4">
+          <div className="h-28 rounded-xl bg-[rgb(var(--color-border))]" />
+          <div className="h-28 rounded-xl bg-[rgb(var(--color-border))]" />
+          <div className="h-28 rounded-xl bg-[rgb(var(--color-border))]" />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="aspect-[16/10] rounded-xl bg-[rgb(var(--color-border))]" />
+        <div className="aspect-[16/10] rounded-xl bg-[rgb(var(--color-border))]" />
+        <div className="aspect-[16/10] rounded-xl bg-[rgb(var(--color-border))]" />
+      </div>
+    </div>
+  )
+}
 
 interface FeedPageClientProps {
   homeFeedData: HomeFeedInitialData
@@ -33,11 +57,10 @@ function FeedScrollHeaderConfig({ homeFeedData }: FeedPageClientProps) {
 }
 
 /**
- * Desktop shell is heavy (TBT). Keep the SSR mobile tree as LCP until idle,
- * then reveal desktop without unmounting the mobile tree (avoids CLS/INP spikes).
+ * Desktop shell: lg+ CSS ile mobil ağacı gizle (yanlış layout → CLS yok).
+ * Desktop bundle idle sonrası yüklenir; yer tutucu aynı grid’i rezerve eder.
  */
 function useDesktopFeedReady() {
-  const [isLg, setIsLg] = useState(false)
   const [desktopReady, setDesktopReady] = useState(false)
 
   useEffect(() => {
@@ -60,18 +83,15 @@ function useDesktopFeedReady() {
       clearIdle()
       const enable = () => setDesktopReady(true)
       if ('requestIdleCallback' in window) {
-        idleId = window.requestIdleCallback(enable, { timeout: 3_500 })
+        idleId = window.requestIdleCallback(enable, { timeout: 2_500 })
       } else {
-        timer = setTimeout(enable, 2_000)
+        timer = setTimeout(enable, 1_200)
       }
     }
 
     const sync = () => {
-      const matches = mq.matches
-      setIsLg(matches)
-      if (matches) {
-        armDesktop()
-      } else {
+      if (mq.matches) armDesktop()
+      else {
         clearIdle()
         setDesktopReady(false)
       }
@@ -85,20 +105,20 @@ function useDesktopFeedReady() {
     }
   }, [])
 
-  return isLg && desktopReady
+  return desktopReady
 }
 
 export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('home')
   const liveFeedData = useHomeFeedLiveUpdates(homeFeedData)
-  const showDesktop = useDesktopFeedReady()
+  const desktopReady = useDesktopFeedReady()
 
   return (
     <>
       <FeedScrollHeaderConfig homeFeedData={liveFeedData} />
 
-      {/* Mobile/SSR tree — stay mounted; hide when desktop shell is ready. */}
-      <div className={showDesktop ? 'hidden' : undefined} aria-hidden={showDesktop || undefined}>
+      {/* Mobil — lg altında görünür; masaüstünde DOM’da kalır ama layout’a girmez */}
+      <div className="lg:hidden">
         <FeedCategoryBar activeTab={activeTab} onTabChange={setActiveTab} />
         {activeTab === 'home' && <HomeFeed data={liveFeedData} />}
         {activeTab === 'trend' && (
@@ -108,12 +128,17 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
         )}
       </div>
 
-      {showDesktop ? (
+      {/* Masaüstü — CSS ile ilk paint’ten itibaren ayrılır (mobil flash yok) */}
+      <div className="hidden lg:block">
         <AdSlotProvider page="home">
           {activeTab === 'home' ? (
-            <DesktopNewspaperShell>
-              <DesktopHomeFeed data={liveFeedData} />
-            </DesktopNewspaperShell>
+            desktopReady ? (
+              <DesktopNewspaperShell>
+                <DesktopHomeFeed data={liveFeedData} />
+              </DesktopNewspaperShell>
+            ) : (
+              <DesktopFeedPlaceholder />
+            )
           ) : null}
           {activeTab === 'trend' && (
             <div className="pb-10">
@@ -126,7 +151,7 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
             </div>
           )}
         </AdSlotProvider>
-      ) : null}
+      </div>
     </>
   )
 }

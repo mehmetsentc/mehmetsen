@@ -42,7 +42,10 @@ export function EventCard({ event }: EventCardProps) {
           <img
             src={coverImageUrl}
             alt={event.title}
+            width={640}
+            height={360}
             loading="lazy"
+            decoding="async"
             onError={() => setImageFailed(true)}
             className="h-full w-full object-cover"
           />

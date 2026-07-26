@@ -10,11 +10,15 @@ import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvents } from '@/hooks/useEvents'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
-import type { EventCategory } from '@/types/event'
+import type { EventCategory, NaEvent } from '@/types/event'
 import { EventCard, EventCardSkeleton } from './EventCard'
 import { EventFilters } from './EventFilters'
 
-export function EventList() {
+export function EventList({
+  initialEvents = [],
+}: {
+  initialEvents?: NaEvent[]
+}) {
   const { user } = useAuth()
 
   const userCityName = user?.location?.trim() || null
@@ -35,6 +39,7 @@ export function EventList() {
   const [geoLoading, setGeoLoading] = useState(false)
   const userPickedCityRef = useRef(userPickedCity)
   const geoTriedRef = useRef(false)
+  const hasSsrSeed = initialEvents.length > 0 && !selectedCitySlug && !selectedCategory
 
   userPickedCityRef.current = userPickedCity
 
@@ -78,6 +83,10 @@ export function EventList() {
       nearby: false,
     })
 
+  // SSR seed — client fetch gelene kadar boş sayfa / CLS olmasın
+  const displayEvents =
+    hasSsrSeed && loading && events.length === 0 ? initialEvents : events
+
   const { sentinelRef } = useInfiniteScroll({
     onLoadMore: loadMore,
     hasMore,
@@ -98,11 +107,9 @@ export function EventList() {
     setSelectedCitySlug(userCitySlug ?? null)
   }
 
-  // geoLoading is intentionally excluded — we show all events immediately,
-  // then silently re-filter when geolocation resolves.
-  const showSkeletons = loading
-  const showEmpty = !showSkeletons && !error && events.length === 0
-  const showItems = !showSkeletons && events.length > 0
+  const showSkeletons = loading && displayEvents.length === 0
+  const showEmpty = !showSkeletons && !error && displayEvents.length === 0
+  const showItems = displayEvents.length > 0
 
   return (
     <div className="w-full">
@@ -173,7 +180,7 @@ export function EventList() {
 
       <div className="grid grid-cols-1 gap-4 py-3 sm:grid-cols-2">
         {showSkeletons && [...Array(4)].map((_, i) => <EventCardSkeleton key={`sk-${i}`} />)}
-        {showItems && events.map((event) => <EventCard key={event.id} event={event} />)}
+        {showItems && displayEvents.map((event) => <EventCard key={event.id} event={event} />)}
         {loadingMore && <EventCardSkeleton key="sk-more" />}
       </div>
 

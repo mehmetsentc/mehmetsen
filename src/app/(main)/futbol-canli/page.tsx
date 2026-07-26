@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { FootballPage } from '@/components/football/FootballPage'
+import { getTodayFixtures } from '@/services/footballService.server'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default function FutbolCanliPage() {
-  return <FootballPage />
+export default async function FutbolCanliPage() {
+  const initialFixtures = await getTodayFixtures(203).catch(() => [])
+  return <FootballPage initialFixtures={initialFixtures} />
 }

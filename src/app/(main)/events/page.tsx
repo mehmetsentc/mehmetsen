@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { EventList } from '@/components/events/EventList'
+import { getUpcomingEventsServer } from '@/services/eventService.server'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-export default function EventsPage() {
-  return <EventList />
+export default async function EventsPage() {
+  const initialEvents = await getUpcomingEventsServer(12)
+  return <EventList initialEvents={initialEvents} />
 }
