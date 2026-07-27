@@ -114,19 +114,57 @@ export async function reverseGeocode(lat: number, lng: number): Promise<PostLoca
   }
 }
 
-export function getCurrentPosition(): Promise<GeolocationPosition> {
+function getCurrentPositionOnce(
+  options: PositionOptions
+): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Konum desteklenmiyor'))
       return
     }
+    navigator.geolocation.getCurrentPosition(resolve, reject, options)
+  })
+}
 
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
+/**
+ * GPS konumu al. Önce yüksek doğruluk dener; masaüstü/Wi‑Fi’de sık görülen
+ * timeout / unavailable durumunda düşük doğrulukla yeniden dener.
+ */
+export async function getCurrentPosition(): Promise<GeolocationPosition> {
+  try {
+    return await getCurrentPositionOnce({
       enableHighAccuracy: true,
-      timeout: 12_000,
+      timeout: 10_000,
       maximumAge: 60_000,
     })
-  })
+  } catch (err) {
+    const code = (err as GeolocationPositionError | undefined)?.code
+    // PERMISSION_DENIED = 1 → ikinci deneme anlamsız
+    if (code === 1) throw err
+    return getCurrentPositionOnce({
+      enableHighAccuracy: false,
+      timeout: 15_000,
+      maximumAge: 5 * 60_000,
+    })
+  }
+}
+
+export async function detectCityViaIp(): Promise<{
+  lat: number
+  lng: number
+  city?: string
+} | null> {
+  try {
+    const res = await fetch('/api/geo/detect')
+    if (!res.ok) return null
+    const geo = (await res.json()) as { lat?: number; lng?: number; city?: string }
+    if (typeof geo.lat !== 'number' || typeof geo.lng !== 'number') return null
+    if (!Number.isFinite(geo.lat) || !Number.isFinite(geo.lng)) return null
+    if (geo.lat === 0 && geo.lng === 0) return null
+    return { lat: geo.lat, lng: geo.lng, city: geo.city }
+  } catch {
+    return null
+  }
 }
 
 export async function detectCurrentLocation(): Promise<PostLocation | null> {

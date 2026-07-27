@@ -87,8 +87,8 @@ describe('seed editors', () => {
     }
   })
 
-  it('defaults seed publish policy to REQUIRES_APPROVAL via forcesDraft', () => {
-    expect(aiEditorForcesDraft('REQUIRES_APPROVAL')).toBe(true)
+  it('only DRAFT_ONLY forces draft; AUTO_PUBLISH and REQUIRES_APPROVAL allow publish', () => {
+    expect(aiEditorForcesDraft('REQUIRES_APPROVAL')).toBe(false)
     expect(aiEditorForcesDraft('DRAFT_ONLY')).toBe(true)
     expect(aiEditorForcesDraft('AUTO_PUBLISH')).toBe(false)
   })

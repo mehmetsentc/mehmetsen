@@ -5,8 +5,10 @@ import {
   listAiEditors,
   seedDefaultAiEditors,
   refreshStylePromptsFromSeed,
+  enableAutoPublishForActiveEditors,
 } from '@/lib/ai/editorial/aiEditorService'
 import { invalidateEditorRouterCache } from '@/lib/ai/editorial/editorRouter'
+import type { AiPublishPolicy } from '@/types/aiEditor'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -41,6 +43,11 @@ export async function POST(request: Request) {
     invalidateEditorRouterCache()
     return NextResponse.json({ success: true, ...result })
   }
+  if (body.action === 'enableAutoPublish') {
+    const result = await enableAutoPublishForActiveEditors(auth.uid)
+    invalidateEditorRouterCache()
+    return NextResponse.json({ success: true, ...result })
+  }
 
   const name = String(body.name ?? '').trim()
   const title = String(body.title ?? '').trim()
@@ -66,7 +73,7 @@ export async function POST(request: Request) {
         : undefined,
       categoryIds: Array.isArray(body.categoryIds) ? body.categoryIds.map(String) : undefined,
       capabilities: (body.capabilities as object | undefined) as never,
-      publishPolicy: (body.publishPolicy as 'REQUIRES_APPROVAL' | undefined) ?? 'REQUIRES_APPROVAL',
+      publishPolicy: (body.publishPolicy as AiPublishPolicy | undefined) ?? 'AUTO_PUBLISH',
       prompts: (body.prompts as object | undefined) as never,
       createdBy: auth.uid,
     })

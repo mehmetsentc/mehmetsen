@@ -1,6 +1,6 @@
 /**
  * Newsroom pipeline: source → extract → AI rewrite → fact-check → dedupe → category/geo → AUTO publish.
- * newsDrafts only when confidence < 50, moderation review, or hard fact-check failure.
+ * newsDrafts when confidence below threshold, moderation review, DRAFT_ONLY persona, or hard failures.
  *
  * EXTRACTION STAGE (new):
  *   When baseWorker queues items with thin RSS content (<500 chars),
@@ -733,9 +733,8 @@ export async function processNewsroomArticle(
     // Gate keeper 'publish' kararı → AI yazdı, kalite geçti → eski fact-check koşulları geçerlir
     const gateDraft = !workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'draft'
     const isFallbackContent = !workingInput.skipAiRewrite && rewritten.categoryConfidence === 0
-    const providerFallbackDraft =
-      factCheck.flags.includes('provider_fallback') ||
-      factCheck.flags.includes('factcheck_heuristic')
+    // Heuristik fact-check tek başına taslak zorlamaz — skor eşiği yeter.
+    // (Eski: factcheck_heuristic → her zaman draft → otomatik yayın fiilen kapalıydı.)
 
     if (gateDraft) {
       console.warn(
@@ -752,12 +751,28 @@ export async function processNewsroomArticle(
       contentHasIncompleteSegments(rewritten.description || '') ||
       contentHasIncompleteSegments((rewritten as AiRewriteResult).spot || '')
 
-    const personaRequiresApproval = aiEditorForcesDraft(routedEditor?.publishPolicy)
+    // Final kategoriye göre byline personasını seç (yazım worker hint'i ile yapılmış olabilir)
+    let publishEditor = routedEditor
+    if (
+      !workingInput.skipAiRewrite &&
+      !workingInput.preferredAiEditorId &&
+      resolvedCategory
+    ) {
+      const byCategory = await routeAiEditor({
+        categoryId: resolvedCategory,
+        isBreaking,
+        articleFormat: workingInput.articleFormat ?? 'standard',
+      }).catch(() => null)
+      if (byCategory) publishEditor = byCategory
+    }
 
+    const personaRequiresApproval = aiEditorForcesDraft(publishEditor?.publishPolicy)
+
+    // AUTO_PUBLISH / REQUIRES_APPROVAL: kalite kapısını geçerse yayın.
+    // Yalnızca DRAFT_ONLY persona veya düşük güven / gate / moderasyon → taslak.
     const needsDraft =
       gateDraft ||
       isFallbackContent ||
-      providerFallbackDraft ||
       factCheck.confidenceScore < NEWSROOM_AUTO_PUBLISH_THRESHOLD ||
       factCheckFailedBadly ||
       moderation.decision === 'review' ||
@@ -786,7 +801,7 @@ export async function processNewsroomArticle(
     const plainFromBlocks = articleBlocksToPlainText(bodyBlocks)
     const contentBody = plainFromBlocks || rewritten.description
 
-    const personaAuthors = routedEditor ? authorFieldsFromEditor(routedEditor) : null
+    const personaAuthors = publishEditor ? authorFieldsFromEditor(publishEditor) : null
 
     const doc = {
       title: rewritten.title,

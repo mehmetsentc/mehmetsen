@@ -74,7 +74,7 @@
     },
     {
       "path": "/api/cron/newsroom/process-queue",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/newsroom/national",

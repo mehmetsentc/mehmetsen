@@ -54,10 +54,15 @@ export default function AiEditorsAdminPage() {
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'seed' }),
       })
-      const data = (await res.json()) as { created?: string[]; skipped?: string[]; error?: string }
+      const data = (await res.json()) as {
+        created?: string[]
+        updated?: string[]
+        skipped?: string[]
+        error?: string
+      }
       if (!res.ok) throw new Error(data.error || 'Seed başarısız')
       toast.success(
-        `Seed: ${(data.created ?? []).length} yeni, ${(data.skipped ?? []).length} atlandı`
+        `Seed: ${(data.created ?? []).length} yeni, ${(data.updated ?? []).length} güncellendi, ${(data.skipped ?? []).length} atlandı`
       )
       await load()
     } catch (e) {
@@ -91,8 +96,35 @@ export default function AiEditorsAdminPage() {
     }
   }
 
+  const enableAutoPublish = async () => {
+    if (!canManage) {
+      toast.error('Yetkiniz yok')
+      return
+    }
+    setSeeding(true)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch('/api/admin/ai-editors', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'enableAutoPublish' }),
+      })
+      const data = (await res.json()) as { updated?: string[]; skipped?: string[]; error?: string }
+      if (!res.ok) throw new Error(data.error || 'Güncelleme başarısız')
+      toast.success(
+        `Otomatik yayın: ${(data.updated ?? []).length} editör güncellendi`
+      )
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Güncelleme hatası')
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   const active = editors.filter((e) => e.status === 'active').length
   const columns = editors.filter((e) => e.capabilities?.columnEnabled).length
+  const autoPublish = editors.filter((e) => e.publishPolicy === 'AUTO_PUBLISH').length
 
   return (
     <div className="flex flex-col">
@@ -105,7 +137,7 @@ export default function AiEditorsAdminPage() {
           <Kpi label="Toplam" value={editors.length} />
           <Kpi label="Aktif" value={active} />
           <Kpi label="Köşe açık" value={columns} />
-          <Kpi label="Onay politikası" value="REQUIRES_APPROVAL" small />
+          <Kpi label="Otomatik yayın" value={`${autoPublish}/${editors.length || 0}`} small />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -127,6 +159,15 @@ export default function AiEditorsAdminPage() {
               >
                 {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 8 Editör Seed
+              </button>
+              <button
+                type="button"
+                onClick={() => void enableAutoPublish()}
+                disabled={seeding}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] disabled:opacity-60"
+              >
+                {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                Otomatik yayını aç
               </button>
               <button
                 type="button"

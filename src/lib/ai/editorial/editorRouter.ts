@@ -52,11 +52,12 @@ export interface EditorRouteInput {
   articleFormat?: 'standard' | 'column' | 'analysis'
 }
 
-/** REQUIRES_APPROVAL / DRAFT_ONLY never auto-publish. */
+/** DRAFT_ONLY never auto-publishes. AUTO_PUBLISH and REQUIRES_APPROVAL both allow publish
+ * (quality gates still apply). REQUIRES_APPROVAL is legacy — prefer AUTO_PUBLISH. */
 export function aiEditorForcesDraft(
   policy: AiEditorDocument['publishPolicy'] | null | undefined
 ): boolean {
-  return policy === 'REQUIRES_APPROVAL' || policy === 'DRAFT_ONLY'
+  return policy === 'DRAFT_ONLY'
 }
 
 /**

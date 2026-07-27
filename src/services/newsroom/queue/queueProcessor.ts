@@ -14,7 +14,7 @@ import {
 import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 
-const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 4)
+const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 8)
 
 // Her job 3-4 AI çağrısı (stage1-3 + factChecker) × ~30s = yüksek CPU.
 // 200s wall-clock budget: süre aşılırsa yeni job başlatma.

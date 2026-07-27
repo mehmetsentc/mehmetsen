@@ -98,10 +98,13 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
           <button
             type="button"
             onClick={startAutoLocation}
+            disabled={locationState === 'requesting'}
             title="GPS ile tespit et"
+            aria-busy={locationState === 'requesting'}
             className={cn(
-              'inline-flex shrink-0 items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-xs font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]',
-              isMobile ? 'h-9 w-9 justify-center px-0' : 'px-3 py-2'
+              'inline-flex shrink-0 items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-xs font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))] disabled:cursor-wait disabled:opacity-70',
+              isMobile ? 'h-9 w-9 justify-center px-0' : 'px-3 py-2',
+              locationState === 'denied' && 'border-red-300 text-red-600 hover:text-red-700'
             )}
           >
             {locationState === 'requesting' ? (
@@ -109,7 +112,7 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
             ) : (
               <Navigation className="h-4 w-4" />
             )}
-            {!isMobile ? 'Konumumu kullan' : null}
+            {!isMobile ? (locationState === 'requesting' ? 'Konum alınıyor…' : 'Konumumu kullan') : null}
           </button>
 
           {city ? (
@@ -117,11 +120,25 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
               <MapPin className="h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" />
               <span className="truncate font-semibold text-[rgb(var(--color-brand))]">{city.name}</span>
               <span className="shrink-0 text-xs text-[rgb(var(--color-muted))]">
-                {locationState === 'granted' ? '· GPS' : locationState === 'stored' ? '· Kaydedilmiş' : ''}
+                {locationState === 'granted'
+                  ? '· GPS'
+                  : locationState === 'requesting'
+                    ? '· Aranıyor'
+                    : locationState === 'denied'
+                      ? '· İzin yok'
+                      : locationState === 'stored'
+                        ? '· Kaydedilmiş'
+                        : ''}
               </span>
             </div>
           ) : null}
         </div>
+
+        {locationState === 'denied' ? (
+          <p className="mt-2 text-xs text-red-600">
+            Konum alınamadı. Tarayıcıda konum iznini açın veya şehir seçin.
+          </p>
+        ) : null}
 
         <div
           ref={chipsScrollRef}

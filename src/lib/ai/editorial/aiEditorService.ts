@@ -177,7 +177,7 @@ export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEdit
     isAI: true,
     verified: true,
     capabilities: { ...DEFAULT_AI_CAPABILITIES, ...input.capabilities },
-    publishPolicy: input.publishPolicy ?? 'REQUIRES_APPROVAL',
+    publishPolicy: input.publishPolicy ?? 'AUTO_PUBLISH',
     maxDailyNews: 40,
     maxDailyColumns: 1,
     maxDailyVideos: 5,
@@ -292,9 +292,16 @@ export async function archiveAiEditor(id: string): Promise<AiEditorDocument> {
   return updateAiEditor(id, { status: 'archived' })
 }
 
-async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<'created' | 'skipped'> {
+async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<'created' | 'updated' | 'skipped'> {
   const existing = await getAiEditorBySlug(spec.slug)
-  if (existing && existing.status === 'active') return 'skipped'
+  if (existing && existing.status === 'active') {
+    // Seed personas: haber gelince düzenle → kategorile → yayına al
+    if (existing.publishPolicy !== 'AUTO_PUBLISH' && existing.publishPolicy !== 'DRAFT_ONLY') {
+      await updateAiEditor(existing.id, { publishPolicy: 'AUTO_PUBLISH' }, createdBy)
+      return 'updated'
+    }
+    return 'skipped'
+  }
 
   await createAiEditor({
     name: spec.name,
@@ -309,7 +316,7 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
     capabilities: spec.capabilities,
     modelAssignments: defaultModelAssignmentsForSeed(spec),
     prompts: spec.prompts,
-    publishPolicy: 'REQUIRES_APPROVAL',
+    publishPolicy: 'AUTO_PUBLISH',
     createdBy,
   })
   return 'created'
@@ -317,16 +324,37 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
 
 export async function seedDefaultAiEditors(createdBy: string | null = 'system'): Promise<{
   created: string[]
+  updated: string[]
   skipped: string[]
 }> {
   const created: string[] = []
+  const updated: string[] = []
   const skipped: string[] = []
   for (const spec of SEED_AI_EDITORS) {
     const result = await seedOne(spec, createdBy)
     if (result === 'created') created.push(spec.slug)
+    else if (result === 'updated') updated.push(spec.slug)
     else skipped.push(spec.slug)
   }
-  return { created, skipped }
+  return { created, updated, skipped }
+}
+
+/** Aktif editörlerde DRAFT_ONLY hariç yayın politikasını AUTO_PUBLISH yap. */
+export async function enableAutoPublishForActiveEditors(
+  changedBy: string | null = 'system'
+): Promise<{ updated: string[]; skipped: string[] }> {
+  const editors = await listAiEditors({ status: 'active', limit: 100 })
+  const updated: string[] = []
+  const skipped: string[] = []
+  for (const editor of editors) {
+    if (editor.publishPolicy === 'AUTO_PUBLISH' || editor.publishPolicy === 'DRAFT_ONLY') {
+      skipped.push(editor.slug)
+      continue
+    }
+    await updateAiEditor(editor.id, { publishPolicy: 'AUTO_PUBLISH' }, changedBy)
+    updated.push(editor.slug)
+  }
+  return { updated, skipped }
 }
 
 /**

@@ -387,9 +387,9 @@ export default function AiEditorDetailPage() {
                 }
                 className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
               >
-                <option value="REQUIRES_APPROVAL">REQUIRES_APPROVAL</option>
-                <option value="DRAFT_ONLY">DRAFT_ONLY</option>
-                <option value="AUTO_PUBLISH">AUTO_PUBLISH</option>
+                <option value="AUTO_PUBLISH">AUTO_PUBLISH — hemen yayına al</option>
+                <option value="REQUIRES_APPROVAL">REQUIRES_APPROVAL — (eski, yayın engellemez)</option>
+                <option value="DRAFT_ONLY">DRAFT_ONLY — yalnızca taslak</option>
               </select>
             </div>
             <div>

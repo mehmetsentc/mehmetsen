@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { postService } from '@/services/postService'
-import { getCurrentPosition } from '@/lib/location'
+import { detectCityViaIp, getCurrentPosition } from '@/lib/location'
 import { nearestProvinceSlug, getCityCategoryName } from '@/constants/cities'
 import {
   clearLocalNewsCitySlug,
@@ -14,6 +14,7 @@ import {
   writeLocalNewsCitySlug,
   writeStoredUserLocation,
 } from '@/lib/userLocationStorage'
+import toast from '@/lib/toast-shim'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { usePageState } from '@/hooks/usePageState'
@@ -76,7 +77,8 @@ function resolvePersistedLocalCitySlug(pathname: string): string | null {
     stored?.citySlug &&
     (stored.source === 'manual' ||
       stored.source === 'geolocation' ||
-      stored.source === 'profile')
+      stored.source === 'profile' ||
+      stored.source === 'ip')
   ) {
     return stored.citySlug
   }
@@ -92,7 +94,7 @@ function hasUserPickedCity(pathname: string): boolean {
   return Boolean(readLocalNewsCitySlug())
 }
 
-/** Kullanıcı yerel konumunu bilinçli seçti mi? (IP/fallback sayılmaz) */
+/** Kullanıcı yerel konumunu bilinçli seçti mi? (cookie/fallback sayılmaz) */
 function hasExplicitLocationChoice(): boolean {
   if (readLocalNewsCitySlug()) return true
   const stored = readStoredUserLocation()
@@ -100,7 +102,8 @@ function hasExplicitLocationChoice(): boolean {
   return (
     stored.source === 'manual' ||
     stored.source === 'geolocation' ||
-    stored.source === 'profile'
+    stored.source === 'profile' ||
+    stored.source === 'ip'
   )
 }
 
@@ -244,40 +247,90 @@ export function useLocalNewsPage() {
 
   const { sentinelRef } = useInfiniteScroll({ onLoadMore: loadMore, hasMore, loading: loadingMore })
 
+  const applyDetectedCity = useCallback(
+    (
+      lat: number,
+      lng: number,
+      source: 'geolocation' | 'ip',
+      opts?: { silent?: boolean }
+    ) => {
+      const slug = nearestProvinceSlug(lat, lng)
+      const name = getCityCategoryName(slug)
+      const province = TURKISH_PROVINCES.find((p) => p.slug === slug)
+      if (!province) return
+
+      setCity(provinceToCity(province))
+      setLocationState(source === 'geolocation' ? 'granted' : 'stored')
+      userPickedRef.current = true
+      setUserPickedCity(true)
+      setStoredCitySlug(slug)
+      writeLocalNewsCitySlug(slug)
+      writeStoredUserLocation({
+        citySlug: slug,
+        cityName: name,
+        lat,
+        lng,
+        source: source === 'ip' ? 'ip' : 'geolocation',
+        updatedAt: Date.now(),
+      })
+
+      if (!opts?.silent) {
+        if (source === 'geolocation') {
+          toast.success(`Konumunuz: ${name}`)
+        } else {
+          toast(`Yaklaşık konum: ${name}`, { icon: '📍' })
+        }
+      }
+    },
+    [setStoredCitySlug, setUserPickedCity]
+  )
+
   const requestGeolocation = useCallback(
     async (opts?: { force?: boolean }) => {
       if (!opts?.force && (requestedRef.current || userPickedRef.current)) return
       requestedRef.current = true
       geoAbortRef.current = false
       setLocationState('requesting')
+
       try {
+        // iOS Capacitor remote-URL: native izin diyaloğu olmadan GPS sessizce düşer
+        const isCapacitor =
+          typeof window !== 'undefined' &&
+          typeof (window as unknown as { Capacitor?: unknown }).Capacitor !== 'undefined'
+        if (isCapacitor) {
+          const { default: NativeGeolocation } = await import('@/plugins/NativeGeolocation')
+          const { status } = await NativeGeolocation.requestPermission()
+          if (geoAbortRef.current) return
+          if (status === 'denied') {
+            throw Object.assign(new Error('permission denied'), { code: 1 })
+          }
+        }
+
         const pos = await getCurrentPosition()
         if (geoAbortRef.current) return
-        const { latitude: lat, longitude: lng } = pos.coords
-        const slug = nearestProvinceSlug(lat, lng)
-        const name = getCityCategoryName(slug)
-        const province = TURKISH_PROVINCES.find((p) => p.slug === slug)!
-        setCity(provinceToCity(province))
-        setLocationState('granted')
-        userPickedRef.current = true
-        setUserPickedCity(true)
-        setStoredCitySlug(slug)
-        writeLocalNewsCitySlug(slug)
-        writeStoredUserLocation({
-          citySlug: slug,
-          cityName: name,
-          lat,
-          lng,
-          source: 'geolocation',
-          updatedAt: Date.now(),
-        })
-      } catch {
+        applyDetectedCity(pos.coords.latitude, pos.coords.longitude, 'geolocation')
+      } catch (err) {
         if (geoAbortRef.current) return
+
+        // GPS reddedildi / zaman aşımı → IP ile yaklaşık şehir
+        const ip = await detectCityViaIp()
+        if (geoAbortRef.current) return
+        if (ip) {
+          applyDetectedCity(ip.lat, ip.lng, 'ip')
+          return
+        }
+
         requestedRef.current = false
         setLocationState('denied')
+        const code = (err as GeolocationPositionError | undefined)?.code
+        if (code === 1) {
+          toast.error('Konum izni reddedildi. Tarayıcı ayarlarından izin verin.')
+        } else {
+          toast.error('Konum alınamadı. Şehir listesinden seçebilirsiniz.')
+        }
       }
     },
-    [setStoredCitySlug, setUserPickedCity]
+    [applyDetectedCity]
   )
 
   useEffect(() => {

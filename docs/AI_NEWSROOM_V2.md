@@ -59,7 +59,11 @@ Worker `editorId` / `editorType` unchanged.
 
 Selin Aras, Mert Karaca, Defne Aksoy, Kerem Aydın, Ece Yalın, Deniz Erdem, İpek Demir, Arda Şahin.
 
-Default publish policy: **REQUIRES_APPROVAL** → always `newsDrafts` until Admin changes policy.
+Default publish policy: **AUTO_PUBLISH** → ilgili persona düzenler, kategoriler ve kalite kapısından geçen haberi doğrudan yayına alır.
+
+`DRAFT_ONLY` persona’lar her zaman `newsDrafts`’a düşer. Düşük güven / gate / moderasyon reddi hâlâ taslağa alır.
+
+Queue drain: `/api/cron/newsroom/process-queue` her **5 dakikada** bir çalışır (`NEWSROOM_QUEUE_BATCH_SIZE` varsayılan 8).
 
 ## Adding a new editor
 

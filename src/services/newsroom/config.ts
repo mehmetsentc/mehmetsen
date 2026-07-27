@@ -2,7 +2,7 @@ import type { EditorId, EditorMetadata } from '@/services/newsroom/types'
 
 /** Auto-publish unless fact-check confidence drops below this (draft queue). */
 export const NEWSROOM_AUTO_PUBLISH_THRESHOLD = Number(
-  process.env.NEWSROOM_AUTO_PUBLISH_THRESHOLD ?? 70
+  process.env.NEWSROOM_AUTO_PUBLISH_THRESHOLD ?? 60
 )
 
 /** Items below this score are flagged for admin review and held in newsDrafts. */
