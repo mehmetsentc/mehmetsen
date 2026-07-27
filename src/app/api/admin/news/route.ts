@@ -75,7 +75,12 @@ export async function POST(request: Request) {
   if (!body.title?.trim()) {
     return NextResponse.json({ error: 'Başlık gerekli' }, { status: 400 })
   }
-  if (body.status?.trim() === 'published' && !hasPermission(auth.role, 'news:publish')) {
+  const willForcePublishViaFeatured = body.featured === true
+  if (
+    body.status?.trim() === 'published' &&
+    !hasPermission(auth.role, 'news:publish') &&
+    !willForcePublishViaFeatured
+  ) {
     return NextResponse.json(
       { error: 'Bu hesabın doğrudan yayınlama yetkisi yok; haber incelemeye gönderilmeli' },
       { status: 403 }
@@ -85,7 +90,19 @@ export async function POST(request: Request) {
   try {
     const db = getAdminFirestore()
     const now = Date.now()
-    const status = body.status?.trim() || 'pending'
+    const requestedStatus = body.status?.trim() || 'pending'
+    const featured = body.featured === true
+    // Öne Çıkan homepage query only returns published — force publish when featured.
+    const status =
+      featured && requestedStatus !== 'archived' && requestedStatus !== 'banned'
+        ? 'published'
+        : requestedStatus
+    if (status === 'published' && !hasPermission(auth.role, 'news:publish') && !featured) {
+      return NextResponse.json(
+        { error: 'Bu hesabın doğrudan yayınlama yetkisi yok; haber incelemeye gönderilmeli' },
+        { status: 403 }
+      )
+    }
     const categoryId = body.categoryId?.trim() ?? ''
     const bodyBlocks = sanitizeArticleBlocks(body.bodyBlocks)
     const content = body.content?.trim() || articleBlocksToPlainText(bodyBlocks)
@@ -160,9 +177,9 @@ export async function POST(request: Request) {
       videoUrl: body.videoUrl?.trim() ?? '',
       tags: Array.isArray(body.tags) ? body.tags : [],
       isBreaking: body.isBreaking ?? false,
-      featured: body.featured === true,
-      isEditorPick: body.featured === true,
-      ...(body.featured === true ? { featuredAt: now } : {}),
+      featured,
+      isEditorPick: featured,
+      ...(featured ? { featuredAt: now } : {}),
       manuallyEdited: true,
       manualEditedBy: auth.uid,
       createdAt: now,

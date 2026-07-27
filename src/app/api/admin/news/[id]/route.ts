@@ -134,11 +134,29 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     // Numeric epoch ms — survives cache JSON + sorts with orderBy featuredAt
     if (body.featured) {
       update.featuredAt = Date.now()
+      // Öne Çıkan only appears on the homepage for published news.
+      // Pending/draft pins were silently invisible on the live site.
+      if (body.status?.trim() !== 'archived' && body.status?.trim() !== 'banned') {
+        update.status = 'published'
+        if (body.status == null || body.status === 'pending' || body.status === 'draft') {
+          // ensure caller path also treats this as publish
+        }
+      }
     } else {
       update.featuredAt = FieldValue.delete()
     }
   }
-  if (body.status?.trim()) update.status = body.status.trim()
+  if (body.status?.trim()) {
+    // Featured force-publish wins over an explicit pending/draft status in the same save.
+    if (
+      !(
+        body.featured === true &&
+        (body.status.trim() === 'pending' || body.status.trim() === 'draft')
+      )
+    ) {
+      update.status = body.status.trim()
+    }
+  }
   if (Array.isArray(body.tags)) update.tags = body.tags
   if (body.citySlug != null) update.citySlug = String(body.citySlug).trim()
   if (body.city != null) update.city = String(body.city).trim()
@@ -275,10 +293,13 @@ export async function PUT(request: Request, context: RouteContext) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
   if (body.status?.trim() === 'published' && !hasPermission(auth.role, 'news:publish')) {
-    return NextResponse.json(
-      { error: 'Bu hesabın doğrudan yayınlama yetkisi yok; haber incelemeye gönderilmeli' },
-      { status: 403 }
-    )
+    // Allow editors to publish when pinning Öne Çıkan (otherwise pin is invisible live).
+    if (!(body.featured === true)) {
+      return NextResponse.json(
+        { error: 'Bu hesabın doğrudan yayınlama yetkisi yok; haber incelemeye gönderilmeli' },
+        { status: 403 }
+      )
+    }
   }
 
   try {
@@ -320,13 +341,21 @@ export async function PUT(request: Request, context: RouteContext) {
       // DROPS documents missing that field — the root cause of "published article
       // not showing in its category". Only backfill when it's actually missing, so
       // we never bump the sort position of an already-dated article.
-      const willBePublished = (body.status?.trim() || prevData?.status) === 'published'
+      const willBePublished =
+        update.status === 'published' ||
+        (body.status?.trim() || prevData?.status) === 'published' ||
+        body.featured === true
       const existingPublishedAt = prevData?.publishedAt
       const hasValidPublishedAt =
         typeof existingPublishedAt === 'number' ||
         (existingPublishedAt != null && typeof existingPublishedAt === 'object')
       if (willBePublished && !hasValidPublishedAt && update.publishedAt == null) {
         update.publishedAt = Date.now()
+      }
+
+      // Featured pin must have numeric featuredAt for homepage orderBy.
+      if (body.featured === true && update.featuredAt == null) {
+        update.featuredAt = Date.now()
       }
 
       await newsRef.update(update)

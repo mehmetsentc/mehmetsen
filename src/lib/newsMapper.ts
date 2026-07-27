@@ -96,6 +96,8 @@ export interface NewsDocument {
   articleFormat?: 'standard' | 'column' | 'analysis'
   /** Persistent AI persona id (≠ worker editorId) */
   aiEditorId?: string
+  /** Denormalized AI flag (optional; prefer aiEditorId / authorId prefix) */
+  isAI?: boolean
   readingTimeMinutes?: number
   isBreaking?: boolean
   featured?: boolean
@@ -448,7 +450,10 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
         ? data.articleFormat
         : 'standard',
     aiEditorId: data.aiEditorId?.trim() || undefined,
-    authorIsAI: Boolean(data.aiEditorId?.trim()),
+    authorIsAI:
+      Boolean(data.aiEditorId?.trim()) ||
+      authorId.startsWith('ai_editor_') ||
+      data.isAI === true,
     readingTimeMinutes: data.readingTimeMinutes,
     sourceUrl: data.sourceUrl?.trim() || undefined,
     audioUrl: data.audioUrl?.trim() || undefined,

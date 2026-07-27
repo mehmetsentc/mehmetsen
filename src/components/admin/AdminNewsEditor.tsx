@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star,
+  Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
@@ -51,6 +51,8 @@ interface ProfessionalAiResult {
   gateDecision?: 'publish' | 'review'
   researchSources?: Array<{ title: string; url: string }>
   liveResearchUsed?: boolean
+  editorName?: string | null
+  aiEditorId?: string | null
   error?: string
 }
 
@@ -302,7 +304,16 @@ export function AdminNewsEditor({
     }
   }
 
-  const runProfessionalAi = async (autoPublish: boolean) => {
+  const selectedAiEditor = useMemo(
+    () => aiEditors.find((editor) => editor.id === aiEditorId) ?? null,
+    [aiEditors, aiEditorId]
+  )
+
+  const runProfessionalAi = async (autoPublish: boolean, opts?: { requireEditor?: boolean }) => {
+    if (opts?.requireEditor && !aiEditorId) {
+      toast.error('Önce bir AI editör / yazar seçin')
+      return
+    }
     const rawInput = [title, spot, summary, content].filter(Boolean).join('\n\n').trim()
     if (rawInput.length < 80) {
       toast.error('AI editör için en az 80 karakter ham haber metni girin')
@@ -322,7 +333,14 @@ export function AdminNewsEditor({
       const res = await fetch('/api/admin/ai-assist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ mode: 'publish-ready', input: rawInput, imageUrls }),
+        body: JSON.stringify({
+          mode: 'publish-ready',
+          input: rawInput,
+          imageUrls,
+          ...(aiEditorId
+            ? { aiEditorId, articleFormat }
+            : {}),
+        }),
       })
       const data = await res.json() as ProfessionalAiResult
       if (!res.ok) throw new Error(data.error || 'AI editör haberi hazırlayamadı')
@@ -362,11 +380,16 @@ export function AdminNewsEditor({
       setStatus(nextStatus)
       setShowAiPreview(true)
 
+      const editorLabel = data.editorName?.trim() || selectedAiEditor?.name
       if (!autoPublish) {
         toast.success(
-          data.gateDecision === 'publish'
-            ? 'Haber yayıma hazırlandı'
-            : 'Haber hazırlandı; kalite kontrolü nedeniyle incelemeye alındı'
+          editorLabel
+            ? data.gateDecision === 'publish'
+              ? `${editorLabel} tarzında yayıma hazırlandı`
+              : `${editorLabel} tarzında hazırlandı; incelemeye alındı`
+            : data.gateDecision === 'publish'
+              ? 'Haber yayıma hazırlandı'
+              : 'Haber hazırlandı; kalite kontrolü nedeniyle incelemeye alındı'
         )
         return
       }
@@ -559,6 +582,73 @@ export function AdminNewsEditor({
       />
     </div>
 
+    <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-[rgb(var(--color-card))] to-rose-500/10 p-4 shadow-sm">
+      <div className="mb-2 flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-amber-500" aria-hidden />
+        <label className="text-xs font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">
+          AI Editör / Yazar tarzı
+        </label>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-[rgb(var(--color-muted))]">
+            Editör
+          </label>
+          <select
+            value={aiEditorId}
+            onChange={(event) => setAiEditorId(event.target.value)}
+            className={fieldInputCls}
+          >
+            <option value="">Manuel (CMS kullanıcısı)</option>
+            {aiEditors.map((editor) => (
+              <option key={editor.id} value={editor.id}>
+                {editor.name} — {editor.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-[rgb(var(--color-muted))]">
+            İçerik türü
+          </label>
+          <select
+            value={articleFormat}
+            onChange={(event) => {
+              const v = event.target.value
+              setArticleFormat(v === 'column' || v === 'analysis' ? v : 'standard')
+            }}
+            className={fieldInputCls}
+          >
+            <option value="standard">Haber</option>
+            <option value="column">Köşe yazısı</option>
+            <option value="analysis">Analiz</option>
+          </select>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => void runProfessionalAi(false, { requireEditor: true })}
+        disabled={aiPreparing || mediaUploading || !aiEditorId}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 px-4 py-3 text-sm font-black text-white shadow-md transition hover:from-amber-400 hover:to-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {aiPreparing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Sparkles className="h-4 w-4" />
+        )}
+        {selectedAiEditor
+          ? `${selectedAiEditor.name} tarzıyla dikkat çekici haber hazırla`
+          : 'Editör seçip tek tuşla hazırla'}
+      </button>
+      <p className="mt-2 text-[11px] leading-relaxed text-[rgb(var(--color-muted))]">
+        Ham metni (başlık/spot/özet/içerik) yazın → editör seçin → tek tuş. Karakter &amp; yazım
+        talimatları uygulanır; byline bu yazara bağlanır.{' '}
+        <a href="/admin/ai-editors" className="font-semibold underline hover:text-[rgb(var(--color-text))]">
+          Promptları yönet
+        </a>
+      </p>
+    </div>
+
     <div>
       <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">İçerik</label>
       <textarea
@@ -576,7 +666,9 @@ export function AdminNewsEditor({
           className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
         >
           {aiPreparing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-          AI ile profesyonel hazırla
+          {selectedAiEditor
+            ? `${selectedAiEditor.name} tarzıyla hazırla`
+            : 'AI ile profesyonel hazırla'}
         </button>
         <button
           type="button"
@@ -589,8 +681,9 @@ export function AdminNewsEditor({
         </button>
       </div>
       <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">
-        Gemini görselleri analiz eder; DeepSeek manşet, SEO, kategori ve H2/H3 gövdeyi hazırlar.
-        Kalite eşiğini geçmeyen haber otomatik olarak incelemeye alınır.
+        {selectedAiEditor
+          ? `${selectedAiEditor.name} karakter/tarz promptları + manşet/SEO/H2 gövde. Talimatlar AI Editörler panelinden yönetilir.`
+          : 'Genel AI hazırlık. Editör seçerseniz o yazarın talimat ve tarzıyla yazar.'}
       </p>
     </div>
 
@@ -696,48 +789,6 @@ export function AdminNewsEditor({
         <option value="standard">Standart haber</option>
         <option value="longform">Gezi / longform (geniş ve ferah)</option>
       </select>
-    </div>
-
-    <div>
-      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
-        İçerik türü
-      </label>
-      <select
-        value={articleFormat}
-        onChange={(event) => {
-          const v = event.target.value
-          setArticleFormat(v === 'column' || v === 'analysis' ? v : 'standard')
-        }}
-        className={fieldInputCls}
-      >
-        <option value="standard">Haber</option>
-        <option value="column">Köşe yazısı</option>
-        <option value="analysis">Analiz</option>
-      </select>
-    </div>
-
-    <div>
-      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
-        AI Editör / Yazar
-      </label>
-      <select
-        value={aiEditorId}
-        onChange={(event) => setAiEditorId(event.target.value)}
-        className={fieldInputCls}
-      >
-        <option value="">Manuel (giriş yapan CMS kullanıcısı)</option>
-        {aiEditors.map((editor) => (
-          <option key={editor.id} value={editor.id}>
-            {editor.name} — {editor.title}
-          </option>
-        ))}
-      </select>
-      <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
-        Seçilirse byline ve yazar profili bu AI editöre bağlanır. Tarz talimatları:{' '}
-        <a href="/admin/ai-editors" className="underline hover:text-[rgb(var(--color-text))]">
-          AI Editörler → Promptlar
-        </a>
-      </p>
     </div>
 
     <div className="grid grid-cols-2 gap-3">
@@ -895,13 +946,22 @@ export function AdminNewsEditor({
         <div>
           <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Öne Çıkan</p>
           <p className="text-[11px] text-[rgb(var(--color-muted))]">
-            Kategoriden bağımsız — ana sayfa başındaki öne çıkanlar slider&apos;ında görünür
+            Ana sayfa öne çıkan slider&apos;ında görünür. Açınca haber otomatik Yayında olur.
           </p>
         </div>
       </div>
       <button
         type="button"
-        onClick={() => setFeatured((v) => !v)}
+        onClick={() => {
+          setFeatured((v) => {
+            const next = !v
+            if (next && status !== 'published') {
+              setStatus('published')
+              toast.success('Öne çıkan için durum Yayında olarak ayarlandı')
+            }
+            return next
+          })
+        }}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
           featured ? 'bg-amber-500' : 'bg-[rgb(var(--color-border))]'
         }`}

@@ -916,9 +916,22 @@ export async function processNewsroomArticle(
             preferredSlug: options.preferredSlug,
           }
         : undefined
-      const { newsId } = await newsDraftService.publishFromPipeline(db, doc, publishOpts)
+      const { newsId, slug } = await newsDraftService.publishFromPipeline(db, doc, publishOpts)
       if (breakingFlags.shouldPushNotify) {
         await queueBreakingPushNotification(newsId, rewritten.title, breakingScore)
+      }
+      try {
+        const { revalidatePath } = await import('next/cache')
+        const { revalidateHomeFeedCaches } = await import('@/lib/revalidateHome')
+        revalidateHomeFeedCaches()
+        if (resolvedCategory) revalidatePath(`/kategori/${resolvedCategory}`)
+        if (resolvedCategory === 'yerel-haber') revalidatePath('/yerel')
+        if (slug) revalidatePath(`/haber/${slug}`)
+        if (personaAuthors?.authorUsername) {
+          revalidatePath(`/yazar/${personaAuthors.authorUsername}`)
+        }
+      } catch {
+        /* cron / non-Next contexts */
       }
       console.log(`[newsroom] auto-published ${newsId} (confidence=${factCheck.confidenceScore})`)
       return { outcome: 'published', lowConfidence, newsId }

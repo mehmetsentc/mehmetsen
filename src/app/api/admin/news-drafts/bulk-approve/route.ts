@@ -41,11 +41,24 @@ export async function POST(request: Request) {
   let approved = 0
   let skipped = 0
   const errors: string[] = []
+  const publishedSlugs: string[] = []
+  const categories = new Set<string>()
+  const authors = new Set<string>()
 
   for (const doc of docs) {
     try {
-      await newsDraftService.approveDraft(doc.id)
+      const result = await newsDraftService.approveDraft(doc.id)
       approved++
+      if (result.slug) publishedSlugs.push(result.slug)
+      const data = doc.data() as {
+        categoryId?: string
+        category?: string
+        authorUsername?: string
+      }
+      const cat = String(data.categoryId || data.category || '').trim()
+      if (cat) categories.add(cat)
+      const uname = String(data.authorUsername || '').trim()
+      if (uname) authors.add(uname)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       if (msg.includes('already approved')) {
@@ -53,6 +66,22 @@ export async function POST(request: Request) {
       } else {
         errors.push(`${doc.id}: ${msg}`)
       }
+    }
+  }
+
+  if (approved > 0) {
+    try {
+      const { revalidatePath } = await import('next/cache')
+      const { revalidateHomeFeedCaches } = await import('@/lib/revalidateHome')
+      revalidateHomeFeedCaches()
+      for (const cat of categories) {
+        revalidatePath(`/kategori/${cat}`)
+        if (cat === 'yerel-haber') revalidatePath('/yerel')
+      }
+      for (const slug of publishedSlugs) revalidatePath(`/haber/${slug}`)
+      for (const uname of authors) revalidatePath(`/yazar/${uname}`)
+    } catch {
+      /* best-effort */
     }
   }
 

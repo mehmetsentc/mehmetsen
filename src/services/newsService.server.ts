@@ -296,10 +296,17 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
   // when we only fetched ~40 by publish date (looked like “only NaHaber works”).
   const scan = Math.max(limit * 25, 250)
 
-  const mapAndRank = (docs: QueryDocumentSnapshot[]) =>
-    mapAdminDocs(docs).sort(compareFeaturedPriority).slice(0, limit)
+  const byId = new Map<string, NewsItem>()
+
+  const mergeDocs = (docs: QueryDocumentSnapshot[]) => {
+    for (const item of mapAdminDocs(docs)) {
+      if (!item.featured) continue
+      byId.set(item.id, item)
+    }
+  }
 
   // Prefer pin time when indexed (status + featured + featuredAt).
+  // Docs missing featuredAt are omitted by this query — merge a second scan.
   try {
     const snap = await db
       .collection(NEWS_COLLECTION)
@@ -308,7 +315,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
       .orderBy('featuredAt', 'desc')
       .limit(scan)
       .get()
-    if (!snap.empty) return mapAndRank(snap.docs)
+    mergeDocs(snap.docs)
   } catch (error) {
     console.warn('[newsService.server] featuredAt order failed, using publishedAt scan:', error)
   }
@@ -321,7 +328,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
       .orderBy('publishedAt', 'desc')
       .limit(scan)
       .get()
-    return mapAndRank(snap.docs)
+    mergeDocs(snap.docs)
   } catch (error) {
     console.warn('[newsService.server] featured query failed, trying isEditorPick:', error)
     try {
@@ -332,17 +339,18 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
         .orderBy('publishedAt', 'desc')
         .limit(scan)
         .get()
-      return mapAndRank(snap.docs)
+      mergeDocs(snap.docs)
     } catch (err2) {
       console.warn('[newsService.server] isEditorPick featured query failed:', err2)
-      return []
     }
   }
+
+  return [...byId.values()].sort(compareFeaturedPriority).slice(0, limit)
 }
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v4'],
+  ['home-featured-v5'],
   { revalidate: 30, tags: ['home-feed'] }
 )
 

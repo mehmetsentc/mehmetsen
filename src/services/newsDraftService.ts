@@ -31,6 +31,13 @@ export interface NewsroomDraftFields {
   description: string
   author: string
   authorId: string
+  /** Public profile slug — required for /yazar links */
+  authorUsername?: string
+  authorDisplayName?: string
+  authorPhotoURL?: string | null
+  /** Persistent AI persona id (distinct from worker editorId) */
+  aiEditorId?: string
+  articleFormat?: 'standard' | 'column' | 'analysis'
   thumbnail: string
   videoUrl: string
   category: string
@@ -83,12 +90,36 @@ function draftToPublishedNews(
   slug: string,
   now: number
 ) {
+  const personaUsername =
+    ('authorUsername' in draft && draft.authorUsername?.trim()) ||
+    undefined
+  const personaDisplayName =
+    ('authorDisplayName' in draft && draft.authorDisplayName?.trim()) ||
+    undefined
+  const personaPhoto =
+    'authorPhotoURL' in draft ? draft.authorPhotoURL : undefined
+  const personaAiEditorId =
+    ('aiEditorId' in draft && draft.aiEditorId?.trim()) ||
+    (draft as NewsDraftDocument).aiEditorId?.trim() ||
+    undefined
+  const personaFormat =
+    ('articleFormat' in draft && draft.articleFormat) ||
+    (draft as NewsDraftDocument).articleFormat ||
+    undefined
+
   return {
     title: draft.title,
     summary: draft.summary ?? '',
     description: draft.description,
     author: draft.author,
     authorId: draft.authorId,
+    ...(personaUsername ? { authorUsername: personaUsername } : {}),
+    ...(personaDisplayName ? { authorDisplayName: personaDisplayName } : {}),
+    ...(personaPhoto !== undefined ? { authorPhotoURL: personaPhoto ?? null } : {}),
+    ...(personaAiEditorId ? { aiEditorId: personaAiEditorId } : {}),
+    ...(personaFormat === 'column' || personaFormat === 'analysis' || personaFormat === 'standard'
+      ? { articleFormat: personaFormat }
+      : {}),
     thumbnail: draft.thumbnail,
     videoUrl: draft.videoUrl,
     category: draft.category,
@@ -201,6 +232,20 @@ export const newsDraftService = {
         ? { bodyBlocks: doc.bodyBlocks, htmlContent: '' }
         : {}),
       ...(doc.articleLayout ? { articleLayout: doc.articleLayout } : {}),
+      ...(doc.authorUsername?.trim() ? { authorUsername: doc.authorUsername.trim() } : {}),
+      ...(doc.authorDisplayName?.trim()
+        ? { authorDisplayName: doc.authorDisplayName.trim() }
+        : {}),
+      ...(doc.authorPhotoURL !== undefined
+        ? { authorPhotoURL: doc.authorPhotoURL ?? null }
+        : {}),
+      ...(doc.authorId ? { authorId: doc.authorId, author: doc.author } : {}),
+      ...(doc.aiEditorId?.trim() ? { aiEditorId: doc.aiEditorId.trim() } : {}),
+      ...(doc.articleFormat === 'column' ||
+      doc.articleFormat === 'analysis' ||
+      doc.articleFormat === 'standard'
+        ? { articleFormat: doc.articleFormat }
+        : {}),
       thumbnail: doc.thumbnail || snap.data()?.thumbnail || '',
       coverImageUrl: doc.coverImageUrl || doc.thumbnail || snap.data()?.coverImageUrl || '',
       category: doc.category,
@@ -279,7 +324,14 @@ export const newsDraftService = {
     const snap = await ref.get()
     if (!snap.exists) throw new Error('News not found')
 
-    const data = snap.data() as { title?: string; status?: string; slug?: string }
+    const data = snap.data() as {
+      title?: string
+      status?: string
+      slug?: string
+      featured?: boolean
+      isEditorPick?: boolean
+      featuredAt?: number | { toMillis?: () => number } | null
+    }
     const now = Date.now()
     const slug = data.slug?.trim() || (await allocateUniqueSlug(db, data.title ?? 'haber', newsId))
 
@@ -289,6 +341,17 @@ export const newsDraftService = {
       publishedAt: now,
       updatedAt: now,
       moderationNote: null,
+      // Preserve / normalize featured pin so approve after “Öne Çıkan” still surfaces
+      ...(data.featured === true || data.isEditorPick === true
+        ? {
+            featured: true,
+            isEditorPick: true,
+            featuredAt:
+              typeof data.featuredAt === 'number'
+                ? data.featuredAt
+                : now,
+          }
+        : {}),
     })
 
     return { newsId, slug }

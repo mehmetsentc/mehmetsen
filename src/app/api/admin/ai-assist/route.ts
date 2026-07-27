@@ -7,6 +7,9 @@ import { researchLiveNews } from '@/lib/ai/liveResearch'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { contentHasIncompleteSegments } from '@/lib/ai/textCompleteness'
+import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
+import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
+import type { AiPromptType } from '@/types/aiEditor'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,8 +25,30 @@ type AssistMode =
   | 'trends'
   | 'keywords'
 
+type ArticleFormatAssist = 'standard' | 'column' | 'analysis'
+
 const CATEGORY_IDS = new Set(DEFAULT_CATEGORIES.map((category) => category.id))
 const CATEGORY_LIST = DEFAULT_CATEGORIES.map((category) => `${category.id}: ${category.name}`).join(', ')
+
+/** CMS tek-tuş: editör tarzı + dikkat çekici manşet, JSON şeması korunur */
+const PERSONA_ATTENTION_LOCK = `
+CMS TEK-TUŞ GÖREVİ — DİKKAT ÇEKİCİ HABER:
+- Bu AI editörün karakter, ton ve yazım talimatlarına SIKI uy; genel anonim haber dili kullanma
+- Manşet güçlü, merak uyandıran, akılda kalıcı olsun; uydurma / abartılı clickbait / "şok" clickbait YASAK
+- Spot okuyucuyu ilk 2 cümlede yakalasın; 5W+1H eksiksiz
+- Gövde editörün tarzında olsun (kelime seçimi, tempo, vurgu); ansiklopedi / okul kompozisyonu yazma
+- Kaynakta olmayan sayı, alıntı, olay uydurma
+- content: ## H2 kullan (# H1 yok); en fazla 2-3 kısa bölüm; 180-400 kelime hedef
+- summary en fazla 280 karakter; seoTitle 50-65; seoDescription 140-165
+- categoryId geçerli kimliklerden biri; tags 5-8; seoKeywords 8-15
+- imageOrder yalnızca verilen görsel URL'lerini içersin
+`.trim()
+
+const PUBLISH_JSON_SCHEMA = `
+Yalnızca şu JSON şemasını döndür:
+{"title":"...","spot":"...","summary":"...","content":"...","seoTitle":"...","seoDescription":"...","categoryId":"...","tags":["..."],"seoKeywords":["..."],"imageOrder":["..."]}
+Geçerli kategoriler: ${CATEGORY_LIST}
+`.trim()
 
 const SYSTEM_PROMPTS: Record<AssistMode, string> = {
   create: `Sen deneyimli bir Türk gazetecisisin. Verilen konuda profesyonel bir haber metni yaz.
@@ -144,13 +169,22 @@ export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'ai:use')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { mode: AssistMode; input?: string; imageUrl?: string; imageUrls?: string[] }
+  let body: {
+    mode: AssistMode
+    input?: string
+    imageUrl?: string
+    imageUrls?: string[]
+    aiEditorId?: string
+    articleFormat?: ArticleFormatAssist
+  }
   try {
     body = await request.json() as {
       mode: AssistMode
       input?: string
       imageUrl?: string
       imageUrls?: string[]
+      aiEditorId?: string
+      articleFormat?: ArticleFormatAssist
     }
   }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
@@ -159,8 +193,58 @@ export async function POST(request: Request) {
   if (!mode || !SYSTEM_PROMPTS[mode]) return NextResponse.json({ error: 'Invalid mode' }, { status: 400 })
 
   const userMessage = mode === 'trends' ? 'Türkiye gündemini analiz et.' : input.trim() || 'Haber içeriği sağlanmadı.'
+  const selectedAiEditorId = body.aiEditorId?.trim() || ''
+  const articleFormat: ArticleFormatAssist =
+    body.articleFormat === 'column' || body.articleFormat === 'analysis'
+      ? body.articleFormat
+      : 'standard'
 
   try {
+    let personaMeta: {
+      aiEditorId: string
+      editorName: string
+      editorSlug: string
+      promptVersions: Record<string, number>
+    } | null = null
+    let systemPrompt = SYSTEM_PROMPTS[mode]
+
+    if (
+      selectedAiEditorId &&
+      (mode === 'publish-ready' || mode === 'create' || mode === 'rewrite')
+    ) {
+      const editor = await getAiEditorById(selectedAiEditorId)
+      if (!editor || editor.status === 'archived') {
+        return NextResponse.json({ error: 'Geçersiz veya arşivlenmiş AI editör' }, { status: 400 })
+      }
+      const task: AiPromptType =
+        articleFormat === 'column'
+          ? 'column'
+          : articleFormat === 'analysis'
+            ? 'analysis'
+            : 'news'
+      const built = await buildEditorPrompt({
+        editor,
+        task,
+        sourceTitle: input.split('\n').find((line) => line.trim())?.slice(0, 200),
+        sourceBody: input,
+        extraUserNotes:
+          mode === 'publish-ready'
+            ? 'CMS formundan tek tuşla yayıma hazır, dikkat çekici haber üret.'
+            : undefined,
+      })
+      systemPrompt = [
+        built.system,
+        PERSONA_ATTENTION_LOCK,
+        PUBLISH_JSON_SCHEMA,
+      ].join('\n\n')
+      personaMeta = {
+        aiEditorId: editor.id,
+        editorName: editor.name,
+        editorSlug: editor.slug,
+        promptVersions: built.promptVersions as Record<string, number>,
+      }
+    }
+
     const requestedUrls = [
       ...(imageUrl?.trim() ? [imageUrl.trim()] : []),
       ...(Array.isArray(body.imageUrls) ? body.imageUrls : []),
@@ -194,6 +278,9 @@ export async function POST(request: Request) {
     const enrichedUserMessage =
       mode === 'publish-ready'
         ? [
+            personaMeta
+              ? `YAZAR KİMLİĞİ: ${personaMeta.editorName} (@${personaMeta.editorSlug}) — yukarıdaki karakter/tarz talimatlarına uy.`
+              : '',
             'HAM HABER METNİ:',
             userMessage.slice(0, 18_000),
             '',
@@ -215,9 +302,11 @@ export async function POST(request: Request) {
                   `[Görsel ${i + 1}] url:${img.url} | role:${img.role} | alaka:${img.relevanceScore}/100 | caption(sadece imageOrder için):"${img.caption}"`
                 ).join('\n')
               : 'Görsel yok veya analiz edilemedi.',
-          ].join('\n')
+          ]
+            .filter(Boolean)
+            .join('\n')
         : userMessage
-    const parsed = await callAi(SYSTEM_PROMPTS[mode], enrichedUserMessage)
+    const parsed = await callAi(systemPrompt, enrichedUserMessage)
 
     if (mode === 'create' || mode === 'rewrite' || mode === 'publish-ready') {
       const title = String(parsed.title ?? '').trim()
@@ -309,6 +398,10 @@ export async function POST(request: Request) {
         researchSources: research?.sources ?? [],
         researchQueries: research?.searchQueries ?? [],
         liveResearchUsed: Boolean(research),
+        aiEditorId: personaMeta?.aiEditorId ?? null,
+        editorName: personaMeta?.editorName ?? null,
+        articleFormat,
+        promptVersions: personaMeta?.promptVersions ?? null,
       })
     }
 

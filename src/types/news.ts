@@ -63,6 +63,9 @@ export interface NewsDraftDocument extends NewsIngestMeta, NewsLocationFields, N
   description: string
   author: string
   authorId: string
+  authorUsername?: string
+  authorDisplayName?: string
+  authorPhotoURL?: string | null
   thumbnail: string
   videoUrl: string
   category: string
