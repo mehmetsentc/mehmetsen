@@ -169,6 +169,20 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // AI Editorial Newsroom V2 — Admin SDK only (no client writes)
+    match /aiEditors/{editorId} {
+      allow read, write: if false;
+    }
+    match /aiEditorPrompts/{promptId} {
+      allow read, write: if false;
+    }
+    match /aiModelRegistry/{modelId} {
+      allow read, write: if false;
+    }
+    match /aiUsageEvents/{eventId} {
+      allow read, write: if false;
+    }
+
     match /news/{docId}/editHistory/{entryId} {
       allow read: if true;
       allow write: if false;

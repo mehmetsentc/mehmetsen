@@ -34,6 +34,10 @@ import { geoEngine } from '@/services/newsroom/geoEngine'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
+import { contentHasIncompleteSegments } from '@/lib/ai/textCompleteness'
+import { routeAiEditor, authorFieldsFromEditor, aiEditorForcesDraft } from '@/lib/ai/editorial/editorRouter'
+import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
+import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
 
 /** Minimum total content length (chars) to proceed to AI rewrite. */
@@ -454,7 +458,47 @@ export async function processNewsroomArticle(
 
     // ── AI REWRITE STAGE ──────────────────────────────────────────────────────
     // skipAiRewrite=true → trend/influencer editörler kendi içeriğini üretir, yeniden yazma yok
-    // skipAiRewrite=false → 4 aşamalı AI editör zinciri çalışır
+    // skipAiRewrite=false → 4 aşamalı AI editör zinciri (+ V2 persona context)
+    const routedEditor = workingInput.skipAiRewrite
+      ? null
+      : await routeAiEditor({
+          categoryId: workingInput.forcedCategoryId,
+          isBreaking: workingInput.isBreaking,
+          preferredAiEditorId: workingInput.preferredAiEditorId,
+          articleFormat: workingInput.articleFormat ?? 'standard',
+        }).catch(() => null)
+
+    let personaSystem: string | undefined
+    let personaUser: string | undefined
+    let writerModel: string | undefined
+    let promptVersions: Record<string, number> | undefined
+
+    if (routedEditor && !workingInput.skipAiRewrite) {
+      try {
+        const built = await buildEditorPrompt({
+          editor: routedEditor,
+          task: workingInput.articleFormat === 'column' ? 'column' : 'news',
+          sourceTitle: workingInput.originalTitle,
+          sourceBody: workingInput.originalContent || workingInput.originalSummary,
+          sourceUrl: workingInput.sourceUrl,
+          categoryId: workingInput.forcedCategoryId,
+        })
+        personaSystem = built.system
+        personaUser = built.user
+        promptVersions = built.promptVersions as Record<string, number>
+        const resolved = resolveModelForEditor(
+          routedEditor,
+          workingInput.articleFormat === 'column' ? 'column' : 'news'
+        )
+        writerModel = resolved.model
+      } catch (err) {
+        console.warn(
+          '[pipeline] persona prompt build failed:',
+          err instanceof Error ? err.message : err
+        )
+      }
+    }
+
     const rewrittenRaw = workingInput.skipAiRewrite
       ? {
           title: workingInput.originalTitle,
@@ -481,7 +525,21 @@ export async function processNewsroomArticle(
           originalContent: workingInput.originalContent,
           sourceUrl: workingInput.sourceUrl,
           forcedCategoryId: workingInput.forcedCategoryId,
+          systemPromptOverride: personaSystem,
+          userPromptOverride: personaUser,
+          writerModel,
+          aiEditorId: routedEditor?.id,
         })
+
+    if (routedEditor && !workingInput.skipAiRewrite) {
+      void recordAiUsage({
+        editorId: routedEditor.id,
+        task: workingInput.articleFormat === 'column' ? 'column' : 'news',
+        provider: 'deepseek',
+        model: writerModel || process.env.DEEPSEEK_NEWS_MODEL || 'deepseek',
+        published: false,
+      })
+    }
 
     // Gate keeper skip kararı → haber atlanır
     if (!workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'skip') {
@@ -689,6 +747,13 @@ export async function processNewsroomArticle(
       )
     }
 
+    const incompleteText =
+      contentHasIncompleteSegments(rewritten.title || '') ||
+      contentHasIncompleteSegments(rewritten.description || '') ||
+      contentHasIncompleteSegments((rewritten as AiRewriteResult).spot || '')
+
+    const personaRequiresApproval = aiEditorForcesDraft(routedEditor?.publishPolicy)
+
     const needsDraft =
       gateDraft ||
       isFallbackContent ||
@@ -696,7 +761,15 @@ export async function processNewsroomArticle(
       factCheck.confidenceScore < NEWSROOM_AUTO_PUBLISH_THRESHOLD ||
       factCheckFailedBadly ||
       moderation.decision === 'review' ||
-      moderation.decision !== 'approve'
+      moderation.decision !== 'approve' ||
+      incompleteText ||
+      personaRequiresApproval
+
+    if (incompleteText) {
+      console.warn(
+        `[pipeline] incomplete text detected — forcing draft: ${workingInput.sourceUrl?.slice(0, 80)}`
+      )
+    }
 
     // Estimate reading time from AI-written content
     const readingWords = (rewritten.description || '').trim().split(/\s+/).filter(Boolean).length
@@ -713,6 +786,8 @@ export async function processNewsroomArticle(
     const plainFromBlocks = articleBlocksToPlainText(bodyBlocks)
     const contentBody = plainFromBlocks || rewritten.description
 
+    const personaAuthors = routedEditor ? authorFieldsFromEditor(routedEditor) : null
+
     const doc = {
       title: rewritten.title,
       // Journalistic lead paragraph (2-4 sentences, answers 5W+H)
@@ -727,8 +802,14 @@ export async function processNewsroomArticle(
       // SEO fields — generated by AI, optimized for search
       seoTitle: (rewritten as AiRewriteResult).seoTitle ?? rewritten.title,
       seoDescription: (rewritten as AiRewriteResult).seoDescription ?? rewritten.summary,
-      author: workingInput.extractedAuthor || NAHABER_AUTHOR,
-      authorId: NAHABER_AUTHOR_ID,
+      author: personaAuthors?.author || workingInput.extractedAuthor || NAHABER_AUTHOR,
+      authorId: personaAuthors?.authorId || NAHABER_AUTHOR_ID,
+      authorUsername: personaAuthors?.authorUsername || undefined,
+      authorDisplayName: personaAuthors?.authorDisplayName || undefined,
+      authorPhotoURL: personaAuthors?.authorPhotoURL ?? undefined,
+      aiEditorId: personaAuthors?.aiEditorId || undefined,
+      articleFormat: workingInput.articleFormat ?? 'standard',
+      aiPromptVersions: promptVersions || undefined,
       thumbnail: workingInput.imageUrl ?? '',
       coverImageUrl: workingInput.imageUrl ?? '',
       videoUrl: '',
@@ -751,7 +832,11 @@ export async function processNewsroomArticle(
       researchSources: workingInput.researchSources ?? [],
       readingTimeMinutes,
       draftStatus: 'pending_review' as const,
-      moderationReasons: moderation.decision === 'review' ? moderation.reasons : [],
+      moderationReasons: [
+        ...(moderation.decision === 'review' ? moderation.reasons : []),
+        ...(incompleteText ? ['incomplete_text'] : []),
+        ...(personaRequiresApproval ? ['ai_editor_requires_approval'] : []),
+      ],
       aiGenerated: true,
       rssFingerprint: fingerprint,
       rssGuid: workingInput.rssGuid ?? workingInput.sourceUrl,

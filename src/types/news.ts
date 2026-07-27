@@ -39,6 +39,9 @@ export type NewsroomEditorType = 'local' | 'national' | 'breaking' | 'trend' | '
 export interface NewsroomFields {
   editorId?: string
   editorType?: NewsroomEditorType
+  /** Persistent AI persona (V2) — distinct from worker editorId */
+  aiEditorId?: string
+  articleFormat?: 'standard' | 'column' | 'analysis'
   /** 0–100 fact-checker confidence */
   confidenceScore?: number
   factCheckFlags?: string[]

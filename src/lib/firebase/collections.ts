@@ -41,6 +41,16 @@ export const Collections = {
   /** Ingestion source metadata */
   SOURCES:        'sources',
 
+  // ── AI Editorial Newsroom V2 (personas) ───────────────────────────────────
+  /** Persistent AI editor identities (private config) */
+  AI_EDITORS: 'aiEditors',
+  /** Versioned constitution / task prompts — doc id: `${editorId}__${promptType}__v${n}` */
+  AI_EDITOR_PROMPTS: 'aiEditorPrompts',
+  /** Provider/model catalog (no API secrets) */
+  AI_MODEL_REGISTRY: 'aiModelRegistry',
+  /** Per-call usage skeleton for cost dashboards */
+  AI_USAGE_EVENTS: 'aiUsageEvents',
+
   // ── Analytics ─────────────────────────────────────────────────────────────
   /** Daily aggregated page-view counters — doc id: YYYY-MM-DD */
   ANALYTICS_DAILY: 'analyticsDaily',

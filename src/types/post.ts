@@ -93,6 +93,11 @@ export interface Post {
   bodyBlocks?: ArticleBlock[]
   /** Optional presentation style; longform uses wider editorial spacing. */
   articleLayout?: 'standard' | 'longform'
+  /** News vs opinion column (V2) */
+  articleFormat?: 'standard' | 'column' | 'analysis'
+  /** Persistent AI editor persona */
+  aiEditorId?: string
+  authorIsAI?: boolean
   /** Estimated reading time in minutes */
   readingTimeMinutes?: number
   /** Original source article URL */

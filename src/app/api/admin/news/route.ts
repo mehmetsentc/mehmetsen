@@ -47,6 +47,7 @@ interface CreatePayload {
   additionalImages?: Array<{ url: string; caption?: string }>
   bodyBlocks?: ArticleBlock[]
   articleLayout?: 'standard' | 'longform'
+  articleFormat?: 'standard' | 'column' | 'analysis'
   aiResearchSources?: GroundingSource[]
 }
 
@@ -110,6 +111,10 @@ export async function POST(request: Request) {
       content,
       bodyBlocks,
       articleLayout: body.articleLayout === 'longform' ? 'longform' : 'standard',
+      articleFormat:
+        body.articleFormat === 'column' || body.articleFormat === 'analysis'
+          ? body.articleFormat
+          : 'standard',
       spot: body.spot?.trim() ?? '',
       seoTitle: body.seoTitle?.trim() ?? '',
       seoDescription: body.seoDescription?.trim() ?? '',

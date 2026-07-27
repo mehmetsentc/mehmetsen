@@ -22,7 +22,6 @@ export async function isNewsroomAuthorized(request: Request): Promise<boolean> {
     const authHeader = request.headers.get('authorization')
     if (authHeader === `Bearer ${newsroomSecret}`) return true
 
-    // cron-job.org ve benzeri servisler secret'ı query param olarak gönderebilir
     try {
       const url = new URL(request.url)
       const qSecret = url.searchParams.get('secret') || url.searchParams.get('cron_secret')
@@ -32,8 +31,17 @@ export async function isNewsroomAuthorized(request: Request): Promise<boolean> {
     }
   }
 
-  const cms = await verifyCmsToken(request, 'cron:trigger')
-  if (cms) return true
+  // Operate (run pipeline): cron:trigger or ai:configure
+  const cmsOperate =
+    (await verifyCmsToken(request, 'cron:trigger')) ||
+    (await verifyCmsToken(request, 'ai:configure'))
+  if (cmsOperate) return true
+
+  // View-only CMS staff with ai:use (GET status/queue)
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const cmsView = await verifyCmsToken(request, 'ai:use')
+    if (cmsView) return true
+  }
 
   const authHeader = request.headers.get('authorization')
   if (authHeader?.startsWith('Bearer ')) {

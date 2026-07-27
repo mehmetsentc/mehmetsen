@@ -92,6 +92,10 @@ export interface NewsDocument {
   htmlContent?: string
   bodyBlocks?: ArticleBlock[]
   articleLayout?: 'standard' | 'longform'
+  /** Content format: news vs opinion (V2) — independent of articleLayout */
+  articleFormat?: 'standard' | 'column' | 'analysis'
+  /** Persistent AI persona id (≠ worker editorId) */
+  aiEditorId?: string
   readingTimeMinutes?: number
   isBreaking?: boolean
   featured?: boolean
@@ -428,6 +432,10 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     isBreaking: shouldShowBreakingBadge({
       isBreaking: data.isBreaking ?? data.categoryId === 'son-dakika',
       categoryId: data.categoryId ?? data.category,
+      articleFormat:
+        data.articleFormat === 'column' || data.articleFormat === 'analysis'
+          ? data.articleFormat
+          : 'standard',
     }),
     priorityScore: data.priorityScore ?? 0,
     editorType: data.editorType,
@@ -435,6 +443,12 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     htmlContent: data.htmlContent?.trim() || undefined,
     bodyBlocks: sanitizeArticleBlocks(data.bodyBlocks),
     articleLayout: data.articleLayout === 'longform' ? 'longform' : 'standard',
+    articleFormat:
+      data.articleFormat === 'column' || data.articleFormat === 'analysis'
+        ? data.articleFormat
+        : 'standard',
+    aiEditorId: data.aiEditorId?.trim() || undefined,
+    authorIsAI: Boolean(data.aiEditorId?.trim()),
     readingTimeMinutes: data.readingTimeMinutes,
     sourceUrl: data.sourceUrl?.trim() || undefined,
     audioUrl: data.audioUrl?.trim() || undefined,

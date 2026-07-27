@@ -23,6 +23,11 @@ export interface MultiStageInput {
   originalContent: string
   sourceUrl: string
   forcedCategoryId?: string
+  /** V2 persona context — optional */
+  systemPromptOverride?: string
+  userPromptOverride?: string
+  writerModel?: string
+  aiEditorId?: string
 }
 
 export interface MultiStageResult extends AiRewriteResult {
@@ -35,6 +40,8 @@ export interface MultiStageResult extends AiRewriteResult {
   gateDecision: 'publish' | 'draft' | 'skip'
   gateReasons: string[]
   publishScore: number
+  aiEditorId?: string
+  promptVersions?: Record<string, number>
 }
 
 export async function runMultiStageEditor(input: MultiStageInput): Promise<MultiStageResult> {
@@ -48,6 +55,9 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     originalSummary: input.originalSummary,
     originalContent: input.originalContent,
     sourceUrl: input.sourceUrl,
+    systemPromptOverride: input.systemPromptOverride,
+    userPromptOverride: input.userPromptOverride,
+    model: input.writerModel,
   })
 
   // ── Stage 2: Fact Checker ────────────────────────────────────────────────────
@@ -104,5 +114,6 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     gateDecision: gate.decision,
     gateReasons: gate.reasons,
     publishScore: gate.publishScore,
+    aiEditorId: input.aiEditorId,
   }
 }

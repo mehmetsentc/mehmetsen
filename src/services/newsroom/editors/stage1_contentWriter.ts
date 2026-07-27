@@ -23,6 +23,11 @@ interface WriterInput {
   originalSummary: string
   originalContent: string
   sourceUrl: string
+  /** Optional persona constitution + task instructions (V2) */
+  systemPromptOverride?: string
+  /** Optional user-message prefix (source already in buildPrompt) */
+  userPromptOverride?: string
+  model?: string
 }
 
 const SYSTEM_PROMPT = `Sen NaHaber'in içerik editörüsün. Görevin: verilen ham haberi profesyonel Türkçe gazete haberine dönüştürmek.
@@ -78,7 +83,21 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const model =
+    input.model?.trim() ||
+    process.env.DEEPSEEK_NEWS_MODEL?.trim() ||
+    'deepseek-chat'
+  const systemContent = input.systemPromptOverride?.trim()
+    ? `${input.systemPromptOverride.trim()}\n\n${SYSTEM_PROMPT}`
+    : SYSTEM_PROMPT
+  const userContent = input.userPromptOverride?.trim()
+    ? `${input.userPromptOverride.trim()}\n\n${buildPrompt(input)}`
+    : buildPrompt(input)
+
+  const messages = [
+    { role: 'system' as const, content: systemContent },
+    { role: 'user' as const, content: userContent },
+  ]
 
   try {
     let res = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -88,10 +107,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         model,
         temperature: 0.5,
         response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: buildPrompt(input) },
-        ],
+        messages,
       }),
       signal: AbortSignal.timeout(35_000),
     })
@@ -106,10 +122,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
           model,
           temperature: 0.5,
           response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: buildPrompt(input) },
-          ],
+          messages,
         }),
         signal: AbortSignal.timeout(35_000),
       })

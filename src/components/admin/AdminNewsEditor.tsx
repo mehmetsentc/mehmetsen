@@ -107,6 +107,11 @@ export function AdminNewsEditor({
   const [articleLayout, setArticleLayout] = useState<'standard' | 'longform'>(
     post?.articleLayout === 'longform' ? 'longform' : 'standard'
   )
+  const [articleFormat, setArticleFormat] = useState<'standard' | 'column' | 'analysis'>(
+    post?.articleFormat === 'column' || post?.articleFormat === 'analysis'
+      ? post.articleFormat
+      : 'standard'
+  )
   const [spot, setSpot] = useState(post?.spot ?? '')
   const [categoryId, setCategoryId] = useState(post?.categoryId ?? '')
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
@@ -232,6 +237,7 @@ export function AdminNewsEditor({
     content,
     bodyBlocks,
     articleLayout,
+    articleFormat,
     spot,
     categoryId,
     status,
@@ -440,6 +446,7 @@ export function AdminNewsEditor({
         content,
         bodyBlocks,
         articleLayout,
+        articleFormat,
         spot,
         categoryId,
         status: status as AdminNewsItem['status'],
@@ -661,6 +668,24 @@ export function AdminNewsEditor({
       >
         <option value="standard">Standart haber</option>
         <option value="longform">Gezi / longform (geniş ve ferah)</option>
+      </select>
+    </div>
+
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+        İçerik türü
+      </label>
+      <select
+        value={articleFormat}
+        onChange={(event) => {
+          const v = event.target.value
+          setArticleFormat(v === 'column' || v === 'analysis' ? v : 'standard')
+        }}
+        className={fieldInputCls}
+      >
+        <option value="standard">Haber</option>
+        <option value="column">Köşe yazısı</option>
+        <option value="analysis">Analiz</option>
       </select>
     </div>
 

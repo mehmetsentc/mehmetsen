@@ -51,10 +51,15 @@ export function docToNewsItem(
     String(raw.featuredImage ?? '').trim() ||
     undefined
 
+  const articleFormat =
+    raw.articleFormat === 'column' || raw.articleFormat === 'analysis'
+      ? (raw.articleFormat as 'column' | 'analysis')
+      : 'standard'
+
   const isBreaking =
-    raw.isBreaking === true ||
-    raw.breaking === true ||
-    categoryId === 'son-dakika'
+    articleFormat !== 'column' &&
+    articleFormat !== 'analysis' &&
+    (raw.isBreaking === true || raw.breaking === true || categoryId === 'son-dakika')
 
   const descriptionRaw =
     String(raw.description ?? '').trim() ||
@@ -110,6 +115,7 @@ export function docToNewsItem(
     featured: raw.featured === true || raw.isEditorPick === true,
     featuredAt: parseFirestoreTimestamp(raw.featuredAt as TimestampLike),
     breaking: isBreaking,
+    articleFormat,
   }
 }
 

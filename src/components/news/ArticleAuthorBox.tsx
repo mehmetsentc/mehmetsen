@@ -59,7 +59,11 @@ export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
       )}
       <div className="min-w-0">
         <p className="text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-          {category}
+          {post.articleFormat === 'column'
+            ? 'Köşe Yazısı'
+            : post.articleFormat === 'analysis'
+              ? 'Analiz'
+              : category}
         </p>
         {href ? (
           <Link
@@ -71,6 +75,11 @@ export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
         ) : (
           <p className="mt-0.5 text-base font-bold text-[rgb(var(--color-text))]">{byline}</p>
         )}
+        {post.aiEditorId || post.authorIsAI ? (
+          <p className="mt-1 text-xs font-semibold text-[rgb(var(--color-brand))]">
+            NaHaber AI Editörü
+          </p>
+        ) : null}
         {post.source ? (
           <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">Kaynak: {post.source}</p>
         ) : null}

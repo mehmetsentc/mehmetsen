@@ -51,6 +51,7 @@ interface UpdatePayload {
   additionalImages?: Array<{ url: string; caption?: string }>
   bodyBlocks?: ArticleBlock[]
   articleLayout?: 'standard' | 'longform'
+  articleFormat?: 'standard' | 'column' | 'analysis'
   /** Explicit live-blog mode for /canli/[slug] */
   isLiveBlog?: boolean
   liveUpdates?: Array<{ id?: string; content?: string; timestamp?: string | number; author?: string }>
@@ -97,6 +98,13 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
   }
   if (body.articleLayout === 'standard' || body.articleLayout === 'longform') {
     update.articleLayout = body.articleLayout
+  }
+  if (
+    body.articleFormat === 'standard' ||
+    body.articleFormat === 'column' ||
+    body.articleFormat === 'analysis'
+  ) {
+    update.articleFormat = body.articleFormat
   }
   if (body.spot?.trim()) update.spot = body.spot.trim()
   if (body.seoTitle?.trim()) update.seoTitle = body.seoTitle.trim()

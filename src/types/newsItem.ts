@@ -26,6 +26,8 @@ export type NewsItem = {
   /** ISO — set when editor toggles Öne Çıkan; drives featured sort priority. */
   featuredAt?: string
   breaking?: boolean
+  /** column/analysis excluded from breaking stripe */
+  articleFormat?: 'standard' | 'column' | 'analysis'
 }
 
 export type HomeCategorySlug =

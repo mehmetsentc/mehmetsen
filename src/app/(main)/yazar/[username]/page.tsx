@@ -1,15 +1,13 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Globe, MapPin, User } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl } from '@/lib/seo'
-import { getCategoryLabel } from '@/lib/newsMapper'
-import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import {
   getAuthorByUsername,
   getPostsByAuthorId,
 } from '@/services/newsService.server'
+import { AuthorProfileClient } from '@/components/author/AuthorProfileClient'
 
 export const revalidate = 180
 
@@ -32,10 +30,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  const title = `${author.displayName} — Yazar`
+  const roleLabel = author.isAI ? 'NaHaber AI Editörü' : 'Yazar'
+  const title = `${author.displayName} — ${roleLabel}`
   const description =
     author.bio?.trim() ||
-    `${author.displayName} tarafından ${siteName} üzerinde yayımlanan haberler.`
+    `${author.displayName} tarafından ${siteName} üzerinde yayımlanan içerikler.`
   const canonical = `${siteUrl}${ROUTES.AUTHOR(author.username)}`
 
   return {
@@ -74,7 +73,7 @@ export default async function AuthorPage({ params }: Props) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'ProfilePage',
-    name: `${author.displayName} — Yazar`,
+    name: `${author.displayName} — ${author.isAI ? 'AI Editör' : 'Yazar'}`,
     url: `${siteUrl}${ROUTES.AUTHOR(author.username)}`,
     mainEntity: {
       '@type': 'Person',
@@ -84,6 +83,12 @@ export default async function AuthorPage({ params }: Props) {
       ...(author.bio ? { description: author.bio } : {}),
       ...(author.website ? { sameAs: [author.website] } : {}),
       worksFor: { '@type': 'NewsMediaOrganization', name: siteName },
+      ...(author.isAI
+        ? {
+            description: `${author.bio || author.displayName} — NaHaber yapay zeka editör kimliği.`,
+            additionalType: 'https://schema.org/SoftwareApplication',
+          }
+        : {}),
     },
   }
 
@@ -97,8 +102,6 @@ export default async function AuthorPage({ params }: Props) {
         <header className="mb-8 flex items-start gap-4 border-b border-[rgb(var(--color-border))] pb-6">
           <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[rgb(var(--color-brand))]/10 text-[rgb(var(--color-brand))]">
             {author.photoURL ? (
-              // Native img: author avatars come from arbitrary hosts (Firebase Auth,
-              // Google, Apple) that are not all allow-listed in next/image.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={author.photoURL}
@@ -115,7 +118,7 @@ export default async function AuthorPage({ params }: Props) {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
-              Yazar
+              {author.isAI ? 'NaHaber AI Editörü' : 'Yazar'}
             </p>
             <h1 className="mt-0.5 text-2xl font-black tracking-tight text-[rgb(var(--color-text))] sm:text-3xl">
               {author.displayName}
@@ -154,53 +157,7 @@ export default async function AuthorPage({ params }: Props) {
           </div>
         </header>
 
-        <section aria-label="Yazarın haberleri">
-          <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
-            Haberler ({posts.length})
-          </h2>
-          {posts.length === 0 ? (
-            <p className="py-10 text-center text-sm text-[rgb(var(--color-muted))]">
-              Bu yazarın henüz yayımlanmış haberi yok.
-            </p>
-          ) : (
-            <ul className="space-y-4">
-              {posts.map((post) => {
-                const image =
-                  post.coverImageUrl?.trim() ||
-                  post.mediaItems?.find((m) => m.type === 'image')?.url ||
-                  null
-                return (
-                  <li key={post.id}>
-                    <Link
-                      href={ROUTES.NEWS_DETAIL(post.slug)}
-                      className="flex gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3 transition-colors hover:border-[rgb(var(--color-brand))]/40"
-                    >
-                      {image ? (
-                        <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-border))]">
-                          <SafeNewsImage
-                            src={image}
-                            alt={post.title}
-                            fill
-                            className="object-cover"
-                            sizes="112px"
-                          />
-                        </div>
-                      ) : null}
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
-                          {getCategoryLabel(post.categoryId)}
-                        </p>
-                        <h3 className="mt-0.5 line-clamp-2 text-sm font-bold text-[rgb(var(--color-text))]">
-                          {post.title}
-                        </h3>
-                      </div>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
+        <AuthorProfileClient author={author} posts={posts} />
       </main>
     </>
   )

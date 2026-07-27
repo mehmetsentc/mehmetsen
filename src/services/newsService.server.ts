@@ -253,6 +253,7 @@ async function getHomeNewsPool(poolSize = 120): Promise<NewsItem[]> {
 }
 
 function isBreakingPoolItem(item: NewsItem): boolean {
+  if (item.articleFormat === 'column' || item.articleFormat === 'analysis') return false
   return item.breaking === true || item.category === 'son-dakika'
 }
 
@@ -754,6 +755,9 @@ export type PublicAuthorProfile = {
   department?: string
   isVerified: boolean
   postsCount: number
+  isAI?: boolean
+  aiEditorId?: string | null
+  coverURL?: string | null
 }
 
 /** Public author profile resolved by username (Admin SDK). */
@@ -785,6 +789,9 @@ export async function getAuthorByUsername(username: string): Promise<PublicAutho
       department: data.department as string | undefined,
       isVerified: Boolean(data.isVerified),
       postsCount: typeof data.postsCount === 'number' ? data.postsCount : 0,
+      isAI: data.isAI === true,
+      aiEditorId: (data.aiEditorId as string | null | undefined) ?? null,
+      coverURL: (data.coverURL as string | null | undefined) ?? null,
     }
   } catch (error) {
     console.warn('[newsService.server] getAuthorByUsername failed:', error)

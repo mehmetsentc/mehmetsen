@@ -97,6 +97,10 @@ export interface NewsroomArticleInput {
    * (e.g. trend editor, influencer editor). Preserves originalTitle/Summary/Content as-is.
    */
   skipAiRewrite?: boolean
+  /** V2 persona override (stable aiEditors id) */
+  preferredAiEditorId?: string
+  /** standard | column | analysis */
+  articleFormat?: 'standard' | 'column' | 'analysis'
 }
 
 /** Enriched article after fact-check, category, and geo engines. */
