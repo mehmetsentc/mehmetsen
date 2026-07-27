@@ -9,66 +9,51 @@ import { HOME_FEATURED_LIMIT, type NewsItem } from '@/types/newsItem'
 
 /**
  * Desktop “Öne Çıkan” — 10 haber, boş hücre yok.
- * Üst: lead + 3 yan. Alt: kalanlar 3’lü tam satırlar (10 → 6 = 2×3).
+ * Üst: lead + 3 yan (3 satır grid; yan görseller aspect ile her zaman görünür).
+ * Alt: kalanlar 3’lü tam satırlar (10 → 6 = 2×3).
  */
 export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
   const slides = items.slice(0, HOME_FEATURED_LIMIT)
   if (slides.length === 0) return null
 
   const [lead, ...rest] = slides
-  // 10 haber: 1 lead + 3 yan + 6 alt (2 tam satır) — yarım satır kalmaz
   const sideCount = Math.min(3, rest.length)
   const side = rest.slice(0, sideCount)
   const below = rest.slice(sideCount)
 
   return (
     <section aria-label="Öne Çıkan Haberler" className="space-y-3">
-      <div className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-12 lg:gap-4">
-        <article className="relative min-h-[260px] min-w-0 lg:col-span-8 lg:min-h-0">
-          <Link href={newsItemDetailHref(lead!)} className="group absolute inset-0 block max-lg:relative max-lg:min-h-[260px]">
-            <div className="relative h-full min-h-[260px] overflow-hidden rounded-xl bg-[rgb(var(--color-border))] max-lg:aspect-[16/10] lg:min-h-0">
-              <SafeNewsImage
-                src={lead!.imageUrl || FEED_FALLBACK_LOGO}
-                alt={lead!.title}
-                fill
-                sizes="(max-width: 1280px) 70vw, 780px"
-                priority
-                className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.01]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                <span className="mb-2 inline-flex rounded-md bg-[rgb(var(--color-brand))] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">
-                  {newsItemCategoryLabel(lead!)}
-                </span>
-                <h2 className="line-clamp-3 text-xl font-black leading-tight text-white sm:text-2xl lg:text-[1.65rem]">
-                  {lead!.title}
-                </h2>
-                {lead!.description ? (
-                  <p className="mt-2 line-clamp-2 hidden text-sm text-white/85 sm:block">
-                    {lead!.description}
-                  </p>
-                ) : null}
-              </div>
+      {side.length === 3 ? (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:grid-rows-3 lg:gap-4">
+          <article className="relative min-h-[240px] min-w-0 max-lg:aspect-[16/10] lg:col-span-8 lg:row-span-3 lg:min-h-0">
+            <LeadCard item={lead!} />
+          </article>
+          {side.map((item) => (
+            <div key={item.id} className="min-h-0 lg:col-span-4">
+              <FeaturedSideCard item={item} />
             </div>
-          </Link>
-        </article>
-
-        {side.length > 0 ? (
-          <div
-            className={
-              side.length === 1
-                ? 'flex h-full flex-col gap-4 lg:col-span-4'
-                : side.length === 2
-                  ? 'grid h-full grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1'
-                  : 'flex h-full flex-col gap-4 sm:grid sm:grid-cols-3 lg:col-span-4 lg:flex lg:flex-col'
-            }
-          >
-            {side.map((item) => (
-              <FeaturedSideCard key={item.id} item={item} />
-            ))}
-          </div>
-        ) : null}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-12 lg:gap-4">
+          <article className="relative min-h-[240px] min-w-0 max-lg:aspect-[16/10] lg:col-span-8">
+            <LeadCard item={lead!} />
+          </article>
+          {side.length > 0 ? (
+            <div
+              className={
+                side.length === 1
+                  ? 'flex flex-col gap-3 lg:col-span-4'
+                  : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1'
+              }
+            >
+              {side.map((item) => (
+                <FeaturedSideCard key={item.id} item={item} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {below.length > 0 ? (
         <div className={belowGridClass(below.length)}>
@@ -81,6 +66,37 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
   )
 }
 
+function LeadCard({ item }: { item: NewsItem }) {
+  return (
+    <Link href={newsItemDetailHref(item)} className="group absolute inset-0 block">
+      <div className="relative h-full overflow-hidden rounded-xl bg-[rgb(var(--color-border))]">
+        <SafeNewsImage
+          src={item.imageUrl || FEED_FALLBACK_LOGO}
+          alt={item.title}
+          fill
+          sizes="(max-width: 1280px) 70vw, 780px"
+          priority
+          className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.01]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+          <span className="mb-2 inline-flex rounded-md bg-[rgb(var(--color-brand))] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">
+            {newsItemCategoryLabel(item)}
+          </span>
+          <h2 className="line-clamp-3 text-xl font-black leading-tight text-white sm:text-2xl lg:text-[1.65rem]">
+            {item.title}
+          </h2>
+          {item.description ? (
+            <p className="mt-2 line-clamp-2 hidden text-sm text-white/85 sm:block">
+              {item.description}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 /** Satırları tam doldur — 2/3/4/6 için boş hücre bırakma. */
 function belowGridClass(count: number): string {
   const base = 'grid gap-4'
@@ -88,7 +104,6 @@ function belowGridClass(count: number): string {
   if (count === 2) return `${base} grid-cols-1 sm:grid-cols-2`
   if (count === 4) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
   if (count === 5) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-5`
-  // 3, 6, 9 → üçlü tam satırlar (10 featured’ın altı: 6)
   if (count % 3 === 0) return `${base} grid-cols-1 sm:grid-cols-3`
   if (count % 2 === 0) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-2`
   return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`
@@ -99,18 +114,19 @@ function FeaturedSideCard({ item }: { item: NewsItem }) {
   return (
     <Link
       href={newsItemDetailHref(item)}
-      className="group flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
+      className="group flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
     >
-      <div className="relative min-h-[72px] flex-[1.15] overflow-hidden bg-[rgb(var(--color-border))]">
+      {/* Sabit oran — flex min-height ile ezilmesin (önceki ince şerit bug’ı) */}
+      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-[rgb(var(--color-border))]">
         <SafeNewsImage
           src={item.imageUrl || FEED_FALLBACK_LOGO}
           alt={item.title}
           fill
           sizes="(max-width: 1024px) 45vw, 320px"
-          className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
+          className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.02]"
         />
       </div>
-      <div className="flex shrink-0 flex-col px-3 py-2.5">
+      <div className="flex min-h-0 flex-1 flex-col justify-center px-3 py-2.5">
         <span className="mb-0.5 text-[10px] font-black uppercase tracking-wide text-[rgb(var(--color-brand))]">
           {newsItemCategoryLabel(item)}
         </span>
@@ -139,7 +155,7 @@ function FeaturedTileCard({ item }: { item: NewsItem }) {
           alt={item.title}
           fill
           sizes="(max-width: 1024px) 50vw, 280px"
-          className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
+          className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.02]"
         />
       </div>
       <div className="flex flex-1 flex-col p-3">
