@@ -131,13 +131,13 @@ export async function claimPendingQueueItems(
 
     const snap = await queueCollection(db)
       .where('status', '==', status)
-      .limit(Math.max(remaining * 2, 8))
+      .orderBy('createdAt', 'asc')
+      .limit(Math.max(remaining * 3, 12))
       .get()
 
     const due = snap.docs
       .map((doc) => ({ doc, data: doc.data() as NewsQueueDocument }))
-      .filter(({ data }) => data.scheduledAt <= now && data.attempts < data.maxAttempts)
-      .sort((a, b) => a.data.scheduledAt - b.data.scheduledAt)
+      .filter(({ data }) => (data.scheduledAt ?? 0) <= now && data.attempts < data.maxAttempts)
       .slice(0, remaining)
 
     for (const { doc, data } of due) {
