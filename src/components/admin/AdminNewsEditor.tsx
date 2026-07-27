@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
@@ -112,6 +112,8 @@ export function AdminNewsEditor({
       ? post.articleFormat
       : 'standard'
   )
+  const [aiEditorId, setAiEditorId] = useState(post?.aiEditorId?.trim() ?? '')
+  const [aiEditors, setAiEditors] = useState<Array<{ id: string; name: string; slug: string; title: string }>>([])
   const [spot, setSpot] = useState(post?.spot ?? '')
   const [categoryId, setCategoryId] = useState(post?.categoryId ?? '')
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
@@ -187,6 +189,29 @@ export function AdminNewsEditor({
     [bodyBlocks, title, spot, summary, thumbnail]
   )
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const token = (await auth.currentUser?.getIdToken()) ?? ''
+        if (!token) return
+        const res = await fetch('/api/admin/ai-editors?status=active', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const data = (await res.json()) as {
+          editors?: Array<{ id: string; name: string; slug: string; title: string }>
+        }
+        if (!cancelled) setAiEditors(data.editors ?? [])
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const headerTitle = mode === 'create' ? 'Yeni Haber' : 'Haberi Düzenle'
   const saveLabel = mode === 'create' ? 'Yayınla' : 'Kaydet'
 
@@ -238,6 +263,7 @@ export function AdminNewsEditor({
     bodyBlocks,
     articleLayout,
     articleFormat,
+    aiEditorId: aiEditorId || null,
     spot,
     categoryId,
     status,
@@ -447,6 +473,7 @@ export function AdminNewsEditor({
         bodyBlocks,
         articleLayout,
         articleFormat,
+        aiEditorId: aiEditorId || undefined,
         spot,
         categoryId,
         status: status as AdminNewsItem['status'],
@@ -687,6 +714,30 @@ export function AdminNewsEditor({
         <option value="column">Köşe yazısı</option>
         <option value="analysis">Analiz</option>
       </select>
+    </div>
+
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+        AI Editör / Yazar
+      </label>
+      <select
+        value={aiEditorId}
+        onChange={(event) => setAiEditorId(event.target.value)}
+        className={fieldInputCls}
+      >
+        <option value="">Manuel (giriş yapan CMS kullanıcısı)</option>
+        {aiEditors.map((editor) => (
+          <option key={editor.id} value={editor.id}>
+            {editor.name} — {editor.title}
+          </option>
+        ))}
+      </select>
+      <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
+        Seçilirse byline ve yazar profili bu AI editöre bağlanır. Tarz talimatları:{' '}
+        <a href="/admin/ai-editors" className="underline hover:text-[rgb(var(--color-text))]">
+          AI Editörler → Promptlar
+        </a>
+      </p>
     </div>
 
     <div className="grid grid-cols-2 gap-3">

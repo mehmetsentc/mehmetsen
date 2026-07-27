@@ -15,6 +15,8 @@ import {
   sanitizeArticleBlocks,
   type ArticleBlock,
 } from '@/lib/articleBlocks'
+import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
+import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -48,6 +50,8 @@ interface CreatePayload {
   bodyBlocks?: ArticleBlock[]
   articleLayout?: 'standard' | 'longform'
   articleFormat?: 'standard' | 'column' | 'analysis'
+  /** AI persona override — null/'' clears and uses CMS user as author */
+  aiEditorId?: string | null
   aiResearchSources?: GroundingSource[]
 }
 
@@ -99,6 +103,13 @@ export async function POST(request: Request) {
     const userData = userSnap.data()
     const authorUsername = (userData?.username as string | undefined)?.trim() || 'nahaber'
 
+    const selectedAiEditorId = body.aiEditorId?.trim() || ''
+    const aiEditor = selectedAiEditorId ? await getAiEditorById(selectedAiEditorId) : null
+    if (selectedAiEditorId && (!aiEditor || aiEditor.status === 'archived')) {
+      return NextResponse.json({ error: 'Geçersiz AI editör' }, { status: 400 })
+    }
+    const personaAuthors = aiEditor ? authorFieldsFromEditor(aiEditor) : null
+
     const newsRef = body.draftId?.trim()
       ? db.collection(Collections.NEWS).doc(body.draftId.trim())
       : db.collection(Collections.NEWS).doc()
@@ -127,10 +138,21 @@ export async function POST(request: Request) {
       status,
       type: 'news',
       source: 'NaHaber',
-      author: authorUsername,
-      authorId: auth.uid,
-      authorUsername,
-      authorDisplayName: (userData?.displayName as string | undefined)?.trim() || authorUsername,
+      ...(personaAuthors
+        ? {
+            author: personaAuthors.author,
+            authorId: personaAuthors.authorId,
+            authorUsername: personaAuthors.authorUsername,
+            authorDisplayName: personaAuthors.authorDisplayName,
+            authorPhotoURL: personaAuthors.authorPhotoURL,
+            aiEditorId: personaAuthors.aiEditorId,
+          }
+        : {
+            author: authorUsername,
+            authorId: auth.uid,
+            authorUsername,
+            authorDisplayName: (userData?.displayName as string | undefined)?.trim() || authorUsername,
+          }),
       thumbnail: body.thumbnail?.trim() ?? '',
       coverImageUrl: body.thumbnail?.trim() ?? '',
       imageUrl: body.thumbnail?.trim() ?? '',

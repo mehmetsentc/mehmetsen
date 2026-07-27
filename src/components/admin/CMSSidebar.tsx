@@ -107,7 +107,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/newsroom', label: 'AI Newsroom', icon: BrainCircuit, requiredPermissions: ['ai:use'] },
       { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, requiredPermissions: ['ai:use'] },
       { href: '/admin/ai/news', label: 'AI Haber Asistanı', icon: Bot, requiredPermissions: ['ai:use'] },
-      { href: '/admin/ai/video', label: 'AI Video Asistanı', icon: Zap, requiredPermissions: ['ai:use'] },
     ],
   },
   {

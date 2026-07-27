@@ -17,6 +17,8 @@ import {
   sanitizeArticleBlocks,
   type ArticleBlock,
 } from '@/lib/articleBlocks'
+import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
+import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -52,6 +54,8 @@ interface UpdatePayload {
   bodyBlocks?: ArticleBlock[]
   articleLayout?: 'standard' | 'longform'
   articleFormat?: 'standard' | 'column' | 'analysis'
+  /** AI persona override — null/'' clears persona authorship */
+  aiEditorId?: string | null
   /** Explicit live-blog mode for /canli/[slug] */
   isLiveBlog?: boolean
   liveUpdates?: Array<{ id?: string; content?: string; timestamp?: string | number; author?: string }>
@@ -279,6 +283,30 @@ export async function PUT(request: Request, context: RouteContext) {
 
   try {
     const update = buildUpdatePayload(body, auth.uid)
+
+    if ('aiEditorId' in body) {
+      const selectedId = typeof body.aiEditorId === 'string' ? body.aiEditorId.trim() : ''
+      if (selectedId) {
+        const aiEditor = await getAiEditorById(selectedId)
+        if (!aiEditor || aiEditor.status === 'archived') {
+          return NextResponse.json({ error: 'Geçersiz AI editör' }, { status: 400 })
+        }
+        Object.assign(update, authorFieldsFromEditor(aiEditor))
+      } else {
+        const dbUsers = getAdminFirestore()
+        const userSnap = await dbUsers.collection(Collections.USERS).doc(auth.uid).get()
+        const userData = userSnap.data()
+        const authorUsername = (userData?.username as string | undefined)?.trim() || 'nahaber'
+        update.aiEditorId = FieldValue.delete()
+        update.authorId = auth.uid
+        update.authorUsername = authorUsername
+        update.authorDisplayName =
+          (userData?.displayName as string | undefined)?.trim() || authorUsername
+        update.author = authorUsername
+        update.authorPhotoURL = (userData?.photoURL as string | undefined) ?? null
+      }
+    }
+
     const db = getAdminFirestore()
 
     const newsRef = db.collection(Collections.NEWS).doc(id)

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
-  Newspaper, Users, Video, TrendingUp, Clock, CheckCircle2,
+  Newspaper, Users, TrendingUp, Clock, CheckCircle2,
   XCircle, AlertTriangle, Zap, BarChart3, Eye, Activity,
   RefreshCw, ArrowUpRight, Bot, Radio,
 } from 'lucide-react'
@@ -331,9 +331,9 @@ export default function AdminIndexPage() {
               </div>
               <div className="p-3 space-y-2">
                 {[
+                  { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, color: 'text-purple-600' },
                   { href: '/admin/ai/news', label: 'Haber Oluştur', icon: Newspaper, color: 'text-blue-600' },
                   { href: '/admin/ai/news?mode=rewrite', label: 'Haber Yeniden Yaz', icon: RefreshCw, color: 'text-emerald-600' },
-                  { href: '/admin/ai/video', label: 'Video Script Oluştur', icon: Video, color: 'text-purple-600' },
                   { href: '/admin/seo', label: 'SEO Analizi Yap', icon: BarChart3, color: 'text-amber-600' },
                 ].map(item => (
                   <Link key={item.href} href={item.href} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))]">
