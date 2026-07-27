@@ -263,7 +263,7 @@ export async function markQueueSkipped(
   reason: string
 ): Promise<void> {
   await queueCollection(db).doc(queueId).update({
-    status: 'published',
+    status: 'skipped',
     lastError: reason.slice(0, 200),
     leaseOwner: null,
     leaseExpiresAt: null,
