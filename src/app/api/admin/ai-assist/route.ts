@@ -135,54 +135,9 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
     }
   }
 
-  // --- Gemini (fallback) ---
-  const geminiKey = process.env.GEMINI_API_KEY?.trim()
-  if (geminiKey) {
-    try {
-      const geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            generationConfig: {
-              temperature: 0.45,
-              maxOutputTokens: 8000,
-              responseMimeType: 'application/json',
-            },
-          }),
-          signal: AbortSignal.timeout(50_000),
-        }
-      )
-      if (res.ok) {
-        const data = await res.json() as {
-          candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>
-        }
-        const parts = data.candidates?.[0]?.content?.parts ?? []
-        const raw = parts.find(p => !p.thought && typeof p.text === 'string')?.text?.trim()
-        if (raw) {
-          const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-          try {
-            return JSON.parse(cleaned) as Record<string, unknown>
-          } catch {
-            errors.push(`Gemini JSON parse hatası`)
-          }
-        } else {
-          errors.push('Gemini: boş yanıt')
-        }
-      } else {
-        const body = await res.text().catch(() => '')
-        errors.push(`Gemini HTTP ${res.status}: ${body.slice(0, 200)}`)
-      }
-    } catch (e) {
-      errors.push(`Gemini bağlantı hatası: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
+  // Gemini text fallback removed — cost control (use DeepSeek only)
 
-  throw new Error(errors.length ? errors.join(' | ') : 'AI anahtarı yapılandırılmamış')
+  throw new Error(errors.length ? errors.join(' | ') : 'AI anahtarı yapılandırılmamış (DEEPSEEK_API_KEY)')
 }
 
 export async function POST(request: Request) {
@@ -311,24 +266,25 @@ export async function POST(request: Request) {
         !contentHasIncompleteSegments(content) &&
         !contentHasIncompleteSegments(title) &&
         !contentHasIncompleteSegments(spot)
+      const researchOk =
+        !research || (research.sources.length >= 2 && research.brief.length >= 120)
       const checks = [
         title.length >= 20,
         spot.length >= 80,
         summary.length >= 60,
-        content.length >= 600,
-        /^##\s+\S/m.test(content),
+        content.length >= 400,
         CATEGORY_IDS.has(categoryCandidate) || categoryId === 'astroloji',
-        tags.length >= 5,
+        tags.length >= 3,
         String(parsed.seoTitle ?? '').trim().length >= 40,
         String(parsed.seoDescription ?? '').trim().length >= 120,
-        (research?.sources.length ?? 0) >= 2,
+        researchOk,
         textComplete,
       ]
       let qualityScore = Math.round((checks.filter(Boolean).length / checks.length) * 100)
       // Yarım cümle / kesik başlık varsa puanı sert düşür (screenshot'taki %90 yanılgısını önle)
       if (!textComplete) qualityScore = Math.min(qualityScore, 45)
       const gateDecision =
-        qualityScore >= 78 && textComplete && (research?.sources.length ?? 0) >= 2
+        qualityScore >= 78 && textComplete && researchOk
           ? 'publish'
           : 'review'
       return NextResponse.json({

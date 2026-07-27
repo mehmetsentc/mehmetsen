@@ -123,6 +123,11 @@ describe('ModelRouter', () => {
     const resolved = resolveModelForEditor(editor, 'news')
     expect(resolved.provider).toBe('deepseek')
   })
+
+  it('defaults RESEARCH to DeepSeek (Gemini opt-in only)', () => {
+    const resolved = resolveModelForEditor(null, 'research')
+    expect(resolved.provider).toBe('deepseek')
+  })
 })
 
 describe('EditorRouter category map', () => {

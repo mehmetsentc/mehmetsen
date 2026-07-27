@@ -67,7 +67,12 @@ Admin → AI Editörler → Yeni (or API `POST /api/admin/ai-editors`). Creates 
 
 ## Changing models
 
-Edit `modelAssignments` on the editor (Admin UI). Secrets stay in Vercel env (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`).
+Edit `modelAssignments` on the editor (Admin UI). Secrets stay in Vercel env (`DEEPSEEK_API_KEY`).
+
+**Gemini cost control (default OFF):**
+- `LIVE_RESEARCH_ENABLED=1` — enables Gemini Google Search grounding (trend/admin research)
+- `GEMINI_VISION_ENABLED=1` — enables Gemini vision for image captions
+- Without these flags, newsroom uses DeepSeek only even if `GEMINI_API_KEY` is set.
 
 ## Columns
 

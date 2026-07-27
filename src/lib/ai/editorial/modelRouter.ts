@@ -4,7 +4,6 @@ import { Collections } from '@/lib/firebase/collections'
 
 const DEFAULT_DEEPSEEK_MODEL =
   process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
-const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash'
 
 export interface ResolvedModel {
   provider: AiProviderId
@@ -13,14 +12,8 @@ export interface ResolvedModel {
 }
 
 function defaultForTask(task: AiEditorTask): AiModelAssignment {
-  if (task === 'research') {
-    return {
-      provider: 'gemini',
-      model: DEFAULT_GEMINI_MODEL,
-      fallbackProvider: 'deepseek',
-      fallbackModel: DEFAULT_DEEPSEEK_MODEL,
-    }
-  }
+  // All tasks default to cheap DeepSeek; Gemini only via explicit editor assignment + flags.
+  void task
   return {
     provider: 'deepseek',
     model: DEFAULT_DEEPSEEK_MODEL,

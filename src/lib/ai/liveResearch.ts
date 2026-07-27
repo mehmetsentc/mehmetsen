@@ -111,6 +111,10 @@ export async function researchLiveNews(input: {
   query: string
   context?: string
 }): Promise<GroundedResearch | null> {
+  // Cost gate: Gemini Google Search grounding is expensive — off unless explicitly enabled.
+  if (process.env.LIVE_RESEARCH_ENABLED?.trim() !== '1') {
+    return null
+  }
   const apiKey = process.env.GEMINI_API_KEY?.trim()
   if (!apiKey) return null
   const query = input.query.trim().slice(0, 500)
@@ -169,5 +173,8 @@ Yalnızca araştırma notunu döndür; yayımlanmış haber üslubunda manşet y
 }
 
 export function isLiveResearchConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY?.trim())
+  return (
+    process.env.LIVE_RESEARCH_ENABLED?.trim() === '1' &&
+    Boolean(process.env.GEMINI_API_KEY?.trim())
+  )
 }

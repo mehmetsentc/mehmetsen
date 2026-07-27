@@ -225,8 +225,12 @@ async function generateWithDeepSeek(input: ImageSeoInput): Promise<ImageAnalysis
 }
 
 export async function generateImageAnalysis(input: ImageSeoInput): Promise<ImageAnalysis | null> {
-  const vision = await generateWithGeminiVision(input)
-  if (vision) return vision
+  // Cost: Gemini vision is expensive — DeepSeek text-first by default.
+  // Opt in with GEMINI_VISION_ENABLED=1 only when true vision captions are needed.
+  if (process.env.GEMINI_VISION_ENABLED?.trim() === '1') {
+    const vision = await generateWithGeminiVision(input)
+    if (vision) return vision
+  }
   return generateWithDeepSeek(input)
 }
 

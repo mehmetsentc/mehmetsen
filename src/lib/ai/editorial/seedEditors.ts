@@ -34,12 +34,7 @@ const DEFAULT_MODELS: Partial<Record<AiEditorTask, AiModelAssignment>> = {
   seo: DEEPSEEK_NEWS,
   self_review: DEEPSEEK_NEWS,
   fact_check: DEEPSEEK_NEWS,
-  research: {
-    provider: 'gemini',
-    model: process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash',
-    fallbackProvider: 'deepseek',
-    fallbackModel: DEEPSEEK_NEWS.model,
-  },
+  research: DEEPSEEK_NEWS,
 }
 
 function caps(partial: Partial<AiEditorCapabilities>): AiEditorCapabilities {
