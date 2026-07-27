@@ -7,7 +7,14 @@ type TimestampLike =
   | string
   | null
   | undefined
-  | { toDate?: () => Date; toMillis?: () => number }
+  | {
+      toDate?: () => Date
+      toMillis?: () => number
+      seconds?: number
+      nanoseconds?: number
+      _seconds?: number
+      _nanoseconds?: number
+    }
 
 export function parseFirestoreTimestamp(value: TimestampLike): string | undefined {
   if (value == null) return undefined
@@ -24,10 +31,28 @@ export function parseFirestoreTimestamp(value: TimestampLike): string | undefine
 
   if (typeof value === 'object') {
     if (typeof value.toDate === 'function') {
-      return value.toDate().toISOString()
+      try {
+        return value.toDate().toISOString()
+      } catch {
+        /* fall through */
+      }
     }
     if (typeof value.toMillis === 'function') {
-      return new Date(value.toMillis()).toISOString()
+      try {
+        return new Date(value.toMillis()).toISOString()
+      } catch {
+        /* fall through */
+      }
+    }
+    // JSON / Admin serialized Timestamp shapes
+    const seconds =
+      typeof value.seconds === 'number'
+        ? value.seconds
+        : typeof value._seconds === 'number'
+          ? value._seconds
+          : undefined
+    if (typeof seconds === 'number' && Number.isFinite(seconds)) {
+      return new Date(seconds * 1000).toISOString()
     }
   }
 

@@ -292,9 +292,27 @@ function bucketFeatured(pool: NewsItem[], limit: number, pinned: NewsItem[] = []
 
 async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
   const db = getAdminFirestore()
-  // Fetch a wider window then re-rank by featuredAt (CMS toggle) so older
-  // publish dates don't bury newly pinned Öne Çıkan items.
-  const scan = Math.max(limit * 4, 24)
+  // Wide scan: newly pinned OLD articles have old publishedAt and were dropped
+  // when we only fetched ~40 by publish date (looked like “only NaHaber works”).
+  const scan = Math.max(limit * 25, 250)
+
+  const mapAndRank = (docs: QueryDocumentSnapshot[]) =>
+    mapAdminDocs(docs).sort(compareFeaturedPriority).slice(0, limit)
+
+  // Prefer pin time when indexed (status + featured + featuredAt).
+  try {
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('featured', '==', true)
+      .orderBy('featuredAt', 'desc')
+      .limit(scan)
+      .get()
+    if (!snap.empty) return mapAndRank(snap.docs)
+  } catch (error) {
+    console.warn('[newsService.server] featuredAt order failed, using publishedAt scan:', error)
+  }
+
   try {
     const snap = await db
       .collection(NEWS_COLLECTION)
@@ -303,7 +321,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
       .orderBy('publishedAt', 'desc')
       .limit(scan)
       .get()
-    return mapAdminDocs(snap.docs).sort(compareFeaturedPriority).slice(0, limit)
+    return mapAndRank(snap.docs)
   } catch (error) {
     console.warn('[newsService.server] featured query failed, trying isEditorPick:', error)
     try {
@@ -314,7 +332,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
         .orderBy('publishedAt', 'desc')
         .limit(scan)
         .get()
-      return mapAdminDocs(snap.docs).sort(compareFeaturedPriority).slice(0, limit)
+      return mapAndRank(snap.docs)
     } catch (err2) {
       console.warn('[newsService.server] isEditorPick featured query failed:', err2)
       return []
@@ -324,7 +342,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v3'],
+  ['home-featured-v4'],
   { revalidate: 30, tags: ['home-feed'] }
 )
 

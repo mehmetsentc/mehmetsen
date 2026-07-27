@@ -283,6 +283,42 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "featured",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "featuredAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "news",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "featured",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "publishedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "news",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "viewsCount",
           "order": "DESCENDING"
         }

@@ -131,9 +131,9 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     update.featured = body.featured
     // Keep live-feed / editor-pick consumers in sync
     update.isEditorPick = body.featured
-    // Pin time so newly marked Öne Çıkan rises above older featured flags
+    // Numeric epoch ms — survives cache JSON + sorts with orderBy featuredAt
     if (body.featured) {
-      update.featuredAt = FieldValue.serverTimestamp()
+      update.featuredAt = Date.now()
     } else {
       update.featuredAt = FieldValue.delete()
     }
