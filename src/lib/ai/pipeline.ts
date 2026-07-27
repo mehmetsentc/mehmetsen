@@ -1,12 +1,11 @@
 /**
  * NaHaber Multi-Agent AI Pipeline
  *
- * Akış: DeepSeek (Collector) → Gemini (Editor) → GPT Genel Yayın Yönetmeni → Firestore
+ * Akış: DeepSeek (Collector + Editor + QA) → Firestore taslak/yayın → Sosyal
  *
- * - DeepSeek : duplicate tespiti + içerik zenginleştirme
- * - Gemini   : profesyonel haber yazımı + SEO + sosyal medya
- * - GPT (GYY): kategori doğrulama + web araması + nihai yayın kararı
- * - Onaylanan haberler news koleksiyonuna kaydedilir
+ * - DeepSeek : duplicate tespiti, haber yazımı, SEO, kalite
+ * - Gemini   : varsayılan kapalı (maliyet); yalnızca LIVE_RESEARCH / vision bayrakları
+ * - Onay politikasına göre newsDrafts veya news koleksiyonuna yazılır
  */
 
 import { getAdminFirestore } from '@/lib/firebase/admin'

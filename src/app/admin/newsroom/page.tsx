@@ -186,7 +186,7 @@ export default function NewsroomPage() {
         {/* ── Top stats ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {[
-            { label: 'AI Agent', value: `${onlineCount}/4`, icon: Bot, color: 'text-blue-400' },
+            { label: 'AI Agent', value: `${onlineCount}/${Math.max(agents.length, 1)}`, icon: Bot, color: 'text-blue-400' },
             { label: 'Kuyrukta', value: q.pending, icon: Clock, color: 'text-amber-400' },
             { label: 'İşleniyor', value: q.processing, icon: Activity, color: 'text-blue-400' },
             { label: 'Yayınlandı', value: q.done, icon: CheckCircle2, color: 'text-emerald-400' },
@@ -247,11 +247,10 @@ export default function NewsroomPage() {
         {tab === 'overview' && (
           <div className="space-y-4">
             {/* Agent cards */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {(loading.status ? [
-                { id: 'gemini', name: 'Gemini 2.5 Flash', role: 'Baş Editör (Birincil)', configured: false, ok: false, latencyMs: 0 },
-                { id: 'deepseek', name: 'DeepSeek V3', role: 'Haber Yazarı (Yedek)', configured: false, ok: false, latencyMs: 0 },
-              ] : agents.filter(a => a.id === 'gemini' || a.id === 'deepseek')).map(agent => {
+                { id: 'deepseek', name: 'DeepSeek', role: 'Birincil editör (topla + yaz + QA)', configured: false, ok: false, latencyMs: 0 },
+              ] : agents.filter(a => a.id === 'deepseek')).map(agent => {
                 const Icon = AGENT_ICONS[agent.id] ?? Bot
                 return (
                   <div key={agent.id} className={cn(
@@ -271,7 +270,7 @@ export default function NewsroomPage() {
                     </div>
                     <div className="mt-3">
                       <p className="text-sm font-bold text-white">{agent.name}</p>
-                      <p className="text-[11px] text-[rgb(var(--color-muted))]">{agent.role}</p>
+                      <p className="text-[11px] text-[rgb(var(--color-muted))]">{agent.role || 'Birincil haber motoru'}</p>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-[10px] text-[rgb(var(--color-muted))]">
                       <span>{agent.configured ? '✓ Yapılandırıldı' : '✗ API Key eksik'}</span>
@@ -283,18 +282,30 @@ export default function NewsroomPage() {
                   </div>
                 )
               })}
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 opacity-80">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-blue-300">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div className="mt-3">
+                  <p className="text-sm font-bold text-white">Gemini</p>
+                  <p className="text-[11px] text-[rgb(var(--color-muted))]">
+                    Opsiyonel — varsayılan kapalı (maliyet). Yalnızca LIVE_RESEARCH / vision bayrakları açıkken.
+                  </p>
+                </div>
+                <p className="mt-3 text-[10px] text-amber-400/90">Yedek / araştırma · birincil değil</p>
+              </div>
             </div>
 
-            {/* Pipeline flow diagram */}
+            {/* Pipeline flow diagram — matches live DeepSeek-first architecture */}
             <div className="rounded-xl border border-white/10 bg-white/5 p-5">
               <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[rgb(var(--color-muted))]">Pipeline Akışı</p>
               <div className="flex flex-wrap items-center gap-2">
                 {[
-                  { label: 'Kaynak RSS', color: 'bg-slate-700' },
-                  { label: 'Gemini', sub: 'Baş Editör', color: 'bg-blue-900/50 border-blue-500/40' },
-                  { label: 'DeepSeek', sub: 'Yedek Editör', color: 'bg-purple-900/50 border-purple-500/40' },
-                  { label: 'Firestore', sub: 'Yayınla', color: 'bg-orange-900/50 border-orange-500/40' },
-                  { label: 'Sosyal Medya', color: 'bg-pink-900/50 border-pink-500/40' },
+                  { label: 'Kaynak RSS', sub: 'Ingest', color: 'bg-slate-700' },
+                  { label: 'DeepSeek', sub: 'Topla + Yaz', color: 'bg-purple-900/50 border-purple-500/40' },
+                  { label: 'DeepSeek QA', sub: 'Kalite / kategori', color: 'bg-violet-900/50 border-violet-500/40' },
+                  { label: 'Firestore', sub: 'Taslak / Yayın', color: 'bg-orange-900/50 border-orange-500/40' },
+                  { label: 'Sosyal Medya', sub: 'FB / IG', color: 'bg-pink-900/50 border-pink-500/40' },
                 ].map((step, i, arr) => (
                   <div key={step.label} className="flex items-center gap-2">
                     <div className={cn('rounded-lg border border-white/10 px-3 py-2 text-center text-xs', step.color)}>
@@ -305,6 +316,10 @@ export default function NewsroomPage() {
                   </div>
                 ))}
               </div>
+              <p className="mt-3 text-[11px] text-[rgb(var(--color-muted))]">
+                Eski dizilim (Gemini birincil → DeepSeek yedek) artık geçerli değil. Gemini yalnızca bayrakla açılan
+                araştırma/görsel yollarında kullanılır.
+              </p>
             </div>
 
             {/* Queue chart */}
@@ -354,7 +369,7 @@ export default function NewsroomPage() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-[rgb(var(--color-muted))]">Haber</th>
                       <th className="hidden px-4 py-3 text-left text-xs font-semibold text-[rgb(var(--color-muted))] sm:table-cell">Kaynak</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))]">Durum</th>
-                      <th className="hidden px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))] md:table-cell">Gemini</th>
+                      <th className="hidden px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))] md:table-cell">Kalite</th>
                       <th className="hidden px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))] md:table-cell">Karar</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))]">İşlem</th>
                     </tr>
@@ -481,7 +496,7 @@ export default function NewsroomPage() {
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[rgb(var(--color-muted))]">Otomatik Cron</p>
               <div className="space-y-2">
                 {[
-                  { path: '/api/cron/newsroom/ai-pipeline', schedule: 'Her 5 dakika', desc: 'Ana AI pipeline (Gemini birincil → DeepSeek yedek)' },
+                  { path: '/api/cron/newsroom/ai-pipeline', schedule: 'Her 5 dakika', desc: 'Ana AI pipeline (DeepSeek birincil; Gemini varsayılan kapalı)' },
                   { path: '/api/cron/social', schedule: 'Her 5 dakika', desc: 'Facebook + Instagram paylaşımı' },
                   { path: '/api/cron/newsroom/ingest', schedule: 'Her 10 dakika', desc: 'RSS kaynak toplama' },
                 ].map(cron => (

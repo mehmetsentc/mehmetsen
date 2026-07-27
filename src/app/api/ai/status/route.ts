@@ -34,7 +34,8 @@ export async function GET(request: Request) {
     agents: {
       deepseek: {
         id: 'deepseek',
-        name: `DeepSeek V3 (${health.model})`,
+        name: `DeepSeek (${health.model})`,
+        role: 'Birincil editör (topla + yaz + QA)',
         roleDescriptions: {
           collector: 'Duplicate tespiti + içerik zenginleştirme',
           editor: 'Profesyonel haber yazımı + SEO + sosyal medya',
