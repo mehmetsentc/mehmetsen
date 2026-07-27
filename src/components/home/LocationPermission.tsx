@@ -55,17 +55,38 @@ export function LocationPermission() {
   /** GPS başarısız olunca IP üzerinden yaklaşık şehir tespit et */
   const fallbackToIpGeo = async () => {
     try {
-      const res = await fetch('/api/geo/detect')
+      // Önce CDN geo (Antalya gibi illerde ip2location’dan daha doğru)
+      const cdnRes = await fetch('/api/geo/ip', { cache: 'no-store' })
+      if (cdnRes.ok) {
+        const geo = (await cdnRes.json()) as { citySlug?: string; cityName?: string; lat?: number | null; lng?: number | null }
+        if (geo.citySlug) {
+          const record: StoredUserLocation = {
+            citySlug: geo.citySlug,
+            cityName: geo.cityName || getCityCategoryName(geo.citySlug),
+            lat: typeof geo.lat === 'number' ? geo.lat : null,
+            lng: typeof geo.lng === 'number' ? geo.lng : null,
+            source: 'ip',
+            updatedAt: Date.now(),
+          }
+          writeStoredUserLocation(record)
+          window.dispatchEvent(new CustomEvent('nahaber:location-updated', { detail: record }))
+          return
+        }
+      }
+
+      const res = await fetch('/api/geo/detect', { cache: 'no-store' })
       if (!res.ok) return
-      const geo = await res.json() as { lat?: number; lng?: number; city?: string }
-      if (!geo.lat || !geo.lng) return
-      const citySlug = nearestProvinceSlug(geo.lat, geo.lng)
+      const geo = await res.json() as { lat?: number; lng?: number; city?: string; citySlug?: string; cityName?: string }
+      const citySlug =
+        geo.citySlug ||
+        (geo.lat != null && geo.lng != null ? nearestProvinceSlug(geo.lat, geo.lng) : null)
+      if (!citySlug) return
       const record: StoredUserLocation = {
         citySlug,
-        cityName: getCityCategoryName(citySlug),
+        cityName: geo.cityName || getCityCategoryName(citySlug),
         lat: geo.lat,
         lng: geo.lng,
-        source: 'geolocation', // 'ip' yerine 'geolocation' — aynı tip kabul edilsin
+        source: 'ip',
         updatedAt: Date.now(),
       }
       writeStoredUserLocation(record)

@@ -252,12 +252,15 @@ export function useLocalNewsPage() {
       lat: number,
       lng: number,
       source: 'geolocation' | 'ip',
-      opts?: { silent?: boolean }
+      opts?: { silent?: boolean; citySlug?: string }
     ) => {
-      const slug = nearestProvinceSlug(lat, lng)
+      const slug = opts?.citySlug || nearestProvinceSlug(lat, lng)
       const name = getCityCategoryName(slug)
       const province = TURKISH_PROVINCES.find((p) => p.slug === slug)
       if (!province) return
+
+      const coordsLat = Number.isFinite(lat) && (lat !== 0 || lng !== 0) ? lat : province.lat
+      const coordsLng = Number.isFinite(lng) && (lat !== 0 || lng !== 0) ? lng : province.lng
 
       setCity(provinceToCity(province))
       setLocationState(source === 'geolocation' ? 'granted' : 'stored')
@@ -268,8 +271,8 @@ export function useLocalNewsPage() {
       writeStoredUserLocation({
         citySlug: slug,
         cityName: name,
-        lat,
-        lng,
+        lat: coordsLat,
+        lng: coordsLng,
         source: source === 'ip' ? 'ip' : 'geolocation',
         updatedAt: Date.now(),
       })
@@ -278,7 +281,7 @@ export function useLocalNewsPage() {
         if (source === 'geolocation') {
           toast.success(`Konumunuz: ${name}`)
         } else {
-          toast(`Yaklaşık konum: ${name}`, { icon: '📍' })
+          toast(`Yaklaşık konum: ${name} — yanlışsa listeden seçin`, { icon: '📍', duration: 5000 })
         }
       }
     },
@@ -312,22 +315,26 @@ export function useLocalNewsPage() {
       } catch (err) {
         if (geoAbortRef.current) return
 
-        // GPS reddedildi / zaman aşımı → IP ile yaklaşık şehir
+        const code = (err as GeolocationPositionError | undefined)?.code
+        // İzin reddi → IP ile yanlış şehre (İstanbul) kilitleme; kullanıcı seçsin
+        if (code === 1) {
+          requestedRef.current = false
+          setLocationState('denied')
+          toast.error('Konum izni reddedildi. Antalya gibi şehrinizi listeden seçin.')
+          return
+        }
+
+        // Zaman aşımı / unavailable → CDN IP geo (Vercel öncelikli)
         const ip = await detectCityViaIp()
         if (geoAbortRef.current) return
-        if (ip) {
-          applyDetectedCity(ip.lat, ip.lng, 'ip')
+        if (ip?.citySlug || (ip && (ip.lat !== 0 || ip.lng !== 0))) {
+          applyDetectedCity(ip.lat, ip.lng, 'ip', { citySlug: ip.citySlug })
           return
         }
 
         requestedRef.current = false
         setLocationState('denied')
-        const code = (err as GeolocationPositionError | undefined)?.code
-        if (code === 1) {
-          toast.error('Konum izni reddedildi. Tarayıcı ayarlarından izin verin.')
-        } else {
-          toast.error('Konum alınamadı. Şehir listesinden seçebilirsiniz.')
-        }
+        toast.error('Konum alınamadı. Şehir listesinden Antalya’yı seçebilirsiniz.')
       }
     },
     [applyDetectedCity]

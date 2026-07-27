@@ -153,15 +153,58 @@ export async function detectCityViaIp(): Promise<{
   lat: number
   lng: number
   city?: string
+  citySlug?: string
+  source?: string
 } | null> {
+  // 1) CDN geo (Vercel) — ip2location’a göre TR şehirlerinde daha doğru
   try {
-    const res = await fetch('/api/geo/detect')
+    const res = await fetch('/api/geo/ip', { cache: 'no-store' })
+    if (res.ok) {
+      const geo = (await res.json()) as {
+        citySlug?: string
+        cityName?: string
+        lat?: number | null
+        lng?: number | null
+      }
+      if (geo.citySlug) {
+        return {
+          lat: typeof geo.lat === 'number' ? geo.lat : 0,
+          lng: typeof geo.lng === 'number' ? geo.lng : 0,
+          city: geo.cityName,
+          citySlug: geo.citySlug,
+          source: 'vercel',
+        }
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // 2) detect (Vercel header öncelikli + ip2location yedek)
+  try {
+    const res = await fetch('/api/geo/detect', { cache: 'no-store' })
     if (!res.ok) return null
-    const geo = (await res.json()) as { lat?: number; lng?: number; city?: string }
+    const geo = (await res.json()) as {
+      lat?: number
+      lng?: number
+      city?: string
+      citySlug?: string
+      cityName?: string
+      source?: string
+    }
+    if (geo.citySlug) {
+      return {
+        lat: typeof geo.lat === 'number' ? geo.lat : 0,
+        lng: typeof geo.lng === 'number' ? geo.lng : 0,
+        city: geo.cityName || geo.city,
+        citySlug: geo.citySlug,
+        source: geo.source,
+      }
+    }
     if (typeof geo.lat !== 'number' || typeof geo.lng !== 'number') return null
     if (!Number.isFinite(geo.lat) || !Number.isFinite(geo.lng)) return null
     if (geo.lat === 0 && geo.lng === 0) return null
-    return { lat: geo.lat, lng: geo.lng, city: geo.city }
+    return { lat: geo.lat, lng: geo.lng, city: geo.city, source: geo.source }
   } catch {
     return null
   }
