@@ -28,6 +28,28 @@ type AssistMode =
 type ArticleFormatAssist = 'standard' | 'column' | 'analysis'
 
 const CATEGORY_IDS = new Set(DEFAULT_CATEGORIES.map((category) => category.id))
+
+/** AI bazen <p>…</p> sızdırıyor — CMS önizlemede ham etiket görünmesin. */
+function stripAiHtmlLeak(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/<\/?(p|div|section|article|span|strong|b|em|i|ul|ol|li|br|hr)(?:\s[^>]*)?\/?>/gi, (tag) => {
+      const name = tag.replace(/[<>/]/g, '').split(/\s/)[0]?.toLowerCase() ?? ''
+      if (name === 'br' || name === 'hr' || name === 'p' || name === 'div' || name === 'li') return '\n'
+      return ''
+    })
+    .replace(/<\/?h([1-6])(?:\s[^>]*)?>/gi, (_, level) => `\n${'#'.repeat(Number(level))} `)
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/<[^>]+>/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
 const CATEGORY_LIST = DEFAULT_CATEGORIES.map((category) => `${category.id}: ${category.name}`).join(', ')
 
 /** CMS tek-tuş: editör tarzı + dikkat çekici manşet, JSON şeması korunur */
@@ -79,6 +101,7 @@ Kurallar:
   * Okuyucuya haberin neden önemli olduğunu anlat
   * Kapak görseli veya manşet açıklamasını content'e ekleme
 - content markdown yapısı ZORUNLU:
+  * HTML etiketleri (<p>, <div>, <br>, <span> vb.) ASLA yazma — yalnızca düz metin + ## / ### markdown
   * ## H2 ve gerektiğinde ### H3 kullan; # H1 ASLA kullanma
   * Her başlık haber konusunu özetleyen bağımsız bir etiket olsun; ZORUNLU: en fazla 6 kelime
   * Görsel açıklaması (caption/alt), kişi-yer adı listesi veya uzun cümle başlık OLAMAZ
@@ -309,10 +332,10 @@ export async function POST(request: Request) {
     const parsed = await callAi(systemPrompt, enrichedUserMessage)
 
     if (mode === 'create' || mode === 'rewrite' || mode === 'publish-ready') {
-      const title = String(parsed.title ?? '').trim()
-      const content = String(parsed.content ?? '').trim()
-      const spot = String(parsed.spot ?? '').trim()
-      const summary = String(parsed.summary ?? '').trim()
+      const title = stripAiHtmlLeak(String(parsed.title ?? ''))
+      const content = stripAiHtmlLeak(String(parsed.content ?? ''))
+      const spot = stripAiHtmlLeak(String(parsed.spot ?? ''))
+      const summary = stripAiHtmlLeak(String(parsed.summary ?? ''))
       const requestedOrder = Array.isArray(parsed.imageOrder)
         ? parsed.imageOrder.map(String).filter((url) => requestedUrls.includes(url))
         : []
