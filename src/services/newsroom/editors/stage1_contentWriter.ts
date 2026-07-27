@@ -1,19 +1,18 @@
 /**
  * STAGE 1 — Content Writer
  *
- * Tek sorumluluğu: Ham RSS içeriğini profesyonel Türkçe gazete haberine dönüştürmek.
- * Kategori, son-dakika kararı VERMEZ — sadece içerik yazar.
- * Yalnızca DeepSeek kullanır.
+ * Ham RSS → profesyonel Türkçe gazete haberi.
+ * Persona (V2) varsa onun constitution/task prompt'u esas alınır;
+ * burada yalnızca sabit güvenlik + haber biçimi kuralları eklenir.
  */
 
 export interface WrittenArticle {
   title: string
-  spot: string       // gazetecilik girişi, 2-4 cümle
-  summary: string    // feed teaser, max 120 karakter
-  content: string    // tam haber gövdesi, min 200 kelime
+  spot: string
+  summary: string
+  content: string
   seoTitle: string
   seoDescription: string
-  /** true = AI yazdı, false = ham RSS fallback (yayınlanmaz) */
   aiWritten: boolean
 }
 
@@ -23,37 +22,43 @@ interface WriterInput {
   originalSummary: string
   originalContent: string
   sourceUrl: string
-  /** Optional persona constitution + task instructions (V2) */
   systemPromptOverride?: string
-  /** Optional user-message prefix (source already in buildPrompt) */
   userPromptOverride?: string
   model?: string
 }
 
-const SYSTEM_PROMPT = `Sen NaHaber'in içerik editörüsün. Görevin: verilen ham haberi profesyonel Türkçe gazete haberine dönüştürmek.
+/** Ortak güvenlik — persona ile birleşir, makale şişirme YOK */
+const HARD_RULES = `MUTLAK KURALLAR:
+- Kaynakta OLMAYAN bilgi, rakam, alıntı, yasa adı uydurma
+- Kaynak ajans/gazete adını (AA, DHA vb.) metne yazma
+- Başlıkta FLAŞ / SON DAKİKA / büyük harf spam yok
+- Yarım cümle, kesilmiş kelime bırakma
+- Caption metnini ## başlık yapma
+- Çıktı her zaman Türkçe
+- Yalnızca geçerli JSON döndür`
 
-MUTLAK KURALLAR:
-- Kaynak metinde OLMAYAN hiçbir bilgi, istatistik, kişi, alıntı EKLEME
-- İçerik yetersizse qualityScore 0-30 ver — yeterli içerik olmadan uzun haber YAZMA
-- Kaynak gazete/ajans adını (AA, DHA, İHA, Hürriyet vb.) içeriğe YAZMA
-- Başlıkta BÜYÜK HARF spam, "FLAŞ", "SON DAKİKA" yazma
-- Paragraflar arası \\n\\n kullan
-- ÇIKTI DİLİ: Her zaman Türkçe
+/**
+ * Varsayılan haber biçimi (persona yoksa).
+ * Ters piramit: özet → olgular → kısa bağlam. Ansiklopedi / okul kompozisyonu YASAK.
+ */
+const DEFAULT_NEWS_SYSTEM = `Sen NaHaber içerik editörüsün. Kısa, net, olgu temelli GAZETE HABERİ yaz.
 
-ALAN TANIMLARI:
-- title: Gazete manşeti, max 70 karakter, sadece ilk harf büyük
-- spot: Lider paragraf. Kim+Ne+Nerede+Ne zaman+Neden. 3-5 cümle, 80-150 kelime
-- summary: Feed teaser, max 120 karakter, title'dan FARKLI bilgi
-- content: Haber gövdesi, MİNİMUM 500 KELIME. Bölümleri ## H2 ve ### H3 markdown başlıklarıyla ayır.
-  Bu yapı TÜM kategoriler ve alt kategoriler için aynıdır (gündem, spor/futbol, teknoloji, kültür/sinema, sağlık, magazin, dünya, yerel-haber, gezi vb.).
-  Sayfa başlığı H1 olduğu için content içinde # H1 KULLANMA. Her bölüm için anlamlı ## başlıklar kullan.
-  Paragraflar arası boş satır (\\n\\n) kullan. 6-8 paragraf + 3-5 başlık hedefle.
-  İçeriği zenginleştirmek için: olayın arka planını, önemini, etkilenecek tarafları, uzman görüşleri (kaynak metinde varsa) ve tarihsel bağlamı (kaynak metinde varsa) ekle.
-  500 kelime altındaki içerikler KABUL EDİLMEZ.
-- seoTitle: SEO başlık, 55-65 karakter
-- seoDescription: Meta description, 145-160 karakter
+HABER BİÇİMİ (zorunlu):
+- Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman)
+- spot: 2-4 cümle lider; content spot'u tekrarlama
+- content: 180-350 kelime yeter; gereksiz uzatma YASAK
+- En fazla 1-2 ## başlık; yalnızca olay-özgü (ör. "Ceza tutarı", "Resmi açıklama")
+- YASAK başlıklar: "Sonuç", "Giriş", "Gelişme", "Önemi", "Biyolojik Çeşitliliğin Korunması", "Genel Değerlendirme" ve benzeri ders kitabı / ansiklopedi başlıkları
+- YASAK: uzun genel bilgi paragrafları, ahlak dersi, "bu nedenle vatandaşların…" nutukları
+- Kaynak inceyse kısa yaz; doldurma yapma
 
-ÇIKTI: Yalnızca geçerli JSON, başka hiçbir şey:`
+ALANLAR:
+- title: manşet, max 70 karakter
+- spot: lider paragraf
+- summary: feed teaser max 120 karakter, title'dan farklı
+- content: gövde (markdown ## isteğe bağlı, # H1 kullanma)
+- seoTitle: 55-65 karakter
+- seoDescription: 145-160 karakter`
 
 function buildPrompt(input: WriterInput): string {
   const content = input.originalContent || input.originalSummary || ''
@@ -66,9 +71,7 @@ Başlık: ${input.originalTitle}
 İçerik:
 ${content.slice(0, 6000)}
 
-HATIRLATMA: content alanı minimum 500 kelime olmalı. Haberi genişlet, arka planını açıkla, bağlamı ve önemini belirt.
-
-Haberi yaz. JSON formatı:
+GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma. JSON:
 {
   "title": "string",
   "spot": "string",
@@ -87,9 +90,12 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     input.model?.trim() ||
     process.env.DEEPSEEK_NEWS_MODEL?.trim() ||
     'deepseek-chat'
+
+  // Persona (Admin'de bir kez girilen core+news) esas; eski 500 kelime/essay kuralları yok
   const systemContent = input.systemPromptOverride?.trim()
-    ? `${input.systemPromptOverride.trim()}\n\n${SYSTEM_PROMPT}`
-    : SYSTEM_PROMPT
+    ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
+    : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`
+
   const userContent = input.userPromptOverride?.trim()
     ? `${input.userPromptOverride.trim()}\n\n${buildPrompt(input)}`
     : buildPrompt(input)
@@ -105,7 +111,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        temperature: 0.5,
+        temperature: 0.4,
         response_format: { type: 'json_object' },
         messages,
       }),
@@ -120,7 +126,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model,
-          temperature: 0.5,
+          temperature: 0.4,
           response_format: { type: 'json_object' },
           messages,
         }),
@@ -129,64 +135,53 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     }
 
     if (!res.ok) {
-      console.warn(`[stage1/deepseek] error ${res.status}`)
+      console.error('[stage1/deepseek] HTTP', res.status)
       return null
     }
 
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    const json = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>
+    }
     const raw = json.choices?.[0]?.message?.content?.trim()
     if (!raw) return null
 
-    const p = JSON.parse(raw) as {
-      title?: string; spot?: string; summary?: string
-      content?: string; seoTitle?: string; seoDescription?: string
-    }
-
-    const content = p.content?.trim() || ''
-    const wordCount = content.split(/\s+/).filter(Boolean).length
-    if (wordCount < 400) {
-      console.warn(`[stage1/deepseek] çok kısa içerik (${wordCount} kelime, min 400)`)
-      return null
-    }
+    const parsed = JSON.parse(raw) as Partial<WrittenArticle>
+    const title = String(parsed.title ?? '').trim()
+    const body = String(parsed.content ?? '').trim()
+    if (!title || !body) return null
 
     return {
-      title: p.title?.trim() || input.originalTitle,
-      spot: p.spot?.trim() || '',
-      summary: (p.summary?.trim() || '').slice(0, 150),
-      content,
-      seoTitle: (p.seoTitle?.trim() || p.title?.trim() || input.originalTitle).slice(0, 70),
-      seoDescription: (p.seoDescription?.trim() || p.summary?.trim() || '').slice(0, 165),
+      title,
+      spot: String(parsed.spot ?? '').trim(),
+      summary: String(parsed.summary ?? '').trim(),
+      content: body,
+      seoTitle: String(parsed.seoTitle ?? title).trim(),
+      seoDescription: String(parsed.seoDescription ?? '').trim(),
       aiWritten: true,
     }
   } catch (err) {
-    console.warn('[stage1/deepseek] exception:', err instanceof Error ? err.message : err)
+    console.error('[stage1/deepseek]', err instanceof Error ? err.message : err)
     return null
   }
 }
 
-/**
- * Stage 1 ana fonksiyon.
- * DeepSeek → ham fallback (aiWritten: false)
- */
 export async function writeArticle(input: WriterInput): Promise<WrittenArticle> {
   console.log(`[stage1/contentWriter] başlıyor: "${input.originalTitle.slice(0, 60)}"`)
-
-  const deepseekResult = await callDeepSeek(input)
-  if (deepseekResult) {
-    console.log(`[stage1] DeepSeek başarılı: "${deepseekResult.title.slice(0, 60)}"`)
-    return deepseekResult
+  const written = await callDeepSeek(input)
+  if (written) {
+    console.log(`[stage1] DeepSeek başarılı: "${written.title.slice(0, 60)}"`)
+    return written
   }
 
-  // Ham fallback — aiWritten: false → pipeline taslağa alır
   console.warn(`[stage1] DeepSeek başarısız — ham fallback: "${input.originalTitle.slice(0, 60)}"`)
-  const rawContent = (input.originalContent || input.originalSummary || '').slice(0, 800)
+  const fallback = (input.originalContent || input.originalSummary || input.originalTitle).trim()
   return {
-    title: input.originalTitle,
-    spot: input.originalSummary || '',
-    summary: (input.originalSummary || '').slice(0, 120),
-    content: rawContent,
-    seoTitle: input.originalTitle.slice(0, 70),
-    seoDescription: (input.originalSummary || '').slice(0, 165),
+    title: input.originalTitle.slice(0, 70),
+    spot: (input.originalSummary || '').slice(0, 400),
+    summary: (input.originalSummary || input.originalTitle).slice(0, 120),
+    content: fallback.slice(0, 800),
+    seoTitle: input.originalTitle.slice(0, 65),
+    seoDescription: (input.originalSummary || input.originalTitle).slice(0, 160),
     aiWritten: false,
   }
 }

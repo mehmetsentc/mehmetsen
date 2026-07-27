@@ -4,6 +4,7 @@ import {
   createAiEditor,
   listAiEditors,
   seedDefaultAiEditors,
+  refreshStylePromptsFromSeed,
 } from '@/lib/ai/editorial/aiEditorService'
 import { invalidateEditorRouterCache } from '@/lib/ai/editorial/editorRouter'
 
@@ -32,6 +33,11 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   if (body.action === 'seed') {
     const result = await seedDefaultAiEditors(auth.uid)
+    invalidateEditorRouterCache()
+    return NextResponse.json({ success: true, ...result })
+  }
+  if (body.action === 'refreshStylePrompts') {
+    const result = await refreshStylePromptsFromSeed(auth.uid)
     invalidateEditorRouterCache()
     return NextResponse.json({ success: true, ...result })
   }

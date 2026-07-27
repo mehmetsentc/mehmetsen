@@ -328,3 +328,60 @@ export async function seedDefaultAiEditors(createdBy: string | null = 'system'):
   }
   return { created, skipped }
 }
+
+/**
+ * Mevcut editörlerin core/news(/breaking) prompt'larını seed'den yenile.
+ * Karakter + haber tarzı bir kez güncellenir; sonraki haberlerde geçerli olur.
+ */
+export async function refreshStylePromptsFromSeed(changedBy: string | null): Promise<{
+  updated: string[]
+  missing: string[]
+}> {
+  const updated: string[] = []
+  const missing: string[] = []
+  for (const spec of SEED_AI_EDITORS) {
+    const existing = await getAiEditorBySlug(spec.slug)
+    if (!existing) {
+      missing.push(spec.slug)
+      continue
+    }
+    if (spec.prompts.core) {
+      await setPromptVersion({
+        editorId: existing.id,
+        promptType: 'core',
+        content: spec.prompts.core,
+        changedBy,
+        changeReason: 'refreshStylePromptsFromSeed',
+      })
+    }
+    if (spec.prompts.news) {
+      await setPromptVersion({
+        editorId: existing.id,
+        promptType: 'news',
+        content: spec.prompts.news,
+        changedBy,
+        changeReason: 'refreshStylePromptsFromSeed',
+      })
+    }
+    if (spec.prompts.breaking) {
+      await setPromptVersion({
+        editorId: existing.id,
+        promptType: 'breaking',
+        content: spec.prompts.breaking,
+        changedBy,
+        changeReason: 'refreshStylePromptsFromSeed',
+      })
+    }
+    if (spec.prompts.column) {
+      await setPromptVersion({
+        editorId: existing.id,
+        promptType: 'column',
+        content: spec.prompts.column,
+        changedBy,
+        changeReason: 'refreshStylePromptsFromSeed',
+      })
+    }
+    updated.push(spec.slug)
+  }
+  return { updated, missing }
+}

@@ -67,6 +67,30 @@ export default function AiEditorsAdminPage() {
     }
   }
 
+  const refreshStyles = async () => {
+    if (!canManage) {
+      toast.error('Yetkiniz yok')
+      return
+    }
+    setSeeding(true)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch('/api/admin/ai-editors', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'refreshStylePrompts' }),
+      })
+      const data = (await res.json()) as { updated?: string[]; missing?: string[]; error?: string }
+      if (!res.ok) throw new Error(data.error || 'Yenileme başarısız')
+      toast.success(`Tarz promptları güncellendi: ${(data.updated ?? []).length} editör`)
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Yenileme hatası')
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   const active = editors.filter((e) => e.status === 'active').length
   const columns = editors.filter((e) => e.capabilities?.columnEnabled).length
 
@@ -74,7 +98,7 @@ export default function AiEditorsAdminPage() {
     <div className="flex flex-col">
       <CMSHeader
         title="AI Editörler"
-        subtitle="Kalıcı AI yazar kimlikleri, constitution ve model atamaları"
+        subtitle="Karakter, yazım tarzı ve prompt yönetimi — talimat bir kez girilir"
       />
       <div className="space-y-6 p-6">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -94,15 +118,26 @@ export default function AiEditorsAdminPage() {
             Yenile
           </button>
           {canManage && (
-            <button
-              type="button"
-              onClick={() => void seed()}
-              disabled={seeding}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-primary))] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
-            >
-              {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              8 Editör Seed
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => void seed()}
+                disabled={seeding}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-primary))] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                8 Editör Seed
+              </button>
+              <button
+                type="button"
+                onClick={() => void refreshStyles()}
+                disabled={seeding}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] disabled:opacity-60"
+              >
+                {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                Tarz promptlarını yenile
+              </button>
+            </>
           )}
         </div>
 
@@ -162,7 +197,7 @@ export default function AiEditorsAdminPage() {
                         href={`/admin/ai-editors/${editor.id}`}
                         className="text-xs font-semibold text-[rgb(var(--color-primary))] hover:underline"
                       >
-                        Detay
+                        Karakter & tarz
                       </Link>
                     </td>
                   </tr>

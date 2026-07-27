@@ -6,13 +6,7 @@ import { useParams } from 'next/navigation'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { auth } from '@/lib/firebase/auth'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
-import {
-  ArrowLeft,
-  Loader2,
-  Save,
-  Play,
-  Archive,
-} from 'lucide-react'
+import { ArrowLeft, Loader2, Save, Play, Archive } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { AiEditorDocument, AiEditorPromptDocument, AiPromptType } from '@/types/aiEditor'
 
@@ -21,19 +15,17 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-const PROMPT_TYPES: AiPromptType[] = [
-  'core',
-  'news',
+const EXTRA_PROMPT_TYPES: AiPromptType[] = [
   'column',
   'analysis',
-  'video',
+  'breaking',
   'seo',
   'review',
+  'video',
   'source',
-  'breaking',
 ]
 
-type TabId = 'profile' | 'prompts' | 'models' | 'sandbox'
+type TabId = 'style' | 'extra' | 'profile' | 'models' | 'sandbox'
 
 export default function AiEditorDetailPage() {
   const params = useParams<{ id: string }>()
@@ -41,17 +33,19 @@ export default function AiEditorDetailPage() {
   const { can } = useCmsAuth()
   const canManage = can('editors:manage') || can('ai:configure')
 
-  const [tab, setTab] = useState<TabId>('profile')
+  const [tab, setTab] = useState<TabId>('style')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [editor, setEditor] = useState<AiEditorDocument | null>(null)
   const [prompts, setPrompts] = useState<Record<string, AiEditorPromptDocument | null>>({})
-  const [promptDraft, setPromptDraft] = useState('')
-  const [promptType, setPromptType] = useState<AiPromptType>('core')
+  const [coreDraft, setCoreDraft] = useState('')
+  const [newsDraft, setNewsDraft] = useState('')
+  const [extraType, setExtraType] = useState<AiPromptType>('column')
+  const [extraDraft, setExtraDraft] = useState('')
   const [sandboxTitle, setSandboxTitle] = useState('Örnek haber başlığı')
   const [sandboxBody, setSandboxBody] = useState('Kaynak metin buraya…')
   const [sandboxTask, setSandboxTask] = useState<'news' | 'column'>('news')
-  const [sandboxOut, setSandboxOut] = useState<string>('')
+  const [sandboxOut, setSandboxOut] = useState('')
   const [sandboxRunning, setSandboxRunning] = useState(false)
 
   const load = useCallback(async () => {
@@ -66,8 +60,8 @@ export default function AiEditorDetailPage() {
       }
       setEditor(data.editor)
       setPrompts(data.prompts ?? {})
-      const active = data.prompts?.[promptType]
-      setPromptDraft(active?.content ?? '')
+      setCoreDraft(data.prompts?.core?.content ?? '')
+      setNewsDraft(data.prompts?.news?.content ?? '')
     } catch {
       toast.error('Editör yüklenemedi')
       setEditor(null)
@@ -81,9 +75,8 @@ export default function AiEditorDetailPage() {
   }, [load])
 
   useEffect(() => {
-    const active = prompts[promptType]
-    setPromptDraft(active?.content ?? '')
-  }, [promptType, prompts])
+    setExtraDraft(prompts[extraType]?.content ?? '')
+  }, [extraType, prompts])
 
   const patch = async (body: Record<string, unknown>) => {
     if (!canManage) {
@@ -109,7 +102,7 @@ export default function AiEditorDetailPage() {
     }
   }
 
-  const savePrompt = async () => {
+  const savePrompt = async (promptType: AiPromptType, content: string) => {
     if (!canManage) return
     setSaving(true)
     try {
@@ -120,8 +113,8 @@ export default function AiEditorDetailPage() {
         body: JSON.stringify({
           action: 'setPrompt',
           promptType,
-          content: promptDraft,
-          changeReason: 'Admin UI',
+          content,
+          changeReason: 'Admin karakter/tarz paneli',
         }),
       })
       const data = (await res.json()) as { error?: string; prompt?: AiEditorPromptDocument }
@@ -129,12 +122,17 @@ export default function AiEditorDetailPage() {
       if (data.prompt) {
         setPrompts((prev) => ({ ...prev, [promptType]: data.prompt! }))
       }
-      toast.success(`Prompt v${data.prompt?.version ?? ''} kaydedildi`)
+      toast.success(`${promptType} v${data.prompt?.version ?? ''} kaydedildi — bundan sonraki haberlerde geçerli`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Hata')
     } finally {
       setSaving(false)
     }
+  }
+
+  const saveStyle = async () => {
+    await savePrompt('core', coreDraft)
+    await savePrompt('news', newsDraft)
   }
 
   const runSandbox = async () => {
@@ -197,9 +195,20 @@ export default function AiEditorDetailPage() {
     )
   }
 
+  const tabs: { id: TabId; label: string }[] = [
+    { id: 'style', label: 'Karakter & Tarz' },
+    { id: 'extra', label: 'Diğer promptlar' },
+    { id: 'profile', label: 'Profil' },
+    { id: 'models', label: 'Modeller' },
+    { id: 'sandbox', label: 'Önizleme' },
+  ]
+
   return (
     <div className="flex flex-col">
-      <CMSHeader title={editor.name} subtitle={`${editor.title} · @${editor.slug}`} />
+      <CMSHeader
+        title={editor.name}
+        subtitle={`${editor.title} · @${editor.slug} — talimat bir kez girilir, her haberde kullanılır`}
+      />
       <div className="space-y-5 p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -210,28 +219,137 @@ export default function AiEditorDetailPage() {
             Liste
           </Link>
           <div className="ml-auto flex flex-wrap gap-1">
-            {(['profile', 'prompts', 'models', 'sandbox'] as TabId[]).map((t) => (
+            {tabs.map((t) => (
               <button
-                key={t}
+                key={t.id}
                 type="button"
-                onClick={() => setTab(t)}
+                onClick={() => setTab(t.id)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                  tab === t
+                  tab === t.id
                     ? 'bg-[rgb(var(--color-primary))] text-white'
                     : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))]'
                 }`}
               >
-                {t === 'profile'
-                  ? 'Profil'
-                  : t === 'prompts'
-                    ? 'Promptlar'
-                    : t === 'models'
-                      ? 'Modeller'
-                      : 'Sandbox'}
+                {t.label}
               </button>
             ))}
           </div>
         </div>
+
+        {tab === 'style' && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-[rgb(var(--color-text))]">
+              <p className="font-semibold">Tek seferlik tarz ayarı</p>
+              <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                Karakter (kimlik/ton) + Haber yazım kurallarını kaydedin. Bu editöre düşen her haber aynı
+                üslupta yazılır. Ansiklopedik “Sonuç / …Önemi” makalesi istenmez — gazete ters piramidi.
+              </p>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="space-y-2 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-sm font-bold text-[rgb(var(--color-text))]">
+                    Karakter / kimlik (core)
+                  </label>
+                  {prompts.core && (
+                    <span className="text-[10px] text-[rgb(var(--color-muted))]">
+                      v{prompts.core.version}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[rgb(var(--color-muted))]">
+                  Kim bu editör? Ton, yasaklar, uzmanlık. Örn: “Sen İpek Demir’sin… insan odaklı, mekân
+                  uydurma.”
+                </p>
+                <textarea
+                  value={coreDraft}
+                  onChange={(e) => setCoreDraft(e.target.value)}
+                  disabled={!canManage}
+                  rows={14}
+                  className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 font-mono text-xs leading-relaxed"
+                  placeholder="Sen … NaHaber … Editörü (AI). Ton: … Yasaklar: …"
+                />
+              </div>
+
+              <div className="space-y-2 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-sm font-bold text-[rgb(var(--color-text))]">
+                    Haber yazım tarzı (news)
+                  </label>
+                  {prompts.news && (
+                    <span className="text-[10px] text-[rgb(var(--color-muted))]">
+                      v{prompts.news.version}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[rgb(var(--color-muted))]">
+                  Bu editör haberleri nasıl yazar? 5N1K, uzunluk, hangi ## başlıklar yasak…
+                </p>
+                <textarea
+                  value={newsDraft}
+                  onChange={(e) => setNewsDraft(e.target.value)}
+                  disabled={!canManage}
+                  rows={14}
+                  className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 font-mono text-xs leading-relaxed"
+                  placeholder="GAZETE HABERİ (ters piramit)… 180-350 kelime… Sonuç başlığı yasak…"
+                />
+              </div>
+            </div>
+
+            {canManage && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void saveStyle()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-primary))] px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Karakter & tarzı kaydet
+              </button>
+            )}
+          </div>
+        )}
+
+        {tab === 'extra' && (
+          <div className="space-y-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
+            <div className="flex flex-wrap gap-1">
+              {EXTRA_PROMPT_TYPES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setExtraType(t)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${
+                    extraType === t
+                      ? 'bg-[rgb(var(--color-primary))] text-white'
+                      : 'bg-black/[0.04] text-[rgb(var(--color-muted))]'
+                  }`}
+                >
+                  {t}
+                  {prompts[t] ? ` v${prompts[t]!.version}` : ''}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={extraDraft}
+              onChange={(e) => setExtraDraft(e.target.value)}
+              disabled={!canManage}
+              rows={14}
+              className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 font-mono text-xs leading-relaxed"
+            />
+            {canManage && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void savePrompt(extraType, extraDraft)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-primary))] px-3 py-2 text-xs font-semibold text-white"
+              >
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                {extraType} kaydet
+              </button>
+            )}
+          </div>
+        )}
 
         {tab === 'profile' && (
           <div className="space-y-4 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
@@ -293,20 +411,6 @@ export default function AiEditorDetailPage() {
                 className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
               />
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={editor.capabilities.columnEnabled}
-                disabled={!canManage}
-                onChange={(e) =>
-                  setEditor({
-                    ...editor,
-                    capabilities: { ...editor.capabilities, columnEnabled: e.target.checked },
-                  })
-                }
-              />
-              Köşe yazısı açık
-            </label>
             {canManage && (
               <div className="flex flex-wrap gap-2">
                 <button
@@ -326,7 +430,7 @@ export default function AiEditorDetailPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-primary))] px-3 py-2 text-xs font-semibold text-white"
                 >
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  Kaydet
+                  Profil kaydet
                 </button>
                 <button
                   type="button"
@@ -337,59 +441,7 @@ export default function AiEditorDetailPage() {
                   <Archive className="h-3.5 w-3.5" />
                   Arşivle
                 </button>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() =>
-                    void patch({
-                      status: editor.status === 'active' ? 'disabled' : 'active',
-                    })
-                  }
-                  className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold"
-                >
-                  {editor.status === 'active' ? 'Pasifleştir' : 'Aktifleştir'}
-                </button>
               </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'prompts' && (
-          <div className="space-y-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
-            <div className="flex flex-wrap gap-1">
-              {PROMPT_TYPES.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setPromptType(t)}
-                  className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${
-                    promptType === t
-                      ? 'bg-[rgb(var(--color-primary))] text-white'
-                      : 'bg-black/[0.04] text-[rgb(var(--color-muted))]'
-                  }`}
-                >
-                  {t}
-                  {prompts[t] ? ` v${prompts[t]!.version}` : ''}
-                </button>
-              ))}
-            </div>
-            <textarea
-              value={promptDraft}
-              onChange={(e) => setPromptDraft(e.target.value)}
-              disabled={!canManage}
-              rows={16}
-              className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 font-mono text-xs leading-relaxed"
-            />
-            {canManage && (
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void savePrompt()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-primary))] px-3 py-2 text-xs font-semibold text-white"
-              >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                Yeni versiyon kaydet
-              </button>
             )}
           </div>
         )}
@@ -397,7 +449,7 @@ export default function AiEditorDetailPage() {
         {tab === 'models' && (
           <div className="space-y-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 text-sm">
             <p className="text-xs text-[rgb(var(--color-muted))]">
-              Secrets env’de kalır. Burada yalnızca provider/model ataması.
+              Secrets env’de. Burada provider/model özeti.
             </p>
             {(['news', 'research', 'column', 'seo'] as const).map((task) => {
               const a = editor.modelAssignments?.[task]
@@ -421,7 +473,7 @@ export default function AiEditorDetailPage() {
         {tab === 'sandbox' && (
           <div className="space-y-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
             <p className="text-xs text-[rgb(var(--color-muted))]">
-              Önizleme yalnızca — feed/analytics’e yazılmaz.
+              Kayıtlı tarz ile önizleme — yayına yazılmaz.
             </p>
             <select
               value={sandboxTask}
@@ -450,7 +502,7 @@ export default function AiEditorDetailPage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-primary))] px-3 py-2 text-xs font-semibold text-white"
             >
               {sandboxRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-              Generate (preview)
+              Bu tarzla dene
             </button>
             {sandboxOut && (
               <pre className="max-h-[420px] overflow-auto rounded-lg bg-black/[0.04] p-3 text-xs whitespace-pre-wrap">
