@@ -9,23 +9,22 @@ import { HOME_FEATURED_LIMIT, type NewsItem } from '@/types/newsItem'
 
 /**
  * Desktop “Öne Çıkan” — 10 haber, boş hücre yok.
- * Üst: lead + 3 yan (3 satır grid; yan görseller aspect ile her zaman görünür).
- * Alt: kalanlar 3’lü tam satırlar (10 → 6 = 2×3).
+ * Üst: lead (~2 yan kart yüksekliği) + 2 yan; 3. yan + kalanlar altta 3’lü satırlar.
  */
 export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
   const slides = items.slice(0, HOME_FEATURED_LIMIT)
   if (slides.length === 0) return null
 
   const [lead, ...rest] = slides
-  const sideCount = Math.min(3, rest.length)
-  const side = rest.slice(0, sideCount)
-  const below = rest.slice(sideCount)
+  // Lead yüksekliği 2 kareye denk gelsin: yanında yalnızca 2 kart
+  const side = rest.slice(0, Math.min(2, rest.length))
+  const below = rest.slice(side.length)
 
   return (
     <section aria-label="Öne Çıkan Haberler" className="space-y-3">
-      {side.length === 3 ? (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:grid-rows-3 lg:gap-4">
-          <article className="relative min-h-[240px] min-w-0 max-lg:aspect-[16/10] lg:col-span-8 lg:row-span-3 lg:min-h-0">
+      {side.length === 2 ? (
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-12 lg:grid-rows-2 lg:gap-4">
+          <article className="relative aspect-[16/10] min-w-0 lg:col-span-8 lg:row-span-2 lg:aspect-auto lg:h-full lg:min-h-0">
             <LeadCard item={lead!} />
           </article>
           {side.map((item) => (
@@ -35,18 +34,12 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-12 lg:gap-4">
-          <article className="relative min-h-[240px] min-w-0 max-lg:aspect-[16/10] lg:col-span-8">
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-12 lg:gap-4">
+          <article className="relative aspect-[16/10] min-w-0 lg:col-span-8">
             <LeadCard item={lead!} />
           </article>
           {side.length > 0 ? (
-            <div
-              className={
-                side.length === 1
-                  ? 'flex flex-col gap-3 lg:col-span-4'
-                  : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1'
-              }
-            >
+            <div className="flex flex-col gap-3 lg:col-span-4">
               {side.map((item) => (
                 <FeaturedSideCard key={item.id} item={item} />
               ))}
@@ -97,13 +90,14 @@ function LeadCard({ item }: { item: NewsItem }) {
   )
 }
 
-/** Satırları tam doldur — 2/3/4/6 için boş hücre bırakma. */
+/** Satırları tam doldur — 2/3/4/6/7/8 için boş hücre bırakmayı azalt. */
 function belowGridClass(count: number): string {
   const base = 'grid gap-4'
   if (count <= 1) return `${base} grid-cols-1`
   if (count === 2) return `${base} grid-cols-1 sm:grid-cols-2`
   if (count === 4) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
   if (count === 5) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-5`
+  if (count === 7) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
   if (count % 3 === 0) return `${base} grid-cols-1 sm:grid-cols-3`
   if (count % 2 === 0) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-2`
   return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`
