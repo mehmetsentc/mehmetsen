@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 120
 
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'admin')
+  const auth = await verifyCmsToken(request, 'cron:trigger')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json().catch(() => ({})) as { olderThanHours?: number }

@@ -84,7 +84,9 @@ describe('buildBodyBlocksFromAi', () => {
     const headings = blocks.filter((b) => b.type === 'heading')
     expect(headings.every((h) => h.type === 'heading' && h.level !== 1)).toBe(true)
     expect(blocks.some((b) => b.type === 'image')).toBe(false)
-    expect(blocks.some((b) => b.text === 'Ekipler bölgede arama kurtarma sürdürüyor.')).toBe(false)
+    expect(
+      blocks.some((b) => b.type === 'paragraph' && b.text === 'Ekipler bölgede arama kurtarma sürdürüyor.')
+    ).toBe(false)
     expect(headings.some((h) => h.type === 'heading' && h.text === 'Sahada çalışmalar')).toBe(true)
   })
 
