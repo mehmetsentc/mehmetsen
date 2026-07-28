@@ -806,7 +806,7 @@ export async function processNewsroomArticle(
     const doc = {
       title: rewritten.title,
       // Journalistic lead paragraph (2-4 sentences, answers 5W+H)
-      spot: (rewritten as AiRewriteResult).spot ?? rewritten.summary,
+      spot: (rewritten as AiRewriteResult).spot ?? rewritten.summary ?? '',
       summary: rewritten.summary,
       description: contentBody,
       // Full AI-written article body (plain fallback)
@@ -819,12 +819,21 @@ export async function processNewsroomArticle(
       seoDescription: (rewritten as AiRewriteResult).seoDescription ?? rewritten.summary,
       author: personaAuthors?.author || workingInput.extractedAuthor || NAHABER_AUTHOR,
       authorId: personaAuthors?.authorId || NAHABER_AUTHOR_ID,
-      authorUsername: personaAuthors?.authorUsername || undefined,
-      authorDisplayName: personaAuthors?.authorDisplayName || undefined,
-      authorPhotoURL: personaAuthors?.authorPhotoURL ?? undefined,
-      aiEditorId: personaAuthors?.aiEditorId || undefined,
+      // Persona alanları: undefined değil, ya değer var ya da hiç dahil edilmez
+      ...(personaAuthors?.authorUsername?.trim()
+        ? { authorUsername: personaAuthors.authorUsername }
+        : {}),
+      ...(personaAuthors?.authorDisplayName?.trim()
+        ? { authorDisplayName: personaAuthors.authorDisplayName }
+        : {}),
+      ...(personaAuthors?.authorPhotoURL
+        ? { authorPhotoURL: personaAuthors.authorPhotoURL }
+        : {}),
+      ...(personaAuthors?.aiEditorId?.trim()
+        ? { aiEditorId: personaAuthors.aiEditorId }
+        : {}),
       articleFormat: workingInput.articleFormat ?? 'standard',
-      aiPromptVersions: promptVersions || undefined,
+      ...(promptVersions ? { aiPromptVersions: promptVersions } : {}),
       thumbnail: workingInput.imageUrl ?? '',
       coverImageUrl: workingInput.imageUrl ?? '',
       videoUrl: '',
@@ -839,11 +848,11 @@ export async function processNewsroomArticle(
       district: location?.district ?? '',
       citySlug: resolvedCitySlug,
       country: location?.country ?? 'Türkiye',
-      location,
+      location: location ?? null,
       tags: geo.tags,
       type: 'news' as const,
-      source: workingInput.sourceLabel,
-      sourceUrl: workingInput.sourceUrl,
+      source: workingInput.sourceLabel ?? null,
+      sourceUrl: workingInput.sourceUrl ?? '',
       researchSources: workingInput.researchSources ?? [],
       readingTimeMinutes,
       draftStatus: 'pending_review' as const,
@@ -854,10 +863,10 @@ export async function processNewsroomArticle(
       ],
       aiGenerated: true,
       rssFingerprint: fingerprint,
-      rssGuid: workingInput.rssGuid ?? workingInput.sourceUrl,
-      ingestionSourceId: workingInput.ingestionSourceId ?? workingInput.editorId,
-      sourceLabel: workingInput.sourceLabel,
-      originalTitle: workingInput.originalTitle,
+      rssGuid: workingInput.rssGuid ?? workingInput.sourceUrl ?? '',
+      ingestionSourceId: workingInput.ingestionSourceId ?? workingInput.editorId ?? '',
+      sourceLabel: workingInput.sourceLabel ?? null,
+      originalTitle: workingInput.originalTitle ?? null,
       ingestedAt: now,
       sourcePublishedAt: workingInput.sourcePublishedAt ?? null,
       createdAt: now,
