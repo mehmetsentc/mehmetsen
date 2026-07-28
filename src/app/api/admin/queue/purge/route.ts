@@ -37,37 +37,35 @@ export async function POST(request: Request) {
   const db = getAdminFirestore()
   const col = db.collection(Collections.NEWS_QUEUE)
 
-  const STATUSES = ['pending', 'failed', 'dead_letter', 'processing'] as const
+  // Single-field range query — no composite index needed.
+  // We delete ALL old items (any status) since published/skipped docs are
+  // already finished and don't affect queue processing.
+  const SKIP_STATUSES = new Set(['published', 'skipped'])
   let totalDeleted = 0
   const details: Record<string, number> = {}
+  let hasMore = true
 
-  for (const status of STATUSES) {
-    let deleted = 0
-    let hasMore = true
+  while (hasMore) {
+    const snap = await col
+      .where('createdAt', '<', cutoff)
+      .orderBy('createdAt', 'asc')
+      .limit(400)
+      .get()
 
-    while (hasMore) {
-      const snap = await col
-        .where('status', '==', status)
-        .where('createdAt', '<', cutoff)
-        .orderBy('createdAt', 'asc')
-        .limit(400)
-        .get()
+    if (snap.empty) { hasMore = false; break }
 
-      if (snap.empty) { hasMore = false; break }
-
-      // Delete in batches of 400
-      const batch = db.batch()
-      for (const doc of snap.docs) {
-        batch.delete(doc.ref)
-      }
-      await batch.commit()
-
-      deleted += snap.docs.length
-      if (snap.docs.length < 400) hasMore = false
+    const batch = db.batch()
+    let batchCount = 0
+    for (const doc of snap.docs) {
+      const status = (doc.data() as { status?: string }).status ?? 'unknown'
+      if (SKIP_STATUSES.has(status)) continue
+      batch.delete(doc.ref)
+      details[status] = (details[status] ?? 0) + 1
+      batchCount++
+      totalDeleted++
     }
-
-    details[status] = deleted
-    totalDeleted += deleted
+    if (batchCount > 0) await batch.commit()
+    if (snap.docs.length < 400) hasMore = false
   }
 
   return NextResponse.json({
