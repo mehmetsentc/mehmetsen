@@ -10,6 +10,8 @@ import { buildNewsSlug } from '@/lib/newsSlug'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
+import { demoteExcessFeaturedPins } from '@/lib/featuredPins'
+import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 import {
   articleBlocksToPlainText,
   sanitizeArticleBlocks,
@@ -234,6 +236,17 @@ export async function POST(request: Request) {
     }
 
     await newsRef.set(payload)
+
+    if (featured) {
+      try {
+        await demoteExcessFeaturedPins(db, {
+          keepId: newsRef.id,
+          limit: HOME_FEATURED_LIMIT,
+        })
+      } catch (trimErr) {
+        console.warn('[admin/news POST] featured trim skipped:', trimErr)
+      }
+    }
 
     if (status === 'published') {
       try {

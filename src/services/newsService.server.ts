@@ -261,13 +261,13 @@ function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
   return pool.filter(isBreakingPoolItem).slice(0, limit)
 }
 
-/** CMS pin time first, then publish time — newly toggled “Öne Çıkan” rises above older flags. */
+/** CMS pin time first; missing featuredAt falls back to publish time (legacy RSS pins). */
 function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
-  const aPin = Date.parse(a.featuredAt ?? '') || 0
-  const bPin = Date.parse(b.featuredAt ?? '') || 0
-  if (aPin !== bPin) return bPin - aPin
   const aPub = Date.parse(a.publishedAt ?? a.createdAt ?? '') || 0
   const bPub = Date.parse(b.publishedAt ?? b.createdAt ?? '') || 0
+  const aPin = Date.parse(a.featuredAt ?? '') || aPub
+  const bPin = Date.parse(b.featuredAt ?? '') || bPub
+  if (aPin !== bPin) return bPin - aPin
   return bPub - aPub
 }
 
@@ -350,7 +350,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v5'],
+  ['home-featured-v6'],
   { revalidate: 30, tags: ['home-feed'] }
 )
 

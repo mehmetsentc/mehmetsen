@@ -19,6 +19,8 @@ import {
 } from '@/lib/articleBlocks'
 import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
 import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
+import { demoteExcessFeaturedPins } from '@/lib/featuredPins'
+import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -364,7 +366,18 @@ export async function PUT(request: Request, context: RouteContext) {
 
       await newsRef.update(update)
 
-      if (prevData?.status === 'published' || body.status === 'published') {
+      if (body.featured === true) {
+        try {
+          await demoteExcessFeaturedPins(db, {
+            keepId: id,
+            limit: HOME_FEATURED_LIMIT,
+          })
+        } catch (trimErr) {
+          console.warn('[admin/news PUT] featured trim skipped:', trimErr)
+        }
+      }
+
+      if (prevData?.status === 'published' || body.status === 'published' || body.featured === true) {
         await syncPostsMirror(id, update)
       }
 
@@ -390,17 +403,36 @@ export async function PUT(request: Request, context: RouteContext) {
       const draftUpdate = { ...update }
       delete draftUpdate.status
 
-      if (body.status === 'published') {
+      // Öne Çıkan → otomatik yayına al (UI status=published gönderir; featured da yeterli)
+      const shouldPublish =
+        body.status === 'published' || body.featured === true
+
+      if (shouldPublish) {
+        if (body.featured === true) {
+          draftUpdate.featured = true
+          draftUpdate.isEditorPick = true
+          if (draftUpdate.featuredAt == null) draftUpdate.featuredAt = Date.now()
+        }
         if (Object.keys(draftUpdate).length > 0) {
           await draftRef.update(draftUpdate)
         }
         const result = await newsDraftService.approveDraft(id)
+        if (body.featured === true && result.newsId) {
+          try {
+            await demoteExcessFeaturedPins(db, {
+              keepId: result.newsId,
+              limit: HOME_FEATURED_LIMIT,
+            })
+          } catch (trimErr) {
+            console.warn('[admin/news PUT] featured trim skipped:', trimErr)
+          }
+        }
         revalidateNewsPaths(draftSnap.data(), body)
         void notifyIfPublished(draftSnap.data(), body)
         // Draft onaylandığında da anında paylaş
         const draftData = { ...draftSnap.data(), ...draftUpdate }
         if (isCanakkaleArticle(draftData)) {
-          after(() => publishOneSocial(id))
+          after(() => publishOneSocial(result.newsId))
         }
         return NextResponse.json({ ok: true, collection: 'newsDrafts', ...result })
       }
@@ -416,7 +448,25 @@ export async function PUT(request: Request, context: RouteContext) {
     const postsRef = db.collection(Collections.POSTS).doc(id)
     const postsSnap = await postsRef.get()
     if (postsSnap.exists) {
+      // Homepage Öne Çıkan reads `news` only — mirror pin fields when the CMS
+      // hit a posts-only document (legacy / user post ids).
+      if (body.featured === true) {
+        const newsTwin = db.collection(Collections.NEWS).doc(id)
+        const twinSnap = await newsTwin.get()
+        if (twinSnap.exists) {
+          await newsTwin.update(update)
+          try {
+            await demoteExcessFeaturedPins(db, {
+              keepId: id,
+              limit: HOME_FEATURED_LIMIT,
+            })
+          } catch (trimErr) {
+            console.warn('[admin/news PUT] featured trim skipped:', trimErr)
+          }
+        }
+      }
       await postsRef.update(update)
+      revalidateNewsPaths(postsSnap.data(), body)
       return NextResponse.json({ ok: true, collection: 'posts' })
     }
 

@@ -216,6 +216,22 @@ function draftToPublishedNews(
     ...('videoEmbedUrl' in draft && draft.videoEmbedUrl
       ? { videoEmbedUrl: draft.videoEmbedUrl }
       : {}),
+    // Preserve CMS “Öne Çıkan” when approving a draft that was pinned before publish
+    ...(() => {
+      const d = draft as NewsDraftDocument & {
+        featured?: boolean
+        isEditorPick?: boolean
+        featuredAt?: number
+      }
+      if (d.featured === true || d.isEditorPick === true) {
+        return {
+          featured: true,
+          isEditorPick: true,
+          featuredAt: typeof d.featuredAt === 'number' ? d.featuredAt : now,
+        }
+      }
+      return {}
+    })(),
   })
 }
 
