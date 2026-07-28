@@ -71,7 +71,9 @@ Başlık: ${input.originalTitle}
 İçerik:
 ${content.slice(0, 6000)}
 
-GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma. JSON:
+GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
+content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
+JSON:
 {
   "title": "string",
   "spot": "string",
