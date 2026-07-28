@@ -4,6 +4,7 @@
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 
 /** Admin panel job ID → one or more cron API paths (sıralı çalışır). */
 const JOB_ROUTES: Record<string, string[]> = {
@@ -57,10 +58,12 @@ const JOB_ROUTES: Record<string, string[]> = {
 const ALLOWED_JOBS = Object.keys(JOB_ROUTES)
 
 export async function POST(request: Request) {
-  const auth =
+  const cmsAuth =
     (await verifyCmsToken(request, 'cron:trigger')) ||
     (await verifyCmsToken(request, 'cron:read'))
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const cronAuth = !cmsAuth && (await isNewsroomAuthorized(request))
+  if (!cmsAuth && !cronAuth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = cmsAuth ?? { uid: 'cron-secret', role: 'super_admin' as const, email: 'system' }
 
   const { searchParams } = new URL(request.url)
   const jobId = searchParams.get('job')

@@ -4,7 +4,7 @@
  * Body: { olderThanHours?: number } — default: start of today (UTC+3)
  */
 import { NextResponse } from 'next/server'
-import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 
@@ -13,8 +13,9 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'cron:trigger')
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await isNewsroomAuthorized(request))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body = await request.json().catch(() => ({})) as { olderThanHours?: number; cutoffTs?: number }
 
