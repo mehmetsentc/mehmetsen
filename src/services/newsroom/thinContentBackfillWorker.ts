@@ -176,20 +176,25 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
       })
 
       if (pipelineResult.outcome === 'updated' || pipelineResult.outcome === 'published') {
-        // Pipeline sonrası hâlâ kısaysa taslağa al (kalite kapısı draft yazmış olabilir)
         const fresh = await doc.ref.get()
         const freshData = fresh.data() ?? {}
         const freshWords = newsBodyWordCount(freshData)
-        const stillPublished = String(freshData.status ?? '') === 'published'
+        const status = String(freshData.status ?? '')
 
-        if (stillPublished && freshWords >= MIN_WORDS) {
+        if (status === 'draft') {
+          result.drafted++
+          await doc.ref.update({
+            contentBackfillAt: now,
+            contentBackfillStatus: 'drafted_by_pipeline',
+          }).catch(() => {})
+        } else if (status === 'published' && freshWords >= MIN_WORDS) {
           result.updated++
           await doc.ref.update({
             contentBackfillAt: now,
             contentBackfillStatus: 'success',
             updatedAt: now,
           }).catch(() => {})
-        } else if (stillPublished && freshWords < MIN_WORDS) {
+        } else if (status === 'published' && freshWords < MIN_WORDS) {
           await demoteToDraft(
             doc.ref,
             now,
@@ -197,13 +202,16 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
           )
           result.drafted++
         } else {
-          // Pipeline zaten draft’a almış olabilir
           result.drafted++
-          await doc.ref.update({
-            contentBackfillStatus: 'drafted_by_pipeline',
-            contentBackfillAt: now,
-          }).catch(() => {})
         }
+      } else if (pipelineResult.outcome === 'created') {
+        // Eski yol: newsDrafts'a yazıp yayını bırakıyordu — canlıyı taslağa al
+        await demoteToDraft(
+          doc.ref,
+          now,
+          `İnce içerik (${words} kelime) — genişletme yetersiz, otomatik taslak`
+        )
+        result.drafted++
       } else if (pipelineResult.outcome === 'skipped') {
         result.skipped++
         if (words < 120) {

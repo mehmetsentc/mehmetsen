@@ -910,12 +910,28 @@ export async function processNewsroomArticle(
 
     if (targetNewsId) {
       if (needsDraft) {
-        await db.collection(Collections.NEWS_DRAFTS).add({
-          ...doc,
-          canonicalNewsId: targetNewsId,
-          duplicateOf: targetNewsId,
-        })
-        return { outcome: 'created', lowConfidence, newsId: targetNewsId }
+        // Mevcut canlı haberi ince bırakma — gövdeyi güncelleyip taslağa al (AdSense / kalite)
+        const { createdAt: _createdAt, ingestedAt: _ingestedAt, ...draftFields } = doc
+        await db.collection(Collections.NEWS).doc(targetNewsId).set(
+          {
+            ...draftFields,
+            status: 'draft',
+            featured: false,
+            isEditorPick: false,
+            featuredAt: null,
+            needsAdminReview: true,
+            moderationNote: bodyTooShort
+              ? `İnce içerik (${countPlainWords(rewritten.description)} kelime) — pipeline taslak`
+              : 'Kalite kapısı — pipeline taslak',
+            contentBackfillStatus: 'drafted_by_pipeline',
+            updatedAt: now,
+          },
+          { merge: true }
+        )
+        console.log(
+          `[newsroom] demoted thin/live ${targetNewsId} → draft (confidence=${factCheck.confidenceScore})`
+        )
+        return { outcome: 'updated', lowConfidence: true, newsId: targetNewsId }
       }
 
       await newsDraftService.updatePublishedNews(db, targetNewsId, doc, {
