@@ -1,9 +1,7 @@
 /**
  * POST /api/admin/queue/purge
- * Marks old pending/failed/dead_letter queue items as dead_letter so
- * process-queue stops retrying them and picks up fresh news instead.
- *
- * Body: { olderThanHours?: number } — default 12
+ * Deletes old queue items so process-queue only works on today's news.
+ * Body: { olderThanHours?: number } — default: start of today (UTC+3)
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
@@ -12,69 +10,71 @@ import { Collections } from '@/lib/firebase/collections'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+export const maxDuration = 300
 
 export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'cron:trigger')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json().catch(() => ({})) as { olderThanHours?: number }
-  const olderThanHours = Math.max(1, Math.min(720, body.olderThanHours ?? 12))
-  const cutoff = Date.now() - olderThanHours * 60 * 60 * 1000
+  const body = await request.json().catch(() => ({})) as { olderThanHours?: number; cutoffTs?: number }
+
+  // Default: start of today Turkey time (UTC+3)
+  let cutoff: number
+  if (body.cutoffTs) {
+    cutoff = body.cutoffTs
+  } else if (body.olderThanHours) {
+    cutoff = Date.now() - body.olderThanHours * 60 * 60 * 1000
+  } else {
+    // Start of today in Turkey (UTC+3)
+    const now = new Date()
+    const turkeyOffset = 3 * 60 // minutes
+    const turkeyMs = now.getTime() + (turkeyOffset + now.getTimezoneOffset()) * 60 * 1000
+    const todayTurkey = new Date(turkeyMs)
+    todayTurkey.setHours(0, 0, 0, 0)
+    cutoff = todayTurkey.getTime() - (turkeyOffset + now.getTimezoneOffset()) * 60 * 1000
+  }
 
   const db = getAdminFirestore()
   const col = db.collection(Collections.NEWS_QUEUE)
-  const now = Date.now()
 
-  const STATUSES = ['pending', 'failed', 'dead_letter'] as const
-  let total = 0
+  const STATUSES = ['pending', 'failed', 'dead_letter', 'processing'] as const
+  let totalDeleted = 0
   const details: Record<string, number> = {}
 
   for (const status of STATUSES) {
-    let processed = 0
-    let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null
+    let deleted = 0
+    let hasMore = true
 
-    // Paginate in batches of 400 to avoid Firestore write-batch limits
-    while (true) {
-      let q = col
+    while (hasMore) {
+      const snap = await col
         .where('status', '==', status)
         .where('createdAt', '<', cutoff)
         .orderBy('createdAt', 'asc')
         .limit(400)
+        .get()
 
-      if (lastDoc) q = q.startAfter(lastDoc)
+      if (snap.empty) { hasMore = false; break }
 
-      const snap = await q.get()
-      if (snap.empty) break
-
+      // Delete in batches of 400
       const batch = db.batch()
       for (const doc of snap.docs) {
-        batch.update(doc.ref, {
-          status: 'dead_letter',
-          lastError: `purged_by_admin_older_than_${olderThanHours}h`,
-          updatedAt: now,
-          leaseOwner: null,
-          leaseExpiresAt: null,
-          claimedAt: null,
-        })
+        batch.delete(doc.ref)
       }
       await batch.commit()
 
-      processed += snap.docs.length
-      lastDoc = snap.docs[snap.docs.length - 1] ?? null
-
-      if (snap.docs.length < 400) break
+      deleted += snap.docs.length
+      if (snap.docs.length < 400) hasMore = false
     }
 
-    details[status] = processed
-    total += processed
+    details[status] = deleted
+    totalDeleted += deleted
   }
 
   return NextResponse.json({
     success: true,
-    purged: total,
+    deleted: totalDeleted,
     details,
-    cutoffHours: olderThanHours,
     cutoffDate: new Date(cutoff).toISOString(),
+    message: `${totalDeleted} eski queue item silindi`,
   })
 }
