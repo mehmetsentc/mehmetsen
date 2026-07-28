@@ -122,8 +122,10 @@ export const HOME_FEED_DESKTOP_LAZY_RAILS: HomeCategorySlug[] = [
 /** @deprecated Artık pool-first; geriye dönük importlar için tutuluyor. */
 export const FEED_PRIORITY_RAILS: HomeCategorySlug[] = HOME_CATEGORY_RAILS
 
-/** Ana sayfa Öne Çıkan — web + mobil ortak limit. */
-export const HOME_FEATURED_LIMIT = 10
+/** Ana sayfa Öne Çıkan — web + mobil ortak limit.
+ * Desktop: 1 lead + 2 yan + 8 alt (4+4) = 11 — alt satırda 3’lü kırık satır olmasın.
+ */
+export const HOME_FEATURED_LIMIT = 11
 
 export interface HomeFeedInitialData {
   breaking: NewsItem[]

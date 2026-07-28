@@ -103,7 +103,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const trending = data.trending.slice(0, 8)
     const moreList = take(8)
 
-    // CMS “Öne Çıkan” — kategori bağımsız ilk 10
+    // CMS “Öne Çıkan” — kategori bağımsız (1 lead + 2 yan + 8 alt)
     const featuredSlider = data.featured
       .filter((p) => p.featured === true)
       .slice(0, HOME_FEATURED_LIMIT)

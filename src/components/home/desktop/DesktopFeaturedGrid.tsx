@@ -8,8 +8,7 @@ import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
 import { HOME_FEATURED_LIMIT, type NewsItem } from '@/types/newsItem'
 
 /**
- * Desktop “Öne Çıkan” — 10 haber, boş hücre yok.
- * Üst: lead (~2 yan kart yüksekliği) + 2 yan; 3. yan + kalanlar altta 3’lü satırlar.
+ * Desktop “Öne Çıkan” — 1 lead + 2 yan + altta 4’lü satırlar (limit 11 → 4+4).
  */
 export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
   const slides = items.slice(0, HOME_FEATURED_LIMIT)
@@ -90,17 +89,12 @@ function LeadCard({ item }: { item: NewsItem }) {
   )
 }
 
-/** Satırları tam doldur — 2/3/4/6/7/8 için boş hücre bırakmayı azalt. */
+/** Alt satırlar — lg’de her zaman 4 sütun (3’lü satırda kartlar genişlemesin). */
 function belowGridClass(count: number): string {
   const base = 'grid gap-4'
   if (count <= 1) return `${base} grid-cols-1`
   if (count === 2) return `${base} grid-cols-1 sm:grid-cols-2`
-  if (count === 4) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
-  if (count === 5) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-5`
-  if (count === 7) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
-  if (count % 3 === 0) return `${base} grid-cols-1 sm:grid-cols-3`
-  if (count % 2 === 0) return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-2`
-  return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`
+  return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
 }
 
 function FeaturedSideCard({ item }: { item: NewsItem }) {

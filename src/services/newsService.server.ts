@@ -350,7 +350,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v6'],
+  ['home-featured-v7'],
   { revalidate: 30, tags: ['home-feed'] }
 )
 
@@ -493,7 +493,7 @@ async function getHomeFeedRailItems(category: string, limitCount: number): Promi
  */
 
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
-  // Pool + dedicated featured query (CMS “Öne Çıkan” — kategori bağımsız ilk 10)
+  // Pool + dedicated featured query (CMS “Öne Çıkan” — kategori bağımsız)
   const [pool, featuredPinned] = await Promise.all([
     getHomeNewsPool(160),
     getFeaturedNewsCached(HOME_FEATURED_LIMIT),
