@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isDirectImageUrl, isLikelyVideoUrl } from '@/lib/adminVideoScrapeClient'
+import { isDirectImageUrl, isLikelyVideoUrl } from '@/lib/adminMediaUrlDetect'
 
 describe('isDirectImageUrl', () => {
   it('accepts extension-based images', () => {
