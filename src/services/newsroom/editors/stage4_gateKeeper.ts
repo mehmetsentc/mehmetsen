@@ -119,9 +119,13 @@ export function gateKeep(input: GateInput): GateResult {
   }
 
   // ── 3. İçerik kalite ─────────────────────────────────────────────────────────
+  // Kısa gövde = sert taslak (AdSense / kalite). Skor düşümü yetmez; 70 ile publish oluyordu.
   if (input.factCheck.shortContent) {
-    publishScore -= 30
-    reasons.push('içerik çok kısa')
+    return {
+      decision: 'draft',
+      reasons: ['içerik çok kısa — min gövde kelimesi karşılanmadı'],
+      publishScore: Math.min(publishScore, 40),
+    }
   }
 
   if (input.factCheck.titleMismatch) {
