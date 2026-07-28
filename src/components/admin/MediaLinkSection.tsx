@@ -75,31 +75,47 @@ export function MediaLinkSection({ onThumbnailChange, onVideoUrlChange }: MediaL
       return
     }
 
-    // Video / sayfa scrap (YouTube, Vimeo, haber sayfası, MP4…)
+    // Video / sayfa scrap (YouTube, Vimeo, haber sayfası, MP4…) — olmazsa görsel import
     setLoading(true)
     try {
-      const scraped = await scrapeVideoUrl(url, { download: true })
-      const previewType =
-        scraped.provider === 'youtube' || isEmbedPlayerUrl(scraped.playUrl)
-          ? 'youtube'
-          : 'video'
-      setPreview({
-        type: previewType,
-        url: scraped.playUrl,
-        thumbnailUrl: scraped.thumbnailUrl,
-      })
-      onVideoUrlChange(scraped.playUrl)
-      if (scraped.thumbnailUrl) onThumbnailChange(scraped.thumbnailUrl)
-      setInput('')
-      toast.success(
-        scraped.provider === 'youtube'
-          ? 'YouTube videosu eklendi'
-          : scraped.source === 'page'
-            ? 'Sayfadan video alındı'
-            : 'Video eklendi'
-      )
+      try {
+        const scraped = await scrapeVideoUrl(url, { download: true })
+        const previewType =
+          scraped.provider === 'youtube' || isEmbedPlayerUrl(scraped.playUrl)
+            ? 'youtube'
+            : 'video'
+        setPreview({
+          type: previewType,
+          url: scraped.playUrl,
+          thumbnailUrl: scraped.thumbnailUrl,
+        })
+        onVideoUrlChange(scraped.playUrl)
+        if (scraped.thumbnailUrl) onThumbnailChange(scraped.thumbnailUrl)
+        setInput('')
+        toast.success(
+          scraped.provider === 'youtube'
+            ? 'YouTube videosu eklendi'
+            : scraped.source === 'page'
+              ? 'Sayfadan video alındı'
+              : 'Video eklendi'
+        )
+      } catch (videoErr) {
+        const { importMediaFromUrl } = await import('@/lib/adminVideoScrapeClient')
+        const data = await importMediaFromUrl(url)
+        if (data.type === 'video') {
+          setPreview({ type: 'video', url: data.url })
+          onVideoUrlChange(data.url)
+          toast.success('Video eklendi')
+        } else {
+          setPreview({ type: 'image', url: data.url })
+          onThumbnailChange(data.url)
+          toast.success("Görsel Storage'a yüklendi")
+        }
+        setInput('')
+        if (!data.url) throw videoErr
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Video alınamadı')
+      toast.error(err instanceof Error ? err.message : 'Medya alınamadı')
     } finally {
       setLoading(false)
     }

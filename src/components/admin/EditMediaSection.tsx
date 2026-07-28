@@ -220,20 +220,15 @@ export function EditMediaSection({
 
     setLinkLoading(true)
     try {
-      // Doğrudan görsel → Storage import
+      // Doğrudan / CDN görsel → Storage import (uzantısız gstatic vb. dahil)
       if (isDirectImageUrl(url)) {
-        const token = await auth.currentUser?.getIdToken()
-        if (!token) { toast.error('Giriş gerekli'); return }
+        const { importMediaFromUrl } = await import('@/lib/adminVideoScrapeClient')
+        const data = await importMediaFromUrl(url)
 
-        const res = await fetch('/api/admin/media/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ url }),
-        })
-        const data = await res.json() as { url?: string; type?: string; error?: string }
-        if (!res.ok || !data.url) throw new Error(data.error ?? 'Medya yüklenemedi')
-
-        if (!thumbnail) {
+        if (data.type === 'video') {
+          onVideoUrlChange(data.url)
+          toast.success('Video eklendi')
+        } else if (!thumbnail) {
           onThumbnailChange(data.url)
           toast.success('Ana görsel eklendi')
           void generateImageSeo(data.url, 'thumbnail')
@@ -247,16 +242,41 @@ export function EditMediaSection({
         return
       }
 
-      // YouTube / sayfa / MP4 → video scrap
-      const scraped = await scrapeVideoUrl(url, { download: true })
-      onVideoUrlChange(scraped.playUrl)
-      if (scraped.thumbnailUrl && !thumbnail) {
-        onThumbnailChange(scraped.thumbnailUrl)
+      // YouTube / sayfa / MP4 → video scrap; başarısızsa görsel import dene
+      try {
+        const scraped = await scrapeVideoUrl(url, { download: true })
+        onVideoUrlChange(scraped.playUrl)
+        if (scraped.thumbnailUrl && !thumbnail) {
+          onThumbnailChange(scraped.thumbnailUrl)
+        }
+        setLinkInput('')
+        toast.success(
+          scraped.source === 'page' ? 'Sayfadan video alındı' : 'Video eklendi'
+        )
+      } catch (videoErr) {
+        const { importMediaFromUrl } = await import('@/lib/adminVideoScrapeClient')
+        try {
+          const data = await importMediaFromUrl(url)
+          if (data.type === 'video') {
+            onVideoUrlChange(data.url)
+            toast.success('Video eklendi')
+          } else if (!thumbnail) {
+            onThumbnailChange(data.url)
+            toast.success('Ana görsel eklendi')
+            void generateImageSeo(data.url, 'thumbnail')
+          } else {
+            const nextAdditional = [...additionalImages, { url: data.url, caption: '' }]
+            onAdditionalImagesChange(nextAdditional)
+            toast.success('Ek görsel eklendi')
+            void generateImageSeo(data.url, 'additional', nextAdditional)
+          }
+          setLinkInput('')
+        } catch {
+          throw videoErr instanceof Error
+            ? videoErr
+            : new Error('Sayfa veya video alınamadı. Doğrudan YouTube / MP4 linki veya görsel URL deneyin.')
+        }
       }
-      setLinkInput('')
-      toast.success(
-        scraped.source === 'page' ? 'Sayfadan video alındı' : 'Video eklendi'
-      )
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Medya yüklenemedi')
     } finally {
@@ -546,9 +566,9 @@ export function EditMediaSection({
         <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[rgb(var(--color-text))]">
             <Link2 className="h-3.5 w-3.5 text-[rgb(var(--color-muted))]" />
-            URL&apos;den video scrap
+            URL&apos;den görsel / video scrap
             <span className="font-normal text-[rgb(var(--color-muted))]">
-              · YouTube, haber sayfası veya video
+              · Görsel, YouTube, haber sayfası veya video
             </span>
           </p>
           <div className="flex gap-2">
@@ -558,7 +578,7 @@ export function EditMediaSection({
               onChange={(e) => setLinkInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleLinkAdd() } }}
               disabled={linkLoading}
-              placeholder="YouTube, haber sayfası veya video URL yapıştır…"
+              placeholder="Görsel, YouTube veya haber sayfası URL yapıştır…"
               className="flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
             />
             <button
@@ -571,7 +591,7 @@ export function EditMediaSection({
             </button>
           </div>
           <p className="mt-1.5 text-[10px] text-[rgb(var(--color-muted))]">
-            YouTube / Vimeo embed · Sayfadan video çıkar · MP4 Storage&apos;a kopyalanır
+            Görsel CDN / Google thumbnail · YouTube / Vimeo · Sayfadan video · MP4 Storage&apos;a kopyalanır
           </p>
         </div>
       </div>

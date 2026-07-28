@@ -197,7 +197,7 @@ export function MediaItemsManager({
         }
       }
 
-      // YouTube, Vimeo, haber sayfası, MP4… → video scrap
+      // YouTube, Vimeo, haber sayfası, MP4… → video scrap; olmazsa görsel import
       try {
         const scraped = await scrapeVideoUrl(url, { download: true })
         return {
@@ -208,9 +208,22 @@ export function MediaItemsManager({
           alt: null,
           credit: scraped.provider !== 'unknown' ? scraped.provider : null,
         }
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : `Video alınamadı: ${url.slice(0, 40)}`)
-        return null
+      } catch {
+        try {
+          const { importMediaFromUrl } = await import('@/lib/adminVideoScrapeClient')
+          const data = await importMediaFromUrl(url)
+          return {
+            type: data.type === 'video' ? 'video' : 'image',
+            url: data.url,
+            thumbnailUrl: data.url,
+            caption: null,
+            alt: null,
+            credit: null,
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : `Medya alınamadı: ${url.slice(0, 40)}`)
+          return null
+        }
       }
     },
     []
