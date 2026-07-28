@@ -47,7 +47,9 @@ export const SHARED_NEWS_STYLE = `GAZETE HABERİ yaz (ters piramit).
 - 180-350 kelime; doldurma yok
 - "Sonuç / Giriş / Gelişme / …Önemi / Biyolojik Çeşitlilik" gibi ders kitabı ## başlıkları YASAK
 - En fazla 1-2 olay-özgü ## başlık
-- Spot güçlü; content spot'u kopyalama`
+- Spot güçlü; content spot'u kopyalama
+- HTML YASAK: <p>, </p>, <div>, <br>, <span> vb. ASLA yazma — yalnızca düz metin ve ## / ### markdown
+- Paragrafları boş satırla ayır; etiket/kod gibi görünmesin`
 
 export const SEED_AI_EDITORS: SeedEditorSpec[] = [
   {

@@ -18,6 +18,7 @@ import { auth } from '@/lib/firebase/auth'
 import type { Post } from '@/types/post'
 import type { ArticleBlock } from '@/lib/articleBlocks'
 import type { AdminNewsItem } from '@/services/adminNewsService'
+import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 
 /** {"caption":"..."} formatındaki bozuk değerleri temizler */
 function sanitizeCaptionValue(v: string | undefined | null): string {
@@ -104,7 +105,7 @@ export function AdminNewsEditor({
   const [title, setTitle] = useState(post?.title ?? '')
   const [slug, setSlug] = useState((post as (Post & { slug?: string }) | undefined)?.slug ?? '')
   const [summary, setSummary] = useState(post?.summary ?? '')
-  const [content, setContent] = useState(post?.content ?? '')
+  const [content, setContent] = useState(() => stripHtmlToNewsPlainText(post?.content ?? ''))
   const [bodyBlocks, setBodyBlocks] = useState<ArticleBlock[]>(post?.bodyBlocks ?? [])
   const [articleLayout, setArticleLayout] = useState<'standard' | 'longform'>(
     post?.articleLayout === 'longform' ? 'longform' : 'standard'
@@ -314,7 +315,9 @@ export function AdminNewsEditor({
       toast.error('Önce bir AI editör / yazar seçin')
       return
     }
-    const rawInput = [title, spot, summary, content].filter(Boolean).join('\n\n').trim()
+    const rawInput = stripHtmlToNewsPlainText(
+      [title, spot, summary, content].filter(Boolean).join('\n\n').trim()
+    )
     if (rawInput.length < 80) {
       toast.error('AI editör için en az 80 karakter ham haber metni girin')
       return
@@ -345,10 +348,10 @@ export function AdminNewsEditor({
       const data = await res.json() as ProfessionalAiResult
       if (!res.ok) throw new Error(data.error || 'AI editör haberi hazırlayamadı')
 
-      const nextTitle = data.title?.trim() || title
-      const nextSpot = data.spot?.trim() || spot
-      const nextSummary = data.summary?.trim() || summary
-      const nextContent = data.content?.trim() || content
+      const nextTitle = stripHtmlToNewsPlainText(data.title?.trim() || title)
+      const nextSpot = stripHtmlToNewsPlainText(data.spot?.trim() || spot)
+      const nextSummary = stripHtmlToNewsPlainText(data.summary?.trim() || summary)
+      const nextContent = stripHtmlToNewsPlainText(data.content?.trim() || content)
       const nextBlocks = Array.isArray(data.bodyBlocks) ? data.bodyBlocks : bodyBlocks
       const nextThumbnail = data.imageOrder?.[0] || thumbnail
       const nextAdditional = Array.isArray(data.additionalImages)

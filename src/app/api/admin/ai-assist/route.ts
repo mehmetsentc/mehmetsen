@@ -9,6 +9,7 @@ import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { contentHasIncompleteSegments } from '@/lib/ai/textCompleteness'
 import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
+import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 import type { AiPromptType } from '@/types/aiEditor'
 
 export const runtime = 'nodejs'
@@ -31,24 +32,7 @@ const CATEGORY_IDS = new Set(DEFAULT_CATEGORIES.map((category) => category.id))
 
 /** AI bazen <p>…</p> sızdırıyor — CMS önizlemede ham etiket görünmesin. */
 function stripAiHtmlLeak(text: string): string {
-  return text
-    .replace(/\r\n/g, '\n')
-    .replace(/<\/?(p|div|section|article|span|strong|b|em|i|ul|ol|li|br|hr)(?:\s[^>]*)?\/?>/gi, (tag) => {
-      const name = tag.replace(/[<>/]/g, '').split(/\s/)[0]?.toLowerCase() ?? ''
-      if (name === 'br' || name === 'hr' || name === 'p' || name === 'div' || name === 'li') return '\n'
-      return ''
-    })
-    .replace(/<\/?h([1-6])(?:\s[^>]*)?>/gi, (_, level) => `\n${'#'.repeat(Number(level))} `)
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/<[^>]+>/g, '')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  return stripHtmlToNewsPlainText(text)
 }
 const CATEGORY_LIST = DEFAULT_CATEGORIES.map((category) => `${category.id}: ${category.name}`).join(', ')
 
@@ -61,6 +45,7 @@ CMS TEK-TUŞ GÖREVİ — DİKKAT ÇEKİCİ HABER:
 - Gövde editörün tarzında olsun (kelime seçimi, tempo, vurgu); ansiklopedi / okul kompozisyonu yazma
 - Kaynakta olmayan sayı, alıntı, olay uydurma
 - content: ## H2 kullan (# H1 yok); en fazla 2-3 kısa bölüm; 180-400 kelime hedef
+- HTML (<p>, <div>, <br>…) ASLA — yalnızca düz metin + markdown
 - summary en fazla 280 karakter; seoTitle 50-65; seoDescription 140-165
 - categoryId geçerli kimliklerden biri; tags 5-8; seoKeywords 8-15
 - imageOrder yalnızca verilen görsel URL'lerini içersin
@@ -78,6 +63,7 @@ JSON formatında yanıt ver: {"title":"...","content":"...","summary":"...","spo
 spot: 5W+1H (Kim,Ne,Nerede,Ne Zaman,Neden,Nasıl) yanıtlayan 2-4 cümlelik haber girizgahı; spot yalnızca bu alanda, content içinde TEKRAR etme.
 content kuralları:
 - ## H2 ve ### H3 kullan; # H1 KULLANMA
+- HTML etiketleri (<p>, <div>, <br> vb.) ASLA yazma
 - Her başlık kendi satırında olsun, en fazla 6 kelime; manşet cümlesi, spot veya görsel caption'ını başlık yapma
 - Başlıktan sonra boş satır bırak, sonra tam paragraf
 - Başlık ile paragrafı aynı satıra veya bitişik yapıştırma
@@ -86,7 +72,7 @@ content kuralları:
 
   rewrite: `Sen deneyimli bir Türk gazete editörüsün. Verilen haberi yeniden yaz, daha akıcı ve profesyonel yap.
 JSON: {"title":"...","content":"...","summary":"...","spot":"..."}
-content kuralları: ## / ### başlıklar kendi satırında (max 6 kelime), ardından boş satır + tam paragraf; # H1 yok; spot ve giriş paragrafını content'e kopyalama; görsel caption'ını H2/H3 yapma.
+content kuralları: ## / ### başlıklar kendi satırında (max 6 kelime), ardından boş satır + tam paragraf; # H1 yok; HTML (<p> vb.) yasak; spot ve giriş paragrafını content'e kopyalama; görsel caption'ını H2/H3 yapma.
 MUTLAK: Yarım cümle, kesilmiş kelime veya bağlaçla biten paragraf bırakma; her birimi noktalama ile tamamla.`,
 
   'publish-ready': `Sen NaHaber'in deneyimli genel yayın yönetmenisin. Kullanıcının verdiği ham metni yayıma hazır, kapsamlı ve bilgilendirici bir Türkçe habere dönüştür.
