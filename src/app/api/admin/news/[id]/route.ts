@@ -193,13 +193,17 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
   }
   if (Array.isArray(body.liveUpdates)) {
     update.liveUpdates = body.liveUpdates
-      .map((u, index) => ({
-        id: (u.id?.trim() || `u-${index + 1}`).slice(0, 64),
-        content: (u.content ?? '').trim().slice(0, 4000),
-        timestamp: u.timestamp ?? Date.now(),
-        author: (u.author ?? '').trim().slice(0, 120) || undefined,
-      }))
-      .filter((u) => u.content.length > 0)
+      .map((u, index) => {
+        const row: Record<string, unknown> = {
+          id: (u.id?.trim() || `u-${index + 1}`).slice(0, 64),
+          content: (u.content ?? '').trim().slice(0, 4000),
+          timestamp: u.timestamp ?? Date.now(),
+        }
+        const author = (u.author ?? '').trim().slice(0, 120)
+        if (author) row.author = author
+        return row
+      })
+      .filter((u) => String(u.content ?? '').length > 0)
       .slice(0, 200)
   }
 

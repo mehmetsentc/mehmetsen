@@ -475,8 +475,11 @@ export default function AdminNewsPage() {
       await adminNewsService.approve(post.id, post.adminSource)
       toast.success('Haber onaylandı')
       setPosts(prev => prev.filter(p => p.id !== post.id))
-    } catch { toast.error('Onaylama başarısız') }
-    finally { setActionLoading(null) }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Onaylama başarısız')
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const handleReject = async (post: AdminNewsItem) => {

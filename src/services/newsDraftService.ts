@@ -85,6 +85,26 @@ export interface NewsroomDraftFields {
   videoEmbedUrl?: string
 }
 
+function omitUndefinedFields(
+  obj: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) out[key] = value
+  }
+  return out
+}
+
+function resolveSourceLabel(
+  draft: NewsDraftDocument | NewsroomDraftFields
+): string {
+  const source = typeof draft.source === 'string' ? draft.source.trim() : ''
+  if (source) return source
+  const label = typeof draft.sourceLabel === 'string' ? draft.sourceLabel.trim() : ''
+  if (label) return label
+  return 'NaHaber'
+}
+
 function draftToPublishedNews(
   draft: NewsDraftDocument | NewsroomDraftFields,
   slug: string,
@@ -107,7 +127,18 @@ function draftToPublishedNews(
     (draft as NewsDraftDocument).articleFormat ||
     undefined
 
-  return {
+  const location =
+    draft.location && typeof draft.location === 'object'
+      ? omitUndefinedFields({
+          city: draft.location.city ?? '',
+          district: draft.location.district,
+          country: draft.location.country ?? 'Türkiye',
+          lat: draft.location.lat ?? 0,
+          lng: draft.location.lng ?? 0,
+        })
+      : null
+
+  return omitUndefinedFields({
     title: draft.title,
     summary: draft.summary ?? '',
     description: draft.description,
@@ -120,30 +151,30 @@ function draftToPublishedNews(
     ...(personaFormat === 'column' || personaFormat === 'analysis' || personaFormat === 'standard'
       ? { articleFormat: personaFormat }
       : {}),
-    thumbnail: draft.thumbnail,
-    videoUrl: draft.videoUrl,
+    thumbnail: draft.thumbnail ?? '',
+    videoUrl: draft.videoUrl ?? '',
     category: draft.category,
     categoryId: draft.categoryId,
-    city: draft.city,
+    city: draft.city ?? '',
     district: draft.district ?? '',
-    citySlug: draft.citySlug,
+    citySlug: draft.citySlug ?? '',
     country: draft.country ?? 'Türkiye',
-    location: draft.location,
-    tags: draft.tags,
-    type: draft.type,
-    source: draft.source,
+    location,
+    tags: Array.isArray(draft.tags) ? draft.tags : [],
+    type: draft.type ?? 'news',
+    source: resolveSourceLabel(draft),
     slug,
     status: 'published' as const,
-    aiGenerated: draft.aiGenerated,
-    rssFingerprint: draft.rssFingerprint,
-    rssGuid: draft.rssGuid,
-    sourceUrl: draft.sourceUrl,
-    ingestionSourceId: draft.ingestionSourceId,
-    sourceLabel: draft.sourceLabel,
-    originalTitle: draft.originalTitle,
-    ingestedAt: draft.ingestedAt,
+    aiGenerated: draft.aiGenerated ?? false,
+    rssFingerprint: draft.rssFingerprint ?? '',
+    rssGuid: draft.rssGuid ?? draft.sourceUrl ?? '',
+    sourceUrl: draft.sourceUrl ?? '',
+    ingestionSourceId: draft.ingestionSourceId ?? '',
+    sourceLabel: draft.sourceLabel ?? resolveSourceLabel(draft),
+    originalTitle: draft.originalTitle ?? draft.title,
+    ingestedAt: draft.ingestedAt ?? now,
     sourcePublishedAt: draft.sourcePublishedAt ?? null,
-    createdAt: draft.createdAt,
+    createdAt: draft.createdAt ?? now,
     updatedAt: now,
     publishedAt: now,
     viewsCount: 0,
@@ -151,12 +182,18 @@ function draftToPublishedNews(
     commentCount: 0,
     savesCount: 0,
     sharesCount: 0,
-    editorId: 'editorId' in draft ? draft.editorId : undefined,
-    editorType: 'editorType' in draft ? draft.editorType : undefined,
-    confidenceScore: 'confidenceScore' in draft ? draft.confidenceScore : undefined,
+    ...('editorId' in draft && draft.editorId ? { editorId: draft.editorId } : {}),
+    ...('editorType' in draft && draft.editorType ? { editorType: draft.editorType } : {}),
+    ...('confidenceScore' in draft && draft.confidenceScore != null
+      ? { confidenceScore: draft.confidenceScore }
+      : {}),
+    ...('factCheckFlags' in draft && Array.isArray((draft as NewsroomDraftFields).factCheckFlags)
+      ? { factCheckFlags: (draft as NewsroomDraftFields).factCheckFlags }
+      : {}),
     isBreaking: 'isBreaking' in draft ? draft.isBreaking ?? false : false,
     priorityScore: 'priorityScore' in draft ? draft.priorityScore ?? 0 : 0,
-    breakingScore: 'breakingScore' in draft ? draft.breakingScore ?? draft.priorityScore ?? 0 : 0,
+    breakingScore:
+      'breakingScore' in draft ? draft.breakingScore ?? draft.priorityScore ?? 0 : 0,
     isPinned: 'isPinned' in draft ? draft.isPinned ?? false : false,
     isTrending: 'isTrending' in draft ? draft.isTrending ?? false : false,
     ...('spot' in draft && draft.spot ? { spot: draft.spot } : {}),
@@ -175,11 +212,11 @@ function draftToPublishedNews(
       ? { seoDescription: draft.seoDescription }
       : {}),
     ...('htmlContent' in draft && draft.htmlContent ? { htmlContent: draft.htmlContent } : {}),
-    ...('hasVideo' in draft ? { hasVideo: draft.hasVideo ?? false } : {}),
+    ...('hasVideo' in draft && draft.hasVideo != null ? { hasVideo: draft.hasVideo } : {}),
     ...('videoEmbedUrl' in draft && draft.videoEmbedUrl
       ? { videoEmbedUrl: draft.videoEmbedUrl }
       : {}),
-  }
+  })
 }
 
 export const newsDraftService = {
@@ -256,16 +293,16 @@ export const newsDraftService = {
       country: doc.country ?? 'Türkiye',
       location: doc.location,
       tags: doc.tags,
-      source: doc.source,
-      sourceUrl: doc.sourceUrl,
-      sourceLabel: doc.sourceLabel,
-      originalTitle: doc.originalTitle,
+      source: doc.source?.trim() || doc.sourceLabel?.trim() || 'NaHaber',
+      sourceUrl: doc.sourceUrl ?? '',
+      sourceLabel: doc.sourceLabel?.trim() || doc.source?.trim() || 'NaHaber',
+      originalTitle: doc.originalTitle ?? doc.title,
       sourcePublishedAt: doc.sourcePublishedAt ?? null,
       updatedAt: now,
-      editorId: doc.editorId,
-      editorType: doc.editorType,
-      confidenceScore: doc.confidenceScore,
-      factCheckFlags: doc.factCheckFlags,
+      ...(doc.editorId ? { editorId: doc.editorId } : {}),
+      ...(doc.editorType ? { editorType: doc.editorType } : {}),
+      ...(doc.confidenceScore != null ? { confidenceScore: doc.confidenceScore } : {}),
+      ...(Array.isArray(doc.factCheckFlags) ? { factCheckFlags: doc.factCheckFlags } : {}),
       isBreaking: doc.isBreaking ?? false,
       priorityScore: doc.priorityScore ?? 0,
       breakingScore: doc.breakingScore ?? doc.priorityScore ?? 0,

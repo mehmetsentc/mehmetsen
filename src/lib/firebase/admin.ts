@@ -76,7 +76,14 @@ function getAdminApp(): App {
 
 /** Server-only Firestore client (bypasses security rules). */
 export function getAdminFirestore(): Firestore {
-  if (!adminDb) adminDb = getFirestore(getAdminApp())
+  if (!adminDb) {
+    adminDb = getFirestore(getAdminApp())
+    try {
+      adminDb.settings({ ignoreUndefinedProperties: true })
+    } catch {
+      // settings() throws if already initialized elsewhere — safe to ignore
+    }
+  }
   return adminDb
 }
 
