@@ -1,22 +1,27 @@
 /**
  * Thin Content Backfill Worker
  *
- * Yayında olan ama içeriği kısa (<500 karakter) haberleri yeniden işler:
+ * Yayında olan ama gövdesi kısa (< MIN_NEWS_BODY_WORDS) haberleri yeniden işler:
  *   1) Jina + arama fallback ile tam metin çek
- *   2) 4 aşamalı AI editör ile NaHaber tarzında yeniden yaz
+ *   2) AI pipeline ile NaHaber tarzında yeniden yaz
  *   3) Mevcut haberi güncelle (existingNewsId)
  *
- * Cron: her 6 saatte bir, run başına max 6 haber (AI maliyeti + timeout).
+ * Genişletilemeyen / kaynak URL’siz kısa haberler → taslak (AdSense ince içerik riski).
+ * Cron: run başına max 8 haber (AI maliyeti + timeout).
  */
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
+import type { DocumentReference } from 'firebase-admin/firestore'
 
-function docContentLength(data: Record<string, unknown>): number {
-  const body = String(data.description ?? data.content ?? '').trim()
-  const summary = String(data.summary ?? '').trim()
-  return (body + ' ' + summary).trim().length
+export function newsBodyPlainText(data: Record<string, unknown>): string {
+  return String(data.description ?? data.content ?? data.body ?? '').trim()
+}
+
+export function newsBodyWordCount(data: Record<string, unknown>): number {
+  return countPlainWords(newsBodyPlainText(data))
 }
 
 export interface ThinContentBackfillResult {
@@ -25,14 +30,14 @@ export interface ThinContentBackfillResult {
   updated: number
   skipped: number
   failed: number
-  archived: number
+  drafted: number
   errors: string[]
   durationMs: number
 }
 
-const THIN_CHARS = 500
-const SCAN_LIMIT = 100
-const MAX_PER_RUN = 8
+const SCAN_LIMIT = Number(process.env.THIN_BACKFILL_SCAN_LIMIT || 150)
+const MAX_PER_RUN = Number(process.env.THIN_BACKFILL_MAX_PER_RUN || 8)
+const MIN_WORDS = Number(process.env.THIN_BACKFILL_MIN_WORDS || MIN_NEWS_BODY_WORDS)
 const RETRY_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 const SCRAPER_RETRY_COOLDOWN_MS = 0
 
@@ -46,6 +51,22 @@ function isScraperArticle(docId: string, data: Record<string, unknown>): boolean
   )
 }
 
+async function demoteToDraft(
+  ref: DocumentReference,
+  now: number,
+  reason: string
+): Promise<void> {
+  await ref.update({
+    status: 'draft',
+    featured: false,
+    isEditorPick: false,
+    featuredAt: null,
+    contentBackfillStatus: 'drafted_thin',
+    moderationNote: reason,
+    updatedAt: now,
+  })
+}
+
 export async function runThinContentBackfillWorker(): Promise<ThinContentBackfillResult> {
   const started = Date.now()
   const result: ThinContentBackfillResult = {
@@ -54,7 +75,7 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
     updated: 0,
     skipped: 0,
     failed: 0,
-    archived: 0,
+    drafted: 0,
     errors: [],
     durationMs: 0,
   }
@@ -79,9 +100,7 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
   const candidates = snap.docs
     .filter((doc) => {
       const data = doc.data()
-      if (docContentLength(data) >= THIN_CHARS) return false
-      const sourceUrl = String(data.sourceUrl ?? '').trim()
-      if (!sourceUrl.startsWith('http')) return false
+      if (newsBodyWordCount(data) >= MIN_WORDS) return false
       const lastAttempt = Number(data.contentBackfillAt ?? 0)
       const cooldown = isScraperArticle(doc.id, data)
         ? SCRAPER_RETRY_COOLDOWN_MS
@@ -90,9 +109,14 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
       return true
     })
     .sort((a, b) => {
+      // Önce kaynak URL’si olanlar (genişletilebilir), sonra kelime sayısı artan
+      const aUrl = String(a.data().sourceUrl ?? '').startsWith('http') ? 0 : 1
+      const bUrl = String(b.data().sourceUrl ?? '').startsWith('http') ? 0 : 1
+      if (aUrl !== bUrl) return aUrl - bUrl
       const aScraper = isScraperArticle(a.id, a.data()) ? 0 : 1
       const bScraper = isScraperArticle(b.id, b.data()) ? 0 : 1
-      return aScraper - bScraper
+      if (aScraper !== bScraper) return aScraper - bScraper
+      return newsBodyWordCount(a.data()) - newsBodyWordCount(b.data())
     })
 
   result.scanned = snap.size
@@ -102,14 +126,31 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
 
   for (const doc of batch) {
     const data = doc.data()
-    const sourceUrl = String(data.sourceUrl).trim()
+    const sourceUrl = String(data.sourceUrl ?? '').trim()
     const title = String(data.title ?? data.originalTitle ?? '').trim()
+    const words = newsBodyWordCount(data)
+
     if (!title) {
       result.skipped++
       continue
     }
 
-    // Deneme zamanını işaretle (başarısız olsa bile cooldown)
+    // Kaynak URL yok → genişletilemez; AdSense için yayından taslağa al
+    if (!sourceUrl.startsWith('http')) {
+      try {
+        await demoteToDraft(
+          doc.ref,
+          now,
+          `İnce içerik (${words} kelime) — kaynak URL yok, otomatik taslak`
+        )
+        result.drafted++
+      } catch (err) {
+        result.failed++
+        result.errors.push(`${doc.id}: draft failed: ${err instanceof Error ? err.message : String(err)}`)
+      }
+      continue
+    }
+
     await doc.ref.update({ contentBackfillAt: now }).catch(() => {})
 
     const input: NewsroomArticleInput = {
@@ -135,24 +176,43 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
       })
 
       if (pipelineResult.outcome === 'updated' || pipelineResult.outcome === 'published') {
-        result.updated++
-        await doc.ref.update({
-          contentBackfillAt: now,
-          contentBackfillStatus: 'success',
-          updatedAt: now,
-        }).catch(() => {})
-      } else if (pipelineResult.outcome === 'skipped') {
-        result.skipped++
-        // Hâlâ içerik çekilemiyorsa ve çok kısaysa arşivle
-        const len = docContentLength(data)
-        if (len < 120) {
+        // Pipeline sonrası hâlâ kısaysa taslağa al (kalite kapısı draft yazmış olabilir)
+        const fresh = await doc.ref.get()
+        const freshData = fresh.data() ?? {}
+        const freshWords = newsBodyWordCount(freshData)
+        const stillPublished = String(freshData.status ?? '') === 'published'
+
+        if (stillPublished && freshWords >= MIN_WORDS) {
+          result.updated++
           await doc.ref.update({
-            status: 'archived',
-            contentBackfillStatus: 'archived_thin',
-            moderationNote: 'İnce içerik — otomatik arşivlendi',
+            contentBackfillAt: now,
+            contentBackfillStatus: 'success',
             updatedAt: now,
           }).catch(() => {})
-          result.archived++
+        } else if (stillPublished && freshWords < MIN_WORDS) {
+          await demoteToDraft(
+            doc.ref,
+            now,
+            `İnce içerik (${freshWords} kelime) — genişletme sonrası hâlâ kısa, taslak`
+          )
+          result.drafted++
+        } else {
+          // Pipeline zaten draft’a almış olabilir
+          result.drafted++
+          await doc.ref.update({
+            contentBackfillStatus: 'drafted_by_pipeline',
+            contentBackfillAt: now,
+          }).catch(() => {})
+        }
+      } else if (pipelineResult.outcome === 'skipped') {
+        result.skipped++
+        if (words < 120) {
+          await demoteToDraft(
+            doc.ref,
+            now,
+            `İnce içerik (${words} kelime) — kaynak genişletilemedi, otomatik taslak`
+          )
+          result.drafted++
         } else {
           await doc.ref.update({ contentBackfillStatus: 'skipped' }).catch(() => {})
         }
@@ -170,7 +230,7 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
   result.durationMs = Date.now() - started
   console.log(
     `[thin-backfill] scanned=${result.scanned} candidates=${result.candidates} ` +
-    `updated=${result.updated} skipped=${result.skipped} archived=${result.archived} failed=${result.failed}`
+    `updated=${result.updated} drafted=${result.drafted} skipped=${result.skipped} failed=${result.failed} minWords=${MIN_WORDS}`
   )
   return result
 }
