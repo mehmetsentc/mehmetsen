@@ -255,7 +255,32 @@ export const newsDraftService = {
     }
 
     if (options?.newsId) {
-      await db.collection(Collections.NEWS).doc(options.newsId).set(payload)
+      const ref = db.collection(Collections.NEWS).doc(options.newsId)
+      const existing = await ref.get()
+      const prev = existing.data() as
+        | {
+            featured?: boolean
+            isEditorPick?: boolean
+            featuredAt?: number | { toMillis?: () => number } | null
+          }
+        | undefined
+
+      // Full `.set()` would wipe CMS Öne Çıkan pins on RSS re-publish.
+      const preserveFeatured =
+        prev?.featured === true || prev?.isEditorPick === true
+          ? {
+              featured: true as const,
+              isEditorPick: true as const,
+              featuredAt:
+                typeof prev.featuredAt === 'number'
+                  ? prev.featuredAt
+                  : typeof prev?.featuredAt?.toMillis === 'function'
+                    ? prev.featuredAt.toMillis()
+                    : now,
+            }
+          : {}
+
+      await ref.set({ ...payload, ...preserveFeatured })
       return { newsId: options.newsId, slug }
     }
 
