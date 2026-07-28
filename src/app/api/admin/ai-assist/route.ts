@@ -44,7 +44,7 @@ CMS TEK-TUŞ GÖREVİ — DİKKAT ÇEKİCİ HABER:
 - Spot okuyucuyu ilk 2 cümlede yakalasın; 5W+1H eksiksiz
 - Gövde editörün tarzında olsun (kelime seçimi, tempo, vurgu); ansiklopedi / okul kompozisyonu yazma
 - Kaynakta olmayan sayı, alıntı, olay uydurma
-- content: ## H2 kullan (# H1 yok); en fazla 2-3 kısa bölüm; 180-400 kelime hedef
+- content: ## H2 kullan (# H1 yok); en fazla 2-3 kısa bölüm; 250-450 kelime hedef (asgari ~220)
 - HTML (<p>, <div>, <br>…) ASLA — yalnızca düz metin + markdown
 - summary en fazla 280 karakter; seoTitle 50-65; seoDescription 140-165
 - categoryId geçerli kimliklerden biri; tags 5-8; seoKeywords 8-15

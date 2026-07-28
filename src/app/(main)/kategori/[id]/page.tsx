@@ -126,18 +126,23 @@ function getCategoryDescription(cat: CategoryDef, siteName: string): string {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const cat = getCategoryMeta(id)
-  if (!cat) return { title: 'Kategori' }
+  if (!cat) return { title: 'Kategori', robots: { index: false, follow: false } }
 
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
   const pageTitle = getCategoryPageTitle(cat)
   const description = getCategoryDescription(cat, siteName)
+  const posts = await prefetchCategoryPosts(cat.id)
+  const thinCategory = posts.length < 3
 
   return {
     title: pageTitle,
     description,
     keywords: [cat.name, `${cat.name} haberleri`, 'son dakika', siteName, 'Türkiye haberleri'],
-    robots: { index: true, follow: true },
+    // İnce/boş kategori sayfaları AdSense ve arama kalitesini zayıflatır
+    robots: thinCategory
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
     alternates: {
       canonical: `${siteUrl}${ROUTES.CATEGORY(cat.slug ?? cat.id)}`,
     },

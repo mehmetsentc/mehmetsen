@@ -53,6 +53,10 @@ const nextConfig: NextConfig = {
       { source: '/ara', destination: '/search', permanent: true },
       { source: '/ara/:path*', destination: '/search/:path*', permanent: true },
       { source: '/hukuk/gizlilik', destination: '/gizlilik', permanent: true },
+      // AdSense / SEO: boş veya yanlış URL’leri kanonik sayfalara taşı
+      { source: '/kune', destination: '/kunye', permanent: true },
+      { source: '/kategori/otomotiv', destination: '/kategori/otomobil', permanent: true },
+      { source: '/kategori/etkinlikler', destination: '/events', permanent: true },
     ]
   },
 

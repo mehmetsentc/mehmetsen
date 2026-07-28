@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   description:
     'Tavla, satranç, sudoku, kelime günü, adam asmaca, hafıza, mayın tarlası, 2048 ve daha fazlası — NaHaber’de ücretsiz online oyna.',
   alternates: { canonical: `${getSiteUrl()}${ROUTES.GAMES}` },
-  robots: { index: true, follow: true },
+  // Oyun hub’ı haber içeriği değil — yayıncı incelemesinde ince sayfa riskini azalt
+  robots: { index: false, follow: false },
 }
 
 export default function GamesPage() {

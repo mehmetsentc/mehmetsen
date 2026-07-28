@@ -35,6 +35,7 @@ import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
+import { isNewsBodyTooShort, countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
 import { routeAiEditor, authorFieldsFromEditor, aiEditorForcesDraft } from '@/lib/ai/editorial/editorRouter'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
@@ -751,6 +752,13 @@ export async function processNewsroomArticle(
       contentHasIncompleteSegments(rewritten.description || '') ||
       contentHasIncompleteSegments((rewritten as AiRewriteResult).spot || '')
 
+    const bodyTooShort = isNewsBodyTooShort(rewritten.description || '')
+    if (bodyTooShort) {
+      console.warn(
+        `[pipeline] short body (${countPlainWords(rewritten.description)} < ${MIN_NEWS_BODY_WORDS}) — forcing draft: ${workingInput.sourceUrl?.slice(0, 80)}`
+      )
+    }
+
     // Final kategoriye göre byline personasını seç (yazım worker hint'i ile yapılmış olabilir)
     let publishEditor = routedEditor
     if (
@@ -778,6 +786,7 @@ export async function processNewsroomArticle(
       moderation.decision === 'review' ||
       moderation.decision !== 'approve' ||
       incompleteText ||
+      bodyTooShort ||
       personaRequiresApproval
 
     if (incompleteText) {

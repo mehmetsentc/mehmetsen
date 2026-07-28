@@ -292,7 +292,7 @@ export default function AiEditorDetailPage() {
                   disabled={!canManage}
                   rows={14}
                   className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 font-mono text-xs leading-relaxed"
-                  placeholder="GAZETE HABERİ (ters piramit)… 180-350 kelime… Sonuç başlığı yasak…"
+                  placeholder="GAZETE HABERİ (ters piramit)… 250-450 kelime… Sonuç başlığı yasak…"
                 />
               </div>
             </div>

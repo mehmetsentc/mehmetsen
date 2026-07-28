@@ -394,9 +394,9 @@ const QA_SYSTEM_PROMPT = `Sen NaHaber'in Genel Yayın Yönetmeni'sin. DeepSeek e
 4. Nihai kararı ver
 
 ## YAYIM KURALLARI
-- approved      : Güvenilir kaynak, yeterli içerik (≥100 kelime), doğrulanabilir bilgi, doğru kategori
-- needs_revision: Kategori yanlış, başlık sorunlu, içerik kısa ama gerçek
-- rejected      : İçerik <80 kelime; tamamen doğrulanamaz iddia; clickbait/spam
+- approved      : Güvenilir kaynak, yeterli içerik (≥200 kelime), doğrulanabilir bilgi, doğru kategori
+- needs_revision: Kategori yanlış, başlık sorunlu, içerik kısa ama gerçek (120-199 kelime)
+- rejected      : İçerik <120 kelime; tamamen doğrulanamaz iddia; clickbait/spam
 
 ## MUTLAK YASAK
 - Kaynakta OLMAYAN bilgi, kişi adı, şehir adı, rakam veya alıntı ekleme
@@ -507,7 +507,7 @@ export async function deepseekQaCheck(article: ChiefEditorInput): Promise<ChiefE
 
   const prompt = `Aşağıdaki haberi incele ve yayın kararı ver.
 
-KELIME SAYISI: ${wordCount} ${wordCount < 100 ? '⚠️ DÜŞÜK' : '✓'}
+KELIME SAYISI: ${wordCount} ${wordCount < 200 ? '⚠️ DÜŞÜK (hedef ≥200, asgari yayın ~220)' : '✓'}
 KALİTE SKORU: ${article.qualityScore}/100
 MEVCUT KATEGORİ: ${article.category}
 ---

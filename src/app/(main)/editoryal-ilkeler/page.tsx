@@ -70,9 +70,11 @@ export default function EditoryelIlkelerPage() {
 
           <h2 className="text-xl font-semibold text-white">6. Yapay Zeka Kullanımı</h2>
           <p>
-            Haberlerimiz yapay zeka destekli araçlarla işlenip düzenlenebilir; ancak tüm
-            içerikler yayın öncesinde editörel denetimden geçirilmektedir. Yapay zeka içerik
-            üreticisi değil, editoryal verimliliği artıran bir araç olarak kullanılmaktadır.
+            Haber üretim sürecinde yapay zekâ destekli araçlar (kaynak tarama, taslak,
+            dil düzenleme) kullanılabilir. Bu araçlar içerik üreticisinin yerine geçmez;
+            editoryal verimliliği artırır. Yayın öncesinde kalite, tutarlılık ve kategori
+            kontrolleri uygulanır. Okuyucuya sunulan haberler otomatik üretilmiş ince
+            sayfa yığını olarak tasarlanmaz; anlamlı gövde metni ve bağlam hedeflenir.
           </p>
         </div>
       </main>

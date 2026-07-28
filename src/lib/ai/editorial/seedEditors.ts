@@ -44,7 +44,7 @@ function caps(partial: Partial<AiEditorCapabilities>): AiEditorCapabilities {
 /** Her editörün news prompt'una eklenen ortak haber biçimi */
 export const SHARED_NEWS_STYLE = `GAZETE HABERİ yaz (ters piramit).
 - 5N1K; en önemli bilgi ilk cümlede
-- 180-350 kelime; doldurma yok
+- 250-450 kelime gövde (asgari ~220); doldurma yok; kaynak inceyse bile olgusal bağlam ekle
 - "Sonuç / Giriş / Gelişme / …Önemi / Biyolojik Çeşitlilik" gibi ders kitabı ## başlıkları YASAK
 - En fazla 1-2 olay-özgü ## başlık
 - Spot güçlü; content spot'u kopyalama

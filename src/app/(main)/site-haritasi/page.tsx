@@ -24,13 +24,19 @@ export const metadata: Metadata = {
 
 const UTILITY_PAGES = [
   { label: 'Hakkımızda', href: '/hakkimizda' },
+  { label: 'Künye', href: '/kunye' },
   { label: 'İletişim', href: '/iletisim' },
+  { label: 'Editoryal İlkeler', href: '/editoryal-ilkeler' },
   { label: 'Yerel Haberler', href: ROUTES.LOCAL },
+  { label: 'Etkinlikler', href: ROUTES.EVENTS },
   { label: 'Teve', href: ROUTES.REELS },
   { label: 'Arama', href: ROUTES.SEARCH },
   { label: 'Gizlilik Politikası', href: '/gizlilik' },
+  { label: 'Çerez Politikası', href: '/hukuk/cerez-politikasi' },
+  { label: 'KVKK', href: '/hukuk/kvkk' },
+  { label: 'Aydınlatma Metni', href: '/aydinlatma-metni' },
   { label: 'Kullanım Koşulları', href: '/hukuk/kullanim-kosullari' },
-  { label: 'Editoryal İlkeler', href: '/editoryal-ilkeler' },
+  { label: 'İçerik Kuralları', href: ROUTES.FEED_CONTENT_POLICY },
 ] as const
 
 export default function SiteHaritasiPage() {

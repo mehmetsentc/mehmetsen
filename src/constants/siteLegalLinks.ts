@@ -54,7 +54,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Dünya', href: '/kategori/dunya' },
       { label: 'Siyaset', href: '/kategori/siyaset' },
       { label: 'Yerel Haberler', href: '/yerel' },
-      { label: 'Tarihte Bugün', href: '/feed' },
+      { label: 'Çok Okunanlar', href: '/cok-okunanlar' },
     ],
   },
   {
@@ -66,7 +66,6 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Ekonomi', href: '/kategori/ekonomi' },
       { label: 'Borsa', href: '/kategori/borsa' },
       { label: 'Kripto', href: '/kategori/kripto' },
-      { label: 'Döviz', href: '/kategori/ekonomi' },
     ],
   },
   {
@@ -78,7 +77,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Yaşam', href: '/kategori/yasam' },
       { label: 'Gastronomi', href: '/kategori/gastronomi' },
       { label: 'Magazin', href: '/kategori/magazin' },
-      { label: 'Müzeler', href: '/kategori/kultur' },
+      { label: 'Müzeler', href: '/muzeler' },
     ],
   },
   {
@@ -91,7 +90,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Teve', href: '/reels' },
       { label: 'Keşfet', href: '/discover' },
       { label: 'Eğitim', href: '/kategori/egitim' },
-      { label: 'Etkinlikler', href: '/kategori/etkinlikler' },
+      { label: 'Etkinlikler', href: '/events' },
     ],
   },
   {
@@ -102,7 +101,6 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Otomobil', href: '/kategori/otomobil' },
       { label: 'Meteoroloji', href: '/kategori/meteoroloji' },
       { label: 'Hava Durumu', href: '/weather' },
-      { label: 'Uzay', href: '/kategori/bilim' },
     ],
   },
   {

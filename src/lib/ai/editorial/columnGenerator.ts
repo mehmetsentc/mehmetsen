@@ -6,6 +6,7 @@ import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRo
 import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
 import { callDeepSeek } from '@/lib/ai/editorial/sandboxCall'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
+import { countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 
@@ -97,7 +98,7 @@ export async function runDailyColumnGeneration(limit = 3): Promise<{
 
     const title = String(result.title || '').trim()
     const content = String(result.content || '').trim()
-    if (!title || content.length < 400) {
+    if (!title || countPlainWords(content) < MIN_NEWS_BODY_WORDS) {
       skipped.push(`${editor.slug}:thin`)
       continue
     }

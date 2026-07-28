@@ -25,7 +25,7 @@ export default function KunyePage() {
             <span className="text-[rgb(var(--color-muted))]">.com</span>
           </span>
           <p className="mt-2 text-sm text-[rgb(var(--color-muted))]">
-            Türkiye&apos;nin yapay zeka destekli anlık haber platformu
+            Türkiye&apos;nin anlık dijital haber platformu
           </p>
         </div>
 
@@ -55,9 +55,10 @@ export default function KunyePage() {
           <h2 className="mb-2 text-sm font-bold text-[rgb(var(--color-text))]">Hakkımızda</h2>
           <p className="text-sm leading-relaxed text-[rgb(var(--color-muted))]">
             NaHaber, Shen Medya bünyesinde faaliyet gösteren bağımsız bir dijital haber
-            platformudur. Yapay zeka destekli içerik derleme ve düzenleme teknolojileriyle
-            güncel haberleri, son dakika gelişmelerini ve yerel haberleri en hızlı biçimde
-            okuyucularına ulaştırmayı hedeflemektedir.
+            platformudur. Güncel haberleri, son dakika gelişmelerini ve yerel haberleri
+            okuyucularına hızlı ve anlaşılır biçimde ulaştırmayı hedeflemektedir. Haber
+            üretim sürecinde yardımcı teknolojiler kullanılabilir; yayın kararı ve
+            editoryal denetim insan gözetiminde yürütülür.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
             Editoryal bağımsızlık ve doğruluk ilkelerimiz çerçevesinde, hiçbir siyasi parti,

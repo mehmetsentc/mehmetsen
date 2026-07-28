@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: game.title,
     description: game.description,
     alternates: { canonical: `${getSiteUrl()}${ROUTES.GAME(slug)}` },
-    robots: { index: true, follow: true },
+    robots: { index: false, follow: false },
   }
 }
 

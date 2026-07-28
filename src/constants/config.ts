@@ -196,7 +196,6 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'turizm',
   'tarih',
   'asayis',
-  'etkinlikler',
 ] as const
 
 /**
@@ -229,7 +228,6 @@ export const TOP_NAV_CATEGORY_IDS = [
   'tiyatro',
   'magazin',
   'tarih',
-  'etkinlikler',
 ] as const
 
 export interface SiteNavItem {
@@ -269,7 +267,6 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('saglik'),
     categoryLink('cevre-iklim'),
     categoryLink('oyun-espor'),
-    { id: 'oyunlar', label: 'Oyunlar', href: ROUTES.GAMES },
     categoryLink('din-inanc'),
     categoryLink('turizm'),
     categoryLink('gezi'),
@@ -278,14 +275,14 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('yasam'),
     categoryLink('astroloji') ? { ...categoryLink('astroloji')!, indent: true } : null,
     categoryLink('gastronomi'),
-    categoryLink('otomobil', 'Otomotiv'),
+    categoryLink('otomobil'),
     categoryLink('kultur'),
     categoryLink('sinema') ? { ...categoryLink('sinema')!, indent: true } : null,
     categoryLink('tiyatro') ? { ...categoryLink('tiyatro')!, indent: true } : null,
     { id: 'teve', label: 'Teve', href: ROUTES.REELS, indent: true },
     categoryLink('magazin'),
     categoryLink('tarih'),
-    categoryLink('etkinlikler'),
+    { id: 'etkinlikler', label: 'Etkinlikler', href: ROUTES.EVENTS },
   ]
 
   return items.filter((item): item is SiteNavItem => item !== null)

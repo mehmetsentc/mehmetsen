@@ -11,12 +11,13 @@
  */
 
 import type { WrittenArticle } from './stage1_contentWriter'
+import { MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
 
 export interface FactCheckResult {
   score: number         // 0-100
   approved: boolean     // score >= 50
   flags: string[]       // sorun açıklamaları
-  shortContent: boolean // content < 150 kelime
+  shortContent: boolean // content < MIN_NEWS_BODY_WORDS
   titleMismatch: boolean
 }
 
@@ -37,9 +38,9 @@ export function quickFactCheck(input: FactCheckInput): FactCheckResult {
   const flags: string[] = []
   const wordCount = input.written.content.split(/\s+/).filter(Boolean).length
 
-  // İçerik uzunluğu
-  const shortContent = wordCount < 120
-  if (shortContent) flags.push(`içerik çok kısa: ${wordCount} kelime (min 120)`)
+  // İçerik uzunluğu — AdSense / editoryal ortak eşik
+  const shortContent = wordCount < MIN_NEWS_BODY_WORDS
+  if (shortContent) flags.push(`içerik çok kısa: ${wordCount} kelime (min ${MIN_NEWS_BODY_WORDS})`)
 
   // Teknik içerik tespiti (HTML/JSON/React sızdı mı?)
   const techPatterns = [
