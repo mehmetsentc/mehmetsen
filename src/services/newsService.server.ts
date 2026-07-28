@@ -350,7 +350,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v7'],
+  ['home-featured-v8'],
   { revalidate: 30, tags: ['home-feed'] }
 )
 

@@ -8,16 +8,17 @@ import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
 import { HOME_FEATURED_LIMIT, type NewsItem } from '@/types/newsItem'
 
 /**
- * Desktop “Öne Çıkan” — 1 lead + 2 yan + altta 4’lü satırlar (limit 11 → 4+4).
+ * Desktop “Öne Çıkan” — 1 lead + 2 yan + altta 2×4 kart (toplam 11).
  */
 export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
   const slides = items.slice(0, HOME_FEATURED_LIMIT)
   if (slides.length === 0) return null
 
   const [lead, ...rest] = slides
-  // Lead yüksekliği 2 kareye denk gelsin: yanında yalnızca 2 kart
   const side = rest.slice(0, Math.min(2, rest.length))
-  const below = rest.slice(side.length)
+  const below = rest.slice(side.length, side.length + 8)
+  const belowRow1 = below.slice(0, 4)
+  const belowRow2 = below.slice(4, 8)
 
   return (
     <section aria-label="Öne Çıkan Haberler" className="space-y-3">
@@ -47,9 +48,17 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
         </div>
       )}
 
-      {below.length > 0 ? (
-        <div className={belowGridClass(below.length)}>
-          {below.map((item) => (
+      {belowRow1.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {belowRow1.map((item) => (
+            <FeaturedTileCard key={item.id} item={item} />
+          ))}
+        </div>
+      ) : null}
+
+      {belowRow2.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {belowRow2.map((item) => (
             <FeaturedTileCard key={item.id} item={item} />
           ))}
         </div>
@@ -87,14 +96,6 @@ function LeadCard({ item }: { item: NewsItem }) {
       </div>
     </Link>
   )
-}
-
-/** Alt satırlar — lg’de her zaman 4 sütun (3’lü satırda kartlar genişlemesin). */
-function belowGridClass(count: number): string {
-  const base = 'grid gap-4'
-  if (count <= 1) return `${base} grid-cols-1`
-  if (count === 2) return `${base} grid-cols-1 sm:grid-cols-2`
-  return `${base} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
 }
 
 function FeaturedSideCard({ item }: { item: NewsItem }) {

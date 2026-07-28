@@ -103,10 +103,18 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     const trending = data.trending.slice(0, 8)
     const moreList = take(8)
 
-    // CMS “Öne Çıkan” — kategori bağımsız (1 lead + 2 yan + 8 alt)
-    const featuredSlider = data.featured
+    // CMS “Öne Çıkan” pinleri + eksikse son haberlerle 11’e tamamla (1+2+4+4)
+    const featuredPins = data.featured
       .filter((p) => p.featured === true)
       .slice(0, HOME_FEATURED_LIMIT)
+    const featuredIds = new Set(featuredPins.map((p) => p.id))
+    const featuredFillers =
+      featuredPins.length < HOME_FEATURED_LIMIT
+        ? data.latest
+            .filter((p) => !featuredIds.has(p.id))
+            .slice(0, HOME_FEATURED_LIMIT - featuredPins.length)
+        : []
+    const featuredSlider = [...featuredPins, ...featuredFillers]
 
     const opinionItems =
       featuredSlider.length >= 3
