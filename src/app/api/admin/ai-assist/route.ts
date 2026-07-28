@@ -6,7 +6,7 @@ import { generateImageAnalysis, type ImageAnalysis } from '@/lib/ai/imageSeo'
 import { researchLiveNews } from '@/lib/ai/liveResearch'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
-import { contentHasIncompleteSegments } from '@/lib/ai/textCompleteness'
+import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
@@ -362,7 +362,7 @@ export async function POST(request: Request) {
         : []
       const textComplete =
         !contentHasIncompleteSegments(content) &&
-        !contentHasIncompleteSegments(title) &&
+        !titleLooksIncomplete(title) &&
         !contentHasIncompleteSegments(spot)
       const researchOk =
         !research || (research.sources.length >= 2 && research.brief.length >= 120)

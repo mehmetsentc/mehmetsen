@@ -34,7 +34,7 @@ import { geoEngine } from '@/services/newsroom/geoEngine'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
-import { contentHasIncompleteSegments } from '@/lib/ai/textCompleteness'
+import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { routeAiEditor, authorFieldsFromEditor, aiEditorForcesDraft } from '@/lib/ai/editorial/editorRouter'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
@@ -747,7 +747,7 @@ export async function processNewsroomArticle(
     }
 
     const incompleteText =
-      contentHasIncompleteSegments(rewritten.title || '') ||
+      titleLooksIncomplete(rewritten.title || '') ||
       contentHasIncompleteSegments(rewritten.description || '') ||
       contentHasIncompleteSegments((rewritten as AiRewriteResult).spot || '')
 

@@ -3,6 +3,7 @@ import {
   contentHasIncompleteSegments,
   shortHeadingFromCaption,
   textLooksIncomplete,
+  titleLooksIncomplete,
 } from '@/lib/ai/textCompleteness'
 
 describe('textLooksIncomplete', () => {
@@ -28,6 +29,21 @@ describe('textLooksIncomplete', () => {
       )
     ).toBe(false)
     expect(textLooksIncomplete('Düşük maliyet ve hızlı hizmet', { allowShortHeading: true })).toBe(false)
+  })
+})
+
+describe('titleLooksIncomplete', () => {
+  it('accepts normal news headlines without a trailing period', () => {
+    expect(
+      titleLooksIncomplete("TÜVTÜRK'te üst düzey iki atama: CFO ve Risk Direktörü belirlendi")
+    ).toBe(false)
+    expect(titleLooksIncomplete("CHP'de Grup Toplantısı Krizi: İki Taraf da Meclis'te")).toBe(false)
+  })
+
+  it('flags truncated or conjunction-ended titles', () => {
+    expect(titleLooksIncomplete('CHP grup toplantısı ve')).toBe(true)
+    expect(titleLooksIncomplete('Son dakika gelişme…')).toBe(true)
+    expect(titleLooksIncomplete('')).toBe(true)
   })
 })
 

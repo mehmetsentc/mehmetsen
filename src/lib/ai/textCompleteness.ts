@@ -33,6 +33,19 @@ export function textLooksIncomplete(text: string, opts?: { allowShortHeading?: b
   return false
 }
 
+/**
+ * Manşetler gazetede nokta ile bitmez — body incomplete kontrolünü başlığa
+ * uygulamayın (yoksa her haber incomplete_text ile taslağa düşer).
+ */
+export function titleLooksIncomplete(title: string): boolean {
+  const t = title.replace(/\s+/g, ' ').trim()
+  if (!t) return true
+  if (LEADING_FRAGMENT.test(t)) return true
+  if (TRAILING_CONJUNCTIONS.test(t)) return true
+  if (/[-–—…]\s*$/.test(t)) return true
+  return false
+}
+
 /** Başlık olarak kullanılabilecek kısa etiket üret; uzun caption’ı ASLA keserek başlık yapma. */
 export function shortHeadingFromCaption(
   caption: string | undefined,

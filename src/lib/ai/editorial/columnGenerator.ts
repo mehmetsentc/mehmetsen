@@ -5,7 +5,7 @@ import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
 import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
 import { callDeepSeek } from '@/lib/ai/editorial/sandboxCall'
-import { contentHasIncompleteSegments } from '@/lib/ai/textCompleteness'
+import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 
@@ -102,7 +102,7 @@ export async function runDailyColumnGeneration(limit = 3): Promise<{
       continue
     }
     if (
-      contentHasIncompleteSegments(title) ||
+      titleLooksIncomplete(title) ||
       contentHasIncompleteSegments(content) ||
       contentHasIncompleteSegments(String(result.spot || ''))
     ) {
