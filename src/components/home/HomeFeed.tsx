@@ -53,15 +53,15 @@ export function HomeFeed({ data }: HomeFeedProps) {
 
   return (
     <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10 max-md:pt-4">
-      {/* Mobile: hero → markets → son dakika. Tablet+: original order. */}
+      {/* Mobile: Son Dakika → hero → markets. Tablet+: same logical order. */}
       <div className="flex flex-col">
-        <div className="order-3 md:order-1">
+        <div className="order-1">
           <BreakingStories items={breaking} />
         </div>
-        <div className="order-1 md:order-2">
+        <div className="order-2">
           <FeaturedSlider items={featuredItems} />
         </div>
-        <div className="order-2 mt-0 max-md:mt-5 md:order-3">
+        <div className="order-3 mt-0 max-md:mt-5">
           <MarketTicker />
         </div>
       </div>
