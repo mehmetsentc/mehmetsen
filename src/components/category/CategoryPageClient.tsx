@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react'
 import { CategoryFeed } from '@/components/feed/CategoryFeed'
 import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
+import { MobileCategoryLanding } from '@/components/category/mobile/MobileCategoryLanding'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { DesktopCategoryPage } from '@/components/home/desktop/DesktopCategoryPage'
 import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
@@ -98,8 +99,27 @@ export function CategoryPageClient({
 
   return (
     <>
-      {/* Mobil + tablet — BBC kategori şablonu */}
-      <div className="bbc-category-page lg:hidden w-full">
+      {/* Phone only — editorial newspaper landing */}
+      <div className="md:hidden w-full">
+        {showNewsFeed ? (
+          <MobileCategoryLanding
+            cat={cat}
+            isSubcategory={isSubcategory}
+            parentCat={parentCat}
+            subTabs={subTabs}
+            tabParent={tabParent}
+            showTabs={showTabs}
+            initialPosts={initialPosts}
+            pageTitle={pageTitle}
+            topExtras={topExtras}
+          />
+        ) : (
+          <div className="px-4 py-4">{topExtras}</div>
+        )}
+      </div>
+
+      {/* Tablet — preserve existing BBC category template */}
+      <div className="bbc-category-page hidden md:block lg:hidden w-full">
         <CategoryBbcPageHeader
           pageTitle={pageTitle}
           subTabs={showTabs ? subTabs : []}
@@ -119,7 +139,7 @@ export function CategoryPageClient({
         ) : null}
       </div>
 
-      {/* Desktop — BBC kategori şablonu */}
+      {/* Desktop — unchanged */}
       <div className="hidden lg:block">
         <AdSlotProvider page="category" categoryId={cat.id}>
           <DesktopCategoryPage
