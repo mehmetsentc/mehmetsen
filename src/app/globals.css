@@ -2603,6 +2603,28 @@ video.reels-video {
   @apply mb-5 px-1;
 }
 
+@media (max-width: 767px) {
+  .home-feed {
+    /* Extra room under sticky category nav before hero */
+  }
+
+  .home-section {
+    @apply mb-7 px-0;
+  }
+
+  .home-section-header {
+    @apply mb-4 px-4;
+  }
+
+  .home-rail-title {
+    @apply mb-4 px-4;
+  }
+
+  .home-rail-accent {
+    @apply h-8 w-[5px];
+  }
+}
+
 .home-section-header {
   @apply mb-3 flex items-center gap-2 px-1;
 }

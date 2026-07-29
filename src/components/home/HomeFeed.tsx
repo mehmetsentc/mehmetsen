@@ -52,15 +52,26 @@ export function HomeFeed({ data }: HomeFeedProps) {
   const { items: moreItems, loadingMore, sentinelRef } = useHomeFeedInfinite(feedTail)
 
   return (
-    <div className="home-feed mx-auto w-full max-w-3xl pb-6">
-      <BreakingStories items={breaking} />
-      <FeaturedSlider items={featuredItems} />
-      <MarketTicker />
+    <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10 max-md:pt-4">
+      {/* Mobile: hero → markets → son dakika. Tablet+: original order. */}
+      <div className="flex flex-col">
+        <div className="order-3 md:order-1">
+          <BreakingStories items={breaking} />
+        </div>
+        <div className="order-1 md:order-2">
+          <FeaturedSlider items={featuredItems} />
+        </div>
+        <div className="order-2 mt-0 max-md:mt-5 md:order-3">
+          <MarketTicker />
+        </div>
+      </div>
 
-      <section className="home-section" aria-label="Son haberler">
-        <div className="home-rail-title">
-          <span className="home-rail-accent" aria-hidden />
-          <h2 className="text-lg font-black text-[rgb(var(--color-text))]">Akış</h2>
+      <section className="home-section max-md:!mb-6 max-md:!mt-7 max-md:!px-0" aria-label="Son haberler">
+        <div className="home-rail-title max-md:mb-4 max-md:px-4">
+          <span className="home-rail-accent max-md:h-8 max-md:w-[5px]" aria-hidden />
+          <h2 className="text-lg font-black text-[rgb(var(--color-text))] max-md:text-[1.75rem]">
+            Akış
+          </h2>
         </div>
         <MobileMagazineFeed items={feedHead} />
       </section>

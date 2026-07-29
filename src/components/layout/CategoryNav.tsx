@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils'
 
 const NAV_CATEGORIES = getSwipeableFeedDestinations()
 
-/** Must match Navbar feed height (`h-[72px]`). */
-const FEED_NAV_TOP = 'top-[72px]'
+/** Must match Navbar feed height (`h-[72px]` + safe-area). */
+const FEED_NAV_TOP = 'top-[calc(72px+env(safe-area-inset-top,0px))]'
 const DEFAULT_NAV_TOP = 'top-14'
 
 export function CategoryNav() {
@@ -35,7 +35,15 @@ export function CategoryNav() {
       )}
       aria-label="Kategoriler"
     >
-      <div className="flex gap-0 overflow-x-auto scroll-px-3 scrollbar-none" data-no-category-swipe>
+      <div
+        className={cn(
+          'flex overflow-x-auto scrollbar-hide',
+          isFeed
+            ? 'min-h-[54px] snap-x snap-mandatory scroll-px-4 gap-6 px-4'
+            : 'gap-0 scroll-px-3'
+        )}
+        data-no-category-swipe
+      >
         {NAV_CATEGORIES.map((cat) => {
           const isActive = activeKey === cat.id
           return (
@@ -43,7 +51,10 @@ export function CategoryNav() {
               key={cat.href}
               href={cat.href}
               className={cn(
-                'relative flex min-h-11 shrink-0 items-center px-3.5 text-sm font-semibold transition-colors',
+                'relative flex shrink-0 items-center transition-colors',
+                isFeed
+                  ? 'min-h-[54px] snap-start px-0.5 text-[15px] font-semibold'
+                  : 'min-h-11 px-3.5 text-sm font-semibold',
                 isActive
                   ? 'text-[rgb(var(--color-brand))]'
                   : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
@@ -51,7 +62,12 @@ export function CategoryNav() {
             >
               {cat.label}
               {isActive && (
-                <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[rgb(var(--color-brand))]" />
+                <span
+                  className={cn(
+                    'absolute bottom-0 h-[2.5px] rounded-full bg-[rgb(var(--color-brand))]',
+                    isFeed ? 'left-0 right-0' : 'left-3 right-3 h-[2px]'
+                  )}
+                />
               )}
             </Link>
           )
