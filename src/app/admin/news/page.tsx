@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
+import { MobileContent } from '@/components/admin/mobile/MobileContent'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
+import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 import { ROUTES } from '@/constants/routes'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -394,10 +396,29 @@ function PaginationBar({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function AdminNewsPage() {
+  const isMobile = useIsMobileAdminViewport()
+
+  if (isMobile === null) {
+    return <div className="p-4 text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</div>
+  }
+
+  if (isMobile) {
+    return (
+      <Suspense fallback={<div className="p-4 text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</div>}>
+        <MobileContent />
+      </Suspense>
+    )
+  }
+
+  return <AdminNewsDesktopPage />
+}
+
+function AdminNewsDesktopPage() {
   const { can, user, loading: authLoading } = useCmsAuth()
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get('category') ?? ''
   const filterParam = searchParams.get('filter') ?? ''
+  const qParam = searchParams.get('q') ?? ''
   const initialFilter: AdminNewsFilter =
     filterParam === 'published' ||
     filterParam === 'pending' ||
@@ -416,7 +437,13 @@ export default function AdminNewsPage() {
       setFilter('all')
     }
   }, [searchParams])
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(qParam)
+
+  useEffect(() => {
+    const q = searchParams.get('q') ?? ''
+    if (q && q !== search) setSearch(q)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate from URL only when q changes
+  }, [searchParams])
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [posts, setPosts] = useState<AdminNewsItem[]>([])
   const [loading, setLoading] = useState(true)

@@ -541,14 +541,19 @@ export function AdminNewsEditor({
   }
 
   const formFields = (
-  <div className="flex-1 overflow-y-auto space-y-4 p-5">
+  <div className="flex-1 overflow-y-auto space-y-4 p-4 pb-28 md:p-5 md:pb-5">
     <div>
-      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Başlık</label>
-      <input
-        type="text"
+      <div className="mb-1.5 flex items-center justify-between">
+        <label className="block text-xs font-semibold text-[rgb(var(--color-muted))]">Başlık</label>
+        <span className={`text-[10px] font-mono ${title.length > 70 ? 'text-amber-600' : 'text-[rgb(var(--color-muted))]'}`}>
+          {title.length}/70
+        </span>
+      </div>
+      <textarea
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className={fieldInputCls}
+        rows={3}
+        className={`${fieldInputCls} resize-none text-[22px] font-bold leading-snug md:text-sm md:font-normal md:leading-normal`}
         placeholder="Haber başlığı..."
       />
     </div>
@@ -571,7 +576,7 @@ export function AdminNewsEditor({
     </div>
 
     <div>
-      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Spot (girizgah)</label>
+      <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Spot</label>
       <textarea
         value={spot}
         onChange={(e) => setSpot(e.target.value)}
@@ -1244,11 +1249,14 @@ export function AdminNewsEditor({
   )
 
   const footer = (
-    <div className="flex items-center justify-end gap-2 border-t border-[rgb(var(--color-border))] px-5 py-3">
+    <div
+      className="sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-3 md:px-5"
+      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+    >
       <button
         type="button"
         onClick={handleCancel}
-        className="rounded-xl border border-[rgb(var(--color-border))] px-4 py-2 text-sm font-semibold text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
+        className="min-h-11 rounded-xl border border-[rgb(var(--color-border))] px-4 py-2.5 text-sm font-semibold text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
       >
         İptal
       </button>
@@ -1256,7 +1264,7 @@ export function AdminNewsEditor({
         type="button"
         onClick={handleSave}
         disabled={saving}
-        className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[rgb(var(--color-brand))] px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 md:flex-none md:bg-blue-600 md:hover:bg-blue-700"
       >
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : mode === 'create' ? <Plus className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
         {saving ? 'Kaydediliyor...' : saveLabel}
@@ -1288,11 +1296,22 @@ export function AdminNewsEditor({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
-      <div className="flex items-center justify-between border-b border-[rgb(var(--color-border))] px-5 py-4">
-        <div className="flex items-center gap-2">
-          {mode === 'create' ? <Plus className="h-4 w-4 text-blue-500" /> : <Pencil className="h-4 w-4 text-blue-500" />}
-          <span className="text-sm font-bold text-[rgb(var(--color-text))]">{headerTitle}</span>
+    <div className="mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-none border-0 bg-[rgb(var(--color-card))] shadow-none md:rounded-2xl md:border md:border-[rgb(var(--color-border))] md:shadow-sm">
+      <div
+        className="sticky top-0 z-10 flex items-center justify-between border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/95 px-3 py-3 backdrop-blur md:px-5 md:py-4"
+        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-[rgb(var(--color-muted))] md:hidden"
+            aria-label="Geri"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {mode === 'create' ? <Plus className="hidden h-4 w-4 text-blue-500 md:block" /> : <Pencil className="hidden h-4 w-4 text-blue-500 md:block" />}
+          <span className="truncate text-sm font-bold text-[rgb(var(--color-text))]">{headerTitle}</span>
         </div>
       </div>
       {formFields}

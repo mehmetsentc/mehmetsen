@@ -1,28 +1,47 @@
 'use client'
 
+import { Suspense } from 'react'
 import { AdminGuard } from '@/components/admin/AdminGuard'
 import { CMSSidebar } from '@/components/admin/CMSSidebar'
-import { AdminMobileNav } from '@/components/admin/AdminMobileNav'
+import { MobileAdminProvider, useMobileAdmin } from '@/components/admin/mobile/MobileAdminContext'
+import { MobileAdminHeader } from '@/components/admin/mobile/MobileAdminHeader'
+import { MobileAdminBottomNav } from '@/components/admin/mobile/MobileAdminBottomNav'
+import { MobileCreateSheet } from '@/components/admin/mobile/MobileCreateSheet'
+import { MobileSearchSheet } from '@/components/admin/mobile/MobileSearchSheet'
+import { MobileNotificationsSheet } from '@/components/admin/mobile/MobileNotificationsSheet'
+
+function AdminMain({ children }: { children: React.ReactNode }) {
+  const { hideChrome } = useMobileAdmin()
+  return (
+    <main className="min-h-0 flex-1 overflow-y-auto">
+      <div className={hideChrome ? undefined : 'max-md:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]'}>
+        {children}
+      </div>
+    </main>
+  )
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AdminGuard>
-      <div className="flex h-screen overflow-hidden bg-[rgb(var(--color-bg))]">
-        {/* Enterprise CMS sidebar — desktop only */}
-        <div className="hidden lg:block">
-          <CMSSidebar />
-        </div>
-
-        {/* Main area */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="lg:hidden">
-            <AdminMobileNav />
+      <MobileAdminProvider>
+        <div className="admin-shell flex h-screen overflow-hidden bg-[rgb(var(--color-bg))]">
+          <div className="hidden md:block">
+            <Suspense fallback={<div className="h-screen w-[248px] bg-[rgb(var(--admin-sidebar))]" />}>
+              <CMSSidebar />
+            </Suspense>
           </div>
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <MobileAdminHeader />
+            <AdminMain>{children}</AdminMain>
+            <MobileAdminBottomNav />
+            <MobileCreateSheet />
+            <MobileSearchSheet />
+            <MobileNotificationsSheet />
+          </div>
         </div>
-      </div>
+      </MobileAdminProvider>
     </AdminGuard>
   )
 }

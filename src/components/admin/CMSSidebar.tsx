@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -8,10 +8,10 @@ import {
   Bot, BarChart3, Search, Clock, Key, Settings, ChevronRight,
   ArrowLeft, Zap, Shield, Radio, TrendingUp, Share2,
   BrainCircuit, ChevronDown, Flame, MapPin, Landmark, Globe,
-  Trophy, Cpu, TrendingUp as EkonomiIcon, Heart, FlaskConical,
-  Palette, Star, Tag, Utensils, Car, CircleDot, Music, Film,
-  Theater, PartyPopper, Swords, Plane, Map, ShieldAlert, CloudRain,
-  Leaf, Calendar, Bitcoin, BarChart2, Megaphone, type LucideIcon,
+  Trophy, Cpu, Heart, FlaskConical, Palette, Star, Tag, Utensils,
+  Car, CircleDot, Music, Film, Theater, PartyPopper, Swords, Plane,
+  Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
+  Megaphone, Mail, Inbox, Archive, FileText, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -27,7 +27,7 @@ const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   dunya: Globe,
   asayis: ShieldAlert,
   'son-dakika': Zap,
-  ekonomi: EkonomiIcon,
+  ekonomi: TrendingUp,
   borsa: BarChart2,
   kripto: Bitcoin,
   spor: Trophy,
@@ -68,8 +68,8 @@ function buildSidebarCategories() {
 }
 
 const CATEGORIES = buildSidebarCategories()
+const COLLAPSE_KEY = 'cms_nav_collapsed_groups'
 
-// ── Nav types ─────────────────────────────────────────────────────────────
 interface NavItem {
   href: string
   label: string
@@ -80,12 +80,14 @@ interface NavItem {
 }
 
 interface NavGroup {
+  id: string
   label: string
   items: NavItem[]
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
+    id: 'overview',
     label: 'Genel Bakış',
     items: [
       { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -93,40 +95,56 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'İçerik Yönetimi',
+    id: 'content',
+    label: 'İçerik',
     items: [
       { href: '/admin/news', label: 'Tüm Haberler', icon: Newspaper, requiredPermissions: ['news:read'] },
+      { href: '/admin/news/create', label: 'Yeni Haber', icon: FileText, requiredPermissions: ['news:create'] },
+      { href: '/admin/news?filter=pending', label: 'Onay Kuyruğu', icon: Clock, requiredPermissions: ['news:read'] },
+      { href: '/admin/news?filter=draft', label: 'Taslaklar', icon: FileText, requiredPermissions: ['news:read'] },
+      { href: '/admin/archive', label: 'Arşiv', icon: Archive, requiredPermissions: ['news:read'] },
       { href: '/admin/videos', label: 'Videolar', icon: Video, requiredPermissions: ['video:read'] },
-      { href: '/admin/seo', label: 'SEO Yönetimi', icon: Search, requiredPermissions: ['seo:read'] },
-      { href: '/admin/ads', label: 'Reklam Yönetimi', icon: Megaphone, requiredPermissions: ['seo:edit'] },
+      { href: '/admin/categories', label: 'Kategoriler', icon: Tag, requiredPermissions: ['news:read'] },
     ],
   },
   {
+    id: 'newsroom',
+    label: 'Haber Merkezi',
+    items: [
+      { href: '/admin/news?category=son-dakika', label: 'Son Dakika', icon: Zap, requiredPermissions: ['news:read'] },
+      { href: '/admin/inbox', label: 'Gelen Kutusu', icon: Mail, requiredPermissions: ['news:read'] },
+      { href: '/admin/submissions', label: 'Gönderiler', icon: Inbox, requiredPermissions: ['news:read'] },
+      { href: '/admin/reports', label: 'Raporlar', icon: ShieldAlert, requiredPermissions: ['news:read'] },
+      { href: '/admin/events', label: 'Etkinlikler', icon: Calendar, requiredPermissions: ['news:read'] },
+    ],
+  },
+  {
+    id: 'ai',
     label: 'Yapay Zeka',
     items: [
       { href: '/admin/newsroom', label: 'AI Newsroom', icon: BrainCircuit, requiredPermissions: ['ai:use'] },
       { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, requiredPermissions: ['ai:use'] },
       { href: '/admin/ai/news', label: 'AI Haber Asistanı', icon: Bot, requiredPermissions: ['ai:use'] },
+      { href: '/admin/ai/video', label: 'AI Video', icon: Film, requiredPermissions: ['ai:use'] },
     ],
   },
   {
-    label: 'Ekip Yönetimi',
+    id: 'distribution',
+    label: 'Dağıtım',
+    items: [
+      { href: '/admin/social', label: 'Sosyal Medya', icon: Share2, requiredPermissions: ['news:read'] },
+      { href: '/admin/social/gorsel', label: 'Görsel Üretici', icon: Film, requiredPermissions: ['news:read'] },
+      { href: '/admin/seo', label: 'SEO Yönetimi', icon: Search, requiredPermissions: ['seo:read'] },
+      { href: '/admin/ads', label: 'Reklam Yönetimi', icon: Megaphone, requiredPermissions: ['seo:edit'] },
+    ],
+  },
+  {
+    id: 'team',
+    label: 'Yönetim',
     items: [
       { href: '/admin/editors', label: 'Editörler', icon: UserCog, requiredPermissions: ['editors:read'] },
       { href: '/admin/authors', label: 'Yazarlar', icon: UserCheck, requiredPermissions: ['authors:read'] },
       { href: '/admin/users', label: 'Kullanıcılar', icon: Users, requiredPermissions: ['users:read'] },
-    ],
-  },
-  {
-    label: 'Sosyal Medya',
-    items: [
-      { href: '/admin/social', label: 'Paylaşım Durumu', icon: Share2, requiredPermissions: ['news:read'] },
-      { href: '/admin/social/gorsel', label: 'Görsel Üretici', icon: Film, requiredPermissions: ['news:read'] },
-    ],
-  },
-  {
-    label: 'Sistem',
-    items: [
       { href: '/admin/cron', label: 'Cron İzleme', icon: Clock, requiredPermissions: ['cron:read'] },
       { href: '/admin/api-management', label: 'API Yönetimi', icon: Key, requiredPermissions: ['system:api_keys'] },
       { href: '/admin/settings', label: 'Ayarlar', icon: Settings, requiredPermissions: ['system:settings'] },
@@ -134,60 +152,84 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-function isActive(pathname: string, href: string, exact = false): boolean {
-  if (exact) return pathname === href
-  if (href === '/admin') return pathname === href
-  return pathname === href || pathname.startsWith(`${href}/`)
+function isActive(pathname: string, search: string, href: string, exact = false): boolean {
+  const [path, query = ''] = href.split('?')
+  if (exact) return pathname === path && (!query || search.includes(query))
+  if (path === '/admin') return pathname === path
+  if (pathname !== path && !pathname.startsWith(`${path}/`)) return false
+  if (!query) {
+    // Prefer exact query-less match when another item owns the query
+    if (path === '/admin/news' && search.includes('filter=') && href === '/admin/news') return false
+    if (path === '/admin/news' && search.includes('category=') && href === '/admin/news') return false
+    return pathname === path || pathname.startsWith(`${path}/`)
+  }
+  return search.includes(query)
 }
 
-function NavItemRow({ item, pathname }: { item: NavItem; pathname: string }) {
-  const active = isActive(pathname, item.href, item.exact)
+function NavItemRow({
+  item,
+  pathname,
+  search,
+}: {
+  item: NavItem
+  pathname: string
+  search: string
+}) {
+  const active = isActive(pathname, search, item.href, item.exact)
   const Icon = item.icon
 
   return (
     <Link
       href={item.href}
       className={cn(
-        'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
-        active ? 'bg-white/15 text-white shadow-sm' : 'text-slate-300 hover:bg-white/8 hover:text-white'
+        'group flex items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors duration-150',
+        active
+          ? 'bg-white/12 text-white'
+          : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
       )}
     >
-      <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-slate-400 group-hover:text-white')} />
+      <Icon
+        className={cn(
+          'h-4 w-4 shrink-0',
+          active ? 'text-[rgb(var(--color-brand))]' : 'text-slate-400 group-hover:text-slate-200'
+        )}
+      />
       <span className="flex-1 truncate">{item.label}</span>
-      {item.badge && (
-        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{item.badge}</span>
-      )}
-      {active && <ChevronRight className="h-3 w-3 text-white/50" />}
+      {item.badge ? (
+        <span className="rounded-full bg-[rgb(var(--color-brand))] px-1.5 py-0.5 text-[10px] font-bold text-white">
+          {item.badge}
+        </span>
+      ) : null}
+      {active ? <ChevronRight className="h-3 w-3 text-white/40" /> : null}
     </Link>
   )
 }
 
-// ── Category submenu ──────────────────────────────────────────────────────
 function CategoryMenu({ pathname }: { pathname: string }) {
   const searchParams = useSearchParams()
   const activeCategory = searchParams.get('category')
   const isNewsPage = pathname === '/admin/news'
-  const [open, setOpen] = useState(isNewsPage)
+  const [open, setOpen] = useState(Boolean(activeCategory))
 
   return (
     <div>
       <button
-        onClick={() => setOpen(o => !o)}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
         className={cn(
-          'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
-          isNewsPage && !activeCategory
-            ? 'bg-white/15 text-white'
-            : 'text-slate-300 hover:bg-white/8 hover:text-white'
+          'group flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors',
+          isNewsPage && activeCategory
+            ? 'bg-white/12 text-white'
+            : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
         )}
       >
-        <Tag className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-white" />
-        <span className="flex-1 truncate text-left">Kategoriler</span>
-        <ChevronDown className={cn('h-3.5 w-3.5 text-slate-500 transition-transform duration-200', open && 'rotate-180')} />
+        <Tag className="h-4 w-4 shrink-0 text-slate-400" />
+        <span className="flex-1 truncate text-left">Kategori Filtreleri</span>
+        <ChevronDown className={cn('h-3.5 w-3.5 text-slate-500 transition-transform', open && 'rotate-180')} />
       </button>
-
-      {open && (
-        <div className="ml-3 mt-0.5 max-h-[min(420px,50vh)] space-y-px overflow-y-auto border-l border-white/10 pl-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-          {CATEGORIES.map(cat => {
+      {open ? (
+        <div className="ml-3 mt-0.5 max-h-[min(280px,40vh)] space-y-px overflow-y-auto border-l border-white/10 pl-2.5">
+          {CATEGORIES.map((cat) => {
             const Icon = cat.icon
             const active = isNewsPage && activeCategory === cat.id
             return (
@@ -195,103 +237,131 @@ function CategoryMenu({ pathname }: { pathname: string }) {
                 key={cat.id}
                 href={`/admin/news?category=${cat.id}`}
                 className={cn(
-                  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all',
-                  active
-                    ? 'bg-white/15 text-white'
-                    : 'text-slate-400 hover:bg-white/8 hover:text-slate-200'
+                  'flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors',
+                  active ? 'bg-white/12 text-white' : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
                 )}
               >
-                <Icon className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-white' : cat.color)} />
-                <span className="flex-1 truncate">{cat.label}</span>
-                {active && <ChevronRight className="h-2.5 w-2.5 text-white/50" />}
+                <Icon className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-[rgb(var(--color-brand))]' : cat.color)} />
+                <span className="truncate">{cat.label}</span>
               </Link>
             )
           })}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
 
-// ── Main sidebar ──────────────────────────────────────────────────────────
 export function CMSSidebar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const search = searchParams.toString()
   const { user, role, roleLabel, can } = useCmsAuth()
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSE_KEY)
+      if (raw) setCollapsed(JSON.parse(raw) as Record<string, boolean>)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  const toggleGroup = (id: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] }
+      try {
+        localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
 
   const visibleGroups = useMemo(
     () =>
-      NAV_GROUPS.map(group => ({
+      NAV_GROUPS.map((group) => ({
         ...group,
-        items: group.items.filter(item =>
-          !item.requiredPermissions || item.requiredPermissions.some(p => can(p))
+        items: group.items.filter(
+          (item) => !item.requiredPermissions || item.requiredPermissions.some((p) => can(p))
         ),
-      })).filter(group => group.items.length > 0),
+      })).filter((group) => group.items.length > 0),
     [can]
   )
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col overflow-hidden bg-[#0d1117] text-white">
-      {/* Brand */}
-      <div className="flex items-center gap-3 border-b border-white/8 px-5 py-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg">
+    <aside className="flex h-screen w-[248px] shrink-0 flex-col overflow-hidden bg-[rgb(var(--admin-sidebar))] text-white">
+      <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))] shadow-sm">
           <Radio className="h-5 w-5 text-white" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold tracking-tight text-white">NaHaber CMS</p>
-          <p className="text-[10px] uppercase tracking-widest text-slate-400">Newsroom</p>
+          <p className="truncate text-sm font-bold tracking-tight">
+            <span className="text-[rgb(var(--color-brand))]">Na</span>Haber CMS
+          </p>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Newsroom</p>
         </div>
       </div>
 
-      {/* Live Indicator */}
-      <div className="flex items-center gap-2 border-b border-white/8 px-5 py-2.5">
+      <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
         <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         </span>
-        <span className="text-[11px] font-medium text-slate-400">Canlı Yayın Aktif</span>
-        <TrendingUp className="ml-auto h-3 w-3 text-green-500" />
+        <span className="text-[11px] font-medium text-slate-400">Canlı yayın aktif</span>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-        {visibleGroups.map(group => (
-          <div key={group.label} className="mb-4 px-3">
-            <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-              {group.label}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map(item => (
-                <NavItemRow key={item.href} item={item} pathname={pathname} />
-              ))}
-              {group.label === 'İçerik Yönetimi' && can('news:read') && (
-                <CategoryMenu pathname={pathname} />
-              )}
+        {visibleGroups.map((group) => {
+          const isCollapsed = Boolean(collapsed[group.id])
+          return (
+            <div key={group.id} className="mb-3 px-2.5">
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.id)}
+                className="mb-1 flex w-full items-center gap-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-300"
+              >
+                <span className="flex-1 text-left">{group.label}</span>
+                <ChevronDown className={cn('h-3 w-3 transition-transform', isCollapsed && '-rotate-90')} />
+              </button>
+              {!isCollapsed ? (
+                <div className="space-y-0.5">
+                  {group.items.map((item) => (
+                    <NavItemRow key={item.href + item.label} item={item} pathname={pathname} search={search} />
+                  ))}
+                  {group.id === 'content' && can('news:read') ? <CategoryMenu pathname={pathname} /> : null}
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
 
-      {/* User info */}
-      <div className="border-t border-white/8 px-3 py-3 space-y-2">
-        {user && (
-          <div className="flex items-center gap-3 rounded-lg bg-white/5 px-3 py-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-xs font-bold text-white">
+      <div className="space-y-2 border-t border-white/[0.06] px-2.5 py-3">
+        {user ? (
+          <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.04] px-3 py-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold text-white">
               {user.displayName?.[0]?.toUpperCase() ?? user.email?.[0]?.toUpperCase() ?? 'U'}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-white">
-                {user.displayName || user.email}
-              </p>
-              <span className={cn('inline-block rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wide', CMS_ROLE_COLORS[role])}>
+              <p className="truncate text-xs font-semibold text-white">{user.displayName || user.email}</p>
+              <span
+                className={cn(
+                  'mt-0.5 inline-block rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
+                  CMS_ROLE_COLORS[role]
+                )}
+              >
                 {roleLabel}
               </span>
             </div>
-            {role === 'super_admin' && <Shield className="h-3.5 w-3.5 text-purple-400" />}
+            {role === 'super_admin' ? <Shield className="h-3.5 w-3.5 text-slate-400" /> : null}
           </div>
-        )}
+        ) : null}
         <Link
           href="/"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/8 hover:text-white"
+          className="flex items-center gap-3 rounded-[10px] px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Uygulamaya Dön

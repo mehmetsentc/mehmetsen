@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Bell, Search, Plus, ExternalLink, ChevronDown } from 'lucide-react'
+import { Bell, Search, Plus, ExternalLink, RefreshCw } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { cn } from '@/lib/utils'
 import { db } from '@/lib/firebase/firestore'
@@ -11,6 +11,7 @@ import type { CmsNotification } from '@/types/cms'
 import { getSiteUrl } from '@/lib/seo'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { AdminCommandPalette, useAdminCommandHotkey } from '@/components/admin/AdminCommandPalette'
 
 const SEEN_KEY = 'cms_notif_seen_at'
 
@@ -27,32 +28,35 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const [notifs, setNotifs] = useState<CmsNotification[]>([])
 
   useEffect(() => {
-    // Simulated notifications from newsDrafts pending review
     const q = query(
       collection(db, 'newsDrafts'),
       where('draftStatus', '==', 'pending_review'),
       orderBy('createdAt', 'desc'),
       limit(8)
     )
-    const unsub = onSnapshot(q, snap => {
-      const items: CmsNotification[] = snap.docs.map(doc => {
-        const d = doc.data()
-        const createdAt = typeof d.createdAt === 'number'
-          ? new Date(d.createdAt).toISOString()
-          : (d.createdAt as string) ?? new Date().toISOString()
-        return {
-          id: doc.id,
-          type: 'article_submitted',
-          title: 'Yeni haber onay bekliyor',
-          message: (d.title as string) ?? 'Başlık yok',
-          href: '/admin/news?filter=pending',
-          isRead: false,
-          createdAt,
-        }
-      })
-      setNotifs(items)
-    }, () => setNotifs([]))
-
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const items: CmsNotification[] = snap.docs.map((doc) => {
+          const d = doc.data()
+          const createdAt =
+            typeof d.createdAt === 'number'
+              ? new Date(d.createdAt).toISOString()
+              : ((d.createdAt as string) ?? new Date().toISOString())
+          return {
+            id: doc.id,
+            type: 'article_submitted' as const,
+            title: 'Yeni haber onay bekliyor',
+            message: (d.title as string) ?? 'Başlık yok',
+            href: '/admin/news?filter=pending',
+            isRead: false,
+            createdAt,
+          }
+        })
+        setNotifs(items)
+      },
+      () => setNotifs([])
+    )
     return unsub
   }, [])
 
@@ -60,19 +64,17 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
     <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-2xl">
       <div className="flex items-center justify-between border-b border-[rgb(var(--color-border))] px-4 py-3">
         <span className="text-sm font-bold text-[rgb(var(--color-text))]">Bildirimler</span>
-        {notifs.length > 0 && (
-          <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
+        {notifs.length > 0 ? (
+          <span className="rounded-full bg-[rgb(var(--color-brand))] px-2 py-0.5 text-[10px] font-bold text-white">
             {notifs.length}
           </span>
-        )}
+        ) : null}
       </div>
       {notifs.length === 0 ? (
-        <div className="px-4 py-8 text-center text-sm text-[rgb(var(--color-muted))]">
-          Yeni bildirim yok
-        </div>
+        <div className="px-4 py-8 text-center text-sm text-[rgb(var(--color-muted))]">Yeni bildirim yok</div>
       ) : (
         <div className="max-h-72 overflow-y-auto">
-          {notifs.map(notif => (
+          {notifs.map((notif) => (
             <Link
               key={notif.id}
               href={notif.href ?? '#'}
@@ -92,8 +94,12 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
         </div>
       )}
       <div className="border-t border-[rgb(var(--color-border))] px-4 py-2">
-        <Link href="/admin/news?filter=pending" onClick={onClose} className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400">
-          Tümünü gör →
+        <Link
+          href="/admin/news?filter=pending"
+          onClick={onClose}
+          className="text-xs font-semibold text-[rgb(var(--color-brand))] hover:underline"
+        >
+          Onay kuyruğunu aç →
         </Link>
       </div>
     </div>
@@ -107,105 +113,162 @@ interface CMSHeaderProps {
 }
 
 export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
-  const { user, role, can } = useCmsAuth()
+  const { can } = useCmsAuth()
   const [notifOpen, setNotifOpen] = useState(false)
+  const [cmdOpen, setCmdOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
-  const [seenAt, setSeenAt] = useState<number>(0)
+  const [seenAt, setSeenAt] = useState(0)
 
-  // Load seen timestamp from localStorage on mount
+  const openCommand = useCallback(() => setCmdOpen(true), [])
+  useAdminCommandHotkey(openCommand)
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(SEEN_KEY)
       if (stored) setSeenAt(Number(stored))
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [])
 
-  // Badge count: getCountFromServer + 2 dakika polling (onSnapshot yerine — reads azaltır)
   useEffect(() => {
     let cancelled = false
     const fetchCount = async () => {
       try {
-        const q = seenAt > 0
-          ? query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'), where('createdAt', '>', seenAt))
-          : query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))
+        const q =
+          seenAt > 0
+            ? query(
+                collection(db, 'newsDrafts'),
+                where('draftStatus', '==', 'pending_review'),
+                where('createdAt', '>', seenAt)
+              )
+            : query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))
         const snap = await getCountFromServer(q)
         if (!cancelled) setPendingCount(snap.data().count)
-      } catch { /* sessizce atla */ }
+      } catch {
+        /* ignore */
+      }
     }
-    fetchCount()
+    void fetchCount()
     const interval = setInterval(fetchCount, 2 * 60 * 1000)
-    return () => { cancelled = true; clearInterval(interval) }
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [seenAt])
 
   function openNotifications() {
     const now = Date.now()
-    try { localStorage.setItem(SEEN_KEY, String(now)) } catch {}
+    try {
+      localStorage.setItem(SEEN_KEY, String(now))
+    } catch {
+      /* ignore */
+    }
     setSeenAt(now)
     setPendingCount(0)
-    setNotifOpen(o => !o)
+    setNotifOpen((o) => !o)
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))]/95 px-6 py-4 backdrop-blur-sm">
-      {/* Page title */}
-      <div className="min-w-0">
-        <h1 className="truncate text-xl font-black tracking-tight text-[rgb(var(--color-text))]">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="truncate text-sm text-[rgb(var(--color-muted))]">{subtitle}</p>
-        )}
-      </div>
-
-      {/* Right actions */}
-      <div className="flex shrink-0 items-center gap-2">
-        {actions}
-
-        {can('news:create') && (
-          <Link
-            href="/admin/news/create"
-            className="hidden items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 sm:flex"
-          >
-            <Plus className="h-4 w-4" />
-            Yeni Haber
-          </Link>
-        )}
-
-        {/* Notifications */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={openNotifications}
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
-          >
-            <Bell className="h-4 w-4" />
-            {pendingCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                {pendingCount > 9 ? '9+' : pendingCount}
-              </span>
-            )}
-          </button>
-          {notifOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-              <div className="z-50">
-                <NotificationDropdown onClose={() => setNotifOpen(false)} />
-              </div>
-            </>
-          )}
+    <>
+      <header className="sticky top-0 z-30 hidden items-center gap-3 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))]/95 px-4 py-3 backdrop-blur-sm md:flex sm:px-6">
+        <div className="min-w-0 shrink">
+          <h1 className="truncate text-lg font-bold tracking-tight text-[rgb(var(--color-text))] sm:text-xl">
+            {title}
+          </h1>
+          {subtitle ? (
+            <p className="truncate text-xs text-[rgb(var(--color-muted))] sm:text-sm">{subtitle}</p>
+          ) : null}
         </div>
 
-        {/* Preview site */}
-        <a
-          href={getSiteUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
-          title="Siteyi Önizle"
+        <button
+          type="button"
+          onClick={openCommand}
+          className="mx-auto hidden min-w-0 max-w-md flex-1 items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-left text-sm text-[rgb(var(--color-muted))] transition-colors hover:border-[rgb(var(--color-brand))]/30 hover:text-[rgb(var(--color-text))] md:flex"
         >
-          <ExternalLink className="h-4 w-4" />
-        </a>
-      </div>
-    </header>
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">Haber, kişi, kaynak veya komut ara…</span>
+          <kbd className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5 text-[10px] font-semibold">
+            ⌘K
+          </kbd>
+        </button>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {actions}
+
+          <button
+            type="button"
+            onClick={openCommand}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] md:hidden"
+            aria-label="Ara"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+
+          {can('news:create') ? (
+            <Link
+              href="/admin/news/create"
+              className="hidden items-center gap-1.5 rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 sm:flex"
+            >
+              <Plus className="h-4 w-4" />
+              Yeni Haber
+            </Link>
+          ) : null}
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={openNotifications}
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
+              aria-label="Bildirimler"
+            >
+              <Bell className="h-4 w-4" />
+              {pendingCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] px-0.5 text-[9px] font-bold text-white">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              ) : null}
+            </button>
+            {notifOpen ? (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                <NotificationDropdown onClose={() => setNotifOpen(false)} />
+              </>
+            ) : null}
+          </div>
+
+          <a
+            href={getSiteUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
+            title="Siteyi Önizle"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
+      </header>
+
+      <AdminCommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
+    </>
+  )
+}
+
+export function CMSRefreshButton({
+  loading,
+  onClick,
+}: {
+  loading?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
+    >
+      <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+      <span className="hidden sm:inline">Yenile</span>
+    </button>
   )
 }

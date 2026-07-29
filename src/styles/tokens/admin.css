@@ -1,0 +1,54 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * NaHaber CMS — Admin design tokens
+ * Calm newsroom surfaces; brand red only for primary actions / urgency.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --admin-bg: var(--bg-base);
+  --admin-surface: var(--bg-card);
+  --admin-surface-secondary: var(--bg-subtle, 248 249 251);
+  --admin-border: var(--border-default);
+  --admin-text: var(--text-primary);
+  --admin-muted: var(--text-tertiary);
+  --admin-brand: var(--brand-500);
+  --admin-success: 16 185 129;
+  --admin-warning: 245 158 11;
+  --admin-danger: 239 68 68;
+  --admin-info: 59 130 246;
+  --admin-ai: 139 92 246;
+  --admin-sidebar: 13 17 23;
+  --admin-sidebar-text: 203 213 225;
+  --admin-radius: 14px;
+  --admin-radius-sm: 10px;
+}
+
+.admin-shell {
+  background: rgb(var(--admin-bg));
+  color: rgb(var(--admin-text));
+}
+
+.admin-surface {
+  background: rgb(var(--admin-surface));
+  border: 1px solid rgb(var(--admin-border));
+  border-radius: var(--admin-radius);
+}
+
+.admin-kpi-value {
+  font-size: clamp(1.65rem, 2vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-section-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: rgb(var(--admin-text));
+}
+
+.admin-meta {
+  font-size: 0.75rem;
+  color: rgb(var(--admin-muted));
+}

@@ -38,7 +38,7 @@ export default function AdminNewsEditPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-0 md:p-6 lg:p-8">
       <AdminNewsEditor
         mode="edit"
         variant="page"
