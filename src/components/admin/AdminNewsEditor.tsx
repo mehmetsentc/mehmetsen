@@ -120,15 +120,19 @@ export function AdminNewsEditor({
   const [spot, setSpot] = useState(post?.spot ?? '')
   const [categoryId, setCategoryId] = useState(post?.categoryId ?? '')
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
-  const [citySlug, setCitySlug] = useState((post as (Post & { citySlug?: string }) | undefined)?.citySlug ?? '')
-  const [districtSlug, setDistrictSlug] = useState((post as (Post & { districtSlug?: string }) | undefined)?.districtSlug ?? '')
-  const [countrySlug, setCountrySlug] = useState(() =>
-    resolveCountrySlug(
+  const [citySlug, setCitySlug] = useState((post as (Post & { citySlug?: string }) | undefined)?.citySlug?.trim() ?? '')
+  const [districtSlug, setDistrictSlug] = useState(post?.districtSlug?.trim() ?? '')
+  const [countrySlug, setCountrySlug] = useState(() => {
+    // Domestic articles store citySlug for location; don't resolve country from 'Türkiye'
+    // — doing so makes countrySlug truthy and hides the city dropdown on re-edit.
+    const existingCitySlug = (post as (Post & { citySlug?: string }) | undefined)?.citySlug?.trim()
+    if (existingCitySlug) return ''
+    return resolveCountrySlug(
       (post as (Post & { countrySlug?: string }) | undefined)?.countrySlug,
       (post as (Post & { country?: string; location?: { country?: string } }) | undefined)?.country
         ?? (post as (Post & { location?: { country?: string } }) | undefined)?.location?.country
     )
-  )
+  })
   const isWorldCategory = categoryId === 'dunya'
   const availableDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
   const [thumbnail, setThumbnail] = useState(post?.coverImageUrl ?? '')
@@ -299,6 +303,7 @@ export function AdminNewsEditor({
             citySlug,
             city: TURKISH_PROVINCES.find((p) => p.slug === citySlug)?.name ?? citySlug,
             country: 'Türkiye',
+            countrySlug: '',  // Domestic article — clear any stale countrySlug
             ...(districtSlug ? { districtSlug } : {}),
           }
         : {}),
@@ -510,6 +515,8 @@ export function AdminNewsEditor({
         seoKeywords,
         isBreaking,
         featured,
+        citySlug: citySlug || undefined,
+        districtSlug: districtSlug || undefined,
       }
 
       if (variant === 'drawer') {

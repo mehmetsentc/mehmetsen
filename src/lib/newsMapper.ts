@@ -26,6 +26,7 @@ export interface NewsDocument {
   city?: string
   district?: string
   citySlug?: string
+  districtSlug?: string
   location?: PostLocation | null
   tags?: string[]
   videoUrl?: string
@@ -413,6 +414,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     categoryId: data.categoryId?.trim() || data.category?.trim() || '',
     city: data.city?.trim() || null,
     citySlug: data.citySlug?.trim() || null,
+    districtSlug: data.districtSlug?.trim() || null,
     location: data.location ?? null,
     tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
     postType,
