@@ -38,7 +38,7 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
   if (!apiKey) return null
   try {
     const res = await fetch(`${FIREBASE_URL}/${id}?key=${apiKey}`, {
-      next: { revalidate: 60 },  // 1 dk — admin görseli düzeltince hızlı yansıt
+      cache: 'no-store',  // Sosyal paylaşım anında taze veri — stale OG görseli üretme
     })
     if (!res.ok) return null
     const data = await res.json() as { fields?: Record<string, { stringValue?: string }> }

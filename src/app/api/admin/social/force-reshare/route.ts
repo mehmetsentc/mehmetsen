@@ -176,8 +176,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Yeni OG görseli — fix sonrası doğru görsel gelir
-    const socialImageUrl = `https://nahaber.com/api/og/social/${id}`
+    // ?v=timestamp → CDN + data cache bypass — her zaman taze OG görseli
+    const socialImageUrl = `https://nahaber.com/api/og/social/${id}?v=${Date.now()}`
     const hashtagStr = socialContent.hashtags.join(' ')
     const fullCaption = [
       socialContent.caption,

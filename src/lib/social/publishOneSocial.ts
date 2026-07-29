@@ -138,7 +138,8 @@ export async function publishOneSocial(newsId: string): Promise<void> {
     }
 
     // ── Görsel ve caption ────────────────────────────────────────────────────
-    const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}`
+    // ?v=timestamp → Vercel CDN + Next.js data cache bypass → taze OG görseli garantiler
+    const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}?v=${Date.now()}`
     const hashtagStr     = socialContent.hashtags.join(' ')
     const fullCaption    = [
       socialContent.caption,
