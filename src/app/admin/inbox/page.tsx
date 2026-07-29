@@ -6,6 +6,24 @@ import { CMSHeader } from '@/components/admin/CMSHeader'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { cn } from '@/lib/utils'
 import type { GmailMessageSummary, GmailMessageDetail } from '@/lib/gmail/types'
+import { auth } from '@/lib/firebase/auth'
+
+/** Returns current user's Firebase ID token for API calls */
+async function getToken(): Promise<string> {
+  return (await auth.currentUser?.getIdToken()) ?? ''
+}
+
+/** Authenticated fetch wrapper */
+async function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  const token = await getToken()
+  return fetch(url, {
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +47,24 @@ function formatDate(dateStr: string): string {
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function NotConnectedState({ canManage }: { canManage: boolean }) {
+  const [connecting, setConnecting] = useState(false)
+  const [connectError, setConnectError] = useState('')
+
+  async function handleConnect() {
+    setConnecting(true)
+    setConnectError('')
+    try {
+      const r = await authFetch('/api/admin/gmail/connect')
+      const d = await r.json()
+      if (!r.ok || d.error) throw new Error(d.error ?? 'Bağlantı başlatılamadı')
+      // Redirect to Google OAuth consent screen
+      window.location.href = d.authUrl
+    } catch (e) {
+      setConnectError(e instanceof Error ? e.message : 'Bağlantı hatası')
+      setConnecting(false)
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-2xl p-4 sm:p-6">
       <section className="rounded-[14px] border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-6 sm:p-8">
@@ -51,14 +87,20 @@ function NotConnectedState({ canManage }: { canManage: boolean }) {
           </div>
         </div>
 
+        {connectError && (
+          <p className="mt-3 text-sm text-red-400">{connectError}</p>
+        )}
+
         {canManage ? (
-          <a
-            href="/api/admin/gmail/connect"
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[rgb(var(--color-brand))] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+          <button
+            type="button"
+            onClick={handleConnect}
+            disabled={connecting}
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[rgb(var(--color-brand))] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
           >
-            <Mail className="h-4 w-4" />
-            Gmail Bağla
-          </a>
+            {connecting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            {connecting ? 'Yönlendiriliyor…' : 'Gmail Bağla'}
+          </button>
         ) : (
           <p className="mt-4 text-sm text-[rgb(var(--color-muted))]">
             Bağlantıyı yalnızca süper admin veya sistem ayarı yetkisi olanlar yapılandırabilir.
@@ -149,7 +191,7 @@ function MessageDetail({
     setMsg(null)
     setDraftId(null)
     setError('')
-    fetch(`/api/admin/gmail/messages/${messageId}`)
+    authFetch(`/api/admin/gmail/messages/${messageId}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error)
@@ -163,7 +205,7 @@ function MessageDetail({
     if (!canCreate || converting) return
     setConverting(true)
     try {
-      const r = await fetch(`/api/admin/gmail/messages/${messageId}/to-draft`, { method: 'POST' })
+      const r = await authFetch(`/api/admin/gmail/messages/${messageId}/to-draft`, { method: 'POST' })
       const d = await r.json()
       if (d.error) throw new Error(d.error)
       setDraftId(d.draftId)
@@ -265,7 +307,7 @@ export default function AdminInboxPage() {
   const fetchStatus = useCallback(async () => {
     setStatusLoading(true)
     try {
-      const r = await fetch('/api/admin/gmail/status')
+      const r = await authFetch('/api/admin/gmail/status')
       if (r.status === 500) { setEnvMissing(true); return }
       const d = await r.json()
       setStatus(d)
@@ -280,7 +322,7 @@ export default function AdminInboxPage() {
     setMsgLoading(true)
     try {
       const url = `/api/admin/gmail/messages?maxResults=25${pageToken ? `&pageToken=${pageToken}` : ''}`
-      const r = await fetch(url)
+      const r = await authFetch(url)
       const d = await r.json()
       if (d.error) return
       setMessages((prev) => pageToken ? [...prev, ...(d.messages ?? [])] : (d.messages ?? []))
@@ -299,7 +341,7 @@ export default function AdminInboxPage() {
     if (!confirm('Gmail bağlantısını kesmek istediğinizden emin misiniz?')) return
     setDisconnecting(true)
     try {
-      await fetch('/api/admin/gmail/disconnect', { method: 'POST' })
+      await authFetch('/api/admin/gmail/disconnect', { method: 'POST' })
       setStatus({ connected: false })
       setMessages([])
       setSelectedId(null)

@@ -21,7 +21,8 @@ export async function GET(request: Request) {
     const encodedState = Buffer.from(state).toString('base64url')
 
     const authUrl = buildAuthUrl(encodedState)
-    return NextResponse.redirect(authUrl)
+    // Return JSON so the client can redirect (fetch can't follow cross-origin redirects with auth headers)
+    return NextResponse.json({ authUrl })
   } catch (err) {
     console.error('[gmail/connect]', err)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
