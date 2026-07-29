@@ -9,8 +9,10 @@ import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
+import { routeEditorial } from '@/lib/ai/editorial/editorRouter'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 import type { AiPromptType } from '@/types/aiEditor'
+import { TURKISH_PROVINCES } from '@/constants/cities'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,12 +38,12 @@ function stripAiHtmlLeak(text: string): string {
 }
 const CATEGORY_LIST = DEFAULT_CATEGORIES.map((category) => `${category.id}: ${category.name}`).join(', ')
 
-/** CMS tek-tuş: editör tarzı + dikkat çekici manşet, JSON şeması korunur */
+/** CMS tek-tuş: editör tarzı + net manşet, JSON şeması korunur */
 const PERSONA_ATTENTION_LOCK = `
-CMS TEK-TUŞ GÖREVİ — DİKKAT ÇEKİCİ HABER:
+CMS TEK-TUŞ GÖREVİ — UZMAN AI EDİTÖR:
 - Bu AI editörün karakter, ton ve yazım talimatlarına SIKI uy; genel anonim haber dili kullanma
-- Manşet güçlü, merak uyandıran, akılda kalıcı olsun; uydurma / abartılı clickbait / "şok" clickbait YASAK
-- Spot okuyucuyu ilk 2 cümlede yakalasın; 5W+1H eksiksiz
+- Manşet net, spesifik ve doğru olsun; uydurma / abartılı clickbait / "şok" clickbait YASAK
+- Spot okuyucuyu ilk 2 cümlede bilgilendirsin; 5W+1H eksiksiz
 - Gövde editörün tarzında olsun (kelime seçimi, tempo, vurgu); ansiklopedi / okul kompozisyonu yazma
 - Kaynakta olmayan sayı, alıntı, olay uydurma
 - content: ## H2 kullan (# H1 yok); en fazla 2-3 kısa bölüm; 250-450 kelime hedef (asgari ~220)
@@ -185,6 +187,11 @@ export async function POST(request: Request) {
     imageUrls?: string[]
     aiEditorId?: string
     articleFormat?: ArticleFormatAssist
+    autoRoute?: boolean
+    categoryId?: string
+    citySlug?: string
+    districtSlug?: string
+    isBreaking?: boolean
   }
   try {
     body = await request.json() as {
@@ -194,6 +201,11 @@ export async function POST(request: Request) {
       imageUrls?: string[]
       aiEditorId?: string
       articleFormat?: ArticleFormatAssist
+      autoRoute?: boolean
+      categoryId?: string
+      citySlug?: string
+      districtSlug?: string
+      isBreaking?: boolean
     }
   }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
@@ -203,6 +215,7 @@ export async function POST(request: Request) {
 
   const userMessage = mode === 'trends' ? 'Türkiye gündemini analiz et.' : input.trim() || 'Haber içeriği sağlanmadı.'
   const selectedAiEditorId = body.aiEditorId?.trim() || ''
+  const autoRoute = body.autoRoute === true || selectedAiEditorId === '__auto__'
   const articleFormat: ArticleFormatAssist =
     body.articleFormat === 'column' || body.articleFormat === 'analysis'
       ? body.articleFormat
@@ -214,14 +227,37 @@ export async function POST(request: Request) {
       editorName: string
       editorSlug: string
       promptVersions: Record<string, number>
+      routeConfidence?: number
+      routeReason?: string
+      secondaryEditorSlug?: string | null
+      suggestedCategoryId?: string | null
+      suggestedCitySlug?: string | null
+      suggestedDistrictSlug?: string | null
     } | null = null
     let systemPrompt = SYSTEM_PROMPTS[mode]
 
     if (
-      selectedAiEditorId &&
+      (selectedAiEditorId || autoRoute) &&
       (mode === 'publish-ready' || mode === 'create' || mode === 'rewrite')
     ) {
-      const editor = await getAiEditorById(selectedAiEditorId)
+      let editor = selectedAiEditorId && !autoRoute
+        ? await getAiEditorById(selectedAiEditorId)
+        : null
+
+      let routeMeta: Awaited<ReturnType<typeof routeEditorial>> | null = null
+      if (autoRoute || !editor) {
+        routeMeta = await routeEditorial({
+          preferredAiEditorId: autoRoute ? null : selectedAiEditorId || null,
+          categoryId: body.categoryId || null,
+          citySlug: body.citySlug || null,
+          districtSlug: body.districtSlug || null,
+          isBreaking: body.isBreaking === true,
+          articleFormat,
+          text: input,
+        })
+        editor = routeMeta.editor
+      }
+
       if (!editor || editor.status === 'archived') {
         return NextResponse.json({ error: 'Geçersiz veya arşivlenmiş AI editör' }, { status: 400 })
       }
@@ -231,14 +267,20 @@ export async function POST(request: Request) {
           : articleFormat === 'analysis'
             ? 'analysis'
             : 'news'
+      const provinceName = routeMeta?.citySlug
+        ? TURKISH_PROVINCES.find((p) => p.slug === routeMeta.citySlug)?.name
+        : undefined
       const built = await buildEditorPrompt({
         editor,
         task,
         sourceTitle: input.split('\n').find((line) => line.trim())?.slice(0, 200),
         sourceBody: input,
+        categoryId: routeMeta?.categoryId || body.categoryId || undefined,
+        province: provinceName,
+        district: routeMeta?.districtSlug || body.districtSlug || undefined,
         extraUserNotes:
           mode === 'publish-ready'
-            ? 'CMS formundan tek tuşla yayıma hazır, dikkat çekici haber üret.'
+            ? 'CMS formundan tek tuşla yayıma hazır, net ve olgusal haber üret.'
             : undefined,
       })
       systemPrompt = [
@@ -251,6 +293,12 @@ export async function POST(request: Request) {
         editorName: editor.name,
         editorSlug: editor.slug,
         promptVersions: built.promptVersions as Record<string, number>,
+        routeConfidence: routeMeta?.confidence,
+        routeReason: routeMeta?.reason,
+        secondaryEditorSlug: routeMeta?.secondaryEditorSlug ?? null,
+        suggestedCategoryId: routeMeta?.categoryId ?? null,
+        suggestedCitySlug: routeMeta?.citySlug ?? null,
+        suggestedDistrictSlug: routeMeta?.districtSlug ?? null,
       }
     }
 
@@ -351,8 +399,15 @@ export async function POST(request: Request) {
       const tags = Array.isArray(parsed.tags)
         ? parsed.tags.map(String).map((tag) => tag.trim().toLowerCase()).filter(Boolean).slice(0, 8)
         : []
+      const routedCategory =
+        personaMeta?.suggestedCategoryId &&
+        CATEGORY_IDS.has(personaMeta.suggestedCategoryId)
+          ? personaMeta.suggestedCategoryId
+          : null
       const categoryId = applyAstrologyCategoryOverride(
-        CATEGORY_IDS.has(categoryCandidate) ? categoryCandidate : 'gundem',
+        CATEGORY_IDS.has(categoryCandidate)
+          ? categoryCandidate
+          : routedCategory || 'gundem',
         title,
         content,
         tags
@@ -409,6 +464,12 @@ export async function POST(request: Request) {
         liveResearchUsed: Boolean(research),
         aiEditorId: personaMeta?.aiEditorId ?? null,
         editorName: personaMeta?.editorName ?? null,
+        editorSlug: personaMeta?.editorSlug ?? null,
+        routeConfidence: personaMeta?.routeConfidence ?? null,
+        routeReason: personaMeta?.routeReason ?? null,
+        secondaryEditorSlug: personaMeta?.secondaryEditorSlug ?? null,
+        suggestedCitySlug: personaMeta?.suggestedCitySlug ?? null,
+        suggestedDistrictSlug: personaMeta?.suggestedDistrictSlug ?? null,
         articleFormat,
         promptVersions: personaMeta?.promptVersions ?? null,
       })

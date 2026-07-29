@@ -13,6 +13,8 @@ export interface PromptBuildInput {
   sourceBody?: string
   sourceUrl?: string
   categoryId?: string
+  province?: string
+  district?: string
   extraUserNotes?: string
 }
 
@@ -45,13 +47,30 @@ export async function buildEditorPrompt(input: PromptBuildInput): Promise<BuiltP
   const core = await getActivePrompt(input.editor.id, 'core')
   const taskPrompt = await getActivePrompt(input.editor.id, input.task)
 
+  const locationBlock =
+    input.province || input.district
+      ? [
+          'YEREL MASA BAĞLAMI (dinamik — persona promptuna gömülü sabit olay bilgisi değil):',
+          input.province ? `İl: ${input.province}` : '',
+          input.district ? `İlçe: ${input.district}` : '',
+          'Konumu doğal kullan; genel şehir övgüsü doldurma; il/ilçe karıştırma.',
+          'Ulusal önemdeyse yükseltme bayrağı öner.',
+        ]
+          .filter(Boolean)
+          .join('\n')
+      : ''
+
   const systemParts = [
     core?.content?.trim() ||
       `Sen ${input.editor.name}, ${input.editor.title} (NaHaber AI Editörü). Olgu temelli Türkçe gazete dili. Kaynakta olmayan bilgi uydurma.`,
     taskPrompt?.content?.trim() || '',
     input.task === 'news' || input.task === 'breaking' ? NEWS_FORMAT_LOCK : '',
     input.categoryId ? `Kategori bağlamı: ${input.categoryId}` : '',
-    'Yarım cümle bırakma. Caption metnini H2 yapma.',
+    locationBlock,
+    input.editor.editorialMission
+      ? `Editöryal görev: ${input.editor.editorialMission}`
+      : '',
+    'Yarım cümle bırakma. Caption metnini H2 yapma. Sen bir AI editörsün; insan çalışan gibi sahte kimlik uydurma.',
   ].filter(Boolean)
 
   const sourceBlock = [

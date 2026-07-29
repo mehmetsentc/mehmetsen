@@ -467,6 +467,11 @@ export async function processNewsroomArticle(
           isBreaking: workingInput.isBreaking,
           preferredAiEditorId: workingInput.preferredAiEditorId,
           articleFormat: workingInput.articleFormat ?? 'standard',
+          text: [workingInput.originalTitle, workingInput.originalSummary, workingInput.originalContent]
+            .filter(Boolean)
+            .join('\n')
+            .slice(0, 4000),
+          citySlug: workingInput.forcedCitySlug ?? null,
         }).catch(() => null)
 
     let personaSystem: string | undefined
@@ -483,6 +488,8 @@ export async function processNewsroomArticle(
           sourceBody: workingInput.originalContent || workingInput.originalSummary,
           sourceUrl: workingInput.sourceUrl,
           categoryId: workingInput.forcedCategoryId,
+          province: workingInput.forcedCity,
+          district: workingInput.forcedDistrict,
         })
         personaSystem = built.system
         personaUser = built.user
@@ -770,6 +777,11 @@ export async function processNewsroomArticle(
         categoryId: resolvedCategory,
         isBreaking,
         articleFormat: workingInput.articleFormat ?? 'standard',
+        text: [workingInput.originalTitle, workingInput.originalSummary]
+          .filter(Boolean)
+          .join('\n')
+          .slice(0, 2000),
+        citySlug: workingInput.forcedCitySlug ?? null,
       }).catch(() => null)
       if (byCategory) publishEditor = byCategory
     }

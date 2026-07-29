@@ -37,18 +37,9 @@ export function DesktopBreakingTicker({ items }: DesktopBreakingTickerProps) {
   const item = items[index] ?? items[0]!
 
   return (
-    <div
-      className="mb-4 flex h-9 overflow-hidden border border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/25"
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      <Link
-        href={ROUTES.CATEGORY('son-dakika')}
-        className="flex shrink-0 items-center bg-red-600 px-3 transition-colors hover:bg-red-700"
-      >
-        <span className="text-[10px] font-black uppercase tracking-[0.14em] text-white">
-          Son Dakika
-        </span>
+    <div className="nl-breaking-ticker mb-4" aria-live="polite" aria-atomic="true">
+      <Link href={ROUTES.CATEGORY('son-dakika')} className="nl-breaking-ticker__label">
+        Son Dakika
       </Link>
 
       <Link
@@ -65,7 +56,7 @@ export function DesktopBreakingTicker({ items }: DesktopBreakingTickerProps) {
           {item.title}
         </p>
         {items.length > 1 ? (
-          <span className="hidden shrink-0 text-[10px] font-bold tabular-nums text-red-600 sm:inline">
+          <span className="hidden shrink-0 text-[10px] font-bold tabular-nums text-[rgb(var(--color-brand))] sm:inline">
             {index + 1}/{items.length}
           </span>
         ) : null}

@@ -5,8 +5,10 @@ import {
   promptDocId,
   syntheticAiAuthorUid,
   type AiEditorDocument,
+  type AiEditorLocalConfig,
   type AiEditorPromptDocument,
   type AiEditorStatus,
+  type AiPersonaType,
   type AiPromptType,
   type AiPublishPolicy,
 } from '@/types/aiEditor'
@@ -142,6 +144,14 @@ export interface CreateAiEditorInput {
   allowedSourceIds?: string[]
   prompts?: Partial<Record<AiPromptType, string>>
   createdBy?: string | null
+  personaType?: AiPersonaType
+  desk?: string
+  editorialMission?: string
+  tone?: string
+  temperature?: number
+  fallbackEditorSlug?: string | null
+  localConfig?: AiEditorLocalConfig | null
+  assignableForNews?: boolean
 }
 
 export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEditorDocument> {
@@ -184,6 +194,14 @@ export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEdit
     modelAssignments: input.modelAssignments ?? {},
     preferredSourceIds: input.preferredSourceIds ?? [],
     allowedSourceIds: input.allowedSourceIds ?? [],
+    personaType: input.personaType,
+    desk: input.desk,
+    editorialMission: input.editorialMission,
+    tone: input.tone,
+    temperature: input.temperature,
+    fallbackEditorSlug: input.fallbackEditorSlug ?? null,
+    localConfig: input.localConfig ?? null,
+    assignableForNews: input.assignableForNews ?? true,
     version: 1,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
@@ -295,12 +313,59 @@ export async function archiveAiEditor(id: string): Promise<AiEditorDocument> {
 async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<'created' | 'updated' | 'skipped'> {
   const existing = await getAiEditorBySlug(spec.slug)
   if (existing && existing.status === 'active') {
-    // Seed personas: haber gelince düzenle → kategorile → yayına al
-    if (existing.publishPolicy !== 'AUTO_PUBLISH' && existing.publishPolicy !== 'DRAFT_ONLY') {
-      await updateAiEditor(existing.id, { publishPolicy: 'AUTO_PUBLISH' }, createdBy)
-      return 'updated'
-    }
-    return 'skipped'
+    await updateAiEditor(
+      existing.id,
+      {
+        title: spec.title,
+        shortBio: spec.shortBio,
+        bio: spec.bio,
+        columnName: spec.columnName,
+        primarySpecialization: spec.primarySpecialization,
+        specializations: spec.specializations,
+        categoryIds: spec.categoryIds,
+        capabilities: { ...DEFAULT_AI_CAPABILITIES, ...spec.capabilities },
+        personaType: spec.personaType,
+        desk: spec.desk,
+        editorialMission: spec.editorialMission,
+        tone: spec.tone,
+        temperature: spec.temperature,
+        fallbackEditorSlug: spec.fallbackEditorSlug ?? null,
+        localConfig: spec.localConfig ?? null,
+        assignableForNews: spec.assignableForNews ?? true,
+        publishPolicy:
+          existing.publishPolicy === 'DRAFT_ONLY' ? 'DRAFT_ONLY' : 'AUTO_PUBLISH',
+      },
+      createdBy
+    )
+    return 'updated'
+  }
+
+  if (existing && existing.status !== 'active') {
+    await updateAiEditor(
+      existing.id,
+      {
+        status: 'active',
+        title: spec.title,
+        shortBio: spec.shortBio,
+        bio: spec.bio,
+        columnName: spec.columnName,
+        primarySpecialization: spec.primarySpecialization,
+        specializations: spec.specializations,
+        categoryIds: spec.categoryIds,
+        capabilities: { ...DEFAULT_AI_CAPABILITIES, ...spec.capabilities },
+        personaType: spec.personaType,
+        desk: spec.desk,
+        editorialMission: spec.editorialMission,
+        tone: spec.tone,
+        temperature: spec.temperature,
+        fallbackEditorSlug: spec.fallbackEditorSlug ?? null,
+        localConfig: spec.localConfig ?? null,
+        assignableForNews: spec.assignableForNews ?? true,
+        publishPolicy: 'AUTO_PUBLISH',
+      },
+      createdBy
+    )
+    return 'updated'
   }
 
   await createAiEditor({
@@ -318,6 +383,14 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
     prompts: spec.prompts,
     publishPolicy: 'AUTO_PUBLISH',
     createdBy,
+    personaType: spec.personaType,
+    desk: spec.desk,
+    editorialMission: spec.editorialMission,
+    tone: spec.tone,
+    temperature: spec.temperature,
+    fallbackEditorSlug: spec.fallbackEditorSlug,
+    localConfig: spec.localConfig,
+    assignableForNews: spec.assignableForNews,
   })
   return 'created'
 }
@@ -358,7 +431,7 @@ export async function enableAutoPublishForActiveEditors(
 }
 
 /**
- * Mevcut editörlerin core/news(/breaking) prompt'larını seed'den yenile.
+ * Mevcut editörlerin prompt'larını seed'den yenile (versioned).
  * Karakter + haber tarzı bir kez güncellenir; sonraki haberlerde geçerli olur.
  */
 export async function refreshStylePromptsFromSeed(changedBy: string | null): Promise<{
@@ -367,44 +440,52 @@ export async function refreshStylePromptsFromSeed(changedBy: string | null): Pro
 }> {
   const updated: string[] = []
   const missing: string[] = []
+  const promptTypes: AiPromptType[] = [
+    'core',
+    'news',
+    'breaking',
+    'column',
+    'analysis',
+    'seo',
+    'review',
+    'video',
+    'source',
+  ]
   for (const spec of SEED_AI_EDITORS) {
     const existing = await getAiEditorBySlug(spec.slug)
     if (!existing) {
       missing.push(spec.slug)
       continue
     }
-    if (spec.prompts.core) {
+    await updateAiEditor(
+      existing.id,
+      {
+        title: spec.title,
+        shortBio: spec.shortBio,
+        bio: spec.bio,
+        columnName: spec.columnName,
+        primarySpecialization: spec.primarySpecialization,
+        specializations: spec.specializations,
+        categoryIds: spec.categoryIds,
+        personaType: spec.personaType,
+        desk: spec.desk,
+        editorialMission: spec.editorialMission,
+        tone: spec.tone,
+        temperature: spec.temperature,
+        fallbackEditorSlug: spec.fallbackEditorSlug ?? null,
+        localConfig: spec.localConfig ?? null,
+        assignableForNews: spec.assignableForNews ?? true,
+        capabilities: { ...DEFAULT_AI_CAPABILITIES, ...spec.capabilities },
+      },
+      changedBy
+    )
+    for (const promptType of promptTypes) {
+      const content = spec.prompts[promptType]
+      if (!content?.trim()) continue
       await setPromptVersion({
         editorId: existing.id,
-        promptType: 'core',
-        content: spec.prompts.core,
-        changedBy,
-        changeReason: 'refreshStylePromptsFromSeed',
-      })
-    }
-    if (spec.prompts.news) {
-      await setPromptVersion({
-        editorId: existing.id,
-        promptType: 'news',
-        content: spec.prompts.news,
-        changedBy,
-        changeReason: 'refreshStylePromptsFromSeed',
-      })
-    }
-    if (spec.prompts.breaking) {
-      await setPromptVersion({
-        editorId: existing.id,
-        promptType: 'breaking',
-        content: spec.prompts.breaking,
-        changedBy,
-        changeReason: 'refreshStylePromptsFromSeed',
-      })
-    }
-    if (spec.prompts.column) {
-      await setPromptVersion({
-        editorId: existing.id,
-        promptType: 'column',
-        content: spec.prompts.column,
+        promptType,
+        content,
         changedBy,
         changeReason: 'refreshStylePromptsFromSeed',
       })

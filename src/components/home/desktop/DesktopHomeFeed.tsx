@@ -173,15 +173,18 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
           <div className={HERO_SPLIT_MAIN}>
             <HeroImageOnly item={layout.heroLead!} priority aspect="wide" />
             <div className="mt-4">
-              <TextLeadStory item={layout.heroLead!} size="hero" />
+              <TextLeadStory item={layout.heroLead!} size="hero" dropCap />
             </div>
           </div>
 
           <aside className={HERO_SPLIT_ASIDE}>
-            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-              {layout.heroRight.map((item, i) => (
-                <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
-              ))}
+            <p className="nl-kicker mb-3">Highlights</p>
+            <div className="nl-kicker-bar mb-4">
+              <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 lg:grid-cols-1">
+                {layout.heroRight.map((item, i) => (
+                  <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
+                ))}
+              </div>
             </div>
           </aside>
         </section>
@@ -242,7 +245,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
           <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
           <div className="grid grid-cols-12 items-start gap-4">
             <div className="col-span-12 min-w-0 lg:col-span-6">
-              <TextLeadStory item={layout.featureLead} size="lg" />
+              <TextLeadStory item={layout.featureLead} size="lg" dropCap />
             </div>
             <div className="col-span-12 min-w-0 lg:col-span-6">
               <ImageStory item={layout.featureImage} aspect="wide" showSummary={false} />

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ROUTES } from '@/constants/routes'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
+import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
 import { WeatherMini } from '@/components/widgets/WeatherMini'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -19,19 +20,17 @@ export function DesktopRightRail({ mostRead, className }: DesktopRightRailProps)
     <aside className={className} aria-label="Yan sütun">
       <div className="desktop-newspaper-rail-sticky space-y-5">
         {top.length > 0 ? (
-          <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
-            <h3 className="mb-3 border-t-4 border-[rgb(var(--color-text))] pt-3 text-lg font-bold text-[rgb(var(--color-text))]">
-              Çok Okunanlar
-            </h3>
-            <ol className="space-y-3">
+          <div className="nl-highlights">
+            <h3 className="nl-highlights__title">Highlights</h3>
+            <ol className="m-0 list-none space-y-3 p-0">
               {top.map((item, i) => (
-                <li key={item.id} className="flex gap-3">
+                <li key={item.id} className="flex gap-3 border-b border-[rgb(var(--color-border))] pb-3 last:border-0 last:pb-0">
                   <span className="w-5 shrink-0 text-lg font-black tabular-nums text-[rgb(var(--color-brand))]">
-                    {i + 1}
+                    {String(i + 1).padStart(2, '0')}
                   </span>
                   <Link
                     href={newsItemDetailHref(item)}
-                    className="line-clamp-3 text-sm font-semibold leading-snug text-[rgb(var(--color-text))] hover:underline"
+                    className="line-clamp-3 font-serif text-sm font-semibold leading-snug text-[rgb(var(--color-text))] hover:underline"
                   >
                     {item.title}
                   </Link>
@@ -40,12 +39,14 @@ export function DesktopRightRail({ mostRead, className }: DesktopRightRailProps)
             </ol>
             <Link
               href={ROUTES.CATEGORY('gundem')}
-              className="mt-3 block text-xs font-semibold text-[rgb(var(--color-brand))] hover:underline"
+              className="mt-3 block text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-brand))] hover:underline"
             >
               Tümünü gör →
             </Link>
           </div>
         ) : null}
+
+        <DesktopInsideIndex />
 
         <DesktopNewsletterSignup />
 

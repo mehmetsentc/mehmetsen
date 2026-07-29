@@ -53,8 +53,42 @@ interface ProfessionalAiResult {
   researchSources?: Array<{ title: string; url: string }>
   liveResearchUsed?: boolean
   editorName?: string | null
+  editorSlug?: string | null
   aiEditorId?: string | null
+  routeConfidence?: number | null
+  routeReason?: string | null
+  secondaryEditorSlug?: string | null
+  suggestedCitySlug?: string | null
+  suggestedDistrictSlug?: string | null
   error?: string
+}
+
+const AI_EDITOR_AUTO = '__auto__'
+
+type AiEditorOption = {
+  id: string
+  name: string
+  slug: string
+  title: string
+  desk?: string
+  personaType?: string
+  assignableForNews?: boolean
+  primarySpecialization?: string
+}
+
+function aiEditorGroupLabel(editor: AiEditorOption): string {
+  if (editor.personaType === 'columnist') return 'AI KÖŞE YAZARLARI'
+  if (editor.personaType === 'local_editor') return 'YEREL'
+  if (editor.personaType === 'breaking_editor') return 'SON DAKİKA'
+  if (editor.personaType === 'senior_editor') return 'GENEL'
+  if (
+    editor.personaType === 'seo_editor' ||
+    editor.personaType === 'copy_editor' ||
+    editor.personaType === 'verification_editor'
+  ) {
+    return 'İÇ AJANLAR'
+  }
+  return (editor.desk || editor.primarySpecialization || 'MASA').toLocaleUpperCase('tr-TR')
 }
 
 export type AdminNewsEditorMode = 'create' | 'edit'
@@ -115,8 +149,11 @@ export function AdminNewsEditor({
       ? post.articleFormat
       : 'standard'
   )
-  const [aiEditorId, setAiEditorId] = useState(post?.aiEditorId?.trim() ?? '')
-  const [aiEditors, setAiEditors] = useState<Array<{ id: string; name: string; slug: string; title: string }>>([])
+  const [aiEditorId, setAiEditorId] = useState(
+    post?.aiEditorId?.trim() ? post.aiEditorId.trim() : AI_EDITOR_AUTO
+  )
+  const [aiEditors, setAiEditors] = useState<AiEditorOption[]>([])
+  const [routedEditorLabel, setRoutedEditorLabel] = useState<string | null>(null)
   const [spot, setSpot] = useState(post?.spot ?? '')
   const [categoryId, setCategoryId] = useState(post?.categoryId ?? '')
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
@@ -207,7 +244,7 @@ export function AdminNewsEditor({
         })
         if (!res.ok) return
         const data = (await res.json()) as {
-          editors?: Array<{ id: string; name: string; slug: string; title: string }>
+          editors?: AiEditorOption[]
         }
         if (!cancelled) setAiEditors(data.editors ?? [])
       } catch {
@@ -270,7 +307,7 @@ export function AdminNewsEditor({
     bodyBlocks,
     articleLayout,
     articleFormat,
-    aiEditorId: aiEditorId || null,
+    aiEditorId: aiEditorId && aiEditorId !== AI_EDITOR_AUTO ? aiEditorId : null,
     spot,
     categoryId,
     status,
@@ -314,9 +351,48 @@ export function AdminNewsEditor({
     () => aiEditors.find((editor) => editor.id === aiEditorId) ?? null,
     [aiEditors, aiEditorId]
   )
+  const isAutoEditor = aiEditorId === AI_EDITOR_AUTO
+  const assignableEditors = useMemo(
+    () =>
+      aiEditors.filter(
+        (e) =>
+          e.assignableForNews !== false &&
+          e.personaType !== 'seo_editor' &&
+          e.personaType !== 'copy_editor' &&
+          e.personaType !== 'verification_editor'
+      ),
+    [aiEditors]
+  )
+  const editorsByGroup = useMemo(() => {
+    const map = new Map<string, AiEditorOption[]>()
+    for (const editor of assignableEditors) {
+      const group = aiEditorGroupLabel(editor)
+      const list = map.get(group) ?? []
+      list.push(editor)
+      map.set(group, list)
+    }
+    return [...map.entries()]
+  }, [assignableEditors])
+
+  const aiPrepareButtonLabel = useMemo(() => {
+    if (isAutoEditor) {
+      return routedEditorLabel
+        ? `${routedEditorLabel} ile haberi hazırla`
+        : '✨ Uzman AI Editörle Haberi Hazırla'
+    }
+    if (selectedAiEditor) {
+      const desk = selectedAiEditor.desk || selectedAiEditor.primarySpecialization || ''
+      if (selectedAiEditor.slug === 'deniz-erdem') return 'Deniz Erdem ile spor haberini hazırla'
+      if (selectedAiEditor.slug === 'burak-celik') return 'Burak Çelik ile yerel haberi hazırla'
+      if (selectedAiEditor.slug === 'arda-sahin') return 'Arda Şahin ile son dakika haberi hazırla'
+      if (selectedAiEditor.slug === 'kerem-aydin') return 'Kerem Aydın ile ekonomi haberini hazırla'
+      return `${selectedAiEditor.name} ile ${desk ? `${desk.toLocaleLowerCase('tr-TR')} ` : ''}haberi hazırla`
+    }
+    return 'Editör seçip hazırla'
+  }, [isAutoEditor, routedEditorLabel, selectedAiEditor])
 
   const runProfessionalAi = async (autoPublish: boolean, opts?: { requireEditor?: boolean }) => {
-    if (opts?.requireEditor && !aiEditorId) {
+    if (opts?.requireEditor && !isAutoEditor && !aiEditorId) {
       toast.error('Önce bir AI editör / yazar seçin')
       return
     }
@@ -345,9 +421,15 @@ export function AdminNewsEditor({
           mode: 'publish-ready',
           input: rawInput,
           imageUrls,
-          ...(aiEditorId
-            ? { aiEditorId, articleFormat }
-            : {}),
+          articleFormat,
+          autoRoute: isAutoEditor,
+          ...(isAutoEditor
+            ? {}
+            : { aiEditorId }),
+          ...(categoryId ? { categoryId } : {}),
+          ...(citySlug ? { citySlug } : {}),
+          ...(districtSlug ? { districtSlug } : {}),
+          isBreaking,
         }),
       })
       const data = await res.json() as ProfessionalAiResult
@@ -375,6 +457,21 @@ export function AdminNewsEditor({
       setSeoTitle(data.seoTitle?.trim() || nextTitle)
       setSeoDescription(data.seoDescription?.trim() || nextSummary)
       if (data.categoryId?.trim()) setCategoryId(data.categoryId.trim())
+      if (data.suggestedCitySlug?.trim()) setCitySlug(data.suggestedCitySlug.trim())
+      if (data.suggestedDistrictSlug?.trim()) setDistrictSlug(data.suggestedDistrictSlug.trim())
+      if (data.aiEditorId?.trim() && isAutoEditor) {
+        // Keep AUTO selected; show who was routed
+        const label = data.editorName
+          ? `${data.editorName}${data.editorSlug ? '' : ''}`
+          : null
+        if (data.editorName) {
+          const deskHint = aiEditors.find((e) => e.id === data.aiEditorId)?.desk
+          setRoutedEditorLabel(
+            deskHint ? `${data.editorName} — ${deskHint}` : data.editorName
+          )
+        }
+        void label
+      }
       if (Array.isArray(data.tags)) setTags(data.tags)
       if (Array.isArray(data.seoKeywords)) setSeoKeywords(data.seoKeywords)
       setThumbnail(nextThumbnail)
@@ -388,13 +485,16 @@ export function AdminNewsEditor({
       setStatus(nextStatus)
       setShowAiPreview(true)
 
-      const editorLabel = data.editorName?.trim() || selectedAiEditor?.name
+      const editorLabel =
+        data.editorName?.trim() ||
+        routedEditorLabel ||
+        selectedAiEditor?.name
       if (!autoPublish) {
         toast.success(
           editorLabel
             ? data.gateDecision === 'publish'
-              ? `${editorLabel} tarzında yayıma hazırlandı`
-              : `${editorLabel} tarzında hazırlandı; incelemeye alındı`
+              ? `${editorLabel} ile yayıma hazırlandı`
+              : `${editorLabel} ile hazırlandı; incelemeye alındı`
             : data.gateDecision === 'publish'
               ? 'Haber yayıma hazırlandı'
               : 'Haber hazırlandı; kalite kontrolü nedeniyle incelemeye alındı'
@@ -417,6 +517,9 @@ export function AdminNewsEditor({
         thumbnail: nextThumbnail,
         imageCaption: sanitizeCaptionValue(data.imageCaption) || imageCaption || nextTitle,
         additionalImages: nextAdditional,
+        aiEditorId: data.aiEditorId || (isAutoEditor ? null : aiEditorId) || null,
+        citySlug: data.suggestedCitySlug?.trim() || citySlug,
+        districtSlug: data.suggestedDistrictSlug?.trim() || districtSlug,
         aiResearchSources: Array.isArray(data.researchSources) ? data.researchSources : [],
         status: nextStatus,
       }
@@ -601,7 +704,7 @@ export function AdminNewsEditor({
       <div className="mb-2 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-amber-500" aria-hidden />
         <label className="text-xs font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">
-          AI Editör / Yazar tarzı
+          AI Newsroom — Editör
         </label>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -610,17 +713,30 @@ export function AdminNewsEditor({
             Editör
           </label>
           <select
-            value={aiEditorId}
-            onChange={(event) => setAiEditorId(event.target.value)}
+            value={aiEditorId || AI_EDITOR_AUTO}
+            onChange={(event) => {
+              setAiEditorId(event.target.value)
+              setRoutedEditorLabel(null)
+            }}
             className={fieldInputCls}
           >
+            <option value={AI_EDITOR_AUTO}>✨ Otomatik — NaHaber Akıllı Yönlendirme</option>
             <option value="">Manuel (CMS kullanıcısı)</option>
-            {aiEditors.map((editor) => (
-              <option key={editor.id} value={editor.id}>
-                {editor.name} — {editor.title}
-              </option>
+            {editorsByGroup.map(([group, list]) => (
+              <optgroup key={group} label={group}>
+                {list.map((editor) => (
+                  <option key={editor.id} value={editor.id}>
+                    {editor.name} — {editor.title}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
+          {isAutoEditor && routedEditorLabel && (
+            <p className="mt-1.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
+              Yönlendirildi: {routedEditorLabel}
+            </p>
+          )}
         </div>
         <div>
           <label className="mb-1 block text-[11px] font-semibold text-[rgb(var(--color-muted))]">
@@ -635,7 +751,7 @@ export function AdminNewsEditor({
             className={fieldInputCls}
           >
             <option value="standard">Haber</option>
-            <option value="column">Köşe yazısı</option>
+            <option value="column">Köşe yazısı (AI Köşe Yazarı)</option>
             <option value="analysis">Analiz</option>
           </select>
         </div>
@@ -643,7 +759,7 @@ export function AdminNewsEditor({
       <button
         type="button"
         onClick={() => void runProfessionalAi(false, { requireEditor: true })}
-        disabled={aiPreparing || mediaUploading || !aiEditorId}
+        disabled={aiPreparing || mediaUploading || (!isAutoEditor && !aiEditorId)}
         className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 px-4 py-3 text-sm font-black text-white shadow-md transition hover:from-amber-400 hover:to-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {aiPreparing ? (
@@ -651,15 +767,13 @@ export function AdminNewsEditor({
         ) : (
           <Sparkles className="h-4 w-4" />
         )}
-        {selectedAiEditor
-          ? `${selectedAiEditor.name} tarzıyla dikkat çekici haber hazırla`
-          : 'Editör seçip tek tuşla hazırla'}
+        {aiPrepareButtonLabel}
       </button>
       <p className="mt-2 text-[11px] leading-relaxed text-[rgb(var(--color-muted))]">
-        Ham metni (başlık/spot/özet/içerik) yazın → editör seçin → tek tuş. Karakter &amp; yazım
-        talimatları uygulanır; byline bu yazara bağlanır.{' '}
+        Varsayılan: otomatik masa yönlendirme (Spor→Deniz, Yerel→Burak, Ekonomi→Kerem…). AI
+        editörler şeffaf biçimde AI olarak etiketlenir; insan onayı nihai karardır.{' '}
         <a href="/admin/ai-editors" className="font-semibold underline hover:text-[rgb(var(--color-text))]">
-          Promptları yönet
+          AI Newsroom yönet
         </a>
       </p>
     </div>
@@ -682,8 +796,10 @@ export function AdminNewsEditor({
         >
           {aiPreparing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
           {selectedAiEditor
-            ? `${selectedAiEditor.name} tarzıyla hazırla`
-            : 'AI ile profesyonel hazırla'}
+            ? `${selectedAiEditor.name} ile hazırla`
+            : isAutoEditor
+              ? 'Uzman AI ile hazırla'
+              : 'AI ile profesyonel hazırla'}
         </button>
         <button
           type="button"

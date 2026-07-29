@@ -1401,7 +1401,8 @@
   }
 
   .desktop-newspaper {
-    font-family: var(--font-serif-display, Georgia, 'Times New Roman', 'Iowan Old Style', serif);
+    font-family: var(--font-inter, Inter, system-ui, sans-serif);
+    color: rgb(var(--nl-ink, var(--color-text)));
   }
 
   .desktop-newspaper .desktop-news-header,

@@ -1,11 +1,26 @@
 /**
  * Multi-Agent AI Editorial Newsroom V2 — persistent editor personas.
  * Distinct from newsroom worker EditorId (breaking-news, local-news, …).
+ *
+ * These are editorial AI agents, not human employees. UI may present them as
+ * newsroom personalities; disclosure must remain clear (isAI / AI Editörü).
  */
 
 export type AiEditorStatus = 'active' | 'disabled' | 'archived'
 
 export type AiPublishPolicy = 'DRAFT_ONLY' | 'REQUIRES_APPROVAL' | 'AUTO_PUBLISH'
+
+/** Capability / desk role — drive routing; names are presentation only. */
+export type AiPersonaType =
+  | 'desk_editor'
+  | 'local_editor'
+  | 'senior_editor'
+  | 'breaking_editor'
+  | 'seo_editor'
+  | 'verification_editor'
+  | 'video_editor'
+  | 'columnist'
+  | 'copy_editor'
 
 export type AiEditorTask =
   | 'news'
@@ -35,6 +50,15 @@ export type AiPromptType =
 export type AiProviderId = 'deepseek' | 'gemini' | 'openai'
 
 export type ArticleFormat = 'standard' | 'column' | 'analysis'
+
+export interface AiEditorLocalConfig {
+  /** Province slugs this local desk prioritizes (e.g. canakkale). */
+  provinces?: string[]
+  priorityProvinces?: string[]
+  districts?: string[]
+  autoDiscovery?: boolean
+  notes?: string
+}
 
 export interface AiModelAssignment {
   provider: AiProviderId
@@ -85,6 +109,21 @@ export interface AiEditorDocument {
   /** Preferred RSS / source ids (extend existing SOURCES) */
   preferredSourceIds: string[]
   allowedSourceIds: string[]
+  /** Desk role — routing uses this, not display name. */
+  personaType?: AiPersonaType
+  /** Human-readable desk label (Genel Yayın, Spor, Yerel, …). */
+  desk?: string
+  editorialMission?: string
+  tone?: string
+  /** Optional creativity hint for providers that support temperature. */
+  temperature?: number
+  fallbackEditorSlug?: string | null
+  localConfig?: AiEditorLocalConfig | null
+  /**
+   * When false, excluded from news auto-routing (SEO / copy / verification agents).
+   * Defaults to true when omitted (legacy docs).
+   */
+  assignableForNews?: boolean
   version: number
   createdAt: number
   updatedAt: number

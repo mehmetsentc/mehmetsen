@@ -6,10 +6,10 @@ interface DesktopSectionHeaderProps {
   title: string
   href?: string
   className?: string
-  variant?: 'default' | 'brand' | 'bbc'
+  variant?: 'default' | 'brand' | 'bbc' | 'nl'
 }
 
-export function DesktopSectionHeader({ title, href, className, variant = 'bbc' }: DesktopSectionHeaderProps) {
+export function DesktopSectionHeader({ title, href, className, variant = 'nl' }: DesktopSectionHeaderProps) {
   const content = (
     <>
       <span>{title}</span>
@@ -25,6 +25,7 @@ export function DesktopSectionHeader({ title, href, className, variant = 'bbc' }
       'border-t border-[rgb(var(--color-text))] pt-3 text-sm font-black uppercase tracking-wide text-[rgb(var(--color-text))]',
     variant === 'bbc' &&
       'border-t-4 border-[rgb(var(--color-text))] pt-4 text-2xl font-bold normal-case tracking-tight text-[rgb(var(--color-text))]',
+    variant === 'nl' && 'nl-section-header',
     className
   )
 

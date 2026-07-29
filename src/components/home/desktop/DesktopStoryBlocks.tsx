@@ -305,16 +305,31 @@ export function ImageStory({
   )
 }
 
-export function TextLeadStory({ item, size = 'lg' }: { item: NewsItem; size?: 'md' | 'lg' | 'hero' }) {
+export function TextLeadStory({
+  item,
+  size = 'lg',
+  dropCap = false,
+}: {
+  item: NewsItem
+  size?: 'md' | 'lg' | 'hero'
+  dropCap?: boolean
+}) {
   return (
     <article className="min-w-0">
       <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+        {item.breaking ? <span className="nl-kicker">Son Dakika</span> : null}
         <NewsTypeBadge item={item} />
         <StoryCategoryBadge item={item} />
       </div>
       <Headline item={item} size={size === 'hero' ? 'hero' : size} serif />
       {item.description ? (
-        <p className="mt-3 line-clamp-4 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+        <p
+          className={
+            dropCap
+              ? 'nl-dropcap mt-3 line-clamp-5 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]'
+              : 'mt-3 line-clamp-4 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]'
+          }
+        >
           {item.description}
         </p>
       ) : null}

@@ -28,7 +28,7 @@ LLM reality:
 
 Incomplete-sentence gate: `src/lib/ai/textCompleteness.ts` (must not regress).
 
-## V2 extension (this release)
+## V2 extension — multi-agent digital newsroom
 
 Persona layer on top of existing pipelines — **no third publish orchestrator**.
 
@@ -40,55 +40,59 @@ Persona layer on top of existing pipelines — **no third publish orchestrator**
 | Usage events (skeleton) | `aiUsageEvents` |
 | Public profile | `users` with `isAI: true`, `aiEditorId` |
 
-News fields added:
+News fields:
 
 - `aiEditorId` — persona id (stable)
 - `articleFormat` — `standard` \| `column` \| `analysis` (default `standard`)
-- Author byline fields (`authorId`, `authorUsername`, …) set from persona user when routed
+- Author byline fields set from persona user when routed
 
 Worker `editorId` / `editorType` unchanged.
 
+Routing: `src/lib/ai/editorial/editorRouter.ts` + `categoryHint.ts`  
+Local discovery queries: `localQueryBuilder.ts`  
+Composed prompts: `promptBuilder.ts` (GLOBAL + desk + location context + task)
+
+Personas are **AI editors / AI columnists** — not fake human employees. No fabricated credentials.
+
 ## Admin
 
-- `/admin/ai-editors` — list / create / seed
+- `/admin/ai-editors` — list / seed sync / style refresh
 - `/admin/ai-editors/[id]` — constitution, task prompts, models, policy, sandbox
-- Sidebar under Yapay Zeka
+- Article editor: default **✨ Otomatik** → `EditorialRouter` assigns specialist
 - Permissions: `editors:manage`, `ai:configure` (operate); `ai:use` (view)
 
-## Seed editors (idempotent)
+## Seed roster (idempotent sync)
 
-Selin Aras, Mert Karaca, Defne Aksoy, Kerem Aydın, Ece Yalın, Deniz Erdem, İpek Demir, Arda Şahin.
+Desk editors: Selin, Arda, Ece, Mert, Defne, Kerem, Deniz, Can, Leyla, İpek, Melis, Aslı, Derya, Emre, Zeynep, Baran, Burak, Oğuz  
 
-Default publish policy: **AUTO_PUBLISH** → ilgili persona düzenler, kategoriler ve kalite kapısından geçen haberi doğrudan yayına alır.
+Internal: Redaksiyon, SEO, Doğrulama  
 
-`DRAFT_ONLY` persona’lar her zaman `newsDrafts`’a düşer. Düşük güven / gate / moderasyon reddi hâlâ taslağa alır.
+Columnists: Alp, Derin, Koray, Lara, Eda, Deniz Alp  
 
-Queue drain: `/api/cron/newsroom/process-queue` her **5 dakikada** bir çalışır (`NEWSROOM_QUEUE_BATCH_SIZE` varsayılan 8).
+`POST /api/admin/ai-editors` `{ action: "seed" }` creates missing + syncs metadata.  
+`{ action: "refreshStylePrompts" }` versions prompts from seed.
+
+Default publish policy: **AUTO_PUBLISH** for pipeline personas (quality gates still apply). High-risk human approval remains via gates / CMS.
+
+## CMS auto-routing examples
+
+| Paste | Desk |
+|-------|------|
+| Çanakkale Biga yangın | Burak Çelik (yerel) |
+| Fenerbahçe transfer | Deniz Erdem |
+| TCMB faiz | Kerem Aydın |
+| Apple iPhone | Can Tunç |
+| CHP açıklama | Mert Karaca |
 
 ## Adding a new editor
 
-Admin → AI Editörler → Yeni (or API `POST /api/admin/ai-editors`). Creates `aiEditors` + synthetic `users` doc. Public profile at `/yazar/{slug}` appears automatically.
+Admin → AI Editörler → Yeni (or API). Creates `aiEditors` + synthetic `users` doc. Prefer `personaType` + `desk` + `categoryIds` over hardcoding names in logic.
 
 ## Changing models
 
 Edit `modelAssignments` on the editor (Admin UI). Secrets stay in Vercel env (`DEEPSEEK_API_KEY`).
 
 **Gemini cost control (default OFF):**
-- `LIVE_RESEARCH_ENABLED=1` — enables Gemini Google Search grounding (trend/admin research)
+- `LIVE_RESEARCH_ENABLED=1` — enables Gemini Google Search grounding
 - `GEMINI_VISION_ENABLED=1` — enables Gemini vision for image captions
 - Without these flags, newsroom uses DeepSeek only even if `GEMINI_API_KEY` is set.
-
-## Columns
-
-`articleFormat: 'column'` marks opinion pieces. Not mixed into breaking feeds. Column cron `/api/cron/newsroom/ai-columns` (daily 07:00 UTC) is idempotent and skips when there is nothing worth writing.
-
-## Later phases (not this PR)
-
-Memory retrieval, learning proposals, Editor-in-Chief layer, full cost dashboard, weekly review, homepage “Bugünün Yazarları”, prediction tracking.
-
-## Manual ops
-
-1. Deploy Firestore indexes / rules if changed
-2. Run seed once from Admin
-3. Confirm env keys already configured
-4. Deploy with `[deploy]` after smoke tests
