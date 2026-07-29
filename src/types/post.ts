@@ -153,6 +153,9 @@ export interface Post {
   additionalImages?: Array<{ url: string; caption?: string }>
   /** Kapak görseli SEO açıklaması (image sitemap + alt text) */
   imageCaption?: string | null
+  /** AI editör tekrar haber tespiti */
+  isDuplicate?: boolean
+  duplicateReason?: string
   publishedAt: string | null
   createdAt: string
   updatedAt: string

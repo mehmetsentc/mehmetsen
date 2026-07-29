@@ -239,6 +239,10 @@
     {
       "path": "/api/cron/analytics-cleanup",
       "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/cron/editorial-review",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

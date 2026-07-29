@@ -58,6 +58,7 @@ const FILTERS: { id: AdminNewsFilter; label: string; color: string }[] = [
   { id: 'all', label: 'Tümü', color: '' },
   { id: 'published', label: 'Yayında', color: 'text-emerald-600' },
   { id: 'pending', label: 'Onay Bekliyor', color: 'text-amber-600' },
+  { id: 'duplicate', label: 'Tekrar Haber', color: 'text-orange-600' },
   { id: 'draft', label: 'Taslak', color: 'text-blue-600' },
   { id: 'removed', label: 'Kaldırıldı', color: 'text-red-600' },
 ]
@@ -246,6 +247,11 @@ function NewsRow({
           <div className="flex items-start gap-2 flex-wrap">
             <p className="line-clamp-2 text-sm font-semibold text-[rgb(var(--color-text))] flex-1">{post.title}</p>
             <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', badge.cls)}>{badge.label}</span>
+            {post.isDuplicate && (
+              <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                🔁 TEKRAR
+              </span>
+            )}
           </div>
           <div className="mt-1 flex flex-wrap gap-3 text-[10px] text-[rgb(var(--color-muted))]">
             {post.categoryId && <span className="flex items-center gap-1"><Tag className="h-2.5 w-2.5" />{post.categoryId}</span>}
@@ -253,7 +259,12 @@ function NewsRow({
             {(post as AdminNewsItem & { citySlug?: string }).citySlug && <span className="flex items-center gap-1"><Globe className="h-2.5 w-2.5" />{(post as AdminNewsItem & { citySlug?: string }).citySlug}</span>}
             <span>{publishedAt}</span>
           </div>
-          {post.spot && (
+          {post.isDuplicate && post.duplicateReason && (
+            <p className="mt-1 line-clamp-1 text-[11px] text-orange-600 dark:text-orange-400">
+              ⚠️ {post.duplicateReason}
+            </p>
+          )}
+          {!post.isDuplicate && post.spot && (
             <p className="mt-1 line-clamp-1 text-[11px] italic text-[rgb(var(--color-muted))]">{post.spot}</p>
           )}
         </div>
@@ -390,6 +401,7 @@ export default function AdminNewsPage() {
   const initialFilter: AdminNewsFilter =
     filterParam === 'published' ||
     filterParam === 'pending' ||
+    filterParam === 'duplicate' ||
     filterParam === 'draft' ||
     filterParam === 'removed'
       ? filterParam
@@ -398,7 +410,7 @@ export default function AdminNewsPage() {
 
   useEffect(() => {
     const fp = searchParams.get('filter') ?? ''
-    if (fp === 'published' || fp === 'pending' || fp === 'draft' || fp === 'removed') {
+    if (fp === 'published' || fp === 'pending' || fp === 'duplicate' || fp === 'draft' || fp === 'removed') {
       setFilter(fp)
     } else if (!fp) {
       setFilter('all')
@@ -431,8 +443,10 @@ export default function AdminNewsPage() {
       const cursor = pageCursorsRef.current[page] ?? undefined
       // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
       const catFilter = searchTerm.trim() ? undefined : categoryParamRef.current || undefined
+      // 'duplicate' filtresi: Firestore'dan pending'leri çek, client-side isDuplicate filtrele
+      const fsFilter: AdminNewsFilter = filter === 'duplicate' ? 'pending' : filter
       const [result, tagResults] = await Promise.all([
-        adminNewsService.list(filter, cursor, catFilter, searchTerm.trim() ? 500 : undefined),
+        adminNewsService.list(fsFilter, cursor, catFilter, filter === 'duplicate' ? 500 : (searchTerm.trim() ? 500 : undefined)),
         searchTerm.trim() ? adminNewsService.searchByTag(searchTerm) : Promise.resolve([]),
       ])
       // Tag sorgusu sonuçlarını merge et — 500 limitinin dışındaki eski haberler de görünsün
@@ -441,7 +455,9 @@ export default function AdminNewsPage() {
       for (const p of tagResults) {
         if (!seen.has(p.id)) { seen.add(p.id); merged.push(p) }
       }
-      setPosts(merged)
+      // Tekrar haber filtresi → client-side isDuplicate === true
+      const filtered = filter === 'duplicate' ? merged.filter(p => p.isDuplicate === true) : merged
+      setPosts(filtered)
       setCurrentPage(page)
       setHasNext(result.hasMore)
       if (result.hasMore && result.lastDoc && !pageCursorsRef.current[page + 1]) {
@@ -577,6 +593,29 @@ export default function AdminNewsPage() {
     setBulkLoading(false)
   }
 
+  const [editorialLoading, setEditorialLoading] = useState(false)
+
+  const handleRunEditorialReview = async () => {
+    if (!confirm('AI Genel Yayın Editörü tüm pending haberleri inceleyecek. Benzersiz olanlar otomatik yayınlanacak. Devam edilsin mi?')) return
+    setEditorialLoading(true)
+    try {
+      const token = await auth.currentUser?.getIdToken()
+      const res = await fetch('/api/admin/editorial-review/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ limit: 500 }),
+      })
+      const data = await res.json() as { processed?: number; published?: number; duplicate?: number; errors?: number }
+      if (!res.ok) throw new Error('API hatası')
+      toast.success(`✅ ${data.processed ?? 0} haber incelendi — ${data.published ?? 0} yayınlandı, ${data.duplicate ?? 0} tekrar olarak işaretlendi`)
+      void load(0)
+    } catch {
+      toast.error('AI editör incelemesi başarısız')
+    } finally {
+      setEditorialLoading(false)
+    }
+  }
+
   const handleEdit = (post: AdminNewsItem) => setEditingPost(post)
 
   const handleSaved = (id: string, updated: Partial<AdminNewsItem>) => {
@@ -701,7 +740,7 @@ export default function AdminNewsPage() {
         </div>
 
         {/* Bulk actions */}
-        {(selected.size > 0 || filter === 'draft') && (
+        {(selected.size > 0 || filter === 'draft' || filter === 'pending') && (
           <div className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 ${confirmBulkRemove ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30' : 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30'}`}>
             {selected.size > 0 && <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{selected.size} seçili</span>}
             {selected.size > 0 && (
@@ -732,6 +771,13 @@ export default function AdminNewsPage() {
               <button onClick={handleBulkRemoveAllDrafts} disabled={bulkLoading}
                 className="flex items-center gap-1 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-700 disabled:opacity-50">
                 <Trash2 className="h-3 w-3" />Tüm Taslakları Sil
+              </button>
+            )}
+            {filter === 'pending' && !confirmBulkRemove && (
+              <button onClick={handleRunEditorialReview} disabled={editorialLoading || bulkLoading}
+                className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50 ml-auto">
+                {editorialLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                AI Editör İncele
               </button>
             )}
             {filter === 'removed' && !confirmBulkRemove && (

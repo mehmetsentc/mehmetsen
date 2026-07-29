@@ -53,7 +53,7 @@ function sanitizeMediaItems(items: MediaItem[] | undefined): Array<{
 
 const PAGE_SIZE = 50
 
-export type AdminNewsFilter = 'all' | 'published' | 'pending' | 'draft' | 'removed'
+export type AdminNewsFilter = 'all' | 'published' | 'pending' | 'duplicate' | 'draft' | 'removed'
 
 export type AdminNewsSource = 'news' | 'newsDrafts'
 

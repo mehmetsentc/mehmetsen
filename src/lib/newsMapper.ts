@@ -113,6 +113,8 @@ export interface NewsDocument {
     source?: string
   }
   audioReady?: boolean
+  isDuplicate?: boolean
+  duplicateReason?: string
 }
 
 export const DEFAULT_CATEGORY_LABEL = 'Genel'
@@ -475,6 +477,8 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     publishedAt,
     createdAt,
     updatedAt,
+    isDuplicate: data.isDuplicate === true,
+    duplicateReason: data.duplicateReason?.trim() || undefined,
   }
 }
 
