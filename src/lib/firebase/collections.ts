@@ -74,6 +74,10 @@ export const Collections = {
 
   /** Oyun skorları / sıralama — doc id: `${gameSlug}__${userId}` */
   GAME_SCORES: 'gameScores',
+
+  // ── Integrations ──────────────────────────────────────────────────────────
+  /** OAuth integration tokens — doc id: 'gmail_bilgi' etc. */
+  INTEGRATIONS: 'integrations',
 } as const
 
 /** Primary collection for the TikTok-style video feed */
