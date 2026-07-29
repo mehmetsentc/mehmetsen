@@ -6,7 +6,7 @@
  * - Tekrar haber → isDuplicate: true, status: 'pending' (insan onayına bırak)
  */
 
-import { adminDb } from '@/lib/firebase-admin'
+import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
@@ -32,7 +32,8 @@ interface ArticleInput {
 async function fetchRecentPublished(categoryId?: string | null): Promise<Array<{ title: string; summary: string }>> {
   const cutoff = new Date(Date.now() - WINDOW_MS).toISOString()
 
-  let query = adminDb
+  const db = getAdminFirestore()
+  let query = db
     .collection('news')
     .where('status', '==', 'published')
     .where('publishedAt', '>=', cutoff)
@@ -42,7 +43,7 @@ async function fetchRecentPublished(categoryId?: string | null): Promise<Array<{
   // Önce aynı kategoriden ara (daha güvenilir sonuç), kategori yoksa genel
   if (categoryId) {
     try {
-      const snap = await adminDb
+      const snap = await db
         .collection('news')
         .where('status', '==', 'published')
         .where('categoryId', '==', categoryId)
@@ -154,7 +155,7 @@ export async function applyReviewToFirestore(
   articleId: string,
   result: EditorialReviewResult
 ): Promise<void> {
-  const ref = adminDb.collection('news').doc(articleId)
+  const ref = getAdminFirestore().collection('news').doc(articleId)
 
   if (result.action === 'published') {
     await ref.update({

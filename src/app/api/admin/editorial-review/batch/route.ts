@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebase-admin'
+import { getAdminFirestore } from '@/lib/firebase/admin'
 import { runEditorialReview, applyReviewToFirestore } from '@/lib/editorial/aiEditorialReview'
 import { verifyAdminRequest } from '@/lib/adminAuth'
 
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const batchLimit = Math.min(body.limit ?? 500, 500)
 
   // Tüm pending haberleri çek (isDuplicate olmayan önce işlensin)
-  const snap = await adminDb
+  const snap = await getAdminFirestore()
     .collection('news')
     .where('status', '==', 'pending')
     .orderBy('createdAt', 'desc')

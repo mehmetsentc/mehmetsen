@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebase-admin'
+import { getAdminFirestore } from '@/lib/firebase/admin'
 import { runEditorialReview, applyReviewToFirestore } from '@/lib/editorial/aiEditorialReview'
 
 export const runtime = 'nodejs'
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
   // editorialReviewedAt olmayan pending haberleri al
   // Not: Firestore "field does not exist" için __name__ trick ya da client-side filter kullanılır
-  const snap = await adminDb
+  const snap = await getAdminFirestore()
     .collection('news')
     .where('status', '==', 'pending')
     .orderBy('createdAt', 'desc')
