@@ -120,7 +120,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
           </h1>
 
           {/* Meta row */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[rgb(var(--color-muted))]">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[rgb(var(--color-meta))]">
             <span className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-text))]">
               <User className="h-3.5 w-3.5" />
               {bylineName}
@@ -161,7 +161,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
         <div className="px-4 py-6 sm:px-8 sm:py-8">
           {/* Spot / Lead paragraph — journalistic 5W+H intro */}
           {showLead && (
-            <blockquote className="news-lead mb-8 border-l-4 border-[rgb(var(--color-brand))] bg-[rgb(var(--color-surface))] px-5 py-4 text-lg font-medium leading-relaxed text-[rgb(var(--color-text))] sm:text-xl not-italic">
+            <blockquote className="news-lead mb-8 border-l-4 border-[rgb(var(--color-brand))] bg-[rgb(var(--color-surface-elevated))] px-5 py-4 text-lg font-medium leading-relaxed text-[rgb(var(--color-summary))] sm:text-xl not-italic">
               {leadText}
             </blockquote>
           )}
@@ -169,14 +169,14 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
           {/* Full HTML content (extracted from source) */}
           {hasHtmlContent && sanitizedHtml && (
             <div
-              className="news-body prose prose-lg prose-invert max-w-none text-[rgb(var(--color-text))] [&>p]:mb-6 [&>p]:leading-[1.85] [&>h2]:mb-4 [&>h2]:mt-8 [&>h2]:text-xl [&>h2]:font-black [&>h3]:mb-3 [&>h3]:mt-6 [&>h3]:text-lg [&>h3]:font-bold [&>ul]:mb-6 [&>ul]:list-disc [&>ul]:pl-6 [&>li]:mb-2 [&>blockquote]:border-l-4 [&>blockquote]:border-[rgb(var(--color-brand))] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[rgb(var(--color-muted))]"
+              className="news-body prose prose-lg max-w-none text-[rgb(var(--color-body))] [&>p]:mb-6 [&>p]:leading-[1.85] [&>p]:text-[rgb(var(--color-body))] [&>h2]:mb-4 [&>h2]:mt-8 [&>h2]:text-xl [&>h2]:font-black [&>h2]:text-[rgb(var(--color-text))] [&>h3]:mb-3 [&>h3]:mt-6 [&>h3]:text-lg [&>h3]:font-bold [&>h3]:text-[rgb(var(--color-text))] [&>ul]:mb-6 [&>ul]:list-disc [&>ul]:pl-6 [&>li]:mb-2 [&>blockquote]:border-l-4 [&>blockquote]:border-[rgb(var(--color-brand))] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[rgb(var(--color-body))]"
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           )}
 
           {/* Plain text paragraphs (fallback) */}
           {!hasHtmlContent && paragraphs.length > 0 && (
-            <div className="news-body space-y-6 text-[17px] leading-[1.85] tracking-[0.01em] text-[rgb(var(--color-text))] sm:text-[18px]">
+            <div className="news-body space-y-6 text-[17px] leading-[1.85] tracking-[0.01em] text-[rgb(var(--color-body))] sm:text-[18px]">
               {paragraphs.map((paragraph, index) => (
                 <p key={index}>{paragraph}</p>
               ))}

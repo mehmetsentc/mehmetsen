@@ -31,12 +31,12 @@
   gap: 0.35rem;
   margin-bottom: 0.4rem;
   font-size: 0.8125rem;
-  color: rgb(var(--color-muted));
+  color: rgb(var(--color-meta));
 }
 
 .mc-breadcrumb__link {
   font-weight: 600;
-  color: rgb(var(--color-muted));
+  color: rgb(var(--color-meta));
 }
 
 .mc-breadcrumb__link:active {
@@ -279,7 +279,7 @@
   overflow: hidden;
   font-size: 1rem;
   line-height: 1.45;
-  color: rgb(var(--color-muted));
+  color: rgb(var(--color-summary));
 }
 
 /* ── Compact ──────────────────────────────────────────────────────────── */
@@ -323,7 +323,7 @@
   overflow: hidden;
   font-size: 0.9375rem;
   line-height: 1.4;
-  color: rgb(var(--color-muted));
+  color: rgb(var(--color-summary));
 }
 
 /* ── Video ────────────────────────────────────────────────────────────── */
@@ -392,7 +392,7 @@
 }
 
 .dark .mc-video__summary {
-  color: rgb(var(--color-muted));
+  color: rgb(var(--color-summary));
 }
 
 /* ── Text / no-image ──────────────────────────────────────────────────── */
@@ -417,13 +417,13 @@
   overflow: hidden;
   font-size: 1rem;
   line-height: 1.45;
-  color: rgb(var(--color-muted));
+  color: rgb(var(--color-summary));
 }
 
 .mc-text__meta {
   margin: 0.45rem 0 0;
   font-size: 0.8125rem;
-  color: rgb(var(--color-muted));
+  color: rgb(var(--color-meta));
 }
 
 /* ── Badge / play ─────────────────────────────────────────────────────── */

@@ -1,10 +1,18 @@
 /* ─────────────────────────────────────────────────────────────────────────
- * NaHaber 2026 — Color Tokens
- * Format: `R G B` triplet so all consumers can use rgb(var(--token) / α)
- * 3 katmanlı tema sistemi:
- *   :root              — Light (varsayılan)
- *   .dark              — Dark (gece koyu lacivert)
- *   [data-theme="oled"]— OLED Dark (tam siyah, AMOLED için)
+ * NaHaber 2026 — Color Tokens (Readability-first)
+ * Format: `R G B` triplet → rgb(var(--token) / α)
+ *
+ * Hierarchy (importance → color):
+ *   headline / primary  → strongest
+ *   body                → primary reading content
+ *   summary / secondary → clearly readable, softer than body
+ *   meta / tertiary     → timestamps, captions — still AA-readable
+ *   muted               → truly nonessential only
+ *
+ * 3 themes:
+ *   :root              — Light
+ *   .dark              — Dark (near-black navy)
+ *   [data-theme="oled"]— OLED (true black base, elevated surfaces)
  * ───────────────────────────────────────────────────────────────────────── */
 
   :root {
@@ -14,111 +22,130 @@
     --brand-200: 250 168 175;
     --brand-300: 243 117 127;
     --brand-400: 237  76  90;
-    --brand-500: 229  9  20;   /* #E50914 — Master brand */
-    --brand-600: 200  9  18;
-    --brand-700: 168  6  14;
-    --brand-800: 130  4  10;
-    --brand-900:  92  3   7;
+    --brand-500: 229   9  20;   /* #E50914 — Master brand */
+    --brand-600: 200   9  18;   /* accessible red text on white */
+    --brand-700: 168   6  14;
+    --brand-800: 130   4  10;
+    --brand-900:  92   3   7;
+    --brand-soft: 254 232 235;
 
     /* ── Support / Destructive ────────────────────────────────────────── */
-    --support-500: 255 59 48; /* #FF3B30 — iOS system red */
+    --support-500: 255 59 48;
 
     /* ── Surface (light) ──────────────────────────────────────────────── */
-    --bg-base:        255 255 255; /* sayfa zemini */
-    --bg-subtle:      248 250 252; /* hafif gri */
-    --bg-muted:       241 245 249;
-    --bg-card:        255 255 255; /* kart */
-    --bg-elevated:    255 255 255; /* dropdown/modal */
-    --bg-inverse:      15  20  40;
-    --bg-overlay:      15  20  40; /* modal arkası — α ile kullan */
+    --bg-base:        255 255 255; /* #FFFFFF */
+    --bg-subtle:      252 252 253; /* #FCFCFD */
+    --bg-muted:       246 247 249; /* #F6F7F9 */
+    --bg-card:        255 255 255;
+    --bg-elevated:    248 250 252; /* #F8FAFC */
+    --bg-inverse:      15  23  42;
+    --bg-overlay:      15  23  42;
 
-    /* ── Border ───────────────────────────────────────────────────────── */
-    --border-subtle:  226 232 240;
-    --border-default: 214 219 230;
-    --border-strong:  148 163 184;
-    --border-focus:   229   9  20; /* brand-500 */
+    /* ── Border (light) ───────────────────────────────────────────────── */
+    --border-subtle:  229 231 235; /* #E5E7EB */
+    --border-default: 226 232 240; /* #E2E8F0 */
+    --border-strong:  203 213 225; /* #CBD5E1 */
+    --border-focus:   229   9  20;
 
-    /* ── Text ─────────────────────────────────────────────────────────── */
-    --text-primary:   15  20  40;
-    --text-secondary: 51  65  85;
-    --text-tertiary:  75  90 115;
-    --text-muted:    120 135 160;
-    --text-inverse:  255 255 255;
+    /* ── Text (light) — WCAG AA+ editorial ladder ─────────────────────── */
+    --text-primary:   15  23  42;  /* #0F172A — headlines */
+    --text-body:      39  50  68;  /* #273244 — article body */
+    --text-secondary: 71  85 105;  /* #475569 — spot / summary */
+    --text-tertiary: 102 112 133;  /* #667085 — metadata */
+    --text-muted:    122 134 153;  /* #7A8699 — tertiary only */
+    --text-inverse:  248 250 252;
     --text-onbrand:  255 255 255;
-    --text-link:     200   9  18; /* brand-600 — light'ta okunabilir */
+    --text-link:     200   9  18;  /* brand-600 on white */
 
     /* ── Semantic ─────────────────────────────────────────────────────── */
-    --success-500: 16 185 129;  /* emerald */
+    --success-500:  5 150 105;
     --success-fg:  255 255 255;
-    --warning-500: 245 158 11;  /* amber */
+    --warning-500: 217 119  6;
     --warning-fg:   30  41  59;
-    --danger-500:  239  68  68; /* red */
+    --danger-500:  220  38  38;
     --danger-fg:   255 255 255;
-    --info-500:     59 130 246; /* blue */
+    --info-500:     37  99 235;
     --info-fg:     255 255 255;
 
-    /* ── Category Accents (Sticker palette) ───────────────────────────── */
+    /* ── Category Accents ─────────────────────────────────────────────── */
     --cat-gundem:     232  30  52;
     --cat-sondakika:  229   9  20;
-    --cat-siyaset:     79  70 229;  /* indigo */
-    --cat-ekonomi:     16 185 129;  /* emerald */
-    --cat-spor:       249 115  22;  /* orange */
-    --cat-dunya:      139  92 246;  /* violet */
-    --cat-teknoloji:    6 182 212;  /* cyan */
-    --cat-saglik:     244  63  94;  /* rose */
-    --cat-kultur:     236  72 153;  /* pink */
-    --cat-yerel:      245 158  11;  /* amber */
-    --cat-yasam:      168  85 247;  /* purple */
-    --cat-video:      236  72 153;  /* pink */
-    --cat-egitim:      14 165 233;  /* sky */
-    --cat-magazin:    234  88 198;
-    --cat-hava:        56 189 248;  /* sky-400 */
+    --cat-siyaset:     79  70 229;
+    --cat-ekonomi:      5 150 105;
+    --cat-spor:       234  88  12;
+    --cat-dunya:      124  58 237;
+    --cat-teknoloji:    8 145 178;
+    --cat-saglik:     225  29  72;
+    --cat-kultur:     219  39 119;
+    --cat-yerel:      217 119  6;
+    --cat-yasam:      147  51 234;
+    --cat-video:      219  39 119;
+    --cat-egitim:       2 132 199;
+    --cat-magazin:    219  39 119;
+    --cat-hava:         2 132 199;
 
     /* ── Nav ──────────────────────────────────────────────────────────── */
-    --nav-hover:      237 240 247;
-    --nav-active:     229   9  20;
+    --nav-hover:         237 240 247;
+    --nav-active:        229   9  20;
+    --nav-inactive:       71  85 105; /* #475569 — readable inactive */
+    --nav-bar-bg:        255 255 255;
+    --nav-bar-border:    226 232 240;
   }
 
   .dark {
-    /* Dark — koyu lacivert, mevcut sürümün gece tonu */
-    --bg-base:         8  12  28;
-    --bg-subtle:      10  14  32;
-    --bg-muted:       18  26  56;
-    --bg-card:        10  15  34;
-    --bg-elevated:    20  28  64;
+    /* Near-black navy — not pure #000 */
+    --bg-base:         7  11  24;  /* #070B18 */
+    --bg-subtle:      13  19  36;  /* #0D1324 */
+    --bg-muted:       21  30  49;  /* #151E31 */
+    --bg-card:        13  19  36;  /* #0D1324 */
+    --bg-elevated:    17  25  43;  /* #11192B */
     --bg-inverse:    248 250 252;
     --bg-overlay:      0   0   0;
 
-    --border-subtle:  20  28  64;
-    --border-default: 26  37  70;
-    --border-strong:  51  65 105;
+    --border-subtle:  32  42  60;  /* ~#202A3C */
+    --border-default: 38  49  71;  /* #263147 */
+    --border-strong:  52  65  88;  /* #344158 */
+    --border-focus:   243 117 127;
 
-    --text-primary:   248 250 252;
-    --text-secondary: 203 213 225;
-    --text-tertiary:  148 163 184;
-    --text-muted:     100 115 140;
-    --text-inverse:    15  20  40;
-    --text-link:      243 117 127; /* brand-300 — dark'ta okunabilir */
+    /* Editorial ladder — solid colors, no opacity tricks */
+    --text-primary:   248 250 252; /* #F8FAFC — headlines */
+    --text-body:      229 231 235; /* #E5E7EB — article body (PRIMARY) */
+    --text-secondary: 203 213 225; /* #CBD5E1 — spot / summary */
+    --text-tertiary:  168 179 197; /* #A8B3C5 — metadata */
+    --text-muted:     137 149 168; /* #8995A8 — lowest readable tier */
+    --text-inverse:    15  23  42;
+    --text-onbrand:   255 255 255;
+    --text-link:      252 165 172; /* brand-ish on dark — readable */
 
-    --nav-hover:      18  27  58;
+    --brand-soft:      127  29  29;
+
+    --nav-hover:        25  35  56;
+    --nav-active:      255  51  68; /* slightly brighter red on navy */
+    --nav-inactive:    174 185 202; /* #AEB9CA */
+    --nav-bar-bg:        9  15  30; /* #090F1E */
+    --nav-bar-border:   38  49  71;
   }
 
-  /* OLED Dark — AMOLED ekranlar için tam siyah, batarya dostu */
+  /* OLED — true black base, keep readable text ladder from .dark */
   html[data-theme="oled"],
   html[data-theme="oled"].dark {
     --bg-base:         0   0   0;
-    --bg-subtle:       6   6   8;
-    --bg-muted:       12  12  16;
-    --bg-card:         8   8  12;
-    --bg-elevated:    14  14  20;
-    --border-subtle:  22  22  28;
-    --border-default: 32  32  40;
-    --border-strong:  60  60  72;
+    --bg-subtle:       8   8  12;
+    --bg-muted:       14  14  20;
+    --bg-card:        10  10  14;
+    --bg-elevated:    16  16  22;
+    --border-subtle:  28  28  36;
+    --border-default: 40  40  52;
+    --border-strong:  64  64  80;
 
-    --text-primary:   255 255 255;
-    --text-secondary: 220 220 230;
-    --text-tertiary:  170 170 180;
-    --text-muted:     130 130 145;
+    --text-primary:   248 250 252;
+    --text-body:      229 231 235;
+    --text-secondary: 203 213 225;
+    --text-tertiary:  168 179 197;
+    --text-muted:     137 149 168;
 
-    --nav-hover:      18  18  24;
+    --nav-hover:       18  18  24;
+    --nav-inactive:   174 185 202;
+    --nav-bar-bg:       0   0   0;
+    --nav-bar-border:  40  40  52;
   }

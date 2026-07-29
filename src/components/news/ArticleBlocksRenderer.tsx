@@ -37,7 +37,7 @@ export function ArticleBlocksRenderer({
 }: ArticleBlocksRendererProps) {
   return (
     <div
-      className={`article-prose news-body article-blocks text-[17px] leading-[1.85] text-[rgb(var(--color-text))] sm:text-[18px] ${
+      className={`article-prose news-body article-blocks text-[17px] leading-[1.85] text-[rgb(var(--color-body))] sm:text-[18px] ${
         longform ? 'article-blocks-longform' : ''
       }`}
     >

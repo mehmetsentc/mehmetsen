@@ -56,15 +56,15 @@ export function CategoryNav() {
                   ? 'min-h-[54px] snap-start px-0.5 text-[15px] font-semibold'
                   : 'min-h-11 px-3.5 text-sm font-semibold',
                 isActive
-                  ? 'text-[rgb(var(--color-brand))]'
-                  : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+                  ? 'text-[rgb(var(--color-nav-active))]'
+                  : 'text-[rgb(var(--color-nav-inactive))] hover:text-[rgb(var(--color-text))]'
               )}
             >
               {cat.label}
               {isActive && (
                 <span
                   className={cn(
-                    'absolute bottom-0 h-[2.5px] rounded-full bg-[rgb(var(--color-brand))]',
+                    'absolute bottom-0 h-[2.5px] rounded-full bg-[rgb(var(--color-nav-active))]',
                     isFeed ? 'left-0 right-0' : 'left-3 right-3 h-[2px]'
                   )}
                 />

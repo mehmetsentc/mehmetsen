@@ -55,7 +55,7 @@ function MobileListStory({
             {item.title}
           </h3>
           {summary ? (
-            <p className="mt-2 hidden line-clamp-2 text-[15px] leading-relaxed text-[rgb(var(--color-muted))] max-md:block">
+            <p className="mt-2 hidden line-clamp-2 text-[15px] leading-relaxed text-[rgb(var(--color-summary))] max-md:block">
               {summary}
             </p>
           ) : null}

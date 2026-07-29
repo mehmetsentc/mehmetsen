@@ -36,18 +36,29 @@
 
 @layer base {
   :root {
-    /* ── Legacy bridge: --color-* → yeni token'lar ───────────────────────
-     * Eski 50+ component bu adlandırmayı kullanıyor. Yeni token'lara
-     * köprü olarak burada tutuluyor — geçiş tamamlanınca silinecek. */
+    /* ── Legacy bridge: --color-* → semantic tokens ─────────────────────
+     * CRITICAL: --color-muted maps to secondary (spot/summary readable),
+     * NOT the lowest tertiary tier. Metadata that must stay softer should
+     * use --color-meta. Nav inactive uses --color-nav-inactive. */
     --color-brand: var(--brand-500);
     --color-primary: var(--brand-500);
+    --color-bg: var(--bg-base);
     --color-surface: var(--bg-base);
+    --color-surface-elevated: var(--bg-elevated);
     --color-card: var(--bg-card);
     --color-border: var(--border-default);
+    --color-border-strong: var(--border-strong);
     --color-text: var(--text-primary);
-    --color-muted: var(--text-tertiary);
+    --color-body: var(--text-body);
+    --color-summary: var(--text-secondary);
+    --color-muted: var(--text-secondary);
+    --color-meta: var(--text-tertiary);
     --color-muted-subtle: var(--text-muted);
+    --color-nav-inactive: var(--nav-inactive);
+    --color-nav-active: var(--nav-active);
     --color-nav-hover: var(--nav-hover);
+    --color-nav-bar: var(--nav-bar-bg);
+    --color-nav-bar-border: var(--nav-bar-border);
     --sidebar-width-collapsed: 256px;
     --sidebar-width-expanded: 256px;
     --layout-gutter: 1.5rem;
@@ -190,16 +201,25 @@
   }
 
   .dark {
-    /* Bridge: dark token'lar otomatik colors.css'teki .dark blok'undan gelir */
-    --color-brand: var(--brand-500);
-    --color-primary: var(--brand-500);
+    --color-brand: var(--nav-active);
+    --color-primary: var(--nav-active);
+    --color-bg: var(--bg-base);
     --color-surface: var(--bg-base);
+    --color-surface-elevated: var(--bg-elevated);
     --color-card: var(--bg-card);
     --color-border: var(--border-default);
+    --color-border-strong: var(--border-strong);
     --color-text: var(--text-primary);
-    --color-muted: var(--text-tertiary);
+    --color-body: var(--text-body);
+    --color-summary: var(--text-secondary);
+    --color-muted: var(--text-secondary);
+    --color-meta: var(--text-tertiary);
     --color-muted-subtle: var(--text-muted);
+    --color-nav-inactive: var(--nav-inactive);
+    --color-nav-active: var(--nav-active);
     --color-nav-hover: var(--nav-hover);
+    --color-nav-bar: var(--nav-bar-bg);
+    --color-nav-bar-border: var(--nav-bar-border);
   }
 
   html {
@@ -208,7 +228,13 @@
   }
 
   body {
-    @apply bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))];
+    @apply bg-[rgb(var(--color-surface))] text-[rgb(var(--color-body))];
+    color: rgb(var(--color-body));
+  }
+
+  /* Headings default to primary (stronger than body) */
+  h1, h2, h3, h4, h5, h6 {
+    color: rgb(var(--color-text));
   }
 }
 
@@ -499,18 +525,20 @@
   .bbc-story-summary {
     font-size: 1rem;
     line-height: 1.65;
-    color: color-mix(in srgb, rgb(var(--color-text)) 82%, transparent);
+    color: rgb(var(--color-summary));
+    font-weight: 400;
   }
 
   .bbc-story-summary--sm {
     font-size: 0.875rem;
     line-height: 1.55;
+    color: rgb(var(--color-summary));
   }
 
   .bbc-story-meta {
     font-size: 0.8125rem;
     line-height: 1.4;
-    color: rgb(var(--color-muted));
+    color: rgb(var(--color-meta));
   }
 
   .bbc-more-date {
@@ -1180,7 +1208,7 @@
   }
 
   .exp-card__summary--ink {
-    color: color-mix(in srgb, rgb(var(--color-text)) 82%, transparent);
+    color: rgb(var(--color-summary));
   }
 
   .exp-card__meta {
@@ -1541,7 +1569,7 @@
     max-width: 42rem;
     line-height: 1.7;
     font-size: 1.0625rem;
-    color: rgb(var(--color-text));
+    color: rgb(var(--color-body));
   }
 
   .article-prose > p:first-of-type::first-letter {
@@ -1614,7 +1642,7 @@
     padding: 0.6rem 0.25rem 0;
     font-size: 0.8125rem;
     line-height: 1.5;
-    color: rgb(var(--color-muted));
+    color: rgb(var(--color-meta));
   }
 
   .article-block-divider {

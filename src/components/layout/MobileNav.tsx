@@ -49,11 +49,11 @@ const MobileNavLink = memo(function MobileNavLink({ item, active, pathname }: Mo
       onClick={handleClick}
       className={cn(
         'flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors',
-        active ? 'text-[rgb(var(--color-brand))]' : 'text-[rgb(var(--color-muted))]'
+        active ? 'text-[rgb(var(--color-nav-active))]' : 'text-[rgb(var(--color-nav-inactive))]'
       )}
     >
       <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.25 : 1.75} />
-      <span className={cn('text-[10px] leading-none', active ? 'font-bold' : 'font-medium')}>
+      <span className={cn('text-[10px] leading-none', active ? 'font-bold' : 'font-semibold')}>
         {label}
       </span>
     </Link>
@@ -76,7 +76,7 @@ function MobileNavInner() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/92 backdrop-blur-xl lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))]/95 backdrop-blur-xl lg:hidden"
       aria-label="Ana menü"
     >
       <div
