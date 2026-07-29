@@ -69,7 +69,7 @@ export async function generateVideoScript(input: VideoScriptInput): Promise<Vide
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: process.env.DEEPSEEK_NEWS_MODEL || 'deepseek-v4-flash',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: articleText },
@@ -136,7 +136,7 @@ export async function generateMultiLengthScripts(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: process.env.DEEPSEEK_NEWS_MODEL || 'deepseek-v4-flash',
         messages: [
           { role: 'system', content: buildMultiLengthSystemPrompt() },
           { role: 'user', content: articleText },
@@ -191,7 +191,7 @@ export async function generateSocialCaptions(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: process.env.DEEPSEEK_NEWS_MODEL || 'deepseek-v4-flash',
         messages: [
           { role: 'system', content: buildSocialCaptionSystemPrompt() },
           { role: 'user', content: articleText },

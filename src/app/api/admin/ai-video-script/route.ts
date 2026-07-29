@@ -42,7 +42,7 @@ JSON: {"title":"...","duration":saniye,"intro":"...","segments":[{"label":"...",
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: process.env.DEEPSEEK_NEWS_MODEL || 'deepseek-v4-flash',
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Konu: ${topic}` }],
         response_format: { type: 'json_object' },
         temperature: 0.7,

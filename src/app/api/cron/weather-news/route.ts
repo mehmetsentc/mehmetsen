@@ -76,7 +76,7 @@ Sadece JSON döndür, açıklama ekleme.`
         Authorization: `Bearer ${openaiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: process.env.DEEPSEEK_NEWS_MODEL || 'deepseek-v4-flash',
         temperature: 0.7,
         max_tokens: 800,
         response_format: { type: 'json_object' },

@@ -43,7 +43,7 @@ JSON: {"title":"...max 70 karakter...","summary":"...1 cümle...","content":"...
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: process.env.DEEPSEEK_NEWS_MODEL || 'deepseek-v4-flash',
         temperature: 0.5,
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }],
