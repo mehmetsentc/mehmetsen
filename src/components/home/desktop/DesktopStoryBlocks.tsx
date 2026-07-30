@@ -200,37 +200,39 @@ export function HeroImageOnly({
   )
 }
 
-/** BBC hero yan sütun: dikey kart — tam genişlik görsel + metin */
+/** Manşet yan sütun: yatay kompakt kart — 2–3 haber sol lead yüksekliğine yaklaşır */
 export function RightFeatureStory({ item, live = false }: { item: NewsItem; live?: boolean }) {
   return (
-    <article className="min-w-0 border-b border-[rgb(var(--color-border))] py-4 last:border-b-0">
+    <article className="min-w-0 border-b border-[rgb(var(--color-border))] py-3.5 last:border-b-0 last:pb-0 first:pt-0">
       {live ? (
         <span className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-red-600">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-600" />
           Canlı
         </span>
       ) : null}
-      <Link href={newsItemDetailHref(item)} className="group block min-w-0">
-        <div className="relative mb-3 aspect-[3/2] w-full overflow-hidden bg-[rgb(var(--color-border))]">
+      <Link href={newsItemDetailHref(item)} className="group flex min-w-0 gap-3.5">
+        <div className="relative aspect-[4/3] w-[7.25rem] shrink-0 overflow-hidden bg-[rgb(var(--color-border))] sm:w-[8.5rem]">
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
             fill
-            sizes="(max-width: 1280px) 22vw, 400px"
-            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            sizes="140px"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         </div>
-        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-          <NewsTypeBadge item={item} />
-          <StoryCategoryBadge item={item} />
+        <div className="min-w-0 flex-1 self-center">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <NewsTypeBadge item={item} />
+            <StoryCategoryBadge item={item} />
+          </div>
+          <HeadlineText item={item} size="md" serif />
+          {item.description ? (
+            <p className="mt-1.5 line-clamp-2 break-words text-[13px] leading-snug text-[rgb(var(--color-text)_/_0.72)]">
+              {item.description}
+            </p>
+          ) : null}
+          <StoryMeta item={item} className="mt-1.5" />
         </div>
-        <HeadlineText item={item} size="sm" serif />
-        {item.description ? (
-          <p className="mt-1.5 line-clamp-2 break-words text-xs leading-relaxed text-[rgb(var(--color-muted))]">
-            {item.description}
-          </p>
-        ) : null}
-        <StoryMeta item={item} className="mt-1.5" />
       </Link>
     </article>
   )
@@ -326,8 +328,8 @@ export function TextLeadStory({
         <p
           className={
             dropCap
-              ? 'nl-dropcap mt-3 line-clamp-5 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]'
-              : 'mt-3 line-clamp-4 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]'
+              ? 'nl-dropcap mt-3 line-clamp-5 break-words text-[15px] leading-relaxed text-[rgb(var(--color-text)_/_0.78)]'
+              : 'mt-3 line-clamp-4 break-words text-[15px] leading-relaxed text-[rgb(var(--color-text)_/_0.78)]'
           }
         >
           {item.description}

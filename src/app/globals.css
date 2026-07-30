@@ -1101,32 +1101,35 @@
     column-gap: var(--exp-gap);
   }
 
-  .exp-masonry--hero {
-    column-count: 1;
+  /* Featured hero must stay single-column — later .exp-masonry media queries
+     would otherwise shrink the lead card to 1/2–1/3 width. */
+  .exp-masonry--hero,
+  .exp-feed__hero .exp-masonry {
+    column-count: 1 !important;
   }
 
   @media (min-width: 640px) {
-    .exp-masonry {
+    .exp-masonry:not(.exp-masonry--hero) {
       column-count: 2;
     }
   }
 
   @media (min-width: 768px) {
-    .exp-masonry {
+    .exp-masonry:not(.exp-masonry--hero) {
       column-count: 2;
       --exp-gap: 1.1rem;
     }
   }
 
   @media (min-width: 1024px) {
-    .exp-masonry {
+    .exp-masonry:not(.exp-masonry--hero) {
       column-count: 3;
       --exp-gap: 1.25rem;
     }
   }
 
   @media (min-width: 1920px) {
-    .exp-masonry {
+    .exp-masonry:not(.exp-masonry--hero) {
       column-count: 3;
       --exp-gap: 1.35rem;
     }
@@ -1163,13 +1166,39 @@
   .exp-card__scrim {
     position: absolute;
     inset: 0;
+    z-index: 1;
+    pointer-events: none;
     background: linear-gradient(
       to top,
-      rgba(0, 0, 0, 0.94) 0%,
-      rgba(0, 0, 0, 0.72) 38%,
-      rgba(0, 0, 0, 0.2) 68%,
-      rgba(0, 0, 0, 0) 100%
+      rgba(0, 0, 0, 0.92) 0%,
+      rgba(0, 0, 0, 0.78) 28%,
+      rgba(0, 0, 0, 0.42) 55%,
+      rgba(0, 0, 0, 0.18) 78%,
+      rgba(0, 0, 0, 0.06) 100%
     );
+  }
+
+  /* Hero lead — stronger plate so light photos stay readable */
+  .exp-card--overlay.exp-card--hero .exp-card__scrim {
+    background:
+      linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.96) 0%,
+        rgba(0, 0, 0, 0.88) 32%,
+        rgba(0, 0, 0, 0.45) 62%,
+        rgba(0, 0, 0, 0.15) 100%
+      );
+  }
+
+  .exp-card--overlay.exp-card--hero .exp-card__media {
+    min-height: min(52vw, 22rem);
+  }
+
+  @media (min-width: 1024px) {
+    .exp-card--overlay.exp-card--hero .exp-card__media {
+      min-height: 24rem;
+      aspect-ratio: 16 / 9;
+    }
   }
 
   .exp-card__body {
@@ -1177,7 +1206,13 @@
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 1.1rem 1rem 1rem;
+    z-index: 2;
+    padding: 1.25rem 1.15rem 1.15rem;
+  }
+
+  .exp-card--overlay.exp-card--hero .exp-card__body {
+    padding: 1.5rem 1.35rem 1.35rem;
+    max-width: 46rem;
   }
 
   .exp-card__title {
@@ -1187,6 +1222,7 @@
     line-height: 1.28;
     letter-spacing: -0.015em;
     text-wrap: pretty;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 2px 12px rgba(0, 0, 0, 0.35);
     display: -webkit-box;
     -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
@@ -1194,40 +1230,52 @@
   }
 
   .exp-card__title--hero {
-    font-size: clamp(1.25rem, 2.2vw, 1.85rem);
-    -webkit-line-clamp: 4;
+    font-size: clamp(1.35rem, 2.4vw, 2.05rem);
+    line-height: 1.22;
+    -webkit-line-clamp: 3;
   }
 
   .exp-card__title--ink {
     color: rgb(var(--color-text));
+    text-shadow: none;
     -webkit-line-clamp: 4;
   }
 
   .exp-card__summary {
     margin-top: 0.45rem;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.92);
     font-size: 0.9rem;
     line-height: 1.5;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
 
+  .exp-card--overlay.exp-card--hero .exp-card__summary {
+    font-size: 0.95rem;
+    -webkit-line-clamp: 2;
+    max-width: 38rem;
+  }
+
   .exp-card__summary--ink {
     color: rgb(var(--color-summary));
+    text-shadow: none;
   }
 
   .exp-card__meta {
     display: block;
-    margin-top: 0.5rem;
-    color: rgba(255, 255, 255, 0.88);
-    font-size: 0.8125rem;
+    margin-top: 0.55rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.75rem;
     font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
 
   .exp-card__meta--ink {
     color: rgb(var(--color-muted));
+    text-shadow: none;
   }
 
   .exp-card__meta-row {

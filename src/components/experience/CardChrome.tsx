@@ -81,6 +81,7 @@ export function MediaOverlay({
   badge,
   titleClassName,
   showSummary,
+  hero,
 }: {
   post: TimelinePost
   aspect: AspectRatio
@@ -88,21 +89,30 @@ export function MediaOverlay({
   badge?: React.ReactNode
   titleClassName?: string
   showSummary?: boolean
+  /** Lead featured card — stronger scrim + sizing */
+  hero?: boolean
 }) {
   const { href, image, summary, label, time, isVideo } = useCardMeta(post)
 
   return (
-    <Link href={href} className="exp-card exp-card--overlay group">
+    <Link
+      href={href}
+      className={cn('exp-card exp-card--overlay group', hero && 'exp-card--hero')}
+    >
       <AspectBox aspect={aspect} className="exp-card__media">
         <SafeNewsImage
           src={image}
           alt={post.title}
           fill
           priority={priority}
-          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+          sizes={
+            hero
+              ? '(max-width: 768px) 100vw, (max-width: 1280px) 90vw, 1100px'
+              : '(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw'
+          }
           className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
         />
-        <div className="exp-card__scrim" />
+        <div className="exp-card__scrim" aria-hidden />
         {badge ?? (label ? <CardBadge>{label}</CardBadge> : null)}
         {isVideo ? (
           <span className="exp-card__play">

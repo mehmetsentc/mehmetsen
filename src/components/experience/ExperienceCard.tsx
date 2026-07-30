@@ -32,6 +32,7 @@ function CardBody({ slot, priority }: ExperienceCardProps) {
           aspect="16/9"
           priority={priority}
           showSummary
+          hero
           titleClassName="exp-card__title--hero"
         />
       )

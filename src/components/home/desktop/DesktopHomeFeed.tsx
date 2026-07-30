@@ -77,14 +77,15 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     // Hero ve üst bölümler sadece Gündem rayinden beslenir
     const gundemRail = categoryRails.gundem ?? []
     const heroLead = gundemRail[0]
-    const heroRight = gundemRail.slice(1, 3)
+    // 3 kompakt yan haber — 2 tam-geniş görsel kart sol sütunu boş bırakıyordu
+    const heroRight = gundemRail.slice(1, 4)
 
-    const topFour = gundemRail.slice(3, 7)
-    const quickHeadlines = gundemRail.slice(7, 12)
+    const topFour = gundemRail.slice(4, 8)
+    const quickHeadlines = gundemRail.slice(8, 13)
 
-    // Alt Gündem bölümü: rail'den kalan haberler (12. index sonrası)
-    const moreGrid = gundemRail.slice(12, 16)
-    const moreSidebar = gundemRail.slice(16, 18)
+    // Alt Gündem bölümü: rail'den kalan haberler
+    const moreGrid = gundemRail.slice(13, 17)
+    const moreSidebar = gundemRail.slice(17, 19)
 
     const featureLead = take(1)[0]
     const featureImage = take(1)[0]
@@ -180,8 +181,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
 
           <aside className={HERO_SPLIT_ASIDE}>
             <p className="nl-kicker mb-3">Öne Çıkanlar</p>
-            <div className="nl-kicker-bar mb-4">
-              <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="nl-kicker-bar">
+              <div className="flex min-w-0 flex-1 flex-col">
                 {layout.heroRight.map((item, i) => (
                   <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
                 ))}
