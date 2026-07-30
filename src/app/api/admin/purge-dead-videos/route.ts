@@ -13,7 +13,7 @@
  * Auth: super_admin veya managing_editor (news:publish yetkisi)
  */
 import { NextResponse } from 'next/server'
-import { verifyCmsToken } from '@/lib/cmsAuth'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 
 export const runtime = 'nodejs'
