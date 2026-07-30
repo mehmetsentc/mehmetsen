@@ -1,8 +1,3 @@
-/**
- * Günlük futbol senkronizasyonu — tüm ligler
- * Her gün 06:00 UTC çalışır
- * 4 lig × 3 endpoint = 12 API isteği/gün (100 req/gün limitinde güvenli)
- */
 import { NextRequest, NextResponse } from 'next/server'
 import {
   getStandings,
@@ -13,6 +8,7 @@ import {
   CURRENT_SEASON,
 } from '@/services/footballService.server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
+import { syncSkorDaily, syncSkorStandings } from '@/lib/skor/sync'
 
 export const runtime    = 'nodejs'
 export const dynamic    = 'force-dynamic'
@@ -60,7 +56,24 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, date: today, results })
+  // NaHaber Skor arşivine yaz
+  const [skorDaily, skorStandings] = await Promise.allSettled([
+    syncSkorDaily(),
+    syncSkorStandings(),
+  ])
+
+  return NextResponse.json({
+    ok: true,
+    date: today,
+    results,
+    skor: {
+      daily: skorDaily.status === 'fulfilled' ? skorDaily.value : String(skorDaily.reason),
+      standings:
+        skorStandings.status === 'fulfilled'
+          ? skorStandings.value
+          : String(skorStandings.reason),
+    },
+  })
 }
 
 export const POST = GET

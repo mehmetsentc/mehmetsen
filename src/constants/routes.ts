@@ -32,6 +32,8 @@ export const ROUTES = {
   TEKNOLOJI: '/kategori/teknoloji',
   SPOR: '/kategori/spor',
   FOOTBALL: '/futbol-canli',
+  /** NaHaber Skor — minimal Maçkolik (çoklu spor) */
+  SKOR: '/skor',
   MUZELER: '/muzeler',
   DUNYA: '/kategori/dunya',
   SAGLIK: '/kategori/saglik',
@@ -120,6 +122,7 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname === ROUTES.MOST_READ || pathname.startsWith('/cok-okunanlar')) return true
   if (pathname.startsWith('/influencer')) return true
   if (pathname.startsWith('/futbol-canli')) return true
+  if (pathname.startsWith('/skor')) return true
   if (pathname.startsWith('/muzeler')) return true
   if (pathname.startsWith('/oyunlar')) return true
   if (pathname === ROUTES.SITE_MAP) return true

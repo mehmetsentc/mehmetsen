@@ -1,0 +1,200 @@
+/* NaHaber Skor — compact scoreboard surface (separate from news cards) */
+.skor-page {
+  --skor-live: #ef4444;
+  --skor-row: rgb(var(--color-card));
+  --skor-line: rgb(var(--color-border) / 0.55);
+  min-height: 60dvh;
+}
+
+.skor-cookie-rail {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.skor-cookie-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.skor-cookie {
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--color-border));
+  padding: 0.4rem 0.95rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: rgb(var(--color-muted));
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.skor-cookie[aria-pressed='true'] {
+  border-color: rgb(var(--color-brand));
+  background: rgb(var(--color-brand) / 0.12);
+  color: rgb(var(--color-brand));
+}
+
+.skor-tab-rail {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: 0.75rem;
+  background: rgb(var(--color-surface));
+  padding: 0.25rem;
+  margin-bottom: 0.85rem;
+}
+
+.skor-tab {
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgb(var(--color-muted));
+}
+
+.skor-tab[aria-pressed='true'] {
+  background: rgb(var(--color-card));
+  color: rgb(var(--color-text));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+.skor-league {
+  border: 1px solid var(--skor-line);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--skor-row);
+  margin-bottom: 0.65rem;
+}
+
+.skor-league__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--skor-line);
+  background: rgb(var(--color-surface) / 0.65);
+}
+
+.skor-league__title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgb(var(--color-muted));
+}
+
+.skor-match {
+  display: grid;
+  grid-template-columns: 48px 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--skor-line);
+}
+
+.skor-match:last-child {
+  border-bottom: 0;
+}
+
+.skor-match--live {
+  background: rgb(239 68 68 / 0.06);
+}
+
+.skor-match__clock {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--color-muted));
+}
+
+.skor-match__clock--live {
+  color: var(--skor-live);
+}
+
+.skor-match__team {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(var(--color-text));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skor-match__team--right {
+  text-align: right;
+}
+
+.skor-match__score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 3.25rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.skor-pulse {
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--skor-live);
+  animation: skor-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skor-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+}
+
+.skor-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid rgb(var(--color-border) / 0.7);
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    105deg,
+    rgb(var(--color-surface)) 0%,
+    rgb(var(--color-card)) 55%,
+    rgb(var(--color-brand) / 0.08) 100%
+  );
+  padding: 0.7rem 0.9rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.skor-cta__title {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: rgb(var(--color-text));
+}
+
+.skor-cta__sub {
+  font-size: 0.7rem;
+  color: rgb(var(--color-muted));
+  margin-top: 0.1rem;
+}
+
+.skor-cta__go {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: rgb(var(--color-brand));
+}

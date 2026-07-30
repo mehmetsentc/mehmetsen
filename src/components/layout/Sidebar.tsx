@@ -23,6 +23,7 @@ interface SidebarProps {
 
 const APP_NAV = [
   { label: 'Yerel Haber', href: ROUTES.LOCAL,         icon: MapPin       },
+  { label: 'Skor',        href: ROUTES.SKOR,          icon: Trophy       },
   { label: 'Süper Lig',   href: ROUTES.FOOTBALL,      icon: Trophy       },
   { label: 'Müzeler',     href: ROUTES.MUZELER,       icon: Building2    },
   { label: 'Magazin',     href: '/kategori/magazin',  icon: Star         },

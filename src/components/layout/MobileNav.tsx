@@ -3,7 +3,7 @@
 import { memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Tv, Bookmark, MapPin } from 'lucide-react'
+import { Home, Search, Tv, Bookmark, MapPin, Trophy } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { ROUTES } from '@/constants/routes'
@@ -22,6 +22,9 @@ function isNavActive(pathname: string, item: MobileNavItem): boolean {
   }
   if (item.href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
   if (item.href === ROUTES.SAVED) return pathname.startsWith(ROUTES.SAVED)
+  if (item.href === ROUTES.SKOR) {
+    return pathname === ROUTES.SKOR || pathname.startsWith(`${ROUTES.SKOR}/`)
+  }
   if (item.href === ROUTES.LOCAL) {
     return pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)
   }
@@ -67,9 +70,10 @@ function MobileNavInner() {
     () => [
       { icon: Home, label: 'Ana Sayfa', href: ROUTES.FEED },
       { icon: Search, label: 'Ara', href: ROUTES.SEARCH },
+      { icon: Trophy, label: 'Skor', href: ROUTES.SKOR },
       { icon: Tv, label: 'Reels', href: ROUTES.REELS },
       { icon: Bookmark, label: 'Kayıtlı', href: ROUTES.SAVED },
-      { icon: MapPin, label: 'Yerel Haber', href: ROUTES.LOCAL },
+      { icon: MapPin, label: 'Yerel', href: ROUTES.LOCAL },
     ],
     []
   )

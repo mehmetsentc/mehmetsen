@@ -75,6 +75,13 @@ export const Collections = {
   /** Oyun skorları / sıralama — doc id: `${gameSlug}__${userId}` */
   GAME_SCORES: 'gameScores',
 
+  // ── NaHaber Skor (minimal Maçkolik) ───────────────────────────────────────
+  SPORTS_LEAGUES: 'sportsLeagues',
+  SPORTS_MATCHES: 'sportsMatches',
+  SPORTS_STANDINGS: 'sportsStandings',
+  SPORTS_SEASONS: 'sportsSeasons',
+  SPORTS_SYNC_STATE: 'sportsSyncState',
+
   // ── Integrations ──────────────────────────────────────────────────────────
   /** OAuth integration tokens — doc id: 'gmail_bilgi' etc. */
   INTEGRATIONS: 'integrations',
