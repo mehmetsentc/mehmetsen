@@ -124,10 +124,14 @@ async function fetchEspnDays(
   const daySet = new Set(days)
   const includeUndated = opts?.includeUndated !== false
   const includeRange = opts?.includeRange !== false
+  // Many single-day ESPN calls time out on Vercel — only hit per-day for tiny windows
+  const usePerDay = compact.length > 0 && compact.length <= 3
 
   const tasks: Promise<MatchResult[]>[] = []
   for (const league of leagues) {
-    for (const d of compact) tasks.push(fetchEspnLeague(league, d))
+    if (usePerDay) {
+      for (const d of compact) tasks.push(fetchEspnLeague(league, d))
+    }
     if (includeRange && compact.length >= 2) {
       const from = compact[0]!
       const to = compact[compact.length - 1]!
