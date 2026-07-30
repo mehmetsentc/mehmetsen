@@ -159,10 +159,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     })
   }
 
-  // ── Görseli olan haberleri önceliklendir ──────────────────────────────
-  // Instagram için görsel şart — görselsiz haberler koyu/siyah görünür.
-  const withImage    = candidates.filter(doc => !!extractImageUrl(doc.data() as Record<string, unknown>))
-  const prioritized  = withImage.length > 0 ? withImage : candidates
+  // ── Görseli olan haberler zorunlu — görselsiz haberler paylaşılmaz ──────
+  // Instagram/Facebook için görsel şart; görselsiz haberler koyu/siyah görünür.
+  const withImage   = candidates.filter(doc => !!extractImageUrl(doc.data() as Record<string, unknown>))
+  const prioritized = withImage   // fallback yok — sadece görseli olan haberler
   console.log(`[cron/social] candidates=${candidates.length} withImage=${withImage.length}`)
 
   const finalDocs = prioritized.slice(0, BATCH_LIMIT)

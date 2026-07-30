@@ -109,6 +109,13 @@ export async function publishOneSocial(newsId: string): Promise<void> {
     const title = typeof data.title === 'string' ? data.title : ''
     if (!title) return
 
+    // ── Görsel zorunluluğu: resim yoksa paylaşma ─────────────────────────────
+    const coverImage = extractImageUrl(data)
+    if (!coverImage) {
+      console.log(`[publishOneSocial] Görsel yok — paylaşım atlandı: ${newsId}`)
+      return
+    }
+
     // ── Metin hazırlığı ──────────────────────────────────────────────────────
     const spot: string =
       typeof data.spot        === 'string' ? data.spot        :
