@@ -565,15 +565,16 @@ function VideoFeedItemInner({
   // ytBlocked=true: video sahibi embedding'i kapatmış (101/150) → fallback UI göster.
   if (isYouTube && youtubeVideoId) {
     const videoId = youtubeVideoId
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
 
     // youtube-nocookie.com: gizlilik modu + iOS WebKit'te postMessage daha güvenilir
     // autoplay=1 + mute=1: browser autoplay politikasını bypass eder (sesli → postMessage ile aç)
     // Tek sabit src — key değişmez, iframe yeniden yüklenmez.
     // Oynatma/durdurma postMessage (playVideo/pauseVideo) ile yönetilir.
+    // origin=https://nahaber.com hardcoded: Capacitor WebView'da window.location.origin
+    // "capacitor://localhost" döner, YouTube bunu bot olarak algılar → oturum açma overlay'i.
     const baseEmbed = `https://www.youtube-nocookie.com/embed/${videoId}`
-    const embedSrc = `${baseEmbed}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${origin}`
+    const embedSrc = `${baseEmbed}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=https://nahaber.com`
 
     const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl
       ?? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
