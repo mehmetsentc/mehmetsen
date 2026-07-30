@@ -1,13 +1,14 @@
 'use client'
 
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Tv, Bookmark, MapPin, Trophy } from 'lucide-react'
+import { Home, Search, Plus, Trophy, MapPin } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
+import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
 
 interface MobileNavItem {
   icon: LucideIcon
@@ -15,20 +16,18 @@ interface MobileNavItem {
   href: string
 }
 
-function isNavActive(pathname: string, item: MobileNavItem): boolean {
-  if (item.href === ROUTES.FEED) return pathname === ROUTES.FEED || pathname === '/'
-  if (item.href === ROUTES.SEARCH) {
+function isNavActive(pathname: string, href: string): boolean {
+  if (href === ROUTES.FEED) return pathname === ROUTES.FEED || pathname === '/'
+  if (href === ROUTES.SEARCH) {
     return pathname.startsWith(ROUTES.SEARCH) || pathname.startsWith(ROUTES.SEARCH_TR)
   }
-  if (item.href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
-  if (item.href === ROUTES.SAVED) return pathname.startsWith(ROUTES.SAVED)
-  if (item.href === ROUTES.SKOR) {
-    return pathname === ROUTES.SKOR || pathname.startsWith(`${ROUTES.SKOR}/`)
+  if (href === ROUTES.SPOR) {
+    return pathname === ROUTES.SPOR || pathname.startsWith(`${ROUTES.SPOR}/`)
   }
-  if (item.href === ROUTES.LOCAL) {
+  if (href === ROUTES.LOCAL) {
     return pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)
   }
-  return pathname.startsWith(item.href)
+  return pathname.startsWith(href)
 }
 
 interface MobileNavLinkProps {
@@ -65,38 +64,70 @@ const MobileNavLink = memo(function MobileNavLink({ item, active, pathname }: Mo
 
 function MobileNavInner() {
   const pathname = usePathname()
+  const [submitOpen, setSubmitOpen] = useState(false)
 
-  const items = useMemo<MobileNavItem[]>(
+  const leftItems = useMemo<MobileNavItem[]>(
     () => [
-      { icon: Home, label: 'Ana Sayfa', href: ROUTES.FEED },
-      { icon: Search, label: 'Ara', href: ROUTES.SEARCH },
-      { icon: Trophy, label: 'Skor', href: ROUTES.SKOR },
-      { icon: Tv, label: 'Reels', href: ROUTES.REELS },
-      { icon: Bookmark, label: 'Kayıtlı', href: ROUTES.SAVED },
+      { icon: Home,   label: 'Ana Sayfa', href: ROUTES.FEED },
+      { icon: Search, label: 'Ara',       href: ROUTES.SEARCH },
+    ],
+    []
+  )
+
+  const rightItems = useMemo<MobileNavItem[]>(
+    () => [
+      { icon: Trophy, label: 'Spor',  href: ROUTES.SPOR },
       { icon: MapPin, label: 'Yerel', href: ROUTES.LOCAL },
     ],
     []
   )
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))]/95 backdrop-blur-xl lg:hidden"
-      aria-label="Ana menü"
-    >
-      <div
-        className="flex items-end pb-[var(--safe-bottom)]"
-        style={{ height: 'calc(3.5rem + var(--safe-bottom, 0px))' }}
+    <>
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))]/95 backdrop-blur-xl lg:hidden"
+        aria-label="Ana menü"
       >
-        {items.map((item) => (
-          <MobileNavLink
-            key={item.href}
-            item={item}
-            active={isNavActive(pathname, item)}
-            pathname={pathname}
-          />
-        ))}
-      </div>
-    </nav>
+        <div
+          className="flex items-end pb-[var(--safe-bottom)]"
+          style={{ height: 'calc(3.5rem + var(--safe-bottom, 0px))' }}
+        >
+          {/* Sol: Ana Sayfa + Ara */}
+          {leftItems.map((item) => (
+            <MobileNavLink
+              key={item.href}
+              item={item}
+              active={isNavActive(pathname, item.href)}
+              pathname={pathname}
+            />
+          ))}
+
+          {/* Ortada: Haber Ekle FAB */}
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <button
+              type="button"
+              aria-label="Haber Ekle"
+              onClick={() => setSubmitOpen(true)}
+              className="flex h-12 w-12 -translate-y-2 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-white shadow-lg transition-transform active:scale-95"
+            >
+              <Plus className="h-6 w-6" strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {/* Sağ: Spor + Yerel */}
+          {rightItems.map((item) => (
+            <MobileNavLink
+              key={item.href}
+              item={item}
+              active={isNavActive(pathname, item.href)}
+              pathname={pathname}
+            />
+          ))}
+        </div>
+      </nav>
+
+      {submitOpen && <SubmitNewsModal onClose={() => setSubmitOpen(false)} />}
+    </>
   )
 }
 
