@@ -53,7 +53,7 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
     const loadRelated = () => {
       if (cancelled) return
       void postService
-        .getSuggestedNews(post.id, { categoryId: post.categoryId ?? 'gundem', limit: 10 })
+        .getSuggestedNews(post.id, { categoryId: post.categoryId ?? 'gundem', limit: 8 })
         .then((items) => {
           if (!cancelled) setSuggested(items)
         })
@@ -127,32 +127,14 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
         </NewsArticleBody>
       </NewsArticleCard>
 
-      {suggested.length > 0 && (
-        <section className="news-article-rail mt-8 w-full">
+      {suggested.length > 0 ? (
+        <section className="news-article-rail mt-8 w-full" aria-label="Daha fazla haber">
           <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
-            İlgili Haberler
+            Daha fazla haber
           </h2>
-          <SuggestedNewsRail posts={suggested.slice(0, 6)} preferSlugLinks />
+          <SuggestedNewsRail posts={suggested.slice(0, 8)} preferSlugLinks hideHeader />
         </section>
-      )}
-
-      {suggested.length > 6 && (
-        <section className="news-article-rail mt-8 w-full">
-          <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
-            Benzer Haberler
-          </h2>
-          <SuggestedNewsRail posts={suggested.slice(6, 12)} preferSlugLinks />
-        </section>
-      )}
-
-      {latest.length > 0 && (
-        <section className="news-article-rail mt-8 w-full">
-          <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">
-            Son Haberler
-          </h2>
-          <SuggestedNewsRail posts={latest} preferSlugLinks />
-        </section>
-      )}
+      ) : null}
 
       {(suggested[0] ?? latest[0]) && (
         <section className="news-article-rail mt-4 w-full">

@@ -520,16 +520,28 @@ export function MackolikScoreboard() {
           <Loader2 className="h-5 w-5 animate-spin text-[rgb(var(--color-muted))]" />
         </div>
       ) : groups.length === 0 ? (
-        <p className="px-1 text-xs text-[rgb(var(--color-muted))]">
+        <p className="rounded-xl border border-[rgb(var(--color-border))]/70 bg-[rgb(var(--color-surface))] px-3 py-2.5 text-[11px] leading-snug text-[rgb(var(--color-muted))]">
           {tab === 'live'
-            ? 'Şu an canlı maç yok — Bugün veya Program sekmesine bakın.'
+            ? 'Şu an canlı maç yok.'
             : tab === 'today' || emptyReason === 'no_matches_today'
-              ? 'Bugün oynanan / oynanacak maç yok. Yaklaşan fikstür için Program sekmesine bakın.'
+              ? 'Bugün maç yok — Program sekmesine bakın.'
               : tab === 'results'
-                ? 'Son günlerde sonuç bulunamadı.'
+                ? 'Sonuç bulunamadı.'
                 : tab === 'program'
-                  ? 'Yaklaşan program bulunamadı.'
+                  ? 'Yaklaşan program yok.'
                   : 'Maç bulunamadı.'}
+          {tab === 'today' || emptyReason === 'no_matches_today' ? (
+            <>
+              {' '}
+              <button
+                type="button"
+                onClick={() => setTab('program')}
+                className="font-semibold text-[rgb(var(--color-brand))]"
+              >
+                Program →
+              </button>
+            </>
+          ) : null}
         </p>
       ) : (
         <div className="space-y-3">

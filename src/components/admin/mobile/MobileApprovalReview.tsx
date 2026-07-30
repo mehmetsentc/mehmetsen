@@ -246,7 +246,7 @@ export function MobileApprovalReview({ id }: { id: string }) {
       >
         <div className="mx-auto flex max-w-lg gap-2">
           <Link
-            href={source === 'newsDrafts' ? `/admin/news?filter=pending` : `/admin/news/${id}/edit`}
+            href={`/admin/news/${id}/edit`}
             className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-[rgb(var(--color-border))] text-sm font-semibold text-[rgb(var(--color-text))]"
           >
             <Pencil className="h-4 w-4" />

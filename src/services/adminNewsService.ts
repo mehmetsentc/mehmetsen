@@ -270,8 +270,14 @@ export const adminNewsService = {
 
   async getById(id: string): Promise<Post | null> {
     const snap = await getDoc(doc(db, VIDEO_FEED_COLLECTION, id))
-    if (!snap.exists()) return null
-    return adminNewsDocToPost(snap.id, snap.data() as NewsDocument)
+    if (snap.exists()) {
+      return adminNewsDocToPost(snap.id, snap.data() as NewsDocument)
+    }
+
+    // Onay kuyruğundaki haberler newsDrafts'ta olabilir
+    const draftSnap = await getDoc(doc(db, Collections.NEWS_DRAFTS, id))
+    if (!draftSnap.exists()) return null
+    return draftDocToPost(draftSnap.id, draftSnap.data() as NewsDocument)
   },
 
   async approve(id: string, source: AdminNewsSource = 'news'): Promise<void> {

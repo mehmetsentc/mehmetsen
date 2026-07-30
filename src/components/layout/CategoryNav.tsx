@@ -39,7 +39,7 @@ export function CategoryNav() {
         className={cn(
           'flex overflow-x-auto scrollbar-hide',
           isFeed
-            ? 'min-h-[54px] snap-x snap-mandatory scroll-px-4 gap-6 px-4'
+            ? 'min-h-[48px] snap-x snap-mandatory scroll-px-4 gap-5 px-4'
             : 'gap-0 scroll-px-3'
         )}
         data-no-category-swipe
@@ -53,7 +53,7 @@ export function CategoryNav() {
               className={cn(
                 'relative flex shrink-0 items-center transition-colors',
                 isFeed
-                  ? 'min-h-[54px] snap-start px-0.5 text-[15px] font-semibold'
+                  ? 'min-h-[48px] snap-start px-0.5 text-[15px] font-semibold'
                   : 'min-h-11 px-3.5 text-sm font-semibold',
                 isActive
                   ? 'text-[rgb(var(--color-nav-active))]'

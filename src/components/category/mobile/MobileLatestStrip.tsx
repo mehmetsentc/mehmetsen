@@ -43,7 +43,7 @@ export function MobileLatestStrip({ items, className }: MobileLatestStripProps) 
       } else {
         el.scrollBy({ left: 160, behavior: 'smooth' })
       }
-    }, 4500)
+    }, 6500)
 
     return () => window.clearInterval(id)
   }, [items.length, paused])
@@ -62,7 +62,7 @@ export function MobileLatestStrip({ items, className }: MobileLatestStripProps) 
         className="mc-latest__scroller scrollbar-hide"
         data-no-category-swipe
       >
-        {items.map((item, i) => (
+        {items.slice(0, 5).map((item, i) => (
           <span key={item.id} className="mc-latest__item">
             {i > 0 ? <span className="mc-latest__dot" aria-hidden>•</span> : null}
             <Link href={item.href} className="mc-latest__link">

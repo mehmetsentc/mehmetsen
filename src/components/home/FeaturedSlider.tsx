@@ -92,8 +92,8 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
         <div
           className={cn(
             'relative w-full max-w-full overflow-hidden',
-            // Mobile: full-bleed, taller, no rounded corners
-            'h-[clamp(380px,95vw,520px)] max-md:rounded-none',
+            // Mobile: shorter manşet so more feed fits above the fold
+            'h-[clamp(240px,68vw,300px)] max-md:rounded-none',
             // Tablet+: kept rounded
             'md:aspect-[16/10] md:h-auto md:rounded-2xl'
           )}
@@ -165,11 +165,11 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
             href={newsItemDetailHref(item)}
             className="absolute inset-0 z-10 flex flex-col justify-end focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            <div className="px-4 pb-5 pt-10 sm:px-6 max-md:px-5 max-md:pb-8 md:pb-12">
-              <span className="mb-2.5 inline-flex items-center rounded-md bg-[rgb(var(--color-brand))] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white max-md:mb-3">
+            <div className="px-4 pb-4 pt-8 sm:px-6 max-md:px-5 max-md:pb-5 md:pb-12">
+              <span className="mb-2 inline-flex items-center rounded-md bg-[rgb(var(--color-brand))] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white max-md:mb-2">
                 {newsItemCategoryLabel(item)}
               </span>
-              <h2 className="line-clamp-3 text-[1.5rem] font-black leading-[1.12] tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)] max-md:text-[clamp(1.45rem,_5.5vw,_1.9rem)] max-md:leading-[1.15] sm:text-[1.85rem]">
+              <h2 className="line-clamp-3 text-[1.5rem] font-black leading-[1.12] tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)] max-md:line-clamp-2 max-md:text-[clamp(1.2rem,_4.5vw,_1.55rem)] max-md:leading-[1.2] sm:text-[1.85rem]">
                 {item.title}
               </h2>
               {slides.length > 1 ? (

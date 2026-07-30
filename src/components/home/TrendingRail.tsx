@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
+import { ROUTES } from '@/constants/routes'
 import type { NewsItem } from '@/types/newsItem'
 
 interface TrendingRailProps {
@@ -19,6 +20,12 @@ export function TrendingRail({ items }: TrendingRailProps) {
         <span className="ml-2 rounded-full bg-[rgb(var(--color-brand))]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
           Canlı
         </span>
+        <Link
+          href={`${ROUTES.FEED}?tab=trend`}
+          className="ml-auto text-sm font-semibold text-[rgb(var(--color-brand))]"
+        >
+          Tümü
+        </Link>
       </div>
 
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide" data-no-category-swipe>

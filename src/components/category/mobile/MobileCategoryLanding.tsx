@@ -20,6 +20,7 @@ import {
 import { MobileCategoryHeader } from './MobileCategoryHeader'
 import { MobileLatestStrip } from './MobileLatestStrip'
 import { MobileCategoryStory } from './MobileCategoryStories'
+import { MobileYerelCityStrip } from './MobileYerelCityStrip'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
@@ -301,6 +302,8 @@ export function MobileCategoryLanding({
       />
 
       {topExtras ? <div className="mc-extras">{topExtras}</div> : null}
+
+      {cat.id === 'yerel-haber' ? <MobileYerelCityStrip /> : null}
 
       {loadingInitial ? (
         <div className="mc-skeletons">

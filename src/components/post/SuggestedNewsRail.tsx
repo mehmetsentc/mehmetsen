@@ -17,28 +17,42 @@ interface SuggestedNewsRailProps {
   posts: Post[]
   /** Prefer canonical `/haber/[slug]` links for news articles. */
   preferSlugLinks?: boolean
+  /** Hide built-in “Önerilen Haberler” heading when parent supplies one. */
+  hideHeader?: boolean
 }
 
 function suggestedNewsHref(post: Post, _preferSlugLinks: boolean): string {
   return getPostDetailHref(post)
 }
 
-export function SuggestedNewsRail({ posts, preferSlugLinks = false }: SuggestedNewsRailProps) {
+export function SuggestedNewsRail({
+  posts,
+  preferSlugLinks = false,
+  hideHeader = false,
+}: SuggestedNewsRailProps) {
   const tier = useNetworkTier()
   if (posts.length === 0) return null
 
   return (
-    <section className="mt-8 border-t border-gray-100 pt-6 dark:border-gray-800">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Önerilen Haberler</h2>
-        <Link
-          href={ROUTES.FEED}
-          className="flex items-center gap-0.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
-        >
-          Tümü
-          <ChevronRight className="h-4 w-4" />
-        </Link>
-      </div>
+    <section
+      className={
+        hideHeader
+          ? 'mt-0'
+          : 'mt-8 border-t border-gray-100 pt-6 dark:border-gray-800'
+      }
+    >
+      {hideHeader ? null : (
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Önerilen Haberler</h2>
+          <Link
+            href={ROUTES.FEED}
+            className="flex items-center gap-0.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            Tümü
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
 
       <div className="hide-scrollbar -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
         {posts.map((post) => {

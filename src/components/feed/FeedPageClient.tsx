@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import { HomeFeed } from '@/components/home/HomeFeed'
 import { TrendFeed } from '@/components/feed/TrendFeed'
-import { FeedCategoryBar, type FeedTab } from '@/components/feed/FeedCategoryBar'
+import type { FeedTab } from '@/components/feed/FeedCategoryBar'
 import { AdSlotProvider } from '@/context/AdSlotContext'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import { useHomeFeedLiveUpdates } from '@/hooks/useHomeFeedLiveUpdates'
@@ -108,8 +109,9 @@ function useDesktopFeedReady() {
   return desktopReady
 }
 
-export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
-  const [activeTab, setActiveTab] = useState<FeedTab>('home')
+function FeedPageBody({ homeFeedData }: FeedPageClientProps) {
+  const searchParams = useSearchParams()
+  const activeTab: FeedTab = searchParams.get('tab') === 'trend' ? 'trend' : 'home'
   const liveFeedData = useHomeFeedLiveUpdates(homeFeedData)
   const desktopReady = useDesktopFeedReady()
 
@@ -117,12 +119,11 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
     <>
       <FeedScrollHeaderConfig homeFeedData={liveFeedData} />
 
-      {/* Mobil — lg altında görünür; masaüstünde DOM’da kalır ama layout’a girmez */}
+      {/* Mobil — lg altında görünür; Ana Sayfa/Trend alt şeridi kaldırıldı (chrome sade) */}
       <div className="lg:hidden">
-        <FeedCategoryBar activeTab={activeTab} onTabChange={setActiveTab} />
         {activeTab === 'home' && <HomeFeed data={liveFeedData} />}
         {activeTab === 'trend' && (
-          <div className="mt-4">
+          <div className="mt-2 px-0">
             <TrendFeed items={liveFeedData.trendFeed} />
           </div>
         )}
@@ -153,5 +154,13 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
         </AdSlotProvider>
       </div>
     </>
+  )
+}
+
+export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
+  return (
+    <Suspense fallback={<HomeFeed data={homeFeedData} />}>
+      <FeedPageBody homeFeedData={homeFeedData} />
+    </Suspense>
   )
 }
