@@ -18,6 +18,8 @@ import type {
 } from '@/lib/skor/types'
 import { FINISHED_SHORT, LIVE_SHORT } from '@/lib/skor/types'
 
+const PROGRAM_DAYS = 21
+
 function filterByTab(
   matches: SportsMatchDoc[],
   tab: SkorBoardTab,
@@ -40,6 +42,14 @@ function filterByTab(
     }
     return true
   })
+}
+
+function programDayList(fromYmd: string, days = PROGRAM_DAYS): string[] {
+  const out: string[] = []
+  for (let i = 0; i <= days; i++) out.push(turkeyYmd(i))
+  // turkeyYmd(i) is relative to now — when fromYmd is today this is fine
+  void fromYmd
+  return out
 }
 
 export async function getSkorBoard(opts: {
@@ -69,6 +79,7 @@ export async function getSkorBoard(opts: {
 
   let matches: SportsMatchDoc[] = []
   let source: 'firestore' | 'hydrate' = 'firestore'
+  let emptyReason: string | null = null
 
   if (tab === 'live') {
     matches = await queryLiveMatches(sport)
@@ -78,12 +89,11 @@ export async function getSkorBoard(opts: {
       source = 'hydrate'
     }
   } else if (tab === 'program') {
-    const to = turkeyYmd(7)
+    const to = turkeyYmd(PROGRAM_DAYS)
     matches = await queryProgramMatches(sport, today, to)
+    matches = filterByTab(matches, 'program', today, yesterday)
     if (matches.length === 0) {
-      const days: string[] = []
-      for (let i = 0; i <= 7; i++) days.push(turkeyYmd(i))
-      const hydrated = await hydrateSportBoard(sport, days)
+      const hydrated = await hydrateSportBoard(sport, programDayList(today))
       matches = filterByTab(hydrated, 'program', today, yesterday)
       source = 'hydrate'
     }
@@ -94,17 +104,37 @@ export async function getSkorBoard(opts: {
       const days = [date, turkeyYmd(-2), turkeyYmd(-3)]
       const hydrated = await hydrateSportBoard(sport, days)
       matches = hydrated.filter(
-        (m) => m.status === 'finished' || FINISHED_SHORT.has(m.statusShort)
+        (m) =>
+          (m.status === 'finished' || FINISHED_SHORT.has(m.statusShort)) &&
+          days.includes(m.dateYmd)
       )
       source = 'hydrate'
     }
   } else {
+    // today
     matches = await queryMatchesBySportDate(sport, date)
     matches = filterByTab(matches, 'today', date, yesterday)
     if (matches.length === 0) {
       const hydrated = await hydrateSportBoard(sport, [date])
       matches = filterByTab(hydrated, 'today', date, yesterday)
       source = 'hydrate'
+    }
+    // Offseason / sparse days: soft-fill with upcoming so the board isn't blank
+    if (matches.length === 0) {
+      const to = turkeyYmd(PROGRAM_DAYS)
+      let upcoming = await queryProgramMatches(sport, today, to)
+      upcoming = filterByTab(upcoming, 'program', today, yesterday)
+      if (upcoming.length === 0) {
+        const hydrated = await hydrateSportBoard(sport, programDayList(today))
+        upcoming = filterByTab(hydrated, 'program', today, yesterday)
+        source = 'hydrate'
+      }
+      if (upcoming.length > 0) {
+        matches = upcoming
+        emptyReason = 'showing_upcoming'
+      } else {
+        emptyReason = 'no_matches_today'
+      }
     }
   }
 
@@ -113,18 +143,22 @@ export async function getSkorBoard(opts: {
     (m) => m.status === 'live' || LIVE_SHORT.has(m.statusShort)
   ).length
 
+  if (!emptyReason) {
+    emptyReason =
+      groups.length === 0 && tab === 'today'
+        ? 'no_matches_today'
+        : groups.length === 0 && tab === 'live'
+          ? 'no_live'
+          : null
+  }
+
   return {
     tab,
     sport,
     date,
     groups,
     liveCount,
-    emptyReason:
-      groups.length === 0 && tab === 'today'
-        ? 'no_matches_today'
-        : groups.length === 0 && tab === 'live'
-          ? 'no_live'
-          : null,
+    emptyReason,
     source,
     updatedAt: Date.now(),
   }

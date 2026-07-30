@@ -4,7 +4,7 @@ import {
   fetchEspnLeague,
 } from '@/lib/sports/espnScoreboard'
 import { fetchSportsDbDays } from '@/lib/sports/theSportsDb'
-import { addTurkeyDays, turkeyNowParts } from '@/lib/sports/matchTypes'
+import { addTurkeyDays, turkeyNowParts, type MatchResult } from '@/lib/sports/matchTypes'
 import {
   CURRENT_SEASON,
   LEAGUE_IDS,
@@ -112,18 +112,41 @@ async function persistMatchDocs(docs: SportsMatchDoc[]): Promise<number> {
   return n
 }
 
-async function fetchEspnDays(sport: SkorSport, days: string[]): Promise<SportsMatchDoc[]> {
+async function fetchEspnDays(
+  sport: SkorSport,
+  days: string[],
+  opts?: { includeUndated?: boolean; includeRange?: boolean }
+): Promise<SportsMatchDoc[]> {
   const compact = days.map((d) => d.replace(/-/g, ''))
   const leagues =
     sport === 'futbol' ? SOCCER_LEAGUES : sport === 'basketbol' ? BASKETBALL_LEAGUES : []
   if (!leagues.length) return []
-  const batches = await Promise.all(
-    leagues.flatMap((league) => compact.map((d) => fetchEspnLeague(league, d)))
-  )
   const daySet = new Set(days)
+  const includeUndated = opts?.includeUndated !== false
+  const includeRange = opts?.includeRange !== false
+
+  const tasks: Promise<MatchResult[]>[] = []
+  for (const league of leagues) {
+    for (const d of compact) tasks.push(fetchEspnLeague(league, d))
+    if (includeRange && compact.length >= 2) {
+      const from = compact[0]!
+      const to = compact[compact.length - 1]!
+      tasks.push(fetchEspnLeague(league, `${from}-${to}`))
+    }
+    // ESPN often only exposes the next kickoff via undated scoreboard
+    if (includeUndated) tasks.push(fetchEspnLeague(league))
+  }
+
+  const batches = await Promise.all(tasks)
+  const minDay = days.length ? days.reduce((a, b) => (a < b ? a : b)) : ''
   return batches
     .flat()
-    .filter((m) => daySet.has(m.date) && m.sport === sport)
+    .filter((m) => {
+      if (m.sport !== sport) return false
+      if (daySet.has(m.date)) return true
+      // Keep undated/range upcoming outside the exact day list (preseason gaps)
+      return includeUndated && m.status === 'upcoming' && (!minDay || m.date >= minDay)
+    })
     .map((m) => matchResultToMatchDoc(m, 'espn'))
 }
 
@@ -184,7 +207,7 @@ export async function syncSkorDaily(): Promise<Record<string, unknown>> {
   const today = turkeyYmd(0)
   const yesterday = turkeyYmd(-1)
   const tomorrow = turkeyYmd(1)
-  const programEnd = turkeyYmd(7)
+  const programEnd = turkeyYmd(21)
   const counts: Record<string, number> = {}
 
   try {
@@ -305,31 +328,38 @@ export async function hydrateSportBoard(
   sport: SkorSport,
   days: string[]
 ): Promise<SportsMatchDoc[]> {
-  if (sport === 'futbol') {
-    const docs: SportsMatchDoc[] = []
-    for (const day of days) {
-      try {
-        const groups = await getDayScoreboard(day)
-        docs.push(...groups.flatMap((g) => g.matches.map(footballScoreboardToMatchDoc)))
-      } catch {
-        /* ignore */
+  let docs: SportsMatchDoc[] = []
+  try {
+    if (sport === 'futbol') {
+      for (const day of days) {
+        try {
+          const groups = await getDayScoreboard(day)
+          docs.push(...groups.flatMap((g) => g.matches.map(footballScoreboardToMatchDoc)))
+        } catch {
+          /* ignore */
+        }
       }
+      docs.push(...(await fetchEspnDays('futbol', days)))
+    } else if (sport === 'basketbol') {
+      docs = [
+        ...(await fetchEspnDays('basketbol', days)),
+        ...(await fetchTsdbDays('basketbol', days)),
+      ]
+    } else {
+      docs = await fetchTsdbDays('voleybol', days)
     }
-    docs.push(...(await fetchEspnDays('futbol', days)))
-    await persistMatchDocs(dedupeMatches(docs))
-    return dedupeMatches(docs)
+  } catch (err) {
+    console.error('[skor/hydrate] fetch failed', sport, err)
   }
-  if (sport === 'basketbol') {
-    const docs = dedupeMatches([
-      ...(await fetchEspnDays('basketbol', days)),
-      ...(await fetchTsdbDays('basketbol', days)),
-    ])
-    await persistMatchDocs(docs)
-    return docs
+
+  const deduped = dedupeMatches(docs)
+  try {
+    await persistMatchDocs(deduped)
+  } catch (err) {
+    // Still return live data even if Firestore write fails
+    console.error('[skor/hydrate] persist failed', err)
   }
-  const docs = await fetchTsdbDays('voleybol', days)
-  await persistMatchDocs(docs)
-  return docs
+  return deduped
 }
 
 function dedupeMatches(docs: SportsMatchDoc[]): SportsMatchDoc[] {

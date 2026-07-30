@@ -193,6 +193,11 @@ export function NahaberSkorPage() {
         </p>
       ) : (
         <div>
+          {emptyReason === 'showing_upcoming' ? (
+            <p className="mb-2 rounded-lg bg-[rgb(var(--color-surface))] px-3 py-2 text-[11px] text-[rgb(var(--color-muted))]">
+              Bugün maç yok — yaklaşan program gösteriliyor.
+            </p>
+          ) : null}
           {groups.map((g) => (
             <SkorLeagueGroup
               key={g.key}
