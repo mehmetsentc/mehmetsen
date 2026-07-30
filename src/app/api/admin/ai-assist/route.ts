@@ -156,11 +156,20 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
       })
       if (res.ok) {
         const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-        const content = json.choices[0]?.message?.content?.trim() ?? '{}'
+        const raw = json.choices[0]?.message?.content?.trim() ?? '{}'
         try {
-          return JSON.parse(content) as Record<string, unknown>
+          // Robust extraction: handle markdown code fences (```json ... ```)
+          let jsonStr = raw
+          const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+          if (fence) jsonStr = fence[1].trim()
+          // Fallback: find first {...} block
+          if (!jsonStr.startsWith('{')) {
+            const obj = jsonStr.match(/\{[\s\S]*\}/)
+            if (obj) jsonStr = obj[0]
+          }
+          return JSON.parse(jsonStr) as Record<string, unknown>
         } catch {
-          errors.push(`DeepSeek JSON parse hatası (${content.length} karakter)`)
+          errors.push(`DeepSeek JSON parse hatası (${raw.length} karakter)`)
         }
       } else {
         const body = await res.text().catch(() => '')

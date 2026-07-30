@@ -65,8 +65,8 @@ async function fetchRecentPublished(categoryId?: string | null): Promise<Array<{
 
   const snap = await query.get()
   return snap.docs.map((d) => ({
-    title: String(d.data().title || ''),
-    summary: String(d.data().summary || '').slice(0, 150),
+    title: String(d.data().title ?? ''),
+    summary: String(d.data().summary ?? '').slice(0, 150),
   }))
 }
 
@@ -78,7 +78,14 @@ export async function runEditorialReview(article: ArticleInput): Promise<Editori
     return { isDuplicate: false, reason: 'API key yok', action: 'published' }
   }
 
-  const recent = await fetchRecentPublished(article.categoryId)
+  // Wrap Firestore fetch in try-catch — missing index or permission errors must not crash the cron
+  let recent: Array<{ title: string; summary: string }> = []
+  try {
+    recent = await fetchRecentPublished(article.categoryId)
+  } catch (err) {
+    console.error('[editorialReview] fetchRecentPublished hatası:', err)
+    return { isDuplicate: false, reason: 'Karşılaştırma sorgusu başarısız', action: 'published' }
+  }
 
   if (recent.length === 0) {
     return { isDuplicate: false, reason: 'Son 48 saatte karşılaştırılacak haber yok', action: 'published' }
@@ -129,8 +136,16 @@ Sadece JSON döndür, başka hiçbir şey yazma:
     }
 
     const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
-    const content = json.choices?.[0]?.message?.content ?? '{}'
-    const parsed = JSON.parse(content) as { isDuplicate?: boolean; reason?: string }
+    const raw = json.choices?.[0]?.message?.content ?? '{}'
+    // Robust JSON extraction — handles markdown code fences from models that ignore response_format
+    let jsonStr = raw.trim()
+    const fence = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (fence) jsonStr = fence[1].trim()
+    if (!jsonStr.startsWith('{')) {
+      const obj = jsonStr.match(/\{[\s\S]*\}/)
+      if (obj) jsonStr = obj[0]
+    }
+    const parsed = JSON.parse(jsonStr) as { isDuplicate?: boolean; reason?: string }
 
     const isDuplicate = parsed.isDuplicate === true
     const reason = String(parsed.reason || '').trim()
