@@ -87,14 +87,14 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
         </p>
       </div>
 
-      {/* Mobile: inset cinematic card. Tablet+: existing bleed/contained. */}
-      <div className="home-full-bleed md:home-contained max-md:!mx-4 max-md:!w-[calc(100%-2rem)]">
+      {/* Mobile: full-bleed cinematic card. Tablet+: existing bleed/contained. */}
+      <div className="home-full-bleed md:home-contained max-md:!mx-0 max-md:!w-full">
         <div
           className={cn(
             'relative w-full max-w-full overflow-hidden',
-            // Mobile: fixed cinematic height band (avoid aspect-ratio+min-height width blowout)
-            'h-[clamp(340px,88vw,470px)] rounded-[18px]',
-            // Tablet+ (still in HomeFeed under lg): previous denser ratio
+            // Mobile: full-bleed, taller, no rounded corners
+            'h-[clamp(380px,95vw,520px)] max-md:rounded-none',
+            // Tablet+: kept rounded
             'md:aspect-[16/10] md:h-auto md:rounded-2xl'
           )}
           data-no-category-swipe
@@ -134,7 +134,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
                     className="object-cover object-center max-md:object-center md:object-top"
                   />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent max-md:from-black/80 max-md:via-black/25 md:from-black md:via-black/60 md:to-black/5" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/50 to-transparent max-md:to-black/5 md:from-black md:via-black/60 md:to-black/5" />
               </div>
             )
           })}
@@ -165,16 +165,16 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
             href={newsItemDetailHref(item)}
             className="absolute inset-0 z-10 flex flex-col justify-end focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            <div className="px-4 pb-5 pt-10 sm:px-6 max-md:px-5 max-md:pb-6 max-md:pt-16 md:pb-12">
-              <span className="mb-2.5 inline-flex items-center rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1.5 text-[12px] font-bold uppercase tracking-wider text-white max-md:mb-3">
+            <div className="px-4 pb-5 pt-10 sm:px-6 max-md:px-5 max-md:pb-8 md:pb-12">
+              <span className="mb-2.5 inline-flex items-center rounded-md bg-[rgb(var(--color-brand))] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white max-md:mb-3">
                 {newsItemCategoryLabel(item)}
               </span>
-              <h2 className="line-clamp-3 text-[1.5rem] font-black leading-[1.12] tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] max-md:text-[clamp(1.75rem,_7vw,_2.35rem)] max-md:leading-[1.08] sm:text-[1.85rem]">
+              <h2 className="line-clamp-3 text-[1.5rem] font-black leading-[1.12] tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)] max-md:text-[clamp(1.45rem,_5.5vw,_1.9rem)] max-md:leading-[1.15] sm:text-[1.85rem]">
                 {item.title}
               </h2>
               {slides.length > 1 ? (
                 <p
-                  className="mt-3.5 text-[12px] font-semibold tabular-nums tracking-wide text-white/80 max-md:mt-4 max-md:text-[13px] md:hidden"
+                  className="mt-3 text-[11px] font-semibold tabular-nums tracking-widest text-white/60 max-md:mt-3.5 md:hidden"
                   aria-live="polite"
                 >
                   {counter}
