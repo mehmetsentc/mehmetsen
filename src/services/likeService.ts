@@ -14,11 +14,24 @@ import { db, Collections, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore
 import { generateLikeId } from '@/lib/utils'
 import { notificationService } from '@/services/notificationService'
 
+/**
+ * Module-scope in-memory cache for like status checks.
+ * Eliminates redundant Firestore reads when the same (userId, postId)
+ * is checked multiple times within a browser session (e.g. feed cards).
+ * Invalidated on toggle.
+ */
+const _likeCache = new Map<string, boolean>()
+function _likeCacheKey(userId: string, postId: string) { return `${userId}:${postId}` }
+
 export const likeService = {
   async isLiked(userId: string, postId: string): Promise<boolean> {
+    const key = _likeCacheKey(userId, postId)
+    if (_likeCache.has(key)) return _likeCache.get(key)!
     try {
       const snap = await getDoc(doc(db, Collections.LIKES, generateLikeId(userId, postId)))
-      return snap.exists()
+      const result = snap.exists()
+      _likeCache.set(key, result)
+      return result
     } catch {
       return false
     }
@@ -145,6 +158,9 @@ export const likeService = {
       newLiked = true
       shouldNotify = true
     })
+
+    // Sync cache so subsequent isLiked() calls in the same session are free
+    _likeCache.set(_likeCacheKey(userId, postId), newLiked)
 
     if (shouldNotify && authorId && authorId !== userId) {
       try {

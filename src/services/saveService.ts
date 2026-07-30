@@ -15,11 +15,24 @@ import { generateSaveId } from '@/lib/utils'
 import { postService } from '@/services/postService'
 import type { Post } from '@/types/post'
 
+/**
+ * Module-scope in-memory cache for save status checks.
+ * Eliminates redundant Firestore reads when the same (userId, postId)
+ * is checked multiple times within a browser session (e.g. feed cards).
+ * Invalidated on toggle.
+ */
+const _saveCache = new Map<string, boolean>()
+function _saveCacheKey(userId: string, postId: string) { return `${userId}:${postId}` }
+
 export const saveService = {
   async isSaved(userId: string, postId: string): Promise<boolean> {
+    const key = _saveCacheKey(userId, postId)
+    if (_saveCache.has(key)) return _saveCache.get(key)!
     try {
       const snap = await getDoc(doc(db, Collections.SAVES, generateSaveId(userId, postId)))
-      return snap.exists()
+      const result = snap.exists()
+      _saveCache.set(key, result)
+      return result
     } catch {
       return false
     }
@@ -82,9 +95,11 @@ export const saveService = {
   async toggle(userId: string, postId: string, currentlySaved: boolean): Promise<boolean> {
     if (currentlySaved) {
       await this.unsave(userId, postId)
+      _saveCache.set(_saveCacheKey(userId, postId), false)
       return false
     }
     await this.save(userId, postId)
+    _saveCache.set(_saveCacheKey(userId, postId), true)
     return true
   },
 

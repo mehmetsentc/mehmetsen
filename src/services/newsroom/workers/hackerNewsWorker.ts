@@ -19,7 +19,7 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { enqueueNewsItem } from '@/services/newsroom/queue/newsQueueService'
 import {
-  loadSourceFingerprints,
+  loadFingerprintsForHashes,
   upsertSourceFingerprint,
   type SourceArticleFingerprint,
 } from '@/services/newsroom/detection/sourceFingerprint'
@@ -33,6 +33,10 @@ const WORKER_ID = 'hackernews' as const
 const MIN_SCORE = 150         // düşük kaliteli/niş içerik filtresi
 const MAX_ITEMS_PER_RUN = 10  // cron başına max 10 yeni item
 const MAX_AGE_MS = 18 * 60 * 60 * 1000 // 18 saat
+// Sadece ilk N ID için fingerprint yükle — eski kod tüm 500'ü tarıyordu
+// ve loadSourceFingerprints ile 600 doc okuyordu. Yeni yaklaşım:
+// 150 ID × 1 point-read = 150 reads (hepsini karşılar, 600'den çok daha az)
+const CANDIDATE_WINDOW = 150
 
 interface HnItem {
   id: number
@@ -66,20 +70,24 @@ export async function runHackerNewsWorker(): Promise<NewsroomRunResult> {
   const result = emptyNewsroomResult(WORKER_ID)
   const db = getAdminFirestore()
 
-  // Mevcut fingerprintleri yükle (dedupe)
-  let stored: Awaited<ReturnType<typeof loadSourceFingerprints>>
-  try {
-    stored = await loadSourceFingerprints(db, SOURCE_ID)
-  } catch (e) {
-    result.errors.push(`[hackernews] Firestore fingerprint read failed: ${e instanceof Error ? e.message : e}`)
+  // En iyi hikayeleri çek — sadece ilk CANDIDATE_WINDOW ID'yi işle
+  // (eskiden 500 ID × loadSourceFingerprints 600 doc = pahalı; yeni: 150 point-read)
+  const storyIds = await fetchJson<number[]>(`${HN_BASE}/beststories.json`)
+  if (!storyIds || storyIds.length === 0) {
+    result.errors.push('[hackernews] beststories fetch failed or empty')
     result.durationMs = Date.now() - started
     return result
   }
 
-  // En iyi 500 hikayeyi çek
-  const storyIds = await fetchJson<number[]>(`${HN_BASE}/beststories.json`)
-  if (!storyIds || storyIds.length === 0) {
-    result.errors.push('[hackernews] beststories fetch failed or empty')
+  const candidateIds = storyIds.slice(0, CANDIDATE_WINDOW)
+  const candidateHashes = candidateIds.map((id) => `hn-${id}`)
+
+  // Sadece aday ID'lerin fingerprint'ini yükle (maliyet: ~150 point reads)
+  let stored: Map<string, unknown>
+  try {
+    stored = await loadFingerprintsForHashes(db, SOURCE_ID, candidateHashes)
+  } catch (e) {
+    result.errors.push(`[hackernews] Firestore fingerprint read failed: ${e instanceof Error ? e.message : e}`)
     result.durationMs = Date.now() - started
     return result
   }
@@ -89,7 +97,7 @@ export async function runHackerNewsWorker(): Promise<NewsroomRunResult> {
   const cutoff = now - MAX_AGE_MS
   let newCount = 0
 
-  for (const id of storyIds) {
+  for (const id of candidateIds) {
     if (newCount >= MAX_ITEMS_PER_RUN) break
 
     const hash = `hn-${id}`

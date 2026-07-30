@@ -18,7 +18,7 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { enqueueNewsItem } from '@/services/newsroom/queue/newsQueueService'
 import {
-  loadSourceFingerprints,
+  loadFingerprintsForHashes,
   upsertSourceFingerprint,
   type SourceArticleFingerprint,
 } from '@/services/newsroom/detection/sourceFingerprint'
@@ -92,21 +92,24 @@ export async function runFreeNewsApiWorker(): Promise<NewsroomRunResult> {
     return result
   }
 
-  // Mevcut fingerprintleri yükle (dedupe)
-  let stored: Awaited<ReturnType<typeof loadSourceFingerprints>>
-  try {
-    stored = await loadSourceFingerprints(db, SOURCE_ID)
-  } catch (e) {
-    result.errors.push(`[freenews] Firestore fingerprint read failed: ${e instanceof Error ? e.message : e}`)
-    result.durationMs = Date.now() - started
-    return result
-  }
-
-  // Son Türkçe haberleri listele
+  // Son Türkçe haberleri listele — önce listeyi çek, sonra YALNIZCA bu hash'ler için
+  // fingerprint oku (eski yaklaşım 600 doc okuyordu; yeni yaklaşım ~20 point read yapar)
   const listUrl = `${API_BASE}/news?language=tr&order_by=published_at&page_size=20`
   const listResp = await fetchJson<{ data: FreeNewsItem[] }>(listUrl, apiKey)
   if (!listResp?.data?.length) {
     result.errors.push('[freenews] /v1/news yanıtı boş veya başarısız')
+    result.durationMs = Date.now() - started
+    return result
+  }
+
+  const feedHashes = listResp.data.map((item) => `freenews-${item.uuid}`)
+
+  // Sadece feed'deki itemların fingerprint'ini yükle (maliyet: ~20 reads)
+  let stored: Map<string, unknown>
+  try {
+    stored = await loadFingerprintsForHashes(db, SOURCE_ID, feedHashes)
+  } catch (e) {
+    result.errors.push(`[freenews] Firestore fingerprint read failed: ${e instanceof Error ? e.message : e}`)
     result.durationMs = Date.now() - started
     return result
   }
