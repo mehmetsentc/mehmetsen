@@ -20,6 +20,16 @@ const SEEN_THRESHOLD_MS = 2_500
 // YouTube iframe postMessage target — must match embed host (youtube-nocookie.com).
 const YT_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
 
+/**
+ * Capacitor WKWebView'da YouTube iframe'i çalışmıyor:
+ * - YouTube cookie'si yok → "Bot olmadığınızı doğrulamak için oturum açın" overlay'i
+ * - Bu sadece window.Capacitor varlığıyla tespit edilir.
+ * Web'de (Safari/Chrome) iframe normal çalışır.
+ */
+const IS_CAPACITOR =
+  typeof window !== 'undefined' &&
+  !!(window as unknown as { Capacitor?: unknown }).Capacitor
+
 interface VideoFeedItemProps {
   video: VideoFeedItemType
   isActive: boolean
@@ -59,7 +69,8 @@ function VideoFeedItemInner({
   } = useAppState()
   const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [ytBlocked, setYtBlocked] = useState(false)   // embedding engeli: 101/150
+  // Capacitor WebView'da YouTube iframe → bot overlay; direkt fallback göster.
+  const [ytBlocked, setYtBlocked] = useState(() => IS_CAPACITOR)
   const [ytApiConnected, setYtApiConnected] = useState(false) // YouTube JS API bağlandı mı
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null)
@@ -393,7 +404,8 @@ function VideoFeedItemInner({
     setYtApiConnected(false)
     if (isYouTube) {
       setPaused(true)
-      setYtBlocked(false)
+      // Capacitor'da ytBlocked kalıcı true — iframe hiç yüklenmez
+      setYtBlocked(IS_CAPACITOR)
       setLoading(true)
     }
   }, [video.id, isYouTube])
