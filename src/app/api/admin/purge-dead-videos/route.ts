@@ -46,9 +46,8 @@ async function isVideoEmbeddable(videoId: string): Promise<'ok' | 'blocked' | 'm
 }
 
 export async function POST(request: Request) {
-  try {
-    await verifyCmsToken(request, 'news:publish')
-  } catch {
+  const auth = await verifyCmsToken(request, 'news:publish')
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
