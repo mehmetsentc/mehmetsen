@@ -17,6 +17,7 @@ import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStr
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import { NewspaperMasthead } from '@/components/home/desktop/NewspaperMasthead'
 import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
+import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
 import {
   HeroImageOnly,
   ImageStory,
@@ -178,7 +179,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
           </div>
 
           <aside className={HERO_SPLIT_ASIDE}>
-            <p className="nl-kicker mb-3">Highlights</p>
+            <p className="nl-kicker mb-3">Öne Çıkanlar</p>
             <div className="nl-kicker-bar mb-4">
               <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 lg:grid-cols-1">
                 {layout.heroRight.map((item, i) => (
@@ -314,9 +315,17 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         sentinelRef={sentinelRef}
       />
 
-      <div className="xl:hidden">
-        <DesktopNewsletterSignup />
-      </div>
+      <section
+        className="mt-10 grid grid-cols-1 gap-6 border-t border-[rgb(var(--color-border))] pt-8 lg:grid-cols-12"
+        aria-label="Dizin ve abonelik"
+      >
+        <div className="lg:col-span-5">
+          <DesktopInsideIndex />
+        </div>
+        <div className="lg:col-span-7">
+          <DesktopNewsletterSignup />
+        </div>
+      </section>
     </div>
   )
 }

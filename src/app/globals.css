@@ -349,6 +349,7 @@
 
   .content-main.content-main-newspaper {
     max-width: var(--layout-content-newspaper, min(1200px, 100%));
+    width: 100%;
   }
 
   @media (min-width: 1024px) {
@@ -374,29 +375,35 @@
     }
   }
 
-  /* Desktop gazete kabuğu — ana sayfa, kategori ve tüm newspaper rotalarında tutarlı genişlik */
+  /* Desktop gazete kabuğu — content-main ile aynı dış kenar; iç içe daraltma yok */
   @media (min-width: 1024px) {
     .desktop-newspaper-shell {
       width: 100%;
-      max-width: var(--layout-content-newspaper);
-      margin-inline: auto;
+      max-width: none;
+      margin-inline: 0;
     }
 
     .desktop-newspaper-shell--with-rail {
       display: grid;
       grid-template-columns: minmax(0, 1fr) var(--layout-rail);
       column-gap: var(--layout-gutter);
-      align-items: stretch;
+      align-items: start;
+    }
+
+    .desktop-newspaper-shell-top {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
     }
 
     .desktop-newspaper-shell--with-rail > .desktop-newspaper-main {
       grid-column: 1;
-      grid-row: 1;
+      grid-row: auto;
     }
 
     .desktop-newspaper-shell--with-rail > .desktop-newspaper-rail {
       grid-column: 2;
-      grid-row: 1;
+      grid-row: auto;
     }
 
     .desktop-newspaper-shell-footer {
@@ -413,7 +420,7 @@
     .desktop-newspaper-rail {
       width: var(--layout-rail);
       min-width: var(--layout-rail);
-      align-self: stretch;
+      align-self: start;
     }
 
     .desktop-newspaper-rail-sticky {

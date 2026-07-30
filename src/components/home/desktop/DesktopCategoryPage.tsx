@@ -55,40 +55,36 @@ export function DesktopCategoryPage({
     (isSubcategory && parentCat ? `${parentCat.name} · ${cat.name}` : cat.name)
 
   return (
-    <div className="desktop-category-page bbc-category-page desktop-newspaper-shell desktop-newspaper-shell--with-rail pb-10">
-      <div className="desktop-newspaper-main min-w-0">
-        <CategoryBbcPageHeader
-          pageTitle={pageTitle}
-          subTabs={showTabs ? subTabs : []}
-          tabParentSlug={tabParent?.slug}
-          isSubcategory={isSubcategory}
-          categoryId={cat.id}
-          className="mb-8"
-        />
+    <div className="desktop-category-page bbc-category-page desktop-newspaper-shell w-full pb-10">
+      <CategoryBbcPageHeader
+        pageTitle={pageTitle}
+        subTabs={showTabs ? subTabs : []}
+        tabParentSlug={tabParent?.slug}
+        isSubcategory={isSubcategory}
+        categoryId={cat.id}
+        className="mb-8"
+      />
 
-        {topSlot ? <div className="bbc-category-top-slot mb-8">{topSlot}</div> : null}
+      {topSlot ? <div className="bbc-category-top-slot mb-8">{topSlot}</div> : null}
 
-        {showFeed ? (
-          <>
-            <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mb-8" />
+      {showFeed ? (
+        <>
+          <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mb-8" />
 
-            <CategoryExperience
-              categoryId={cat.id}
-              initialPosts={cachedPosts}
-              breakpoint="desktop"
-              className="nl-category-experience"
-            />
+          <CategoryExperience
+            categoryId={cat.id}
+            initialPosts={cachedPosts}
+            breakpoint="desktop"
+            className="nl-category-experience"
+          />
 
-            <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mb-10" />
-          </>
-        ) : null}
-      </div>
+          <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mb-10" />
 
-      <aside className="desktop-newspaper-rail hidden xl:block" aria-label="Kategori dizini">
-        <div className="desktop-newspaper-rail-sticky space-y-5">
-          <DesktopInsideIndex title="İçindekiler" />
-        </div>
-      </aside>
+          <div className="mt-8 max-w-md">
+            <DesktopInsideIndex title="İçindekiler" />
+          </div>
+        </>
+      ) : null}
     </div>
   )
 }

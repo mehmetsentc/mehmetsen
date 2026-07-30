@@ -19,10 +19,6 @@ const DesktopNewspaperShell = dynamic(
     import('@/components/home/desktop/DesktopNewspaperShell').then((m) => m.DesktopNewspaperShell),
   { ssr: false, loading: () => <DesktopFeedPlaceholder /> }
 )
-const DesktopRightRail = dynamic(
-  () => import('@/components/home/desktop/DesktopRightRail').then((m) => m.DesktopRightRail),
-  { ssr: false }
-)
 
 function DesktopFeedPlaceholder() {
   return (
@@ -137,9 +133,7 @@ export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
         <AdSlotProvider page="home">
           {activeTab === 'home' ? (
             desktopReady ? (
-              <DesktopNewspaperShell
-                rail={<DesktopRightRail mostRead={liveFeedData.mostRead} />}
-              >
+              <DesktopNewspaperShell>
                 <DesktopHomeFeed data={liveFeedData} />
               </DesktopNewspaperShell>
             ) : (

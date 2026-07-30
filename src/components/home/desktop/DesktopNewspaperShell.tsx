@@ -4,18 +4,20 @@ import { cn } from '@/lib/utils'
 
 interface DesktopNewspaperShellProps {
   children: React.ReactNode
+  /** Optional full-bleed band above main+rail (masthead, featured, …). */
+  top?: React.ReactNode
   rail?: React.ReactNode
   footer?: React.ReactNode
   className?: string
 }
 
 /**
- * Desktop gazete sayfalarında tutarlı genişlik: ana sütun + isteğe bağlı sağ rail
- * xl+ ekranlarda rail sütunu tüm sayfa yüksekliğinde kalır (sticky içerik).
- * Footer varsa ana+rail toplam genişliğini kaplar.
+ * Desktop gazete kabuğu — content-main genişliğini birebir doldurur
+ * (iç içe max-width yok). `top` ve `footer` rail varken de tam genişlik kaplar.
  */
 export function DesktopNewspaperShell({
   children,
+  top,
   rail,
   footer,
   className,
@@ -28,6 +30,7 @@ export function DesktopNewspaperShell({
         className
       )}
     >
+      {top ? <div className="desktop-newspaper-shell-top min-w-0">{top}</div> : null}
       <div className="desktop-newspaper-main min-w-0">{children}</div>
       {rail ? <div className="desktop-newspaper-rail hidden xl:block">{rail}</div> : null}
       {footer ? <div className="desktop-newspaper-shell-footer">{footer}</div> : null}

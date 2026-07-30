@@ -21,7 +21,7 @@ export function DesktopRightRail({ mostRead, className }: DesktopRightRailProps)
       <div className="desktop-newspaper-rail-sticky space-y-5">
         {top.length > 0 ? (
           <div className="nl-highlights">
-            <h3 className="nl-highlights__title">Highlights</h3>
+            <h3 className="nl-highlights__title">Öne Çıkanlar</h3>
             <ol className="m-0 list-none space-y-3 p-0">
               {top.map((item, i) => (
                 <li key={item.id} className="flex gap-3 border-b border-[rgb(var(--color-border))] pb-3 last:border-0 last:pb-0">
