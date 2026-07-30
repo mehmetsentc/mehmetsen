@@ -21,14 +21,22 @@ const SEEN_THRESHOLD_MS = 2_500
 const YT_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
 
 /**
- * Capacitor WKWebView'da YouTube iframe'i çalışmıyor:
- * - YouTube cookie'si yok → "Bot olmadığınızı doğrulamak için oturum açın" overlay'i
- * - Bu sadece window.Capacitor varlığıyla tespit edilir.
- * Web'de (Safari/Chrome) iframe normal çalışır.
+ * Native WebView tespiti — YouTube iframe cookie sorunu için.
+ *
+ * iOS WKWebView UA:   "... Mobile/15E148"          → Safari YOK
+ * iOS Safari UA:      "... Mobile/15E148 Safari/604.1" → Safari VAR
+ * Android WebView UA: "... wv ..."                 → "wv" etiketi VAR
+ *
+ * window.Capacitor remote URL'lerde inject edilmez, bu yüzden UA kullanıyoruz.
  */
-const IS_CAPACITOR =
-  typeof window !== 'undefined' &&
-  !!(window as unknown as { Capacitor?: unknown }).Capacitor
+function detectNativeWebView(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  const isAndroidWV = /\bwv\b/i.test(ua)
+  const isiOSWV = /iPhone|iPad|iPod/i.test(ua) && !/Safari/i.test(ua)
+  return isAndroidWV || isiOSWV
+}
+const IS_NATIVE_WEBVIEW = detectNativeWebView()
 
 interface VideoFeedItemProps {
   video: VideoFeedItemType
@@ -70,7 +78,7 @@ function VideoFeedItemInner({
   const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(true)
   // Capacitor WebView'da YouTube iframe → bot overlay; direkt fallback göster.
-  const [ytBlocked, setYtBlocked] = useState(() => IS_CAPACITOR)
+  const [ytBlocked, setYtBlocked] = useState(() => IS_NATIVE_WEBVIEW)
   const [ytApiConnected, setYtApiConnected] = useState(false) // YouTube JS API bağlandı mı
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null)
@@ -405,7 +413,7 @@ function VideoFeedItemInner({
     if (isYouTube) {
       setPaused(true)
       // Capacitor'da ytBlocked kalıcı true — iframe hiç yüklenmez
-      setYtBlocked(IS_CAPACITOR)
+      setYtBlocked(IS_NATIVE_WEBVIEW)
       setLoading(true)
     }
   }, [video.id, isYouTube])
