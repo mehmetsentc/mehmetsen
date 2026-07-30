@@ -21,22 +21,27 @@ const SEEN_THRESHOLD_MS = 2_500
 const YT_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
 
 /**
- * Native WebView tespiti — YouTube iframe cookie sorunu için.
+ * YouTube iframe sadece gerçek tarayıcılarda çalışır.
+ * Capacitor WKWebView'da YouTube cookie yok → bot overlay.
  *
- * iOS WKWebView UA:   "... Mobile/15E148"          → Safari YOK
- * iOS Safari UA:      "... Mobile/15E148 Safari/604.1" → Safari VAR
- * Android WebView UA: "... wv ..."                 → "wv" etiketi VAR
+ * Güvenli yaklaşım: "WebView tespiti" yerine "gerçek tarayıcı tespiti".
+ * Tanınmayan ortam → iframe yok, thumbnail + link göster.
  *
- * window.Capacitor remote URL'lerde inject edilmez, bu yüzden UA kullanıyoruz.
+ * Gerçek tarayıcı kriterleri:
+ *   - Masaüstü Chrome/Firefox/Edge (Mobile değil)
+ *   - iOS Safari: hem "Safari" hem "Version/" içerir (Capacitor ikisini de içermez)
  */
-function detectNativeWebView(): boolean {
+function isRealBrowser(): boolean {
   if (typeof navigator === 'undefined') return false
   const ua = navigator.userAgent
-  const isAndroidWV = /\bwv\b/i.test(ua)
-  const isiOSWV = /iPhone|iPad|iPod/i.test(ua) && !/Safari/i.test(ua)
-  return isAndroidWV || isiOSWV
+  // Masaüstü Chrome/Firefox/Edge
+  if (/Chrome|Firefox|Edg\//.test(ua) && !/Mobile/.test(ua)) return true
+  // Gerçek iOS Safari: "Version/X.X" + "Safari" + "Mobile" — Capacitor bunu içermez
+  if (/iPhone|iPad|iPod/.test(ua) && /Version\/\d/.test(ua) && /Safari/.test(ua)) return true
+  return false
 }
-const IS_NATIVE_WEBVIEW = detectNativeWebView()
+/** true → iframe göster | false → thumbnail + YouTube linki göster */
+const YOUTUBE_IFRAME_OK = isRealBrowser()
 
 interface VideoFeedItemProps {
   video: VideoFeedItemType
@@ -78,7 +83,7 @@ function VideoFeedItemInner({
   const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(true)
   // Capacitor WebView'da YouTube iframe → bot overlay; direkt fallback göster.
-  const [ytBlocked, setYtBlocked] = useState(() => IS_NATIVE_WEBVIEW)
+  const [ytBlocked, setYtBlocked] = useState(() => !YOUTUBE_IFRAME_OK)
   const [ytApiConnected, setYtApiConnected] = useState(false) // YouTube JS API bağlandı mı
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null)
@@ -413,7 +418,7 @@ function VideoFeedItemInner({
     if (isYouTube) {
       setPaused(true)
       // Capacitor'da ytBlocked kalıcı true — iframe hiç yüklenmez
-      setYtBlocked(IS_NATIVE_WEBVIEW)
+      setYtBlocked(!YOUTUBE_IFRAME_OK)
       setLoading(true)
     }
   }, [video.id, isYouTube])
