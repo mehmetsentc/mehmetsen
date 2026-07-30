@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     const summary = results.map((r, i) => {
       const channelId = channelIds[i]
       if (r.status === 'fulfilled') {
-        return { channelId, ...r.value }
+        return r.value // already contains channelId from syncYouTubeRss
       }
       const message = r.reason instanceof Error ? r.reason.message : String(r.reason)
       console.error(`[api/cron/youtube-rss] channel ${channelId} failed:`, message)
