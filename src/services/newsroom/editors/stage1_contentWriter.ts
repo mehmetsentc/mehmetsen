@@ -6,6 +6,9 @@
  * burada yalnızca sabit güvenlik + haber biçimi kuralları eklenir.
  */
 
+import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
+import { countPlainWords, isNewsBodyTooShort, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
+
 export interface WrittenArticle {
   title: string
   spot: string
@@ -127,6 +130,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     { role: 'user' as const, content: userContent },
   ]
 
+  const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 60_000)
+
   try {
     let res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -134,10 +139,11 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
       body: JSON.stringify({
         model,
         temperature: 0.4,
+        max_tokens: 5000,
         response_format: { type: 'json_object' },
         messages,
       }),
-      signal: AbortSignal.timeout(35_000),
+      signal: AbortSignal.timeout(timeoutMs),
     })
 
     if (res.status === 429) {
@@ -149,10 +155,11 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         body: JSON.stringify({
           model,
           temperature: 0.4,
+          max_tokens: 5000,
           response_format: { type: 'json_object' },
           messages,
         }),
-        signal: AbortSignal.timeout(35_000),
+        signal: AbortSignal.timeout(timeoutMs),
       })
     }
 
@@ -162,12 +169,31 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     }
 
     const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>
+      choices?: Array<{ message?: { content?: string }; finish_reason?: string }>
     }
-    const raw = json.choices?.[0]?.message?.content?.trim()
+    const choice = json.choices?.[0]
+    const raw = choice?.message?.content?.trim()
     if (!raw) return null
 
-    const parsed = JSON.parse(raw) as Partial<WrittenArticle>
+    if (choice?.finish_reason === 'length') {
+      console.warn('[stage1/deepseek] finish_reason=length — çıktı kesilmiş olabilir')
+    }
+
+    let parsed: Partial<WrittenArticle>
+    try {
+      let jsonStr = raw
+      const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (fence) jsonStr = fence[1]!.trim()
+      if (!jsonStr.startsWith('{')) {
+        const obj = jsonStr.match(/\{[\s\S]*\}/)
+        if (obj) jsonStr = obj[0]
+      }
+      parsed = JSON.parse(jsonStr) as Partial<WrittenArticle>
+    } catch {
+      console.error('[stage1/deepseek] JSON parse failed')
+      return null
+    }
+
     const title = String(parsed.title ?? '').trim()
     const body = String(parsed.content ?? '').trim()
     if (!title || !body) return null
@@ -187,23 +213,69 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   }
 }
 
+function writtenLooksIncomplete(w: WrittenArticle): boolean {
+  return (
+    titleLooksIncomplete(w.title) ||
+    contentHasIncompleteSegments(w.spot || '') ||
+    contentHasIncompleteSegments(w.summary || '') ||
+    contentHasIncompleteSegments(w.content || '') ||
+    isNewsBodyTooShort(w.content)
+  )
+}
+
 export async function writeArticle(input: WriterInput): Promise<WrittenArticle> {
   console.log(`[stage1/contentWriter] başlıyor: "${input.originalTitle.slice(0, 60)}"`)
-  const written = await callDeepSeek(input)
+  let written = await callDeepSeek(input)
+
+  // Yarım / kısa çıktı → bir kez daha yaz (onay kuyruğuna yarım metin basmamak için)
+  if (written && writtenLooksIncomplete(written)) {
+    console.warn('[stage1] yarım/kısa çıktı — tamamlamak için yeniden yazılıyor')
+    const repaired = await callDeepSeek({
+      ...input,
+      revisionHints: [
+        ...(input.revisionHints ?? []),
+        'Önceki çıktı YARIM KESİLMİŞ — tüm alanları (title, spot, summary, content) eksiksiz tamamla',
+        'Hiçbir cümleyi ortada bırakma; spot ve content nokta ile bitsin',
+        `content en az ${MIN_NEWS_BODY_WORDS} kelime olsun`,
+      ],
+      previousDraft: {
+        title: written.title,
+        spot: written.spot,
+        content: written.content,
+      },
+    })
+    if (repaired && !writtenLooksIncomplete(repaired)) {
+      written = repaired
+    } else if (repaired && countPlainWords(repaired.content) > countPlainWords(written.content)) {
+      written = repaired
+    }
+  }
+
   if (written) {
     console.log(`[stage1] DeepSeek başarılı: "${written.title.slice(0, 60)}"`)
     return written
   }
 
   console.warn(`[stage1] DeepSeek başarısız — ham fallback: "${input.originalTitle.slice(0, 60)}"`)
+  // Ortadan kesme — son cümle sonuna kadar al (onay kuyruğuna “…canlarını” gibi yarım spot basmamak için)
+  const cutAtSentence = (text: string, max: number) => {
+    const t = text.trim()
+    if (t.length <= max) return t
+    const slice = t.slice(0, max)
+    const lastStop = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf('!'), slice.lastIndexOf('?'))
+    if (lastStop > max * 0.4) return slice.slice(0, lastStop + 1).trim()
+    const lastSpace = slice.lastIndexOf(' ')
+    return (lastSpace > 40 ? slice.slice(0, lastSpace) : slice).trim()
+  }
   const fallback = (input.originalContent || input.originalSummary || input.originalTitle).trim()
+  const spotSrc = (input.originalSummary || '').trim()
   return {
     title: input.originalTitle.slice(0, 70),
-    spot: (input.originalSummary || '').slice(0, 400),
-    summary: (input.originalSummary || input.originalTitle).slice(0, 120),
-    content: fallback.slice(0, 800),
+    spot: cutAtSentence(spotSrc, 400),
+    summary: cutAtSentence(input.originalSummary || input.originalTitle, 120),
+    content: cutAtSentence(fallback, 800),
     seoTitle: input.originalTitle.slice(0, 65),
-    seoDescription: (input.originalSummary || input.originalTitle).slice(0, 160),
+    seoDescription: cutAtSentence(input.originalSummary || input.originalTitle, 160),
     aiWritten: false,
   }
 }

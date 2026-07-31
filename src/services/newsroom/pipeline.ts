@@ -557,19 +557,33 @@ export async function processNewsroomArticle(
 
     let rewriteAttempt = 0
 
-    // Düşük gate / kısa gövde → 1 yeniden yazım (onay kuyruğuna düşmeden önce)
+    const articleIncomplete = (r: {
+      title?: string
+      spot?: string
+      summary?: string
+      description?: string
+    }) =>
+      titleLooksIncomplete(r.title || '') ||
+      contentHasIncompleteSegments(r.spot || '') ||
+      contentHasIncompleteSegments(r.summary || '') ||
+      contentHasIncompleteSegments(r.description || '') ||
+      isNewsBodyTooShort(r.description || '')
+
+    // Düşük gate / kısa / yarım gövde → yeniden yazım (onay kuyruğuna yarım haber basmamak için)
     if (
       !workingInput.skipAiRewrite &&
       NEWSROOM_REWRITE_MAX_RETRIES > 0 &&
       rewrittenRaw.gateDecision !== 'skip'
     ) {
-      const needsRetry =
-        rewrittenRaw.gateDecision === 'draft' ||
-        (rewrittenRaw.publishScore ?? 0) < 60 ||
-        isNewsBodyTooShort(rewrittenRaw.description || '') ||
-        rewrittenRaw.categoryConfidence === 0
-
-      if (needsRetry) {
+      let attempt = 0
+      while (
+        attempt < NEWSROOM_REWRITE_MAX_RETRIES &&
+        (rewrittenRaw.gateDecision === 'draft' ||
+          (rewrittenRaw.publishScore ?? 0) < 60 ||
+          rewrittenRaw.categoryConfidence === 0 ||
+          articleIncomplete(rewrittenRaw))
+      ) {
+        attempt += 1
         const hints = [
           ...(rewrittenRaw.gateReasons ?? []),
           isNewsBodyTooShort(rewrittenRaw.description || '')
@@ -578,10 +592,13 @@ export async function processNewsroomArticle(
           rewrittenRaw.categoryConfidence === 0
             ? 'Önceki çıktı AI fallback — kaynak metinden profesyonel haber yaz'
             : '',
+          articleIncomplete(rewrittenRaw)
+            ? 'Önceki metin YARIM KESİLMİŞ (spot/summary/content). Tüm alanları noktalı, eksiksiz cümlelerle yeniden yaz.'
+            : '',
         ].filter(Boolean)
 
         console.warn(
-          `[pipeline] rewrite retry (${hints.slice(0, 3).join('; ')}): ${workingInput.sourceUrl?.slice(0, 80)}`
+          `[pipeline] rewrite retry #${attempt} (${hints.slice(0, 3).join('; ')}): ${workingInput.sourceUrl?.slice(0, 80)}`
         )
 
         const retryRaw = await runMultiStageEditor({
@@ -593,23 +610,22 @@ export async function processNewsroomArticle(
             content: rewrittenRaw.description || '',
           },
         })
-        rewriteAttempt = 1
+        rewriteAttempt = attempt
 
+        const prevIncomplete = articleIncomplete(rewrittenRaw)
+        const nextIncomplete = articleIncomplete(retryRaw)
         const better =
+          (!nextIncomplete && prevIncomplete) ||
           retryRaw.gateDecision === 'publish' ||
           (retryRaw.publishScore ?? 0) > (rewrittenRaw.publishScore ?? 0) ||
           (countPlainWords(retryRaw.description) > countPlainWords(rewrittenRaw.description) &&
-            retryRaw.categoryConfidence > 0)
+            retryRaw.categoryConfidence > 0) ||
+          (retryRaw.categoryConfidence > 0 && rewrittenRaw.categoryConfidence === 0)
 
-        if (better || retryRaw.gateDecision !== 'skip') {
-          if (better) rewrittenRaw = retryRaw
-          else if (
-            retryRaw.categoryConfidence > 0 &&
-            rewrittenRaw.categoryConfidence === 0
-          ) {
-            rewrittenRaw = retryRaw
-          }
-        }
+        if (better) rewrittenRaw = retryRaw
+        else if (!nextIncomplete && retryRaw.categoryConfidence > 0) rewrittenRaw = retryRaw
+
+        if (!articleIncomplete(rewrittenRaw) && rewrittenRaw.gateDecision === 'publish') break
       }
     }
 
@@ -831,7 +847,8 @@ export async function processNewsroomArticle(
     const incompleteText =
       titleLooksIncomplete(rewritten.title || '') ||
       contentHasIncompleteSegments(rewritten.description || '') ||
-      contentHasIncompleteSegments((rewritten as AiRewriteResult).spot || '')
+      contentHasIncompleteSegments((rewritten as AiRewriteResult).spot || '') ||
+      contentHasIncompleteSegments(rewritten.summary || '')
 
     const bodyTooShort = isNewsBodyTooShort(rewritten.description || '')
     if (bodyTooShort) {

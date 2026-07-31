@@ -16,7 +16,7 @@ export const NEWSROOM_LOW_CONFIDENCE_THRESHOLD = Number(
  */
 export const NEWSROOM_REWRITE_MAX_RETRIES = Math.max(
   0,
-  Math.min(2, Number(process.env.NEWSROOM_REWRITE_MAX_RETRIES ?? 1))
+  Math.min(3, Number(process.env.NEWSROOM_REWRITE_MAX_RETRIES ?? 2))
 )
 
 /**

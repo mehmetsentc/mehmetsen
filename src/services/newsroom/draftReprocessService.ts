@@ -97,6 +97,19 @@ export async function reprocessPendingDrafts(): Promise<DraftReprocessStats> {
       if (!data.sourceUrl && !data.originalTitle && !data.title) return false
       return true
     })
+    // Yarım metin (incomplete_text) önce — onay kuyruğundaki kesik spot/gövdeyi onar
+    .sort((a, b) => {
+      const aReasons = Array.isArray(a.data().moderationReasons)
+        ? (a.data().moderationReasons as string[])
+        : []
+      const bReasons = Array.isArray(b.data().moderationReasons)
+        ? (b.data().moderationReasons as string[])
+        : []
+      const aInc = aReasons.includes('incomplete_text') ? 1 : 0
+      const bInc = bReasons.includes('incomplete_text') ? 1 : 0
+      if (aInc !== bInc) return bInc - aInc
+      return Number(b.data().createdAt ?? 0) - Number(a.data().createdAt ?? 0)
+    })
     .slice(0, NEWSROOM_DRAFT_REPROCESS_BATCH)
 
   stats.scanned = candidates.length
