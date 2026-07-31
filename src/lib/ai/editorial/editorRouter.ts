@@ -107,6 +107,7 @@ export interface EditorialRouteResult {
   categoryId: string | null
   citySlug: string | null
   districtSlug: string | null
+  countrySlug: string | null
   confidence: number
   reason: string
   autoRouted: boolean
@@ -228,6 +229,7 @@ export function routeEditorialFromList(
     ? normalizeCitySlug(cityRaw.includes('-') || /^[a-z0-9-]+$/.test(cityRaw) ? cityRaw : slugifyCity(cityRaw))
     : null
   const districtSlug = input.districtSlug || hint?.districtSlug || null
+  const countrySlug = hint?.countrySlug || null
 
   const editor = pickAiEditorFromList(editors, {
     ...input,
@@ -265,6 +267,7 @@ export function routeEditorialFromList(
     categoryId,
     citySlug,
     districtSlug,
+    countrySlug,
     confidence,
     reason,
     autoRouted,
@@ -295,6 +298,7 @@ export async function routeEditorial(input: EditorRouteInput): Promise<Editorial
         categoryId: input.categoryId ?? null,
         citySlug: input.citySlug ?? null,
         districtSlug: input.districtSlug ?? null,
+        countrySlug: null,
         confidence: 1,
         reason: 'manuel seçim',
         autoRouted: false,

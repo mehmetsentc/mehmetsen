@@ -33,6 +33,7 @@ import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
 import { factChecker } from '@/services/newsroom/factChecker'
 import { geoEngine } from '@/services/newsroom/geoEngine'
+import { resolveCountryFromText } from '@/constants/countries'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
@@ -665,18 +666,6 @@ export async function processNewsroomArticle(
       rewritten,
     })
 
-    const geo = geoEngine.enrich(rewritten, workingInput.extraTags ?? [])
-
-    let city = geo.city
-    let district = geo.district
-    let citySlug = geo.citySlug
-    const country = geo.country
-
-    // forcedDistrict uygula (her zaman)
-    if (workingInput.forcedDistrict?.trim()) {
-      district = workingInput.forcedDistrict.trim()
-    }
-
     const resolvedCategoryRaw = categoryEngine.resolve(
       rewritten.categoryId,
       workingInput.editorType,
@@ -757,6 +746,23 @@ export async function processNewsroomArticle(
       classification.overrides.push('burç/astroloji → astroloji')
     }
 
+    // Geo: final kategori bilindikten sonra (dunya → ülke, yerel → ilçe)
+    const geo = geoEngine.enrich(rewritten, workingInput.extraTags ?? [], {
+      categoryId: classification.categoryId,
+    })
+
+    let city = geo.city
+    let district = geo.district
+    let citySlug = geo.citySlug
+    let districtSlug = geo.districtSlug
+    let country = geo.country
+    let countrySlug = geo.countrySlug
+
+    // forcedDistrict uygula (her zaman)
+    if (workingInput.forcedDistrict?.trim()) {
+      district = workingInput.forcedDistrict.trim()
+    }
+
     // ── forcedCitySlug override — SADECE yerel-haber + içerikten şehir bulunamadıysa ──
     // Kural: geo engine haber metninden bir şehir çıkardıysa (geo.city) → onu koru.
     // forcedCitySlug (kaynak gazetenin şehri) yalnızca FALLBACK olarak devreye girer:
@@ -766,12 +772,26 @@ export async function processNewsroomArticle(
     // Örnek sorun (önceki davranış): Muğla gazetesinden alınan Hakkari haberi → geo.city = "Hakkari"
     // ama forcedCitySlug = "mugla" eziyordu. Artık içerik şehri korunur.
     const finalCategoryIsLocal = classification.categoryId === 'yerel-haber'
-    const articleIsAbroad = country && country !== 'Türkiye'
+    const articleIsAbroad =
+      classification.categoryId === 'dunya' ||
+      Boolean(country && country !== 'Türkiye') ||
+      Boolean(countrySlug)
 
     if (articleIsAbroad) {
       // Yurt dışı haber — kaynak şehri ne olursa olsun city sıfırla
       city = null
       citySlug = ''
+      district = null
+      districtSlug = ''
+      if (!country || country === 'Türkiye') {
+        const retry = resolveCountryFromText(
+          `${rewritten.title} ${rewritten.description} ${(rewritten.tags || []).join(' ')}`
+        )
+        if (retry) {
+          country = retry.name
+          countrySlug = retry.slug
+        }
+      }
     } else if (workingInput.forcedCitySlug?.trim() && finalCategoryIsLocal && !geo.city) {
       // Geo engine içerikten şehir bulamadı → kaynak şehrini fallback olarak kullan
       citySlug = normalizeCitySlug(workingInput.forcedCitySlug)
@@ -794,17 +814,31 @@ export async function processNewsroomArticle(
           : moderationRaw
 
     const now = Date.now()
-    const locationRaw = toLocation(city, district, country)
+    // Yurt dışı: şehir olmasa da ülke korunur (location null → country Türkiye fallback YASAK)
+    const locationRaw = articleIsAbroad
+      ? {
+          city: '',
+          country: country.trim() || 'Türkiye',
+          lat: 0,
+          lng: 0,
+          ...(district?.trim() ? { district: district.trim() } : {}),
+        }
+      : toLocation(city, district, country)
     const location = locationRaw
-      ? { ...locationRaw, country: locationRaw.country ?? 'Türkiye' }
+      ? {
+          ...locationRaw,
+          country: articleIsAbroad
+            ? country.trim() || locationRaw.country || 'Türkiye'
+            : locationRaw.country ?? 'Türkiye',
+        }
       : null
-    if (location && citySlug) {
+    if (location && citySlug && !articleIsAbroad) {
       location.city = city ?? location.city
       if (district) location.district = district
     }
-    const resolvedCitySlug = normalizeCitySlug(
-      location?.city ? slugifyCity(location.city) : citySlug
-    )
+    const resolvedCitySlug = articleIsAbroad
+      ? ''
+      : normalizeCitySlug(location?.city ? slugifyCity(location.city) : citySlug)
     const cityCategory = resolvedCitySlug ? cityCategoryId(resolvedCitySlug) : ''
     const resolvedCategory = classification.categoryId || cityCategory
 
@@ -961,10 +995,14 @@ export async function processNewsroomArticle(
       articleLayout: (bodyBlocks.some((b) => b.type === 'heading')
         ? 'longform'
         : 'standard') as 'standard' | 'longform',
-      city: location?.city ?? '',
-      district: location?.district ?? '',
+      city: articleIsAbroad ? '' : location?.city ?? city ?? '',
+      district: articleIsAbroad ? '' : location?.district ?? district ?? '',
+      districtSlug: articleIsAbroad ? '' : districtSlug || '',
       citySlug: resolvedCitySlug,
-      country: location?.country ?? 'Türkiye',
+      country: articleIsAbroad
+        ? country || location?.country || 'Türkiye'
+        : location?.country ?? country ?? 'Türkiye',
+      countrySlug: articleIsAbroad ? countrySlug || '' : '',
       location: location ?? null,
       tags: geo.tags,
       type: 'news' as const,

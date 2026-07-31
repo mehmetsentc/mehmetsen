@@ -1,8 +1,18 @@
 /**
- * Geo Engine — enriches city/district/country and location tags.
+ * Geo Engine — enriches city/district/country and location tags + CMS slugs.
  */
 import { slugifyCity } from '@/lib/location'
-import { normalizeCitySlug } from '@/constants/cities'
+import {
+  DISTRICT_DISPLAY_NAMES,
+  DISTRICT_TO_PROVINCE_SLUG,
+  extractDistrictSlugFromText,
+  normalizeCitySlug,
+} from '@/constants/cities'
+import {
+  findCountryByName,
+  resolveCountryFromText,
+  resolveCountrySlug,
+} from '@/constants/countries'
 import type { AiRewriteResult } from '@/services/aiNewsEditor'
 
 export interface GeoEnrichment {
@@ -10,6 +20,8 @@ export interface GeoEnrichment {
   district: string | null
   country: string
   citySlug: string
+  districtSlug: string
+  countrySlug: string
   tags: string[]
 }
 
@@ -44,30 +56,10 @@ const TURKISH_PROVINCES_ALL: [string, string][] = [
   ['yozgat', 'Yozgat'], ['zonguldak', 'Zonguldak'],
 ]
 
-// Build lookup: ASCII slug → display name
 const CITY_DISPLAY: Map<string, string> = new Map(TURKISH_PROVINCES_ALL)
 
-/**
- * City slugs that are also very common Turkish words.
- * These must NOT be auto-detected from text — only use when AI explicitly names the city.
- * - agri  = "ağrı" (pain/ache) — appears in any medical or political text
- * - van   = "van" (truck/cargo vehicle)
- * - ordu  = "ordu" (army/military) — ubiquitous in political/military news
- * - mus   = "muş" — less common but also a verb form
- * - bolu  = "bolu" — also a common syllable
- * - batman = also an English word
- */
 const AMBIGUOUS_CITY_SLUGS = new Set(['agri', 'van', 'ordu', 'mus', 'bolu', 'batman'])
 
-/**
- * National-scope keywords: if ANY of these appear in the text, this is
- * a national/political story — skip text-based city extraction entirely.
- *
- * KURAL: Yalnızca gerçekten ulusal haberleri engelle.
- * "bakan ", "milletvekili", "akp", "chp", "mhp" gibi kelimeler yerel siyasi
- * haberlerde de geçer (belediye başkanı toplantısı, il teşkilatı vb.).
- * Bunları listeden çıkardık — çok agresif city detection'ı engelliyorlardı.
- */
 const NATIONAL_SCOPE_KEYWORDS = [
   'cumhurbaskani', 'erdogan', 'tbmm', 'basbakan',
   'savunma bakani', 'disisleri bakani', 'icisleri bakani',
@@ -77,24 +69,25 @@ const NATIONAL_SCOPE_KEYWORDS = [
   'nato zirvesi', 'ab zirvesi', 'birlesmis milletler',
 ]
 
-export function extractCityFromText(text: string): string | null {
-  // Normalize Turkish chars to ASCII for matching
-  const lower = text
+function normalizeTr(text: string): string {
+  return text
     .toLocaleLowerCase('tr-TR')
-    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+}
 
-  // If this is a national/political story, don't auto-detect a city from text.
-  // These stories mention politicians & institutions that could be in any city.
-  const isNationalScope = NATIONAL_SCOPE_KEYWORDS.some(kw => lower.includes(kw))
+export function extractCityFromText(text: string): string | null {
+  const lower = normalizeTr(text)
+
+  const isNationalScope = NATIONAL_SCOPE_KEYWORDS.some((kw) => lower.includes(kw))
   if (isNationalScope) return null
 
   for (const [slug] of TURKISH_PROVINCES_ALL) {
-    // Skip ambiguous city names — they're too often common words
     if (AMBIGUOUS_CITY_SLUGS.has(slug)) continue
-
-    // Word-boundary match: prevents "kars" matching inside "karsi" (=karşı),
-    // "van" inside "ivan/avantaj", "ordu" inside "orduyu" etc.
     const re = new RegExp(`(?<![a-z])${slug}(?![a-z])`)
     if (re.test(lower)) {
       return CITY_DISPLAY.get(slug) ?? slug
@@ -103,68 +96,150 @@ export function extractCityFromText(text: string): string | null {
   return null
 }
 
-/** Normalize an arbitrary city string to its canonical Turkish display name. */
 function normalizeDisplayCity(raw: string): string {
-  const slug = raw
-    .toLocaleLowerCase('tr-TR')
-    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-    .replace(/\s+/g, '')
+  const slug = normalizeTr(raw).replace(/\s+/g, '')
   return CITY_DISPLAY.get(slug) ?? raw
 }
 
-export function enrichGeo(rewritten: AiRewriteResult, extraTags: string[] = []): GeoEnrichment {
-  let city = rewritten.city?.trim() || null
-  let district = rewritten.district?.trim() || null
-  const country = rewritten.country?.trim() || 'Türkiye'
+function resolveDistrictDisplay(districtRaw: string | null, citySlug: string): {
+  district: string | null
+  districtSlug: string
+} {
+  if (!districtRaw?.trim() && !citySlug) return { district: null, districtSlug: '' }
 
-  if (city) {
-    if (country && country !== 'Türkiye') {
-      // Yurt dışı haber — AI'ın verdiği şehri kullanma.
-      // "Gazze" gibi yabancı yer isimleri normalizeCitySlug fuzzy match ile
-      // yanlış Türk iline eşleşir (örn. Gazze → Gaziantep).
-      city = null
-      district = null
-    } else {
-      // Normalize to canonical display name (e.g. "diyarbakır" → "Diyarbakır")
-      city = normalizeDisplayCity(city)
-      // Normalize edilmiş şehrin gerçek bir Türk ili olup olmadığını doğrula.
-      // Fuzzy match yanlış eşleşmeleri önlemek için CITY_DISPLAY map'ini kullan.
-      const slugCheck = city
-        .toLocaleLowerCase('tr-TR')
-        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-        .replace(/\s+/g, '')
-      if (!CITY_DISPLAY.has(slugCheck)) {
-        // AI'ın verdiği şehir bilinmiyor (yabancı yer adı veya AI hatası).
-        // Metinden tekrar dene; text extraction daha kontrollü çalışır.
-        const haystack = `${rewritten.title} ${rewritten.description}`
-        city = extractCityFromText(haystack)
-        district = null
+  const haystack = normalizeTr(districtRaw || '')
+  let slug =
+    (districtRaw ? extractDistrictSlugFromText(haystack) : null) ||
+    (districtRaw
+      ? normalizeTr(districtRaw).replace(/\s+/g, '-').replace(/-+/g, '-')
+      : '')
+
+  // İlçe → il eşlemesi: şehir biliniyorsa yalnızca o ile ait ilçeyi kabul et
+  if (slug && citySlug) {
+    const province = DISTRICT_TO_PROVINCE_SLUG[slug]
+    if (province && province !== citySlug) {
+      // Yanlış ilçe / başka il — reddet, metinden şehir ilçesini ara
+      slug = ''
+    }
+  }
+
+  if (!slug && citySlug && districtRaw) {
+    // Serbest metin: display name ile eşle
+    for (const [dSlug, name] of Object.entries(DISTRICT_DISPLAY_NAMES)) {
+      if (DISTRICT_TO_PROVINCE_SLUG[dSlug] !== citySlug) continue
+      if (normalizeTr(name) === haystack || dSlug === haystack.replace(/\s+/g, '-')) {
+        slug = dSlug
+        break
       }
     }
-  } else if (country === 'Türkiye' || !country) {
-    // Yalnızca Türkiye haberleri için metinden şehir çıkar.
-    // Dünya haberleri (country !== 'Türkiye') metinde Türk şehri geçse bile tag ekleme.
-    const haystack = `${rewritten.title} ${rewritten.description}`
+  }
+
+  if (!slug) return { district: districtRaw?.trim() || null, districtSlug: '' }
+
+  const name = DISTRICT_DISPLAY_NAMES[slug] || districtRaw?.trim() || slug
+  return { district: name, districtSlug: slug }
+}
+
+export function enrichGeo(
+  rewritten: AiRewriteResult,
+  extraTags: string[] = [],
+  opts?: { categoryId?: string | null }
+): GeoEnrichment {
+  let city = rewritten.city?.trim() || null
+  let district = rewritten.district?.trim() || null
+  let country = rewritten.country?.trim() || 'Türkiye'
+  const haystack = `${rewritten.title} ${rewritten.description} ${(rewritten.tags || []).join(' ')}`
+  const categoryId = opts?.categoryId || rewritten.categoryId || ''
+
+  // Dünya / yurt dışı: ülküyü AI + metinden kesinleştir
+  const fromAiCountry =
+    country && country !== 'Türkiye' ? findCountryByName(country) : null
+  const fromTextCountry =
+    categoryId === 'dunya' || (country && country !== 'Türkiye') || !country
+      ? resolveCountryFromText(haystack)
+      : null
+
+  if (categoryId === 'dunya' || fromAiCountry || fromTextCountry) {
+    const resolved = fromAiCountry || fromTextCountry
+    if (resolved) {
+      country = resolved.name
+    } else if (categoryId === 'dunya' && (!country || country === 'Türkiye')) {
+      // Dünya kategorisi ama ülke çıkarılamadı — Türkiye bırakma
+      const retry = resolveCountryFromText(haystack)
+      if (retry) country = retry.name
+    }
+  }
+
+  const isAbroad = Boolean(country && country !== 'Türkiye')
+
+  if (isAbroad) {
+    city = null
+    district = null
+  } else if (city) {
+    city = normalizeDisplayCity(city)
+    const slugCheck = normalizeTr(city).replace(/\s+/g, '')
+    if (!CITY_DISPLAY.has(slugCheck)) {
+      city = extractCityFromText(haystack)
+      district = null
+    }
+  } else {
     city = extractCityFromText(haystack)
   }
 
   const citySlug = city ? normalizeCitySlug(slugifyCity(city)) : ''
-  const tags = [...rewritten.tags]
 
-  if (citySlug && !tags.includes(citySlug)) {
-    tags.unshift(citySlug)
+  // İlçe: AI + metin (yalnızca Türkiye + şehir biliniyorken)
+  let districtSlug = ''
+  if (!isAbroad) {
+    const fromTextDistrict = extractDistrictSlugFromText(haystack)
+    // Metin ilçesi şehri doğrular / doldurur
+    if (fromTextDistrict) {
+      const province = DISTRICT_TO_PROVINCE_SLUG[fromTextDistrict]
+      if (province) {
+        if (!citySlug) {
+          city = CITY_DISPLAY.get(province) ?? province
+        } else if (citySlug !== province) {
+          // Metin ilçesi başka ile ait — şehir AI/metin öncelikli; ilçeyi atla
+        } else {
+          district = DISTRICT_DISPLAY_NAMES[fromTextDistrict] || district
+        }
+        if (!citySlug || citySlug === province) {
+          district = DISTRICT_DISPLAY_NAMES[fromTextDistrict] || district
+          districtSlug = fromTextDistrict
+        }
+      }
+    }
+
+    if (!districtSlug) {
+      const resolved = resolveDistrictDisplay(district, city ? normalizeCitySlug(slugifyCity(city)) : citySlug)
+      district = resolved.district
+      districtSlug = resolved.districtSlug
+    }
   }
-  if (district) {
-    const d = district.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')
-    if (!tags.includes(d)) tags.push(d)
-  }
+
+  const finalCitySlug = city ? normalizeCitySlug(slugifyCity(city)) : ''
+  const countrySlug =
+    country && country !== 'Türkiye'
+      ? resolveCountrySlug(undefined, country) || resolveCountryFromText(country)?.slug || ''
+      : ''
+
+  const tags = [...rewritten.tags]
+  if (finalCitySlug && !tags.includes(finalCitySlug)) tags.unshift(finalCitySlug)
+  if (districtSlug && !tags.includes(districtSlug)) tags.push(districtSlug)
+  if (countrySlug && !tags.includes(countrySlug)) tags.push(countrySlug)
   for (const tag of extraTags) {
     if (!tags.includes(tag)) tags.push(tag)
   }
 
-  return { city, district, country, citySlug, tags }
+  return {
+    city,
+    district,
+    country,
+    citySlug: finalCitySlug,
+    districtSlug,
+    countrySlug,
+    tags,
+  }
 }
 
 export const geoEngine = {

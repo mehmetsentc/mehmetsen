@@ -119,6 +119,12 @@ Aşağıdakilerin hepsi doğruysa → yerel-haber:
 ✓ Diğer şehirlerde benzer etki yok
 ✓ Türkiye genelinde politika/yasa/ekonomi değişikliği yok
 
+KONUM KURALLARI (ZORUNLU):
+- categoryId = dunya → country: olayın geçtiği ülke (Türkçe ad: Japonya, Almanya, ABD…). city/district: null
+- categoryId = yerel-haber → city: Türk ili; district: ilçe adı varsa doldur (Gemlik, Çine…)
+- Türkiye içi diğer kategoriler → country: "Türkiye"; city yalnızca olay o ile bağlıysa
+- Kaynak gazete şehrini city olarak yazma — olayın geçtiği yeri yaz
+
 ALTIN KURAL son-dakika için: "Bu haber Türkiye genelini veya uluslararası düzeni doğrudan etkiliyor mu?" → Hayır → son-dakika DEĞİL.
 
 KESİN YASAKLAR (son-dakika olamaz):
@@ -144,8 +150,8 @@ JSON formatında kategori bilgisi döndür:
   "isBreaking": boolean,
   "confidence": number (0-100),
   "city": "string veya null (haberin geçtiği Türk şehri, kaynak gazete şehri DEĞİL)",
-  "district": "string veya null",
-  "country": "string (varsayılan: Türkiye)",
+  "district": "string veya null (Türk ilçe adı; yoksa null)",
+  "country": "string (Türkiye veya dünya haberi için ülke adı Türkçe — örn. Japonya)",
   "tags": ["string"] (3-6 etiket, küçük harf Türkçe),
   "reason": "string (kategori seçim gerekçesi)"
 }`

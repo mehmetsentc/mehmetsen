@@ -219,6 +219,13 @@ export async function POST(request: Request) {
         country: 'Türkiye',
         lat: 0,
         lng: 0,
+        ...(body.districtSlug?.trim()
+          ? { district: body.district?.trim() || body.districtSlug.trim() }
+          : {}),
+      }
+      if (body.districtSlug?.trim()) {
+        payload.districtSlug = body.districtSlug.trim()
+        payload.district = body.district?.trim() || body.districtSlug.trim()
       }
     }
 

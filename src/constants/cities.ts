@@ -189,6 +189,38 @@ export function getDistrictsForProvince(provinceSlug: string): Array<{ slug: str
   return districts.map((d) => ({ slug: d.slug, name: d.name }))
 }
 
+function normalizeTrAscii(text: string): string {
+  return text
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+}
+
+/**
+ * Metinden ilçe slug çıkar (uzun isim öncelikli).
+ * `normalized` ASCII-Türkçe normalize edilmiş olmalı veya ham metin olabilir.
+ */
+export function extractDistrictSlugFromText(text: string): string | null {
+  const normalized = normalizeTrAscii(text)
+  const entries = Object.entries(DISTRICT_DISPLAY_NAMES).sort(
+    (a, b) => b[1].length - a[1].length || b[0].length - a[0].length
+  )
+  for (const [slug, name] of entries) {
+    const nameNorm = normalizeTrAscii(name)
+    if (nameNorm.length < 4 && slug.length < 4) continue
+    const nameRe = new RegExp(`(?<![a-z0-9])${nameNorm.replace(/\s+/g, '\\s*')}(?![a-z0-9])`)
+    const slugRe = new RegExp(`(?<![a-z0-9])${slug}(?![a-z0-9])`)
+    if (nameRe.test(normalized) || slugRe.test(normalized)) {
+      return slug
+    }
+  }
+  return null
+}
+
 /** Map user district or province slug to province slug used on ingested news. */
 export function resolveLocalNewsCitySlug(rawSlug: string): string {
   return normalizeCitySlug(rawSlug)

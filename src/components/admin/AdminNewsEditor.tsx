@@ -60,6 +60,7 @@ interface ProfessionalAiResult {
   secondaryEditorSlug?: string | null
   suggestedCitySlug?: string | null
   suggestedDistrictSlug?: string | null
+  suggestedCountrySlug?: string | null
   error?: string
 }
 
@@ -457,8 +458,17 @@ export function AdminNewsEditor({
       setSeoTitle(data.seoTitle?.trim() || nextTitle)
       setSeoDescription(data.seoDescription?.trim() || nextSummary)
       if (data.categoryId?.trim()) setCategoryId(data.categoryId.trim())
-      if (data.suggestedCitySlug?.trim()) setCitySlug(data.suggestedCitySlug.trim())
-      if (data.suggestedDistrictSlug?.trim()) setDistrictSlug(data.suggestedDistrictSlug.trim())
+      if (data.suggestedCountrySlug?.trim()) {
+        setCountrySlug(data.suggestedCountrySlug.trim())
+        setCitySlug('')
+        setDistrictSlug('')
+        if (!data.categoryId?.trim() || data.categoryId === 'gundem') {
+          setCategoryId('dunya')
+        }
+      } else {
+        if (data.suggestedCitySlug?.trim()) setCitySlug(data.suggestedCitySlug.trim())
+        if (data.suggestedDistrictSlug?.trim()) setDistrictSlug(data.suggestedDistrictSlug.trim())
+      }
       if (data.aiEditorId?.trim() && isAutoEditor) {
         // Keep AUTO selected; show who was routed
         const label = data.editorName
@@ -520,6 +530,7 @@ export function AdminNewsEditor({
         aiEditorId: data.aiEditorId || (isAutoEditor ? null : aiEditorId) || null,
         citySlug: data.suggestedCitySlug?.trim() || citySlug,
         districtSlug: data.suggestedDistrictSlug?.trim() || districtSlug,
+        countrySlug: data.suggestedCountrySlug?.trim() || countrySlug,
         aiResearchSources: Array.isArray(data.researchSources) ? data.researchSources : [],
         status: nextStatus,
       }

@@ -4,7 +4,12 @@
  */
 
 import { extractCityFromText } from '@/services/newsroom/geoEngine'
-import { DISTRICT_TO_PROVINCE_SLUG, DISTRICT_DISPLAY_NAMES, normalizeCitySlug } from '@/constants/cities'
+import {
+  DISTRICT_TO_PROVINCE_SLUG,
+  extractDistrictSlugFromText,
+  normalizeCitySlug,
+} from '@/constants/cities'
+import { resolveCountryFromText } from '@/constants/countries'
 import { slugifyCity } from '@/lib/location'
 
 export interface CategoryHint {
@@ -13,6 +18,7 @@ export interface CategoryHint {
   reason: string
   citySlug?: string
   districtSlug?: string
+  countrySlug?: string
   secondaryCategoryId?: string
 }
 
@@ -27,21 +33,8 @@ function normalizeTr(text: string): string {
     .replace(/ç/g, 'c')
 }
 
-function extractDistrictSlug(normalized: string): string | null {
-  // Prefer longer district names first to avoid short slug false positives (e.g. "can" in "canakkale").
-  const entries = Object.entries(DISTRICT_DISPLAY_NAMES).sort(
-    (a, b) => b[1].length - a[1].length || b[0].length - a[0].length
-  )
-  for (const [slug, name] of entries) {
-    const nameNorm = normalizeTr(name)
-    if (nameNorm.length < 4 && slug.length < 4) continue
-    const nameRe = new RegExp(`(?<![a-z0-9])${nameNorm.replace(/\s+/g, '\\s*')}(?![a-z0-9])`)
-    const slugRe = new RegExp(`(?<![a-z0-9])${slug}(?![a-z0-9])`)
-    if (nameRe.test(normalized) || slugRe.test(normalized)) {
-      return slug
-    }
-  }
-  return null
+export function extractDistrictSlug(normalized: string): string | null {
+  return extractDistrictSlugFromText(normalized)
 }
 
 const RULES: Array<{ categoryId: string; confidence: number; patterns: RegExp[]; reason: string }> = [
@@ -189,7 +182,17 @@ export function hintCategoryFromText(raw: string): CategoryHint | null {
     : districtSlug
       ? DISTRICT_TO_PROVINCE_SLUG[districtSlug]
       : undefined
-
+  const countryHit = resolveCountryFromText(text)
+  const countrySlug = countryHit && countryHit.name !== 'Türkiye' ? countryHit.slug : undefined
+  // Yurt dışı güçlü sinyal: ülke bulundu + Türk şehri yok → dünya
+  if (countrySlug && !citySlug) {
+    return {
+      categoryId: 'dunya',
+      confidence: 0.9,
+      reason: `ülke tespit: ${countryHit!.name}`,
+      countrySlug,
+    }
+  }
   const isLocalEvent = LOCAL_EVENT.test(normalized) && Boolean(citySlug || districtSlug)
   const isNationalMajor = NATIONAL_BREAKING.test(normalized)
 
@@ -242,6 +245,8 @@ export function hintCategoryFromText(raw: string): CategoryHint | null {
         reason: rule.reason,
         citySlug: citySlug || undefined,
         districtSlug: districtSlug || undefined,
+        countrySlug:
+          rule.categoryId === 'dunya' ? countrySlug || undefined : undefined,
       }
     }
   }

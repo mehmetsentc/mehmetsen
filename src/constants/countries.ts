@@ -275,3 +275,72 @@ export function resolveCountrySlug(raw?: string | null, countryName?: string | n
   }
   return ''
 }
+
+/** Metinden ülke çıkar — en uzun isim eşleşmesi (Japonya > Jap). */
+export function resolveCountryFromText(text: string): WorldCountry | null {
+  const raw = text.trim()
+  if (!raw) return null
+
+  // Önce açık isim / alias
+  const direct = findCountryByName(raw)
+  if (direct) return direct
+
+  const lower = raw.toLocaleLowerCase('tr-TR')
+  const ascii = lower
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+
+  // Alias kelimeleri (İngilizce / yaygın)
+  const TEXT_ALIASES: Array<[RegExp, string]> = [
+    [/\b(japonya|japan|japon|nippon|tokyo|osaka|kumamoto|hiroshima)\b/i, 'japonya'],
+    [/\b(abd|amerika|usa|u\.s\.a|washington|new york|california)\b/i, 'abd'],
+    [/\b(ingiltere|birleşik krallık|birlesik krallik|uk|london|britain|england)\b/i, 'birleşik krallık'],
+    [/\b(almanya|germany|berlin|munich|münih)\b/i, 'almanya'],
+    [/\b(fransa|france|paris)\b/i, 'fransa'],
+    [/\b(rusya|russia|moscow|moskova)\b/i, 'rusya'],
+    [/\b(cin|çin|china|pekin|beijing)\b/i, 'çin'],
+    [/\b(israil|israel|tel aviv|gazze|gaza)\b/i, 'israil'],
+    [/\b(filistin|palestine|ramallah)\b/i, 'filistin'],
+    [/\b(ukrayna|ukraine|kiev|kyiv)\b/i, 'ukrayna'],
+    [/\b(suriye|syria|damascus|şam)\b/i, 'suriye'],
+    [/\b(irak|iraq|bağdat|baghdad)\b/i, 'irak'],
+    [/\b(iran|iranlı|tehran|tahran)\b/i, 'iran'],
+    [/\b(yunanistan|greece|atina|athens)\b/i, 'yunanistan'],
+    [/\b(italya|italy|roma|rome|milan)\b/i, 'italya'],
+    [/\b(ispanya|spain|madrid|barcelona)\b/i, 'ispanya'],
+    [/\b(misir|mısır|egypt|kahire|cairo)\b/i, 'mısır'],
+    [/\b(kktc|kuzey kıbrıs|lefkoşa)\b/i, 'kibris'], // may not exist — fallback handled
+  ]
+
+  for (const [re, nameKey] of TEXT_ALIASES) {
+    if (re.test(lower) || re.test(ascii)) {
+      const hit = findCountryByName(nameKey) || findCountryBySlug(nameKey)
+      if (hit) return hit
+    }
+  }
+
+  // Ülke adlarını uzun → kısa tara (false positive azalt)
+  const sorted = [...WORLD_COUNTRIES].sort((a, b) => b.name.length - a.name.length)
+  for (const c of sorted) {
+    if (c.name.length < 4) continue
+    const nameNorm = c.name.toLocaleLowerCase('tr-TR')
+    const nameAscii = nameNorm
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c')
+    const re = new RegExp(
+      `(?<![a-z0-9çğıöşü])${nameAscii.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z0-9çğıöşü])`,
+      'i'
+    )
+    if (re.test(ascii) || lower.includes(nameNorm)) return c
+  }
+
+  return null
+}

@@ -13,6 +13,7 @@ import { routeEditorial } from '@/lib/ai/editorial/editorRouter'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 import type { AiPromptType } from '@/types/aiEditor'
 import { TURKISH_PROVINCES } from '@/constants/cities'
+import { resolveCountryFromText } from '@/constants/countries'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -330,6 +331,7 @@ export async function POST(request: Request) {
       suggestedCategoryId?: string | null
       suggestedCitySlug?: string | null
       suggestedDistrictSlug?: string | null
+      suggestedCountrySlug?: string | null
     } | null = null
     let systemPrompt = SYSTEM_PROMPTS[mode]
 
@@ -396,6 +398,7 @@ export async function POST(request: Request) {
         suggestedCategoryId: routeMeta?.categoryId ?? null,
         suggestedCitySlug: routeMeta?.citySlug ?? null,
         suggestedDistrictSlug: routeMeta?.districtSlug ?? null,
+        suggestedCountrySlug: routeMeta?.countrySlug ?? null,
       }
     }
 
@@ -537,6 +540,10 @@ export async function POST(request: Request) {
         qualityScore >= 78 && textComplete && researchOk
           ? 'publish'
           : 'review'
+      const countryFromText =
+        categoryId === 'dunya' || categoryId === 'kibris-haberleri'
+          ? resolveCountryFromText(`${title}\n${spot}\n${content}\n${tags.join(' ')}`)
+          : null
       return NextResponse.json({
         success: true,
         mode,
@@ -565,8 +572,12 @@ export async function POST(request: Request) {
         routeConfidence: personaMeta?.routeConfidence ?? null,
         routeReason: personaMeta?.routeReason ?? null,
         secondaryEditorSlug: personaMeta?.secondaryEditorSlug ?? null,
-        suggestedCitySlug: personaMeta?.suggestedCitySlug ?? null,
-        suggestedDistrictSlug: personaMeta?.suggestedDistrictSlug ?? null,
+        suggestedCitySlug:
+          categoryId === 'dunya' ? null : personaMeta?.suggestedCitySlug ?? null,
+        suggestedDistrictSlug:
+          categoryId === 'dunya' ? null : personaMeta?.suggestedDistrictSlug ?? null,
+        suggestedCountrySlug:
+          personaMeta?.suggestedCountrySlug ?? countryFromText?.slug ?? null,
         articleFormat,
         promptVersions: personaMeta?.promptVersions ?? null,
       })
