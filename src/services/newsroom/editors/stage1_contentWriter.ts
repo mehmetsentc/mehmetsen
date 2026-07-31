@@ -25,6 +25,9 @@ interface WriterInput {
   systemPromptOverride?: string
   userPromptOverride?: string
   model?: string
+  /** Gate / QC notları — yeniden yazımda düzeltilecek noktalar */
+  revisionHints?: string[]
+  previousDraft?: { title: string; spot: string; content: string }
 }
 
 /** Ortak güvenlik — persona ile birleşir, makale şişirme YOK */
@@ -65,12 +68,29 @@ function buildPrompt(input: WriterInput): string {
   const sourceNote = input.sourceUrl
     ? `Kaynak URL: ${input.sourceUrl}`
     : `Kaynak: ${input.sourceLabel}`
+
+  let revisionBlock = ''
+  if (input.revisionHints?.length || input.previousDraft) {
+    const hints = (input.revisionHints ?? []).map((h) => `- ${h}`).join('\n')
+    const prev = input.previousDraft
+    revisionBlock = `
+
+YENİDEN DÜZENLEME GÖREVİ:
+Önceki taslak kalite kapısından geçmedi. Aynı olay için DAHA İYİ bir gazete haberi yaz.
+${hints ? `Düzeltilecek noktalar:\n${hints}` : ''}
+${prev ? `Önceki başlık: ${prev.title}\nÖnceki spot: ${prev.spot.slice(0, 400)}\nÖnceki gövde (özet):\n${prev.content.slice(0, 2500)}` : ''}
+- Gövdeyi en az 220 kelime yap (hedef 280-450); yarım cümle bırakma
+- Kaynakta olmayan bilgi uydurma
+- Önceki taslağın hatalarını tekrarlama
+`
+  }
+
   return `${sourceNote}
 Başlık: ${input.originalTitle}
 Özet: ${input.originalSummary || ''}
 İçerik:
 ${content.slice(0, 6000)}
-
+${revisionBlock}
 GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
 content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
 JSON:

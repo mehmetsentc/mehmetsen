@@ -41,6 +41,9 @@
     "src/app/api/cron/newsroom/process-queue/route.ts": {
       "memory": 1024
     },
+    "src/app/api/cron/newsroom/draft-reprocess/route.ts": {
+      "memory": 1024
+    },
     "src/app/api/admin/backfill-images/route.ts": {
       "memory": 1024
     },
@@ -75,6 +78,10 @@
     {
       "path": "/api/cron/newsroom/process-queue",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/draft-reprocess",
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/cron/newsroom/national",

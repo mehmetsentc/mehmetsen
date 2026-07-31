@@ -10,6 +10,36 @@ export const NEWSROOM_LOW_CONFIDENCE_THRESHOLD = Number(
   process.env.NEWSROOM_LOW_CONFIDENCE_THRESHOLD ?? 55
 )
 
+/**
+ * Gate/confidence düşükse Stage1'i kaç kez yeniden çalıştır.
+ * 1 = ilk yazım + 1 düzeltme (varsayılan).
+ */
+export const NEWSROOM_REWRITE_MAX_RETRIES = Math.max(
+  0,
+  Math.min(2, Number(process.env.NEWSROOM_REWRITE_MAX_RETRIES ?? 1))
+)
+
+/**
+ * Retry sonrası confidence eşiğini bu kadar gevşet (yalnızca gate=publish ise).
+ * Örn. 60−10=50 → ikinci denemede 50+ yayınlanır.
+ */
+export const NEWSROOM_RETRY_CONFIDENCE_RELAX = Math.max(
+  0,
+  Math.min(20, Number(process.env.NEWSROOM_RETRY_CONFIDENCE_RELAX ?? 10))
+)
+
+/** Draft kuyruğundan otomatik yeniden işlenecek max belge / cron. */
+export const NEWSROOM_DRAFT_REPROCESS_BATCH = Math.max(
+  1,
+  Math.min(20, Number(process.env.NEWSROOM_DRAFT_REPROCESS_BATCH ?? 8))
+)
+
+/** Aynı draft kaç kez otomatik yeniden denensin. */
+export const NEWSROOM_DRAFT_REPROCESS_MAX_ATTEMPTS = Math.max(
+  1,
+  Math.min(5, Number(process.env.NEWSROOM_DRAFT_REPROCESS_MAX_ATTEMPTS ?? 2))
+)
+
 export const MAX_AI_CALLS_PER_EDITOR = Number(process.env.NEWS_INGEST_MAX_AI_CALLS ?? 12)
 
 /** Wire + regional Turkish sources — local worker. */

@@ -8,7 +8,12 @@ Canonical publish path:
 2. `/api/cron/newsroom/process-queue` → `processNewsQueue`
 3. `processNewsroomArticle` (`src/services/newsroom/pipeline.ts`)
 4. `runMultiStageEditor` (DeepSeek writer → heuristic fact-check → category → gate)
-5. Confidence / moderation → `news` or `newsDrafts`
+5. Gate/skor düşükse **1 rewrite retry** → yeniden gate
+6. Confidence / moderation → `news` (AUTO) veya `newsDrafts`
+7. `/api/cron/newsroom/draft-reprocess` (*/10) → pending drafts yeniden pipeline → geçerse yayın
+
+Env: `NEWSROOM_REWRITE_MAX_RETRIES` (default 1), `NEWSROOM_RETRY_CONFIDENCE_RELAX` (default 10),
+`NEWSROOM_DRAFT_REPROCESS_BATCH` (default 8), `NEWSROOM_AUTO_PUBLISH_THRESHOLD` (default 60).
 
 Legacy sync path: `runRssEditor` → same `processNewsroomArticle`.
 

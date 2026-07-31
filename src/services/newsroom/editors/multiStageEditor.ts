@@ -28,6 +28,9 @@ export interface MultiStageInput {
   userPromptOverride?: string
   writerModel?: string
   aiEditorId?: string
+  /** Yeniden yazım: gate nedenleri */
+  revisionHints?: string[]
+  previousDraft?: { title: string; spot: string; content: string }
 }
 
 export interface MultiStageResult extends AiRewriteResult {
@@ -58,6 +61,8 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     systemPromptOverride: input.systemPromptOverride,
     userPromptOverride: input.userPromptOverride,
     model: input.writerModel,
+    revisionHints: input.revisionHints,
+    previousDraft: input.previousDraft,
   })
 
   // ── Stage 2: Fact Checker ────────────────────────────────────────────────────

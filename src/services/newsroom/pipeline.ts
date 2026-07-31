@@ -13,7 +13,13 @@ import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
 import { Collections } from '@/lib/firebase/admin'
 import { aiNewsEditor, type AiRewriteResult } from '@/services/aiNewsEditor'
 import { geminiEditArticle, isGeminiConfigured } from '@/lib/ai/gemini'
-import { runMultiStageEditor } from '@/services/newsroom/editors/multiStageEditor'
+import {
+  NEWSROOM_AUTO_PUBLISH_THRESHOLD,
+  NEWSROOM_LOW_CONFIDENCE_THRESHOLD,
+  NEWSROOM_REWRITE_MAX_RETRIES,
+  NEWSROOM_RETRY_CONFIDENCE_RELAX,
+} from '@/services/newsroom/config'
+import { runMultiStageEditor, type MultiStageResult } from '@/services/newsroom/editors/multiStageEditor'
 import { moderateContent } from '@/services/moderationService'
 import { newsDraftService } from '@/services/newsDraftService'
 import {
@@ -24,10 +30,6 @@ import {
 import { categoryEngine } from '@/services/newsroom/categoryEngine'
 import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
-import {
-  NEWSROOM_AUTO_PUBLISH_THRESHOLD,
-  NEWSROOM_LOW_CONFIDENCE_THRESHOLD,
-} from '@/services/newsroom/config'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
 import { factChecker } from '@/services/newsroom/factChecker'
 import { geoEngine } from '@/services/newsroom/geoEngine'
@@ -273,6 +275,11 @@ export interface PipelineOptions {
   targetNewsId?: string
   publishedAt?: number
   preferredSlug?: string
+  /**
+   * Mevcut newsDrafts belgesini yeniden işle.
+   * Fingerprint skip atlanır; yayınlanırsa draft silinir, yine draft kalırsa güncellenir.
+   */
+  reprocessDraftId?: string
 }
 
 export interface PipelineResult {
@@ -346,7 +353,10 @@ export async function processNewsroomArticle(
     if (existing?.collection === 'news' && !options.existingNewsId) {
       return { outcome: 'skipped' }
     }
-    if (existing?.collection === 'newsDrafts') {
+    if (
+      existing?.collection === 'newsDrafts' &&
+      existing.id !== options.reprocessDraftId
+    ) {
       return { outcome: 'skipped' }
     }
   }
@@ -507,7 +517,24 @@ export async function processNewsroomArticle(
       }
     }
 
-    const rewrittenRaw = workingInput.skipAiRewrite
+    const stageInputBase = {
+      sourceLabel: workingInput.sourceLabel,
+      originalTitle: workingInput.originalTitle,
+      originalSummary: workingInput.originalSummary,
+      originalContent: workingInput.originalContent,
+      sourceUrl: workingInput.sourceUrl,
+      forcedCategoryId: workingInput.forcedCategoryId,
+      systemPromptOverride: personaSystem,
+      userPromptOverride: personaUser,
+      writerModel,
+      aiEditorId: routedEditor?.id,
+    }
+
+    let rewrittenRaw: MultiStageResult | (AiRewriteResult & {
+      gateDecision: 'publish' | 'draft' | 'skip'
+      gateReasons: string[]
+      publishScore: number
+    }) = workingInput.skipAiRewrite
       ? {
           title: workingInput.originalTitle,
           spot: workingInput.originalSummary ?? '',
@@ -526,18 +553,65 @@ export async function processNewsroomArticle(
           gateReasons: [] as string[],
           publishScore: 80,
         }
-      : await runMultiStageEditor({
-          sourceLabel: workingInput.sourceLabel,
-          originalTitle: workingInput.originalTitle,
-          originalSummary: workingInput.originalSummary,
-          originalContent: workingInput.originalContent,
-          sourceUrl: workingInput.sourceUrl,
-          forcedCategoryId: workingInput.forcedCategoryId,
-          systemPromptOverride: personaSystem,
-          userPromptOverride: personaUser,
-          writerModel,
-          aiEditorId: routedEditor?.id,
+      : await runMultiStageEditor(stageInputBase)
+
+    let rewriteAttempt = 0
+
+    // Düşük gate / kısa gövde → 1 yeniden yazım (onay kuyruğuna düşmeden önce)
+    if (
+      !workingInput.skipAiRewrite &&
+      NEWSROOM_REWRITE_MAX_RETRIES > 0 &&
+      rewrittenRaw.gateDecision !== 'skip'
+    ) {
+      const needsRetry =
+        rewrittenRaw.gateDecision === 'draft' ||
+        (rewrittenRaw.publishScore ?? 0) < 60 ||
+        isNewsBodyTooShort(rewrittenRaw.description || '') ||
+        rewrittenRaw.categoryConfidence === 0
+
+      if (needsRetry) {
+        const hints = [
+          ...(rewrittenRaw.gateReasons ?? []),
+          isNewsBodyTooShort(rewrittenRaw.description || '')
+            ? `Gövde çok kısa (<${MIN_NEWS_BODY_WORDS} kelime) — olgu ve bağlam ekle`
+            : '',
+          rewrittenRaw.categoryConfidence === 0
+            ? 'Önceki çıktı AI fallback — kaynak metinden profesyonel haber yaz'
+            : '',
+        ].filter(Boolean)
+
+        console.warn(
+          `[pipeline] rewrite retry (${hints.slice(0, 3).join('; ')}): ${workingInput.sourceUrl?.slice(0, 80)}`
+        )
+
+        const retryRaw = await runMultiStageEditor({
+          ...stageInputBase,
+          revisionHints: hints,
+          previousDraft: {
+            title: rewrittenRaw.title,
+            spot: rewrittenRaw.spot || rewrittenRaw.summary || '',
+            content: rewrittenRaw.description || '',
+          },
         })
+        rewriteAttempt = 1
+
+        const better =
+          retryRaw.gateDecision === 'publish' ||
+          (retryRaw.publishScore ?? 0) > (rewrittenRaw.publishScore ?? 0) ||
+          (countPlainWords(retryRaw.description) > countPlainWords(rewrittenRaw.description) &&
+            retryRaw.categoryConfidence > 0)
+
+        if (better || retryRaw.gateDecision !== 'skip') {
+          if (better) rewrittenRaw = retryRaw
+          else if (
+            retryRaw.categoryConfidence > 0 &&
+            rewrittenRaw.categoryConfidence === 0
+          ) {
+            rewrittenRaw = retryRaw
+          }
+        }
+      }
+    }
 
     if (routedEditor && !workingInput.skipAiRewrite) {
       void recordAiUsage({
@@ -788,12 +862,17 @@ export async function processNewsroomArticle(
 
     const personaRequiresApproval = aiEditorForcesDraft(publishEditor?.publishPolicy)
 
+    const confidenceThreshold =
+      rewriteAttempt > 0
+        ? Math.max(40, NEWSROOM_AUTO_PUBLISH_THRESHOLD - NEWSROOM_RETRY_CONFIDENCE_RELAX)
+        : NEWSROOM_AUTO_PUBLISH_THRESHOLD
+
     // AUTO_PUBLISH / REQUIRES_APPROVAL: kalite kapısını geçerse yayın.
     // Yalnızca DRAFT_ONLY persona veya düşük güven / gate / moderasyon → taslak.
     const needsDraft =
       gateDraft ||
       isFallbackContent ||
-      factCheck.confidenceScore < NEWSROOM_AUTO_PUBLISH_THRESHOLD ||
+      factCheck.confidenceScore < confidenceThreshold ||
       factCheckFailedBadly ||
       moderation.decision === 'review' ||
       moderation.decision !== 'approve' ||
@@ -978,6 +1057,9 @@ export async function processNewsroomArticle(
           }
         : undefined
       const { newsId, slug } = await newsDraftService.publishFromPipeline(db, doc, publishOpts)
+      if (options.reprocessDraftId) {
+        await db.collection(Collections.NEWS_DRAFTS).doc(options.reprocessDraftId).delete().catch(() => {})
+      }
       if (breakingFlags.shouldPushNotify) {
         await queueBreakingPushNotification(newsId, rewritten.title, breakingScore)
       }
@@ -994,11 +1076,39 @@ export async function processNewsroomArticle(
       } catch {
         /* cron / non-Next contexts */
       }
-      console.log(`[newsroom] auto-published ${newsId} (confidence=${factCheck.confidenceScore})`)
+      console.log(
+        `[newsroom] auto-published ${newsId} (confidence=${factCheck.confidenceScore}, retry=${rewriteAttempt})`
+      )
       return { outcome: 'published', lowConfidence, newsId }
     }
 
-    await db.collection(Collections.NEWS_DRAFTS).add(doc)
+    const draftPayload = {
+      ...doc,
+      rewriteAttempt,
+      autoReprocessAt: Date.now(),
+      ...(options.reprocessDraftId
+        ? {}
+        : { autoReprocessCount: 0 }),
+    }
+
+    if (options.reprocessDraftId) {
+      const draftRef = db.collection(Collections.NEWS_DRAFTS).doc(options.reprocessDraftId)
+      const prev = await draftRef.get()
+      const prevCount = Number(prev.data()?.autoReprocessCount ?? 0)
+      await draftRef.set(
+        {
+          ...draftPayload,
+          createdAt: prev.data()?.createdAt ?? now,
+          autoReprocessCount: prevCount + 1,
+          updatedAt: now,
+          needsAdminReview: true,
+        },
+        { merge: true }
+      )
+      return { outcome: 'created', lowConfidence, newsId: options.reprocessDraftId }
+    }
+
+    await db.collection(Collections.NEWS_DRAFTS).add(draftPayload)
     return { outcome: 'created', lowConfidence }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
