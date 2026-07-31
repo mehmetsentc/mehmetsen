@@ -80,6 +80,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/newsroom/queue-purge",
+      "schedule": "20 * * * *"
+    },
+    {
       "path": "/api/cron/newsroom/draft-reprocess",
       "schedule": "*/10 * * * *"
     },

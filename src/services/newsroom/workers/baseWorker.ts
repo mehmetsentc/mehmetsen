@@ -13,6 +13,7 @@ import {
   upsertSourceFingerprint,
 } from '@/services/newsroom/detection/sourceFingerprint'
 import { enqueueNewsItem } from '@/services/newsroom/queue/newsQueueService'
+import { DEFAULT_RSS_MAX_AGE_MS } from '@/services/newsroom/queue/freshness'
 import type { EditorId, NewsroomArticleInput, NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 
@@ -67,7 +68,8 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
   for (const source of sources) {
     result.sourcesChecked += 1
 
-    const minPublishedAt = options.maxAgeMs != null ? Date.now() - options.maxAgeMs : undefined
+    const maxAgeMs = options.maxAgeMs ?? DEFAULT_RSS_MAX_AGE_MS
+    const minPublishedAt = Date.now() - maxAgeMs
     let items
     try {
       items = await fetchRssItems(source, {

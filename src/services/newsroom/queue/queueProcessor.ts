@@ -11,10 +11,11 @@ import {
   markQueueSkipped,
   releaseQueueClaim,
 } from '@/services/newsroom/queue/newsQueueService'
+import { staleQueueReason } from '@/services/newsroom/queue/freshness'
 import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 
-const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 12)
+const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 16)
 
 // Her job 3-4 AI çağrısı (stage1-3 + factChecker) × ~30s = yüksek CPU.
 // 200s wall-clock budget: süre aşılırsa yeni job başlatma.
@@ -65,6 +66,13 @@ export async function processNewsQueue(
     const { data } = job
 
     try {
+      const staleReason = staleQueueReason(data)
+      if (staleReason) {
+        await markQueueSkipped(db, job.id, staleReason)
+        stats.skipped += 1
+        continue
+      }
+
       const result = await processNewsroomArticle(db, data.input, {
         changeType: data.changeType,
         existingNewsId: data.existingNewsId ?? undefined,

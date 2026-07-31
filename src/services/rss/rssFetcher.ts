@@ -280,8 +280,10 @@ function filterAndSortItems(
   let filtered = items
 
   if (options?.minPublishedAt != null) {
+    // Reject undated items when an age gate is active — null dates used to
+    // bypass freshness and inflate the queue with unknown-age stories.
     filtered = items.filter(
-      (item) => item.publishedAt == null || item.publishedAt >= options.minPublishedAt!
+      (item) => item.publishedAt != null && item.publishedAt >= options.minPublishedAt!
     )
   }
 

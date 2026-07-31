@@ -129,11 +129,25 @@ export async function claimPendingQueueItems(
   async function claimStatus(status: 'pending' | 'failed', remaining: number): Promise<void> {
     if (remaining <= 0) return
 
-    const snap = await queueCollection(db)
-      .where('status', '==', status)
-      .orderBy('createdAt', 'asc')
-      .limit(Math.max(remaining * 3, 12))
-      .get()
+    // Newest first so backlog cannot bury fresh breaking/gundem for days.
+    // Falls back to ASC if the DESC composite index is not ready yet.
+    let snap
+    try {
+      snap = await queueCollection(db)
+        .where('status', '==', status)
+        .orderBy('createdAt', 'desc')
+        .limit(Math.max(remaining * 3, 12))
+        .get()
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      if (!msg.includes('index') && (error as { code?: number }).code !== 9) throw error
+      console.warn('[newsQueue] createdAt desc index missing — falling back to asc')
+      snap = await queueCollection(db)
+        .where('status', '==', status)
+        .orderBy('createdAt', 'asc')
+        .limit(Math.max(remaining * 3, 12))
+        .get()
+    }
 
     const due = snap.docs
       .map((doc) => ({ doc, data: doc.data() as NewsQueueDocument }))

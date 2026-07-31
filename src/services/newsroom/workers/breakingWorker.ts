@@ -9,6 +9,7 @@ export async function runBreakingWorker(): Promise<NewsroomRunResult> {
     workerId: 'breaking-news',
     editorType: 'breaking',
     sourceIds: BREAKING_NEWS_SOURCE_IDS,
+    maxAgeMs: Number(process.env.BREAKING_NEWS_MAX_AGE_MS ?? 4 * 60 * 60 * 1000),
     enrichInput: (item) => {
       const signals = analyzeBreakingSignals(item.title, item.summary, item.publishedAt)
       return {
