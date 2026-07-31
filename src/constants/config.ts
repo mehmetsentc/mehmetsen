@@ -171,31 +171,33 @@ export function getHomeFeedCategoryFamily(parentId: string): string[] {
 }
 
 /**
- * Categories shown in the main sidebar nav (in order).
+ * Categories shown in the main sidebar nav (legacy order reference).
+ * Yeni side nav kaynak: `@/constants/sidebarNav` (PRIMARY / EXPLORE / TOOLS).
  * Subcategories are shown inside their parent's page, not here.
  */
 export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'gundem',
-  'siyaset',
+  'asayis',
+  'spor',
   'dunya',
   'kibris-haberleri',
-  'spor',
-  'teknoloji',
+  'siyaset',
   'ekonomi',
-  'egitim',
   'saglik',
-  'yasam',
+  'egitim',
+  'teknoloji',
   'bilim',
   'cevre-iklim',
-  'oyun-espor',
-  'din-inanc',
-  'meteoroloji',
+  'yasam',
   'kultur',
+  'magazin',
+  'turizm',
+  'gezi',
+  'tarih',
   'gastronomi',
   'otomobil',
-  'turizm',
-  'tarih',
-  'asayis',
+  'oyun-espor',
+  'din-inanc',
 ] as const
 
 /**

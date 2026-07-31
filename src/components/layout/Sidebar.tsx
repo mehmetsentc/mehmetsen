@@ -1,15 +1,29 @@
 'use client'
 
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, LogOut, CalendarDays, Clapperboard, Settings, Shield, Star, Cloud, MapPin, Flame, User, PanelLeftClose, Trophy, Building2 } from 'lucide-react'
+import {
+  Search,
+  LogOut,
+  Settings,
+  Shield,
+  User,
+  PanelLeftClose,
+  ChevronDown,
+} from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
-import { DEFAULT_CATEGORIES, SIDEBAR_MAIN_CATEGORY_IDS } from '@/constants/config'
+import {
+  SIDEBAR_EXPLORE,
+  SIDEBAR_EXPLORE_PREVIEW,
+  SIDEBAR_PRIMARY,
+  SIDEBAR_TOOLS,
+  type SidebarNavItem,
+} from '@/constants/sidebarNav'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -21,32 +35,76 @@ interface SidebarProps {
   onDesktopClose?: () => void
 }
 
-const APP_NAV = [
-  { label: 'Yerel Haber', href: ROUTES.LOCAL,         icon: MapPin       },
-  { label: 'Skor',        href: ROUTES.SKOR,          icon: Trophy       },
-  { label: 'Süper Lig',   href: ROUTES.FOOTBALL,      icon: Trophy       },
-  { label: 'Müzeler',     href: ROUTES.MUZELER,       icon: Building2    },
-  { label: 'Magazin',     href: '/kategori/magazin',  icon: Star         },
-  { label: 'Etkinlikler', href: ROUTES.EVENTS,        icon: CalendarDays },
-  { label: 'Trending',    href: '/kategori/trend',    icon: Flame        },
-  { label: 'Teve',        href: ROUTES.REELS,         icon: Clapperboard },
-  { label: 'Influencer',  href: ROUTES.INFLUENCER,    icon: Star         },
-  { label: 'Hava Durumu', href: ROUTES.WEATHER,       icon: Cloud        },
-]
+function isItemActive(pathname: string, href: string, id: string): boolean {
+  if (id === 'feed') return pathname === ROUTES.FEED || pathname === ROUTES.HOME
+  if (href === ROUTES.LOCAL) return pathname.startsWith(ROUTES.LOCAL)
+  if (href === ROUTES.SKOR) return pathname.startsWith(ROUTES.SKOR)
+  if (href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
+  if (href === ROUTES.EVENTS) return pathname.startsWith(ROUTES.EVENTS)
+  if (href === ROUTES.WEATHER) return pathname.startsWith(ROUTES.WEATHER)
+  if (href === ROUTES.INFLUENCER) return pathname.startsWith(ROUTES.INFLUENCER)
+  if (href === ROUTES.MUZELER) return pathname.startsWith(ROUTES.MUZELER)
+  if (href === ROUTES.FOOTBALL) return pathname.startsWith(ROUTES.FOOTBALL)
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
 
-/** Main categories shown in top nav (user-defined order, Trending/Magazin excluded). */
-const MAIN_CATEGORIES = SIDEBAR_MAIN_CATEGORY_IDS
-  .map((id) => DEFAULT_CATEGORIES.find((c) => c.id === id))
-  .filter(Boolean) as typeof DEFAULT_CATEGORIES[number][]
+function NavLink({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: SidebarNavItem
+  pathname: string
+  onNavigate?: () => void
+}) {
+  const active = isItemActive(pathname, item.href, item.id)
+  const Icon = item.icon
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      data-accent={item.accent}
+      className={cn('app-sidebar__item', active && 'is-active')}
+      aria-current={active ? 'page' : undefined}
+    >
+      <Icon className="app-sidebar__icon" aria-hidden />
+      <span className="truncate">{item.label}</span>
+    </Link>
+  )
+}
 
-function SidebarInner({ className, mobileOpen, desktopOpen = true, onMobileClose, onDesktopClose }: SidebarProps) {
+function SidebarInner({
+  className,
+  mobileOpen,
+  desktopOpen = true,
+  onMobileClose,
+  onDesktopClose,
+}: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout, loading } = useAuth()
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [exploreOpen, setExploreOpen] = useState(false)
 
-  useEffect(() => { setHydrated(true) }, [])
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  // Keşfet’te aktif sayfa varsa bölümü otomatik aç
+  useEffect(() => {
+    const inExplore = SIDEBAR_EXPLORE.some((item) => isItemActive(pathname, item.href, item.id))
+    if (inExplore) setExploreOpen(true)
+  }, [pathname])
+
+  const explorePreview = useMemo(
+    () => SIDEBAR_EXPLORE.slice(0, SIDEBAR_EXPLORE_PREVIEW),
+    []
+  )
+  const exploreRest = useMemo(
+    () => SIDEBAR_EXPLORE.slice(SIDEBAR_EXPLORE_PREVIEW),
+    []
+  )
 
   const handleLogout = useCallback(async () => {
     await logout()
@@ -63,35 +121,36 @@ function SidebarInner({ className, mobileOpen, desktopOpen = true, onMobileClose
         onMobileClose?.()
       }
     },
-    [searchQuery, router, onMobileClose],
+    [searchQuery, router, onMobileClose]
   )
-
-  const isFeedOnly = pathname === ROUTES.FEED
 
   return (
     <>
-      {mobileOpen && (
+      {mobileOpen ? (
         <div
-          className="fixed inset-0 z-[199] bg-black/50 lg:hidden"
+          className="fixed inset-0 z-[199] bg-black/50 transition-opacity duration-200 lg:hidden"
           onClick={onMobileClose}
           aria-hidden
         />
-      )}
+      ) : null}
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-[200] flex flex-col',
+          'app-sidebar fixed inset-y-0 left-0 z-[200] flex flex-col',
           'w-[var(--sidebar-width-collapsed)]',
           'border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]',
-          'transition-transform duration-300 ease-in-out',
+          'transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           desktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full',
-          className,
+          className
         )}
       >
-        {/* Logo header */}
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[rgb(var(--color-border))] px-4">
-          <Link href={ROUTES.FEED} onClick={onMobileClose} className="flex min-w-0 items-center gap-2">
+          <Link
+            href={ROUTES.FEED}
+            onClick={onMobileClose}
+            className="flex min-w-0 items-center gap-2"
+          >
             <BrandLogo size="md" priority />
             <span className="truncate text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
               NaHaber
@@ -107,140 +166,138 @@ function SidebarInner({ className, mobileOpen, desktopOpen = true, onMobileClose
           </button>
         </div>
 
-        {/* Search */}
-        <form
-          onSubmit={handleSearch}
-          className="shrink-0 border-b border-[rgb(var(--color-border))] px-3 py-3"
-        >
-          <div className="flex items-center gap-2">
+        <form onSubmit={handleSearch} className="shrink-0">
+          <div className="app-sidebar__search">
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Haber Arayın"
-              className="min-w-0 flex-1 rounded-xl border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-subtle))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] outline-none"
+              placeholder="Haber ara…"
+              aria-label="Haber ara"
             />
-            <button
-              type="submit"
-              aria-label="Ara"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))] text-white hover:bg-red-700"
-            >
-              <Search className="h-4 w-4" />
+            <button type="submit" aria-label="Ara">
+              <Search className="h-3.5 w-3.5" />
             </button>
           </div>
         </form>
 
-        {/* Category list */}
-        <nav className="flex-1 overflow-y-auto">
-          <Link
-            href={ROUTES.FEED}
-            onClick={onMobileClose}
-            className={cn(
-              'relative flex items-center px-5 py-3 text-[15px] transition-colors',
-              isFeedOnly
-                ? 'font-bold text-[rgb(var(--color-text))]'
-                : 'font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
-            )}
-          >
-            {isFeedOnly && (
-              <span className="absolute left-0 top-0 h-full w-[3px] rounded-r-full bg-[rgb(var(--color-brand))]" />
-            )}
-            Tümü
-          </Link>
+        <nav className="app-sidebar__nav flex-1 overflow-y-auto" aria-label="Ana menü">
+          <div className="app-sidebar__section">
+            <p className="app-sidebar__label">Ana haber</p>
+            {SIDEBAR_PRIMARY.map((item) => (
+              <NavLink
+                key={item.id}
+                item={item}
+                pathname={pathname}
+                onNavigate={onMobileClose}
+              />
+            ))}
+          </div>
 
-          {MAIN_CATEGORIES.map((cat) => {
-            const href = ROUTES.CATEGORY(cat.slug)
-            const isActive = pathname.startsWith(href)
-            return (
-              <Link
-                key={cat.id}
-                href={href}
-                onClick={onMobileClose}
-                className={cn(
-                  'relative flex items-center px-5 py-3 text-[15px] transition-colors',
-                  isActive
-                    ? 'font-bold text-[rgb(var(--color-text))]'
-                    : 'font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
-                )}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-0 h-full w-[3px] rounded-r-full bg-[rgb(var(--color-brand))]" />
-                )}
-                {cat.name}
-              </Link>
-            )
-          })}
+          <div className="app-sidebar__section">
+            <p className="app-sidebar__label">Keşfet</p>
+            {explorePreview.map((item) => (
+              <NavLink
+                key={item.id}
+                item={item}
+                pathname={pathname}
+                onNavigate={onMobileClose}
+              />
+            ))}
 
-          <div className="mx-4 my-2 border-t border-[rgb(var(--color-border))]" />
+            {exploreRest.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  className="app-sidebar__more"
+                  aria-expanded={exploreOpen}
+                  onClick={() => setExploreOpen((v) => !v)}
+                >
+                  <span>{exploreOpen ? 'Daha az' : 'Daha fazla'}</span>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 transition-transform duration-200',
+                      exploreOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+                <div
+                  className={cn('app-sidebar__explore', exploreOpen && 'is-open')}
+                >
+                  <div className="app-sidebar__explore-inner">
+                    {exploreRest.map((item) => (
+                      <NavLink
+                        key={item.id}
+                        item={item}
+                        pathname={pathname}
+                        onNavigate={onMobileClose}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </div>
 
-          {APP_NAV.map(({ label, href, icon: Icon }) => {
-            const isActive = pathname.startsWith(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={onMobileClose}
-                className={cn(
-                  'relative flex items-center gap-3 px-5 py-3 text-[15px] transition-colors',
-                  isActive
-                    ? 'font-bold text-[rgb(var(--color-text))]'
-                    : 'font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
-                )}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-0 h-full w-[3px] rounded-r-full bg-[rgb(var(--color-brand))]" />
-                )}
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
-              </Link>
-            )
-          })}
-
+          <div className="app-sidebar__section">
+            <p className="app-sidebar__label">Araçlar</p>
+            {SIDEBAR_TOOLS.map((item) => (
+              <NavLink
+                key={item.id}
+                item={item}
+                pathname={pathname}
+                onNavigate={onMobileClose}
+              />
+            ))}
+          </div>
         </nav>
 
-        {/* Footer */}
         <div className="shrink-0 space-y-1 border-t border-[rgb(var(--color-border))] p-3">
-          {hydrated && <SidebarInstallCTA onNavigate={onMobileClose} />}
-          {hydrated && !loading && user && (
+          {hydrated ? <SidebarInstallCTA onNavigate={onMobileClose} /> : null}
+          {hydrated && !loading && user ? (
             <>
               <Link
                 href={ROUTES.PROFILE(user.username)}
                 onClick={onMobileClose}
-                className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
+                className="app-sidebar__item"
+                data-accent="muted"
               >
-                <User className="h-4 w-4 shrink-0" />
+                <User className="app-sidebar__icon" />
                 Profilim
               </Link>
               <Link
                 href={ROUTES.SETTINGS}
                 onClick={onMobileClose}
-                className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
+                className="app-sidebar__item"
+                data-accent="muted"
               >
-                <Settings className="h-4 w-4 shrink-0" />
+                <Settings className="app-sidebar__icon" />
                 Ayarlar
               </Link>
-              {isAdminUser(user) && (
+              {isAdminUser(user) ? (
                 <a
                   href={ROUTES.ADMIN.DASHBOARD}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
+                  className="app-sidebar__item"
+                  data-accent="brand"
                 >
-                  <Shield className="h-4 w-4 shrink-0" />
+                  <Shield className="app-sidebar__icon" />
                   Admin Panel
                 </a>
-              )}
+              ) : null}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-red-600"
+                className="app-sidebar__item w-full text-left hover:!text-red-600"
+                data-accent="muted"
               >
-                <LogOut className="h-4 w-4 shrink-0" />
+                <LogOut className="app-sidebar__icon" />
                 Çıkış Yap
               </button>
             </>
-          )}
-          {hydrated && !loading && !user && (
+          ) : null}
+          {hydrated && !loading && !user ? (
             <Link
               href={ROUTES.LOGIN}
               onClick={onMobileClose}
@@ -248,7 +305,7 @@ function SidebarInner({ className, mobileOpen, desktopOpen = true, onMobileClose
             >
               Giriş Yap →
             </Link>
-          )}
+          ) : null}
         </div>
       </aside>
     </>
