@@ -1,14 +1,9 @@
 import type { TimelinePost } from '@/types/post'
 
-export const LOCAL_HERO_COUNT = 4
-export const LOCAL_GRID_SECTION_SIZE = 4
-
-export const LOCAL_NAMED_SECTION_TITLES = [
-  'Gündem',
-  'Editörün Seçimi',
-  'Derinlemesine',
-  'Öne Çıkan',
-] as const
+/** Lead + yan şerit + okunabilir liste + ızgara devam */
+export const LOCAL_RAIL_COUNT = 5
+export const LOCAL_LIST_COUNT = 8
+export const LOCAL_GRID_SECTION_SIZE = 6
 
 export function chunkPosts<T>(posts: T[], size: number): T[][] {
   const chunks: T[][] = []
@@ -17,6 +12,43 @@ export function chunkPosts<T>(posts: T[], size: number): T[][] {
   }
   return chunks
 }
+
+export interface LocalNewsReadableLayout {
+  lead: TimelinePost | undefined
+  rail: TimelinePost[]
+  list: TimelinePost[]
+  gridChunks: TimelinePost[][]
+}
+
+/**
+ * Okunabilirlik öncelikli dizilim:
+ * 1) Tek büyük lead
+ * 2) Yan şeritte 5 kısa haber
+ * 3) Yatay satır listesi (başlık + özet)
+ * 4) Kalanlar ızgara
+ */
+export function buildLocalNewsReadableLayout(posts: TimelinePost[]): LocalNewsReadableLayout {
+  const lead = posts[0]
+  const rail = posts.slice(1, 1 + LOCAL_RAIL_COUNT)
+  const afterRail = posts.slice(1 + LOCAL_RAIL_COUNT)
+  const list = afterRail.slice(0, LOCAL_LIST_COUNT)
+  const rest = afterRail.slice(LOCAL_LIST_COUNT)
+  return {
+    lead,
+    rail,
+    list,
+    gridChunks: chunkPosts(rest, LOCAL_GRID_SECTION_SIZE),
+  }
+}
+
+/** @deprecated — eski dergi layout; yeni sayfa readable layout kullanır */
+export const LOCAL_HERO_COUNT = 4
+export const LOCAL_NAMED_SECTION_TITLES = [
+  'Gündem',
+  'Editörün Seçimi',
+  'Derinlemesine',
+  'Öne Çıkan',
+] as const
 
 export interface LocalNewsMagazineLayout {
   centerHero: TimelinePost | undefined
@@ -30,26 +62,15 @@ export function buildLocalNewsMagazineLayout(
   posts: TimelinePost[],
   cityLabel: string
 ): LocalNewsMagazineLayout {
-  const heroPosts = posts.slice(0, LOCAL_HERO_COUNT)
-  const afterHero = posts.slice(LOCAL_HERO_COUNT)
-
-  const namedSections = LOCAL_NAMED_SECTION_TITLES.map((suffix, index) => {
-    const start = index * LOCAL_GRID_SECTION_SIZE
-    const sectionPosts = afterHero.slice(start, start + LOCAL_GRID_SECTION_SIZE)
-    const title =
-      suffix === 'Gündem' ? `${cityLabel} ${suffix}` : suffix
-    return { title, posts: sectionPosts }
-  }).filter((section) => section.posts.length > 0)
-
-  const namedCount = LOCAL_NAMED_SECTION_TITLES.length * LOCAL_GRID_SECTION_SIZE
-  const overflowPosts = afterHero.slice(namedCount)
-  const overflowChunks = chunkPosts(overflowPosts, LOCAL_GRID_SECTION_SIZE)
-
+  const readable = buildLocalNewsReadableLayout(posts)
   return {
-    centerHero: heroPosts[0],
-    leftHero: heroPosts[1],
-    rightStack: heroPosts.slice(2, LOCAL_HERO_COUNT),
-    namedSections,
-    overflowChunks,
+    centerHero: readable.lead,
+    leftHero: undefined,
+    rightStack: readable.rail.slice(0, 3),
+    namedSections: [],
+    overflowChunks: chunkPosts(
+      [...readable.list, ...readable.gridChunks.flat()],
+      LOCAL_GRID_SECTION_SIZE
+    ),
   }
 }

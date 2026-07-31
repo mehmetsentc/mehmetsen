@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Wind, Droplets, Thermometer, Eye, RefreshCw } from 'lucide-react'
+import { Wind, Droplets, RefreshCw } from 'lucide-react'
 
 interface Props {
   lat: number
@@ -24,50 +24,34 @@ interface AqiData {
   pm25: number
   no2: number
   o3: number
-  co: number
 }
 
-// WMO weather code → Turkish label + emoji
 function wmoLabel(code: number): { label: string; emoji: string } {
-  if (code === 0)              return { label: 'Açık',            emoji: '☀️' }
-  if (code <= 3)               return { label: 'Parçalı Bulutlu', emoji: '⛅' }
-  if (code <= 48)              return { label: 'Sisli',           emoji: '🌫️' }
-  if (code <= 57)              return { label: 'Çiseleyen',       emoji: '🌦️' }
-  if (code <= 67)              return { label: 'Yağmurlu',        emoji: '🌧️' }
-  if (code <= 77)              return { label: 'Karlı',           emoji: '❄️' }
-  if (code <= 82)              return { label: 'Sağanak',         emoji: '🌧️' }
-  if (code <= 94)              return { label: 'Dolu',            emoji: '🌨️' }
-  return                              { label: 'Fırtınalı',       emoji: '⛈️' }
+  if (code === 0) return { label: 'Açık', emoji: '☀️' }
+  if (code <= 3) return { label: 'Parçalı bulutlu', emoji: '⛅' }
+  if (code <= 48) return { label: 'Sisli', emoji: '🌫️' }
+  if (code <= 57) return { label: 'Çiseleyen', emoji: '🌦️' }
+  if (code <= 67) return { label: 'Yağmurlu', emoji: '🌧️' }
+  if (code <= 77) return { label: 'Karlı', emoji: '❄️' }
+  if (code <= 82) return { label: 'Sağanak', emoji: '🌧️' }
+  if (code <= 94) return { label: 'Dolu', emoji: '🌨️' }
+  return { label: 'Fırtınalı', emoji: '⛈️' }
 }
 
-// European AQI → level + color class
 function aqiLevel(aqi: number): { label: string; colorClass: string; bgClass: string } {
-  if (aqi <= 20)  return { label: 'İyi',        colorClass: 'text-green-500',  bgClass: 'bg-green-500/10'  }
-  if (aqi <= 40)  return { label: 'Makul',      colorClass: 'text-lime-500',   bgClass: 'bg-lime-500/10'   }
-  if (aqi <= 60)  return { label: 'Orta',       colorClass: 'text-yellow-500', bgClass: 'bg-yellow-500/10' }
-  if (aqi <= 80)  return { label: 'Kötü',       colorClass: 'text-orange-500', bgClass: 'bg-orange-500/10' }
-  if (aqi <= 100) return { label: 'Çok Kötü',   colorClass: 'text-red-500',    bgClass: 'bg-red-500/10'    }
-  return                 { label: 'Tehlikeli',   colorClass: 'text-purple-600', bgClass: 'bg-purple-600/10' }
-}
-
-function aqiBar(aqi: number) {
-  const pct = Math.min((aqi / 100) * 100, 100)
-  const level = aqiLevel(aqi)
-  return (
-    <div className="mt-1.5 h-1.5 w-full rounded-full bg-[rgb(var(--color-border))]">
-      <div
-        className={`h-full rounded-full ${level.colorClass.replace('text-', 'bg-')}`}
-        style={{ width: `${pct}%`, transition: 'width 0.6s ease' }}
-      />
-    </div>
-  )
+  if (aqi <= 20) return { label: 'İyi', colorClass: 'text-green-600', bgClass: 'bg-green-500/15' }
+  if (aqi <= 40) return { label: 'Makul', colorClass: 'text-lime-700', bgClass: 'bg-lime-500/15' }
+  if (aqi <= 60) return { label: 'Orta', colorClass: 'text-yellow-700', bgClass: 'bg-yellow-500/15' }
+  if (aqi <= 80) return { label: 'Kötü', colorClass: 'text-orange-700', bgClass: 'bg-orange-500/15' }
+  if (aqi <= 100) return { label: 'Çok kötü', colorClass: 'text-red-700', bgClass: 'bg-red-500/15' }
+  return { label: 'Tehlikeli', colorClass: 'text-purple-700', bgClass: 'bg-purple-600/15' }
 }
 
 export function WeatherAirQualityWidget({ lat, lng, cityName }: Props) {
-  const [weather, setWeather]   = useState<WeatherData | null>(null)
-  const [aqi,     setAqi]       = useState<AqiData | null>(null)
-  const [loading, setLoading]   = useState(true)
-  const [error,   setError]     = useState(false)
+  const [weather, setWeather] = useState<WeatherData | null>(null)
+  const [aqi, setAqi] = useState<AqiData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const fetchData = async () => {
     setLoading(true)
@@ -76,38 +60,35 @@ export function WeatherAirQualityWidget({ lat, lng, cityName }: Props) {
       const [wRes, aRes] = await Promise.all([
         fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-          `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,precipitation` +
-          `&timezone=Europe%2FIstanbul`
+            `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,precipitation` +
+            `&timezone=Europe%2FIstanbul`
         ),
         fetch(
           `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}` +
-          `&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,ozone,european_aqi` +
-          `&timezone=Europe%2FIstanbul`
+            `&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,ozone,european_aqi` +
+            `&timezone=Europe%2FIstanbul`
         ),
       ])
 
       if (!wRes.ok || !aRes.ok) throw new Error('API error')
 
       const [wJson, aJson] = await Promise.all([wRes.json(), aRes.json()])
-
       const c = wJson.current
       setWeather({
-        temperature:   c.temperature_2m,
-        apparentTemp:  c.apparent_temperature,
-        humidity:      c.relative_humidity_2m,
-        windSpeed:     c.wind_speed_10m,
-        weatherCode:   c.weather_code,
+        temperature: c.temperature_2m,
+        apparentTemp: c.apparent_temperature,
+        humidity: c.relative_humidity_2m,
+        windSpeed: c.wind_speed_10m,
+        weatherCode: c.weather_code,
         precipitation: c.precipitation,
       })
-
       const a = aJson.current
       setAqi({
         europeanAqi: a.european_aqi,
-        pm10:        a.pm10,
-        pm25:        a.pm2_5,
-        no2:         a.nitrogen_dioxide,
-        o3:          a.ozone,
-        co:          a.carbon_monoxide,
+        pm10: a.pm10,
+        pm25: a.pm2_5,
+        no2: a.nitrogen_dioxide,
+        o3: a.ozone,
       })
     } catch {
       setError(true)
@@ -121,29 +102,32 @@ export function WeatherAirQualityWidget({ lat, lng, cityName }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lat, lng])
 
-  if (loading) return (
-    <div className="mx-3 mt-3 mb-1 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 animate-pulse">
-      <div className="h-4 w-32 rounded-full bg-[rgb(var(--color-border))]" />
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-14 rounded-xl bg-[rgb(var(--color-border))]" />
-        ))}
+  if (loading) {
+    return (
+      <div className="local-wx animate-pulse" aria-hidden>
+        <div className="local-wx__card h-14 flex-1" />
+        <div className="local-wx__card h-14 flex-1" />
       </div>
-    </div>
-  )
+    )
+  }
 
-  if (error) return (
-    <div className="mx-3 mt-3 mb-1 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-3 flex items-center justify-between">
-      <span className="text-xs text-[rgb(var(--color-muted))]">Hava durumu yüklenemedi</span>
-      <button
-        onClick={() => void fetchData()}
-        className="flex items-center gap-1 text-xs text-[rgb(var(--color-brand))] font-semibold"
-      >
-        <RefreshCw className="h-3 w-3" />
-        Tekrar dene
-      </button>
-    </div>
-  )
+  if (error) {
+    return (
+      <div className="local-wx">
+        <div className="local-wx__card justify-between">
+          <span className="local-wx__meta">Hava durumu yüklenemedi</span>
+          <button
+            type="button"
+            onClick={() => void fetchData()}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[rgb(var(--color-brand))]"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Tekrar dene
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (!weather || !aqi) return null
 
@@ -151,114 +135,53 @@ export function WeatherAirQualityWidget({ lat, lng, cityName }: Props) {
   const aqiInfo = aqiLevel(aqi.europeanAqi)
 
   return (
-    <div className="mx-3 mt-3 mb-1 space-y-2">
-
-      {/* ── Hava Durumu Kartı ── */}
-      <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] overflow-hidden">
-        {/* Başlık satırı */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="flex items-center gap-1.5">
-            <Thermometer className="h-3.5 w-3.5 text-[rgb(var(--color-brand))]" />
-            <span className="text-xs font-semibold text-[rgb(var(--color-muted))] uppercase tracking-wide">
-              Hava Durumu · {cityName}
+    <div className="local-wx" aria-label={`${cityName} hava durumu`}>
+      <div className="local-wx__card">
+        <span className="text-2xl leading-none" aria-hidden>
+          {wEmoji}
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-1.5">
+            <span className="local-wx__temp">{Math.round(weather.temperature)}°</span>
+            <span className="local-wx__meta truncate">
+              {wLabel} · {cityName}
             </span>
           </div>
-          <button
-            onClick={() => void fetchData()}
-            className="text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))] transition-colors"
-            aria-label="Yenile"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
+          <p className="local-wx__meta">Hissedilen {Math.round(weather.apparentTemp)}°</p>
         </div>
-
-        {/* Ana sıcaklık */}
-        <div className="flex items-center gap-3 px-4 pb-3">
-          <span className="text-4xl">{wEmoji}</span>
-          <div>
-            <div className="flex items-end gap-1.5">
-              <span className="text-3xl font-bold text-[rgb(var(--color-text))]">
-                {Math.round(weather.temperature)}°
-              </span>
-              <span className="mb-1 text-sm text-[rgb(var(--color-muted))]">C</span>
-            </div>
-            <p className="text-xs text-[rgb(var(--color-muted))]">
-              {wLabel} · Hissedilen {Math.round(weather.apparentTemp)}°C
-            </p>
-          </div>
-        </div>
-
-        {/* Detay grid */}
-        <div className="grid grid-cols-3 border-t border-[rgb(var(--color-border))]">
-          <div className="flex flex-col items-center py-2.5 border-r border-[rgb(var(--color-border))]">
-            <Droplets className="h-4 w-4 text-blue-400 mb-1" />
-            <span className="text-sm font-semibold text-[rgb(var(--color-text))]">{weather.humidity}%</span>
-            <span className="text-[10px] text-[rgb(var(--color-muted))]">Nem</span>
-          </div>
-          <div className="flex flex-col items-center py-2.5 border-r border-[rgb(var(--color-border))]">
-            <Wind className="h-4 w-4 text-sky-400 mb-1" />
-            <span className="text-sm font-semibold text-[rgb(var(--color-text))]">{Math.round(weather.windSpeed)}</span>
-            <span className="text-[10px] text-[rgb(var(--color-muted))]">km/s Rüzgar</span>
-          </div>
-          <div className="flex flex-col items-center py-2.5">
-            <Eye className="h-4 w-4 text-indigo-400 mb-1" />
-            <span className="text-sm font-semibold text-[rgb(var(--color-text))]">{weather.precipitation} mm</span>
-            <span className="text-[10px] text-[rgb(var(--color-muted))]">Yağış</span>
-          </div>
+        <div className="local-wx__stats">
+          <span className="inline-flex items-center gap-1">
+            <Droplets className="h-3 w-3 text-blue-500" />
+            {weather.humidity}%
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Wind className="h-3 w-3 text-sky-500" />
+            {Math.round(weather.windSpeed)} km/s
+          </span>
+          <span>{weather.precipitation} mm</span>
         </div>
       </div>
 
-      {/* ── Hava Kalitesi Kartı ── */}
-      <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] overflow-hidden">
-        {/* Başlık + genel AQI */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <span className="text-xs font-semibold text-[rgb(var(--color-muted))] uppercase tracking-wide">
-            Hava Kalitesi (AQI)
-          </span>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${aqiInfo.colorClass} ${aqiInfo.bgClass}`}>
-            {aqiInfo.label} · {Math.round(aqi.europeanAqi)}
+      <div className="local-wx__card">
+        <div className="min-w-0 flex-1">
+          <p className="local-wx__meta mb-1">Hava kalitesi</p>
+          <span className={`local-wx__aqi ${aqiInfo.colorClass} ${aqiInfo.bgClass}`}>
+            {aqiInfo.label} · {Math.round(aqi.europeanAqi)} AQI
           </span>
         </div>
-
-        {/* AQI bar */}
-        <div className="px-4 pb-3">
-          {aqiBar(aqi.europeanAqi)}
-          <div className="mt-1 flex justify-between text-[9px] text-[rgb(var(--color-muted))]">
-            <span>İyi</span>
-            <span>Orta</span>
-            <span>Tehlikeli</span>
-          </div>
+        <div className="local-wx__stats">
+          <span>PM2.5 {Math.round(aqi.pm25)}</span>
+          <span>PM10 {Math.round(aqi.pm10)}</span>
+          <span>O₃ {Math.round(aqi.o3)}</span>
         </div>
-
-        {/* Kirletici grid */}
-        <div className="grid grid-cols-2 gap-px border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-border))]">
-          {[
-            { label: 'PM2.5',  value: aqi.pm25,  unit: 'μg/m³', limit: 25  },
-            { label: 'PM10',   value: aqi.pm10,  unit: 'μg/m³', limit: 50  },
-            { label: 'NO₂',    value: aqi.no2,   unit: 'μg/m³', limit: 40  },
-            { label: 'O₃',     value: aqi.o3,    unit: 'μg/m³', limit: 120 },
-          ].map(({ label, value, unit, limit }) => {
-            const ratio = Math.min(value / limit, 1)
-            const color = ratio < 0.5 ? 'bg-green-500' : ratio < 0.85 ? 'bg-yellow-500' : 'bg-red-500'
-            return (
-              <div key={label} className="bg-[rgb(var(--color-card))] px-4 py-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[rgb(var(--color-text))]">{label}</span>
-                  <span className="text-xs text-[rgb(var(--color-muted))]">
-                    {Math.round(value * 10) / 10} <span className="text-[9px]">{unit}</span>
-                  </span>
-                </div>
-                <div className="mt-1 h-1 w-full rounded-full bg-[rgb(var(--color-border))]">
-                  <div className={`h-full rounded-full ${color}`} style={{ width: `${ratio * 100}%` }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <p className="px-4 py-2 text-[10px] text-[rgb(var(--color-muted))] text-center">
-          Kaynak: Open-Meteo · Avrupa AQI standardı
-        </p>
+        <button
+          type="button"
+          onClick={() => void fetchData()}
+          className="shrink-0 text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]"
+          aria-label="Hava durumunu yenile"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   )

@@ -7,9 +7,8 @@ import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopCategoryWatch } from '@/components/home/desktop/DesktopCategoryWatch'
 import { GridStory, StackedStory } from '@/components/home/desktop/desktopGridStories'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
-import { LocalNewsMagazineGrids } from '@/components/local/LocalNewsMagazineGrids'
-import { buildLocalNewsMagazineLayout } from '@/components/local/localNewsLayout'
-import { PharmacyWidget } from '@/components/local/PharmacyWidget'
+import { LocalListStory } from '@/components/local/LocalListStory'
+import { buildLocalNewsReadableLayout } from '@/components/local/localNewsLayout'
 import { ROUTES } from '@/constants/routes'
 import { rankFeedPosts } from '@/lib/feedRanking'
 import { useAuth } from '@/hooks/useAuth'
@@ -25,7 +24,6 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
   const { user } = useAuth()
   const {
     city,
-    activeTab,
     posts,
     loading,
     loadingMore,
@@ -47,126 +45,124 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
   )
 
   const pageTitle = city ? `${city.name} Yerel Haber` : 'Yerel Haber'
-  const sectionLead = city ? city.name.toLocaleUpperCase('tr-TR') : 'YEREL'
-
-  const layout = useMemo(
-    () => buildLocalNewsMagazineLayout(rankedPosts, sectionLead),
-    [rankedPosts, sectionLead]
-  )
-
-  const { centerHero, leftHero, rightStack, namedSections, overflowChunks } = layout
-
-  const showNews = activeTab === 'haberler'
+  const layout = useMemo(() => buildLocalNewsReadableLayout(rankedPosts), [rankedPosts])
+  const { lead, rail, list, gridChunks } = layout
 
   return (
-    <div className="desktop-category-page pb-10">
+    <div className="desktop-category-page local-page pb-10">
       <LocalNewsTopPanel state={state} variant="desktop" />
 
-      <h1 className="mb-6 text-center font-serif text-3xl font-bold text-[rgb(var(--color-text))] md:text-4xl">
-        {pageTitle}
-      </h1>
+      <header className="mb-6">
+        <p className="local-page__kicker">Yerel</p>
+        <h1 className="local-page__title">{pageTitle}</h1>
+      </header>
 
-      {city && activeTab === 'eczaneler' ? (
-        <PharmacyWidget citySlug={city.slug} cityName={city.name} />
+      {showingGeneralFallback && city && !loading ? (
+        <p className="mb-6 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+          <span className="font-semibold text-[rgb(var(--color-text))]">{city.name}</span> için yerel haber
+          bulunamadı — Türkiye geneli yerel haberler gösteriliyor.
+        </p>
       ) : null}
 
-      {showNews ? (
+      <DesktopAdBanner slot="category-yerel-haber-top" size="large" className="mb-8" />
+
+      {loading ? (
+        <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="aspect-[16/10] animate-pulse rounded bg-[rgb(var(--color-border))] md:col-span-2" />
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded bg-[rgb(var(--color-border))]" />
+            ))}
+          </div>
+        </div>
+      ) : error ? (
+        <div className="mb-10 rounded-2xl border border-[rgb(var(--color-border))] p-12 text-center">
+          <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
+          <p className="font-semibold text-[rgb(var(--color-text))]">{error}</p>
+          <button
+            type="button"
+            onClick={retryFetch}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[rgb(var(--color-brand))] px-4 py-2 text-xs font-bold text-white"
+          >
+            Tekrar dene
+          </button>
+        </div>
+      ) : (
         <>
-          {showingGeneralFallback && city && !loading ? (
-            <p className="mb-6 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
-              <span className="font-semibold text-[rgb(var(--color-text))]">{city.name}</span> için yerel haber
-              bulunamadı — Türkiye geneli yerel haberler gösteriliyor.
-            </p>
+          {lead ? (
+            <section className="local-lead" aria-label="Öne çıkan haberler">
+              <div className="min-w-0">
+                <GridStory post={lead} size="xl" />
+              </div>
+              {rail.length > 0 ? (
+                <aside className="local-rail" aria-label="Son haberler">
+                  <p className="local-rail__heading">Son haberler</p>
+                  {rail.map((post) => (
+                    <StackedStory key={post.id} post={post} />
+                  ))}
+                </aside>
+              ) : null}
+            </section>
           ) : null}
 
-          <DesktopAdBanner slot="category-yerel-haber-top" size="large" className="mb-8" />
+          {list.length > 0 ? (
+            <section className="mb-10" aria-label="Günün haberleri">
+              <h2 className="local-section-title">Günün haberleri</h2>
+              <div className="local-list">
+                {list.map((post) => (
+                  <LocalListStory key={post.id} post={post} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-          {loading ? (
-            <div className="mb-10 grid grid-cols-2 gap-4 xl:grid-cols-4">
-              {[...Array(4)].map((_, i) => (
+          <DesktopCategoryWatch posts={rankedPosts} categorySlug="yerel-haber" />
+
+          <DesktopAdBanner slot="category-yerel-haber-mid" className="mb-10" />
+
+          {gridChunks.map((chunk, index) => (
+            <section
+              key={`grid-${index}`}
+              className="mb-10"
+              aria-label={index === 0 ? 'Daha fazla haber' : undefined}
+            >
+              {index === 0 ? <h2 className="local-section-title">Daha fazla</h2> : null}
+              <div className="local-more-grid">
+                {chunk.map((post) => (
+                  <GridStory key={post.id} post={post} />
+                ))}
+              </div>
+            </section>
+          ))}
+
+          {loadingMore ? (
+            <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {[...Array(3)].map((_, i) => (
                 <div key={i} className="aspect-video animate-pulse rounded bg-[rgb(var(--color-border))]" />
               ))}
             </div>
-          ) : error ? (
-            <div className="mb-10 rounded-2xl border border-[rgb(var(--color-border))] p-12 text-center">
-              <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
-              <p className="font-semibold text-[rgb(var(--color-text))]">{error}</p>
-              <button
-                type="button"
-                onClick={retryFetch}
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-[rgb(var(--color-brand))] px-4 py-2 text-xs font-bold text-white"
+          ) : null}
+
+          <div ref={sentinelRef} className="h-1" aria-hidden />
+
+          {!loading && rankedPosts.length === 0 ? (
+            <div className="mb-10 border border-dashed border-[rgb(var(--color-border))] py-16 text-center">
+              <MapPin className="mx-auto mb-3 h-10 w-10 text-[rgb(var(--color-muted))]" />
+              <p className="text-lg font-semibold text-[rgb(var(--color-text))]">
+                {city ? `${city.name} haberleri henüz eklenmedi` : 'Haber bulunamadı'}
+              </p>
+              <Link
+                href={ROUTES.FEED}
+                className="mt-3 inline-block text-sm font-semibold text-[rgb(var(--color-brand))] hover:underline"
               >
-                Tekrar dene
-              </button>
+                Ana sayfaya dön
+              </Link>
             </div>
-          ) : (
-            <>
-              {centerHero ? (
-                <section
-                  className="mb-10 grid grid-cols-12 items-start gap-4 border-b border-[rgb(var(--color-border))] pb-10"
-                  aria-label="Öne çıkan haberler"
-                >
-                  {leftHero ? (
-                    <div className="col-span-12 min-w-0 md:col-span-3 xl:col-span-3">
-                      <GridStory post={leftHero} />
-                    </div>
-                  ) : null}
-                  <div
-                    className={
-                      leftHero
-                        ? 'col-span-12 min-w-0 md:col-span-6 xl:col-span-6'
-                        : 'col-span-12 min-w-0 md:col-span-9 xl:col-span-9'
-                    }
-                  >
-                    <GridStory post={centerHero} size="xl" />
-                  </div>
-                  {rightStack.length > 0 ? (
-                    <aside
-                      className="col-span-12 flex min-w-0 flex-col gap-1 md:col-span-3 xl:col-span-3"
-                      aria-label="Son haberler"
-                    >
-                      {rightStack.map((post) => (
-                        <StackedStory key={post.id} post={post} />
-                      ))}
-                    </aside>
-                  ) : null}
-                </section>
-              ) : null}
+          ) : null}
 
-              <LocalNewsMagazineGrids namedSections={namedSections} overflowChunks={[]} />
-
-              <DesktopCategoryWatch posts={rankedPosts} categorySlug="yerel-haber" />
-
-              <DesktopAdBanner slot="category-yerel-haber-mid" className="mb-10" />
-
-              <LocalNewsMagazineGrids
-                namedSections={[]}
-                overflowChunks={overflowChunks}
-                loadingMore={loadingMore}
-                sentinelRef={sentinelRef}
-              />
-
-              {!loading && rankedPosts.length === 0 ? (
-                <div className="mb-10 border border-dashed border-[rgb(var(--color-border))] py-16 text-center">
-                  <MapPin className="mx-auto mb-3 h-10 w-10 text-[rgb(var(--color-muted))]" />
-                  <p className="text-lg font-semibold text-[rgb(var(--color-text))]">
-                    {city ? `${city.name} haberleri henüz eklenmedi` : 'Haber bulunamadı'}
-                  </p>
-                  <Link
-                    href={ROUTES.FEED}
-                    className="mt-3 inline-block text-sm font-semibold text-[rgb(var(--color-brand))] hover:underline"
-                  >
-                    Ana sayfaya dön
-                  </Link>
-                </div>
-              ) : null}
-
-              <DesktopAdBanner slot="category-yerel-haber-bottom" size="large" className="mb-10" />
-            </>
-          )}
+          <DesktopAdBanner slot="category-yerel-haber-bottom" size="large" className="mb-10" />
         </>
-      ) : null}
-
+      )}
     </div>
   )
 }

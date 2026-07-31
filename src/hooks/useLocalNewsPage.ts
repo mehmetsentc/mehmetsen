@@ -28,7 +28,6 @@ import {
 import type { TimelinePost } from '@/types/post'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 
-export type LocalNewsActiveTab = 'haberler' | 'eczaneler'
 export type LocalNewsLocationState = 'idle' | 'requesting' | 'granted' | 'denied' | 'stored'
 
 export interface LocalCity {
@@ -111,7 +110,6 @@ export function useLocalNewsPage() {
   const pathname = usePathname()
   const userLocation = useUserLocation()
   const [locationState, setLocationState] = useState<LocalNewsLocationState>('idle')
-  const [activeTab, setActiveTab] = useState<LocalNewsActiveTab>('haberler')
   const [city, setCity] = useState<LocalCity | null>(() =>
     cityFromSlug(resolvePersistedLocalCitySlug(ROUTES.LOCAL))
   )
@@ -510,8 +508,6 @@ export function useLocalNewsPage() {
 
   return {
     locationState,
-    activeTab,
-    setActiveTab,
     city,
     query,
     setQuery,

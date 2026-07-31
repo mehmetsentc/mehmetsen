@@ -14,41 +14,6 @@ interface LocalNewsTopPanelProps {
   variant?: 'desktop' | 'mobile'
 }
 
-function LocalNewsTabs({
-  state,
-  compact,
-}: {
-  state: LocalNewsState
-  compact?: boolean
-}) {
-  const { activeTab, setActiveTab, city } = state
-  if (!city) return null
-
-  return (
-    <div className={cn('flex gap-2', compact ? 'px-3 pb-2 pt-1' : 'pt-3')}>
-      {([
-        ['haberler', MapPin, 'Haberler'],
-        ['eczaneler', null, 'Nöbetçi Eczaneler'],
-      ] as const).map(([key, Icon, label]) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => setActiveTab(key)}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-all',
-            activeTab === key
-              ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
-              : 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
-          )}
-        >
-          {Icon ? <Icon className="h-3.5 w-3.5" /> : <span className="text-[11px]">💊</span>}
-          {label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPanelProps) {
   const {
     city,
@@ -67,12 +32,12 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
   return (
     <section
       className={cn(
-        'local-news-top-panel mb-8 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
+        'local-news-top-panel mb-6 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
         isMobile ? 'rounded-none' : 'rounded-xl border shadow-sm'
       )}
       aria-label="Yerel haber araçları"
     >
-      <div className={cn(isMobile ? 'px-3 pt-3' : 'p-4')}>
+      <div className={cn(isMobile ? 'px-3 pt-3 pb-2' : 'p-4 pb-3')}>
         <div className={cn('flex flex-wrap items-center gap-3', isMobile && 'gap-2')}>
           <div
             className={cn(
@@ -117,8 +82,8 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
 
           {city ? (
             <div className="flex min-w-0 items-center gap-1.5 text-sm">
-              <MapPin className="h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" />
-              <span className="truncate font-semibold text-[rgb(var(--color-brand))]">{city.name}</span>
+              <MapPin className="h-4 w-4 shrink-0 text-[rgb(5_150_105)]" />
+              <span className="truncate font-semibold text-[rgb(5_150_105)]">{city.name}</span>
               <span className="shrink-0 text-xs text-[rgb(var(--color-muted))]">
                 {locationState === 'granted'
                   ? '· GPS'
@@ -159,8 +124,8 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
                   'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all',
                   isMobile && 'snap-start',
                   isSelected
-                    ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
-                    : 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))] hover:border-[rgb(var(--color-primary))]/40 hover:text-[rgb(var(--color-text))]'
+                    ? 'bg-[rgb(5_150_105)] text-white shadow-sm'
+                    : 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))] hover:border-[rgb(5_150_105)]/40 hover:text-[rgb(var(--color-text))]'
                 )}
               >
                 {c.name}
@@ -171,12 +136,10 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
             <p className="py-1.5 text-xs text-[rgb(var(--color-muted))]">Şehir bulunamadı</p>
           ) : null}
         </div>
-
-        <LocalNewsTabs state={state} compact={isMobile} />
       </div>
 
       {city?.lat && city.lng ? (
-        <div className={cn('border-t border-[rgb(var(--color-border))]', isMobile ? 'px-0' : 'px-4 pb-4')}>
+        <div className={cn('border-t border-[rgb(var(--color-border))]', isMobile ? 'px-3 pb-3' : 'px-4 pb-4')}>
           <WeatherAirQualityWidget lat={city.lat} lng={city.lng} cityName={city.name} />
         </div>
       ) : null}
