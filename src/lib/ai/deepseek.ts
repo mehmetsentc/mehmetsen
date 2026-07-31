@@ -69,9 +69,9 @@ export function isDeepSeekConfigured(): boolean {
 }
 
 // ── Core API call ─────────────────────────────────────────────────────────────
-async function callDeepSeek(
+async function callDeepSeekOnce(
   messages: Array<{ role: string; content: string }>,
-  opts: { temperature?: number; max_tokens?: number } = {}
+  opts: { temperature?: number; max_tokens?: number; timeoutMs?: number }
 ): Promise<string> {
   const cfg = getConfig()
   if (!cfg) throw new Error('DEEPSEEK_API_KEY eksik')
@@ -89,12 +89,12 @@ async function callDeepSeek(
       max_tokens: opts.max_tokens ?? 2048,
       response_format: { type: 'json_object' },
     }),
-    signal: AbortSignal.timeout(45_000),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 90_000),
   })
 
   if (!res.ok) {
     const err = await res.text().catch(() => '')
-    throw new Error(`DeepSeek API ${res.status}: ${err.slice(0, 200)}`)
+    throw new Error(`[stage1/deepseek] HTTP ${res.status}: ${err.slice(0, 200)}`)
   }
 
   const data = (await res.json()) as {
@@ -102,11 +102,33 @@ async function callDeepSeek(
     error?: { message?: string }
   }
 
-  if (data.error) throw new Error(`DeepSeek error: ${data.error.message}`)
+  if (data.error) throw new Error(`[stage1/deepseek] error: ${data.error.message}`)
 
   const content = data.choices?.[0]?.message?.content?.trim()
-  if (!content) throw new Error('DeepSeek boş yanıt döndürdü')
+  if (!content) throw new Error('[stage1/deepseek] boş yanıt döndürdü')
   return content
+}
+
+/**
+ * İlk denemede timeout → max_tokens yarıya düşürülerek tek retry.
+ * DeepSeek yük altında yavaşladığında 252 timeout/gün gibi kuyruk tıkanmasını önler.
+ */
+async function callDeepSeek(
+  messages: Array<{ role: string; content: string }>,
+  opts: { temperature?: number; max_tokens?: number } = {}
+): Promise<string> {
+  try {
+    return await callDeepSeekOnce(messages, { ...opts, timeoutMs: 90_000 })
+  } catch (err) {
+    const isTimeout = err instanceof Error &&
+      (err.name === 'TimeoutError' || err.message.includes('timeout') || err.message.includes('aborted'))
+    if (!isTimeout) throw err
+
+    // Timeout: tek seferlik retry ile azaltılmış token sayısı
+    const retryTokens = Math.max(1024, Math.round((opts.max_tokens ?? 2048) / 2))
+    console.warn(`[deepseek] Timeout — retry with max_tokens=${retryTokens}`)
+    return await callDeepSeekOnce(messages, { ...opts, max_tokens: retryTokens, timeoutMs: 90_000 })
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -375,7 +397,7 @@ export async function deepseekEditArticle(input: GeminiEditInput): Promise<Gemin
       { role: 'system', content: EDITOR_SYSTEM_PROMPT },
       { role: 'user', content: prompt },
     ],
-    { temperature: 0.3, max_tokens: 6000 }
+    { temperature: 0.3, max_tokens: 4000 }
   )
   return parseEditorJson(raw, DEEPSEEK_MODEL)
 }
