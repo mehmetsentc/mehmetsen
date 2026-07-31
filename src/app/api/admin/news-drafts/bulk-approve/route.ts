@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       if (uname) authors.add(uname)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (msg.includes('already approved')) {
+      if (msg.includes('already approved') || msg.startsWith('empty_content:')) {
         skipped++
       } else {
         errors.push(`${doc.id}: ${msg}`)

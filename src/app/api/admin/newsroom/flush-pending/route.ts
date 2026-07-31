@@ -102,8 +102,11 @@ export async function POST(request: Request) {
         draftApprove.approved += 1
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
-        if (msg.includes('already approved')) draftApprove.skipped += 1
-        else draftApprove.errors.push(`${doc.id}: ${msg}`)
+        if (msg.includes('already approved') || msg.startsWith('empty_content:')) {
+          draftApprove.skipped += 1
+        } else {
+          draftApprove.errors.push(`${doc.id}: ${msg}`)
+        }
       }
     }
 

@@ -135,6 +135,65 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
       continue
     }
 
+    // YouTube / boş gövde: summary→description doldur veya taslağa al
+    const isVideoPost =
+      data.postType === 'video' ||
+      String(data.slug || '').startsWith('video-') ||
+      String(data.rssFingerprint || '').startsWith('youtube-rss:')
+
+    if (words < 20 && isVideoPost) {
+      const summary = String(data.summary || '').trim()
+      const watch =
+        sourceUrl.startsWith('http')
+          ? sourceUrl
+          : String(data.videoEmbedUrl || data.videoUrl || '').trim()
+      const spot =
+        summary.length >= 40
+          ? summary.slice(0, 280)
+          : `${title.replace(/\s*#Canlı\s*$/i, '').trim()}.`
+      const body = [
+        spot,
+        '',
+        summary.length > spot.length ? summary : '',
+        '',
+        watch ? `Video: ${watch}` : '',
+        '',
+        'Bu içerik YouTube kanalından otomatik alındı. Ayrıntılar videoda.',
+      ]
+        .filter((line, i, arr) => !(line === '' && arr[i - 1] === ''))
+        .join('\n')
+        .trim()
+
+      try {
+        // Açıklamasız canlı yayınlar → taslak; en az özet varsa yayınlı tut + doldur
+        if (summary.length < 40) {
+          await demoteToDraft(
+            doc.ref,
+            now,
+            'Boş YouTube gövdesi — CMS içerik yok, otomatik taslak'
+          )
+          result.drafted++
+        } else {
+          await doc.ref.update({
+            spot,
+            description: body,
+            content: body,
+            summary: summary || title.slice(0, 280),
+            contentBackfillStatus: 'youtube_body_filled',
+            contentBackfillAt: now,
+            updatedAt: now,
+          })
+          result.updated++
+        }
+      } catch (err) {
+        result.failed++
+        result.errors.push(
+          `${doc.id}: video fill failed: ${err instanceof Error ? err.message : String(err)}`
+        )
+      }
+      continue
+    }
+
     // Kaynak URL yok → genişletilemez; AdSense için yayından taslağa al
     if (!sourceUrl.startsWith('http')) {
       try {

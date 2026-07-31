@@ -5,7 +5,32 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
 import { buildNewsSlug } from '@/lib/newsSlug'
+import { countPlainWords } from '@/lib/contentQuality'
 import type { NewsDraftDocument } from '@/types/news'
+
+/** Spot + gövde birlikte boşsa onaylanamaz (CMS'te “içerik yok” yayın engeli). */
+export function draftHasPublishableBody(draft: {
+  title?: string
+  summary?: string
+  description?: string
+  spot?: string
+  content?: string
+  htmlContent?: string
+  bodyBlocks?: unknown
+}): boolean {
+  const body = [draft.description, draft.content, draft.spot, draft.htmlContent]
+    .map((v) => String(v || '').trim())
+    .join('\n')
+    .trim()
+
+  if (countPlainWords(body) >= 40) return true
+
+  const blocks = Array.isArray(draft.bodyBlocks) ? draft.bodyBlocks : []
+  if (blocks.length > 0) return true
+
+  // Yalnızca özet/başlık → yetersiz
+  return false
+}
 
 async function slugTaken(db: Firestore, slug: string, excludeId?: string): Promise<boolean> {
   const snap = await db.collection(Collections.NEWS).where('slug', '==', slug).limit(2).get()
@@ -366,6 +391,32 @@ export const newsDraftService = {
     const draft = draftSnap.data() as NewsDraftDocument
     if (draft.draftStatus === 'approved') {
       throw new Error('Draft already approved')
+    }
+
+    // Boş spot/içerik ile yayın engeli (bulk-approve / flush dahil)
+    if (!draftHasPublishableBody(draft)) {
+      // Özetten gövde kurtarma — hâlâ çok kısa ise reddet
+      const summary = String(draft.summary || '').trim()
+      const draftAny = draft as NewsDraftDocument & {
+        spot?: string
+        content?: string
+        htmlContent?: string
+        bodyBlocks?: unknown
+      }
+      if (summary.length >= 40 && !String(draft.description || '').trim()) {
+        draftAny.description = summary
+        draftAny.spot = draftAny.spot || summary.slice(0, 280)
+        draftAny.content = draftAny.content || summary
+        await draftRef.update({
+          description: draftAny.description,
+          spot: draftAny.spot,
+          content: draftAny.content,
+          updatedAt: Date.now(),
+        })
+      }
+      if (!draftHasPublishableBody(draftAny)) {
+        throw new Error('empty_content: Spot/içerik boş — AI ile hazırlayın veya metin girin')
+      }
     }
 
     const now = Date.now()
