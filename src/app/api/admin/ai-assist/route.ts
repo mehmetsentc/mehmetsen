@@ -16,7 +16,7 @@ import { TURKISH_PROVINCES } from '@/constants/cities'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 90
+export const maxDuration = 120
 
 type AssistMode =
   | 'create'
@@ -134,55 +134,143 @@ JSON: {"keywords":["kelime1","kelime2",...]} — 8 ile 15 arasında anahtar keli
 Kişi adları, yer adları, konu başlıkları ve arama niyetiyle eşleşen terimleri dahil et.`,
 }
 
+function parseAiJson(raw: string): Record<string, unknown> {
+  let jsonStr = raw.trim()
+  const fence = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (fence) jsonStr = fence[1]!.trim()
+  if (!jsonStr.startsWith('{')) {
+    const obj = jsonStr.match(/\{[\s\S]*\}/)
+    if (obj) jsonStr = obj[0]
+  }
+  return JSON.parse(jsonStr) as Record<string, unknown>
+}
+
+async function callDeepSeekOnce(
+  systemPrompt: string,
+  userMessage: string,
+  opts: { timeoutMs: number; maxTokens: number }
+): Promise<Record<string, unknown>> {
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (!deepseekKey) throw new Error('DEEPSEEK_API_KEY yok')
+
+  const model =
+    process.env.DEEPSEEK_NEWS_MODEL?.trim() ||
+    process.env.DEEPSEEK_MODEL?.trim() ||
+    'deepseek-chat'
+
+  const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.45,
+      max_tokens: opts.maxTokens,
+    }),
+    signal: AbortSignal.timeout(opts.timeoutMs),
+  })
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`DeepSeek HTTP ${res.status}: ${body.slice(0, 200)}`)
+  }
+
+  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> }
+  const raw = json.choices[0]?.message?.content?.trim() ?? '{}'
+  try {
+    return parseAiJson(raw)
+  } catch {
+    throw new Error(`DeepSeek JSON parse hatası (${raw.length} karakter)`)
+  }
+}
+
+async function callGeminiFallback(
+  systemPrompt: string,
+  userMessage: string
+): Promise<Record<string, unknown>> {
+  const geminiKey = process.env.GEMINI_API_KEY?.trim()
+  if (!geminiKey) throw new Error('GEMINI_API_KEY yok')
+
+  const geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: {
+          temperature: 0.45,
+          maxOutputTokens: 8000,
+          responseMimeType: 'application/json',
+        },
+      }),
+      signal: AbortSignal.timeout(55_000),
+    }
+  )
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Gemini HTTP ${res.status}: ${body.slice(0, 200)}`)
+  }
+
+  const data = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>
+  }
+  const parts = data.candidates?.[0]?.content?.parts ?? []
+  const raw = parts.find((p) => !p.thought && typeof p.text === 'string')?.text?.trim()
+  if (!raw) throw new Error('Gemini: boş yanıt')
+  return parseAiJson(raw)
+}
+
 async function callAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
   const errors: string[] = []
 
-  // --- DeepSeek (primary) ---
-  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
-  if (deepseekKey) {
+  // DeepSeek primary — uzun CMS yazımı için yüksek timeout + 1 retry
+  if (process.env.DEEPSEEK_API_KEY?.trim()) {
     try {
-      const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
-      const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
-          response_format: { type: 'json_object' },
-          temperature: 0.45,
-          max_tokens: 8000,
-        }),
-        signal: AbortSignal.timeout(35_000),
+      return await callDeepSeekOnce(systemPrompt, userMessage, {
+        timeoutMs: 85_000,
+        maxTokens: 6000,
       })
-      if (res.ok) {
-        const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-        const raw = json.choices[0]?.message?.content?.trim() ?? '{}'
-        try {
-          // Robust extraction: handle markdown code fences (```json ... ```)
-          let jsonStr = raw
-          const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-          if (fence) jsonStr = fence[1].trim()
-          // Fallback: find first {...} block
-          if (!jsonStr.startsWith('{')) {
-            const obj = jsonStr.match(/\{[\s\S]*\}/)
-            if (obj) jsonStr = obj[0]
-          }
-          return JSON.parse(jsonStr) as Record<string, unknown>
-        } catch {
-          errors.push(`DeepSeek JSON parse hatası (${raw.length} karakter)`)
-        }
-      } else {
-        const body = await res.text().catch(() => '')
-        errors.push(`DeepSeek HTTP ${res.status}: ${body.slice(0, 200)}`)
-      }
     } catch (e) {
-      errors.push(`DeepSeek bağlantı hatası: ${e instanceof Error ? e.message : String(e)}`)
+      const msg = e instanceof Error ? e.message : String(e)
+      errors.push(`DeepSeek: ${msg}`)
+      const isTimeout = /timeout|aborted|AbortError/i.test(msg)
+      if (isTimeout) {
+        try {
+          console.warn('[ai-assist] DeepSeek timeout — kısa retry')
+          return await callDeepSeekOnce(systemPrompt, userMessage, {
+            timeoutMs: 70_000,
+            maxTokens: 4000,
+          })
+        } catch (e2) {
+          errors.push(`DeepSeek retry: ${e2 instanceof Error ? e2.message : String(e2)}`)
+        }
+      }
     }
   }
 
-  // Gemini text fallback removed — cost control (use DeepSeek only)
+  // Gemini fallback (timeout / DeepSeek down)
+  if (process.env.GEMINI_API_KEY?.trim()) {
+    try {
+      console.warn('[ai-assist] Gemini fallback')
+      return await callGeminiFallback(systemPrompt, userMessage)
+    } catch (e) {
+      errors.push(`Gemini: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
 
-  throw new Error(errors.length ? errors.join(' | ') : 'AI anahtarı yapılandırılmamış (DEEPSEEK_API_KEY)')
+  throw new Error(
+    errors.length
+      ? errors.join(' | ')
+      : 'AI anahtarı yapılandırılmamış (DEEPSEEK_API_KEY)'
+  )
 }
 
 export async function POST(request: Request) {
