@@ -13,5 +13,5 @@ export const maxDuration = 300
 
 const handler = createNewsroomCronHandler('draft-reprocess', reprocessPendingDrafts)
 
-export const GET = handler
-export const POST = handler
+export const GET = handler.GET
+export const POST = handler.POST
