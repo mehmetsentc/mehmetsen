@@ -23,6 +23,7 @@ const JOB_ROUTES: Record<string, string[]> = {
   local: ['/api/cron/newsroom/local'],
   national: ['/api/cron/newsroom/national'],
   'process-queue': ['/api/cron/newsroom/process-queue'],
+  'draft-reprocess': ['/api/cron/newsroom/draft-reprocess'],
   /** Tüm büyük RSS kaynaklarını tetikle (queue sıfırlama sonrası kullanılır) */
   'full-ingest': [
     '/api/cron/newsroom/breaking',

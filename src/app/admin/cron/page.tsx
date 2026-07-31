@@ -26,6 +26,7 @@ interface CronRun {
 const JOBS = [
   { id: 'news-fetch', label: 'Haber Çekme', desc: 'Breaking + gündem RSS → kuyruk işle', schedule: 'Manuel / 15 dk', icon: '📰' },
   { id: 'process-queue', label: 'Kuyruk İşle', desc: 'Bekleyen haberleri AI ile yazıp yayınla', schedule: 'Her 5 dk', icon: '⚙️' },
+  { id: 'draft-reprocess', label: 'Taslak AI Yeniden', desc: 'Onay kuyruğundaki taslakları yeniden yaz/yayınla', schedule: 'Her 10 dk', icon: '✍️' },
   { id: 'breaking', label: 'Son Dakika RSS', desc: 'Breaking kaynaklarını çeker', schedule: 'Her 15 dk', icon: '⚡' },
   { id: 'gundem', label: 'Gündem RSS', desc: 'Ulusal gündem kaynakları', schedule: 'Her 20 dk', icon: '🗞️' },
   { id: 'local', label: 'Yerel RSS', desc: 'Yerel haber kaynakları', schedule: 'Saatte 1', icon: '📍' },
@@ -56,6 +57,7 @@ export default function CronMonitorPage() {
   const [loading, setLoading] = useState(true)
   const [triggering, setTriggering] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
+  const [flushing, setFlushing] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -100,6 +102,39 @@ export default function CronMonitorPage() {
       await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Temizlik hatası')
+    }
+  }
+
+  const flushAllPending = async () => {
+    if (flushing) return
+    const ok = window.confirm(
+      'Tüm bekleyen kuyruk işlenecek, taslaklar AI ile yeniden denenecek ve kalan onay kuyruğu yayınlanacak.\n\nDevam?'
+    )
+    if (!ok) return
+    setFlushing(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/newsroom/flush-pending', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          approveDrafts: true,
+          reprocessDrafts: true,
+          minConfidence: 0,
+          maxRounds: 15,
+        }),
+      })
+      const data = (await res.json()) as { ok?: boolean; message?: string; error?: string }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      toast.success(data.message || 'Bekleyenler işlendi')
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Toplu işlem başarısız')
+    } finally {
+      setFlushing(false)
     }
   }
 
@@ -165,6 +200,15 @@ export default function CronMonitorPage() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold"
           >
             Takılıları temizle
+          </button>
+          <button
+            type="button"
+            disabled={flushing || triggering != null}
+            onClick={() => void flushAllPending()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {flushing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            Tek tuş: Tüm bekleyenleri yayınla
           </button>
           {queuePending != null && (
             <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
