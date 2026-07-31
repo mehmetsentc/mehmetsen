@@ -163,13 +163,25 @@
 
 .local-wx__card {
   display: flex;
-  flex: 1 1 220px;
+  flex: 1 1 240px;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
   padding: 0.65rem 0.85rem;
   border: 1px solid rgb(var(--color-border));
   background: rgb(var(--color-surface, var(--color-card)));
+}
+
+.local-wx__card--aqi {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.local-wx__emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .local-wx__temp {
@@ -181,6 +193,7 @@
 }
 
 .local-wx__meta {
+  margin: 0;
   font-size: 0.75rem;
   line-height: 1.35;
   color: rgb(var(--color-muted));
@@ -196,14 +209,35 @@
   color: rgb(var(--color-text));
 }
 
+.local-wx__aqi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.local-wx__aqi-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.local-wx__stats--aqi {
+  margin-left: 0;
+}
+
 .local-wx__aqi {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.2rem 0.55rem;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 @media (max-width: 639px) {
@@ -227,8 +261,44 @@
     -webkit-line-clamp: 2;
   }
 
-  .local-wx__stats {
+  .local-wx {
+    flex-direction: column;
+  }
+
+  .local-wx__card {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .local-wx__card--weather {
+    flex-wrap: wrap;
+  }
+
+  .local-wx__card--weather .local-wx__stats {
     width: 100%;
     margin-left: 0;
+    padding-top: 0.15rem;
+  }
+
+  .local-wx__aqi-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.55rem;
+  }
+
+  .local-wx__stats--aqi {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+    margin-left: 0;
+  }
+
+  .local-wx__stats--aqi > span {
+    text-align: center;
+    padding: 0.35rem 0.25rem;
+    border: 1px solid rgb(var(--color-border));
+    background: rgb(var(--color-card));
+    font-size: 0.68rem;
   }
 }

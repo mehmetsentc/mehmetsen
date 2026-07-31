@@ -136,11 +136,11 @@ export function WeatherAirQualityWidget({ lat, lng, cityName }: Props) {
 
   return (
     <div className="local-wx" aria-label={`${cityName} hava durumu`}>
-      <div className="local-wx__card">
-        <span className="text-2xl leading-none" aria-hidden>
+      <div className="local-wx__card local-wx__card--weather">
+        <span className="local-wx__emoji" aria-hidden>
           {wEmoji}
         </span>
-        <div className="min-w-0">
+        <div className="local-wx__main min-w-0">
           <div className="flex items-baseline gap-1.5">
             <span className="local-wx__temp">{Math.round(weather.temperature)}°</span>
             <span className="local-wx__meta truncate">
@@ -162,26 +162,28 @@ export function WeatherAirQualityWidget({ lat, lng, cityName }: Props) {
         </div>
       </div>
 
-      <div className="local-wx__card">
-        <div className="min-w-0 flex-1">
-          <p className="local-wx__meta mb-1">Hava kalitesi</p>
+      <div className="local-wx__card local-wx__card--aqi">
+        <div className="local-wx__aqi-head">
+          <p className="local-wx__meta">Hava kalitesi</p>
+          <button
+            type="button"
+            onClick={() => void fetchData()}
+            className="shrink-0 text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]"
+            aria-label="Hava durumunu yenile"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="local-wx__aqi-body">
           <span className={`local-wx__aqi ${aqiInfo.colorClass} ${aqiInfo.bgClass}`}>
             {aqiInfo.label} · {Math.round(aqi.europeanAqi)} AQI
           </span>
+          <div className="local-wx__stats local-wx__stats--aqi">
+            <span>PM2.5 {Math.round(aqi.pm25)}</span>
+            <span>PM10 {Math.round(aqi.pm10)}</span>
+            <span>O₃ {Math.round(aqi.o3)}</span>
+          </div>
         </div>
-        <div className="local-wx__stats">
-          <span>PM2.5 {Math.round(aqi.pm25)}</span>
-          <span>PM10 {Math.round(aqi.pm10)}</span>
-          <span>O₃ {Math.round(aqi.o3)}</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => void fetchData()}
-          className="shrink-0 text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]"
-          aria-label="Hava durumunu yenile"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-        </button>
       </div>
     </div>
   )
