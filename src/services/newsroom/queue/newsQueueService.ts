@@ -1,9 +1,10 @@
 /**
  * Firestore-backed news processing queue with retry scheduling and lease claims.
  */
-import type { Firestore } from 'firebase-admin/firestore'
+import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 import type { NewsQueueDocument, QueueEnqueueInput } from '@/services/newsroom/queue/types'
+import { staleQueueReason } from '@/services/newsroom/queue/freshness'
 
 const DEFAULT_MAX_ATTEMPTS = 3
 const DEFAULT_LEASE_MS = Number(process.env.NEWSROOM_QUEUE_LEASE_MS ?? 240_000)
@@ -126,55 +127,98 @@ export async function claimPendingQueueItems(
     await reclaimExpiredLeases(db, limit)
   }
 
+  async function fetchPage(
+    status: 'pending' | 'failed',
+    pageSize: number,
+    cursor: QueryDocumentSnapshot | null,
+    order: 'desc' | 'asc'
+  ) {
+    let q = queueCollection(db).where('status', '==', status).orderBy('createdAt', order).limit(pageSize)
+    if (cursor) q = q.startAfter(cursor)
+    return q.get()
+  }
+
   async function claimStatus(status: 'pending' | 'failed', remaining: number): Promise<void> {
     if (remaining <= 0) return
 
-    // Newest first so backlog cannot bury fresh breaking/gundem for days.
-    // Falls back to ASC if the DESC composite index is not ready yet.
-    let snap
+    // Prefer newest-first. If DESC index is missing, ASC + skip-stale paging
+    // still reaches fresh jobs instead of burning the whole batch on 12h+ junk.
+    let order: 'desc' | 'asc' = 'desc'
     try {
-      snap = await queueCollection(db)
-        .where('status', '==', status)
-        .orderBy('createdAt', 'desc')
-        .limit(Math.max(remaining * 3, 12))
-        .get()
+      await fetchPage(status, 1, null, 'desc')
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       if (!msg.includes('index') && (error as { code?: number }).code !== 9) throw error
-      console.warn('[newsQueue] createdAt desc index missing — falling back to asc')
-      snap = await queueCollection(db)
-        .where('status', '==', status)
-        .orderBy('createdAt', 'asc')
-        .limit(Math.max(remaining * 3, 12))
-        .get()
+      console.warn('[newsQueue] createdAt desc index missing — falling back to asc + stale skip')
+      order = 'asc'
     }
 
-    const due = snap.docs
-      .map((doc) => ({ doc, data: doc.data() as NewsQueueDocument }))
-      .filter(({ data }) => (data.scheduledAt ?? 0) <= now && data.attempts < data.maxAttempts)
-      .slice(0, remaining)
+    let cursor: QueryDocumentSnapshot | null = null
+    let pages = 0
+    const maxPages = order === 'asc' ? 25 : 5
 
-    for (const { doc, data } of due) {
-      if (claimed.length >= limit) break
+    while (claimed.length < limit && pages < maxPages) {
+      pages += 1
+      const need = limit - claimed.length
+      const snap = await fetchPage(status, Math.max(need * 4, 40), cursor, order)
+      if (snap.empty) break
+      cursor = snap.docs[snap.docs.length - 1]!
 
-      if (ATOMIC_CLAIM) {
-        try {
-          const ok = await db.runTransaction(async (tx) => {
-            const fresh = await tx.get(doc.ref)
-            if (!fresh.exists) return false
-            const current = fresh.data() as NewsQueueDocument
-            if (current.status !== status) return false
-            if (current.scheduledAt > now || current.attempts >= current.maxAttempts) return false
-            tx.update(doc.ref, {
-              status: 'processing',
-              leaseOwner: owner,
-              leaseExpiresAt,
-              claimedAt: now,
-              updatedAt: now,
+      for (const doc of snap.docs) {
+        if (claimed.length >= limit) break
+        const data = doc.data() as NewsQueueDocument
+        if ((data.scheduledAt ?? 0) > now || data.attempts >= data.maxAttempts) continue
+
+        const stale = staleQueueReason(data)
+        if (stale) {
+          try {
+            await markQueueSkipped(db, doc.id, stale)
+          } catch (err) {
+            console.warn(`[newsQueue] stale skip failed for ${doc.id}:`, err)
+          }
+          continue
+        }
+
+        if (ATOMIC_CLAIM) {
+          try {
+            const ok = await db.runTransaction(async (tx) => {
+              const fresh = await tx.get(doc.ref)
+              if (!fresh.exists) return false
+              const current = fresh.data() as NewsQueueDocument
+              if (current.status !== status) return false
+              if (current.scheduledAt > now || current.attempts >= current.maxAttempts) return false
+              if (staleQueueReason(current)) return false
+              tx.update(doc.ref, {
+                status: 'processing',
+                leaseOwner: owner,
+                leaseExpiresAt,
+                claimedAt: now,
+                updatedAt: now,
+              })
+              return true
             })
-            return true
+            if (!ok) continue
+            claimed.push({
+              id: doc.id,
+              data: {
+                ...data,
+                status: 'processing',
+                leaseOwner: owner,
+                leaseExpiresAt,
+                claimedAt: now,
+              },
+            })
+          } catch (error) {
+            console.warn(`[newsQueue] claim transaction failed for ${doc.id}:`, error)
+          }
+        } else {
+          await doc.ref.update({
+            status: 'processing',
+            leaseOwner: owner,
+            leaseExpiresAt,
+            claimedAt: now,
+            updatedAt: now,
           })
-          if (!ok) continue
           claimed.push({
             id: doc.id,
             data: {
@@ -185,28 +229,10 @@ export async function claimPendingQueueItems(
               claimedAt: now,
             },
           })
-        } catch (error) {
-          console.warn(`[newsQueue] claim transaction failed for ${doc.id}:`, error)
         }
-      } else {
-        await doc.ref.update({
-          status: 'processing',
-          leaseOwner: owner,
-          leaseExpiresAt,
-          claimedAt: now,
-          updatedAt: now,
-        })
-        claimed.push({
-          id: doc.id,
-          data: {
-            ...data,
-            status: 'processing',
-            leaseOwner: owner,
-            leaseExpiresAt,
-            claimedAt: now,
-          },
-        })
       }
+
+      if (snap.size < Math.max(need * 4, 40)) break
     }
   }
 
