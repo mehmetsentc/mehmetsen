@@ -130,36 +130,42 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     { role: 'user' as const, content: userContent },
   ]
 
-  const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 60_000)
+  const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 90_000)
 
-  try {
-    let res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+  const doFetch = async (maxTok: number) => {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
         temperature: 0.4,
-        max_tokens: 5000,
+        max_tokens: maxTok,
         response_format: { type: 'json_object' },
         messages,
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })
+    return res
+  }
+
+  try {
+    let res = await doFetch(5000).catch(async (err: unknown) => {
+      const isTimeout = err instanceof Error &&
+        (err.name === 'TimeoutError' || err.message.includes('timeout') || err.message.includes('aborted'))
+      if (!isTimeout) throw err
+      console.warn('[stage1/deepseek] Timeout (5000t) — retry 2500t')
+      return doFetch(2500)
+    })
 
     if (res.status === 429) {
       console.warn('[stage1/deepseek] 429, 3s retry')
       await new Promise((r) => setTimeout(r, 3000))
-      res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          temperature: 0.4,
-          max_tokens: 5000,
-          response_format: { type: 'json_object' },
-          messages,
-        }),
-        signal: AbortSignal.timeout(timeoutMs),
+      res = await doFetch(5000).catch(async (err: unknown) => {
+        const isTimeout = err instanceof Error &&
+          (err.name === 'TimeoutError' || err.message.includes('timeout') || err.message.includes('aborted'))
+        if (!isTimeout) throw err
+        console.warn('[stage1/deepseek] Timeout (429 retry) — 2500t')
+        return doFetch(2500)
       })
     }
 
@@ -171,12 +177,25 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     const json = (await res.json()) as {
       choices?: Array<{ message?: { content?: string }; finish_reason?: string }>
     }
-    const choice = json.choices?.[0]
-    const raw = choice?.message?.content?.trim()
+    let choice = json.choices?.[0]
+    let raw = choice?.message?.content?.trim()
     if (!raw) return null
 
+    // finish_reason=length → çıktı kesilmiş, daha az token ile retry
     if (choice?.finish_reason === 'length') {
-      console.warn('[stage1/deepseek] finish_reason=length — çıktı kesilmiş olabilir')
+      console.warn('[stage1/deepseek] finish_reason=length — 2500t ile retry')
+      const res2 = await doFetch(2500).catch(() => null)
+      if (res2?.ok) {
+        const json2 = (await res2.json()) as {
+          choices?: Array<{ message?: { content?: string }; finish_reason?: string }>
+        }
+        const choice2 = json2.choices?.[0]
+        const raw2 = choice2?.message?.content?.trim()
+        if (raw2) {
+          choice = choice2
+          raw = raw2
+        }
+      }
     }
 
     let parsed: Partial<WrittenArticle>

@@ -397,7 +397,7 @@ export async function deepseekEditArticle(input: GeminiEditInput): Promise<Gemin
       { role: 'system', content: EDITOR_SYSTEM_PROMPT },
       { role: 'user', content: prompt },
     ],
-    { temperature: 0.3, max_tokens: 4000 }
+    { temperature: 0.3, max_tokens: 6000 }
   )
   return parseEditorJson(raw, DEEPSEEK_MODEL)
 }
