@@ -17,9 +17,9 @@ import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 
 const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 16)
 
-// Her job 3-4 AI çağrısı (stage1-3 + factChecker) × ~30s = yüksek CPU.
-// 200s wall-clock budget: süre aşılırsa yeni job başlatma.
-const WALL_CLOCK_BUDGET_MS = 200_000
+// Her job: stage1 (50s×2) + stage3 (40s) ≈ 140s max.
+// 140s wall-clock budget: Vercel 300s limitinden 160s önce çıkılır.
+const WALL_CLOCK_BUDGET_MS = 140_000
 
 export async function processNewsQueue(
   db: Firestore = getAdminFirestore(),

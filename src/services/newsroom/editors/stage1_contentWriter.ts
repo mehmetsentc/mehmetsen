@@ -130,42 +130,37 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     { role: 'user' as const, content: userContent },
   ]
 
-  const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 90_000)
+  // 50s timeout: stage1 × 2 (incomplete retry) + stage3 = ~130s per article, well under 200s budget
+  const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 50_000)
 
-  const doFetch = async (maxTok: number) => {
-    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+  try {
+    let res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
         temperature: 0.4,
-        max_tokens: maxTok,
+        max_tokens: 3500,
         response_format: { type: 'json_object' },
         messages,
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })
-    return res
-  }
-
-  try {
-    let res = await doFetch(5000).catch(async (err: unknown) => {
-      const isTimeout = err instanceof Error &&
-        (err.name === 'TimeoutError' || err.message.includes('timeout') || err.message.includes('aborted'))
-      if (!isTimeout) throw err
-      console.warn('[stage1/deepseek] Timeout (5000t) — retry 2500t')
-      return doFetch(2500)
-    })
 
     if (res.status === 429) {
       console.warn('[stage1/deepseek] 429, 3s retry')
       await new Promise((r) => setTimeout(r, 3000))
-      res = await doFetch(5000).catch(async (err: unknown) => {
-        const isTimeout = err instanceof Error &&
-          (err.name === 'TimeoutError' || err.message.includes('timeout') || err.message.includes('aborted'))
-        if (!isTimeout) throw err
-        console.warn('[stage1/deepseek] Timeout (429 retry) — 2500t')
-        return doFetch(2500)
+      res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          temperature: 0.4,
+          max_tokens: 3500,
+          response_format: { type: 'json_object' },
+          messages,
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
       })
     }
 
@@ -181,21 +176,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     let raw = choice?.message?.content?.trim()
     if (!raw) return null
 
-    // finish_reason=length → çıktı kesilmiş, daha az token ile retry
     if (choice?.finish_reason === 'length') {
-      console.warn('[stage1/deepseek] finish_reason=length — 2500t ile retry')
-      const res2 = await doFetch(2500).catch(() => null)
-      if (res2?.ok) {
-        const json2 = (await res2.json()) as {
-          choices?: Array<{ message?: { content?: string }; finish_reason?: string }>
-        }
-        const choice2 = json2.choices?.[0]
-        const raw2 = choice2?.message?.content?.trim()
-        if (raw2) {
-          choice = choice2
-          raw = raw2
-        }
-      }
+      console.warn('[stage1/deepseek] finish_reason=length — çıktı kesilmiş, devam ediliyor')
     }
 
     let parsed: Partial<WrittenArticle>
