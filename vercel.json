@@ -61,7 +61,7 @@
     },
     {
       "path": "/api/cron/newsroom/breaking",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/newsroom/local",
@@ -77,7 +77,7 @@
     },
     {
       "path": "/api/cron/newsroom/process-queue",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/queue-purge",
@@ -85,7 +85,7 @@
     },
     {
       "path": "/api/cron/newsroom/draft-reprocess",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/newsroom/national",
@@ -93,7 +93,7 @@
     },
     {
       "path": "/api/cron/newsroom/gundem",
-      "schedule": "*/20 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/newsroom/finans",
@@ -101,11 +101,11 @@
     },
     {
       "path": "/api/cron/newsroom/politics",
-      "schedule": "0,30 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/newsroom/sports",
-      "schedule": "*/20 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/newsroom/world",
@@ -117,7 +117,7 @@
     },
     {
       "path": "/api/cron/newsroom/technology",
-      "schedule": "10,40 * * * *"
+      "schedule": "10 * * * *"
     },
     {
       "path": "/api/cron/newsroom/kripto",
@@ -193,7 +193,7 @@
     },
     {
       "path": "/api/cron/newsroom/anka-breaking",
-      "schedule": "*/20 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/newsroom/anka-local",
@@ -225,7 +225,7 @@
     },
     {
       "path": "/api/cron/newsroom/sozcu-breaking",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/newsroom/expire-breaking",
@@ -265,7 +265,7 @@
     },
     {
       "path": "/api/cron/editorial-review",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/15 * * * *"
     }
   ]
 }
