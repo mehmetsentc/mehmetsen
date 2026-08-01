@@ -662,14 +662,10 @@ export const postService = {
     }
   },
 
-  async incrementViews(id: string) {
-    const ref = doc(db, VIDEO_FEED_COLLECTION, id)
-    const snap = await getDoc(ref)
-    if (snap.exists()) {
-      await updateDoc(ref, { viewsCount: increment(1) })
-      return
-    }
-    await updateDoc(doc(db, Collections.POSTS, id), { viewsCount: increment(1) })
+  async incrementViews(_id: string) {
+    // COST PAUSE: viewsCount writes disabled to reduce Firestore costs.
+    // Re-enable when budget is restored.
+    return
   },
 
   async incrementShares(id: string) {

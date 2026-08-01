@@ -244,11 +244,11 @@ async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
 
 const getHomeNewsPoolCached = unstable_cache(
   async (poolSize: number) => fetchHomeNewsPool(poolSize),
-  ['home-news-pool-v4'],
-  { revalidate: 120, tags: ['home-feed'] }
+  ['home-news-pool-v5'],
+  { revalidate: 300, tags: ['home-feed'] }
 )
 
-async function getHomeNewsPool(poolSize = 120): Promise<NewsItem[]> {
+async function getHomeNewsPool(poolSize = 40): Promise<NewsItem[]> {
   return getHomeNewsPoolCached(poolSize)
 }
 

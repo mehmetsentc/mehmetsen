@@ -8,13 +8,14 @@ import { getHomeFeedInitialData } from '@/services/newsService.server'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+// CDN caching: 120s fresh, 300s stale-while-revalidate
 
 export async function GET() {
   try {
     const data = await getHomeFeedInitialData()
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
+        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
       },
     })
   } catch (error) {

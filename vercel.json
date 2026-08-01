@@ -85,7 +85,7 @@
     },
     {
       "path": "/api/cron/newsroom/draft-reprocess",
-      "schedule": "*/20 * * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/cron/newsroom/national",
@@ -153,7 +153,7 @@
     },
     {
       "path": "/api/cron/social",
-      "schedule": "15,45 * * * *"
+      "schedule": "0 8,12,18,22 * * *"
     },
     {
       "path": "/api/cron/youtube-rss",
@@ -249,7 +249,7 @@
     },
     {
       "path": "/api/cron/skor-live",
-      "schedule": "*/2 * * * *"
+      "schedule": "0 17,18,19,20,21,22 * * *"
     },
     {
       "path": "/api/cron/skor-daily",
@@ -265,7 +265,7 @@
     },
     {
       "path": "/api/cron/editorial-review",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 */3 * * *"
     }
   ]
 }

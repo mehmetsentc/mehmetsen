@@ -145,6 +145,10 @@ async function parseBody(request: Request): Promise<TrackBody> {
 }
 
 export async function POST(request: Request) {
+  // COST PAUSE: Firestore analytics writes disabled to reduce costs.
+  // Re-enable by removing this early return when budget is restored.
+  return NextResponse.json({ ok: true, skipped: 'cost-pause' })
+
   try {
     const body = await parseBody(request)
     if (body.analyticsConsent !== true) {

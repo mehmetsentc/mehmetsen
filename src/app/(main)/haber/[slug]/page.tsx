@@ -15,7 +15,7 @@ import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { ROUTES } from '@/constants/routes'
 
 // ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
-export const revalidate = 60
+export const revalidate = 300
 
 // Deduplicate: generateMetadata + page both need the post — fetch once per request
 const getCachedNews = cache((slug: string) => getNewsBySlug(slug))
