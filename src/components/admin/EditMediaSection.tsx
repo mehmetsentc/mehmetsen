@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import {
   Upload, Link2, X, Loader2,
@@ -11,6 +11,51 @@ import { storageService } from '@/services/storageService'
 import { auth } from '@/lib/firebase/auth'
 import { isDirectImageUrl, scrapeVideoUrl } from '@/lib/adminVideoScrapeClient'
 import { isEmbedPlayerUrl } from '@/lib/videoEmbed'
+
+/**
+ * Video preview with CORS-error fallback.
+ * External URLs (third-party news sites) may be blocked by the browser due to CORS.
+ * In that case we show an "Dışarıda Aç" link instead of a broken player.
+ */
+function VideoPlayer({ src }: { src: string }) {
+  const [errored, setErrored] = useState(false)
+
+  // Reset error state when the src changes
+  useEffect(() => { setErrored(false) }, [src])
+
+  if (errored) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-black/80 px-4 py-8 text-center">
+        <Video className="h-8 w-8 text-white/40" />
+        <p className="text-xs text-white/60">
+          Video bu önizlemede oynatılamıyor
+          <br />
+          <span className="text-white/40">(CORS / tarayıcı kısıtlaması)</span>
+        </p>
+        <a
+          href={src}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
+        >
+          ↗ Dışarıda Aç
+        </a>
+        <p className="text-[10px] text-white/30 max-w-xs break-all">{src}</p>
+      </div>
+    )
+  }
+
+  return (
+    // eslint-disable-next-line jsx-a11y/media-has-caption
+    <video
+      src={src}
+      controls
+      crossOrigin="anonymous"
+      className="max-h-48 w-full rounded-xl"
+      onError={() => setErrored(true)}
+    />
+  )
+}
 
 export interface AdditionalImageItem {
   url: string
@@ -529,8 +574,7 @@ export function EditMediaSection({
                 />
               </div>
             ) : (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={videoUrl} controls className="max-h-48 w-full rounded-xl" />
+              <VideoPlayer src={videoUrl} />
             )}
             <div className="absolute right-2 top-2 flex gap-1.5">
               <button
