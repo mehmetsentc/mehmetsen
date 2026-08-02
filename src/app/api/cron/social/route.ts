@@ -27,7 +27,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
-import { isOwnContent } from '@/lib/social/publishOneSocial'
+import { isOwnContent, isSkippableForSocial } from '@/lib/social/publishOneSocial'
 import type {
   SocialCronItemResult,
   SocialCronResult,
@@ -141,11 +141,12 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
 
   let candidates = snap.docs.filter(doc => {
     const d = doc.data() as Record<string, unknown>
-    // Video haberlerini atla — thumbnail'leri "Videolu Haber" kartı olduğu için
-    // OG şablonunun fotoğraf alanında kötü görünüyor
+    // Video haberlerini atla
     if (d.socialPublished || d.hasVideo || d.isVideo) return false
     // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
     if (!isOwnContent(d)) return false
+    // Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini atla
+    if (isSkippableForSocial(d)) return false
     return true
   })
 
@@ -160,8 +161,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     candidates = snap2.docs.filter(doc => {
       const d = doc.data() as Record<string, unknown>
       if (!isCanakkale(d) || d.socialPublished || d.hasVideo || d.isVideo) return false
-      // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
       if (!isOwnContent(d)) return false
+      // Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini atla
+      if (isSkippableForSocial(d)) return false
       return true
     })
   }

@@ -57,6 +57,44 @@ export function isOwnContent(data: Record<string, unknown>): boolean {
   return false
 }
 
+/**
+ * Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini yakala.
+ * Bunlar sosyal medyaya gönderilmemeli:
+ *   - Başlıkta "#Canlı" veya "canlı yayın" geçen haberler (içleri genellikle boş)
+ *   - Sadece sosyal medya takip linkleri içeren spot/içerik
+ *   - Çok kısa içerikli (gerçek haber olmayan) paylaşımlar
+ */
+export function isSkippableForSocial(data: Record<string, unknown>): boolean {
+  const title = String(data.title ?? '').toLowerCase()
+  const spot  = String(data.spot ?? data.summary ?? data.description ?? '').toLowerCase()
+  const content = String(data.content ?? data.body ?? '').toLowerCase()
+  const combined = `${spot} ${content}`
+
+  // Canlı yayın haberleri — içleri boş, sadece link
+  if (title.includes('#canlı') || title.includes('canlı yayın') || title.includes(' #canli')) {
+    return true
+  }
+
+  // Sosyal medya tanıtım metni (whatsapp kanal linki, bluesky, vb.)
+  const PROMO_PATTERNS = [
+    'whatsapp.com/channel',
+    'bsky.app/profile',
+    'sosyal medya hesaplarımızı takip',
+    'takip etmeyi unutmayın',
+    'kanalımıza abone',
+    't.me/',               // Telegram
+    'youtube.com/@',       // YouTube kanal tanıtımı
+  ]
+  if (PROMO_PATTERNS.some(p => combined.includes(p))) return true
+
+  // Spot 10 karakterden kısa VE içerik de yoksa — boş haber
+  const spotLen = spot.trim().length
+  const contentLen = content.replace(/<[^>]+>/g, '').trim().length
+  if (spotLen < 10 && contentLen < 30) return true
+
+  return false
+}
+
 // ── Yardımcı fonksiyonlar ─────────────────────────────────────────────────────
 
 function extractImageUrl(data: Record<string, unknown>): string | undefined {
@@ -123,6 +161,11 @@ export async function publishOneSocial(newsId: string): Promise<void> {
     // Kendi haberimiz değil (harici RSS/scraper kaynağı)
     if (!isOwnContent(data)) {
       console.log(`[publishOneSocial] Harici kaynak — sosyal medyaya gönderilmedi: ${newsId}`)
+      return
+    }
+    // Canlı yayın / boş içerik / sosyal medya tanıtım haberi
+    if (isSkippableForSocial(data)) {
+      console.log(`[publishOneSocial] Canlı yayın/boş içerik — atlandı: ${newsId}`)
       return
     }
 
