@@ -15,7 +15,6 @@ import {
   writeStoredUserLocation,
 } from '@/lib/userLocationStorage'
 import toast from '@/lib/toast-shim'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
