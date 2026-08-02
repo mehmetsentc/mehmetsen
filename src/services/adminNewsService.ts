@@ -160,8 +160,7 @@ function statusConstraint(filter: AdminNewsFilter): Parameters<typeof where>[2] 
   }
 }
 
-function docCreatedAtMs(data: NewsDocument): number {
-  const raw = data.createdAt
+function timestampToMs(raw: unknown): number {
   if (typeof raw === 'number') {
     return raw < 1_000_000_000_000 ? raw * 1000 : raw
   }
@@ -169,17 +168,23 @@ function docCreatedAtMs(data: NewsDocument): number {
     const parsed = Date.parse(raw)
     return Number.isNaN(parsed) ? 0 : parsed
   }
-  if (raw && typeof raw === 'object' && 'toMillis' in raw && typeof raw.toMillis === 'function') {
-    return raw.toMillis()
+  if (raw && typeof raw === 'object' && 'toMillis' in raw && typeof (raw as { toMillis: () => number }).toMillis === 'function') {
+    return (raw as { toMillis: () => number }).toMillis()
   }
   if (raw && typeof raw === 'object' && 'seconds' in raw) {
     return Number((raw as { seconds: number }).seconds) * 1000
   }
-  const published = data.publishedAt
-  if (typeof published === 'number') {
-    return published < 1_000_000_000_000 ? published * 1000 : published
-  }
   return 0
+}
+
+function docCreatedAtMs(data: NewsDocument): number {
+  return (
+    timestampToMs(data.createdAt) ||
+    timestampToMs(data.updatedAt) ||
+    timestampToMs(data.publishedAt) ||
+    timestampToMs((data as { sourcePublishedAt?: unknown }).sourcePublishedAt) ||
+    0
+  )
 }
 
 function mapAdminNewsDocs(
@@ -241,7 +246,11 @@ export const adminNewsService = {
     if (status) filterConstraints.push(where('status', '==', status))
     if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
 
+    // Draft/pending rows often lack createdAt/publishedAt. Firestore orderBy on a
+    // missing field returns an empty snapshot (success) — so we must keep trying
+    // weaker queries when a status filter yields zero docs.
     const queryAttempts: QueryConstraint[][] = [
+      [...filterConstraints, orderBy('updatedAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
       [...filterConstraints, orderBy('createdAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
       [...filterConstraints, orderBy('publishedAt', 'desc'), limit(pageSize)],
       [...filterConstraints, limit(pageSize * 2)],
@@ -249,10 +258,14 @@ export const adminNewsService = {
     ]
 
     let lastError: unknown = null
-    for (const constraints of queryAttempts) {
+    for (let i = 0; i < queryAttempts.length; i++) {
+      const constraints = queryAttempts[i]!
+      const isLast = i === queryAttempts.length - 1
       try {
         const snap = await fetchAdminNewsSnap(constraints)
         const posts = mapAdminNewsDocs(snap.docs, filter, categoryId).slice(0, pageSize)
+        // Empty ordered query ≠ "no drafts" — try next attempt while filter is set.
+        if (posts.length === 0 && status && !isLast) continue
         return {
           posts,
           lastDoc: snap.docs[snap.docs.length - 1] ?? null,
@@ -542,45 +555,75 @@ async function listPendingQueue(
   const items: AdminNewsItem[] = []
 
   try {
-    const draftConstraints: QueryConstraint[] = [
-      where('draftStatus', '==', 'pending_review'),
-      orderBy('createdAt', 'desc'),
-      limit(PAGE_SIZE),
+    // Prefer updatedAt — many review docs lack createdAt.
+    const draftAttemptConstraints: QueryConstraint[][] = [
+      [
+        where('draftStatus', '==', 'pending_review'),
+        orderBy('updatedAt', 'desc'),
+        ...(lastDoc ? [startAfter(lastDoc)] : []),
+        limit(PAGE_SIZE),
+      ],
+      [
+        where('draftStatus', '==', 'pending_review'),
+        orderBy('createdAt', 'desc'),
+        ...(lastDoc ? [startAfter(lastDoc)] : []),
+        limit(PAGE_SIZE),
+      ],
+      [where('draftStatus', '==', 'pending_review'), limit(PAGE_SIZE)],
     ]
-    if (lastDoc) draftConstraints.push(startAfter(lastDoc))
 
-    const draftSnap = await getDocs(query(collection(db, Collections.NEWS_DRAFTS), ...draftConstraints))
+    let draftSnap: Awaited<ReturnType<typeof getDocs>> | null = null
+    for (const constraints of draftAttemptConstraints) {
+      try {
+        const snap = await getDocs(query(collection(db, Collections.NEWS_DRAFTS), ...constraints))
+        if (snap.empty && constraints !== draftAttemptConstraints[draftAttemptConstraints.length - 1]) {
+          continue
+        }
+        draftSnap = snap
+        break
+      } catch (err) {
+        console.warn('[adminNewsService] pending_review attempt failed:', err)
+      }
+    }
 
-    for (const d of draftSnap.docs) {
-      items.push(draftDocToPost(d.id, d.data() as NewsDocument))
+    if (draftSnap) {
+      for (const d of draftSnap.docs) {
+        items.push(draftDocToPost(d.id, d.data() as NewsDocument))
+      }
     }
 
     if (items.length < PAGE_SIZE) {
-      const legacySnap = await getDocs(
-        query(
-          collection(db, VIDEO_FEED_COLLECTION),
-          where('status', '==', 'pending'),
-          orderBy('createdAt', 'desc'),
-          limit(PAGE_SIZE - items.length)
-        )
-      )
-      for (const d of legacySnap.docs) {
-        items.push({
-          ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
-          adminSource: 'news',
-        })
+      const legacyAttempts: QueryConstraint[][] = [
+        [where('status', '==', 'pending'), orderBy('updatedAt', 'desc'), limit(PAGE_SIZE - items.length)],
+        [where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(PAGE_SIZE - items.length)],
+        [where('status', '==', 'pending'), limit(PAGE_SIZE - items.length)],
+      ]
+      for (const constraints of legacyAttempts) {
+        try {
+          const legacySnap = await getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints))
+          if (legacySnap.empty && constraints !== legacyAttempts[legacyAttempts.length - 1]) continue
+          for (const d of legacySnap.docs) {
+            items.push({
+              ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
+              adminSource: 'news',
+            })
+          }
+          break
+        } catch (err) {
+          console.warn('[adminNewsService] legacy pending attempt failed:', err)
+        }
       }
     }
 
     return {
       posts: items,
-      lastDoc: draftSnap.docs[draftSnap.docs.length - 1] ?? null,
-      hasMore: draftSnap.docs.length === PAGE_SIZE,
+      lastDoc: draftSnap?.docs[draftSnap.docs.length - 1] ?? null,
+      hasMore: (draftSnap?.docs.length ?? 0) === PAGE_SIZE,
     }
   } catch (error) {
     console.warn('[adminNewsService] pending queue failed:', error)
     const snap = await getDocs(
-      query(collection(db, Collections.NEWS_DRAFTS), orderBy('createdAt', 'desc'), limit(PAGE_SIZE))
+      query(collection(db, Collections.NEWS_DRAFTS), where('draftStatus', '==', 'pending_review'), limit(PAGE_SIZE))
     )
     return {
       posts: snap.docs.map((d) => draftDocToPost(d.id, d.data() as NewsDocument)),

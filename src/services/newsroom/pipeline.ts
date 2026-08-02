@@ -1103,10 +1103,12 @@ export async function processNewsroomArticle(
     if (targetNewsId) {
       if (needsDraft) {
         // Mevcut canlı haberi ince bırakma — gövdeyi güncelleyip taslağa al (AdSense / kalite)
-        const { createdAt: _createdAt, ingestedAt: _ingestedAt, ...draftFields } = doc
+        const { createdAt: existingCreatedAt, ingestedAt: _ingestedAt, ...draftFields } = doc
         await db.collection(Collections.NEWS).doc(targetNewsId).set(
           {
             ...draftFields,
+            // Keep/seed createdAt — admin list orderBy excludes docs missing this field
+            createdAt: existingCreatedAt ?? now,
             status: 'draft',
             featured: false,
             isEditorPick: false,
