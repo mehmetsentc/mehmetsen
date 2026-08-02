@@ -37,7 +37,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   {
     id: 'scraper-canakkale-kaleninsesi',
     label: 'Kalenin Sesi (scraper)',
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: HTTP 403
     listUrls: ['https://www.kaleninsesi.com/', 'https://www.kaleninsesi.com/son-dakika'],
     linkPattern: '/\\d{5,}',
     maxItems: 5,
@@ -75,7 +75,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   {
     id: 'scraper-bursa-olay',
     label: 'Bursa Olay (scraper)',
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: no usable page body
     listUrls: ['https://www.bursaolay.com/', 'https://www.bursaolay.com/son-dakika'],
     linkPattern: '/haber/|/\\d{5,}',
     maxItems: 5,
@@ -97,7 +97,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   {
     id: 'scraper-ankara-yerel',
     label: 'Ankara Yerel Haber (scraper)',
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: fetch failed
     listUrls: ['https://www.ankarayerelhaber.com/'],
     linkPattern: '/haber/|/\\d{5,}',
     maxItems: 5,
@@ -119,7 +119,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   {
     id: 'scraper-antalya-olay',
     label: 'Antalya Olay (scraper)',
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: fetch failed
     listUrls: ['https://www.antalyaolay.com/'],
     linkPattern: '/haber/|/\\d{5,}',
     maxItems: 5,
@@ -130,7 +130,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   {
     id: 'scraper-konya-ovahaber',
     label: 'Konya Ova Haber (scraper)',
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: fetch failed
     listUrls: ['https://www.konyaovahaber.com/'],
     linkPattern: '/haber/|/\\d{5,}',
     maxItems: 5,
@@ -174,7 +174,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   {
     id: 'scraper-gaziantep-olay',
     label: 'Gaziantep Olay (scraper)',
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: fetch failed
     listUrls: ['https://www.gaziantepolay.com/'],
     linkPattern: '/haber/|/\\d{5,}',
     maxItems: 5,

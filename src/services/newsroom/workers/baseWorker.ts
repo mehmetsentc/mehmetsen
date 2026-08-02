@@ -60,9 +60,9 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
   const sources = resolveSources(options)
 
   if (sources.length === 0 && options.sourceIds?.length) {
-    for (const sourceId of options.sourceIds) {
-      result.errors.push(`Unknown RSS source: ${sourceId}`)
-    }
+    result.errors.push(
+      `No enabled RSS sources for worker (requested: ${options.sourceIds.join(', ')})`
+    )
   }
 
   for (const source of sources) {

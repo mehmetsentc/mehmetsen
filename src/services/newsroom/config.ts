@@ -43,7 +43,7 @@ export const NEWSROOM_DRAFT_REPROCESS_MAX_ATTEMPTS = Math.max(
 export const MAX_AI_CALLS_PER_EDITOR = Number(process.env.NEWS_INGEST_MAX_AI_CALLS ?? 12)
 
 /** Wire + regional Turkish sources — local worker. */
-export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'iha', 'dha', 'anka-haber'] as const
+export const LOCAL_NEWS_SOURCE_IDS = ['aa', 'dha', 'anka-haber'] as const
 
 /**
  * Kaç il Google News feed'i çekilsin.
@@ -56,156 +56,127 @@ export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
 )
 
 /**
- * Türk ulusal kaynakları — 7 çekirdek kaynak (overlap temizlendi).
- * Kaldırılanlar: milliyet/sabah/yenisafak/karar (hurriyet/sozcu'yla overlap),
- * independent-tr/gazeteduvar (küçük kitle), euronews-tr (world worker'da var).
+ * Türk ulusal kaynakları — yalnızca enabled RSS (2026-08-02 audit temizliği).
+ * Kapalı: iha, hurriyet, ahaber, yeniakit, haberler, sondakika, mynet
  */
 export const NATIONAL_NEWS_SOURCE_IDS = [
-  // Haber ajansları (birincil kaynaklar)
-  'aa', 'iha', 'dha', 'anka-haber',
-  // Ana yayın kuruluşları
-  'trt', 'ntv', 'cnn', 'haberturk', 'hurriyet', 'sozcu',
-  // Büyük gazeteler
-  'ahaber', 'ensonhaber', 'yeniasir', 'yeniakit', 'dw-turkish',
-  // Haber aggregatörleri
-  'haberler', 'sondakika', 'mynet',
-  // Gazetecilik / görüş
+  'aa', 'dha', 'anka-haber',
+  'trt', 'ntv', 'cnn', 'haberturk', 'sozcu',
+  'ensonhaber', 'yeniasir', 'dw-turkish',
   'cumhuriyet', 't24',
 ] as const
 
 /**
- * Son dakika kaynakları — Türk + uluslararası ajanslar (5 → 9).
- * Eklendi: hurriyet, sozcu, haberturk, sabah (yüksek trafikli Türk kaynakları)
- * Bunlar 15 dakikada bir taranır → Türkçe son dakika haberler çok daha hızlı gelir.
+ * Son dakika kaynakları — yalnızca enabled RSS.
+ * Kapalı: iha, hurriyet, bbc, trt-sondakika, haberler, sondakika
  */
 export const BREAKING_NEWS_SOURCE_IDS = [
-  // Ajanslar — en hızlı son dakika
-  'aa', 'iha', 'dha', 'anka-haber',
-  // Türk ulusal medya (sozcu kaldırıldı — içerik kazıma engelliyor; ahaber kaldırıldı — kullanıcı isteği)
-  'ntv', 'cnn', 'haberturk', 'hurriyet', 'trt', 'sabah',
-  // Son dakika özel feedler
+  'aa', 'dha', 'anka-haber',
+  'ntv', 'cnn', 'haberturk', 'trt', 'sabah',
   'sabah-sondakika', 'milliyet-sondakika',
-  // NOT: 'haberler' ve 'sondakika' aggregatörleri kaldırıldı —
-  //   Bu siteler yerel haberleri "Son Dakika:" prefix'iyle yayınlıyor,
-  //   bu da analyzeBreakingSignals'ı tetikleyerek yerel haberlerin son-dakika'ya
-  //   sızmasına neden oluyor. National worker'a taşındı.
-  // NOT: 'trt-sondakika' kaldırıldı — feed bayatladı (son güncelleme 20 Nisan 2026)
-  // Uluslararası
-  'reuters-world', 'ap-news', 'bbc',
+  'reuters-world', 'ap-news',
 ] as const
 
 /**
- * Uluslararası haberler — 5 kaynak (12'den).
- * Kaldırılanlar: guardian/dw-english/sky-news (overlap), bbc (bbc-world'le aynı),
- * nyt-world/wapo-world (paywall), france24-en (az çıkar).
+ * Uluslararası haberler — yalnızca enabled RSS.
+ * Kapalı: sputnik-tr, ahaber-dunya
  */
 export const WORLD_NEWS_SOURCE_IDS = [
   'reuters-world', 'ap-news', 'aljazeera', 'bbc-world', 'euronews-tr',
-  'sputnik-tr', 'dw-turkish', 'milliyet-dunya', 'sabah-dunya', 'ahaber-dunya',
+  'dw-turkish', 'milliyet-dunya', 'sabah-dunya',
 ] as const
 
 /**
- * Teknoloji kaynakları — 5 çekirdek (14'ten).
- * Kaldırılanlar: wired/arstechnica/venturebeat/mit-tech (nişe çok spesifik),
- * openai/google/microsoft/apple blogları (pazarlama içeriği), chip-tr (Google News).
+ * Teknoloji kaynakları — yalnızca enabled RSS.
+ * Kapalı: donanimhaber, ahaber-teknoloji
  */
 export const TECH_NEWS_SOURCE_IDS = [
-  'techcrunch', 'theverge', 'shiftdelete', 'webtekno', 'donanimhaber',
-  'ntv-teknoloji', 'cnnturk-bilim', 'milliyet-teknoloji', 'sabah-teknoloji', 'ahaber-teknoloji',
+  'techcrunch', 'theverge', 'shiftdelete', 'webtekno',
+  'ntv-teknoloji', 'cnnturk-bilim', 'milliyet-teknoloji', 'sabah-teknoloji',
 ] as const
 
 /**
- * Spor kaynakları — 5 Türk çekirdek (15'ten).
- * Kaldırılanlar: hurriyet-spor/haberturk-spor/milliyet-spor (overlap),
- * goal-tr/f1-espn/bbc-sport/espn-soccer/transfermarkt-news/uefa-news/takvim-spor
- * (İngilizce veya Google News arama sorguları).
+ * Spor kaynakları — yalnızca enabled RSS.
+ * Kapalı: ntv-spor, ahaber-spor
  */
 export const SPORTS_NEWS_SOURCE_IDS = [
-  'fanatik', 'fotomac', 'ajansspor', 'ntv-spor', 'trt-spor',
-  'sabah-spor', 'cnnturk-spor', 'ahaber-spor',
+  'fanatik', 'fotomac', 'ajansspor', 'trt-spor',
+  'sabah-spor', 'cnnturk-spor',
 ] as const
 
 /**
- * Sağlık kaynakları — 4 kaynak (9'dan).
- * Kaldırılanlar: nih-news/nature-news/science-daily/lancet/cdc-news
- * (akademik, Türk kitlesiyle düşük alakası).
+ * Sağlık kaynakları — yalnızca enabled RSS.
+ * Kapalı: medimagazin, saglik-aktuel, ahaber-saglik
  */
 export const HEALTH_NEWS_SOURCE_IDS = [
-  'who-news', 'saglik-tr', 'medimagazin', 'saglik-aktuel',
-  'ntv-saglik', 'cnnturk-saglik', 'milliyet-saglik', 'sabah-saglik', 'hurriyet-saglik', 'ahaber-saglik',
+  'who-news', 'saglik-tr',
+  'ntv-saglik', 'cnnturk-saglik', 'milliyet-saglik', 'sabah-saglik', 'hurriyet-saglik',
 ] as const
 
 /**
- * Siyaset kaynakları — 4 kaynak (11'den, overlap temizlendi).
- * Kaldırılanlar: haberturk-politika/trt-politika (national'daki haberturk/trt ile aynı),
- * milliyet-siyaset/hurriyet-siyaset (national'dakilerin politika feed'i zaten benzer),
- * cumhuriyet/gazeteduvar (national'da var), bbc/euronews-tr (world'de var).
+ * Siyaset kaynakları — yalnızca enabled RSS.
+ * Kapalı: ntv-politika, aa-siyaset
  */
 export const POLITICS_NEWS_SOURCE_IDS = [
-  'anka-haber', 'ntv-politika', 'aa-siyaset', 't24',
+  'anka-haber', 't24',
 ] as const
 
 /**
- * Magazin kaynakları — 3 Türk kaynak (9'dan).
- * Kaldırılanlar: hurriyet-magazin/takvim-magazin (overlap),
- * variety/billboard/tmz-news/hollywood-reporter (Amerikan eğlence → Türk okuyucuyla alakasız).
+ * Magazin kaynakları — yalnızca enabled RSS.
+ * Kapalı: posta-magazin, hurriyet-magazin
  */
 export const MAGAZINE_NEWS_SOURCE_IDS = [
-  'milliyet-magazin', 'sabah-magazin', 'posta-magazin',
-  'hurriyet-magazin', 'takvim-magazin', 'cnnturk-kultur', 'cnnturk-yasam',
+  'milliyet-magazin', 'sabah-magazin',
+  'takvim-magazin', 'cnnturk-kultur', 'cnnturk-yasam',
   'ntv-yasam', 'sabah-kultur-sanat', 'ntv-kultur',
 ] as const
 
 /**
- * Finans kaynakları — 3 Türk kaynak (7'den).
- * Kaldırılanlar: ekonomim/haberturk-ekonomi (ntv-ekonomi ile overlap),
- * bloomberg-int/cnbc-int (İngilizce, Türk finans kitlesi için düşük değer).
+ * Finans kaynakları (config registry) — yalnızca enabled RSS.
+ * Kapalı: bigpara, finansgundem, hurriyet-ekonomi, ahaber-ekonomi
+ * Not: finansWorker.ts kendi listesini kullanır.
  */
 export const FINANS_SOURCE_IDS = [
   'bloomberght', 'dunya-ekonomi', 'ntv-ekonomi',
-  'bigpara', 'finansgundem', 'milliyet-ekonomi', 'hurriyet-ekonomi', 'cnnturk-ekonomi',
-  'sabah-ekonomi', 'ahaber-ekonomi',
+  'milliyet-ekonomi', 'cnnturk-ekonomi', 'sabah-ekonomi',
 ] as const
 
 /**
  * Gündem bot kaynakları — Google News TR + AA kategori feedleri + yüksek kaliteli son-dakika.
- * Ulusal kapsam filtresi: AI "Tüm Türkiye'yi etkiler mi?" sorusuyla doğrular.
+ * Kapalı: haberturk-sondakika
  */
 export const GUNDEM_SOURCE_IDS = [
-  // Google News algoritması — gündemdeki haberleri yüzey
   'google-news-tr', 'google-news-tr-ulusal', 'google-news-tr-politika', 'google-news-tr-ekonomi',
-  // Anadolu Ajansı — birincil kaynak, kategori feedleri
   'aa-gundem', 'aa-politika', 'aa-ekonomi',
-  // Yüksek kaliteli son-dakika feedleri
-  'ntv-sondakika', 'haberturk-sondakika', 'cumhuriyet-gundem', 'iha-gundem',
+  'ntv-sondakika', 'cumhuriyet-gundem', 'iha-gundem',
 ] as const
 
-/** Gastronomi kaynakları — yemek, restoran, mutfak haberleri. */
+/** Gastronomi kaynakları — yalnızca enabled RSS. Kapalı: yemek-com, hurriyet-gastronomi */
 export const GASTRONOMI_SOURCE_IDS = [
-  'gastronomi-google-news', 'lezzet-com', 'yemek-com', 'milliyet-gastronomi', 'hurriyet-gastronomi',
+  'gastronomi-google-news', 'lezzet-com', 'milliyet-gastronomi',
 ] as const
 
-/** Otomobil kaynakları — araç, araba, trafik, elektrikli araç haberleri. */
+/** Otomobil kaynakları — yalnızca enabled RSS. Kapalı: oto-com-tr, arabalar-com-tr, hurriyet-otomobil */
 export const OTOMOBIL_SOURCE_IDS = [
-  'otomobil-google-news', 'oto-com-tr', 'otomobilhaber', 'arabalar-com-tr',
-  'hurriyet-otomobil', 'milliyet-otomobil', 'ntv-otomobil', 'cnnturk-otomobil', 'sabah-otomobil',
+  'otomobil-google-news', 'otomobilhaber',
+  'milliyet-otomobil', 'ntv-otomobil', 'cnnturk-otomobil', 'sabah-otomobil',
   'sozcu-otomotiv',
 ] as const
 
-/** Turizm kaynakları — otel, tatil, tur operatörü, havalimanı, sezon haberleri. */
+/** Turizm kaynakları — yalnızca enabled RSS. Kapalı: turizaktuel (2026-08-02 audit) */
 export const TURIZM_SOURCE_IDS = [
   'turizm-google-news',
-  'turizmgazetesi', 'turizaktuel', 'turizmekonomi',
+  'turizmgazetesi', 'turizmekonomi',
   'turizmajansi', 'turizmnews', 'turizmaktuel', 'turizmguncel',
   'tourismtoday',
   'aa-turizm', 'hurriyet-seyahat', 'ntv-seyahat', 'sabah-turizm',
 ] as const
 
-/** Kıbrıs / KKTC kaynakları — yerel haberler, kaza/asayiş, gündem, Lefkoşa. */
+/** Kıbrıs / KKTC kaynakları — yalnızca enabled RSS. Kapalı: diyalog-kibris, kibrisbulteni */
 export const KIBRIS_SOURCE_IDS = [
   'kibris-google-news', 'kibris-kaza-google-news',
   'kibrisgazetesi', 'havadiskibris', 'kibrispostasi',
-  'yeniduzen-kibris', 'diyalog-kibris', 'starkibris', 'kibrisbulteni',
+  'yeniduzen-kibris', 'starkibris',
   'bugunkibris', 'detaykibris', 'sondakikacyprus',
   'kibrisgercek', 'gundemkibris', 'haberkibris',
   'sondakika-kibris', 'polis-kktc',

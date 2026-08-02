@@ -442,7 +442,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=son+dakika+site:sozcu.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 15,
-    enabled: false,
+    enabled: false, // içerik kazıma engeli — sozcu-breaking cron no-op
   },
 
   // ── Kripto ───────────────────────────────────────────────────────────────
@@ -1837,7 +1837,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:turizaktuel.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 5,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: fetch failed (primary + alt)
   },
   {
     id: 'aa-turizm',
@@ -2064,7 +2064,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:diyalog.com+kıbrıs&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: empty RSS (114b)
   },
   {
     id: 'starkibris',
@@ -2084,7 +2084,7 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
       'https://news.google.com/rss/search?q=site:kibrisbulteni.com&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 6,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: fetch failed
   },
   {
     id: 'bugunkibris',
@@ -2188,4 +2188,20 @@ export function getRssSources(): RssSourceDefinition[] {
 
 export function getRssSourceById(id: string): RssSourceDefinition | undefined {
   return getRssSources().find((s) => s.id === id)
+}
+
+/** Look up a source definition regardless of enabled flag (for diagnostics). */
+export function getRssSourceDefinition(id: string): RssSourceDefinition | undefined {
+  const src = DEFAULT_SOURCES.find((s) => s.id === id)
+  if (!src) return undefined
+  return {
+    ...src,
+    feedUrl: envFeedOverride(src.id) ?? src.feedUrl,
+    enabled: src.enabled && isSourceEnabled(src.id),
+  }
+}
+
+/** Keep only IDs that resolve to an enabled RSS source. */
+export function filterEnabledSourceIds(ids: readonly string[]): string[] {
+  return ids.filter((id) => Boolean(getRssSourceById(id)))
 }

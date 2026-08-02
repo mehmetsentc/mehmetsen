@@ -47,7 +47,8 @@ export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomR
   for (const sourceId of options.sourceIds) {
     const source = getRssSourceById(sourceId)
     if (!source) {
-      result.errors.push(`Unknown RSS source: ${sourceId}`)
+      // Disabled or missing — skip quietly (worker ID lists may lag behind registry)
+      result.itemsSkipped += 1
       continue
     }
 

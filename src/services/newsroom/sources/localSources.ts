@@ -1075,7 +1075,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.tokathaber.com/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Tokat haber site:tokathaber.com')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: timeout
     localMeta: { citySlug: 'tokat', cityName: 'Tokat' },
   },
   // ── Trabzon ───────────────────────────────────────────────────────────────
@@ -1209,7 +1209,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.cukurovapress.com/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Adana haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: no feed items
     localMeta: { citySlug: 'adana', cityName: 'Adana' },
   },
   // ── Adıyaman (ek kaynaklar) ──────────────────────────────────────────────────
@@ -1734,7 +1734,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.haberci18.com/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Çankırı haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: HTTP 404
     localMeta: { citySlug: 'cankiri', cityName: 'Çankırı' },
   },
   {
@@ -1865,7 +1865,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.edirnegazetesi.com.tr/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Edirne haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: HTTP 404
     localMeta: { citySlug: 'edirne', cityName: 'Edirne' },
   },
   {
@@ -1931,7 +1931,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.gazetepusula.net/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Erzurum haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: no feed items
     localMeta: { citySlug: 'erzurum', cityName: 'Erzurum' },
   },
   {
@@ -2127,7 +2127,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.igdirdogusgazetesi.com/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Iğdır haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: HTTP 404
     localMeta: { citySlug: 'igdir', cityName: 'Iğdır' },
   },
   {
@@ -2714,7 +2714,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.guneygazetesi.com/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Mersin haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: empty (0b)
     localMeta: { citySlug: 'mersin', cityName: 'Mersin' },
   },
   {
@@ -2844,7 +2844,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.nigdegunaydin.com/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Niğde haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: HTTP 410
     localMeta: { citySlug: 'nigde', cityName: 'Niğde' },
   },
   // ── Ordu (ek kaynaklar) ──────────────────────────────────────────────────
@@ -2910,7 +2910,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.gazete53.com/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Rize haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: HTTP 500
     localMeta: { citySlug: 'rize', cityName: 'Rize' },
   },
   // ── Sakarya (ek kaynaklar) ──────────────────────────────────────────────────
@@ -3041,7 +3041,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.sivasmemleket.com.tr/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Sivas haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: no feed items
     localMeta: { citySlug: 'sivas', cityName: 'Sivas' },
   },
   // ── Şanlıurfa (ek kaynaklar) ──────────────────────────────────────────────────
@@ -3172,7 +3172,7 @@ export const LOCAL_PORTAL_FEEDS: LocalFeedSource[] = [
     feedUrl: 'https://www.haber61.net/rss',
     alternateFeedUrls: [buildGoogleNewsFeedUrl('Trabzon haber')],
     maxItemsPerRun: 3,
-    enabled: true,
+    enabled: false, // 2026-08-02 audit: timeout
     localMeta: { citySlug: 'trabzon', cityName: 'Trabzon' },
   },
   {
