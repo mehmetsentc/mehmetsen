@@ -60,20 +60,43 @@ export function isOwnContent(data: Record<string, unknown>): boolean {
 /**
  * Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini yakala.
  * Bunlar sosyal medyaya gönderilmemeli:
- *   - Başlıkta "#Canlı" veya "canlı yayın" geçen haberler (içleri genellikle boş)
+ *   - isLiveBlog === true (canlı takip/blog)
+ *   - Başlıkta "canlı" + yayın bağlamı olan haberler
  *   - Sadece sosyal medya takip linkleri içeren spot/içerik
  *   - Çok kısa içerikli (gerçek haber olmayan) paylaşımlar
+ *   - Video (YouTube kanalı videoları)
  */
 export function isSkippableForSocial(data: Record<string, unknown>): boolean {
-  const title = String(data.title ?? '').toLowerCase()
-  const spot  = String(data.spot ?? data.summary ?? data.description ?? '').toLowerCase()
+  const title   = String(data.title ?? '').toLowerCase()
+  const spot    = String(data.spot ?? data.summary ?? data.description ?? '').toLowerCase()
   const content = String(data.content ?? data.body ?? '').toLowerCase()
   const combined = `${spot} ${content}`
 
-  // Canlı yayın haberleri — içleri boş, sadece link
-  if (title.includes('#canlı') || title.includes('canlı yayın') || title.includes(' #canli')) {
-    return true
-  }
+  // isLiveBlog / canlı takip alanı
+  if (data.isLiveBlog === true) return true
+
+  // Canlı yayın haberleri — başlıkta "canlı" + yayın/takip bağlamı
+  const CANLI_TITLE_PATTERNS = [
+    '#canlı', '# canlı',
+    '#canli', '# canli',
+    'canlı yayın',     // "canlı yayın izle"
+    'canli yayin',
+    'canlı takip',     // "canlı takip"
+    'canlıyayın',
+    'canlı anlatım',   // "dakika dakika canlı anlatım"
+    'canlı blog',
+  ]
+  if (CANLI_TITLE_PATTERNS.some(p => title.includes(p))) return true
+
+  // "canlı" kelimesi başlıkta + video veya yayın bağlamı
+  if (title.includes('canlı') && (
+    title.startsWith('canlı') ||          // "canlı: ..."
+    title.includes(' canlıda ') ||         // "canlıda açıkladı"
+    title.includes('canlıda ') ||
+    data.hasVideo === true ||              // YouTube video
+    title.includes('yayın') ||            // "canlı yayından"
+    title.includes('dakika dakika')       // "canlı anlatım"
+  )) return true
 
   // Sosyal medya tanıtım metni (whatsapp kanal linki, bluesky, vb.)
   const PROMO_PATTERNS = [
@@ -88,7 +111,7 @@ export function isSkippableForSocial(data: Record<string, unknown>): boolean {
   if (PROMO_PATTERNS.some(p => combined.includes(p))) return true
 
   // Spot 10 karakterden kısa VE içerik de yoksa — boş haber
-  const spotLen = spot.trim().length
+  const spotLen    = spot.trim().length
   const contentLen = content.replace(/<[^>]+>/g, '').trim().length
   if (spotLen < 10 && contentLen < 30) return true
 
@@ -136,11 +159,15 @@ function stripHtml(html: string): string {
  * Haber hikaye paylaşımı için uygun mu?
  *  - Güncel: categoryId === 'gundem'
  *  - Öne çıkan: featured === true
- *  - Son dakika: isBreaking === true
+ *
+ * NOT: isBreaking kasıtlı ÇIKARILDI — son dakika haberler çok kısa/ince içerik
+ * olabiliyor ve canlı yayın takipleri breaking olarak gelebiliyor.
+ * Breaking haberler yalnızca Çanakkale filtresiyle post olarak paylaşılır.
  */
 export function isStoryEligible(data: Record<string, unknown>): boolean {
+  // Canlı yayın / live blog → hikaye olmaz
+  if (isSkippableForSocial(data)) return false
   if (data.featured === true || data.isFeatured === true) return true
-  if (data.isBreaking === true) return true
   const catId = String(data.categoryId ?? '').toLowerCase()
   const cat   = String(data.category   ?? '').toLowerCase()
   return catId === 'gundem' || cat === 'gundem'

@@ -10,7 +10,7 @@ import { sanitizeGroundingSources, type GroundingSource } from '@/lib/ai/liveRes
 import { newsDraftService } from '@/services/newsDraftService'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
-import { isCanakkaleArticle, publishOneSocial } from '@/lib/social/publishOneSocial'
+import { isCanakkaleArticle, isStoryEligible, publishOneSocial } from '@/lib/social/publishOneSocial'
 import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
 import {
   articleBlocksToPlainText,
@@ -384,12 +384,14 @@ export async function PUT(request: Request, context: RouteContext) {
       revalidateNewsPaths(prevData, body)
       void notifyIfPublished(prevData, body)
 
-      // ── Anında sosyal paylaşım: Çanakkale haberi ilk kez yayınlandığında ──
+      // ── Anında sosyal paylaşım: ilk kez yayınlandığında ────────────────────
+      // POST    → Çanakkale konumlı haberler
+      // HİKAYE → Gündem (categoryId=gundem) + Öne çıkan (featured=true)
       // after() → response döndükten sonra arka planda çalışır (Next.js 15)
       const justPublished = prevData?.status !== 'published' && body.status === 'published'
       if (justPublished) {
         const mergedData = { ...prevData, ...update }
-        if (isCanakkaleArticle(mergedData)) {
+        if (isCanakkaleArticle(mergedData) || isStoryEligible(mergedData)) {
           after(() => publishOneSocial(id))
         }
       }
@@ -429,9 +431,9 @@ export async function PUT(request: Request, context: RouteContext) {
         }
         revalidateNewsPaths(draftSnap.data(), body)
         void notifyIfPublished(draftSnap.data(), body)
-        // Draft onaylandığında da anında paylaş
+        // Draft onaylandığında da anında paylaş (post veya hikaye)
         const draftData = { ...draftSnap.data(), ...draftUpdate }
-        if (isCanakkaleArticle(draftData)) {
+        if (isCanakkaleArticle(draftData) || isStoryEligible(draftData)) {
           after(() => publishOneSocial(result.newsId))
         }
         return NextResponse.json({ ok: true, collection: 'newsDrafts', ...result })

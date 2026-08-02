@@ -355,11 +355,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       if (!isOwnContent(d)) return false
       if (isSkippableForSocial(d)) return false
       if (!extractImageUrl(d)) return false
-      const featured    = d.featured === true || d.isFeatured === true
-      const breaking    = d.isBreaking === true
-      const catId       = String(d.categoryId ?? '').toLowerCase()
-      const cat         = String(d.category   ?? '').toLowerCase()
-      return featured || breaking || catId === 'gundem' || cat === 'gundem'
+      const featured = d.featured === true || d.isFeatured === true
+      const catId    = String(d.categoryId ?? '').toLowerCase()
+      const cat      = String(d.category   ?? '').toLowerCase()
+      return featured || catId === 'gundem' || cat === 'gundem'
     }
 
     const storyCandidates = storySnap.docs
