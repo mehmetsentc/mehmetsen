@@ -1,6 +1,37 @@
 /**
  * Shared RSS worker — fetch → fingerprint diff → enqueue → sync fingerprints.
  */
+
+// ─── Canlı yayın + tanıtım içerik filtreleri ───────────────────────────────
+// Bu kalıplarla eşleşen RSS haberleri hiç Firestore'a yazılmaz.
+// Silinen haberler de bu şekilde yeniden oluşturulmaz çünkü fingerprint
+// "görüldü" olarak işaretlenerek sonraki çalışmalarda atlanır.
+
+const CANLI_TITLE_PATTERNS: RegExp[] = [
+  /#\s*canlı/i,
+  /\bcanlı\s*yayın/i,
+  /\bcanlıyayın/i,
+  /\bcanlı\s*takip/i,
+  /\bcanlı\s*anlatım/i,
+  /\bcanlı\s*blog/i,
+  /\/\s*#\s*canlı/i,          // "Başlık / #Canlı"
+]
+
+const PROMO_CONTENT_PATTERNS: RegExp[] = [
+  /sosyal medya hesaplarımızı takip etmeyi unutmayın/i,
+  /whatsapp\.com\/channel\//i,
+  /bsky\.app\/profile\//i,
+  /t\.me\/[a-z0-9_]+/i,       // Telegram kanal linkleri
+]
+
+function isSkippableRssItem(title: string, summary: string, content: string): boolean {
+  if (CANLI_TITLE_PATTERNS.some(p => p.test(title))) return true
+  const body = summary + ' ' + content
+  if (PROMO_CONTENT_PATTERNS.some(p => p.test(body))) return true
+  return false
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 import type { Firestore } from 'firebase-admin/firestore'
 import { normalizeCitySlug } from '@/constants/cities'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -140,6 +171,23 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
       if (change.item.imageUrl) {
         input.imageUrl = change.item.imageUrl
       }
+
+      // ── Canlı yayın / tanıtım filtresi ─────────────────────────────────
+      // Eşleşen haberi hiç sıraya koymuyoruz.
+      // Fingerprint yine de kaydediliyor; böylece RSS güncellenip yeni
+      // fingerprint üretse bile başlık hâlâ eşleştiği sürece bir sonraki
+      // çalışmada da atlanır.
+      if (isSkippableRssItem(
+        change.item.title,
+        change.item.summary,
+        change.item.content,
+      )) {
+        try { await upsertSourceFingerprint(db, source.id, change.fingerprint) } catch { /* non-critical */ }
+        result.itemsSkipped += 1
+        console.log(`[${options.workerId}:${source.id}] skipped (canlı/promo): ${change.item.title.slice(0, 80)}`)
+        continue
+      }
+      // ────────────────────────────────────────────────────────────────────
 
       try {
         await enqueueNewsItem(db, {
