@@ -176,7 +176,11 @@ export function MobileCategoryLanding({
       <div className="px-4 pt-2 pb-8">
         <CategoryLoadMore
           categoryId={cat.id}
-          initialItems={[]}
+          initialItems={initialPosts.map((p) => ({
+            id: p.id,
+            slug: p.slug ?? p.id,
+            title: p.title ?? '',
+          }))}
           initialBeforeDay={initialBeforeDay}
           initialHasMore={initialPosts.length > 0}
         />
