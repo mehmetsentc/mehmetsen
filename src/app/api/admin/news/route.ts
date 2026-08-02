@@ -196,24 +196,13 @@ export async function POST(request: Request) {
       postType: 'news',
     }
 
-    if (body.countrySlug?.trim() || body.country?.trim()) {
-      const countryName = body.country?.trim()
-        || body.countrySlug?.trim()
-        || ''
-      payload.country = countryName
-      payload.countrySlug = body.countrySlug?.trim() || countryName.toLowerCase().replace(/\s+/g, '-')
-      payload.location = body.location ?? {
-        city: body.city?.trim() ?? '',
-        country: countryName,
-        lat: 0,
-        lng: 0,
-      }
-      payload.citySlug = ''
-      payload.city = body.city?.trim() ?? ''
-    } else if (body.citySlug?.trim()) {
+    // Check citySlug first — domestic city articles also send country:'Türkiye',
+    // so the citySlug branch must win over the generic country branch.
+    if (body.citySlug?.trim()) {
       payload.citySlug = body.citySlug.trim()
       payload.city = body.city?.trim() ?? body.citySlug.trim()
       payload.country = 'Türkiye'
+      payload.countrySlug = ''
       payload.location = {
         city: payload.city as string,
         country: 'Türkiye',
@@ -227,6 +216,20 @@ export async function POST(request: Request) {
         payload.districtSlug = body.districtSlug.trim()
         payload.district = body.district?.trim() || body.districtSlug.trim()
       }
+    } else if (body.countrySlug?.trim() || body.country?.trim()) {
+      const countryName = body.country?.trim()
+        || body.countrySlug?.trim()
+        || ''
+      payload.country = countryName
+      payload.countrySlug = body.countrySlug?.trim() || countryName.toLowerCase().replace(/\s+/g, '-')
+      payload.location = body.location ?? {
+        city: body.city?.trim() ?? '',
+        country: countryName,
+        lat: 0,
+        lng: 0,
+      }
+      payload.citySlug = ''
+      payload.city = body.city?.trim() ?? ''
     }
 
     const additionalImages = sanitizeAdditionalImages(body.additionalImages)
