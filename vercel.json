@@ -260,10 +260,6 @@
       "schedule": "30 5 * * 1"
     },
     {
-      "path": "/api/cron/analytics-cleanup",
-      "schedule": "15 3 * * *"
-    },
-    {
       "path": "/api/cron/editorial-review",
       "schedule": "0 */3 * * *"
     }

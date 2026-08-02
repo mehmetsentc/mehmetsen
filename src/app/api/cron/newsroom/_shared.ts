@@ -19,22 +19,8 @@ export function createNewsroomCronHandler<T>(
     }
 
     const startedAt = Date.now()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let runRef: any = null
-
-    // Write a "running" log entry to Firestore (best-effort — don't fail the cron if this errors)
-    try {
-      const { getAdminFirestore } = await import('@/lib/firebase/admin')
-      const adminDb = getAdminFirestore()
-      runRef = await adminDb.collection('cronRuns').add({
-        jobName: label,
-        status: 'running',
-        startedAt,
-        triggeredBy: 'schedule',
-      })
-    } catch {
-      // Non-fatal — cron proceeds even if Firestore logging fails
-    }
+    // COST PAUSE: cronRuns Firestore logging disabled — logs go to Vercel console instead.
+    console.log(`[cron:start] ${label}`)
 
     try {
       if (!inFlight) {
@@ -44,37 +30,14 @@ export function createNewsroomCronHandler<T>(
       }
       const result = await inFlight
 
-      // Update log with success
-      if (runRef) {
-        const finishedAt = Date.now()
-        runRef.update({
-          status: 'success',
-          finishedAt,
-          durationMs: finishedAt - startedAt,
-          result: JSON.stringify(result).slice(0, 2000),
-        }).catch(() => {})
-      }
-
+      console.log(`[cron:done] ${label} durationMs=${Date.now() - startedAt}`)
       return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      // Short prefix so Vercel MCP's 30-char truncation shows the actual error
       console.error(`CRON_FAIL[${label}]: ${message}`)
       if (error instanceof Error && error.stack) {
         console.error('CRON_STACK:', error.stack.slice(0, 500))
       }
-
-      // Update log with failure
-      if (runRef) {
-        const finishedAt = Date.now()
-        runRef.update({
-          status: 'failed',
-          finishedAt,
-          durationMs: finishedAt - startedAt,
-          error: message,
-        }).catch(() => {})
-      }
-
       return NextResponse.json({ error: message }, { status: 500 })
     }
   }
