@@ -85,13 +85,17 @@ export async function POST(request: Request) {
 
   let requestedLimit = 2
   let specificIds: string[] = []
+  let specificSlugs: string[] = []
   try {
-    const body = await request.json() as { limit?: number; ids?: string[] }
+    const body = await request.json() as { limit?: number; ids?: string[]; slugs?: string[] }
     if (body.limit && typeof body.limit === 'number') {
       requestedLimit = Math.min(Math.max(1, body.limit), 5)
     }
     if (Array.isArray(body.ids) && body.ids.length > 0) {
       specificIds = body.ids.slice(0, 5)
+    }
+    if (Array.isArray(body.slugs) && body.slugs.length > 0) {
+      specificSlugs = body.slugs.slice(0, 5)
     }
   } catch { /* varsayılan 2 */ }
 
@@ -99,7 +103,15 @@ export async function POST(request: Request) {
 
   let targets: DocumentSnapshot[]
 
-  if (specificIds.length > 0) {
+  if (specificSlugs.length > 0) {
+    // Slug ile sorgula — Çanakkale filtresi yok
+    const snaps = await Promise.all(
+      specificSlugs.map(slug =>
+        db.collection(Collections.NEWS).where('slug', '==', slug).limit(1).get()
+      )
+    )
+    targets = snaps.flatMap(s => s.docs).filter(d => d.exists)
+  } else if (specificIds.length > 0) {
     // Belirli ID'leri direkt getir — Çanakkale filtresi yok
     const docs = await Promise.all(
       specificIds.map(id => db.collection(Collections.NEWS).doc(id).get())
