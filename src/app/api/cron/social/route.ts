@@ -16,7 +16,7 @@
  * Auth: Bearer CRON_SECRET  veya ?secret=CRON_SECRET
  */
 import { NextResponse } from 'next/server'
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
@@ -295,38 +295,6 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       twResult = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
 
-    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
-
-    // ── Hikaye URL'i (hem IG hem FB hikayesi için ortak) ─────────────────────
-    const storyImageUrl: string = `https://nahaber.com/api/og/story/${id}?v=${Date.now()}`
-    const storyPayload: SocialPublishPayload = {
-      newsId:      id,
-      title:       socialContent.headline || title,
-      description: undefined,
-      imageUrl:    storyImageUrl,
-      articleUrl,
-    }
-
-    // ── Instagram Hikaye ─────────────────────────────────────────────────
-    let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
-    try {
-      igStoryResult = await publishInstagramStory(storyPayload)
-      console.log(`[cron/social] IG Story → ${id}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
-    } catch (err) {
-      igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
-    }
-
-    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
-
-    // ── Facebook Hikaye ───────────────────────────────────────────────────
-    let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
-    try {
-      fbStoryResult = await publishFacebookStory(storyPayload)
-      console.log(`[cron/social] FB Story → ${id}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
-    } catch (err) {
-      fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
-    }
-
     // ── Firestore güncelle ────────────────────────────────────────────────
     const markedDone = fbResult.success || igResult.success || twResult.success
 
@@ -339,11 +307,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           socialHeadline:    socialContent.headline,
           socialHashtags:    socialContent.hashtags,
         }
-        if (fbResult.platformId)      update.facebookPostId    = fbResult.platformId
-        if (igResult.platformId)      update.instagramMediaId  = igResult.platformId
-        if (twResult.platformId)      update.twitterTweetId    = twResult.platformId
-        if (igStoryResult.platformId) update.instagramStoryId  = igStoryResult.platformId
-        if (fbStoryResult.platformId) update.facebookStoryId   = fbStoryResult.platformId
+        if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
+        if (igResult.platformId) update.instagramMediaId = igResult.platformId
+        if (twResult.platformId) update.twitterTweetId   = twResult.platformId
         await db.collection(Collections.NEWS).doc(id).update(update)
         succeeded++
       } catch (err) {
@@ -362,7 +328,116 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
   }
 
-  return { processed: finalDocs.length, succeeded, failed, items: results }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BÖLÜM 2 — HİKAYELER: Güncel (categoryId=gundem) + Öne Çıkan (featured)
+  // Post filtresiyle bağımsız — Çanakkale şartı yok, ayrı storyPublished alanı
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const STORY_BATCH_LIMIT = 5
+  const STORY_WINDOW_MS   = 10 * 60 * 60 * 1000  // son 10 saat
+  const recentTs = Timestamp.fromDate(new Date(Date.now() - STORY_WINDOW_MS))
+
+  let storySucceeded = 0
+  let storyFailed    = 0
+
+  try {
+    const storySnap = await db
+      .collection(Collections.NEWS)
+      .where('status', '==', 'published')
+      .where('createdAt', '>=', recentTs)
+      .orderBy('createdAt', 'desc')
+      .limit(60)
+      .get()
+
+    /** Hikaye için uygun mu? */
+    function isStoryEligible(d: Record<string, unknown>): boolean {
+      if (d.storyPublished === true) return false
+      if (!isOwnContent(d)) return false
+      if (isSkippableForSocial(d)) return false
+      if (!extractImageUrl(d)) return false
+      const featured    = d.featured === true || d.isFeatured === true
+      const breaking    = d.isBreaking === true
+      const catId       = String(d.categoryId ?? '').toLowerCase()
+      const cat         = String(d.category   ?? '').toLowerCase()
+      return featured || breaking || catId === 'gundem' || cat === 'gundem'
+    }
+
+    const storyCandidates = storySnap.docs
+      .filter(doc => isStoryEligible(doc.data() as Record<string, unknown>))
+      .slice(0, STORY_BATCH_LIMIT)
+
+    console.log(`[cron/social] Story candidates: ${storyCandidates.length}`)
+
+    for (const doc of storyCandidates) {
+      const data    = doc.data() as Record<string, unknown>
+      const id      = doc.id
+      const title   = typeof data.title === 'string' ? data.title : ''
+      const spot    = typeof data.spot === 'string' ? data.spot :
+                      typeof data.summary === 'string' ? data.summary : ''
+      const articleUrl = buildArticleUrl(id, data)
+
+      // AI içerik (hikaye için başlık yeterli)
+      let headline = title.slice(0, 80)
+      try {
+        const ai = await generateSocialContent(title, spot, typeof data.cityName === 'string' ? data.cityName : 'Türkiye')
+        if (ai) headline = ai.headline || headline
+      } catch { /* fallback */ }
+
+      const storyImageUrl: string = `https://nahaber.com/api/og/story/${id}?v=${Date.now()}`
+      const storyPayload: SocialPublishPayload = {
+        newsId:      id,
+        title:       headline,
+        description: undefined,
+        imageUrl:    storyImageUrl,
+        articleUrl,
+      }
+
+      let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
+      try {
+        igStoryResult = await publishInstagramStory(storyPayload)
+        console.log(`[cron/social] IG Story → ${id}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
+      } catch (err) {
+        igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+
+      let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
+      try {
+        fbStoryResult = await publishFacebookStory(storyPayload)
+        console.log(`[cron/social] FB Story → ${id}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
+      } catch (err) {
+        fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      if (igStoryResult.success || fbStoryResult.success) {
+        try {
+          const storyUpdate: Record<string, unknown> = {
+            storyPublished:   true,
+            storyPublishedAt: FieldValue.serverTimestamp(),
+          }
+          if (igStoryResult.platformId) storyUpdate.instagramStoryId = igStoryResult.platformId
+          if (fbStoryResult.platformId) storyUpdate.facebookStoryId  = fbStoryResult.platformId
+          await db.collection(Collections.NEWS).doc(id).update(storyUpdate)
+          storySucceeded++
+        } catch (err) {
+          console.error(`[cron/social] Story Firestore update failed for ${id}:`, err)
+          storyFailed++
+        }
+      } else {
+        storyFailed++
+      }
+
+      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+    }
+  } catch (err) {
+    console.error('[cron/social] Story loop error:', err)
+  }
+
+  return {
+    processed: finalDocs.length, succeeded, failed, items: results,
+    stories: { processed: storySucceeded + storyFailed, succeeded: storySucceeded, failed: storyFailed },
+  }
 }
 
 async function handleRequest(request: Request) {

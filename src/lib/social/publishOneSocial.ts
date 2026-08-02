@@ -133,10 +133,28 @@ function stripHtml(html: string): string {
 // ── Ana fonksiyon ─────────────────────────────────────────────────────────────
 
 /**
- * Tek bir haberi FB + IG'ye yayınlar.
- * - Hata olursa fırlatmaz, sadece loglar.
- * - Zaten yayınlanmışsa, video ise veya Çanakkale haberi değilse çıkar.
- * - next/server `after()` içinde çağrılmak için tasarlanmıştır.
+ * Haber hikaye paylaşımı için uygun mu?
+ *  - Güncel: categoryId === 'gundem'
+ *  - Öne çıkan: featured === true
+ *  - Son dakika: isBreaking === true
+ */
+export function isStoryEligible(data: Record<string, unknown>): boolean {
+  if (data.featured === true || data.isFeatured === true) return true
+  if (data.isBreaking === true) return true
+  const catId = String(data.categoryId ?? '').toLowerCase()
+  const cat   = String(data.category   ?? '').toLowerCase()
+  return catId === 'gundem' || cat === 'gundem'
+}
+
+/**
+ * Tek bir haberi FB + IG'ye yayınlar (post ve/veya hikaye).
+ *
+ * POST yayını   : Çanakkale konumlı haberler  → FB post + IG post
+ * HİKAYE yayını : Güncel + Öne çıkan haberler → IG hikaye + FB hikaye
+ *
+ * İki kanal bağımsız; bir haber her ikisine de girebilir.
+ * Fire-and-forget: hataları loglar, fırlatmaz.
+ * next/server `after()` içinde çağrılmak için tasarlanmıştır.
  */
 export async function publishOneSocial(newsId: string): Promise<void> {
   try {
@@ -149,15 +167,8 @@ export async function publishOneSocial(newsId: string): Promise<void> {
 
     const data = doc.data() as Record<string, unknown>
 
-    // Zaten yayınlanmış
-    if (data.socialPublished === true) {
-      console.log(`[publishOneSocial] Zaten yayınlanmış — atlandı: ${newsId}`)
-      return
-    }
     // Video haberler atla
     if (data.hasVideo || data.isVideo) return
-    // Çanakkale haberi değil
-    if (!isCanakkaleArticle(data)) return
     // Kendi haberimiz değil (harici RSS/scraper kaynağı)
     if (!isOwnContent(data)) {
       console.log(`[publishOneSocial] Harici kaynak — sosyal medyaya gönderilmedi: ${newsId}`)
@@ -172,7 +183,15 @@ export async function publishOneSocial(newsId: string): Promise<void> {
     const title = typeof data.title === 'string' ? data.title : ''
     if (!title) return
 
-    // ── Görsel zorunluluğu: resim yoksa paylaşma ─────────────────────────────
+    // ── Ne yayınlanacak? ─────────────────────────────────────────────────────
+    const shouldPost  = isCanakkaleArticle(data) && data.socialPublished !== true
+    const shouldStory = isStoryEligible(data)    && data.storyPublished  !== true
+    if (!shouldPost && !shouldStory) {
+      console.log(`[publishOneSocial] Post+Story zaten yayınlandı veya uygun değil — atlandı: ${newsId}`)
+      return
+    }
+
+    // ── Görsel zorunluluğu ───────────────────────────────────────────────────
     const coverImage = extractImageUrl(data)
     if (!coverImage) {
       console.log(`[publishOneSocial] Görsel yok — paylaşım atlandı: ${newsId}`)
@@ -207,93 +226,94 @@ export async function publishOneSocial(newsId: string): Promise<void> {
       }
     }
 
-    // ── Görsel URL'leri ──────────────────────────────────────────────────────
-    // ?v=timestamp → Vercel CDN + Next.js data cache bypass → taze OG görseli garantiler
     const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}?v=${Date.now()}`
     const storyImageUrl  = `https://nahaber.com/api/og/story/${newsId}?v=${Date.now()}`
     const hashtagStr     = socialContent.hashtags.join(' ')
     const fullCaption    = [
-      socialContent.caption,
-      '',
-      `🔗 Haberin devamı: ${articleUrl}`,
-      '',
+      socialContent.caption, '',
+      `🔗 Haberin devamı: ${articleUrl}`, '',
       hashtagStr,
     ].join('\n')
 
-    const payload: SocialPublishPayload = {
-      newsId,
-      title:       socialContent.headline || title,
-      description: fullCaption,
-      imageUrl:    socialImageUrl,
-      articleUrl,
-    }
-
-    // ── Yayınla ──────────────────────────────────────────────────────────────
-    let fbResult: { success: boolean; error?: string; platformId?: string } =
-      { success: false, error: 'not attempted' }
-    let igResult: { success: boolean; error?: string; platformId?: string } =
-      { success: false, error: 'not attempted' }
-
-    try {
-      fbResult = await publishToFacebook(payload)
-    } catch (err) {
-      fbResult = { success: false, error: err instanceof Error ? err.message : String(err) }
-    }
-
-    await new Promise(r => setTimeout(r, 2000))
-
-    try {
-      igResult = await publishToInstagram(payload)
-    } catch (err) {
-      igResult = { success: false, error: err instanceof Error ? err.message : String(err) }
-    }
-
-    // ── Instagram Hikaye ─────────────────────────────────────────────────────
-    let igStoryResult: { success: boolean; error?: string; platformId?: string } =
-      { success: false, error: 'not attempted' }
-    try {
-      await new Promise(r => setTimeout(r, 2000))
-      const storyPayload = { ...payload, imageUrl: storyImageUrl }
-      igStoryResult = await publishInstagramStory(storyPayload)
-      console.log(`[publishOneSocial] IG Story → ${newsId}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
-    } catch (err) {
-      igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
-    }
-
-    // ── Facebook Hikaye ──────────────────────────────────────────────────────
-    let fbStoryResult: { success: boolean; error?: string; platformId?: string } =
-      { success: false, error: 'not attempted' }
-    try {
-      await new Promise(r => setTimeout(r, 2000))
-      const storyPayload = { ...payload, imageUrl: storyImageUrl }
-      fbStoryResult = await publishFacebookStory(storyPayload)
-      console.log(`[publishOneSocial] FB Story → ${newsId}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
-    } catch (err) {
-      fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
-    }
-
-    // ── Firestore güncelle ───────────────────────────────────────────────────
-    if (fbResult.success || igResult.success) {
-      const update: Record<string, unknown> = {
-        socialPublished:   true,
-        socialPublishedAt: FieldValue.serverTimestamp(),
-        socialImageUrl,
-        socialHeadline:    socialContent.headline,
-        socialHashtags:    socialContent.hashtags,
+    // ── POST (Çanakkale) ─────────────────────────────────────────────────────
+    if (shouldPost) {
+      const payload: SocialPublishPayload = {
+        newsId, title: socialContent.headline || title,
+        description: fullCaption, imageUrl: socialImageUrl, articleUrl,
       }
-      if (fbResult.platformId)      update.facebookPostId    = fbResult.platformId
-      if (igResult.platformId)      update.instagramMediaId  = igResult.platformId
-      if (igStoryResult.platformId) update.instagramStoryId  = igStoryResult.platformId
-      if (fbStoryResult.platformId) update.facebookStoryId   = fbStoryResult.platformId
 
-      await db.collection(Collections.NEWS).doc(newsId).update(update)
-      console.log(
-        `[publishOneSocial] ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success} IGStory:${igStoryResult.success} FBStory:${fbStoryResult.success}`
-      )
-    } else {
-      console.warn(
-        `[publishOneSocial] ✗ ${newsId} — FB: ${fbResult.error ?? '?'} | IG: ${igResult.error ?? '?'}`
-      )
+      let fbResult: { success: boolean; error?: string; platformId?: string } =
+        { success: false, error: 'not attempted' }
+      let igResult: { success: boolean; error?: string; platformId?: string } =
+        { success: false, error: 'not attempted' }
+
+      try { fbResult = await publishToFacebook(payload) }
+      catch (err) { fbResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+
+      await new Promise(r => setTimeout(r, 2000))
+
+      try { igResult = await publishToInstagram(payload) }
+      catch (err) { igResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+
+      if (fbResult.success || igResult.success) {
+        const update: Record<string, unknown> = {
+          socialPublished:   true,
+          socialPublishedAt: FieldValue.serverTimestamp(),
+          socialImageUrl,
+          socialHeadline:    socialContent.headline,
+          socialHashtags:    socialContent.hashtags,
+        }
+        if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
+        if (igResult.platformId) update.instagramMediaId = igResult.platformId
+        await db.collection(Collections.NEWS).doc(newsId).update(update)
+        console.log(`[publishOneSocial] POST ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success}`)
+      } else {
+        console.warn(`[publishOneSocial] POST ✗ ${newsId} — FB: ${fbResult.error} | IG: ${igResult.error}`)
+      }
+
+      await new Promise(r => setTimeout(r, 2000))
+    }
+
+    // ── HİKAYE (güncel + öne çıkan) ─────────────────────────────────────────
+    if (shouldStory) {
+      const storyPayload: SocialPublishPayload = {
+        newsId, title: socialContent.headline || title,
+        description: undefined, imageUrl: storyImageUrl, articleUrl,
+      }
+
+      let igStoryResult: { success: boolean; error?: string; platformId?: string } =
+        { success: false, error: 'not attempted' }
+      let fbStoryResult: { success: boolean; error?: string; platformId?: string } =
+        { success: false, error: 'not attempted' }
+
+      try {
+        igStoryResult = await publishInstagramStory(storyPayload)
+        console.log(`[publishOneSocial] IG Story → ${newsId}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
+      } catch (err) {
+        igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      await new Promise(r => setTimeout(r, 2000))
+
+      try {
+        fbStoryResult = await publishFacebookStory(storyPayload)
+        console.log(`[publishOneSocial] FB Story → ${newsId}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
+      } catch (err) {
+        fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      if (igStoryResult.success || fbStoryResult.success) {
+        const storyUpdate: Record<string, unknown> = {
+          storyPublished:   true,
+          storyPublishedAt: FieldValue.serverTimestamp(),
+        }
+        if (igStoryResult.platformId) storyUpdate.instagramStoryId = igStoryResult.platformId
+        if (fbStoryResult.platformId) storyUpdate.facebookStoryId  = fbStoryResult.platformId
+        await db.collection(Collections.NEWS).doc(newsId).update(storyUpdate)
+        console.log(`[publishOneSocial] STORY ✓ ${newsId} — IG:${igStoryResult.success} FB:${fbStoryResult.success}`)
+      } else {
+        console.warn(`[publishOneSocial] STORY ✗ ${newsId} — IG: ${igStoryResult.error} | FB: ${fbStoryResult.error}`)
+      }
     }
   } catch (err) {
     // Fire-and-forget: hata yutulur, cron bir sonraki çalışmada tekrar dener

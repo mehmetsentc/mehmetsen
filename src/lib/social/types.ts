@@ -43,6 +43,12 @@ export interface SocialCronResult {
   succeeded: number
   failed: number
   items: SocialCronItemResult[]
+  /** Story pipeline (güncel + öne çıkan) özeti */
+  stories?: {
+    processed: number
+    succeeded: number
+    failed: number
+  }
 }
 
 /** Payload POSTed to /api/social/facebook or /api/social/instagram */
