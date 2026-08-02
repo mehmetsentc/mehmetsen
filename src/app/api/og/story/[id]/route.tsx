@@ -4,17 +4,17 @@
  * ONYEDİTİVİ — 1080×1920 Instagram & Facebook Hikaye görseli (9:16)
  * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout (yukarıdan aşağı):
+ * Layout:
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  60% (1152px)
+ *   │   HABER FOTOĞRAFI       │  65% (1248px)
  *   │                         │
- *   ├─── nahaber.com ─────────┤  tam kırmızı bar + beyaz pill
- *   │                         │
- *   │   BAŞLIK / MANŞET       │  kalan alan — lacivert bg
- *   │   ║ kırmızı sol çizgi   │
- *   │   #hashtag açık mavi    │
+ *   │  [🔗 nahaber.com pill]  │  alt kısım — link stikeri
+ *   ├─── nahaber.com ─────────┤  tam kırmızı bar + beyaz pill (80px)
+ *   │   BAŞLIK                │
+ *   │   spot/özet metin       │  kalan — lacivert bg (592px)
+ *   │   #hashtag              │
  *   └─────────────────────────┘
  */
 export const runtime = 'nodejs'
@@ -73,18 +73,22 @@ function bestImage(a: ArticleData): string {
   return ''
 }
 
+function truncate(s: string, max: number) {
+  return s.length > max ? s.slice(0, max - 1) + '…' : s
+}
+
 // Boyutlar — 9:16 hikaye
 const W = 1080
 const H = 1920
-const PHOTO_H = 1152  // %60
+const PHOTO_H = 1248  // %65 (önceki %60'tan büyütüldü)
 const MID_H   = 80    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // ~688px
+const TITLE_H = H - PHOTO_H - MID_H  // 592px
 
 // Renkler
 const NAVY   = '#0d2355'   // OnyediTivi koyu lacivert
 const RED    = '#CC0000'   // NaHaber kırmızısı
 const BLUE   = '#2563b8'   // OnyediTivi orta mavi
-const LBLUE  = '#62b8e8'   // OnyediTivi açık mavi (hashtag)
+const LBLUE  = '#62b8e8'   // OnyediTivi açık mavi
 
 function fallback() {
   return new ImageResponse(
@@ -103,12 +107,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const photo = bestImage(article)
   const title = article.title
+  const spot  = article.spot ? truncate(article.spot.replace(/<[^>]+>/g, ' ').trim(), 180) : ''
+
   const titleSize =
-    title.length > 120 ? 38 :
-    title.length > 90  ? 44 :
-    title.length > 70  ? 50 :
-    title.length > 50  ? 58 :
-    title.length > 35  ? 66 : 76
+    title.length > 120 ? 36 :
+    title.length > 90  ? 42 :
+    title.length > 70  ? 48 :
+    title.length > 50  ? 54 :
+    title.length > 35  ? 62 : 70
 
   try {
     return new ImageResponse(
@@ -118,7 +124,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         background: NAVY, overflow: 'hidden',
       }}>
 
-        {/* ── FOTOĞRAF ── */}
+        {/* ── FOTOĞRAF (%65) ── */}
         <div style={{
           width: W, height: PHOTO_H, position: 'relative',
           display: 'flex', flexShrink: 0, overflow: 'hidden',
@@ -133,8 +139,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
           {/* Alt gradient → lacivert */}
           <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 400,
-            background: `linear-gradient(to top,${NAVY} 0%,rgba(13,35,85,0.5) 50%,transparent 100%)`,
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 420,
+            background: `linear-gradient(to top,${NAVY} 0%,rgba(13,35,85,0.55) 45%,transparent 100%)`,
             display: 'flex',
           }} />
 
@@ -145,18 +151,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             background: 'rgba(13,35,85,0.88)', borderRadius: 14,
             padding: '12px 24px 12px 12px', gap: 14,
           }}>
-            {/* 17 rozeti — iç içe katmanlar */}
             <div style={{ width: 64, height: 64, position: 'relative',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {/* arka açık mavi blob */}
               <div style={{ position: 'absolute', width: 64, height: 58,
                 background: '#8bbde0', borderRadius: '45% 55% 50% 50% / 50% 50% 55% 45%',
                 display: 'flex' }} />
-              {/* orta mavi */}
               <div style={{ position: 'absolute', width: 56, height: 56,
                 background: BLUE, borderRadius: '38% 62% 55% 45% / 45% 55% 62% 38%',
                 display: 'flex' }} />
-              {/* iç koyu daire */}
               <div style={{ position: 'absolute', width: 46, height: 46,
                 background: NAVY, borderRadius: '50%', display: 'flex',
                 alignItems: 'center', justifyContent: 'center' }}>
@@ -171,50 +173,74 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
               <span style={{ color: LBLUE, fontWeight: 600, fontSize: 13, letterSpacing: 3, display: 'flex' }}>HABERLERi</span>
             </div>
           </div>
+
+          {/* Bağlantı pill — fotoğraf alt kısmı */}
+          <div style={{
+            position: 'absolute', bottom: 56, left: '50%', marginLeft: -220,
+            display: 'flex', alignItems: 'center', gap: 18,
+            background: 'rgba(255,255,255,0.18)',
+            border: '2px solid rgba(255,255,255,0.4)',
+            borderRadius: 80, padding: '18px 48px',
+          }}>
+            {/* zincir ikonu — iki oval */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <div style={{ width: 20, height: 12, borderRadius: 6, border: '3px solid rgba(255,255,255,0.85)', display: 'flex' }} />
+              <div style={{ width: 14, height: 2, background: 'rgba(255,255,255,0.85)', display: 'flex' }} />
+              <div style={{ width: 20, height: 12, borderRadius: 6, border: '3px solid rgba(255,255,255,0.85)', display: 'flex' }} />
+            </div>
+            <span style={{ color: '#ffffff', fontSize: 28, fontWeight: 700, letterSpacing: 0.3, display: 'flex' }}>
+              nahaber.com&apos;u oku
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 32, display: 'flex' }}>↑</span>
+          </div>
         </div>
 
-        {/* ── GEÇİŞ SATIRI: tam kırmızı bar + nahaber.com pill ── */}
+        {/* ── GEÇİŞ BARI — tam kırmızı + beyaz pill ── */}
         <div style={{
           width: W, height: MID_H, flexShrink: 0,
           background: RED,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '0 44px', gap: 0,
+          padding: '0 44px',
         }}>
-          {/* sol yatay çizgi */}
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.25)', display: 'flex' }} />
-          {/* nahaber.com pill */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             background: '#ffffff', borderRadius: 50,
-            padding: '10px 32px',
-            margin: '0 24px',
+            padding: '10px 32px', margin: '0 24px',
           }}>
             <div style={{ width: 12, height: 12, borderRadius: '50%', background: RED, display: 'flex', flexShrink: 0 }} />
             <span style={{ color: RED, fontSize: 28, fontWeight: 800, letterSpacing: 0.3, display: 'flex' }}>nahaber.com</span>
           </div>
-          {/* sağ yatay çizgi */}
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.25)', display: 'flex' }} />
         </div>
 
-        {/* ── BAŞLIK ALANI ── */}
+        {/* ── BAŞLIK + SPOT ALANI ── */}
         <div style={{
           width: W, height: TITLE_H, flexShrink: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           padding: '36px 44px 40px', background: NAVY,
         }}>
-          {/* Başlık — sol kırmızı çizgi + metin */}
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 22, flex: 1 }}>
+          {/* Başlık — sol kırmızı çizgi */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 22 }}>
             <div style={{ width: 7, borderRadius: 4, background: RED, flexShrink: 0, alignSelf: 'stretch', display: 'flex' }} />
-            <span style={{
-              color: '#ffffff', fontWeight: 900, fontSize: titleSize,
-              lineHeight: 1.35, display: 'flex', flexDirection: 'column',
-            }}>{title}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <span style={{
+                color: '#ffffff', fontWeight: 900, fontSize: titleSize,
+                lineHeight: 1.3, display: 'flex', flexDirection: 'column',
+              }}>{title}</span>
+              {/* Spot metin — özet */}
+              {spot ? (
+                <span style={{
+                  color: 'rgba(255,255,255,0.62)', fontWeight: 400,
+                  fontSize: 32, lineHeight: 1.5, display: 'flex', flexDirection: 'column',
+                }}>{spot}</span>
+              ) : null}
+            </div>
           </div>
           {/* Hashtags */}
           <span style={{
-            color: LBLUE, fontSize: 26,
-            fontWeight: 600, letterSpacing: 1.5, display: 'flex',
-            marginTop: 28,
+            color: LBLUE, fontSize: 26, fontWeight: 600,
+            letterSpacing: 1.5, display: 'flex', marginTop: 24,
           }}>#NaHaber  #Çanakkale  #SonDakika</span>
         </div>
 
