@@ -106,20 +106,40 @@ export async function POST(request: Request) {
     )
     targets = docs.filter(d => d.exists)
   } else {
-    // Son N Çanakkale haberini bul (socialPublished olup olmadığına bakılmaz)
-    const snap = await db
-      .collection(Collections.NEWS)
-      .where('citySlug', '==', 'canakkale')
-      .where('status', '==', 'published')
-      .orderBy('publishedAt', 'desc')
-      .limit(30)
-      .get()
+    // İki sorgu: citySlug ile (yeni haberler) + city adıyla (citySlug bug'dan etkilenmiş eski haberler)
+    const [snap1, snap2] = await Promise.all([
+      db.collection(Collections.NEWS)
+        .where('citySlug', '==', 'canakkale')
+        .where('status', '==', 'published')
+        .orderBy('publishedAt', 'desc')
+        .limit(30)
+        .get(),
+      db.collection(Collections.NEWS)
+        .where('city', '==', 'Çanakkale')
+        .where('status', '==', 'published')
+        .orderBy('publishedAt', 'desc')
+        .limit(30)
+        .get(),
+    ])
+
+    // Merge + deduplicate
+    const seen = new Set<string>()
+    const merged = [...snap1.docs, ...snap2.docs].filter(d => {
+      if (seen.has(d.id)) return false
+      seen.add(d.id)
+      return true
+    })
 
     // Görseli olan haberleri önceliklendir
-    const candidates = snap.docs
+    const candidates = merged
       .filter(d => {
         const data = d.data() as Record<string, unknown>
         return !data.hasVideo && !data.isVideo && isCanakkale(data)
+      })
+      .sort((a, b) => {
+        const pa = (a.data() as Record<string, unknown>).publishedAt as number ?? 0
+        const pb = (b.data() as Record<string, unknown>).publishedAt as number ?? 0
+        return pb - pa
       })
 
     const withImage = candidates.filter(d => !!extractImageUrl(d.data() as Record<string, unknown>))
