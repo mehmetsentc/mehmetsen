@@ -42,6 +42,21 @@ export function isCanakkaleArticle(data: Record<string, unknown>): boolean {
   )
 }
 
+/**
+ * Haberin NaHaber/OnyediTivi tarafından hazırlandığını doğrula.
+ * Harici sourceUrl (RSS, scraper) olan haberler sosyal medyaya gitmez —
+ * sadece kendi editörlerimizin yazdığı veya kendi sitemizden gelen haberler yayınlanır.
+ */
+export function isOwnContent(data: Record<string, unknown>): boolean {
+  const sourceUrl = String(data.sourceUrl ?? '').trim().toLowerCase()
+  // sourceUrl yoksa veya http ile başlamıyorsa → kendi içeriğimiz ✓
+  if (!sourceUrl || !sourceUrl.startsWith('http')) return true
+  // sourceUrl kendi sitemizi gösteriyorsa → kendi içeriğimiz ✓
+  if (sourceUrl.includes('nahaber.com') || sourceUrl.includes('onyeditivi.com')) return true
+  // Harici URL → başka kaynaktan gelmiş, yayınlama ✗
+  return false
+}
+
 // ── Yardımcı fonksiyonlar ─────────────────────────────────────────────────────
 
 function extractImageUrl(data: Record<string, unknown>): string | undefined {
@@ -105,6 +120,11 @@ export async function publishOneSocial(newsId: string): Promise<void> {
     if (data.hasVideo || data.isVideo) return
     // Çanakkale haberi değil
     if (!isCanakkaleArticle(data)) return
+    // Kendi haberimiz değil (harici RSS/scraper kaynağı)
+    if (!isOwnContent(data)) {
+      console.log(`[publishOneSocial] Harici kaynak — sosyal medyaya gönderilmedi: ${newsId}`)
+      return
+    }
 
     const title = typeof data.title === 'string' ? data.title : ''
     if (!title) return

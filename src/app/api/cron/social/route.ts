@@ -27,6 +27,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
+import { isOwnContent } from '@/lib/social/publishOneSocial'
 import type {
   SocialCronItemResult,
   SocialCronResult,
@@ -139,10 +140,13 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     .get()
 
   let candidates = snap.docs.filter(doc => {
-    const d = doc.data()
+    const d = doc.data() as Record<string, unknown>
     // Video haberlerini atla — thumbnail'leri "Videolu Haber" kartı olduğu için
     // OG şablonunun fotoğraf alanında kötü görünüyor
-    return !d.socialPublished && !d.hasVideo && !d.isVideo
+    if (d.socialPublished || d.hasVideo || d.isVideo) return false
+    // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
+    if (!isOwnContent(d)) return false
+    return true
   })
 
   // ── Yedek sorgu: son 100 haberi tara, Çanakkale olanları bul ──────────
@@ -155,7 +159,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       .get()
     candidates = snap2.docs.filter(doc => {
       const d = doc.data() as Record<string, unknown>
-      return isCanakkale(d) && !d.socialPublished && !d.hasVideo && !d.isVideo
+      if (!isCanakkale(d) || d.socialPublished || d.hasVideo || d.isVideo) return false
+      // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
+      if (!isOwnContent(d)) return false
+      return true
     })
   }
 
