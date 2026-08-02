@@ -48,6 +48,44 @@ import type { NewsroomArticleInput } from '@/services/newsroom/types'
 const QUALITY_MIN_CHARS = 500
 
 /**
+ * Sosyal medya tanıtım içerikleri tespiti.
+ *
+ * Bazı haber kaynakları (ANKA, AA vb.) RSS feed'lerine gerçek haber yerine
+ * sosyal medya takip çağrısı yayınlar:
+ *   "X oldu. 🚨Sosyal medya hesaplarımızı takip etmeyi unutmayın!
+ *    WhatsApp: https://whatsapp.com/channel/... Bluesky: http://bsky.app/..."
+ *
+ * Bu tür içerikler haber değil reklam — pipeline'a girmeden atlanır.
+ * Koşul: en az 1 güçlü sinyal VARSA + tanıtım metni çıkarıldıktan sonra
+ * kalan içerik 200 karakterden kısaysa → promotional.
+ */
+function isPromotionalContent(title: string, content: string, summary?: string): boolean {
+  const combined = `${title} ${content} ${summary ?? ''}`.toLowerCase()
+
+  // Güçlü sinyaller — bunlardan herhangi biri yoksa hemen çık
+  const strongSignals = [
+    /sosyal medya hesap.*?takip/i,
+    /hesaplar.*?takip etmeyi unutmay/i,
+    /bizi takip etmeyi unutmay/i,
+    /kanalımıza abone/i,
+    /whatsapp\.com\/channel/i,
+    /bsky\.app\/profile/i,
+    /t\.me\/[a-zA-Z0-9_+]+/,      // Telegram kanal linki
+  ]
+
+  const hasStrongSignal = strongSignals.some(p => p.test(combined))
+  if (!hasStrongSignal) return false
+
+  // Tanıtım satırlarını çıkar, geriye ne kalıyor?
+  const promoLineRx = /whatsapp|bluesky|bsky\.app|t\.me\/|sosyal medya|takip et|kanalımız|hesabımız|instagram|twitter|youtube\.com\/channel|telegram/i
+  const lines = content.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean)
+  const nonPromo = lines.filter(l => !promoLineRx.test(l)).join(' ').trim()
+
+  // Tanıtım çıkarıldıktan sonra 200 karakterden az içerik kaldıysa → tanıtım içeriği
+  return nonPromo.length < 200
+}
+
+/**
  * Detects RSS content truncated mid-sentence.
  *
  * RSS feeds routinely clip articles at 200-500 chars without a sentence
@@ -360,6 +398,14 @@ export async function processNewsroomArticle(
     ) {
       return { outcome: 'skipped' }
     }
+  }
+
+  // ── PROMOTIONAL CONTENT GATE ───────────────────────────────────────────────
+  // Sosyal medya tanıtım içerikleri (WhatsApp/Bluesky/Telegram kanalı paylaşımı)
+  // yayına alınmadan önce atlanır.
+  if (isPromotionalContent(input.originalTitle, input.originalContent ?? '', input.originalSummary)) {
+    console.log(`[newsroom/pipeline] promo content filtered: ${input.sourceUrl?.slice(0, 80)}`)
+    return { outcome: 'skipped' }
   }
 
   try {
