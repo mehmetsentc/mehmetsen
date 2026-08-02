@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
-import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
+import { CategoryLoadMore, categoryBeforeDayFromItems } from '@/components/category/CategoryLoadMore'
 import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import type { CategoryDef } from '@/constants/config'
@@ -72,8 +72,7 @@ export function DesktopCategoryPage({
   useScrollHeaderConfig({ subcategories: subTabs, tabParent })
 
   const items: NewsItem[] = useMemo(() => initialPosts.map(toNewsItem), [initialPosts])
-  const last = items[items.length - 1]
-  const initialCursor = last?.publishedAt ? String(Date.parse(last.publishedAt)) : null
+  const initialBeforeDay = categoryBeforeDayFromItems(items)
 
   const pageTitle =
     pageTitleProp ??
@@ -99,8 +98,8 @@ export function DesktopCategoryPage({
           <CategoryLoadMore
             categoryId={cat.id}
             initialItems={items}
-            initialCursor={initialCursor}
-            initialHasMore={items.length >= 20}
+            initialBeforeDay={initialBeforeDay}
+            initialHasMore
           />
 
           <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mb-10" />

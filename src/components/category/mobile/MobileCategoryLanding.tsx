@@ -12,6 +12,7 @@ import { MobileYerelCityStrip } from './MobileYerelCityStrip'
 import { MobileCategoryStory } from './MobileCategoryStories'
 import { MobileLatestStrip } from './MobileLatestStrip'
 import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
+import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
 import Link from 'next/link'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
@@ -131,13 +132,15 @@ export function MobileCategoryLanding({
     [initialPosts]
   )
 
-  // Cursor: son initialPost'un publishedAt'i — load more buradan devam eder
+  // Load-more starts from the day before the oldest SSR post
   const lastPost = initialPosts[initialPosts.length - 1]
-  const initialCursor = lastPost?.publishedAt
-    ? typeof lastPost.publishedAt === 'number'
-      ? String(lastPost.publishedAt)
-      : String(Date.parse(String(lastPost.publishedAt)))
-    : null
+  const initialBeforeDay = previousTurkeyDayFromPublishedAt(
+    lastPost?.publishedAt == null
+      ? undefined
+      : typeof lastPost.publishedAt === 'number'
+        ? lastPost.publishedAt
+        : String(lastPost.publishedAt)
+  )
 
   const empty = initialPosts.length === 0
 
@@ -174,8 +177,8 @@ export function MobileCategoryLanding({
         <CategoryLoadMore
           categoryId={cat.id}
           initialItems={[]}
-          initialCursor={initialCursor}
-          initialHasMore={initialPosts.length >= 20}
+          initialBeforeDay={initialBeforeDay}
+          initialHasMore={initialPosts.length > 0}
         />
       </div>
     </div>

@@ -49,7 +49,7 @@ export function HomeFeed({ data }: HomeFeedProps) {
   const feedHead = useMemo(() => dedupedLatest.slice(0, 6), [dedupedLatest])
   const feedTail = useMemo(() => dedupedLatest.slice(6), [dedupedLatest])
 
-  const { items: moreItems, loadingMore, sentinelRef } = useHomeFeedInfinite(feedTail)
+  const { items: moreItems, loadingMore, hasMore, loadMore } = useHomeFeedInfinite(feedTail)
 
   return (
     <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10 max-md:pt-4">
@@ -96,12 +96,13 @@ export function HomeFeed({ data }: HomeFeedProps) {
         <LocalNewsSection />
       </LazySection>
 
-      {moreItems.length > 0 ? (
+      {moreItems.length > 0 || hasMore ? (
         <section className="home-section" aria-label="Daha fazla haber">
           <MobileMagazineFeed
             items={moreItems}
             loadingMore={loadingMore}
-            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            onLoadMore={() => void loadMore()}
           />
         </section>
       ) : null}

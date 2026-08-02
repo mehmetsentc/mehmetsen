@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
+import { CategoryLoadMore, categoryBeforeDayFromItems } from '@/components/category/CategoryLoadMore'
 import type { TimelinePost } from '@/types/post'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -32,16 +32,12 @@ function toNewsItem(post: TimelinePost): NewsItem {
 export function CategoryFeed({ categoryId, initialPosts = [] }: CategoryFeedProps) {
   const items: NewsItem[] = useMemo(() => initialPosts.map(toNewsItem), [initialPosts])
 
-  // Compute cursor from last item's publishedAt for "load more"
-  const last = items[items.length - 1]
-  const initialCursor = last?.publishedAt ? String(Date.parse(last.publishedAt)) : null
-
   return (
     <CategoryLoadMore
       categoryId={categoryId}
       initialItems={items}
-      initialCursor={initialCursor}
-      initialHasMore={items.length >= 20}
+      initialBeforeDay={categoryBeforeDayFromItems(items)}
+      initialHasMore
     />
   )
 }

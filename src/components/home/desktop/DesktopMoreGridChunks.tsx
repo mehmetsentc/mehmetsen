@@ -3,6 +3,7 @@
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID } from '@/components/home/desktop/desktopLayout'
 import { ImageStory } from '@/components/home/desktop/DesktopStoryBlocks'
+import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import type { NewsItem } from '@/types/newsItem'
 
 function chunkItems<T>(items: T[], size: number): T[][] {
@@ -18,7 +19,8 @@ interface DesktopMoreGridChunksProps {
   title?: string
   href?: string
   loadingMore?: boolean
-  sentinelRef?: React.RefObject<HTMLDivElement | null>
+  hasMore?: boolean
+  onLoadMore?: () => void
 }
 
 /** 4-card grid chunks replacing archive-style DesktopMoreList rows. */
@@ -27,10 +29,11 @@ export function DesktopMoreGridChunks({
   title = 'Daha Fazla',
   href,
   loadingMore,
-  sentinelRef,
+  hasMore,
+  onLoadMore,
 }: DesktopMoreGridChunksProps) {
   const chunks = chunkItems(items, 4)
-  if (chunks.length === 0 && !loadingMore) return null
+  if (chunks.length === 0 && !loadingMore && !hasMore) return null
 
   return (
     <>
@@ -57,7 +60,9 @@ export function DesktopMoreGridChunks({
         </div>
       ) : null}
 
-      {sentinelRef ? <div ref={sentinelRef} className="h-1" aria-hidden /> : null}
+      {hasMore && onLoadMore ? (
+        <LoadMoreDayButton onClick={onLoadMore} loading={loadingMore} />
+      ) : null}
     </>
   )
 }

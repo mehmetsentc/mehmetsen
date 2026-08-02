@@ -5,15 +5,18 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
+import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
 import type { NewsItem } from '@/types/newsItem'
 import type { CategoryFeedPage } from '@/services/newsService.server'
 
 interface CategoryLoadMoreProps {
   categoryId: string
   initialItems: NewsItem[]
-  initialCursor: string | null
-  initialHasMore: boolean
+  /** Turkey YMD to request on first click (day before SSR tail). */
+  initialBeforeDay: string
+  initialHasMore?: boolean
 }
 
 function NewsRow({ item }: { item: NewsItem }) {
@@ -56,19 +59,19 @@ function NewsRow({ item }: { item: NewsItem }) {
 export function CategoryLoadMore({
   categoryId,
   initialItems,
-  initialCursor,
-  initialHasMore,
+  initialBeforeDay,
+  initialHasMore = true,
 }: CategoryLoadMoreProps) {
   const [items, setItems] = useState<NewsItem[]>(initialItems)
-  const [cursor, setCursor] = useState<string | null>(initialCursor)
-  const [hasMore, setHasMore] = useState(initialHasMore)
+  const [beforeDay, setBeforeDay] = useState<string | null>(initialBeforeDay)
+  const [hasMore, setHasMore] = useState(initialHasMore && Boolean(initialBeforeDay))
   const [isPending, startTransition] = useTransition()
 
   const loadMore = () => {
+    if (!beforeDay || !hasMore) return
     startTransition(async () => {
       try {
-        const params = new URLSearchParams({ id: categoryId, limit: '20' })
-        if (cursor) params.set('cursor', cursor)
+        const params = new URLSearchParams({ id: categoryId, beforeDay })
         const res = await fetch(`/api/feed/category?${params}`)
         if (!res.ok) return
         const data: CategoryFeedPage = await res.json()
@@ -76,10 +79,10 @@ export function CategoryLoadMore({
           const seen = new Set(prev.map((p) => p.id))
           return [...prev, ...data.items.filter((i) => !seen.has(i.id))]
         })
-        setCursor(data.nextCursor)
-        setHasMore(data.hasMore)
+        setBeforeDay(data.prevDay)
+        setHasMore(Boolean(data.hasMore && data.prevDay))
       } catch {
-        // silently fail
+        setHasMore(false)
       }
     })
   }
@@ -92,23 +95,14 @@ export function CategoryLoadMore({
         ))}
       </div>
 
-      {hasMore && (
-        <div className="mt-6 flex justify-center pb-8">
-          <button
-            onClick={loadMore}
-            disabled={isPending}
-            className="rounded-full border-2 border-[rgb(var(--color-text))] px-8 py-2.5 text-sm font-semibold text-[rgb(var(--color-text))] transition-all hover:bg-[rgb(var(--color-text))] hover:text-[rgb(var(--color-bg))] disabled:opacity-50"
-          >
-            {isPending ? 'Yükleniyor...' : 'Daha fazla haber'}
-          </button>
-        </div>
-      )}
-
-      {!hasMore && items.length > 0 && (
-        <p className="py-6 text-center text-xs text-[rgb(var(--color-text-muted))]">
-          Tüm haberler gösterildi
-        </p>
-      )}
+      {hasMore ? (
+        <LoadMoreDayButton onClick={loadMore} loading={isPending} />
+      ) : null}
     </div>
   )
+}
+
+export function categoryBeforeDayFromItems(items: NewsItem[]): string {
+  const last = items[items.length - 1]
+  return previousTurkeyDayFromPublishedAt(last?.publishedAt)
 }

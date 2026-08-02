@@ -2,19 +2,15 @@
 
 import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
+import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
-import { getCategoryLabel } from '@/lib/newsMapper'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
-import { getCategoryAccentColor } from '@/lib/categoryAccent'
 import type { NewsItem } from '@/types/newsItem'
 import { cn } from '@/lib/utils'
 
 function MobileListStory({ item }: { item: NewsItem }) {
   const href = newsItemDetailHref(item)
   const image = item.imageUrl || FEED_FALLBACK_LOGO
-  const category = getCategoryLabel(item.category)
-  const summary = (item.description || '').trim()
-  const accent = getCategoryAccentColor(item.category || '')
 
   return (
     <article
@@ -39,24 +35,9 @@ function MobileListStory({ item }: { item: NewsItem }) {
           />
         </div>
 
-        <div className="max-md:mt-3 max-md:px-4">
-          {category ? (
-            <span
-              className="text-[11px] font-bold uppercase tracking-wide max-md:text-[12px]"
-              style={{ color: accent }}
-            >
-              {category}
-            </span>
-          ) : null}
-          <h3 className="mt-1 line-clamp-3 text-base font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline max-md:mt-1.5 max-md:line-clamp-2 max-md:text-[1.125rem] max-md:font-extrabold max-md:leading-[1.25]">
-            {item.title}
-          </h3>
-          {summary ? (
-            <p className="mt-2 hidden line-clamp-2 text-[15px] leading-relaxed text-[rgb(var(--color-summary))] max-md:mt-1.5 max-md:line-clamp-1 max-md:block max-md:text-[14px]">
-              {summary}
-            </p>
-          ) : null}
-        </div>
+        <h3 className="px-0 text-base font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline max-md:mt-3 max-md:px-4 max-md:text-[1.125rem] max-md:font-extrabold max-md:leading-[1.3]">
+          {item.title}
+        </h3>
       </Link>
     </article>
   )
@@ -65,14 +46,17 @@ function MobileListStory({ item }: { item: NewsItem }) {
 interface MobileMagazineFeedProps {
   items: NewsItem[]
   loadingMore?: boolean
-  sentinelRef?: React.RefObject<HTMLDivElement | null>
+  hasMore?: boolean
+  onLoadMore?: () => void
 }
 
-/**
- * Single-column editorial list for mobile home.
- * Compact image + category + headline — denser above-the-fold feed.
- */
-export function MobileMagazineFeed({ items, loadingMore, sentinelRef }: MobileMagazineFeedProps) {
+/** Mobile home Akış: image + full headline only. */
+export function MobileMagazineFeed({
+  items,
+  loadingMore,
+  hasMore,
+  onLoadMore,
+}: MobileMagazineFeedProps) {
   if (items.length === 0 && !loadingMore) return null
 
   return (
@@ -90,16 +74,17 @@ export function MobileMagazineFeed({ items, loadingMore, sentinelRef }: MobileMa
             >
               <div className="aspect-[16/9] w-full animate-pulse rounded-xl bg-[rgb(var(--color-border))] max-md:mx-4 max-md:w-[calc(100%-2rem)] max-md:rounded-[14px]" />
               <div className="max-md:px-4">
-                <div className="h-3 w-16 animate-pulse rounded bg-[rgb(var(--color-border))]" />
                 <div className="mt-2 h-5 w-full animate-pulse rounded bg-[rgb(var(--color-border))]" />
-                <div className="mt-1.5 h-4 w-3/4 animate-pulse rounded bg-[rgb(var(--color-border))]" />
+                <div className="mt-1.5 h-5 w-4/5 animate-pulse rounded bg-[rgb(var(--color-border))]" />
               </div>
             </div>
           ))}
         </>
       ) : null}
 
-      {sentinelRef ? <div ref={sentinelRef} className="h-1" aria-hidden /> : null}
+      {hasMore && onLoadMore ? (
+        <LoadMoreDayButton onClick={onLoadMore} loading={loadingMore} />
+      ) : null}
     </div>
   )
 }

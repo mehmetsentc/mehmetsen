@@ -147,7 +147,7 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
     }
   }, [data, categoryRails])
 
-  const { items: moreItems, loadingMore, sentinelRef } = useHomeFeedInfinite(layout.moreList)
+  const { items: moreItems, loadingMore, hasMore, loadMore } = useHomeFeedInfinite(layout.moreList)
   const hasHero = layout.heroLead
 
   return (
@@ -313,7 +313,8 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
         title="Daha Fazla"
         href={ROUTES.CATEGORY('gundem')}
         loadingMore={loadingMore}
-        sentinelRef={sentinelRef}
+        hasMore={hasMore}
+        onLoadMore={() => void loadMore()}
       />
 
       <section

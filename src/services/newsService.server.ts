@@ -9,6 +9,11 @@ import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { getCategoryFamily, getHomeFeedCategoryFamily } from '@/constants/config'
 import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
+import {
+  addTurkeyDays,
+  isTurkeyYmd,
+  turkeyDayBounds,
+} from '@/lib/turkeyCalendar'
 import type { Post } from '@/types/post'
 import type { FeedSliderItem } from '@/types/feedSlider'
 import {
@@ -608,53 +613,130 @@ export async function getHomeLocalNews(citySlug: string, limitCount = 8): Promis
 
 export interface HomeFeedMoreResult {
   items: NewsItem[]
-  nextCursor: string | null
+  /** Turkey YMD that was loaded (null if empty after skip window). */
+  day: string | null
+  /** Next `beforeDay` the client should request. */
+  prevDay: string | null
   hasMore: boolean
 }
 
-/** Paginated home feed items for infinite scroll. */
-export async function getHomeFeedMore(
-  cursor?: string,
-  limitCount = 8
-): Promise<HomeFeedMoreResult> {
+const DAY_FEED_MAX_ITEMS = 300
+const EMPTY_DAY_SKIP_MAX = 7
+
+async function hasPublishedBefore(beforeMs: number, categoryId?: string): Promise<boolean> {
   try {
     const db = getAdminFirestore()
-    let query = db
+    let q = db
       .collection(NEWS_COLLECTION)
       .where('status', '==', 'published')
+      .where('publishedAt', '<', beforeMs)
       .orderBy('publishedAt', 'desc')
-      .limit(limitCount + 1)
+      .limit(1)
 
-    if (cursor) {
-      const cursorMs = Number(cursor)
-      if (Number.isFinite(cursorMs)) {
-        query = db
-          .collection(NEWS_COLLECTION)
-          .where('status', '==', 'published')
-          .orderBy('publishedAt', 'desc')
-          .startAfter(cursorMs)
-          .limit(limitCount + 1)
-      }
+    if (categoryId) {
+      const family = getCategoryFamily(categoryId)
+      q = db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where(
+          'categoryId',
+          family.length > 1 ? 'in' : '==',
+          family.length > 1 ? family : categoryId
+        )
+        .where('publishedAt', '<', beforeMs)
+        .orderBy('publishedAt', 'desc')
+        .limit(1)
     }
 
-    const snap = await query.get()
-    const all = mapAdminDocs(snap.docs)
-    const hasMore = all.length > limitCount
-    const page = all.slice(0, limitCount)
-    const last = page[page.length - 1]
-    const nextCursor = hasMore && last
-      ? String(Date.parse(last.publishedAt ?? last.createdAt ?? '') || '')
-      : null
+    const snap = await q.get()
+    return !snap.empty
+  } catch (error) {
+    console.warn('[newsService.server] hasPublishedBefore failed:', error)
+    return false
+  }
+}
 
+async function fetchPublishedInDay(
+  ymd: string,
+  categoryId?: string
+): Promise<NewsItem[]> {
+  const { startMs, endMs } = turkeyDayBounds(ymd)
+  const db = getAdminFirestore()
+
+  let q = db
+    .collection(NEWS_COLLECTION)
+    .where('status', '==', 'published')
+    .where('publishedAt', '>=', startMs)
+    .where('publishedAt', '<', endMs)
+    .orderBy('publishedAt', 'desc')
+    .limit(DAY_FEED_MAX_ITEMS)
+
+  if (categoryId) {
+    const family = getCategoryFamily(categoryId)
+    q = db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where(
+        'categoryId',
+        family.length > 1 ? 'in' : '==',
+        family.length > 1 ? family : categoryId
+      )
+      .where('publishedAt', '>=', startMs)
+      .where('publishedAt', '<', endMs)
+      .orderBy('publishedAt', 'desc')
+      .limit(DAY_FEED_MAX_ITEMS)
+  }
+
+  const snap = await q.get()
+  return mapAdminDocs(snap.docs).map(slimNewsItemForFeed)
+}
+
+/**
+ * Load one Turkey calendar day of published news (home or category).
+ * Empty days are skipped up to EMPTY_DAY_SKIP_MAX.
+ */
+export async function getFeedByTurkeyDay(
+  beforeDay: string,
+  categoryId?: string
+): Promise<HomeFeedMoreResult> {
+  if (!isTurkeyYmd(beforeDay)) {
+    return { items: [], day: null, prevDay: null, hasMore: false }
+  }
+
+  try {
+    let ymd = beforeDay
+    for (let i = 0; i < EMPTY_DAY_SKIP_MAX; i++) {
+      const items = await fetchPublishedInDay(ymd, categoryId)
+      if (items.length > 0) {
+        const { startMs } = turkeyDayBounds(ymd)
+        const hasMore = await hasPublishedBefore(startMs, categoryId)
+        return {
+          items,
+          day: ymd,
+          prevDay: addTurkeyDays(ymd, -1),
+          hasMore,
+        }
+      }
+      ymd = addTurkeyDays(ymd, -1)
+    }
+
+    const { startMs } = turkeyDayBounds(ymd)
+    const hasMore = await hasPublishedBefore(startMs, categoryId)
     return {
-      items: page.map(slimNewsItemForFeed),
-      nextCursor: nextCursor && nextCursor !== 'NaN' ? nextCursor : null,
+      items: [],
+      day: null,
+      prevDay: hasMore ? ymd : null,
       hasMore,
     }
   } catch (error) {
-    console.warn('[newsService.server] getHomeFeedMore failed:', error)
-    return { items: [], nextCursor: null, hasMore: false }
+    console.warn('[newsService.server] getFeedByTurkeyDay failed:', error)
+    return { items: [], day: null, prevDay: null, hasMore: false }
   }
+}
+
+/** @deprecated Prefer getFeedByTurkeyDay — kept name for call-site clarity on home. */
+export async function getHomeFeedMore(beforeDay: string): Promise<HomeFeedMoreResult> {
+  return getFeedByTurkeyDay(beforeDay)
 }
 
 /** Archive items published on the same calendar day (any year). */
@@ -866,77 +948,25 @@ export async function getPostsByAuthorId(authorId: string, limitCount = 40): Pro
   }
 }
 
-// ─── Category feed pagination (server-side, no client Firestore) ──────────────
+// ─── Category feed by Turkey calendar day ─────────────────────────────────────
 
 export interface CategoryFeedPage {
   items: NewsItem[]
-  nextCursor: string | null
+  day: string | null
+  prevDay: string | null
   hasMore: boolean
 }
 
-/**
- * Returns one page of published articles for a category.
- * Uses timestamp cursor (publishedAt ms) for pagination.
- * Wrapped in unstable_cache so Vercel re-uses results across requests.
- */
-async function fetchCategoryFeedPage(
+async function fetchCategoryFeedByDay(
   categoryId: string,
-  cursor: string | null,
-  limitCount: number
+  beforeDay: string
 ): Promise<CategoryFeedPage> {
-  try {
-    const db = getAdminFirestore()
-    const family = getCategoryFamily(categoryId)
-
-    let q = db
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .where(
-        family.length > 1 ? 'categoryId' : 'categoryId',
-        family.length > 1 ? 'in' : '==',
-        family.length > 1 ? family : categoryId
-      )
-      .orderBy('publishedAt', 'desc')
-      .limit(limitCount + 1)
-
-    if (cursor) {
-      const cursorMs = Number(cursor)
-      if (Number.isFinite(cursorMs) && cursorMs > 0) {
-        q = db
-          .collection(NEWS_COLLECTION)
-          .where('status', '==', 'published')
-          .where(
-            family.length > 1 ? 'categoryId' : 'categoryId',
-            family.length > 1 ? 'in' : '==',
-            family.length > 1 ? family : categoryId
-          )
-          .orderBy('publishedAt', 'desc')
-          .startAfter(cursorMs)
-          .limit(limitCount + 1)
-      }
-    }
-
-    const snap = await q.get()
-    const all = mapAdminDocs(snap.docs)
-    const hasMore = all.length > limitCount
-    const page = all.slice(0, limitCount)
-    const last = page[page.length - 1]
-    const lastMs = last ? Date.parse(last.publishedAt ?? last.createdAt ?? '') : NaN
-    const nextCursor = hasMore && !isNaN(lastMs) ? String(lastMs) : null
-
-    return { items: page.map(slimNewsItemForFeed), nextCursor, hasMore }
-  } catch (err) {
-    const code = (err as { code?: number }).code
-    if (code === 8) console.warn('[newsService] category feed RESOURCE_EXHAUSTED')
-    else console.warn('[newsService] category feed error:', err)
-    return { items: [], nextCursor: null, hasMore: false }
-  }
+  return getFeedByTurkeyDay(beforeDay, categoryId)
 }
 
 export const getCategoryFeedPage = unstable_cache(
-  (categoryId: string, cursor: string | null, limitCount: number) =>
-    fetchCategoryFeedPage(categoryId, cursor, limitCount),
-  ['category-feed-page-v1'],
+  (categoryId: string, beforeDay: string) => fetchCategoryFeedByDay(categoryId, beforeDay),
+  ['category-feed-day-v1'],
   { revalidate: 300, tags: ['category-feed'] }
 )
 

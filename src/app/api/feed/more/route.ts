@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getHomeFeedMore } from '@/services/newsService.server'
+import { addTurkeyDays, isTurkeyYmd, turkeyYmdNow } from '@/lib/turkeyCalendar'
 
 export const runtime = 'nodejs'
 export const revalidate = 120
 
+/**
+ * GET /api/feed/more?beforeDay=YYYY-MM-DD
+ * Returns published news for that Turkey calendar day (skips empty days up to 7).
+ */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const cursor = searchParams.get('cursor') || undefined
-  const limit = Math.min(Number(searchParams.get('limit') || 8), 16)
+  const raw = searchParams.get('beforeDay')?.trim() || ''
+  const beforeDay = isTurkeyYmd(raw) ? raw : addTurkeyDays(turkeyYmdNow(), -1)
 
   try {
-    const result = await getHomeFeedMore(cursor, limit)
+    const result = await getHomeFeedMore(beforeDay)
     return NextResponse.json(result, {
       headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' },
     })
