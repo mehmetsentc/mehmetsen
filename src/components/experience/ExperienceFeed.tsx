@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { AdaptiveMasonry } from './AdaptiveMasonry'
 import { buildExperienceSlots } from './feedRhythm'
 import { CategoryStoryRail } from '@/components/category/CategoryStoryRail'
+import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import type { TimelinePost } from '@/types/post'
 import type { ExperienceTheme } from './types'
@@ -17,6 +18,8 @@ interface ExperienceFeedProps {
   onLoadMore?: () => void
   /** Insert a discover rail after the first rhythm block. */
   showDiscoverRail?: boolean
+  /** Day-based button (default) vs legacy infinite scroll sentinel. */
+  loadMoreMode?: 'button' | 'sentinel'
 }
 
 function LoadMoreSentinel({
@@ -59,6 +62,7 @@ export function ExperienceFeed({
   hasMore = false,
   onLoadMore,
   showDiscoverRail = true,
+  loadMoreMode = 'button',
 }: ExperienceFeedProps) {
   const slots = useMemo(() => buildExperienceSlots(posts), [posts])
 
@@ -119,7 +123,13 @@ export function ExperienceFeed({
         </div>
       ) : null}
 
-      <LoadMoreSentinel enabled={hasMore} loading={loadingMore || loading} onLoadMore={onLoadMore} />
+      {hasMore && onLoadMore && loadMoreMode === 'button' ? (
+        <LoadMoreDayButton onClick={onLoadMore} loading={loadingMore} />
+      ) : null}
+
+      {loadMoreMode === 'sentinel' ? (
+        <LoadMoreSentinel enabled={hasMore} loading={loadingMore || loading} onLoadMore={onLoadMore} />
+      ) : null}
     </div>
   )
 }
