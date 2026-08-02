@@ -16,6 +16,7 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		BB1234560000000200000002 /* NativeAppleSignInPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1234560000000100000001 /* NativeAppleSignInPlugin.swift */; };
+		BB1234560000000400000004 /* AppViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1234560000000300000003 /* AppViewController.swift */; };
 		EE000001000000020000002 /* NativeGeolocationPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE000001000000010000001 /* NativeGeolocationPlugin.swift */; };
 /* End PBXBuildFile section */
 
@@ -31,6 +32,7 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		BB1234560000000100000001 /* NativeAppleSignInPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAppleSignInPlugin.swift; sourceTree = "<group>"; };
+		BB1234560000000300000003 /* AppViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewController.swift; sourceTree = "<group>"; };
 		EE000001000000010000001 /* NativeGeolocationPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGeolocationPlugin.swift; sourceTree = "<group>"; };
 		CC000001000000010000001 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -69,6 +71,7 @@
 			children = (
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				BB1234560000000300000003 /* AppViewController.swift */,
 				BB1234560000000100000001 /* NativeAppleSignInPlugin.swift */,
 				EE000001000000010000001 /* NativeGeolocationPlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -163,6 +166,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				BB1234560000000400000004 /* AppViewController.swift in Sources */,
 				BB1234560000000200000002 /* NativeAppleSignInPlugin.swift in Sources */,
 				EE000001000000020000002 /* NativeGeolocationPlugin.swift in Sources */,
 			);
@@ -305,7 +309,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = VMZA353GB7;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -331,7 +335,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = VMZA353GB7;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;

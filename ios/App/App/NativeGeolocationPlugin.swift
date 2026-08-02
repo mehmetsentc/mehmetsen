@@ -11,7 +11,13 @@ import CoreLocation
  * garantilemek için kullanılır.
  */
 @objc(NativeGeolocationPlugin)
-public class NativeGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate {
+public class NativeGeolocationPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate {
+
+    public let identifier = "NativeGeolocationPlugin"
+    public let jsName = "NativeGeolocation"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "requestPermission", returnType: CAPPluginReturnPromise)
+    ]
 
     private var locationManager: CLLocationManager?
     private var permissionCall: CAPPluginCall?
