@@ -1,27 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
-import Link from 'next/link'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
-import {
-  getCategorySectionDef,
-  getCategorySectionHref,
-  getThemedCategorySectionIds,
-} from '@/constants/categorySections'
+import { useMemo } from 'react'
 import { getCategoryAccent } from '@/constants/categoryTheme'
-import { useThemedCategoryFeed } from '@/hooks/useThemedCategoryFeed'
 import {
-  appendFeedSlots,
-  collectRenderedIds,
   composeMobileCategoryLayout,
   type MobileCategoryBlock,
   type MobileStorySlot,
 } from '@/lib/mobileCategoryComposition'
 import { MobileCategoryHeader } from './MobileCategoryHeader'
-import { MobileLatestStrip } from './MobileLatestStrip'
-import { MobileCategoryStory } from './MobileCategoryStories'
 import { MobileYerelCityStrip } from './MobileYerelCityStrip'
-import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
+import { MobileCategoryStory } from './MobileCategoryStories'
+import { MobileLatestStrip } from './MobileLatestStrip'
+import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
+import Link from 'next/link'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
 
@@ -46,71 +37,6 @@ interface MobileCategoryLandingProps {
   topExtras?: React.ReactNode
 }
 
-function sectionTitle(sectionId: string): string {
-  const def = getCategorySectionDef(sectionId)
-  if (!def) return sectionId
-  const parent = DEFAULT_CATEGORIES.find((c) => c.id === def.parentId)
-  if (parent && sectionId !== parent.id) return def.name
-  return def.name
-}
-
-function SectionVisibilityTrigger({
-  onVisible,
-  enabled,
-}: {
-  onVisible: () => void
-  enabled: boolean
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const firedRef = useRef(false)
-
-  useEffect(() => {
-    if (!enabled) return
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && !firedRef.current) {
-          firedRef.current = true
-          onVisible()
-        }
-      },
-      { rootMargin: '280px', threshold: 0 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [onVisible, enabled])
-
-  return <div ref={ref} className="h-px" aria-hidden />
-}
-
-function LoadMoreSentinel({
-  onLoadMore,
-  loading,
-  hasMore,
-}: {
-  onLoadMore: () => void
-  loading: boolean
-  hasMore: boolean
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el || !hasMore) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && !loading) onLoadMore()
-      },
-      { rootMargin: '480px', threshold: 0.01 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [onLoadMore, loading, hasMore])
-
-  return <div ref={ref} className="h-1" aria-hidden />
-}
-
 function StoryStack({ slots, priorityFirst }: { slots: MobileStorySlot[]; priorityFirst?: boolean }) {
   return (
     <div className="mc-stack">
@@ -126,13 +52,7 @@ function StoryStack({ slots, priorityFirst }: { slots: MobileStorySlot[]; priori
   )
 }
 
-function BlockView({
-  block,
-  isFirstHero,
-}: {
-  block: MobileCategoryBlock
-  isFirstHero?: boolean
-}) {
+function BlockView({ block, isFirstHero }: { block: MobileCategoryBlock; isFirstHero?: boolean }) {
   if (block.type === 'hero' && block.slots[0]) {
     return (
       <MobileCategoryStory
@@ -142,11 +62,9 @@ function BlockView({
       />
     )
   }
-
   if (block.type === 'latest' && block.latestTitles) {
     return <MobileLatestStrip items={block.latestTitles} />
   }
-
   if (block.type === 'videos') {
     return (
       <section className="mc-section" aria-label={block.title ?? 'Video'}>
@@ -159,7 +77,6 @@ function BlockView({
       </section>
     )
   }
-
   if (block.type === 'section') {
     return (
       <section className="mc-section" aria-label={block.title}>
@@ -176,7 +93,6 @@ function BlockView({
       </section>
     )
   }
-
   if (block.type === 'feed') {
     return (
       <section className="mc-section" aria-label={block.title ?? 'Son Haberler'}>
@@ -185,14 +101,15 @@ function BlockView({
       </section>
     )
   }
-
   return <StoryStack slots={block.slots} />
 }
 
 /**
- * Mobile-only (<768px) editorial category / subcategory landing.
- * Opening layout is frozen from server initialPosts so lazy section loads
- * do not reshuffle the top of the page.
+ * Mobile-only (<768px) editorial category landing.
+ *
+ * COST REDUCTION: Infinite scroll ve client-side Firestore okuma kaldırıldı.
+ * Açılış blokları SSR initialPosts'tan oluşturulur (sıfır Firestore okuma).
+ * "Daha fazla yükle" butonu /api/feed/category (server-cached, 5 dk) çağırır.
  */
 export function MobileCategoryLanding({
   cat,
@@ -205,89 +122,24 @@ export function MobileCategoryLanding({
   pageTitle,
   topExtras,
 }: MobileCategoryLandingProps) {
-  const sectionIds = useMemo(() => getThemedCategorySectionIds(cat.id), [cat.id])
   const accent = getCategoryAccent(cat.id)
   const style = { ['--mc-accent' as string]: accent.rgb } as React.CSSProperties
 
-  const { sections, activated, ensureSectionLoaded, loadMoreSection } = useThemedCategoryFeed(
-    sectionIds,
-    initialPosts
-  )
-
-  const bootedRef = useRef(false)
-  useEffect(() => {
-    if (bootedRef.current) return
-    const first = sectionIds[0]
-    if (!first) return
-    bootedRef.current = true
-    ensureSectionLoaded(first)
-  }, [sectionIds, ensureSectionLoaded])
-
-  // Stable opening from SSR posts only — never reshuffles when more sections load
+  // Açılış editorial layout — SSR verisi, Firestore okuma yok
   const openingBlocks = useMemo(
-    () =>
-      composeMobileCategoryLayout({
-        posts: initialPosts,
-        sections: [],
-        isSubcategory: true, // force opening-only (no sibling sections here)
-      }),
+    () => composeMobileCategoryLayout({ posts: initialPosts, sections: [], isSubcategory: true }),
     [initialPosts]
   )
 
-  const openingIds = useMemo(() => collectRenderedIds(openingBlocks), [openingBlocks])
+  // Cursor: son initialPost'un publishedAt'i — load more buradan devam eder
+  const lastPost = initialPosts[initialPosts.length - 1]
+  const initialCursor = lastPost?.publishedAt
+    ? typeof lastPost.publishedAt === 'number'
+      ? String(lastPost.publishedAt)
+      : String(Date.parse(String(lastPost.publishedAt)))
+    : null
 
-  const siblingSectionBlocks = useMemo(() => {
-    if (isSubcategory) return [] as MobileCategoryBlock[]
-    const used = new Set(openingIds)
-    const blocks: MobileCategoryBlock[] = []
-
-    for (const sectionId of sectionIds) {
-      if (sectionId === cat.id) continue
-      const state = sections[sectionId]
-      const posts = state?.posts ?? []
-      if (posts.length === 0) continue
-      const slots = appendFeedSlots(posts, used, 0).slice(0, 4)
-      // Prefer large-first for section identity
-      if (slots[0]) slots[0] = { ...slots[0], variant: slots[0].variant === 'text' ? 'text' : 'large' }
-      if (slots.length === 0) continue
-      blocks.push({
-        type: 'section',
-        title: sectionTitle(sectionId),
-        href: getCategorySectionHref(sectionId),
-        slots,
-      })
-    }
-    return blocks
-  }, [isSubcategory, sectionIds, cat.id, sections, openingIds])
-
-  const renderedIds = useMemo(() => {
-    const ids = new Set(openingIds)
-    for (const b of siblingSectionBlocks) {
-      for (const s of b.slots) ids.add(s.post.id)
-    }
-    return ids
-  }, [openingIds, siblingSectionBlocks])
-
-  const primarySectionId = isSubcategory
-    ? sectionIds[0]
-    : (sectionIds.includes(cat.id) ? cat.id : sectionIds[sectionIds.length - 1])
-
-  const primaryState = primarySectionId ? sections[primarySectionId] : undefined
-
-  const extraFeedSlots = useMemo(() => {
-    if (!primaryState?.posts.length) return [] as MobileStorySlot[]
-    const ids = new Set(renderedIds)
-    return appendFeedSlots(primaryState.posts, ids, openingBlocks.length)
-  }, [primaryState?.posts, renderedIds, openingBlocks.length])
-
-  const loadingInitial =
-    initialPosts.length === 0 &&
-    Boolean(primaryState && !primaryState.loaded && (primaryState.loading || !primaryState.loaded))
-
-  const empty =
-    !loadingInitial &&
-    initialPosts.length === 0 &&
-    (!primaryState || (primaryState.loaded && primaryState.posts.length === 0))
+  const empty = initialPosts.length === 0
 
   return (
     <div className="mc-page" style={style}>
@@ -305,16 +157,6 @@ export function MobileCategoryLanding({
 
       {cat.id === 'yerel-haber' ? <MobileYerelCityStrip /> : null}
 
-      {loadingInitial ? (
-        <div className="mc-skeletons">
-          <div className="mc-skel mc-skel--hero" />
-          <div className="mc-skel mc-skel--line" />
-          <div className="mc-skel mc-skel--large" />
-          <div className="mc-skel mc-skel--compact" />
-          <div className="mc-skel mc-skel--compact" />
-        </div>
-      ) : null}
-
       {empty ? (
         <p className="mc-empty">Bu kategoride henüz yayınlanmış haber bulunmuyor.</p>
       ) : null}
@@ -327,61 +169,15 @@ export function MobileCategoryLanding({
         />
       ))}
 
-      {!isSubcategory
-        ? sectionIds
-            .filter((id) => id !== cat.id)
-            .map((sectionId) => (
-              <SectionVisibilityTrigger
-                key={`vis-${sectionId}`}
-                onVisible={() => ensureSectionLoaded(sectionId)}
-                enabled={activated}
-              />
-            ))
-        : null}
-
-      {siblingSectionBlocks.map((block, i) => (
-        <BlockView key={`sec-${block.title}-${i}`} block={block} />
-      ))}
-
-      {!isSubcategory
-        ? sectionIds
-            .filter((id) => id !== cat.id)
-            .map((sectionId) => {
-              const state = sections[sectionId]
-              if (!state?.loading || state.loaded) return null
-              return (
-                <div key={`sk-${sectionId}`} className="mc-skeletons">
-                  <TimelineItemSkeleton />
-                </div>
-              )
-            })
-        : null}
-
-      {extraFeedSlots.length > 0 ? (
-        <section className="mc-section" aria-label="Son Haberler">
-          {openingBlocks.some((b) => b.type === 'feed') ? null : (
-            <h2 className="mc-section__title" style={{ paddingInline: '1rem', marginBottom: '1.25rem' }}>
-              Son Haberler
-            </h2>
-          )}
-          <StoryStack slots={extraFeedSlots} />
-        </section>
-      ) : null}
-
-      {primaryState?.loadingMore ? (
-        <div className="mc-skeletons">
-          <div className="mc-skel mc-skel--compact" />
-          <div className="mc-skel mc-skel--compact" />
-        </div>
-      ) : null}
-
-      {primarySectionId && primaryState ? (
-        <LoadMoreSentinel
-          onLoadMore={() => loadMoreSection(primarySectionId)}
-          loading={primaryState.loadingMore || primaryState.loading}
-          hasMore={primaryState.hasMore}
+      {/* Sunucu taraflı sayfalama — client Firestore okuma yok */}
+      <div className="px-4 pt-2 pb-8">
+        <CategoryLoadMore
+          categoryId={cat.id}
+          initialItems={[]}
+          initialCursor={initialCursor}
+          initialHasMore={initialPosts.length >= 20}
         />
-      ) : null}
+      </div>
     </div>
   )
 }

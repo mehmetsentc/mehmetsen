@@ -1,14 +1,14 @@
 'use client'
 
+import { useMemo } from 'react'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
-import { CategoryExperience } from '@/components/experience/CategoryExperience'
+import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
 import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
-import { getCache } from '@/lib/clientCache'
-import { PAGE_CACHE_KEYS } from '@/lib/pageCache'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
+import type { NewsItem } from '@/types/newsItem'
 
 interface SubTab {
   id: string
@@ -33,6 +33,30 @@ interface DesktopCategoryPageProps {
   showTabs?: boolean
 }
 
+function toNewsItem(post: TimelinePost): NewsItem {
+  const pubMs =
+    typeof post.publishedAt === 'number'
+      ? post.publishedAt
+      : post.publishedAt
+        ? Date.parse(String(post.publishedAt))
+        : null
+  return {
+    id: post.id,
+    slug: post.slug ?? post.id,
+    title: post.title ?? '',
+    description: post.spot?.trim().slice(0, 120) || undefined,
+    imageUrl: post.coverImageUrl ?? undefined,
+    publishedAt: pubMs ? new Date(pubMs).toISOString() : undefined,
+    category: post.categoryId ?? undefined,
+    breaking: post.isBreaking ?? false,
+  }
+}
+
+/**
+ * Desktop category page — client-side Firestore kaldırıldı.
+ * CategoryExperience + useThemedCategoryFeed yerine CategoryLoadMore kullanılır.
+ * Load more, /api/feed/category (5 dk ISR) üzerinden sunucu tarafı çalışır.
+ */
 export function DesktopCategoryPage({
   cat,
   isSubcategory,
@@ -47,8 +71,9 @@ export function DesktopCategoryPage({
 }: DesktopCategoryPageProps) {
   useScrollHeaderConfig({ subcategories: subTabs, tabParent })
 
-  const cacheKey = PAGE_CACHE_KEYS.category(cat.id)
-  const cachedPosts = initialPosts.length ? initialPosts : (getCache<TimelinePost[]>(cacheKey) ?? [])
+  const items: NewsItem[] = useMemo(() => initialPosts.map(toNewsItem), [initialPosts])
+  const last = items[items.length - 1]
+  const initialCursor = last?.publishedAt ? String(Date.parse(last.publishedAt)) : null
 
   const pageTitle =
     pageTitleProp ??
@@ -71,11 +96,11 @@ export function DesktopCategoryPage({
         <>
           <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mb-8" />
 
-          <CategoryExperience
+          <CategoryLoadMore
             categoryId={cat.id}
-            initialPosts={cachedPosts}
-            breakpoint="desktop"
-            className="nl-category-experience"
+            initialItems={items}
+            initialCursor={initialCursor}
+            initialHasMore={items.length >= 20}
           />
 
           <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mb-10" />

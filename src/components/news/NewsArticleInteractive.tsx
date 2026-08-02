@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
-import { postService } from '@/services/postService'
 import { LikeButton } from '@/components/post/LikeButton'
 import { SaveButton } from '@/components/post/SaveButton'
 import { ShareButton } from '@/components/post/ShareButton'
@@ -17,6 +16,39 @@ import { formatCount } from '@/lib/postUtils'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
 import type { Post } from '@/types/post'
+import type { CategoryFeedPage } from '@/services/newsService.server'
+
+/**
+ * COST REDUCTION: getSuggestedNews() + getNewsTimeline() direkt Firestore okuması kaldırıldı.
+ * Her makale sayfasında ~34 Firestore oku tetikliyordu (5000 görüntüleme/gün → ~170k oku/gün).
+ * Yerine /api/feed/category (5 dk ISR cache) kullanılıyor — Firestore'a asla direkt gitmiyor.
+ */
+function newsItemToPost(item: CategoryFeedPage['items'][number]): Post {
+  return {
+    id: item.id,
+    slug: item.slug ?? item.id,
+    title: item.title ?? '',
+    coverImageUrl: item.imageUrl ?? null,
+    categoryId: item.category ?? 'gundem',
+    publishedAt: item.publishedAt ?? null,
+    summary: item.description ?? '',
+    description: item.description ?? '',
+    postType: 'news',
+    status: 'published',
+    type: 'news',
+    content: '',
+    author: '',
+    authorId: '',
+    createdAt: null,
+    updatedAt: null,
+    likesCount: 0,
+    commentsCount: 0,
+    savesCount: 0,
+    viewsCount: 0,
+    isBreaking: item.breaking ?? false,
+    featured: false,
+  } as unknown as Post
+}
 
 const ArticleTOC = dynamic(
   () => import('@/components/news/ArticleTOC').then((m) => m.ArticleTOC),
@@ -33,7 +65,6 @@ interface NewsArticleInteractiveProps {
 
 export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
   const [suggested, setSuggested] = useState<Post[]>([])
-  const [latest, setLatest] = useState<Post[]>([])
   const { leadText, bodyText } = parseArticleContent(post)
 
   const { liked, count: likesCount, toggle: toggleLike, loading: likeLoading } = useLike({
@@ -47,36 +78,37 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
   })
 
   useEffect(() => {
-    postService.incrementViews(post.id).catch(() => {})
+    // incrementViews disabled — COST PAUSE
+    // postService.incrementViews(post.id).catch(() => {})
 
     let cancelled = false
-    const loadRelated = () => {
+    const loadRelated = async () => {
       if (cancelled) return
-      void postService
-        .getSuggestedNews(post.id, { categoryId: post.categoryId ?? 'gundem', limit: 8 })
-        .then((items) => {
-          if (!cancelled) setSuggested(items)
-        })
-        .catch(() => {})
-      void postService
-        .getNewsTimeline(undefined, { feedSource: 'nahaber' })
-        .then((result) => {
-          if (!cancelled) {
-            setLatest(result.posts.filter((item) => item.id !== post.id).slice(0, 8))
-          }
-        })
-        .catch(() => {})
+      try {
+        // /api/feed/category → 5 dk ISR cache, direkt Firestore okuması yok
+        const categoryId = post.categoryId ?? 'gundem'
+        const res = await fetch(`/api/feed/category?id=${categoryId}&limit=12`)
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as CategoryFeedPage
+        const filtered = data.items
+          .filter((i) => i.id !== post.id)
+          .slice(0, 8)
+          .map(newsItemToPost)
+        if (!cancelled) setSuggested(filtered)
+      } catch {
+        // non-blocking
+      }
     }
 
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(loadRelated, { timeout: 2500 })
+      const id = window.requestIdleCallback(() => void loadRelated(), { timeout: 2500 })
       return () => {
         cancelled = true
         window.cancelIdleCallback(id)
       }
     }
 
-    const t = globalThis.setTimeout(loadRelated, 1200)
+    const t = globalThis.setTimeout(() => void loadRelated(), 1200)
     return () => {
       cancelled = true
       globalThis.clearTimeout(t)
@@ -136,9 +168,9 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
         </section>
       ) : null}
 
-      {(suggested[0] ?? latest[0]) && (
+      {suggested[0] && (
         <section className="news-article-rail mt-4 w-full">
-          <NextArticleCard nextPost={suggested[0] ?? latest[0]} />
+          <NextArticleCard nextPost={suggested[0]} />
         </section>
       )}
     </NewsArticlePage>

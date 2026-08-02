@@ -29,16 +29,9 @@ const BATCH_SIZE = 10               // items per cron run (was 5 → doubled for
 const INTER_ITEM_DELAY_MS = 800     // rate limit pause between items (was 1500ms)
 
 // ── Logging ───────────────────────────────────────────────────────────────────
+// COST PAUSE: aiLogs Firestore yazımı devre dışı — console.log ile değiştirildi
 async function log(entry: Omit<AiLogEntry, 'timestamp'>): Promise<void> {
-  try {
-    const db = getAdminFirestore()
-    await db.collection(Collections.AI_LOGS).add({
-      ...entry,
-      timestamp: Date.now(),
-    })
-  } catch {
-    // Non-critical — don't let logging errors break the pipeline
-  }
+  console.log(`[ai-pipeline] ${entry.agent} ${entry.level}: ${entry.message}`)
 }
 
 // ── Queue helpers ─────────────────────────────────────────────────────────────

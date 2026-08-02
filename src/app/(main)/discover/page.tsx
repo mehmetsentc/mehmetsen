@@ -2,9 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Suspense, useMemo } from 'react'
-import { useCachedPageData } from '@/hooks/useCachedPageData'
-import { PAGE_CACHE_KEYS } from '@/lib/pageCache'
+import { Suspense, useMemo, useState, useEffect } from 'react'
 import {
   TrendingUp,
   TrendingDown,
@@ -21,15 +19,66 @@ import {
 import { Skeleton } from '@/components/ui/Skeleton'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
-import { useTrendingTopics } from '@/hooks/useTrendingTopics'
-import { postService } from '@/services/postService'
+import { SEED_TRENDING_TAGS } from '@/lib/trendingUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { getPostDetailHref, hasVideoContent } from '@/lib/postUtils'
+import { getPostDetailHref } from '@/lib/postUtils'
 import { resolveTimelineImageUrl } from '@/lib/feedMediaUtils'
 import { formatTimelineRelative } from '@/lib/timelineUtils'
 import { cn } from '@/lib/utils'
 import type { Post } from '@/types/post'
 import type { TrendingTopic } from '@/lib/trendingUtils'
+import type { CategoryFeedPage } from '@/services/newsService.server'
+
+// Static city list — eliminates 120 Firestore reads per session (getRecentCities)
+const STATIC_CITIES: Array<{ slug: string; name: string }> = [
+  { slug: 'istanbul', name: 'İstanbul' },
+  { slug: 'ankara', name: 'Ankara' },
+  { slug: 'izmir', name: 'İzmir' },
+  { slug: 'antalya', name: 'Antalya' },
+  { slug: 'bursa', name: 'Bursa' },
+  { slug: 'adana', name: 'Adana' },
+  { slug: 'konya', name: 'Konya' },
+  { slug: 'gaziantep', name: 'Gaziantep' },
+  { slug: 'mersin', name: 'Mersin' },
+  { slug: 'diyarbakir', name: 'Diyarbakır' },
+  { slug: 'samsun', name: 'Samsun' },
+  { slug: 'eskisehir', name: 'Eskişehir' },
+]
+
+/**
+ * COST REDUCTION: Keşfet sayfası Firestore'dan ayrıştırıldı.
+ * - useTrendingTopics() → 200 oku → SEED_TRENDING_TAGS static (0 oku)
+ * - postService.getNewsTimeline() → 10 oku → /api/feed/category (ISR cache)
+ * - postService.getVideoFeed() → 24 oku → kaldırıldı
+ * - postService.getRecentCities(12) → 120 oku → STATIC_CITIES (0 oku)
+ * Toplam tasarruf: ~354 oku/oturum
+ */
+function newsItemToPost(item: CategoryFeedPage['items'][number]): Post {
+  return {
+    id: item.id,
+    slug: item.slug ?? item.id,
+    title: item.title ?? '',
+    coverImageUrl: item.imageUrl ?? null,
+    categoryId: item.category ?? 'gundem',
+    publishedAt: item.publishedAt ?? null,
+    summary: item.description ?? '',
+    description: item.description ?? '',
+    postType: 'news',
+    status: 'published',
+    type: 'news',
+    content: '',
+    author: '',
+    authorId: '',
+    createdAt: null,
+    updatedAt: null,
+    likesCount: 0,
+    commentsCount: 0,
+    savesCount: 0,
+    viewsCount: 0,
+    isBreaking: item.breaking ?? false,
+    featured: false,
+  } as unknown as Post
+}
 
 // ── Category colors map ──────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
@@ -184,33 +233,36 @@ const CATEGORY_META: Record<string, { icon: string; color: string }> = {
   'yerel-haber': { icon: '📍', color: 'bg-teal-600/10 text-teal-400 border-teal-600/20' },
 }
 
-interface DiscoverPayload {
-  news: Post[]
-  videos: Post[]
-  cities: Array<{ slug: string; name: string }>
-}
-
 function DiscoverContent() {
-  const { topics, loading: topicsLoading } = useTrendingTopics()
-  const { data, loading } = useCachedPageData<DiscoverPayload>(
-    PAGE_CACHE_KEYS.discover,
-    async () => {
-      const [newsResult, videoResult, cityList] = await Promise.all([
-        postService.getNewsTimeline(undefined, { feedSource: 'nahaber' }),
-        postService.getVideoFeed(),
-        postService.getRecentCities(12),
-      ])
-      return {
-        news: newsResult.posts.slice(0, 6),
-        videos: videoResult.posts.slice(0, 4),
-        cities: cityList.map((c) => ({ slug: c.slug, name: c.name })),
-      }
-    }
+  // Static trending topics — no Firestore read (SEED_TRENDING_TAGS fallback)
+  const topics: TrendingTopic[] = useMemo(
+    () => SEED_TRENDING_TAGS.map((tag) => ({ tag, count: 0 })),
+    []
   )
+  const topicsLoading = false
 
-  const trendingNews = data?.news ?? []
-  const trendingVideos = data?.videos ?? []
-  const cities = data?.cities ?? []
+  const [trendingNews, setTrendingNews] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/feed/category?id=gundem&limit=6')
+      .then((r) => (r.ok ? (r.json() as Promise<CategoryFeedPage>) : null))
+      .then((data) => {
+        if (!cancelled && data) setTrendingNews(data.items.slice(0, 6).map(newsItemToPost))
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Video section removed — getVideoFeed() was 24 reads/session with no server cache
+  const trendingVideos: Post[] = []
+  const cities = STATIC_CITIES
 
   const maxCount = useMemo(
     () => Math.max(...topics.map((t) => t.count), 1),
