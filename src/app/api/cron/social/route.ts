@@ -131,43 +131,44 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
 
   const db = getAdminFirestore()
 
-  // ── Birincil sorgu: citySlug == 'canakkale' ────────────────────────────
-  const snap = await db
-    .collection(Collections.NEWS)
-    .where('citySlug', '==', 'canakkale')
-    .where('status', '==', 'published')
-    .orderBy('createdAt', 'desc')
-    .limit(BATCH_LIMIT * 5)
-    .get()
+  // ── İki sorguyu paralel çalıştır ve birleştir ────────────────────────
+  // 1. citySlug='canakkale' olan haberler (yeni haberler)
+  // 2. city='Çanakkale' olan haberler (citySlug eksik olabilir)
+  const [snap1, snap2] = await Promise.all([
+    db.collection(Collections.NEWS)
+      .where('citySlug', '==', 'canakkale')
+      .where('status', '==', 'published')
+      .orderBy('createdAt', 'desc')
+      .limit(BATCH_LIMIT * 5)
+      .get(),
+    db.collection(Collections.NEWS)
+      .where('city', '==', 'Çanakkale')
+      .where('status', '==', 'published')
+      .orderBy('createdAt', 'desc')
+      .limit(BATCH_LIMIT * 5)
+      .get(),
+  ])
 
-  let candidates = snap.docs.filter(doc => {
+  // Merge + deduplicate
+  const seen = new Set<string>()
+  const merged = [...snap1.docs, ...snap2.docs].filter(doc => {
+    if (seen.has(doc.id)) return false
+    seen.add(doc.id)
+    return true
+  })
+
+  let candidates = merged.filter(doc => {
     const d = doc.data() as Record<string, unknown>
     // Video haberlerini atla
     if (d.socialPublished || d.hasVideo || d.isVideo) return false
+    // Çanakkale haberi değilse atla (geniş kontrol)
+    if (!isCanakkale(d)) return false
     // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
     if (!isOwnContent(d)) return false
     // Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini atla
     if (isSkippableForSocial(d)) return false
     return true
   })
-
-  // ── Yedek sorgu: son 100 haberi tara, Çanakkale olanları bul ──────────
-  if (candidates.length === 0) {
-    const snap2 = await db
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .orderBy('createdAt', 'desc')
-      .limit(100)
-      .get()
-    candidates = snap2.docs.filter(doc => {
-      const d = doc.data() as Record<string, unknown>
-      if (!isCanakkale(d) || d.socialPublished || d.hasVideo || d.isVideo) return false
-      if (!isOwnContent(d)) return false
-      // Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini atla
-      if (isSkippableForSocial(d)) return false
-      return true
-    })
-  }
 
   // ── Görseli olan haberler zorunlu — görselsiz haberler paylaşılmaz ──────
   // Instagram/Facebook için görsel şart; görselsiz haberler koyu/siyah görünür.
