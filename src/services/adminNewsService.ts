@@ -572,23 +572,22 @@ async function listPendingQueue(
       [where('draftStatus', '==', 'pending_review'), limit(PAGE_SIZE)],
     ]
 
-    let draftSnap: Awaited<ReturnType<typeof getDocs>> | null = null
+    let draftLastDoc: QueryDocumentSnapshot | null = null
+    let draftDocCount = 0
     for (const constraints of draftAttemptConstraints) {
       try {
         const snap = await getDocs(query(collection(db, Collections.NEWS_DRAFTS), ...constraints))
         if (snap.empty && constraints !== draftAttemptConstraints[draftAttemptConstraints.length - 1]) {
           continue
         }
-        draftSnap = snap
+        for (const d of snap.docs) {
+          items.push(draftDocToPost(d.id, d.data() as NewsDocument))
+        }
+        draftLastDoc = snap.docs[snap.docs.length - 1] ?? null
+        draftDocCount = snap.docs.length
         break
       } catch (err) {
         console.warn('[adminNewsService] pending_review attempt failed:', err)
-      }
-    }
-
-    if (draftSnap) {
-      for (const d of draftSnap.docs) {
-        items.push(draftDocToPost(d.id, d.data() as NewsDocument))
       }
     }
 
@@ -617,8 +616,8 @@ async function listPendingQueue(
 
     return {
       posts: items,
-      lastDoc: draftSnap?.docs[draftSnap.docs.length - 1] ?? null,
-      hasMore: (draftSnap?.docs.length ?? 0) === PAGE_SIZE,
+      lastDoc: draftLastDoc,
+      hasMore: draftDocCount === PAGE_SIZE,
     }
   } catch (error) {
     console.warn('[adminNewsService] pending queue failed:', error)
