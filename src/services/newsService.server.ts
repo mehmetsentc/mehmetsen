@@ -187,26 +187,33 @@ export async function getNewsById(id: string): Promise<Post | null> {
   }
 }
 
+const getNewsBySlugCached = unstable_cache(
+  async (slug: string): Promise<Post | null> => {
+    try {
+      const snap = await getAdminFirestore()
+        .collection(NEWS_COLLECTION)
+        .where('slug', '==', slug)
+        .limit(1)
+        .get()
+
+      if (!snap.empty) {
+        const doc = snap.docs[0]!
+        return newsDocToPost(doc.id, doc.data() as NewsDocument)
+      }
+    } catch (error) {
+      console.warn('[newsService.server] getNewsBySlug query failed:', error)
+    }
+
+    return getNewsById(slug)
+  },
+  ['news-by-slug-v1'],
+  { revalidate: 300, tags: ['news-post'] }
+)
+
 export async function getNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
-
-  try {
-    const snap = await getAdminFirestore()
-      .collection(NEWS_COLLECTION)
-      .where('slug', '==', normalized)
-      .limit(1)
-      .get()
-
-    if (!snap.empty) {
-      const doc = snap.docs[0]!
-      return newsDocToPost(doc.id, doc.data() as NewsDocument)
-    }
-  } catch (error) {
-    console.warn('[newsService.server] getNewsBySlug query failed:', error)
-  }
-
-  return getNewsById(normalized)
+  return getNewsBySlugCached(normalized)
 }
 
 function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
@@ -297,9 +304,9 @@ function bucketFeatured(pool: NewsItem[], limit: number, pinned: NewsItem[] = []
 
 async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
   const db = getAdminFirestore()
-  // Wide scan: newly pinned OLD articles have old publishedAt and were dropped
-  // when we only fetched ~40 by publish date (looked like “only NaHaber works”).
-  const scan = Math.max(limit * 25, 250)
+  // Moderate scan: first query already uses featuredAt index for recently-pinned articles.
+  // Second (publishedAt) fallback only needs to cover recent publishes, not all history.
+  const scan = Math.max(limit * 5, 60)
 
   const byId = new Map<string, NewsItem>()
 
@@ -355,8 +362,8 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v8'],
-  { revalidate: 30, tags: ['home-feed'] }
+  ['home-featured-v9'],
+  { revalidate: 600, tags: ['home-feed'] }
 )
 
 function bucketLatest(pool: NewsItem[], limit: number, now: number): NewsItem[] {
@@ -500,7 +507,7 @@ async function getHomeFeedRailItems(category: string, limitCount: number): Promi
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   // Pool + dedicated featured query (CMS “Öne Çıkan” — kategori bağımsız)
   const [pool, featuredPinned] = await Promise.all([
-    getHomeNewsPool(160),
+    getHomeNewsPool(40),
     getFeaturedNewsCached(HOME_FEATURED_LIMIT),
   ])
 
@@ -540,7 +547,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
 export async function getHomeCategoryRailsLazy(
   categories?: HomeCategorySlug[]
 ): Promise<Partial<Record<HomeCategorySlug, NewsItem[]>>> {
-  const pool = await getHomeNewsPool(160)
+  const pool = await getHomeNewsPool(40)
   if (pool.length === 0) return {}
   const wanted =
     categories && categories.length > 0
@@ -734,72 +741,92 @@ export async function getFeedByTurkeyDay(
   }
 }
 
+const getHomeFeedMoreCached = unstable_cache(
+  (beforeDay: string) => getFeedByTurkeyDay(beforeDay),
+  ['home-feed-more-v1'],
+  { revalidate: 300, tags: ['home-feed'] }
+)
+
 /** @deprecated Prefer getFeedByTurkeyDay — kept name for call-site clarity on home. */
 export async function getHomeFeedMore(beforeDay: string): Promise<HomeFeedMoreResult> {
-  return getFeedByTurkeyDay(beforeDay)
+  return getHomeFeedMoreCached(beforeDay)
 }
 
-/** Archive items published on the same calendar day (any year). */
+/** Archive items published on the same calendar day (any year). Cached 1 hour per (month, day). */
+const getOnThisDayNewsCached = unstable_cache(
+  async (month: number, day: number): Promise<NewsItem[]> => {
+    try {
+      const db = getAdminFirestore()
+      // Only show articles from PREVIOUS years — exclude current year
+      const startOfCurrentYear = new Date(new Date().getFullYear(), 0, 1).getTime()
+
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where('publishedAt', '<', startOfCurrentYear)
+        .orderBy('publishedAt', 'desc')
+        .limit(300)
+        .get()
+
+      return mapAdminDocs(snap.docs).filter((item) => {
+        const ts = item.publishedAt ?? item.createdAt
+        if (!ts) return false
+        const d = new Date(ts)
+        return d.getMonth() + 1 === month && d.getDate() === day
+      })
+    } catch (error) {
+      console.warn('[newsService.server] getOnThisDayNews failed:', error)
+      return []
+    }
+  },
+  ['on-this-day-v1'],
+  { revalidate: 3600, tags: ['on-this-day'] }
+)
+
 export async function getOnThisDayNews(
   month: number,
   day: number,
   limitCount = 5
 ): Promise<NewsItem[]> {
-  try {
-    const db = getAdminFirestore()
-    // Only show articles from PREVIOUS years — exclude current year
-    const startOfCurrentYear = new Date(new Date().getFullYear(), 0, 1).getTime()
-
-    const snap = await db
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .where('publishedAt', '<', startOfCurrentYear)
-      .orderBy('publishedAt', 'desc')
-      .limit(1000)
-      .get()
-
-    const items = mapAdminDocs(snap.docs).filter((item) => {
-      const ts = item.publishedAt ?? item.createdAt
-      if (!ts) return false
-      const d = new Date(ts)
-      return d.getMonth() + 1 === month && d.getDate() === day
-    })
-
-    return items.slice(0, limitCount)
-  } catch (error) {
-    console.warn('[newsService.server] getOnThisDayNews failed:', error)
-    return []
-  }
+  const items = await getOnThisDayNewsCached(month, day)
+  return items.slice(0, limitCount)
 }
 
-/** Published posts in the same category for crawlable internal links. */
+/** Published posts in the same category for crawlable internal links. Cached 10 min per category. */
+const getSuggestedPostsCached = unstable_cache(
+  async (categoryId: string | null, fetchLimit: number): Promise<Post[]> => {
+    try {
+      const db = getAdminFirestore()
+      const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
+
+      const snap = categoryId
+        ? await base
+            .where('categoryId', '==', categoryId)
+            .orderBy('publishedAt', 'desc')
+            .limit(fetchLimit)
+            .get()
+        : await base.orderBy('publishedAt', 'desc').limit(fetchLimit).get()
+
+      return snap.docs
+        .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+        .filter((post): post is Post => post !== null)
+    } catch (error) {
+      console.warn('[newsService.server] getSuggestedPostsServer failed:', error)
+      return []
+    }
+  },
+  ['suggested-posts-v1'],
+  { revalidate: 600, tags: ['news-post'] }
+)
+
 export async function getSuggestedPostsServer(
   excludeId: string,
   options?: { categoryId?: string; limit?: number }
 ): Promise<Post[]> {
   const limitCount = options?.limit ?? 4
-  const categoryId = options?.categoryId?.trim()
-
-  try {
-    const db = getAdminFirestore()
-    const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
-
-    const snap = categoryId
-      ? await base
-          .where('categoryId', '==', categoryId)
-          .orderBy('publishedAt', 'desc')
-          .limit(limitCount + 5)
-          .get()
-      : await base.orderBy('publishedAt', 'desc').limit(limitCount + 5).get()
-
-    return snap.docs
-      .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
-      .filter((post): post is Post => post !== null && post.id !== excludeId)
-      .slice(0, limitCount)
-  } catch (error) {
-    console.warn('[newsService.server] getSuggestedPostsServer failed:', error)
-    return []
-  }
+  const categoryId = options?.categoryId?.trim() || null
+  const posts = await getSuggestedPostsCached(categoryId, limitCount + 5)
+  return posts.filter((post) => post.id !== excludeId).slice(0, limitCount)
 }
 
 function tagVariants(raw: string): string[] {
@@ -813,43 +840,51 @@ function tagVariants(raw: string): string[] {
   return [...variants]
 }
 
-/** Published posts matching a tag slug (indexable /etiket/[slug] pages). */
-export async function getPostsByTag(rawTag: string, limitCount = 40): Promise<Post[]> {
-  const variants = tagVariants(rawTag)
-  if (variants.length === 0) return []
+/** Published posts matching a tag slug (indexable /etiket/[slug] pages). Cached 10 min per tag. */
+const getPostsByTagCached = unstable_cache(
+  async (rawTag: string, limitCount: number): Promise<Post[]> => {
+    const variants = tagVariants(rawTag)
+    if (variants.length === 0) return []
 
-  try {
-    const db = getAdminFirestore()
-    const seen = new Set<string>()
-    const posts: Post[] = []
+    try {
+      const db = getAdminFirestore()
+      const seen = new Set<string>()
+      const posts: Post[] = []
 
-    await Promise.allSettled(
-      variants.map(async (variant) => {
-        const snap = await db
-          .collection(NEWS_COLLECTION)
-          .where('status', '==', 'published')
-          .where('tags', 'array-contains', variant)
-          .limit(limitCount)
-          .get()
+      await Promise.allSettled(
+        variants.map(async (variant) => {
+          const snap = await db
+            .collection(NEWS_COLLECTION)
+            .where('status', '==', 'published')
+            .where('tags', 'array-contains', variant)
+            .limit(limitCount)
+            .get()
 
-        for (const doc of snap.docs) {
-          if (seen.has(doc.id)) continue
-          const post = newsDocToPost(doc.id, doc.data() as NewsDocument)
-          if (post) {
-            seen.add(doc.id)
-            posts.push(post)
+          for (const doc of snap.docs) {
+            if (seen.has(doc.id)) continue
+            const post = newsDocToPost(doc.id, doc.data() as NewsDocument)
+            if (post) {
+              seen.add(doc.id)
+              posts.push(post)
+            }
           }
-        }
-      })
-    )
+        })
+      )
 
-    return posts.sort(
-      (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt)
-    )
-  } catch (error) {
-    console.warn('[newsService.server] getPostsByTag failed:', error)
-    return []
-  }
+      return posts.sort(
+        (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt)
+      )
+    } catch (error) {
+      console.warn('[newsService.server] getPostsByTag failed:', error)
+      return []
+    }
+  },
+  ['posts-by-tag-v1'],
+  { revalidate: 600, tags: ['news-post'] }
+)
+
+export async function getPostsByTag(rawTag: string, limitCount = 40): Promise<Post[]> {
+  return getPostsByTagCached(rawTag, limitCount)
 }
 
 export type PublicAuthorProfile = {
@@ -868,84 +903,98 @@ export type PublicAuthorProfile = {
   coverURL?: string | null
 }
 
-/** Public author profile resolved by username (Admin SDK). */
+/** Public author profile resolved by username (Admin SDK). Cached 1 hour per username. */
+const getAuthorByUsernameCached = unstable_cache(
+  async (username: string): Promise<PublicAuthorProfile | null> => {
+    try {
+      const db = getAdminFirestore()
+      const snap = await db
+        .collection(Collections.USERS)
+        .where('username', '==', username)
+        .limit(1)
+        .get()
+
+      if (snap.empty) return null
+      const doc = snap.docs[0]!
+      const data = doc.data()
+      if (data.isBlocked === true) return null
+
+      return {
+        uid: doc.id,
+        username: String(data.username ?? username),
+        displayName: String(data.displayName ?? data.username ?? 'Yazar'),
+        photoURL: (data.photoURL as string | null | undefined) ?? null,
+        bio: (data.bio as string | null | undefined) ?? null,
+        website: (data.website as string | null | undefined) ?? null,
+        location: (data.location as string | null | undefined) ?? null,
+        department: data.department as string | undefined,
+        isVerified: Boolean(data.isVerified),
+        postsCount: typeof data.postsCount === 'number' ? data.postsCount : 0,
+        isAI: data.isAI === true,
+        aiEditorId: (data.aiEditorId as string | null | undefined) ?? null,
+        coverURL: (data.coverURL as string | null | undefined) ?? null,
+      }
+    } catch (error) {
+      console.warn('[newsService.server] getAuthorByUsername failed:', error)
+      return null
+    }
+  },
+  ['author-by-username-v1'],
+  { revalidate: 3600, tags: ['author'] }
+)
+
 export async function getAuthorByUsername(username: string): Promise<PublicAuthorProfile | null> {
   const normalized = username.trim().toLocaleLowerCase('tr-TR')
   if (!normalized) return null
-
-  try {
-    const db = getAdminFirestore()
-    const snap = await db
-      .collection(Collections.USERS)
-      .where('username', '==', normalized)
-      .limit(1)
-      .get()
-
-    if (snap.empty) return null
-    const doc = snap.docs[0]!
-    const data = doc.data()
-    if (data.isBlocked === true) return null
-
-    return {
-      uid: doc.id,
-      username: String(data.username ?? normalized),
-      displayName: String(data.displayName ?? data.username ?? 'Yazar'),
-      photoURL: (data.photoURL as string | null | undefined) ?? null,
-      bio: (data.bio as string | null | undefined) ?? null,
-      website: (data.website as string | null | undefined) ?? null,
-      location: (data.location as string | null | undefined) ?? null,
-      department: data.department as string | undefined,
-      isVerified: Boolean(data.isVerified),
-      postsCount: typeof data.postsCount === 'number' ? data.postsCount : 0,
-      isAI: data.isAI === true,
-      aiEditorId: (data.aiEditorId as string | null | undefined) ?? null,
-      coverURL: (data.coverURL as string | null | undefined) ?? null,
-    }
-  } catch (error) {
-    console.warn('[newsService.server] getAuthorByUsername failed:', error)
-    return null
-  }
+  return getAuthorByUsernameCached(normalized)
 }
 
-/** Published news authored by a user id (for /yazar/[username]). */
-export async function getPostsByAuthorId(authorId: string, limitCount = 40): Promise<Post[]> {
-  const id = authorId.trim()
-  if (!id) return []
-
-  try {
-    const db = getAdminFirestore()
-    const snap = await db
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .where('authorId', '==', id)
-      .orderBy('publishedAt', 'desc')
-      .limit(limitCount)
-      .get()
-
-    return snap.docs
-      .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
-      .filter((post): post is Post => post !== null)
-  } catch (error) {
-    // Fallback without composite index: filter in memory from recent published docs.
-    console.warn('[newsService.server] getPostsByAuthorId indexed query failed, falling back:', error)
+/** Published news authored by a user id (for /yazar/[username]). Cached 30 min per author. */
+const getPostsByAuthorIdCached = unstable_cache(
+  async (authorId: string, limitCount: number): Promise<Post[]> => {
     try {
       const db = getAdminFirestore()
       const snap = await db
         .collection(NEWS_COLLECTION)
         .where('status', '==', 'published')
+        .where('authorId', '==', authorId)
         .orderBy('publishedAt', 'desc')
-        .limit(200)
+        .limit(limitCount)
         .get()
 
       return snap.docs
         .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
-        .filter((post): post is Post => post !== null && post.authorId === id)
-        .slice(0, limitCount)
-    } catch (fallbackError) {
-      console.warn('[newsService.server] getPostsByAuthorId fallback failed:', fallbackError)
-      return []
+        .filter((post): post is Post => post !== null)
+    } catch (error) {
+      // Fallback without composite index: filter in memory from recent published docs.
+      console.warn('[newsService.server] getPostsByAuthorId indexed query failed, falling back:', error)
+      try {
+        const db = getAdminFirestore()
+        const snap = await db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .orderBy('publishedAt', 'desc')
+          .limit(200)
+          .get()
+
+        return snap.docs
+          .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+          .filter((post): post is Post => post !== null && post.authorId === authorId)
+          .slice(0, limitCount)
+      } catch (fallbackError) {
+        console.warn('[newsService.server] getPostsByAuthorId fallback failed:', fallbackError)
+        return []
+      }
     }
-  }
+  },
+  ['posts-by-author-v1'],
+  { revalidate: 1800, tags: ['author'] }
+)
+
+export async function getPostsByAuthorId(authorId: string, limitCount = 40): Promise<Post[]> {
+  const id = authorId.trim()
+  if (!id) return []
+  return getPostsByAuthorIdCached(id, limitCount)
 }
 
 // ─── Category feed by Turkey calendar day ─────────────────────────────────────
@@ -970,23 +1019,32 @@ export const getCategoryFeedPage = unstable_cache(
   { revalidate: 300, tags: ['category-feed'] }
 )
 
-/** All-time most-read published articles for the public /cok-okunanlar page. */
+/** All-time most-read published articles for the public /cok-okunanlar page. Cached 10 min. */
+const getMostReadPostsCached = unstable_cache(
+  async (limitCount: number): Promise<NewsItem[]> => {
+    try {
+      const db = getAdminFirestore()
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .orderBy('viewsCount', 'desc')
+        .limit(limitCount)
+        .get()
+
+      const items = mapAdminDocs(snap.docs)
+      if (items.length > 0) return items
+    } catch (error) {
+      console.warn('[newsService.server] getMostReadPosts viewsCount query failed:', error)
+    }
+    return []
+  },
+  ['most-read-posts-v1'],
+  { revalidate: 600, tags: ['news-post'] }
+)
+
 export async function getMostReadPosts(limitCount = 40): Promise<NewsItem[]> {
-  try {
-    const db = getAdminFirestore()
-    const snap = await db
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .orderBy('viewsCount', 'desc')
-      .limit(limitCount)
-      .get()
-
-    const items = mapAdminDocs(snap.docs)
-    if (items.length > 0) return items
-  } catch (error) {
-    console.warn('[newsService.server] getMostReadPosts viewsCount query failed:', error)
-  }
-
+  const items = await getMostReadPostsCached(limitCount)
+  if (items.length > 0) return items
   // Fallback: reuse the home pool's most-read bucket.
   const home = await getHomeFeedInitialData()
   return home.mostRead.slice(0, limitCount)
