@@ -9,8 +9,8 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
-import { publishToFacebook } from '@/lib/social/facebook'
-import { publishToInstagram } from '@/lib/social/instagram'
+import { publishToFacebook, publishFacebookStory } from '@/lib/social/facebook'
+import { publishToInstagram, publishInstagramStory } from '@/lib/social/instagram'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
@@ -207,9 +207,10 @@ export async function publishOneSocial(newsId: string): Promise<void> {
       }
     }
 
-    // ── Görsel ve caption ────────────────────────────────────────────────────
+    // ── Görsel URL'leri ──────────────────────────────────────────────────────
     // ?v=timestamp → Vercel CDN + Next.js data cache bypass → taze OG görseli garantiler
     const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}?v=${Date.now()}`
+    const storyImageUrl  = `https://nahaber.com/api/og/story/${newsId}?v=${Date.now()}`
     const hashtagStr     = socialContent.hashtags.join(' ')
     const fullCaption    = [
       socialContent.caption,
@@ -247,6 +248,30 @@ export async function publishOneSocial(newsId: string): Promise<void> {
       igResult = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
 
+    // ── Instagram Hikaye ─────────────────────────────────────────────────────
+    let igStoryResult: { success: boolean; error?: string; platformId?: string } =
+      { success: false, error: 'not attempted' }
+    try {
+      await new Promise(r => setTimeout(r, 2000))
+      const storyPayload = { ...payload, imageUrl: storyImageUrl }
+      igStoryResult = await publishInstagramStory(storyPayload)
+      console.log(`[publishOneSocial] IG Story → ${newsId}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
+    } catch (err) {
+      igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+
+    // ── Facebook Hikaye ──────────────────────────────────────────────────────
+    let fbStoryResult: { success: boolean; error?: string; platformId?: string } =
+      { success: false, error: 'not attempted' }
+    try {
+      await new Promise(r => setTimeout(r, 2000))
+      const storyPayload = { ...payload, imageUrl: storyImageUrl }
+      fbStoryResult = await publishFacebookStory(storyPayload)
+      console.log(`[publishOneSocial] FB Story → ${newsId}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
+    } catch (err) {
+      fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+
     // ── Firestore güncelle ───────────────────────────────────────────────────
     if (fbResult.success || igResult.success) {
       const update: Record<string, unknown> = {
@@ -256,11 +281,15 @@ export async function publishOneSocial(newsId: string): Promise<void> {
         socialHeadline:    socialContent.headline,
         socialHashtags:    socialContent.hashtags,
       }
-      if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
-      if (igResult.platformId) update.instagramMediaId = igResult.platformId
+      if (fbResult.platformId)      update.facebookPostId    = fbResult.platformId
+      if (igResult.platformId)      update.instagramMediaId  = igResult.platformId
+      if (igStoryResult.platformId) update.instagramStoryId  = igStoryResult.platformId
+      if (fbStoryResult.platformId) update.facebookStoryId   = fbStoryResult.platformId
 
       await db.collection(Collections.NEWS).doc(newsId).update(update)
-      console.log(`[publishOneSocial] ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success}`)
+      console.log(
+        `[publishOneSocial] ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success} IGStory:${igStoryResult.success} FBStory:${fbStoryResult.success}`
+      )
     } else {
       console.warn(
         `[publishOneSocial] ✗ ${newsId} — FB: ${fbResult.error ?? '?'} | IG: ${igResult.error ?? '?'}`

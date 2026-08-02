@@ -20,7 +20,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
-import { publishToFacebook } from '@/lib/social/facebook'
+import { publishToFacebook, publishFacebookStory } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
 import { publishToTwitter } from '@/lib/social/twitter'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
@@ -28,6 +28,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
 import { isOwnContent, isSkippableForSocial } from '@/lib/social/publishOneSocial'
+import { publishInstagramStory } from '@/lib/social/instagram'
 import type {
   SocialCronItemResult,
   SocialCronResult,
@@ -294,6 +295,38 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       twResult = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
 
+    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+
+    // ── Hikaye URL'i (hem IG hem FB hikayesi için ortak) ─────────────────────
+    const storyImageUrl: string = `https://nahaber.com/api/og/story/${id}?v=${Date.now()}`
+    const storyPayload: SocialPublishPayload = {
+      newsId:      id,
+      title:       socialContent.headline || title,
+      description: undefined,
+      imageUrl:    storyImageUrl,
+      articleUrl,
+    }
+
+    // ── Instagram Hikaye ─────────────────────────────────────────────────
+    let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
+    try {
+      igStoryResult = await publishInstagramStory(storyPayload)
+      console.log(`[cron/social] IG Story → ${id}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
+    } catch (err) {
+      igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+
+    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+
+    // ── Facebook Hikaye ───────────────────────────────────────────────────
+    let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
+    try {
+      fbStoryResult = await publishFacebookStory(storyPayload)
+      console.log(`[cron/social] FB Story → ${id}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
+    } catch (err) {
+      fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+
     // ── Firestore güncelle ────────────────────────────────────────────────
     const markedDone = fbResult.success || igResult.success || twResult.success
 
@@ -306,9 +339,11 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           socialHeadline:    socialContent.headline,
           socialHashtags:    socialContent.hashtags,
         }
-        if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
-        if (igResult.platformId) update.instagramMediaId = igResult.platformId
-        if (twResult.platformId) update.twitterTweetId   = twResult.platformId
+        if (fbResult.platformId)      update.facebookPostId    = fbResult.platformId
+        if (igResult.platformId)      update.instagramMediaId  = igResult.platformId
+        if (twResult.platformId)      update.twitterTweetId    = twResult.platformId
+        if (igStoryResult.platformId) update.instagramStoryId  = igStoryResult.platformId
+        if (fbStoryResult.platformId) update.facebookStoryId   = fbStoryResult.platformId
         await db.collection(Collections.NEWS).doc(id).update(update)
         succeeded++
       } catch (err) {

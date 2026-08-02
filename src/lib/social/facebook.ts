@@ -29,6 +29,52 @@ function buildFacebookCaption(payload: SocialPublishPayload): string {
   return lines.join('\n')
 }
 
+/**
+ * Facebook Hikaye yayınla.
+ * POST /{pageId}/photo_stories — 1 adımlı (container yok).
+ * Görsel 1080×1920 (9:16) olmalı; /api/og/story/[id] route'undan gelir.
+ */
+export async function publishFacebookStory(
+  payload: SocialPublishPayload
+): Promise<SocialPublishResult> {
+  const pageId = process.env.FACEBOOK_PAGE_ID?.trim()
+  const { fbToken: accessToken } = await getSocialTokens()
+
+  if (!pageId || !accessToken) {
+    return { success: false, error: 'FACEBOOK_PAGE_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik' }
+  }
+  if (!payload.imageUrl?.trim()) {
+    return { success: false, error: 'Facebook Hikaye için görsel URL gerekli' }
+  }
+
+  try {
+    const res = await fetch(`${GRAPH_BASE}/${pageId}/photo_stories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: payload.imageUrl.trim(),
+        access_token: accessToken,
+      }),
+    })
+
+    const json = (await res.json()) as { post_id?: string; id?: string; error?: { message?: string } }
+
+    if (!res.ok || json.error) {
+      const msg = json.error?.message ?? `HTTP ${res.status}`
+      console.error(`[facebook] story failed for news ${payload.newsId}:`, msg)
+      return { success: false, error: msg }
+    }
+
+    const platformId = json.post_id ?? json.id
+    console.log(`[facebook] story published for news ${payload.newsId} → ${platformId}`)
+    return { success: true, platformId }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[facebook] story unexpected error for news ${payload.newsId}:`, msg)
+    return { success: false, error: msg }
+  }
+}
+
 /** Publish a photo post (with image) or a link post (without image) to a Facebook Page. */
 export async function publishToFacebook(
   payload: SocialPublishPayload

@@ -1,15 +1,15 @@
 /**
- * GET /api/og/social/[id]
+ * GET /api/og/story/[id]
  *
- * ONYEDİTİVİ — 1080×1080 Instagram & Facebook Post görseli (1:1)
+ * ONYEDİTİVİ — 1080×1920 Instagram & Facebook Hikaye görseli (9:16)
  *
  * Layout (yukarıdan aşağı):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  55% (594px)
+ *   │   HABER FOTOĞRAFI       │  60% (1152px)
  *   │                         │
- *   ├─ ■ nahaber.com ─────────┤  geçiş satırı (80px)
+ *   ├─ ■ nahaber.com ─────────┤  geçiş satırı
  *   │                         │
  *   │   BAŞLIK / MANŞET       │  kalan alan
  *   │                         │
@@ -24,7 +24,7 @@ import { type NextRequest } from 'next/server'
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
-interface ArticleOGData {
+interface ArticleData {
   title: string
   spot: string
   imageUrl: string
@@ -34,7 +34,7 @@ interface ArticleOGData {
   image: string
 }
 
-async function fetchArticle(id: string): Promise<ArticleOGData | null> {
+async function fetchArticle(id: string): Promise<ArticleData | null> {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
   if (!apiKey) return null
   try {
@@ -58,55 +58,54 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
 const SUPPORTED = /\.(jpe?g|png|gif|webp|avif)(\?|$)/i
 const UNSUPPORTED = /\.(svg|bmp|tiff?)(\?|$)/i
 
-function isValidImageUrl(url: string | undefined): url is string {
+function isValidUrl(url: string | undefined): url is string {
   if (!url || !url.startsWith('http')) return false
   if (url.endsWith('/') || url.endsWith('-') || url.endsWith('_')) return false
   if ((url.split('/').pop() ?? '').length < 4) return false
   return !UNSUPPORTED.test(url)
 }
 
-function bestImage(a: ArticleOGData): string {
+function bestImage(a: ArticleData): string {
   const candidates = [a.thumbnail, a.coverImageUrl, a.imageUrl, a.featuredImage, a.image]
-  for (const c of candidates) if (isValidImageUrl(c) && SUPPORTED.test(c)) return c
-  for (const c of candidates) if (isValidImageUrl(c)) return c
+  for (const c of candidates) if (isValidUrl(c) && SUPPORTED.test(c)) return c
+  for (const c of candidates) if (isValidUrl(c)) return c
   return ''
 }
 
-// Boyutlar — 1:1 kare
-const W = 1080
-const H = 1080
-const PHOTO_H = 594  // %55
-const MID_H   = 80   // geçiş satırı
-const TITLE_H = H - PHOTO_H - MID_H  // 406px
+function truncate(s: string, max: number) {
+  return s.length > max ? s.slice(0, max - 1) + '…' : s
+}
 
-function fallbackImageResponse() {
+// Boyutlar
+const W = 1080
+const H = 1920
+const PHOTO_H = 1152  // %60
+const MID_H   = 96    // geçiş satırı
+const TITLE_H = H - PHOTO_H - MID_H  // ~672px
+
+function fallback() {
   return new ImageResponse(
     <div style={{ width: W, height: H, display: 'flex', background: '#000' }}>
-      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 32, margin: 'auto', display: 'flex' }}>NaHaber</span>
+      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 40, margin: 'auto', display: 'flex' }}>NaHaber</span>
     </div>,
     { width: W, height: H }
   )
 }
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-
-  let article: ArticleOGData | null = null
-  try { article = await fetchArticle(id) } catch { return fallbackImageResponse() }
+  let article: ArticleData | null = null
+  try { article = await fetchArticle(id) } catch { return fallback() }
   if (!article?.title) return new Response('Haber bulunamadi', { status: 404 })
 
   const photo = bestImage(article)
   const title = article.title
   const titleSize =
-    title.length > 110 ? 30 :
-    title.length > 90  ? 34 :
-    title.length > 70  ? 38 :
-    title.length > 55  ? 42 :
-    title.length > 40  ? 48 :
-    title.length > 28  ? 54 : 62
+    title.length > 120 ? 38 :
+    title.length > 90  ? 44 :
+    title.length > 70  ? 50 :
+    title.length > 50  ? 56 :
+    title.length > 35  ? 64 : 72
 
   try {
     return new ImageResponse(
@@ -118,8 +117,8 @@ export async function GET(
 
         {/* ── FOTOĞRAF ── */}
         <div style={{
-          width: W, height: PHOTO_H,
-          position: 'relative', display: 'flex', flexShrink: 0, overflow: 'hidden',
+          width: W, height: PHOTO_H, position: 'relative',
+          display: 'flex', flexShrink: 0, overflow: 'hidden',
           background: 'linear-gradient(160deg,#1c2d45 0%,#0d1a2e 50%,#050c18 100%)',
         }}>
           {photo ? (
@@ -132,32 +131,32 @@ export async function GET(
 
           {/* Alt gradient */}
           <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 200,
-            background: 'linear-gradient(to top,rgba(0,0,0,0.60) 0%,transparent 100%)',
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 360,
+            background: 'linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 100%)',
             display: 'flex',
           }} />
 
           {/* Logo badge */}
           <div style={{
-            position: 'absolute', top: 24, right: 24,
-            background: 'rgba(13,31,68,0.92)', borderRadius: 10,
+            position: 'absolute', top: 40, right: 40,
+            background: 'rgba(13,31,68,0.92)', borderRadius: 14,
             display: 'flex', alignItems: 'center',
-            padding: '10px 20px 10px 10px', gap: 10,
+            padding: '12px 22px 12px 12px', gap: 10,
           }}>
-            <div style={{ width: 48, height: 48, position: 'relative',
+            <div style={{ width: 52, height: 52, position: 'relative',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <div style={{ position: 'absolute', width: 46, height: 46, background: '#1a4299',
-                borderRadius: 12, transform: 'rotate(12deg)', display: 'flex' }} />
-              <div style={{ position: 'absolute', width: 42, height: 42, background: '#1a3480',
+              <div style={{ position: 'absolute', width: 50, height: 50, background: '#1a4299',
+                borderRadius: 14, transform: 'rotate(12deg)', display: 'flex' }} />
+              <div style={{ position: 'absolute', width: 46, height: 46, background: '#1a3480',
                 borderRadius: '50%', display: 'flex' }} />
               <div style={{ position: 'relative', display: 'flex', alignItems: 'baseline', zIndex: 10 }}>
-                <span style={{ color: '#fff', fontWeight: 900, fontSize: 20, lineHeight: 1, display: 'flex', marginRight: -1 }}>1</span>
-                <span style={{ color: '#60a5fa', fontWeight: 900, fontSize: 20, lineHeight: 1, display: 'flex' }}>7</span>
+                <span style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1, display: 'flex', marginRight: -1 }}>1</span>
+                <span style={{ color: '#60a5fa', fontWeight: 900, fontSize: 22, lineHeight: 1, display: 'flex' }}>7</span>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ color: '#fff', fontWeight: 900, fontSize: 16, letterSpacing: 0.5, display: 'flex' }}>ONYEDiTiVi</span>
-              <span style={{ color: '#93c5fd', fontWeight: 500, fontSize: 10, letterSpacing: 2.5, display: 'flex' }}>HABERLERi</span>
+              <span style={{ color: '#fff', fontWeight: 900, fontSize: 18, letterSpacing: 0.5, display: 'flex' }}>ONYEDiTiVi</span>
+              <span style={{ color: '#93c5fd', fontWeight: 500, fontSize: 11, letterSpacing: 3, display: 'flex' }}>HABERLERi</span>
             </div>
           </div>
         </div>
@@ -166,16 +165,16 @@ export async function GET(
         <div style={{
           width: W, height: MID_H, flexShrink: 0,
           display: 'flex', alignItems: 'center',
-          padding: '0 36px', gap: 18, background: '#000000',
+          padding: '0 40px', gap: 20, background: '#000000',
         }}>
-          <div style={{ width: 40, height: 10, background: '#dc2626', borderRadius: 5, display: 'flex', flexShrink: 0 }} />
+          <div style={{ width: 48, height: 12, background: '#dc2626', borderRadius: 6, display: 'flex', flexShrink: 0 }} />
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'rgba(255,255,255,0.12)', borderRadius: 36,
-            padding: '8px 20px',
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: 'rgba(255,255,255,0.12)', borderRadius: 40,
+            padding: '10px 24px',
           }}>
-            <span style={{ fontSize: 22, display: 'flex' }}>🔗</span>
-            <span style={{ color: '#ffffff', fontSize: 22, fontWeight: 700, display: 'flex' }}>nahaber.com</span>
+            <span style={{ fontSize: 28, display: 'flex' }}>🔗</span>
+            <span style={{ color: '#ffffff', fontSize: 26, fontWeight: 700, display: 'flex' }}>nahaber.com</span>
           </div>
         </div>
 
@@ -183,14 +182,14 @@ export async function GET(
         <div style={{
           width: W, height: TITLE_H, flexShrink: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-          padding: '24px 36px 28px', background: '#000000',
+          padding: '32px 40px 36px', background: '#000000',
         }}>
           <span style={{
             color: '#ffffff', fontWeight: 900, fontSize: titleSize,
             lineHeight: 1.38, display: 'flex', flexDirection: 'column',
           }}>{title}</span>
           <span style={{
-            color: 'rgba(255,255,255,0.28)', fontSize: 18,
+            color: 'rgba(255,255,255,0.30)', fontSize: 22,
             fontWeight: 500, letterSpacing: 2, display: 'flex',
           }}>#NaHaber  #Çanakkale  #SonDakika</span>
         </div>
@@ -202,6 +201,6 @@ export async function GET(
       }
     )
   } catch {
-    return fallbackImageResponse()
+    return fallback()
   }
 }
