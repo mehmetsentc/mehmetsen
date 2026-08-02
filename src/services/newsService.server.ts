@@ -866,6 +866,80 @@ export async function getPostsByAuthorId(authorId: string, limitCount = 40): Pro
   }
 }
 
+// ─── Category feed pagination (server-side, no client Firestore) ──────────────
+
+export interface CategoryFeedPage {
+  items: NewsItem[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
+/**
+ * Returns one page of published articles for a category.
+ * Uses timestamp cursor (publishedAt ms) for pagination.
+ * Wrapped in unstable_cache so Vercel re-uses results across requests.
+ */
+async function fetchCategoryFeedPage(
+  categoryId: string,
+  cursor: string | null,
+  limitCount: number
+): Promise<CategoryFeedPage> {
+  try {
+    const db = getAdminFirestore()
+    const family = getCategoryFamily(categoryId)
+
+    let q = db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where(
+        family.length > 1 ? 'categoryId' : 'categoryId',
+        family.length > 1 ? 'in' : '==',
+        family.length > 1 ? family : categoryId
+      )
+      .orderBy('publishedAt', 'desc')
+      .limit(limitCount + 1)
+
+    if (cursor) {
+      const cursorMs = Number(cursor)
+      if (Number.isFinite(cursorMs) && cursorMs > 0) {
+        q = db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where(
+            family.length > 1 ? 'categoryId' : 'categoryId',
+            family.length > 1 ? 'in' : '==',
+            family.length > 1 ? family : categoryId
+          )
+          .orderBy('publishedAt', 'desc')
+          .startAfter(cursorMs)
+          .limit(limitCount + 1)
+      }
+    }
+
+    const snap = await q.get()
+    const all = mapAdminDocs(snap.docs)
+    const hasMore = all.length > limitCount
+    const page = all.slice(0, limitCount)
+    const last = page[page.length - 1]
+    const lastMs = last ? Date.parse(last.publishedAt ?? last.createdAt ?? '') : NaN
+    const nextCursor = hasMore && !isNaN(lastMs) ? String(lastMs) : null
+
+    return { items: page.map(slimNewsItemForFeed), nextCursor, hasMore }
+  } catch (err) {
+    const code = (err as { code?: number }).code
+    if (code === 8) console.warn('[newsService] category feed RESOURCE_EXHAUSTED')
+    else console.warn('[newsService] category feed error:', err)
+    return { items: [], nextCursor: null, hasMore: false }
+  }
+}
+
+export const getCategoryFeedPage = unstable_cache(
+  (categoryId: string, cursor: string | null, limitCount: number) =>
+    fetchCategoryFeedPage(categoryId, cursor, limitCount),
+  ['category-feed-page-v1'],
+  { revalidate: 300, tags: ['category-feed'] }
+)
+
 /** All-time most-read published articles for the public /cok-okunanlar page. */
 export async function getMostReadPosts(limitCount = 40): Promise<NewsItem[]> {
   try {
