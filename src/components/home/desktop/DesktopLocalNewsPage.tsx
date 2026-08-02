@@ -8,6 +8,7 @@ import { DesktopCategoryWatch } from '@/components/home/desktop/DesktopCategoryW
 import { GridStory, StackedStory } from '@/components/home/desktop/desktopGridStories'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { LocalListStory } from '@/components/local/LocalListStory'
+import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { buildLocalNewsReadableLayout } from '@/components/local/localNewsLayout'
 import { ROUTES } from '@/constants/routes'
 import { rankFeedPosts } from '@/lib/feedRanking'
@@ -29,7 +30,8 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
     loadingMore,
     error,
     showingGeneralFallback,
-    sentinelRef,
+    hasMore,
+    loadMore,
     retryFetch,
   } = state
 
@@ -143,7 +145,9 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
             </div>
           ) : null}
 
-          <div ref={sentinelRef} className="h-1" aria-hidden />
+          {hasMore ? (
+            <LoadMoreDayButton onClick={() => void loadMore()} loading={loadingMore} />
+          ) : null}
 
           {!loading && rankedPosts.length === 0 ? (
             <div className="mb-10 border border-dashed border-[rgb(var(--color-border))] py-16 text-center">

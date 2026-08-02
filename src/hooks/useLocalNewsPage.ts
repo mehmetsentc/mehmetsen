@@ -15,7 +15,7 @@ import {
   writeStoredUserLocation,
 } from '@/lib/userLocationStorage'
 import toast from '@/lib/toast-shim'
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
@@ -242,8 +242,6 @@ export function useLocalNewsPage() {
       setLoadingMore(false)
     }
   }, [city, lastDoc, loadingMore, hasMore, showingGeneralFallback])
-
-  const { sentinelRef } = useInfiniteScroll({ onLoadMore: loadMore, hasMore, loading: loadingMore })
 
   const applyDetectedCity = useCallback(
     (
@@ -519,7 +517,8 @@ export function useLocalNewsPage() {
     filteredCities,
     chipsScrollRef,
     selectedChipRef,
-    sentinelRef,
+    hasMore,
+    loadMore,
     handleSelectCity,
     retryFetch,
     resetGeolocation,

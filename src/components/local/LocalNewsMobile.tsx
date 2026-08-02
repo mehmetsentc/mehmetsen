@@ -4,6 +4,7 @@ import { MapPin, AlertCircle } from 'lucide-react'
 import { CategoryHeroStory } from '@/components/category/CategoryPostStories'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { LocalListStory } from '@/components/local/LocalListStory'
+import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { cn } from '@/lib/utils'
 import type { useLocalNewsPage } from '@/hooks/useLocalNewsPage'
 
@@ -21,7 +22,8 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
     loadingMore,
     error,
     showingGeneralFallback,
-    sentinelRef,
+    hasMore,
+    loadMore,
     retryFetch,
   } = state
 
@@ -106,7 +108,9 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
         </div>
       )}
 
-      <div ref={sentinelRef} className="h-4" aria-hidden />
+      {hasMore ? (
+        <LoadMoreDayButton onClick={() => void loadMore()} loading={loadingMore} />
+      ) : null}
     </div>
   )
 }
