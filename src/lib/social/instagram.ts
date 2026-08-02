@@ -94,6 +94,77 @@ async function publishMediaContainer(
   return json.id
 }
 
+/**
+ * Story için medya container'ı oluştur.
+ * media_type=STORIES → Instagram Hikaye olarak yayınlanır.
+ * link_sticker_url → haberin linki hikayeye sticker olarak eklenir.
+ */
+async function createStoryContainer(
+  igBusinessId: string,
+  accessToken: string,
+  imageUrl: string,
+  articleUrl?: string
+): Promise<string> {
+  const body: Record<string, string> = {
+    image_url:  imageUrl,
+    media_type: 'STORIES',
+    access_token: accessToken,
+  }
+  // Link sticker — bazı hesaplarda aktif olmayabilir; API hata verirse graceful devam et
+  if (articleUrl) body.link_sticker_url = articleUrl
+
+  const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  const json = (await res.json()) as { id?: string; error?: { message?: string } }
+
+  if (!res.ok || json.error || !json.id) {
+    throw new Error(json.error?.message ?? `Story container HTTP ${res.status}`)
+  }
+
+  return json.id
+}
+
+/**
+ * Instagram Hikaye yayınla (1080×1920 story görsel + link sticker).
+ * - Görsel /api/og/story/[id] route'undan gelir
+ * - Başarısız olursa error döner, fırlatmaz
+ */
+export async function publishInstagramStory(payload: SocialPublishPayload): Promise<SocialPublishResult> {
+  const igBusinessId = process.env.INSTAGRAM_BUSINESS_ID?.trim()
+  const { igToken: accessToken } = await getSocialTokens()
+
+  if (!igBusinessId || !accessToken) {
+    return { success: false, error: 'INSTAGRAM_BUSINESS_ID veya access token eksik' }
+  }
+  if (!payload.imageUrl?.trim()) {
+    return { success: false, error: 'Story için görsel URL gerekli' }
+  }
+
+  try {
+    const containerId = await createStoryContainer(
+      igBusinessId,
+      accessToken,
+      payload.imageUrl.trim(),
+      payload.articleUrl
+    )
+
+    console.log(`[instagram] story container created for ${payload.newsId}: ${containerId}`)
+    await new Promise(r => setTimeout(r, 1000))
+
+    const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId)
+    console.log(`[instagram] story published for ${payload.newsId} → ${mediaId}`)
+    return { success: true, platformId: mediaId }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[instagram] story failed for ${payload.newsId}:`, msg)
+    return { success: false, error: msg }
+  }
+}
+
 /** Full two-step Instagram publish flow. */
 export async function publishToInstagram(
   payload: SocialPublishPayload
