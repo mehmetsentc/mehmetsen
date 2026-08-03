@@ -56,20 +56,15 @@ export function BreakingStories({ items }: BreakingStoriesProps) {
     setViewerOpen(true)
   }, [])
 
+  if (items.length === 0) return null
+
   return (
     <section aria-label="Son Dakika" className="home-section">
       <div className="mb-3 flex items-center justify-between px-1">
         <h2 className="home-section-title">Son Dakika</h2>
       </div>
 
-      {items.length === 0 ? (
-        <div className="mx-1 rounded-2xl border border-dashed border-border bg-bg-card px-4 py-8 text-center">
-          <p className="text-sm font-medium text-text-tertiary">
-            Şu an aktif son dakika haberi yok.
-          </p>
-        </div>
-      ) : (
-        <div
+      <div
           className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide snap-x snap-mandatory"
           data-no-category-swipe
         >
@@ -98,7 +93,6 @@ export function BreakingStories({ items }: BreakingStoriesProps) {
             />
           ))}
         </div>
-      )}
 
       <StoryViewer
         items={items}
