@@ -274,17 +274,17 @@ function NewsRow({
         {/* Actions */}
         <div className="flex shrink-0 flex-col gap-1 items-end">
           <div className="flex gap-1">
+            {(post.status === 'pending' || post.status === 'draft') && (
+              <button onClick={() => onApprove(post)} disabled={busy}
+                className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}Onayla
+              </button>
+            )}
             {post.status === 'pending' && (
-              <>
-                <button onClick={() => onApprove(post)} disabled={busy}
-                  className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-                  {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}Onayla
-                </button>
-                <button onClick={() => onReject(post)} disabled={busy}
-                  className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-50">
-                  <XCircle className="h-3 w-3" />Reddet
-                </button>
-              </>
+              <button onClick={() => onReject(post)} disabled={busy}
+                className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-50">
+                <XCircle className="h-3 w-3" />Reddet
+              </button>
             )}
             {post.status === 'published' && (
               <a href={ROUTES.NEWS_DETAIL(post.slug || post.id)} target="_blank" rel="noopener noreferrer"
@@ -570,15 +570,23 @@ function AdminNewsDesktopPage() {
   }
 
   const handleBulkApprove = async () => {
-    const pending = posts.filter(p => selected.has(p.id) && p.status === 'pending')
-    if (!pending.length) { toast('Seçili bekleyen haber yok'); return }
+    // Taslak + onay bekleyen: tekil "Onayla" ile aynı approve akışı
+    const eligible = posts.filter(
+      p => selected.has(p.id) && (p.status === 'pending' || p.status === 'draft')
+    )
+    if (!eligible.length) { toast('Seçili onaylanacak haber yok'); return }
     setBulkLoading(true)
     let done = 0
-    for (const p of pending) {
-      try { await adminNewsService.approve(p.id, p.adminSource); done++ } catch { /* skip */ }
+    const approvedIds = new Set<string>()
+    for (const p of eligible) {
+      try {
+        await adminNewsService.approve(p.id, p.adminSource)
+        done++
+        approvedIds.add(p.id)
+      } catch { /* skip */ }
     }
     toast.success(`${done} haber onaylandı`)
-    setPosts(prev => prev.filter(p => !selected.has(p.id) || p.status !== 'pending'))
+    setPosts(prev => prev.filter(p => !approvedIds.has(p.id)))
     setSelected(new Set())
     setBulkLoading(false)
   }
