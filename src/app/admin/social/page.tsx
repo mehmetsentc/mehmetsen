@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, useDeferredValue, type ReactNode } from 'react'
+import { useEffect, useState, useCallback, useMemo, useDeferredValue, useRef, type ReactNode } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { db } from '@/lib/firebase/firestore'
 import { auth } from '@/lib/firebase/auth'
@@ -219,7 +219,8 @@ export default function SocialPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
+  // Cursor ref so load-more always sees the latest snapshot (avoids stale closure in useCallback)
+  const lastDocRef = useRef<QueryDocumentSnapshot | null>(null)
 
   // Composer
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -276,7 +277,9 @@ export default function SocialPage() {
 
       try {
         const col = collection(db, 'news')
-        const cursor = reset ? null : lastDoc
+        // Read cursor from ref — lastDoc state is intentionally omitted from deps
+        // to avoid refetch loops; without the ref, load-more kept reusing null.
+        const cursor = reset ? null : lastDocRef.current
 
         const runQuery = async () => {
           if (tab === 'post' && statusFilter === 'published') {
@@ -360,10 +363,18 @@ export default function SocialPage() {
           newRows = newRows.filter((r) => !!r.storyPublished)
         }
 
-        if (reset) setRows(newRows)
-        else setRows((prev) => [...prev, ...newRows])
+        if (reset) {
+          setRows(newRows)
+        } else {
+          setRows((prev) => {
+            const seen = new Set(prev.map((r) => r.id))
+            const unique = newRows.filter((r) => !seen.has(r.id))
+            return unique.length ? [...prev, ...unique] : prev
+          })
+        }
 
-        setLastDoc(snap.docs[snap.docs.length - 1] ?? null)
+        const nextCursor = snap.docs[snap.docs.length - 1] ?? null
+        lastDocRef.current = nextCursor
         setHasMore(snap.docs.length >= PAGE_SIZE)
       } catch (err) {
         console.error('[social admin] fetch error:', err)
@@ -373,12 +384,11 @@ export default function SocialPage() {
         setLoadingMore(false)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [tab, statusFilter]
   )
 
   useEffect(() => {
-    setLastDoc(null)
+    lastDocRef.current = null
     setRows([])
     void fetchRows(true)
   }, [tab, statusFilter, fetchRows])
@@ -685,7 +695,7 @@ export default function SocialPage() {
         toast.success(
           `Cron çalıştı — ${data.processed ?? 0} haber işlendi, ${data.succeeded ?? 0} paylaşıldı`
         )
-        setLastDoc(null)
+        lastDocRef.current = null
         await fetchRows(true)
       } else {
         toast.error(data.error ?? 'Cron hatası')
@@ -879,7 +889,10 @@ export default function SocialPage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => { setLastDoc(null); void fetchRows(true) }}
+              onClick={() => {
+                lastDocRef.current = null
+                void fetchRows(true)
+              }}
               disabled={loading}
               className={btnSecondary}
             >
@@ -1170,7 +1183,10 @@ export default function SocialPage() {
                     onClick={() => openComposer(row)}
                     className={cn(
                       'flex w-full gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-[rgb(var(--color-surface))]',
-                      active && 'bg-blue-50 ring-1 ring-inset ring-blue-400 dark:bg-blue-950/30 dark:ring-blue-500/50'
+                      // Theme-aware highlight: avoid fixed pastel (bg-blue-50) which
+                      // washed out --color-text in dark/light mismatches.
+                      active &&
+                        'bg-red-50/90 ring-1 ring-inset ring-red-400 dark:bg-red-950/45 dark:ring-red-500/55'
                     )}
                   >
                     {img ? (
@@ -1182,30 +1198,51 @@ export default function SocialPage() {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-[rgb(var(--color-text))]">
+                      <p
+                        className={cn(
+                          'line-clamp-2 text-[15px] font-semibold leading-snug',
+                          active
+                            ? 'text-slate-900 dark:text-red-50'
+                            : 'text-[rgb(var(--color-text))]'
+                        )}
+                      >
                         {row.title}
                       </p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {row.categoryId && (
-                          <span className="rounded-md bg-[rgb(var(--color-surface))] px-2 py-0.5 text-xs text-[rgb(var(--color-muted))]">
+                          <span
+                            className={cn(
+                              'rounded-md px-2 py-0.5 text-xs',
+                              active
+                                ? 'bg-white/80 text-slate-700 dark:bg-red-900/50 dark:text-red-100'
+                                : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]'
+                            )}
+                          >
                             {row.categoryId}
                           </span>
                         )}
                         {row.citySlug && (
-                          <span className="rounded-md bg-[rgb(var(--color-surface))] px-2 py-0.5 text-xs text-[rgb(var(--color-muted))]">
+                          <span
+                            className={cn(
+                              'rounded-md px-2 py-0.5 text-xs',
+                              active
+                                ? 'bg-white/80 text-slate-700 dark:bg-red-900/50 dark:text-red-100'
+                                : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]'
+                            )}
+                          >
                             {row.citySlug}
                           </span>
                         )}
                         {external && (
                           <span
-                            className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                            className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
                             title="Harici kaynak — manuel paylaşılabilir"
                           >
                             RSS
                           </span>
                         )}
                         {noImg && (
-                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                             Görsel yok
                           </span>
                         )}
@@ -1216,7 +1253,14 @@ export default function SocialPage() {
                           <span className="text-xs font-bold text-emerald-600">X</span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                      <p
+                        className={cn(
+                          'mt-1 text-xs',
+                          active
+                            ? 'text-slate-600 dark:text-red-200/80'
+                            : 'text-[rgb(var(--color-muted))]'
+                        )}
+                      >
                         {(() => {
                           const d = safeToDate(row.publishedAt ?? row.createdAt)
                           return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—'
@@ -1231,7 +1275,6 @@ export default function SocialPage() {
                 )
               })}
             </div>
-
             {hasMore && !loading && (
               <div className="border-t border-[rgb(var(--color-border))] p-4 text-center">
                 <button
