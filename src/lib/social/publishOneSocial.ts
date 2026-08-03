@@ -47,8 +47,8 @@ export function isCanakkaleArticle(data: Record<string, unknown>): boolean {
 
 /**
  * Haberin NaHaber/OnyediTivi tarafından hazırlandığını doğrula.
- * Harici sourceUrl (RSS, scraper) olan haberler sosyal medyaya gitmez —
- * sadece kendi editörlerimizin yazdığı veya kendi sitemizden gelen haberler yayınlanır.
+ * Harici sourceUrl (RSS, scraper) otomatik cron'da engellenir;
+ * manuel admin paylaşımında (`manual: true`) bu kontrol atlanır.
  */
 export function isOwnContent(data: Record<string, unknown>): boolean {
   const sourceUrl = String(data.sourceUrl ?? '').trim().toLowerCase()
@@ -56,7 +56,7 @@ export function isOwnContent(data: Record<string, unknown>): boolean {
   if (!sourceUrl || !sourceUrl.startsWith('http')) return true
   // sourceUrl kendi sitemizi gösteriyorsa → kendi içeriğimiz ✓
   if (sourceUrl.includes('nahaber.com') || sourceUrl.includes('onyeditivi.com')) return true
-  // Harici URL → başka kaynaktan gelmiş, yayınlama ✗
+  // Harici URL → başka kaynaktan (cron engeller; manuel paylaşım serbest)
   return false
 }
 
@@ -261,10 +261,10 @@ export async function publishOneSocial(
     if (data.hasVideo || data.isVideo) {
       return skipped(newsId, 'Video haberler sosyal medyaya gönderilmez')
     }
-    // Kendi haberimiz değil (harici RSS/scraper kaynağı)
-    if (!isOwnContent(data)) {
-      console.log(`[publishOneSocial] Harici kaynak — sosyal medyaya gönderilmedi: ${newsId}`)
-      return skipped(newsId, 'Harici RSS/kaynak haberi — yalnızca NaHaber içerikleri paylaşılabilir')
+    // Harici RSS/scraper: yalnızca otomatik (cron) yolunda engelle; manuel admin paylaşımı serbest
+    if (!manual && !isOwnContent(data)) {
+      console.log(`[publishOneSocial] Harici kaynak — otomatik paylaşım atlandı: ${newsId}`)
+      return skipped(newsId, 'Harici RSS/kaynak haberi — otomatik paylaşım yalnızca NaHaber içerikleri için')
     }
     // Canlı yayın / boş içerik / sosyal medya tanıtım haberi
     if (isSkippableForSocial(data)) {

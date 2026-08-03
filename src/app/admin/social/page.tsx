@@ -189,7 +189,7 @@ export default function SocialPage() {
   const [tab, setTab] = useState<TabKey>('post')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
-  const [hideRss, setHideRss] = useState(true)
+  const [hideRss, setHideRss] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('')
   const [rows, setRows] = useState<SocialNewsRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -401,10 +401,6 @@ export default function SocialPage() {
   const shareSelected = async () => {
     if (!user || !selected || sharing) return
 
-    if (isLikelyExternalRss(selected)) {
-      toast.error('Harici RSS haberi — yalnızca NaHaber içerikleri paylaşılabilir')
-      return
-    }
     if (!hasImage(selected)) {
       toast.error('Görsel yok — paylaşım için kapak görseli gerekli')
       return
@@ -628,12 +624,8 @@ export default function SocialPage() {
     ? `/api/og/${previewMode}/${selected.id}?title=${encodeURIComponent(deferredHeadline)}&spot=${encodeURIComponent(deferredSpot)}&v=${previewTick}`
     : ''
 
-  const composerBlocked = selected
-    ? isLikelyExternalRss(selected)
-      ? 'RSS — paylaşılamaz'
-      : !hasImage(selected)
-        ? 'Görsel yok'
-        : null
+  const composerBlocked = selected && !hasImage(selected)
+    ? 'Görsel yok — paylaşım için kapak görseli gerekli'
     : null
 
   return (
@@ -904,9 +896,11 @@ export default function SocialPage() {
                           <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">{row.citySlug}</span>
                         )}
                         {external && (
-                          <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-300">RSS — paylaşılamaz</span>
+                          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-300" title="Harici kaynak — manuel paylaşım">
+                            RSS
+                          </span>
                         )}
-                        {noImg && !external && (
+                        {noImg && (
                           <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-300">Görsel yok</span>
                         )}
                         <StatusBadge ok={shared} label={shared ? 'Paylaşıldı' : 'Paylaşılmadı'} />
@@ -981,6 +975,12 @@ export default function SocialPage() {
                 </div>
 
                 <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                  {isLikelyExternalRss(selected) && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+                      Harici kaynak — manuel paylaşım. Otomatik cron bu haberi paylaşmaz.
+                    </div>
+                  )}
+
                   {/* Live OG preview */}
                   <div className="overflow-hidden rounded-lg border border-white/10 bg-black/30">
                     <div className="flex items-center justify-between border-b border-white/10 px-2 py-1.5">
@@ -1237,7 +1237,7 @@ export default function SocialPage() {
         </div>
 
         <p className="text-center text-[11px] text-[rgb(var(--color-muted))]">
-          Harici RSS engellenir · Görselsiz haber paylaşılamaz · Yeniden paylaş için onay kutusu gerekir
+          Manuel paylaşımda RSS serbest · Görselsiz haber paylaşılamaz · Yeniden paylaş için onay kutusu gerekir
         </p>
       </div>
     </div>
