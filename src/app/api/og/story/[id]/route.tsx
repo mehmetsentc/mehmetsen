@@ -396,8 +396,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                     display: 'flex', flexShrink: 0,
                   }} />
                   <div style={{
-                    width: W - TEXT_PAD_SIDE * 2 - 32 - 40 - 12,
-                    height: 1, background: 'rgba(255,255,255,0.42)',
+                    width: 900, height: 2, borderRadius: 1,
+                    background: 'rgba(255,255,255,0.38)',
                     display: 'flex', flexShrink: 0,
                   }} />
                 </div>
