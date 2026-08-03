@@ -13,21 +13,54 @@
 
 const DEFAULT_HASHTAGS = ['#NaHaber', '#Çanakkale', '#SonDakika']
 
+/** Manşet sonunda bırakılmaması gereken bağlaç / sıfat / yarım öbekler */
+const DANGLING_TAIL_RE =
+  /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten)\s*$/iu
+
 export function clampAtWordBoundary(s: string, max: number): string {
   const t = s.replace(/\s+/g, ' ').trim()
   if (t.length <= max) return t
   const slice = t.slice(0, max)
   const sp = slice.lastIndexOf(' ')
-  return (sp > max * 0.45 ? slice.slice(0, sp) : slice)
-    .replace(/\s+(ve|veya|ile|için|olan|ama|fakat|ancak|ki|:|,)\s*$/iu, '')
-    .trim()
+  let out = (sp > max * 0.45 ? slice.slice(0, sp) : slice).trim()
+  // Yarım anlam bırakma: "…5 yaşındaki" / "…vurulan" gibi sarkan sıfat/fiilimsi
+  for (let i = 0; i < 6; i++) {
+    const next = out.replace(DANGLING_TAIL_RE, '').trim()
+    if (next === out) break
+    out = next
+  }
+  // Aşırı kısaldıysa orijinal kelime sınırına geri dön (boş manşet olmasın)
+  if (out.length < Math.min(24, Math.floor(max * 0.35))) {
+    out = (sp > max * 0.45 ? slice.slice(0, sp) : slice)
+      .replace(/\s+(ve|veya|ile|için|olan|ama|fakat|ancak|ki|:|,)\s*$/iu, '')
+      .trim()
+  }
+  return out
 }
 
-/** Tam cümle(ler) sınırında kısalt; mümkün değilse kelime sınırında. */
-export function clampCompleteSentences(s: string, max: number): string {
+/**
+ * Manşet için: mümkünse limiti aşmadan TAM başlığı koru;
+ * kısaltmak zorundaysa kelime sınırında + sarkan sıfat temizliği.
+ * Max'ı biraz esnetmek (softMax) yarım cümleyi önlemek için tercih edilir.
+ */
+export function clampCompleteHeadline(s: string, max: number, softMax = max + 16): string {
+  const t = s.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').trim()
+  if (!t) return ''
+  const plain = t.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+  if (plain.length <= max) return t.includes('\n') ? t : plain
+  if (plain.length <= softMax) return plain
+  return clampAtWordBoundary(plain, max)
+}
+
+/** Tam cümle(ler) sınırında kısalt; mümkün değilse kelime sınırında.
+ * softMax: cümle softMax içinde bitiyorsa tamamını koru (yarım "taburcu" engeli).
+ */
+export function clampCompleteSentences(s: string, max: number, softMax = max + 24): string {
   const t = s.replace(/\s+/g, ' ').trim()
+  if (!t) return ''
   if (t.length <= max) return t
-  const slice = t.slice(0, max)
+  if (t.length <= softMax && /[.!?]$/.test(t)) return t
+  const slice = t.slice(0, Math.max(max, softMax))
   const ends = ['. ', '! ', '? ']
     .map((p) => slice.lastIndexOf(p))
     .concat(/[.!?]$/.test(slice) ? [slice.length - 1] : [-1])

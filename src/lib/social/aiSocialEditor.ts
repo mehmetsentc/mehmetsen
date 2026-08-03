@@ -12,16 +12,16 @@
  * Env: GEMINI_API_KEY, GEMINI_MODEL (default: gemini-2.5-flash)
  */
 
-import { clampAtWordBoundary, clampCompleteSentences } from './feedCaption'
+import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from './feedCaption'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const DEEPSEEK_BASE = 'https://api.deepseek.com/v1/chat/completions'
 
-/** Kısa tut: OG'de 1 satır veya doğal 2–3 satır; 4+ satır sarkan cümlelerden kaçın */
-const HEADLINE_MAX = 52
+/** Kısa ama TAM manşet; yarım sıfat kesimi olmasın (max 78) */
+const HEADLINE_MAX = 78
 /** Tam özet için biraz daha alan; lacivert panel sığacak şekilde */
-const STORY_SUMMARY_MAX = 170
+const STORY_SUMMARY_MAX = 200
 /** Post caption gövdesi — cümle ortasından kesilmez; URL/hashtag publisher ekler */
 const CAPTION_MAX = 900
 
@@ -46,7 +46,7 @@ KURALLAR:
 - headline: Gazete ciddiyetiyle dikkat çeken TÜRKÇE manşet (max ${HEADLINE_MAX} karakter). Etkili olsun.
   * UZUNLUK / SATIR: Ya TEK SATIRDA sığacak kadar kısa ve vurucu OL, YA DA 2–3 tematik satır için satır sonlarını \\n ile belirt (ör. "Çanakkale enflasyonunda\\nsürpriz düşüş"). Her satır kısa vurucu öbek olsun. Uzun sarkan tek cümle YASAK — 4+ satıra rastgele sarılmasın. Max 3 satır.
   * Curiosity gap OK (beklenmedik açı, gerilim, çarpıcı rakam); ucuz clickbait / sahte vaat YASAK.
-  * TAM kelimeler; yarım cümle / kesik kelime YASAK. Nokta ile bitirme (gazete manşeti gibi).
+  * TAM kelimeler; yarım cümle / kesik kelime YASAK. "5 yaşındaki" / "vurulan" gibi sıfat veya fiilimsede BITIRME — isim veya fiille bitir (ör. "…Karan taburcu oldu"). Nokta ile bitirme (gazete manşeti gibi).
 - storySummary: Manşetin ALTINDA görünecek TAM FAYDALI ÖZET. 1 veya 2 TAM cümle; toplam max ${STORY_SUMMARY_MAX} karakter. Her cümle nokta, ünlem veya soru işareti ile bitsin. Asla cümleyi veya kelimeyi ortadan kesme.
   * 1. görev — ANLAŞILIRLIK: Ne olduğu net olsun (kim/ne/nerede + ana olay). Okuyucu özetten haberi anlamalı; teaser / "ipuucu verip sakla" YASAK.
   * 2. görev — DERİNLİK İŞTAHI: Merak, maddi etki / kim etkileniyor / ne değişiyor / çarpıcı sonuç gibi ÖZ ile gelsin — "git oku" demeden. Tıklama, link stiker / bağlantı UI üzerinden olur; metinde CTA yok.
@@ -97,7 +97,7 @@ function clampHeadline(s: string, max: number): string {
     .filter(Boolean)
     .slice(0, 3)
   if (lines.length === 0) return ''
-  if (lines.length === 1) return clampAtWordBoundary(lines[0], max)
+  if (lines.length === 1) return clampCompleteHeadline(lines[0], max)
   // Çok satır: toplam max'ı satırlara orantılı dağıt; aşarsa son satırdan kısalt
   let joined = lines.join('\n')
   if (joined.replace(/\n/g, '').length <= max && joined.length <= max + lines.length - 1) {

@@ -17,7 +17,9 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload, SocialPublishResult } from '@/lib/social/types'
-import { clampAtWordBoundary, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
+import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -293,9 +295,16 @@ export async function publishOneSocial(
       shouldPost  = true
       shouldStory = true
     } else {
-      // Otomatik (cron / after): uygunluk kuralları
-      shouldPost  = isCanakkaleArticle(data) && data.socialPublished !== true
-      shouldStory = isStoryEligible(data)    && data.storyPublished  !== true
+      // Otomatik (cron / after): uygunluk kuralları + kategori bayrakları
+      const catId = typeof data.categoryId === 'string' ? data.categoryId : undefined
+      const rule = await getRuleForCategory(catId)
+      shouldPost  =
+        isCanakkaleArticle(data) &&
+        data.socialPublished !== true &&
+        allowsAutoPost(rule)
+      shouldStory =
+        allowsAutoStory(rule, isStoryEligible(data)) &&
+        data.storyPublished !== true
     }
 
     // Force değilse ve zaten yayınlandıysa atla (mode/manual açıkken)
@@ -385,15 +394,15 @@ export async function publishOneSocial(
     if (!socialContent) {
       const fallbackSpot = spot.replace(/\s+/g, ' ').trim()
       socialContent = {
-        headline: clampAtWordBoundary(title, 52),
+        headline: clampCompleteHeadline(title, 78),
         storySummary: (() => {
           const cleaned = fallbackSpot
             .replace(/\b(detaylar(?:ı|ın)?\s+(?:için\s+)?(?:haberimizde|tıklayın)|haberimizde|haberin\s+devamı|devamı\s+için|devamını\s+oku|tıklayın)\b/giu, '')
             .replace(/\s{2,}/g, ' ')
             .trim()
           if (!cleaned) return `${clampAtWordBoundary(title, 120)}.`
-          if (cleaned.length <= 170) return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`
-          return clampCompleteSentences(cleaned, 170)
+          if (cleaned.length <= 160) return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`
+          return clampCompleteSentences(cleaned, 130)
         })(),
         caption:  spot ? `📰 ${spot.trim()}` : `📰 ${title.trim()}`,
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],

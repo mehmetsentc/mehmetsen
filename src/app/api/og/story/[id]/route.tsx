@@ -24,14 +24,16 @@ export const runtime = 'nodejs'
 
 import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
+import { embedBestOgImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
+import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
 
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
-/** Manşet — 1 satır veya 2–3 vurucu satır; kelime ortasından kesilmez */
-const TITLE_MAX = 52
-/** Özet — 1–2 tam faydalı cümle; cümle/kelime ortasından kesilmez */
-const SPOT_MAX = 170
+/** Manşet — tam anlam; softMax ile yarım sıfat kesimini önle */
+const TITLE_MAX = 78
+/** Özet — 1–2 kısa cümle, büyük punto; cümle/kelime ortasından kesilmez */
+const SPOT_MAX = 200
 
 interface ArticleData {
   title: string
@@ -54,49 +56,28 @@ async function fetchArticle(id: string): Promise<ArticleData | null> {
     const data = await res.json() as { fields?: Record<string, { stringValue?: string }> }
     const f = data.fields
     if (!f) return null
+    const str = (v?: { stringValue?: string }) => v?.stringValue?.trim() || ''
     return {
-      title:               f.title?.stringValue               || '',
-      spot:                f.spot?.stringValue                || f.summary?.stringValue || f.description?.stringValue || '',
-      socialHeadline:      f.socialHeadline?.stringValue      || '',
-      socialStorySummary:  f.socialStorySummary?.stringValue  || '',
-      imageUrl:            f.imageUrl?.stringValue            || '',
-      thumbnail:           f.thumbnail?.stringValue           || '',
-      coverImageUrl:       f.coverImageUrl?.stringValue       || '',
-      featuredImage:       f.featuredImage?.stringValue       || '',
-      image:               f.image?.stringValue               || '',
+      title:               str(f.title),
+      spot:                str(f.spot) || str(f.summary) || str(f.description),
+      socialHeadline:      str(f.socialHeadline),
+      socialStorySummary:  str(f.socialStorySummary),
+      imageUrl:            str(f.imageUrl),
+      thumbnail:           str(f.thumbnail),
+      coverImageUrl:       str(f.coverImageUrl),
+      featuredImage:       str(f.featuredImage),
+      image:               str(f.image),
     }
   } catch { return null }
 }
 
-const SUPPORTED = /\.(jpe?g|png|gif|webp|avif)(\?|$)/i
-const UNSUPPORTED = /\.(svg|bmp|tiff?)(\?|$)/i
-
-function isValidUrl(url: string | undefined): url is string {
-  if (!url || !url.startsWith('http')) return false
-  if (url.endsWith('/') || url.endsWith('-') || url.endsWith('_')) return false
-  if ((url.split('/').pop() ?? '').length < 4) return false
-  return !UNSUPPORTED.test(url)
+function bestImageCandidates(a: ArticleData): string[] {
+  return [a.thumbnail, a.coverImageUrl, a.imageUrl, a.featuredImage, a.image]
+    .map((u) => normalizeAbsoluteImageUrl(u))
+    .filter((u) => isUsableImageUrl(u))
 }
 
-function bestImage(a: ArticleData): string {
-  const candidates = [a.thumbnail, a.coverImageUrl, a.imageUrl, a.featuredImage, a.image]
-  for (const c of candidates) if (isValidUrl(c) && SUPPORTED.test(c)) return c
-  for (const c of candidates) if (isValidUrl(c)) return c
-  return ''
-}
-
-/** Kelime sınırında kısalt; bağlaç/kesik kelime bırakma; ellipsis yok (yarıda kalmış görünmesin). */
-function clampAtWord(s: string, max: number): string {
-  const t = s.replace(/\s+/g, ' ').trim()
-  if (t.length <= max) return t
-  const slice = t.slice(0, max)
-  const sp = slice.lastIndexOf(' ')
-  return (sp > max * 0.45 ? slice.slice(0, sp) : slice)
-    .replace(/\s+(ve|veya|ile|için|olan|ama|fakat|ancak|ki|:|,)\s*$/iu, '')
-    .trim()
-}
-
-/** Manşet: 1–3 tematik satır (\\n); toplam karakter limiti. */
+/** Manşet: 1–3 tematik satır (\\n); toplam karakter + softMax. */
 function clampHeadline(s: string, max: number): string {
   const lines = s
     .replace(/\r\n/g, '\n')
@@ -105,52 +86,32 @@ function clampHeadline(s: string, max: number): string {
     .filter(Boolean)
     .slice(0, 3)
   if (lines.length === 0) return ''
-  if (lines.length === 1) return clampAtWord(lines[0], max)
+  if (lines.length === 1) return clampCompleteHeadline(lines[0], max)
   let used = 0
   const out: string[] = []
   for (let i = 0; i < lines.length; i++) {
     const remain = max - used
     if (remain < 6) break
     const share = Math.max(8, Math.floor(remain / (lines.length - i)))
-    const part = clampAtWord(lines[i], Math.min(share, remain))
+    const part = clampAtWordBoundary(lines[i], Math.min(share, remain))
     if (!part) continue
     out.push(part)
     used += part.length
   }
-  return out.join('\n')
-}
-
-/** Tercihen cümle sınırında bitir; aksi halde kelime sınırında. */
-function clampCompleteSentences(s: string, max: number): string {
-  const t = s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-  if (!t) return ''
-  if (t.length <= max) return t
-  const slice = t.slice(0, max)
-  const candidates = [
-    slice.lastIndexOf('. '),
-    slice.lastIndexOf('! '),
-    slice.lastIndexOf('? '),
-    /[.!?]$/.test(slice) ? slice.length - 1 : -1,
-  ]
-  const best = Math.max(...candidates)
-  if (best >= Math.min(36, Math.floor(max * 0.35))) {
-    const end = slice[best] === ' ' ? best : best + 1
-    return slice.slice(0, end).trim()
-  }
-  return clampAtWord(t, max)
+  return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
 // Boyutlar — 9:16 hikaye
 const W = 1080
 const H = 1920
-/** Fotoğraf alanı — bar+metin ~72px aşağı (önceki 1248 → 1320) */
-const PHOTO_H = 1320  // ~%69
+/** Fotoğraf alanı — metin bandına biraz daha yer (okunabilirlik) */
+const PHOTO_H = 1260  // ~%66
 const MID_H   = 80    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // 520px
+const TITLE_H = H - PHOTO_H - MID_H  // 580px
 /** Metin bloğu üst boşluğu — kırmızı çizgi + başlık biraz daha aşağı */
-const TEXT_PAD_TOP = 52
+const TEXT_PAD_TOP = 48
 const TEXT_PAD_SIDE = 44
-const TEXT_PAD_BOTTOM = 40
+const TEXT_PAD_BOTTOM = 36
 
 // Renkler
 const NAVY   = '#0d2355'   // OnyediTivi koyu lacivert
@@ -198,6 +159,7 @@ async function loadStoryFonts(): Promise<OgFont[]> {
     { name: FONT_HEADLINE, weight: 700 },
     { name: FONT_HEADLINE, weight: 900 },
     { name: FONT_BODY, weight: 400 },
+    { name: FONT_BODY, weight: 500 },
     { name: FONT_BODY, weight: 600 },
     { name: FONT_BODY, weight: 700 },
     { name: FONT_BODY, weight: 800 },
@@ -250,23 +212,38 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     article?.spot ||
     ''
 
-  const photo =
-    (isValidUrl(overrideImage) ? overrideImage : '') ||
-    (article ? bestImage(article) : '')
+  const candidates = [
+    overrideImage,
+    ...(article ? bestImageCandidates(article) : []),
+  ]
+  // next/og WebP/hotlink'i yutuyor — JPEG data URI'ye çevir
+  const photo = await embedBestOgImage(candidates, {
+    maxWidth: 1080,
+    maxHeight: 1400,
+    quality: 84,
+  })
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
   const spot  = rawSpot ? clampCompleteSentences(rawSpot, SPOT_MAX) : ''
   const titleLines = title.split('\n').filter(Boolean)
   const titlePlainLen = titleLines.join('').length
 
-  // Gazete display: kısa = büyük tek satır; 2–3 satır = biraz sıkı ama güçlü
+  // Gazete display: kısa = çok büyük tek satır; 2–3 satır = güçlü ama ferah
   const titleSize =
-    titleLines.length >= 3 ? 50 :
-    titleLines.length === 2 ? (titlePlainLen > 36 ? 54 : 60) :
-    titlePlainLen > 40 ? 54 :
+    titleLines.length >= 3 ? 52 :
+    titleLines.length === 2 ? (titlePlainLen > 40 ? 54 : 60) :
+    titlePlainLen > 58 ? 48 :
+    titlePlainLen > 44 ? 54 :
     titlePlainLen > 28 ? 62 :
-    titlePlainLen > 18 ? 68 : 74
-  const titleLineHeight = titleLines.length >= 2 ? 1.14 : 1.12
+    titlePlainLen > 16 ? 70 : 78
+  const titleLineHeight = titleLines.length >= 2 ? 1.2 : 1.16
+
+  const spotLen = spot.length
+  const spotSize =
+    spotLen > 120 ? 28 :
+    spotLen > 80 ? 30 :
+    spotLen > 40 ? 32 : 34
+  const spotLineHeight = 1.45
 
   try {
     const fonts = await loadStoryFonts()
@@ -388,26 +365,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               width: 7, borderRadius: 4, background: RED, flexShrink: 0,
               alignSelf: 'stretch', display: 'flex', marginTop: 6,
             }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: W - TEXT_PAD_SIDE * 2 - 29 }}>
-              {/* Manşet — 1 satır veya \\n ile 2–3 tematik satır */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: W - TEXT_PAD_SIDE * 2 - 29 }}>
+              {/* Manşet — büyük punto, yüksek kontrast */}
               <div style={{
-                display: 'flex', flexDirection: 'column', gap: 2,
-                maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
+                display: 'flex', flexDirection: 'column', gap: 4,
+                maxHeight: Math.round(titleSize * titleLineHeight * 3.15),
                 overflow: 'hidden',
               }}>
                 {titleLines.map((line, i) => (
                   <span key={i} style={{
                     color: '#ffffff', fontFamily: headlineFamily, fontWeight: 900,
-                    fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: -0.8,
+                    fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: -0.3,
                     display: 'flex',
                   }}>{line}</span>
                 ))}
               </div>
-              {/* Spot — tam faydalı özet; meta CTA yok (link stiker tıklatır) */}
+              {/* Spot — yüksek kontrast özet; meta CTA yok (link stiker tıklatır) */}
               {spot ? (
                 <span style={{
-                  color: 'rgba(255,255,255,0.72)', fontFamily: bodyFamily, fontWeight: 400,
-                  fontSize: 28, lineHeight: 1.42, display: 'flex', flexDirection: 'column',
+                  color: 'rgba(255,255,255,0.92)', fontFamily: bodyFamily, fontWeight: 500,
+                  fontSize: spotSize, lineHeight: spotLineHeight, display: 'flex', flexDirection: 'column',
                 }}>{spot}</span>
               ) : null}
             </div>

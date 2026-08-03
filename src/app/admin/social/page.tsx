@@ -17,6 +17,14 @@ import {
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
+import {
+  FALLBACK_CATEGORY_RULE,
+  composerModeFromRule,
+  normalizeCategoryRule,
+  type SocialCategoryMode,
+  type SocialCategoryRule,
+  type SocialCategoryRulesDoc,
+} from '@/lib/social/categoryRules'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -26,6 +34,7 @@ import { useAuth } from '@/hooks/useAuth'
 type TabKey = 'post' | 'story'
 type ShareMode = 'post' | 'story' | 'both'
 type StatusFilter = 'all' | 'published' | 'pending'
+type ComposerShareMode = ShareMode
 
 interface SocialNewsRow {
   id: string
@@ -220,6 +229,15 @@ export default function SocialPage() {
   const [diagResult, setDiagResult] = useState<{ summary: string; steps: Array<{ name: string; ok: boolean; detail: string }> } | null>(null)
   const [showTokenPanel, setShowTokenPanel] = useState(false)
   const [showTools, setShowTools] = useState(false)
+  const [showCategoryRules, setShowCategoryRules] = useState(false)
+  const [categoryRules, setCategoryRules] = useState<SocialCategoryRulesDoc>({
+    categories: {},
+    default: { ...FALLBACK_CATEGORY_RULE },
+  })
+  const [categoryRulesDraft, setCategoryRulesDraft] = useState<Record<string, SocialCategoryRule>>({})
+  const [defaultRuleDraft, setDefaultRuleDraft] = useState<SocialCategoryRule>({ ...FALLBACK_CATEGORY_RULE })
+  const [loadingCategoryRules, setLoadingCategoryRules] = useState(false)
+  const [savingCategoryRules, setSavingCategoryRules] = useState(false)
   const [newFbToken, setNewFbToken] = useState('')
   const [newIgToken, setNewIgToken] = useState('')
   const [savingToken, setSavingToken] = useState(false)
@@ -369,7 +387,12 @@ export default function SocialPage() {
   // ── Open composer ──────────────────────────────────────────────────────────
   const openComposer = (row: SocialNewsRow) => {
     setSelectedId(row.id)
-    setShareMode(tab)
+    const catId = (row.categoryId || row.category || '').trim().toLowerCase()
+    const rule = catId && categoryRules.categories[catId]
+      ? categoryRules.categories[catId]
+      : categoryRules.default
+    const mode = composerModeFromRule(rule, tab) as ComposerShareMode
+    setShareMode(mode)
     setHeadline(row.socialHeadline || row.title || '')
     const spot = row.spot || row.summary || row.description || ''
     setCaption(row.socialCaption || (spot ? `📰 ${spot}` : `📰 ${row.title || ''}`))
@@ -380,7 +403,12 @@ export default function SocialPage() {
         : ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye']
       ).join(' ')
     )
-    setPlatforms({ facebook: true, instagram: true, twitter: false })
+    const plat = rule.platforms
+    setPlatforms({
+      facebook: plat?.facebook !== false,
+      instagram: plat?.instagram !== false,
+      twitter: plat?.twitter === true,
+    })
     const already = isShared(row, tab)
     setForceReshare(already)
     setLastResult(null)
@@ -392,10 +420,107 @@ export default function SocialPage() {
     setLastResult(null)
   }
 
-  // Sync share mode when tab changes while composer open
+  // Sekme değişince: seçili haberin kategori varsayılanını yeniden uygula
   useEffect(() => {
-    if (selectedId) setShareMode(tab)
+    if (!selectedId) return
+    const row = rows.find((r) => r.id === selectedId)
+    if (!row) {
+      setShareMode(tab)
+      return
+    }
+    const catId = (row.categoryId || row.category || '').trim().toLowerCase()
+    const rule = catId && categoryRules.categories[catId]
+      ? categoryRules.categories[catId]
+      : categoryRules.default
+    setShareMode(composerModeFromRule(rule, tab))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca sekme değişiminde
   }, [tab, selectedId])
+
+  const loadCategoryRules = useCallback(async () => {
+    if (!user) return
+    setLoadingCategoryRules(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/category-rules', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Yüklenemedi')
+      const data = await res.json() as {
+        categories?: Record<string, SocialCategoryRule>
+        default?: SocialCategoryRule
+      }
+      const doc: SocialCategoryRulesDoc = {
+        categories: data.categories ?? {},
+        default: normalizeCategoryRule(data.default, FALLBACK_CATEGORY_RULE),
+      }
+      setCategoryRules(doc)
+      const draft: Record<string, SocialCategoryRule> = {}
+      for (const c of MAIN_CATEGORIES) {
+        draft[c.id] = normalizeCategoryRule(doc.categories[c.id], doc.default)
+      }
+      for (const [id, rule] of Object.entries(doc.categories)) {
+        if (!draft[id]) draft[id] = normalizeCategoryRule(rule, doc.default)
+      }
+      setCategoryRulesDraft(draft)
+      setDefaultRuleDraft(doc.default)
+    } catch (err) {
+      console.error('[social admin] category rules:', err)
+      toast.error('Kategori kuralları yüklenemedi')
+    } finally {
+      setLoadingCategoryRules(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    void loadCategoryRules()
+  }, [loadCategoryRules])
+
+  const saveCategoryRules = async () => {
+    if (!user || savingCategoryRules) return
+    setSavingCategoryRules(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/category-rules', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          default: defaultRuleDraft,
+          categories: categoryRulesDraft,
+        }),
+      })
+      const data = await res.json() as {
+        ok?: boolean
+        message?: string
+        error?: string
+        categories?: Record<string, SocialCategoryRule>
+        default?: SocialCategoryRule
+      }
+      if (!res.ok || !data.ok) {
+        toast.error(data.error ?? 'Kayıt başarısız')
+        return
+      }
+      setCategoryRules({
+        categories: data.categories ?? categoryRulesDraft,
+        default: data.default ?? defaultRuleDraft,
+      })
+      toast.success(data.message ?? 'Kategori kuralları kaydedildi')
+    } catch (err) {
+      console.error(err)
+      toast.error('Bağlantı hatası')
+    } finally {
+      setSavingCategoryRules(false)
+    }
+  }
+
+  const updateDraftRule = (catId: string, patch: Partial<SocialCategoryRule>) => {
+    setCategoryRulesDraft((prev) => ({
+      ...prev,
+      [catId]: normalizeCategoryRule({ ...prev[catId], ...patch }, defaultRuleDraft),
+    }))
+  }
 
   // ── Share ──────────────────────────────────────────────────────────────────
   const shareSelected = async () => {
@@ -775,9 +900,154 @@ export default function SocialPage() {
               {triggeringCron ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
               Cron Çalıştır
             </button>
+            <button
+              onClick={() => {
+                setShowCategoryRules((p) => !p)
+                if (!showCategoryRules) void loadCategoryRules()
+              }}
+              className="inline-flex items-center gap-1.5 rounded bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-600"
+            >
+              <Layers className="h-3 w-3" />
+              Kategori ayarları
+            </button>
             <p className="w-full text-[11px] text-[rgb(var(--color-muted))]">
               Habere tıklayın → sağdaki composer’da manşet, özet, platform ve mod seçin → Paylaş.
+              Kategori varsayılanları composer modunu ön-seçer; cron auto bayraklarına uyar.
             </p>
+          </div>
+        )}
+
+        {showCategoryRules && (
+          <div className="rounded-lg border border-white/15 bg-white/5 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-white">Kategori sosyal ayarları</h3>
+                <p className="mt-0.5 text-[11px] text-[rgb(var(--color-muted))]">
+                  Varsayılan paylaşım modu (composer) + otomatik cron bayrakları. Firestore:{' '}
+                  <code className="text-slate-300">config/socialCategoryRules</code>
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadCategoryRules()}
+                  disabled={loadingCategoryRules}
+                  className="rounded bg-white/10 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-white/15 disabled:opacity-50"
+                >
+                  {loadingCategoryRules ? <Loader2 className="inline h-3 w-3 animate-spin" /> : <RefreshCw className="inline h-3 w-3" />} Yenile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveCategoryRules()}
+                  disabled={savingCategoryRules}
+                  className="rounded bg-[rgb(var(--color-brand))] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  {savingCategoryRules ? <Loader2 className="inline h-3 w-3 animate-spin" /> : null} Kaydet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryRules(false)}
+                  className="text-xs text-[rgb(var(--color-muted))] hover:text-white"
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded border border-white/10 bg-black/20 px-3 py-2 text-xs">
+              <span className="font-semibold text-white">Varsayılan (diğer kategoriler)</span>
+              <select
+                value={defaultRuleDraft.defaultMode}
+                onChange={(e) =>
+                  setDefaultRuleDraft((p) => ({
+                    ...p,
+                    defaultMode: e.target.value as SocialCategoryMode,
+                  }))
+                }
+                className="rounded border border-white/10 bg-white/5 px-2 py-1 text-white"
+              >
+                <option value="post">Post</option>
+                <option value="story">Hikâye</option>
+                <option value="both">İkisi</option>
+                <option value="none">Yok</option>
+              </select>
+              <label className="inline-flex items-center gap-1.5 text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={defaultRuleDraft.autoPost !== false}
+                  onChange={(e) =>
+                    setDefaultRuleDraft((p) => ({ ...p, autoPost: e.target.checked }))
+                  }
+                />
+                Auto post
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={defaultRuleDraft.autoStory === true}
+                  onChange={(e) =>
+                    setDefaultRuleDraft((p) => ({ ...p, autoStory: e.target.checked }))
+                  }
+                />
+                Auto hikâye
+              </label>
+            </div>
+
+            <div className="max-h-72 overflow-auto rounded border border-white/10">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-slate-900 text-[10px] uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">Kategori</th>
+                    <th className="px-3 py-2 font-semibold">Varsayılan mod</th>
+                    <th className="px-3 py-2 font-semibold">Auto post</th>
+                    <th className="px-3 py-2 font-semibold">Auto hikâye</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {MAIN_CATEGORIES.map((c) => {
+                    const rule = categoryRulesDraft[c.id] ?? defaultRuleDraft
+                    return (
+                      <tr key={c.id} className="hover:bg-white/[0.03]">
+                        <td className="px-3 py-2">
+                          <span className="font-medium text-white">{c.name}</span>
+                          <span className="ml-1.5 text-[10px] text-slate-500">{c.id}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={rule.defaultMode}
+                            onChange={(e) =>
+                              updateDraftRule(c.id, {
+                                defaultMode: e.target.value as SocialCategoryMode,
+                              })
+                            }
+                            className="rounded border border-white/10 bg-white/5 px-2 py-1 text-white"
+                          >
+                            <option value="post">Post</option>
+                            <option value="story">Hikâye</option>
+                            <option value="both">İkisi</option>
+                            <option value="none">Yok</option>
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={rule.autoPost !== false}
+                            onChange={(e) => updateDraftRule(c.id, { autoPost: e.target.checked })}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={rule.autoStory === true}
+                            onChange={(e) => updateDraftRule(c.id, { autoStory: e.target.checked })}
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

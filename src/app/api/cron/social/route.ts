@@ -26,13 +26,19 @@ import { publishToTwitter } from '@/lib/social/twitter'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
-import { clampAtWordBoundary, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
 
 import {
   isOwnContent,
   isSkippableForSocial,
   isStoryEligible as isStoryEligibleShared,
 } from '@/lib/social/publishOneSocial'
+import { getCategoryRulesDoc } from '@/lib/social/categoryRulesStore'
+import {
+  allowsAutoPost,
+  allowsAutoStory,
+  resolveCategoryRule,
+} from '@/lib/social/categoryRules'
 import type {
   SocialCronItemResult,
   SocialCronResult,
@@ -134,6 +140,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
   }
 
   const db = getAdminFirestore()
+  const categoryRules = await getCategoryRulesDoc()
 
   // ── İki sorguyu paralel çalıştır ve birleştir ────────────────────────
   // 1. citySlug='canakkale' olan haberler (yeni haberler)
@@ -171,6 +178,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     if (!isOwnContent(d)) return false
     // Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini atla
     if (isSkippableForSocial(d)) return false
+    // Kategori kuralı: none / autoPost=false → atla
+    const catId = typeof d.categoryId === 'string' ? d.categoryId : undefined
+    if (!allowsAutoPost(resolveCategoryRule(categoryRules, catId))) return false
     return true
   })
 
@@ -212,7 +222,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         if (d.storyPublished === true) return false
         if (!isOwnContent(d)) return false
         if (!extractImageUrl(d)) return false
-        return isStoryEligibleShared(d)
+        const catId = typeof d.categoryId === 'string' ? d.categoryId : undefined
+        const rule = resolveCategoryRule(categoryRules, catId)
+        // Mevcut gundem/featured + kategori autoStory opt-in / veto
+        return allowsAutoStory(rule, isStoryEligibleShared(d))
       })
       .slice(0, STORY_BATCH_LIMIT)
 
@@ -238,11 +251,11 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
 
       // AI içerik — headline + storySummary Firestore'a yazılsın (OG route okur)
-      let headline = clampAtWordBoundary(title, 80)
+      let headline = clampCompleteHeadline(title, 78)
       let storySummary = spot
         ? clampCompleteSentences(
             /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
-            170
+            130
           )
         : `${clampAtWordBoundary(title, 120)}.`
       try {
@@ -391,7 +404,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         ? `📰 ${spot.trim()}`
         : `📰 ${title.trim()}`
       socialContent = {
-        headline: clampAtWordBoundary(title, 52),
+        headline: clampCompleteHeadline(title, 78),
         storySummary: spot
           ? clampCompleteSentences(
               /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
