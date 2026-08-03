@@ -13,7 +13,7 @@
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
-const DEEPSEEK_BASE = 'https://api.deepseek.com/chat/completions'
+const DEEPSEEK_BASE = 'https://api.deepseek.com/v1/chat/completions'
 
 export interface AISocialContent {
   headline: string
