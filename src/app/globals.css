@@ -1039,17 +1039,17 @@
     position: relative;
     width: 100%;
     overflow: hidden;
-    background: rgb(var(--color-border));
-    aspect-ratio: 16 / 10;
-    min-height: 220px;
-    max-height: min(72vw, 420px);
+    background: #0a0a0a;
+    aspect-ratio: 16 / 9;
+    min-height: 240px;
+    max-height: min(70vw, 460px);
   }
 
   @media (max-width: 767px) {
     .featured-news-carousel__stage {
-      aspect-ratio: 4 / 3;
+      aspect-ratio: 16 / 10;
       max-height: none;
-      min-height: clamp(240px, 68vw, 340px);
+      min-height: clamp(260px, 62vw, 360px);
       border-radius: 0;
     }
   }
@@ -1057,7 +1057,7 @@
   @media (min-width: 768px) {
     .featured-news-carousel__stage {
       border-radius: 0.75rem;
-      max-height: 480px;
+      max-height: 520px;
     }
   }
 
@@ -1067,6 +1067,7 @@
     opacity: 0;
     z-index: 0;
     pointer-events: none;
+    background: #0a0a0a;
   }
 
   .featured-news-carousel__slide--animate {
@@ -1079,15 +1080,26 @@
     pointer-events: auto;
   }
 
+  /* Tam görünsün — kırpma yok; boşluklar koyu arka planda letterbox olur */
+  .featured-news-carousel__slide img,
+  .featured-news-carousel__slide picture,
+  .featured-news-carousel__slide .safe-news-image,
+  .featured-news-carousel__media {
+    object-fit: contain !important;
+    object-position: center center !important;
+  }
+
   .featured-news-carousel__scrim {
     position: absolute;
     inset: 0;
+    pointer-events: none;
+    /* Alt metin okunaklı olsun; yan letterbox koyu kalsın */
     background: linear-gradient(
       to top,
-      rgba(0, 0, 0, 0.92) 0%,
-      rgba(0, 0, 0, 0.55) 38%,
-      rgba(0, 0, 0, 0.12) 68%,
-      transparent 100%
+      rgba(0, 0, 0, 0.88) 0%,
+      rgba(0, 0, 0, 0.45) 32%,
+      rgba(0, 0, 0, 0.08) 58%,
+      transparent 78%
     );
   }
 
