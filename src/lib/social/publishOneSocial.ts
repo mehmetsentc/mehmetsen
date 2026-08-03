@@ -20,6 +20,7 @@ import type { SocialPublishPayload, SocialPublishResult } from '@/lib/social/typ
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
 import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
+import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -274,6 +275,14 @@ export async function publishOneSocial(
       return skipped(newsId, 'Canlı yayın, boş içerik veya tanıtım haberi — paylaşıma uygun değil')
     }
 
+    // Global otomatik paylaşım ayarları (manuel paylaşımı etkilemez)
+    const autoShare = manual ? null : await getAutoShareSettings()
+    if (autoShare && !autoShare.autoOnPublish && !mode) {
+      // CMS yayınında anlık paylaşım kapalı — cron ayrı çalışır
+      console.log(`[publishOneSocial] autoOnPublish kapalı — anlık paylaşım atlandı: ${newsId}`)
+      return skipped(newsId, 'Yayınlanınca otomatik paylaşım kapalı (cron ayrı çalışır)')
+    }
+
     const title = typeof data.title === 'string' ? data.title : ''
     if (!title) return skipped(newsId, 'Haber başlığı yok')
 
@@ -295,14 +304,16 @@ export async function publishOneSocial(
       shouldPost  = true
       shouldStory = true
     } else {
-      // Otomatik (cron / after): uygunluk kuralları + kategori bayrakları
+      // Otomatik (cron / after): uygunluk kuralları + kategori bayrakları + global toggle
       const catId = typeof data.categoryId === 'string' ? data.categoryId : undefined
       const rule = await getRuleForCategory(catId)
       shouldPost  =
+        autoShare!.autoPost &&
         isCanakkaleArticle(data) &&
         data.socialPublished !== true &&
         allowsAutoPost(rule)
       shouldStory =
+        autoShare!.autoStory &&
         allowsAutoStory(rule, isStoryEligible(data)) &&
         data.storyPublished !== true
     }

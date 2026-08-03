@@ -34,6 +34,7 @@ import {
   isStoryEligible as isStoryEligibleShared,
 } from '@/lib/social/publishOneSocial'
 import { getCategoryRulesDoc } from '@/lib/social/categoryRulesStore'
+import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
 import {
   allowsAutoPost,
   allowsAutoStory,
@@ -140,55 +141,67 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
   }
 
   const db = getAdminFirestore()
-  const categoryRules = await getCategoryRulesDoc()
-
-  // ── İki sorguyu paralel çalıştır ve birleştir ────────────────────────
-  // 1. citySlug='canakkale' olan haberler (yeni haberler)
-  // 2. city='Çanakkale' olan haberler (citySlug eksik olabilir)
-  const [snap1, snap2] = await Promise.all([
-    db.collection(Collections.NEWS)
-      .where('citySlug', '==', 'canakkale')
-      .where('status', '==', 'published')
-      .orderBy('createdAt', 'desc')
-      .limit(BATCH_LIMIT * 5)
-      .get(),
-    db.collection(Collections.NEWS)
-      .where('city', '==', 'Çanakkale')
-      .where('status', '==', 'published')
-      .orderBy('createdAt', 'desc')
-      .limit(BATCH_LIMIT * 5)
-      .get(),
+  const [categoryRules, autoShare] = await Promise.all([
+    getCategoryRulesDoc(),
+    getAutoShareSettings(),
   ])
+  console.log(
+    `[cron/social] autoShare autoPost=${autoShare.autoPost} autoStory=${autoShare.autoStory} autoOnPublish=${autoShare.autoOnPublish}`
+  )
 
-  // Merge + deduplicate
-  const seen = new Set<string>()
-  const merged = [...snap1.docs, ...snap2.docs].filter(doc => {
-    if (seen.has(doc.id)) return false
-    seen.add(doc.id)
-    return true
-  })
+  // Post adayları yalnızca autoPost açıksa toplanır
+  let prioritized: Array<{ id: string; data: () => FirebaseFirestore.DocumentData }> = []
+  if (autoShare.autoPost) {
+    // ── İki sorguyu paralel çalıştır ve birleştir ────────────────────────
+    // 1. citySlug='canakkale' olan haberler (yeni haberler)
+    // 2. city='Çanakkale' olan haberler (citySlug eksik olabilir)
+    const [snap1, snap2] = await Promise.all([
+      db.collection(Collections.NEWS)
+        .where('citySlug', '==', 'canakkale')
+        .where('status', '==', 'published')
+        .orderBy('createdAt', 'desc')
+        .limit(BATCH_LIMIT * 5)
+        .get(),
+      db.collection(Collections.NEWS)
+        .where('city', '==', 'Çanakkale')
+        .where('status', '==', 'published')
+        .orderBy('createdAt', 'desc')
+        .limit(BATCH_LIMIT * 5)
+        .get(),
+    ])
 
-  let candidates = merged.filter(doc => {
-    const d = doc.data() as Record<string, unknown>
-    // Video haberlerini atla
-    if (d.socialPublished || d.hasVideo || d.isVideo) return false
-    // Çanakkale haberi değilse atla (geniş kontrol)
-    if (!isCanakkale(d)) return false
-    // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
-    if (!isOwnContent(d)) return false
-    // Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini atla
-    if (isSkippableForSocial(d)) return false
-    // Kategori kuralı: none / autoPost=false → atla
-    const catId = typeof d.categoryId === 'string' ? d.categoryId : undefined
-    if (!allowsAutoPost(resolveCategoryRule(categoryRules, catId))) return false
-    return true
-  })
+    // Merge + deduplicate
+    const seen = new Set<string>()
+    const merged = [...snap1.docs, ...snap2.docs].filter(doc => {
+      if (seen.has(doc.id)) return false
+      seen.add(doc.id)
+      return true
+    })
 
-  // ── Görseli olan haberler zorunlu — görselsiz haberler paylaşılmaz ──────
-  // Instagram/Facebook için görsel şart; görselsiz haberler koyu/siyah görünür.
-  const withImage   = candidates.filter(doc => !!extractImageUrl(doc.data() as Record<string, unknown>))
-  const prioritized = withImage   // fallback yok — sadece görseli olan haberler
-  console.log(`[cron/social] candidates=${candidates.length} withImage=${withImage.length}`)
+    const candidates = merged.filter(doc => {
+      const d = doc.data() as Record<string, unknown>
+      // Video haberlerini atla
+      if (d.socialPublished || d.hasVideo || d.isVideo) return false
+      // Çanakkale haberi değilse atla (geniş kontrol)
+      if (!isCanakkale(d)) return false
+      // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
+      if (!isOwnContent(d)) return false
+      // Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini atla
+      if (isSkippableForSocial(d)) return false
+      // Kategori kuralı: none / autoPost=false → atla
+      const catId = typeof d.categoryId === 'string' ? d.categoryId : undefined
+      if (!allowsAutoPost(resolveCategoryRule(categoryRules, catId))) return false
+      return true
+    })
+
+    // ── Görseli olan haberler zorunlu — görselsiz haberler paylaşılmaz ──────
+    // Instagram/Facebook için görsel şart; görselsiz haberler koyu/siyah görünür.
+    const withImage = candidates.filter(doc => !!extractImageUrl(doc.data() as Record<string, unknown>))
+    prioritized = withImage   // fallback yok — sadece görseli olan haberler
+    console.log(`[cron/social] candidates=${candidates.length} withImage=${withImage.length}`)
+  } else {
+    console.log('[cron/social] autoPost kapalı — post batch atlandı')
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // BÖLÜM 1 — HİKAYELER ÖNCE (güncel + öne çıkan)
@@ -206,7 +219,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
   let storyProcessed = 0
   const storyItemLogs: Array<{ newsId: string; title: string; ok: boolean; error?: string }> = []
 
-  try {
+  if (!autoShare.autoStory) {
+    console.log('[cron/social] autoStory kapalı — hikâye batch atlandı')
+  } else try {
     // publishedAt number — draft onayında createdAt eski kalabiliyor
     const storySnap = await db
       .collection(Collections.NEWS)
