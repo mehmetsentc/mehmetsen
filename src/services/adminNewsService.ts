@@ -59,6 +59,19 @@ export type AdminNewsSource = 'news' | 'newsDrafts'
 
 export interface AdminNewsItem extends Post {
   adminSource: AdminNewsSource
+  /** FB/IG/X feed post olarak paylaşılmış mı */
+  socialPublished?: boolean
+  /** IG/FB hikâye olarak paylaşılmış mı */
+  storyPublished?: boolean
+}
+
+function withSocialFlags(post: Post, data: Record<string, unknown>, adminSource: AdminNewsSource): AdminNewsItem {
+  return {
+    ...post,
+    adminSource,
+    socialPublished: data.socialPublished === true,
+    storyPublished: data.storyPublished === true,
+  }
 }
 
 async function adminFetch(path: string, method: 'POST' | 'DELETE', body?: object): Promise<void> {
@@ -81,7 +94,10 @@ async function adminFetch(path: string, method: 'POST' | 'DELETE', body?: object
 
 function draftDocToPost(id: string, data: NewsDocument): AdminNewsItem {
   const post = adminNewsDocToPost(id, data)
-  return { ...post, status: 'pending', adminSource: 'newsDrafts' }
+  return {
+    ...withSocialFlags(post, data as Record<string, unknown>, 'newsDrafts'),
+    status: 'pending',
+  }
 }
 
 function adminNewsDocToPost(id: string, data: NewsDocument): Post {
@@ -197,10 +213,10 @@ function mapAdminNewsDocs(
       docCreatedAtMs(b.data() as NewsDocument) - docCreatedAtMs(a.data() as NewsDocument)
   )
 
-  let posts: AdminNewsItem[] = sorted.map((d) => ({
-    ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
-    adminSource: 'news' as const,
-  }))
+  let posts: AdminNewsItem[] = sorted.map((d) => {
+    const data = d.data() as NewsDocument
+    return withSocialFlags(adminNewsDocToPost(d.id, data), data as Record<string, unknown>, 'news')
+  })
 
   // Enforce the category filter in-memory. The query fallbacks below may drop the
   // `where('categoryId', ...)` clause (composite-index gaps), which would otherwise
@@ -497,10 +513,8 @@ export const adminNewsService = {
           for (const d of snap.docs) {
             if (!seen.has(d.id)) {
               seen.add(d.id)
-              results.push({
-                ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
-                adminSource: 'news' as const,
-              })
+              const data = d.data() as NewsDocument
+              results.push(withSocialFlags(adminNewsDocToPost(d.id, data), data as Record<string, unknown>, 'news'))
             }
           }
         } catch {
@@ -606,10 +620,8 @@ async function listPendingQueue(
           const legacySnap = await getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints))
           if (legacySnap.empty && constraints !== legacyAttempts[legacyAttempts.length - 1]) continue
           for (const d of legacySnap.docs) {
-            items.push({
-              ...adminNewsDocToPost(d.id, d.data() as NewsDocument),
-              adminSource: 'news',
-            })
+            const data = d.data() as NewsDocument
+            items.push(withSocialFlags(adminNewsDocToPost(d.id, data), data as Record<string, unknown>, 'news'))
           }
           break
         } catch (err) {

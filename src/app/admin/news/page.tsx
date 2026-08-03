@@ -8,7 +8,7 @@ import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X,
-  ChevronLeft, ChevronRight, Eye,
+  ChevronLeft, ChevronRight, Eye, Share2, Smartphone,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
@@ -205,6 +205,13 @@ function SeoPreview({ post }: { post: AdminNewsItem }) {
 }
 
 // ── News Row ───────────────────────────────────────────────────────────────
+function newsHasShareImage(post: AdminNewsItem): boolean {
+  if (post.coverImageUrl?.trim()) return true
+  return (post.mediaItems ?? []).some((m) => m.type === 'image' && !!m.url?.trim())
+}
+
+type SocialShareMode = 'story' | 'post'
+
 function NewsRow({
   post,
   selected,
@@ -227,13 +234,121 @@ function NewsRow({
   const [expanded, setExpanded] = useState(false)
   const [showAi, setShowAi] = useState(false)
   const [showSeo, setShowSeo] = useState(false)
-  const busy = actionLoading === post.id
+  const [sharingMode, setSharingMode] = useState<SocialShareMode | null>(null)
+  const [socialPublished, setSocialPublished] = useState(!!post.socialPublished)
+  const [storyPublished, setStoryPublished] = useState(!!post.storyPublished)
+  const busy = actionLoading === post.id || sharingMode !== null
   const badge = STATUS_BADGE[post.status ?? 'draft'] ?? STATUS_BADGE.draft
+  const canShare = newsHasShareImage(post)
+
+  useEffect(() => {
+    setSocialPublished(!!post.socialPublished)
+    setStoryPublished(!!post.storyPublished)
+  }, [post.id, post.socialPublished, post.storyPublished])
 
   const publishedAtStr = post.publishedAt ?? post.createdAt
   const publishedAt = publishedAtStr
     ? formatDistanceToNow(new Date(publishedAtStr), { locale: tr, addSuffix: true })
     : '—'
+
+  const shareSocial = async (mode: SocialShareMode) => {
+    if (!canShare || sharingMode) return
+
+    const alreadyKnown = mode === 'post' ? socialPublished : storyPublished
+    let force = alreadyKnown
+    if (alreadyKnown) {
+      const ok = window.confirm(
+        mode === 'story'
+          ? 'Bu haber zaten hikâye olarak paylaşılmış. Yeniden paylaş?'
+          : 'Bu haber zaten feed post olarak paylaşılmış. Yeniden paylaş?'
+      )
+      if (!ok) return
+    }
+
+    const run = async (useForce: boolean) => {
+      setSharingMode(mode)
+      const toastId = toast.loading(
+        mode === 'story' ? 'Hikâye paylaşılıyor…' : 'Feed post paylaşılıyor…'
+      )
+
+      try {
+        const token = (await auth.currentUser?.getIdToken()) ?? ''
+        const res = await fetch('/api/admin/social/force-reshare', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ids: [post.id],
+            mode,
+            manual: true,
+            force: useForce,
+          }),
+        })
+        const data = await res.json() as {
+          error?: string
+          results?: Array<{
+            ok: boolean
+            reason?: string
+            post?: {
+              facebook: { success: boolean }
+              instagram: { success: boolean }
+              twitter?: { success: boolean }
+            }
+            story?: {
+              facebook: { success: boolean }
+              instagram: { success: boolean }
+            }
+          }>
+        }
+
+        const r0 = data.results?.[0]
+        if (!res.ok) {
+          const msg = data.error ?? r0?.reason ?? 'Paylaşım başarısız'
+          if (!useForce && /zaten|force/i.test(msg)) {
+            toast.dismiss(toastId)
+            if (mode === 'post') setSocialPublished(true)
+            if (mode === 'story') setStoryPublished(true)
+            const ok = window.confirm(
+              mode === 'story'
+                ? 'Bu haber zaten hikâye olarak paylaşılmış. Yeniden paylaş?'
+                : 'Bu haber zaten feed post olarak paylaşılmış. Yeniden paylaş?'
+            )
+            if (ok) {
+              setSharingMode(null)
+              return run(true)
+            }
+            return
+          }
+          toast.error(msg, { id: toastId })
+          return
+        }
+
+        const parts: string[] = []
+        if (r0?.post) {
+          parts.push(
+            `Post FB:${r0.post.facebook.success ? '✓' : '✗'} IG:${r0.post.instagram.success ? '✓' : '✗'}` +
+            (r0.post.twitter ? ` X:${r0.post.twitter.success ? '✓' : '✗'}` : '')
+          )
+        }
+        if (r0?.story) {
+          parts.push(`Hikâye FB:${r0.story.facebook.success ? '✓' : '✗'} IG:${r0.story.instagram.success ? '✓' : '✗'}`)
+        }
+        toast.success(parts.join(' · ') || 'Paylaşıldı', { id: toastId })
+
+        if (mode === 'post') setSocialPublished(true)
+        if (mode === 'story') setStoryPublished(true)
+      } catch (err) {
+        console.error('[admin/news] social share error:', err)
+        toast.error('Bağlantı hatası', { id: toastId })
+      } finally {
+        setSharingMode(null)
+      }
+    }
+
+    await run(force)
+  }
 
   return (
     <div className={cn('border-b border-[rgb(var(--color-border))] transition-colors', selected && 'bg-blue-50/50 dark:bg-blue-950/10')}>
@@ -278,11 +393,11 @@ function NewsRow({
 
         {/* Actions */}
         <div className="flex shrink-0 flex-col gap-1 items-end">
-          <div className="flex gap-1">
+          <div className="flex flex-wrap justify-end gap-1">
             {(post.status === 'pending' || post.status === 'draft') && (
               <button onClick={() => onApprove(post)} disabled={busy}
                 className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}Onayla
+                {busy && !sharingMode ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}Onayla
               </button>
             )}
             {post.status === 'pending' && (
@@ -297,6 +412,36 @@ function NewsRow({
                 <ExternalLink className="h-3 w-3" />Görüntüle
               </a>
             )}
+            <button
+              type="button"
+              onClick={() => void shareSocial('story')}
+              disabled={!canShare || busy}
+              title={canShare ? (storyPublished ? 'Hikâye yeniden paylaş (IG/FB)' : 'Hikâye paylaş (IG/FB)') : 'Görsel yok — paylaşım için kapak gerekli'}
+              className={cn(
+                'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40',
+                storyPublished
+                  ? 'border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/30'
+                  : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+              )}
+            >
+              {sharingMode === 'story' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Smartphone className="h-3 w-3" />}
+              Hikâye
+            </button>
+            <button
+              type="button"
+              onClick={() => void shareSocial('post')}
+              disabled={!canShare || busy}
+              title={canShare ? (socialPublished ? 'Post yeniden paylaş (FB/IG/X)' : 'Post paylaş (FB/IG/X)') : 'Görsel yok — paylaşım için kapak gerekli'}
+              className={cn(
+                'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40',
+                socialPublished
+                  ? 'border-sky-300 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950/30'
+                  : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+              )}
+            >
+              {sharingMode === 'post' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Share2 className="h-3 w-3" />}
+              Post
+            </button>
             <button onClick={() => { setShowAi(v => !v); setShowSeo(false); setExpanded(false) }}
               className={cn('flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
                 showAi ? 'border-blue-500 bg-blue-600 text-white' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]')}>
