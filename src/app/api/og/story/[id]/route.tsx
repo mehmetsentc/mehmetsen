@@ -4,16 +4,16 @@
  * ONYEDİTİVİ — 1080×1920 Instagram & Facebook Hikaye görseli (9:16)
  * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout:
+ * Layout (okunabilirlik: foto kısaltıldı, metin bandı yükseltildi):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  ~69% (1320px) — bar+metin aşağı kaydırıldı
+ *   │   HABER FOTOĞRAFI       │  ~55% (1060px)
  *   │                         │
  *   │  [🔗 nahaber.com pill]  │  alt kısım — link stikeri görseli
  *   ├─── nahaber.com ─────────┤  tam kırmızı bar + beyaz pill (80px)
- *   │   BAŞLIK                │
- *   │   spot/özet metin       │  kalan — lacivert bg (520px)
+ *   │   MANŞET (Playfair)     │
+ *   │   spot/özet (büyük)     │  ~41% — lacivert bg (780px)
  *   │   #hashtag              │
  *   └─────────────────────────┘
  *
@@ -101,17 +101,17 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
-// Boyutlar — 9:16 hikaye
+// Boyutlar — 9:16 hikaye (foto ~55% / metin ~41% — manşet+özet ferah)
 const W = 1080
 const H = 1920
-/** Fotoğraf alanı — metin bandına biraz daha yer (okunabilirlik) */
-const PHOTO_H = 1260  // ~%66
+/** Fotoğraf — kırmızı bar daha yukarı; metin paneli daha yüksek */
+const PHOTO_H = 1060  // ~%55
 const MID_H   = 80    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // 580px
-/** Metin bloğu üst boşluğu — kırmızı çizgi + başlık biraz daha aşağı */
-const TEXT_PAD_TOP = 48
-const TEXT_PAD_SIDE = 44
-const TEXT_PAD_BOTTOM = 36
+const TITLE_H = H - PHOTO_H - MID_H  // 780px (~%41)
+/** Metin paneli — cömert padding; hashtag ezilmesin */
+const TEXT_PAD_TOP = 52
+const TEXT_PAD_SIDE = 48
+const TEXT_PAD_BOTTOM = 44
 
 // Renkler
 const NAVY   = '#0d2355'   // OnyediTivi koyu lacivert
@@ -219,7 +219,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // next/og WebP/hotlink'i yutuyor — JPEG data URI'ye çevir
   const photo = await embedBestOgImage(candidates, {
     maxWidth: 1080,
-    maxHeight: 1400,
+    maxHeight: 1200,
     quality: 84,
   })
 
@@ -228,22 +228,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const titleLines = title.split('\n').filter(Boolean)
   const titlePlainLen = titleLines.join('').length
 
-  // Gazete display: kısa = çok büyük tek satır; 2–3 satır = güçlü ama ferah
+  // Manşet — mobil hikayede rahat okunur Playfair; 1–3 satır, yüksek satır arası
   const titleSize =
-    titleLines.length >= 3 ? 52 :
-    titleLines.length === 2 ? (titlePlainLen > 40 ? 54 : 60) :
-    titlePlainLen > 58 ? 48 :
-    titlePlainLen > 44 ? 54 :
-    titlePlainLen > 28 ? 62 :
-    titlePlainLen > 16 ? 70 : 78
-  const titleLineHeight = titleLines.length >= 2 ? 1.2 : 1.16
+    titleLines.length >= 3 ? 56 :
+    titleLines.length === 2 ? (titlePlainLen > 44 ? 58 : titlePlainLen > 32 ? 62 : 66) :
+    titlePlainLen > 58 ? 54 :
+    titlePlainLen > 44 ? 60 :
+    titlePlainLen > 28 ? 68 :
+    titlePlainLen > 16 ? 76 : 84
+  const titleLineHeight = titleLines.length >= 2 ? 1.24 : 1.18
 
+  // Özet — belirgin şekilde daha büyük; yüksek kontrast (metin paneli ~%41)
   const spotLen = spot.length
   const spotSize =
-    spotLen > 120 ? 28 :
-    spotLen > 80 ? 30 :
-    spotLen > 40 ? 32 : 34
-  const spotLineHeight = 1.45
+    spotLen > 140 ? 36 :
+    spotLen > 100 ? 38 :
+    spotLen > 60 ? 40 : 42
+  const spotLineHeight = 1.52
 
   try {
     const fonts = await loadStoryFonts()
@@ -263,7 +264,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         background: NAVY, overflow: 'hidden',
       }}>
 
-        {/* ── FOTOĞRAF (%65) ── */}
+        {/* ── FOTOĞRAF (~55%) ── */}
         <div style={{
           width: W, height: PHOTO_H, position: 'relative',
           display: 'flex', flexShrink: 0, overflow: 'hidden',
@@ -278,7 +279,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
           {/* Alt gradient → lacivert */}
           <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 420,
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 320,
             background: `linear-gradient(to top,${NAVY} 0%,rgba(13,35,85,0.55) 45%,transparent 100%)`,
             display: 'flex',
           }} />
@@ -315,7 +316,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
           {/* Bağlantı pill — fotoğraf alt kısmı (bar'a yaklaştırıldı) */}
           <div style={{
-            position: 'absolute', bottom: 40, left: '50%', marginLeft: -220,
+            position: 'absolute', bottom: 36, left: '50%', marginLeft: -220,
             display: 'flex', alignItems: 'center', gap: 18,
             background: 'rgba(255,255,255,0.18)',
             border: '2px solid rgba(255,255,255,0.4)',
@@ -353,23 +354,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.25)', display: 'flex' }} />
         </div>
 
-        {/* ── BAŞLIK + SPOT ALANI ── */}
+        {/* ── BAŞLIK + SPOT ALANI (~41%) ── */}
         <div style={{
           width: W, height: TITLE_H, flexShrink: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           padding: `${TEXT_PAD_TOP}px ${TEXT_PAD_SIDE}px ${TEXT_PAD_BOTTOM}px`, background: NAVY,
         }}>
-          {/* Başlık — sol kırmızı çizgi (üst padding ile birlikte aşağı kaydırıldı) */}
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 22, paddingTop: 8 }}>
+          {/* Manşet + özet — sol kırmızı çizgi; aralarında net boşluk */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24, flex: 1, overflow: 'hidden' }}>
             <div style={{
-              width: 7, borderRadius: 4, background: RED, flexShrink: 0,
-              alignSelf: 'stretch', display: 'flex', marginTop: 6,
+              width: 8, borderRadius: 4, background: RED, flexShrink: 0,
+              alignSelf: 'stretch', display: 'flex', marginTop: 8, minHeight: 64,
             }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: W - TEXT_PAD_SIDE * 2 - 29 }}>
-              {/* Manşet — büyük punto, yüksek kontrast */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 0,
+              maxWidth: W - TEXT_PAD_SIDE * 2 - 32, flex: 1, overflow: 'hidden',
+            }}>
+              {/* Manşet — büyük Playfair, yüksek kontrast */}
               <div style={{
-                display: 'flex', flexDirection: 'column', gap: 4,
-                maxHeight: Math.round(titleSize * titleLineHeight * 3.15),
+                display: 'flex', flexDirection: 'column', gap: 6,
+                maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
                 overflow: 'hidden',
               }}>
                 {titleLines.map((line, i) => (
@@ -380,19 +384,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                   }}>{line}</span>
                 ))}
               </div>
-              {/* Spot — yüksek kontrast özet; meta CTA yok (link stiker tıklatır) */}
+              {/* Özet — beyaza yakın, manşetten ≥36px boşluk; meta CTA yok */}
               {spot ? (
                 <span style={{
-                  color: 'rgba(255,255,255,0.92)', fontFamily: bodyFamily, fontWeight: 500,
+                  color: 'rgba(255,255,255,0.96)', fontFamily: bodyFamily, fontWeight: 500,
                   fontSize: spotSize, lineHeight: spotLineHeight, display: 'flex', flexDirection: 'column',
+                  paddingTop: 36,
                 }}>{spot}</span>
               ) : null}
             </div>
           </div>
-          {/* Hashtags */}
+          {/* Hashtags — metinden ayrı, ezilmesin */}
           <span style={{
-            color: LBLUE, fontFamily: bodyFamily, fontSize: 26, fontWeight: 600,
-            letterSpacing: 1.5, display: 'flex', marginTop: 20,
+            color: LBLUE, fontFamily: bodyFamily, fontSize: 28, fontWeight: 600,
+            letterSpacing: 1.5, display: 'flex', marginTop: 28, flexShrink: 0,
           }}>#NaHaber  #Çanakkale  #SonDakika</span>
         </div>
 
