@@ -11,8 +11,9 @@
 
 import type { DeepSeekCollectResult, GeminiEditResult } from './types'
 
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'   // DeepSeek-V3
-const DEEPSEEK_BASE = 'https://api.deepseek.com/v1'
+import { getDeepSeekModel } from './deepseekClient'
+
+const DEEPSEEK_MODEL = getDeepSeekModel()
 
 // ── Shared types ──────────────────────────────────────────────────────────────
 
@@ -76,37 +77,16 @@ async function callDeepSeekOnce(
   const cfg = getConfig()
   if (!cfg) throw new Error('DEEPSEEK_API_KEY eksik')
 
-  const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${cfg.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: DEEPSEEK_MODEL,
-      messages,
-      temperature: opts.temperature ?? 0.2,
-      max_tokens: opts.max_tokens ?? 2048,
-      response_format: { type: 'json_object' },
-    }),
-    signal: AbortSignal.timeout(opts.timeoutMs ?? 90_000),
+  const { deepseekChatCompletion } = await import('./deepseekClient')
+  return deepseekChatCompletion({
+    messages,
+    model: DEEPSEEK_MODEL,
+    temperature: opts.temperature ?? 0.2,
+    maxTokens: opts.max_tokens ?? 2048,
+    timeoutMs: opts.timeoutMs ?? 90_000,
+    disableThinking: true,
+    jsonMode: true,
   })
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => '')
-    throw new Error(`[stage1/deepseek] HTTP ${res.status}: ${err.slice(0, 200)}`)
-  }
-
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
-    error?: { message?: string }
-  }
-
-  if (data.error) throw new Error(`[stage1/deepseek] error: ${data.error.message}`)
-
-  const content = data.choices?.[0]?.message?.content?.trim()
-  if (!content) throw new Error('[stage1/deepseek] boş yanıt döndürdü')
-  return content
 }
 
 /**
@@ -632,21 +612,17 @@ export async function checkDeepSeekHealth(): Promise<{
     const cfg = getConfig()
     if (!cfg) return { ok: false, latencyMs: 0, model: DEEPSEEK_MODEL, roles: [], error: 'DEEPSEEK_API_KEY eksik' }
 
-    const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${cfg.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [{ role: 'user', content: 'test' }],
-        max_tokens: 5,
-      }),
-      signal: AbortSignal.timeout(8_000),
+    const { deepseekChatCompletion } = await import('./deepseekClient')
+    await deepseekChatCompletion({
+      model: DEEPSEEK_MODEL,
+      messages: [{ role: 'user', content: 'ping' }],
+      maxTokens: 8,
+      timeoutMs: 8_000,
+      disableThinking: true,
+      jsonMode: false,
     })
     return {
-      ok: res.ok,
+      ok: true,
       latencyMs: Date.now() - start,
       model: DEEPSEEK_MODEL,
       roles: ['collector', 'editor', 'qa'],

@@ -151,37 +151,18 @@ async function callDeepSeekOnce(
   userMessage: string,
   opts: { timeoutMs: number; maxTokens: number }
 ): Promise<Record<string, unknown>> {
-  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
-  if (!deepseekKey) throw new Error('DEEPSEEK_API_KEY yok')
-
-  const model =
-    process.env.DEEPSEEK_NEWS_MODEL?.trim() ||
-    process.env.DEEPSEEK_MODEL?.trim() ||
-    'deepseek-chat'
-
-  const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.45,
-      max_tokens: opts.maxTokens,
-    }),
-    signal: AbortSignal.timeout(opts.timeoutMs),
+  const { deepseekChatCompletion } = await import('@/lib/ai/deepseekClient')
+  const raw = await deepseekChatCompletion({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ],
+    temperature: 0.45,
+    maxTokens: opts.maxTokens,
+    timeoutMs: opts.timeoutMs,
+    disableThinking: true,
+    jsonMode: true,
   })
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`DeepSeek HTTP ${res.status}: ${body.slice(0, 200)}`)
-  }
-
-  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> }
-  const raw = json.choices[0]?.message?.content?.trim() ?? '{}'
   try {
     return parseAiJson(raw)
   } catch {
@@ -231,8 +212,9 @@ async function callGeminiFallback(
 
 async function callAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
   const errors: string[] = []
+  const { isGeminiFallbackEnabled, isGeminiCreditError } = await import('@/lib/ai/deepseekClient')
 
-  // DeepSeek primary — uzun CMS yazımı için yüksek timeout + 1 retry
+  // DeepSeek primary — V4 thinking kapalı + boş yanıtta retry
   if (process.env.DEEPSEEK_API_KEY?.trim()) {
     try {
       return await callDeepSeekOnce(systemPrompt, userMessage, {
@@ -242,10 +224,12 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       errors.push(`DeepSeek: ${msg}`)
-      const isTimeout = /timeout|aborted|AbortError/i.test(msg)
-      if (isTimeout) {
+      const shouldRetry = /timeout|aborted|AbortError|boş yanıt|0 karakter|HTTP 429|HTTP 5\d\d/i.test(
+        msg
+      )
+      if (shouldRetry) {
         try {
-          console.warn('[ai-assist] DeepSeek timeout — kısa retry')
+          console.warn('[ai-assist] DeepSeek retry')
           return await callDeepSeekOnce(systemPrompt, userMessage, {
             timeoutMs: 70_000,
             maxTokens: 4000,
@@ -257,13 +241,18 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
     }
   }
 
-  // Gemini fallback (timeout / DeepSeek down)
-  if (process.env.GEMINI_API_KEY?.trim()) {
+  // Gemini yalnızca açıkça etkinse (kredi yokken varsayılan kapalı)
+  if (isGeminiFallbackEnabled() && process.env.GEMINI_API_KEY?.trim()) {
     try {
       console.warn('[ai-assist] Gemini fallback')
       return await callGeminiFallback(systemPrompt, userMessage)
     } catch (e) {
-      errors.push(`Gemini: ${e instanceof Error ? e.message : String(e)}`)
+      const msg = e instanceof Error ? e.message : String(e)
+      if (isGeminiCreditError(msg)) {
+        errors.push('Gemini: kredi yok (GEMINI_FALLBACK kapatıldı / billing)')
+      } else {
+        errors.push(`Gemini: ${msg}`)
+      }
     }
   }
 

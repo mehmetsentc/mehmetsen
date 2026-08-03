@@ -179,7 +179,7 @@ function normalizeCategoryId(raw: string): string {
 async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null> {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
 
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -189,6 +189,7 @@ async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null
         model,
         temperature: 0.2,
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: buildPrompt(input) },

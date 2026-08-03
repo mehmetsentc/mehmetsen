@@ -8,9 +8,8 @@
 
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
+import { deepseekChatCompletion, getDeepSeekApiKey, getDeepSeekModel } from '@/lib/ai/deepseekClient'
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_NEWS_MODEL || 'deepseek-v4-flash'
 const WINDOW_MS = 48 * 60 * 60 * 1000 // 48 saat
 
 export interface EditorialReviewResult {
@@ -74,7 +73,7 @@ async function fetchRecentPublished(categoryId?: string | null): Promise<Array<{
  * Tek bir haberi AI ile incele.
  */
 export async function runEditorialReview(article: ArticleInput): Promise<EditorialReviewResult> {
-  if (!DEEPSEEK_API_KEY) {
+  if (!getDeepSeekApiKey()) {
     return { isDuplicate: false, reason: 'API key yok', action: 'published' }
   }
 
@@ -114,29 +113,15 @@ Sadece JSON döndür, başka hiçbir şey yazma:
 {"isDuplicate": true|false, "reason": "kısa Türkçe açıklama (max 100 karakter)"}`
 
   try {
-    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0.1,
-        max_tokens: 150,
-      }),
-      signal: AbortSignal.timeout(20_000),
+    const raw = await deepseekChatCompletion({
+      model: getDeepSeekModel(),
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+      maxTokens: 150,
+      timeoutMs: 20_000,
+      disableThinking: true,
+      jsonMode: true,
     })
-
-    if (!res.ok) {
-      console.error('[editorialReview] DeepSeek HTTP error:', res.status)
-      return { isDuplicate: false, reason: `API hatası: ${res.status}`, action: 'published' }
-    }
-
-    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
-    const raw = json.choices?.[0]?.message?.content ?? '{}'
     // Robust JSON extraction — handles markdown code fences from models that ignore response_format
     let jsonStr = raw.trim()
     const fence = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)

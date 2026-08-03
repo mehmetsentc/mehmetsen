@@ -80,6 +80,7 @@ Sadece JSON döndür, açıklama ekleme.`
         temperature: 0.7,
         max_tokens: 800,
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         messages: [{ role: 'user', content: prompt }],
       }),
     })

@@ -119,7 +119,7 @@ export async function classifyArticleCategory(
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!deepseekKey) return null
 
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
 
   const categoryList = CATEGORIES.map(
     c => `  - ${c}: ${CATEGORY_DESCRIPTIONS[c]}`
@@ -170,6 +170,7 @@ JSON formatında yanıt ver:
         model,
         temperature: 0.1,
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         max_tokens: 200,
         messages: [
           { role: 'system', content: 'Sen bir Türk haber kategorileme uzmanısın. Yalnızca JSON döndür.' },

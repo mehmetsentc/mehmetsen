@@ -2,8 +2,9 @@ import type { AiEditorDocument, AiEditorTask, AiModelAssignment, AiProviderId } 
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 
-const DEFAULT_DEEPSEEK_MODEL =
-  process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
+import { getDeepSeekModel, isGeminiFallbackEnabled } from '@/lib/ai/deepseekClient'
+
+const DEFAULT_DEEPSEEK_MODEL = getDeepSeekModel()
 
 export interface ResolvedModel {
   provider: AiProviderId
@@ -36,9 +37,14 @@ export function resolveModelForEditor(
       model: assignment.fallbackModel,
     }
   }
-  // Prefer DeepSeek when Gemini key missing for research
-  if (resolved.provider === 'gemini' && !process.env.GEMINI_API_KEY?.trim()) {
-    if (resolved.fallback) return { provider: resolved.fallback.provider, model: resolved.fallback.model }
+  // Prefer DeepSeek when Gemini unavailable / credits off
+  if (
+    resolved.provider === 'gemini' &&
+    (!process.env.GEMINI_API_KEY?.trim() || !isGeminiFallbackEnabled())
+  ) {
+    if (resolved.fallback?.provider === 'deepseek') {
+      return { provider: resolved.fallback.provider, model: resolved.fallback.model }
+    }
     return { provider: 'deepseek', model: DEFAULT_DEEPSEEK_MODEL }
   }
   if (resolved.provider === 'deepseek' && !process.env.DEEPSEEK_API_KEY?.trim() && resolved.fallback) {

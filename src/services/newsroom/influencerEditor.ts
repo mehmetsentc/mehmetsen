@@ -13,7 +13,7 @@ async function researchInfluencer(name: string): Promise<{
   content: string
 }> {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
 
   if (!apiKey) {
     return {
@@ -33,6 +33,7 @@ async function researchInfluencer(name: string): Promise<{
       model,
       temperature: 0.55,
       response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
       messages: [
         {
           role: 'system',

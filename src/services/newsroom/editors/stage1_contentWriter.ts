@@ -111,10 +111,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
-  const model =
-    input.model?.trim() ||
-    process.env.DEEPSEEK_NEWS_MODEL?.trim() ||
-    'deepseek-chat'
+  const { deepseekChatCompletion, getDeepSeekModel } = await import('@/lib/ai/deepseekClient')
+  const model = getDeepSeekModel(input.model)
 
   // Persona (Admin'de bir kez girilen core+news) esas; eski 500 kelime/essay kuralları yok
   const systemContent = input.systemPromptOverride?.trim()
@@ -134,50 +132,34 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 50_000)
 
   try {
-    let res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    let raw: string
+    try {
+      raw = await deepseekChatCompletion({
         model,
-        temperature: 0.4,
-        max_tokens: 3500,
-        response_format: { type: 'json_object' },
         messages,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    })
-
-    if (res.status === 429) {
-      console.warn('[stage1/deepseek] 429, 3s retry')
-      await new Promise((r) => setTimeout(r, 3000))
-      res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          temperature: 0.4,
-          max_tokens: 3500,
-          response_format: { type: 'json_object' },
-          messages,
-        }),
-        signal: AbortSignal.timeout(timeoutMs),
+        temperature: 0.4,
+        maxTokens: 3500,
+        timeoutMs,
+        disableThinking: true,
+        jsonMode: true,
       })
-    }
-
-    if (!res.ok) {
-      console.error('[stage1/deepseek] HTTP', res.status)
-      return null
-    }
-
-    const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string }; finish_reason?: string }>
-    }
-    let choice = json.choices?.[0]
-    let raw = choice?.message?.content?.trim()
-    if (!raw) return null
-
-    if (choice?.finish_reason === 'length') {
-      console.warn('[stage1/deepseek] finish_reason=length — çıktı kesilmiş, devam ediliyor')
+    } catch (firstErr) {
+      const msg = firstErr instanceof Error ? firstErr.message : String(firstErr)
+      if (!/HTTP 429|boş yanıt|0 karakter/i.test(msg)) {
+        console.error('[stage1/deepseek]', msg)
+        return null
+      }
+      console.warn('[stage1/deepseek] retry after', msg.slice(0, 80))
+      await new Promise((r) => setTimeout(r, 3000))
+      raw = await deepseekChatCompletion({
+        model,
+        messages,
+        temperature: 0.4,
+        maxTokens: 3500,
+        timeoutMs,
+        disableThinking: true,
+        jsonMode: true,
+      })
     }
 
     let parsed: Partial<WrittenArticle>

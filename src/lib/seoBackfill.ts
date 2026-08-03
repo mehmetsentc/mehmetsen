@@ -28,7 +28,7 @@ async function generateSeo(input: {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
   const userMessage = [
     `Başlık: ${input.title}`,
     '',
@@ -50,6 +50,7 @@ async function generateSeo(input: {
           { role: 'user', content: userMessage },
         ],
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         temperature: 0.4,
         max_tokens: 500,
       }),

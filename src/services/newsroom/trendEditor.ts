@@ -117,7 +117,7 @@ Yalnızca yukarıdaki kaynaklı araştırmayı kullanarak bu konunun NEDEN bugü
 
   // ── DeepSeek ile trend analizi ────────────────────────────────────────────
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
-  const deepseekModel = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const deepseekModel = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
 
   if (deepseekKey) {
     try {
@@ -128,6 +128,7 @@ Yalnızca yukarıdaki kaynaklı araştırmayı kullanarak bu konunun NEDEN bugü
           model: deepseekModel,
           temperature: 0.5,
           response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
           max_tokens: 2048,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },

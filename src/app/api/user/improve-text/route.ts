@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rateLimit'
+import { deepseekChatCompletion, getDeepSeekApiKey } from '@/lib/ai/deepseekClient'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,33 +24,25 @@ JSON formatında yanıt ver:
   "summary": "2-3 cümlelik özet"
 }`
 
-async function callGemini(content: string, title: string): Promise<{ title: string; content: string; summary: string } | null> {
-  const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
-  if (!apiKey) return null
+async function callDeepSeekImprove(
+  content: string,
+  title: string
+): Promise<{ title: string; content: string; summary: string } | null> {
+  if (!getDeepSeekApiKey()) return null
 
   try {
-    const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
     const userMessage = `BAŞLIK: ${title}\n\nİÇERİK:\n${content}`
-
-    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userMessage },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.4,
-        max_tokens: 1500,
-      }),
-      signal: AbortSignal.timeout(20_000),
+    const raw = await deepseekChatCompletion({
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: 0.4,
+      maxTokens: 1500,
+      timeoutMs: 20_000,
+      disableThinking: true,
+      jsonMode: true,
     })
-    if (!res.ok) return null
-    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
-    const raw = json.choices?.[0]?.message?.content?.trim()
-    if (!raw) return null
     const parsed = JSON.parse(raw) as { title?: string; content?: string; summary?: string }
     if (!parsed.title || !parsed.content) return null
     return {
@@ -83,7 +76,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'İçerik çok kısa' }, { status: 400 })
   }
 
-  const result = await callGemini(content, title)
+  const result = await callDeepSeekImprove(content, title)
   if (!result) {
     return NextResponse.json({ error: 'AI servisi şu an kullanılamıyor' }, { status: 503 })
   }

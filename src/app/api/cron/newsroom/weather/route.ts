@@ -46,6 +46,7 @@ JSON: {"title":"...max 70 karakter...","summary":"...1 cümle...","content":"...
         model: process.env.DEEPSEEK_NEWS_MODEL || 'deepseek-v4-flash',
         temperature: 0.5,
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         messages: [{ role: 'user', content: prompt }],
       }),
       signal: AbortSignal.timeout(15_000),

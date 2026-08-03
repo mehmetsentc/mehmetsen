@@ -118,7 +118,7 @@ function getDeepSeekConfig(): AiProviderConfig | null {
   if (!apiKey) return null
   return {
     apiKey,
-    model: process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat',
+    model: process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash',
     baseUrl: 'https://api.deepseek.com/v1/chat/completions',
     provider: 'deepseek',
   }
@@ -496,6 +496,7 @@ async function callSingleProvider(
       model: config.model,
       temperature: mode === 'archive' ? 0.45 : 0.55,
       response_format: { type: 'json_object' },
+      ...(config.provider === 'deepseek' ? { thinking: { type: 'disabled' as const } } : {}),
       messages: [
         { role: 'system', content: buildSystemPrompt(mode) },
         { role: 'user', content: buildUserPrompt(input) },

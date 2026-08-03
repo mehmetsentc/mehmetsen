@@ -29,8 +29,9 @@ async function classifyWithGpt(title: string, content: string): Promise<string |
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_API_KEY}` },
       body: JSON.stringify({
-        model: process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat',
+        model: process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash',
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         max_tokens: 60,
         temperature: 0,
         messages: [

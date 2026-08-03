@@ -44,7 +44,7 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<AiResp
   // DeepSeek (tek sağlayıcı)
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (deepseekKey) {
-    const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+    const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
@@ -55,6 +55,7 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<AiResp
           { role: 'user', content: userMessage },
         ],
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         temperature: 0.3,
         max_tokens: 1200,
       }),

@@ -131,7 +131,7 @@ async function generateArticleFromHeadline(
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
   const baseUrl = 'https://api.deepseek.com/v1/chat/completions'
 
   const systemPrompt = `Sen NaHaber adlı Türkçe haber platformunun editörüsün.
@@ -151,6 +151,7 @@ KURALLAR:
         model,
         temperature: 0.5,
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Başlık: "${title}"\nKaynak: ${sourceLabel}\n\nHaberi yaz.` },
@@ -202,7 +203,7 @@ async function translateToTurkish(fields: {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
   const baseUrl = 'https://api.deepseek.com/v1/chat/completions'
 
   const contentSnippet = (fields.originalContent ?? '').slice(0, 3000)
@@ -216,6 +217,7 @@ async function translateToTurkish(fields: {
         model,
         temperature: 0.2,
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         messages: [
           {
             role: 'system',

@@ -33,7 +33,7 @@ const URGENCY_KEYWORDS = [
 function getDeepSeekConfig(): { apiKey: string; model: string } | null {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-chat'
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
   return { apiKey, model }
 }
 
@@ -107,6 +107,7 @@ async function deepSeekFactCheck(input: FactCheckInput): Promise<FactCheckResult
       model: config.model,
       temperature: 0.2,
       response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
       messages: [
         {
           role: 'system',

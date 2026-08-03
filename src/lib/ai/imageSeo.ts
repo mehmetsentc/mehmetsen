@@ -210,6 +210,7 @@ async function generateWithDeepSeek(input: ImageSeoInput): Promise<ImageAnalysis
           { role: 'user', content: buildUserPrompt(input, false) },
         ],
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
         temperature: 0.35,
         max_tokens: 600,
       }),

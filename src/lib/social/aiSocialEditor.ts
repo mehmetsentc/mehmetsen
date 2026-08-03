@@ -129,6 +129,7 @@ async function generateWithDeepSeek(
         temperature: 0.4,
         max_tokens: 512,
         response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
       }),
     })
     if (!res.ok) {
