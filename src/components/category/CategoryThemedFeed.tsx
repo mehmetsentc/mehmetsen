@@ -206,7 +206,7 @@ function MobileSectionBlock({
   // First section leads with a swipeable hero carousel (top 5). Other sections
   // keep a single hero. A horizontal "discover" rail sits between the hero and
   // the vertical timeline to break the monotony of stacked cards.
-  const heroCount = isFirstSection ? Math.min(posts.length, 5) : posts.length > 0 ? 1 : 0
+  const heroCount = isFirstSection ? Math.min(posts.length, 20) : posts.length > 0 ? 1 : 0
   const heroPosts = posts.slice(0, heroCount)
   const railPosts = posts.slice(heroCount, heroCount + 6)
   const rest = posts.slice(heroCount + railPosts.length)
