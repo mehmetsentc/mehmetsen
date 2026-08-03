@@ -394,7 +394,7 @@ export async function PUT(request: Request, context: RouteContext) {
         prevData?.featured !== true
       const newlyGundem =
         prevData?.status === 'published' &&
-        (body.categoryId === 'gundem' || body.category === 'gundem') &&
+        body.categoryId?.trim().toLowerCase() === 'gundem' &&
         String(prevData?.categoryId ?? prevData?.category ?? '').toLowerCase() !== 'gundem' &&
         prevData?.storyPublished !== true
 
