@@ -12,6 +12,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
 import { publishToFacebook, publishFacebookStory } from '@/lib/social/facebook'
 import { publishToInstagram, publishInstagramStory } from '@/lib/social/instagram'
+import { publishToTwitter } from '@/lib/social/twitter'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
@@ -159,6 +160,22 @@ function stripHtml(html: string): string {
 
 export type PublishSocialMode = 'post' | 'story' | 'both'
 
+/** Admin composer overrides — paylaşım öncesi düzenlenen alanlar. */
+export interface SocialPublishOverrides {
+  headline?: string
+  /** FB/IG/X post caption gövdesi (URL/hashtag publisher ekler). */
+  caption?: string
+  /** Hikâye OG özeti. */
+  storySummary?: string
+  hashtags?: string[]
+  /** Platform seçimi. Varsayılan: hepsi açık. X yalnızca post modunda. */
+  platforms?: {
+    facebook?: boolean
+    instagram?: boolean
+    twitter?: boolean
+  }
+}
+
 export interface PublishOneSocialOptions {
   /** Hangi kanal(lar). Varsayılan: otomatik (uygunluk kurallarına göre). */
   mode?: PublishSocialMode
@@ -169,6 +186,8 @@ export interface PublishOneSocialOptions {
    * (yine de kendi içerik + görsel + skippable kontrolleri uygulanır).
    */
   manual?: boolean
+  /** Composer'dan gelen metin / platform override'ları. */
+  overrides?: SocialPublishOverrides
 }
 
 export interface PublishOneSocialResult {
@@ -181,6 +200,7 @@ export interface PublishOneSocialResult {
     attempted: boolean
     facebook: SocialPublishResult
     instagram: SocialPublishResult
+    twitter?: SocialPublishResult
   }
   story?: {
     attempted: boolean
@@ -225,7 +245,7 @@ export async function publishOneSocial(
   newsId: string,
   options: PublishOneSocialOptions = {},
 ): Promise<PublishOneSocialResult> {
-  const { mode, force = false, manual = false } = options
+  const { mode, force = false, manual = false, overrides } = options
 
   try {
     const db  = getAdminFirestore()
@@ -296,6 +316,18 @@ export async function publishOneSocial(
       return skipped(newsId, reason)
     }
 
+    // Platform seçimi (varsayılan: hepsi)
+    const wantFb = overrides?.platforms?.facebook !== false
+    const wantIg = overrides?.platforms?.instagram !== false
+    const wantTw = overrides?.platforms?.twitter === true // X opt-in (yalnızca post)
+
+    if (shouldPost && !wantFb && !wantIg && !wantTw) {
+      return skipped(newsId, 'Post için en az bir platform seçilmeli (Facebook / Instagram / X)')
+    }
+    if (shouldStory && !wantFb && !wantIg) {
+      return skipped(newsId, 'Hikâye için Facebook veya Instagram seçilmeli')
+    }
+
     // ── Force: bayrakları sıfırla ────────────────────────────────────────────
     if (force) {
       const reset: Record<string, unknown> = {}
@@ -341,9 +373,15 @@ export async function publishOneSocial(
     const articleUrl = buildArticleUrl(newsId, data)
     const cityName   = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
 
-    // ── AI içerik üretimi ────────────────────────────────────────────────────
-    const aiContext = bodyText.length > 100 ? bodyText : spot
-    let socialContent = await generateSocialContent(title, aiContext, cityName)
+    // ── AI içerik üretimi (override yoksa) ───────────────────────────────────
+    const hasFullOverride =
+      !!(overrides?.headline?.trim()) &&
+      !!(overrides?.caption?.trim() || overrides?.storySummary?.trim())
+
+    let socialContent = hasFullOverride
+      ? null
+      : await generateSocialContent(title, bodyText.length > 100 ? bodyText : spot, cityName)
+
     if (!socialContent) {
       const fallbackSpot = spot.replace(/\s+/g, ' ').trim()
       socialContent = {
@@ -361,6 +399,41 @@ export async function publishOneSocial(
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText:  title,
       }
+    }
+
+    // Composer override'ları uygula
+    if (overrides?.headline?.trim()) {
+      socialContent.headline = overrides.headline.trim()
+    }
+    if (overrides?.caption?.trim()) {
+      socialContent.caption = overrides.caption.trim()
+    }
+    if (overrides?.storySummary?.trim()) {
+      socialContent.storySummary = overrides.storySummary.trim()
+    } else if (overrides?.caption?.trim() && shouldStory && !shouldPost) {
+      // Yalnız hikâye: caption alanı özet olarak da kullanılabilir
+      socialContent.storySummary = overrides.caption.trim()
+    }
+    if (Array.isArray(overrides?.hashtags) && overrides.hashtags.length > 0) {
+      socialContent.hashtags = overrides.hashtags
+        .map((t) => {
+          const s = String(t).trim()
+          return s.startsWith('#') ? s : `#${s}`
+        })
+        .filter(Boolean)
+    }
+
+    // OG görseli Firestore'dan socialHeadline/socialStorySummary okur —
+    // paylaşmadan önce kaydet ki taze OG doğru metni kullansın.
+    try {
+      await db.collection(Collections.NEWS).doc(newsId).update({
+        socialHeadline: socialContent.headline,
+        socialStorySummary: socialContent.storySummary,
+        socialCaption: socialContent.caption,
+        socialHashtags: socialContent.hashtags,
+      })
+    } catch (err) {
+      console.warn(`[publishOneSocial] social fields pre-save failed ${newsId}:`, err)
     }
 
     const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}?v=${Date.now()}`
@@ -384,50 +457,53 @@ export async function publishOneSocial(
         hashtags: socialContent.hashtags,
       }
 
-      let fbResult: SocialPublishResult = { success: false, error: 'not attempted' }
-      let igResult: SocialPublishResult = { success: false, error: 'not attempted' }
+      let fbResult: SocialPublishResult = { success: false, error: wantFb ? 'not attempted' : 'skipped' }
+      let igResult: SocialPublishResult = { success: false, error: wantIg ? 'not attempted' : 'skipped' }
+      let twResult: SocialPublishResult = { success: false, error: wantTw ? 'not attempted' : 'skipped' }
 
-      try { fbResult = await publishToFacebook(payload) }
-      catch (err) { fbResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+      if (wantFb) {
+        try { fbResult = await publishToFacebook(payload) }
+        catch (err) { fbResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+        await new Promise(r => setTimeout(r, 2000))
+      }
 
-      await new Promise(r => setTimeout(r, 2000))
+      if (wantIg) {
+        try { igResult = await publishToInstagram(payload) }
+        catch (err) { igResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+        if (wantTw) await new Promise(r => setTimeout(r, 2000))
+      }
 
-      try { igResult = await publishToInstagram(payload) }
-      catch (err) { igResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+      if (wantTw) {
+        try { twResult = await publishToTwitter(payload) }
+        catch (err) { twResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+      }
 
-      result.post = { attempted: true, facebook: fbResult, instagram: igResult }
+      result.post = { attempted: true, facebook: fbResult, instagram: igResult, twitter: twResult }
 
-      if (fbResult.success || igResult.success) {
+      if (fbResult.success || igResult.success || twResult.success) {
         const update: Record<string, unknown> = {
           socialPublished:   true,
           socialPublishedAt: FieldValue.serverTimestamp(),
           socialImageUrl,
           socialHeadline:      socialContent.headline,
           socialStorySummary:  socialContent.storySummary,
+          socialCaption:       socialContent.caption,
           socialHashtags:      socialContent.hashtags,
         }
         if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
         if (igResult.platformId) update.instagramMediaId = igResult.platformId
+        if (twResult.platformId) update.twitterTweetId   = twResult.platformId
         await db.collection(Collections.NEWS).doc(newsId).update(update)
-        console.log(`[publishOneSocial] POST ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success}`)
+        console.log(`[publishOneSocial] POST ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success} X:${twResult.success}`)
       } else {
-        console.warn(`[publishOneSocial] POST ✗ ${newsId} — FB: ${fbResult.error} | IG: ${igResult.error}`)
+        console.warn(`[publishOneSocial] POST ✗ ${newsId} — FB: ${fbResult.error} | IG: ${igResult.error} | X: ${twResult.error}`)
       }
 
-      await new Promise(r => setTimeout(r, 2000))
+      if (shouldStory) await new Promise(r => setTimeout(r, 2000))
     }
 
     // ── HİKAYE (güncel + öne çıkan / manuel) ────────────────────────────────
     if (shouldStory) {
-      try {
-        await db.collection(Collections.NEWS).doc(newsId).update({
-          socialHeadline: socialContent.headline,
-          socialStorySummary: socialContent.storySummary,
-        })
-      } catch (err) {
-        console.warn(`[publishOneSocial] story AI fields update failed ${newsId}:`, err)
-      }
-
       const storyPayload: SocialPublishPayload = {
         newsId, title: socialContent.headline || title,
         description: undefined, imageUrl: storyImageUrl, articleUrl,
@@ -437,23 +513,26 @@ export async function publishOneSocial(
         console.warn(`[publishOneSocial] STORY articleUrl eksik — yine de denenecek: ${newsId}`)
       }
 
-      let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
-      let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
+      let igStoryResult: SocialPublishResult = { success: false, error: wantIg ? 'not attempted' : 'skipped' }
+      let fbStoryResult: SocialPublishResult = { success: false, error: wantFb ? 'not attempted' : 'skipped' }
 
-      try {
-        igStoryResult = await publishInstagramStory(storyPayload)
-        console.log(`[publishOneSocial] IG Story → ${newsId}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
-      } catch (err) {
-        igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      if (wantIg) {
+        try {
+          igStoryResult = await publishInstagramStory(storyPayload)
+          console.log(`[publishOneSocial] IG Story → ${newsId}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
+        } catch (err) {
+          igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+        }
+        if (wantFb) await new Promise(r => setTimeout(r, 2000))
       }
 
-      await new Promise(r => setTimeout(r, 2000))
-
-      try {
-        fbStoryResult = await publishFacebookStory(storyPayload)
-        console.log(`[publishOneSocial] FB Story → ${newsId}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
-      } catch (err) {
-        fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      if (wantFb) {
+        try {
+          fbStoryResult = await publishFacebookStory(storyPayload)
+          console.log(`[publishOneSocial] FB Story → ${newsId}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
+        } catch (err) {
+          fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+        }
       }
 
       result.story = { attempted: true, facebook: fbStoryResult, instagram: igStoryResult }
@@ -462,6 +541,8 @@ export async function publishOneSocial(
         const storyUpdate: Record<string, unknown> = {
           storyPublished:   true,
           storyPublishedAt: FieldValue.serverTimestamp(),
+          socialHeadline: socialContent.headline,
+          socialStorySummary: socialContent.storySummary,
         }
         if (igStoryResult.platformId) storyUpdate.instagramStoryId = igStoryResult.platformId
         if (fbStoryResult.platformId) storyUpdate.facebookStoryId  = fbStoryResult.platformId
@@ -472,14 +553,21 @@ export async function publishOneSocial(
       }
     }
 
-    const postOk  = !!(result.post && (result.post.facebook.success || result.post.instagram.success))
+    const postOk  = !!(result.post && (
+      result.post.facebook.success ||
+      result.post.instagram.success ||
+      result.post.twitter?.success
+    ))
     const storyOk = !!(result.story && (result.story.facebook.success || result.story.instagram.success))
     result.ok = postOk || storyOk
 
     if (!result.ok) {
       const parts: string[] = []
       if (result.post) {
-        parts.push(`Post FB: ${result.post.facebook.error ?? '—'} | IG: ${result.post.instagram.error ?? '—'}`)
+        parts.push(
+          `Post FB: ${result.post.facebook.error ?? '—'} | IG: ${result.post.instagram.error ?? '—'}` +
+          (result.post.twitter ? ` | X: ${result.post.twitter.error ?? '—'}` : '')
+        )
       }
       if (result.story) {
         parts.push(`Hikâye FB: ${result.story.facebook.error ?? '—'} | IG: ${result.story.instagram.error ?? '—'}`)

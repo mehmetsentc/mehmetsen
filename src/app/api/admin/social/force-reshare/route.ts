@@ -27,6 +27,7 @@ import {
   publishOneSocial,
   type PublishSocialMode,
   type PublishOneSocialResult,
+  type SocialPublishOverrides,
 } from '@/lib/social/publishOneSocial'
 
 export const runtime = 'nodejs'
@@ -84,6 +85,47 @@ function parseMode(raw: unknown): PublishSocialMode | undefined {
   return undefined
 }
 
+function parseOverrides(body: Record<string, unknown>): SocialPublishOverrides | undefined {
+  const out: SocialPublishOverrides = {}
+  if (typeof body.headline === 'string' && body.headline.trim()) {
+    out.headline = body.headline.trim()
+  }
+  if (typeof body.caption === 'string' && body.caption.trim()) {
+    out.caption = body.caption.trim()
+  }
+  if (typeof body.storySummary === 'string' && body.storySummary.trim()) {
+    out.storySummary = body.storySummary.trim()
+  }
+  const tagsRaw = body.hashtags
+  if (Array.isArray(tagsRaw)) {
+    out.hashtags = tagsRaw.map(String).map((t) => t.trim()).filter(Boolean)
+  } else if (typeof tagsRaw === 'string' && tagsRaw.trim()) {
+    out.hashtags = tagsRaw
+      .split(/[\s,]+/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+  }
+  const platforms = body.platforms
+  if (platforms && typeof platforms === 'object' && !Array.isArray(platforms)) {
+    const p = platforms as Record<string, unknown>
+    out.platforms = {
+      facebook: p.facebook !== false,
+      instagram: p.instagram !== false,
+      twitter: p.twitter === true,
+    }
+  }
+  if (
+    !out.headline &&
+    !out.caption &&
+    !out.storySummary &&
+    !out.hashtags &&
+    !out.platforms
+  ) {
+    return undefined
+  }
+  return out
+}
+
 export async function POST(request: Request) {
   // CMS token VEYA CRON_SECRET ile çalışır
   const cronSecret = process.env.CRON_SECRET?.trim()
@@ -101,28 +143,23 @@ export async function POST(request: Request) {
   let mode: PublishSocialMode | undefined
   let force = true // manuel/toplu yeniden paylaşımda varsayılan force
   let manual = false
+  let overrides: SocialPublishOverrides | undefined
 
   try {
-    const body = await request.json() as {
-      limit?: number
-      ids?: string[]
-      slugs?: string[]
-      mode?: string
-      force?: boolean
-      manual?: boolean
-    }
-    if (body.limit && typeof body.limit === 'number') {
+    const body = await request.json() as Record<string, unknown>
+    if (typeof body.limit === 'number') {
       requestedLimit = Math.min(Math.max(1, body.limit), 5)
     }
     if (Array.isArray(body.ids) && body.ids.length > 0) {
-      specificIds = body.ids.slice(0, 5)
+      specificIds = (body.ids as string[]).slice(0, 5)
     }
     if (Array.isArray(body.slugs) && body.slugs.length > 0) {
-      specificSlugs = body.slugs.slice(0, 5)
+      specificSlugs = (body.slugs as string[]).slice(0, 5)
     }
     mode = parseMode(body.mode)
     if (typeof body.force === 'boolean') force = body.force
     if (typeof body.manual === 'boolean') manual = body.manual
+    overrides = parseOverrides(body)
   } catch { /* varsayılan 2 */ }
 
   // Belirli ID/slug ile çağrı → publishOneSocial pipeline (post/story/both)
@@ -159,6 +196,7 @@ export async function POST(request: Request) {
         mode: mode ?? 'post',
         force,
         manual: true,
+        overrides,
       })
       results.push(r)
       if (targetIds.length > 1) await new Promise(res => setTimeout(res, 1500))

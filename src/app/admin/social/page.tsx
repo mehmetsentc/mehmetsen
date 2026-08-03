@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useDeferredValue, type ReactNode } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { db } from '@/lib/firebase/firestore'
 import { auth } from '@/lib/firebase/auth'
@@ -11,10 +11,12 @@ import {
 import {
   Share2, CheckCircle2, XCircle, RefreshCw, Loader2,
   Facebook, Instagram, ExternalLink, Play, Tag, Image as ImageIcon,
-  Newspaper, BookImage, Search, KeyRound, Stethoscope,
+  Newspaper, BookImage, Search, KeyRound, Stethoscope, X, Copy,
+  EyeOff, Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
+import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -22,6 +24,7 @@ import { useAuth } from '@/hooks/useAuth'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type TabKey = 'post' | 'story'
+type ShareMode = 'post' | 'story' | 'both'
 type StatusFilter = 'all' | 'published' | 'pending'
 
 interface SocialNewsRow {
@@ -38,6 +41,9 @@ interface SocialNewsRow {
   url?: string
   slug?: string
   sourceUrl?: string
+  spot?: string
+  summary?: string
+  description?: string
   createdAt?: number | { toDate(): Date }
   publishedAt?: number | { toDate(): Date }
   socialPublished?: boolean
@@ -46,10 +52,12 @@ interface SocialNewsRow {
   storyPublishedAt?: number | { toDate(): Date }
   socialImageUrl?: string
   socialHeadline?: string
+  socialCaption?: string
   socialStorySummary?: string
   socialHashtags?: string[]
   facebookPostId?: string
   instagramMediaId?: string
+  twitterTweetId?: string
   facebookStoryId?: string
   instagramStoryId?: string
   featured?: boolean
@@ -58,8 +66,30 @@ interface SocialNewsRow {
   isVideo?: boolean
 }
 
+interface PlatformToggles {
+  facebook: boolean
+  instagram: boolean
+  twitter: boolean
+}
+
+interface LastShareResult {
+  ok: boolean
+  message: string
+  post?: {
+    facebook: { success: boolean; error?: string }
+    instagram: { success: boolean; error?: string }
+    twitter?: { success: boolean; error?: string }
+  }
+  story?: {
+    facebook: { success: boolean; error?: string }
+    instagram: { success: boolean; error?: string }
+  }
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 24
+
+const MAIN_CATEGORIES = DEFAULT_CATEGORIES.filter((c) => !c.parentId).slice(0, 16)
 
 function safeToDate(val: unknown): Date | null {
   if (val == null) return null
@@ -92,19 +122,64 @@ function isShared(row: SocialNewsRow, tab: TabKey): boolean {
   return tab === 'post' ? !!row.socialPublished : !!row.storyPublished
 }
 
+function articleUrlOf(row: SocialNewsRow): string | null {
+  if (row.url) return row.url
+  if (row.slug) return ROUTES.NEWS_DETAIL(row.slug)
+  return null
+}
+
+function parseHashtagInput(raw: string): string[] {
+  return raw
+    .split(/[\s,]+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t) => (t.startsWith('#') ? t : `#${t}`))
+}
+
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold',
+        'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold',
         ok
-          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+          ? 'bg-emerald-500/15 text-emerald-400'
+          : 'bg-amber-500/15 text-amber-400'
       )}
     >
       {ok ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
       {label}
     </span>
+  )
+}
+
+function PlatformToggle({
+  active,
+  onChange,
+  label,
+  disabled,
+  children,
+}: {
+  active: boolean
+  onChange: (v: boolean) => void
+  label: string
+  disabled?: boolean
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(!active)}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40',
+        active
+          ? 'border-[rgb(var(--color-brand))]/50 bg-[rgb(var(--color-brand))]/15 text-white'
+          : 'border-white/10 bg-white/5 text-[rgb(var(--color-muted))] hover:bg-white/10'
+      )}
+    >
+      {children}
+      {label}
+    </button>
   )
 }
 
@@ -114,12 +189,32 @@ export default function SocialPage() {
   const [tab, setTab] = useState<TabKey>('post')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
+  const [hideRss, setHideRss] = useState(true)
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [rows, setRows] = useState<SocialNewsRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
-  const [sharingId, setSharingId] = useState<string | null>(null)
+
+  // Composer
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [shareMode, setShareMode] = useState<ShareMode>('post')
+  const [headline, setHeadline] = useState('')
+  const [caption, setCaption] = useState('')
+  const [storySummary, setStorySummary] = useState('')
+  const [hashtagsRaw, setHashtagsRaw] = useState('')
+  const [platforms, setPlatforms] = useState<PlatformToggles>({
+    facebook: true,
+    instagram: true,
+    twitter: false,
+  })
+  const [forceReshare, setForceReshare] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [lastResult, setLastResult] = useState<LastShareResult | null>(null)
+  const [previewTick, setPreviewTick] = useState(0)
+
+  // Tools
   const [triggeringCron, setTriggeringCron] = useState(false)
   const [diagnosing, setDiagnosing] = useState(false)
   const [diagResult, setDiagResult] = useState<{ summary: string; steps: Array<{ name: string; ok: boolean; detail: string }> } | null>(null)
@@ -129,6 +224,16 @@ export default function SocialPage() {
   const [newIgToken, setNewIgToken] = useState('')
   const [savingToken, setSavingToken] = useState(false)
   const [tokenResult, setTokenResult] = useState<{ ok: boolean; message: string; permissions?: string[]; note?: string } | null>(null)
+
+  const deferredHeadline = useDeferredValue(headline)
+  const deferredSpot = useDeferredValue(
+    shareMode === 'post' ? (storySummary || caption.slice(0, 320)) : storySummary
+  )
+
+  const selected = useMemo(
+    () => rows.find((r) => r.id === selectedId) ?? null,
+    [rows, selectedId]
+  )
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchRows = useCallback(
@@ -160,7 +265,6 @@ export default function SocialPage() {
                 ...(cursor ? [startAfter(cursor)] : []),
               ))
             } catch {
-              // Index yoksa publishedAt ile geniş liste + client filter
               return getDocs(query(
                 col,
                 where('status', '==', 'published'),
@@ -200,7 +304,6 @@ export default function SocialPage() {
               ))
             }
           }
-          // Tümü: yayınlanmış haberler (manuel seçim için geniş liste)
           return getDocs(query(
             col,
             where('status', '==', 'published'),
@@ -249,99 +352,184 @@ export default function SocialPage() {
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) =>
-      r.title?.toLowerCase().includes(q) ||
-      r.slug?.toLowerCase().includes(q) ||
-      r.id.toLowerCase().includes(q) ||
-      r.citySlug?.toLowerCase().includes(q) ||
-      r.categoryId?.toLowerCase().includes(q)
+    return rows.filter((r) => {
+      if (hideRss && isLikelyExternalRss(r)) return false
+      if (categoryFilter && r.categoryId !== categoryFilter && r.category !== categoryFilter) return false
+      if (!q) return true
+      return (
+        r.title?.toLowerCase().includes(q) ||
+        r.slug?.toLowerCase().includes(q) ||
+        r.id.toLowerCase().includes(q) ||
+        r.citySlug?.toLowerCase().includes(q) ||
+        r.categoryId?.toLowerCase().includes(q)
+      )
+    })
+  }, [rows, search, hideRss, categoryFilter])
+
+  // ── Open composer ──────────────────────────────────────────────────────────
+  const openComposer = (row: SocialNewsRow) => {
+    setSelectedId(row.id)
+    setShareMode(tab)
+    setHeadline(row.socialHeadline || row.title || '')
+    const spot = row.spot || row.summary || row.description || ''
+    setCaption(row.socialCaption || (spot ? `📰 ${spot}` : `📰 ${row.title || ''}`))
+    setStorySummary(row.socialStorySummary || spot || '')
+    setHashtagsRaw(
+      (row.socialHashtags?.length
+        ? row.socialHashtags
+        : ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye']
+      ).join(' ')
     )
-  }, [rows, search])
+    setPlatforms({ facebook: true, instagram: true, twitter: false })
+    const already = isShared(row, tab)
+    setForceReshare(already)
+    setLastResult(null)
+    setPreviewTick((n) => n + 1)
+  }
 
-  // ── Share one ──────────────────────────────────────────────────────────────
-  const shareOne = async (row: SocialNewsRow) => {
-    if (!user || sharingId) return
+  const closeComposer = () => {
+    setSelectedId(null)
+    setLastResult(null)
+  }
 
-    if (isLikelyExternalRss(row)) {
+  // Sync share mode when tab changes while composer open
+  useEffect(() => {
+    if (selectedId) setShareMode(tab)
+  }, [tab, selectedId])
+
+  // ── Share ──────────────────────────────────────────────────────────────────
+  const shareSelected = async () => {
+    if (!user || !selected || sharing) return
+
+    if (isLikelyExternalRss(selected)) {
       toast.error('Harici RSS haberi — yalnızca NaHaber içerikleri paylaşılabilir')
       return
     }
-    if (!hasImage(row)) {
+    if (!hasImage(selected)) {
       toast.error('Görsel yok — paylaşım için kapak görseli gerekli')
       return
     }
-
-    const already = isShared(row, tab)
-    if (already) {
-      const ok = window.confirm(
-        tab === 'post'
-          ? 'Bu haber zaten feed post olarak paylaşılmış. Yeniden paylaşmak istiyor musunuz?'
-          : 'Bu haber zaten hikâye olarak paylaşılmış. Yeniden paylaşmak istiyor musunuz?'
-      )
-      if (!ok) return
+    if (!platforms.facebook && !platforms.instagram && !(shareMode !== 'story' && platforms.twitter)) {
+      toast.error('En az bir platform seçin')
+      return
+    }
+    if (!headline.trim()) {
+      toast.error('Manşet gerekli')
+      return
     }
 
-    setSharingId(row.id)
+    const alreadyPost = !!selected.socialPublished
+    const alreadyStory = !!selected.storyPublished
+    const needsForce =
+      (shareMode === 'post' && alreadyPost) ||
+      (shareMode === 'story' && alreadyStory) ||
+      (shareMode === 'both' && (alreadyPost || alreadyStory))
+
+    if (needsForce && !forceReshare) {
+      toast.error('Bu haber zaten paylaşılmış — «Yeniden paylaş»ı açın')
+      return
+    }
+
+    setSharing(true)
     const toastId = toast.loading(
-      tab === 'post' ? 'Feed post paylaşılıyor…' : 'Hikâye paylaşılıyor…'
+      shareMode === 'story' ? 'Hikâye paylaşılıyor…' :
+      shareMode === 'both' ? 'Post + hikâye paylaşılıyor…' :
+      'Feed post paylaşılıyor…'
     )
+
     try {
       const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const body: Record<string, unknown> = {
+        ids: [selected.id],
+        mode: shareMode,
+        force: needsForce || forceReshare,
+        manual: true,
+        headline: headline.trim(),
+        hashtags: parseHashtagInput(hashtagsRaw),
+        platforms: {
+          facebook: platforms.facebook,
+          instagram: platforms.instagram,
+          twitter: shareMode !== 'story' && platforms.twitter,
+        },
+      }
+      if (shareMode === 'post' || shareMode === 'both') {
+        body.caption = caption.trim()
+      }
+      if (shareMode === 'story' || shareMode === 'both') {
+        body.storySummary = storySummary.trim() || caption.trim()
+      } else if (shareMode === 'post') {
+        // OG görsel özeti — composer önizlemesiyle aynı kaynak
+        body.storySummary = storySummary.trim() || caption.trim().slice(0, 320)
+      }
+      if (shareMode === 'story' && !body.caption) {
+        body.caption = storySummary.trim()
+      }
+
       const res = await fetch('/api/admin/social/force-reshare', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ids: [row.id],
-          mode: tab,
-          force: true,
-          manual: true,
-        }),
+        body: JSON.stringify(body),
       })
       const data = await res.json() as {
         error?: string
-        succeeded?: number
         results?: Array<{
           ok: boolean
           reason?: string
-          post?: { facebook: { success: boolean }; instagram: { success: boolean } }
-          story?: { facebook: { success: boolean }; instagram: { success: boolean } }
+          post?: LastShareResult['post']
+          story?: LastShareResult['story']
         }>
       }
 
+      const r0 = data.results?.[0]
       if (!res.ok) {
-        toast.error(data.error ?? 'Paylaşım başarısız', { id: toastId })
+        const msg = data.error ?? r0?.reason ?? 'Paylaşım başarısız'
+        toast.error(msg, { id: toastId })
+        setLastResult({ ok: false, message: msg, post: r0?.post, story: r0?.story })
         return
       }
 
-      const r0 = data.results?.[0]
-      const fbOk = tab === 'post' ? r0?.post?.facebook.success : r0?.story?.facebook.success
-      const igOk = tab === 'post' ? r0?.post?.instagram.success : r0?.story?.instagram.success
-      toast.success(
-        `Paylaşıldı — FB: ${fbOk ? '✓' : '✗'} · IG: ${igOk ? '✓' : '✗'}`,
-        { id: toastId }
-      )
+      const parts: string[] = []
+      if (r0?.post) {
+        parts.push(
+          `Post FB:${r0.post.facebook.success ? '✓' : '✗'} IG:${r0.post.instagram.success ? '✓' : '✗'}` +
+          (r0.post.twitter ? ` X:${r0.post.twitter.success ? '✓' : '✗'}` : '')
+        )
+      }
+      if (r0?.story) {
+        parts.push(`Hikâye FB:${r0.story.facebook.success ? '✓' : '✗'} IG:${r0.story.instagram.success ? '✓' : '✗'}`)
+      }
+      const msg = parts.join(' · ') || 'Paylaşıldı'
+      toast.success(msg, { id: toastId })
+      setLastResult({ ok: true, message: msg, post: r0?.post, story: r0?.story })
 
-      // Optimistic local update
       setRows((prev) => prev.map((r) => {
-        if (r.id !== row.id) return r
-        if (tab === 'post') {
-          return { ...r, socialPublished: true, socialPublishedAt: Date.now() }
+        if (r.id !== selected.id) return r
+        const next = { ...r, socialHeadline: headline.trim(), socialCaption: caption.trim(), socialStorySummary: storySummary.trim(), socialHashtags: parseHashtagInput(hashtagsRaw) }
+        if (shareMode === 'post' || shareMode === 'both') {
+          next.socialPublished = true
+          next.socialPublishedAt = Date.now()
         }
-        return { ...r, storyPublished: true, storyPublishedAt: Date.now() }
+        if (shareMode === 'story' || shareMode === 'both') {
+          next.storyPublished = true
+          next.storyPublishedAt = Date.now()
+        }
+        return next
       }))
+      setForceReshare(true)
+      setPreviewTick((n) => n + 1)
     } catch (err) {
       console.error('[social admin] share error:', err)
       toast.error('Bağlantı hatası', { id: toastId })
+      setLastResult({ ok: false, message: 'Bağlantı hatası' })
     } finally {
-      setSharingId(null)
+      setSharing(false)
     }
   }
 
-  // ── Cron trigger ───────────────────────────────────────────────────────────
+  // ── Cron / Token / Diagnose ────────────────────────────────────────────────
   const triggerCron = async () => {
     if (!user || triggeringCron) return
     setTriggeringCron(true)
@@ -374,7 +562,6 @@ export default function SocialPage() {
     }
   }
 
-  // ── Token güncelle ─────────────────────────────────────────────────────────
   const saveToken = async () => {
     if (!user || savingToken || !newFbToken.trim()) return
     setSavingToken(true)
@@ -404,7 +591,6 @@ export default function SocialPage() {
     }
   }
 
-  // ── Diagnose ───────────────────────────────────────────────────────────────
   const runDiagnose = async () => {
     if (!user || diagnosing) return
     setDiagnosing(true)
@@ -424,78 +610,90 @@ export default function SocialPage() {
     }
   }
 
+  const copyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url.startsWith('http') ? url : `https://www.nahaber.com${url}`)
+      toast.success('URL kopyalandı')
+    } catch {
+      toast.error('Kopyalanamadı')
+    }
+  }
+
   // ── Stats ──────────────────────────────────────────────────────────────────
-  const publishedCount = rows.filter((r) => isShared(r, tab)).length
-  const pendingCount   = rows.filter((r) => !isShared(r, tab)).length
-  const fbCount = tab === 'post'
-    ? rows.filter((r) => r.facebookPostId).length
-    : rows.filter((r) => r.facebookStoryId).length
-  const igCount = tab === 'post'
-    ? rows.filter((r) => r.instagramMediaId).length
-    : rows.filter((r) => r.instagramStoryId).length
+  const publishedCount = filteredRows.filter((r) => isShared(r, tab)).length
+  const pendingCount = filteredRows.filter((r) => !isShared(r, tab)).length
+
+  const previewMode = shareMode === 'story' ? 'story' : 'social'
+  const ogPreviewSrc = selected
+    ? `/api/og/${previewMode}/${selected.id}?title=${encodeURIComponent(deferredHeadline)}&spot=${encodeURIComponent(deferredSpot)}&v=${previewTick}`
+    : ''
+
+  const composerBlocked = selected
+    ? isLikelyExternalRss(selected)
+      ? 'RSS — paylaşılamaz'
+      : !hasImage(selected)
+        ? 'Görsel yok'
+        : null
+    : null
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-bg))]">
       <CMSHeader title="Sosyal Medya" />
 
-      <div className="mx-auto max-w-6xl space-y-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-5 lg:px-6">
 
-        {/* Primary tabs: Post / Hikâye */}
-        <div className="flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
-          {([
-            { key: 'post' as const,  label: 'Post',   icon: Newspaper, hint: 'FB / IG feed' },
-            { key: 'story' as const, label: 'Hikâye', icon: BookImage, hint: 'FB / IG story' },
-          ]).map(({ key, label, icon: Icon, hint }) => (
-            <button
-              key={key}
-              onClick={() => { setTab(key); setStatusFilter('all'); setSearch('') }}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors',
-                tab === key
-                  ? 'bg-[rgb(var(--color-brand))] text-white shadow'
-                  : 'text-[rgb(var(--color-muted))] hover:bg-white/10 hover:text-white'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-              <span className={cn(
-                'hidden text-[10px] font-medium sm:inline',
-                tab === key ? 'text-white/70' : 'text-[rgb(var(--color-muted))]'
-              )}>
-                {hint}
-              </span>
-            </button>
-          ))}
-        </div>
+        {/* Tabs + stats */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
+            {([
+              { key: 'post' as const, label: 'Post', icon: Newspaper, hint: 'FB / IG / X' },
+              { key: 'story' as const, label: 'Hikâye', icon: BookImage, hint: 'FB / IG story' },
+            ]).map(({ key, label, icon: Icon, hint }) => (
+              <button
+                key={key}
+                onClick={() => { setTab(key); setStatusFilter('all'); setSearch('') }}
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-bold transition-colors',
+                  tab === key
+                    ? 'bg-[rgb(var(--color-brand))] text-white'
+                    : 'text-[rgb(var(--color-muted))] hover:bg-white/10 hover:text-white'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+                <span className={cn('hidden text-[10px] font-medium sm:inline', tab === key ? 'text-white/70' : '')}>
+                  {hint}
+                </span>
+              </button>
+            ))}
+          </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: 'Listelenen', value: rows.length, color: 'text-blue-600' },
-            { label: 'Paylaşıldı', value: publishedCount, color: 'text-emerald-600' },
-            { label: 'Bekliyor', value: pendingCount, color: 'text-amber-600' },
-            { label: 'FB / IG', value: `${fbCount} / ${igCount}`, color: 'text-purple-600' },
-          ].map((s) => (
-            <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 p-3.5">
-              <p className="text-xs text-[rgb(var(--color-muted))]">{s.label}</p>
-              <p className={cn('mt-0.5 text-xl font-bold', s.color)}>{s.value}</p>
-            </div>
-          ))}
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <span className="rounded bg-white/5 px-2.5 py-1 text-[rgb(var(--color-muted))]">
+              Listelenen <strong className="text-white">{filteredRows.length}</strong>
+            </span>
+            <span className="rounded bg-emerald-500/10 px-2.5 py-1 text-emerald-400">
+              Paylaşıldı <strong>{publishedCount}</strong>
+            </span>
+            <span className="rounded bg-amber-500/10 px-2.5 py-1 text-amber-400">
+              Paylaşılmadı <strong>{pendingCount}</strong>
+            </span>
+          </div>
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {([
               { key: 'all' as const, label: 'Tümü' },
-              { key: 'pending' as const, label: 'Bekliyor' },
+              { key: 'pending' as const, label: 'Paylaşılmadı' },
               { key: 'published' as const, label: 'Paylaşıldı' },
             ]).map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setStatusFilter(key)}
                 className={cn(
-                  'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                  'rounded px-2.5 py-1 text-xs font-semibold transition-colors',
                   statusFilter === key
                     ? 'bg-white/20 text-white'
                     : 'bg-white/5 text-[rgb(var(--color-muted))] hover:bg-white/10 hover:text-white'
@@ -505,41 +703,66 @@ export default function SocialPage() {
               </button>
             ))}
 
-            <div className="relative ml-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Başlık / slug ara…"
-                className="w-44 rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-brand))] sm:w-56"
+                className="w-40 rounded border border-white/10 bg-white/5 py-1.5 pl-7 pr-2 text-xs text-white placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-brand))] sm:w-52"
               />
             </div>
+
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white focus:outline-none"
+            >
+              <option value="">Tüm kategoriler</option>
+              {MAIN_CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setHideRss((p) => !p)}
+              className={cn(
+                'inline-flex items-center gap-1 rounded border px-2 py-1.5 text-xs font-semibold',
+                hideRss
+                  ? 'border-white/20 bg-white/10 text-white'
+                  : 'border-white/10 bg-transparent text-[rgb(var(--color-muted))]'
+              )}
+              title="Harici RSS haberlerini gizle"
+            >
+              <EyeOff className="h-3 w-3" />
+              RSS gizle
+            </button>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => { setLastDoc(null); void fetchRows(true) }}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15 disabled:opacity-50"
             >
               <RefreshCw className={cn('h-3 w-3', loading && 'animate-spin')} />
               Yenile
             </button>
             <button
               onClick={() => setShowTools((p) => !p)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15"
+              className="inline-flex items-center gap-1.5 rounded bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15"
             >
               Araçlar
             </button>
           </div>
         </div>
 
-        {/* Secondary tools (collapsed by default) */}
         {showTools && (
-          <div className="flex flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="flex flex-wrap gap-2 rounded-lg border border-white/10 bg-white/5 p-3">
             <button
               onClick={() => { setShowTokenPanel((p) => !p); setTokenResult(null) }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+              className="inline-flex items-center gap-1.5 rounded bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-600"
             >
               <KeyRound className="h-3 w-3" />
               Token Güncelle
@@ -547,7 +770,7 @@ export default function SocialPage() {
             <button
               onClick={() => void runDiagnose()}
               disabled={diagnosing}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-600 disabled:opacity-50"
             >
               {diagnosing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Stethoscope className="h-3 w-3" />}
               Teşhis
@@ -555,75 +778,52 @@ export default function SocialPage() {
             <button
               onClick={() => void triggerCron()}
               disabled={triggeringCron}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-500 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-600 disabled:opacity-50"
             >
               {triggeringCron ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
               Cron Çalıştır
             </button>
             <p className="w-full text-[11px] text-[rgb(var(--color-muted))]">
-              Asıl yol: listeden haber seç → «Sosyal medyada paylaş». Cron otomatik uygun haberleri işler.
+              Habere tıklayın → sağdaki composer’da manşet, özet, platform ve mod seçin → Paylaş.
             </p>
           </div>
         )}
 
-        {/* Token panel */}
         {showTokenPanel && (
-          <div className="rounded-xl border border-violet-500/30 bg-violet-950/20 p-5">
-            <h3 className="mb-1 font-bold text-white">Facebook / Instagram Token Güncelle</h3>
-            <p className="mb-4 text-xs text-slate-400">
-              Token eksik izinlere sahip olduğunda paylaşımlar çalışmaz. Graph API Explorer&apos;dan Page Token alın.
+          <div className="rounded-lg border border-white/15 bg-white/5 p-4">
+            <h3 className="mb-1 text-sm font-bold text-white">Facebook / Instagram Token</h3>
+            <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+              Graph API Explorer&apos;dan Page Token alın; eksik izinlerde paylaşım başarısız olur.
             </p>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-300">
-                  Facebook Page Access Token <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  value={newFbToken}
-                  onChange={e => setNewFbToken(e.target.value)}
-                  rows={3}
-                  placeholder="EAAWo..."
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-300">
-                  Instagram Access Token <span className="text-slate-500">(opsiyonel)</span>
-                </label>
-                <textarea
-                  value={newIgToken}
-                  onChange={e => setNewIgToken(e.target.value)}
-                  rows={2}
-                  placeholder="EAAWo... (opsiyonel)"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                />
-              </div>
-
+            <div className="space-y-2">
+              <textarea
+                value={newFbToken}
+                onChange={(e) => setNewFbToken(e.target.value)}
+                rows={2}
+                placeholder="Facebook Page Access Token *"
+                className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 font-mono text-xs text-white focus:outline-none"
+              />
+              <textarea
+                value={newIgToken}
+                onChange={(e) => setNewIgToken(e.target.value)}
+                rows={2}
+                placeholder="Instagram Access Token (opsiyonel)"
+                className="w-full rounded border border-white/10 bg-black/20 px-3 py-2 font-mono text-xs text-white focus:outline-none"
+              />
               {tokenResult && (
-                <div className={cn(
-                  'rounded-lg px-3 py-2 text-xs',
-                  tokenResult.ok ? 'bg-emerald-900/30 text-emerald-300' : 'bg-red-900/30 text-red-300'
-                )}>
-                  {tokenResult.ok ? '✅' : '❌'} {tokenResult.message}
-                  {tokenResult.ok && tokenResult.note && (
-                    <div className="mt-1 text-[10px] text-slate-400">{tokenResult.note}</div>
-                  )}
-                </div>
+                <p className={cn('text-xs', tokenResult.ok ? 'text-emerald-400' : 'text-red-400')}>
+                  {tokenResult.message}
+                </p>
               )}
-
               <div className="flex gap-2">
                 <button
                   onClick={() => void saveToken()}
                   disabled={savingToken || !newFbToken.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50"
+                  className="rounded bg-[rgb(var(--color-brand))] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
                 >
-                  {savingToken ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                  Doğrula & Kaydet
+                  {savingToken ? <Loader2 className="inline h-3 w-3 animate-spin" /> : null} Doğrula & Kaydet
                 </button>
-                <button
-                  onClick={() => { setShowTokenPanel(false); setTokenResult(null) }}
-                  className="rounded-lg px-4 py-2 text-xs text-slate-400 hover:text-white"
-                >
+                <button onClick={() => setShowTokenPanel(false)} className="text-xs text-[rgb(var(--color-muted))] hover:text-white">
                   Kapat
                 </button>
               </div>
@@ -631,266 +831,413 @@ export default function SocialPage() {
           </div>
         )}
 
-        {/* Diagnose result */}
         {diagResult && (
           <div className={cn(
-            'rounded-xl border p-4 text-sm',
-            diagResult.steps.some(s => !s.ok)
+            'rounded-lg border p-3 text-sm',
+            diagResult.steps.some((s) => !s.ok)
               ? 'border-red-500/30 bg-red-950/20'
               : 'border-emerald-500/30 bg-emerald-950/20'
           )}>
-            <p className="mb-3 font-bold text-white">{diagResult.summary}</p>
-            <div className="space-y-1.5">
-              {diagResult.steps.map((step, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <span className={step.ok ? 'text-emerald-400' : 'text-red-400'}>
-                    {step.ok ? '✓' : '✗'}
-                  </span>
-                  <span className="shrink-0 font-semibold text-white">{step.name}:</span>
-                  <span className={cn('text-[11px]', step.ok ? 'text-slate-300' : 'text-red-300')}>
-                    {step.detail}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setDiagResult(null)} className="mt-3 text-xs text-slate-500 hover:text-white">
-              Kapat
-            </button>
+            <p className="mb-2 font-bold text-white">{diagResult.summary}</p>
+            {diagResult.steps.map((step, i) => (
+              <div key={i} className="flex gap-2 text-xs">
+                <span className={step.ok ? 'text-emerald-400' : 'text-red-400'}>{step.ok ? '✓' : '✗'}</span>
+                <span className="font-semibold text-white">{step.name}:</span>
+                <span className="text-[rgb(var(--color-muted))]">{step.detail}</span>
+              </div>
+            ))}
+            <button onClick={() => setDiagResult(null)} className="mt-2 text-xs text-[rgb(var(--color-muted))] hover:text-white">Kapat</button>
           </div>
         )}
 
-        {/* Hint */}
-        <p className="text-xs text-[rgb(var(--color-muted))]">
-          {tab === 'post'
-            ? 'Post sekmesi: seçtiğiniz haberi FB/IG feed’e paylaşır. Cron otomatik olarak Çanakkale haberlerini işler; burada istediğiniz kendi içeriği seçebilirsiniz.'
-            : 'Hikâye sekmesi: seçtiğiniz haberi FB/IG story olarak paylaşır. Meta link sticker bazı hesaplarda kısıtlı olabilir.'}
-        </p>
-
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl border border-white/10">
-          <table className="w-full text-sm">
-            <thead className="border-b border-white/10 bg-white/5">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold text-[rgb(var(--color-muted))]">Haber</th>
-                <th className="hidden px-4 py-3 text-left font-semibold text-[rgb(var(--color-muted))] md:table-cell">
-                  {tab === 'post' ? 'Caption / AI' : 'Hikâye özeti'}
-                </th>
-                <th className="hidden px-4 py-3 text-left font-semibold text-[rgb(var(--color-muted))] sm:table-cell">Tarih</th>
-                <th className="px-4 py-3 text-center font-semibold text-[rgb(var(--color-muted))]">
-                  <Facebook className="inline h-3.5 w-3.5" />
-                </th>
-                <th className="px-4 py-3 text-center font-semibold text-[rgb(var(--color-muted))]">
-                  <Instagram className="inline h-3.5 w-3.5" />
-                </th>
-                <th className="px-4 py-3 text-center font-semibold text-[rgb(var(--color-muted))]">Durum</th>
-                <th className="px-4 py-3 text-right font-semibold text-[rgb(var(--color-muted))]">İşlem</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
+        {/* Main split layout */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_440px]">
+          {/* News list */}
+          <div className="overflow-hidden rounded-lg border border-white/10">
+            <div className="divide-y divide-white/5">
               {loading && (
-                <tr>
-                  <td colSpan={7} className="py-16 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-[rgb(var(--color-muted))]" />
-                  </td>
-                </tr>
+                <div className="flex justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-[rgb(var(--color-muted))]" />
+                </div>
               )}
 
               {!loading && filteredRows.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-16 text-center text-[rgb(var(--color-muted))]">
-                    <Share2 className="mx-auto mb-2 h-8 w-8 opacity-30" />
-                    <p>Haber bulunamadı</p>
-                  </td>
-                </tr>
+                <div className="py-16 text-center text-[rgb(var(--color-muted))]">
+                  <Share2 className="mx-auto mb-2 h-8 w-8 opacity-30" />
+                  <p className="text-sm">Haber bulunamadı</p>
+                </div>
               )}
 
               {!loading && filteredRows.map((row) => {
                 const img = getBestImage(row)
-                const articleUrl = row.url ?? (row.slug ? ROUTES.NEWS_DETAIL(row.slug) : null)
                 const shared = isShared(row, tab)
                 const external = isLikelyExternalRss(row)
                 const noImg = !hasImage(row)
+                const active = selectedId === row.id
                 const fbOk = tab === 'post' ? !!row.facebookPostId : !!row.facebookStoryId
                 const igOk = tab === 'post' ? !!row.instagramMediaId : !!row.instagramStoryId
-                const isBusy = sharingId === row.id
 
                 return (
-                  <tr key={row.id} className="transition-colors hover:bg-white/5">
-                    <td className="px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        {img ? (
-                          <div className="relative h-12 w-20 shrink-0">
-                            <img src={img} alt="" className="h-12 w-20 rounded-md object-cover" />
-                            {row.socialImageUrl && (
-                              <span title="AI overlay görsel" className="absolute -right-1 -top-1 rounded-full bg-pink-500 p-0.5">
-                                <ImageIcon className="h-2.5 w-2.5 text-white" />
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded-md bg-white/10">
-                            <ImageIcon className="h-5 w-5 opacity-30" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="line-clamp-2 text-sm font-medium leading-snug text-white">
-                            {row.title}
-                          </p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                            {row.citySlug && (
-                              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">
-                                {row.citySlug}
-                              </span>
-                            )}
-                            {row.categoryId && (
-                              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">
-                                {row.categoryId}
-                              </span>
-                            )}
-                            {external && (
-                              <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-300">
-                                RSS
-                              </span>
-                            )}
-                            {articleUrl && (
-                              <a
-                                href={articleUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[10px] text-[rgb(var(--color-brand))] hover:underline"
-                              >
-                                <ExternalLink className="h-2.5 w-2.5" />
-                                Habere git
-                              </a>
-                            )}
-                          </div>
-                        </div>
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() => openComposer(row)}
+                    className={cn(
+                      'flex w-full gap-3 px-3 py-3 text-left transition-colors hover:bg-white/[0.04]',
+                      active && 'bg-[rgb(var(--color-brand))]/10 ring-1 ring-inset ring-[rgb(var(--color-brand))]/40'
+                    )}
+                  >
+                    {img ? (
+                      <img src={img} alt="" className="h-14 w-[72px] shrink-0 rounded object-cover" />
+                    ) : (
+                      <div className="flex h-14 w-[72px] shrink-0 items-center justify-center rounded bg-white/10">
+                        <ImageIcon className="h-4 w-4 opacity-30" />
                       </div>
-                    </td>
-
-                    <td className="hidden px-4 py-3 md:table-cell">
-                      {tab === 'post' ? (
-                        row.socialHeadline ? (
-                          <div className="max-w-[220px]">
-                            <p className="line-clamp-1 text-xs font-medium text-white">{row.socialHeadline}</p>
-                            {row.socialHashtags && row.socialHashtags.length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {row.socialHashtags.slice(0, 3).map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="inline-flex items-center gap-0.5 rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] text-purple-400"
-                                  >
-                                    <Tag className="h-2 w-2" />
-                                    {tag.replace('#', '')}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-[rgb(var(--color-muted))]">—</span>
-                        )
-                      ) : (
-                        row.socialStorySummary || row.socialHeadline ? (
-                          <p className="line-clamp-2 max-w-[220px] text-xs text-slate-300">
-                            {row.socialStorySummary || row.socialHeadline}
-                          </p>
-                        ) : (
-                          <span className="text-xs text-[rgb(var(--color-muted))]">—</span>
-                        )
-                      )}
-                    </td>
-
-                    <td className="hidden px-4 py-3 text-xs text-[rgb(var(--color-muted))] sm:table-cell">
-                      <div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-medium leading-snug text-white">{row.title}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        {row.categoryId && (
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">{row.categoryId}</span>
+                        )}
+                        {row.citySlug && (
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">{row.citySlug}</span>
+                        )}
+                        {external && (
+                          <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-300">RSS — paylaşılamaz</span>
+                        )}
+                        {noImg && !external && (
+                          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-300">Görsel yok</span>
+                        )}
+                        <StatusBadge ok={shared} label={shared ? 'Paylaşıldı' : 'Paylaşılmadı'} />
+                        {fbOk && <Facebook className="h-3 w-3 text-emerald-400" />}
+                        {igOk && <Instagram className="h-3 w-3 text-emerald-400" />}
+                        {tab === 'post' && row.twitterTweetId && (
+                          <span className="text-[10px] font-bold text-emerald-400">X</span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-[10px] text-[rgb(var(--color-muted))]">
                         {(() => {
                           const d = safeToDate(row.publishedAt ?? row.createdAt)
                           return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—'
                         })()}
-                      </div>
-                      {shared && (
-                        <div className="mt-0.5 text-[10px] text-emerald-500">
-                          Paylaşıldı:{' '}
-                          {(() => {
-                            const d = safeToDate(tab === 'post' ? row.socialPublishedAt : row.storyPublishedAt)
-                            return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—'
-                          })()}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3 text-center">
-                      {fbOk
-                        ? <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" />
-                        : <XCircle className="mx-auto h-4 w-4 text-slate-500" />}
-                    </td>
-
-                    <td className="px-4 py-3 text-center">
-                      {igOk
-                        ? <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" />
-                        : <XCircle className="mx-auto h-4 w-4 text-slate-500" />}
-                    </td>
-
-                    <td className="px-4 py-3 text-center">
-                      <StatusBadge
-                        ok={shared}
-                        label={shared ? 'Paylaşıldı' : 'Bekliyor'}
-                      />
-                    </td>
-
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => void shareOne(row)}
-                        disabled={!!sharingId || external || noImg}
-                        title={
-                          external
-                            ? 'Harici RSS — paylaşılamaz'
-                            : noImg
-                              ? 'Görsel gerekli'
-                              : shared
-                                ? 'Yeniden paylaş'
-                                : tab === 'post'
-                                  ? 'Feed post olarak paylaş'
-                                  : 'Hikâye olarak paylaş'
-                        }
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40',
-                          shared
-                            ? 'bg-white/10 text-white hover:bg-white/15'
-                            : 'bg-[rgb(var(--color-brand))] text-white hover:opacity-90'
-                        )}
-                      >
-                        {isBusy
-                          ? <Loader2 className="h-3 w-3 animate-spin" />
-                          : <Share2 className="h-3 w-3" />}
-                        <span className="hidden sm:inline">
-                          {shared ? 'Yeniden paylaş' : 'Sosyal medyada paylaş'}
-                        </span>
-                        <span className="sm:hidden">Paylaş</span>
-                      </button>
-                    </td>
-                  </tr>
+                        {shared && (() => {
+                          const d = safeToDate(tab === 'post' ? row.socialPublishedAt : row.storyPublishedAt)
+                          return d ? ` · paylaşıldı ${formatDistanceToNow(d, { addSuffix: true, locale: tr })}` : ''
+                        })()}
+                      </p>
+                    </div>
+                  </button>
                 )
               })}
-            </tbody>
-          </table>
+            </div>
+
+            {hasMore && !loading && (
+              <div className="border-t border-white/10 p-3 text-center">
+                <button
+                  onClick={() => void fetchRows(false)}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 rounded bg-white/10 px-4 py-1.5 text-xs font-semibold hover:bg-white/15 disabled:opacity-50"
+                >
+                  {loadingMore ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  Daha fazla yükle
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Composer — desktop sticky / mobile drawer */}
+          <div
+            className={cn(
+              'lg:sticky lg:top-4 lg:self-start',
+              selected
+                ? 'fixed inset-0 z-40 flex flex-col bg-[rgb(var(--color-bg))] lg:static lg:z-auto lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:rounded-lg lg:border lg:border-white/10'
+                : 'hidden lg:block lg:rounded-lg lg:border lg:border-white/10 lg:bg-white/[0.02]'
+            )}
+          >
+            {!selected ? (
+              <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                <Layers className="mb-3 h-10 w-10 text-white/20" />
+                <p className="text-sm font-semibold text-white">Paylaşım editörü</p>
+                <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                  Soldan bir haber seçin. Manşet, özet, platform ve modu ayarlayıp paylaşın.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">Paylaşım</p>
+                    <p className="truncate text-sm font-semibold text-white">{selected.title}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeComposer}
+                    className="rounded p-1.5 text-[rgb(var(--color-muted))] hover:bg-white/10 hover:text-white"
+                    aria-label="Kapat"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                  {/* Live OG preview */}
+                  <div className="overflow-hidden rounded-lg border border-white/10 bg-black/30">
+                    <div className="flex items-center justify-between border-b border-white/10 px-2 py-1.5">
+                      <span className="text-[10px] font-semibold uppercase text-[rgb(var(--color-muted))]">
+                        {previewMode === 'story' ? 'Hikâye önizleme' : 'Post önizleme'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTick((n) => n + 1)}
+                        className="text-[10px] text-[rgb(var(--color-muted))] hover:text-white"
+                      >
+                        Yenile
+                      </button>
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      key={ogPreviewSrc}
+                      src={ogPreviewSrc}
+                      alt="OG önizleme"
+                      className={cn(
+                        'w-full bg-slate-900 object-contain',
+                        previewMode === 'story' ? 'max-h-[360px]' : 'aspect-square max-h-[320px]'
+                      )}
+                    />
+                  </div>
+
+                  {/* Mode */}
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                      Mod
+                    </label>
+                    <div className="flex gap-1 rounded-lg bg-white/5 p-1">
+                      {([
+                        { key: 'post' as const, label: 'Post' },
+                        { key: 'story' as const, label: 'Hikâye' },
+                        { key: 'both' as const, label: 'İkisi' },
+                      ]).map(({ key, label }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setShareMode(key)}
+                          className={cn(
+                            'flex-1 rounded-md py-1.5 text-xs font-bold transition-colors',
+                            shareMode === key
+                              ? 'bg-[rgb(var(--color-brand))] text-white'
+                              : 'text-[rgb(var(--color-muted))] hover:text-white'
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Platforms */}
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                      Platformlar
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <PlatformToggle
+                        active={platforms.facebook}
+                        onChange={(v) => setPlatforms((p) => ({ ...p, facebook: v }))}
+                        label="Facebook"
+                      >
+                        <Facebook className="h-3.5 w-3.5" />
+                      </PlatformToggle>
+                      <PlatformToggle
+                        active={platforms.instagram}
+                        onChange={(v) => setPlatforms((p) => ({ ...p, instagram: v }))}
+                        label="Instagram"
+                      >
+                        <Instagram className="h-3.5 w-3.5" />
+                      </PlatformToggle>
+                      {shareMode !== 'story' && (
+                        <PlatformToggle
+                          active={platforms.twitter}
+                          onChange={(v) => setPlatforms((p) => ({ ...p, twitter: v }))}
+                          label="X"
+                        >
+                          <span className="text-[11px] font-black leading-none">𝕏</span>
+                        </PlatformToggle>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Headline */}
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                      Manşet
+                    </label>
+                    <textarea
+                      value={headline}
+                      onChange={(e) => setHeadline(e.target.value)}
+                      rows={2}
+                      className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-brand))]"
+                      placeholder="Sosyal medya manşeti…"
+                    />
+                    <p className="mt-0.5 text-right text-[10px] text-[rgb(var(--color-muted))]">{headline.length} karakter</p>
+                  </div>
+
+                  {/* Caption / story summary */}
+                  {(shareMode === 'post' || shareMode === 'both') && (
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                        Özet / Caption
+                      </label>
+                      <textarea
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        rows={5}
+                        className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-white placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-brand))]"
+                        placeholder="FB / IG / X gönderi metni (URL ve hashtag sistem ekler)…"
+                      />
+                      <p className="mt-0.5 text-right text-[10px] text-[rgb(var(--color-muted))]">{caption.length} karakter</p>
+                    </div>
+                  )}
+
+                  {(shareMode === 'story' || shareMode === 'both') && (
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                        Hikâye özeti
+                      </label>
+                      <textarea
+                        value={storySummary}
+                        onChange={(e) => setStorySummary(e.target.value)}
+                        rows={3}
+                        className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-white placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-brand))]"
+                        placeholder="Hikâye görselindeki özet metin…"
+                      />
+                      <p className="mt-0.5 text-right text-[10px] text-[rgb(var(--color-muted))]">{storySummary.length} karakter</p>
+                    </div>
+                  )}
+
+                  {/* Hashtags */}
+                  {(shareMode === 'post' || shareMode === 'both') && (
+                    <div>
+                      <label className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                        <Tag className="h-3 w-3" /> Hashtagler
+                      </label>
+                      <input
+                        value={hashtagsRaw}
+                        onChange={(e) => setHashtagsRaw(e.target.value)}
+                        className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-brand))]"
+                        placeholder="#NaHaber #Çanakkale …"
+                      />
+                    </div>
+                  )}
+
+                  {/* Article URL */}
+                  {(() => {
+                    const url = articleUrlOf(selected)
+                    if (!url) return null
+                    const full = url.startsWith('http') ? url : `https://www.nahaber.com${url}`
+                    return (
+                      <div>
+                        <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                          Haber URL
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            readOnly
+                            value={full}
+                            className="min-w-0 flex-1 truncate rounded border border-white/10 bg-black/20 px-2 py-1.5 font-mono text-[10px] text-slate-300"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void copyUrl(full)}
+                            className="rounded border border-white/10 p-1.5 text-[rgb(var(--color-muted))] hover:text-white"
+                            title="Kopyala"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                          <a
+                            href={full}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded border border-white/10 p-1.5 text-[rgb(var(--color-muted))] hover:text-white"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Force + status */}
+                  <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <StatusBadge
+                        ok={
+                          shareMode === 'story'
+                            ? !!selected.storyPublished
+                            : shareMode === 'both'
+                              ? !!(selected.socialPublished && selected.storyPublished)
+                              : !!selected.socialPublished
+                        }
+                        label={
+                          shareMode === 'story'
+                            ? (selected.storyPublished ? 'Hikâye paylaşıldı' : 'Paylaşılmadı')
+                            : shareMode === 'both'
+                              ? (selected.socialPublished && selected.storyPublished
+                                ? 'Post + hikâye paylaşıldı'
+                                : selected.socialPublished
+                                  ? 'Post paylaşıldı'
+                                  : selected.storyPublished
+                                    ? 'Hikâye paylaşıldı'
+                                    : 'Paylaşılmadı')
+                              : (selected.socialPublished ? 'Post paylaşıldı' : 'Paylaşılmadı')
+                        }
+                      />
+                      <label className="flex cursor-pointer items-center gap-1.5 text-xs text-[rgb(var(--color-muted))]">
+                        <input
+                          type="checkbox"
+                          checked={forceReshare}
+                          onChange={(e) => setForceReshare(e.target.checked)}
+                          className="rounded border-white/20"
+                        />
+                        Yeniden paylaş
+                      </label>
+                    </div>
+                    {lastResult && (
+                      <div className={cn(
+                        'rounded px-2 py-1.5 text-[11px]',
+                        lastResult.ok ? 'bg-emerald-500/10 text-emerald-300' : 'bg-red-500/10 text-red-300'
+                      )}>
+                        {lastResult.message}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CTA */}
+                <div className="border-t border-white/10 p-4">
+                  {composerBlocked ? (
+                    <div className="rounded bg-white/5 py-2.5 text-center text-xs font-semibold text-amber-400">
+                      {composerBlocked}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void shareSelected()}
+                      disabled={sharing}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[rgb(var(--color-brand))] py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
+                    >
+                      {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                      Paylaş
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {hasMore && !loading && (
-          <div className="flex justify-center">
-            <button
-              onClick={() => void fetchRows(false)}
-              disabled={loadingMore}
-              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold hover:bg-white/15 disabled:opacity-50"
-            >
-              {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Daha fazla yükle
-            </button>
-          </div>
-        )}
-
-        <p className="text-center text-xs text-[rgb(var(--color-muted))]">
-          Harici RSS haberleri engellenir. Görselsiz haberler paylaşılamaz. Sistem aynı haberi çift paylaşmamak için bayrak tutar; yeniden paylaş onay ister.
+        <p className="text-center text-[11px] text-[rgb(var(--color-muted))]">
+          Harici RSS engellenir · Görselsiz haber paylaşılamaz · Yeniden paylaş için onay kutusu gerekir
         </p>
       </div>
     </div>
