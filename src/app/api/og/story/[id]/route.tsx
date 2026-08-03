@@ -4,16 +4,17 @@
  * ONYEDİTİVİ — 1080×1920 Instagram & Facebook Hikaye görseli (9:16)
  * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout (okunabilirlik: foto kısaltıldı, metin bandı yükseltildi):
+ * Layout (foto biraz daha uzun; manşet↔özet ince ayraç):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  ~55% (1060px)
+ *   │   HABER FOTOĞRAFI       │  ~58% (1120px)
  *   │                         │
  *   │  [🔗 nahaber.com pill]  │  alt kısım — link stikeri görseli
  *   ├─── nahaber.com ─────────┤  tam kırmızı bar + beyaz pill (80px)
  *   │   MANŞET (Playfair)     │
- *   │   spot/özet (büyük)     │  ~41% — lacivert bg (780px)
+ *   │   ── ayraç ──           │
+ *   │   spot/özet (büyük)     │  ~38% — lacivert bg (720px)
  *   │   #hashtag              │
  *   └─────────────────────────┘
  *
@@ -101,13 +102,13 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
-// Boyutlar — 9:16 hikaye (foto ~55% / metin ~41% — manşet+özet ferah)
+// Boyutlar — 9:16 hikaye (foto ~58% / metin ~38% — bar biraz aşağı)
 const W = 1080
 const H = 1920
-/** Fotoğraf — kırmızı bar daha yukarı; metin paneli daha yüksek */
-const PHOTO_H = 1060  // ~%55
+/** Fotoğraf — kırmızı bar + metin bandı biraz daha aşağı */
+const PHOTO_H = 1120  // ~%58
 const MID_H   = 80    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // 780px (~%41)
+const TITLE_H = H - PHOTO_H - MID_H  // 720px (~%38)
 /** Metin paneli — cömert padding; hashtag ezilmesin */
 const TEXT_PAD_TOP = 52
 const TEXT_PAD_SIDE = 48
@@ -238,7 +239,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     titlePlainLen > 16 ? 76 : 84
   const titleLineHeight = titleLines.length >= 2 ? 1.24 : 1.18
 
-  // Özet — belirgin şekilde daha büyük; yüksek kontrast (metin paneli ~%41)
+  // Özet — punto korundu; yüksek kontrast
   const spotLen = spot.length
   const spotSize =
     spotLen > 140 ? 36 :
@@ -264,7 +265,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         background: NAVY, overflow: 'hidden',
       }}>
 
-        {/* ── FOTOĞRAF (~55%) ── */}
+        {/* ── FOTOĞRAF (~58%) ── */}
         <div style={{
           width: W, height: PHOTO_H, position: 'relative',
           display: 'flex', flexShrink: 0, overflow: 'hidden',
@@ -354,13 +355,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.25)', display: 'flex' }} />
         </div>
 
-        {/* ── BAŞLIK + SPOT ALANI (~41%) ── */}
+        {/* ── BAŞLIK + SPOT ALANI (~38%) ── */}
         <div style={{
           width: W, height: TITLE_H, flexShrink: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           padding: `${TEXT_PAD_TOP}px ${TEXT_PAD_SIDE}px ${TEXT_PAD_BOTTOM}px`, background: NAVY,
         }}>
-          {/* Manşet + özet — sol kırmızı çizgi; aralarında net boşluk */}
+          {/* Manşet + ayraç + özet — sol kırmızı çizgi */}
           <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24, flex: 1, overflow: 'hidden' }}>
             <div style={{
               width: 8, borderRadius: 4, background: RED, flexShrink: 0,
@@ -370,7 +371,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               display: 'flex', flexDirection: 'column', gap: 0,
               maxWidth: W - TEXT_PAD_SIDE * 2 - 32, flex: 1, overflow: 'hidden',
             }}>
-              {/* Manşet — büyük Playfair, yüksek kontrast */}
+              {/* Manşet — büyük Playfair, yüksek kontrast (punto sabit) */}
               <div style={{
                 display: 'flex', flexDirection: 'column', gap: 6,
                 maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
@@ -384,12 +385,29 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                   }}>{line}</span>
                 ))}
               </div>
-              {/* Özet — beyaza yakın, manşetten ≥36px boşluk; meta CTA yok */}
+              {/* Manşet ↔ özet ayraç: kısa kırmızı + ince beyaz hairline */}
+              {spot ? (
+                <div style={{
+                  display: 'flex', flexDirection: 'row', alignItems: 'center',
+                  gap: 12, width: '100%', marginTop: 26, marginBottom: 0,
+                }}>
+                  <div style={{
+                    width: 40, height: 2, borderRadius: 1, background: RED,
+                    display: 'flex', flexShrink: 0,
+                  }} />
+                  <div style={{
+                    width: W - TEXT_PAD_SIDE * 2 - 32 - 40 - 12,
+                    height: 1, background: 'rgba(255,255,255,0.42)',
+                    display: 'flex', flexShrink: 0,
+                  }} />
+                </div>
+              ) : null}
+              {/* Özet — punto sabit; ayraçtan 22px boşluk */}
               {spot ? (
                 <span style={{
                   color: 'rgba(255,255,255,0.96)', fontFamily: bodyFamily, fontWeight: 500,
                   fontSize: spotSize, lineHeight: spotLineHeight, display: 'flex', flexDirection: 'column',
-                  paddingTop: 36,
+                  paddingTop: 22,
                 }}>{spot}</span>
               ) : null}
             </div>
