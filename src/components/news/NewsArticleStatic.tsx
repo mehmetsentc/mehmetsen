@@ -2,11 +2,11 @@ import { Fragment } from 'react'
 import Link from 'next/link'
 import { format, isValid } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { ChevronRight, Clock, Eye, Hash, MapPin, User } from 'lucide-react'
+import { ChevronRight, Clock, Hash, MapPin, User } from 'lucide-react'
 import type { MediaItem, Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { formatCount, getArticleBylineName, getPostCoverAlt } from '@/lib/postUtils'
+import { getArticleBylineName, getPostCoverAlt } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
@@ -220,15 +220,6 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
               <Clock className="h-3.5 w-3.5" />
               {readMinutes} dk okuma
             </span>
-            {post.viewsCount > 0 && (
-              <>
-                <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
-                <span className="inline-flex items-center gap-1">
-                  <Eye className="h-3.5 w-3.5" />
-                  {formatCount(post.viewsCount)} görüntülenme
-                </span>
-              </>
-            )}
           </div>
         </header>
 

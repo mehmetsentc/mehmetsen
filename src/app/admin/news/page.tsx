@@ -8,7 +8,7 @@ import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Eye,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
@@ -16,6 +16,7 @@ import { MobileContent } from '@/components/admin/mobile/MobileContent'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
+import { formatCount } from '@/lib/postUtils'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
@@ -259,6 +260,10 @@ function NewsRow({
             {post.categoryId && <span className="flex items-center gap-1"><Tag className="h-2.5 w-2.5" />{post.categoryId}</span>}
             {post.readingTimeMinutes && <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{post.readingTimeMinutes} dk okuma</span>}
             {(post as AdminNewsItem & { citySlug?: string }).citySlug && <span className="flex items-center gap-1"><Globe className="h-2.5 w-2.5" />{(post as AdminNewsItem & { citySlug?: string }).citySlug}</span>}
+            <span className="flex items-center gap-1 font-semibold tabular-nums text-[rgb(var(--color-text))]" title="Oturum başına en fazla 1 sayım">
+              <Eye className="h-2.5 w-2.5" />
+              {formatCount(post.viewsCount ?? 0)} görüntülenme
+            </span>
             <span>{publishedAt}</span>
           </div>
           {post.isDuplicate && post.duplicateReason && (

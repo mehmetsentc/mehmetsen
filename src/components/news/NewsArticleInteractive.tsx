@@ -12,6 +12,7 @@ import { ArticleReaderTools } from '@/components/news/ArticleReaderTools'
 import { ArticleSourceBadge } from '@/components/news/ArticleSourceBadge'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
+import { useNewsViewIncrement } from '@/hooks/useNewsViewIncrement'
 import { formatCount } from '@/lib/postUtils'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
@@ -77,10 +78,10 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
     initialCount: post.savesCount,
   })
 
-  useEffect(() => {
-    // incrementViews disabled — COST PAUSE
-    // postService.incrementViews(post.id).catch(() => {})
+  // Lightweight viewsCount only (session-debounced). Full analytics stays paused.
+  useNewsViewIncrement(post.id)
 
+  useEffect(() => {
     let cancelled = false
     const loadRelated = async () => {
       if (cancelled) return

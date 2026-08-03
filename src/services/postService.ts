@@ -663,8 +663,9 @@ export const postService = {
   },
 
   async incrementViews(_id: string) {
-    // COST PAUSE: viewsCount writes disabled to reduce Firestore costs.
-    // Re-enable when budget is restored.
+    // COST PAUSE (client SDK path): article views use POST /api/news/view instead
+    // (session-debounced, single FieldValue.increment). Do not re-enable direct
+    // client writes here — that bypasses debounce and raises cost.
     return
   },
 

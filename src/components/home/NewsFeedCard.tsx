@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { Eye } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
@@ -53,12 +52,6 @@ export function NewsFeedCard({ item, priority = false }: NewsFeedCardProps) {
           <h3 className="line-clamp-3 text-lg font-black leading-snug text-[rgb(var(--color-text))] md:text-xl">
             {item.title}
           </h3>
-          {typeof item.views === 'number' && item.views > 0 ? (
-            <div className="mt-3 flex items-center gap-1 text-xs text-[rgb(var(--color-muted))]">
-              <Eye className="h-3.5 w-3.5" />
-              <span>{item.views.toLocaleString('tr-TR')} görüntülenme</span>
-            </div>
-          ) : null}
         </div>
       </Link>
     </article>

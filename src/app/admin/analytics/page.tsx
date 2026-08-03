@@ -247,10 +247,15 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {!loading && data && (data.topPages.length === 0 || totalDevice === 0) && (
+        {!loading && data && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            Sayfa / cihaz / kaynak dağılımı henüz dolmamış. Haber görüntülenmeleri ayrı kaydediliyor;
-            yeni ziyaretler bu panelleri doldurmaya başlar. Birkaç sayfa gezindikten sonra yenileyin.
+            Canlı analitik toplama (sayfa yolu, cihaz, IP/geo, günlük özetler) maliyet nedeniyle
+            duraklatıldı (<code className="text-[11px]">/api/analytics/track</code> → cost-pause).
+            Bu yüzden Bugün / son günler boş görünebilir. Haber başına{' '}
+            <code className="text-[11px]">viewsCount</code> ise hafif sayaç ile güncellenir
+            (<code className="text-[11px]">/api/news/view</code>, oturum başına en fazla 1 yazma) —
+            Admin → Haberler listesinde görünür; canlı trafik paneli değildir.
+            Eski günler için <strong>7 Gün</strong> veya <strong>30 Gün</strong> filtresini deneyin.
           </div>
         )}
 
