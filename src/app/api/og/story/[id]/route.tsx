@@ -190,10 +190,11 @@ async function loadGoogleFont(family: string, weight: number): Promise<ArrayBuff
   }
 }
 
-type OgFont = { name: string; data: ArrayBuffer; weight: number; style: 'normal' }
+type OgFontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900
+type OgFont = { name: string; data: ArrayBuffer; weight: OgFontWeight; style: 'normal' }
 
 async function loadStoryFonts(): Promise<OgFont[]> {
-  const specs: Array<{ name: string; weight: number }> = [
+  const specs: Array<{ name: string; weight: OgFontWeight }> = [
     { name: FONT_HEADLINE, weight: 700 },
     { name: FONT_HEADLINE, weight: 900 },
     { name: FONT_BODY, weight: 400 },
