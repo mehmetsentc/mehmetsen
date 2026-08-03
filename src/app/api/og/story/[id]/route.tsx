@@ -8,14 +8,17 @@
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  65% (1248px)
+ *   │   HABER FOTOĞRAFI       │  ~69% (1320px) — bar+metin aşağı kaydırıldı
  *   │                         │
- *   │  [🔗 nahaber.com pill]  │  alt kısım — link stikeri
+ *   │  [🔗 nahaber.com pill]  │  alt kısım — link stikeri görseli
  *   ├─── nahaber.com ─────────┤  tam kırmızı bar + beyaz pill (80px)
  *   │   BAŞLIK                │
- *   │   spot/özet metin       │  kalan — lacivert bg (592px)
+ *   │   spot/özet metin       │  kalan — lacivert bg (520px)
  *   │   #hashtag              │
  *   └─────────────────────────┘
+ *
+ * Örnek (Firestore olmadan):
+ *   /api/og/story/sample?title=...&spot=...&image=https://...
  */
 export const runtime = 'nodejs'
 
@@ -25,9 +28,16 @@ import { type NextRequest } from 'next/server'
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
+/** Manşet — 1 satır veya 2–3 vurucu satır; kelime ortasından kesilmez */
+const TITLE_MAX = 52
+/** Özet — 1–2 tam faydalı cümle; cümle/kelime ortasından kesilmez */
+const SPOT_MAX = 170
+
 interface ArticleData {
   title: string
   spot: string
+  socialHeadline: string
+  socialStorySummary: string
   imageUrl: string
   thumbnail: string
   coverImageUrl: string
@@ -45,13 +55,15 @@ async function fetchArticle(id: string): Promise<ArticleData | null> {
     const f = data.fields
     if (!f) return null
     return {
-      title:         f.title?.stringValue         || '',
-      spot:          f.spot?.stringValue          || f.summary?.stringValue || f.description?.stringValue || '',
-      imageUrl:      f.imageUrl?.stringValue      || '',
-      thumbnail:     f.thumbnail?.stringValue     || '',
-      coverImageUrl: f.coverImageUrl?.stringValue || '',
-      featuredImage: f.featuredImage?.stringValue || '',
-      image:         f.image?.stringValue         || '',
+      title:               f.title?.stringValue               || '',
+      spot:                f.spot?.stringValue                || f.summary?.stringValue || f.description?.stringValue || '',
+      socialHeadline:      f.socialHeadline?.stringValue      || '',
+      socialStorySummary:  f.socialStorySummary?.stringValue  || '',
+      imageUrl:            f.imageUrl?.stringValue            || '',
+      thumbnail:           f.thumbnail?.stringValue           || '',
+      coverImageUrl:       f.coverImageUrl?.stringValue       || '',
+      featuredImage:       f.featuredImage?.stringValue       || '',
+      image:               f.image?.stringValue               || '',
     }
   } catch { return null }
 }
@@ -73,22 +85,130 @@ function bestImage(a: ArticleData): string {
   return ''
 }
 
-function truncate(s: string, max: number) {
-  return s.length > max ? s.slice(0, max - 1) + '…' : s
+/** Kelime sınırında kısalt; bağlaç/kesik kelime bırakma; ellipsis yok (yarıda kalmış görünmesin). */
+function clampAtWord(s: string, max: number): string {
+  const t = s.replace(/\s+/g, ' ').trim()
+  if (t.length <= max) return t
+  const slice = t.slice(0, max)
+  const sp = slice.lastIndexOf(' ')
+  return (sp > max * 0.45 ? slice.slice(0, sp) : slice)
+    .replace(/\s+(ve|veya|ile|için|olan|ama|fakat|ancak|ki|:|,)\s*$/iu, '')
+    .trim()
+}
+
+/** Manşet: 1–3 tematik satır (\\n); toplam karakter limiti. */
+function clampHeadline(s: string, max: number): string {
+  const lines = s
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 3)
+  if (lines.length === 0) return ''
+  if (lines.length === 1) return clampAtWord(lines[0], max)
+  let used = 0
+  const out: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const remain = max - used
+    if (remain < 6) break
+    const share = Math.max(8, Math.floor(remain / (lines.length - i)))
+    const part = clampAtWord(lines[i], Math.min(share, remain))
+    if (!part) continue
+    out.push(part)
+    used += part.length
+  }
+  return out.join('\n')
+}
+
+/** Tercihen cümle sınırında bitir; aksi halde kelime sınırında. */
+function clampCompleteSentences(s: string, max: number): string {
+  const t = s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!t) return ''
+  if (t.length <= max) return t
+  const slice = t.slice(0, max)
+  const candidates = [
+    slice.lastIndexOf('. '),
+    slice.lastIndexOf('! '),
+    slice.lastIndexOf('? '),
+    /[.!?]$/.test(slice) ? slice.length - 1 : -1,
+  ]
+  const best = Math.max(...candidates)
+  if (best >= Math.min(36, Math.floor(max * 0.35))) {
+    const end = slice[best] === ' ' ? best : best + 1
+    return slice.slice(0, end).trim()
+  }
+  return clampAtWord(t, max)
 }
 
 // Boyutlar — 9:16 hikaye
 const W = 1080
 const H = 1920
-const PHOTO_H = 1248  // %65 (önceki %60'tan büyütüldü)
+/** Fotoğraf alanı — bar+metin ~72px aşağı (önceki 1248 → 1320) */
+const PHOTO_H = 1320  // ~%69
 const MID_H   = 80    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // 592px
+const TITLE_H = H - PHOTO_H - MID_H  // 520px
+/** Metin bloğu üst boşluğu — kırmızı çizgi + başlık biraz daha aşağı */
+const TEXT_PAD_TOP = 52
+const TEXT_PAD_SIDE = 44
+const TEXT_PAD_BOTTOM = 40
 
 // Renkler
 const NAVY   = '#0d2355'   // OnyediTivi koyu lacivert
 const RED    = '#CC0000'   // NaHaber kırmızısı
 const BLUE   = '#2563b8'   // OnyediTivi orta mavi
 const LBLUE  = '#62b8e8'   // OnyediTivi açık mavi
+
+/** Manşet — gazete ciddiyeti (serif display) */
+const FONT_HEADLINE = 'Playfair Display'
+/** Özet / UI — okunaklı sans (klasik gazete: serif manşet + sans deck) */
+const FONT_BODY = 'Inter'
+
+/**
+ * Google Fonts CSS → TTF/OTF ArrayBuffer (Satori / next/og).
+ * Safari UA ile truetype döner; woff2 Satori'de sorun çıkarabilir.
+ */
+async function loadGoogleFont(family: string, weight: number): Promise<ArrayBuffer | null> {
+  try {
+    const cssUrl =
+      `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}&display=swap`
+    const css = await fetch(cssUrl, {
+      headers: {
+        // Eski Safari → truetype/opentype URL'leri
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1',
+      },
+      cache: 'force-cache',
+    }).then((r) => r.text())
+    const match = css.match(/src:\s*url\(([^)]+)\)\s*format\(['"]?(?:opentype|truetype)['"]?\)/i)
+      || css.match(/src:\s*url\(([^)]+)\)/i)
+    if (!match?.[1]) return null
+    const res = await fetch(match[1], { cache: 'force-cache' })
+    if (!res.ok) return null
+    return await res.arrayBuffer()
+  } catch {
+    return null
+  }
+}
+
+type OgFont = { name: string; data: ArrayBuffer; weight: number; style: 'normal' }
+
+async function loadStoryFonts(): Promise<OgFont[]> {
+  const specs: Array<{ name: string; weight: number }> = [
+    { name: FONT_HEADLINE, weight: 700 },
+    { name: FONT_HEADLINE, weight: 900 },
+    { name: FONT_BODY, weight: 400 },
+    { name: FONT_BODY, weight: 600 },
+    { name: FONT_BODY, weight: 700 },
+    { name: FONT_BODY, weight: 800 },
+  ]
+  const loaded = await Promise.all(
+    specs.map(async (s) => {
+      const data = await loadGoogleFont(s.name, s.weight)
+      return data ? { name: s.name, data, weight: s.weight, style: 'normal' as const } : null
+    })
+  )
+  return loaded.filter((f): f is OgFont => f !== null)
+}
 
 function fallback() {
   return new ImageResponse(
@@ -99,28 +219,69 @@ function fallback() {
   )
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const q = req.nextUrl.searchParams
+  const overrideTitle = q.get('title')?.trim() || ''
+  const overrideSpot  = q.get('spot')?.trim()  || ''
+  const overrideImage = q.get('image')?.trim() || ''
+
   let article: ArticleData | null = null
-  try { article = await fetchArticle(id) } catch { return fallback() }
-  if (!article?.title) return new Response('Haber bulunamadi', { status: 404 })
+  if (id !== 'sample' && id !== 'preview') {
+    try { article = await fetchArticle(id) } catch { return fallback() }
+  }
 
-  const photo = bestImage(article)
-  const title = article.title
-  const spot  = article.spot ? truncate(article.spot.replace(/<[^>]+>/g, ' ').trim(), 180) : ''
+  const rawTitle =
+    overrideTitle ||
+    article?.socialHeadline ||
+    article?.title ||
+    ''
+  if (!rawTitle) {
+    if (id === 'sample' || id === 'preview') {
+      return new Response('sample için ?title= ve ?spot= gerekli', { status: 400 })
+    }
+    return new Response('Haber bulunamadi', { status: 404 })
+  }
 
+  const rawSpot =
+    overrideSpot ||
+    article?.socialStorySummary ||
+    article?.spot ||
+    ''
+
+  const photo =
+    (isValidUrl(overrideImage) ? overrideImage : '') ||
+    (article ? bestImage(article) : '')
+
+  const title = clampHeadline(rawTitle, TITLE_MAX)
+  const spot  = rawSpot ? clampCompleteSentences(rawSpot, SPOT_MAX) : ''
+  const titleLines = title.split('\n').filter(Boolean)
+  const titlePlainLen = titleLines.join('').length
+
+  // Gazete display: kısa = büyük tek satır; 2–3 satır = biraz sıkı ama güçlü
   const titleSize =
-    title.length > 120 ? 36 :
-    title.length > 90  ? 42 :
-    title.length > 70  ? 48 :
-    title.length > 50  ? 54 :
-    title.length > 35  ? 62 : 70
+    titleLines.length >= 3 ? 50 :
+    titleLines.length === 2 ? (titlePlainLen > 36 ? 54 : 60) :
+    titlePlainLen > 40 ? 54 :
+    titlePlainLen > 28 ? 62 :
+    titlePlainLen > 18 ? 68 : 74
+  const titleLineHeight = titleLines.length >= 2 ? 1.14 : 1.12
 
   try {
+    const fonts = await loadStoryFonts()
+    const hasHeadlineFont = fonts.some((f) => f.name === FONT_HEADLINE)
+    const hasBodyFont = fonts.some((f) => f.name === FONT_BODY)
+    const headlineFamily = hasHeadlineFont
+      ? `"${FONT_HEADLINE}", "Times New Roman", Georgia, serif`
+      : '"Times New Roman", Georgia, serif'
+    const bodyFamily = hasBodyFont
+      ? `"${FONT_BODY}", "Helvetica Neue", Helvetica, Arial, sans-serif`
+      : '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
     return new ImageResponse(
       <div style={{
         width: W, height: H, display: 'flex', flexDirection: 'column',
-        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+        fontFamily: bodyFamily,
         background: NAVY, overflow: 'hidden',
       }}>
 
@@ -174,9 +335,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             </div>
           </div>
 
-          {/* Bağlantı pill — fotoğraf alt kısmı */}
+          {/* Bağlantı pill — fotoğraf alt kısmı (bar'a yaklaştırıldı) */}
           <div style={{
-            position: 'absolute', bottom: 56, left: '50%', marginLeft: -220,
+            position: 'absolute', bottom: 40, left: '50%', marginLeft: -220,
             display: 'flex', alignItems: 'center', gap: 18,
             background: 'rgba(255,255,255,0.18)',
             border: '2px solid rgba(255,255,255,0.4)',
@@ -218,35 +379,49 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         <div style={{
           width: W, height: TITLE_H, flexShrink: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-          padding: '36px 44px 40px', background: NAVY,
+          padding: `${TEXT_PAD_TOP}px ${TEXT_PAD_SIDE}px ${TEXT_PAD_BOTTOM}px`, background: NAVY,
         }}>
-          {/* Başlık — sol kırmızı çizgi */}
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 22 }}>
-            <div style={{ width: 7, borderRadius: 4, background: RED, flexShrink: 0, alignSelf: 'stretch', display: 'flex' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <span style={{
-                color: '#ffffff', fontWeight: 900, fontSize: titleSize,
-                lineHeight: 1.3, display: 'flex', flexDirection: 'column',
-              }}>{title}</span>
-              {/* Spot metin — özet */}
+          {/* Başlık — sol kırmızı çizgi (üst padding ile birlikte aşağı kaydırıldı) */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 22, paddingTop: 8 }}>
+            <div style={{
+              width: 7, borderRadius: 4, background: RED, flexShrink: 0,
+              alignSelf: 'stretch', display: 'flex', marginTop: 6,
+            }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: W - TEXT_PAD_SIDE * 2 - 29 }}>
+              {/* Manşet — 1 satır veya \\n ile 2–3 tematik satır */}
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 2,
+                maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
+                overflow: 'hidden',
+              }}>
+                {titleLines.map((line, i) => (
+                  <span key={i} style={{
+                    color: '#ffffff', fontFamily: headlineFamily, fontWeight: 900,
+                    fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: -0.8,
+                    display: 'flex',
+                  }}>{line}</span>
+                ))}
+              </div>
+              {/* Spot — tam faydalı özet; meta CTA yok (link stiker tıklatır) */}
               {spot ? (
                 <span style={{
-                  color: 'rgba(255,255,255,0.62)', fontWeight: 400,
-                  fontSize: 32, lineHeight: 1.5, display: 'flex', flexDirection: 'column',
+                  color: 'rgba(255,255,255,0.72)', fontFamily: bodyFamily, fontWeight: 400,
+                  fontSize: 28, lineHeight: 1.42, display: 'flex', flexDirection: 'column',
                 }}>{spot}</span>
               ) : null}
             </div>
           </div>
           {/* Hashtags */}
           <span style={{
-            color: LBLUE, fontSize: 26, fontWeight: 600,
-            letterSpacing: 1.5, display: 'flex', marginTop: 24,
+            color: LBLUE, fontFamily: bodyFamily, fontSize: 26, fontWeight: 600,
+            letterSpacing: 1.5, display: 'flex', marginTop: 20,
           }}>#NaHaber  #Çanakkale  #SonDakika</span>
         </div>
 
       </div>,
       {
         width: W, height: H,
+        ...(fonts.length > 0 ? { fonts } : {}),
         headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=300' },
       }
     )

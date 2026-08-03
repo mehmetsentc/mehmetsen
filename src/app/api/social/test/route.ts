@@ -21,6 +21,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import type { SocialPublishPayload } from '@/lib/social/types'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import { clampAtWordBoundary } from '@/lib/social/feedCaption'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -126,7 +127,8 @@ async function handleRequest(request: Request) {
   let socialContent = await generateSocialContent(title, description, cityName)
   if (!socialContent) {
     socialContent = {
-      headline: title.slice(0, 60),
+      headline: clampAtWordBoundary(title, 52),
+      storySummary: `${clampAtWordBoundary(title, 120)}.`,
       caption:  `📰 ${title}`,
       hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
       altText:  title,
@@ -141,15 +143,13 @@ async function handleRequest(request: Request) {
   steps.overlayResult = `OG route → ${socialImageUrl}`
 
   // ── 4. Sosyal medya paylaşımı ─────────────────────────────────────────────
-  const hashtagStr = socialContent.hashtags.join(' ')
-  const fullCaption = `${socialContent.caption}\n\n${hashtagStr}\n\n🔗 ${articleUrl}`
-
   const payload: SocialPublishPayload = {
     newsId:      docId,
-    title:       socialContent.headline || title,
-    description: fullCaption,
+    title,
+    description: socialContent.caption,
     imageUrl:    socialImageUrl,
     articleUrl,
+    hashtags:    socialContent.hashtags,
   }
 
   let fbResult, igResult
@@ -172,6 +172,7 @@ async function handleRequest(request: Request) {
       socialPublishedAt: FieldValue.serverTimestamp(),
       socialImageUrl:    socialImageUrl ?? null,
       socialHeadline:    socialContent.headline,
+      socialStorySummary: socialContent.storySummary,
       socialHashtags:    socialContent.hashtags,
       ...(fbResult?.platformId  ? { facebookPostId:   fbResult.platformId }  : {}),
       ...(igResult?.platformId  ? { instagramMediaId: igResult.platformId }  : {}),

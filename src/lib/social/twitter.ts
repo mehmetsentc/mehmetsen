@@ -4,6 +4,7 @@
  */
 import crypto from 'crypto'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
+import { clampAtWordBoundary } from './feedCaption'
 
 // ── OAuth 1.0a yardımcıları ────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ function buildTweetText(payload: SocialPublishPayload): string {
 
   let headline = payload.title
   if (headline.length > available) {
-    headline = headline.slice(0, available - 3) + '...'
+    headline = clampAtWordBoundary(headline, available - 1)
   }
 
   return `${headline}${separator}${hashtagLine}\n\n${url}`

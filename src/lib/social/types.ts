@@ -48,14 +48,19 @@ export interface SocialCronResult {
     processed: number
     succeeded: number
     failed: number
+    items?: Array<{ newsId: string; title: string; ok: boolean; error?: string }>
   }
 }
 
 /** Payload POSTed to /api/social/facebook or /api/social/instagram */
 export interface SocialPublishPayload {
   newsId: string
+  /** Post: tam haber manşeti. Story: kısa AI headline (sadece log/görsel bağlamı). */
   title: string
+  /** Post özet gövdesi (AI caption) — URL/hashtag içermez; publisher ekler. */
   description?: string
   imageUrl?: string
   articleUrl?: string
+  /** Post hashtag listesi; yoksa publisher varsayılan kullanır. */
+  hashtags?: string[]
 }

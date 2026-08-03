@@ -21,6 +21,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload } from '@/lib/social/types'
+import { clampAtWordBoundary, clampCompleteSentences } from '@/lib/social/feedCaption'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -201,8 +202,14 @@ export async function POST(request: Request) {
     let socialContent = await generateSocialContent(title, aiContext, cityName)
     if (!socialContent) {
       socialContent = {
-        headline: title.slice(0, 60),
-        caption: spot ? `📰 ${spot}` : `📰 ${title}`,
+        headline: clampAtWordBoundary(title, 52),
+        storySummary: spot
+          ? clampCompleteSentences(
+              /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
+              170
+            )
+          : `${clampAtWordBoundary(title, 120)}.`,
+        caption: spot ? `📰 ${spot.trim()}` : `📰 ${title.trim()}`,
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText: title,
       }
@@ -210,21 +217,14 @@ export async function POST(request: Request) {
 
     // ?v=timestamp → CDN + data cache bypass — her zaman taze OG görseli
     const socialImageUrl = `https://nahaber.com/api/og/social/${id}?v=${Date.now()}`
-    const hashtagStr = socialContent.hashtags.join(' ')
-    const fullCaption = [
-      socialContent.caption,
-      '',
-      `🔗 Haberin devamı: ${articleUrl}`,
-      '',
-      hashtagStr,
-    ].join('\n')
 
     const payload: SocialPublishPayload = {
       newsId: id,
-      title: socialContent.headline || title,
-      description: fullCaption,
+      title,
+      description: socialContent.caption,
       imageUrl: socialImageUrl,
       articleUrl,
+      hashtags: socialContent.hashtags,
     }
 
     let fbResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
@@ -252,6 +252,7 @@ export async function POST(request: Request) {
         socialPublishedAt: FieldValue.serverTimestamp(),
         socialImageUrl,
         socialHeadline: socialContent.headline,
+        socialStorySummary: socialContent.storySummary,
         socialHashtags: socialContent.hashtags,
       }
       if ('platformId' in fbResult && fbResult.platformId) update.facebookPostId   = fbResult.platformId

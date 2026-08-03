@@ -15,6 +15,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload } from '@/lib/social/types'
+import { clampAtWordBoundary, clampCompleteSentences } from '@/lib/social/feedCaption'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -245,9 +246,19 @@ export async function publishOneSocial(newsId: string): Promise<void> {
     const aiContext = bodyText.length > 100 ? bodyText : spot
     let socialContent = await generateSocialContent(title, aiContext, cityName)
     if (!socialContent) {
+      const fallbackSpot = spot.replace(/\s+/g, ' ').trim()
       socialContent = {
-        headline: title.slice(0, 60),
-        caption:  spot ? `📰 ${spot}` : `📰 ${title}`,
+        headline: clampAtWordBoundary(title, 52),
+        storySummary: (() => {
+          const cleaned = fallbackSpot
+            .replace(/\b(detaylar(?:ı|ın)?\s+(?:için\s+)?(?:haberimizde|tıklayın)|haberimizde|haberin\s+devamı|devamı\s+için|devamını\s+oku|tıklayın)\b/giu, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim()
+          if (!cleaned) return `${clampAtWordBoundary(title, 120)}.`
+          if (cleaned.length <= 170) return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`
+          return clampCompleteSentences(cleaned, 170)
+        })(),
+        caption:  spot ? `📰 ${spot.trim()}` : `📰 ${title.trim()}`,
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText:  title,
       }
@@ -255,18 +266,17 @@ export async function publishOneSocial(newsId: string): Promise<void> {
 
     const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}?v=${Date.now()}`
     const storyImageUrl  = `https://nahaber.com/api/og/story/${newsId}?v=${Date.now()}`
-    const hashtagStr     = socialContent.hashtags.join(' ')
-    const fullCaption    = [
-      socialContent.caption, '',
-      `🔗 Haberin devamı: ${articleUrl}`, '',
-      hashtagStr,
-    ].join('\n')
 
     // ── POST (Çanakkale) ─────────────────────────────────────────────────────
     if (shouldPost) {
+      // Post: TAM haber manşeti + AI özet gövdesi; URL/hashtag publisher ekler
       const payload: SocialPublishPayload = {
-        newsId, title: socialContent.headline || title,
-        description: fullCaption, imageUrl: socialImageUrl, articleUrl,
+        newsId,
+        title,
+        description: socialContent.caption,
+        imageUrl: socialImageUrl,
+        articleUrl,
+        hashtags: socialContent.hashtags,
       }
 
       let fbResult: { success: boolean; error?: string; platformId?: string } =
@@ -287,8 +297,9 @@ export async function publishOneSocial(newsId: string): Promise<void> {
           socialPublished:   true,
           socialPublishedAt: FieldValue.serverTimestamp(),
           socialImageUrl,
-          socialHeadline:    socialContent.headline,
-          socialHashtags:    socialContent.hashtags,
+          socialHeadline:      socialContent.headline,
+          socialStorySummary:  socialContent.storySummary,
+          socialHashtags:      socialContent.hashtags,
         }
         if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
         if (igResult.platformId) update.instagramMediaId = igResult.platformId
@@ -303,9 +314,23 @@ export async function publishOneSocial(newsId: string): Promise<void> {
 
     // ── HİKAYE (güncel + öne çıkan) ─────────────────────────────────────────
     if (shouldStory) {
+      // OG route socialHeadline / socialStorySummary okusun
+      try {
+        await db.collection(Collections.NEWS).doc(newsId).update({
+          socialHeadline: socialContent.headline,
+          socialStorySummary: socialContent.storySummary,
+        })
+      } catch (err) {
+        console.warn(`[publishOneSocial] story AI fields update failed ${newsId}:`, err)
+      }
+
       const storyPayload: SocialPublishPayload = {
         newsId, title: socialContent.headline || title,
         description: undefined, imageUrl: storyImageUrl, articleUrl,
+      }
+
+      if (!articleUrl?.trim()) {
+        console.warn(`[publishOneSocial] STORY articleUrl eksik — yine de denenecek: ${newsId}`)
       }
 
       let igStoryResult: { success: boolean; error?: string; platformId?: string } =

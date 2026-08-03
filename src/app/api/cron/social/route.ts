@@ -16,19 +16,23 @@
  * Auth: Bearer CRON_SECRET  veya ?secret=CRON_SECRET
  */
 import { NextResponse } from 'next/server'
-import { FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { publishToFacebook, publishFacebookStory } from '@/lib/social/facebook'
-import { publishToInstagram } from '@/lib/social/instagram'
+import { publishToInstagram, publishInstagramStory } from '@/lib/social/instagram'
 import { publishToTwitter } from '@/lib/social/twitter'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import { clampAtWordBoundary, clampCompleteSentences } from '@/lib/social/feedCaption'
 
-import { isOwnContent, isSkippableForSocial } from '@/lib/social/publishOneSocial'
-import { publishInstagramStory } from '@/lib/social/instagram'
+import {
+  isOwnContent,
+  isSkippableForSocial,
+  isStoryEligible as isStoryEligibleShared,
+} from '@/lib/social/publishOneSocial'
 import type {
   SocialCronItemResult,
   SocialCronResult,
@@ -176,6 +180,156 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
   const prioritized = withImage   // fallback yok — sadece görseli olan haberler
   console.log(`[cron/social] candidates=${candidates.length} withImage=${withImage.length}`)
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BÖLÜM 1 — HİKAYELER ÖNCE (güncel + öne çıkan)
+  // Post döngüsü zamanı yemesin diye hikayeler önce yayınlanır.
+  // publishedAt NUMBER ile filtrele — createdAt Timestamp karşılaştırması 0 sonuç
+  // döndürüyordu (tüm news.createdAt number; Timestamp query sessizce boş geliyordu).
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const STORY_BATCH_LIMIT = 5
+  const STORY_WINDOW_MS   = 10 * 60 * 60 * 1000  // son 10 saat
+  const recentPublishedAt = Date.now() - STORY_WINDOW_MS
+
+  let storySucceeded = 0
+  let storyFailed    = 0
+  let storyProcessed = 0
+  const storyItemLogs: Array<{ newsId: string; title: string; ok: boolean; error?: string }> = []
+
+  try {
+    // publishedAt number — draft onayında createdAt eski kalabiliyor
+    const storySnap = await db
+      .collection(Collections.NEWS)
+      .where('status', '==', 'published')
+      .where('publishedAt', '>=', recentPublishedAt)
+      .orderBy('publishedAt', 'desc')
+      .limit(80)
+      .get()
+
+    const storyCandidates = storySnap.docs
+      .filter(doc => {
+        const d = doc.data() as Record<string, unknown>
+        if (d.storyPublished === true) return false
+        if (!isOwnContent(d)) return false
+        if (!extractImageUrl(d)) return false
+        return isStoryEligibleShared(d)
+      })
+      .slice(0, STORY_BATCH_LIMIT)
+
+    console.log(
+      `[cron/social] Story candidates: ${storyCandidates.length}` +
+        ` (window publishedAt>=${new Date(recentPublishedAt).toISOString()}, scanned=${storySnap.size})`
+    )
+
+    for (const doc of storyCandidates) {
+      storyProcessed++
+      const data    = doc.data() as Record<string, unknown>
+      const id      = doc.id
+      const title   = typeof data.title === 'string' ? data.title : ''
+      const spot    = typeof data.spot === 'string' ? data.spot :
+                      typeof data.summary === 'string' ? data.summary : ''
+      const articleUrl = buildArticleUrl(id, data)
+
+      if (!articleUrl) {
+        console.warn(`[cron/social] Story articleUrl boş — atlandı: ${id}`)
+        storyFailed++
+        storyItemLogs.push({ newsId: id, title, ok: false, error: 'articleUrl missing' })
+        continue
+      }
+
+      // AI içerik — headline + storySummary Firestore'a yazılsın (OG route okur)
+      let headline = clampAtWordBoundary(title, 80)
+      let storySummary = spot
+        ? clampCompleteSentences(
+            /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
+            170
+          )
+        : `${clampAtWordBoundary(title, 120)}.`
+      try {
+        const ai = await generateSocialContent(
+          title,
+          spot,
+          typeof data.cityName === 'string' ? data.cityName : 'Türkiye'
+        )
+        if (ai) {
+          headline = ai.headline || headline
+          if (ai.storySummary) storySummary = ai.storySummary
+        }
+      } catch { /* fallback */ }
+
+      // OG route sosyal alanları okusun diye önce kaydet
+      try {
+        await db.collection(Collections.NEWS).doc(id).update({
+          socialHeadline: headline,
+          socialStorySummary: storySummary,
+        })
+      } catch (err) {
+        console.warn(`[cron/social] story AI fields update failed ${id}:`, err)
+      }
+
+      const storyImageUrl: string = `https://nahaber.com/api/og/story/${id}?v=${Date.now()}`
+      const storyPayload: SocialPublishPayload = {
+        newsId:      id,
+        title:       headline,
+        description: undefined,
+        imageUrl:    storyImageUrl,
+        articleUrl,
+      }
+
+      let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
+      try {
+        igStoryResult = await publishInstagramStory(storyPayload)
+        console.log(`[cron/social] IG Story → ${id}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
+      } catch (err) {
+        igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+
+      let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
+      try {
+        fbStoryResult = await publishFacebookStory(storyPayload)
+        console.log(`[cron/social] FB Story → ${id}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
+      } catch (err) {
+        fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      if (igStoryResult.success || fbStoryResult.success) {
+        try {
+          const storyUpdate: Record<string, unknown> = {
+            storyPublished:   true,
+            storyPublishedAt: FieldValue.serverTimestamp(),
+          }
+          if (igStoryResult.platformId) storyUpdate.instagramStoryId = igStoryResult.platformId
+          if (fbStoryResult.platformId) storyUpdate.facebookStoryId  = fbStoryResult.platformId
+          await db.collection(Collections.NEWS).doc(id).update(storyUpdate)
+          storySucceeded++
+          storyItemLogs.push({ newsId: id, title, ok: true })
+        } catch (err) {
+          console.error(`[cron/social] Story Firestore update failed for ${id}:`, err)
+          storyFailed++
+          storyItemLogs.push({ newsId: id, title, ok: false, error: 'firestore update failed' })
+        }
+      } else {
+        storyFailed++
+        storyItemLogs.push({
+          newsId: id,
+          title,
+          ok: false,
+          error: `IG: ${igStoryResult.error} | FB: ${fbStoryResult.error}`,
+        })
+      }
+
+      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+    }
+  } catch (err) {
+    console.error('[cron/social] Story loop error:', err)
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BÖLÜM 2 — POSTLAR (Çanakkale)
+  // ═══════════════════════════════════════════════════════════════════════════
+
   const finalDocs = prioritized.slice(0, BATCH_LIMIT)
   const results: SocialCronItemResult[] = []
   let succeeded = 0
@@ -234,10 +388,16 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     if (!socialContent) {
       // Fallback: AI başarısız olursa spot'tan manuel bir caption oluştur
       const fallbackCaption = spot
-        ? `📰 ${spot}`
-        : `📰 ${title}`
+        ? `📰 ${spot.trim()}`
+        : `📰 ${title.trim()}`
       socialContent = {
-        headline: title.slice(0, 60),
+        headline: clampAtWordBoundary(title, 52),
+        storySummary: spot
+          ? clampCompleteSentences(
+              /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
+              170
+            )
+          : `${clampAtWordBoundary(title, 120)}.`,
         caption:  fallbackCaption,
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText:  title,
@@ -249,23 +409,14 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const socialImageUrl: string = `https://nahaber.com/api/og/social/${id}?v=${Date.now()}`
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
-    // ── Post formatı: AI'ın ürettiği paragraflı açıklama + link + hashtag ─
-    // socialContent.caption → 3 paragraf, bilgilendirici, emoji'li
-    const hashtagStr = socialContent.hashtags.join(' ')
-    const fullCaption = [
-      socialContent.caption,
-      '',
-      `🔗 Haberin devamı: ${articleUrl}`,
-      '',
-      hashtagStr,
-    ].join('\n')
-
+    // Post: TAM manşet + AI özet; URL/hashtag publisher (buildFeedCaption) ekler
     const payload: SocialPublishPayload = {
       newsId:      id,
-      title:       socialContent.headline || title,
-      description: fullCaption,   // tam metin + link + hashtag
+      title,
+      description: socialContent.caption,
       imageUrl:    socialImageUrl,
       articleUrl,
+      hashtags:    socialContent.hashtags,
     }
 
     // ── Facebook ──────────────────────────────────────────────────────────
@@ -305,7 +456,8 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           socialPublished:   true,
           socialPublishedAt: FieldValue.serverTimestamp(),
           socialImageUrl:    socialImageUrl ?? null,
-          socialHeadline:    socialContent.headline,
+          socialHeadline:      socialContent.headline,
+          socialStorySummary:  socialContent.storySummary,
           socialHashtags:    socialContent.hashtags,
         }
         if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
@@ -329,114 +481,14 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // BÖLÜM 2 — HİKAYELER: Güncel (categoryId=gundem) + Öne Çıkan (featured)
-  // Post filtresiyle bağımsız — Çanakkale şartı yok, ayrı storyPublished alanı
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const STORY_BATCH_LIMIT = 5
-  const STORY_WINDOW_MS   = 10 * 60 * 60 * 1000  // son 10 saat
-  const recentTs = Timestamp.fromDate(new Date(Date.now() - STORY_WINDOW_MS))
-
-  let storySucceeded = 0
-  let storyFailed    = 0
-
-  try {
-    const storySnap = await db
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .where('createdAt', '>=', recentTs)
-      .orderBy('createdAt', 'desc')
-      .limit(60)
-      .get()
-
-    /** Hikaye için uygun mu? */
-    function isStoryEligible(d: Record<string, unknown>): boolean {
-      if (d.storyPublished === true) return false
-      if (!isOwnContent(d)) return false
-      if (isSkippableForSocial(d)) return false
-      if (!extractImageUrl(d)) return false
-      const featured = d.featured === true || d.isFeatured === true
-      const catId    = String(d.categoryId ?? '').toLowerCase()
-      const cat      = String(d.category   ?? '').toLowerCase()
-      return featured || catId === 'gundem' || cat === 'gundem'
-    }
-
-    const storyCandidates = storySnap.docs
-      .filter(doc => isStoryEligible(doc.data() as Record<string, unknown>))
-      .slice(0, STORY_BATCH_LIMIT)
-
-    console.log(`[cron/social] Story candidates: ${storyCandidates.length}`)
-
-    for (const doc of storyCandidates) {
-      const data    = doc.data() as Record<string, unknown>
-      const id      = doc.id
-      const title   = typeof data.title === 'string' ? data.title : ''
-      const spot    = typeof data.spot === 'string' ? data.spot :
-                      typeof data.summary === 'string' ? data.summary : ''
-      const articleUrl = buildArticleUrl(id, data)
-
-      // AI içerik (hikaye için başlık yeterli)
-      let headline = title.slice(0, 80)
-      try {
-        const ai = await generateSocialContent(title, spot, typeof data.cityName === 'string' ? data.cityName : 'Türkiye')
-        if (ai) headline = ai.headline || headline
-      } catch { /* fallback */ }
-
-      const storyImageUrl: string = `https://nahaber.com/api/og/story/${id}?v=${Date.now()}`
-      const storyPayload: SocialPublishPayload = {
-        newsId:      id,
-        title:       headline,
-        description: undefined,
-        imageUrl:    storyImageUrl,
-        articleUrl,
-      }
-
-      let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
-      try {
-        igStoryResult = await publishInstagramStory(storyPayload)
-        console.log(`[cron/social] IG Story → ${id}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
-      } catch (err) {
-        igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
-      }
-
-      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
-
-      let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
-      try {
-        fbStoryResult = await publishFacebookStory(storyPayload)
-        console.log(`[cron/social] FB Story → ${id}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
-      } catch (err) {
-        fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
-      }
-
-      if (igStoryResult.success || fbStoryResult.success) {
-        try {
-          const storyUpdate: Record<string, unknown> = {
-            storyPublished:   true,
-            storyPublishedAt: FieldValue.serverTimestamp(),
-          }
-          if (igStoryResult.platformId) storyUpdate.instagramStoryId = igStoryResult.platformId
-          if (fbStoryResult.platformId) storyUpdate.facebookStoryId  = fbStoryResult.platformId
-          await db.collection(Collections.NEWS).doc(id).update(storyUpdate)
-          storySucceeded++
-        } catch (err) {
-          console.error(`[cron/social] Story Firestore update failed for ${id}:`, err)
-          storyFailed++
-        }
-      } else {
-        storyFailed++
-      }
-
-      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
-    }
-  } catch (err) {
-    console.error('[cron/social] Story loop error:', err)
-  }
-
   return {
     processed: finalDocs.length, succeeded, failed, items: results,
-    stories: { processed: storySucceeded + storyFailed, succeeded: storySucceeded, failed: storyFailed },
+    stories: {
+      processed: storyProcessed,
+      succeeded: storySucceeded,
+      failed: storyFailed,
+      items: storyItemLogs,
+    },
   }
 }
 

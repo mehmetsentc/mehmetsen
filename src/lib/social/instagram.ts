@@ -9,33 +9,31 @@
  *
  * NOTE: Instagram requires a PUBLIC image URL for media containers.
  *       If imageUrl is missing, we skip Instagram (image is mandatory for IG posts).
+ *
+ * Feed post links:
+ *   Graph API `POST /{ig-user-id}/media` has caption, image_url, alt_text, etc. —
+ *   NO dedicated `link` / `link_sticker_url` for IMAGE feed posts (link_sticker_url
+ *   is Stories-only). For verified / professional accounts Meta may render a URL
+ *   inside the caption as clickable; we always put the full article URL in the caption.
  */
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { getSocialTokens } from './tokenStore'
+import { buildFeedCaption } from './feedCaption'
 
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
 
-// Instagram caption limiti 2200 karakter
 const IG_CAPTION_LIMIT = 2200
 
-/** Build the caption text for an Instagram post. */
+/** Build the caption text for an Instagram feed post. */
 function buildInstagramCaption(payload: SocialPublishPayload): string {
-  const lines: string[] = []
-  lines.push(`📰 ${payload.title.trim()}`)
-  if (payload.description?.trim()) {
-    lines.push('')
-    lines.push(payload.description.trim())
-  }
-  if (payload.articleUrl?.trim()) {
-    lines.push('')
-    lines.push(`Haberi Oku:\n${payload.articleUrl.trim()}`)
-  }
-  lines.push('')
-  lines.push('#NaHaber #Çanakkale #SonDakika')
-  const caption = lines.join('\n')
-  // Instagram 2200 karakter limitini aşma
-  return caption.length > IG_CAPTION_LIMIT ? caption.slice(0, IG_CAPTION_LIMIT - 1) + '…' : caption
+  return buildFeedCaption({
+    title: payload.title,
+    body: payload.description,
+    articleUrl: payload.articleUrl,
+    hashtags: payload.hashtags,
+    maxLen: IG_CAPTION_LIMIT,
+  })
 }
 
 /**
@@ -97,7 +95,10 @@ async function publishMediaContainer(
 /**
  * Story için medya container'ı oluştur.
  * media_type=STORIES → Instagram Hikaye olarak yayınlanır.
- * link_sticker_url → haberin linki hikayeye sticker olarak eklenir.
+ * link_sticker_url → profesyonel hesaplarda tıklanabilir haber linki (desteklenirse).
+ *
+ * Meta resmi olarak sticker yayınını desteklemediğini söyler; bazı Business hesaplarda
+ * link_sticker_url yine de kabul edilir. Hata olursa çağıran taraf link olmadan yeniden dener.
  */
 async function createStoryContainer(
   igBusinessId: string,
@@ -105,21 +106,22 @@ async function createStoryContainer(
   imageUrl: string,
   articleUrl?: string
 ): Promise<string> {
-  const body: Record<string, string> = {
-    image_url:  imageUrl,
+  const link = articleUrl?.trim()
+  // application/x-www-form-urlencoded — Graph API story alanlarında JSON'dan daha güvenilir
+  const params = new URLSearchParams({
+    image_url: imageUrl,
     media_type: 'STORIES',
     access_token: accessToken,
-  }
-  // Link sticker — bazı hesaplarda aktif olmayabilir; API hata verirse graceful devam et
-  if (articleUrl) body.link_sticker_url = articleUrl
+  })
+  if (link) params.set('link_sticker_url', link)
 
   const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
   })
 
-  const json = (await res.json()) as { id?: string; error?: { message?: string } }
+  const json = (await res.json()) as { id?: string; error?: { message?: string; code?: number } }
 
   if (!res.ok || json.error || !json.id) {
     throw new Error(json.error?.message ?? `Story container HTTP ${res.status}`)
@@ -128,10 +130,21 @@ async function createStoryContainer(
   return json.id
 }
 
+function isLinkStickerError(msg: string): boolean {
+  const m = msg.toLowerCase()
+  return (
+    m.includes('link_sticker') ||
+    m.includes('link sticker') ||
+    m.includes('invalid parameter') ||
+    m.includes('unsupported') ||
+    m.includes('not supported') ||
+    m.includes('stickers')
+  )
+}
+
 /**
- * Instagram Hikaye yayınla (1080×1920 story görsel + link sticker).
- * - Görsel /api/og/story/[id] route'undan gelir
- * - Başarısız olursa error döner, fırlatmaz
+ * Instagram Hikaye yayınla (1080×1920 story görsel + mümkünse link sticker).
+ * Önce articleUrl ile dener; link reddedilirse link olmadan tekrar dener (hikaye yine yayınlanır).
  */
 export async function publishInstagramStory(payload: SocialPublishPayload): Promise<SocialPublishResult> {
   const igBusinessId = process.env.INSTAGRAM_BUSINESS_ID?.trim()
@@ -144,15 +157,36 @@ export async function publishInstagramStory(payload: SocialPublishPayload): Prom
     return { success: false, error: 'Story için görsel URL gerekli' }
   }
 
-  try {
-    const containerId = await createStoryContainer(
-      igBusinessId,
-      accessToken,
-      payload.imageUrl.trim(),
-      payload.articleUrl
-    )
+  const imageUrl = payload.imageUrl.trim()
+  const articleUrl = payload.articleUrl?.trim() || undefined
 
-    console.log(`[instagram] story container created for ${payload.newsId}: ${containerId}`)
+  try {
+    let containerId: string
+    let usedLink = false
+
+    if (articleUrl) {
+      try {
+        containerId = await createStoryContainer(igBusinessId, accessToken, imageUrl, articleUrl)
+        usedLink = true
+      } catch (linkErr) {
+        const linkMsg = linkErr instanceof Error ? linkErr.message : String(linkErr)
+        console.warn(
+          `[instagram] story link_sticker_url reddedildi (${payload.newsId}): ${linkMsg} — link olmadan yeniden deneniyor`
+        )
+        if (!isLinkStickerError(linkMsg) && /rate limit|oauth|permission|token/i.test(linkMsg)) {
+          throw linkErr
+        }
+        containerId = await createStoryContainer(igBusinessId, accessToken, imageUrl, undefined)
+      }
+    } else {
+      console.warn(`[instagram] story articleUrl eksik — link sticker olmadan yayınlanacak: ${payload.newsId}`)
+      containerId = await createStoryContainer(igBusinessId, accessToken, imageUrl, undefined)
+    }
+
+    console.log(
+      `[instagram] story container created for ${payload.newsId}: ${containerId}` +
+        (usedLink ? ' (link_sticker_url=yes)' : ' (link_sticker_url=no)')
+    )
     await new Promise(r => setTimeout(r, 1000))
 
     const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId)

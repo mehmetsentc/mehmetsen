@@ -384,12 +384,21 @@ export async function PUT(request: Request, context: RouteContext) {
       revalidateNewsPaths(prevData, body)
       void notifyIfPublished(prevData, body)
 
-      // ── Anında sosyal paylaşım: ilk kez yayınlandığında ────────────────────
-      // POST    → Çanakkale konumlı haberler
-      // HİKAYE → Gündem (categoryId=gundem) + Öne çıkan (featured=true)
-      // after() → response döndükten sonra arka planda çalışır (Next.js 15)
+      // ── Anında sosyal paylaşım ──────────────────────────────────────────────
+      // POST    → Çanakkale (ilk yayın)
+      // HİKAYE → Gündem / Öne çıkan — ilk yayın VEYA sonradan featured/gündem
       const justPublished = prevData?.status !== 'published' && body.status === 'published'
-      if (justPublished) {
+      const newlyFeatured =
+        prevData?.status === 'published' &&
+        body.featured === true &&
+        prevData?.featured !== true
+      const newlyGundem =
+        prevData?.status === 'published' &&
+        (body.categoryId === 'gundem' || body.category === 'gundem') &&
+        String(prevData?.categoryId ?? prevData?.category ?? '').toLowerCase() !== 'gundem' &&
+        prevData?.storyPublished !== true
+
+      if (justPublished || newlyFeatured || newlyGundem) {
         const mergedData = { ...prevData, ...update }
         if (isCanakkaleArticle(mergedData) || isStoryEligible(mergedData)) {
           after(() => publishOneSocial(id))
