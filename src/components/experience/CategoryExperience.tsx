@@ -47,6 +47,7 @@ export function CategoryExperience({
   const sectionIds = getThemedCategorySectionIds(categoryId)
   const primaryId = sectionIds[0] ?? categoryId
   const theme = useMemo(() => getExperienceTheme(categoryId), [categoryId])
+  const isMobile = breakpoint === 'mobile'
   const multi = sectionIds.length > 1
 
   const [posts, setPosts] = useState<TimelinePost[]>(initialPosts)
@@ -117,9 +118,9 @@ export function CategoryExperience({
   if (sectionIds.length === 0) return null
 
   const style = experienceThemeStyle(theme)
-  // Kaydırmalı öne çıkan: tüm breakpoint'lerde (mobil + tablet + masaüstü)
-  const heroPosts = posts.slice(0, 20)
-  const feedPosts = heroPosts.length > 0 ? posts.slice(heroPosts.length) : posts
+  // Kaydırmalı öne çıkan yalnızca mobilde; masaüstü ExperienceFeed ızgarası
+  const heroPosts = isMobile ? posts.slice(0, 20) : []
+  const feedPosts = isMobile && heroPosts.length > 0 ? posts.slice(heroPosts.length) : posts
 
   return (
     <div
