@@ -7,6 +7,8 @@ import {
   type MobileCategoryBlock,
   type MobileStorySlot,
 } from '@/lib/mobileCategoryComposition'
+import { categoryPostImage } from '@/components/home/desktop/categoryPostUtils'
+import { CategoryHeroCarousel } from '@/components/category/CategoryHeroCarousel'
 import { MobileCategoryHeader } from './MobileCategoryHeader'
 import { MobileYerelCityStrip } from './MobileYerelCityStrip'
 import { MobileCategoryStory } from './MobileCategoryStories'
@@ -53,15 +55,37 @@ function StoryStack({ slots, priorityFirst }: { slots: MobileStorySlot[]; priori
   )
 }
 
-function BlockView({ block, isFirstHero }: { block: MobileCategoryBlock; isFirstHero?: boolean }) {
-  if (block.type === 'hero' && block.slots[0]) {
-    return (
-      <MobileCategoryStory
-        variant="hero"
-        post={block.slots[0].post}
-        priority={isFirstHero}
-      />
-    )
+function BlockView({
+  block,
+  isFirstHero,
+  heroCarouselPosts,
+}: {
+  block: MobileCategoryBlock
+  isFirstHero?: boolean
+  /** When set, first hero becomes a multi-slide carousel instead of a single card. */
+  heroCarouselPosts?: TimelinePost[]
+}) {
+  if (block.type === 'hero') {
+    if (heroCarouselPosts && heroCarouselPosts.length > 0) {
+      return (
+        <div className="mc-hero-carousel px-0">
+          <CategoryHeroCarousel
+            posts={heroCarouselPosts}
+            priority={isFirstHero}
+            limit={20}
+          />
+        </div>
+      )
+    }
+    if (block.slots[0]) {
+      return (
+        <MobileCategoryStory
+          variant="hero"
+          post={block.slots[0].post}
+          priority={isFirstHero}
+        />
+      )
+    }
   }
   if (block.type === 'latest' && block.latestTitles) {
     return <MobileLatestStrip items={block.latestTitles} />
@@ -132,6 +156,12 @@ export function MobileCategoryLanding({
     [initialPosts]
   )
 
+  // Kaydırmalı öne çıkan: görselli haberlerden ilk 20 (tek hero yerine)
+  const heroCarouselPosts = useMemo(() => {
+    const withImage = initialPosts.filter((p) => categoryPostImage(p).length > 10)
+    return (withImage.length > 0 ? withImage : initialPosts).slice(0, 20)
+  }, [initialPosts])
+
   // Load-more starts from the day before the oldest SSR post
   const lastPost = initialPosts[initialPosts.length - 1]
   const initialBeforeDay = previousTurkeyDayFromPublishedAt(
@@ -169,6 +199,11 @@ export function MobileCategoryLanding({
           key={`open-${block.type}-${i}-${block.slots[0]?.post.id ?? block.latestTitles?.[0]?.id ?? i}`}
           block={block}
           isFirstHero={i === 0}
+          heroCarouselPosts={
+            block.type === 'hero' && i === openingBlocks.findIndex((b) => b.type === 'hero')
+              ? heroCarouselPosts
+              : undefined
+          }
         />
       ))}
 

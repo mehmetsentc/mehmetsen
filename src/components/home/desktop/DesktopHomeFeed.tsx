@@ -9,7 +9,8 @@ import { DesktopMarketSidebar } from '@/components/home/desktop/DesktopMarketSid
 import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGridChunks'
 import { DesktopMostReadGrid } from '@/components/home/desktop/DesktopMostReadGrid'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
-import { DesktopFeaturedGrid } from '@/components/home/desktop/DesktopFeaturedGrid'
+import { FeaturedNewsCarousel, type FeaturedCarouselSlide } from '@/components/news/FeaturedNewsCarousel'
+import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
 import { GamesRail } from '@/components/home/GamesRail'
 import { LazySection } from '@/components/home/LazySection'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
@@ -161,7 +162,20 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
       {layout.featuredSlider.length > 0 ? (
         <div className="mb-8 border-b border-[rgb(var(--color-border))] pb-8">
           <DesktopSectionHeader title="Öne Çıkan" href={ROUTES.CATEGORY('gundem')} />
-          <DesktopFeaturedGrid items={layout.featuredSlider} />
+          <FeaturedNewsCarousel
+            slides={layout.featuredSlider.map(
+              (item): FeaturedCarouselSlide => ({
+                id: item.id,
+                href: newsItemDetailHref(item),
+                title: item.title,
+                kicker: item.description?.trim() || newsItemCategoryLabel(item),
+                imageUrl: item.imageUrl,
+              })
+            )}
+            label="Öne Çıkan Haberler"
+            limit={HOME_FEATURED_LIMIT}
+            priority
+          />
         </div>
       ) : null}
 
