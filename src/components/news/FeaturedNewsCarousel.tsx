@@ -161,7 +161,7 @@ export function FeaturedNewsCarousel({
                   fetchPriority={
                     priority && index === 0 && current === 0 ? 'high' : 'auto'
                   }
-                  className="featured-news-carousel__media object-contain object-center"
+                  className="featured-news-carousel__media object-center"
                 />
                 <div className="featured-news-carousel__scrim" aria-hidden />
               </div>
