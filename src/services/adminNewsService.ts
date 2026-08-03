@@ -249,9 +249,13 @@ export const adminNewsService = {
     // Draft/pending rows often lack createdAt/publishedAt. Firestore orderBy on a
     // missing field returns an empty snapshot (success) — so we must keep trying
     // weaker queries when a status filter yields zero docs.
+    // createdAt is tried first so the server-side fetch order matches the
+    // client-side sort in mapAdminNewsDocs — otherwise updatedAt-ordered fetches
+    // can return recently-edited old articles while newer articles fall outside
+    // the page window.
     const queryAttempts: QueryConstraint[][] = [
-      [...filterConstraints, orderBy('updatedAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
       [...filterConstraints, orderBy('createdAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
+      [...filterConstraints, orderBy('updatedAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
       [...filterConstraints, orderBy('publishedAt', 'desc'), limit(pageSize)],
       [...filterConstraints, limit(pageSize * 2)],
       [limit(Math.max(pageSize * 3, 150))],
