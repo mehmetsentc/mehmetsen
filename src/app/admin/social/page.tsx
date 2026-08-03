@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { db } from '@/lib/firebase/firestore'
 import { auth } from '@/lib/firebase/auth'
@@ -11,6 +11,7 @@ import {
 import {
   Share2, CheckCircle2, XCircle, RefreshCw, Loader2,
   Facebook, Instagram, ExternalLink, Play, Tag, Image as ImageIcon,
+  Newspaper, BookImage, Search, KeyRound, Stethoscope,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
@@ -20,39 +21,49 @@ import toast from 'react-hot-toast'
 import { useAuth } from '@/hooks/useAuth'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+type TabKey = 'post' | 'story'
+type StatusFilter = 'all' | 'published' | 'pending'
+
 interface SocialNewsRow {
   id: string
   title: string
-  category: string
+  category?: string
+  categoryId?: string
   citySlug?: string
+  city?: string
+  status?: string
   thumbnail?: string
   coverImageUrl?: string
   imageUrl?: string
   url?: string
   slug?: string
-  createdAt?: number
+  sourceUrl?: string
+  createdAt?: number | { toDate(): Date }
+  publishedAt?: number | { toDate(): Date }
   socialPublished?: boolean
-  socialPublishedAt?: number
-  socialImageUrl?: string   // AI overlay görsel
-  socialHeadline?: string   // AI üretilen manşet
-  socialHashtags?: string[] // AI üretilen hashtagler
+  socialPublishedAt?: number | { toDate(): Date }
+  storyPublished?: boolean
+  storyPublishedAt?: number | { toDate(): Date }
+  socialImageUrl?: string
+  socialHeadline?: string
+  socialStorySummary?: string
+  socialHashtags?: string[]
   facebookPostId?: string
   instagramMediaId?: string
+  facebookStoryId?: string
+  instagramStoryId?: string
+  featured?: boolean
+  isFeatured?: boolean
+  hasVideo?: boolean
+  isVideo?: boolean
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-const PAGE_SIZE = 20
+const PAGE_SIZE = 24
 
-/**
- * Firestore may store timestamps as plain numbers (Date.now()) OR as Firestore
- * Timestamp objects (FieldValue.serverTimestamp()). The client SDK returns the
- * latter as Timestamp objects whose valueOf() returns a string, causing
- * `new Date(obj)` to produce Invalid Date → RangeError in date-fns.
- */
 function safeToDate(val: unknown): Date | null {
   if (val == null) return null
   if (typeof val === 'number') return new Date(val)
-  // Firestore Timestamp object (client SDK)
   if (typeof val === 'object' && val !== null && 'toDate' in val) {
     return (val as { toDate(): Date }).toDate()
   }
@@ -67,6 +78,20 @@ function getBestImage(row: SocialNewsRow): string | undefined {
   return row.socialImageUrl || row.thumbnail || row.coverImageUrl || row.imageUrl
 }
 
+function hasImage(row: SocialNewsRow): boolean {
+  return !!getBestImage(row)
+}
+
+function isLikelyExternalRss(row: SocialNewsRow): boolean {
+  const src = (row.sourceUrl ?? '').trim().toLowerCase()
+  if (!src || !src.startsWith('http')) return false
+  return !src.includes('nahaber.com') && !src.includes('onyeditivi.com')
+}
+
+function isShared(row: SocialNewsRow, tab: TabKey): boolean {
+  return tab === 'post' ? !!row.socialPublished : !!row.storyPublished
+}
+
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
@@ -74,7 +99,7 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
         'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold',
         ok
           ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
       )}
     >
       {ok ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
@@ -86,20 +111,24 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function SocialPage() {
   const { user } = useAuth()
+  const [tab, setTab] = useState<TabKey>('post')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [search, setSearch] = useState('')
   const [rows, setRows] = useState<SocialNewsRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
+  const [sharingId, setSharingId] = useState<string | null>(null)
   const [triggeringCron, setTriggeringCron] = useState(false)
   const [diagnosing, setDiagnosing] = useState(false)
   const [diagResult, setDiagResult] = useState<{ summary: string; steps: Array<{ name: string; ok: boolean; detail: string }> } | null>(null)
-  const [filter, setFilter] = useState<'all' | 'published' | 'pending'>('all')
   const [showTokenPanel, setShowTokenPanel] = useState(false)
+  const [showTools, setShowTools] = useState(false)
   const [newFbToken, setNewFbToken] = useState('')
   const [newIgToken, setNewIgToken] = useState('')
   const [savingToken, setSavingToken] = useState(false)
-  const [tokenResult, setTokenResult] = useState<{ ok: boolean; message: string; permissions?: string[] } | null>(null)
+  const [tokenResult, setTokenResult] = useState<{ ok: boolean; message: string; permissions?: string[]; note?: string } | null>(null)
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchRows = useCallback(
@@ -109,55 +138,97 @@ export default function SocialPage() {
 
       try {
         const col = collection(db, 'news')
-        let q
+        const cursor = reset ? null : lastDoc
 
-        if (filter === 'published') {
-          // Tüm sosyal medyaya paylaşılmış haberler (city bağımsız)
-          q = query(
+        const runQuery = async () => {
+          if (tab === 'post' && statusFilter === 'published') {
+            return getDocs(query(
+              col,
+              where('socialPublished', '==', true),
+              orderBy('socialPublishedAt', 'desc'),
+              limit(PAGE_SIZE),
+              ...(cursor ? [startAfter(cursor)] : []),
+            ))
+          }
+          if (tab === 'story' && statusFilter === 'published') {
+            try {
+              return await getDocs(query(
+                col,
+                where('storyPublished', '==', true),
+                orderBy('storyPublishedAt', 'desc'),
+                limit(PAGE_SIZE),
+                ...(cursor ? [startAfter(cursor)] : []),
+              ))
+            } catch {
+              // Index yoksa publishedAt ile geniş liste + client filter
+              return getDocs(query(
+                col,
+                where('status', '==', 'published'),
+                orderBy('publishedAt', 'desc'),
+                limit(PAGE_SIZE * 2),
+                ...(cursor ? [startAfter(cursor)] : []),
+              ))
+            }
+          }
+          if (tab === 'post' && statusFilter === 'pending') {
+            return getDocs(query(
+              col,
+              where('citySlug', '==', 'canakkale'),
+              where('status', '==', 'published'),
+              orderBy('publishedAt', 'desc'),
+              limit(PAGE_SIZE),
+              ...(cursor ? [startAfter(cursor)] : []),
+            ))
+          }
+          if (tab === 'story' && statusFilter === 'pending') {
+            try {
+              return await getDocs(query(
+                col,
+                where('status', '==', 'published'),
+                where('categoryId', '==', 'gundem'),
+                orderBy('publishedAt', 'desc'),
+                limit(PAGE_SIZE),
+                ...(cursor ? [startAfter(cursor)] : []),
+              ))
+            } catch {
+              return getDocs(query(
+                col,
+                where('status', '==', 'published'),
+                orderBy('publishedAt', 'desc'),
+                limit(PAGE_SIZE),
+                ...(cursor ? [startAfter(cursor)] : []),
+              ))
+            }
+          }
+          // Tümü: yayınlanmış haberler (manuel seçim için geniş liste)
+          return getDocs(query(
             col,
-            where('socialPublished', '==', true),
-            orderBy('socialPublishedAt', 'desc'),
-            limit(PAGE_SIZE),
-            ...(reset || !lastDoc ? [] : [startAfter(lastDoc)])
-          )
-        } else if (filter === 'pending') {
-          // Çanakkale haberleri — henüz paylaşılmamış
-          q = query(
-            col,
-            where('citySlug', '==', 'canakkale'),
             where('status', '==', 'published'),
-            orderBy('createdAt', 'desc'),
+            orderBy('publishedAt', 'desc'),
             limit(PAGE_SIZE),
-            ...(reset || !lastDoc ? [] : [startAfter(lastDoc)])
-          )
-        } else {
-          // Tümü: Çanakkale + sosyal paylaşımlar
-          q = query(
-            col,
-            where('citySlug', '==', 'canakkale'),
-            orderBy('createdAt', 'desc'),
-            limit(PAGE_SIZE),
-            ...(reset || !lastDoc ? [] : [startAfter(lastDoc)])
-          )
+            ...(cursor ? [startAfter(cursor)] : []),
+          ))
         }
 
-        const snap = await getDocs(q)
-        const newRows: SocialNewsRow[] = snap.docs.map((doc) => {
+        const snap = await runQuery()
+
+        let newRows: SocialNewsRow[] = snap.docs.map((doc) => {
           const d = doc.data() as Omit<SocialNewsRow, 'id'>
           return { id: doc.id, ...d }
         })
 
-        // Pending filtresi için memory'de `socialPublished` yokları süz
-        const filtered =
-          filter === 'pending'
-            ? newRows.filter((r) => !r.socialPublished)
-            : newRows
+        if (statusFilter === 'pending') {
+          newRows = newRows.filter((r) => !isShared(r, tab) && !r.hasVideo && !r.isVideo)
+        }
+        if (tab === 'story' && statusFilter === 'published') {
+          newRows = newRows.filter((r) => !!r.storyPublished)
+        }
 
-        if (reset) setRows(filtered)
-        else setRows((prev) => [...prev, ...filtered])
+        if (reset) setRows(newRows)
+        else setRows((prev) => [...prev, ...newRows])
 
         setLastDoc(snap.docs[snap.docs.length - 1] ?? null)
-        setHasMore(snap.docs.length === PAGE_SIZE)
+        setHasMore(snap.docs.length >= PAGE_SIZE)
       } catch (err) {
         console.error('[social admin] fetch error:', err)
         toast.error('Veriler yüklenemedi')
@@ -167,13 +238,108 @@ export default function SocialPage() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filter]
+    [tab, statusFilter]
   )
 
   useEffect(() => {
     setLastDoc(null)
+    setRows([])
     void fetchRows(true)
-  }, [filter, fetchRows])
+  }, [tab, statusFilter, fetchRows])
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter((r) =>
+      r.title?.toLowerCase().includes(q) ||
+      r.slug?.toLowerCase().includes(q) ||
+      r.id.toLowerCase().includes(q) ||
+      r.citySlug?.toLowerCase().includes(q) ||
+      r.categoryId?.toLowerCase().includes(q)
+    )
+  }, [rows, search])
+
+  // ── Share one ──────────────────────────────────────────────────────────────
+  const shareOne = async (row: SocialNewsRow) => {
+    if (!user || sharingId) return
+
+    if (isLikelyExternalRss(row)) {
+      toast.error('Harici RSS haberi — yalnızca NaHaber içerikleri paylaşılabilir')
+      return
+    }
+    if (!hasImage(row)) {
+      toast.error('Görsel yok — paylaşım için kapak görseli gerekli')
+      return
+    }
+
+    const already = isShared(row, tab)
+    if (already) {
+      const ok = window.confirm(
+        tab === 'post'
+          ? 'Bu haber zaten feed post olarak paylaşılmış. Yeniden paylaşmak istiyor musunuz?'
+          : 'Bu haber zaten hikâye olarak paylaşılmış. Yeniden paylaşmak istiyor musunuz?'
+      )
+      if (!ok) return
+    }
+
+    setSharingId(row.id)
+    const toastId = toast.loading(
+      tab === 'post' ? 'Feed post paylaşılıyor…' : 'Hikâye paylaşılıyor…'
+    )
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/force-reshare', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ids: [row.id],
+          mode: tab,
+          force: true,
+          manual: true,
+        }),
+      })
+      const data = await res.json() as {
+        error?: string
+        succeeded?: number
+        results?: Array<{
+          ok: boolean
+          reason?: string
+          post?: { facebook: { success: boolean }; instagram: { success: boolean } }
+          story?: { facebook: { success: boolean }; instagram: { success: boolean } }
+        }>
+      }
+
+      if (!res.ok) {
+        toast.error(data.error ?? 'Paylaşım başarısız', { id: toastId })
+        return
+      }
+
+      const r0 = data.results?.[0]
+      const fbOk = tab === 'post' ? r0?.post?.facebook.success : r0?.story?.facebook.success
+      const igOk = tab === 'post' ? r0?.post?.instagram.success : r0?.story?.instagram.success
+      toast.success(
+        `Paylaşıldı — FB: ${fbOk ? '✓' : '✗'} · IG: ${igOk ? '✓' : '✗'}`,
+        { id: toastId }
+      )
+
+      // Optimistic local update
+      setRows((prev) => prev.map((r) => {
+        if (r.id !== row.id) return r
+        if (tab === 'post') {
+          return { ...r, socialPublished: true, socialPublishedAt: Date.now() }
+        }
+        return { ...r, storyPublished: true, storyPublishedAt: Date.now() }
+      }))
+    } catch (err) {
+      console.error('[social admin] share error:', err)
+      toast.error('Bağlantı hatası', { id: toastId })
+    } finally {
+      setSharingId(null)
+    }
+  }
 
   // ── Cron trigger ───────────────────────────────────────────────────────────
   const triggerCron = async () => {
@@ -198,7 +364,7 @@ export default function SocialPage() {
         setLastDoc(null)
         await fetchRows(true)
       } else {
-        toast.error(data.error ?? 'Cron hatası — konsolu kontrol et')
+        toast.error(data.error ?? 'Cron hatası')
       }
     } catch (err) {
       console.error('[social admin] cron trigger error:', err)
@@ -220,9 +386,9 @@ export default function SocialPage() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ facebookPageToken: newFbToken.trim(), instagramToken: newIgToken.trim() || undefined }),
       })
-      const data = await res.json() as { ok?: boolean; message?: string; permissions?: string[]; error?: string }
+      const data = await res.json() as { ok?: boolean; message?: string; permissions?: string[]; note?: string; error?: string }
       if (res.ok && data.ok) {
-        setTokenResult({ ok: true, message: data.message ?? 'Token kaydedildi', permissions: data.permissions })
+        setTokenResult({ ok: true, message: data.message ?? 'Token kaydedildi', permissions: data.permissions, note: data.note })
         setNewFbToken('')
         setNewIgToken('')
         toast.success('Token başarıyla güncellendi!')
@@ -259,62 +425,97 @@ export default function SocialPage() {
   }
 
   // ── Stats ──────────────────────────────────────────────────────────────────
-  const publishedCount = rows.filter((r) => r.socialPublished).length
-  const pendingCount   = rows.filter((r) => !r.socialPublished).length
-  const fbCount        = rows.filter((r) => r.facebookPostId).length
-  const igCount        = rows.filter((r) => r.instagramMediaId).length
-  const aiImageCount   = rows.filter((r) => r.socialImageUrl).length
+  const publishedCount = rows.filter((r) => isShared(r, tab)).length
+  const pendingCount   = rows.filter((r) => !isShared(r, tab)).length
+  const fbCount = tab === 'post'
+    ? rows.filter((r) => r.facebookPostId).length
+    : rows.filter((r) => r.facebookStoryId).length
+  const igCount = tab === 'post'
+    ? rows.filter((r) => r.instagramMediaId).length
+    : rows.filter((r) => r.instagramStoryId).length
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-bg))]">
-      <CMSHeader title="Sosyal Medya Paylaşımları" />
+      <CMSHeader title="Sosyal Medya" />
 
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 lg:px-8">
+      <div className="mx-auto max-w-6xl space-y-5 px-4 py-6 lg:px-8">
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {/* Primary tabs: Post / Hikâye */}
+        <div className="flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
+          {([
+            { key: 'post' as const,  label: 'Post',   icon: Newspaper, hint: 'FB / IG feed' },
+            { key: 'story' as const, label: 'Hikâye', icon: BookImage, hint: 'FB / IG story' },
+          ]).map(({ key, label, icon: Icon, hint }) => (
+            <button
+              key={key}
+              onClick={() => { setTab(key); setStatusFilter('all'); setSearch('') }}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors',
+                tab === key
+                  ? 'bg-[rgb(var(--color-brand))] text-white shadow'
+                  : 'text-[rgb(var(--color-muted))] hover:bg-white/10 hover:text-white'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+              <span className={cn(
+                'hidden text-[10px] font-medium sm:inline',
+                tab === key ? 'text-white/70' : 'text-[rgb(var(--color-muted))]'
+              )}>
+                {hint}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: 'Toplam', value: rows.length, color: 'text-blue-600' },
+            { label: 'Listelenen', value: rows.length, color: 'text-blue-600' },
             { label: 'Paylaşıldı', value: publishedCount, color: 'text-emerald-600' },
             { label: 'Bekliyor', value: pendingCount, color: 'text-amber-600' },
             { label: 'FB / IG', value: `${fbCount} / ${igCount}`, color: 'text-purple-600' },
-            { label: 'AI Görsel', value: aiImageCount, color: 'text-pink-500' },
           ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-xl border border-white/10 bg-white/5 p-4"
-            >
+            <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 p-3.5">
               <p className="text-xs text-[rgb(var(--color-muted))]">{s.label}</p>
-              <p className={cn('mt-1 text-2xl font-bold', s.color)}>{s.value}</p>
+              <p className={cn('mt-0.5 text-xl font-bold', s.color)}>{s.value}</p>
             </div>
           ))}
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Filter tabs */}
-          <div className="flex gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             {([
-              { key: 'all',       label: 'Tümü (Çanakkale)' },
-              { key: 'published', label: '✓ Paylaşıldı' },
-              { key: 'pending',   label: '⏳ Bekliyor' },
-            ] as const).map(({ key, label }) => (
+              { key: 'all' as const, label: 'Tümü' },
+              { key: 'pending' as const, label: 'Bekliyor' },
+              { key: 'published' as const, label: 'Paylaşıldı' },
+            ]).map(({ key, label }) => (
               <button
                 key={key}
-                onClick={() => setFilter(key)}
+                onClick={() => setStatusFilter(key)}
                 className={cn(
                   'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-                  filter === key
-                    ? 'bg-[rgb(var(--color-brand))] text-white'
-                    : 'bg-white/10 text-[rgb(var(--color-muted))] hover:bg-white/15 hover:text-white'
+                  statusFilter === key
+                    ? 'bg-white/20 text-white'
+                    : 'bg-white/5 text-[rgb(var(--color-muted))] hover:bg-white/10 hover:text-white'
                 )}
               >
                 {label}
               </button>
             ))}
+
+            <div className="relative ml-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Başlık / slug ara…"
+                className="w-44 rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-brand))] sm:w-56"
+              />
+            </div>
           </div>
 
-          {/* Actions */}
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => { setLastDoc(null); void fetchRows(true) }}
@@ -325,48 +526,53 @@ export default function SocialPage() {
               Yenile
             </button>
             <button
-              onClick={() => { setShowTokenPanel(p => !p); setTokenResult(null) }}
+              onClick={() => setShowTools((p) => !p)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15"
+            >
+              Araçlar
+            </button>
+          </div>
+        </div>
+
+        {/* Secondary tools (collapsed by default) */}
+        {showTools && (
+          <div className="flex flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
+            <button
+              onClick={() => { setShowTokenPanel((p) => !p); setTokenResult(null) }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
             >
-              🔑 Token Güncelle
+              <KeyRound className="h-3 w-3" />
+              Token Güncelle
             </button>
             <button
               onClick={() => void runDiagnose()}
               disabled={diagnosing}
               className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
             >
-              {diagnosing ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+              {diagnosing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Stethoscope className="h-3 w-3" />}
               Teşhis
             </button>
             <button
               onClick={() => void triggerCron()}
               disabled={triggeringCron}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-500 disabled:opacity-50"
             >
-              {triggeringCron
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <Play className="h-3 w-3" />
-              }
+              {triggeringCron ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
               Cron Çalıştır
             </button>
+            <p className="w-full text-[11px] text-[rgb(var(--color-muted))]">
+              Asıl yol: listeden haber seç → «Sosyal medyada paylaş». Cron otomatik uygun haberleri işler.
+            </p>
           </div>
-        </div>
+        )}
 
-        {/* Token güncelleme paneli */}
+        {/* Token panel */}
         {showTokenPanel && (
           <div className="rounded-xl border border-violet-500/30 bg-violet-950/20 p-5">
-            <h3 className="mb-1 font-bold text-white">🔑 Facebook / Instagram Token Güncelle</h3>
+            <h3 className="mb-1 font-bold text-white">Facebook / Instagram Token Güncelle</h3>
             <p className="mb-4 text-xs text-slate-400">
-              Token eksik izinlere sahip olduğunda paylaşımlar çalışmaz. Yeni token almak için:
+              Token eksik izinlere sahip olduğunda paylaşımlar çalışmaz. Graph API Explorer&apos;dan Page Token alın.
             </p>
-            <ol className="mb-4 space-y-1 text-xs text-slate-300">
-              <li>1. <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-violet-400 underline">Graph API Explorer</a> aç</li>
-              <li>2. App: <strong>NaHaber Social Publisher</strong> seç</li>
-              <li>3. İzinler listesinde şunları ekle: <code className="rounded bg-white/10 px-1">instagram_content_publish</code>, <code className="rounded bg-white/10 px-1">instagram_basic</code>, <code className="rounded bg-white/10 px-1">pages_read_engagement</code></li>
-              <li>4. <strong>Generate Access Token</strong> → izin ver</li>
-              <li>5. <strong>User Token</strong> açılır menüsünden <strong>Onyeditivi</strong> sayfasını seç</li>
-              <li>6. Oluşan token&apos;ı aşağıya yapıştır → <strong>Doğrula & Kaydet</strong></li>
-            </ol>
             <div className="space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-300">
@@ -382,7 +588,7 @@ export default function SocialPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-300">
-                  Instagram Access Token <span className="text-slate-500">(opsiyonel — boş bırakılırsa FB token kullanılır)</span>
+                  Instagram Access Token <span className="text-slate-500">(opsiyonel)</span>
                 </label>
                 <textarea
                   value={newIgToken}
@@ -399,10 +605,8 @@ export default function SocialPage() {
                   tokenResult.ok ? 'bg-emerald-900/30 text-emerald-300' : 'bg-red-900/30 text-red-300'
                 )}>
                   {tokenResult.ok ? '✅' : '❌'} {tokenResult.message}
-                  {tokenResult.ok && tokenResult.permissions && (
-                    <div className="mt-1 text-[10px] text-slate-400">
-                      İzinler: {tokenResult.permissions.join(', ')}
-                    </div>
+                  {tokenResult.ok && tokenResult.note && (
+                    <div className="mt-1 text-[10px] text-slate-400">{tokenResult.note}</div>
                   )}
                 </div>
               )}
@@ -427,7 +631,7 @@ export default function SocialPage() {
           </div>
         )}
 
-        {/* Diagnose result panel */}
+        {/* Diagnose result */}
         {diagResult && (
           <div className={cn(
             'rounded-xl border p-4 text-sm',
@@ -455,13 +659,22 @@ export default function SocialPage() {
           </div>
         )}
 
+        {/* Hint */}
+        <p className="text-xs text-[rgb(var(--color-muted))]">
+          {tab === 'post'
+            ? 'Post sekmesi: seçtiğiniz haberi FB/IG feed’e paylaşır. Cron otomatik olarak Çanakkale haberlerini işler; burada istediğiniz kendi içeriği seçebilirsiniz.'
+            : 'Hikâye sekmesi: seçtiğiniz haberi FB/IG story olarak paylaşır. Meta link sticker bazı hesaplarda kısıtlı olabilir.'}
+        </p>
+
         {/* Table */}
         <div className="overflow-hidden rounded-xl border border-white/10">
           <table className="w-full text-sm">
             <thead className="border-b border-white/10 bg-white/5">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-[rgb(var(--color-muted))]">Haber</th>
-                <th className="hidden px-4 py-3 text-left font-semibold text-[rgb(var(--color-muted))] md:table-cell">AI İçerik</th>
+                <th className="hidden px-4 py-3 text-left font-semibold text-[rgb(var(--color-muted))] md:table-cell">
+                  {tab === 'post' ? 'Caption / AI' : 'Hikâye özeti'}
+                </th>
                 <th className="hidden px-4 py-3 text-left font-semibold text-[rgb(var(--color-muted))] sm:table-cell">Tarih</th>
                 <th className="px-4 py-3 text-center font-semibold text-[rgb(var(--color-muted))]">
                   <Facebook className="inline h-3.5 w-3.5" />
@@ -470,41 +683,44 @@ export default function SocialPage() {
                   <Instagram className="inline h-3.5 w-3.5" />
                 </th>
                 <th className="px-4 py-3 text-center font-semibold text-[rgb(var(--color-muted))]">Durum</th>
+                <th className="px-4 py-3 text-right font-semibold text-[rgb(var(--color-muted))]">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {loading && (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center">
+                  <td colSpan={7} className="py-16 text-center">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-[rgb(var(--color-muted))]" />
                   </td>
                 </tr>
               )}
 
-              {!loading && rows.length === 0 && (
+              {!loading && filteredRows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center text-[rgb(var(--color-muted))]">
+                  <td colSpan={7} className="py-16 text-center text-[rgb(var(--color-muted))]">
                     <Share2 className="mx-auto mb-2 h-8 w-8 opacity-30" />
                     <p>Haber bulunamadı</p>
                   </td>
                 </tr>
               )}
 
-              {!loading && rows.map((row) => {
+              {!loading && filteredRows.map((row) => {
                 const img = getBestImage(row)
                 const articleUrl = row.url ?? (row.slug ? ROUTES.NEWS_DETAIL(row.slug) : null)
+                const shared = isShared(row, tab)
+                const external = isLikelyExternalRss(row)
+                const noImg = !hasImage(row)
+                const fbOk = tab === 'post' ? !!row.facebookPostId : !!row.facebookStoryId
+                const igOk = tab === 'post' ? !!row.instagramMediaId : !!row.instagramStoryId
+                const isBusy = sharingId === row.id
+
                 return (
                   <tr key={row.id} className="transition-colors hover:bg-white/5">
-                    {/* Haber başlığı + görsel */}
                     <td className="px-4 py-3">
                       <div className="flex items-start gap-3">
                         {img ? (
                           <div className="relative h-12 w-20 shrink-0">
-                            <img
-                              src={img}
-                              alt=""
-                              className="h-12 w-20 rounded-md object-cover"
-                            />
+                            <img src={img} alt="" className="h-12 w-20 rounded-md object-cover" />
                             {row.socialImageUrl && (
                               <span title="AI overlay görsel" className="absolute -right-1 -top-1 rounded-full bg-pink-500 p-0.5">
                                 <ImageIcon className="h-2.5 w-2.5 text-white" />
@@ -520,93 +736,138 @@ export default function SocialPage() {
                           <p className="line-clamp-2 text-sm font-medium leading-snug text-white">
                             {row.title}
                           </p>
-                          {articleUrl && (
-                            <a
-                              href={articleUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-[rgb(var(--color-brand))] hover:underline"
-                            >
-                              <ExternalLink className="h-2.5 w-2.5" />
-                              Habere git
-                            </a>
-                          )}
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                            {row.citySlug && (
+                              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">
+                                {row.citySlug}
+                              </span>
+                            )}
+                            {row.categoryId && (
+                              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">
+                                {row.categoryId}
+                              </span>
+                            )}
+                            {external && (
+                              <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-300">
+                                RSS
+                              </span>
+                            )}
+                            {articleUrl && (
+                              <a
+                                href={articleUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[10px] text-[rgb(var(--color-brand))] hover:underline"
+                              >
+                                <ExternalLink className="h-2.5 w-2.5" />
+                                Habere git
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
 
-                    {/* AI üretilen içerik */}
                     <td className="hidden px-4 py-3 md:table-cell">
-                      {row.socialHeadline ? (
-                        <div className="max-w-[200px]">
-                          <p className="line-clamp-1 text-xs font-medium text-white">
-                            {row.socialHeadline}
-                          </p>
-                          {row.socialHashtags && row.socialHashtags.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {row.socialHashtags.slice(0, 3).map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="inline-flex items-center gap-0.5 rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] text-purple-400"
-                                >
-                                  <Tag className="h-2 w-2" />
-                                  {tag.replace('#', '')}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                      {tab === 'post' ? (
+                        row.socialHeadline ? (
+                          <div className="max-w-[220px]">
+                            <p className="line-clamp-1 text-xs font-medium text-white">{row.socialHeadline}</p>
+                            {row.socialHashtags && row.socialHashtags.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {row.socialHashtags.slice(0, 3).map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="inline-flex items-center gap-0.5 rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] text-purple-400"
+                                  >
+                                    <Tag className="h-2 w-2" />
+                                    {tag.replace('#', '')}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[rgb(var(--color-muted))]">—</span>
+                        )
                       ) : (
-                        <span className="text-xs text-[rgb(var(--color-muted))]">—</span>
+                        row.socialStorySummary || row.socialHeadline ? (
+                          <p className="line-clamp-2 max-w-[220px] text-xs text-slate-300">
+                            {row.socialStorySummary || row.socialHeadline}
+                          </p>
+                        ) : (
+                          <span className="text-xs text-[rgb(var(--color-muted))]">—</span>
+                        )
                       )}
                     </td>
 
-                    {/* Tarih */}
                     <td className="hidden px-4 py-3 text-xs text-[rgb(var(--color-muted))] sm:table-cell">
                       <div>
-                        {(() => { const d = safeToDate(row.createdAt); return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—' })()}
+                        {(() => {
+                          const d = safeToDate(row.publishedAt ?? row.createdAt)
+                          return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—'
+                        })()}
                       </div>
-                      {row.socialPublishedAt && (
+                      {shared && (
                         <div className="mt-0.5 text-[10px] text-emerald-500">
                           Paylaşıldı:{' '}
-                          {(() => { const d = safeToDate(row.socialPublishedAt); return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—' })()}
+                          {(() => {
+                            const d = safeToDate(tab === 'post' ? row.socialPublishedAt : row.storyPublishedAt)
+                            return d ? formatDistanceToNow(d, { addSuffix: true, locale: tr }) : '—'
+                          })()}
                         </div>
                       )}
                     </td>
 
-                    {/* Facebook */}
                     <td className="px-4 py-3 text-center">
-                      {row.facebookPostId ? (
-                        <a
-                          href={`https://www.facebook.com/${row.facebookPostId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`FB Post: ${row.facebookPostId}`}
-                        >
-                          <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" />
-                        </a>
-                      ) : (
-                        <XCircle className="mx-auto h-4 w-4 text-slate-500" />
-                      )}
+                      {fbOk
+                        ? <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" />
+                        : <XCircle className="mx-auto h-4 w-4 text-slate-500" />}
                     </td>
 
-                    {/* Instagram */}
                     <td className="px-4 py-3 text-center">
-                      {row.instagramMediaId ? (
-                        <span title={`IG Media: ${row.instagramMediaId}`}>
-                          <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" />
-                        </span>
-                      ) : (
-                        <XCircle className="mx-auto h-4 w-4 text-slate-500" />
-                      )}
+                      {igOk
+                        ? <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" />
+                        : <XCircle className="mx-auto h-4 w-4 text-slate-500" />}
                     </td>
 
-                    {/* Durum */}
                     <td className="px-4 py-3 text-center">
                       <StatusBadge
-                        ok={!!row.socialPublished}
-                        label={row.socialPublished ? 'Paylaşıldı' : 'Bekliyor'}
+                        ok={shared}
+                        label={shared ? 'Paylaşıldı' : 'Bekliyor'}
                       />
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => void shareOne(row)}
+                        disabled={!!sharingId || external || noImg}
+                        title={
+                          external
+                            ? 'Harici RSS — paylaşılamaz'
+                            : noImg
+                              ? 'Görsel gerekli'
+                              : shared
+                                ? 'Yeniden paylaş'
+                                : tab === 'post'
+                                  ? 'Feed post olarak paylaş'
+                                  : 'Hikâye olarak paylaş'
+                        }
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                          shared
+                            ? 'bg-white/10 text-white hover:bg-white/15'
+                            : 'bg-[rgb(var(--color-brand))] text-white hover:opacity-90'
+                        )}
+                      >
+                        {isBusy
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <Share2 className="h-3 w-3" />}
+                        <span className="hidden sm:inline">
+                          {shared ? 'Yeniden paylaş' : 'Sosyal medyada paylaş'}
+                        </span>
+                        <span className="sm:hidden">Paylaş</span>
+                      </button>
                     </td>
                   </tr>
                 )
@@ -615,7 +876,6 @@ export default function SocialPage() {
           </table>
         </div>
 
-        {/* Load more */}
         {hasMore && !loading && (
           <div className="flex justify-center">
             <button
@@ -629,9 +889,8 @@ export default function SocialPage() {
           </div>
         )}
 
-        {/* Duplikat önleme notu */}
         <p className="text-center text-xs text-[rgb(var(--color-muted))]">
-          Sistem her haber için hem ID hem başlık kontrolü yaparak aynı haberi iki kez paylaşmaz.
+          Harici RSS haberleri engellenir. Görselsiz haberler paylaşılamaz. Sistem aynı haberi çift paylaşmamak için bayrak tutar; yeniden paylaş onay ister.
         </p>
       </div>
     </div>

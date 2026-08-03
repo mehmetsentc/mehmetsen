@@ -4,7 +4,8 @@
  * Admin panelinde Çanakkale haberi ilk kez yayınlandığında
  * `after()` ile çağrılır; cron'u beklemeden anında paylaşım yapar.
  *
- * Fire-and-forget güvenli: hataları loglar, fırlatmaz.
+ * Fire-and-forget güvenli: hataları loglar, fırlatmaz (void çağrılar için).
+ * Admin manuel paylaşımda options + result döner.
  */
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
@@ -14,7 +15,7 @@ import { publishToInstagram, publishInstagramStory } from '@/lib/social/instagra
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
-import type { SocialPublishPayload } from '@/lib/social/types'
+import type { SocialPublishPayload, SocialPublishResult } from '@/lib/social/types'
 import { clampAtWordBoundary, clampCompleteSentences } from '@/lib/social/feedCaption'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
@@ -154,7 +155,43 @@ function stripHtml(html: string): string {
     .trim()
 }
 
-// ── Ana fonksiyon ─────────────────────────────────────────────────────────────
+// ── Options / Result ──────────────────────────────────────────────────────────
+
+export type PublishSocialMode = 'post' | 'story' | 'both'
+
+export interface PublishOneSocialOptions {
+  /** Hangi kanal(lar). Varsayılan: otomatik (uygunluk kurallarına göre). */
+  mode?: PublishSocialMode
+  /** Yayın bayraklarını sıfırla ve yeniden paylaş. */
+  force?: boolean
+  /**
+   * Admin manuel paylaşım: şehir/kategori uygunluk kapılarını atla
+   * (yine de kendi içerik + görsel + skippable kontrolleri uygulanır).
+   */
+  manual?: boolean
+}
+
+export interface PublishOneSocialResult {
+  ok: boolean
+  newsId: string
+  skipped: boolean
+  reason?: string
+  title?: string
+  post?: {
+    attempted: boolean
+    facebook: SocialPublishResult
+    instagram: SocialPublishResult
+  }
+  story?: {
+    attempted: boolean
+    facebook: SocialPublishResult
+    instagram: SocialPublishResult
+  }
+}
+
+function skipped(newsId: string, reason: string): PublishOneSocialResult {
+  return { ok: false, newsId, skipped: true, reason }
+}
 
 /**
  * Haber hikaye paylaşımı için uygun mu?
@@ -180,50 +217,112 @@ export function isStoryEligible(data: Record<string, unknown>): boolean {
  * POST yayını   : Çanakkale konumlı haberler  → FB post + IG post
  * HİKAYE yayını : Güncel + Öne çıkan haberler → IG hikaye + FB hikaye
  *
- * İki kanal bağımsız; bir haber her ikisine de girebilir.
- * Fire-and-forget: hataları loglar, fırlatmaz.
- * next/server `after()` içinde çağrılmak için tasarlanmıştır.
+ * `manual: true` ile admin panelinden şehir/kategori kapıları atlanır.
+ * `force: true` ile mevcut yayın bayrakları sıfırlanıp yeniden paylaşılır.
+ * `mode` ile yalnızca post / story / both seçilir.
  */
-export async function publishOneSocial(newsId: string): Promise<void> {
+export async function publishOneSocial(
+  newsId: string,
+  options: PublishOneSocialOptions = {},
+): Promise<PublishOneSocialResult> {
+  const { mode, force = false, manual = false } = options
+
   try {
     const db  = getAdminFirestore()
     const doc = await db.collection(Collections.NEWS).doc(newsId).get()
     if (!doc.exists) {
       console.log(`[publishOneSocial] Haber bulunamadı: ${newsId}`)
-      return
+      return skipped(newsId, 'Haber bulunamadı')
     }
 
-    const data = doc.data() as Record<string, unknown>
+    let data = doc.data() as Record<string, unknown>
 
     // Video haberler atla
-    if (data.hasVideo || data.isVideo) return
+    if (data.hasVideo || data.isVideo) {
+      return skipped(newsId, 'Video haberler sosyal medyaya gönderilmez')
+    }
     // Kendi haberimiz değil (harici RSS/scraper kaynağı)
     if (!isOwnContent(data)) {
       console.log(`[publishOneSocial] Harici kaynak — sosyal medyaya gönderilmedi: ${newsId}`)
-      return
+      return skipped(newsId, 'Harici RSS/kaynak haberi — yalnızca NaHaber içerikleri paylaşılabilir')
     }
     // Canlı yayın / boş içerik / sosyal medya tanıtım haberi
     if (isSkippableForSocial(data)) {
       console.log(`[publishOneSocial] Canlı yayın/boş içerik — atlandı: ${newsId}`)
-      return
+      return skipped(newsId, 'Canlı yayın, boş içerik veya tanıtım haberi — paylaşıma uygun değil')
     }
 
     const title = typeof data.title === 'string' ? data.title : ''
-    if (!title) return
+    if (!title) return skipped(newsId, 'Haber başlığı yok')
 
     // ── Ne yayınlanacak? ─────────────────────────────────────────────────────
-    const shouldPost  = isCanakkaleArticle(data) && data.socialPublished !== true
-    const shouldStory = isStoryEligible(data)    && data.storyPublished  !== true
+    let shouldPost: boolean
+    let shouldStory: boolean
+
+    if (mode === 'post') {
+      shouldPost  = true
+      shouldStory = false
+    } else if (mode === 'story') {
+      shouldPost  = false
+      shouldStory = true
+    } else if (mode === 'both') {
+      shouldPost  = true
+      shouldStory = true
+    } else if (manual) {
+      // mode yok + manual → her ikisini dene (uygunluk kapısı yok)
+      shouldPost  = true
+      shouldStory = true
+    } else {
+      // Otomatik (cron / after): uygunluk kuralları
+      shouldPost  = isCanakkaleArticle(data) && data.socialPublished !== true
+      shouldStory = isStoryEligible(data)    && data.storyPublished  !== true
+    }
+
+    // Force değilse ve zaten yayınlandıysa atla (mode/manual açıkken)
+    if (!force) {
+      if (shouldPost && data.socialPublished === true) shouldPost = false
+      if (shouldStory && data.storyPublished === true) shouldStory = false
+    }
+
     if (!shouldPost && !shouldStory) {
-      console.log(`[publishOneSocial] Post+Story zaten yayınlandı veya uygun değil — atlandı: ${newsId}`)
-      return
+      const reason = mode
+        ? (mode === 'post'
+            ? 'Bu haber zaten feed post olarak paylaşılmış (yeniden paylaşmak için force kullanın)'
+            : mode === 'story'
+              ? 'Bu haber zaten hikâye olarak paylaşılmış (yeniden paylaşmak için force kullanın)'
+              : 'Post ve hikâye zaten yayınlanmış')
+        : 'Post+Story zaten yayınlandı veya uygun değil'
+      console.log(`[publishOneSocial] ${reason} — atlandı: ${newsId}`)
+      return skipped(newsId, reason)
+    }
+
+    // ── Force: bayrakları sıfırla ────────────────────────────────────────────
+    if (force) {
+      const reset: Record<string, unknown> = {}
+      if (shouldPost) {
+        reset.socialPublished = false
+        reset.socialPublishedAt = FieldValue.delete()
+        reset.facebookPostId = FieldValue.delete()
+        reset.instagramMediaId = FieldValue.delete()
+        reset.twitterTweetId = FieldValue.delete()
+      }
+      if (shouldStory) {
+        reset.storyPublished = false
+        reset.storyPublishedAt = FieldValue.delete()
+        reset.instagramStoryId = FieldValue.delete()
+        reset.facebookStoryId = FieldValue.delete()
+      }
+      if (Object.keys(reset).length > 0) {
+        await db.collection(Collections.NEWS).doc(newsId).update(reset).catch(() => {})
+        data = { ...data, socialPublished: shouldPost ? false : data.socialPublished, storyPublished: shouldStory ? false : data.storyPublished }
+      }
     }
 
     // ── Görsel zorunluluğu ───────────────────────────────────────────────────
     const coverImage = extractImageUrl(data)
     if (!coverImage) {
       console.log(`[publishOneSocial] Görsel yok — paylaşım atlandı: ${newsId}`)
-      return
+      return skipped(newsId, 'Görsel yok — paylaşım için kapak görseli gerekli')
     }
 
     // ── Metin hazırlığı ──────────────────────────────────────────────────────
@@ -267,9 +366,15 @@ export async function publishOneSocial(newsId: string): Promise<void> {
     const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}?v=${Date.now()}`
     const storyImageUrl  = `https://nahaber.com/api/og/story/${newsId}?v=${Date.now()}`
 
-    // ── POST (Çanakkale) ─────────────────────────────────────────────────────
+    const result: PublishOneSocialResult = {
+      ok: false,
+      newsId,
+      skipped: false,
+      title: title.slice(0, 120),
+    }
+
+    // ── POST (Çanakkale / manuel) ────────────────────────────────────────────
     if (shouldPost) {
-      // Post: TAM haber manşeti + AI özet gövdesi; URL/hashtag publisher ekler
       const payload: SocialPublishPayload = {
         newsId,
         title,
@@ -279,10 +384,8 @@ export async function publishOneSocial(newsId: string): Promise<void> {
         hashtags: socialContent.hashtags,
       }
 
-      let fbResult: { success: boolean; error?: string; platformId?: string } =
-        { success: false, error: 'not attempted' }
-      let igResult: { success: boolean; error?: string; platformId?: string } =
-        { success: false, error: 'not attempted' }
+      let fbResult: SocialPublishResult = { success: false, error: 'not attempted' }
+      let igResult: SocialPublishResult = { success: false, error: 'not attempted' }
 
       try { fbResult = await publishToFacebook(payload) }
       catch (err) { fbResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
@@ -291,6 +394,8 @@ export async function publishOneSocial(newsId: string): Promise<void> {
 
       try { igResult = await publishToInstagram(payload) }
       catch (err) { igResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+
+      result.post = { attempted: true, facebook: fbResult, instagram: igResult }
 
       if (fbResult.success || igResult.success) {
         const update: Record<string, unknown> = {
@@ -312,9 +417,8 @@ export async function publishOneSocial(newsId: string): Promise<void> {
       await new Promise(r => setTimeout(r, 2000))
     }
 
-    // ── HİKAYE (güncel + öne çıkan) ─────────────────────────────────────────
+    // ── HİKAYE (güncel + öne çıkan / manuel) ────────────────────────────────
     if (shouldStory) {
-      // OG route socialHeadline / socialStorySummary okusun
       try {
         await db.collection(Collections.NEWS).doc(newsId).update({
           socialHeadline: socialContent.headline,
@@ -333,10 +437,8 @@ export async function publishOneSocial(newsId: string): Promise<void> {
         console.warn(`[publishOneSocial] STORY articleUrl eksik — yine de denenecek: ${newsId}`)
       }
 
-      let igStoryResult: { success: boolean; error?: string; platformId?: string } =
-        { success: false, error: 'not attempted' }
-      let fbStoryResult: { success: boolean; error?: string; platformId?: string } =
-        { success: false, error: 'not attempted' }
+      let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
+      let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
 
       try {
         igStoryResult = await publishInstagramStory(storyPayload)
@@ -354,6 +456,8 @@ export async function publishOneSocial(newsId: string): Promise<void> {
         fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
       }
 
+      result.story = { attempted: true, facebook: fbStoryResult, instagram: igStoryResult }
+
       if (igStoryResult.success || fbStoryResult.success) {
         const storyUpdate: Record<string, unknown> = {
           storyPublished:   true,
@@ -367,9 +471,32 @@ export async function publishOneSocial(newsId: string): Promise<void> {
         console.warn(`[publishOneSocial] STORY ✗ ${newsId} — IG: ${igStoryResult.error} | FB: ${fbStoryResult.error}`)
       }
     }
+
+    const postOk  = !!(result.post && (result.post.facebook.success || result.post.instagram.success))
+    const storyOk = !!(result.story && (result.story.facebook.success || result.story.instagram.success))
+    result.ok = postOk || storyOk
+
+    if (!result.ok) {
+      const parts: string[] = []
+      if (result.post) {
+        parts.push(`Post FB: ${result.post.facebook.error ?? '—'} | IG: ${result.post.instagram.error ?? '—'}`)
+      }
+      if (result.story) {
+        parts.push(`Hikâye FB: ${result.story.facebook.error ?? '—'} | IG: ${result.story.instagram.error ?? '—'}`)
+      }
+      result.reason = parts.join(' · ') || 'Paylaşım başarısız'
+    }
+
+    return result
   } catch (err) {
     // Fire-and-forget: hata yutulur, cron bir sonraki çalışmada tekrar dener
     console.error('[publishOneSocial] Beklenmeyen hata:', err)
+    return {
+      ok: false,
+      newsId,
+      skipped: false,
+      reason: err instanceof Error ? err.message : String(err),
+    }
   }
 }
 

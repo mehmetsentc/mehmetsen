@@ -1,13 +1,14 @@
 /**
  * POST /api/admin/social/force-reshare
  *
- * Son N adet Çanakkale haberinin socialPublished bayrağını sıfırlar
- * ve hepsini yeniden FB + IG + X'e paylaşır.
+ * Manuel / toplu sosyal medya paylaşımı.
  *
- * Body (opsiyonel):
- *   { "limit": 2 }   — kaç haber (varsayılan 2, maks 5)
+ * Body:
+ *   { "ids": ["newsId"], "mode": "post"|"story"|"both", "force": true }
+ *   { "slugs": ["slug"], "mode": "post" }
+ *   { "limit": 2 }   — eski davranış: son N Çanakkale haberini post olarak yeniden paylaş
  *
- * Auth: CMS token (news:publish yetkisi gerekli)
+ * Auth: CMS token (news:publish) veya CRON_SECRET
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
@@ -22,6 +23,11 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload } from '@/lib/social/types'
 import { clampAtWordBoundary, clampCompleteSentences } from '@/lib/social/feedCaption'
+import {
+  publishOneSocial,
+  type PublishSocialMode,
+  type PublishOneSocialResult,
+} from '@/lib/social/publishOneSocial'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -73,6 +79,11 @@ function stripHtml(html: string): string {
     .replace(/\s{2,}/g, ' ').trim()
 }
 
+function parseMode(raw: unknown): PublishSocialMode | undefined {
+  if (raw === 'post' || raw === 'story' || raw === 'both') return raw
+  return undefined
+}
+
 export async function POST(request: Request) {
   // CMS token VEYA CRON_SECRET ile çalışır
   const cronSecret = process.env.CRON_SECRET?.trim()
@@ -87,8 +98,19 @@ export async function POST(request: Request) {
   let requestedLimit = 2
   let specificIds: string[] = []
   let specificSlugs: string[] = []
+  let mode: PublishSocialMode | undefined
+  let force = true // manuel/toplu yeniden paylaşımda varsayılan force
+  let manual = false
+
   try {
-    const body = await request.json() as { limit?: number; ids?: string[]; slugs?: string[] }
+    const body = await request.json() as {
+      limit?: number
+      ids?: string[]
+      slugs?: string[]
+      mode?: string
+      force?: boolean
+      manual?: boolean
+    }
     if (body.limit && typeof body.limit === 'number') {
       requestedLimit = Math.min(Math.max(1, body.limit), 5)
     }
@@ -98,67 +120,129 @@ export async function POST(request: Request) {
     if (Array.isArray(body.slugs) && body.slugs.length > 0) {
       specificSlugs = body.slugs.slice(0, 5)
     }
+    mode = parseMode(body.mode)
+    if (typeof body.force === 'boolean') force = body.force
+    if (typeof body.manual === 'boolean') manual = body.manual
   } catch { /* varsayılan 2 */ }
 
+  // Belirli ID/slug ile çağrı → publishOneSocial pipeline (post/story/both)
+  const isTargeted = specificIds.length > 0 || specificSlugs.length > 0
+  if (isTargeted) {
+    // Admin UI'dan gelen tekil paylaşım: manual + mode varsayılanları
+    if (manual || mode) {
+      manual = true
+      if (!mode) mode = 'post'
+    }
+
+    const db = getAdminFirestore()
+    let targetIds = [...specificIds]
+
+    if (specificSlugs.length > 0) {
+      const snaps = await Promise.all(
+        specificSlugs.map(slug =>
+          db.collection(Collections.NEWS).where('slug', '==', slug).limit(1).get()
+        )
+      )
+      targetIds = [...targetIds, ...snaps.flatMap(s => s.docs.map(d => d.id))]
+    }
+
+    // dedupe
+    targetIds = [...new Set(targetIds)].slice(0, 5)
+
+    if (targetIds.length === 0) {
+      return NextResponse.json({ error: 'Haber bulunamadı' }, { status: 404 })
+    }
+
+    const results: PublishOneSocialResult[] = []
+    for (const id of targetIds) {
+      const r = await publishOneSocial(id, {
+        mode: mode ?? 'post',
+        force,
+        manual: true,
+      })
+      results.push(r)
+      if (targetIds.length > 1) await new Promise(res => setTimeout(res, 1500))
+    }
+
+    const succeeded = results.filter(r => r.ok).length
+    const failed = results.filter(r => !r.ok).length
+
+    // Tek haber paylaşımında daha net HTTP status
+    if (targetIds.length === 1) {
+      const r = results[0]
+      if (r.skipped) {
+        return NextResponse.json({
+          reshared: 0,
+          succeeded: 0,
+          failed: 1,
+          error: r.reason,
+          results,
+        }, { status: 422 })
+      }
+      if (!r.ok) {
+        return NextResponse.json({
+          reshared: 0,
+          succeeded: 0,
+          failed: 1,
+          error: r.reason ?? 'Paylaşım başarısız',
+          results,
+        }, { status: 502 })
+      }
+    }
+
+    return NextResponse.json({
+      reshared: results.length,
+      succeeded,
+      failed,
+      mode: mode ?? 'post',
+      results,
+    })
+  }
+
+  // ── Eski toplu Çanakkale post yeniden paylaşımı ────────────────────────────
   const db = getAdminFirestore()
 
   let targets: DocumentSnapshot[]
 
-  if (specificSlugs.length > 0) {
-    // Slug ile sorgula — Çanakkale filtresi yok
-    const snaps = await Promise.all(
-      specificSlugs.map(slug =>
-        db.collection(Collections.NEWS).where('slug', '==', slug).limit(1).get()
-      )
-    )
-    targets = snaps.flatMap(s => s.docs).filter(d => d.exists)
-  } else if (specificIds.length > 0) {
-    // Belirli ID'leri direkt getir — Çanakkale filtresi yok
-    const docs = await Promise.all(
-      specificIds.map(id => db.collection(Collections.NEWS).doc(id).get())
-    )
-    targets = docs.filter(d => d.exists)
-  } else {
-    // İki sorgu: citySlug ile (yeni haberler) + city adıyla (citySlug bug'dan etkilenmiş eski haberler)
-    const [snap1, snap2] = await Promise.all([
-      db.collection(Collections.NEWS)
-        .where('citySlug', '==', 'canakkale')
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(30)
-        .get(),
-      db.collection(Collections.NEWS)
-        .where('city', '==', 'Çanakkale')
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(30)
-        .get(),
-    ])
+  // İki sorgu: citySlug ile (yeni haberler) + city adıyla (citySlug bug'dan etkilenmiş eski haberler)
+  const [snap1, snap2] = await Promise.all([
+    db.collection(Collections.NEWS)
+      .where('citySlug', '==', 'canakkale')
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .limit(30)
+      .get(),
+    db.collection(Collections.NEWS)
+      .where('city', '==', 'Çanakkale')
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .limit(30)
+      .get(),
+  ])
 
-    // Merge + deduplicate
-    const seen = new Set<string>()
-    const merged = [...snap1.docs, ...snap2.docs].filter(d => {
-      if (seen.has(d.id)) return false
-      seen.add(d.id)
-      return true
+  // Merge + deduplicate
+  const seen = new Set<string>()
+  const merged = [...snap1.docs, ...snap2.docs].filter(d => {
+    if (seen.has(d.id)) return false
+    seen.add(d.id)
+    return true
+  })
+
+  // Görseli olan haberleri önceliklendir
+  const candidates = merged
+    .filter(d => {
+      const data = d.data() as Record<string, unknown>
+      return !data.hasVideo && !data.isVideo && isCanakkale(data)
+    })
+    .sort((a, b) => {
+      const pa = (a.data() as Record<string, unknown>).publishedAt as number ?? 0
+      const pb = (b.data() as Record<string, unknown>).publishedAt as number ?? 0
+      return pb - pa
     })
 
-    // Görseli olan haberleri önceliklendir
-    const candidates = merged
-      .filter(d => {
-        const data = d.data() as Record<string, unknown>
-        return !data.hasVideo && !data.isVideo && isCanakkale(data)
-      })
-      .sort((a, b) => {
-        const pa = (a.data() as Record<string, unknown>).publishedAt as number ?? 0
-        const pb = (b.data() as Record<string, unknown>).publishedAt as number ?? 0
-        return pb - pa
-      })
-
-    const withImage = candidates.filter(d => !!extractImageUrl(d.data() as Record<string, unknown>))
-    const pool = withImage.length >= requestedLimit ? withImage : candidates
-    targets = pool.slice(0, requestedLimit)
-  }
+  const withImage = candidates.filter(d => !!extractImageUrl(d.data() as Record<string, unknown>))
+  const pool = withImage.length >= requestedLimit ? withImage : candidates
+  targets = pool.slice(0, requestedLimit)
 
   if (targets.length === 0) {
     return NextResponse.json({ error: 'Çanakkale haberi bulunamadı' }, { status: 404 })
