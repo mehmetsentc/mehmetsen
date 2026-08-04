@@ -4,17 +4,17 @@
  * ONYEDİTİVİ — 1080×1920 Instagram & Facebook Hikaye görseli (9:16)
  * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout (foto biraz daha uzun; manşet↔özet ince ayraç):
+ * Layout (hikaye okunabilirliği — metne biraz daha alan; manşet↔özet ayraç):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  ~58% (1120px)
+ *   │   HABER FOTOĞRAFI       │  ~56% (1080px)
  *   │                         │
  *   │  [🔗 nahaber.com pill]  │  alt kısım — link stikeri görseli
  *   ├─── nahaber.com ─────────┤  tam kırmızı bar + beyaz pill (80px)
  *   │   MANŞET (Playfair)     │
  *   │   ── ayraç ──           │
- *   │   spot/özet (büyük)     │  ~38% — lacivert bg (720px)
+ *   │   spot/özet (büyük, net)│  ~40% — lacivert bg (760px)
  *   │   #hashtag              │
  *   └─────────────────────────┘
  *
@@ -31,10 +31,10 @@ import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } fr
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
-/** Manşet — tam anlam; softMax ile yarım sıfat kesimini önle */
-const TITLE_MAX = 78
+/** Manşet — 1–2 tematik satır tercih; kelime ortasından kesilmez */
+const TITLE_MAX = 72
 /** Özet — 1–2 kısa cümle, büyük punto; cümle/kelime ortasından kesilmez */
-const SPOT_MAX = 200
+const SPOT_MAX = 160
 
 interface ArticleData {
   title: string
@@ -102,17 +102,17 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
-// Boyutlar — 9:16 hikaye (foto ~58% / metin ~38% — bar biraz aşağı)
+// Boyutlar — 9:16 hikaye (~56% foto / ~40% metin — hikaye okunabilirliği)
 const W = 1080
 const H = 1920
-/** Fotoğraf — kırmızı bar + metin bandı biraz daha aşağı */
-const PHOTO_H = 1120  // ~%58
+/** Fotoğraf — kırmızı bar + metin bandı; metne biraz daha alan */
+const PHOTO_H = 1080  // ~%56
 const MID_H   = 80    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // 720px (~%38)
+const TITLE_H = H - PHOTO_H - MID_H  // 760px (~%40)
 /** Metin paneli — cömert padding; hashtag ezilmesin */
-const TEXT_PAD_TOP = 52
+const TEXT_PAD_TOP = 48
 const TEXT_PAD_SIDE = 48
-const TEXT_PAD_BOTTOM = 44
+const TEXT_PAD_BOTTOM = 40
 
 // Renkler
 const NAVY   = '#0d2355'   // OnyediTivi koyu lacivert
@@ -229,22 +229,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const titleLines = title.split('\n').filter(Boolean)
   const titlePlainLen = titleLines.join('').length
 
-  // Manşet — mobil hikayede rahat okunur Playfair; 1–3 satır, yüksek satır arası
+  // Alt ~40% metin bandı — güçlü Playfair manşet + yüksek kontrast özet (hikaye okunabilirliği)
   const titleSize =
-    titleLines.length >= 3 ? 56 :
-    titleLines.length === 2 ? (titlePlainLen > 44 ? 58 : titlePlainLen > 32 ? 62 : 66) :
-    titlePlainLen > 58 ? 54 :
-    titlePlainLen > 44 ? 60 :
-    titlePlainLen > 28 ? 68 :
-    titlePlainLen > 16 ? 76 : 84
-  const titleLineHeight = titleLines.length >= 2 ? 1.24 : 1.18
+    titleLines.length >= 3 ? (titlePlainLen > 55 ? 54 : 58) :
+    titleLines.length === 2 ? (titlePlainLen > 52 ? 58 : titlePlainLen > 36 ? 64 : 70) :
+    titlePlainLen > 58 ? 56 :
+    titlePlainLen > 48 ? 62 :
+    titlePlainLen > 36 ? 68 :
+    titlePlainLen > 24 ? 74 :
+    titlePlainLen > 16 ? 82 : 90
+  const titleLineHeight = titleLines.length >= 2 ? 1.3 : 1.24
 
-  // Özet — punto korundu; yüksek kontrast
+  // Özet — pure white, büyük punto, feed post ile aynı niyet (dikeyde ölçekli)
   const spotLen = spot.length
   const spotSize =
-    spotLen > 140 ? 36 :
-    spotLen > 100 ? 38 :
-    spotLen > 60 ? 40 : 42
+    spotLen > 140 ? 40 :
+    spotLen > 100 ? 42 :
+    spotLen > 70 ? 46 : 48
   const spotLineHeight = 1.52
 
   try {
@@ -355,7 +356,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.25)', display: 'flex' }} />
         </div>
 
-        {/* ── BAŞLIK + SPOT ALANI (~38%) ── */}
+        {/* ── BAŞLIK + SPOT ALANI (~40%) ── */}
         <div style={{
           width: W, height: TITLE_H, flexShrink: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
@@ -371,51 +372,53 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               display: 'flex', flexDirection: 'column', gap: 0,
               maxWidth: W - TEXT_PAD_SIDE * 2 - 32, flex: 1, overflow: 'hidden',
             }}>
-              {/* Manşet — büyük Playfair, yüksek kontrast (punto sabit) */}
+              {/* Manşet — Playfair display; yüksek kontrast beyaz */}
               <div style={{
-                display: 'flex', flexDirection: 'column', gap: 6,
+                display: 'flex', flexDirection: 'column', gap: 8,
                 maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
                 overflow: 'hidden',
               }}>
                 {titleLines.map((line, i) => (
                   <span key={i} style={{
                     color: '#ffffff', fontFamily: headlineFamily, fontWeight: 900,
-                    fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: -0.3,
+                    fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: 0.15,
                     display: 'flex',
                   }}>{line}</span>
                 ))}
               </div>
-              {/* Manşet ↔ özet ayraç: kısa kırmızı + ince beyaz hairline */}
+              {/* Ayırıcı + özet — near-white, daha büyük punto; manşet↔özet ayraç */}
               {spot ? (
                 <div style={{
-                  display: 'flex', flexDirection: 'row', alignItems: 'center',
-                  gap: 12, width: '100%', marginTop: 26, marginBottom: 0,
+                  display: 'flex', flexDirection: 'column', gap: 22,
+                  paddingTop: 32,
                 }}>
                   <div style={{
-                    width: 40, height: 2, borderRadius: 1, background: RED,
-                    display: 'flex', flexShrink: 0,
-                  }} />
-                  <div style={{
-                    width: 900, height: 2, borderRadius: 1,
-                    background: 'rgba(255,255,255,0.38)',
-                    display: 'flex', flexShrink: 0,
-                  }} />
+                    display: 'flex', flexDirection: 'row', alignItems: 'center',
+                    gap: 12, width: '100%',
+                  }}>
+                    <div style={{
+                      width: 48, height: 3, borderRadius: 1.5, background: RED,
+                      display: 'flex', flexShrink: 0,
+                    }} />
+                    <div style={{
+                      width: 120, height: 2, borderRadius: 1,
+                      background: 'rgba(255,255,255,0.32)',
+                      display: 'flex', flexShrink: 0,
+                    }} />
+                  </div>
+                  <span style={{
+                    color: '#ffffff', fontFamily: bodyFamily, fontWeight: 600,
+                    fontSize: spotSize, lineHeight: spotLineHeight,
+                    letterSpacing: 0.15, display: 'flex', flexDirection: 'column',
+                  }}>{spot}</span>
                 </div>
-              ) : null}
-              {/* Özet — punto sabit; ayraçtan 22px boşluk */}
-              {spot ? (
-                <span style={{
-                  color: 'rgba(255,255,255,0.96)', fontFamily: bodyFamily, fontWeight: 500,
-                  fontSize: spotSize, lineHeight: spotLineHeight, display: 'flex', flexDirection: 'column',
-                  paddingTop: 22,
-                }}>{spot}</span>
               ) : null}
             </div>
           </div>
           {/* Hashtags — metinden ayrı, ezilmesin */}
           <span style={{
             color: LBLUE, fontFamily: bodyFamily, fontSize: 28, fontWeight: 600,
-            letterSpacing: 1.5, display: 'flex', marginTop: 28, flexShrink: 0,
+            letterSpacing: 1.5, display: 'flex', marginTop: 24, flexShrink: 0,
           }}>#NaHaber  #Çanakkale  #SonDakika</span>
         </div>
 
