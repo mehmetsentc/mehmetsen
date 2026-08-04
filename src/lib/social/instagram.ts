@@ -1,6 +1,7 @@
 /**
  * Instagram Graph API service layer.
  * Two-step publish: (1) create media container, (2) publish container.
+ * Multi-image: carousel children → parent CAROUSEL → media_publish.
  *
  * Required env vars (server-side only):
  *   INSTAGRAM_BUSINESS_ID      — e.g. 17841477331518718
@@ -19,11 +20,14 @@
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { getSocialTokens } from './tokenStore'
 import { buildFeedCaption } from './feedCaption'
+import { resolveCarouselUrls } from './carouselImages'
 
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
 
 const IG_CAPTION_LIMIT = 2200
+const CONTAINER_POLL_MS = 1500
+const CONTAINER_POLL_MAX = 20
 
 /** Build the caption text for an Instagram feed post. */
 function buildInstagramCaption(payload: SocialPublishPayload): string {
@@ -37,7 +41,7 @@ function buildInstagramCaption(payload: SocialPublishPayload): string {
 }
 
 /**
- * Step 1 — Create an Instagram media container.
+ * Step 1 — Create an Instagram media container (single IMAGE post).
  * Returns the container ID or throws.
  */
 async function createMediaContainer(
@@ -63,6 +67,86 @@ async function createMediaContainer(
   }
 
   return json.id
+}
+
+/** Carousel child item — is_carousel_item=true, no caption. */
+async function createCarouselItemContainer(
+  igBusinessId: string,
+  accessToken: string,
+  imageUrl: string
+): Promise<string> {
+  const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      image_url: imageUrl,
+      is_carousel_item: true,
+      access_token: accessToken,
+    }),
+  })
+
+  const json = (await res.json()) as { id?: string; error?: { message?: string } }
+
+  if (!res.ok || json.error || !json.id) {
+    throw new Error(json.error?.message ?? `Carousel item HTTP ${res.status}`)
+  }
+
+  return json.id
+}
+
+/** Parent carousel container with children IDs. */
+async function createCarouselParentContainer(
+  igBusinessId: string,
+  accessToken: string,
+  childIds: string[],
+  caption: string
+): Promise<string> {
+  const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      media_type: 'CAROUSEL',
+      children: childIds.join(','),
+      caption,
+      access_token: accessToken,
+    }),
+  })
+
+  const json = (await res.json()) as { id?: string; error?: { message?: string } }
+
+  if (!res.ok || json.error || !json.id) {
+    throw new Error(json.error?.message ?? `Carousel parent HTTP ${res.status}`)
+  }
+
+  return json.id
+}
+
+/**
+ * Wait until IG container status is FINISHED (required before carousel publish).
+ */
+async function waitForContainerReady(
+  containerId: string,
+  accessToken: string
+): Promise<void> {
+  for (let i = 0; i < CONTAINER_POLL_MAX; i++) {
+    const res = await fetch(
+      `${GRAPH_BASE}/${containerId}?fields=status_code&access_token=${encodeURIComponent(accessToken)}`
+    )
+    const json = (await res.json()) as {
+      status_code?: string
+      error?: { message?: string }
+    }
+    if (json.error) {
+      throw new Error(json.error.message ?? 'Container status error')
+    }
+    const status = (json.status_code ?? '').toUpperCase()
+    if (status === 'FINISHED') return
+    if (status === 'ERROR' || status === 'EXPIRED') {
+      throw new Error(`Container ${containerId} status=${status}`)
+    }
+    await new Promise((r) => setTimeout(r, CONTAINER_POLL_MS))
+  }
+  throw new Error(`Container ${containerId} timed out waiting for FINISHED`)
 }
 
 /**
@@ -199,7 +283,94 @@ export async function publishInstagramStory(payload: SocialPublishPayload): Prom
   }
 }
 
-/** Full two-step Instagram publish flow. */
+async function publishSingleImage(
+  igBusinessId: string,
+  accessToken: string,
+  newsId: string,
+  imageUrl: string,
+  caption: string
+): Promise<SocialPublishResult> {
+  console.log(`[instagram] single — ${newsId}`)
+  const containerId = await createMediaContainer(
+    igBusinessId,
+    accessToken,
+    imageUrl,
+    caption
+  )
+  console.log(`[instagram] container created for news ${newsId}: ${containerId}`)
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+  const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId)
+  console.log(`[instagram] published news ${newsId} → media ${mediaId}`)
+  return { success: true, platformId: mediaId }
+}
+
+/**
+ * Carousel: child containers → wait FINISHED → parent CAROUSEL → publish.
+ * Bozuk slide'lar atlanır; <2 child kalırsa veya parent fail → single fallback.
+ */
+async function publishCarousel(
+  igBusinessId: string,
+  accessToken: string,
+  newsId: string,
+  imageUrls: string[],
+  caption: string,
+  fallbackImageUrl: string
+): Promise<SocialPublishResult> {
+  console.log(`[instagram] carousel — ${newsId} (${imageUrls.length} slides)`)
+
+  const childIds: string[] = []
+  for (let i = 0; i < imageUrls.length; i++) {
+    const url = imageUrls[i]
+    try {
+      const id = await createCarouselItemContainer(igBusinessId, accessToken, url)
+      await waitForContainerReady(id, accessToken)
+      childIds.push(id)
+      console.log(`[instagram] carousel child ${i + 1}/${imageUrls.length} ready: ${id}`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(`[instagram] carousel child skip ${i + 1} (${newsId}): ${msg}`)
+    }
+  }
+
+  if (childIds.length < 2) {
+    console.warn(
+      `[instagram] carousel insufficient children (${childIds.length}) → single fallback — ${newsId}`
+    )
+    return publishSingleImage(
+      igBusinessId,
+      accessToken,
+      newsId,
+      fallbackImageUrl,
+      caption
+    )
+  }
+
+  try {
+    const parentId = await createCarouselParentContainer(
+      igBusinessId,
+      accessToken,
+      childIds,
+      caption
+    )
+    console.log(`[instagram] carousel parent created for ${newsId}: ${parentId}`)
+    await waitForContainerReady(parentId, accessToken)
+    const mediaId = await publishMediaContainer(igBusinessId, accessToken, parentId)
+    console.log(`[instagram] carousel published ${newsId} → media ${mediaId} (${childIds.length} slides)`)
+    return { success: true, platformId: mediaId }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn(`[instagram] carousel publish failed → single fallback (${newsId}): ${msg}`)
+    return publishSingleImage(
+      igBusinessId,
+      accessToken,
+      newsId,
+      fallbackImageUrl,
+      caption
+    )
+  }
+}
+
+/** Full two-step Instagram publish flow (single or carousel). */
 export async function publishToInstagram(
   payload: SocialPublishPayload
 ): Promise<SocialPublishResult> {
@@ -213,8 +384,10 @@ export async function publishToInstagram(
     }
   }
 
-  // Instagram requires an image — skip gracefully if none
-  if (!payload.imageUrl?.trim()) {
+  const carouselUrls = resolveCarouselUrls(payload)
+  const singleUrl = payload.imageUrl?.trim() || carouselUrls?.[0]
+
+  if (!singleUrl) {
     return {
       success: false,
       error: 'Instagram için görsel URL gerekli — atlandı',
@@ -224,24 +397,23 @@ export async function publishToInstagram(
   const caption = buildInstagramCaption(payload)
 
   try {
-    // Step 1: Create container
-    const containerId = await createMediaContainer(
+    if (carouselUrls && carouselUrls.length >= 2) {
+      return await publishCarousel(
+        igBusinessId,
+        accessToken,
+        payload.newsId,
+        carouselUrls,
+        caption,
+        singleUrl
+      )
+    }
+    return await publishSingleImage(
       igBusinessId,
       accessToken,
-      payload.imageUrl.trim(),
+      payload.newsId,
+      singleUrl,
       caption
     )
-
-    console.log(`[instagram] container created for news ${payload.newsId}: ${containerId}`)
-
-    // Brief pause between steps (IG recommends a small delay)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Step 2: Publish
-    const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId)
-
-    console.log(`[instagram] published news ${payload.newsId} → media ${mediaId}`)
-    return { success: true, platformId: mediaId }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`[instagram] publish failed for news ${payload.newsId}:`, msg)

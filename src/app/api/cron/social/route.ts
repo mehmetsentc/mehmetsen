@@ -46,6 +46,7 @@ import type {
   SocialPublishPayload,
   SocialPublishResult,
 } from '@/lib/social/types'
+import { buildSocialImagePayload } from '@/lib/social/carouselImages'
 
 
 export const runtime = 'nodejs'
@@ -437,15 +438,22 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const socialImageUrl: string = `https://nahaber.com/api/og/social/${id}?v=${Date.now()}`
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
+    const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data)
+
     // Post: TAM manşet + AI özet; URL/hashtag publisher (buildFeedCaption) ekler
     const payload: SocialPublishPayload = {
       newsId:      id,
       title,
       description: socialContent.caption,
-      imageUrl:    socialImageUrl,
+      imageUrl:    imagePayload.imageUrl,
+      ...(imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
       articleUrl,
       hashtags:    socialContent.hashtags,
     }
+    console.log(
+      `[cron/social] POST ${imagePayload.mode} — ${id}` +
+        (imagePayload.imageUrls ? ` (${imagePayload.imageUrls.length} slides)` : '')
+    )
 
     // ── Facebook ──────────────────────────────────────────────────────────
     let fbResult: SocialPublishResult = { success: false, error: 'not attempted' }

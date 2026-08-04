@@ -21,6 +21,7 @@ import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } fr
 import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
+import { buildSocialImagePayload } from '@/lib/social/carouselImages'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -459,6 +460,11 @@ export async function publishOneSocial(
     const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}?v=${Date.now()}`
     const storyImageUrl  = `https://nahaber.com/api/og/story/${newsId}?v=${Date.now()}`
 
+    // Hybrid carousel: 2+ kaynak görsel → slide1 branded OG + orijinaller
+    const imagePayload = shouldPost
+      ? await buildSocialImagePayload(newsId, socialImageUrl, data)
+      : { imageUrl: socialImageUrl, mode: 'single' as const }
+
     const result: PublishOneSocialResult = {
       ok: false,
       newsId,
@@ -472,10 +478,16 @@ export async function publishOneSocial(
         newsId,
         title,
         description: socialContent.caption,
-        imageUrl: socialImageUrl,
+        imageUrl: imagePayload.imageUrl,
+        ...(imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
         articleUrl,
         hashtags: socialContent.hashtags,
       }
+
+      console.log(
+        `[publishOneSocial] POST ${imagePayload.mode} — ${newsId}` +
+          (imagePayload.imageUrls ? ` (${imagePayload.imageUrls.length} slides)` : '')
+      )
 
       let fbResult: SocialPublishResult = { success: false, error: wantFb ? 'not attempted' : 'skipped' }
       let igResult: SocialPublishResult = { success: false, error: wantIg ? 'not attempted' : 'skipped' }

@@ -59,7 +59,17 @@ export interface SocialPublishPayload {
   title: string
   /** Post özet gövdesi (AI caption) — URL/hashtag içermez; publisher ekler. */
   description?: string
+  /**
+   * Tek görsel / carousel slide 1 (markalı OG).
+   * Carousel yoksa tek post bu URL ile yayınlanır.
+   */
   imageUrl?: string
+  /**
+   * 2+ görsel varsa carousel: [slide1 branded OG, ...orijinal görseller].
+   * Instagram limiti 10; Facebook multi-photo aynı listeyi kullanır.
+   * Yoksa veya 1 eleman → tek görsel akışı.
+   */
+  imageUrls?: string[]
   articleUrl?: string
   /** Post hashtag listesi; yoksa publisher varsayılan kullanır. */
   hashtags?: string[]

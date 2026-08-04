@@ -1,6 +1,7 @@
 /**
  * Facebook Graph API service layer.
  * Publishes a post to a Facebook Page using the v21.0 Graph API.
+ * Multi-image: unpublished photo uploads → feed with attached_media.
  *
  * Required env vars (server-side only, no NEXT_PUBLIC prefix):
  *   FACEBOOK_PAGE_ID           — e.g. 167304713122153
@@ -9,6 +10,7 @@
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { getSocialTokens } from './tokenStore'
 import { buildFeedCaption } from './feedCaption'
+import { resolveCarouselUrls } from './carouselImages'
 
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
@@ -183,7 +185,116 @@ async function publishFacebookStoryViaUrl(
   }
 }
 
-/** Publish a photo post (with image) or a link post (without image) to a Facebook Page. */
+/** Tek fotoğraf postu (published). */
+async function publishSinglePhoto(
+  pageId: string,
+  accessToken: string,
+  newsId: string,
+  imageUrl: string,
+  caption: string
+): Promise<SocialPublishResult> {
+  console.log(`[facebook] single — ${newsId}`)
+  const res = await fetch(`${GRAPH_BASE}/${pageId}/photos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: imageUrl,
+      caption,
+      access_token: accessToken,
+    }),
+  })
+  const json = (await res.json()) as { id?: string; error?: { message?: string } }
+  if (!res.ok || json.error || !json.id) {
+    const msg = json.error?.message ?? `HTTP ${res.status}`
+    console.error(`[facebook] publish failed for news ${newsId}:`, msg)
+    return { success: false, error: msg }
+  }
+  console.log(`[facebook] published news ${newsId} → post ${json.id}`)
+  return { success: true, platformId: json.id }
+}
+
+/** Unpublished foto yükle — multi-photo attached_media için. */
+async function uploadUnpublishedPhoto(
+  pageId: string,
+  accessToken: string,
+  imageUrl: string
+): Promise<string> {
+  const res = await fetch(`${GRAPH_BASE}/${pageId}/photos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: imageUrl,
+      published: false,
+      access_token: accessToken,
+    }),
+  })
+  const json = (await res.json()) as { id?: string; error?: { message?: string } }
+  if (!res.ok || json.error || !json.id) {
+    throw new Error(json.error?.message ?? `Unpublished upload HTTP ${res.status}`)
+  }
+  return json.id
+}
+
+/**
+ * Multi-photo: her görseli unpublished yükle → feed + attached_media.
+ * Bozuk slide atlanır; <2 foto kalırsa veya feed fail → single fallback.
+ */
+async function publishMultiPhoto(
+  pageId: string,
+  accessToken: string,
+  newsId: string,
+  imageUrls: string[],
+  caption: string,
+  fallbackImageUrl: string
+): Promise<SocialPublishResult> {
+  console.log(`[facebook] carousel — ${newsId} (${imageUrls.length} slides)`)
+
+  const photoIds: string[] = []
+  for (let i = 0; i < imageUrls.length; i++) {
+    try {
+      const id = await uploadUnpublishedPhoto(pageId, accessToken, imageUrls[i])
+      photoIds.push(id)
+      console.log(`[facebook] unpublished photo ${i + 1}/${imageUrls.length}: ${id}`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(`[facebook] multi-photo skip slide ${i + 1} (${newsId}): ${msg}`)
+    }
+  }
+
+  if (photoIds.length < 2) {
+    console.warn(
+      `[facebook] multi-photo insufficient (${photoIds.length}) → single fallback — ${newsId}`
+    )
+    return publishSinglePhoto(pageId, accessToken, newsId, fallbackImageUrl, caption)
+  }
+
+  try {
+    const attached_media = photoIds.map((id) => ({ media_fbid: id }))
+    const res = await fetch(`${GRAPH_BASE}/${pageId}/feed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: caption,
+        attached_media,
+        access_token: accessToken,
+      }),
+    })
+    const json = (await res.json()) as { id?: string; error?: { message?: string } }
+    if (!res.ok || json.error || !json.id) {
+      throw new Error(json.error?.message ?? `Multi-photo feed HTTP ${res.status}`)
+    }
+    console.log(
+      `[facebook] multi-photo published ${newsId} → post ${json.id} (${photoIds.length} photos)`
+    )
+    return { success: true, platformId: json.id }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn(`[facebook] multi-photo failed → single fallback (${newsId}): ${msg}`)
+    return publishSinglePhoto(pageId, accessToken, newsId, fallbackImageUrl, caption)
+  }
+}
+
+/** Publish a photo post (single or multi), or a link post (without image). */
 export async function publishToFacebook(
   payload: SocialPublishPayload
 ): Promise<SocialPublishResult> {
@@ -199,32 +310,34 @@ export async function publishToFacebook(
 
   const caption = buildFacebookCaption(payload)
   const articleUrl = payload.articleUrl?.trim()
+  const carouselUrls = resolveCarouselUrls(payload)
+  const singleUrl = payload.imageUrl?.trim() || carouselUrls?.[0]
 
   try {
-    let endpoint: string
-    let body: Record<string, string>
-
-    if (payload.imageUrl?.trim()) {
-      // Markalı görsel + caption; article URL caption içinde (FB'de tıklanır)
-      endpoint = `${GRAPH_BASE}/${pageId}/photos`
-      body = {
-        url: payload.imageUrl.trim(),
+    if (carouselUrls && carouselUrls.length >= 2 && singleUrl) {
+      return await publishMultiPhoto(
+        pageId,
+        accessToken,
+        payload.newsId,
+        carouselUrls,
         caption,
-        access_token: accessToken,
-      }
-    } else {
-      endpoint = `${GRAPH_BASE}/${pageId}/feed`
-      body = {
+        singleUrl
+      )
+    }
+
+    if (singleUrl) {
+      return await publishSinglePhoto(pageId, accessToken, payload.newsId, singleUrl, caption)
+    }
+
+    // Görselsiz link post
+    const res = await fetch(`${GRAPH_BASE}/${pageId}/feed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         message: caption,
         access_token: accessToken,
         ...(articleUrl ? { link: articleUrl } : {}),
-      }
-    }
-
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      }),
     })
 
     const json = (await res.json()) as { id?: string; error?: { message?: string } }

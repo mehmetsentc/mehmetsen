@@ -22,6 +22,7 @@ import type { SocialPublishPayload } from '@/lib/social/types'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { clampAtWordBoundary } from '@/lib/social/feedCaption'
+import { buildSocialImagePayload } from '@/lib/social/carouselImages'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -140,14 +141,17 @@ async function handleRequest(request: Request) {
 
   // ── 3. Onyedi Tivi markalı görsel — OG route URL (1080×1080, Edge cached) ──
   const socialImageUrl: string = `https://nahaber.com/api/og/social/${docId}`
-  steps.overlayResult = `OG route → ${socialImageUrl}`
+  const imagePayload = await buildSocialImagePayload(docId, socialImageUrl, data)
+  steps.overlayResult = `OG route → ${socialImageUrl} (${imagePayload.mode})`
+  if (imagePayload.imageUrls) steps.carouselSlides = imagePayload.imageUrls.length
 
   // ── 4. Sosyal medya paylaşımı ─────────────────────────────────────────────
   const payload: SocialPublishPayload = {
     newsId:      docId,
     title,
     description: socialContent.caption,
-    imageUrl:    socialImageUrl,
+    imageUrl:    imagePayload.imageUrl,
+    ...(imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
     articleUrl,
     hashtags:    socialContent.hashtags,
   }

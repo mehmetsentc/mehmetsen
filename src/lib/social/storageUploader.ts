@@ -15,15 +15,24 @@ import { getAdminStorage } from '@/lib/firebase/admin'
 
 const FOLDER = 'social-images'
 
+/**
+ * @param filenameHint — opsiyonel; verilmezse `{newsId}.jpg`.
+ *   Carousel slide'lar için örn. `{newsId}-slide-2.jpg`
+ */
 export async function uploadSocialImage(
   buffer: Buffer,
-  newsId: string
+  newsId: string,
+  filenameHint?: string
 ): Promise<string | null> {
   try {
     const storage = getAdminStorage()
     const bucket  = storage.bucket()
 
-    const filename = `${FOLDER}/${newsId}.jpg`
+    const safeHint = filenameHint
+      ?.replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/\.+/g, '.')
+      .slice(0, 120)
+    const filename = `${FOLDER}/${safeHint || `${newsId}.jpg`}`
     const file     = bucket.file(filename)
 
     await file.save(buffer, {

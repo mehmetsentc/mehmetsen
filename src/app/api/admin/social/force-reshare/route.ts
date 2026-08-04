@@ -29,6 +29,7 @@ import {
   type PublishOneSocialResult,
   type SocialPublishOverrides,
 } from '@/lib/social/publishOneSocial'
+import { buildSocialImagePayload } from '@/lib/social/carouselImages'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -339,15 +340,21 @@ export async function POST(request: Request) {
 
     // ?v=timestamp → CDN + data cache bypass — her zaman taze OG görseli
     const socialImageUrl = `https://nahaber.com/api/og/social/${id}?v=${Date.now()}`
+    const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data)
 
     const payload: SocialPublishPayload = {
       newsId: id,
       title,
       description: socialContent.caption,
-      imageUrl: socialImageUrl,
+      imageUrl: imagePayload.imageUrl,
+      ...(imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
       articleUrl,
       hashtags: socialContent.hashtags,
     }
+    console.log(
+      `[force-reshare] POST ${imagePayload.mode} — ${id}` +
+        (imagePayload.imageUrls ? ` (${imagePayload.imageUrls.length} slides)` : '')
+    )
 
     let fbResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
     let igResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }

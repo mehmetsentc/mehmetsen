@@ -53,13 +53,13 @@ function refererFor(hostname: string): string {
 }
 
 /**
- * Görseli indirip JPEG data URI döner. Başarısızsa null.
- * next/og <img src> için güvenli format.
+ * Görseli indirip JPEG buffer döner. Başarısızsa null.
+ * Hotlink / WebP / Referer korumalı CDN'ler için UA+Referer kullanır.
  */
-export async function embedOgImageDataUri(
+export async function fetchImageAsJpegBuffer(
   imageUrl: string,
   opts?: { maxWidth?: number; maxHeight?: number; quality?: number },
-): Promise<string | null> {
+): Promise<Buffer | null> {
   const url = normalizeAbsoluteImageUrl(imageUrl)
   if (!url) return null
 
@@ -85,7 +85,7 @@ export async function embedOgImageDataUri(
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.length < 64) return null
 
-    const jpeg = await sharp(buf, { failOn: 'none' })
+    return await sharp(buf, { failOn: 'none' })
       .rotate()
       .resize({
         width: maxWidth,
@@ -95,12 +95,23 @@ export async function embedOgImageDataUri(
       })
       .jpeg({ quality, mozjpeg: true })
       .toBuffer()
-
-    return `data:image/jpeg;base64,${jpeg.toString('base64')}`
   } catch (err) {
     console.warn('[ogImageEmbed] failed:', err instanceof Error ? err.message : err)
     return null
   }
+}
+
+/**
+ * Görseli indirip JPEG data URI döner. Başarısızsa null.
+ * next/og <img src> için güvenli format.
+ */
+export async function embedOgImageDataUri(
+  imageUrl: string,
+  opts?: { maxWidth?: number; maxHeight?: number; quality?: number },
+): Promise<string | null> {
+  const jpeg = await fetchImageAsJpegBuffer(imageUrl, opts)
+  if (!jpeg) return null
+  return `data:image/jpeg;base64,${jpeg.toString('base64')}`
 }
 
 /** Adayları sırayla dene; ilk başarılı data URI. */
