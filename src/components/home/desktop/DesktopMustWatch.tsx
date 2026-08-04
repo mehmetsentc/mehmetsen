@@ -24,19 +24,22 @@ export function DesktopMustWatch({ items }: DesktopMustWatchProps) {
   }
 
   return (
-    <section className="desktop-must-watch mb-10 bg-[#0f1428] dark:bg-[#121a38] py-6 text-white" aria-label="Trend haberler">
+    <section
+      className="desktop-must-watch mb-10 border-y border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface-elevated))] py-6 text-[rgb(var(--color-text))]"
+      aria-label="Trend haberler"
+    >
       <div className="mb-4 flex items-center justify-between px-1">
         <DesktopSectionHeader
           title="Trend Haberler"
           href={ROUTES.CATEGORY('trend')}
-          className="mb-0 border-t-0 pt-0 text-white hover:text-red-300"
+          className="mb-0 border-t-0 pt-0 text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
         />
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => scroll(-1)}
             aria-label="Önceki"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition-colors hover:bg-white/10"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))]"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -44,7 +47,7 @@ export function DesktopMustWatch({ items }: DesktopMustWatchProps) {
             type="button"
             onClick={() => scroll(1)}
             aria-label="Sonraki"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition-colors hover:bg-white/10"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))]"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -56,13 +59,13 @@ export function DesktopMustWatch({ items }: DesktopMustWatchProps) {
         className="flex gap-4 overflow-x-auto px-1 pb-1 scrollbar-hide"
         data-no-category-swipe
       >
-        {items.slice(0, 8).map((item, index) => (
+        {items.slice(0, 8).map((item) => (
           <Link
             key={item.id}
             href={newsItemDetailHref(item)}
             className="group w-[280px] shrink-0 snap-start"
           >
-            <div className="relative mb-3 aspect-video overflow-hidden bg-neutral-800">
+            <div className="relative mb-3 aspect-video overflow-hidden bg-[rgb(var(--color-border))]">
               <SafeNewsImage
                 src={item.imageUrl || FEED_FALLBACK_LOGO}
                 alt={item.title}
@@ -72,11 +75,11 @@ export function DesktopMustWatch({ items }: DesktopMustWatchProps) {
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               />
             </div>
-            <h3 className="line-clamp-3 text-sm font-bold leading-snug text-white group-hover:underline">
+            <h3 className="line-clamp-3 text-sm font-bold leading-snug text-[rgb(var(--color-text))] group-hover:underline">
               {item.title}
             </h3>
             {item.description ? (
-              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-white/70">
+              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">
                 {item.description}
               </p>
             ) : null}

@@ -2115,7 +2115,7 @@
   .desktop-newspaper .desktop-must-watch h2,
   .desktop-newspaper .desktop-must-watch a {
     color: inherit;
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgb(var(--color-border));
   }
 
   .content-main-reels {
