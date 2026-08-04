@@ -106,7 +106,7 @@ export default function AppDownloadPage() {
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-base text-text-secondary sm:text-lg">
           Anlık bildirimler, çevrimdışı okuma ve uygulamanın hızlı versiyonu. Android&apos;de tek dokunuş;
-          iPhone&apos;da Safari → Ana Ekrana Ekle.
+          iPhone&apos;da Safari veya Chrome → Paylaş → Ana Ekrana Ekle.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -164,13 +164,13 @@ export default function AppDownloadPage() {
         <h2 className="text-2xl font-bold text-text-primary">Cihazına göre yükleme</h2>
 
         <InstallStep
-          platform="iOS / iPhone & iPad"
+          platform="iOS / iPhone & iPad (Safari veya Chrome)"
           icon="🍎"
           steps={[
-            'Safari\'de www.nahaber.com adresini aç',
-            'Alt çubuktaki Paylaş ikonuna dokun',
+            'Safari veya Chrome\'da www.nahaber.com adresini aç',
+            'Paylaş (□↑) ikonuna dokun — Safari\'de alt çubuk, Chrome\'da adres çubuğu sağında',
             'Aşağı kaydır → "Ana Ekrana Ekle"',
-            'Sağ üstte "Ekle" diyerek onayla',
+            'Sağ üstte "Ekle" diyerek onayla (Web Uygulaması olarak aç açık kalsın)',
           ]}
         />
 

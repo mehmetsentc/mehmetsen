@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Download, Check, Apple, Smartphone } from 'lucide-react'
+import { Download, Check, Smartphone, Share } from 'lucide-react'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -10,19 +10,19 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 type Platform = 'ios' | 'android' | 'desktop' | 'unknown'
+type IOSBrowser = 'safari' | 'chrome' | 'other'
 type InstallState = 'installed' | 'available' | 'ios-hint' | 'desktop-hint' | 'unknown'
 
 /**
- * /uygulama sayfasındaki birincil "Yükle" butonu.
- * Platforma göre davranır:
- *  - Chromium tabanlı + beforeinstallprompt yakaladı → native install prompt
- *  - iOS Safari → kullanıcıyı paylaş menüsüne yönlendiren ipucu açar
- *  - Masaüstü → adres çubuğundaki kurulum ikonunu işaret eder
- *  - Zaten yüklü → "Yüklü ✓" gösterir
+ * /uygulama sayfasındaki birincil "Ana ekrana ekle" butonu.
+ *  - Chromium + beforeinstallprompt → native prompt()
+ *  - iOS (Safari veya Chrome) → Paylaş → Ana Ekrana Ekle rehberi
+ *    (JS ile native install yok; navigator.share Ana Ekrana Ekle göstermez)
  */
 export function InstallNowButton() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [platform, setPlatform] = useState<Platform>('unknown')
+  const [iosBrowser, setIOSBrowser] = useState<IOSBrowser>('safari')
   const [state, setState] = useState<InstallState>('unknown')
   const [showHint, setShowHint] = useState(false)
 
@@ -38,6 +38,12 @@ export function InstallNowButton() {
 
     const detected: Platform = isIOSDevice ? 'ios' : isAndroid ? 'android' : 'desktop'
     setPlatform(detected)
+
+    if (isIOSDevice) {
+      if (/crios/.test(ua)) setIOSBrowser('chrome')
+      else if (/fxios|edgios|opios/.test(ua)) setIOSBrowser('other')
+      else setIOSBrowser('safari')
+    }
 
     if (standalone) {
       setState('installed')
@@ -97,14 +103,14 @@ export function InstallNowButton() {
   }
 
   const icon =
-    platform === 'ios' ? <Apple className="h-5 w-5" />
+    platform === 'ios' ? <Share className="h-5 w-5" />
     : platform === 'android' ? <Smartphone className="h-5 w-5" />
     : <Download className="h-5 w-5" />
 
   const label =
-    state === 'available' ? 'Şimdi yükle'
-    : platform === 'ios' ? 'iPhone\'a yükle'
-    : platform === 'android' ? 'Android\'e yükle'
+    state === 'available' ? 'Ana ekrana ekle'
+    : platform === 'ios' ? 'Ana ekrana ekle'
+    : platform === 'android' ? 'Ana ekrana ekle'
     : 'Bilgisayara yükle'
 
   return (
@@ -122,15 +128,31 @@ export function InstallNowButton() {
         <div className="absolute left-1/2 top-full z-50 mt-3 w-[320px] -translate-x-1/2 rounded-2xl border border-border bg-bg-card p-4 shadow-2xl">
           {state === 'ios-hint' && (
             <div className="text-left text-sm text-text-secondary">
-              <p className="mb-2 font-bold text-text-primary">iPhone / iPad&apos;de yükle:</p>
+              <p className="mb-2 font-bold text-text-primary">iPhone / iPad&apos;de ekle:</p>
               <p className="mb-2 text-xs text-text-tertiary">
-                Apple tek dokunuşlu kurulum diyalogu açmaya izin vermez — Safari üzerinden eklenir.
+                Apple tek dokunuşlu kurulum API&apos;si sunmaz. Safari veya Chrome&apos;da
+                Paylaş → Ana Ekrana Ekle ile eklenir.
               </p>
               <ol className="space-y-1 pl-5 list-decimal">
-                <li>Bu sayfayı <strong>Safari</strong>&apos;de aç (Chrome/Firefox iOS olmaz)</li>
-                <li>Alt çubukta <strong>Paylaş</strong> (□↑) ikonuna dokun</li>
-                <li>Aşağı kaydır → <strong>Ana Ekrana Ekle</strong></li>
-                <li>Sağ üstte <strong>Ekle</strong> dokun</li>
+                {iosBrowser === 'chrome' ? (
+                  <>
+                    <li>Üst adres çubuğunda <strong>Paylaş</strong> (□↑) ikonuna dokun</li>
+                    <li>Aşağı kaydır → <strong>Ana Ekrana Ekle</strong></li>
+                    <li>Sağ üstte <strong>Ekle</strong> dokun</li>
+                  </>
+                ) : iosBrowser === 'safari' ? (
+                  <>
+                    <li>Alt çubukta <strong>Paylaş</strong> (□↑) ikonuna dokun</li>
+                    <li>Aşağı kaydır → <strong>Ana Ekrana Ekle</strong></li>
+                    <li>Sağ üstte <strong>Ekle</strong> dokun</li>
+                  </>
+                ) : (
+                  <>
+                    <li><strong>Paylaş</strong> (□↑) veya ⋯ menüsünü aç</li>
+                    <li><strong>Ana Ekrana Ekle</strong>&apos;yi seç</li>
+                    <li><strong>Ekle</strong> dokun</li>
+                  </>
+                )}
               </ol>
             </div>
           )}

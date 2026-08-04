@@ -14,6 +14,8 @@ interface BeforeInstallPromptEvent extends Event {
 const DISMISS_KEY = 'nahaber:pwa-install-dismissed-at'
 const DISMISS_DAYS = 14
 
+type IOSBrowser = 'safari' | 'chrome' | 'other' | null
+
 function isStandaloneDisplay(): boolean {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -21,30 +23,67 @@ function isStandaloneDisplay(): boolean {
   )
 }
 
-/** Any iPhone/iPad/iPod — including Chrome/Firefox iOS (no beforeinstallprompt). */
-function detectIOS(): { isIOS: boolean; isSafari: boolean } {
+/**
+ * Any iPhone/iPad/iPod — including Chrome/Firefox/Edge wrappers.
+ * iOS never fires beforeinstallprompt; install is Share → Ana Ekrana Ekle
+ * (Safari + Chrome/Edge/Firefox on iOS 16.4+).
+ */
+function detectIOSBrowser(): { isIOS: boolean; iosBrowser: IOSBrowser } {
   const ua = navigator.userAgent.toLowerCase()
   const isIOS =
     /iphone|ipad|ipod/.test(ua) ||
-    // iPadOS 13+ desktop UA
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  const isSafari = isIOS && !/crios|fxios|edgios|opios/.test(ua)
-  return { isIOS, isSafari }
+  if (!isIOS) return { isIOS: false, iosBrowser: null }
+  if (/crios/.test(ua)) return { isIOS: true, iosBrowser: 'chrome' }
+  if (/fxios|edgios|opios/.test(ua)) return { isIOS: true, iosBrowser: 'other' }
+  return { isIOS: true, iosBrowser: 'safari' }
+}
+
+function iosGuide(iosBrowser: IOSBrowser): { summary: string; steps: string[] } {
+  if (iosBrowser === 'chrome') {
+    return {
+      summary: 'Chrome’da tek dokunuşlu yükleme yok — Paylaş menüsünden eklenir.',
+      steps: [
+        'Üst adres çubuğundaki Paylaş (□↑) ikonuna dokun',
+        'Aşağı kaydır → Ana Ekrana Ekle',
+        'Sağ üstte Ekle’ye bas',
+      ],
+    }
+  }
+  if (iosBrowser === 'safari') {
+    return {
+      summary: 'Safari’de tek dokunuşlu yükleme yok — Paylaş menüsünden eklenir.',
+      steps: [
+        'Alt çubuktaki Paylaş (□↑) ikonuna dokun',
+        'Aşağı kaydır → Ana Ekrana Ekle',
+        'Sağ üstte Ekle’ye bas',
+      ],
+    }
+  }
+  return {
+    summary: 'iPhone’da ana ekrana ekleme Paylaş menüsünden yapılır.',
+    steps: [
+      'Paylaş (□↑) veya ⋯ menüsünü aç',
+      'Ana Ekrana Ekle’yi seç',
+      'Ekle’ye bas',
+    ],
+  }
 }
 
 /**
- * PWAInstallPrompt — F5
+ * PWAInstallPrompt — tek toast / popup
  *
- * Android/Chrome/Edge: catch beforeinstallprompt → custom one-tap "Yükle".
- * iOS: Apple does not expose a programmatic install API — soft banner guides
- * Share → Ana Ekrana Ekle (Safari only; other iOS browsers get "Safari'de aç").
+ * Android/Chrome/Edge: beforeinstallprompt → "Ana ekrana ekle" → native prompt().
+ * iOS (Safari + Chrome iOS): aynı toast; buton kısa rehberi açar.
+ *   JS ile native install tetiklenemez — navigator.share() da Ana Ekrana Ekle vermez.
  */
 export function PWAInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
-  const [isSafari, setIsSafari] = useState(false)
+  const [iosBrowser, setIOSBrowser] = useState<IOSBrowser>(null)
   const [installed, setInstalled] = useState(false)
+  const [iosGuideOpen, setIOSGuideOpen] = useState(false)
 
   const isRecentlyDismissed = useCallback((): boolean => {
     try {
@@ -60,9 +99,9 @@ export function PWAInstallPrompt() {
 
   useEffect(() => {
     setInstalled(isStandaloneDisplay())
-    const { isIOS: ios, isSafari: safari } = detectIOS()
+    const { isIOS: ios, iosBrowser: browser } = detectIOSBrowser()
     setIsIOS(ios)
-    setIsSafari(safari)
+    setIOSBrowser(browser)
   }, [])
 
   useEffect(() => {
@@ -101,6 +140,7 @@ export function PWAInstallPrompt() {
 
   const dismiss = useCallback(() => {
     setVisible(false)
+    setIOSGuideOpen(false)
     try {
       localStorage.setItem(DISMISS_KEY, String(Date.now()))
     } catch {
@@ -134,7 +174,19 @@ export function PWAInstallPrompt() {
     }
   }, [deferred])
 
+  const onPrimary = useCallback(() => {
+    if (!isIOS && deferred) {
+      void install()
+      return
+    }
+    // iOS: no programmatic install — reveal shortest guided steps
+    setIOSGuideOpen(true)
+  }, [isIOS, deferred, install])
+
   if (installed) return null
+
+  const guide = iosGuide(iosBrowser)
+  const canNativeInstall = !isIOS && !!deferred
 
   return (
     <AnimatePresence>
@@ -146,7 +198,7 @@ export function PWAInstallPrompt() {
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
           className="fixed inset-x-3 bottom-3 z-banner sm:left-auto sm:right-4 sm:w-[380px]"
           role="dialog"
-          aria-label="NaHaber uygulamayı yükle"
+          aria-label="NaHaber ana ekrana ekle"
         >
           <div className="relative overflow-hidden rounded-2xl border border-border bg-bg-card/95 p-4 shadow-2xl backdrop-blur-xl">
             <button
@@ -157,7 +209,8 @@ export function PWAInstallPrompt() {
             >
               <X className="h-4 w-4" />
             </button>
-            <div className="flex items-start gap-3">
+
+            <div className="flex items-start gap-3 pr-6">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
                 {isIOS ? <Share className="h-6 w-6" /> : <Download className="h-6 w-6" />}
               </span>
@@ -167,38 +220,65 @@ export function PWAInstallPrompt() {
                 </p>
                 <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">
                   {isIOS
-                    ? isSafari
-                      ? 'Safari\'de Paylaş → "Ana Ekrana Ekle" ile uygulama gibi açılır.'
-                      : 'iPhone\'da ana ekrana ekleme yalnızca Safari ile mümkün.'
-                    : 'Tek dokunuşla yükle — daha hızlı erişim ve bildirimler.'}
+                    ? guide.summary
+                    : canNativeInstall
+                      ? 'Tek dokunuşla yükle — daha hızlı erişim.'
+                      : 'Tarayıcı menüsünden ana ekrana ekleyebilirsin.'}
                 </p>
               </div>
             </div>
 
-            {!isIOS && deferred ? (
+            {(canNativeInstall || isIOS) && (
               <div className="mt-4 flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={dismiss}>
                   Şimdi değil
                 </Button>
-                <Button variant="solid" size="sm" onClick={install} leftIcon={<Download className="h-3.5 w-3.5" />}>
-                  Yükle
+                <Button
+                  variant="solid"
+                  size="sm"
+                  onClick={onPrimary}
+                  leftIcon={
+                    isIOS ? <Share className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />
+                  }
+                >
+                  Ana ekrana ekle
                 </Button>
               </div>
-            ) : isIOS ? (
-              <div className="mt-3 rounded-xl bg-bg-subtle/60 px-3 py-2 text-2xs leading-relaxed text-text-tertiary">
-                {isSafari ? (
-                  <>
-                    Alt çubuktaki <strong>Paylaş</strong> (□↑) → aşağı kaydır →{' '}
-                    <strong>Ana Ekrana Ekle</strong> → <strong>Ekle</strong>.
-                  </>
-                ) : (
-                  <>
-                    <strong>Safari</strong>&apos;de nahaber.com aç → Paylaş →{' '}
-                    <strong>Ana Ekrana Ekle</strong>. Chrome/Firefox iOS bunu desteklemez.
-                  </>
-                )}
-              </div>
-            ) : null}
+            )}
+
+            <AnimatePresence>
+              {isIOS && iosGuideOpen && (
+                <motion.ol
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22 }}
+                  className="mt-3 space-y-1.5 overflow-hidden rounded-xl bg-bg-subtle/60 px-3 py-2.5 text-2xs leading-relaxed text-text-tertiary"
+                >
+                  {guide.steps.map((step, i) => (
+                    <li key={step} className="flex gap-2">
+                      <span className="font-bold text-brand-500">{i + 1}.</span>
+                      <span>
+                        {step.split(/(Paylaş \(□↑\)|Ana Ekrana Ekle|Ekle)/g).map((part, j) =>
+                          /^(Paylaş \(□↑\)|Ana Ekrana Ekle|Ekle)$/.test(part) ? (
+                            <strong key={j} className="text-text-secondary">
+                              {part}
+                            </strong>
+                          ) : (
+                            <span key={j}>{part}</span>
+                          ),
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                  {iosBrowser === 'chrome' && (
+                    <li className="pt-0.5 text-[10px] text-text-tertiary/80">
+                      İpucu: Paylaş ikonu adres çubuğunun sağında.
+                    </li>
+                  )}
+                </motion.ol>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       )}
