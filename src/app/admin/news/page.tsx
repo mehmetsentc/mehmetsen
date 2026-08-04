@@ -610,6 +610,7 @@ function AdminNewsDesktopPage() {
   const [categoryFilter, setCategoryFilter] = useState(categoryParam)
   const [cityFilter, setCityFilter] = useState('')
   const pendingCategoryRef = useRef<string | null>(null)
+  const cachedCitiesRef = useRef<{ slug: string; name: string; count: number }[]>([])
 
   useEffect(() => {
     // Ignore out-of-order URL updates while a user-driven category change is in flight.
@@ -624,8 +625,9 @@ function AdminNewsDesktopPage() {
 
   // İl filtresi yalnızca Yerel kategorisinde anlamlı; çıkınca temizle
   useEffect(() => {
-    if (categoryFilter !== YEREL_CATEGORY_ID && cityFilter) {
-      setCityFilter('')
+    if (categoryFilter !== YEREL_CATEGORY_ID) {
+      if (cityFilter) setCityFilter('')
+      cachedCitiesRef.current = []
     }
   }, [categoryFilter, cityFilter])
 
@@ -663,6 +665,9 @@ function AdminNewsDesktopPage() {
   const categoryFilterRef = useRef(categoryFilter)
   categoryFilterRef.current = categoryFilter
 
+  const cityFilterRef = useRef(cityFilter)
+  cityFilterRef.current = cityFilter
+
   // Generation counter — discard stale in-flight loads when category/filter changes mid-fetch
   const loadGenRef = useRef(0)
 
@@ -690,10 +695,12 @@ function AdminNewsDesktopPage() {
       const cursor = pageCursorsRef.current[page] ?? undefined
       // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
       const catFilter = searchTerm.trim() ? undefined : categoryFilterRef.current || undefined
+      // İl filtresi — Firestore'a doğrudan geçirilir (server-side)
+      const citySlugFilter = searchTerm.trim() ? undefined : cityFilterRef.current || undefined
       // 'duplicate' filtresi: Firestore'dan pending'leri çek, client-side isDuplicate filtrele
       const fsFilter: AdminNewsFilter = filter === 'duplicate' ? 'pending' : filter
       const [result, tagResults] = await Promise.all([
-        adminNewsService.list(fsFilter, cursor, catFilter, filter === 'duplicate' ? 500 : (searchTerm.trim() ? 500 : undefined)),
+        adminNewsService.list(fsFilter, cursor, catFilter, filter === 'duplicate' ? 500 : (searchTerm.trim() ? 500 : undefined), citySlugFilter),
         searchTerm.trim() ? adminNewsService.searchByTag(searchTerm) : Promise.resolve([]),
       ])
       if (myGen !== loadGenRef.current) return
@@ -724,7 +731,7 @@ function AdminNewsDesktopPage() {
 
   useEffect(() => {
     if (authLoading) return
-    // Reset pagination on filter or category change.
+    // Reset pagination on filter, category, or city change.
     pageCursorsRef.current = [null]
     setCurrentPage(0)
     setKnownPages(1)
@@ -732,7 +739,7 @@ function AdminNewsDesktopPage() {
     const tid = setTimeout(() => { void load(0) }, 0)
     return () => clearTimeout(tid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, categoryFilter, authLoading])
+  }, [filter, categoryFilter, cityFilter, authLoading])
 
   const handleApprove = async (post: AdminNewsItem) => {
     setActionLoading(post.id)
@@ -892,18 +899,22 @@ function AdminNewsDesktopPage() {
     else setSelected(new Set(posts.map(p => p.id)))
   }
 
-  // Yerel listesindeki iller — mevcut sayfadaki haberlerden (ilçe → il normalize)
+  // Yerel listesindeki iller — il filtresi yokken mevcut sayfadaki haberlerden hesaplanır.
+  // Bir il seçildiğinde sunucu yalnızca o ilin haberlerini döner, bu yüzden listeyi cache'leriz.
   const availableCities = useMemo(() => {
+    if (cityFilter) return cachedCitiesRef.current
     const counts = new Map<string, number>()
     for (const p of posts) {
       const slug = postProvinceSlug(p)
       if (!slug) continue
       counts.set(slug, (counts.get(slug) ?? 0) + 1)
     }
-    return [...counts.entries()]
+    const list = [...counts.entries()]
       .map(([slug, count]) => ({ slug, name: getCityCategoryName(slug), count }))
       .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
-  }, [posts])
+    if (list.length > 0) cachedCitiesRef.current = list
+    return list
+  }, [posts, cityFilter])
 
   const filtered = posts.filter(p => {
     if (cityFilter) {

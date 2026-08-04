@@ -206,7 +206,8 @@ function docCreatedAtMs(data: NewsDocument): number {
 function mapAdminNewsDocs(
   docs: QueryDocumentSnapshot[],
   filter: AdminNewsFilter,
-  categoryId?: string
+  categoryId?: string,
+  citySlug?: string
 ): AdminNewsItem[] {
   const sorted = [...docs].sort(
     (a, b) =>
@@ -223,6 +224,11 @@ function mapAdminNewsDocs(
   // leak other categories into a category-filtered admin view.
   if (categoryId) {
     posts = posts.filter((p) => p.categoryId === categoryId)
+  }
+
+  // Enforce citySlug in-memory for fallback queries that may drop the constraint.
+  if (citySlug) {
+    posts = posts.filter((p) => p.citySlug === citySlug)
   }
 
   if (filter === 'removed') {
@@ -250,7 +256,8 @@ export const adminNewsService = {
     filter: AdminNewsFilter = 'all',
     lastDoc?: QueryDocumentSnapshot,
     categoryId?: string,
-    limitOverride?: number
+    limitOverride?: number,
+    citySlug?: string
   ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
     const pageSize = limitOverride ?? PAGE_SIZE
     if (filter === 'pending') {
@@ -261,6 +268,7 @@ export const adminNewsService = {
     const filterConstraints: QueryConstraint[] = []
     if (status) filterConstraints.push(where('status', '==', status))
     if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
+    if (citySlug) filterConstraints.push(where('citySlug', '==', citySlug))
 
     // Draft/pending rows often lack createdAt/publishedAt. Firestore orderBy on a
     // missing field returns an empty snapshot (success) — so we must keep trying
@@ -283,13 +291,14 @@ export const adminNewsService = {
       const isLast = i === queryAttempts.length - 1
       try {
         const snap = await fetchAdminNewsSnap(constraints)
-        const posts = mapAdminNewsDocs(snap.docs, filter, categoryId).slice(0, pageSize)
+        const allFiltered = mapAdminNewsDocs(snap.docs, filter, categoryId, citySlug)
+        const posts = allFiltered.slice(0, pageSize)
         // Empty ordered query ≠ "no drafts" — try next attempt while filter is set.
-        if (posts.length === 0 && status && !isLast) continue
+        if (posts.length === 0 && (status || citySlug) && !isLast) continue
         return {
           posts,
           lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-          hasMore: snap.docs.length >= pageSize,
+          hasMore: allFiltered.length > pageSize || snap.docs.length >= pageSize,
         }
       } catch (error) {
         lastError = error
