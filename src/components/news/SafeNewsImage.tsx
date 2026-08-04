@@ -53,6 +53,8 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
         loading={loading}
         onError={handleError}
         {...rest}
+        draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
       />
     )
   }
@@ -67,6 +69,8 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
         alt={alt ?? ''}
         loading={lazy ? 'lazy' : 'eager'}
         decoding="async"
+        draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
         className={cn(
           'absolute inset-0 h-full w-full object-center',
           !hasObjectFitClass(className) && 'object-cover',
@@ -84,6 +88,8 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
       alt={alt ?? ''}
       loading={lazy ? 'lazy' : 'eager'}
       decoding="async"
+      draggable={false}
+      onContextMenu={(e) => e.preventDefault()}
       className={className}
       width={typeof rest.width === 'number' ? rest.width : undefined}
       height={typeof rest.height === 'number' ? rest.height : undefined}

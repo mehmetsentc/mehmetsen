@@ -1882,6 +1882,37 @@
     max-height: none;
   }
 
+  /* Soft anti-copy — public article reading UI only (not admin / inputs) */
+  .news-article-page .news-body,
+  .news-article-page .article-prose,
+  .news-article-page .news-lead,
+  .news-article-page .news-article-title,
+  .news-article-page .news-article-hero,
+  .news-article-page figure {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  .news-article-page img {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+    user-drag: none;
+  }
+
+  .news-article-page input,
+  .news-article-page textarea,
+  .news-article-page select,
+  .news-article-page [contenteditable='true'],
+  .news-article-page [contenteditable=''],
+  .news-article-page [role='textbox'] {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+
   .article-prose {
     max-width: 42rem;
     line-height: 1.7;

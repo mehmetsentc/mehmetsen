@@ -52,6 +52,8 @@ export function SliderImage({
           priority={priority}
           fetchPriority={priority ? 'high' : 'auto'}
           loading={priority ? 'eager' : 'lazy'}
+          draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
         />
       )
     }
@@ -67,6 +69,8 @@ export function SliderImage({
         priority={priority}
         fetchPriority={priority ? 'high' : 'auto'}
         loading={priority ? 'eager' : 'lazy'}
+        draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
       />
     )
   }
@@ -79,6 +83,8 @@ export function SliderImage({
         alt={alt}
         fetchPriority={priority ? 'high' : 'auto'}
         decoding="async"
+        draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
         className={cn('h-auto w-full', className)}
       />
     )
@@ -91,6 +97,8 @@ export function SliderImage({
       alt={alt}
       fetchPriority={priority ? 'high' : 'auto'}
       decoding="async"
+      draggable={false}
+      onContextMenu={(e) => e.preventDefault()}
       className={cn('absolute inset-0 h-full w-full', objectClass, className)}
     />
   )
