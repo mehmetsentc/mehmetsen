@@ -1,10 +1,10 @@
 import Link from 'next/link'
-import { LogIn, Mail, Settings, Smartphone, UserPlus } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
+import { FooterAccountLinks } from '@/components/layout/FooterAccountLinks'
 import {
   CONTACT_EMAIL,
-  FOOTER_ACCOUNT_LINKS,
   FOOTER_BOTTOM_LINKS,
   FOOTER_NAV_COLUMNS,
   type FooterLink,
@@ -46,14 +46,6 @@ const SOCIAL = [
   { label: 'Instagram', href: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? 'https://www.instagram.com/nahabercom' },
   { label: 'YouTube', href: process.env.NEXT_PUBLIC_YOUTUBE_URL ?? 'https://www.youtube.com/@nahabercom' },
 ] as const
-
-const ACCOUNT_ICONS: Record<string, typeof LogIn> = {
-  'Giriş Yap': LogIn,
-  'Kayıt Ol': UserPlus,
-  'Hesap Ayarları': Settings,
-  'Mobil Uygulama': Smartphone,
-  'İletişim Formu': Mail,
-}
 
 function FooterLinkItem({ link, bold = false }: { link: FooterLink; bold?: boolean }) {
   const className = cn(
@@ -198,20 +190,7 @@ export function DesktopHomeFooter() {
               Hesap
             </h2>
             <ul className="m-0 flex list-none flex-col gap-3 p-0">
-              {FOOTER_ACCOUNT_LINKS.map((link) => {
-                const Icon = ACCOUNT_ICONS[link.label]
-                return (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="inline-flex items-center gap-2 text-[13px] font-bold text-[rgb(var(--color-text))] transition-colors hover:underline"
-                    >
-                      {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
-                      {link.label}
-                    </Link>
-                  </li>
-                )
-              })}
+              <FooterAccountLinks />
               <li className="pt-1">
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
