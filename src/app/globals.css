@@ -2041,19 +2041,28 @@
   }
 
   @media (min-width: 1024px) {
-    /* Theme D barlar: full-bleed değil — content-main / logo sütunu ile aynı max-width */
+    /* Theme D: üst #111 + alt #1A1A1A aynı gazete sütunu — ikisi de stretch, full-bleed yok */
     .desktop-web-header--concept-b {
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
       width: 100%;
       max-width: var(--layout-content-newspaper);
       margin-left: auto;
       margin-right: auto;
       z-index: 50;
       overflow: visible;
+      box-sizing: border-box;
     }
 
     .desktop-web-header__bar {
       position: relative;
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      flex: 0 0 auto;
+      box-sizing: border-box;
     }
 
     .desktop-web-header__bar--brand {
@@ -2064,7 +2073,7 @@
       background-color: rgb(var(--header-navy-bg));
     }
 
-    /* Full-bleed ::before kaldırıldı — sayfa zemini solda/sağda görünür */
+    /* Full-bleed ::before kaldırıldı — iki bar da aynı content kutusu */
     .desktop-web-header__bar::before {
       content: none;
     }
@@ -2072,9 +2081,11 @@
     .desktop-web-header__inner {
       position: relative;
       z-index: 1;
+      display: flex;
       width: 100%;
       max-width: 100%;
       margin-inline: 0;
+      box-sizing: border-box;
     }
   }
 

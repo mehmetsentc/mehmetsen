@@ -65,7 +65,7 @@ function HeaderBrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   )
 }
 
-/** Content-width charcoal bar (Theme D) — matches newspaper column, not full-bleed. */
+/** Content-width charcoal bar (Theme D) — both tones share one newspaper column width. */
 function HeaderBar({
   tone,
   className,
@@ -84,13 +84,15 @@ function HeaderBar({
   return (
     <Tag
       className={cn(
-        'desktop-web-header__bar',
+        'desktop-web-header__bar w-full max-w-full',
         tone === 'brand' ? 'desktop-web-header__bar--brand' : 'desktop-web-header__bar--navy',
         className
       )}
       {...(ariaLabel ? { 'aria-label': ariaLabel } : {})}
     >
-      <div className={cn('desktop-web-header__inner', innerClassName)}>{children}</div>
+      <div className={cn('desktop-web-header__inner w-full max-w-full', innerClassName)}>
+        {children}
+      </div>
     </Tag>
   )
 }
@@ -110,7 +112,10 @@ function SubcategoryTabs({
       tone="navy"
       className="border-t border-white/10"
       aria-label={`${tabParent?.name ?? 'Kategori'} alt bölümleri`}
-      innerClassName="flex items-stretch overflow-x-auto scrollbar-hide"
+      innerClassName={cn(
+        'flex items-stretch overflow-x-auto scrollbar-hide',
+        compact ? 'px-1' : 'px-3 sm:px-4'
+      )}
     >
       <div className="flex min-w-max items-stretch scroll-px-3">
         <Link
@@ -204,9 +209,9 @@ export function DesktopWebHeader({
           as="nav"
           tone="navy"
           aria-label="İkincil haber kategorileri"
-          innerClassName="flex items-center justify-center overflow-x-auto scrollbar-hide"
+          innerClassName="flex items-center overflow-x-auto scrollbar-hide px-1"
         >
-          <DesktopSiteNavLinks variant="header-secondary" className="mx-auto justify-center" />
+          <DesktopSiteNavLinks variant="header-secondary" className="w-full justify-start" />
         </HeaderBar>
 
         {showSubTabs ? (
@@ -274,11 +279,11 @@ export function DesktopWebHeader({
         as="nav"
         tone="navy"
         aria-label="İkincil haber kategorileri"
-        innerClassName="flex items-center justify-center overflow-x-auto scrollbar-hide"
+        innerClassName="flex items-center overflow-x-auto scrollbar-hide px-3 sm:px-4"
       >
         <DesktopSiteNavLinks
           variant="header-secondary"
-          className="mx-auto justify-center"
+          className="w-full justify-start"
         />
       </HeaderBar>
 
