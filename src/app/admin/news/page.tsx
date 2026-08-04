@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, useRef, Suspense } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
@@ -22,6 +22,7 @@ import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 import { ROUTES } from '@/constants/routes'
+import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -578,6 +579,16 @@ const CATEGORY_CHIPS: { id: string; label: string }[] = [
   { id: 'yerel-haber', label: 'Yerel' },
 ]
 
+const YEREL_CATEGORY_ID = 'yerel-haber'
+
+/** Resolve a post's city/citySlug to a canonical province slug (ilçe → il). */
+function postProvinceSlug(post: AdminNewsItem): string | null {
+  const raw = post.citySlug?.trim() || post.city?.trim() || ''
+  if (!raw) return null
+  const slug = normalizeCitySlug(raw)
+  return slug || null
+}
+
 function AdminNewsDesktopPage() {
   const { can, user, loading: authLoading } = useCmsAuth()
   const router = useRouter()
@@ -597,6 +608,7 @@ function AdminNewsDesktopPage() {
   // Local category state — Link soft-nav was freezing pills after the first click.
   // Drive the UI like status filters; keep the URL in sync via replace.
   const [categoryFilter, setCategoryFilter] = useState(categoryParam)
+  const [cityFilter, setCityFilter] = useState('')
   const pendingCategoryRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -609,6 +621,13 @@ function AdminNewsDesktopPage() {
     }
     setCategoryFilter(categoryParam)
   }, [categoryParam])
+
+  // İl filtresi yalnızca Yerel kategorisinde anlamlı; çıkınca temizle
+  useEffect(() => {
+    if (categoryFilter !== YEREL_CATEGORY_ID && cityFilter) {
+      setCityFilter('')
+    }
+  }, [categoryFilter, cityFilter])
 
   useEffect(() => {
     const fp = searchParams.get('filter') ?? ''
@@ -658,6 +677,7 @@ function AdminNewsDesktopPage() {
   const selectCategory = useCallback((nextCategory: string) => {
     if (nextCategory === categoryFilterRef.current) return
     pendingCategoryRef.current = nextCategory
+    if (nextCategory !== YEREL_CATEGORY_ID) setCityFilter('')
     setCategoryFilter(nextCategory)
     syncCategoryToUrl(nextCategory)
   }, [syncCategoryToUrl])
@@ -872,7 +892,24 @@ function AdminNewsDesktopPage() {
     else setSelected(new Set(posts.map(p => p.id)))
   }
 
+  // Yerel listesindeki iller — mevcut sayfadaki haberlerden (ilçe → il normalize)
+  const availableCities = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const p of posts) {
+      const slug = postProvinceSlug(p)
+      if (!slug) continue
+      counts.set(slug, (counts.get(slug) ?? 0) + 1)
+    }
+    return [...counts.entries()]
+      .map(([slug, count]) => ({ slug, name: getCityCategoryName(slug), count }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+  }, [posts])
+
   const filtered = posts.filter(p => {
+    if (cityFilter) {
+      const slug = postProvinceSlug(p)
+      if (slug !== cityFilter) return false
+    }
     if (!search.trim()) return true
     const term = search.toLowerCase()
     const haystack = [
@@ -888,6 +925,7 @@ function AdminNewsDesktopPage() {
   })
 
   const pendingCount = posts.filter(p => p.status === 'pending').length
+  const isYerel = categoryFilter === YEREL_CATEGORY_ID
 
   return (
     <div className="flex flex-col">
@@ -926,6 +964,40 @@ function AdminNewsDesktopPage() {
             </button>
           ))}
         </div>
+
+        {/* Yerel → il (province) filter chips */}
+        {isYerel && (
+          <div className="relative z-10 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              type="button"
+              onClick={() => setCityFilter('')}
+              className={cn(
+                'flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all',
+                !cityFilter
+                  ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
+                  : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+              )}
+            >
+              Tüm iller
+            </button>
+            {availableCities.map(city => (
+              <button
+                key={city.slug}
+                type="button"
+                onClick={() => setCityFilter(city.slug === cityFilter ? '' : city.slug)}
+                className={cn(
+                  'flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all',
+                  cityFilter === city.slug
+                    ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
+                    : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+                )}
+                title={`${city.count} haber`}
+              >
+                {city.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Filter tabs + search */}
         <div className="flex flex-wrap items-center gap-3">
