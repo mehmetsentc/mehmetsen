@@ -14,6 +14,7 @@ import type { NewsItem } from '@/types/newsItem'
 
 interface LocalNewsClientProps {
   breakingItems?: NewsItem[]
+  initialCitySlug?: string
 }
 
 function LocalScrollHeaderConfig({ breakingItems }: { breakingItems: NewsItem[] }) {
@@ -24,9 +25,9 @@ function LocalScrollHeaderConfig({ breakingItems }: { breakingItems: NewsItem[] 
   return null
 }
 
-function LocalNewsBody({ breakingItems = [] }: LocalNewsClientProps) {
+function LocalNewsBody({ breakingItems = [], initialCitySlug }: LocalNewsClientProps) {
   const { isDesktop } = usePlatformLayout()
-  const state = useLocalNewsPage()
+  const state = useLocalNewsPage(initialCitySlug)
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -65,10 +66,10 @@ function LocalNewsBody({ breakingItems = [] }: LocalNewsClientProps) {
   )
 }
 
-export function LocalNewsClient({ breakingItems = [] }: LocalNewsClientProps) {
+export function LocalNewsClient({ breakingItems = [], initialCitySlug }: LocalNewsClientProps) {
   return (
     <Suspense fallback={null}>
-      <LocalNewsBody breakingItems={breakingItems} />
+      <LocalNewsBody breakingItems={breakingItems} initialCitySlug={initialCitySlug} />
     </Suspense>
   )
 }

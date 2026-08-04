@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { postService } from '@/services/postService'
@@ -105,13 +105,15 @@ function hasExplicitLocationChoice(): boolean {
   )
 }
 
-export function useLocalNewsPage() {
+export function useLocalNewsPage(initialCitySlug?: string) {
   const pathname = usePathname()
+  const router = useRouter()
   const userLocation = useUserLocation()
   const [locationState, setLocationState] = useState<LocalNewsLocationState>('idle')
-  const [city, setCity] = useState<LocalCity | null>(() =>
-    cityFromSlug(resolvePersistedLocalCitySlug(ROUTES.LOCAL))
-  )
+  const [city, setCity] = useState<LocalCity | null>(() => {
+    if (initialCitySlug) return cityFromSlug(initialCitySlug)
+    return cityFromSlug(resolvePersistedLocalCitySlug(ROUTES.LOCAL))
+  })
   const [query, setQuery] = useState('')
   const [posts, setPosts] = useState<TimelinePost[]>([])
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
@@ -272,6 +274,8 @@ export function useLocalNewsPage() {
         updatedAt: Date.now(),
       })
 
+      router.replace(ROUTES.LOCAL_CITY(slug))
+
       if (!opts?.silent) {
         if (source === 'geolocation') {
           toast.success(`Konumunuz: ${name}`)
@@ -280,7 +284,7 @@ export function useLocalNewsPage() {
         }
       }
     },
-    [setStoredCitySlug, setUserPickedCity]
+    [setStoredCitySlug, setUserPickedCity, router]
   )
 
   const requestGeolocation = useCallback(
@@ -340,6 +344,9 @@ export function useLocalNewsPage() {
   }, [userPickedCity])
 
   useEffect(() => {
+    // If URL already provides the city (via initialCitySlug), skip persisted slug resolution
+    if (initialCitySlug) return
+
     const persistedSlug =
       storedCitySlug ??
       resolvePersistedLocalCitySlug(pathname) ??
@@ -381,6 +388,7 @@ export function useLocalNewsPage() {
   }, [
     applyCity,
     city,
+    initialCitySlug,
     pathname,
     storedCitySlug,
     userLocation.citySlug,
@@ -470,8 +478,9 @@ export function useLocalNewsPage() {
         updatedAt: Date.now(),
       })
       requestedRef.current = true
+      router.push(ROUTES.LOCAL_CITY(selected.slug))
     },
-    [setStoredCitySlug, setUserPickedCity]
+    [setStoredCitySlug, setUserPickedCity, router]
   )
 
   const retryFetch = useCallback(() => {
@@ -494,7 +503,8 @@ export function useLocalNewsPage() {
     requestedRef.current = false
     setCity(null)
     setLocationState('idle')
-  }, [setStoredCitySlug, setUserPickedCity])
+    router.push(ROUTES.LOCAL)
+  }, [setStoredCitySlug, setUserPickedCity, router])
 
   const needsLocationSetup =
     !city &&

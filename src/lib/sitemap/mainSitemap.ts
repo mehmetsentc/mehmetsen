@@ -4,6 +4,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { TURKISH_PROVINCES } from '@/constants/cities'
 
 // ─── Pagination config ────────────────────────────────────────────────────────
 // Time-range pagination: each sitemap page covers one WEEK of articles.
@@ -46,6 +47,12 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
     priority: 0.85,
   }))
 
+  const localCityRoutes: MetadataRoute.Sitemap = TURKISH_PROVINCES.map((province) => ({
+    url: `${base}${ROUTES.LOCAL_CITY(province.slug)}`,
+    changeFrequency: 'daily' as const,
+    priority: 0.7,
+  }))
+
   try {
     const latestForSeo = await getAdminFirestore()
       .collection(Collections.NEWS)
@@ -71,9 +78,9 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
       priority: 0.5,
     }))
 
-    return [...staticRoutes, ...categoryRoutes, ...tagRoutes]
+    return [...staticRoutes, ...categoryRoutes, ...localCityRoutes, ...tagRoutes]
   } catch {
-    return [...staticRoutes, ...categoryRoutes]
+    return [...staticRoutes, ...categoryRoutes, ...localCityRoutes]
   }
 }
 

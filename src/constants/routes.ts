@@ -28,6 +28,7 @@ export const ROUTES = {
   GAMES: '/oyunlar',
   GAME: (slug: string) => `/oyunlar/${encodeURIComponent(slug)}`,
   LOCAL: '/yerel',
+  LOCAL_CITY: (citySlug: string) => `/yerel/${encodeURIComponent(citySlug)}`,
   CATEGORY: (slug: string) => `/kategori/${slug}`,
   TEKNOLOJI: '/kategori/teknoloji',
   SPOR: '/kategori/spor',

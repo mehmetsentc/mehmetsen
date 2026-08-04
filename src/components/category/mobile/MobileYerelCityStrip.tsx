@@ -27,7 +27,7 @@ export function MobileYerelCityStrip() {
         {QUICK_CITIES.map((c) => (
           <Link
             key={c.slug}
-            href={`${ROUTES.LOCAL}?sehir=${c.slug}`}
+            href={ROUTES.LOCAL_CITY(c.slug)}
             className="mc-city-strip__chip"
           >
             {c.name}
