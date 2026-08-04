@@ -372,6 +372,14 @@ export function getHeaderSecondaryNavItems(): SiteNavItem[] {
   ).filter((item): item is SiteNavItem => item !== null)
 }
 
+/** Tüm kategoriler birleşik — birincil + ikincil sırasıyla, alt bar'da tek satır. */
+export function getHeaderAllNavItems(): SiteNavItem[] {
+  return [
+    ...getHeaderPrimaryNavItems(),
+    ...getHeaderSecondaryNavItems(),
+  ]
+}
+
 export interface SwipeDestination {
   id: string
   label: string

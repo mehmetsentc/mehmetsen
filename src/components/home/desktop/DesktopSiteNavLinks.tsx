@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
+  getHeaderAllNavItems,
   getHeaderPrimaryNavItems,
   getHeaderSecondaryNavItems,
   getSiteNavItems,
@@ -13,11 +14,12 @@ import { cn } from '@/lib/utils'
 const NAV = getSiteNavItems()
 const PRIMARY = getHeaderPrimaryNavItems()
 const SECONDARY = getHeaderSecondaryNavItems()
+const ALL = getHeaderAllNavItems()
 const FOOTER_PRIMARY = NAV.filter((item) => !item.indent && item.id !== 'teve')
 const FOOTER_GROUPED = NAV.filter((item) => item.indent)
 
 interface DesktopSiteNavLinksProps {
-  variant: 'header' | 'footer' | 'header-primary' | 'header-secondary'
+  variant: 'header' | 'footer' | 'header-primary' | 'header-secondary' | 'header-all'
   /** masthead: NYT tarzı ortalanmış, ayırıcısız nav (legacy) */
   layout?: 'default' | 'masthead'
   className?: string
@@ -125,6 +127,10 @@ export function DesktopSiteNavLinks({
 
   if (variant === 'header-secondary') {
     return <HeaderNavList items={SECONDARY} tone="onNavy" className={className} />
+  }
+
+  if (variant === 'header-all') {
+    return <HeaderNavList items={ALL} tone="onNavy" className={className} />
   }
 
   if (variant === 'header') {

@@ -174,7 +174,7 @@ export function DesktopWebHeader({
         <HeaderBar
           tone="brand"
           className="text-white"
-          innerClassName="flex items-stretch gap-2 px-1"
+          innerClassName="flex items-center gap-2 px-1"
         >
           <div className="flex shrink-0 items-center gap-1 py-2 pl-1">
             <HeaderSidebarToggle compact />
@@ -187,12 +187,7 @@ export function DesktopWebHeader({
             </Link>
           </div>
 
-          <nav
-            className="min-w-0 flex-1 overflow-x-auto scroll-px-3 scrollbar-hide border-l border-white/25 pl-2"
-            aria-label="Haber kategorileri"
-          >
-            <DesktopSiteNavLinks variant="header-primary" />
-          </nav>
+          <div className="flex-1" />
 
           <Link
             href={ROUTES.SEARCH}
@@ -208,10 +203,10 @@ export function DesktopWebHeader({
         <HeaderBar
           as="nav"
           tone="navy"
-          aria-label="İkincil haber kategorileri"
+          aria-label="Haber kategorileri"
           innerClassName="flex items-center overflow-x-auto scrollbar-hide px-1"
         >
-          <DesktopSiteNavLinks variant="header-secondary" className="w-full justify-start" />
+          <DesktopSiteNavLinks variant="header-all" className="w-full justify-start" />
         </HeaderBar>
 
         {showSubTabs ? (
@@ -252,14 +247,7 @@ export function DesktopWebHeader({
           </Link>
         </div>
 
-        <nav
-          className="min-w-0 flex-1 overflow-x-auto scrollbar-hide"
-          aria-label="Birincil haber kategorileri"
-          itemScope
-          itemType="https://schema.org/SiteNavigationElement"
-        >
-          <DesktopSiteNavLinks variant="header-primary" />
-        </nav>
+        <div className="flex-1" />
 
         <div className="flex shrink-0 items-center gap-2">
           <Link
@@ -278,11 +266,11 @@ export function DesktopWebHeader({
       <HeaderBar
         as="nav"
         tone="navy"
-        aria-label="İkincil haber kategorileri"
+        aria-label="Haber kategorileri"
         innerClassName="flex items-center overflow-x-auto scrollbar-hide px-3 sm:px-4"
       >
         <DesktopSiteNavLinks
-          variant="header-secondary"
+          variant="header-all"
           className="w-full justify-start"
         />
       </HeaderBar>
