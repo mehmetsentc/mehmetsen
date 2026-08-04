@@ -229,7 +229,7 @@ export function DesktopWebHeader({
       itemScope
       itemType="https://schema.org/WPHeader"
     >
-      {/* Full-bleed koyu marka bar; iç içerik content sütununa hizalı */}
+      {/* Full-bleed Theme D kömür bar; iç içerik content sütununa hizalı */}
       <HeaderBar
         tone="brand"
         className="relative z-20 text-white"
