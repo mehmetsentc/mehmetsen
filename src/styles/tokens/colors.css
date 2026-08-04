@@ -91,16 +91,16 @@
     --nav-bar-bg:        255 255 255;
     --nav-bar-border:    226 232 240;
 
-    /* Concept B header — dual-tone bars */
-    --header-brand-bg:   var(--brand-500); /* #E50914 */
-    --header-navy-bg:     15  23  42;      /* #0F172A */
+    /* Concept B header — koyu marka üst + kontrast ikincil bar */
+    --header-brand-bg:    15  23  42;      /* #0F172A — koyu marka (navy) */
+    --header-navy-bg:     30  41  59;      /* #1E293B — bir ton açık secondary */
     --header-onbrand:    255 255 255;
 
-    /* Wordmark — logo: Na (beyaz) + Haber (kırmızı); kırmızı barda krem alternatif */
+    /* Wordmark — logo: Na (metin) + Haber (kırmızı); koyu barda Na beyaz + Haber krem/kırmızı */
     --wordmark-na:             var(--text-primary);
     --wordmark-haber:          var(--brand-500); /* #E50914 */
     --wordmark-na-onbrand:     255 255 255;      /* #FFFFFF */
-    --wordmark-haber-onbrand:  255 245 235;      /* #FFF5EB krem */
+    --wordmark-haber-onbrand:  255 245 235;      /* #FFF5EB krem — koyu zeminde okunur */
   }
 
   .dark {
@@ -136,9 +136,9 @@
     --nav-bar-bg:        9  15  30; /* #090F1E */
     --nav-bar-border:   38  49  71;
 
-    /* Concept B — red stays; navy deepens slightly in dark */
-    --header-brand-bg:   var(--brand-500);
-    --header-navy-bg:      9  15  30; /* #090F1E */
+    /* Concept B — koyu marka; dark'ta üst biraz daha derin, secondary hafif açık */
+    --header-brand-bg:     9  15  30; /* #090F1E */
+    --header-navy-bg:     21  30  49; /* #151E31 */
     --header-onbrand:    255 255 255;
 
     --wordmark-na:             var(--text-primary);
@@ -170,8 +170,8 @@
     --nav-bar-bg:       0   0   0;
     --nav-bar-border:  40  40  52;
 
-    --header-brand-bg:   var(--brand-500);
-    --header-navy-bg:      0   0   0;
+    --header-brand-bg:     0   0   0;
+    --header-navy-bg:     14  14  20;
     --header-onbrand:    255 255 255;
 
     --wordmark-na:             var(--text-primary);

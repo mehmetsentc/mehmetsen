@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 /**
  * NaHaber wordmark — logo renkleri:
  *  - default: Na = metin rengi, Haber = brand kırmızı (#E50914)
- *  - onBrand (kırmızı bar): Na = beyaz, Haber = krem (#FFF5EB) — okunabilirlik
+ *  - onBrand (koyu marka bar): Na = beyaz, Haber = krem (#FFF5EB) — okunabilirlik
  */
 export type BrandWordmarkVariant = 'default' | 'onBrand'
 

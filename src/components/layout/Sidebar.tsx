@@ -138,9 +138,9 @@ function SidebarInner({
       <aside
         className={cn(
           'app-sidebar fixed left-0 z-[200] flex flex-col',
-          'inset-y-0',
-          'lg:inset-y-auto lg:bottom-0',
-          'h-full',
+          /* Mobil: tam yükseklik; masaüstü top/height sidebar.css (header altında) */
+          'top-0 bottom-0 h-full',
+          'lg:bottom-0 lg:h-auto',
           'w-[var(--sidebar-width-collapsed)]',
           'border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]',
           'transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',

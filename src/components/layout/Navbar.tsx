@@ -69,7 +69,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             <Menu className="h-6 w-6" strokeWidth={2} />
           </button>
 
-          {/* Logo — Concept B: Na beyaz + Haber krem (kırmızı bar) */}
+          {/* Logo — Concept B: Na beyaz + Haber krem (koyu marka bar) */}
           <Link href={ROUTES.FEED} className="min-w-0 flex-1 px-1" aria-label="NaHaber">
             <BrandWordmark
               variant="onBrand"

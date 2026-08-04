@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Menu, PanelLeftClose, Search } from 'lucide-react'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
@@ -64,6 +65,36 @@ function HeaderBrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   )
 }
 
+/** Full-bleed bar bg + content-aligned inner (haberler.com pattern). */
+function HeaderBar({
+  tone,
+  className,
+  innerClassName,
+  children,
+  as: Tag = 'div',
+  'aria-label': ariaLabel,
+}: {
+  tone: 'brand' | 'navy'
+  className?: string
+  innerClassName?: string
+  children: ReactNode
+  as?: 'div' | 'nav'
+  'aria-label'?: string
+}) {
+  return (
+    <Tag
+      className={cn(
+        'desktop-web-header__bar',
+        tone === 'brand' ? 'desktop-web-header__bar--brand' : 'desktop-web-header__bar--navy',
+        className
+      )}
+      {...(ariaLabel ? { 'aria-label': ariaLabel } : {})}
+    >
+      <div className={cn('desktop-web-header__inner', innerClassName)}>{children}</div>
+    </Tag>
+  )
+}
+
 function SubcategoryTabs({
   subcategories,
   tabParent,
@@ -74,12 +105,12 @@ function SubcategoryTabs({
   compact?: boolean
 }) {
   return (
-    <nav
-      className={cn(
-        'flex items-stretch overflow-x-auto scrollbar-hide border-t border-white/10 bg-[rgb(var(--header-navy-bg))]',
-        compact && 'bg-[rgb(var(--header-navy-bg))]'
-      )}
+    <HeaderBar
+      as="nav"
+      tone="navy"
+      className="border-t border-white/10"
       aria-label={`${tabParent?.name ?? 'Kategori'} alt bölümleri`}
+      innerClassName="flex items-stretch overflow-x-auto scrollbar-hide"
     >
       <div className="flex min-w-max items-stretch scroll-px-3">
         <Link
@@ -111,7 +142,7 @@ function SubcategoryTabs({
           </Link>
         ))}
       </div>
-    </nav>
+    </HeaderBar>
   )
 }
 
@@ -135,7 +166,11 @@ export function DesktopWebHeader({
         itemScope
         itemType="https://schema.org/WPHeader"
       >
-        <div className="flex items-stretch gap-2 bg-[rgb(var(--header-brand-bg))] px-1 text-white">
+        <HeaderBar
+          tone="brand"
+          className="text-white"
+          innerClassName="flex items-stretch gap-2 px-1"
+        >
           <div className="flex shrink-0 items-center gap-1 py-2 pl-1">
             <HeaderSidebarToggle compact />
             <Link
@@ -163,14 +198,16 @@ export function DesktopWebHeader({
           </Link>
 
           <DesktopHeaderAuth variant="onBrand" className="shrink-0 self-center" />
-        </div>
+        </HeaderBar>
 
-        <nav
-          className="flex items-center justify-center overflow-x-auto scroll-px-[var(--layout-gutter)] scrollbar-hide bg-[rgb(var(--header-navy-bg))]"
+        <HeaderBar
+          as="nav"
+          tone="navy"
           aria-label="İkincil haber kategorileri"
+          innerClassName="flex items-center justify-center overflow-x-auto scrollbar-hide"
         >
           <DesktopSiteNavLinks variant="header-secondary" className="mx-auto justify-center" />
-        </nav>
+        </HeaderBar>
 
         {showSubTabs ? (
           <SubcategoryTabs
@@ -186,14 +223,18 @@ export function DesktopWebHeader({
   return (
     <header
       className={cn(
-        'desktop-web-header desktop-web-header--full desktop-web-header--concept-b mb-6 overflow-hidden rounded-b-sm pb-0',
+        'desktop-web-header desktop-web-header--full desktop-web-header--concept-b mb-6 pb-0',
         className
       )}
       itemScope
       itemType="https://schema.org/WPHeader"
     >
-      {/* Concept B — kırmızı üst bar */}
-      <div className="relative z-20 flex items-center gap-3 bg-[rgb(var(--header-brand-bg))] px-3 py-2.5 text-white sm:px-4">
+      {/* Full-bleed koyu marka bar; iç içerik content sütununa hizalı */}
+      <HeaderBar
+        tone="brand"
+        className="relative z-20 text-white"
+        innerClassName="flex items-center gap-3 px-3 py-2.5 sm:px-4"
+      >
         <div className="relative z-10 flex shrink-0 items-center gap-1.5">
           <HeaderSidebarToggle />
           <Link
@@ -227,17 +268,19 @@ export function DesktopWebHeader({
           <DesktopThemeToggle variant="onBrand" />
           <DesktopHeaderAuth variant="onBrand" />
         </div>
-      </div>
+      </HeaderBar>
 
-      {/* Concept B — lacivert ikincil bar */}
-      <nav
-        className="flex items-center justify-center overflow-x-auto scroll-px-[var(--layout-gutter)] scrollbar-hide bg-[rgb(var(--header-navy-bg))]"
+      <HeaderBar
+        as="nav"
+        tone="navy"
         aria-label="İkincil haber kategorileri"
-        itemScope
-        itemType="https://schema.org/SiteNavigationElement"
+        innerClassName="flex items-center justify-center overflow-x-auto scrollbar-hide"
       >
-        <DesktopSiteNavLinks variant="header-secondary" className="mx-auto justify-center" />
-      </nav>
+        <DesktopSiteNavLinks
+          variant="header-secondary"
+          className="mx-auto justify-center"
+        />
+      </HeaderBar>
 
       {showBreaking && breakingItems.length > 0 ? (
         <>
