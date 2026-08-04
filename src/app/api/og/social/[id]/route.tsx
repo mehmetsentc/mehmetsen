@@ -4,13 +4,13 @@
  * ONYEDİTİVİ — 1080×1080 Instagram & Facebook Post görseli (1:1)
  * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout (~60/40 referans kart):
+ * Layout (~54/42 — feed okunabilirliği için metne biraz daha alan):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
- *   │   HABER FOTOĞRAFI       │  ~57% (620px)
+ *   │   HABER FOTOĞRAFI       │  ~54% (580px)
  *   ├─── nahaber.com ─────────┤  kırmızı bar + beyaz pill (48px)
  *   │   MANŞET (Playfair)     │
- *   │   özet (ferah, büyük)   │  ~38% — lacivert (412px)
+ *   │   özet (büyük, net)     │  ~42% — lacivert (452px)
  *   │   #hashtag              │
  *   └─────────────────────────┘
  *
@@ -28,9 +28,9 @@ const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
 /** Manşet — 1–2 tematik satır tercih; kelime ortasından kesilmez */
-const TITLE_MAX = 78
-/** Özet — tam cümleler, ferah punto; cümle/kelime ortasından kesilmez (CTA yok) */
-const SPOT_MAX = 200
+const TITLE_MAX = 72
+/** Özet — tam cümleler, büyük punto; cümle/kelime ortasından kesilmez (CTA yok) */
+const SPOT_MAX = 160
 
 interface ArticleOGData {
   title: string
@@ -98,14 +98,14 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
-// Boyutlar — 1:1 kare (~60% foto / ~40% metin bandı — referans layout)
+// Boyutlar — 1:1 kare (~54% foto / ~42% metin — Instagram feed okunabilirliği)
 const W = 1080
 const H = 1080
-const PHOTO_H = 620   // ~57%
+const PHOTO_H = 580   // ~54%
 const MID_H   = 48    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // 412px (~38%)
+const TITLE_H = H - PHOTO_H - MID_H  // 452px (~42%)
 const TEXT_PAD_TOP = 36
-const TEXT_PAD_SIDE = 40
+const TEXT_PAD_SIDE = 42
 const TEXT_PAD_BOTTOM = 28
 
 // Renkler
@@ -215,23 +215,23 @@ export async function GET(
   const titleLines = title.split('\n').filter(Boolean)
   const titlePlainLen = titleLines.join('').length
 
-  // Alt ~40% metin bandı — referans: büyük Playfair manşet + ferah özet
+  // Alt ~42% metin bandı — güçlü Playfair manşet + yüksek kontrast özet (feed okunabilirliği)
   const titleSize =
-    titleLines.length >= 3 ? (titlePlainLen > 55 ? 36 : 40) :
-    titleLines.length === 2 ? (titlePlainLen > 52 ? 40 : titlePlainLen > 36 ? 44 : 48) :
-    titlePlainLen > 58 ? 40 :
-    titlePlainLen > 48 ? 44 :
-    titlePlainLen > 36 ? 48 :
-    titlePlainLen > 24 ? 52 :
-    titlePlainLen > 16 ? 56 : 60
-  const titleLineHeight = titleLines.length >= 2 ? 1.22 : 1.2
+    titleLines.length >= 3 ? (titlePlainLen > 55 ? 42 : 46) :
+    titleLines.length === 2 ? (titlePlainLen > 52 ? 46 : titlePlainLen > 36 ? 50 : 54) :
+    titlePlainLen > 58 ? 46 :
+    titlePlainLen > 48 ? 50 :
+    titlePlainLen > 36 ? 54 :
+    titlePlainLen > 24 ? 58 :
+    titlePlainLen > 16 ? 62 : 66
+  const titleLineHeight = titleLines.length >= 2 ? 1.3 : 1.24
 
   const spotLen = spot.length
   const spotSize =
-    spotLen > 160 ? 24 :
-    spotLen > 120 ? 26 :
-    spotLen > 80 ? 28 : 30
-  const spotLineHeight = 1.45
+    spotLen > 140 ? 30 :
+    spotLen > 100 ? 32 :
+    spotLen > 70 ? 34 : 36
+  const spotLineHeight = 1.52
 
   try {
     const fonts = await loadPostFonts()
@@ -337,27 +337,36 @@ export async function GET(
               display: 'flex', flexDirection: 'column', gap: 0,
               maxWidth: W - TEXT_PAD_SIDE * 2 - 24, flex: 1, overflow: 'hidden',
             }}>
-              {/* Manşet — Playfair; 1–2 tematik satır */}
+              {/* Manşet — Playfair display; yüksek kontrast beyaz */}
               <div style={{
-                display: 'flex', flexDirection: 'column', gap: 4,
-                maxHeight: Math.round(titleSize * titleLineHeight * 2.4),
+                display: 'flex', flexDirection: 'column', gap: 6,
+                maxHeight: Math.round(titleSize * titleLineHeight * 2.55),
                 overflow: 'hidden',
               }}>
                 {titleLines.map((line, i) => (
                   <span key={i} style={{
                     color: '#ffffff', fontFamily: headlineFamily, fontWeight: 900,
-                    fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: -0.2,
+                    fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: 0.15,
                     display: 'flex',
                   }}>{line}</span>
                 ))}
               </div>
-              {/* Özet — yüksek kontrast; manşetten net boşluk */}
+              {/* Ayırıcı + özet — near-white, daha büyük punto */}
               {spot ? (
-                <span style={{
-                  color: 'rgba(255,255,255,0.94)', fontFamily: bodyFamily, fontWeight: 500,
-                  fontSize: spotSize, lineHeight: spotLineHeight, display: 'flex', flexDirection: 'column',
-                  paddingTop: 32,
-                }}>{spot}</span>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: 20,
+                  paddingTop: 30,
+                }}>
+                  <div style={{
+                    width: 80, height: 2, borderRadius: 1,
+                    background: 'rgba(255,255,255,0.32)', display: 'flex', flexShrink: 0,
+                  }} />
+                  <span style={{
+                    color: '#ffffff', fontFamily: bodyFamily, fontWeight: 600,
+                    fontSize: spotSize, lineHeight: spotLineHeight,
+                    letterSpacing: 0.15, display: 'flex', flexDirection: 'column',
+                  }}>{spot}</span>
+                </div>
               ) : null}
             </div>
           </div>
