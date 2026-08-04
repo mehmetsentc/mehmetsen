@@ -187,6 +187,39 @@ export async function getNewsById(id: string): Promise<Post | null> {
   }
 }
 
+/**
+ * Fuzzy slug fallback: when exact slug match fails, strip all hyphens and
+ * compare against a prefix-scoped set of candidates.  This handles the common
+ * case where apostrophe handling produces "tlye" in the DB but "tl-ye" in an
+ * inbound link (or vice-versa).  The page handler already 301-redirects to
+ * the canonical slug when `post.slug !== requestedSlug`.
+ */
+async function findByNormalizedSlug(slug: string): Promise<Post | null> {
+  const norm = slug.replace(/-/g, '')
+  const prefixLen = Math.min(20, Math.floor(slug.length * 0.4))
+  if (prefixLen < 6) return null
+  const prefix = slug.slice(0, prefixLen)
+
+  try {
+    const snap = await getAdminFirestore()
+      .collection(NEWS_COLLECTION)
+      .where('slug', '>=', prefix)
+      .where('slug', '<=', prefix + '\uf8ff')
+      .limit(10)
+      .get()
+
+    for (const doc of snap.docs) {
+      const data = doc.data() as NewsDocument
+      if ((data.slug || '').replace(/-/g, '') === norm) {
+        return newsDocToPost(doc.id, data)
+      }
+    }
+  } catch (error) {
+    console.warn('[newsService.server] findByNormalizedSlug failed:', error)
+  }
+  return null
+}
+
 const getNewsBySlugCached = unstable_cache(
   async (slug: string): Promise<Post | null> => {
     try {
@@ -204,9 +237,12 @@ const getNewsBySlugCached = unstable_cache(
       console.warn('[newsService.server] getNewsBySlug query failed:', error)
     }
 
-    return getNewsById(slug)
+    const byId = await getNewsById(slug)
+    if (byId) return byId
+
+    return findByNormalizedSlug(slug)
   },
-  ['news-by-slug-v1'],
+  ['news-by-slug-v2'],
   { revalidate: 300, tags: ['news-post'] }
 )
 
