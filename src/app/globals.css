@@ -65,11 +65,12 @@
     --layout-rail: 300px;
     --layout-feed: 720px;
     --layout-stage-max: 1280px;
+    /* Overlay drawer — menü viewport’tan yer kaplamaz */
     --reels-stage-available: calc(
-      100vw - var(--sidebar-width-collapsed) - var(--layout-rail) - var(--layout-gutter) * 4
+      100vw - var(--layout-rail) - var(--layout-gutter) * 4
     );
-    --layout-content: min(720px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
-    --layout-content-wide: min(960px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
+    --layout-content: min(720px, calc(100vw - var(--layout-gutter) * 2));
+    --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 2));
     --layout-content-reels: min(640px, calc(100vw - var(--layout-gutter) * 2));
     --reels-viewport-h: calc(100dvh - 9rem);
     --reels-video-w: min(100%, calc(var(--reels-viewport-h) * 9 / 16));
@@ -92,24 +93,7 @@
       /* Concept B: koyu üst + secondary — iki bar toplam yüksekliği */
       --desktop-web-header-height: 6.5rem;
       --desktop-compact-header-height: 6.5rem;
-      --layout-content-newspaper: min(
-        var(--layout-newspaper-max),
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
-      );
-      --layout-content: min(720px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
-      --layout-content-wide: min(960px, calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2));
-      --layout-content-reels: min(
-        720px,
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
-      );
-      --reels-video-w: min(
-        720px,
-        calc(var(--reels-viewport-h) * 9 / 16),
-        var(--reels-stage-available)
-      );
-    }
-
-    html[data-sidebar='closed'] {
+      /* Overlay menü — açık/kapalı içerik genişliği aynı */
       --layout-content-newspaper: min(
         var(--layout-newspaper-max),
         calc(100vw - var(--layout-gutter) * 2)
@@ -118,6 +102,11 @@
       --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 2));
       --layout-content-reels: min(720px, calc(100vw - var(--layout-gutter) * 2));
       --reels-stage-available: calc(100vw - var(--layout-rail) - var(--layout-gutter) * 4);
+      --reels-video-w: min(
+        720px,
+        calc(var(--reels-viewport-h) * 9 / 16),
+        var(--reels-stage-available)
+      );
     }
   }
 
@@ -128,30 +117,6 @@
       --layout-feed: 720px;
       --layout-content-newspaper: min(
         var(--layout-newspaper-max),
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
-      );
-      --layout-content: min(
-        var(--layout-feed),
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-rail) - var(--layout-gutter) * 4)
-      );
-      --layout-content-wide: min(
-        960px,
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 4)
-      );
-      --layout-content-reels: min(
-        720px,
-        calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
-      );
-      --reels-video-w: min(
-        720px,
-        calc(var(--reels-viewport-h) * 9 / 16),
-        var(--reels-stage-available)
-      );
-    }
-
-    html[data-sidebar='closed'] {
-      --layout-content-newspaper: min(
-        var(--layout-newspaper-max),
         calc(100vw - var(--layout-gutter) * 2)
       );
       --layout-content: min(
@@ -160,6 +125,12 @@
       );
       --layout-content-wide: min(960px, calc(100vw - var(--layout-gutter) * 4));
       --layout-content-reels: min(720px, calc(100vw - var(--layout-gutter) * 2));
+      --reels-stage-available: calc(100vw - var(--layout-rail) - var(--layout-gutter) * 4);
+      --reels-video-w: min(
+        720px,
+        calc(var(--reels-viewport-h) * 9 / 16),
+        var(--reels-stage-available)
+      );
     }
   }
 
@@ -255,7 +226,8 @@
   }
 
   html[data-platform='desktop'] .app-shell-desktop {
-    @apply pl-[var(--sidebar-width-collapsed)];
+    /* Overlay drawer — içerik kaydırılmaz */
+    @apply pl-0;
   }
 
   html[data-sidebar='closed'][data-platform='desktop'] .app-shell-desktop {
@@ -355,7 +327,7 @@
   }
 
   @media (min-width: 1024px) {
-    /* Gazete düzeni: sidebar açık → kenardan kenara; kapalı → viewport ortasında */
+    /* Gazete düzeni: overlay menü — içerik her zaman viewport ortasında */
     .content-stage-newspaper {
       display: grid;
       width: 100%;
@@ -2036,8 +2008,8 @@
   }
 
   html[data-sidebar='open'][data-platform='desktop'] .desktop-scroll-header-compact {
-    /* Sidebar açıkken içerik sütunu kayar; sticky header aynı offset */
-    padding-left: var(--sidebar-width-collapsed);
+    /* Overlay drawer — header offset yok */
+    padding-left: 0;
   }
 
   @media (min-width: 1024px) {
@@ -2583,10 +2555,7 @@
 
   .settings-hub:has(.legal-hub) {
     @apply w-full max-w-none;
-    max-width: min(
-      720px,
-      calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
-    );
+    max-width: min(720px, calc(100vw - var(--layout-gutter) * 2));
   }
 
   @media (max-width: 1023px) {

@@ -142,7 +142,7 @@
     --header-onbrand:    255 255 255;
 
     --wordmark-na:             var(--text-primary);
-    --wordmark-haber:          252 165 172; /* brand-ish on dark surfaces */
+    --wordmark-haber:          var(--brand-500); /* #E50914 — aynı canlı kırmızı */
     --wordmark-na-onbrand:     255 255 255;
     --wordmark-haber-onbrand:  var(--brand-500); /* #E50914 */
   }
@@ -175,7 +175,7 @@
     --header-onbrand:    255 255 255;
 
     --wordmark-na:             var(--text-primary);
-    --wordmark-haber:          252 165 172;
+    --wordmark-haber:          var(--brand-500); /* #E50914 */
     --wordmark-na-onbrand:     255 255 255;
     --wordmark-haber-onbrand:  var(--brand-500); /* #E50914 */
   }

@@ -4,19 +4,20 @@
   --sb-accent: var(--color-brand);
 }
 
-/* Desktop: menü Concept B header’ın (üst + secondary bar) altında başlar */
+/* Desktop: overlay drawer header altında; içerik kaydırılmaz */
 @media (min-width: 1024px) {
   html[data-desktop-header='concept-b'] .app-sidebar {
     top: var(--desktop-web-header-height) !important;
     height: calc(100dvh - var(--desktop-web-header-height)) !important;
     bottom: 0 !important;
-    z-index: 40;
+    z-index: 200;
   }
 
   html[data-desktop-header='none'] .app-sidebar,
   html:not([data-desktop-header]) .app-sidebar {
     top: 0 !important;
     height: 100dvh !important;
+    z-index: 200;
   }
 }
 

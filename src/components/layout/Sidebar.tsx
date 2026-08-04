@@ -112,7 +112,8 @@ function SidebarInner({
     toast.success('Çıkış yapıldı')
     router.push(ROUTES.LOGIN)
     onMobileClose?.()
-  }, [logout, router, onMobileClose])
+    onDesktopClose?.()
+  }, [logout, router, onMobileClose, onDesktopClose])
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
@@ -120,17 +121,31 @@ function SidebarInner({
       if (searchQuery.trim()) {
         router.push(`${ROUTES.SEARCH}?q=${encodeURIComponent(searchQuery.trim())}`)
         onMobileClose?.()
+        onDesktopClose?.()
       }
     },
-    [searchQuery, router, onMobileClose]
+    [searchQuery, router, onMobileClose, onDesktopClose]
   )
+
+  const closeDrawer = useCallback(() => {
+    onMobileClose?.()
+    onDesktopClose?.()
+  }, [onMobileClose, onDesktopClose])
 
   return (
     <>
+      {/* Overlay drawer backdrop — mobile + desktop (tema bozulmasın, push yok) */}
       {mobileOpen ? (
         <div
-          className="fixed inset-0 z-[199] bg-black/50 transition-opacity duration-200 lg:hidden"
+          className="fixed inset-0 z-[199] bg-black/55 transition-opacity duration-200 lg:hidden"
           onClick={onMobileClose}
+          aria-hidden
+        />
+      ) : null}
+      {desktopOpen ? (
+        <div
+          className="fixed inset-0 z-[199] hidden bg-black/55 transition-opacity duration-200 lg:block"
+          onClick={onDesktopClose}
           aria-hidden
         />
       ) : null}
@@ -142,18 +157,20 @@ function SidebarInner({
           'top-0 bottom-0 h-full',
           'lg:bottom-0 lg:h-auto',
           'w-[var(--sidebar-width-collapsed)]',
-          'border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]',
+          /* Temaya uyumlu yüzey — koyu modda beyaz panel yok */
+          'border-r border-[rgb(var(--color-border))] bg-[rgb(var(--bg-elevated))]',
+          'shadow-[4px_0_24px_rgba(0,0,0,0.18)]',
           'transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-          'lg:z-40',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           desktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full',
           className
         )}
+        data-open={mobileOpen || desktopOpen ? 'true' : 'false'}
       >
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[rgb(var(--color-border))] px-4">
           <Link
             href={ROUTES.FEED}
-            onClick={onMobileClose}
+            onClick={closeDrawer}
             className="flex min-w-0 items-center gap-2"
           >
             <BrandLogo size="md" priority />
@@ -192,7 +209,7 @@ function SidebarInner({
                 key={item.id}
                 item={item}
                 pathname={pathname}
-                onNavigate={onMobileClose}
+                onNavigate={closeDrawer}
               />
             ))}
           </div>
@@ -204,19 +221,19 @@ function SidebarInner({
                 key={item.id}
                 item={item}
                 pathname={pathname}
-                onNavigate={onMobileClose}
+                onNavigate={closeDrawer}
               />
             ))}
           </div>
         </nav>
 
         <div className="shrink-0 space-y-1 border-t border-[rgb(var(--color-border))] p-3">
-          {hydrated ? <SidebarInstallCTA onNavigate={onMobileClose} /> : null}
+          {hydrated ? <SidebarInstallCTA onNavigate={closeDrawer} /> : null}
           {hydrated && !loading && user ? (
             <>
               <Link
                 href={ROUTES.PROFILE(user.username)}
-                onClick={onMobileClose}
+                onClick={closeDrawer}
                 className="app-sidebar__item"
                 data-accent="muted"
               >
@@ -225,7 +242,7 @@ function SidebarInner({
               </Link>
               <Link
                 href={ROUTES.SETTINGS}
-                onClick={onMobileClose}
+                onClick={closeDrawer}
                 className="app-sidebar__item"
                 data-accent="muted"
               >
@@ -258,7 +275,7 @@ function SidebarInner({
           {hydrated && !loading && !user ? (
             <Link
               href={ROUTES.LOGIN}
-              onClick={onMobileClose}
+              onClick={closeDrawer}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[rgb(var(--color-brand))] px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700"
             >
               Giriş Yap →

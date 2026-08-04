@@ -1,9 +1,10 @@
 import { cn } from '@/lib/utils'
 
 /**
- * NaHaber wordmark — logo renkleri:
- *  - default: Na = metin rengi, Haber = brand kırmızı (#E50914)
- *  - onBrand (Theme D kömür bar): Na = beyaz, Haber = brand kırmızı (#E50914)
+ * NaHaber wordmark — logo renkleri (her yerde aynı):
+ *  - Haber = brand kırmızı #E50914 (opacity / muted pink yok)
+ *  - default: Na = metin rengi (light ink / dark white)
+ *  - onBrand (Theme D kömür bar): Na = beyaz
  */
 export type BrandWordmarkVariant = 'default' | 'onBrand'
 
@@ -12,6 +13,9 @@ const SIZE_CLASS = {
   md: 'text-[1.55rem]',
   lg: 'text-[1.85rem]',
 } as const
+
+/** Master brand red — header, masthead, sidebar must match */
+const HABER_RED = 'text-[#E50914]'
 
 interface BrandWordmarkProps {
   variant?: BrandWordmarkVariant
@@ -47,15 +51,7 @@ export function BrandWordmark({
       >
         Na
       </span>
-      <span
-        className={
-          onBrand
-            ? 'text-[rgb(var(--wordmark-haber-onbrand))]'
-            : 'text-[rgb(var(--wordmark-haber))]'
-        }
-      >
-        Haber
-      </span>
+      <span className={HABER_RED}>Haber</span>
       {showDotCom ? (
         <span
           className={cn(
