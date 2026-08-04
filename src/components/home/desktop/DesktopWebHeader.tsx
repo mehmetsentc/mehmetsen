@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Search } from 'lucide-react'
+import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
 import { BreakingNewsBand } from '@/components/home/desktop/BreakingNewsBand'
 import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
@@ -31,18 +32,14 @@ interface DesktopWebHeaderProps {
   variant?: 'full' | 'compact'
 }
 
-function BrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
+function HeaderBrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   return (
-    <span
-      className={cn(
-        'font-serif font-bold leading-none tracking-tight text-white',
-        size === 'lg' ? 'text-[1.85rem]' : 'text-[1.35rem]'
-      )}
-      itemProp="name"
-    >
-      NaHaber
-      <span className="text-[0.55em] font-semibold opacity-90">.com</span>
-    </span>
+    <BrandWordmark
+      variant="onBrand"
+      size={size}
+      showDotCom
+      className="font-serif font-bold"
+    />
   )
 }
 
@@ -126,7 +123,7 @@ export function DesktopWebHeader({
               className="flex shrink-0 items-center gap-2 py-2 pr-2 transition-opacity hover:opacity-90"
               aria-label="NaHaber Ana Sayfa"
             >
-              <BrandWordmark size="sm" />
+              <HeaderBrandWordmark size="sm" />
             </Link>
           ) : null}
 
@@ -180,7 +177,7 @@ export function DesktopWebHeader({
             aria-label="NaHaber Ana Sayfa"
             itemProp="url"
           >
-            <BrandWordmark size="lg" />
+            <HeaderBrandWordmark size="lg" />
           </Link>
         ) : null}
 

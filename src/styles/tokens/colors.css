@@ -95,6 +95,12 @@
     --header-brand-bg:   var(--brand-500); /* #E50914 */
     --header-navy-bg:     15  23  42;      /* #0F172A */
     --header-onbrand:    255 255 255;
+
+    /* Wordmark — logo: Na (beyaz) + Haber (kırmızı); kırmızı barda krem alternatif */
+    --wordmark-na:             var(--text-primary);
+    --wordmark-haber:          var(--brand-500); /* #E50914 */
+    --wordmark-na-onbrand:     255 255 255;      /* #FFFFFF */
+    --wordmark-haber-onbrand:  255 245 235;      /* #FFF5EB krem */
   }
 
   .dark {
@@ -134,6 +140,11 @@
     --header-brand-bg:   var(--brand-500);
     --header-navy-bg:      9  15  30; /* #090F1E */
     --header-onbrand:    255 255 255;
+
+    --wordmark-na:             var(--text-primary);
+    --wordmark-haber:          252 165 172; /* brand-ish on dark */
+    --wordmark-na-onbrand:     255 255 255;
+    --wordmark-haber-onbrand:  255 245 235;
   }
 
   /* OLED — true black base, keep readable text ladder from .dark */
@@ -162,4 +173,9 @@
     --header-brand-bg:   var(--brand-500);
     --header-navy-bg:      0   0   0;
     --header-onbrand:    255 255 255;
+
+    --wordmark-na:             var(--text-primary);
+    --wordmark-haber:          252 165 172;
+    --wordmark-na-onbrand:     255 255 255;
+    --wordmark-haber-onbrand:  255 245 235;
   }

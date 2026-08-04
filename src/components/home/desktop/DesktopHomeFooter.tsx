@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { LogIn, Mail, Settings, Smartphone, UserPlus } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/BrandLogo'
+import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import {
   CONTACT_EMAIL,
   FOOTER_ACCOUNT_LINKS,
@@ -114,9 +115,7 @@ export function DesktopHomeFooter() {
         {/* Logo + tagline */}
         <div className="flex items-center gap-2.5">
           <BrandLogo size="sm" />
-          <span className="text-lg font-black tracking-tight text-[rgb(var(--color-text))]" itemProp="name">
-            NaHaber
-          </span>
+          <BrandWordmark variant="default" size="sm" className="font-black text-lg" />
         </div>
         <p className="text-[11px] leading-relaxed text-[rgb(var(--color-muted))] -mt-3">
           Bağımsız dijital haber platformu · Gündem, spor, ekonomi ve daha fazlası
@@ -181,9 +180,7 @@ export function DesktopHomeFooter() {
       <div className="mb-8">
         <Link href={ROUTES.FEED} className="inline-flex items-center gap-2.5" aria-label="NaHaber Ana Sayfa">
           <BrandLogo size="md" />
-          <span className="text-2xl font-black tracking-tight text-[rgb(var(--color-text))]" itemProp="name">
-            NaHaber
-          </span>
+          <BrandWordmark variant="default" size="lg" className="font-black text-2xl" />
         </Link>
       </div>
 

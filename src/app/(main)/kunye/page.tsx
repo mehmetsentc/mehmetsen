@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Mail, Globe, ChevronRight } from 'lucide-react'
+import { BrandWordmark } from '@/components/brand/BrandWordmark'
 
 export const metadata: Metadata = {
   title: 'Künye | NaHaber',
@@ -20,10 +21,12 @@ export default function KunyePage() {
       <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-6 py-8 sm:px-10 sm:py-10">
         {/* Logo / Brand */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <span className="text-3xl font-black tracking-tight text-[rgb(var(--color-text))]">
-            Na<span className="text-[rgb(var(--color-brand))]">Haber</span>
-            <span className="text-[rgb(var(--color-muted))]">.com</span>
-          </span>
+          <BrandWordmark
+            variant="default"
+            size="lg"
+            showDotCom
+            className="font-black text-3xl"
+          />
           <p className="mt-2 text-sm text-[rgb(var(--color-muted))]">
             Türkiye&apos;nin anlık dijital haber platformu
           </p>

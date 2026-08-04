@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
 import { BrandLogo } from '@/components/brand/BrandLogo'
+import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
 import {
   SIDEBAR_EXPLORE,
@@ -152,9 +153,7 @@ function SidebarInner({
             className="flex min-w-0 items-center gap-2"
           >
             <BrandLogo size="md" priority />
-            <span className="truncate text-lg font-black tracking-tight text-[rgb(var(--color-text))]">
-              NaHaber
-            </span>
+            <BrandWordmark variant="default" size="sm" className="truncate font-black text-lg" />
           </Link>
           <button
             type="button"

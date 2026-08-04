@@ -14,6 +14,7 @@ import {
   type SkorSport,
 } from '@/lib/skor/types'
 import { cn } from '@/lib/utils'
+import { BrandWordmark } from '@/components/brand/BrandWordmark'
 
 const TABS: { id: SkorBoardTab; label: string }[] = [
   { id: 'live', label: 'Canlı' },
@@ -81,7 +82,7 @@ export function NahaberSkorPage() {
       <header className="mb-3 flex items-end gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[rgb(var(--color-muted))]">
-            NaHaber
+            <BrandWordmark variant="default" size="sm" className="text-[11px] font-bold uppercase tracking-[0.14em]" />
           </p>
           <h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-[rgb(var(--color-text))] sm:text-2xl">
             <Trophy className="h-5 w-5 text-[rgb(var(--color-brand))]" aria-hidden />

@@ -1,9 +1,8 @@
-'use client'
-
 import Link from 'next/link'
 import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import { EDITION_LABELS, resolveNewspaperEdition } from '@/lib/newspaperEdition'
 import { DesktopMarketTicker } from '@/components/home/desktop/DesktopMarketTicker'
+import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { ROUTES } from '@/constants/routes'
 
 interface NewspaperMastheadProps {
@@ -34,7 +33,11 @@ export function NewspaperMasthead({ lastUpdated }: NewspaperMastheadProps) {
       </div>
 
       <Link href={ROUTES.FEED} className="block no-underline">
-        <p className="nl-masthead__title">NaHaber</p>
+        <BrandWordmark
+          variant="default"
+          size="lg"
+          className="nl-masthead__title font-black"
+        />
       </Link>
       <p className="mt-1 mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgb(var(--color-muted))]">
         Dijital Gazete · Türkiye

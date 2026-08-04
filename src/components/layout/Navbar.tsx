@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
 import { BackNavButton } from '@/components/layout/BackNavButton'
+import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { cn } from '@/lib/utils'
 
 interface NavbarProps {
@@ -68,16 +69,13 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             <Menu className="h-6 w-6" strokeWidth={2} />
           </button>
 
-          {/* Logo — Concept B: beyaz wordmark kırmızı bar üzerinde */}
+          {/* Logo — Concept B: Na beyaz + Haber krem (kırmızı bar) */}
           <Link href={ROUTES.FEED} className="min-w-0 flex-1 px-1" aria-label="NaHaber">
-            <span
-              className={cn(
-                'font-black leading-none tracking-tight text-white',
-                isFeed ? 'text-[1.55rem]' : 'text-[1.45rem]'
-              )}
-            >
-              NaHaber
-            </span>
+            <BrandWordmark
+              variant="onBrand"
+              size={isFeed ? 'md' : 'sm'}
+              className={cn('font-black', !isFeed && 'text-[1.45rem]')}
+            />
           </Link>
 
           <div className="flex shrink-0 items-center">
