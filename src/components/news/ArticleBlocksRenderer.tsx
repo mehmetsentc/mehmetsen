@@ -81,12 +81,13 @@ export function ArticleBlocksRenderer({
         if (block.type === 'image') {
           return (
             <figure key={block.id} className="article-block-media">
-              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[rgb(var(--color-surface))]">
+              <div className="w-full overflow-hidden rounded-xl bg-[rgb(var(--color-surface))]">
                 <SafeNewsImage
                   src={block.url}
                   alt={block.alt || block.caption || title}
-                  fill
-                  className="object-cover"
+                  width={1600}
+                  height={900}
+                  className="h-auto w-full"
                   sizes="(max-width: 768px) 100vw, 760px"
                 />
               </div>

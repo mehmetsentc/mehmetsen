@@ -54,14 +54,15 @@ export function ArticleGallery({ items, title, columns = 2 }: ArticleGalleryProp
             key={`${item.url}-${i}`}
             type="button"
             onClick={() => setActive(i)}
-            className="group relative aspect-[16/10] overflow-hidden rounded-xl bg-[rgb(var(--color-border))] text-left"
+            className="group relative w-full overflow-hidden rounded-xl bg-[rgb(var(--color-border))] text-left"
             aria-label={`Galeriyi aç: ${item.caption || title}`}
           >
             <SafeNewsImage
               src={item.url}
               alt={item.alt || item.caption || title}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              width={1600}
+              height={900}
+              className="h-auto w-full transition-opacity duration-300 group-hover:opacity-95"
               sizes={columns === 3 ? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw' : '(max-width: 640px) 100vw, 50vw'}
             />
             {item.caption ? (
@@ -114,17 +115,16 @@ export function ArticleGallery({ items, title, columns = 2 }: ArticleGalleryProp
               </button>
             </>
           ) : null}
-          <div className="relative z-[1] max-h-[85vh] w-full max-w-4xl">
-            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl">
-              <SafeNewsImage
-                src={current.url}
-                alt={current.alt || current.caption || title}
-                fill
-                className="object-contain"
-                sizes="100vw"
-                priority
-              />
-            </div>
+          <div className="relative z-[1] flex max-h-[85vh] w-full max-w-4xl flex-col items-center">
+            <SafeNewsImage
+              src={current.url}
+              alt={current.alt || current.caption || title}
+              width={1600}
+              height={900}
+              className="max-h-[85vh] w-auto max-w-full rounded-xl object-contain"
+              sizes="100vw"
+              priority
+            />
             <p className="mt-3 text-center text-sm text-white/80">
               {current.caption || `${active + 1} / ${images.length}`}
             </p>

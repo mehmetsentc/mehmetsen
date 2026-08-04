@@ -71,12 +71,17 @@ function VideoHero({ item, title, posterFallback }: {
   )
 }
 
-/** Hero görsel (tek görsel veya hero olarak seçilen ilk image). */
+/** Hero görsel (tek görsel veya hero olarak seçilen ilk image) — tam görsel, kırpma yok. */
 function ImageHero({ item, title }: { item: MediaItem; title: string }) {
   return (
     <figure className="relative">
-      <div className="relative news-article-hero aspect-[16/9] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
-        <SliderImage src={item.url} alt={item.alt ?? item.caption ?? title} priority />
+      <div className="relative news-article-hero w-full overflow-hidden bg-[rgb(var(--color-surface))]">
+        <SliderImage
+          src={item.url}
+          alt={item.alt ?? item.caption ?? title}
+          priority
+          fit="natural"
+        />
         <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/70">
           nahaber.com
         </span>
@@ -92,12 +97,12 @@ function ImageHero({ item, title }: { item: MediaItem; title: string }) {
   )
 }
 
-/** Paragraf araları için inline görsel — ekran genişliğinde, altyazılı. */
+/** Paragraf araları için inline görsel — doğal oran, kırpma yok. */
 function InlineImage({ item, title }: { item: MediaItem; title: string }) {
   return (
     <figure className="my-7 -mx-4 overflow-hidden sm:mx-0 sm:rounded-xl">
-      <div className="relative aspect-[16/9] w-full overflow-hidden bg-[rgb(var(--color-surface))]">
-        <SliderImage src={item.url} alt={item.alt ?? item.caption ?? title} />
+      <div className="w-full overflow-hidden bg-[rgb(var(--color-surface))]">
+        <SliderImage src={item.url} alt={item.alt ?? item.caption ?? title} fit="natural" />
       </div>
       {(item.caption || item.credit) && (
         <figcaption className="px-4 py-2 text-[13px] text-[rgb(var(--color-muted))] sm:px-3">

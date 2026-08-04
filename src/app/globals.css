@@ -1903,20 +1903,9 @@
     letter-spacing: -0.02em;
   }
 
+  /* Hero: no fixed aspect / max-height crop — full image via natural height */
   .news-article-hero {
-    max-height: min(56vh, 480px);
-  }
-
-  @media (min-width: 768px) {
-    .news-article-hero {
-      max-height: min(62vh, 560px);
-    }
-  }
-
-  @media (min-width: 1024px) {
-    html[data-sidebar='closed'][data-platform='desktop'] .news-article-hero {
-      max-height: min(70vh, 680px);
-    }
+    max-height: none;
   }
 
   .article-prose {
