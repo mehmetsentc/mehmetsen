@@ -1,5 +1,6 @@
 /**
  * Image Sitemap — all published articles with a coverImageUrl.
+ * Fetches up to 2000 articles in batches to avoid Firestore limits.
  * Spec: https://developers.google.com/search/docs/crawling-indexing/sitemaps/image-sitemaps
  */
 import { NextResponse } from 'next/server'
@@ -9,8 +10,10 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-// ISR 6 saat — image sitemap Google tarafından nadiren çekiliyor
 export const revalidate = 21600
+
+const BATCH_SIZE = 500
+const MAX_IMAGES = 2000
 
 function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -19,32 +22,44 @@ function escapeXml(s: string): string {
 export async function GET() {
   const base = getSiteUrl()
   let items = ''
+  let totalImages = 0
 
   try {
-    const snap = await getAdminFirestore()
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .orderBy('publishedAt', 'desc')
-      .limit(300)
-      .get()
+    const db = getAdminFirestore()
+    let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
 
-    for (const doc of snap.docs) {
-      const d = doc.data() as {
-        title?: string
-        slug?: string
-        coverImageUrl?: string
-        imageCaption?: string
-        publishedAt?: number
+    while (totalImages < MAX_IMAGES) {
+      let query = db
+        .collection(Collections.NEWS)
+        .where('status', '==', 'published')
+        .orderBy('publishedAt', 'desc')
+        .limit(BATCH_SIZE)
+
+      if (lastDoc) {
+        query = query.startAfter(lastDoc)
       }
-      if (!d.coverImageUrl?.trim()) continue
 
-      const slug = d.slug?.trim() || doc.id
-      const path = slug !== doc.id ? ROUTES.NEWS_DETAIL(slug) : ROUTES.POST_DETAIL(doc.id)
-      const url = `${base}${path}`
-      const title = escapeXml(d.title?.trim() || 'Haber')
-      const caption = escapeXml(d.imageCaption?.trim() || d.title?.trim() || 'Haber görseli')
+      const snap = await query.get()
+      if (snap.empty) break
 
-      items += `
+      for (const doc of snap.docs) {
+        const d = doc.data() as {
+          title?: string
+          slug?: string
+          coverImageUrl?: string
+          imageCaption?: string
+          publishedAt?: number
+        }
+        if (!d.coverImageUrl?.trim()) continue
+        if (totalImages >= MAX_IMAGES) break
+
+        const slug = d.slug?.trim() || doc.id
+        const path = slug !== doc.id ? ROUTES.NEWS_DETAIL(slug) : ROUTES.POST_DETAIL(doc.id)
+        const url = `${base}${path}`
+        const title = escapeXml(d.title?.trim() || 'Haber')
+        const caption = escapeXml(d.imageCaption?.trim() || d.title?.trim() || 'Haber görseli')
+
+        items += `
   <url>
     <loc>${url}</loc>
     <image:image>
@@ -53,6 +68,11 @@ export async function GET() {
       <image:caption>${caption}</image:caption>
     </image:image>
   </url>`
+        totalImages++
+      }
+
+      lastDoc = snap.docs[snap.docs.length - 1]
+      if (snap.docs.length < BATCH_SIZE) break
     }
   } catch (err) {
     console.error('[images-sitemap] error:', err)

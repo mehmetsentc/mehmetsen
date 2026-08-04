@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Flame } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
-import { getSiteUrl } from '@/lib/seo'
+import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
@@ -14,13 +14,15 @@ export const revalidate = 120
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  const title = 'En Çok Okunanlar'
-  const description = `${siteName} okuyucularının en çok okuduğu haberler.`
+  const title = 'En Çok Okunan Haberler'
+  const description = `${siteName} okuyucularının en çok okuduğu haberler — günün en popüler haber başlıkları.`
   const canonical = `${siteUrl}${ROUTES.MOST_READ}`
+  const ogImage = buildCategoryOgUrl('En Çok Okunan Haberler', 'Popüler')
 
   return {
     title,
     description,
+    keywords: ['en çok okunan haberler', 'popüler haberler', 'günün haberleri', 'trend haberler', siteName],
     robots: { index: true, follow: true },
     alternates: { canonical },
     openGraph: {
@@ -30,6 +32,14 @@ export async function generateMetadata(): Promise<Metadata> {
       type: 'website',
       locale: 'tr_TR',
       siteName,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      site: '@nahabercom',
+      title: `${title} | ${siteName}`,
+      description,
+      images: [{ url: ogImage, alt: title }],
     },
   }
 }
@@ -42,10 +52,19 @@ export default async function MostReadPage() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: 'En Çok Okunanlar',
+    name: `En Çok Okunan Haberler | ${siteName}`,
+    description: `${siteName} okuyucularının en çok okuduğu haberler.`,
     url: `${siteUrl}${ROUTES.MOST_READ}`,
     inLanguage: 'tr-TR',
     isPartOf: { '@type': 'WebSite', name: siteName, url: siteUrl },
+    breadcrumb: {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: siteName, item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: 'Haberler', item: `${siteUrl}${ROUTES.FEED}` },
+        { '@type': 'ListItem', position: 3, name: 'En Çok Okunanlar', item: `${siteUrl}${ROUTES.MOST_READ}` },
+      ],
+    },
     mainEntity: {
       '@type': 'ItemList',
       itemListElement: items.slice(0, 20).map((item, index) => ({

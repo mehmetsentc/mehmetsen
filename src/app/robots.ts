@@ -29,12 +29,12 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: 'Googlebot-News',
-        allow: ['/haber/', '/kategori/', '/feed', '/etiket/'],
+        allow: ['/haber/', '/kategori/', '/yerel/', '/feed', '/etiket/', '/cok-okunanlar'],
         disallow: ['/admin/', '/api/', '/settings', '/login', '/register'],
       },
       {
         userAgent: 'Googlebot-Image',
-        allow: ['/haber/', '/kategori/', '/feed', '/images-sitemap.xml'],
+        allow: ['/haber/', '/kategori/', '/yerel/', '/feed', '/images-sitemap.xml'],
         disallow: ['/admin/', '/api/'],
       },
       {

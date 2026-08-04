@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Hash } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
-import { getSiteUrl } from '@/lib/seo'
+import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { formatTagLabel } from '@/lib/tags'
 import { getPostsByTag } from '@/services/newsService.server'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -34,9 +34,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = `${label} etiketiyle yayınlanan son haberler, güncel gelişmeler ve arşiv — ${siteName}.`
   const canonical = `${siteUrl}${ROUTES.TAG(tag)}`
 
+  const ogImage = buildCategoryOgUrl(title, 'Etiket')
   return {
     title,
     description,
+    keywords: [label, `${label} haberleri`, `${label} son dakika`, siteName],
     robots: { index: true, follow: true },
     alternates: { canonical },
     openGraph: {
@@ -46,12 +48,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'website',
       locale: 'tr_TR',
       siteName,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       site: '@nahabercom',
-      title,
+      title: `${title} | ${siteName}`,
       description,
+      images: [{ url: ogImage, alt: title }],
     },
   }
 }
@@ -65,12 +69,24 @@ export default async function TagPage({ params }: Props) {
 
   const siteUrl = getSiteUrl()
   const label = formatTagLabel(tag)
+  const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const tagUrl = `${siteUrl}${ROUTES.TAG(tag)}`
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: `${label} Haberleri`,
-    url: `${siteUrl}${ROUTES.TAG(tag)}`,
+    name: `${label} Haberleri | ${siteName}`,
+    description: `${label} etiketiyle yayınlanan son haberler ve güncel gelişmeler.`,
+    url: tagUrl,
     inLanguage: 'tr-TR',
+    isPartOf: { '@type': 'WebSite', name: siteName, url: siteUrl },
+    breadcrumb: {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: siteName, item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: 'Haberler', item: `${siteUrl}${ROUTES.FEED}` },
+        { '@type': 'ListItem', position: 3, name: label, item: tagUrl },
+      ],
+    },
     mainEntity: {
       '@type': 'ItemList',
       itemListElement: posts.slice(0, 20).map((post, index) => ({

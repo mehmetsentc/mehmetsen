@@ -3,6 +3,7 @@ import type { Post } from '@/types/post'
 import type { NewsItem } from '@/types/newsItem'
 import { getPrimaryVideo, getPostCoverAlt } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
+import { DEFAULT_CATEGORIES, getParentCategory } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
@@ -121,6 +122,14 @@ export function buildFacebookShareUrl(shareUrl: string, shareText?: string): str
   // quote is ignored by most modern FB builds but harmless for legacy clients
   if (text) params.set('quote', text)
   return `https://www.facebook.com/sharer/sharer.php?${params.toString()}`
+}
+
+/** Build a dynamic OG image URL for category/collection pages via /api/og. */
+export function buildCategoryOgUrl(title: string, category?: string): string {
+  const siteUrl = getSiteUrl()
+  const params = new URLSearchParams({ title: title.slice(0, 100) })
+  if (category) params.set('category', category)
+  return `${siteUrl}/api/og?${params.toString()}`
 }
 
 function toAbsoluteShareImage(image: string): string {
@@ -319,12 +328,31 @@ export function buildNewsBreadcrumbJsonLd(post: Post): Record<string, unknown> {
   ]
 
   if (post.categoryId) {
-    items.push({
-      '@type': 'ListItem',
-      position: 3,
-      name: getCategoryLabel(post.categoryId),
-      item: `${base}${ROUTES.CATEGORY(post.categoryId)}`,
-    })
+    const catDef = DEFAULT_CATEGORIES.find((c) => c.id === post.categoryId)
+    const catSlug = catDef?.slug ?? post.categoryId
+
+    const parentCat = catDef?.parentId ? getParentCategory(post.categoryId) : null
+    if (parentCat) {
+      items.push({
+        '@type': 'ListItem',
+        position: 3,
+        name: getCategoryLabel(parentCat.id),
+        item: `${base}${ROUTES.CATEGORY(parentCat.slug ?? parentCat.id)}`,
+      })
+      items.push({
+        '@type': 'ListItem',
+        position: 4,
+        name: getCategoryLabel(post.categoryId),
+        item: `${base}${ROUTES.CATEGORY(catSlug)}`,
+      })
+    } else {
+      items.push({
+        '@type': 'ListItem',
+        position: 3,
+        name: getCategoryLabel(post.categoryId),
+        item: `${base}${ROUTES.CATEGORY(catSlug)}`,
+      })
+    }
   }
 
   items.push({

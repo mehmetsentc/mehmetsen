@@ -42,9 +42,9 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
   ]
 
   const categoryRoutes: MetadataRoute.Sitemap = DEFAULT_CATEGORIES.map((cat) => ({
-    url: `${base}${ROUTES.CATEGORY(cat.id)}`,
+    url: `${base}${ROUTES.CATEGORY(cat.slug ?? cat.id)}`,
     changeFrequency: 'hourly' as const,
-    priority: 0.85,
+    priority: cat.parentId ? 0.75 : 0.85,
   }))
 
   const localCityRoutes: MetadataRoute.Sitemap = TURKISH_PROVINCES.map((province) => ({
