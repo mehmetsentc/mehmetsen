@@ -10,6 +10,7 @@ import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
 import { SporCategoryExtras } from '@/components/sports/SporCategoryExtras'
 import { MatchResults, sportMatchKindForSection } from '@/components/sports/MatchResults'
 import { BorsaWidgetClient } from '@/components/widgets/BorsaWidgetClient'
+import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
 import { AdSlotProvider } from '@/context/AdSlotContext'
@@ -60,6 +61,7 @@ function CategoryTopExtras({
   const sportKind = sportMatchKindForSection(cat.id)
   if (sportKind) return <MatchResults sport={sportKind} />
   if (cat.id === 'borsa') return <BorsaWidgetClient />
+  if (cat.id === 'tarih') return <OnThisDayArchive />
   return null
 }
 

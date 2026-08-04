@@ -9,8 +9,6 @@ import { MustReadSection } from '@/components/home/MustReadSection'
 import { LocalNewsSection } from '@/components/home/LocalNewsSection'
 import { LocationPermission } from '@/components/home/LocationPermission'
 import { TrendingRail } from '@/components/home/TrendingRail'
-import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
-import { FootballWidget } from '@/components/football/FootballWidget'
 import { GamesRail } from '@/components/home/GamesRail'
 import { LazySection } from '@/components/home/LazySection'
 import { LazyCategoryRails } from '@/components/home/LazyCategoryRails'
@@ -81,10 +79,6 @@ export function HomeFeed({ data }: HomeFeedProps) {
 
       <MustReadSection items={mostRead} />
 
-      <OnThisDayArchive />
-      <LazySection minHeight={320}>
-        <FootballWidget />
-      </LazySection>
       <LazySection minHeight={220}>
         <GamesRail />
       </LazySection>

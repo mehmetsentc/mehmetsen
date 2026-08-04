@@ -16,7 +16,6 @@ import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsle
 import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStrip'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import { NewspaperMasthead } from '@/components/home/desktop/NewspaperMasthead'
-import { OnThisDayArchive } from '@/components/home/OnThisDayArchive'
 import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
 import {
   HeroImageOnly,
@@ -278,10 +277,6 @@ export function DesktopHomeFeed({ data }: DesktopHomeFeedProps) {
           />
         </LazySection>
       ) : null}
-
-      <LazySection minHeight={200}>
-        <OnThisDayArchive />
-      </LazySection>
 
       <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
 
