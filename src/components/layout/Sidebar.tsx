@@ -153,7 +153,7 @@ function SidebarInner({
       <aside
         className={cn(
           'app-sidebar fixed left-0 z-[200] flex flex-col',
-          /* Mobil: tam yükseklik; masaüstü top/height sidebar.css (header altında) */
+          /* Mobil + masaüstü: üst kenar viewport/header ile aynı hizada (overlay) */
           'top-0 bottom-0 h-full',
           'lg:bottom-0 lg:h-auto',
           'w-[var(--sidebar-width-collapsed)]',
