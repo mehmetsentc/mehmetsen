@@ -90,6 +90,11 @@
     --nav-inactive:       71  85 105; /* #475569 — readable inactive */
     --nav-bar-bg:        255 255 255;
     --nav-bar-border:    226 232 240;
+
+    /* Concept B header — dual-tone bars */
+    --header-brand-bg:   var(--brand-500); /* #E50914 */
+    --header-navy-bg:     15  23  42;      /* #0F172A */
+    --header-onbrand:    255 255 255;
   }
 
   .dark {
@@ -124,6 +129,11 @@
     --nav-inactive:    174 185 202; /* #AEB9CA */
     --nav-bar-bg:        9  15  30; /* #090F1E */
     --nav-bar-border:   38  49  71;
+
+    /* Concept B — red stays; navy deepens slightly in dark */
+    --header-brand-bg:   var(--brand-500);
+    --header-navy-bg:      9  15  30; /* #090F1E */
+    --header-onbrand:    255 255 255;
   }
 
   /* OLED — true black base, keep readable text ladder from .dark */
@@ -148,4 +158,8 @@
     --nav-inactive:   174 185 202;
     --nav-bar-bg:       0   0   0;
     --nav-bar-border:  40  40  52;
+
+    --header-brand-bg:   var(--brand-500);
+    --header-navy-bg:      0   0   0;
+    --header-onbrand:    255 255 255;
   }

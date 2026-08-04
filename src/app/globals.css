@@ -628,6 +628,15 @@
     height: 2.75rem;
   }
 
+  .back-nav-btn--on-brand {
+    color: #fff;
+  }
+
+  .back-nav-btn--on-brand:hover {
+    background: rgb(255 255 255 / 0.12);
+    color: #fff;
+  }
+
   .back-nav-btn--inline {
     margin-top: 0.15rem;
   }
@@ -2029,10 +2038,9 @@
   .desktop-scroll-header-compact {
     left: var(--sidebar-width-collapsed);
     right: 0;
-    border-bottom: 1px solid rgb(var(--color-border));
-    background: color-mix(in srgb, rgb(var(--color-surface)) 98%, transparent);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 1px 0 rgb(var(--color-border) / 0.6);
+    border-bottom: none;
+    background: rgb(var(--header-brand-bg));
+    box-shadow: 0 1px 0 rgb(0 0 0 / 0.12);
   }
 
   html[data-sidebar='closed'][data-platform='desktop'] .desktop-scroll-header-compact {
@@ -2052,6 +2060,10 @@
 
   .desktop-web-header--compact nav a {
     @apply px-3 py-2.5 text-[12px];
+  }
+
+  .desktop-web-header--full.desktop-web-header--concept-b {
+    border-bottom: none;
   }
 
   .desktop-newspaper .desktop-must-watch .desktop-section-header,

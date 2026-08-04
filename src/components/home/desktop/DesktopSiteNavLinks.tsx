@@ -2,17 +2,23 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getSiteNavItems } from '@/constants/config'
+import {
+  getHeaderPrimaryNavItems,
+  getHeaderSecondaryNavItems,
+  getSiteNavItems,
+} from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
 const NAV = getSiteNavItems()
+const PRIMARY = getHeaderPrimaryNavItems()
+const SECONDARY = getHeaderSecondaryNavItems()
 const FOOTER_PRIMARY = NAV.filter((item) => !item.indent && item.id !== 'teve')
 const FOOTER_GROUPED = NAV.filter((item) => item.indent)
 
 interface DesktopSiteNavLinksProps {
-  variant: 'header' | 'footer'
-  /** masthead: NYT tarzı ortalanmış, ayırıcısız nav */
+  variant: 'header' | 'footer' | 'header-primary' | 'header-secondary'
+  /** masthead: NYT tarzı ortalanmış, ayırıcısız nav (legacy) */
   layout?: 'default' | 'masthead'
   className?: string
 }
@@ -20,7 +26,7 @@ interface DesktopSiteNavLinksProps {
 function isActive(pathname: string, href: string, id: string): boolean {
   if (id === 'feed') return pathname === ROUTES.FEED
   if (id === 'yerel') return pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)
-  if (href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
+  if (id === 'video' || href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -50,12 +56,79 @@ function FooterNavLink({
   )
 }
 
-export function DesktopSiteNavLinks({ variant, layout = 'default', className }: DesktopSiteNavLinksProps) {
+function HeaderNavList({
+  items,
+  tone,
+  className,
+}: {
+  items: typeof PRIMARY
+  tone: 'onBrand' | 'onNavy'
+  className?: string
+}) {
   const pathname = usePathname()
-  const isHeader = variant === 'header'
-  const isMasthead = isHeader && layout === 'masthead'
+  const isPrimary = tone === 'onBrand'
 
-  if (isHeader) {
+  return (
+    <ul
+      className={cn(
+        'flex min-w-max list-none items-stretch p-0 m-0',
+        className
+      )}
+    >
+      {items.map((item) => {
+        const active = isActive(pathname, item.href, item.id)
+        return (
+          <li key={item.id} className="flex items-stretch">
+            <Link
+              href={item.href}
+              aria-current={active ? 'page' : undefined}
+              title={`${item.label} haberleri`}
+              className={cn(
+                'shrink-0 transition-colors',
+                isPrimary
+                  ? 'px-2.5 py-3 text-[12px] font-bold uppercase tracking-wide xl:px-3'
+                  : 'px-3 py-2.5 text-[13px] font-semibold xl:px-4',
+                active
+                  ? 'text-white'
+                  : 'text-white/85 hover:text-white'
+              )}
+            >
+              <span className="relative inline-block whitespace-nowrap">
+                {item.label}
+                {active ? (
+                  <span
+                    className={cn(
+                      'absolute left-0 right-0 bg-white',
+                      isPrimary ? '-bottom-2.5 h-0.5' : '-bottom-2 h-[2px]'
+                    )}
+                  />
+                ) : null}
+              </span>
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+export function DesktopSiteNavLinks({
+  variant,
+  layout = 'default',
+  className,
+}: DesktopSiteNavLinksProps) {
+  const pathname = usePathname()
+
+  if (variant === 'header-primary') {
+    return <HeaderNavList items={PRIMARY} tone="onBrand" className={className} />
+  }
+
+  if (variant === 'header-secondary') {
+    return <HeaderNavList items={SECONDARY} tone="onNavy" className={className} />
+  }
+
+  if (variant === 'header') {
+    const isMasthead = layout === 'masthead'
     return (
       <ul
         className={cn(

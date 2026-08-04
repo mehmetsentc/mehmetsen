@@ -30,7 +30,7 @@ export function CategoryNav() {
   return (
     <nav
       className={cn(
-        'sticky z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] lg:hidden',
+        'sticky z-30 bg-[rgb(var(--header-navy-bg))] lg:hidden',
         isFeed ? FEED_NAV_TOP : DEFAULT_NAV_TOP
       )}
       aria-label="Kategoriler"
@@ -56,15 +56,15 @@ export function CategoryNav() {
                   ? 'min-h-[48px] snap-start px-0.5 text-[15px] font-semibold'
                   : 'min-h-11 px-3.5 text-sm font-semibold',
                 isActive
-                  ? 'text-[rgb(var(--color-nav-active))]'
-                  : 'text-[rgb(var(--color-nav-inactive))] hover:text-[rgb(var(--color-text))]'
+                  ? 'text-white'
+                  : 'text-white/75 hover:text-white'
               )}
             >
               {cat.label}
               {isActive && (
                 <span
                   className={cn(
-                    'absolute bottom-0 h-[2.5px] rounded-full bg-[rgb(var(--color-nav-active))]',
+                    'absolute bottom-0 h-[2.5px] rounded-full bg-white',
                     isFeed ? 'left-0 right-0' : 'left-3 right-3 h-[2px]'
                   )}
                 />

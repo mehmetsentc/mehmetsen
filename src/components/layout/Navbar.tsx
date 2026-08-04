@@ -45,7 +45,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         className={cn(
           'z-40 lg:hidden',
           isArticle ? 'relative' : 'sticky top-0',
-          'border-b border-[rgb(var(--color-brand))]/30 bg-[rgb(var(--color-card))]',
+          'bg-[rgb(var(--header-brand-bg))] text-white',
           isFeed && 'pt-[env(safe-area-inset-top,0px)]'
         )}
         style={isFeed ? { height: 'calc(72px + env(safe-area-inset-top, 0px))' } : undefined}
@@ -57,28 +57,26 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           )}
         >
           {showBack ? (
-            <BackNavButton className="back-nav-btn--navbar" />
+            <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
           ) : null}
           <button
             type="button"
             onClick={onMenuClick}
-            className="flex h-11 w-11 shrink-0 items-center justify-center text-[rgb(var(--color-text))]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
             aria-label="Menü"
           >
             <Menu className="h-6 w-6" strokeWidth={2} />
           </button>
 
-          {/* Logo — logo renklerine uyarlanmış: Na=kırmızı, Haber=beyaz, .com=muted */}
+          {/* Logo — Concept B: beyaz wordmark kırmızı bar üzerinde */}
           <Link href={ROUTES.FEED} className="min-w-0 flex-1 px-1" aria-label="NaHaber">
             <span
               className={cn(
-                'font-black leading-none tracking-tight',
+                'font-black leading-none tracking-tight text-white',
                 isFeed ? 'text-[1.55rem]' : 'text-[1.45rem]'
               )}
             >
-              <span className="text-[rgb(var(--color-brand))]">Na</span>
-              <span className="text-[rgb(var(--color-text))]">Haber</span>
-              <span className="text-[rgb(var(--color-muted))] text-base font-semibold">.com</span>
+              NaHaber
             </span>
           </Link>
 
@@ -86,21 +84,21 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             <button
               type="button"
               onClick={() => router.push(ROUTES.SEARCH)}
-              className="flex h-11 w-11 items-center justify-center text-[rgb(var(--color-text))]"
+              className="flex h-11 w-11 items-center justify-center text-white"
               aria-label="Ara"
             >
               <Search className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
             </button>
             <Link
               href={ROUTES.NOTIFICATIONS}
-              className="flex h-11 w-11 items-center justify-center text-[rgb(var(--color-text))]"
+              className="flex h-11 w-11 items-center justify-center text-white"
               aria-label="Bildirimler"
             >
               <Bell className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
             </Link>
             <Link
               href={profileHref}
-              className="flex h-11 w-11 items-center justify-center text-[rgb(var(--color-text))]"
+              className="flex h-11 w-11 items-center justify-center text-white"
               aria-label="Profil"
             >
               <User className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />

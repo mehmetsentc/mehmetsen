@@ -4,23 +4,27 @@ import { useCallback, useEffect, useState, type MouseEvent } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { User } from 'lucide-react'
 import { auth } from '@/lib/firebase/auth'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
-const linkClass =
-  'text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline'
-
 interface DesktopHeaderAuthProps {
   className?: string
+  /** Concept B kırmızı bar üzerinde beyaz / outline stil */
+  variant?: 'default' | 'onBrand'
 }
 
-export function DesktopHeaderAuth({ className }: DesktopHeaderAuthProps) {
+export function DesktopHeaderAuth({
+  className,
+  variant = 'default',
+}: DesktopHeaderAuthProps) {
   const { user, logout, loading } = useAuth()
   const router = useRouter()
   const [hydrated, setHydrated] = useState(false)
   const [hasSession, setHasSession] = useState(false)
+  const onBrand = variant === 'onBrand'
 
   useEffect(() => {
     setHydrated(true)
@@ -50,6 +54,14 @@ export function DesktopHeaderAuth({ className }: DesktopHeaderAuthProps) {
   const displayLabel = user?.displayName || user?.username || 'Hesabım'
   const showLogin = hydrated && !isLoggedIn && !loading
 
+  const linkClass = onBrand
+    ? 'text-white/90 transition-colors hover:text-white hover:underline'
+    : 'text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline'
+
+  const loginBtnClass = onBrand
+    ? 'inline-flex items-center gap-1.5 rounded-lg border border-white/80 bg-transparent px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-white/10'
+    : linkClass
+
   return (
     <div
       className={cn(
@@ -61,7 +73,10 @@ export function DesktopHeaderAuth({ className }: DesktopHeaderAuthProps) {
       {isLoggedIn ? (
         <>
           <span
-            className="max-w-[140px] truncate text-[rgb(var(--color-text))]"
+            className={cn(
+              'max-w-[140px] truncate',
+              onBrand ? 'text-white' : 'text-[rgb(var(--color-text))]'
+            )}
             title={displayLabel}
           >
             {displayLabel}
@@ -71,7 +86,8 @@ export function DesktopHeaderAuth({ className }: DesktopHeaderAuthProps) {
           </button>
         </>
       ) : showLogin ? (
-        <a href={ROUTES.LOGIN} className={linkClass} onClick={goTo(ROUTES.LOGIN)}>
+        <a href={ROUTES.LOGIN} className={loginBtnClass} onClick={goTo(ROUTES.LOGIN)}>
+          {onBrand ? <User className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> : null}
           Giriş
         </a>
       ) : (

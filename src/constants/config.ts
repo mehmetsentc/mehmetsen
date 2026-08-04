@@ -232,6 +232,35 @@ export const TOP_NAV_CATEGORY_IDS = [
   'tarih',
 ] as const
 
+/**
+ * Concept B desktop — kırmızı üst bardaki birincil kategoriler.
+ * Yalnızca mevcut route'lar (CATEGORY / LOCAL).
+ */
+export const HEADER_PRIMARY_NAV_IDS = [
+  'son-dakika',
+  'gundem',
+  'spor',
+  'ekonomi',
+  'dunya',
+  'teknoloji',
+  'yerel',
+] as const
+
+/**
+ * Concept B desktop — lacivert alt bardaki ikincil kategoriler.
+ */
+export const HEADER_SECONDARY_NAV_IDS = [
+  'siyaset',
+  'finans-piyasa',
+  'saglik',
+  'kultur',
+  'magazin',
+  'yasam',
+  'egitim',
+  'video',
+  'turizm',
+] as const
+
 export interface SiteNavItem {
   id: string
   label: string
@@ -303,6 +332,45 @@ export function getTopNavCategories(): Array<{ id: string; label: string; href: 
       label: c!.name,
       href: `/kategori/${c!.slug ?? c!.id}`,
     }))
+}
+
+function resolveHeaderNavItem(
+  id: string,
+  labelOverride?: string
+): SiteNavItem | null {
+  if (id === 'yerel') {
+    return { id: 'yerel', label: labelOverride ?? 'Yerel', href: ROUTES.LOCAL }
+  }
+  if (id === 'video' || id === 'teve') {
+    return { id: 'video', label: labelOverride ?? 'Video', href: ROUTES.REELS }
+  }
+  const def = DEFAULT_CATEGORIES.find((c) => c.id === id)
+  if (!def) return null
+  return {
+    id,
+    label: labelOverride ?? def.name,
+    href: ROUTES.CATEGORY(def.slug ?? def.id),
+  }
+}
+
+const HEADER_SECONDARY_LABELS: Record<string, string> = {
+  siyaset: 'Politika',
+  'finans-piyasa': 'Finans',
+  kultur: 'Kültür Sanat',
+  video: 'Video',
+}
+
+/** Concept B — kırmızı bardaki birincil kategori linkleri. */
+export function getHeaderPrimaryNavItems(): SiteNavItem[] {
+  return HEADER_PRIMARY_NAV_IDS.map((id) => resolveHeaderNavItem(id))
+    .filter((item): item is SiteNavItem => item !== null)
+}
+
+/** Concept B — lacivert bardaki ikincil kategori linkleri. */
+export function getHeaderSecondaryNavItems(): SiteNavItem[] {
+  return HEADER_SECONDARY_NAV_IDS.map((id) =>
+    resolveHeaderNavItem(id, HEADER_SECONDARY_LABELS[id])
+  ).filter((item): item is SiteNavItem => item !== null)
 }
 
 export interface SwipeDestination {
