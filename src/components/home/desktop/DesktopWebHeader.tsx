@@ -65,7 +65,7 @@ function HeaderBrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   )
 }
 
-/** Full-bleed bar bg + content-aligned inner (haberler.com pattern). */
+/** Content-width charcoal bar (Theme D) — matches newspaper column, not full-bleed. */
 function HeaderBar({
   tone,
   className,
@@ -229,7 +229,7 @@ export function DesktopWebHeader({
       itemScope
       itemType="https://schema.org/WPHeader"
     >
-      {/* Full-bleed Theme D kömür bar; iç içerik content sütununa hizalı */}
+      {/* Theme D kömür bar — gazete content sütunu genişliğinde */}
       <HeaderBar
         tone="brand"
         className="relative z-20 text-white"

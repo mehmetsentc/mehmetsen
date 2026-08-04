@@ -2026,7 +2026,7 @@
     margin-bottom: 0.25rem;
   }
 
-  /* Sticky kompakt: full-bleed; iç hizalama DesktopWebHeader__inner */
+  /* Sticky kompakt: şeffaf full-viewport; barlar gazete sütun genişliğinde */
   .desktop-scroll-header-compact {
     left: 0;
     right: 0;
@@ -2041,17 +2041,17 @@
   }
 
   @media (min-width: 1024px) {
+    /* Theme D barlar: full-bleed değil — content-main / logo sütunu ile aynı max-width */
     .desktop-web-header--concept-b {
       position: relative;
       width: 100%;
-      max-width: 100%;
-      margin-left: 0;
-      margin-right: 0;
+      max-width: var(--layout-content-newspaper);
+      margin-left: auto;
+      margin-right: auto;
       z-index: 50;
       overflow: visible;
     }
 
-    /* Bar zemini kenardan kenara; içerik content-main ile aynı genişlikte */
     .desktop-web-header__bar {
       position: relative;
     }
@@ -2064,17 +2064,9 @@
       background-color: rgb(var(--header-navy-bg));
     }
 
+    /* Full-bleed ::before kaldırıldı — sayfa zemini solda/sağda görünür */
     .desktop-web-header__bar::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 50%;
-      width: 100vw;
-      transform: translateX(-50%);
-      background-color: inherit;
-      z-index: 0;
-      pointer-events: none;
+      content: none;
     }
 
     .desktop-web-header__inner {
@@ -2084,18 +2076,12 @@
       max-width: 100%;
       margin-inline: 0;
     }
-
-    /* Sticky/fixed bağlamda parent content-main değil — inner'ı gazete sütununa kilitle */
-    .desktop-scroll-header-compact .desktop-web-header__inner {
-      max-width: var(--layout-content-newspaper);
-      margin-inline: auto;
-    }
   }
 
   .desktop-scroll-header-compact-inner {
-    margin-inline: 0;
+    margin-inline: auto;
     width: 100%;
-    max-width: none;
+    max-width: var(--layout-content-newspaper);
     padding-inline: 0;
   }
 
