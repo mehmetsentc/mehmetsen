@@ -36,7 +36,7 @@ type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
 function getContentVariant(pathname: string): ContentVariant {
   if (pathname === ROUTES.REELS) return 'reels'
   if (pathname.startsWith('/messages')) return 'messages'
-  if (pathname.startsWith('/profile/')) return 'wide'
+  if (pathname.startsWith('/profile/')) return 'newspaper'
   if (pathname === ROUTES.FEED) return 'newspaper'
   if (pathname.startsWith('/kategori/')) return 'newspaper'
   if (pathname.startsWith('/haber/')) return 'newspaper'
