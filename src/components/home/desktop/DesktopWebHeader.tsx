@@ -65,7 +65,7 @@ function HeaderBrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   )
 }
 
-/** Content-width charcoal bar (Theme D) — both tones share one newspaper column width. */
+/** Content-width header bar — dark: shell #11192B; light: Theme D charcoal. */
 function HeaderBar({
   tone,
   className,

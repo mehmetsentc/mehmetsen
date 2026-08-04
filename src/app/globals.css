@@ -2044,7 +2044,7 @@
   }
 
   @media (min-width: 1024px) {
-    /* Theme D: üst #111 + alt #1A1A1A aynı gazete sütunu — ikisi de stretch, full-bleed yok */
+    /* Dark: header bars = --bg-elevated (#11192B); light: Theme D charcoal — content sütunu */
     .desktop-web-header--concept-b {
       position: relative;
       display: flex;

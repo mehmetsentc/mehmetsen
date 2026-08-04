@@ -104,12 +104,12 @@
   }
 
   .dark {
-    /* Near-black navy — not pure #000 */
-    --bg-base:         7  11  24;  /* #070B18 */
-    --bg-subtle:      13  19  36;  /* #0D1324 */
-    --bg-muted:       21  30  49;  /* #151E31 */
-    --bg-card:        13  19  36;  /* #0D1324 */
-    --bg-elevated:    17  25  43;  /* #11192B */
+    /* Unified shell = sidebar --bg-elevated (#11192B) — no clash with header/page */
+    --bg-base:        17  25  43;  /* #11192B — page = sidebar */
+    --bg-subtle:      21  30  49;  /* #151E31 — slight lift */
+    --bg-muted:       25  35  56;  /* #192338 */
+    --bg-card:        21  30  49;  /* #151E31 — readable on shell */
+    --bg-elevated:    17  25  43;  /* #11192B — sidebar */
     --bg-inverse:    248 250 252;
     --bg-overlay:      0   0   0;
 
@@ -133,12 +133,12 @@
     --nav-hover:        25  35  56;
     --nav-active:      255  51  68; /* slightly brighter red on navy */
     --nav-inactive:    174 185 202; /* #AEB9CA */
-    --nav-bar-bg:        9  15  30; /* #090F1E */
+    --nav-bar-bg:       17  25  43; /* #11192B — shell ile aynı */
     --nav-bar-border:   38  49  71;
 
-    /* Theme D charcoal — dark tema ile aynı kömür barlar */
-    --header-brand-bg:    17  17  17; /* #111111 */
-    --header-navy-bg:     26  26  26; /* #1A1A1A */
+    /* Header bars = sidebar elevated — unified dark shell */
+    --header-brand-bg:    17  25  43; /* #11192B */
+    --header-navy-bg:     17  25  43; /* #11192B */
     --header-onbrand:    255 255 255;
 
     --wordmark-na:             var(--text-primary);

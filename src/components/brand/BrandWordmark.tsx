@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
  * NaHaber wordmark — logo renkleri (her yerde aynı):
  *  - Haber = brand kırmızı #E50914 (opacity / muted pink yok)
  *  - default: Na = metin rengi (light ink / dark white)
- *  - onBrand (Theme D kömür bar): Na = beyaz
+ *  - onBrand (koyu header bar): Na = beyaz
  */
 export type BrandWordmarkVariant = 'default' | 'onBrand'
 
