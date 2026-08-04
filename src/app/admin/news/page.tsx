@@ -1,8 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, useRef, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
@@ -560,11 +559,28 @@ export default function AdminNewsPage() {
     )
   }
 
-  return <AdminNewsDesktopPage />
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</div>}>
+      <AdminNewsDesktopPage />
+    </Suspense>
+  )
 }
+
+const CATEGORY_CHIPS: { id: string; label: string }[] = [
+  { id: 'son-dakika', label: '🔴 Son Dakika' },
+  { id: 'gundem', label: 'Gündem' },
+  { id: 'siyaset', label: 'Siyaset' },
+  { id: 'dunya', label: 'Dünya' },
+  { id: 'spor', label: 'Spor' },
+  { id: 'ekonomi', label: 'Ekonomi' },
+  { id: 'teknoloji', label: 'Teknoloji' },
+  { id: 'saglik', label: 'Sağlık' },
+  { id: 'yerel-haber', label: 'Yerel' },
+]
 
 function AdminNewsDesktopPage() {
   const { can, user, loading: authLoading } = useCmsAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get('category') ?? ''
   const filterParam = searchParams.get('filter') ?? ''
@@ -578,6 +594,21 @@ function AdminNewsDesktopPage() {
       ? filterParam
       : 'all'
   const [filter, setFilter] = useState<AdminNewsFilter>(initialFilter)
+  // Local category state — Link soft-nav was freezing pills after the first click.
+  // Drive the UI like status filters; keep the URL in sync via replace.
+  const [categoryFilter, setCategoryFilter] = useState(categoryParam)
+  const pendingCategoryRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    // Ignore out-of-order URL updates while a user-driven category change is in flight.
+    if (pendingCategoryRef.current !== null) {
+      if (categoryParam === pendingCategoryRef.current) {
+        pendingCategoryRef.current = null
+      }
+      return
+    }
+    setCategoryFilter(categoryParam)
+  }, [categoryParam])
 
   useEffect(() => {
     const fp = searchParams.get('filter') ?? ''
@@ -609,23 +640,43 @@ function AdminNewsDesktopPage() {
   const [knownPages, setKnownPages] = useState(1)
   const [hasNext, setHasNext] = useState(false)
 
-  // Keep a ref so `load` always reads the latest categoryParam without being recreated
-  const categoryParamRef = useRef(categoryParam)
-  categoryParamRef.current = categoryParam
+  // Keep a ref so `load` always reads the latest category without being recreated
+  const categoryFilterRef = useRef(categoryFilter)
+  categoryFilterRef.current = categoryFilter
+
+  // Generation counter — discard stale in-flight loads when category/filter changes mid-fetch
+  const loadGenRef = useRef(0)
+
+  const syncCategoryToUrl = useCallback((nextCategory: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (nextCategory) params.set('category', nextCategory)
+    else params.delete('category')
+    const qs = params.toString()
+    router.replace(qs ? `${ROUTES.ADMIN.NEWS}?${qs}` : ROUTES.ADMIN.NEWS, { scroll: false })
+  }, [router, searchParams])
+
+  const selectCategory = useCallback((nextCategory: string) => {
+    if (nextCategory === categoryFilterRef.current) return
+    pendingCategoryRef.current = nextCategory
+    setCategoryFilter(nextCategory)
+    syncCategoryToUrl(nextCategory)
+  }, [syncCategoryToUrl])
 
   const load = useCallback(async (page: number, searchOverride?: string) => {
+    const myGen = ++loadGenRef.current
     setLoading(true)
     const searchTerm = searchOverride !== undefined ? searchOverride : search
     try {
       const cursor = pageCursorsRef.current[page] ?? undefined
       // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
-      const catFilter = searchTerm.trim() ? undefined : categoryParamRef.current || undefined
+      const catFilter = searchTerm.trim() ? undefined : categoryFilterRef.current || undefined
       // 'duplicate' filtresi: Firestore'dan pending'leri çek, client-side isDuplicate filtrele
       const fsFilter: AdminNewsFilter = filter === 'duplicate' ? 'pending' : filter
       const [result, tagResults] = await Promise.all([
         adminNewsService.list(fsFilter, cursor, catFilter, filter === 'duplicate' ? 500 : (searchTerm.trim() ? 500 : undefined)),
         searchTerm.trim() ? adminNewsService.searchByTag(searchTerm) : Promise.resolve([]),
       ])
+      if (myGen !== loadGenRef.current) return
       // Tag sorgusu sonuçlarını merge et — 500 limitinin dışındaki eski haberler de görünsün
       const seen = new Set(result.posts.map(p => p.id))
       const merged = [...result.posts]
@@ -643,10 +694,11 @@ function AdminNewsDesktopPage() {
       }
       setSelected(new Set())
     } catch (err) {
+      if (myGen !== loadGenRef.current) return
       console.error('[admin/news] load error:', err)
       toast.error('Haberler yüklenemedi')
     } finally {
-      setLoading(false)
+      if (myGen === loadGenRef.current) setLoading(false)
     }
   }, [filter, search])
 
@@ -660,7 +712,7 @@ function AdminNewsDesktopPage() {
     const tid = setTimeout(() => { void load(0) }, 0)
     return () => clearTimeout(tid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, categoryParam, authLoading])
+  }, [filter, categoryFilter, authLoading])
 
   const handleApprove = async (post: AdminNewsItem) => {
     setActionLoading(post.id)
@@ -840,46 +892,38 @@ function AdminNewsDesktopPage() {
   return (
     <div className="flex flex-col">
       <CMSHeader
-        title={categoryParam ? `Haberler — ${categoryParam.charAt(0).toUpperCase() + categoryParam.slice(1).replace('-', ' ')}` : 'Haberler'}
-        subtitle={categoryParam ? `${categoryParam} kategorisi filtresi aktif` : 'İçerik editörü ve onay merkezi'}
+        title={categoryFilter ? `Haberler — ${categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1).replace('-', ' ')}` : 'Haberler'}
+        subtitle={categoryFilter ? `${categoryFilter} kategorisi filtresi aktif` : 'İçerik editörü ve onay merkezi'}
       />
       <div className="p-6 space-y-4">
-        {/* Category quick-filter chips */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          <Link
-            href={ROUTES.ADMIN.NEWS}
+        {/* Category quick-filter chips — buttons (not Links) so soft-nav cannot freeze the row */}
+        <div className="relative z-10 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            type="button"
+            onClick={() => selectCategory('')}
             className={cn(
               'flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all',
-              !categoryParam
+              !categoryFilter
                 ? 'bg-[rgb(var(--color-text))] text-[rgb(var(--color-surface))] shadow-sm'
                 : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
             )}
           >
             Tüm Kategoriler
-          </Link>
-          {[
-            { id: 'son-dakika', label: '🔴 Son Dakika' },
-            { id: 'gundem',     label: 'Gündem' },
-            { id: 'siyaset',    label: 'Siyaset' },
-            { id: 'dunya',      label: 'Dünya' },
-            { id: 'spor',       label: 'Spor' },
-            { id: 'ekonomi',    label: 'Ekonomi' },
-            { id: 'teknoloji',  label: 'Teknoloji' },
-            { id: 'saglik',     label: 'Sağlık' },
-            { id: 'yerel-haber', label: 'Yerel' },
-          ].map(cat => (
-            <Link
+          </button>
+          {CATEGORY_CHIPS.map(cat => (
+            <button
               key={cat.id}
-              href={`${ROUTES.ADMIN.NEWS}?category=${cat.id}`}
+              type="button"
+              onClick={() => selectCategory(cat.id)}
               className={cn(
                 'flex-shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all',
-                categoryParam === cat.id
+                categoryFilter === cat.id
                   ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
                   : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
               )}
             >
               {cat.label}
-            </Link>
+            </button>
           ))}
         </div>
 
