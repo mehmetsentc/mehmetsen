@@ -172,8 +172,7 @@ export function getHomeFeedCategoryFamily(parentId: string): string[] {
 
 /**
  * Categories shown in the main sidebar nav (legacy order reference).
- * Yeni side nav kaynak: `@/constants/sidebarNav` (PRIMARY / EXPLORE / TOOLS).
- * Subcategories are shown inside their parent's page, not here.
+ * Güncel side nav: `@/constants/sidebarNav` — SIDEBAR_CATEGORIES (ana + alt).
  */
 export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'gundem',

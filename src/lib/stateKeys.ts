@@ -1,7 +1,7 @@
 /** Zustand persist names — bump suffix to invalidate stale client state. */
 export const STORE_KEYS = {
   FEED: 'nahaber:feedStore:v1',
-  UI: 'nahaber:uiStore:v1',
+  UI: 'nahaber:uiStore:v2',
   PAGE: 'nahaber:pageState:v1',
 } as const
 

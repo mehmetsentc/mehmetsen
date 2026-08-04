@@ -1,6 +1,6 @@
 /**
- * Desktop/mobile side nav bilgi mimarisi — üst menü A bloğu ile aynı sıra.
- * B = Keşfet (collapse), C = Araçlar.
+ * Desktop/mobile side nav — ana + alt kategori ağacı.
+ * Sıra: site nav / CategoryNav hiyerarşisi; altlar DEFAULT_CATEGORIES.parentId.
  */
 import {
   Newspaper,
@@ -34,10 +34,24 @@ import {
   Flame,
   Cloud,
   Building2,
+  CircleDot,
+  Music,
+  PartyPopper,
+  Zap,
+  Swords,
+  BarChart2,
+  Bitcoin,
+  Briefcase,
+  ChartLine,
+  Bolt,
+  Baby,
+  Shirt,
+  HeartHandshake,
+  Sofa,
   type LucideIcon,
 } from 'lucide-react'
+import { DEFAULT_CATEGORIES, getSubcategories, type CategoryDef } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
 
 export type SidebarAccent =
   | 'brand'
@@ -63,55 +77,196 @@ export interface SidebarNavItem {
   href: string
   icon: LucideIcon
   accent: SidebarAccent
+  /** Alt kategori (girintili) */
+  child?: boolean
+  children?: SidebarNavItem[]
 }
 
-function cat(id: string, label?: string): { id: string; label: string; href: string } | null {
-  const def = DEFAULT_CATEGORIES.find((c) => c.id === id)
-  if (!def) return null
+const ICON_BY_ID: Record<string, LucideIcon> = {
+  feed: LayoutGrid,
+  gundem: Newspaper,
+  yerel: MapPin,
+  'yerel-haber': MapPin,
+  asayis: ShieldAlert,
+  spor: Trophy,
+  futbol: CircleDot,
+  basketbol: CircleDot,
+  voleybol: CircleDot,
+  hentbol: CircleDot,
+  atletizm: Zap,
+  gures: Swords,
+  'dunya-kupasi-2026': Trophy,
+  dunya: Globe2,
+  'kibris-haberleri': Landmark,
+  siyaset: Scale,
+  ekonomi: TrendingUp,
+  borsa: BarChart2,
+  kripto: Bitcoin,
+  'finans-piyasa': ChartLine,
+  'emlak-konut': Building2,
+  enerji: Bolt,
+  'is-kariyer': Briefcase,
+  egitim: GraduationCap,
+  saglik: HeartPulse,
+  'cevre-iklim': Leaf,
+  'oyun-espor': Gamepad2,
+  'din-inanc': Church,
+  turizm: Plane,
+  gezi: Compass,
+  teknoloji: Cpu,
+  bilim: FlaskConical,
+  yasam: Home,
+  astroloji: Sparkles,
+  moda: Shirt,
+  'anne-cocuk': Baby,
+  dekorasyon: Sofa,
+  iliskiler: HeartHandshake,
+  gastronomi: UtensilsCrossed,
+  otomobil: Car,
+  kultur: Palette,
+  sinema: Clapperboard,
+  tiyatro: Theater,
+  konser: Music,
+  festival: PartyPopper,
+  magazin: Sparkles,
+  tarih: ScrollText,
+}
+
+const ACCENT_BY_ID: Record<string, SidebarAccent> = {
+  gundem: 'gundem',
+  yerel: 'yerel',
+  'yerel-haber': 'yerel',
+  asayis: 'asayis',
+  spor: 'spor',
+  dunya: 'dunya',
+  'kibris-haberleri': 'dunya',
+  siyaset: 'siyaset',
+  ekonomi: 'ekonomi',
+  egitim: 'egitim',
+  saglik: 'saglik',
+  teknoloji: 'teknoloji',
+  bilim: 'teknoloji',
+  kultur: 'kultur',
+  magazin: 'magazin',
+  yasam: 'yasam',
+  'cevre-iklim': 'ekonomi',
+  turizm: 'yerel',
+  gezi: 'yerel',
+  tarih: 'asayis',
+  gastronomi: 'spor',
+  otomobil: 'muted',
+  'oyun-espor': 'siyaset',
+  'din-inanc': 'muted',
+}
+
+/**
+ * Global kategori sırası — getSiteNavItems / üst menü ile hizalı ana başlıklar.
+ * Alt kategoriler getSubcategories ile eklenir.
+ */
+const SIDEBAR_CATEGORY_ORDER: Array<{
+  id: string
+  label?: string
+  href?: string
+  accent?: SidebarAccent
+}> = [
+  { id: 'gundem' },
+  { id: 'yerel', label: 'Yerel Haber', href: ROUTES.LOCAL, accent: 'yerel' },
+  { id: 'asayis', label: '3. Sayfa' },
+  { id: 'spor' },
+  { id: 'dunya' },
+  { id: 'kibris-haberleri' },
+  { id: 'siyaset' },
+  { id: 'ekonomi' },
+  { id: 'egitim' },
+  { id: 'saglik' },
+  { id: 'cevre-iklim' },
+  { id: 'oyun-espor' },
+  { id: 'din-inanc' },
+  { id: 'turizm' },
+  { id: 'gezi' },
+  { id: 'teknoloji' },
+  { id: 'bilim' },
+  { id: 'yasam' },
+  { id: 'gastronomi' },
+  { id: 'otomobil' },
+  { id: 'kultur' },
+  { id: 'magazin' },
+  { id: 'tarih' },
+]
+
+function catHref(def: CategoryDef): string {
+  return ROUTES.CATEGORY(def.slug ?? def.id)
+}
+
+function toChildItem(def: CategoryDef, parentAccent: SidebarAccent): SidebarNavItem {
   return {
-    id,
-    label: label ?? def.name,
-    href: ROUTES.CATEGORY(def.slug ?? def.id),
+    id: def.id,
+    label: def.name,
+    href: catHref(def),
+    icon: ICON_BY_ID[def.id] ?? Newspaper,
+    accent: ACCENT_BY_ID[def.id] ?? parentAccent,
+    child: true,
   }
 }
 
-/** A — Ana haber (üst menü ile hizalı) */
-export const SIDEBAR_PRIMARY: SidebarNavItem[] = [
+function buildCategoryItem(entry: (typeof SIDEBAR_CATEGORY_ORDER)[number]): SidebarNavItem | null {
+  if (entry.id === 'yerel') {
+    return {
+      id: 'yerel',
+      label: entry.label ?? 'Yerel Haber',
+      href: entry.href ?? ROUTES.LOCAL,
+      icon: MapPin,
+      accent: 'yerel',
+    }
+  }
+
+  const def = DEFAULT_CATEGORIES.find((c) => c.id === entry.id)
+  if (!def) return null
+
+  const accent = entry.accent ?? ACCENT_BY_ID[def.id] ?? 'muted'
+  const children = getSubcategories(def.id).map((sub) => toChildItem(sub, accent))
+
+  return {
+    id: def.id,
+    label: entry.label ?? def.name,
+    href: catHref(def),
+    icon: ICON_BY_ID[def.id] ?? Newspaper,
+    accent,
+    children: children.length > 0 ? children : undefined,
+  }
+}
+
+/** Ana Sayfa + tüm ana/alt kategoriler (tek düz ağaç, global sıra). */
+export const SIDEBAR_CATEGORIES: SidebarNavItem[] = [
   { id: 'feed', label: 'Ana Sayfa', href: ROUTES.FEED, icon: LayoutGrid, accent: 'brand' },
-  { ...cat('gundem')!, icon: Newspaper, accent: 'gundem' },
-  { id: 'yerel', label: 'Yerel Haber', href: ROUTES.LOCAL, icon: MapPin, accent: 'yerel' },
-  { ...cat('asayis', '3. Sayfa')!, icon: ShieldAlert, accent: 'asayis' },
-  { ...cat('spor')!, icon: Trophy, accent: 'spor' },
-  { ...cat('dunya')!, icon: Globe2, accent: 'dunya' },
-  { ...cat('kibris-haberleri')!, icon: Landmark, accent: 'dunya' },
-  { ...cat('siyaset')!, icon: Scale, accent: 'siyaset' },
-  { ...cat('ekonomi')!, icon: TrendingUp, accent: 'ekonomi' },
+  ...SIDEBAR_CATEGORY_ORDER.map(buildCategoryItem).filter(
+    (item): item is SidebarNavItem => item !== null
+  ),
 ]
 
-/** B — Keşfet (varsayılan kapalı “Daha fazla”) */
-export const SIDEBAR_EXPLORE: SidebarNavItem[] = [
-  { ...cat('saglik')!, icon: HeartPulse, accent: 'saglik' },
-  { ...cat('egitim')!, icon: GraduationCap, accent: 'egitim' },
-  { ...cat('teknoloji')!, icon: Cpu, accent: 'teknoloji' },
-  { ...cat('bilim')!, icon: FlaskConical, accent: 'teknoloji' },
-  { ...cat('cevre-iklim')!, icon: Leaf, accent: 'ekonomi' },
-  { ...cat('yasam')!, icon: Home, accent: 'yasam' },
-  { ...cat('kultur')!, icon: Palette, accent: 'kultur' },
-  { ...cat('magazin')!, icon: Sparkles, accent: 'magazin' },
-  { ...cat('turizm')!, icon: Plane, accent: 'yerel' },
-  { ...cat('gezi')!, icon: Compass, accent: 'yerel' },
-  { ...cat('tarih')!, icon: ScrollText, accent: 'asayis' },
-  { ...cat('gastronomi')!, icon: UtensilsCrossed, accent: 'spor' },
-  { ...cat('otomobil')!, icon: Car, accent: 'muted' },
-  { ...cat('oyun-espor')!, icon: Gamepad2, accent: 'siyaset' },
-  { ...cat('din-inanc')!, icon: Church, accent: 'muted' },
-  ...(cat('sinema')
-    ? [{ ...cat('sinema')!, icon: Clapperboard, accent: 'kultur' as const }]
-    : []),
-  ...(cat('tiyatro')
-    ? [{ ...cat('tiyatro')!, icon: Theater, accent: 'kultur' as const }]
-    : []),
-].filter(Boolean) as SidebarNavItem[]
+/** @deprecated SIDEBAR_CATEGORIES kullanın — geriye dönük uyumluluk */
+export const SIDEBAR_PRIMARY: SidebarNavItem[] = SIDEBAR_CATEGORIES.filter(
+  (item) =>
+    ['feed', 'gundem', 'yerel', 'asayis', 'spor', 'dunya', 'kibris-haberleri', 'siyaset', 'ekonomi'].includes(
+      item.id
+    )
+)
+
+/** @deprecated SIDEBAR_CATEGORIES kullanın */
+export const SIDEBAR_EXPLORE: SidebarNavItem[] = SIDEBAR_CATEGORIES.filter(
+  (item) =>
+    ![
+      'feed',
+      'gundem',
+      'yerel',
+      'asayis',
+      'spor',
+      'dunya',
+      'kibris-haberleri',
+      'siyaset',
+      'ekonomi',
+    ].includes(item.id)
+)
 
 /** C — Araçlar / ürün yüzeyleri */
 export const SIDEBAR_TOOLS: SidebarNavItem[] = [
@@ -124,5 +279,17 @@ export const SIDEBAR_TOOLS: SidebarNavItem[] = [
   { id: 'hava', label: 'Hava Durumu', href: ROUTES.WEATHER, icon: Cloud, accent: 'hava' },
 ]
 
-/** Keşfet’te ilk N satır her zaman görünür; kalanı “Daha fazla” */
-export const SIDEBAR_EXPLORE_PREVIEW = 6
+/** Keşfet önizleme — tam listeye geçildi; 0 = hepsi açık */
+export const SIDEBAR_EXPLORE_PREVIEW = 0
+
+/** Düz liste: ana + çocuklar (render için). */
+export function flattenSidebarItems(items: SidebarNavItem[]): SidebarNavItem[] {
+  const out: SidebarNavItem[] = []
+  for (const item of items) {
+    out.push(item)
+    if (item.children?.length) {
+      out.push(...item.children)
+    }
+  }
+  return out
+}

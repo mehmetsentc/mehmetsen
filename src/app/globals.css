@@ -89,7 +89,9 @@
     :root {
       --layout-gutter: 0.75rem;
       --layout-newspaper-max: 1280px;
-      --desktop-compact-header-height: 3.25rem;
+      /* Concept B: kırmızı birincil + lacivert ikincil bar */
+      --desktop-web-header-height: 5.75rem;
+      --desktop-compact-header-height: 5.75rem;
       --layout-content-newspaper: min(
         var(--layout-newspaper-max),
         calc(100vw - var(--sidebar-width-collapsed) - var(--layout-gutter) * 2)
@@ -2025,22 +2027,38 @@
   }
 
   .desktop-scroll-header-compact {
-    left: var(--sidebar-width-collapsed);
+    left: 0;
     right: 0;
     border-bottom: none;
     background: rgb(var(--header-brand-bg));
     box-shadow: 0 1px 0 rgb(0 0 0 / 0.12);
   }
 
+  /* Side menü header altında; üst bar her zaman tam genişlik */
   html[data-sidebar='closed'][data-platform='desktop'] .desktop-scroll-header-compact {
     left: 0;
   }
 
+  @media (min-width: 1024px) {
+    .desktop-web-header--concept-b {
+      position: relative;
+      width: 100vw;
+      max-width: 100vw;
+      margin-left: calc(50% - 50vw);
+      z-index: 50;
+    }
+
+    html[data-sidebar='open'][data-platform='desktop'] .desktop-web-header--concept-b {
+      /* Sidebar header altında; üst çubuk viewport kenarından kenara */
+      margin-left: calc(50% - 50vw);
+    }
+  }
+
   .desktop-scroll-header-compact-inner {
-    margin-inline: auto;
-    width: min(var(--layout-content-newspaper), calc(100% - var(--layout-gutter) * 2));
-    max-width: 100%;
-    padding-inline: var(--layout-gutter);
+    margin-inline: 0;
+    width: 100%;
+    max-width: none;
+    padding-inline: 0;
   }
 
   .desktop-web-header--compact nav ul {

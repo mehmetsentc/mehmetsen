@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Search } from 'lucide-react'
+import { Menu, PanelLeftClose, Search } from 'lucide-react'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
 import { BreakingNewsBand } from '@/components/home/desktop/BreakingNewsBand'
@@ -13,6 +13,27 @@ import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/uiStore'
 import type { CategoryDef } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
+
+function HeaderSidebarToggle({ compact }: { compact?: boolean }) {
+  const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
+  const toggleDesktopSidebar = useUiStore((s) => s.toggleDesktopSidebar)
+  const Icon = desktopSidebarOpen ? PanelLeftClose : Menu
+
+  return (
+    <button
+      type="button"
+      onClick={toggleDesktopSidebar}
+      aria-label={desktopSidebarOpen ? 'Kenar çubuğunu kapat' : 'Kenar çubuğunu aç'}
+      aria-expanded={desktopSidebarOpen}
+      className={cn(
+        'flex shrink-0 items-center justify-center rounded-lg text-white/90 transition-colors hover:bg-white/15 hover:text-white',
+        compact ? 'h-9 w-9' : 'h-10 w-10'
+      )}
+    >
+      <Icon className={compact ? 'h-4 w-4' : 'h-5 w-5'} strokeWidth={2} />
+    </button>
+  )
+}
 
 interface SubTab {
   id: string
@@ -103,8 +124,6 @@ export function DesktopWebHeader({
   variant = 'full',
 }: DesktopWebHeaderProps) {
   const showSubTabs = subcategories && subcategories.length > 0
-  const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
-  const showHeaderBrand = !desktopSidebarOpen
 
   if (variant === 'compact') {
     return (
@@ -117,21 +136,19 @@ export function DesktopWebHeader({
         itemType="https://schema.org/WPHeader"
       >
         <div className="flex items-stretch gap-2 bg-[rgb(var(--header-brand-bg))] px-1 text-white">
-          {showHeaderBrand ? (
+          <div className="flex shrink-0 items-center gap-1 py-2 pl-1">
+            <HeaderSidebarToggle compact />
             <Link
               href={ROUTES.FEED}
-              className="flex shrink-0 items-center gap-2 py-2 pr-2 transition-opacity hover:opacity-90"
+              className="flex items-center gap-2 pr-2 transition-opacity hover:opacity-90"
               aria-label="NaHaber Ana Sayfa"
             >
               <HeaderBrandWordmark size="sm" />
             </Link>
-          ) : null}
+          </div>
 
           <nav
-            className={cn(
-              'min-w-0 flex-1 overflow-x-auto scroll-px-3 scrollbar-hide pl-2',
-              showHeaderBrand ? 'border-l border-white/25' : ''
-            )}
+            className="min-w-0 flex-1 overflow-x-auto scroll-px-3 scrollbar-hide border-l border-white/25 pl-2"
             aria-label="Haber kategorileri"
           >
             <DesktopSiteNavLinks variant="header-primary" />
@@ -147,6 +164,13 @@ export function DesktopWebHeader({
 
           <DesktopHeaderAuth variant="onBrand" className="shrink-0 self-center" />
         </div>
+
+        <nav
+          className="flex items-center justify-center overflow-x-auto scroll-px-[var(--layout-gutter)] scrollbar-hide bg-[rgb(var(--header-navy-bg))]"
+          aria-label="İkincil haber kategorileri"
+        >
+          <DesktopSiteNavLinks variant="header-secondary" className="mx-auto justify-center" />
+        </nav>
 
         {showSubTabs ? (
           <SubcategoryTabs
@@ -170,16 +194,17 @@ export function DesktopWebHeader({
     >
       {/* Concept B — kırmızı üst bar */}
       <div className="relative z-20 flex items-center gap-3 bg-[rgb(var(--header-brand-bg))] px-3 py-2.5 text-white sm:px-4">
-        {showHeaderBrand ? (
+        <div className="relative z-10 flex shrink-0 items-center gap-1.5">
+          <HeaderSidebarToggle />
           <Link
             href={ROUTES.FEED}
-            className="relative z-10 flex shrink-0 items-center transition-opacity hover:opacity-90"
+            className="flex items-center transition-opacity hover:opacity-90"
             aria-label="NaHaber Ana Sayfa"
             itemProp="url"
           >
             <HeaderBrandWordmark size="lg" />
           </Link>
-        ) : null}
+        </div>
 
         <nav
           className="min-w-0 flex-1 overflow-x-auto scrollbar-hide"

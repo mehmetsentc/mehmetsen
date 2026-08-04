@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -10,7 +10,6 @@ import {
   Shield,
   User,
   PanelLeftClose,
-  ChevronDown,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
@@ -19,9 +18,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
 import {
-  SIDEBAR_EXPLORE,
-  SIDEBAR_EXPLORE_PREVIEW,
-  SIDEBAR_PRIMARY,
+  SIDEBAR_CATEGORIES,
   SIDEBAR_TOOLS,
   type SidebarNavItem,
 } from '@/constants/sidebarNav'
@@ -65,7 +62,7 @@ function NavLink({
       href={item.href}
       onClick={onNavigate}
       data-accent={item.accent}
-      className={cn('app-sidebar__item', active && 'is-active')}
+      className={cn('app-sidebar__item', item.child && 'app-sidebar__item--child', active && 'is-active')}
       aria-current={active ? 'page' : undefined}
     >
       <Icon className="app-sidebar__icon" aria-hidden />
@@ -74,10 +71,29 @@ function NavLink({
   )
 }
 
+function NavBranch({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: SidebarNavItem
+  pathname: string
+  onNavigate?: () => void
+}) {
+  return (
+    <>
+      <NavLink item={item} pathname={pathname} onNavigate={onNavigate} />
+      {item.children?.map((child) => (
+        <NavLink key={child.id} item={child} pathname={pathname} onNavigate={onNavigate} />
+      ))}
+    </>
+  )
+}
+
 function SidebarInner({
   className,
   mobileOpen,
-  desktopOpen = true,
+  desktopOpen = false,
   onMobileClose,
   onDesktopClose,
 }: SidebarProps) {
@@ -86,26 +102,10 @@ function SidebarInner({
   const { user, logout, loading } = useAuth()
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [exploreOpen, setExploreOpen] = useState(false)
 
   useEffect(() => {
     setHydrated(true)
   }, [])
-
-  // Keşfet’te aktif sayfa varsa bölümü otomatik aç
-  useEffect(() => {
-    const inExplore = SIDEBAR_EXPLORE.some((item) => isItemActive(pathname, item.href, item.id))
-    if (inExplore) setExploreOpen(true)
-  }, [pathname])
-
-  const explorePreview = useMemo(
-    () => SIDEBAR_EXPLORE.slice(0, SIDEBAR_EXPLORE_PREVIEW),
-    []
-  )
-  const exploreRest = useMemo(
-    () => SIDEBAR_EXPLORE.slice(SIDEBAR_EXPLORE_PREVIEW),
-    []
-  )
 
   const handleLogout = useCallback(async () => {
     await logout()
@@ -137,10 +137,14 @@ function SidebarInner({
 
       <aside
         className={cn(
-          'app-sidebar fixed inset-y-0 left-0 z-[200] flex flex-col',
+          'app-sidebar fixed left-0 z-[200] flex flex-col',
+          'inset-y-0',
+          'lg:inset-y-auto lg:bottom-0',
+          'h-full',
           'w-[var(--sidebar-width-collapsed)]',
           'border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]',
           'transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+          'lg:z-40',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           desktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full',
           className
@@ -182,60 +186,15 @@ function SidebarInner({
 
         <nav className="app-sidebar__nav flex-1 overflow-y-auto" aria-label="Ana menü">
           <div className="app-sidebar__section">
-            <p className="app-sidebar__label">Ana haber</p>
-            {SIDEBAR_PRIMARY.map((item) => (
-              <NavLink
+            <p className="app-sidebar__label">Kategoriler</p>
+            {SIDEBAR_CATEGORIES.map((item) => (
+              <NavBranch
                 key={item.id}
                 item={item}
                 pathname={pathname}
                 onNavigate={onMobileClose}
               />
             ))}
-          </div>
-
-          <div className="app-sidebar__section">
-            <p className="app-sidebar__label">Keşfet</p>
-            {explorePreview.map((item) => (
-              <NavLink
-                key={item.id}
-                item={item}
-                pathname={pathname}
-                onNavigate={onMobileClose}
-              />
-            ))}
-
-            {exploreRest.length > 0 ? (
-              <>
-                <button
-                  type="button"
-                  className="app-sidebar__more"
-                  aria-expanded={exploreOpen}
-                  onClick={() => setExploreOpen((v) => !v)}
-                >
-                  <span>{exploreOpen ? 'Daha az' : 'Daha fazla'}</span>
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 transition-transform duration-200',
-                      exploreOpen && 'rotate-180'
-                    )}
-                  />
-                </button>
-                <div
-                  className={cn('app-sidebar__explore', exploreOpen && 'is-open')}
-                >
-                  <div className="app-sidebar__explore-inner">
-                    {exploreRest.map((item) => (
-                      <NavLink
-                        key={item.id}
-                        item={item}
-                        pathname={pathname}
-                        onNavigate={onMobileClose}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </>
-            ) : null}
           </div>
 
           <div className="app-sidebar__section">

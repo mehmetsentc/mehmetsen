@@ -233,7 +233,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // preference client-side from the `lang` cookie, so the SSR shell can
   // safely render with the default language and let the client adjust.
   return (
-    <html lang="tr" suppressHydrationWarning data-sidebar="open">
+    <html lang="tr" suppressHydrationWarning data-sidebar="closed" data-desktop-header="concept-b">
       <head>
         {/* Google Consent Mode v2 — default to denied BEFORE any Google scripts.
             DeferredThirdParty upgrades to 'granted' once the user accepts. */}

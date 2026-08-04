@@ -4,6 +4,19 @@
   --sb-accent: var(--color-brand);
 }
 
+@media (min-width: 1024px) {
+  html[data-desktop-header='concept-b'] .app-sidebar {
+    top: var(--desktop-web-header-height);
+    height: calc(100dvh - var(--desktop-web-header-height));
+  }
+
+  html[data-desktop-header='none'] .app-sidebar,
+  html:not([data-desktop-header]) .app-sidebar {
+    top: 0;
+    height: 100dvh;
+  }
+}
+
 .app-sidebar__nav {
   padding: 0.35rem 0.5rem 0.75rem;
 }
@@ -57,6 +70,19 @@
   font-weight: 700;
   color: rgb(var(--text-primary));
   background: rgb(var(--brand-soft) / 0.85);
+}
+
+.app-sidebar__item--child {
+  min-height: 2.35rem;
+  margin-left: 0.55rem;
+  padding-left: 1.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.app-sidebar__item--child .app-sidebar__icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .app-sidebar__item.is-active::before {

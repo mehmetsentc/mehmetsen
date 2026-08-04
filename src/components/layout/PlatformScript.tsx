@@ -7,17 +7,10 @@ export function PlatformScript() {
         var w = window.innerWidth;
         var p = w < 768 ? 'mobile' : w < 1024 ? 'tablet' : 'desktop';
         document.documentElement.dataset.platform = p;
-        var raw = localStorage.getItem('nahaber:uiStore:v1');
-        var sidebarOpen = true;
-        if (raw) {
-          var parsed = JSON.parse(raw);
-          if (parsed.state && parsed.state.desktopSidebarOpen === false) {
-            sidebarOpen = false;
-          }
-        }
-        document.documentElement.dataset.sidebar = sidebarOpen ? 'open' : 'closed';
+        // Desktop side menu defaults closed; not restored from storage
+        document.documentElement.dataset.sidebar = 'closed';
       } catch (e) {
-        document.documentElement.dataset.sidebar = 'open';
+        document.documentElement.dataset.sidebar = 'closed';
       }
     })();
   `

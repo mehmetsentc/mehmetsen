@@ -19,7 +19,8 @@ export const useUiStore = create<UiStore>()(
   persist(
     (set, get) => ({
       mobileDrawerOpen: false,
-      desktopSidebarOpen: true,
+      // Desktop menü her oturumda kapalı başlar; hamburger ile açılır
+      desktopSidebarOpen: false,
       feedPolicyOpen: false,
       setMobileDrawerOpen: (mobileDrawerOpen) => set({ mobileDrawerOpen }),
       toggleMobileDrawer: () => set({ mobileDrawerOpen: !get().mobileDrawerOpen }),
@@ -32,7 +33,7 @@ export const useUiStore = create<UiStore>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         feedPolicyOpen: state.feedPolicyOpen,
-        desktopSidebarOpen: state.desktopSidebarOpen,
+        // desktopSidebarOpen persist edilmez — varsayılan kapalı
       }),
     }
   )
