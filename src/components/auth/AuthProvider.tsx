@@ -293,11 +293,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       import('firebase/firestore'),
     ])
     const current = auth.currentUser
-    if (!current) return
+    if (!current) {
+      throw new Error('Oturum bulunamadı — lütfen yeniden giriş yapın')
+    }
+
     const now = new Date().toISOString()
-    await updateDoc(doc(db, Collections.USERS, current.uid), {
-      termsAcceptedAt: serverTimestamp(),
-    })
+
+    try {
+      await updateDoc(doc(db, Collections.USERS, current.uid), {
+        termsAcceptedAt: serverTimestamp(),
+      })
+    } catch (clientErr) {
+      // Client write başarısız olursa Bearer token ile API fallback
+      console.warn('[AuthProvider] client acceptTerms failed, trying API:', clientErr)
+      const idToken = await current.getIdToken()
+      const res = await fetch('/api/user/accept-terms', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      })
+      if (!res.ok) {
+        throw new Error(`accept-terms failed (${res.status})`)
+      }
+    }
+
     // Firestore refresh beklemeden local state'i anında güncelle —
     // needsEula false'a döner ve modal unmount edilir.
     setUser((prev) => (prev ? { ...prev, termsAcceptedAt: now } : null))

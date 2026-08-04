@@ -2232,7 +2232,8 @@
   }
 
   .feed-policy-overlay {
-    @apply fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-4;
+    @apply fixed inset-0 flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-4;
+    z-index: 11000;
   }
 
   .feed-policy-modal {
@@ -2287,7 +2288,8 @@
   }
 
   .feed-policy-footer {
-    @apply border-t border-[rgb(var(--color-border))] px-6 pb-6 pt-4;
+    @apply border-t border-[rgb(var(--color-border))] px-6 pt-4;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
   }
 
   .feed-policy-actions {
