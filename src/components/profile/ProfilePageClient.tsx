@@ -9,6 +9,7 @@ import { ProfileTabs } from './ProfileTabs'
 import { ProfileCompleteModal } from './ProfileCompleteModal'
 import { ProfileBadges } from './ProfileBadges'
 import { ProfileReadingStats } from './ProfileReadingStats'
+import { ProfileMostRead } from './ProfileMostRead'
 import { ROUTES } from '@/constants/routes'
 import { Button } from '@/components/ui/Button'
 import type { User } from '@/types/user'
@@ -77,6 +78,11 @@ export function ProfilePageClient({
         <ProfileBadges user={profile} />
         <ProfileReadingStats userId={profile.uid} isOwnProfile={isOwnProfile} />
       </div>
+
+      {/* Most-read horizontal scroll */}
+      {initialPosts.length > 0 && (
+        <ProfileMostRead posts={initialPosts} />
+      )}
 
       <ProfileTabs
         userId={profile.uid}

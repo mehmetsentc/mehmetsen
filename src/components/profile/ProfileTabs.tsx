@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { postService } from '@/services/postService'
 import { saveService } from '@/services/saveService'
 import { likeService } from '@/services/likeService'
-import { ProfileGrid } from './ProfileGrid'
+import { ProfileMasonryFeed } from './ProfileMasonryFeed'
 import type { Post } from '@/types/post'
 
 type Tab = 'posts' | 'reels' | 'saved' | 'liked'
@@ -119,7 +119,7 @@ export function ProfileTabs({
           <p className="text-sm text-[rgb(var(--color-muted))]">Bu sekme yalnızca profil sahibine görünür</p>
         </div>
       ) : (
-        <ProfileGrid posts={posts} loading={loading} emptyMessage={emptyMessages[activeTab]} />
+        <ProfileMasonryFeed posts={posts} loading={loading} emptyMessage={emptyMessages[activeTab]} />
       )}
     </div>
   )
