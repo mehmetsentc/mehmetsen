@@ -17,10 +17,11 @@ export function notifyFeedUpdated(count: number) {
     }),
     classNames: {
       toast:
-        'rounded-2xl border border-[rgb(var(--color-brand))]/35 bg-[rgb(var(--color-card))] text-[rgb(var(--color-text))] shadow-lg backdrop-blur-md',
+        'rounded-2xl border border-[rgb(var(--color-brand))]/35 bg-[rgb(var(--color-card))] text-[rgb(var(--color-text))] shadow-lg pointer-events-auto',
       title: 'font-semibold text-[rgb(var(--color-brand))]',
       description: 'text-sm text-[rgb(var(--color-muted))]',
-      closeButton: 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
+      closeButton:
+        'pointer-events-auto z-20 text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
     },
   })
 }

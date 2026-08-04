@@ -45,33 +45,40 @@ function asText(msg: LegacyMessage): string {
   return msg as unknown as string
 }
 
-function toSonnerOpts(opts?: LegacyToastOptions) {
-  if (!opts) return undefined
+const DEFAULT_DURATION_MS = 4000
+
+function toSonnerOpts(
+  opts?: LegacyToastOptions,
+  /** Explicit default so loading→success/error same-id updates always auto-dismiss */
+  defaultDuration?: number
+) {
+  const duration = opts?.duration ?? defaultDuration
+  if (!opts && duration === undefined) return undefined
   return {
-    id: opts.id,
-    duration: opts.duration,
+    id: opts?.id,
+    ...(duration !== undefined ? { duration } : {}),
   }
 }
 
 /** Default toast — react-hot-toast `toast()` call'u */
 function defaultToast(message: LegacyMessage, opts?: LegacyToastOptions): string {
-  const id = sonnerToast(asText(message), toSonnerOpts(opts))
+  const id = sonnerToast(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))
   return String(id)
 }
 
 /** Drop-in API surface */
 const api = Object.assign(defaultToast, {
   success: (message: LegacyMessage, opts?: LegacyToastOptions): string =>
-    String(sonnerToast.success(asText(message), toSonnerOpts(opts))),
+    String(sonnerToast.success(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))),
 
   error: (message: LegacyMessage, opts?: LegacyToastOptions): string =>
-    String(sonnerToast.error(asText(message), toSonnerOpts(opts))),
+    String(sonnerToast.error(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))),
 
   loading: (message: LegacyMessage, opts?: LegacyToastOptions): string =>
     String(sonnerToast.loading(asText(message), toSonnerOpts(opts))),
 
   custom: (message: LegacyMessage, opts?: LegacyToastOptions): string =>
-    String(sonnerToast(asText(message), toSonnerOpts(opts))),
+    String(sonnerToast(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))),
 
   dismiss: (id?: string): void => {
     sonnerToast.dismiss(id)
