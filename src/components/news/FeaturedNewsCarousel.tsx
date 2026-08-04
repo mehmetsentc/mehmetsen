@@ -12,6 +12,7 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { LCP_IMAGE_QUALITY, LCP_IMAGE_SIZES } from '@/lib/lcpImage'
 import { cn } from '@/lib/utils'
+import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
 
 export type FeaturedCarouselSlide = {
   id: string
@@ -26,7 +27,7 @@ interface FeaturedNewsCarouselProps {
   slides: FeaturedCarouselSlide[]
   /** Accessible name for the section */
   label?: string
-  /** Max slides (default 20) */
+  /** Max slides (default 10 — tek satır pagination) */
   limit?: number
   /** Show section title row (“Öne Çıkan”) */
   showTitle?: boolean
@@ -49,7 +50,7 @@ function visibleIndexes(current: number, length: number): number[] {
 export function FeaturedNewsCarousel({
   slides: rawSlides,
   label = 'Öne çıkan haberler',
-  limit = 20,
+  limit = FEATURED_CAROUSEL_LIMIT,
   showTitle = false,
   className,
   priority = true,
@@ -202,7 +203,7 @@ export function FeaturedNewsCarousel({
           </Link>
         </div>
 
-        {/* Dots BELOW the image — red active / gray inactive */}
+        {/* Dots BELOW the image — red pill active / theme-aware inactive */}
         {slides.length > 1 ? (
           <div
             className="featured-news-carousel__dots"

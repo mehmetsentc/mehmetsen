@@ -1236,43 +1236,78 @@
 
   .featured-news-carousel__dots {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
-    gap: 0.55rem;
-    margin-top: 0;
-    padding: 0.95rem 0.75rem 0.35rem;
-    background: #fff;
+    gap: 0.45rem;
+    margin: 0.65rem auto 0.15rem;
+    padding: 0.45rem 0.85rem;
+    width: fit-content;
+    max-width: calc(100% - 1.5rem);
+    border-radius: 999px;
+    background: color-mix(in srgb, rgb(var(--color-surface)) 88%, rgb(var(--color-muted)) 12%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, rgb(var(--color-border)) 55%, transparent);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .featured-news-carousel__dots::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dark .featured-news-carousel__dots {
+    background: color-mix(in srgb, rgb(var(--color-surface-elevated)) 92%, white 8%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, white 12%, transparent);
   }
 
   @media (max-width: 767px) {
     .featured-news-carousel__dots {
-      gap: 0.65rem;
-      padding: 1.1rem 0.9rem 0.6rem;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding: 0.5rem 0.95rem;
     }
   }
 
   .featured-news-carousel__dot {
-    width: 0.72rem;
-    height: 0.72rem;
+    flex: 0 0 auto;
+    width: 0.5rem;
+    height: 0.5rem;
     padding: 0;
     border: 0;
     border-radius: 999px;
-    background: #c8c8c8;
+    background: color-mix(in srgb, rgb(var(--color-muted)) 42%, transparent);
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease;
+    transition:
+      width 0.22s ease,
+      background-color 0.22s ease,
+      transform 0.22s ease,
+      opacity 0.22s ease;
+    opacity: 0.85;
+  }
+
+  .dark .featured-news-carousel__dot {
+    background: color-mix(in srgb, white 28%, transparent);
+    opacity: 0.75;
   }
 
   @media (max-width: 767px) {
     .featured-news-carousel__dot {
-      width: 0.85rem;
-      height: 0.85rem;
+      width: 0.55rem;
+      height: 0.55rem;
     }
   }
 
   .featured-news-carousel__dot.is-active {
+    width: 1.35rem;
     background: rgb(var(--brand-500));
-    transform: scale(1.12);
+    opacity: 1;
+    transform: none;
+  }
+
+  .dark .featured-news-carousel__dot.is-active {
+    background: rgb(var(--brand-500));
+    opacity: 1;
   }
 
   .featured-news-carousel__dot:focus-visible {

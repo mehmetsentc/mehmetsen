@@ -8,6 +8,7 @@ import {
   type MobileStorySlot,
 } from '@/lib/mobileCategoryComposition'
 import { categoryPostImage } from '@/components/home/desktop/categoryPostUtils'
+import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
 import { CategoryHeroCarousel } from '@/components/category/CategoryHeroCarousel'
 import { MobileCategoryHeader } from './MobileCategoryHeader'
 import { MobileYerelCityStrip } from './MobileYerelCityStrip'
@@ -72,7 +73,7 @@ function BlockView({
           <CategoryHeroCarousel
             posts={heroCarouselPosts}
             priority={isFirstHero}
-            limit={20}
+            limit={FEATURED_CAROUSEL_LIMIT}
           />
         </div>
       )
@@ -156,10 +157,10 @@ export function MobileCategoryLanding({
     [initialPosts]
   )
 
-  // Kaydırmalı öne çıkan: görselli haberlerden ilk 20 (tek hero yerine)
+  // Kaydırmalı öne çıkan: görselli haberlerden ilk N (tek satır pagination)
   const heroCarouselPosts = useMemo(() => {
     const withImage = initialPosts.filter((p) => categoryPostImage(p).length > 10)
-    return (withImage.length > 0 ? withImage : initialPosts).slice(0, 20)
+    return (withImage.length > 0 ? withImage : initialPosts).slice(0, FEATURED_CAROUSEL_LIMIT)
   }, [initialPosts])
 
   // Load-more starts from the day before the oldest SSR post

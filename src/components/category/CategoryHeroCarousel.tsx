@@ -10,6 +10,7 @@ import {
   categoryPostHref,
   categoryPostImage,
 } from '@/components/home/desktop/categoryPostUtils'
+import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
 import type { TimelinePost } from '@/types/post'
 
 interface CategoryHeroCarouselProps {
@@ -32,7 +33,7 @@ function postKicker(post: TimelinePost): string {
 export function CategoryHeroCarousel({
   posts,
   priority = false,
-  limit = 20,
+  limit = FEATURED_CAROUSEL_LIMIT,
 }: CategoryHeroCarouselProps) {
   const slides = useMemo<FeaturedCarouselSlide[]>(
     () =>

@@ -6,7 +6,7 @@ import {
   type FeaturedCarouselSlide,
 } from '@/components/news/FeaturedNewsCarousel'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
-import { HOME_FEATURED_LIMIT, type NewsItem } from '@/types/newsItem'
+import { FEATURED_CAROUSEL_LIMIT, type NewsItem } from '@/types/newsItem'
 
 interface FeaturedSliderProps {
   items: NewsItem[]
@@ -16,7 +16,7 @@ interface FeaturedSliderProps {
 export function FeaturedSlider({ items }: FeaturedSliderProps) {
   const slides = useMemo<FeaturedCarouselSlide[]>(
     () =>
-      items.slice(0, HOME_FEATURED_LIMIT).map((item) => ({
+      items.slice(0, FEATURED_CAROUSEL_LIMIT).map((item) => ({
         id: item.id,
         href: newsItemDetailHref(item),
         title: item.title,
@@ -33,7 +33,7 @@ export function FeaturedSlider({ items }: FeaturedSliderProps) {
           slides={slides}
           label="Öne Çıkan Haberler"
           showTitle
-          limit={HOME_FEATURED_LIMIT}
+          limit={FEATURED_CAROUSEL_LIMIT}
           priority
         />
       </div>

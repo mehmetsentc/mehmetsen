@@ -19,6 +19,7 @@ import {
 } from '@/components/sports/MatchResults'
 import { useThemedCategoryFeed } from '@/hooks/useThemedCategoryFeed'
 import { getCategoryAccent } from '@/constants/categoryTheme'
+import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
 import type { TimelinePost } from '@/types/post'
 
 interface CategoryThemedFeedProps {
@@ -203,10 +204,10 @@ function MobileSectionBlock({
 }) {
   const title = sectionTitle(sectionId)
 
-  // First section leads with a swipeable hero carousel (top 5). Other sections
+  // First section leads with a swipeable hero carousel (max 10). Other sections
   // keep a single hero. A horizontal "discover" rail sits between the hero and
   // the vertical timeline to break the monotony of stacked cards.
-  const heroCount = isFirstSection ? Math.min(posts.length, 20) : posts.length > 0 ? 1 : 0
+  const heroCount = isFirstSection ? Math.min(posts.length, FEATURED_CAROUSEL_LIMIT) : posts.length > 0 ? 1 : 0
   const heroPosts = posts.slice(0, heroCount)
   const railPosts = posts.slice(heroCount, heroCount + 6)
   const rest = posts.slice(heroCount + railPosts.length)

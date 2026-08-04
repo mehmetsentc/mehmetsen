@@ -13,6 +13,7 @@ import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { newsItemToTimelinePost } from '@/lib/newsItemToTimelinePost'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
 import { cn } from '@/lib/utils'
+import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
 import type { TimelinePost } from '@/types/post'
 import type { CategoryFeedPage } from '@/services/newsService.server'
 import { ExperienceFeed } from './ExperienceFeed'
@@ -119,7 +120,7 @@ export function CategoryExperience({
 
   const style = experienceThemeStyle(theme)
   // Kaydırmalı öne çıkan yalnızca mobilde; masaüstü ExperienceFeed ızgarası
-  const heroPosts = isMobile ? posts.slice(0, 20) : []
+  const heroPosts = isMobile ? posts.slice(0, FEATURED_CAROUSEL_LIMIT) : []
   const feedPosts = isMobile && heroPosts.length > 0 ? posts.slice(heroPosts.length) : posts
 
   return (
