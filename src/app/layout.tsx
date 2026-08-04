@@ -29,6 +29,7 @@ const sourceSerif = Source_Serif_4({
 import { getSiteUrl } from '@/lib/seo'
 import { OneSignalProvider } from '@/components/OneSignalProvider'
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt'
+import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
 import { ConsentStrip } from '@/components/consent/ConsentStrip'
 
 const appUrl = getSiteUrl()
@@ -291,6 +292,8 @@ gtag('consent','default',{
               {children}
               {/* Single cookie/KVKK consent UI (replaces CookieConsentBanner strip) */}
               <ConsentStrip />
+              {/* PWA: early SW register → Chromium beforeinstallprompt */}
+              <ServiceWorkerRegister />
               {/* F5: PWA "Ana ekrana ekle" prompt */}
               <PWAInstallPrompt />
               {/* F2.5: tüm toast'lar artık sonner ToastViewport üzerinden çıkar

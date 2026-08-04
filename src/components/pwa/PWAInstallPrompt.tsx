@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Download, X } from 'lucide-react'
+import { Download, Share, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -14,24 +14,38 @@ interface BeforeInstallPromptEvent extends Event {
 const DISMISS_KEY = 'nahaber:pwa-install-dismissed-at'
 const DISMISS_DAYS = 14
 
+function isStandaloneDisplay(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  )
+}
+
+/** Any iPhone/iPad/iPod — including Chrome/Firefox iOS (no beforeinstallprompt). */
+function detectIOS(): { isIOS: boolean; isSafari: boolean } {
+  const ua = navigator.userAgent.toLowerCase()
+  const isIOS =
+    /iphone|ipad|ipod/.test(ua) ||
+    // iPadOS 13+ desktop UA
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const isSafari = isIOS && !/crios|fxios|edgios|opios/.test(ua)
+  return { isIOS, isSafari }
+}
+
 /**
  * PWAInstallPrompt — F5
  *
- * Tarayıcı beforeinstallprompt event'ini yakalayıp custom UI ile
- * gösterir. Reddedildiğinde 14 gün boyunca tekrar gösterilmez.
- *
- * iOS Safari beforeinstallprompt'u tetiklemez — orada Apple'ın native
- * "Ana Ekrana Ekle" akışına yönlendiren küçük bir hint gösteririz.
- *
- * Layout'a tek seferlik mount edilir.
+ * Android/Chrome/Edge: catch beforeinstallprompt → custom one-tap "Yükle".
+ * iOS: Apple does not expose a programmatic install API — soft banner guides
+ * Share → Ana Ekrana Ekle (Safari only; other iOS browsers get "Safari'de aç").
  */
 export function PWAInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
+  const [isSafari, setIsSafari] = useState(false)
   const [installed, setInstalled] = useState(false)
 
-  // ── Daha önce dismiss edildi mi? ──────────────────────────────
   const isRecentlyDismissed = useCallback((): boolean => {
     try {
       const at = localStorage.getItem(DISMISS_KEY)
@@ -44,20 +58,13 @@ export function PWAInstallPrompt() {
     }
   }, [])
 
-  // ── Standalone? ─────────────────────────────────────────────────
   useEffect(() => {
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      // Apple-only deprecated flag
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-    setInstalled(standalone)
-
-    const ua = navigator.userAgent.toLowerCase()
-    const ios = /iphone|ipad|ipod/.test(ua) && !/crios|fxios/.test(ua)
+    setInstalled(isStandaloneDisplay())
+    const { isIOS: ios, isSafari: safari } = detectIOS()
     setIsIOS(ios)
+    setIsSafari(safari)
   }, [])
 
-  // ── Listen for beforeinstallprompt ──────────────────────────────
   useEffect(() => {
     if (installed) return
     if (isRecentlyDismissed()) return
@@ -65,7 +72,6 @@ export function PWAInstallPrompt() {
     const onPrompt = (e: Event) => {
       e.preventDefault()
       setDeferred(e as BeforeInstallPromptEvent)
-      // Kullanıcı bir süre etkileşim kursun, sonra bar açılır.
       window.setTimeout(() => setVisible(true), 4_500)
     }
 
@@ -77,7 +83,7 @@ export function PWAInstallPrompt() {
     window.addEventListener('beforeinstallprompt', onPrompt)
     window.addEventListener('appinstalled', onInstalled)
 
-    // iOS: prompt eventi gelmez — kendi banner'ımızı 6 saniye sonra göster
+    // iOS never fires beforeinstallprompt — soft guide after engagement delay
     if (isIOS) {
       const t = window.setTimeout(() => setVisible(true), 6_000)
       return () => {
@@ -109,14 +115,12 @@ export function PWAInstallPrompt() {
       const choice = await deferred.userChoice
       if (choice.outcome === 'accepted') {
         setInstalled(true)
-        // Conversion event — Vercel Analytics tarafından otomatik yakalanır
         try {
           window.dispatchEvent(new CustomEvent('pwa:installed', { detail: { source: 'prompt' } }))
         } catch {
           /* ignore */
         }
       } else {
-        // Reddedilirse de event ile sayalım (analytics için)
         try {
           window.dispatchEvent(new CustomEvent('pwa:install-dismissed', { detail: { source: 'prompt' } }))
         } catch {
@@ -155,7 +159,7 @@ export function PWAInstallPrompt() {
             </button>
             <div className="flex items-start gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
-                <Download className="h-6 w-6" />
+                {isIOS ? <Share className="h-6 w-6" /> : <Download className="h-6 w-6" />}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-text-primary">
@@ -163,8 +167,10 @@ export function PWAInstallPrompt() {
                 </p>
                 <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">
                   {isIOS
-                    ? 'Safari\'de Paylaş → "Ana Ekrana Ekle" ile uygulamayı yükleyebilirsin.'
-                    : 'Daha hızlı erişim, push bildirimleri ve çevrimdışı okuma için yükle.'}
+                    ? isSafari
+                      ? 'Safari\'de Paylaş → "Ana Ekrana Ekle" ile uygulama gibi açılır.'
+                      : 'iPhone\'da ana ekrana ekleme yalnızca Safari ile mümkün.'
+                    : 'Tek dokunuşla yükle — daha hızlı erişim ve bildirimler.'}
                 </p>
               </div>
             </div>
@@ -180,8 +186,17 @@ export function PWAInstallPrompt() {
               </div>
             ) : isIOS ? (
               <div className="mt-3 rounded-xl bg-bg-subtle/60 px-3 py-2 text-2xs leading-relaxed text-text-tertiary">
-                Safari&apos;nin alt çubuğundaki <strong>Paylaş</strong> ikonuna dokun
-                → aşağı kaydır → <strong>Ana Ekrana Ekle</strong>.
+                {isSafari ? (
+                  <>
+                    Alt çubuktaki <strong>Paylaş</strong> (□↑) → aşağı kaydır →{' '}
+                    <strong>Ana Ekrana Ekle</strong> → <strong>Ekle</strong>.
+                  </>
+                ) : (
+                  <>
+                    <strong>Safari</strong>&apos;de nahaber.com aç → Paylaş →{' '}
+                    <strong>Ana Ekrana Ekle</strong>. Chrome/Firefox iOS bunu desteklemez.
+                  </>
+                )}
               </div>
             ) : null}
           </div>

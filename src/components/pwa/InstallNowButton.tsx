@@ -28,13 +28,15 @@ export function InstallNowButton() {
 
   useEffect(() => {
     const ua = navigator.userAgent.toLowerCase()
-    const isIOS = /iphone|ipad|ipod/.test(ua) && !/crios|fxios/.test(ua)
+    const isIOSDevice =
+      /iphone|ipad|ipod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
     const isAndroid = /android/.test(ua)
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true
 
-    const detected: Platform = isIOS ? 'ios' : isAndroid ? 'android' : 'desktop'
+    const detected: Platform = isIOSDevice ? 'ios' : isAndroid ? 'android' : 'desktop'
     setPlatform(detected)
 
     if (standalone) {
@@ -42,8 +44,12 @@ export function InstallNowButton() {
       return
     }
 
-    if (isIOS) setState('ios-hint')
-    else if (detected === 'desktop') setState('desktop-hint')
+    // iOS never exposes beforeinstallprompt (Safari or Chrome/Firefox wrappers)
+    if (isIOSDevice) {
+      setState('ios-hint')
+      return
+    }
+    if (detected === 'desktop') setState('desktop-hint')
 
     const onPrompt = (e: Event) => {
       e.preventDefault()
@@ -116,9 +122,12 @@ export function InstallNowButton() {
         <div className="absolute left-1/2 top-full z-50 mt-3 w-[320px] -translate-x-1/2 rounded-2xl border border-border bg-bg-card p-4 shadow-2xl">
           {state === 'ios-hint' && (
             <div className="text-left text-sm text-text-secondary">
-              <p className="mb-2 font-bold text-text-primary">iPhone&apos;da yükle:</p>
+              <p className="mb-2 font-bold text-text-primary">iPhone / iPad&apos;de yükle:</p>
+              <p className="mb-2 text-xs text-text-tertiary">
+                Apple tek dokunuşlu kurulum diyalogu açmaya izin vermez — Safari üzerinden eklenir.
+              </p>
               <ol className="space-y-1 pl-5 list-decimal">
-                <li>Bu sayfayı <strong>Safari</strong>&apos;de aç</li>
+                <li>Bu sayfayı <strong>Safari</strong>&apos;de aç (Chrome/Firefox iOS olmaz)</li>
                 <li>Alt çubukta <strong>Paylaş</strong> (□↑) ikonuna dokun</li>
                 <li>Aşağı kaydır → <strong>Ana Ekrana Ekle</strong></li>
                 <li>Sağ üstte <strong>Ekle</strong> dokun</li>

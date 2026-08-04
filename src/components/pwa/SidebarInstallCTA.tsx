@@ -54,7 +54,7 @@ export function SidebarInstallCTA({ onNavigate }: SidebarInstallCTAProps) {
       <span className="flex flex-col leading-tight">
         <span className="text-[11px] font-bold">NaHaber&apos;ı yükle</span>
         <span className="text-[10px] font-medium text-text-tertiary">
-          Ana ekranına ekle · 3 sn
+          Ana ekranına ekle · ücretsiz
         </span>
       </span>
     </Link>

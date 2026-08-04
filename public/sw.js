@@ -1,9 +1,15 @@
 /**
- * NaHaber Service Worker — Web Push + Offline Cache
- * Handles FCM push messages and background sync.
+ * NaHaber Service Worker — Web Push + Offline Cache + installability
+ *
+ * Chrome/Edge beforeinstallprompt requires a controlling SW with a fetch
+ * handler. This file is registered early on every visit (see ServiceWorkerRegister).
+ *
+ * OneSignal is imported here so we keep a single SW at scope `/` instead of
+ * fighting OneSignalSDKWorker.js for the same registration.
  */
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js')
 
-const CACHE_VERSION = 'nahaber-v4'
+const CACHE_VERSION = 'nahaber-v5'
 const STATIC_CACHE = [
   '/offline',
   '/favicon.ico',

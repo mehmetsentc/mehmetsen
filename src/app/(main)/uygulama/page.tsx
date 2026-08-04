@@ -105,7 +105,8 @@ export default function AppDownloadPage() {
           NaHaber&apos;ı ana ekranına ekle
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-base text-text-secondary sm:text-lg">
-          Anlık bildirimler, çevrimdışı okuma ve uygulamanın hızlı versiyonu — tek tıkla.
+          Anlık bildirimler, çevrimdışı okuma ve uygulamanın hızlı versiyonu. Android&apos;de tek dokunuş;
+          iPhone&apos;da Safari → Ana Ekrana Ekle.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

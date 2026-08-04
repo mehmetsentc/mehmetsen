@@ -38,7 +38,9 @@ export function OneSignalProvider() {
       window.OneSignalDeferred.push(async (OneSignal) => {
         await OneSignal.init({
           appId,
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
+          // Unified with public/sw.js (importScripts OneSignal) so PWA
+          // installability + push share one controlling worker at `/`.
+          serviceWorkerPath: '/sw.js',
           serviceWorkerParam: { scope: '/' },
           notifyButton: { enable: false },
           promptOptions: {
