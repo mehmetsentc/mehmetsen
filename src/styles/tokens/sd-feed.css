@@ -1,0 +1,133 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * SonDakika-style mobile feed cards — shared across home, category, yerel.
+ * Full-width vertical layout: dot+clock → bold title → wide image.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.sd-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 0.75rem;
+}
+
+.sd-card {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid rgb(var(--color-border) / 0.5);
+}
+
+.sd-card:first-child {
+  padding-top: 0;
+}
+
+.sd-card:last-child {
+  border-bottom: none;
+}
+
+.sd-card__time {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: rgb(var(--color-brand));
+}
+
+.sd-card__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(var(--color-brand));
+  flex-shrink: 0;
+}
+
+.sd-card__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: rgb(var(--color-text));
+}
+
+.sd-card .group:hover .sd-card__title,
+.sd-card .group:active .sd-card__title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sd-card__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: rgb(var(--color-border));
+}
+
+.sd-card__play {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgb(var(--color-brand) / 0.9);
+  color: #fff;
+}
+
+/* Skeleton loader rows */
+.sd-feed__skeleton {
+  padding: 1.25rem 0;
+}
+
+.sd-feed__skeleton-time {
+  height: 1rem;
+  width: 5rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.sd-feed__skeleton-title {
+  height: 1.5rem;
+  width: 75%;
+  border-radius: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.sd-feed__skeleton-media {
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+}
+
+/* Scroll-to-top FAB */
+.sd-fab {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
+  right: 1rem;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 50%;
+  background: rgb(var(--color-brand));
+  color: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.sd-fab:active {
+  transform: scale(0.92);
+}
+
+@media (max-width: 639px) {
+  .sd-card__title {
+    font-size: 1.125rem;
+  }
+}

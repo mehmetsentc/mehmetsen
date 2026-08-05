@@ -66,6 +66,8 @@
   color: rgb(var(--color-muted));
 }
 
+/* ── Desktop list row ── */
+
 .local-list {
   display: flex;
   flex-direction: column;

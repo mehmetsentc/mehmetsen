@@ -50,3 +50,24 @@ export function formatNewsRelative(value?: string): string | null {
 
   return formatNewsDate(value)
 }
+
+const clockFmt = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit', hour12: false })
+const dateFmt = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' })
+
+/** SonDakika-style clock: "00:03" (today), "Dün 22:24" (yesterday), "5 Ağu 14:30" (older) */
+export function formatNewsClock(value?: string | number): string | null {
+  if (value == null) return null
+  const ms = typeof value === 'number' ? value : Date.parse(value)
+  if (!Number.isFinite(ms)) return null
+
+  const now = new Date()
+  const d = new Date(ms)
+  const time = clockFmt.format(d)
+
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const yesterdayStart = todayStart - 86_400_000
+
+  if (ms >= todayStart) return time
+  if (ms >= yesterdayStart) return `Dün ${time}`
+  return `${dateFmt.format(d)} ${time}`
+}

@@ -1,17 +1,45 @@
 'use client'
 
-import { MapPin, AlertCircle } from 'lucide-react'
-import { CategoryHeroStory } from '@/components/category/CategoryPostStories'
+import { useCallback, useEffect, useState } from 'react'
+import { MapPin, AlertCircle, ArrowUp } from 'lucide-react'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
-import { LocalListStory } from '@/components/local/LocalListStory'
+import { MobileFeedCard } from '@/components/feed/MobileFeedCard'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
-import { cn } from '@/lib/utils'
 import type { useLocalNewsPage } from '@/hooks/useLocalNewsPage'
 
 type LocalNewsState = ReturnType<typeof useLocalNewsPage>
 
 interface LocalNewsMobileProps {
   state: LocalNewsState
+}
+
+function ScrollToTopFab() {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    function onScroll() {
+      setVisible(window.scrollY > 600)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const scrollUp = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
+  if (!visible) return null
+
+  return (
+    <button
+      type="button"
+      onClick={scrollUp}
+      aria-label="Yukarı dön"
+      className="sd-fab"
+    >
+      <ArrowUp className="h-5 w-5" />
+    </button>
+  )
 }
 
 export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
@@ -28,8 +56,6 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
   } = state
 
   const pageTitle = city ? `${city.name} Yerel Haber` : 'Yerel Haber'
-  const hero = posts[0]
-  const rest = posts.slice(1)
 
   return (
     <div className="local-page w-full pb-8 lg:hidden">
@@ -51,10 +77,13 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
       ) : null}
 
       {loading ? (
-        <div className="space-y-4 px-3">
-          <div className="aspect-[16/10] animate-pulse rounded-xl bg-[rgb(var(--color-border))]" />
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-lg bg-[rgb(var(--color-border))]" />
+        <div className="sd-feed">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="sd-feed__skeleton">
+              <div className="sd-feed__skeleton-time animate-pulse bg-[rgb(var(--color-border))]" />
+              <div className="sd-feed__skeleton-title animate-pulse bg-[rgb(var(--color-border))]" />
+              <div className="sd-feed__skeleton-media animate-pulse bg-[rgb(var(--color-border))]" />
+            </div>
           ))}
         </div>
       ) : error ? (
@@ -80,30 +109,21 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
           </p>
         </div>
       ) : (
-        <div className="px-3">
-          {hero ? (
-            <div className="mb-5">
-              <CategoryHeroStory post={hero} priority />
-            </div>
-          ) : null}
-
-          {rest.length > 0 ? (
-            <section aria-label="Haber listesi">
-              <h2 className="local-section-title">Son haberler</h2>
-              <div className={cn('local-list')}>
-                {rest.map((post) => (
-                  <LocalListStory key={post.id} post={post} />
-                ))}
-              </div>
-            </section>
-          ) : null}
+        <div className="sd-feed">
+          {posts.map((post, i) => (
+            <MobileFeedCard key={post.id} post={post} priority={i === 0} />
+          ))}
 
           {loadingMore ? (
-            <div className="mt-2 space-y-3">
+            <>
               {[...Array(2)].map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-lg bg-[rgb(var(--color-border))]" />
+                <div key={i} className="sd-feed__skeleton">
+                  <div className="sd-feed__skeleton-time animate-pulse bg-[rgb(var(--color-border))]" />
+                  <div className="sd-feed__skeleton-title animate-pulse bg-[rgb(var(--color-border))]" />
+                  <div className="sd-feed__skeleton-media animate-pulse bg-[rgb(var(--color-border))]" />
+                </div>
               ))}
-            </div>
+            </>
           ) : null}
         </div>
       )}
@@ -111,6 +131,8 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
       {hasMore ? (
         <LoadMoreDayButton onClick={() => void loadMore()} loading={loadingMore} />
       ) : null}
+
+      <ScrollToTopFab />
     </div>
   )
 }

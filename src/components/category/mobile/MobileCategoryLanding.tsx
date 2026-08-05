@@ -1,22 +1,14 @@
 'use client'
 
 import { useMemo } from 'react'
-import { getCategoryAccent } from '@/constants/categoryTheme'
-import {
-  composeMobileCategoryLayout,
-  type MobileCategoryBlock,
-  type MobileStorySlot,
-} from '@/lib/mobileCategoryComposition'
 import { categoryPostImage } from '@/components/home/desktop/categoryPostUtils'
 import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
 import { CategoryHeroCarousel } from '@/components/category/CategoryHeroCarousel'
+import { MobileFeedCard } from '@/components/feed/MobileFeedCard'
 import { MobileCategoryHeader } from './MobileCategoryHeader'
 import { MobileYerelCityStrip } from './MobileYerelCityStrip'
-import { MobileCategoryStory } from './MobileCategoryStories'
-import { MobileLatestStrip } from './MobileLatestStrip'
 import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
-import Link from 'next/link'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
 
@@ -41,101 +33,11 @@ interface MobileCategoryLandingProps {
   topExtras?: React.ReactNode
 }
 
-function StoryStack({ slots, priorityFirst }: { slots: MobileStorySlot[]; priorityFirst?: boolean }) {
-  return (
-    <div className="mc-stack">
-      {slots.map((slot, i) => (
-        <MobileCategoryStory
-          key={slot.post.id}
-          variant={slot.variant}
-          post={slot.post}
-          priority={Boolean(priorityFirst && i === 0)}
-        />
-      ))}
-    </div>
-  )
-}
-
-function BlockView({
-  block,
-  isFirstHero,
-  heroCarouselPosts,
-}: {
-  block: MobileCategoryBlock
-  isFirstHero?: boolean
-  /** When set, first hero becomes a multi-slide carousel instead of a single card. */
-  heroCarouselPosts?: TimelinePost[]
-}) {
-  if (block.type === 'hero') {
-    if (heroCarouselPosts && heroCarouselPosts.length > 0) {
-      return (
-        <div className="mc-hero-carousel px-0">
-          <CategoryHeroCarousel
-            posts={heroCarouselPosts}
-            priority={isFirstHero}
-            limit={FEATURED_CAROUSEL_LIMIT}
-          />
-        </div>
-      )
-    }
-    if (block.slots[0]) {
-      return (
-        <MobileCategoryStory
-          variant="hero"
-          post={block.slots[0].post}
-          priority={isFirstHero}
-        />
-      )
-    }
-  }
-  if (block.type === 'latest' && block.latestTitles) {
-    return <MobileLatestStrip items={block.latestTitles} />
-  }
-  if (block.type === 'videos') {
-    return (
-      <section className="mc-section" aria-label={block.title ?? 'Video'}>
-        {block.title ? <h2 className="mc-section__title">{block.title}</h2> : null}
-        <div className="mc-stack mc-stack--video">
-          {block.slots.map((slot) => (
-            <MobileCategoryStory key={slot.post.id} variant="video" post={slot.post} />
-          ))}
-        </div>
-      </section>
-    )
-  }
-  if (block.type === 'section') {
-    return (
-      <section className="mc-section" aria-label={block.title}>
-        <div className="mc-section__head">
-          {block.href ? (
-            <Link href={block.href} className="mc-section__title-link">
-              <h2 className="mc-section__title">{block.title}</h2>
-            </Link>
-          ) : (
-            <h2 className="mc-section__title">{block.title}</h2>
-          )}
-        </div>
-        <StoryStack slots={block.slots} />
-      </section>
-    )
-  }
-  if (block.type === 'feed') {
-    return (
-      <section className="mc-section" aria-label={block.title ?? 'Son Haberler'}>
-        {block.title ? <h2 className="mc-section__title">{block.title}</h2> : null}
-        <StoryStack slots={block.slots} />
-      </section>
-    )
-  }
-  return <StoryStack slots={block.slots} />
-}
-
 /**
- * Mobile-only (<768px) editorial category landing.
+ * Mobile-only (<768px) category landing — SonDakika-style feed.
  *
- * COST REDUCTION: Infinite scroll ve client-side Firestore okuma kaldırıldı.
- * Açılış blokları SSR initialPosts'tan oluşturulur (sıfır Firestore okuma).
- * "Daha fazla yükle" butonu /api/feed/category (server-cached, 5 dk) çağırır.
+ * Hero carousel at top (kept), followed by full-width vertical cards
+ * matching the SonDakika.com feed pattern.
  */
 export function MobileCategoryLanding({
   cat,
@@ -148,22 +50,21 @@ export function MobileCategoryLanding({
   pageTitle,
   topExtras,
 }: MobileCategoryLandingProps) {
-  const accent = getCategoryAccent(cat.id)
-  const style = { ['--mc-accent' as string]: accent.rgb } as React.CSSProperties
-
-  // Açılış editorial layout — SSR verisi, Firestore okuma yok
-  const openingBlocks = useMemo(
-    () => composeMobileCategoryLayout({ posts: initialPosts, sections: [], isSubcategory: true }),
-    [initialPosts]
-  )
-
-  // Kaydırmalı öne çıkan: görselli haberlerden ilk N (tek satır pagination)
   const heroCarouselPosts = useMemo(() => {
     const withImage = initialPosts.filter((p) => categoryPostImage(p).length > 10)
     return (withImage.length > 0 ? withImage : initialPosts).slice(0, FEATURED_CAROUSEL_LIMIT)
   }, [initialPosts])
 
-  // Load-more starts from the day before the oldest SSR post
+  const heroIds = useMemo(
+    () => new Set(heroCarouselPosts.map((p) => p.id)),
+    [heroCarouselPosts]
+  )
+
+  const feedPosts = useMemo(
+    () => initialPosts.filter((p) => !heroIds.has(p.id)),
+    [initialPosts, heroIds]
+  )
+
   const lastPost = initialPosts[initialPosts.length - 1]
   const initialBeforeDay = previousTurkeyDayFromPublishedAt(
     lastPost?.publishedAt == null
@@ -176,7 +77,7 @@ export function MobileCategoryLanding({
   const empty = initialPosts.length === 0
 
   return (
-    <div className="mc-page" style={style}>
+    <div className="mc-page">
       <MobileCategoryHeader
         pageTitle={isSubcategory && parentCat ? cat.name : pageTitle.includes('·') ? cat.name : pageTitle}
         categoryId={cat.id}
@@ -195,21 +96,25 @@ export function MobileCategoryLanding({
         <p className="mc-empty">Bu kategoride henüz yayınlanmış haber bulunmuyor.</p>
       ) : null}
 
-      {openingBlocks.map((block, i) => (
-        <BlockView
-          key={`open-${block.type}-${i}-${block.slots[0]?.post.id ?? block.latestTitles?.[0]?.id ?? i}`}
-          block={block}
-          isFirstHero={i === 0}
-          heroCarouselPosts={
-            block.type === 'hero' && i === openingBlocks.findIndex((b) => b.type === 'hero')
-              ? heroCarouselPosts
-              : undefined
-          }
-        />
-      ))}
+      {heroCarouselPosts.length > 0 ? (
+        <div className="mc-hero-carousel px-0">
+          <CategoryHeroCarousel
+            posts={heroCarouselPosts}
+            priority
+            limit={FEATURED_CAROUSEL_LIMIT}
+          />
+        </div>
+      ) : null}
 
-      {/* Sunucu taraflı sayfalama — client Firestore okuma yok */}
-      <div className="px-4 pt-2 pb-8">
+      {feedPosts.length > 0 ? (
+        <div className="sd-feed mt-2">
+          {feedPosts.map((post, i) => (
+            <MobileFeedCard key={post.id} post={post} priority={i === 0 && heroCarouselPosts.length === 0} />
+          ))}
+        </div>
+      ) : null}
+
+      <div className="px-3 pt-2 pb-8">
         <CategoryLoadMore
           categoryId={cat.id}
           initialItems={initialPosts.map((p) => ({
