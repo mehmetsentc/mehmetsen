@@ -2044,7 +2044,7 @@
   }
 
   @media (min-width: 1024px) {
-    /* Dark: header bars = --bg-elevated (#11192B); light: Theme D charcoal — content sütunu */
+    /* Header bars = --header-brand-bg / --header-navy-bg (#11192B) in both themes */
     .desktop-web-header--concept-b {
       position: relative;
       display: flex;

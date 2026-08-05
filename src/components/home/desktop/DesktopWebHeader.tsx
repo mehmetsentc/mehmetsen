@@ -65,7 +65,7 @@ function HeaderBrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   )
 }
 
-/** Content-width header bar — dark: shell #11192B; light: Theme D charcoal. */
+/** Content-width header bar — charcoal navy shell (#11192B) in both themes. */
 function HeaderBar({
   tone,
   className,

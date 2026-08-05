@@ -91,9 +91,9 @@
     --nav-bar-bg:        255 255 255;
     --nav-bar-border:    226 232 240;
 
-    /* Theme D — Kömür / Siyah portal: charcoal üst + secondary */
-    --header-brand-bg:    17  17  17;      /* #111111 — kömür üst bar */
-    --header-navy-bg:     26  26  26;      /* #1A1A1A — secondary bar */
+    /* Header chrome — same charcoal navy as dark shell (#11192B), not pure black */
+    --header-brand-bg:    17  25  43;      /* #11192B — brand bar */
+    --header-navy-bg:     17  25  43;      /* #11192B — category sub-bar */
     --header-onbrand:    255 255 255;
 
     /* Wordmark — logo: Na (metin) + Haber (kırmızı); koyu barda Na beyaz + Haber brand kırmızı */
