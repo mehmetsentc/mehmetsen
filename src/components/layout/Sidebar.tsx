@@ -17,6 +17,7 @@ import { ROUTES } from '@/constants/routes'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
+import { SidebarThemeToggle } from '@/components/layout/SidebarThemeToggle'
 import {
   SIDEBAR_CATEGORIES,
   SIDEBAR_TOOLS,
@@ -229,6 +230,7 @@ function SidebarInner({
 
         <div className="shrink-0 space-y-1 border-t border-[rgb(var(--color-border))] p-3">
           {hydrated ? <SidebarInstallCTA onNavigate={closeDrawer} /> : null}
+          {hydrated ? <SidebarThemeToggle /> : null}
           {hydrated && !loading && user ? (
             <>
               <Link
