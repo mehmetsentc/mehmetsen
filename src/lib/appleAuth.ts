@@ -15,6 +15,30 @@ import {
   type UserCredential,
 } from 'firebase/auth'
 
+// ---------- Apple-provided profile (native only) ----------
+
+export interface AppleProfile {
+  givenName?: string
+  familyName?: string
+  email?: string
+}
+
+let _pendingAppleProfile: AppleProfile | null = null
+
+/**
+ * Consume the Apple-provided name/email captured during the most recent
+ * native SIWA flow.  Returns `null` if none is available (web flow or
+ * subsequent logins where Apple no longer sends the data).
+ *
+ * This is intentionally one-shot: call it once after `signInWithApple`
+ * succeeds and the data is cleared.
+ */
+export function consumeAppleProfile(): AppleProfile | null {
+  const data = _pendingAppleProfile
+  _pendingAppleProfile = null
+  return data
+}
+
 // ---------- helpers ----------
 
 function buildAppleProvider(): OAuthProvider {
@@ -61,6 +85,12 @@ async function signInWithNativeApple(auth: Auth): Promise<UserCredential> {
       throw Object.assign(new Error('Sign in already in progress'), { code: 'auth/popup-blocked' })
     }
     throw err
+  }
+
+  _pendingAppleProfile = {
+    givenName: result.givenName || undefined,
+    familyName: result.familyName || undefined,
+    email: result.email || undefined,
   }
 
   const provider = new OAuthProvider('apple.com')

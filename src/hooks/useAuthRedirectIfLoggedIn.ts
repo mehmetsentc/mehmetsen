@@ -23,7 +23,10 @@ export function useAuthRedirectIfLoggedIn() {
 
   useEffect(() => {
     if (loading || !user) return
-    if (!user.onboardingCompleted) {
+    const hasEssentials =
+      user.onboardingCompleted ||
+      (!!user.displayName && user.displayName.length >= 2 && !!user.email && user.email.includes('@'))
+    if (!hasEssentials) {
       router.replace(ROUTES.ONBOARDING)
       return
     }

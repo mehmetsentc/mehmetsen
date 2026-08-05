@@ -13,6 +13,18 @@ interface AuthGuardProps {
   requireAdmin?: boolean
 }
 
+/**
+ * Apple/Google sign-in users already have displayName + email from the
+ * provider.  Don't force them through the onboarding form for data they
+ * already provided — App Store Guideline 4 (SIWA).
+ */
+function shouldSkipOnboarding(user: { displayName?: string; email?: string; onboardingCompleted?: boolean }): boolean {
+  if (user.onboardingCompleted) return true
+  const hasName = !!user.displayName && user.displayName.length >= 2
+  const hasEmail = !!user.email && user.email.includes('@')
+  return hasName && hasEmail
+}
+
 function AuthSpinner({ label }: { label?: string }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-gray-50">
@@ -36,11 +48,7 @@ export function AuthGuard({
   useEffect(() => {
     if (loading) return
 
-    // 1) Onboarding gate — user oturum açmışsa onboarding tamamlanana kadar
-    // tüm rotalardan /onboarding'e zorla. Public rotalarda da geçerlidir;
-    // böylece Google ile yeni kayıt olan kullanıcı dolaşırken /onboarding'i
-    // atlayamaz.
-    if (user && !user.onboardingCompleted && pathname !== ROUTES.ONBOARDING) {
+    if (user && !shouldSkipOnboarding(user) && pathname !== ROUTES.ONBOARDING) {
       router.replace(ROUTES.ONBOARDING)
       return
     }
@@ -71,9 +79,7 @@ export function AuthGuard({
     return <>{children}</>
   }
 
-  // Onboarding gate — public route'ta bile onboarding tamamlanmamışsa
-  // yönlendirme spinner'ı göster. /onboarding'in kendisi hariç.
-  if (user && !user.onboardingCompleted && pathname !== ROUTES.ONBOARDING) {
+  if (user && !shouldSkipOnboarding(user) && pathname !== ROUTES.ONBOARDING) {
     return <AuthSpinner label="Profilini tamamla..." />
   }
 
