@@ -13,6 +13,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { publishToFacebook, publishFacebookStory } from '@/lib/social/facebook'
 import { publishToInstagram, publishInstagramStory } from '@/lib/social/instagram'
 import { publishToTwitter } from '@/lib/social/twitter'
+import { publishToThreads } from '@/lib/social/threads'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
@@ -172,11 +173,12 @@ export interface SocialPublishOverrides {
   /** Hikâye OG özeti. */
   storySummary?: string
   hashtags?: string[]
-  /** Platform seçimi. Varsayılan: hepsi açık. X yalnızca post modunda. */
+  /** Platform seçimi. Varsayılan: hepsi açık. X ve Threads yalnızca post modunda. */
   platforms?: {
     facebook?: boolean
     instagram?: boolean
     twitter?: boolean
+    threads?: boolean
   }
 }
 
@@ -205,6 +207,7 @@ export interface PublishOneSocialResult {
     facebook: SocialPublishResult
     instagram: SocialPublishResult
     twitter?: SocialPublishResult
+    threads?: SocialPublishResult
   }
   story?: {
     attempted: boolean
@@ -340,10 +343,11 @@ export async function publishOneSocial(
     // Platform seçimi (varsayılan: hepsi)
     const wantFb = overrides?.platforms?.facebook !== false
     const wantIg = overrides?.platforms?.instagram !== false
-    const wantTw = overrides?.platforms?.twitter === true // X opt-in (yalnızca post)
+    const wantTw = overrides?.platforms?.twitter === true   // X opt-in (yalnızca post)
+    const wantTh = overrides?.platforms?.threads !== false  // Threads varsayılan: açık
 
-    if (shouldPost && !wantFb && !wantIg && !wantTw) {
-      return skipped(newsId, 'Post için en az bir platform seçilmeli (Facebook / Instagram / X)')
+    if (shouldPost && !wantFb && !wantIg && !wantTw && !wantTh) {
+      return skipped(newsId, 'Post için en az bir platform seçilmeli (Facebook / Instagram / X / Threads)')
     }
     if (shouldStory && !wantFb && !wantIg) {
       return skipped(newsId, 'Hikâye için Facebook veya Instagram seçilmeli')
@@ -492,6 +496,7 @@ export async function publishOneSocial(
       let fbResult: SocialPublishResult = { success: false, error: wantFb ? 'not attempted' : 'skipped' }
       let igResult: SocialPublishResult = { success: false, error: wantIg ? 'not attempted' : 'skipped' }
       let twResult: SocialPublishResult = { success: false, error: wantTw ? 'not attempted' : 'skipped' }
+      let thResult: SocialPublishResult = { success: false, error: wantTh ? 'not attempted' : 'skipped' }
 
       if (wantFb) {
         try { fbResult = await publishToFacebook(payload) }
@@ -502,17 +507,23 @@ export async function publishOneSocial(
       if (wantIg) {
         try { igResult = await publishToInstagram(payload) }
         catch (err) { igResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
-        if (wantTw) await new Promise(r => setTimeout(r, 2000))
+        await new Promise(r => setTimeout(r, 2000))
       }
 
       if (wantTw) {
         try { twResult = await publishToTwitter(payload) }
         catch (err) { twResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+        if (wantTh) await new Promise(r => setTimeout(r, 2000))
       }
 
-      result.post = { attempted: true, facebook: fbResult, instagram: igResult, twitter: twResult }
+      if (wantTh) {
+        try { thResult = await publishToThreads(payload) }
+        catch (err) { thResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+      }
 
-      if (fbResult.success || igResult.success || twResult.success) {
+      result.post = { attempted: true, facebook: fbResult, instagram: igResult, twitter: twResult, threads: thResult }
+
+      if (fbResult.success || igResult.success || twResult.success || thResult.success) {
         const update: Record<string, unknown> = {
           socialPublished:   true,
           socialPublishedAt: FieldValue.serverTimestamp(),
@@ -525,10 +536,11 @@ export async function publishOneSocial(
         if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
         if (igResult.platformId) update.instagramMediaId = igResult.platformId
         if (twResult.platformId) update.twitterTweetId   = twResult.platformId
+        if (thResult.platformId) update.threadsPostId    = thResult.platformId
         await db.collection(Collections.NEWS).doc(newsId).update(update)
-        console.log(`[publishOneSocial] POST ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success} X:${twResult.success}`)
+        console.log(`[publishOneSocial] POST ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success} X:${twResult.success} TH:${thResult.success}`)
       } else {
-        console.warn(`[publishOneSocial] POST ✗ ${newsId} — FB: ${fbResult.error} | IG: ${igResult.error} | X: ${twResult.error}`)
+        console.warn(`[publishOneSocial] POST ✗ ${newsId} — FB: ${fbResult.error} | IG: ${igResult.error} | X: ${twResult.error} | TH: ${thResult.error}`)
       }
 
       if (shouldStory) await new Promise(r => setTimeout(r, 2000))
@@ -588,7 +600,8 @@ export async function publishOneSocial(
     const postOk  = !!(result.post && (
       result.post.facebook.success ||
       result.post.instagram.success ||
-      result.post.twitter?.success
+      result.post.twitter?.success  ||
+      result.post.threads?.success
     ))
     const storyOk = !!(result.story && (result.story.facebook.success || result.story.instagram.success))
     result.ok = postOk || storyOk
@@ -598,7 +611,8 @@ export async function publishOneSocial(
       if (result.post) {
         parts.push(
           `Post FB: ${result.post.facebook.error ?? '—'} | IG: ${result.post.instagram.error ?? '—'}` +
-          (result.post.twitter ? ` | X: ${result.post.twitter.error ?? '—'}` : '')
+          (result.post.twitter ? ` | X: ${result.post.twitter.error ?? '—'}` : '') +
+          (result.post.threads ? ` | TH: ${result.post.threads.error ?? '—'}` : '')
         )
       }
       if (result.story) {

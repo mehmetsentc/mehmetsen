@@ -23,6 +23,7 @@ import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { publishToFacebook, publishFacebookStory } from '@/lib/social/facebook'
 import { publishToInstagram, publishInstagramStory } from '@/lib/social/instagram'
 import { publishToTwitter } from '@/lib/social/twitter'
+import { publishToThreads } from '@/lib/social/threads'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
@@ -483,8 +484,19 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       twResult = { success: false, error: err instanceof Error ? err.message : String(err) }
     }
 
+    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+
+    // ── Threads ───────────────────────────────────────────────────────────
+    let thResult: SocialPublishResult = { success: false, error: 'not attempted' }
+    try {
+      thResult = await publishToThreads(payload)
+      console.log(`[cron/social] Threads → ${id}: ${thResult.success ? '✓' : thResult.error}`)
+    } catch (err) {
+      thResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+
     // ── Firestore güncelle ────────────────────────────────────────────────
-    const markedDone = fbResult.success || igResult.success || twResult.success
+    const markedDone = fbResult.success || igResult.success || twResult.success || thResult.success
 
     if (markedDone) {
       try {
@@ -499,6 +511,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
         if (igResult.platformId) update.instagramMediaId = igResult.platformId
         if (twResult.platformId) update.twitterTweetId   = twResult.platformId
+        if (thResult.platformId) update.threadsPostId    = thResult.platformId
         await db.collection(Collections.NEWS).doc(id).update(update)
         succeeded++
       } catch (err) {
@@ -511,9 +524,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       console.warn(`  FB: ${fbResult.error}`)
       console.warn(`  IG: ${igResult.error}`)
       console.warn(`  X:  ${twResult.error}`)
+      console.warn(`  TH: ${thResult.error}`)
     }
 
-    results.push({ newsId: id, title, facebook: fbResult, instagram: igResult, twitter: twResult, markedDone })
+    results.push({ newsId: id, title, facebook: fbResult, instagram: igResult, twitter: twResult, threads: thResult, markedDone })
     await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
   }
 

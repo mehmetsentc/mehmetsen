@@ -18,6 +18,7 @@ export interface SocialNewsItem {
   /** Individual platform results written on success. */
   facebookPostId?: string
   instagramMediaId?: string
+  threadsPostId?: string
 }
 
 /** Result returned by each platform publisher. */
@@ -34,6 +35,7 @@ export interface SocialCronItemResult {
   facebook: SocialPublishResult
   instagram: SocialPublishResult
   twitter?: SocialPublishResult
+  threads?: SocialPublishResult
   markedDone: boolean
 }
 
