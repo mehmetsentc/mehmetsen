@@ -17,7 +17,7 @@ import { toast as sonnerToast } from 'sonner'
 import type { ReactNode } from 'react'
 
 interface LegacyToastOptions {
-  id?: string
+  id?: string | number
   duration?: number
   /** react-hot-toast'un position/icon/style alanları yutulur — sonner global yapılandırılır */
   position?: string
@@ -28,14 +28,12 @@ interface LegacyToastOptions {
   ariaProps?: { role?: string; 'aria-live'?: string }
 }
 
+type ToastId = string | number
 type LegacyMessage = ReactNode | ((props: { id: string }) => ReactNode)
 
 function asText(msg: LegacyMessage): string {
-  // sonner accepts ReactNode → just cast; render-as-function variants becomes "[function]" string
-  // but the function form is exceedingly rare in this codebase, so we serialize safely.
   if (typeof msg === 'function') {
     try {
-      // Best-effort: call with empty id, expect a string
       const out = (msg as (p: { id: string }) => ReactNode)({ id: 'na' })
       return (out as unknown as string) ?? ''
     } catch {
@@ -61,26 +59,25 @@ function toSonnerOpts(
 }
 
 /** Default toast — react-hot-toast `toast()` call'u */
-function defaultToast(message: LegacyMessage, opts?: LegacyToastOptions): string {
-  const id = sonnerToast(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))
-  return String(id)
+function defaultToast(message: LegacyMessage, opts?: LegacyToastOptions): ToastId {
+  return sonnerToast(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))
 }
 
 /** Drop-in API surface */
 const api = Object.assign(defaultToast, {
-  success: (message: LegacyMessage, opts?: LegacyToastOptions): string =>
-    String(sonnerToast.success(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))),
+  success: (message: LegacyMessage, opts?: LegacyToastOptions): ToastId =>
+    sonnerToast.success(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS)),
 
-  error: (message: LegacyMessage, opts?: LegacyToastOptions): string =>
-    String(sonnerToast.error(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))),
+  error: (message: LegacyMessage, opts?: LegacyToastOptions): ToastId =>
+    sonnerToast.error(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS)),
 
-  loading: (message: LegacyMessage, opts?: LegacyToastOptions): string =>
-    String(sonnerToast.loading(asText(message), toSonnerOpts(opts))),
+  loading: (message: LegacyMessage, opts?: LegacyToastOptions): ToastId =>
+    sonnerToast.loading(asText(message), toSonnerOpts(opts)),
 
-  custom: (message: LegacyMessage, opts?: LegacyToastOptions): string =>
-    String(sonnerToast(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS))),
+  custom: (message: LegacyMessage, opts?: LegacyToastOptions): ToastId =>
+    sonnerToast(asText(message), toSonnerOpts(opts, DEFAULT_DURATION_MS)),
 
-  dismiss: (id?: string): void => {
+  dismiss: (id?: ToastId): void => {
     sonnerToast.dismiss(id)
   },
 
