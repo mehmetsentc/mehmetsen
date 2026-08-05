@@ -17,6 +17,7 @@ export interface SocialCategoryPlatforms {
   facebook?: boolean
   instagram?: boolean
   twitter?: boolean
+  threads?: boolean
 }
 
 export interface SocialCategoryRule {
@@ -62,6 +63,7 @@ export function normalizeCategoryRule(
           facebook: (r.platforms as SocialCategoryPlatforms).facebook,
           instagram: (r.platforms as SocialCategoryPlatforms).instagram,
           twitter: (r.platforms as SocialCategoryPlatforms).twitter,
+          threads: (r.platforms as SocialCategoryPlatforms).threads,
         }
       : fallback.platforms
   return {
