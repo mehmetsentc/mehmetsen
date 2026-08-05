@@ -14,7 +14,7 @@ import { LazySection } from '@/components/home/LazySection'
 import { LazyCategoryRails } from '@/components/home/LazyCategoryRails'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import type { HomeFeedInitialData } from '@/types/newsItem'
-import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
+import { FEATURED_CAROUSEL_LIMIT, HOME_FEATURED_LIMIT } from '@/types/newsItem'
 
 interface HomeFeedProps {
   data: HomeFeedInitialData
@@ -25,9 +25,18 @@ export function HomeFeed({ data }: HomeFeedProps) {
 
   const breakingIds = useMemo(() => new Set(breaking.map((b) => b.id)), [breaking])
   const trendingIds = useMemo(() => new Set(trending.map((t) => t.id)), [trending])
-  const featuredItems = useMemo(
+
+  // Mobile hero slider: prefer CMS-pinned featured posts; fall back to latest
+  // news with images so the carousel is never blank. Desktop "Öne Çıkan" grid
+  // (DesktopFeaturedGrid) stays featured-only — this fallback is slider-only.
+  const featuredPins = useMemo(
     () => featured.filter((item) => item.featured === true).slice(0, HOME_FEATURED_LIMIT),
     [featured]
+  )
+  const hasFeaturedPins = featuredPins.length > 0
+  const sliderItems = useMemo(
+    () => hasFeaturedPins ? featuredPins : latest.filter((item) => item.imageUrl).slice(0, FEATURED_CAROUSEL_LIMIT),
+    [hasFeaturedPins, featuredPins, latest]
   )
 
   const dedupedLatest = useMemo(
@@ -54,7 +63,7 @@ export function HomeFeed({ data }: HomeFeedProps) {
           <BreakingStories items={breaking} />
         </div>
         <div className="order-2">
-          <FeaturedSlider items={featuredItems} />
+          <FeaturedSlider items={sliderItems} isFeatured={hasFeaturedPins} />
         </div>
         <div className="order-3 mt-0 max-md:mt-5">
           <MarketTicker />
