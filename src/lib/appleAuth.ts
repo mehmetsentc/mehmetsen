@@ -4,6 +4,8 @@
  * - Capacitor (iOS): NativeAppleSignInPlugin (ASAuthorizationAppleIDProvider)
  *   → native sheet açılır, tarayıcı açılmaz → App Store Guideline 4 geçer
  * - Web: Firebase OAuthProvider signInWithPopup → redirect fallback
+ *
+ * Production web bundle includes SIWA Guideline 4 profile persistence (build 15).
  */
 import {
   OAuthProvider,
