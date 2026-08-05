@@ -53,7 +53,7 @@ function sanitizeMediaItems(items: MediaItem[] | undefined): Array<{
 
 const PAGE_SIZE = 50
 
-export type AdminNewsFilter = 'all' | 'published' | 'pending' | 'duplicate' | 'draft' | 'removed'
+export type AdminNewsFilter = 'all' | 'published' | 'pending' | 'duplicate' | 'draft' | 'removed' | 'featured'
 
 export type AdminNewsSource = 'news' | 'newsDrafts'
 
@@ -233,6 +233,8 @@ function mapAdminNewsDocs(
 
   if (filter === 'removed') {
     posts = posts.filter((p) => p.status === 'archived' || p.status === 'banned')
+  } else if (filter === 'featured') {
+    posts = posts.filter((p) => p.featured === true)
   } else if (filter === 'published') {
     posts = posts.filter((p) => p.status === 'published')
   } else if (filter === 'draft') {
@@ -266,6 +268,7 @@ export const adminNewsService = {
 
     const status = statusConstraint(filter)
     const filterConstraints: QueryConstraint[] = []
+    if (filter === 'featured') filterConstraints.push(where('featured', '==', true))
     if (status) filterConstraints.push(where('status', '==', status))
     if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
     if (citySlug) filterConstraints.push(where('citySlug', '==', citySlug))

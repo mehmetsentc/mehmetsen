@@ -7,7 +7,7 @@ import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X,
-  ChevronLeft, ChevronRight, Eye, Share2, Smartphone,
+  ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
@@ -60,6 +60,7 @@ function mergeTags(existing: string[], incoming: string[]): string[] {
 const FILTERS: { id: AdminNewsFilter; label: string; color: string }[] = [
   { id: 'all', label: 'Tümü', color: '' },
   { id: 'published', label: 'Yayında', color: 'text-emerald-600' },
+  { id: 'featured', label: 'Öne Çıkan', color: 'text-amber-600' },
   { id: 'pending', label: 'Onay Bekliyor', color: 'text-amber-600' },
   { id: 'duplicate', label: 'Tekrar Haber', color: 'text-orange-600' },
   { id: 'draft', label: 'Taslak', color: 'text-blue-600' },
@@ -365,6 +366,11 @@ function NewsRow({
           <div className="flex items-start gap-2 flex-wrap">
             <p className="line-clamp-2 text-sm font-semibold text-[rgb(var(--color-text))] flex-1">{post.title}</p>
             <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', badge.cls)}>{badge.label}</span>
+            {post.featured && (
+              <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                <Star className="h-2.5 w-2.5 fill-current" />Öne Çıkan
+              </span>
+            )}
             {post.isDuplicate && (
               <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
                 🔁 TEKRAR
@@ -601,7 +607,8 @@ function AdminNewsDesktopPage() {
     filterParam === 'pending' ||
     filterParam === 'duplicate' ||
     filterParam === 'draft' ||
-    filterParam === 'removed'
+    filterParam === 'removed' ||
+    filterParam === 'featured'
       ? filterParam
       : 'all'
   const [filter, setFilter] = useState<AdminNewsFilter>(initialFilter)
@@ -633,7 +640,7 @@ function AdminNewsDesktopPage() {
 
   useEffect(() => {
     const fp = searchParams.get('filter') ?? ''
-    if (fp === 'published' || fp === 'pending' || fp === 'duplicate' || fp === 'draft' || fp === 'removed') {
+    if (fp === 'published' || fp === 'pending' || fp === 'duplicate' || fp === 'draft' || fp === 'removed' || fp === 'featured') {
       setFilter(fp)
     } else if (!fp) {
       setFilter('all')
