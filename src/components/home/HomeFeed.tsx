@@ -25,13 +25,10 @@ export function HomeFeed({ data }: HomeFeedProps) {
 
   const breakingIds = useMemo(() => new Set(breaking.map((b) => b.id)), [breaking])
   const trendingIds = useMemo(() => new Set(trending.map((t) => t.id)), [trending])
-  const featuredItems = useMemo(() => {
-    const pins = featured.filter((item) => item.featured === true).slice(0, HOME_FEATURED_LIMIT)
-    if (pins.length >= HOME_FEATURED_LIMIT) return pins
-    const ids = new Set(pins.map((p) => p.id))
-    const fillers = latest.filter((item) => !ids.has(item.id)).slice(0, HOME_FEATURED_LIMIT - pins.length)
-    return [...pins, ...fillers]
-  }, [featured, latest])
+  const featuredItems = useMemo(
+    () => featured.filter((item) => item.featured === true).slice(0, HOME_FEATURED_LIMIT),
+    [featured]
+  )
 
   const dedupedLatest = useMemo(
     () =>
