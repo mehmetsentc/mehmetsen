@@ -71,6 +71,7 @@ interface SocialNewsRow {
   facebookPostId?: string
   instagramMediaId?: string
   twitterTweetId?: string
+  threadsPostId?: string
   facebookStoryId?: string
   instagramStoryId?: string
   featured?: boolean
@@ -83,6 +84,7 @@ interface PlatformToggles {
   facebook: boolean
   instagram: boolean
   twitter: boolean
+  threads: boolean
 }
 
 interface LastShareResult {
@@ -92,6 +94,7 @@ interface LastShareResult {
     facebook: { success: boolean; error?: string }
     instagram: { success: boolean; error?: string }
     twitter?: { success: boolean; error?: string }
+    threads?: { success: boolean; error?: string }
   }
   story?: {
     facebook: { success: boolean; error?: string }
@@ -237,6 +240,7 @@ export default function SocialPage() {
     facebook: true,
     instagram: true,
     twitter: false,
+    threads: true,
   })
   const [forceReshare, setForceReshare] = useState(false)
   const [sharing, setSharing] = useState(false)
@@ -442,6 +446,7 @@ export default function SocialPage() {
       facebook: plat?.facebook !== false,
       instagram: plat?.instagram !== false,
       twitter: plat?.twitter === true,
+      threads: plat?.threads !== false,
     })
     const already = isShared(row, tab)
     setForceReshare(already)
@@ -634,7 +639,7 @@ export default function SocialPage() {
       toast.error('Görsel yok — paylaşım için kapak görseli gerekli')
       return
     }
-    if (!platforms.facebook && !platforms.instagram && !(shareMode !== 'story' && platforms.twitter)) {
+    if (!platforms.facebook && !platforms.instagram && !(shareMode !== 'story' && platforms.twitter) && !(shareMode !== 'story' && platforms.threads)) {
       toast.error('En az bir platform seçin')
       return
     }
@@ -675,6 +680,7 @@ export default function SocialPage() {
           facebook: platforms.facebook,
           instagram: platforms.instagram,
           twitter: shareMode !== 'story' && platforms.twitter,
+          threads: shareMode !== 'story' && platforms.threads,
         },
       }
       if (shareMode === 'post' || shareMode === 'both') {
@@ -720,6 +726,7 @@ export default function SocialPage() {
       if (r0?.post) {
         parts.push(
           `Post FB:${r0.post.facebook.success ? '✓' : '✗'} IG:${r0.post.instagram.success ? '✓' : '✗'}` +
+          (r0.post.threads ? ` Th:${r0.post.threads.success ? '✓' : '✗'}` : '') +
           (r0.post.twitter ? ` X:${r0.post.twitter.success ? '✓' : '✗'}` : '')
         )
       }
@@ -869,7 +876,7 @@ export default function SocialPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="inline-flex gap-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-1 shadow-sm">
             {([
-              { key: 'post' as const, label: 'Post', icon: Newspaper, hint: 'FB · IG · X' },
+              { key: 'post' as const, label: 'Post', icon: Newspaper, hint: 'FB · IG · Th · X' },
               { key: 'story' as const, label: 'Hikâye', icon: BookImage, hint: 'FB · IG Story' },
             ]).map(({ key, label, icon: Icon, hint }) => (
               <button
@@ -1443,6 +1450,9 @@ export default function SocialPage() {
                         <StatusBadge ok={shared} label={shared ? 'Paylaşıldı' : 'Paylaşılmadı'} />
                         {fbOk && <Facebook className="h-3.5 w-3.5 text-emerald-600" />}
                         {igOk && <Instagram className="h-3.5 w-3.5 text-emerald-600" />}
+                        {tab === 'post' && row.threadsPostId && (
+                          <span className="text-xs font-bold text-emerald-600">Th</span>
+                        )}
                         {tab === 'post' && row.twitterTweetId && (
                           <span className="text-xs font-bold text-emerald-600">X</span>
                         )}
@@ -1599,6 +1609,15 @@ export default function SocialPage() {
                       >
                         <Instagram className="h-4 w-4" />
                       </PlatformToggle>
+                      {shareMode !== 'story' && (
+                        <PlatformToggle
+                          active={platforms.threads}
+                          onChange={(v) => setPlatforms((p) => ({ ...p, threads: v }))}
+                          label="Threads"
+                        >
+                          <span className="text-sm font-black leading-none">@</span>
+                        </PlatformToggle>
+                      )}
                       {shareMode !== 'story' && (
                         <PlatformToggle
                           active={platforms.twitter}

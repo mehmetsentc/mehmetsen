@@ -296,6 +296,7 @@ function NewsRow({
               facebook: { success: boolean }
               instagram: { success: boolean }
               twitter?: { success: boolean }
+              threads?: { success: boolean }
             }
             story?: {
               facebook: { success: boolean }
@@ -330,6 +331,7 @@ function NewsRow({
         if (r0?.post) {
           parts.push(
             `Post FB:${r0.post.facebook.success ? '✓' : '✗'} IG:${r0.post.instagram.success ? '✓' : '✗'}` +
+            (r0.post.threads ? ` Th:${r0.post.threads.success ? '✓' : '✗'}` : '') +
             (r0.post.twitter ? ` X:${r0.post.twitter.success ? '✓' : '✗'}` : '')
           )
         }
@@ -437,7 +439,7 @@ function NewsRow({
               type="button"
               onClick={() => void shareSocial('post')}
               disabled={!canShare || busy}
-              title={canShare ? (socialPublished ? 'Post yeniden paylaş (FB/IG/X)' : 'Post paylaş (FB/IG/X)') : 'Görsel yok — paylaşım için kapak gerekli'}
+              title={canShare ? (socialPublished ? 'Post yeniden paylaş (FB/IG/Th/X)' : 'Post paylaş (FB/IG/Th/X)') : 'Görsel yok — paylaşım için kapak gerekli'}
               className={cn(
                 'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40',
                 socialPublished

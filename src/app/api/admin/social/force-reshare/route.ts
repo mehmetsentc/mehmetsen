@@ -18,6 +18,7 @@ import { FieldValue, DocumentSnapshot } from 'firebase-admin/firestore'
 import { publishToFacebook } from '@/lib/social/facebook'
 import { publishToInstagram } from '@/lib/social/instagram'
 import { publishToTwitter } from '@/lib/social/twitter'
+import { publishToThreads } from '@/lib/social/threads'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
@@ -113,6 +114,7 @@ function parseOverrides(body: Record<string, unknown>): SocialPublishOverrides |
       facebook: p.facebook !== false,
       instagram: p.instagram !== false,
       twitter: p.twitter === true,
+      threads: p.threads !== false,
     }
   }
   if (
@@ -296,6 +298,7 @@ export async function POST(request: Request) {
         facebookPostId: FieldValue.delete(),
         instagramMediaId: FieldValue.delete(),
         twitterTweetId: FieldValue.delete(),
+        threadsPostId: FieldValue.delete(),
       }).catch(() => {})
     )
   )
@@ -359,6 +362,7 @@ export async function POST(request: Request) {
     let fbResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
     let igResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
     let twResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
+    let thResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
 
     try { fbResult = await publishToFacebook(payload) }
     catch (e) { fbResult = { success: false, error: String(e) } }
@@ -373,7 +377,12 @@ export async function POST(request: Request) {
     try { twResult = await publishToTwitter(payload) }
     catch (e) { twResult = { success: false, error: String(e) } }
 
-    const anySuccess = fbResult.success || igResult.success || twResult.success
+    await new Promise(r => setTimeout(r, 2000))
+
+    try { thResult = await publishToThreads(payload) }
+    catch (e) { thResult = { success: false, error: String(e) } }
+
+    const anySuccess = fbResult.success || igResult.success || twResult.success || thResult.success
 
     if (anySuccess) {
       const update: Record<string, unknown> = {
@@ -387,6 +396,7 @@ export async function POST(request: Request) {
       if ('platformId' in fbResult && fbResult.platformId) update.facebookPostId   = fbResult.platformId
       if ('platformId' in igResult && igResult.platformId) update.instagramMediaId = igResult.platformId
       if ('platformId' in twResult && twResult.platformId) update.twitterTweetId   = twResult.platformId
+      if ('platformId' in thResult && thResult.platformId) update.threadsPostId    = thResult.platformId
       await db.collection(Collections.NEWS).doc(id).update(update).catch(() => {})
     }
 
@@ -396,6 +406,7 @@ export async function POST(request: Request) {
       facebook: fbResult,
       instagram: igResult,
       twitter: twResult,
+      threads: thResult,
     })
 
     await new Promise(r => setTimeout(r, 2000))
