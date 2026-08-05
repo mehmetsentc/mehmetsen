@@ -105,6 +105,23 @@ export interface AdminNewsEditorProps {
   onSaved?: (updated: Partial<AdminNewsItem>) => void
 }
 
+function clampSeoTitle(text: string, max = 65): string {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max)
+  const sp = cut.lastIndexOf(' ')
+  return sp > max * 0.6 ? cut.slice(0, sp) : cut
+}
+
+function clampSeoDescription(text: string, max = 165): string {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max)
+  const ends = [cut.lastIndexOf('. '), cut.lastIndexOf('? '), cut.lastIndexOf('! ')]
+  const best = Math.max(...ends)
+  if (best > max * 0.55) return cut.slice(0, best + 1)
+  const sp = cut.lastIndexOf(' ')
+  return sp > max * 0.6 ? cut.slice(0, sp) : cut
+}
+
 function normalizeTag(raw: string): string {
   return raw.trim().toLowerCase().replace(/^#+/, '').replace(/\s+/g, '-')
 }
@@ -455,8 +472,8 @@ export function AdminNewsEditor({
       setSummary(nextSummary)
       setContent(nextContent)
       setBodyBlocks(nextBlocks)
-      setSeoTitle(data.seoTitle?.trim() || nextTitle)
-      setSeoDescription(data.seoDescription?.trim() || nextSummary)
+      setSeoTitle(clampSeoTitle(data.seoTitle?.trim() || nextTitle))
+      setSeoDescription(clampSeoDescription(data.seoDescription?.trim() || nextSummary))
       if (data.categoryId?.trim()) setCategoryId(data.categoryId.trim())
       if (data.suggestedCountrySlug?.trim()) {
         setCountrySlug(data.suggestedCountrySlug.trim())
@@ -519,8 +536,8 @@ export function AdminNewsEditor({
         summary: nextSummary,
         content: nextContent,
         bodyBlocks: nextBlocks,
-        seoTitle: data.seoTitle?.trim() || nextTitle,
-        seoDescription: data.seoDescription?.trim() || nextSummary,
+        seoTitle: clampSeoTitle(data.seoTitle?.trim() || nextTitle),
+        seoDescription: clampSeoDescription(data.seoDescription?.trim() || nextSummary),
         categoryId: data.categoryId?.trim() || categoryId,
         tags: Array.isArray(data.tags) ? data.tags : tags,
         seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : seoKeywords,

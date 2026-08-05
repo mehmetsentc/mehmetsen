@@ -37,6 +37,43 @@ const CATEGORY_IDS = new Set(DEFAULT_CATEGORIES.map((category) => category.id))
 function stripAiHtmlLeak(text: string): string {
   return stripHtmlToNewsPlainText(text)
 }
+
+const TR_STOP_WORDS = new Set([
+  've', 'ile', 'de', 'da', 'den', 'dan', 'bir', 'bu', 'için', 'olan',
+  'olarak', 'ise', 'gibi', 'çok', 'daha', 'en', 'ne', 'her', 'ya',
+  'mi', 'mı', 'mu', 'mü', 'ama', 'ancak', 'hem', 'kadar', 'sonra',
+  'önce', 'üzere', 'dolayı', 'rağmen', 'karşı', 'arasında',
+])
+
+/** Truncate text at the last word boundary within maxLen. */
+function clampAtWordBoundary(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text
+  const cut = text.slice(0, maxLen)
+  const lastSp = cut.lastIndexOf(' ')
+  return lastSp > maxLen * 0.6 ? cut.slice(0, lastSp) : cut
+}
+
+/** Truncate text at the last sentence-ending punctuation within maxLen. */
+function clampAtSentenceBoundary(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text
+  const cut = text.slice(0, maxLen)
+  const ends = [cut.lastIndexOf('. '), cut.lastIndexOf('? '), cut.lastIndexOf('! ')]
+  const best = Math.max(...ends)
+  if (best > maxLen * 0.55) return cut.slice(0, best + 1)
+  const sp = cut.lastIndexOf(' ')
+  return sp > maxLen * 0.6 ? cut.slice(0, sp) : cut
+}
+
+/** Derive SEO keywords from title, tags and spot when AI fails to produce them. */
+function deriveSeoKeywords(title: string, tags: string[], spot: string): string[] {
+  const words = `${title} ${spot}`
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 3 && !TR_STOP_WORDS.has(w))
+  const unique = [...new Set([...tags.map(t => t.toLowerCase()), ...words])]
+  return unique.slice(0, 10)
+}
 const CATEGORY_LIST = DEFAULT_CATEGORIES.map((category) => `${category.id}: ${category.name}`).join(', ')
 
 /** CMS tek-tuş: editör tarzı + net manşet, JSON şeması korunur */
@@ -49,8 +86,11 @@ CMS TEK-TUŞ GÖREVİ — UZMAN AI EDİTÖR:
 - Kaynakta olmayan sayı, alıntı, olay uydurma
 - content: ## H2 kullan (# H1 yok); en fazla 2-3 kısa bölüm; 250-450 kelime hedef (asgari ~220)
 - HTML (<p>, <div>, <br>…) ASLA — yalnızca düz metin + markdown
-- summary en fazla 280 karakter; seoTitle 50-65; seoDescription 140-165
-- categoryId geçerli kimliklerden biri; tags 5-8; seoKeywords 8-15
+- summary en fazla 280 karakter
+- seoTitle KESİNLİKLE 50-65 karakter arasında olsun; 65 karakteri ASLA AŞMA
+- seoDescription KESİNLİKLE 140-165 karakter arasında olsun; 165 karakteri ASLA AŞMA
+- categoryId geçerli kimliklerden biri; tags 5-8
+- seoKeywords ZORUNLU: 8-15 Türkçe SEO anahtar kelimesi; bu alan ASLA boş bırakılmasın
 - imageOrder yalnızca verilen görsel URL'lerini içersin
 `.trim()
 
@@ -105,7 +145,9 @@ Kurallar:
 - Çelişkili veya tek kaynağa dayanan iddiaları kesin bilgi gibi sunma.
 - Araştırma notundaki ham URL'leri haber gövdesine yapıştırma; gerektiğinde kaynağı kurum adıyla belirt.
 - GÖRSEL YASAĞI: Görsel analizindeki caption veya alt metni haber gövdesinde H2/H3 başlık, paragraf veya alıntı olarak ASLA yazma; bu veriler yalnızca imageOrder sıralaması içindir.
-- seoTitle 50-65, seoDescription 140-165 karakter olsun.
+- seoTitle KESİNLİKLE 50-65 karakter arasında olsun; 65 karakteri ASLA AŞMA.
+- seoDescription KESİNLİKLE 140-165 karakter arasında olsun; 165 karakteri ASLA AŞMA.
+- seoKeywords ZORUNLU: 8-15 Türkçe SEO anahtar kelimesi üret; bu alan ASLA boş bırakılmasın.
 - categoryId aşağıdaki geçerli kimliklerden tam biri olsun.
 - Kategori seçiminde EN SPESİFİK alt kategoriyi kullan:
   * Burç / günlük burç / haftalık burç / zodyak / yükselen / Koç|Boğa|İkizler|Yengeç|Aslan|Başak|Terazi|Akrep|Yay|Oğlak|Kova|Balık burcu → categoryId: "astroloji" (ASLA "yasam" değil)
@@ -501,9 +543,12 @@ export async function POST(request: Request) {
         content,
         tags
       )
-      const seoKeywords = Array.isArray(parsed.seoKeywords)
+      let seoKeywords = Array.isArray(parsed.seoKeywords)
         ? parsed.seoKeywords.map(String).map((word) => word.trim().toLowerCase()).filter(Boolean).slice(0, 15)
         : []
+      if (seoKeywords.length === 0) {
+        seoKeywords = deriveSeoKeywords(title, tags, spot)
+      }
       const textComplete =
         !contentHasIncompleteSegments(content) &&
         !titleLooksIncomplete(title) &&
@@ -541,8 +586,8 @@ export async function POST(request: Request) {
         summary,
         content: articleBlocksToPlainText(bodyBlocks) || content,
         bodyBlocks,
-        seoTitle: String(parsed.seoTitle ?? title).trim(),
-        seoDescription: String(parsed.seoDescription ?? summary).trim(),
+        seoTitle: clampAtWordBoundary(String(parsed.seoTitle ?? title).trim(), 65),
+        seoDescription: clampAtSentenceBoundary(String(parsed.seoDescription ?? summary).trim(), 165),
         categoryId,
         tags,
         seoKeywords,
