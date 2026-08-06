@@ -123,13 +123,27 @@ function isLiveBroadcastContent(title: string, content?: string, summary?: strin
   // "düzenleniyor/düzenliyor" + "canlı" kombinasyonu
   if ((t.includes('düzenleniyor') || t.includes('düzenliyor')) && t.includes('canlı')) return true
 
-  // "basın toplantısı düzenliyor" — canlı duyuru, haber değil
-  // "düzenliyor" = şu an devam eden etkinlik; "düzenledi" = geçmiş → haber
-  if (t.includes('basın toplantısı') && t.includes('düzenliyor')) return true
-  if (t.includes('basın toplantısı') && t.includes('düzenleniyor')) return true
+  // "basın toplantısı düzenliyor/yapıyor/gerçekleştiriyor" — canlı duyuru, haber değil
+  // "düzenliyor/yapıyor" = şu an devam eden etkinlik; "düzenledi/yaptı" = geçmiş → haber
+  if (t.includes('basın toplantısı') && (
+    t.includes('düzenliyor') || t.includes('düzenleniyor') ||
+    t.includes('yapıyor') || t.includes('yapılıyor') ||
+    t.includes('gerçekleştiriyor') || t.includes('gerçekleştiriliyor') ||
+    t.includes('veriyor') || t.includes('veriliyor')
+  )) return true
+
+  // Şu an devam eden etkinlik sinyalleri — canlı yayın yönlendirmesi
+  // Not: "toplantısını yaptı", "açıklama yaptı" = geçmiş → haber, bu yüzden
+  // sadece şimdiki zaman fiilleri + toplantı/konuşma bağlamında filtrele.
+  if ((t.includes('açıklama yapıyor') || t.includes('konuşma yapıyor') ||
+       t.includes('konuşuyor') || t.includes('açıklıyor')) &&
+      (t.includes('toplantı') || t.includes('basın') || t.includes('konferans') ||
+       c.includes('youtube.com') || c.includes('canlı'))) return true
 
   // YouTube video linki + canlı içeriği — yayın yönlendirmesi
   if (c.includes('youtube.com/watch') && (c.includes('canlı') || c.includes('canlıyayın'))) return true
+  // YouTube embed/live stream — sadece video linki olan içerik
+  if (c.includes('youtube.com/live') || c.includes('youtu.be/') && c.includes('canlı')) return true
 
   return false
 }
@@ -529,6 +543,15 @@ export async function processNewsroomArticle(
         console.warn(`[newsroom/pipeline] quality gate: içerik hâlâ kesilmiş, atlandı: ${workingInput.sourceUrl}`)
         return { outcome: 'skipped' }
       }
+    }
+
+    // ── LIVE BROADCAST GATE (POST-EXTRACTION) ────────────────────────────────
+    // Bazı RSS beslemeleri canlı yayın işaretlerini sadece tam içerikte gösterir;
+    // truncated feed'lerde başlık temiz görünür ama body "#canlıyayın" / youtube
+    // linki / basın toplantısı ifadesi içerir. Full fetch sonrası tekrar kontrol.
+    if (isLiveBroadcastContent(workingInput.originalTitle, workingInput.originalContent, workingInput.originalSummary)) {
+      console.log(`[newsroom/pipeline] live broadcast filtered (post-extraction): ${workingInput.originalTitle?.slice(0, 80)}`)
+      return { outcome: 'skipped' }
     }
 
     // ── TRANSLATION STAGE ────────────────────────────────────────────────────
