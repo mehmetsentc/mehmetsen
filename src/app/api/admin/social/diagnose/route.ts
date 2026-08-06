@@ -86,19 +86,53 @@ export async function GET(request: Request) {
       : `✓ ${meData.name ?? '?'} (id: ${meData.id})`,
   })
 
-  // ── 3. Token izinleri ─────────────────────────────────────────────────────
-  const permRes = await graphGet('/me/permissions', fbToken)
-  const permData = permRes.data as { data?: Array<{ permission: string; status: string }> }
-  const grantedPerms = (permData.data ?? []).filter(p => p.status === 'granted').map(p => p.permission)
-  const requiredPerms = ['pages_manage_posts', 'instagram_content_publish', 'instagram_basic', 'pages_read_engagement']
-  const missingPerms  = requiredPerms.filter(p => !grantedPerms.includes(p))
-  steps.push({
-    name: 'Token İzinleri',
-    ok: missingPerms.length === 0,
-    detail: missingPerms.length === 0
-      ? `✓ Gerekli tüm izinler mevcut`
-      : `❌ EKSİK: ${missingPerms.join(', ')} | Mevcut: ${grantedPerms.join(', ')}`,
-  })
+  // ── 3. Token tipi / süre (/debug_token) ───────────────────────────────────
+  // App access token (app_id|app_secret) preferred — page token as access_token
+  // often works for expiry/type but scopes may be incomplete.
+  const appId = process.env.FACEBOOK_APP_ID?.trim() || process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() || ''
+  const appSecret = process.env.FACEBOOK_APP_SECRET?.trim() || ''
+  const debugAccessToken = appId && appSecret ? `${appId}|${appSecret}` : fbToken
+  const expiryRes = await fetch(
+    `${GRAPH}/debug_token?input_token=${encodeURIComponent(fbToken)}&access_token=${encodeURIComponent(debugAccessToken)}`
+  )
+  const expiryData = await expiryRes.json() as {
+    data?: {
+      expires_at?: number
+      is_valid?: boolean
+      type?: string
+      scopes?: string[]
+      granular_scopes?: Array<{ scope: string }>
+    }
+    error?: { message?: string }
+  }
+  const debugInfo = expiryData.data
+  const tokenType = (debugInfo?.type ?? '').toUpperCase() // PAGE | USER | …
+  const debugScopes = [
+    ...(debugInfo?.scopes ?? []),
+    ...(debugInfo?.granular_scopes ?? []).map(g => g.scope),
+  ].filter(Boolean)
+  const uniqueDebugScopes = [...new Set(debugScopes)]
+
+  if (debugInfo) {
+    const exp = debugInfo.expires_at
+    const isValid = debugInfo.is_valid
+    const expStr = exp && exp > 0
+      ? `Sona eriyor: ${new Date(exp * 1000).toLocaleDateString('tr-TR')}`
+      : 'Süresi yok (uzun ömürlü)'
+    steps.push({
+      name: 'Token Sona Erme',
+      ok: isValid !== false,
+      detail: isValid === false
+        ? `❌ Token GEÇERSİZ/SÜRESİ DOLMUŞ`
+        : `✓ ${expStr} | Tip: ${debugInfo.type ?? '?'}`,
+    })
+  } else if (expiryData.error) {
+    steps.push({
+      name: 'Token Sona Erme',
+      ok: true,
+      detail: `⚠️ debug_token okunamadı (${expiryData.error.message}) — /me geçerliyse devam`,
+    })
+  }
 
   // ── 4. Facebook Page erişimi ──────────────────────────────────────────────
   let fbPageOk = false
@@ -113,41 +147,83 @@ export async function GET(request: Request) {
     })
   }
 
-  // ── 5. Token sona erme tarihi ─────────────────────────────────────────────
-  const debugRes = await graphGet('/debug_token', `${fbToken}&input_token=${fbToken}&access_token=${fbToken}`)
-  // debug_token requires app token - try /me?fields=...
-  const expiryRes = await fetch(
-    `${GRAPH}/debug_token?input_token=${fbToken}&access_token=${fbToken}`,
-    { headers: { 'Content-Type': 'application/json' } }
-  )
-  const expiryData = await expiryRes.json() as {
-    data?: { expires_at?: number; is_valid?: boolean; type?: string; scopes?: string[] }
-  }
-  if (expiryData.data) {
-    const exp = expiryData.data.expires_at
-    const isValid = expiryData.data.is_valid
-    const expStr = exp && exp > 0
-      ? `Sona eriyor: ${new Date(exp * 1000).toLocaleDateString('tr-TR')}`
-      : 'Süresi yok (uzun ömürlü)'
-    steps.push({
-      name: 'Token Sona Erme',
-      ok: isValid !== false,
-      detail: isValid === false ? `❌ Token GEÇERSİZ/SÜRESİ DOLMUŞ` : `✓ ${expStr} | Tip: ${expiryData.data.type ?? '?'}`,
-    })
-  }
-
-  // ── 6. Instagram Business hesabı ──────────────────────────────────────────
+  // ── 5. Instagram Business hesabı ──────────────────────────────────────────
+  let igOk = false
   if (igBizId) {
     const igRes = await graphGet(`/${igBizId}?fields=name,username,followers_count`, igToken)
     const igData = igRes.data as { name?: string; username?: string; followers_count?: number; error?: { message?: string } }
+    igOk = igRes.ok && !igData.error
     steps.push({
       name: `Instagram Business (${igBizId})`,
-      ok: igRes.ok && !igData.error,
+      ok: igOk,
       detail: igData.error
         ? `❌ ${igData.error.message}`
         : `✓ @${igData.username ?? '?'} — ${igData.followers_count ?? '?'} takipçi`,
     })
   }
+
+  // ── 6. Token izinleri ─────────────────────────────────────────────────────
+  // PAGE token'larda /me/permissions genelde boş döner — izinler USER token'dadır;
+  // Page token bunları miras alır. Gerçek scope listesi /debug_token'dan gelir.
+  const requiredPerms = [
+    'pages_manage_posts',
+    'instagram_content_publish',
+    'instagram_basic',
+    'pages_read_engagement',
+  ]
+  const isPageToken = tokenType === 'PAGE' || (!tokenType && !!meData.id && meData.id === pageId)
+
+  const permRes = await graphGet('/me/permissions', fbToken)
+  const permData = permRes.data as { data?: Array<{ permission: string; status: string }> }
+  const userGrantedPerms = (permData.data ?? [])
+    .filter(p => p.status === 'granted')
+    .map(p => p.permission)
+
+  const grantedPerms = uniqueDebugScopes.length > 0 ? uniqueDebugScopes : userGrantedPerms
+  const missingPerms = requiredPerms.filter(p => !grantedPerms.includes(p))
+  const scopesKnown = grantedPerms.length > 0
+
+  let permsOk: boolean
+  let permsDetail: string
+
+  if (scopesKnown && missingPerms.length === 0) {
+    permsOk = true
+    permsDetail = `✓ Gerekli tüm izinler mevcut (${grantedPerms.length} scope)`
+  } else if (isPageToken && fbPageOk && (igOk || !igBizId)) {
+    // PAGE token + canlı Page/IG erişimi = paylaşım çalışıyor.
+    // /me/permissions boş veya debug_token scope listesi eksik görünebilir — false positive değil.
+    permsOk = true
+    if (!scopesKnown) {
+      permsDetail =
+        '✓ PAGE token — /me/permissions boş olması normal. İzinler token\'ı veren kullanıcının User Token\'ındadır; ' +
+        'Page token bunları miras alır. Page + Instagram erişimi doğrulandı → paylaşım için yeterli.'
+    } else if (missingPerms.length > 0) {
+      permsDetail =
+        `✓ PAGE token geçerli (Page + IG erişimi OK). debug_token bazı scope'ları listelemedi: ${missingPerms.join(', ')}. ` +
+        'Paylaşım zaten çalışıyorsa yok sayılabilir; sorun olursa Token Güncelle ile User Token izinlerini yenileyip Page Token alın.'
+    } else {
+      permsDetail = `✓ Gerekli tüm izinler mevcut (${grantedPerms.length} scope)`
+    }
+  } else if (scopesKnown && missingPerms.length > 0) {
+    permsOk = false
+    permsDetail = `❌ EKSİK: ${missingPerms.join(', ')} | Mevcut: ${grantedPerms.join(', ')}`
+  } else if (isPageToken) {
+    permsOk = false
+    permsDetail =
+      '❌ PAGE token scope listesi okunamadı ve Page/Instagram erişimi başarısız. ' +
+      'Token Güncelle ile pages_manage_posts, instagram_content_publish, instagram_basic, pages_read_engagement izinlerini yeniden verin.'
+  } else {
+    permsOk = missingPerms.length === 0
+    permsDetail = permsOk
+      ? `✓ Gerekli tüm izinler mevcut`
+      : `❌ EKSİK: ${missingPerms.join(', ')} | Mevcut: ${userGrantedPerms.join(', ') || '(boş)'}`
+  }
+
+  steps.push({
+    name: 'Token İzinleri',
+    ok: permsOk,
+    detail: permsDetail,
+  })
 
   // ── 7. OG görsel URL erişilebilirliği ─────────────────────────────────────
   // Bir test haberi ID'si bul
@@ -172,6 +248,53 @@ export async function GET(request: Request) {
     }
   } catch (e) {
     steps.push({ name: 'OG Görsel URL', ok: false, detail: `Firestore hatası: ${String(e)}` })
+  }
+
+  // ── 8. Threads token kontrolü ────────────────────────────────────────────
+  const threadsUserId = process.env.THREADS_USER_ID?.trim() ?? ''
+  const threadsToken  = process.env.THREADS_ACCESS_TOKEN?.trim() ?? ''
+
+  if (!threadsUserId || !threadsToken) {
+    const missing = [
+      !threadsUserId && 'THREADS_USER_ID',
+      !threadsToken  && 'THREADS_ACCESS_TOKEN',
+    ].filter(Boolean).join(', ')
+    steps.push({
+      name: 'Threads Credentials',
+      ok: false,
+      detail: `❌ EKSİK: ${missing} — Vercel env ayarlayın`,
+    })
+  } else {
+    try {
+      const thRes = await fetch(
+        `https://graph.threads.net/v1.0/me?fields=id,username,threads_profile_picture_url&access_token=${encodeURIComponent(threadsToken)}`
+      )
+      const thData = await thRes.json() as {
+        id?: string; username?: string; error?: { message?: string; code?: number }
+      }
+      if (thRes.ok && !thData.error) {
+        steps.push({
+          name: 'Threads Token',
+          ok: true,
+          detail: `✓ @${thData.username ?? '?'} (id: ${thData.id}) — THREADS_USER_ID: ${threadsUserId}`,
+        })
+        if (thData.id && thData.id !== threadsUserId) {
+          steps.push({
+            name: 'Threads User ID Uyumsuzluğu',
+            ok: false,
+            detail: `⚠️ Token user id (${thData.id}) ≠ env THREADS_USER_ID (${threadsUserId}) — env güncellenmeli`,
+          })
+        }
+      } else {
+        steps.push({
+          name: 'Threads Token',
+          ok: false,
+          detail: `❌ ${thData.error?.message ?? `HTTP ${thRes.status}`} (code: ${thData.error?.code ?? '?'})`,
+        })
+      }
+    } catch (e) {
+      steps.push({ name: 'Threads Token', ok: false, detail: `❌ Bağlantı hatası: ${String(e)}` })
+    }
   }
 
   // ── Özet ──────────────────────────────────────────────────────────────────

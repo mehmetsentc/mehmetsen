@@ -1,6 +1,6 @@
 /**
  * Threads Graph API service layer.
- * Two-step publish: (1) create media container, (2) publish container.
+ * Two-step publish: (1) create media container, (2) poll status, (3) publish.
  *
  * Threads API base: https://graph.threads.net/v1.0/
  *
@@ -21,6 +21,8 @@ import { clampAtWordBoundary } from './feedCaption'
 
 const THREADS_API_BASE = 'https://graph.threads.net/v1.0'
 const THREADS_CAPTION_LIMIT = 500
+const CONTAINER_POLL_INTERVAL_MS = 2000
+const CONTAINER_POLL_MAX_ATTEMPTS = 15 // 30s max wait
 
 // ── Caption builder ────────────────────────────────────────────────────────────
 
@@ -75,10 +77,53 @@ function buildThreadsCaption(payload: SocialPublishPayload): string {
   return clampAtWordBoundary(`📰 ${shortTitle}`, THREADS_CAPTION_LIMIT)
 }
 
+// ── Error helpers ──────────────────────────────────────────────────────────────
+
+interface MetaApiError {
+  message?: string
+  code?: number
+  type?: string
+  error_subcode?: number
+  fbtrace_id?: string
+}
+
+function formatMetaError(err: MetaApiError): string {
+  const parts: string[] = []
+  const msg = err.message || 'Bilinmeyen Meta API hatası'
+  parts.push(msg)
+  if (err.code != null) parts.push(`code=${err.code}`)
+  if (err.type) parts.push(`type=${err.type}`)
+  if (err.error_subcode) parts.push(`subcode=${err.error_subcode}`)
+  return parts.join(', ')
+}
+
+function translateMetaError(err: MetaApiError): string {
+  const code = err.code
+  const msg = err.message?.toLowerCase() ?? ''
+
+  if (code === 190 || msg.includes('expired') || msg.includes('invalid')) {
+    return `Threads token geçersiz veya süresi dolmuş — yeniden bağlantı gerekli (${formatMetaError(err)})`
+  }
+  if (code === 4 || code === 17 || msg.includes('rate limit') || msg.includes('too many')) {
+    return `Threads API hız limiti aşıldı — birkaç dakika sonra tekrar deneyin (${formatMetaError(err)})`
+  }
+  if (code === 10 || msg.includes('permission') || msg.includes('scope')) {
+    return `Threads izin hatası — threads_content_publish scope kontrol edin (${formatMetaError(err)})`
+  }
+  if (msg.includes('media') && (msg.includes('not found') || msg.includes('fetch'))) {
+    return `Threads görsel URL'ye erişemedi — görselin herkese açık olduğundan emin olun (${formatMetaError(err)})`
+  }
+  if (code === 1) {
+    return `Threads API geçici hata — genellikle görsel erişim veya token sorunu (${formatMetaError(err)})`
+  }
+  return formatMetaError(err)
+}
+
 // ── API helpers ────────────────────────────────────────────────────────────────
 
 /**
  * Step 1 — Create a Threads media container.
+ * Uses POST body (form-urlencoded) to avoid URL length/encoding issues.
  * Returns the creation_id (container ID).
  */
 async function createThreadsContainer(
@@ -87,29 +132,31 @@ async function createThreadsContainer(
   text: string,
   imageUrl?: string,
 ): Promise<string> {
-  // /me/ endpoint: token'dan user otomatik çözülür — userId yanlış olsa bile çalışır
-  const endpoint = `${THREADS_API_BASE}/me/threads`
-  const url = new URL(endpoint)
-  url.searchParams.set('access_token', accessToken)
-  url.searchParams.set('text', text)
+  const endpoint = `${THREADS_API_BASE}/${userId}/threads`
+
+  const body = new URLSearchParams()
+  body.set('access_token', accessToken)
+  body.set('text', text)
+  body.set('media_type', imageUrl ? 'IMAGE' : 'TEXT')
   if (imageUrl) {
-    url.searchParams.set('media_type', 'IMAGE')
-    url.searchParams.set('image_url', imageUrl)
-  } else {
-    url.searchParams.set('media_type', 'TEXT')
+    body.set('image_url', imageUrl)
   }
 
-  const res = await fetch(url.toString(), { method: 'POST' })
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  })
   const rawText = await res.text()
 
-  let json: { id?: string; error?: { message?: string; code?: number; type?: string } } = {}
+  let json: { id?: string; error?: MetaApiError } = {}
   try { json = JSON.parse(rawText) } catch { /* ignore */ }
 
-  console.log(`[threads] container response (${res.status}):`, rawText.slice(0, 300))
+  console.log(`[threads] container response (${res.status}):`, rawText.slice(0, 400))
 
   if (!res.ok || json.error || !json.id) {
     const detail = json.error
-      ? `${json.error.message} (code=${json.error.code}, type=${json.error.type})`
+      ? translateMetaError(json.error)
       : `HTTP ${res.status}: ${rawText.slice(0, 200)}`
     throw new Error(detail)
   }
@@ -118,7 +165,49 @@ async function createThreadsContainer(
 }
 
 /**
+ * Step 1.5 — Poll container status until FINISHED or ERROR.
+ * Meta requires the container to finish processing (especially for IMAGE)
+ * before calling threads_publish.
+ */
+async function waitForContainerReady(
+  containerId: string,
+  accessToken: string,
+): Promise<void> {
+  for (let attempt = 0; attempt < CONTAINER_POLL_MAX_ATTEMPTS; attempt++) {
+    await new Promise(r => setTimeout(r, CONTAINER_POLL_INTERVAL_MS))
+
+    const url = `${THREADS_API_BASE}/${containerId}?fields=status,error_message&access_token=${encodeURIComponent(accessToken)}`
+    try {
+      const res = await fetch(url)
+      const json = await res.json() as {
+        status?: string
+        error_message?: string
+        error?: MetaApiError
+      }
+
+      console.log(`[threads] container status (attempt ${attempt + 1}):`, json.status ?? 'unknown')
+
+      if (json.status === 'FINISHED') return
+      if (json.status === 'ERROR' || json.error) {
+        const errMsg = json.error_message || json.error?.message || 'Container işleme başarısız'
+        throw new Error(`Threads container hatası: ${errMsg}`)
+      }
+      // IN_PROGRESS or EXPIRED — keep polling for IN_PROGRESS
+      if (json.status === 'EXPIRED') {
+        throw new Error('Threads container süresi doldu — container 24 saat içinde yayınlanmalı')
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('Threads container')) throw err
+      console.warn(`[threads] status poll error (attempt ${attempt + 1}):`, err)
+    }
+  }
+  // Timeout — try publishing anyway (TEXT containers are usually instant)
+  console.warn(`[threads] container status poll timed out, attempting publish anyway`)
+}
+
+/**
  * Step 2 — Publish a Threads container.
+ * Uses POST body (form-urlencoded).
  * Returns the published Threads media ID.
  */
 async function publishThreadsContainer(
@@ -126,21 +215,27 @@ async function publishThreadsContainer(
   accessToken: string,
   creationId: string,
 ): Promise<string> {
-  const url = new URL(`${THREADS_API_BASE}/me/threads_publish`)
-  url.searchParams.set('access_token', accessToken)
-  url.searchParams.set('creation_id', creationId)
+  const endpoint = `${THREADS_API_BASE}/${userId}/threads_publish`
 
-  const res = await fetch(url.toString(), { method: 'POST' })
+  const body = new URLSearchParams()
+  body.set('access_token', accessToken)
+  body.set('creation_id', creationId)
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  })
   const rawText = await res.text()
 
-  let json: { id?: string; error?: { message?: string; code?: number; type?: string } } = {}
+  let json: { id?: string; error?: MetaApiError } = {}
   try { json = JSON.parse(rawText) } catch { /* ignore */ }
 
-  console.log(`[threads] publish response (${res.status}):`, rawText.slice(0, 300))
+  console.log(`[threads] publish response (${res.status}):`, rawText.slice(0, 400))
 
   if (!res.ok || json.error || !json.id) {
     const detail = json.error
-      ? `${json.error.message} (code=${json.error.code}, type=${json.error.type})`
+      ? translateMetaError(json.error)
       : `HTTP ${res.status}: ${rawText.slice(0, 200)}`
     throw new Error(detail)
   }
@@ -175,12 +270,13 @@ export async function publishToThreads(
   try {
     // Step 1: container oluştur (IMAGE → TEXT fallback)
     let creationId: string
+    let usedImage = false
     try {
       creationId = await createThreadsContainer(userId, accessToken, caption, imageUrl)
-      console.log(`[threads] Container oluşturuldu (${imageUrl ? 'IMAGE' : 'TEXT'}) — id: ${creationId}`)
+      usedImage = !!imageUrl
+      console.log(`[threads] Container oluşturuldu (${usedImage ? 'IMAGE' : 'TEXT'}) — id: ${creationId}`)
     } catch (imgErr) {
       if (imageUrl) {
-        // IMAGE container başarısız → TEXT post olarak yeniden dene
         const imgMsg = imgErr instanceof Error ? imgErr.message : String(imgErr)
         console.warn(`[threads] IMAGE container başarısız (${imgMsg}), TEXT post deneniyor`)
         creationId = await createThreadsContainer(userId, accessToken, caption, undefined)
@@ -190,8 +286,10 @@ export async function publishToThreads(
       }
     }
 
-    // Step 2: yayınla (Threads, container'ın hazır olması için kısa bekleme önerir)
-    await new Promise(r => setTimeout(r, 1500))
+    // Step 1.5: Container'ın hazır olmasını bekle (IMAGE için kritik)
+    await waitForContainerReady(creationId, accessToken)
+
+    // Step 2: yayınla
     const mediaId = await publishThreadsContainer(userId, accessToken, creationId)
     console.log(`[threads] Post yayınlandı — id: ${mediaId}`)
 
