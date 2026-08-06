@@ -87,7 +87,9 @@ async function createThreadsContainer(
   text: string,
   imageUrl?: string,
 ): Promise<string> {
-  const url = new URL(`${THREADS_API_BASE}/${userId}/threads`)
+  // /me/ endpoint: token'dan user otomatik çözülür — userId yanlış olsa bile çalışır
+  const endpoint = `${THREADS_API_BASE}/me/threads`
+  const url = new URL(endpoint)
   url.searchParams.set('access_token', accessToken)
   url.searchParams.set('text', text)
   if (imageUrl) {
@@ -98,13 +100,17 @@ async function createThreadsContainer(
   }
 
   const res = await fetch(url.toString(), { method: 'POST' })
+  const rawText = await res.text()
 
-  const json = (await res.json()) as { id?: string; error?: { message?: string; code?: number; type?: string } }
+  let json: { id?: string; error?: { message?: string; code?: number; type?: string } } = {}
+  try { json = JSON.parse(rawText) } catch { /* ignore */ }
+
+  console.log(`[threads] container response (${res.status}):`, rawText.slice(0, 300))
 
   if (!res.ok || json.error || !json.id) {
     const detail = json.error
       ? `${json.error.message} (code=${json.error.code}, type=${json.error.type})`
-      : `HTTP ${res.status}`
+      : `HTTP ${res.status}: ${rawText.slice(0, 200)}`
     throw new Error(detail)
   }
 
@@ -120,18 +126,22 @@ async function publishThreadsContainer(
   accessToken: string,
   creationId: string,
 ): Promise<string> {
-  const url = new URL(`${THREADS_API_BASE}/${userId}/threads_publish`)
+  const url = new URL(`${THREADS_API_BASE}/me/threads_publish`)
   url.searchParams.set('access_token', accessToken)
   url.searchParams.set('creation_id', creationId)
 
   const res = await fetch(url.toString(), { method: 'POST' })
+  const rawText = await res.text()
 
-  const json = (await res.json()) as { id?: string; error?: { message?: string; code?: number; type?: string } }
+  let json: { id?: string; error?: { message?: string; code?: number; type?: string } } = {}
+  try { json = JSON.parse(rawText) } catch { /* ignore */ }
+
+  console.log(`[threads] publish response (${res.status}):`, rawText.slice(0, 300))
 
   if (!res.ok || json.error || !json.id) {
     const detail = json.error
       ? `${json.error.message} (code=${json.error.code}, type=${json.error.type})`
-      : `HTTP ${res.status}`
+      : `HTTP ${res.status}: ${rawText.slice(0, 200)}`
     throw new Error(detail)
   }
 
