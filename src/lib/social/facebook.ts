@@ -16,14 +16,49 @@ const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
 
 /** Build the caption text for a Facebook post. */
-function buildFacebookCaption(payload: SocialPublishPayload): string {
+function buildFacebookCaption(
+  payload: SocialPublishPayload,
+  opts?: { omitUrl?: boolean },
+): string {
   return buildFeedCaption({
     title: payload.title,
     body: payload.description,
-    articleUrl: payload.articleUrl,
+    articleUrl: opts?.omitUrl ? undefined : payload.articleUrl,
     hashtags: payload.hashtags,
     maxLen: 8000,
   })
+}
+
+/**
+ * Fotoğraf postunun altına ilk yorum olarak makale linkini ekle.
+ * Bağlantıyı caption yerine yoruma taşımak Facebook algoritmasında
+ * "outbound link" sinyalini kaldırır → organik erişim artar.
+ * Başarısızlık post yayınını engellemez.
+ */
+async function addLinkComment(
+  pageId: string,
+  accessToken: string,
+  postId: string,
+  articleUrl: string,
+): Promise<void> {
+  try {
+    const res = await fetch(`${GRAPH_BASE}/${postId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `🔗 Haberin devamı: ${articleUrl}`,
+        access_token: accessToken,
+      }),
+    })
+    if (res.ok) {
+      console.log(`[facebook] link comment added to ${postId}`)
+    } else {
+      const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+      console.warn(`[facebook] link comment failed for ${postId}: ${json.error?.message ?? res.status}`)
+    }
+  } catch (err) {
+    console.warn(`[facebook] link comment error for ${postId}:`, err)
+  }
 }
 
 /**
@@ -308,14 +343,19 @@ export async function publishToFacebook(
     }
   }
 
-  const caption = buildFacebookCaption(payload)
   const articleUrl = payload.articleUrl?.trim()
   const carouselUrls = resolveCarouselUrls(payload)
   const singleUrl = payload.imageUrl?.trim() || carouselUrls?.[0]
+  const hasImage = !!singleUrl
+
+  // Fotoğraf postlarında URL'yi caption'dan çıkar → ilk yorum olarak ekle.
+  // Facebook algoritması caption'daki outbound link'leri cezalandırır;
+  // yorum olarak eklemek bu sinyali kaldırır, organik erişimi artırır.
+  const caption = buildFacebookCaption(payload, hasImage ? { omitUrl: true } : undefined)
 
   try {
     if (carouselUrls && carouselUrls.length >= 2 && singleUrl) {
-      return await publishMultiPhoto(
+      const result = await publishMultiPhoto(
         pageId,
         accessToken,
         payload.newsId,
@@ -323,13 +363,21 @@ export async function publishToFacebook(
         caption,
         singleUrl
       )
+      if (result.success && result.platformId && articleUrl) {
+        await addLinkComment(pageId, accessToken, result.platformId, articleUrl)
+      }
+      return result
     }
 
     if (singleUrl) {
-      return await publishSinglePhoto(pageId, accessToken, payload.newsId, singleUrl, caption)
+      const result = await publishSinglePhoto(pageId, accessToken, payload.newsId, singleUrl, caption)
+      if (result.success && result.platformId && articleUrl) {
+        await addLinkComment(pageId, accessToken, result.platformId, articleUrl)
+      }
+      return result
     }
 
-    // Görselsiz link post
+    // Görselsiz link post — URL caption'da kalır + link alanı
     const res = await fetch(`${GRAPH_BASE}/${pageId}/feed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
