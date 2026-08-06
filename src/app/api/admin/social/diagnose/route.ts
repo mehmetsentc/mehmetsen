@@ -270,7 +270,7 @@ export async function GET(request: Request) {
         `https://graph.threads.net/v1.0/me?fields=id,username,threads_profile_picture_url&access_token=${encodeURIComponent(threadsToken)}`
       )
       const thData = await thRes.json() as {
-        id?: string; username?: string; error?: { message?: string; code?: number }
+        id?: string; username?: string; error?: { message?: string; code?: number; type?: string; error_subcode?: number }
       }
       if (thRes.ok && !thData.error) {
         steps.push({
@@ -289,11 +289,46 @@ export async function GET(request: Request) {
         steps.push({
           name: 'Threads Token',
           ok: false,
-          detail: `❌ ${thData.error?.message ?? `HTTP ${thRes.status}`} (code: ${thData.error?.code ?? '?'})`,
+          detail: `❌ ${thData.error?.message ?? `HTTP ${thRes.status}`} (code: ${thData.error?.code ?? '?'}, type: ${thData.error?.type ?? '?'})`,
         })
       }
     } catch (e) {
       steps.push({ name: 'Threads Token', ok: false, detail: `❌ Bağlantı hatası: ${String(e)}` })
+    }
+
+    // ── 8b. Threads publish scope — dry-run TEXT container ────────────────
+    try {
+      const testBody = new URLSearchParams()
+      testBody.set('access_token', threadsToken)
+      testBody.set('text', 'NaHaber bağlantı testi — bu gönderi yayınlanmayacak')
+      testBody.set('media_type', 'TEXT')
+      const testRes = await fetch(
+        `https://graph.threads.net/v1.0/${threadsUserId}/threads`,
+        { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: testBody.toString() }
+      )
+      const testJson = await testRes.json() as {
+        id?: string
+        error?: { message?: string; code?: number; type?: string; error_subcode?: number; fbtrace_id?: string }
+      }
+      if (testRes.ok && testJson.id) {
+        steps.push({
+          name: 'Threads Publish Scope (TEXT)',
+          ok: true,
+          detail: `✓ TEXT container oluşturuldu (${testJson.id}) — threads_content_publish scope aktif`,
+        })
+      } else {
+        const e = testJson.error
+        const detail = e
+          ? `❌ ${e.message} (code=${e.code}, type=${e.type ?? '?'}${e.error_subcode ? `, subcode=${e.error_subcode}` : ''}${e.fbtrace_id ? `, trace=${e.fbtrace_id}` : ''})`
+          : `❌ HTTP ${testRes.status}`
+        steps.push({
+          name: 'Threads Publish Scope (TEXT)',
+          ok: false,
+          detail: detail + ' — threads_content_publish scope eksik veya token yetkisiz olabilir',
+        })
+      }
+    } catch (e) {
+      steps.push({ name: 'Threads Publish Scope', ok: false, detail: `❌ Test hatası: ${String(e)}` })
     }
   }
 

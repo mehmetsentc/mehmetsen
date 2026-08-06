@@ -84,6 +84,8 @@ interface MetaApiError {
   code?: number
   type?: string
   error_subcode?: number
+  error_user_msg?: string
+  error_user_title?: string
   fbtrace_id?: string
 }
 
@@ -94,6 +96,8 @@ function formatMetaError(err: MetaApiError): string {
   if (err.code != null) parts.push(`code=${err.code}`)
   if (err.type) parts.push(`type=${err.type}`)
   if (err.error_subcode) parts.push(`subcode=${err.error_subcode}`)
+  if (err.fbtrace_id) parts.push(`trace=${err.fbtrace_id}`)
+  if (err.error_user_msg) parts.push(`user_msg="${err.error_user_msg}"`)
   return parts.join(', ')
 }
 
@@ -243,11 +247,35 @@ async function publishThreadsContainer(
   return json.id
 }
 
+// ── Full pipeline helper ────────────────────────────────────────────────────────
+
+/**
+ * Runs the complete create → poll → publish pipeline for a single attempt.
+ * Returns the published media ID on success, throws on any failure.
+ */
+async function runThreadsPipeline(
+  userId: string,
+  accessToken: string,
+  caption: string,
+  imageUrl: string | undefined,
+): Promise<string> {
+  const mediaType = imageUrl ? 'IMAGE' : 'TEXT'
+  const creationId = await createThreadsContainer(userId, accessToken, caption, imageUrl)
+  console.log(`[threads] Container oluşturuldu (${mediaType}) — id: ${creationId}`)
+
+  await waitForContainerReady(creationId, accessToken)
+
+  const mediaId = await publishThreadsContainer(userId, accessToken, creationId)
+  console.log(`[threads] Post yayınlandı (${mediaType}) — id: ${mediaId}`)
+  return mediaId
+}
+
 // ── Ana yayın fonksiyonu ───────────────────────────────────────────────────────
 
 /**
  * Threads'e bir haber paylaşır.
- * Görsel varsa IMAGE post, yoksa TEXT post olarak yayınlar.
+ * Görsel varsa IMAGE post dener; IMAGE pipeline'ının herhangi bir adımı
+ * (container create, poll, publish) başarısız olursa TEXT fallback dener.
  * Threads'te linkler caption içinde tıklanabilir — ayrı link alanı gerekmez.
  */
 export async function publishToThreads(
@@ -268,35 +296,23 @@ export async function publishToThreads(
   const imageUrl = payload.imageUrl?.trim() || undefined
 
   try {
-    // Step 1: container oluştur (IMAGE → TEXT fallback)
-    let creationId: string
-    let usedImage = false
-    try {
-      creationId = await createThreadsContainer(userId, accessToken, caption, imageUrl)
-      usedImage = !!imageUrl
-      console.log(`[threads] Container oluşturuldu (${usedImage ? 'IMAGE' : 'TEXT'}) — id: ${creationId}`)
-    } catch (imgErr) {
-      if (imageUrl) {
+    // IMAGE pipeline: create → poll → publish (full pipeline try/catch)
+    if (imageUrl) {
+      try {
+        const mediaId = await runThreadsPipeline(userId, accessToken, caption, imageUrl)
+        return { success: true, platformId: mediaId }
+      } catch (imgErr) {
         const imgMsg = imgErr instanceof Error ? imgErr.message : String(imgErr)
-        console.warn(`[threads] IMAGE container başarısız (${imgMsg}), TEXT post deneniyor`)
-        creationId = await createThreadsContainer(userId, accessToken, caption, undefined)
-        console.log(`[threads] TEXT container oluşturuldu — id: ${creationId}`)
-      } else {
-        throw imgErr
+        console.warn(`[threads] IMAGE pipeline başarısız (${imgMsg}), TEXT fallback deneniyor`)
       }
     }
 
-    // Step 1.5: Container'ın hazır olmasını bekle (IMAGE için kritik)
-    await waitForContainerReady(creationId, accessToken)
-
-    // Step 2: yayınla
-    const mediaId = await publishThreadsContainer(userId, accessToken, creationId)
-    console.log(`[threads] Post yayınlandı — id: ${mediaId}`)
-
+    // TEXT pipeline: fallback or primary (no image)
+    const mediaId = await runThreadsPipeline(userId, accessToken, caption, undefined)
     return { success: true, platformId: mediaId }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error('[threads] Hata:', msg)
+    console.error('[threads] Hata (IMAGE + TEXT başarısız):', msg)
     return { success: false, error: msg }
   }
 }
