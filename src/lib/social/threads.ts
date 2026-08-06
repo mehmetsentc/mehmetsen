@@ -87,24 +87,25 @@ async function createThreadsContainer(
   text: string,
   imageUrl?: string,
 ): Promise<string> {
-  const params = new URLSearchParams({
-    access_token: accessToken,
-    text,
-    ...(imageUrl
-      ? { media_type: 'IMAGE', image_url: imageUrl }
-      : { media_type: 'TEXT' }),
-  })
+  const url = new URL(`${THREADS_API_BASE}/${userId}/threads`)
+  url.searchParams.set('access_token', accessToken)
+  url.searchParams.set('text', text)
+  if (imageUrl) {
+    url.searchParams.set('media_type', 'IMAGE')
+    url.searchParams.set('image_url', imageUrl)
+  } else {
+    url.searchParams.set('media_type', 'TEXT')
+  }
 
-  const res = await fetch(`${THREADS_API_BASE}/${userId}/threads`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  })
+  const res = await fetch(url.toString(), { method: 'POST' })
 
-  const json = (await res.json()) as { id?: string; error?: { message?: string; code?: number } }
+  const json = (await res.json()) as { id?: string; error?: { message?: string; code?: number; type?: string } }
 
   if (!res.ok || json.error || !json.id) {
-    throw new Error(json.error?.message ?? `Threads container HTTP ${res.status}`)
+    const detail = json.error
+      ? `${json.error.message} (code=${json.error.code}, type=${json.error.type})`
+      : `HTTP ${res.status}`
+    throw new Error(detail)
   }
 
   return json.id
@@ -119,21 +120,19 @@ async function publishThreadsContainer(
   accessToken: string,
   creationId: string,
 ): Promise<string> {
-  const params = new URLSearchParams({
-    access_token: accessToken,
-    creation_id: creationId,
-  })
+  const url = new URL(`${THREADS_API_BASE}/${userId}/threads_publish`)
+  url.searchParams.set('access_token', accessToken)
+  url.searchParams.set('creation_id', creationId)
 
-  const res = await fetch(`${THREADS_API_BASE}/${userId}/threads_publish`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  })
+  const res = await fetch(url.toString(), { method: 'POST' })
 
-  const json = (await res.json()) as { id?: string; error?: { message?: string; code?: number } }
+  const json = (await res.json()) as { id?: string; error?: { message?: string; code?: number; type?: string } }
 
   if (!res.ok || json.error || !json.id) {
-    throw new Error(json.error?.message ?? `Threads publish HTTP ${res.status}`)
+    const detail = json.error
+      ? `${json.error.message} (code=${json.error.code}, type=${json.error.type})`
+      : `HTTP ${res.status}`
+    throw new Error(detail)
   }
 
   return json.id
