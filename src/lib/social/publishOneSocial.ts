@@ -343,7 +343,7 @@ export async function publishOneSocial(
     // Platform seçimi (varsayılan: hepsi)
     const wantFb = overrides?.platforms?.facebook !== false
     const wantIg = overrides?.platforms?.instagram !== false
-    const wantTw = overrides?.platforms?.twitter === true   // X opt-in (yalnızca post)
+    const wantTw = overrides?.platforms?.twitter !== false  // X varsayılan: açık
     const wantTh = overrides?.platforms?.threads !== false  // Threads varsayılan: açık
 
     if (shouldPost && !wantFb && !wantIg && !wantTw && !wantTh) {
