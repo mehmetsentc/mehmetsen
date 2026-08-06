@@ -164,9 +164,22 @@ export async function publishToThreads(
   const imageUrl = payload.imageUrl?.trim() || undefined
 
   try {
-    // Step 1: container oluştur
-    const creationId = await createThreadsContainer(userId, accessToken, caption, imageUrl)
-    console.log(`[threads] Container oluşturuldu — id: ${creationId}`)
+    // Step 1: container oluştur (IMAGE → TEXT fallback)
+    let creationId: string
+    try {
+      creationId = await createThreadsContainer(userId, accessToken, caption, imageUrl)
+      console.log(`[threads] Container oluşturuldu (${imageUrl ? 'IMAGE' : 'TEXT'}) — id: ${creationId}`)
+    } catch (imgErr) {
+      if (imageUrl) {
+        // IMAGE container başarısız → TEXT post olarak yeniden dene
+        const imgMsg = imgErr instanceof Error ? imgErr.message : String(imgErr)
+        console.warn(`[threads] IMAGE container başarısız (${imgMsg}), TEXT post deneniyor`)
+        creationId = await createThreadsContainer(userId, accessToken, caption, undefined)
+        console.log(`[threads] TEXT container oluşturuldu — id: ${creationId}`)
+      } else {
+        throw imgErr
+      }
+    }
 
     // Step 2: yayınla (Threads, container'ın hazır olması için kısa bekleme önerir)
     await new Promise(r => setTimeout(r, 1500))
