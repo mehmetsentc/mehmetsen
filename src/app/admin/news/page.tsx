@@ -8,6 +8,7 @@ import {
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X,
   ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star,
+  Facebook, Instagram, ChevronDown,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
@@ -213,6 +214,114 @@ function newsHasShareImage(post: AdminNewsItem): boolean {
 
 type SocialShareMode = 'story' | 'post'
 
+interface PlatformFlags {
+  facebook: boolean
+  instagram: boolean
+  twitter: boolean
+  threads: boolean
+}
+
+const ThreadsIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12.186 24h-.007C5.461 23.956.057 18.51 0 11.735c.057-6.775 5.461-12.22 12.179-12.264h.007C18.539.015 23.943 5.46 24 12.235c-.057 6.776-5.461 12.221-12.179 12.265h-.007zm0-22.53h-.006C6.566 1.513 1.988 6.127 1.942 12.008v.019c.046 5.881 4.624 10.495 10.238 10.538h.006c5.614-.043 10.192-4.657 10.238-10.538v-.019c-.046-5.881-4.624-10.495-10.238-10.538zm3.234 14.588a3.82 3.82 0 0 1-1.12 1.605c-1.468 1.2-3.568 1.452-5.282.576a4.26 4.26 0 0 1-2.028-2.424 6.26 6.26 0 0 1-.378-2.112c-.024-.792.06-1.584.252-2.352.36-1.44 1.2-2.592 2.472-3.168 1.344-.612 2.832-.54 4.104.168.564.312 1.032.768 1.38 1.308l-1.284.876a2.64 2.64 0 0 0-.84-.888c-.78-.48-1.74-.468-2.508.036-.792.516-1.272 1.404-1.476 2.436a5.3 5.3 0 0 0-.096 1.668c.048.564.18 1.116.42 1.62.36.768 1.008 1.272 1.824 1.404.816.132 1.596-.108 2.124-.672.336-.36.54-.816.6-1.308h-2.172v-1.344h3.636v.612c.024.72-.108 1.404-.384 2.04l-.264.108z" />
+  </svg>
+)
+
+const XIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+)
+
+const STORY_PLATFORMS: { key: keyof PlatformFlags; label: string; Icon: React.FC<{ className?: string }> }[] = [
+  { key: 'facebook', label: 'Facebook', Icon: Facebook },
+  { key: 'instagram', label: 'Instagram', Icon: Instagram },
+]
+
+const POST_PLATFORMS: { key: keyof PlatformFlags; label: string; Icon: React.FC<{ className?: string }> }[] = [
+  { key: 'facebook', label: 'Facebook', Icon: Facebook },
+  { key: 'instagram', label: 'Instagram', Icon: Instagram },
+  { key: 'twitter', label: 'X (Twitter)', Icon: XIcon },
+  { key: 'threads', label: 'Threads', Icon: ThreadsIcon },
+]
+
+function SocialSharePopover({
+  mode,
+  onShare,
+  onClose,
+  isAlreadyPublished,
+}: {
+  mode: SocialShareMode
+  onShare: (platforms: PlatformFlags) => void
+  onClose: () => void
+  isAlreadyPublished: boolean
+}) {
+  const platforms = mode === 'story' ? STORY_PLATFORMS : POST_PLATFORMS
+  const [flags, setFlags] = useState<PlatformFlags>({
+    facebook: true,
+    instagram: true,
+    twitter: mode === 'post',
+    threads: mode === 'post',
+  })
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  const anySelected = platforms.some(p => flags[p.key])
+
+  return (
+    <div
+      ref={popoverRef}
+      className="absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl"
+    >
+      <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+        {mode === 'story' ? 'Hikâye Platformları' : 'Post Platformları'}
+      </p>
+      <div className="space-y-0.5">
+        {platforms.map(({ key, label, Icon }) => (
+          <label
+            key={key}
+            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[rgb(var(--color-surface))] transition-colors"
+          >
+            <input
+              type="checkbox"
+              checked={flags[key]}
+              onChange={() => setFlags(prev => ({ ...prev, [key]: !prev[key] }))}
+              className="h-3.5 w-3.5 accent-blue-600"
+            />
+            <Icon className="h-3.5 w-3.5 text-[rgb(var(--color-muted))]" />
+            <span className="text-xs font-medium text-[rgb(var(--color-text))]">{label}</span>
+          </label>
+        ))}
+      </div>
+      <div className="mt-2 flex gap-1.5">
+        <button
+          type="button"
+          onClick={() => onShare(flags)}
+          disabled={!anySelected}
+          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700 disabled:opacity-40"
+        >
+          {mode === 'story' ? <Smartphone className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+          {isAlreadyPublished ? 'Yeniden Paylaş' : 'Paylaş'}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1.5 text-[11px] font-bold text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function NewsRow({
   post,
   selected,
@@ -238,6 +347,7 @@ function NewsRow({
   const [sharingMode, setSharingMode] = useState<SocialShareMode | null>(null)
   const [socialPublished, setSocialPublished] = useState(!!post.socialPublished)
   const [storyPublished, setStoryPublished] = useState(!!post.storyPublished)
+  const [popoverMode, setPopoverMode] = useState<SocialShareMode | null>(null)
   const busy = actionLoading === post.id || sharingMode !== null
   const badge = STATUS_BADGE[post.status ?? 'draft'] ?? STATUS_BADGE.draft
   const canShare = newsHasShareImage(post)
@@ -252,7 +362,7 @@ function NewsRow({
     ? formatDistanceToNow(new Date(publishedAtStr), { locale: tr, addSuffix: true })
     : '—'
 
-  const shareSocial = async (mode: SocialShareMode) => {
+  const shareSocial = async (mode: SocialShareMode, platforms: PlatformFlags) => {
     if (!canShare || sharingMode) return
 
     const alreadyKnown = mode === 'post' ? socialPublished : storyPublished
@@ -266,10 +376,18 @@ function NewsRow({
       if (!ok) return
     }
 
+    const platformNames: string[] = []
+    if (platforms.facebook) platformNames.push('FB')
+    if (platforms.instagram) platformNames.push('IG')
+    if (mode === 'post' && platforms.twitter) platformNames.push('X')
+    if (mode === 'post' && platforms.threads) platformNames.push('Th')
+
     const run = async (useForce: boolean) => {
       setSharingMode(mode)
       const toastId = toast.loading(
-        mode === 'story' ? 'Hikâye paylaşılıyor…' : 'Feed post paylaşılıyor…'
+        mode === 'story'
+          ? `Hikâye paylaşılıyor (${platformNames.join(', ')})…`
+          : `Post paylaşılıyor (${platformNames.join(', ')})…`
       )
 
       try {
@@ -285,6 +403,12 @@ function NewsRow({
             mode,
             manual: true,
             force: useForce,
+            platforms: {
+              facebook: platforms.facebook,
+              instagram: platforms.instagram,
+              twitter: mode === 'post' ? platforms.twitter : false,
+              threads: mode === 'post' ? platforms.threads : false,
+            },
           }),
         })
         const data = await res.json() as {
@@ -329,14 +453,18 @@ function NewsRow({
 
         const parts: string[] = []
         if (r0?.post) {
-          parts.push(
-            `Post FB:${r0.post.facebook.success ? '✓' : '✗'} IG:${r0.post.instagram.success ? '✓' : '✗'}` +
-            (r0.post.threads ? ` Th:${r0.post.threads.success ? '✓' : '✗'}` : '') +
-            (r0.post.twitter ? ` X:${r0.post.twitter.success ? '✓' : '✗'}` : '')
-          )
+          const items: string[] = []
+          if (platforms.facebook) items.push(`FB:${r0.post.facebook.success ? '✓' : '✗'}`)
+          if (platforms.instagram) items.push(`IG:${r0.post.instagram.success ? '✓' : '✗'}`)
+          if (platforms.twitter && r0.post.twitter) items.push(`X:${r0.post.twitter.success ? '✓' : '✗'}`)
+          if (platforms.threads && r0.post.threads) items.push(`Th:${r0.post.threads.success ? '✓' : '✗'}`)
+          parts.push(`Post ${items.join(' ')}`)
         }
         if (r0?.story) {
-          parts.push(`Hikâye FB:${r0.story.facebook.success ? '✓' : '✗'} IG:${r0.story.instagram.success ? '✓' : '✗'}`)
+          const items: string[] = []
+          if (platforms.facebook) items.push(`FB:${r0.story.facebook.success ? '✓' : '✗'}`)
+          if (platforms.instagram) items.push(`IG:${r0.story.instagram.success ? '✓' : '✗'}`)
+          parts.push(`Hikâye ${items.join(' ')}`)
         }
         toast.success(parts.join(' · ') || 'Paylaşıldı', { id: toastId })
 
@@ -351,6 +479,11 @@ function NewsRow({
     }
 
     await run(force)
+  }
+
+  const handlePopoverShare = (mode: SocialShareMode) => (platforms: PlatformFlags) => {
+    setPopoverMode(null)
+    void shareSocial(mode, platforms)
   }
 
   return (
@@ -420,36 +553,63 @@ function NewsRow({
                 <ExternalLink className="h-3 w-3" />Görüntüle
               </a>
             )}
-            <button
-              type="button"
-              onClick={() => void shareSocial('story')}
-              disabled={!canShare || busy}
-              title={canShare ? (storyPublished ? 'Hikâye yeniden paylaş (IG/FB)' : 'Hikâye paylaş (IG/FB)') : 'Görsel yok — paylaşım için kapak gerekli'}
-              className={cn(
-                'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40',
-                storyPublished
-                  ? 'border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/30'
-                  : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+
+            {/* Hikâye — popover ile platform seçimi */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPopoverMode(popoverMode === 'story' ? null : 'story')}
+                disabled={!canShare || busy}
+                title={canShare ? (storyPublished ? 'Hikâye yeniden paylaş (IG/FB)' : 'Hikâye paylaş (IG/FB)') : 'Görsel yok — paylaşım için kapak gerekli'}
+                className={cn(
+                  'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40',
+                  storyPublished
+                    ? 'border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/30'
+                    : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+                )}
+              >
+                {sharingMode === 'story' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Smartphone className="h-3 w-3" />}
+                Hikâye
+                <ChevronDown className="h-2.5 w-2.5 opacity-50" />
+              </button>
+              {popoverMode === 'story' && (
+                <SocialSharePopover
+                  mode="story"
+                  onShare={handlePopoverShare('story')}
+                  onClose={() => setPopoverMode(null)}
+                  isAlreadyPublished={storyPublished}
+                />
               )}
-            >
-              {sharingMode === 'story' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Smartphone className="h-3 w-3" />}
-              Hikâye
-            </button>
-            <button
-              type="button"
-              onClick={() => void shareSocial('post')}
-              disabled={!canShare || busy}
-              title={canShare ? (socialPublished ? 'Post yeniden paylaş (FB/IG/Th/X)' : 'Post paylaş (FB/IG/Th/X)') : 'Görsel yok — paylaşım için kapak gerekli'}
-              className={cn(
-                'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40',
-                socialPublished
-                  ? 'border-sky-300 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950/30'
-                  : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+            </div>
+
+            {/* Post — popover ile platform seçimi */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPopoverMode(popoverMode === 'post' ? null : 'post')}
+                disabled={!canShare || busy}
+                title={canShare ? (socialPublished ? 'Post yeniden paylaş (FB/IG/Th/X)' : 'Post paylaş (FB/IG/Th/X)') : 'Görsel yok — paylaşım için kapak gerekli'}
+                className={cn(
+                  'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40',
+                  socialPublished
+                    ? 'border-sky-300 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950/30'
+                    : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+                )}
+              >
+                {sharingMode === 'post' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Share2 className="h-3 w-3" />}
+                Post
+                <ChevronDown className="h-2.5 w-2.5 opacity-50" />
+              </button>
+              {popoverMode === 'post' && (
+                <SocialSharePopover
+                  mode="post"
+                  onShare={handlePopoverShare('post')}
+                  onClose={() => setPopoverMode(null)}
+                  isAlreadyPublished={socialPublished}
+                />
               )}
-            >
-              {sharingMode === 'post' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Share2 className="h-3 w-3" />}
-              Post
-            </button>
+            </div>
+
             <button onClick={() => { setShowAi(v => !v); setShowSeo(false); setExpanded(false) }}
               className={cn('flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
                 showAi ? 'border-blue-500 bg-blue-600 text-white' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]')}>
