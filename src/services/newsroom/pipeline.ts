@@ -92,39 +92,44 @@ function isPromotionalContent(title: string, content: string, summary?: string):
  * basın toplantısı duyurularını RSS ile gönderir. Bu içerikler gerçek
  * haber değil, canlı yayın yönlendirmesi olduğundan pipeline'a alınmaz.
  *
- * Başlıkta aşağıdaki desenlerin herhangi biri varsa → atlanır:
- *   "#Canlı", "canlı yayın", "basın toplantısı düzenleniyor" vb.
+ * Başlık VEYA içerik/özette aşağıdaki desenlerin herhangi biri varsa → atlanır:
+ *   "#Canlı", "canlı yayın", "basın toplantısı düzenliyor" + youtube linki vb.
  */
-function isLiveBroadcastContent(title: string): boolean {
+function isLiveBroadcastContent(title: string, content?: string, summary?: string): boolean {
   const t = title.toLowerCase().trim()
+  const c = ((content ?? '') + ' ' + (summary ?? '')).toLowerCase()
 
   const CANLI_PATTERNS = [
-    '#canlı',
-    '# canlı',
-    '#canli',
-    '# canli',
-    'canlı yayın',
-    'canli yayin',
-    'canlı takip',
-    'canlıyayın',
-    'canlı anlatım',
-    'canlı blog',
-    'canlı izle',
+    '#canlı', '# canlı', '#canli', '# canli',
+    'canlı yayın', 'canli yayin', 'canlı takip',
+    'canlıyayın', '#canlıyayın', 'canlı anlatım',
+    'canlı blog', 'canlı izle', 'canlı izleyin',
+    'ankacanlı', '#ankacanlı',
   ]
 
+  // Başlıkta varsa → atla
   if (CANLI_PATTERNS.some(p => t.includes(p))) return true
 
-  // "canlı" kelimesi + yayın bağlamı veya başlığın sonu "#canlı" gibi etiketle bitiyor
+  // İçerik/özette varsa → atla
+  if (CANLI_PATTERNS.some(p => c.includes(p))) return true
+
+  // "canlı" kelimesi başlıkta + yayın bağlamı
   if (t.includes('canlı') && (
-    t.endsWith('#canlı') ||
-    t.endsWith('# canlı') ||
-    t.includes('canlı yayın') ||
-    t.includes('yayın') ||
+    t.endsWith('#canlı') || t.endsWith('# canlı') ||
+    t.includes('canlı yayın') || t.includes('yayın') ||
     t.startsWith('canlı')
   )) return true
 
-  // "düzenleniyor" + "canlı" kombinasyonu (basın toplantısı yayınları)
-  if (t.includes('düzenleniyor') && t.includes('canlı')) return true
+  // "düzenleniyor/düzenliyor" + "canlı" kombinasyonu
+  if ((t.includes('düzenleniyor') || t.includes('düzenliyor')) && t.includes('canlı')) return true
+
+  // "basın toplantısı düzenliyor" — canlı duyuru, haber değil
+  // "düzenliyor" = şu an devam eden etkinlik; "düzenledi" = geçmiş → haber
+  if (t.includes('basın toplantısı') && t.includes('düzenliyor')) return true
+  if (t.includes('basın toplantısı') && t.includes('düzenleniyor')) return true
+
+  // YouTube video linki + canlı içeriği — yayın yönlendirmesi
+  if (c.includes('youtube.com/watch') && (c.includes('canlı') || c.includes('canlıyayın'))) return true
 
   return false
 }
@@ -457,7 +462,7 @@ export async function processNewsroomArticle(
   // ── LIVE BROADCAST GATE ────────────────────────────────────────────────────
   // Canlı yayın / basın toplantısı linkleri — haber değil yönlendirme.
   // Başlıkta #Canlı veya canlı yayın desenleri varsa pipeline'a alınmaz.
-  if (isLiveBroadcastContent(input.originalTitle)) {
+  if (isLiveBroadcastContent(input.originalTitle, input.originalContent, input.originalSummary)) {
     console.log(`[newsroom/pipeline] live broadcast filtered: ${input.originalTitle?.slice(0, 80)}`)
     return { outcome: 'skipped' }
   }
