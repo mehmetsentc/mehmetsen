@@ -86,6 +86,50 @@ function isPromotionalContent(title: string, content: string, summary?: string):
 }
 
 /**
+ * Canlı yayın / live broadcast içerik tespiti.
+ *
+ * Bazı haber kaynakları (ANKA, AA, İHA vb.) canlı yayın linkleri ve
+ * basın toplantısı duyurularını RSS ile gönderir. Bu içerikler gerçek
+ * haber değil, canlı yayın yönlendirmesi olduğundan pipeline'a alınmaz.
+ *
+ * Başlıkta aşağıdaki desenlerin herhangi biri varsa → atlanır:
+ *   "#Canlı", "canlı yayın", "basın toplantısı düzenleniyor" vb.
+ */
+function isLiveBroadcastContent(title: string): boolean {
+  const t = title.toLowerCase().trim()
+
+  const CANLI_PATTERNS = [
+    '#canlı',
+    '# canlı',
+    '#canli',
+    '# canli',
+    'canlı yayın',
+    'canli yayin',
+    'canlı takip',
+    'canlıyayın',
+    'canlı anlatım',
+    'canlı blog',
+    'canlı izle',
+  ]
+
+  if (CANLI_PATTERNS.some(p => t.includes(p))) return true
+
+  // "canlı" kelimesi + yayın bağlamı veya başlığın sonu "#canlı" gibi etiketle bitiyor
+  if (t.includes('canlı') && (
+    t.endsWith('#canlı') ||
+    t.endsWith('# canlı') ||
+    t.includes('canlı yayın') ||
+    t.includes('yayın') ||
+    t.startsWith('canlı')
+  )) return true
+
+  // "düzenleniyor" + "canlı" kombinasyonu (basın toplantısı yayınları)
+  if (t.includes('düzenleniyor') && t.includes('canlı')) return true
+
+  return false
+}
+
+/**
  * Detects RSS content truncated mid-sentence.
  *
  * RSS feeds routinely clip articles at 200-500 chars without a sentence
@@ -407,6 +451,14 @@ export async function processNewsroomArticle(
   // yayına alınmadan önce atlanır.
   if (isPromotionalContent(input.originalTitle, input.originalContent ?? '', input.originalSummary)) {
     console.log(`[newsroom/pipeline] promo content filtered: ${input.sourceUrl?.slice(0, 80)}`)
+    return { outcome: 'skipped' }
+  }
+
+  // ── LIVE BROADCAST GATE ────────────────────────────────────────────────────
+  // Canlı yayın / basın toplantısı linkleri — haber değil yönlendirme.
+  // Başlıkta #Canlı veya canlı yayın desenleri varsa pipeline'a alınmaz.
+  if (isLiveBroadcastContent(input.originalTitle)) {
+    console.log(`[newsroom/pipeline] live broadcast filtered: ${input.originalTitle?.slice(0, 80)}`)
     return { outcome: 'skipped' }
   }
 
