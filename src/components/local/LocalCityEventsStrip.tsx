@@ -143,7 +143,7 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
         if (cancelled) return
         const docs = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as NaEvent))
-          .filter((e) => e.status !== 'cancelled' && e.status !== 'past')
+          .filter((e) => e.status !== 'cancelled')
           .slice(0, 10)
         setEvents(docs)
       })
