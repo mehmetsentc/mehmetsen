@@ -35,6 +35,16 @@ const JOBS = [
   { id: 'seo-generate', label: 'SEO Üretimi', desc: 'SEO eksik haberlere meta', schedule: 'Cron', icon: '🔍' },
   { id: 'video-sync', label: 'Video Senkron', desc: 'Video kuyruğu', schedule: 'Cron', icon: '🎬' },
   { id: 'cleanup', label: 'Breaking Expire', desc: 'Eski breaking bayraklarını temizle', schedule: 'Cron', icon: '🗑️' },
+  { id: 'magazine', label: 'Magazin RSS', desc: 'Magazin kaynakları (Gecce, Milliyet, Sabah vb.)', schedule: 'Her 30 dk', icon: '🎭' },
+  { id: 'sports', label: 'Spor RSS', desc: 'Spor kaynakları', schedule: 'Her 30 dk', icon: '⚽' },
+  { id: 'world', label: 'Dünya RSS', desc: 'Dünya haberleri', schedule: 'Her 30 dk', icon: '🌍' },
+  { id: 'technology', label: 'Teknoloji RSS', desc: 'Teknoloji kaynakları', schedule: 'Her 30 dk', icon: '💻' },
+  { id: 'finans', label: 'Finans RSS', desc: 'Finans kaynakları', schedule: 'Her 30 dk', icon: '📊' },
+  { id: 'health', label: 'Sağlık RSS', desc: 'Sağlık kaynakları', schedule: 'Her 30 dk', icon: '🏥' },
+  { id: 'politics', label: 'Politika RSS', desc: 'Politika kaynakları', schedule: 'Her 30 dk', icon: '🏛️' },
+  { id: 'national', label: 'Ulusal RSS', desc: 'Ulusal kaynaklar', schedule: 'Her 30 dk', icon: '🇹🇷' },
+  { id: 'kibris', label: 'Kıbrıs RSS', desc: 'Kıbrıs haberleri', schedule: 'Her 30 dk', icon: '🏝️' },
+  { id: 'freenews', label: 'Freenews RSS', desc: 'Freenews kaynağı', schedule: 'Her 30 dk', icon: '📡' },
 ]
 
 const STATUS_CONFIG = {
