@@ -10,6 +10,7 @@ import {
   categoryPostHref,
   categoryPostImage,
 } from '@/components/home/desktop/categoryPostUtils'
+import { getCarouselManset } from '@/lib/carouselManset'
 import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
 import type { TimelinePost } from '@/types/post'
 
@@ -41,6 +42,7 @@ export function CategoryHeroCarousel({
         id: post.id,
         href: categoryPostHref(post),
         title: post.title,
+        manset: getCarouselManset(post.title, post.seoTitle),
         kicker: postKicker(post),
         imageUrl: categoryPostImage(post) || undefined,
       })),

@@ -18,6 +18,8 @@ export type FeaturedCarouselSlide = {
   id: string
   href: string
   title: string
+  /** Short punchy manşet for overlay — preferred over title when present. */
+  manset?: string
   /** Yellow line above the headline (category / teaser). */
   kicker?: string
   imageUrl?: string
@@ -198,7 +200,18 @@ export function FeaturedNewsCarousel({
               {item.kicker ? (
                 <p className="featured-news-carousel__kicker">{item.kicker}</p>
               ) : null}
-              <h2 className="featured-news-carousel__title">{item.title}</h2>
+              <h2
+                className="featured-news-carousel__title"
+                data-title-length={
+                  (item.manset || item.title).length > 55
+                    ? 'long'
+                    : (item.manset || item.title).length > 40
+                      ? 'medium'
+                      : 'short'
+                }
+              >
+                {item.manset || item.title}
+              </h2>
             </div>
           </Link>
         </div>

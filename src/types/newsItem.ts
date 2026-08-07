@@ -28,6 +28,8 @@ export type NewsItem = {
   breaking?: boolean
   /** column/analysis excluded from breaking stripe */
   articleFormat?: 'standard' | 'column' | 'analysis'
+  /** SEO-optimized short title (55-65 chars) — used as carousel manşet when available */
+  seoTitle?: string
 }
 
 export type HomeCategorySlug =

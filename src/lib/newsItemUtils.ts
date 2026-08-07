@@ -100,6 +100,8 @@ export function docToNewsItem(
         ? Math.max(1, Math.round(readingSource.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length / 200))
         : undefined
 
+  const seoTitleRaw = String(raw.seoTitle ?? '').trim()
+
   return {
     id,
     slug: String(raw.slug ?? id).trim() || id,
@@ -141,6 +143,7 @@ export function docToNewsItem(
     featuredAt: parseFirestoreTimestamp(raw.featuredAt as TimestampLike),
     breaking: isBreaking,
     articleFormat,
+    seoTitle: seoTitleRaw && seoTitleRaw !== title ? seoTitleRaw : undefined,
   }
 }
 
@@ -172,6 +175,7 @@ export function slimNewsItemForFeed(item: NewsItem): NewsItem {
   if (item.featured === true) slim.featured = true
   if (item.featuredAt) slim.featuredAt = item.featuredAt
   if (item.breaking === true) slim.breaking = true
+  if (item.seoTitle) slim.seoTitle = item.seoTitle
 
   return slim
 }

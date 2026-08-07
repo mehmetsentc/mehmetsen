@@ -6,6 +6,7 @@ import {
   type FeaturedCarouselSlide,
 } from '@/components/news/FeaturedNewsCarousel'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
+import { getCarouselManset } from '@/lib/carouselManset'
 import { FEATURED_CAROUSEL_LIMIT, type NewsItem } from '@/types/newsItem'
 
 interface FeaturedSliderProps {
@@ -22,6 +23,7 @@ export function FeaturedSlider({ items, isFeatured = true }: FeaturedSliderProps
         id: item.id,
         href: newsItemDetailHref(item),
         title: item.title,
+        manset: getCarouselManset(item.title, item.seoTitle),
         kicker: item.description?.trim() || newsItemCategoryLabel(item),
         imageUrl: item.imageUrl,
       })),
