@@ -103,7 +103,6 @@ export function useEvents({
 
       if (signal?.aborted) return
 
-      // Firestore sonuçlarını hemen göster (boş olsa bile)
       setEvents((prev) => {
         if (reset) return nextEvents
         const seen = new Set(prev.map((e) => e.id))
@@ -124,31 +123,34 @@ export function useEvents({
       setDataSource(nextSource)
       retryOnceRef.current = false
 
-      // Firestore boş gelince aggregated kaynağı ARKA PLANDA çek
-      // loading kapalıyken kullanıcı boş ekran görmez, sonuç gelince güncellenir
       if (reset && nextEvents.length === 0) {
-        fetchAggregatedEvents(
-          { citySlug: isNearby ? null : city, category: cat ?? null },
-          signal
-        ).then((aggregate) => {
-          if (signal?.aborted || !aggregate.events.length) return
-          const filtered = sortEventsByTimeRange(
-            dedupeEvents(
-              filterEventsForQuery(aggregate.events, {
-                citySlug: isNearby ? undefined : (city ?? undefined),
-                category: cat,
-                timeRange: range,
-              })
-            ),
-            range
+        try {
+          const aggregate = await fetchAggregatedEvents(
+            { citySlug: isNearby ? null : city, category: cat ?? null },
+            signal
           )
-          if (filtered.length > 0) {
-            setEvents(filtered)
-            setHasMore(false)
-            lastDocRef.current = null
-            setDataSource('live')
+          if (signal?.aborted) return
+          if (aggregate.events.length) {
+            const filtered = sortEventsByTimeRange(
+              dedupeEvents(
+                filterEventsForQuery(aggregate.events, {
+                  citySlug: isNearby ? undefined : (city ?? undefined),
+                  category: cat,
+                  timeRange: range,
+                })
+              ),
+              range
+            )
+            if (filtered.length > 0) {
+              setEvents(filtered)
+              setHasMore(false)
+              lastDocRef.current = null
+              setDataSource('live')
+            }
           }
-        }).catch(() => { /* sessiz — aggregated opsiyonel */ })
+        } catch {
+          // aggregated opsiyonel — sessiz hata
+        }
       }
     } catch (err) {
       if (signal?.aborted) return

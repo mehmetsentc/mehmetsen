@@ -135,22 +135,48 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
       limit(15)
     )
 
-    getDocs(q)
-      .then((snap) => {
+    async function fetchStrip() {
+      let docs: NaEvent[] = []
+      try {
+        const snap = await getDocs(q)
         if (cancelled) return
-        const docs = snap.docs
+        docs = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as NaEvent))
           .filter((e) => e.status !== 'cancelled')
           .slice(0, 10)
+      } catch {
+        // Firestore failed (likely missing composite index) — try aggregate
+      }
+
+      if (cancelled) return
+
+      if (docs.length === 0) {
+        try {
+          const res = await fetch(
+            `/api/events/aggregate?citySlug=${encodeURIComponent(citySlug)}`,
+            { signal: controller.signal, cache: 'no-store' }
+          )
+          if (cancelled) return
+          if (res.ok) {
+            const data = await res.json()
+            const all: NaEvent[] = Array.isArray(data.events) ? data.events : []
+            docs = all
+              .filter((e) => e.startsAt >= nowIso && e.status !== 'cancelled')
+              .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+              .slice(0, 10)
+          }
+        } catch {
+          // aggregate also failed — show nothing
+        }
+      }
+
+      if (!cancelled) {
         setEvents(docs)
-      })
-      .catch(() => {
-        if (!cancelled) setEvents([])
-      })
-      .finally(() => {
-        clearTimeout(timer)
-        if (!cancelled) setLoading(false)
-      })
+        setLoading(false)
+      }
+    }
+
+    void fetchStrip().finally(() => clearTimeout(timer))
 
     return () => {
       cancelled = true
