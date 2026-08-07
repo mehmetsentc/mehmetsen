@@ -67,8 +67,8 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
         </p>
       ) : null}
 
-      {/* Şehre özel etkinlikler şeridi */}
-      {city && !showingGeneralFallback && (
+      {/* Şehre özel etkinlikler şeridi — event yoksa strip null döner */}
+      {city && (
         <LocalCityEventsStrip citySlug={city.slug} cityName={city.name} />
       )}
 
