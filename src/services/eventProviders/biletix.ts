@@ -93,7 +93,13 @@ export const biletixProvider: EventProvider = {
       providerLog('biletix', 'querying solr', { citySlug: params.citySlug })
       const data = await fetchJson<BiletixSolrResponse>(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          // Biletix Solr endpoint is same-origin in-browser; server-side requests
+          // need matching Referer/Origin so the endpoint doesn't reject them.
+          'Referer': 'https://www.biletix.com/',
+          'Origin': 'https://www.biletix.com',
+        },
         body: body.toString(),
       })
 
