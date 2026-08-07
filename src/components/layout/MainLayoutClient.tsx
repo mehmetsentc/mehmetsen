@@ -49,6 +49,7 @@ function getContentVariant(pathname: string): ContentVariant {
   if (pathname.startsWith('/editoryal-ilkeler')) return 'newspaper'
   if (pathname.startsWith('/aydinlatma-metni')) return 'newspaper'
   if (pathname === ROUTES.SITE_MAP) return 'newspaper'
+  if (pathname === ROUTES.EVENTS || pathname.startsWith(`${ROUTES.EVENTS}/`)) return 'newspaper'
   return 'default'
 }
 
