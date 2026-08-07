@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { MapPin, AlertCircle, ArrowUp } from 'lucide-react'
+import { LocalCityEventsStrip } from '@/components/local/LocalCityEventsStrip'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { MobileFeedCard } from '@/components/feed/MobileFeedCard'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
@@ -68,6 +69,11 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
           Şehrinizden son gelişmeler
         </p>
       </header>
+
+      {/* Şehre özel etkinlikler şeridi */}
+      {city && !showingGeneralFallback && (
+        <LocalCityEventsStrip citySlug={city.slug} cityName={city.name} />
+      )}
 
       {showingGeneralFallback && city && !loading ? (
         <p className="mx-3 mb-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">
