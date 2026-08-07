@@ -74,9 +74,9 @@ export function OneSignalProvider() {
     }
 
     if ('requestIdleCallback' in window) {
-      idleId = window.requestIdleCallback(arm, { timeout: 12_000 })
+      idleId = window.requestIdleCallback(arm, { timeout: 20_000 })
     } else {
-      timer = setTimeout(arm, 8_000)
+      timer = setTimeout(arm, 15_000)
     }
 
     window.addEventListener('pointerdown', onInteract, { once: true, passive: true })

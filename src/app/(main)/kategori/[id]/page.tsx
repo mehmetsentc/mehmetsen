@@ -11,6 +11,8 @@ import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { TimelinePost } from '@/types/post'
 import { getWorldCup2026Data } from '@/services/sportsApi/worldCup2026'
+import { getLcpPreload } from '@/lib/lcpImage'
+import { categoryPostImage } from '@/components/home/desktop/categoryPostUtils'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -271,8 +273,22 @@ export default async function CategoryPage({ params }: Props) {
   const initialPosts = await prefetchCategoryPosts(cat.id)
   const worldCupData = cat.id === 'dunya-kupasi-2026' ? await getWorldCup2026Data() : null
 
+  const lcpImage = initialPosts.find((p) => categoryPostImage(p).length > 10)
+  const lcpUrl = lcpImage ? categoryPostImage(lcpImage) : null
+  const lcpPreload = lcpUrl ? getLcpPreload(lcpUrl) : null
+
   return (
     <>
+      {lcpPreload ? (
+        <link
+          rel="preload"
+          as="image"
+          href={lcpPreload.href}
+          imageSrcSet={lcpPreload.imagesrcset}
+          imageSizes={lcpPreload.imagesizes}
+          fetchPriority="high"
+        />
+      ) : null}
       <CategoryStructuredData cat={cat} posts={initialPosts} />
       <Suspense
         fallback={

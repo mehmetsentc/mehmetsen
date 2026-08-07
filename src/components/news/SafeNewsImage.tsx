@@ -36,6 +36,13 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
   const hostname = parseHostname(src)
   const useNextImage = !hostname || isKnownNewsImageHost(hostname)
 
+  const fetchPri = (rest as Record<string, unknown>).fetchPriority as
+    | 'high'
+    | 'low'
+    | 'auto'
+    | undefined
+  const isPriority = Boolean(rest.priority)
+
   function handleError() {
     setErrored(true)
     onLoadError?.()
@@ -59,7 +66,7 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
     )
   }
 
-  const lazy = loading !== 'eager'
+  const lazy = !isPriority && loading !== 'eager'
 
   if (fill) {
     return (
@@ -68,7 +75,8 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
         src={src}
         alt={alt ?? ''}
         loading={lazy ? 'lazy' : 'eager'}
-        decoding="async"
+        fetchPriority={fetchPri ?? (isPriority ? 'high' : 'auto')}
+        decoding={isPriority ? 'sync' : 'async'}
         draggable={false}
         onContextMenu={(e) => e.preventDefault()}
         className={cn(
@@ -87,7 +95,8 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
       src={src}
       alt={alt ?? ''}
       loading={lazy ? 'lazy' : 'eager'}
-      decoding="async"
+      fetchPriority={fetchPri ?? (isPriority ? 'high' : 'auto')}
+      decoding={isPriority ? 'sync' : 'async'}
       draggable={false}
       onContextMenu={(e) => e.preventDefault()}
       className={className}

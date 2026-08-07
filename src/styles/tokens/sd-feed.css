@@ -8,6 +8,7 @@
   flex-direction: column;
   gap: 0;
   padding: 0 0.75rem;
+  contain: layout style;
 }
 
 .sd-card {
@@ -62,6 +63,13 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: rgb(var(--color-border));
+  contain: layout size style;
+}
+
+/* Below-fold cards: defer rendering until near viewport. */
+.sd-card:nth-child(n + 3) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 380px;
 }
 
 .sd-card__play {

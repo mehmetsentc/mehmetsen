@@ -14,6 +14,7 @@ import {
 import { getNewsBySlug, getSuggestedPostsServer } from '@/services/newsService.server'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { ROUTES } from '@/constants/routes'
+import { getLcpPreload } from '@/lib/lcpImage'
 
 // ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
 export const revalidate = 300
@@ -80,8 +81,21 @@ export default async function NewsDetailPage({ params }: PageProps) {
     limit: 4,
   })
 
+  const heroImage = post.coverImageUrl?.trim() || null
+  const lcpPreload = heroImage ? getLcpPreload(heroImage) : null
+
   return (
     <>
+      {lcpPreload ? (
+        <link
+          rel="preload"
+          as="image"
+          href={lcpPreload.href}
+          imageSrcSet={lcpPreload.imagesrcset}
+          imageSizes={lcpPreload.imagesizes}
+          fetchPriority="high"
+        />
+      ) : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

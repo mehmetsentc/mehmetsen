@@ -79,8 +79,11 @@ export function SliderImage({
       <img
         src={src}
         alt={alt}
+        width={1600}
+        height={900}
         fetchPriority={priority ? 'high' : 'auto'}
-        decoding="async"
+        decoding={priority ? 'sync' : 'async'}
+        loading={priority ? 'eager' : 'lazy'}
         draggable={false}
         className={cn('h-auto w-full', className)}
       />

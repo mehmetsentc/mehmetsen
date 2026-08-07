@@ -38,13 +38,14 @@ function FeedCard({ href, image, title, timestamp, isVideo, priority }: CardProp
 
         <h3 className="sd-card__title">{title}</h3>
 
-        <div className="sd-card__media">
+        <div className="sd-card__media" style={{ aspectRatio: '16/9', position: 'relative' }}>
           <SafeNewsImage
             src={image}
             alt={title}
             fill
             sizes="(max-width: 768px) 100vw, 640px"
             priority={priority}
+            fetchPriority={priority ? 'high' : 'auto'}
             className="object-cover transition-transform duration-300 group-hover:scale-[1.01]"
           />
           {isVideo ? (
