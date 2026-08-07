@@ -3,14 +3,22 @@ import { biletixProvider } from './biletix'
 import { biletinoProvider } from './biletino'
 import { bubiletProvider } from './bubilet'
 import { genericProvider } from './genericProvider'
+import { ticketmasterProvider } from './ticketmaster'
 
 export type { EventProvider, EventProviderParams } from './types'
 
 /**
  * Registered ticket-platform adapters.
  *
+ * OFFICIAL API (requires API key — preferred when available):
+ *   - ticketmaster — Ticketmaster Discovery API v2. Biletix = Ticketmaster TR,
+ *                    so this is the same data via a proper, IP-unrestricted API.
+ *                    Enable by setting TICKETMASTER_API_KEY in Vercel env vars.
+ *                    Free tier: 5000 req/day. Sign up: developer.ticketmaster.com
+ *
  * LIVE (scraped, enabled by default — no credentials needed):
- *   - biletix  — public Solr JSON endpoint (most reliable, has dates+venue).
+ *   - biletix  — public Solr JSON endpoint. NOTE: Biletix/Ticketmaster blocks
+ *                server-side requests from Vercel IPs. Use ticketmaster instead.
  *   - bubilet  — server-rendered HTML + per-event schema.org JSON-LD
  *                (dates, venue, geo coordinates, image, ticket URL).
  *
@@ -29,6 +37,7 @@ export type { EventProvider, EventProviderParams } from './types'
  *     for these without new code).
  */
 export const eventProviders: EventProvider[] = [
+  ticketmasterProvider, // preferred: official API, same data as Biletix
   biletixProvider,
   bubiletProvider,
   biletinoProvider,
