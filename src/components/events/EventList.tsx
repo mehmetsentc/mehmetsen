@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AlertCircle, CalendarDays, RefreshCw } from 'lucide-react'
-import { getCityCategoryName } from '@/constants/cities'
+import { getCityCategoryName, TURKISH_PROVINCES } from '@/constants/cities'
 import { getCurrentPosition, slugifyCity } from '@/lib/location'
 import { nearestProvinceSlug } from '@/constants/cities'
 import { usePageState } from '@/hooks/usePageState'
@@ -14,23 +15,32 @@ import type { EventCategory, NaEvent } from '@/types/event'
 import { EventCard, EventCardSkeleton } from './EventCard'
 import { EventFilters } from './EventFilters'
 
+function resolveInitialCityFromParams(searchParams: URLSearchParams): string | null {
+  const sehir = searchParams.get('sehir')
+  if (!sehir) return null
+  const province = TURKISH_PROVINCES.find((p) => p.slug === sehir)
+  return province ? province.slug : null
+}
+
 export function EventList({
   initialEvents = [],
 }: {
   initialEvents?: NaEvent[]
 }) {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const urlCitySlug = resolveInitialCityFromParams(searchParams)
 
   const userCityName = user?.location?.trim() || null
   const userCitySlug = userCityName ? slugifyCity(userCityName) : null
 
   const [userPickedCity, setUserPickedCity] = usePageState(
     PAGE_STATE_KEYS.eventsUserPickedCity,
-    false
+    !!urlCitySlug
   )
   const [selectedCitySlug, setSelectedCitySlug] = usePageState<string | null>(
     PAGE_STATE_KEYS.eventsCitySlug,
-    null
+    urlCitySlug
   )
   const [selectedCategory, setSelectedCategory] = usePageState<EventCategory | null>(
     PAGE_STATE_KEYS.eventsCategory,

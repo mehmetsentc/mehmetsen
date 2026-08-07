@@ -29,7 +29,7 @@ function EventMiniCard({ event }: { event: NaEvent }) {
   const showImage = !!coverUrl && !imageFailed
 
   return (
-    <article className="flex w-[160px] shrink-0 flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
+    <article className="flex w-[160px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
       {/* Cover image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[rgb(var(--color-surface-elevated))]">
         {showImage ? (
@@ -116,20 +116,17 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
   const [events, setEvents] = useState<NaEvent[]>([])
   const [loading, setLoading] = useState(true)
 
+  const eventsHref = `${ROUTES.EVENTS}?sehir=${encodeURIComponent(citySlug)}`
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setEvents([])
 
-    // Bypass the global firestoreQueue to avoid blocking the news feed.
-    // This component is non-critical: a direct getDocs with a short timeout
-    // is fine — if it fails or times out we simply show nothing.
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), STRIP_TIMEOUT_MS)
 
     const nowIso = new Date().toISOString()
-    // Composite index: citySlug ASC + startsAt ASC (firestore.indexes.json).
-    // status filter is applied client-side to avoid needing a 3-field index.
     const q = query(
       collection(db, Collections.EVENTS),
       where('citySlug', '==', citySlug),
@@ -161,7 +158,6 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
     }
   }, [citySlug])
 
-  // Yükleniyorsa skeleton göster, boşsa hiç render etme
   if (!loading && events.length === 0) return null
 
   return (
@@ -175,7 +171,7 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
           </span>
         </div>
         <Link
-          href={ROUTES.EVENTS}
+          href={eventsHref}
           className="flex items-center gap-0.5 text-[11px] font-semibold text-blue-600"
         >
           Tümünü gör
@@ -184,7 +180,7 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
       </div>
 
       {/* Horizontal scroll */}
-      <div className="flex gap-3 overflow-x-auto px-3 pb-1 scrollbar-hide">
+      <div className="flex gap-3 overflow-x-auto px-3 pb-1 scrollbar-hide snap-x snap-mandatory">
         {loading
           ? [...Array(4)].map((_, i) => <EventMiniCardSkeleton key={i} />)
           : events.map((event) => <EventMiniCard key={event.id} event={event} />)}
@@ -194,7 +190,7 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
       {!loading && events.length > 0 && (
         <div className="mt-3 px-3">
           <Link
-            href={ROUTES.EVENTS}
+            href={eventsHref}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
           >
             <CalendarDays className="h-4 w-4" />

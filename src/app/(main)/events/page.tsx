@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { EventList } from '@/components/events/EventList'
 import { getUpcomingEventsServer } from '@/services/eventService.server'
@@ -18,5 +19,9 @@ export const metadata: Metadata = {
 
 export default async function EventsPage() {
   const initialEvents = await getUpcomingEventsServer(12)
-  return <EventList initialEvents={initialEvents} />
+  return (
+    <Suspense>
+      <EventList initialEvents={initialEvents} />
+    </Suspense>
+  )
 }
