@@ -7,6 +7,7 @@ import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DesktopCategoryWatch } from '@/components/home/desktop/DesktopCategoryWatch'
 import { GridStory, StackedStory } from '@/components/home/desktop/desktopGridStories'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
+import { LocalCityEventsStrip } from '@/components/local/LocalCityEventsStrip'
 import { LocalListStory } from '@/components/local/LocalListStory'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { buildLocalNewsReadableLayout } from '@/components/local/localNewsLayout'
@@ -65,6 +66,11 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
           bulunamadı — Türkiye geneli yerel haberler gösteriliyor.
         </p>
       ) : null}
+
+      {/* Şehre özel etkinlikler şeridi */}
+      {city && !showingGeneralFallback && (
+        <LocalCityEventsStrip citySlug={city.slug} cityName={city.name} />
+      )}
 
       <DesktopAdBanner slot="category-yerel-haber-top" size="large" className="mb-8" />
 

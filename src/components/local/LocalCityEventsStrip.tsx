@@ -128,13 +128,14 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
     const timer = setTimeout(() => controller.abort(), STRIP_TIMEOUT_MS)
 
     const nowIso = new Date().toISOString()
+    // Composite index: citySlug ASC + startsAt ASC (firestore.indexes.json).
+    // status filter is applied client-side to avoid needing a 3-field index.
     const q = query(
       collection(db, Collections.EVENTS),
-      where('startsAt', '>=', nowIso),
       where('citySlug', '==', citySlug),
-      where('status', '==', 'published'),
+      where('startsAt', '>=', nowIso),
       orderBy('startsAt', 'asc'),
-      limit(10)
+      limit(15)
     )
 
     getDocs(q)
@@ -142,7 +143,8 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
         if (cancelled) return
         const docs = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as NaEvent))
-          .filter((e) => e.status !== 'cancelled')
+          .filter((e) => e.status !== 'cancelled' && e.status !== 'past')
+          .slice(0, 10)
         setEvents(docs)
       })
       .catch(() => {
