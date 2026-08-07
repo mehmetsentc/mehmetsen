@@ -205,7 +205,7 @@ export const authService = {
     await ensureAuthReady()
     const result = await signInWithGoogle(auth)
     if (result === 'redirect') return null
-    void finalizeGoogleSignIn(result.user)
+    await finalizeGoogleSignIn(result.user)
     return result.user
   },
 

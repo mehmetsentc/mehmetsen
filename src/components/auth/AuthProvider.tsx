@@ -243,8 +243,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithApple = useCallback(async () => {
     const { authService } = await import('@/services/authService')
-    return authService.loginWithApple()
-  }, [])
+    const result = await authService.loginWithApple()
+    // finalizeAppleSignIn tamamlandığında Firestore doc garantili yazılmış olur.
+    // refreshUser çağırarak state'i doğru username ile güncelle; yoksa
+    // buildFallbackUser'ın farklı username'i Navbar'da yanlış profil URL'ine yol açar.
+    if (result !== null) {
+      await refreshUser()
+    }
+    return result
+  }, [refreshUser])
 
   const logout = useCallback(async () => {
     const { authService } = await import('@/services/authService')
