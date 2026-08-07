@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { CSSProperties, ReactNode, TouchEventHandler } from 'react'
 import { ArrowLeft, RotateCcw } from 'lucide-react'
@@ -25,6 +26,10 @@ interface GameShellProps {
  * Fullscreen game shell covering the entire viewport.
  * Renders a fixed overlay so Navbar / MobileNav are hidden while playing.
  * Top bar: ← Geri dön  |  Title  |  Yeniden başlat
+ *
+ * Locks body scroll on mount (classic iOS scroll-lock pattern) and blocks
+ * all touch-initiated page panning. Game canvas descendants may opt-in to
+ * touch-action: manipulation via GameBoardFrame.
  */
 export function GameShell({
   gameSlug,
@@ -38,12 +43,54 @@ export function GameShell({
   hideLeaderboard,
   onRestart,
 }: GameShellProps) {
+  const shellRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const scrollY = window.scrollY
+    const body = document.body
+    const html = document.documentElement
+
+    const savedBodyStyle = body.style.cssText
+    const savedHtmlStyle = html.style.cssText
+
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
+    body.style.overflow = 'hidden'
+    html.style.overflow = 'hidden'
+    html.style.height = '100%'
+
+    const preventTouchMove = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target?.closest('.game-board-frame')) return
+      e.preventDefault()
+    }
+    document.addEventListener('touchmove', preventTouchMove, { passive: false })
+
+    return () => {
+      document.removeEventListener('touchmove', preventTouchMove)
+      body.style.cssText = savedBodyStyle
+      html.style.cssText = savedHtmlStyle
+      window.scrollTo(0, scrollY)
+    }
+  }, [])
+
   const bg = dark ? 'bg-slate-950 text-white' : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]'
   const barBg = dark ? 'bg-slate-900/90 border-white/10' : 'bg-[rgb(var(--color-card))]/95 border-[rgb(var(--color-border))]'
   const mutedText = dark ? 'text-white/60' : 'text-[rgb(var(--color-muted))]'
 
   return (
-    <div className={cn('fixed inset-0 z-[100] flex flex-col', bg)}>
+    <div
+      ref={shellRef}
+      className={cn(
+        'fixed inset-0 z-[110] flex flex-col',
+        'h-[100dvh] overflow-hidden overscroll-none',
+        bg
+      )}
+      style={{ touchAction: 'none' }}
+    >
       {/* ---- Top bar ---- */}
       <header
         className={cn(
@@ -52,6 +99,7 @@ export function GameShell({
           'pt-[max(0.5rem,env(safe-area-inset-top))] pb-2',
           barBg
         )}
+        style={{ touchAction: 'none' }}
       >
         <Link
           href={ROUTES.GAMES}
@@ -93,22 +141,23 @@ export function GameShell({
         )}
       </header>
 
-      {/* ---- Scrollable game area ---- */}
+      {/* ---- Game area (no page scroll, contained overscroll) ---- */}
       <div
         className={cn(
-          'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain',
-          'px-3 py-3 sm:px-4 sm:py-4',
-          'pb-[max(1rem,env(safe-area-inset-bottom))]',
+          'flex min-h-0 flex-1 flex-col overflow-hidden overscroll-none',
+          'px-3 py-2 sm:px-4 sm:py-3',
+          'pb-[max(0.5rem,env(safe-area-inset-bottom))]',
           className
         )}
+        style={{ touchAction: 'none' }}
       >
         {stats ? (
-          <div className="mb-2 flex shrink-0 flex-wrap items-center justify-end gap-2">{stats}</div>
+          <div className="mb-1.5 flex shrink-0 flex-wrap items-center justify-end gap-2">{stats}</div>
         ) : null}
 
         <GameRulesSheet gameSlug={gameSlug} dark={dark} />
 
-        <div className="flex w-full flex-1 flex-col items-stretch">{children}</div>
+        <div className="flex w-full min-h-0 flex-1 flex-col items-stretch">{children}</div>
 
         {!hideLeaderboard ? <GameLeaderboard gameSlug={gameSlug} dark={dark} /> : null}
       </div>
@@ -144,10 +193,14 @@ export function GameBoardFrame({
 
   return (
     <div
-      className={cn('game-board-frame mx-auto w-full touch-manipulation', className)}
+      className={cn(
+        'game-board-frame mx-auto w-full overscroll-none',
+        className
+      )}
       style={{
         maxWidth: `min(${maxCap}, ${maxFromHeight})`,
         aspectRatio: `${cols} / ${rows}`,
+        touchAction: 'manipulation',
         ...style,
       }}
       onTouchStart={onTouchStart}
