@@ -241,23 +241,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authService.loginWithGoogle()
   }, [])
 
-  const loginWithApple = useCallback(async () => {
-    const { authService } = await import('@/services/authService')
-    const result = await authService.loginWithApple()
-    // finalizeAppleSignIn tamamlandığında Firestore doc garantili yazılmış olur.
-    // refreshUser çağırarak state'i doğru username ile güncelle; yoksa
-    // buildFallbackUser'ın farklı username'i Navbar'da yanlış profil URL'ine yol açar.
-    if (result !== null) {
-      await refreshUser()
-    }
-    return result
-  }, [refreshUser])
-
-  const logout = useCallback(async () => {
-    const { authService } = await import('@/services/authService')
-    return authService.logout()
-  }, [])
-
   const refreshUser = useCallback(async () => {
     const [{ auth }, { authService }] = await Promise.all([
       import('@/lib/firebase/auth'),
@@ -274,6 +257,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('[AuthProvider] Failed to refresh user profile:', error)
     }
+  }, [])
+
+  const loginWithApple = useCallback(async () => {
+    const { authService } = await import('@/services/authService')
+    const result = await authService.loginWithApple()
+    // finalizeAppleSignIn tamamlandığında Firestore doc garantili yazılmış olur.
+    // refreshUser çağırarak state'i doğru username ile güncelle; yoksa
+    // buildFallbackUser'ın farklı username'i Navbar'da yanlış profil URL'ine yol açar.
+    if (result !== null) {
+      await refreshUser()
+    }
+    return result
+  }, [refreshUser])
+
+  const logout = useCallback(async () => {
+    const { authService } = await import('@/services/authService')
+    return authService.logout()
   }, [])
 
   const value = useMemo(
