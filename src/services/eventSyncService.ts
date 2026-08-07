@@ -340,7 +340,15 @@ export const eventSyncService = {
     const successfulProviders = providers.filter((id) => !failedProviders.includes(id))
     const scrapedIds = new Set(events.map((e) => e.id))
     providerLog('sync', 'marking removed provider events')
-    const markedRemoved = await markRemovedEvents(db, scrapedIds, successfulProviders)
+    // Safety guard: if scraped 0 events, providers likely failed silently (e.g. IP blocked).
+    // Skip markRemovedEvents to avoid mass-cancelling all Firestore events.
+    const markedRemoved =
+      events.length > 0
+        ? await markRemovedEvents(db, scrapedIds, successfulProviders)
+        : 0
+    if (events.length === 0) {
+      console.warn('[eventSync] scraped 0 events — markRemovedEvents skipped to protect existing data')
+    }
     providerLog('sync', 'marking past events')
     const markedPast = await markPastEvents(db)
 
