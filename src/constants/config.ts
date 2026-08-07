@@ -149,14 +149,12 @@ export function getParentCategory(categoryId: string): CategoryDef | undefined {
 /**
  * All category ids that belong to a parent (inclusive).
  * Used to query Firestore for "show all sport news" (spor + futbol + basketbol + ...).
- * Standalone subcategories are EXCLUDED — their articles stay isolated on their own page.
+ * Includes ALL subcategories so the parent "Tümü" view shows every branch.
  */
 export function getCategoryFamily(parentId: string): string[] {
   return [
     parentId,
-    ...getSubcategories(parentId)
-      .filter((c) => !c.standalone)
-      .map((c) => c.id),
+    ...getSubcategories(parentId).map((c) => c.id),
   ]
 }
 
