@@ -45,6 +45,7 @@ const JOB_ROUTES: Record<string, string[]> = {
   ],
   'anka-breaking': ['/api/cron/newsroom/anka-breaking'],
   'sozcu-breaking': ['/api/cron/newsroom/sozcu-breaking'],
+  magazine: ['/api/cron/newsroom/magazine'],
   sports: ['/api/cron/newsroom/sports'],
   world: ['/api/cron/newsroom/world'],
   technology: ['/api/cron/newsroom/technology'],

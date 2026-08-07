@@ -129,6 +129,7 @@ export const MAGAZINE_NEWS_SOURCE_IDS = [
   'milliyet-magazin', 'sabah-magazin',
   'takvim-magazin', 'cnnturk-kultur', 'cnnturk-yasam',
   'ntv-yasam', 'sabah-kultur-sanat', 'ntv-kultur',
+  'gecce',
 ] as const
 
 /**
