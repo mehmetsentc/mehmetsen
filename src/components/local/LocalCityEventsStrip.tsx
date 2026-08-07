@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
 import { CalendarDays, ChevronRight, MapPin, PartyPopper, Ticket } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
-import { eventService } from '@/services/eventService'
+import { db, Collections } from '@/lib/firebase/firestore'
 import {
   formatEventDayBadge,
   getEventCategoryLabel,
@@ -13,6 +14,8 @@ import {
 } from '@/lib/eventUtils'
 import { cn } from '@/lib/utils'
 import type { NaEvent } from '@/types/event'
+
+const STRIP_TIMEOUT_MS = 8_000
 
 interface LocalCityEventsStripProps {
   citySlug: string
@@ -118,20 +121,42 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
     setLoading(true)
     setEvents([])
 
-    eventService
-      .getEvents({ citySlug, timeRange: 'upcoming' })
-      .then((result) => {
+    // Bypass the global firestoreQueue to avoid blocking the news feed.
+    // This component is non-critical: a direct getDocs with a short timeout
+    // is fine — if it fails or times out we simply show nothing.
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), STRIP_TIMEOUT_MS)
+
+    const nowIso = new Date().toISOString()
+    const q = query(
+      collection(db, Collections.EVENTS),
+      where('startsAt', '>=', nowIso),
+      where('citySlug', '==', citySlug),
+      where('status', '==', 'published'),
+      orderBy('startsAt', 'asc'),
+      limit(10)
+    )
+
+    getDocs(q)
+      .then((snap) => {
         if (cancelled) return
-        setEvents(result.events.slice(0, 10))
+        const docs = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as NaEvent))
+          .filter((e) => e.status !== 'cancelled')
+        setEvents(docs)
       })
       .catch(() => {
         if (!cancelled) setEvents([])
       })
       .finally(() => {
+        clearTimeout(timer)
         if (!cancelled) setLoading(false)
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [citySlug])
 
   // Yükleniyorsa skeleton göster, boşsa hiç render etme
