@@ -2,14 +2,13 @@
 
 import Link from 'next/link'
 import type { CSSProperties, ReactNode, TouchEventHandler } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, RotateCcw } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { GameRulesSheet } from '@/components/games/GameRulesSheet'
 import { GameLeaderboard } from '@/components/games/GameLeaderboard'
 
 interface GameShellProps {
-  /** Oyun slug — kurallar + sıralama */
   gameSlug: string
   title: ReactNode
   subtitle?: ReactNode
@@ -19,12 +18,13 @@ interface GameShellProps {
   dark?: boolean
   backClassName?: string
   hideLeaderboard?: boolean
+  onRestart?: () => void
 }
 
 /**
- * Tüm native oyunlar için ortak sayfa kabuğu.
- * Mobil → TV arası ölçeklenir; ilk girişte sade kurallar; üye skor sıralaması.
- * Skor provider sayfa seviyesinde (GameAuthGate içinde) sarıldığı için burada yok.
+ * Fullscreen game shell covering the entire viewport.
+ * Renders a fixed overlay so Navbar / MobileNav are hidden while playing.
+ * Top bar: ← Geri dön  |  Title  |  Yeniden başlat
  */
 export function GameShell({
   gameSlug,
@@ -36,61 +36,82 @@ export function GameShell({
   dark,
   backClassName,
   hideLeaderboard,
+  onRestart,
 }: GameShellProps) {
+  const bg = dark ? 'bg-slate-950 text-white' : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]'
+  const barBg = dark ? 'bg-slate-900/90 border-white/10' : 'bg-[rgb(var(--color-card))]/95 border-[rgb(var(--color-border))]'
+  const mutedText = dark ? 'text-white/60' : 'text-[rgb(var(--color-muted))]'
+
   return (
-    <div
-      className={cn(
-        'mx-auto flex w-full max-w-6xl flex-col',
-        'min-h-[calc(100dvh-3.5rem)] px-3 py-4 sm:px-5 sm:py-6 lg:px-8',
-        'pb-[max(5rem,calc(var(--safe-bottom,0px)+4.5rem))]',
-        className
-      )}
-    >
-      <Link
-        href={ROUTES.GAMES}
+    <div className={cn('fixed inset-0 z-[100] flex flex-col', bg)}>
+      {/* ---- Top bar ---- */}
+      <header
         className={cn(
-          'mb-3 inline-flex w-fit items-center gap-1 text-sm font-medium sm:mb-4',
-          dark
-            ? 'text-white/60 hover:text-white'
-            : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
-          backClassName
+          'flex shrink-0 items-center justify-between gap-2 border-b backdrop-blur-md',
+          'px-3 sm:px-4',
+          'pt-[max(0.5rem,env(safe-area-inset-top))] pb-2',
+          barBg
         )}
       >
-        <ArrowLeft className="h-4 w-4" />
-        Tüm oyunlar
-      </Link>
+        <Link
+          href={ROUTES.GAMES}
+          className={cn(
+            'flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors active:scale-95',
+            dark
+              ? 'text-white/80 hover:bg-white/10 active:bg-white/15'
+              : 'text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))] active:bg-[rgb(var(--color-border))]'
+          )}
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="hidden xs:inline">Geri dön</span>
+        </Link>
 
-      <header className="mb-3 flex flex-wrap items-end justify-between gap-3 sm:mb-4">
-        <div className="min-w-0 flex-1">
-          <h1
-            className={cn(
-              'text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl',
-              !dark && 'text-[rgb(var(--color-text))]'
-            )}
-          >
-            {title}
-          </h1>
+        <div className="min-w-0 flex-1 text-center">
+          <h1 className="truncate text-base font-black sm:text-lg">{title}</h1>
           {subtitle ? (
-            <p
-              className={cn(
-                'mt-0.5 text-sm sm:text-base',
-                dark ? 'text-white/60' : 'text-[rgb(var(--color-muted))]'
-              )}
-            >
-              {subtitle}
-            </p>
+            <p className={cn('truncate text-[11px] sm:text-xs', mutedText)}>{subtitle}</p>
           ) : null}
         </div>
-        {stats ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">{stats}</div>
-        ) : null}
+
+        {onRestart ? (
+          <button
+            type="button"
+            onClick={onRestart}
+            className={cn(
+              'flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors active:scale-95',
+              dark
+                ? 'text-white/80 hover:bg-white/10 active:bg-white/15'
+                : 'text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))] active:bg-[rgb(var(--color-border))]'
+            )}
+            aria-label="Yeniden başlat"
+          >
+            <RotateCcw className="h-5 w-5" />
+            <span className="hidden xs:inline">Yeniden</span>
+          </button>
+        ) : (
+          <div className="w-[68px] shrink-0" />
+        )}
       </header>
 
-      <GameRulesSheet gameSlug={gameSlug} dark={dark} />
+      {/* ---- Scrollable game area ---- */}
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain',
+          'px-3 py-3 sm:px-4 sm:py-4',
+          'pb-[max(1rem,env(safe-area-inset-bottom))]',
+          className
+        )}
+      >
+        {stats ? (
+          <div className="mb-2 flex shrink-0 flex-wrap items-center justify-end gap-2">{stats}</div>
+        ) : null}
 
-      <div className="flex w-full flex-1 flex-col items-stretch">{children}</div>
+        <GameRulesSheet gameSlug={gameSlug} dark={dark} />
 
-      {!hideLeaderboard ? <GameLeaderboard gameSlug={gameSlug} dark={dark} /> : null}
+        <div className="flex w-full flex-1 flex-col items-stretch">{children}</div>
+
+        {!hideLeaderboard ? <GameLeaderboard gameSlug={gameSlug} dark={dark} /> : null}
+      </div>
     </div>
   )
 }
@@ -115,11 +136,11 @@ export function GameBoardFrame({
   onTouchEnd,
 }: GameBoardFrameProps) {
   const aspect = cols / Math.max(rows, 1)
-  const maxFromHeight = `calc((100dvh - 12rem) * ${aspect.toFixed(4)})`
+  const maxFromHeight = `calc((100dvh - 10rem) * ${aspect.toFixed(4)})`
   const maxCap =
     aspect >= 0.85
-      ? 'min(100%, 52rem, 88vmin)'
-      : 'min(100%, 34rem, 52vmin)'
+      ? 'min(100%, 52rem, 90vmin)'
+      : 'min(100%, 38rem, 60vmin)'
 
   return (
     <div

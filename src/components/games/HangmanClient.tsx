@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { RotateCcw, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import {
   CATEGORY_LABEL,
   MAX_WRONG,
@@ -75,6 +75,7 @@ export function HangmanClient() {
     <GameShell
       gameSlug="adam-asmaca"
       title="Adam Asmaca"
+      onRestart={() => restart()}
       subtitle={`Harf tahmin et · ${livesLeft} can · seviye ${level}/3`}
     >
       <GameLevelBar
@@ -99,14 +100,6 @@ export function HangmanClient() {
             {cat === 'hepsi' ? 'Hepsi' : CATEGORY_LABEL[cat]}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => restart()}
-          className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-semibold"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Yeni
-        </button>
       </div>
 
       <div className="mb-4 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 text-center">

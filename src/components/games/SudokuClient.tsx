@@ -6,7 +6,7 @@ import {
   Lightbulb,
   Pause,
   Play,
-  RotateCcw,
+
   Trophy,
 } from 'lucide-react'
 import {
@@ -220,6 +220,7 @@ export function SudokuClient() {
       gameSlug="sudoku"
       title="Sudoku"
       subtitle="Online oyna · 9×9 · ipucu ve not modu"
+      onRestart={() => startPuzzle(difficulty)}
       stats={
         <>
           <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums text-[rgb(var(--color-text))]">
@@ -244,16 +245,7 @@ export function SudokuClient() {
         hint="Kazanınca sonraki seviye açılır"
       />
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => startPuzzle(difficulty)}
-          className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-semibold hover:bg-[rgb(var(--color-surface))]"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Yeni
-        </button>
-      </div>
+      <div className="mb-2" />
 
       {won && (
         <div className="mb-4 flex items-center justify-center gap-2 rounded-xl bg-teal-500/15 px-4 py-3 font-semibold text-teal-700">

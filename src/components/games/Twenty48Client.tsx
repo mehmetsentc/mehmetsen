@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type TouchEvent } from 'react'
-import { RotateCcw, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import {
   canMove,
   maxTile,
@@ -150,6 +150,7 @@ export function Twenty48Client() {
     <GameShell
       gameSlug="2048"
       title="2048"
+      onRestart={restart}
       subtitle={`Seviye ${level}/3 · hedef ${targetTile} · kaydır`}
       stats={
         <>
@@ -159,14 +160,6 @@ export function Twenty48Client() {
           <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
             En iyi {best}
           </span>
-          <button
-            type="button"
-            onClick={restart}
-            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-semibold"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Yeni
-          </button>
         </>
       }
     >

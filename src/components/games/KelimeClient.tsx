@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { RotateCcw, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import {
   MAX_GUESSES,
   TURKISH_LETTERS,
@@ -158,6 +158,7 @@ export function KelimeClient() {
     <GameShell
       gameSlug="kelime"
       title="Kelime Günü"
+      onRestart={() => start(mode)}
       subtitle={`5 harfli Türkçe · seviye ${level}/3 · ${maxGuesses} deneme`}
     >
       <GameLevelBar
@@ -189,14 +190,6 @@ export function KelimeClient() {
           }`}
         >
           Rastgele
-        </button>
-        <button
-          type="button"
-          onClick={() => start(mode)}
-          className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-semibold"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Yenile
         </button>
       </div>
 

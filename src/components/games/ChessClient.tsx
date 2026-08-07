@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, Crown, RotateCcw, Users } from 'lucide-react'
+import { Bot, Crown, Users } from 'lucide-react'
 import { chooseAiMove, CPU_COLOR } from '@/lib/games/chess/ai'
 import {
   applyMove,
@@ -147,6 +147,7 @@ export function ChessClient() {
     <GameShell
       gameSlug="satranc"
       title="Satranç"
+      onRestart={reset}
       subtitle={`Klasik kurallar · rok ve geçerken alma · ${vsCpu ? 'Beyaz sensin' : 'İki oyuncu'}`}
       stats={
         <div className="flex flex-wrap items-center gap-2">
@@ -172,14 +173,6 @@ export function ChessClient() {
               İki kişi
             </button>
           </div>
-          <button
-            type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-sm font-medium hover:bg-[rgb(var(--color-surface))]"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Yeniden
-          </button>
         </div>
       }
     >

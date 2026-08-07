@@ -249,15 +249,16 @@ export function TetrisClient() {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950 text-white">
-      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br opacity-40 ${diff.accent}`} />
-      <div className="pointer-events-none absolute -left-20 top-20 h-64 w-64 rounded-full bg-cyan-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -right-16 bottom-32 h-72 w-72 rounded-full bg-fuchsia-500/20 blur-3xl" />
+    <div className="relative">
+      <div className={`pointer-events-none fixed inset-0 z-[99] bg-gradient-to-br opacity-40 ${diff.accent}`} />
+      <div className="pointer-events-none fixed -left-20 top-20 z-[99] h-64 w-64 rounded-full bg-cyan-500/20 blur-3xl" />
+      <div className="pointer-events-none fixed -right-16 bottom-32 z-[99] h-72 w-72 rounded-full bg-fuchsia-500/20 blur-3xl" />
 
       <GameShell
         gameSlug="tetris"
         dark
-        className="relative min-h-0 pb-24"
+        className="relative"
+        onRestart={() => reset()}
         title={
           <>
             Neon{' '}
@@ -401,18 +402,10 @@ export function TetrisClient() {
           <button
             type="button"
             onClick={() => running && !state.gameOver && setPaused((p) => !p)}
-            className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold"
+            className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-4 py-2.5 text-sm font-semibold"
           >
-            {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+            {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             {paused ? 'Devam' : 'Duraklat'}
-          </button>
-          <button
-            type="button"
-            onClick={() => reset()}
-            className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Yeniden
           </button>
         </div>
 

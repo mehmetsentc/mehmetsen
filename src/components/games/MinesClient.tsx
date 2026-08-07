@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
-import { Flag, RotateCcw, Trophy } from 'lucide-react'
+import { Flag, Trophy } from 'lucide-react'
 import {
   MINES_DIFFICULTIES,
   countFlags,
@@ -109,6 +109,7 @@ export function MinesClient() {
     <GameShell
       gameSlug="mayin"
       title="Mayın Tarlası"
+      onRestart={() => restart()}
       subtitle="Sol tık aç · sağ tık / bayrak modu işaretle"
       stats={
         <>
@@ -140,14 +141,6 @@ export function MinesClient() {
         >
           <Flag className="h-4 w-4" />
           Bayrak
-        </button>
-        <button
-          type="button"
-          onClick={() => restart()}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-[rgb(var(--color-border))] px-4 py-2 text-sm font-semibold"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Yeni
         </button>
       </div>
 

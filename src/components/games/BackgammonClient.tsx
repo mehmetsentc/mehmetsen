@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, Dices, RotateCcw, Users } from 'lucide-react'
+import { Bot, Dices, Users } from 'lucide-react'
 import { chooseAiMove, CPU_PLAYER_ID } from '@/lib/games/backgammon/ai'
 import {
   applyMove,
@@ -143,6 +143,7 @@ export function BackgammonClient() {
     <GameShell
       gameSlug="tavla"
       title="Tavla"
+      onRestart={reset}
       subtitle={
         vsCpu ? 'Bilgisayara karşı veya iki oyuncu · Beta' : 'Aynı cihazda iki oyuncu · Beta'
       }
@@ -170,14 +171,6 @@ export function BackgammonClient() {
               İki kişi
             </button>
           </div>
-          <button
-            type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-sm font-medium hover:bg-[rgb(var(--color-surface))]"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Yeniden
-          </button>
         </div>
       }
     >

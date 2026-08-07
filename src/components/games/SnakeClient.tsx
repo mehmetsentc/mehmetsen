@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Pause, Play, RotateCcw, Trophy } from 'lucide-react'
+import { Pause, Play, Trophy } from 'lucide-react'
 import {
   GRID_COLS,
   GRID_ROWS,
@@ -245,6 +245,7 @@ export function SnakeClient() {
   return (
     <GameShell
       gameSlug="yilan"
+      onRestart={resetGame}
       title={
         <span className="bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
           Neon Yılan
@@ -270,14 +271,6 @@ export function SnakeClient() {
               {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             </button>
           )}
-          <button
-            type="button"
-            onClick={resetGame}
-            className="rounded-lg bg-violet-600 p-2 text-white hover:bg-violet-700"
-            aria-label="Yeniden başlat"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </button>
         </>
       }
     >

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { RotateCcw, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import { createDeck, type MemoryCard } from '@/lib/games/memory/engine'
 import { GameLevelBar } from '@/components/games/GameLevelBar'
 import { GameBoardFrame, GameShell } from '@/components/games/GameShell'
@@ -99,6 +99,7 @@ export function MemoryClient() {
     <GameShell
       gameSlug="hafiza"
       title="Hafıza"
+      onRestart={restart}
       subtitle={`Eşleşen kartları bul · ${pairCount} çift`}
       stats={
         <>
@@ -108,14 +109,6 @@ export function MemoryClient() {
           <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1.5 text-sm font-semibold tabular-nums">
             {moves} hamle
           </span>
-          <button
-            type="button"
-            onClick={restart}
-            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-semibold"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Yeni
-          </button>
         </>
       }
     >
