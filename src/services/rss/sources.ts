@@ -1176,6 +1176,15 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
   {
+    id: 'gecce',
+    label: 'Gecce Magazin',
+    // Türkiye'nin köklü magazin sitesi (2001). Doğrudan RSS feed'i var — scraping
+    // gerekmez. Her item başlık + özet + kapak görseli (media:content) + tarih içeriyor.
+    feedUrl: 'https://www.gecce.com.tr/rss.xml',
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
     id: 'variety',
     label: 'Variety',
     feedUrl: 'https://variety.com/feed/',
