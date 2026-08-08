@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import {
   Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Activity, Timer, RefreshCw,
+  List, ChevronDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -21,6 +22,16 @@ interface CronRun {
   itemsProcessed?: number | null
   error?: string | null
   triggeredBy?: 'schedule' | 'manual' | string
+}
+
+interface PendingQueueItem {
+  id: string
+  title: string
+  source: string
+  workerId: string
+  category: string | null
+  createdAt: number
+  attempts: number
 }
 
 const JOBS = [
@@ -64,29 +75,44 @@ function toMs(v: number | string | null | undefined): number | null {
 export default function CronMonitorPage() {
   const [runs, setRuns] = useState<CronRun[]>([])
   const [queuePending, setQueuePending] = useState<number | null>(null)
+  const [pendingItems, setPendingItems] = useState<PendingQueueItem[]>([])
+  const [pendingOpen, setPendingOpen] = useState(false)
+  const [pendingLoading, setPendingLoading] = useState(false)
+  const [pendingLoadedAll, setPendingLoadedAll] = useState(false)
   const [loading, setLoading] = useState(true)
   const [triggering, setTriggering] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [flushing, setFlushing] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (withPendingDetails = false) => {
     try {
       const token = (await auth.currentUser?.getIdToken()) ?? ''
       if (!token) {
         setLoading(false)
         return
       }
-      const res = await fetch('/api/admin/cron/runs', {
+      const params = new URLSearchParams()
+      if (withPendingDetails) {
+        params.set('pendingDetails', '1')
+        params.set('pendingLimit', '50')
+      }
+      const qs = params.toString()
+      const res = await fetch(`/api/admin/cron/runs${qs ? `?${qs}` : ''}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = (await res.json()) as {
         runs?: CronRun[]
         queuePending?: number
+        pendingItems?: PendingQueueItem[]
         error?: string
       }
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setRuns(data.runs ?? [])
       setQueuePending(typeof data.queuePending === 'number' ? data.queuePending : null)
+      if (data.pendingItems) {
+        setPendingItems(data.pendingItems)
+        setPendingLoadedAll(data.pendingItems.length < 50)
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Cron kayıtları yüklenemedi')
     } finally {
@@ -94,11 +120,50 @@ export default function CronMonitorPage() {
     }
   }, [])
 
+  const loadMorePending = useCallback(async () => {
+    if (pendingLoading || pendingLoadedAll) return
+    setPendingLoading(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const params = new URLSearchParams({
+        pendingDetails: '1',
+        pendingOffset: String(pendingItems.length),
+        pendingLimit: '50',
+      })
+      const res = await fetch(`/api/admin/cron/runs?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = (await res.json()) as {
+        pendingItems?: PendingQueueItem[]
+        queuePending?: number
+        error?: string
+      }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      const newItems = data.pendingItems ?? []
+      setPendingItems((prev) => [...prev, ...newItems])
+      setPendingLoadedAll(newItems.length < 50)
+      if (typeof data.queuePending === 'number') setQueuePending(data.queuePending)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Daha fazla yüklenemedi')
+    } finally {
+      setPendingLoading(false)
+    }
+  }, [pendingItems.length, pendingLoading, pendingLoadedAll])
+
   useEffect(() => {
-    void load()
-    const t = setInterval(() => void load(), 20_000)
+    void load(pendingOpen)
+    const t = setInterval(() => void load(pendingOpen), 20_000)
     return () => clearInterval(t)
-  }, [load])
+  }, [load, pendingOpen])
+
+  const togglePendingPanel = useCallback(() => {
+    const next = !pendingOpen
+    setPendingOpen(next)
+    if (next && pendingItems.length === 0) {
+      setPendingLoading(true)
+      void load(true).finally(() => setPendingLoading(false))
+    }
+  }, [pendingOpen, pendingItems.length, load])
 
   const cleanupStuck = async () => {
     try {
@@ -221,11 +286,111 @@ export default function CronMonitorPage() {
             Tek tuş: Tüm bekleyenleri yayınla
           </button>
           {queuePending != null && (
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-              Kuyruk bekleyen: {queuePending}+
-            </span>
+            <button
+              type="button"
+              onClick={togglePendingPanel}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors',
+                pendingOpen
+                  ? 'bg-amber-200 text-amber-900 ring-1 ring-amber-400 dark:bg-amber-800/60 dark:text-amber-100 dark:ring-amber-600'
+                  : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200'
+              )}
+            >
+              <List className="h-3 w-3" />
+              Kuyruk bekleyen: {queuePending >= 1000 ? '1000+' : queuePending}
+              <ChevronDown className={cn('h-3 w-3 transition-transform', pendingOpen && 'rotate-180')} />
+            </button>
           )}
         </div>
+
+        {pendingOpen && (
+          <div className="overflow-hidden rounded-2xl border border-amber-300 bg-[rgb(var(--color-card))] dark:border-amber-700">
+            <div className="flex items-center justify-between border-b border-amber-200 bg-amber-50 px-5 py-3 dark:border-amber-800 dark:bg-amber-900/20">
+              <div className="flex items-center gap-2">
+                <List className="h-4 w-4 text-amber-600" />
+                <h2 className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                  Kuyrukta bekleyen haberler
+                </h2>
+                {queuePending != null && (
+                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-800 dark:text-amber-200">
+                    {queuePending} adet
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={togglePendingPanel}
+                className="text-xs text-amber-700 hover:underline dark:text-amber-300"
+              >
+                Kapat
+              </button>
+            </div>
+            <div className="max-h-[400px] divide-y divide-[rgb(var(--color-border))] overflow-y-auto">
+              {pendingLoading && pendingItems.length === 0 ? (
+                <div className="space-y-2 p-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-10 animate-pulse rounded-lg bg-[rgb(var(--color-surface))]" />
+                  ))}
+                </div>
+              ) : pendingItems.length === 0 ? (
+                <div className="py-10 text-center text-sm text-[rgb(var(--color-muted))]">
+                  Kuyrukta bekleyen haber yok
+                </div>
+              ) : (
+                <>
+                  {pendingItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-[rgb(var(--color-surface))]"
+                    >
+                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                        <Clock className="h-3 w-3 text-amber-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-bold text-[rgb(var(--color-text))]">
+                          {item.title}
+                        </p>
+                        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[rgb(var(--color-muted))]">
+                          {item.source && <span>{item.source}</span>}
+                          {item.category && (
+                            <span className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 font-medium">
+                              {item.category}
+                            </span>
+                          )}
+                          {item.createdAt > 0 && (
+                            <span>
+                              {formatDistanceToNow(new Date(item.createdAt), { locale: tr, addSuffix: true })}
+                            </span>
+                          )}
+                          {item.attempts > 0 && (
+                            <span className="text-red-500">{item.attempts} deneme</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {!pendingLoadedAll && (
+                    <div className="px-5 py-3 text-center">
+                      <button
+                        type="button"
+                        disabled={pendingLoading}
+                        onClick={() => void loadMorePending()}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-4 py-2 text-xs font-semibold hover:bg-[rgb(var(--color-surface))] disabled:opacity-50"
+                      >
+                        {pendingLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
+                        Daha fazla yükle
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-4">
           {[

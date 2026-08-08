@@ -70,15 +70,59 @@ export async function GET(request: Request) {
       }
     })
 
-    const pendingQueue = await db
+    const wantPendingDetails = url.searchParams.get('pendingDetails') === '1'
+    const pendingOffset = parseInt(url.searchParams.get('pendingOffset') ?? '0', 10) || 0
+    const pendingLimit = Math.min(
+      parseInt(url.searchParams.get('pendingLimit') ?? '50', 10) || 50,
+      100
+    )
+
+    // Real count via Firestore aggregation (free — no doc reads billed)
+    const countSnap = await db
       .collection('newsQueue')
       .where('status', '==', 'pending')
-      .limit(200)
+      .count()
       .get()
+    const queuePending = countSnap.data().count
+
+    let pendingItems: Array<{
+      id: string
+      title: string
+      source: string
+      workerId: string
+      category: string | null
+      createdAt: number
+      attempts: number
+    }> | undefined
+
+    if (wantPendingDetails) {
+      const pSnap = await db
+        .collection('newsQueue')
+        .where('status', '==', 'pending')
+        .orderBy('createdAt', 'desc')
+        .offset(pendingOffset)
+        .limit(pendingLimit)
+        .get()
+
+      pendingItems = pSnap.docs.map((d) => {
+        const data = d.data()
+        const input = (data.input ?? {}) as Record<string, unknown>
+        return {
+          id: d.id,
+          title: (input.originalTitle as string) ?? '(başlıksız)',
+          source: (input.sourceLabel as string) ?? '',
+          workerId: (data.workerId as string) ?? '',
+          category: (input.forcedCategoryId as string) ?? null,
+          createdAt: (data.createdAt as number) ?? 0,
+          attempts: (data.attempts as number) ?? 0,
+        }
+      })
+    }
 
     return NextResponse.json({
       runs,
-      queuePending: pendingQueue.size,
+      queuePending,
+      ...(pendingItems ? { pendingItems } : {}),
     })
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
