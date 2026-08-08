@@ -1347,7 +1347,7 @@ function AdminNewsDesktopPage() {
           )}
         </div>
 
-        {!search.trim() && filtered.length > 0 && (knownPages > 1 || hasNext) && (
+        {!search.trim() && filtered.length > 0 && (hasNext || knownPages > 1 || currentPage > 0) && (
           <PaginationBar
             currentPage={currentPage}
             knownPages={knownPages}
