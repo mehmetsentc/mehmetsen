@@ -601,7 +601,9 @@ export const adminNewsService = {
 
 function queueDocToPost(id: string, data: Record<string, unknown>): AdminNewsItem {
   const input = (data.input ?? {}) as Record<string, unknown>
-  const title = String(input.originalTitle ?? '').trim() || 'Başlıksız (kuyruk)'
+  const queueStatus = String(data.status ?? 'pending')
+  const statusLabel = queueStatus === 'skipped' ? '⏭️ ' : queueStatus === 'processing' ? '⚙️ ' : ''
+  const title = statusLabel + (String(input.originalTitle ?? '').trim() || 'Başlıksız (kuyruk)')
   const summary = String(input.originalSummary ?? '').trim()
   const content = String(input.originalContent ?? '').trim()
   const imageUrl = String(input.imageUrl ?? '').trim()
@@ -720,12 +722,13 @@ async function listPendingQueue(
       }
     }
 
-    // 3. newsQueue items (pending/failed) — shown directly so admin isn't blocked by stuck cron
+    // 3. newsQueue items (pending/failed/skipped/processing) — shown directly so admin sees stuck items
     if (items.length < PAGE_SIZE) {
       const queueLimit = PAGE_SIZE - items.length
       const queueAttempts: QueryConstraint[][] = [
+        [where('status', 'in', ['pending', 'failed', 'skipped', 'processing']), orderBy('createdAt', 'desc'), limit(queueLimit)],
+        [where('status', 'in', ['pending', 'failed', 'skipped']), orderBy('createdAt', 'desc'), limit(queueLimit)],
         [where('status', 'in', ['pending', 'failed']), orderBy('createdAt', 'desc'), limit(queueLimit)],
-        [where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(queueLimit)],
         [where('status', 'in', ['pending', 'failed']), limit(queueLimit)],
       ]
       for (const constraints of queueAttempts) {
@@ -759,7 +762,7 @@ async function listPendingQueue(
     } catch { /* ignore */ }
     try {
       const qSnap = await getDocs(
-        query(collection(db, Collections.NEWS_QUEUE), where('status', 'in', ['pending', 'failed']), limit(PAGE_SIZE))
+        query(collection(db, Collections.NEWS_QUEUE), where('status', 'in', ['pending', 'failed', 'skipped', 'processing']), limit(PAGE_SIZE))
       )
       for (const d of qSnap.docs) results.push(queueDocToPost(d.id, d.data() as Record<string, unknown>))
     } catch { /* ignore */ }

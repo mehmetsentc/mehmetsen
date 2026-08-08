@@ -1035,6 +1035,7 @@ function AdminNewsDesktopPage() {
 
   const [editorialLoading, setEditorialLoading] = useState(false)
   const [purgeLoading, setPurgeLoading] = useState(false)
+  const [requeueLoading, setRequeueLoading] = useState(false)
 
   const handleRunEditorialReview = async () => {
     if (!confirm('AI Genel Yayın Editörü tüm pending haberleri inceleyecek. Benzersiz olanlar otomatik yayınlanacak. Devam edilsin mi?')) return
@@ -1074,6 +1075,27 @@ function AdminNewsDesktopPage() {
       toast.error('Kuyruk temizleme başarısız')
     } finally {
       setPurgeLoading(false)
+    }
+  }
+
+  const handleRequeueSkipped = async () => {
+    if (!confirm('Atlanan (skipped) kuyruk öğelerini yeniden kuyruğa almak istiyor musunuz? Cron bir sonraki çalışmada bunları işleyecek.')) return
+    setRequeueLoading(true)
+    try {
+      const token = await auth.currentUser?.getIdToken()
+      const res = await fetch('/api/admin/newsroom/requeue-skipped', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ resetCreatedAt: true, includeDeadLetter: true }),
+      })
+      const result = await res.json() as { requeued?: number; message?: string }
+      if (!res.ok) throw new Error('API hatası')
+      toast.success(`♻️ ${result.requeued ?? 0} öğe yeniden kuyruğa alındı`)
+      void load(0)
+    } catch {
+      toast.error('Yeniden kuyruğa alma başarısız')
+    } finally {
+      setRequeueLoading(false)
     }
   }
 
@@ -1211,7 +1233,15 @@ function AdminNewsDesktopPage() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-1 overflow-x-auto pb-1">
             {FILTERS.map(f => (
-              <button key={f.id} onClick={() => setFilter(f.id)}
+              <button key={f.id} onClick={() => {
+                setFilter(f.id)
+                const params = new URLSearchParams(searchParams.toString())
+                if (f.id === 'all') params.delete('filter')
+                else params.set('filter', f.id)
+                params.delete('category')
+                const qs = params.toString()
+                router.replace(qs ? `${ROUTES.ADMIN.NEWS}?${qs}` : ROUTES.ADMIN.NEWS, { scroll: false })
+              }}
                 className={cn('flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-all',
                   filter === f.id
                     ? 'bg-blue-600 text-white shadow'
@@ -1287,6 +1317,13 @@ function AdminNewsDesktopPage() {
                 className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50 ml-auto">
                 {editorialLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                 AI Editör İncele
+              </button>
+            )}
+            {filter === 'pending' && !confirmBulkRemove && (
+              <button onClick={handleRequeueSkipped} disabled={requeueLoading || bulkLoading}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                {requeueLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Kuyruğu Yeniden İşle
               </button>
             )}
             {filter === 'pending' && !confirmBulkRemove && (
