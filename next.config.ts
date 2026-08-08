@@ -102,6 +102,16 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // City news: 2 min CDN cache
+      {
+        source: '/api/city/news',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=120, stale-while-revalidate=300',
+          },
+        ],
+      },
       // OG images: 24h CDN cache
       {
         source: '/api/og/(.*)',

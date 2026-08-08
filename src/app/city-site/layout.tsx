@@ -1,0 +1,33 @@
+import { redirect } from 'next/navigation'
+import { getActiveTenant } from '@/lib/tenantContext'
+import { CityLayoutClient } from '@/components/city/CityLayoutClient'
+import { getCityCategoryName } from '@/constants/cities'
+
+/**
+ * City tenant layout — wraps all city-site pages.
+ * Reached via middleware rewrite (public URL stays clean: /, /etkinlik, etc.)
+ * If no tenant is active (national site or flag off), redirects to /.
+ */
+export default async function CityLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const tenant = await getActiveTenant()
+
+  if (!tenant) {
+    redirect('/')
+  }
+
+  const displayName = getCityCategoryName(tenant.provinceSlug)
+
+  return (
+    <CityLayoutClient
+      tenantSlug={tenant.slug}
+      displayName={displayName}
+      provinceSlug={tenant.provinceSlug}
+    >
+      {children}
+    </CityLayoutClient>
+  )
+}

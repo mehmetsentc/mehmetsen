@@ -7,9 +7,22 @@ import {
 } from '@/lib/i18n'
 import { verifyCmsSessionToken } from '@/lib/cmsSession'
 import { CMS_STAFF_ROLES } from '@/types/cms'
+import {
+  resolveTenantFromRequest,
+  TENANT_HEADER,
+  TENANT_PROVINCE_HEADER,
+  TENANT_COOKIE,
+} from '@/lib/tenant'
 
 const COOKIE_MAX_AGE_YEAR = 60 * 60 * 24 * 365
 const CMS_SESSION_COOKIE = 'cms_session'
+
+/**
+ * City tenant routes that get rewritten to /city-site/* internally.
+ * Public URLs stay clean. Unmatched paths on city subdomains fall through
+ * to normal national routes (e.g. /haber/[slug] works on city subdomains).
+ */
+const CITY_REWRITE_PATHS = new Set(['/', '/etkinlik', '/spor', '/ilceler'])
 
 // Read the visitor country from common CDN/edge headers. On Vercel this is
 // `x-vercel-ip-country`; Cloudflare uses `cf-ipcountry`. `request.geo` is no
@@ -38,6 +51,64 @@ export async function middleware(request: NextRequest) {
       url.pathname = '/login'
       url.searchParams.set('next', pathname)
       return NextResponse.redirect(url)
+    }
+  }
+
+  // ── City Network tenant resolution ──────────────────────────────────────
+  const tenant = await resolveTenantFromRequest(request)
+
+  if (tenant) {
+    request.headers.set(TENANT_HEADER, tenant.slug)
+    request.headers.set(TENANT_PROVINCE_HEADER, tenant.provinceSlug)
+
+    // Rewrite city-specific paths to internal /city-site/* routes.
+    // Other paths (e.g. /haber/[slug]) fall through to normal routing.
+    if (CITY_REWRITE_PATHS.has(pathname)) {
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = pathname === '/' ? '/city-site' : `/city-site${pathname}`
+
+      // Forward country/language cookies for first-time visitors
+      const country = detectCountry(request)
+      const existingLang = request.cookies.get(LANGUAGE_COOKIE)?.value
+      const existingCountry = request.cookies.get(COUNTRY_COOKIE)?.value
+      if (country && existingCountry !== country) {
+        request.cookies.set(COUNTRY_COOKIE, country)
+      }
+      if (!isLanguage(existingLang) && country) {
+        request.cookies.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country))
+      }
+
+      const response = NextResponse.rewrite(rewriteUrl, {
+        request: { headers: request.headers },
+      })
+
+      // Set country/language cookies on response
+      if (country && existingCountry !== country) {
+        response.cookies.set(COUNTRY_COOKIE, country, {
+          path: '/',
+          maxAge: COOKIE_MAX_AGE_YEAR,
+          sameSite: 'lax',
+        })
+      }
+      if (!isLanguage(existingLang) && country) {
+        response.cookies.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country), {
+          path: '/',
+          maxAge: COOKIE_MAX_AGE_YEAR,
+          sameSite: 'lax',
+        })
+      }
+
+      // Set tenant cookie
+      const existingTenant = request.cookies.get(TENANT_COOKIE)?.value
+      if (existingTenant !== tenant.slug) {
+        response.cookies.set(TENANT_COOKIE, tenant.slug, {
+          path: '/',
+          maxAge: COOKIE_MAX_AGE_YEAR,
+          sameSite: 'lax',
+        })
+      }
+
+      return response
     }
   }
 
@@ -80,6 +151,18 @@ export async function middleware(request: NextRequest) {
       maxAge: COOKIE_MAX_AGE_YEAR,
       sameSite: 'lax',
     })
+  }
+
+  // City tenant cookie — set once, lives for 1 year (non-rewritten paths)
+  if (tenant) {
+    const existingTenant = request.cookies.get(TENANT_COOKIE)?.value
+    if (existingTenant !== tenant.slug) {
+      response.cookies.set(TENANT_COOKIE, tenant.slug, {
+        path: '/',
+        maxAge: COOKIE_MAX_AGE_YEAR,
+        sameSite: 'lax',
+      })
+    }
   }
 
   return response

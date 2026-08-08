@@ -55,6 +55,11 @@ export const ROUTES = {
   SETTINGS_ACCOUNT_DELETE: '/settings/account/delete',
   FEED_CONTENT_POLICY: '/feed/kurallar',
   SITE_MAP: '/site-haritasi',
+  /** City tenant routes (served on city subdomains) */
+  CITY_FEED: '/',
+  CITY_EVENTS: '/etkinlik',
+  CITY_SPOR: '/spor',
+  CITY_DISTRICTS: '/ilceler',
   ADMIN: {
     ROOT: '/admin',
     DASHBOARD: '/admin',
@@ -135,5 +140,9 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname === '/kunye') return true
   if (pathname === ROUTES.LOGIN || pathname === ROUTES.REGISTER) return true
   if (pathname === ROUTES.APP) return true
+  // City tenant routes are all public
+  if (pathname === ROUTES.CITY_EVENTS || pathname.startsWith('/etkinlik')) return true
+  if (pathname === ROUTES.CITY_SPOR) return true
+  if (pathname === ROUTES.CITY_DISTRICTS || pathname.startsWith('/ilceler')) return true
   return false
 }
