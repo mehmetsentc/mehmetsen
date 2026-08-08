@@ -39,8 +39,15 @@ export function pickBestImageUrl(candidates: Array<string | undefined | null>): 
 }
 
 /**
- * Görseli indir → Sharp ile tam olarak targetW×targetH boyutuna "cover from top" kırp.
- * Satori objectPosition desteği güvenilmez; bu fonksiyon üst kısmı (yüzleri) korur.
+ * Görseli indir → Sharp ile tam olarak targetW×targetH boyutuna akıllı cover-crop.
+ *
+ * Strateji:
+ * - Kaynak landscape (veya kareye yakın) → position:'top' — kafa/gökyüzü korunur.
+ * - Kaynak portrait (hedeften dikeyse) → position:'attention' — Sharp entropy/saliency
+ *   tabanlı odak bulur; yüzler, kontrastlı alanlar çerçevede kalır.
+ *   Bu sayede dikey fotoğrafların üst boşluk şeridi (tavan vb.) değil,
+ *   ortadaki konu (kişi) görünür.
+ *
  * Sonuç JPEG data URI — doğrudan <img src> olarak kullanılır.
  */
 export async function embedCoverTopImage(
@@ -49,6 +56,8 @@ export async function embedCoverTopImage(
   targetH: number,
   quality = 84,
 ): Promise<string> {
+  const targetAspect = targetW / targetH
+
   const seen = new Set<string>()
   for (const c of candidates) {
     const url = normalizeAbsoluteImageUrl(c)
@@ -69,12 +78,19 @@ export async function embedCoverTopImage(
       const buf = Buffer.from(await res.arrayBuffer())
       if (buf.length < 64) continue
 
-      const jpeg = await sharp(buf, { failOn: 'none' })
-        .rotate()
-        .resize(targetW, targetH, {
-          fit: 'cover',
-          position: 'top',
-        })
+      const img = sharp(buf, { failOn: 'none' }).rotate()
+      const meta = await img.metadata()
+      const srcW = meta.width ?? 1
+      const srcH = meta.height ?? 1
+      const srcAspect = srcW / srcH
+
+      // Portrait source into landscape target → vertical crop needed → use attention
+      // Landscape/square source → horizontal crop → top preserves heads
+      const position: string =
+        srcAspect < targetAspect * 0.85 ? 'attention' : 'top'
+
+      const jpeg = await img
+        .resize(targetW, targetH, { fit: 'cover', position })
         .jpeg({ quality, mozjpeg: true })
         .toBuffer()
 
