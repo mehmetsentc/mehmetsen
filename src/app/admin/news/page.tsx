@@ -883,10 +883,14 @@ function AdminNewsDesktopPage() {
       const filtered = filter === 'duplicate' ? merged.filter(p => p.isDuplicate === true) : merged
       setPosts(filtered)
       setCurrentPage(page)
-      setHasNext(result.hasMore)
-      if (result.hasMore && result.lastDoc && !pageCursorsRef.current[page + 1]) {
+      const effectiveHasMore = result.hasMore && filtered.length > 0
+      setHasNext(effectiveHasMore)
+      if (effectiveHasMore && result.lastDoc && !pageCursorsRef.current[page + 1]) {
         pageCursorsRef.current[page + 1] = result.lastDoc
         setKnownPages(prev => Math.max(prev, page + 2))
+      }
+      if (filtered.length === 0) {
+        setKnownPages(page + 1)
       }
       setSelected(new Set())
     } catch (err) {
@@ -1343,7 +1347,7 @@ function AdminNewsDesktopPage() {
           )}
         </div>
 
-        {!search.trim() && (knownPages > 1 || hasNext) && (
+        {!search.trim() && filtered.length > 0 && (knownPages > 1 || hasNext) && (
           <PaginationBar
             currentPage={currentPage}
             knownPages={knownPages}

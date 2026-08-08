@@ -300,10 +300,11 @@ export const adminNewsService = {
         // Empty ordered query ≠ "no drafts" — try next attempt while filter is set.
         const hasServerFilter = !!(status || filter === 'removed' || filter === 'featured' || citySlug)
         if (posts.length === 0 && hasServerFilter && !isLast) continue
+        const hasMore = posts.length >= pageSize && allFiltered.length > pageSize
         return {
           posts,
           lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-          hasMore: allFiltered.length > pageSize || snap.docs.length >= pageSize,
+          hasMore,
         }
       } catch (error) {
         lastError = error
