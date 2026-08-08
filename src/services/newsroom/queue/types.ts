@@ -1,7 +1,7 @@
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
 import type { ArticleChangeType } from '@/services/newsroom/detection/changeDetector'
 
-export type QueueStatus = 'pending' | 'processing' | 'published' | 'failed' | 'dead_letter'
+export type QueueStatus = 'pending' | 'processing' | 'published' | 'failed' | 'dead_letter' | 'skipped'
 
 export interface NewsQueueDocument {
   status: QueueStatus

@@ -941,8 +941,11 @@ function AdminNewsDesktopPage() {
     setActionLoading(id)
     try {
       const post = posts.find(p => p.id === id)
-      // Taslak veya zaten arşivlenmiş → kalıcı sil. Diğerleri arşivlenir.
-      if (post?.status === 'draft' || post?.status === 'archived') {
+      const source = post?.adminSource
+      if (source === 'newsQueue') {
+        await adminNewsService.remove(id, undefined, 'newsQueue')
+        toast.success('Kuyruktan kaldırıldı')
+      } else if (post?.status === 'draft' || post?.status === 'archived') {
         await adminNewsService.permanentDelete(id)
         toast.success('Kalıcı olarak silindi')
       } else {

@@ -55,7 +55,7 @@ const PAGE_SIZE = 50
 
 export type AdminNewsFilter = 'all' | 'published' | 'pending' | 'duplicate' | 'draft' | 'removed' | 'featured'
 
-export type AdminNewsSource = 'news' | 'newsDrafts'
+export type AdminNewsSource = 'news' | 'newsDrafts' | 'newsQueue'
 
 export interface AdminNewsItem extends Post {
   adminSource: AdminNewsSource
@@ -330,6 +330,10 @@ export const adminNewsService = {
   },
 
   async approve(id: string, source: AdminNewsSource = 'news'): Promise<void> {
+    if (source === 'newsQueue') {
+      await adminFetch(`/api/admin/news-queue/${id}/approve`, 'POST')
+      return
+    }
     if (source === 'newsDrafts') {
       await adminFetch(`/api/admin/news-drafts/${id}/approve`, 'POST')
       return
@@ -349,6 +353,10 @@ export const adminNewsService = {
   },
 
   async reject(id: string, source: AdminNewsSource = 'news', reason?: string): Promise<void> {
+    if (source === 'newsQueue') {
+      await adminFetch(`/api/admin/news-queue/${id}/reject`, 'POST', { reason })
+      return
+    }
     if (source === 'newsDrafts') {
       await adminFetch(`/api/admin/news-drafts/${id}/reject`, 'POST', { reason })
       return
@@ -363,13 +371,21 @@ export const adminNewsService = {
     })
   },
 
-  async remove(id: string, _reason?: string): Promise<void> {
+  async remove(id: string, _reason?: string, source?: AdminNewsSource): Promise<void> {
+    if (source === 'newsQueue') {
+      await adminFetch(`/api/admin/news-queue/${id}/reject`, 'POST', { reason: 'Kaldırıldı' })
+      return
+    }
     // Server-side route: archives + revalidates ISR cache
     await adminFetch(`/api/admin/news/${id}`, 'DELETE' as never)
   },
 
   /** Taslakları (draft) kalıcı olarak Firestore'dan siler. */
-  async permanentDelete(id: string): Promise<void> {
+  async permanentDelete(id: string, source?: AdminNewsSource): Promise<void> {
+    if (source === 'newsQueue') {
+      await adminFetch(`/api/admin/news-queue/${id}/reject`, 'POST', { reason: 'Kalıcı olarak silindi' })
+      return
+    }
     // Server-side route: hard-deletes + revalidates ISR cache
     await adminFetch(`/api/admin/news/${id}?permanent=true`, 'DELETE' as never)
   },
@@ -583,13 +599,70 @@ export const adminNewsService = {
   },
 }
 
+function queueDocToPost(id: string, data: Record<string, unknown>): AdminNewsItem {
+  const input = (data.input ?? {}) as Record<string, unknown>
+  const title = String(input.originalTitle ?? '').trim() || 'Başlıksız (kuyruk)'
+  const summary = String(input.originalSummary ?? '').trim()
+  const content = String(input.originalContent ?? '').trim()
+  const imageUrl = String(input.imageUrl ?? '').trim()
+  const sourceLabel = String(input.sourceLabel ?? data.workerId ?? '').trim()
+  const categoryId = String(input.forcedCategoryId ?? '').trim()
+  const citySlug = String(input.forcedCitySlug ?? '').trim()
+  const city = String(input.forcedCity ?? '').trim()
+  const createdAtRaw = data.createdAt as number | undefined
+  const createdAt = createdAtRaw
+    ? new Date(createdAtRaw < 1_000_000_000_000 ? createdAtRaw * 1000 : createdAtRaw).toISOString()
+    : new Date().toISOString()
+
+  return {
+    id,
+    title,
+    slug: id,
+    content,
+    summary: summary || content.slice(0, 280),
+    feedTeaser: summary || title,
+    spot: '',
+    seoTitle: '',
+    seoDescription: '',
+    seoKeywords: [],
+    authorId: 'nahaber',
+    authorUsername: 'nahaber',
+    authorDisplayName: sourceLabel || 'Kuyruk',
+    authorPhotoURL: null,
+    categoryId,
+    city: city || null,
+    citySlug: citySlug || null,
+    location: null,
+    tags: Array.isArray(input.extraTags) ? (input.extraTags as string[]) : [],
+    postType: 'news',
+    source: sourceLabel,
+    mediaItems: [],
+    additionalImages: [],
+    coverImageUrl: imageUrl || null,
+    status: 'pending',
+    visibility: 'public',
+    likesCount: 0,
+    commentsCount: 0,
+    savesCount: 0,
+    sharesCount: 0,
+    viewsCount: 0,
+    isEditorPick: false,
+    featured: false,
+    isTrending: false,
+    publishedAt: null,
+    createdAt,
+    updatedAt: createdAt,
+    adminSource: 'newsQueue',
+  }
+}
+
 async function listPendingQueue(
   lastDoc?: QueryDocumentSnapshot
 ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
   const items: AdminNewsItem[] = []
 
   try {
-    // Prefer updatedAt — many review docs lack createdAt.
+    // 1. newsDrafts with pending_review
     const draftAttemptConstraints: QueryConstraint[][] = [
       [
         where('draftStatus', '==', 'pending_review'),
@@ -625,6 +698,7 @@ async function listPendingQueue(
       }
     }
 
+    // 2. Legacy news collection with status=pending
     if (items.length < PAGE_SIZE) {
       const legacyAttempts: QueryConstraint[][] = [
         [where('status', '==', 'pending'), orderBy('updatedAt', 'desc'), limit(PAGE_SIZE - items.length)],
@@ -646,20 +720,49 @@ async function listPendingQueue(
       }
     }
 
+    // 3. newsQueue items (pending/failed) — shown directly so admin isn't blocked by stuck cron
+    if (items.length < PAGE_SIZE) {
+      const queueLimit = PAGE_SIZE - items.length
+      const queueAttempts: QueryConstraint[][] = [
+        [where('status', 'in', ['pending', 'failed']), orderBy('createdAt', 'desc'), limit(queueLimit)],
+        [where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(queueLimit)],
+        [where('status', 'in', ['pending', 'failed']), limit(queueLimit)],
+      ]
+      for (const constraints of queueAttempts) {
+        try {
+          const queueSnap = await getDocs(query(collection(db, Collections.NEWS_QUEUE), ...constraints))
+          for (const d of queueSnap.docs) {
+            items.push(queueDocToPost(d.id, d.data() as Record<string, unknown>))
+          }
+          break
+        } catch (err) {
+          console.warn('[adminNewsService] newsQueue pending attempt failed:', err)
+        }
+      }
+    }
+
+    const totalHasMore = draftDocCount === PAGE_SIZE || items.length >= PAGE_SIZE
     return {
       posts: items,
       lastDoc: draftLastDoc,
-      hasMore: draftDocCount === PAGE_SIZE,
+      hasMore: totalHasMore,
     }
   } catch (error) {
     console.warn('[adminNewsService] pending queue failed:', error)
-    const snap = await getDocs(
-      query(collection(db, Collections.NEWS_DRAFTS), where('draftStatus', '==', 'pending_review'), limit(PAGE_SIZE))
-    )
-    return {
-      posts: snap.docs.map((d) => draftDocToPost(d.id, d.data() as NewsDocument)),
-      lastDoc: null,
-      hasMore: false,
-    }
+    // Fallback: try newsDrafts + newsQueue individually
+    const results: AdminNewsItem[] = []
+    try {
+      const snap = await getDocs(
+        query(collection(db, Collections.NEWS_DRAFTS), where('draftStatus', '==', 'pending_review'), limit(PAGE_SIZE))
+      )
+      for (const d of snap.docs) results.push(draftDocToPost(d.id, d.data() as NewsDocument))
+    } catch { /* ignore */ }
+    try {
+      const qSnap = await getDocs(
+        query(collection(db, Collections.NEWS_QUEUE), where('status', 'in', ['pending', 'failed']), limit(PAGE_SIZE))
+      )
+      for (const d of qSnap.docs) results.push(queueDocToPost(d.id, d.data() as Record<string, unknown>))
+    } catch { /* ignore */ }
+    return { posts: results, lastDoc: null, hasMore: false }
   }
 }

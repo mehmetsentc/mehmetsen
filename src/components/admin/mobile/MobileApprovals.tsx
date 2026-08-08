@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { CheckCircle2 } from 'lucide-react'
-import { db } from '@/lib/firebase/firestore'
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
+import { db, Collections } from '@/lib/firebase/firestore'
+import { collection, query, where, orderBy, limit, onSnapshot, getDocs } from 'firebase/firestore'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -27,16 +27,19 @@ interface ApprovalItem {
   image?: string
   confidenceScore?: number
   isBreaking?: boolean
+  adminSource: 'newsDrafts' | 'newsQueue'
 }
 
-type Chip = 'all' | 'breaking' | 'ai'
+type Chip = 'all' | 'breaking' | 'ai' | 'queue'
 
 export function MobileApprovals() {
   const { setPendingBadge } = useMobileAdmin()
   const [items, setItems] = useState<ApprovalItem[]>([])
+  const [queueItems, setQueueItems] = useState<ApprovalItem[]>([])
   const [chip, setChip] = useState<Chip>('all')
   const [loading, setLoading] = useState(true)
 
+  // Real-time listener for newsDrafts pending_review
   useEffect(() => {
     const q = query(
       collection(db, 'newsDrafts'),
@@ -58,10 +61,10 @@ export function MobileApprovals() {
             image: (data.imageUrl as string) || (data.thumbnail as string) || (data.coverImageUrl as string) || '',
             confidenceScore: data.confidenceScore as number | undefined,
             isBreaking: Boolean(data.isBreaking) || data.categoryId === 'son-dakika',
+            adminSource: 'newsDrafts' as const,
           }
         })
         setItems(next)
-        setPendingBadge(snap.size)
         setLoading(false)
       },
       () => {
@@ -69,11 +72,57 @@ export function MobileApprovals() {
         setLoading(false)
       }
     )
-  }, [setPendingBadge])
+  }, [])
 
-  const filtered = items.filter((item) => {
+  // Fetch newsQueue pending items (one-shot, not realtime to avoid cost)
+  useEffect(() => {
+    let cancelled = false
+    async function fetchQueue() {
+      try {
+        const attempts = [
+          [where('status', 'in', ['pending', 'failed']), orderBy('createdAt', 'desc'), limit(50)],
+          [where('status', 'in', ['pending', 'failed']), limit(50)],
+        ]
+        for (const constraints of attempts) {
+          try {
+            const snap = await getDocs(query(collection(db, Collections.NEWS_QUEUE), ...constraints))
+            if (cancelled) return
+            const mapped = snap.docs.map((d) => {
+              const data = d.data()
+              const input = (data.input ?? {}) as Record<string, unknown>
+              return {
+                id: d.id,
+                title: String(input.originalTitle ?? '').trim() || 'Başlıksız (kuyruk)',
+                source: String(input.sourceLabel ?? data.workerId ?? ''),
+                categoryId: String(input.forcedCategoryId ?? ''),
+                createdAt: tsToMs(data.createdAt),
+                image: String(input.imageUrl ?? ''),
+                confidenceScore: undefined,
+                isBreaking: Boolean(input.isBreaking),
+                adminSource: 'newsQueue' as const,
+              }
+            })
+            setQueueItems(mapped)
+            return
+          } catch { /* try next */ }
+        }
+      } catch { /* ignore */ }
+    }
+    void fetchQueue()
+    return () => { cancelled = true }
+  }, [])
+
+  // Combine and update badge count
+  useEffect(() => {
+    setPendingBadge(items.length + queueItems.length)
+  }, [items, queueItems, setPendingBadge])
+
+  const allItems = [...items, ...queueItems].sort((a, b) => b.createdAt - a.createdAt)
+
+  const filtered = allItems.filter((item) => {
     if (chip === 'breaking') return item.isBreaking
     if (chip === 'ai') return typeof item.confidenceScore === 'number' || /ai|pipeline|newsroom/i.test(item.source)
+    if (chip === 'queue') return item.adminSource === 'newsQueue'
     return true
   })
 
@@ -82,11 +131,11 @@ export function MobileApprovals() {
       <div className="mb-3 flex items-end justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[rgb(var(--color-text))]">Onay Kuyruğu</h1>
-          <p className="text-sm text-[rgb(var(--color-muted))]">{items.length} bekleyen</p>
+          <p className="text-sm text-[rgb(var(--color-muted))]">{allItems.length} bekleyen{queueItems.length > 0 ? ` (${queueItems.length} kuyruk)` : ''}</p>
         </div>
-        {items.length > 0 ? (
+        {allItems.length > 0 ? (
           <Link
-            href={`/admin/approvals/${items[0].id}?source=newsDrafts&mode=rapid`}
+            href={`/admin/approvals/${allItems[0].id}?source=${allItems[0].adminSource}&mode=rapid`}
             className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-bold text-white"
           >
             Hızlı Onay
@@ -98,6 +147,7 @@ export function MobileApprovals() {
         {(
           [
             { id: 'all', label: 'Tümü' },
+            { id: 'queue', label: `Kuyruk (${queueItems.length})` },
             { id: 'breaking', label: 'Son Dakika' },
             { id: 'ai', label: 'AI' },
           ] as const
@@ -134,7 +184,7 @@ export function MobileApprovals() {
           {filtered.map((item) => (
             <Link
               key={item.id}
-              href={`/admin/approvals/${item.id}?source=newsDrafts`}
+              href={`/admin/approvals/${item.id}?source=${item.adminSource}`}
               className="block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] active:opacity-95"
             >
               <div className="relative aspect-[16/9] bg-[rgb(var(--color-surface))]">

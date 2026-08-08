@@ -29,7 +29,8 @@ interface ReviewDoc {
 export function MobileApprovalReview({ id }: { id: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const source = (searchParams.get('source') === 'news' ? 'news' : 'newsDrafts') as AdminNewsSource
+  const sourceParam = searchParams.get('source')
+  const source: AdminNewsSource = sourceParam === 'news' ? 'news' : sourceParam === 'newsQueue' ? 'newsQueue' : 'newsDrafts'
   const rapid = searchParams.get('mode') === 'rapid'
   const { can } = useCmsAuth()
 
@@ -46,27 +47,51 @@ export function MobileApprovalReview({ id }: { id: string }) {
     async function load() {
       setLoading(true)
       try {
-        const col = source === 'newsDrafts' ? 'newsDrafts' : Collections.NEWS
-        const snap = await getDoc(doc(db, col, id))
-        if (!snap.exists() || cancelled) {
-          if (!cancelled) setDocData(null)
-          return
+        if (source === 'newsQueue') {
+          const snap = await getDoc(doc(db, Collections.NEWS_QUEUE, id))
+          if (!snap.exists() || cancelled) {
+            if (!cancelled) setDocData(null)
+            return
+          }
+          const data = snap.data()
+          const input = (data.input ?? {}) as Record<string, unknown>
+          setDocData({
+            id: snap.id,
+            title: String(input.originalTitle ?? '').trim() || 'Başlıksız',
+            summary: String(input.originalSummary ?? '').trim(),
+            content: String(input.originalContent ?? '').trim(),
+            source: String(input.sourceLabel ?? data.workerId ?? ''),
+            categoryId: String(input.forcedCategoryId ?? ''),
+            image: String(input.imageUrl ?? ''),
+            isBreaking: Boolean(input.isBreaking),
+            confidenceScore: undefined,
+            seoTitle: '',
+            seoDescription: '',
+            slug: '',
+          })
+        } else {
+          const col = source === 'newsDrafts' ? 'newsDrafts' : Collections.NEWS
+          const snap = await getDoc(doc(db, col, id))
+          if (!snap.exists() || cancelled) {
+            if (!cancelled) setDocData(null)
+            return
+          }
+          const data = snap.data()
+          setDocData({
+            id: snap.id,
+            title: (data.title as string) ?? '',
+            summary: (data.summary as string) || (data.spot as string) || '',
+            content: (data.content as string) || (data.description as string) || '',
+            source: (data.source as string) ?? '',
+            categoryId: (data.categoryId as string) || (data.category as string) || '',
+            image: (data.imageUrl as string) || (data.thumbnail as string) || (data.coverImageUrl as string) || '',
+            isBreaking: Boolean(data.isBreaking),
+            confidenceScore: data.confidenceScore as number | undefined,
+            seoTitle: (data.seoTitle as string) || '',
+            seoDescription: (data.seoDescription as string) || '',
+            slug: (data.slug as string) || '',
+          })
         }
-        const data = snap.data()
-        setDocData({
-          id: snap.id,
-          title: (data.title as string) ?? '',
-          summary: (data.summary as string) || (data.spot as string) || '',
-          content: (data.content as string) || (data.description as string) || '',
-          source: (data.source as string) ?? '',
-          categoryId: (data.categoryId as string) || (data.category as string) || '',
-          image: (data.imageUrl as string) || (data.thumbnail as string) || (data.coverImageUrl as string) || '',
-          isBreaking: Boolean(data.isBreaking),
-          confidenceScore: data.confidenceScore as number | undefined,
-          seoTitle: (data.seoTitle as string) || '',
-          seoDescription: (data.seoDescription as string) || '',
-          slug: (data.slug as string) || '',
-        })
       } finally {
         if (!cancelled) setLoading(false)
       }

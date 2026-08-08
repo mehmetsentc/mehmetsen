@@ -166,7 +166,8 @@ service cloud.firestore {
     }
 
     match /newsQueue/{queueId} {
-      allow read, write: if false;
+      allow read: if isCmsStaff();
+      allow write: if false;
     }
 
     // Cron monitor — CMS staff okur; yazma yalnız Admin SDK
