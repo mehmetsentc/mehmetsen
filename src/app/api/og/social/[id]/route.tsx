@@ -22,7 +22,7 @@ export const runtime = 'nodejs'
 
 import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
-import { embedBestOgImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
+import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
 
 const PROJECT_ID = 'nahaberapp'
@@ -206,9 +206,9 @@ export async function GET(
     article?.spot ||
     ''
 
-  const photo = await embedBestOgImage(
+  const photo = await embedCoverTopImage(
     [overrideImage, ...(article ? bestImageCandidates(article) : [])],
-    { maxWidth: 1080, maxHeight: 1080, quality: 84 },
+    W, PHOTO_H, 84,
   )
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
@@ -262,7 +262,6 @@ export async function GET(
             <img src={photo} alt="" width={W} height={PHOTO_H}
               style={{
                 width: W, height: PHOTO_H,
-                objectFit: 'cover', objectPosition: 'center top',
                 display: 'flex',
               }} />
           ) : (

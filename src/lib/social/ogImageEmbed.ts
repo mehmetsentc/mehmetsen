@@ -38,6 +38,54 @@ export function pickBestImageUrl(candidates: Array<string | undefined | null>): 
   return ''
 }
 
+/**
+ * Görseli indir → Sharp ile tam olarak targetW×targetH boyutuna "cover from top" kırp.
+ * Satori objectPosition desteği güvenilmez; bu fonksiyon üst kısmı (yüzleri) korur.
+ * Sonuç JPEG data URI — doğrudan <img src> olarak kullanılır.
+ */
+export async function embedCoverTopImage(
+  candidates: Array<string | undefined | null>,
+  targetW: number,
+  targetH: number,
+  quality = 84,
+): Promise<string> {
+  const seen = new Set<string>()
+  for (const c of candidates) {
+    const url = normalizeAbsoluteImageUrl(c)
+    if (!url || seen.has(url) || !isUsableImageUrl(url)) continue
+    seen.add(url)
+    try {
+      const host = new URL(url).hostname
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(12_000),
+        redirect: 'follow',
+        headers: {
+          'User-Agent': BROWSER_UA,
+          Accept: 'image/avif,image/webp,image/apng,image/jpeg,image/png,image/*,*/*;q=0.8',
+          Referer: refererFor(host),
+        },
+      })
+      if (!res.ok) continue
+      const buf = Buffer.from(await res.arrayBuffer())
+      if (buf.length < 64) continue
+
+      const jpeg = await sharp(buf, { failOn: 'none' })
+        .rotate()
+        .resize(targetW, targetH, {
+          fit: 'cover',
+          position: 'top',
+        })
+        .jpeg({ quality, mozjpeg: true })
+        .toBuffer()
+
+      return `data:image/jpeg;base64,${jpeg.toString('base64')}`
+    } catch {
+      continue
+    }
+  }
+  return ''
+}
+
 function refererFor(hostname: string): string {
   // Haber siteleri genelde kendi origin'ini Referer ister
   const host = hostname.toLowerCase()

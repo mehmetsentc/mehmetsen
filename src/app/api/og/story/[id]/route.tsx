@@ -25,7 +25,7 @@ export const runtime = 'nodejs'
 
 import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
-import { embedBestOgImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
+import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
 
 const PROJECT_ID = 'nahaberapp'
@@ -217,12 +217,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     overrideImage,
     ...(article ? bestImageCandidates(article) : []),
   ]
-  // next/og WebP/hotlink'i yutuyor — JPEG data URI'ye çevir
-  const photo = await embedBestOgImage(candidates, {
-    maxWidth: 1080,
-    maxHeight: 1200,
-    quality: 84,
-  })
+  // Sharp ile üstten hizalı cover-crop — Satori objectPosition'a güvenmiyoruz
+  const photo = await embedCoverTopImage(candidates, W, PHOTO_H, 84)
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
   const spot  = rawSpot ? clampCompleteSentences(rawSpot, SPOT_MAX) : ''
@@ -274,7 +270,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }}>
           {photo ? (
             <img src={photo} alt="" width={W} height={PHOTO_H}
-              style={{ width: W, height: PHOTO_H, objectFit: 'cover', display: 'flex' }} />
+              style={{ width: W, height: PHOTO_H, display: 'flex' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', background: NAVY }} />
           )}
