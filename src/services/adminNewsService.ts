@@ -269,7 +269,8 @@ export const adminNewsService = {
     const status = statusConstraint(filter)
     const filterConstraints: QueryConstraint[] = []
     if (filter === 'featured') filterConstraints.push(where('featured', '==', true))
-    if (status) filterConstraints.push(where('status', '==', status))
+    if (filter === 'removed') filterConstraints.push(where('status', 'in', ['archived', 'banned']))
+    else if (status) filterConstraints.push(where('status', '==', status))
     if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
     if (citySlug) filterConstraints.push(where('citySlug', '==', citySlug))
 
@@ -297,7 +298,8 @@ export const adminNewsService = {
         const allFiltered = mapAdminNewsDocs(snap.docs, filter, categoryId, citySlug)
         const posts = allFiltered.slice(0, pageSize)
         // Empty ordered query ≠ "no drafts" — try next attempt while filter is set.
-        if (posts.length === 0 && (status || citySlug) && !isLast) continue
+        const hasServerFilter = !!(status || filter === 'removed' || filter === 'featured' || citySlug)
+        if (posts.length === 0 && hasServerFilter && !isLast) continue
         return {
           posts,
           lastDoc: snap.docs[snap.docs.length - 1] ?? null,
