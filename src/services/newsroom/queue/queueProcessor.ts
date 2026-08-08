@@ -1,5 +1,6 @@
 /**
- * Process pending newsQueue items — pipeline → auto-publish with retries.
+ * Process pending newsQueue items — pipeline → newsDrafts (pending_review).
+ * Auto-publish only when NEWSROOM_AUTO_PUBLISH_ENABLED=1.
  */
 import type { Firestore } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -14,6 +15,7 @@ import {
 import { staleQueueReason } from '@/services/newsroom/queue/freshness'
 import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
+import { NEWSROOM_AUTO_PUBLISH_ENABLED } from '@/services/newsroom/config'
 
 const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 16)
 
@@ -26,6 +28,10 @@ export async function processNewsQueue(
   batchSize = DEFAULT_BATCH_SIZE
 ): Promise<QueueProcessStats> {
   const startTime = Date.now()
+
+  if (!NEWSROOM_AUTO_PUBLISH_ENABLED) {
+    console.log('[processNewsQueue] auto-publish OFF — processed items → newsDrafts (Onay Bekliyor)')
+  }
 
   const stats: QueueProcessStats = {
     picked: 0,

@@ -5,7 +5,7 @@
  *   Source → editor → factChecker → categoryEngine → geoEngine
  *   → newsDrafts (pending) OR auto-publish if confidenceScore >= threshold
  */
-import { EDITOR_REGISTRY, NEWSROOM_AUTO_PUBLISH_THRESHOLD } from '@/services/newsroom/config'
+import { EDITOR_REGISTRY, NEWSROOM_AUTO_PUBLISH_ENABLED, NEWSROOM_AUTO_PUBLISH_THRESHOLD } from '@/services/newsroom/config'
 import { breakingNewsEditor } from '@/services/newsroom/breakingNewsEditor'
 import { localNewsEditor } from '@/services/newsroom/localNewsEditor'
 import { trendEditor } from '@/services/newsroom/trendEditor'
@@ -36,6 +36,7 @@ export type RunnableEditorId = keyof typeof EDITORS
 
 export const newsroom = {
   registry: EDITOR_REGISTRY,
+  autoPublishEnabled: NEWSROOM_AUTO_PUBLISH_ENABLED,
   autoPublishThreshold: NEWSROOM_AUTO_PUBLISH_THRESHOLD,
 
   editors: EDITORS,

@@ -1,5 +1,14 @@
 import type { EditorId, EditorMetadata } from '@/services/newsroom/types'
 
+/**
+ * Master switch: when false, pipeline NEVER auto-publishes — all items go to
+ * newsDrafts (pending_review) for admin approval in "Onay Bekliyor".
+ * Set NEWSROOM_AUTO_PUBLISH_ENABLED=1 to re-enable automatic publishing.
+ */
+export const NEWSROOM_AUTO_PUBLISH_ENABLED =
+  process.env.NEWSROOM_AUTO_PUBLISH_ENABLED === '1' ||
+  process.env.NEWSROOM_AUTO_PUBLISH_ENABLED === 'true'
+
 /** Auto-publish unless fact-check confidence drops below this (draft queue). */
 export const NEWSROOM_AUTO_PUBLISH_THRESHOLD = Number(
   process.env.NEWSROOM_AUTO_PUBLISH_THRESHOLD ?? 60

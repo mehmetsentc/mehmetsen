@@ -14,6 +14,7 @@ import { Collections } from '@/lib/firebase/admin'
 import { aiNewsEditor, type AiRewriteResult } from '@/services/aiNewsEditor'
 import { geminiEditArticle, isGeminiConfigured } from '@/lib/ai/gemini'
 import {
+  NEWSROOM_AUTO_PUBLISH_ENABLED,
   NEWSROOM_AUTO_PUBLISH_THRESHOLD,
   NEWSROOM_LOW_CONFIDENCE_THRESHOLD,
   NEWSROOM_REWRITE_MAX_RETRIES,
@@ -1048,7 +1049,9 @@ export async function processNewsroomArticle(
 
     // AUTO_PUBLISH / REQUIRES_APPROVAL: kalite kapısını geçerse yayın.
     // Yalnızca DRAFT_ONLY persona veya düşük güven / gate / moderasyon → taslak.
+    // NEWSROOM_AUTO_PUBLISH_ENABLED=false ise hiçbir şey otomatik yayınlanmaz.
     const needsDraft =
+      !NEWSROOM_AUTO_PUBLISH_ENABLED ||
       gateDraft ||
       isFallbackContent ||
       factCheck.confidenceScore < confidenceThreshold ||

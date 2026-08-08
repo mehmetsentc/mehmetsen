@@ -1,10 +1,13 @@
 /**
  * newsDrafts kuyruğunu AI ile yeniden işler.
- * Geçenler otomatik yayınlanır; kalıcı sorunlular (moderasyon / DRAFT_ONLY) atlanır.
+ * NEWSROOM_AUTO_PUBLISH_ENABLED=true ise geçenler otomatik yayınlanır;
+ * false ise tüm sonuçlar pending_review'da kalır (admin onayı beklenir).
+ * Kalıcı sorunlular (moderasyon / DRAFT_ONLY) atlanır.
  */
 import { getAdminFirestore, Collections } from '@/lib/firebase/admin'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import {
+  NEWSROOM_AUTO_PUBLISH_ENABLED,
   NEWSROOM_DRAFT_REPROCESS_BATCH,
   NEWSROOM_DRAFT_REPROCESS_MAX_ATTEMPTS,
 } from '@/services/newsroom/config'
@@ -59,14 +62,22 @@ export async function reprocessPendingDrafts(): Promise<DraftReprocessStats> {
     editorsEnsured: 0,
   }
 
-  try {
-    const ensured = await enableAutoPublishForActiveEditors('draft-reprocess-cron')
-    stats.editorsEnsured = ensured.updated.length
-  } catch (err) {
-    console.warn(
-      '[draft-reprocess] enableAutoPublish failed:',
-      err instanceof Error ? err.message : err
-    )
+  // Skip auto-publish enablement when global auto-publish is off
+  if (NEWSROOM_AUTO_PUBLISH_ENABLED) {
+    try {
+      const ensured = await enableAutoPublishForActiveEditors('draft-reprocess-cron')
+      stats.editorsEnsured = ensured.updated.length
+    } catch (err) {
+      console.warn(
+        '[draft-reprocess] enableAutoPublish failed:',
+        err instanceof Error ? err.message : err
+      )
+    }
+  }
+
+  if (!NEWSROOM_AUTO_PUBLISH_ENABLED) {
+    console.log('[draft-reprocess] NEWSROOM_AUTO_PUBLISH_ENABLED=false — skipping reprocess (items stay in Onay Bekliyor)')
+    return stats
   }
 
   const db = getAdminFirestore()
