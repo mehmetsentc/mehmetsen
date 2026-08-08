@@ -7,8 +7,8 @@
  * Layout (~54/42 — feed okunabilirliği için metne biraz daha alan):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
- *   │   HABER FOTOĞRAFI       │  ~54% (580px) — object-fit: contain
- *   │   (lacivert letterbox)  │  afiş/üst metin kesilmez
+ *   │   HABER FOTOĞRAFI       │  ~54% (580px) — object-fit: cover
+ *   │   (kenardan kenara)     │  üst bölümü doldurur
  *   ├─── nahaber.com ─────────┤  kırmızı bar + beyaz pill (48px)
  *   │   MANŞET (Playfair)     │
  *   │   özet (büyük, net)     │  ~42% — lacivert (452px)
@@ -259,12 +259,11 @@ export async function GET(
           background: NAVY,
         }}>
           {photo ? (
-            /* contain: tam afiş/tema görünür (üst metin kesilmez); boşluklar lacivert letterbox */
             <img src={photo} alt="" width={W} height={PHOTO_H}
               style={{
                 width: W, height: PHOTO_H,
-                objectFit: 'contain', objectPosition: 'center',
-                background: NAVY, display: 'flex',
+                objectFit: 'cover', objectPosition: 'center top',
+                display: 'flex',
               }} />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', background: NAVY }} />
