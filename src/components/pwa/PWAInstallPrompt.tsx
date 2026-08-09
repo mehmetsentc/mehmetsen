@@ -18,6 +18,24 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365 // 1 year
 
 type IOSBrowser = 'safari' | 'chrome' | 'other' | null
 
+/** City subdomain (canakkale.nahaber.com, *.localhost) vs national host. */
+function isCityHost(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname.split(':')[0].toLowerCase()
+  if (host === 'nahaber.com' || host === 'www.nahaber.com' || host === 'localhost' || host === '127.0.0.1') {
+    return false
+  }
+  if (/^[a-z0-9-]+\.localhost$/.test(host)) return true
+  if (/^[a-z0-9-]+\.nahaber\.com$/.test(host) && !host.startsWith('www.')) return true
+  return false
+}
+
+/** National: `/` (pre-redirect) or `/feed` (main home). City: `/` only. */
+function isPwaPromptPath(pathname: string): boolean {
+  if (isCityHost()) return pathname === '/'
+  return pathname === '/' || pathname === '/feed'
+}
+
 function isStandaloneDisplay(): boolean {
   if (typeof window === 'undefined') return false
   return (
@@ -110,7 +128,7 @@ export function PWAInstallPrompt() {
   const [iosGuideOpen, setIOSGuideOpen] = useState(false)
   const hasDismissedRef = useRef(false)
 
-  const isHomepage = pathname === '/'
+  const isPwaHome = isPwaPromptPath(pathname)
 
   useEffect(() => {
     setInstalled(isStandaloneDisplay())
@@ -121,7 +139,7 @@ export function PWAInstallPrompt() {
   }, [])
 
   useEffect(() => {
-    if (!isHomepage) { setVisible(false); return }
+    if (!isPwaHome) { setVisible(false); return }
     if (installed) return
     if (hasDismissedRef.current) return
 
@@ -156,7 +174,7 @@ export function PWAInstallPrompt() {
       window.removeEventListener('beforeinstallprompt', onPrompt)
       window.removeEventListener('appinstalled', onInstalled)
     }
-  }, [installed, isIOS, isHomepage])
+  }, [installed, isIOS, isPwaHome])
 
   const dismiss = useCallback(() => {
     setVisible(false)
