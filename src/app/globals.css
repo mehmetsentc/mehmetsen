@@ -326,6 +326,15 @@
     width: 100%;
   }
 
+  /** City tenant chrome — same centered column as content-stage-newspaper */
+  .newspaper-layout-inner {
+    width: 100%;
+    max-width: var(--layout-content-newspaper, min(1200px, 100%));
+    margin-inline: auto;
+    padding-inline: max(var(--layout-gutter), env(safe-area-inset-left, 0px))
+      max(var(--layout-gutter), env(safe-area-inset-right, 0px));
+  }
+
   @media (min-width: 1024px) {
     /* Gazete düzeni: overlay menü — içerik her zaman viewport ortasında */
     .content-stage-newspaper {

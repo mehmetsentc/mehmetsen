@@ -34,13 +34,15 @@ const CityShell = memo(function CityShell({
       <CitySectionNav />
 
       <PullToRefresh>
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="content-main content-main-newspaper desktop-newspaper"
-        >
-          {children}
-        </main>
+        <div className="content-stage content-stage-newspaper">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="content-main content-main-newspaper desktop-newspaper"
+          >
+            {children}
+          </main>
+        </div>
       </PullToRefresh>
 
       <Suspense fallback={null}>

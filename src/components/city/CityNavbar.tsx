@@ -26,7 +26,7 @@ export function CityNavbar({ cityName, provinceSlug }: CityNavbarProps) {
       )}
       style={{ height: 'calc(72px + env(safe-area-inset-top, 0px))' }}
     >
-      <div className="flex h-[72px] items-center gap-1 px-4">
+      <div className="newspaper-layout-inner flex h-[72px] items-center gap-1">
         <Link href="/" className="flex min-w-0 flex-1 items-center gap-2" aria-label={`${cityName} NaHaber`}>
           {logoSrc ? (
             <Image

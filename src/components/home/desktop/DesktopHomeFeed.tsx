@@ -31,6 +31,7 @@ import { useMergedCategoryRails } from '@/hooks/useMergedCategoryRails'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
   HOME_CATEGORY_DESKTOP_CARDS,
+  HOME_CATEGORY_RAIL_GUNDEM_FETCH,
   HOME_FEED_DESKTOP_LAZY_RAILS,
   HOME_FEATURED_LIMIT,
   type HomeCategorySlug,
@@ -84,16 +85,21 @@ export function DesktopHomeFeed({ data, cityMode = false, cityName }: DesktopHom
       categoryRails.asayis ??
       data.latest
     const gundemRail = Array.isArray(primaryRail) ? primaryRail : []
-    const heroLead = gundemRail[0]
-    // 3 kompakt yan haber — 2 tam-geniş görsel kart sol sütunu boş bırakıyordu
-    const heroRight = gundemRail.slice(1, 4)
+    const heroPool =
+      cityMode && gundemRail.length < 4
+        ? [
+            ...gundemRail,
+            ...data.featured.filter((item) => !gundemRail.some((g) => g.id === item.id)),
+            ...data.latest.filter((item) => !gundemRail.some((g) => g.id === item.id)),
+          ].slice(0, HOME_CATEGORY_RAIL_GUNDEM_FETCH)
+        : gundemRail
+    const heroLead = heroPool[0]
+    const heroRight = heroPool.slice(1, 4)
 
-    const topFour = gundemRail.slice(4, 8)
-    const quickHeadlines = gundemRail.slice(8, 13)
-
-    // Alt Gündem bölümü: rail'den kalan haberler
-    const moreGrid = gundemRail.slice(13, 17)
-    const moreSidebar = gundemRail.slice(17, 19)
+    const topFour = heroPool.slice(4, 8)
+    const quickHeadlines = heroPool.slice(8, 13)
+    const moreGrid = heroPool.slice(13, 17)
+    const moreSidebar = heroPool.slice(17, 19)
 
     const featureLead = take(1)[0]
     const featureImage = take(1)[0]
@@ -119,9 +125,10 @@ export function DesktopHomeFeed({ data, cityMode = false, cityName }: DesktopHom
     const trending = data.trending.slice(0, 8)
     const moreList = take(8)
 
-    const featuredSlider = data.featured
-      .filter((p) => p.featured === true)
-      .slice(0, HOME_FEATURED_LIMIT)
+    const featuredSlider = (cityMode
+      ? data.featured
+      : data.featured.filter((p) => p.featured === true)
+    ).slice(0, HOME_FEATURED_LIMIT)
 
     const opinionItems =
       featuredSlider.length >= 3
@@ -156,6 +163,7 @@ export function DesktopHomeFeed({ data, cityMode = false, cityName }: DesktopHom
     cityMode ? [] : layout.moreList
   )
   const hasHero = layout.heroLead
+  const hasHeroAside = layout.heroRight.length > 0
 
   return (
     <div className="desktop-home-feed">
@@ -183,23 +191,25 @@ export function DesktopHomeFeed({ data, cityMode = false, cityName }: DesktopHom
           className={`mb-10 ${HERO_SPLIT_SECTION} border-b border-[rgb(var(--color-border))] pb-10`}
           aria-label="Manşet"
         >
-          <div className={HERO_SPLIT_MAIN}>
+          <div className={hasHeroAside ? HERO_SPLIT_MAIN : 'col-span-12 min-w-0'}>
             <HeroImageOnly item={layout.heroLead!} priority aspect="wide" />
             <div className="mt-4">
               <TextLeadStory item={layout.heroLead!} size="hero" dropCap />
             </div>
           </div>
 
-          <aside className={HERO_SPLIT_ASIDE}>
-            <p className="nl-kicker mb-3">Öne Çıkanlar</p>
-            <div className="nl-kicker-bar">
-              <div className="flex min-w-0 flex-1 flex-col">
-                {layout.heroRight.map((item, i) => (
-                  <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
-                ))}
+          {hasHeroAside ? (
+            <aside className={HERO_SPLIT_ASIDE}>
+              <p className="nl-kicker mb-3">Öne Çıkanlar</p>
+              <div className="nl-kicker-bar">
+                <div className="flex min-w-0 flex-1 flex-col">
+                  {layout.heroRight.map((item, i) => (
+                    <RightFeatureStory key={item.id} item={item} live={i === 0 && !!item.breaking} />
+                  ))}
+                </div>
               </div>
-            </div>
-          </aside>
+            </aside>
+          ) : null}
         </section>
       ) : null}
 
