@@ -25,6 +25,7 @@ import {
 } from '@/lib/cityEventFilters'
 import { cn } from '@/lib/utils'
 import type { EventTimeRange } from '@/services/eventService'
+import type { NaEvent } from '@/types/event'
 import { CityEventFiltersPanel } from './CityEventFiltersPanel'
 import { CityEventGridCard, CityEventGridCardSkeleton } from './CityEventGridCard'
 import { CityEventListCard, CityEventListCardSkeleton } from './CityEventListCard'
@@ -33,6 +34,8 @@ import { CityEventTopSellers } from './CityEventTopSellers'
 interface CityEventsClientProps {
   citySlug: string
   cityName: string
+  /** SSR-prefetched upcoming events — shown immediately while client revalidates. */
+  initialEvents?: NaEvent[]
 }
 
 const SORT_OPTIONS: Array<{ id: CityEventSort; label: string }> = [
@@ -46,12 +49,20 @@ const TIME_RANGE_OPTIONS: Array<{ id: EventTimeRange; label: string }> = [
   { id: 'past', label: 'Geçmiş' },
 ]
 
-export function CityEventsClient({ citySlug, cityName }: CityEventsClientProps) {
+export function CityEventsClient({
+  citySlug,
+  cityName,
+  initialEvents = [],
+}: CityEventsClientProps) {
   const [timeRange, setTimeRange] = useState<EventTimeRange>('upcoming')
   const { events, loading, error, retry } = useEvents({
     citySlug,
     timeRange,
   })
+
+  const hasSsrSeed = initialEvents.length > 0 && timeRange === 'upcoming'
+  const displayEvents =
+    hasSsrSeed && loading && events.length === 0 ? initialEvents : events
 
   const [filters, setFilters] = useState<CityEventFilterState>(DEFAULT_CITY_EVENT_FILTERS)
   const [sort, setSort] = useState<CityEventSort>('date')
@@ -59,23 +70,24 @@ export function CityEventsClient({ citySlug, cityName }: CityEventsClientProps) 
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
 
   const allDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
-  const venueOptions = useMemo(() => extractVenueOptions(events), [events])
+  const venueOptions = useMemo(() => extractVenueOptions(displayEvents), [displayEvents])
   const districtOptions = useMemo(
-    () => extractDistrictOptions(events, allDistricts),
-    [events, allDistricts]
+    () => extractDistrictOptions(displayEvents, allDistricts),
+    [displayEvents, allDistricts]
   )
 
   const filteredEvents = useMemo(() => {
-    const filtered = filterCityEvents(events, filters)
+    const filtered = filterCityEvents(displayEvents, filters)
     return sortCityEvents(filtered, sort)
-  }, [events, filters, sort])
+  }, [displayEvents, filters, sort])
 
-  const featuredEvents = useMemo(() => pickFeaturedEvents(events), [events])
+  const featuredEvents = useMemo(() => pickFeaturedEvents(displayEvents), [displayEvents])
   const activeFilterCount = countActiveFilters(filters)
 
   const handleResetFilters = () => setFilters(DEFAULT_CITY_EVENT_FILTERS)
 
   const showEmpty = !loading && !error && filteredEvents.length === 0
+  const showSkeletons = loading && displayEvents.length === 0
 
   return (
     <div className="w-full pb-8 pt-3 max-md:pt-2">
@@ -140,7 +152,7 @@ export function CityEventsClient({ citySlug, cityName }: CityEventsClientProps) 
 
         {/* Main content */}
         <div className="min-w-0 flex-1">
-          <CityEventTopSellers events={featuredEvents} loading={loading} />
+          <CityEventTopSellers events={featuredEvents} loading={showSkeletons} />
 
           {/* Toolbar: time range + sort + view toggle + count */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -168,7 +180,7 @@ export function CityEventsClient({ citySlug, cityName }: CityEventsClientProps) 
                 ))}
               </div>
               <p className="text-sm text-[rgb(var(--color-text-secondary))]">
-                {loading ? (
+                {showSkeletons ? (
                   'Yükleniyor…'
                 ) : (
                   <>
@@ -237,7 +249,7 @@ export function CityEventsClient({ citySlug, cityName }: CityEventsClientProps) 
             </div>
           </div>
 
-          {loading ? (
+          {showSkeletons ? (
             viewMode === 'grid' ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                 {Array.from({ length: 6 }, (_, i) => (

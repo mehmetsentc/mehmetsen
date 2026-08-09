@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
 import { CityEventsClient } from '@/components/city/CityEventsClient'
+import { getCityEventsServer } from '@/services/eventService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,11 +24,13 @@ export default async function CityEventsPage() {
   if (!tenant) return null
 
   const cityName = getCityCategoryName(tenant.provinceSlug)
+  const initialEvents = await getCityEventsServer(tenant.provinceSlug)
 
   return (
     <CityEventsClient
       citySlug={tenant.provinceSlug}
       cityName={cityName}
+      initialEvents={initialEvents}
     />
   )
 }

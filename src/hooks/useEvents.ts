@@ -123,7 +123,7 @@ export function useEvents({
       setDataSource(nextSource)
       retryOnceRef.current = false
 
-      if (reset && nextEvents.length === 0) {
+      if (reset && nextEvents.length === 0 && !city) {
         try {
           const aggregate = await fetchAggregatedEvents(
             { citySlug: isNearby ? null : city, category: cat ?? null },
