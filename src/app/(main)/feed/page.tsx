@@ -1,16 +1,20 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { FeedPageClient } from '@/components/feed/FeedPageClient'
 import { FeedStructuredData } from '@/components/home/desktop/FeedStructuredData'
 import { getSiteUrl } from '@/lib/seo'
 import { getLcpPreload } from '@/lib/lcpImage'
 import { getHomeFeedInitialData } from '@/services/newsService.server'
 import { ROUTES } from '@/constants/routes'
+import { getActiveTenant } from '@/lib/tenantContext'
 
 /**
- * Vercel CDN cache: 5 dakika tazelik + tek Firestore havuz sorgusu (pool-first).
- * Eski: 19–25 paralel sorgu → TTFB 5–15s; enrichAllCategoryRails kaldırıldı.
+ * force-dynamic prevents Vercel CDN from caching this page with ISR.
+ * Without it, city subdomains (canakkale.nahaber.com/feed) receive the
+ * CDN-cached national prerender instead of being rewritten to /city-site
+ * by middleware.
  */
-export const revalidate = 30
+export const dynamic = 'force-dynamic'
 
 const siteUrl = getSiteUrl()
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -65,6 +69,12 @@ export const metadata: Metadata = {
 }
 
 export default async function FeedPage() {
+  // Belt-and-suspenders: if middleware rewrite to /city-site didn't fire
+  // (edge config issue, build mismatch), fall back to the root page which
+  // renders city content independently of middleware.
+  const tenant = await getActiveTenant()
+  if (tenant) redirect('/')
+
   const data = await getHomeFeedInitialData()
 
   const lcpImage =

@@ -6,7 +6,6 @@ import { getCityNews } from '@/services/cityNewsService.server'
 import { CityFeedClient } from '@/components/city/CityFeedClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import type { Metadata } from 'next'
-import { getSiteUrl } from '@/lib/seo'
 
 // force-dynamic so the host header is available at request time
 export const dynamic = 'force-dynamic'
@@ -17,15 +16,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const cityName = getCityCategoryName(tenant.provinceSlug)
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  const siteUrl = getSiteUrl()
+  const cityOrigin = `https://${tenant.slug}.nahaber.com`
 
   return {
     title: `${cityName} Haberleri — ${siteName}`,
     description: `${cityName} son dakika yerel haberler, gündem, etkinlikler ve spor haberleri.`,
+    alternates: {
+      canonical: cityOrigin,
+    },
     openGraph: {
       title: `${cityName} Haberleri — ${siteName}`,
       description: `${cityName} şehrinden son dakika yerel haberler ve güncel gelişmeler.`,
-      url: siteUrl,
+      url: cityOrigin,
       type: 'website',
       locale: 'tr_TR',
       siteName,

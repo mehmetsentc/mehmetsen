@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { LocalNewsClient } from '@/components/local/LocalNewsClient'
 import { getBreakingSliderItems } from '@/services/newsService.server'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { NewsItem } from '@/types/newsItem'
+import { getActiveTenant } from '@/lib/tenantContext'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 const siteUrl = getSiteUrl()
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -37,6 +39,9 @@ export const metadata: Metadata = {
 }
 
 export default async function LocalNewsPage() {
+  const tenant = await getActiveTenant()
+  if (tenant) redirect('/')
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
