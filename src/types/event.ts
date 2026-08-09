@@ -66,6 +66,8 @@ export interface NaEvent {
   districtSlug?: string
   /** Human-readable date when exact times vary (recurring / approximate). */
   dateLabel?: string
+  /** When set to `annual`, month/day in startsAt/endsAt roll to current or next year. */
+  recurrence?: 'annual'
   /** Free-form tags shown on city cards (e.g. "Ücretsiz", "festival"). */
   tags?: string[]
   /** Explicit free/public flags for municipal events. */

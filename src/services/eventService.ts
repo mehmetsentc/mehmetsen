@@ -94,6 +94,64 @@ export function sortEventsByTimeRange(
   return [...events].sort((a, b) => dir * a.startsAt.localeCompare(b.startsAt))
 }
 
+
+function buildEventQueryConstraints(options: {
+  citySlug?: string
+  category?: EventCategory
+  timeRange: EventTimeRange
+  nowIso: string
+  sortDir: 'asc' | 'desc'
+  pageSize: number
+  cursor?: QueryDocumentSnapshot | null
+}): Parameters<typeof query>[1][] {
+  const { citySlug, category, timeRange, nowIso, sortDir, pageSize, cursor } = options
+  const constraints: Parameters<typeof query>[1][] = []
+
+  // Equality filters must precede range/orderBy on startsAt (Firestore composite indexes).
+  if (citySlug) constraints.push(where('citySlug', '==', citySlug))
+  if (category) constraints.push(where('category', '==', category))
+
+  if (timeRange === 'upcoming') {
+    constraints.push(where('startsAt', '>=', getUpcomingStartsAtLowerBound(nowIso)))
+  } else {
+    const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    constraints.push(where('startsAt', '<', nowIso))
+    constraints.push(where('startsAt', '>=', threeDaysAgo))
+  }
+
+  constraints.push(orderBy('startsAt', sortDir))
+  if (cursor) constraints.push(startAfter(cursor))
+  constraints.push(limit(pageSize))
+  return constraints
+}
+
+async function fetchAnnualCityEvents(citySlug: string): Promise<NaEvent[]> {
+  const q = query(
+    collection(db, Collections.EVENTS),
+    where('citySlug', '==', citySlug),
+    where('recurrence', '==', 'annual'),
+    limit(100)
+  )
+  const snap = await withTimeout(
+    enqueueFirestoreRead(() => getDocs(q)),
+    QUERY_TIMEOUT_MS,
+    'events-annual'
+  )
+  return snap.docs.map(toEvent).filter(isVisible)
+}
+
+function mergeEventLists(primary: NaEvent[], extra: NaEvent[]): NaEvent[] {
+  const seen = new Set(primary.map((e) => e.id))
+  const merged = [...primary]
+  for (const event of extra) {
+    if (!seen.has(event.id)) {
+      seen.add(event.id)
+      merged.push(event)
+    }
+  }
+  return merged
+}
+
 async function runOrderedFallback(
   options: GetEventsOptions,
   nowIso: string,
@@ -106,20 +164,15 @@ async function runOrderedFallback(
 
   devLog('eventService', 'ordered fallback', { reason, citySlug, category, timeRange })
 
-  const constraints: Parameters<typeof query>[1][] = []
-
-  // Widen the window so multi-day events that already started still fetch.
-  if (timeRange === 'upcoming') {
-    constraints.push(where('startsAt', '>=', getUpcomingStartsAtLowerBound(nowIso)))
-  } else {
-    const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
-    constraints.push(where('startsAt', '<', nowIso))
-    constraints.push(where('startsAt', '>=', threeDaysAgo))
-  }
-
-  constraints.push(orderBy('startsAt', sortDir))
-  if (cursor) constraints.push(startAfter(cursor))
-  constraints.push(limit(FALLBACK_FETCH))
+  const constraints = buildEventQueryConstraints({
+    citySlug,
+    category,
+    timeRange,
+    nowIso,
+    sortDir,
+    pageSize: FALLBACK_FETCH,
+    cursor,
+  })
 
   const snap = await withTimeout(
     enqueueFirestoreRead(() =>
@@ -160,22 +213,15 @@ export const eventService = {
     devLog('eventService', 'getEvents', { citySlug, category, timeRange, hasCursor: !!cursor })
 
     try {
-      const constraints: Parameters<typeof query>[1][] = []
-
-      if (timeRange === 'upcoming') {
-        constraints.push(where('startsAt', '>=', getUpcomingStartsAtLowerBound(nowIso)))
-      } else {
-        // Past: ended, within last 3 days
-        const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
-        constraints.push(where('startsAt', '<', nowIso))
-        constraints.push(where('startsAt', '>=', threeDaysAgo))
-      }
-
-      if (citySlug) constraints.push(where('citySlug', '==', citySlug))
-      if (category) constraints.push(where('category', '==', category))
-      constraints.push(orderBy('startsAt', sortDir))
-      if (cursor) constraints.push(startAfter(cursor))
-      constraints.push(limit(EVENT_PAGE_SIZE))
+      const constraints = buildEventQueryConstraints({
+        citySlug,
+        category,
+        timeRange,
+        nowIso,
+        sortDir,
+        pageSize: EVENT_PAGE_SIZE,
+        cursor,
+      })
 
       const q = query(collection(db, Collections.EVENTS), ...constraints)
       const snap = await withTimeout(
@@ -184,10 +230,22 @@ export const eventService = {
         'events'
       )
 
-      const events = snap.docs
+      let events = snap.docs
         .map(toEvent)
         .filter(isVisible)
         .filter((event) => matchesTimeRange(event, timeRange, nowIso))
+
+      if (timeRange === 'upcoming' && citySlug && !category && !cursor) {
+        try {
+          const annual = await fetchAnnualCityEvents(citySlug)
+          events = mergeEventLists(events, annual).filter((event) =>
+            matchesTimeRange(event, timeRange, nowIso)
+          )
+          events = sortEventsByTimeRange(events, timeRange).slice(0, EVENT_PAGE_SIZE)
+        } catch (annualError) {
+          console.warn('[eventService] annual city events fetch failed:', annualError)
+        }
+      }
 
       if (events.length === 0 && !cursor) {
         return runOrderedFallback(options, nowIso, 'empty-primary')

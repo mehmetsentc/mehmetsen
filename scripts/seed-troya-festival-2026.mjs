@@ -15,6 +15,7 @@ import { join } from 'node:path'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { ensureTroyaEventCovers } from './lib/troya-festival-posters.mjs'
+import { resolveAnnualOccurrence, toAnnualDateLabel } from './lib/annual-event-dates.mjs'
 
 const root = process.cwd()
 const DATA_FILE = join(root, 'data', 'troya-festival-2026-events.json')
@@ -81,10 +82,14 @@ function loadEventsData() {
 
 function buildFirestoreDoc(event, meta, nowIso) {
   const docId = `${SOURCE}_${event.slug}`
-  const startsAt = event.startsAt
-  const endsAt = event.endsAt ?? undefined
+  const templateStart = event.startsAt
+  const templateEnd = event.endsAt ?? undefined
+  const resolved = resolveAnnualOccurrence(templateStart, templateEnd, new Date(nowIso))
+  const startsAt = resolved.startsAt
+  const endsAt = resolved.endsAt
   const timelineStatus =
-    endsAt && endsAt >= nowIso ? 'upcoming' : startsAt >= nowIso ? 'upcoming' : 'past'
+    (endsAt && endsAt >= nowIso) || startsAt >= nowIso ? 'upcoming' : 'past'
+  const dateLabel = toAnnualDateLabel(event.dateLabel)
 
   return {
     id: docId,
@@ -100,7 +105,8 @@ function buildFirestoreDoc(event, meta, nowIso) {
       organizer: event.organizer,
       startsAt,
       endsAt,
-      dateLabel: event.dateLabel,
+      dateLabel,
+      recurrence: 'annual',
       coverImageUrl: `/events/canakkale/troya-2026/${event.slug}.jpg`,
       tags: event.tags,
       isFree: true,

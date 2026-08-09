@@ -1,5 +1,6 @@
 import { format, isSameDay } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { resolveEventSchedule } from '@/lib/annualEventDates'
 import type { EventCategory } from '@/types/event'
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
@@ -36,6 +37,7 @@ type EventDateFields = {
   startsAt: string
   endsAt?: string
   dateLabel?: string
+  recurrence?: 'annual'
 }
 
 /**
@@ -130,8 +132,9 @@ export function formatEventDisplayDate(event: EventDateFields): string {
 }
 
 /** When an event is no longer active — `endsAt` when set, otherwise `startsAt`. */
-export function getEventActiveUntilIso(event: EventDateFields): string {
-  return event.endsAt?.trim() || event.startsAt
+export function getEventActiveUntilIso(event: EventDateFields, nowIso?: string): string {
+  const resolved = resolveEventSchedule(event, nowIso)
+  return resolved.endsAt?.trim() || resolved.startsAt
 }
 
 /** True while the event has not ended (multi-day / bienal-safe). */
@@ -139,7 +142,7 @@ export function isEventUpcoming(
   event: EventDateFields,
   nowIso: string = new Date().toISOString()
 ): boolean {
-  return getEventActiveUntilIso(event) >= nowIso
+  return getEventActiveUntilIso(event, nowIso) >= nowIso
 }
 
 /** Firestore lookback so ongoing events with past `startsAt` still fetch. */
