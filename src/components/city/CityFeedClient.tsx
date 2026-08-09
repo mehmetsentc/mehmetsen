@@ -9,9 +9,10 @@ import type { NewsItem } from '@/types/newsItem'
 interface CityFeedClientProps {
   citySlug: string
   initialItems: NewsItem[]
+  title?: string
 }
 
-export function CityFeedClient({ citySlug, initialItems }: CityFeedClientProps) {
+export function CityFeedClient({ citySlug, initialItems, title }: CityFeedClientProps) {
   const [activeChip, setActiveChip] = useState('tumu')
   const [items, setItems] = useState(initialItems)
   const [loading, setLoading] = useState(false)
@@ -52,6 +53,11 @@ export function CityFeedClient({ citySlug, initialItems }: CityFeedClientProps) 
 
   return (
     <div className="space-y-4">
+      {title && (
+        <h1 className="text-lg font-semibold text-[rgb(var(--color-text-primary))]">
+          {title}
+        </h1>
+      )}
       <CityCategoryChips activeId={activeChip} onSelect={handleCategorySelect} />
 
       {loading ? (

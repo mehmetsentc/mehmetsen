@@ -6,34 +6,55 @@ The City Network allows NaHaber to serve city-specific experiences on subdomains
 (e.g. `canakkale.nahaber.com`) — same codebase, different content filtered by
 province. Everything is gated behind the `CITY_NETWORK_ENABLED` feature flag.
 
+## Phase Status
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 0 | Architecture audit | ✅ Complete |
+| 1 | Drizzle schema + Neon DB + seed | ✅ Complete |
+| 2 | R2 storage abstraction (`src/lib/storage/`) | ✅ Foundation ready |
+| 3 | City middleware rewrite (all browsing paths) | ✅ Complete |
+| 4 | Firebase citySlug feed + Postgres path | ✅ Complete |
+| 5 | City UI (CityHeader, MobileNav, Feed, Spor, Events, Districts) | ✅ Complete |
+| 6 | District sub-routes (`/ilceler/[slug]`) | ✅ Complete |
+| 7 | Postgres news write pipeline (dual-write) | 🔲 Pending |
+| 8 | Full R2 media migration | 🔲 Pending |
+| 9 | Additional cities | 🔲 Pending |
+
 ## Architecture
 
 ```
-canakkale.nahaber.com/
+canakkale.nahaber.com/feed (or / or /yerel)
         ↓
    middleware.ts — detects subdomain → resolves CityTenant
         ↓
    Sets x-nahaber-tenant / x-nahaber-province headers + cookie
         ↓
-   Rewrites / → /city-site (internal), /etkinlik → /city-site/etkinlik, etc.
+   Rewrites to /city-site (internal); /etkinlik → /city-site/etkinlik, etc.
+   National-only paths (/discover, /kategori/*) → redirect to city home
         ↓
    city-site/ layout — reads tenant headers → renders CityLayoutClient
         ↓
-   Firebase news collection filtered by citySlug === 'canakkale'
+   cityNewsService: Firebase (citySlug) OR Postgres (POSTGRES_READS_ENABLED)
 ```
 
 ### Route structure (city tenant)
 
-| Public URL      | Internal rewrite        | Page                        |
-|-----------------|-------------------------|-----------------------------|
-| `/`             | `/city-site`            | City main feed              |
-| `/etkinlik`     | `/city-site/etkinlik`   | City events                 |
-| `/spor`         | `/city-site/spor`       | City sports news            |
-| `/ilceler`      | `/city-site/ilceler`    | District list               |
-| `/haber/[slug]` | (no rewrite — shared)   | News article (shared route) |
+| Public URL             | Internal rewrite              | Page                        |
+|------------------------|-------------------------------|-----------------------------|
+| `/`                    | `/city-site`                  | City main feed              |
+| `/feed`               | `/city-site`                  | City main feed              |
+| `/yerel`              | `/city-site`                  | City main feed              |
+| `/etkinlik`           | `/city-site/etkinlik`         | City events                 |
+| `/spor`               | `/city-site/spor`             | City sports news            |
+| `/ilceler`            | `/city-site/ilceler`          | District list               |
+| `/ilceler/gelibolu`   | `/city-site/ilceler/gelibolu` | District news feed          |
+| `/haber/[slug]`       | (no rewrite — shared)         | News article (shared route) |
+| `/kategori/*`         | → redirect to `/`             | Blocked on city subdomain   |
+| `/discover`, `/skor`… | → redirect to `/`             | Blocked on city subdomain   |
 
-Non-city paths (e.g. `/haber/[slug]`, `/search`) on city subdomains fall through
-to the national site routes without rewrite.
+Non-city paths (e.g. `/haber/[slug]`, `/search`, `/settings`) on city subdomains
+fall through to the national site routes without rewrite (tenant headers still passed).
 
 ### National routes (unchanged)
 
@@ -99,17 +120,28 @@ For wildcard:
 
 In Vercel → **Settings → Environment Variables**, set:
 
-```
-CITY_NETWORK_ENABLED=true
-```
+| Variable | Value | Required |
+|----------|-------|----------|
+| `CITY_NETWORK_ENABLED` | `true` | Yes — activates city tenant routing |
+| `POSTGRES_READS_ENABLED` | `false` | Optional — enables Postgres read path for city news |
+| `DATABASE_URL` | Neon pooled connection string | Optional (hardcoded Çanakkale fallback exists) |
+| `R2_ACCOUNT_ID` | Cloudflare account ID | For media uploads (Phase 2+) |
+| `R2_ACCESS_KEY_ID` | R2 API token key | For media uploads (Phase 2+) |
+| `R2_SECRET_ACCESS_KEY` | R2 API token secret | For media uploads (Phase 2+) |
+| `R2_BUCKET_NAME` | `nahaber-media` | For media uploads (Phase 2+) |
+| `R2_PUBLIC_URL` | Public bucket URL | For media uploads (Phase 2+) |
 
-> Set to `false` (or omit) to keep production on the national site only.
+> Set `CITY_NETWORK_ENABLED` to `false` (or omit) to keep production on the national site only.
 > The flag gates both middleware tenant resolution and the (city) route layout.
 
-### 4. Deploy
+### 4. Deploy & verify
 
-Deploy normally. With `CITY_NETWORK_ENABLED=false`, the city subdomain will
-redirect to the national homepage. Flip to `true` when ready.
+Deploy normally. After deploy with `CITY_NETWORK_ENABLED=true`:
+
+1. Visit `canakkale.nahaber.com/` — should show Çanakkale city feed
+2. Visit `canakkale.nahaber.com/feed` — should show same city feed (NOT national)
+3. Visit `canakkale.nahaber.com/?debugmw=1` — should show tenant info JSON
+4. Visit `nahaber.com/` — should still show national site unchanged
 
 ---
 
@@ -129,30 +161,53 @@ redirect to the national homepage. Flip to `true` when ready.
 | Flag                   | Default | Effect                                         |
 |------------------------|---------|-------------------------------------------------|
 | `CITY_NETWORK_ENABLED` | `false` | Gates all city tenant routing + UI              |
-| `POSTGRES_READS_ENABLED`| `false`| When true, read news from Postgres (Phase 7+)  |
+| `POSTGRES_READS_ENABLED`| `false`| When true, city news reads from Postgres first  |
 
 Both flags default to `false`. Production nahaber.com is completely unchanged
 until you flip `CITY_NETWORK_ENABLED=true` in environment variables.
 
 ---
 
-## Data flow (Phase 6)
+## Data flow
 
-City news feeds read from the **existing Firebase `news` collection**, filtered
-by `citySlug === '<province_slug>'`. No Postgres reads, no new collections.
+City news feeds use a **dual-path** strategy:
 
-The `citySlug` field is already populated on news documents by the newsroom
-pipeline (geoEngine, localWorker). The city feed simply queries:
+1. **Firebase path** (default): queries existing `news` collection filtered by
+   `citySlug === '<province_slug>'`. No new collections needed.
+2. **Postgres path** (when `POSTGRES_READS_ENABLED=true`): reads from the `news`
+   table's `city_slug` column. Falls back to Firebase on empty results or error.
 
 ```
-news.where('status', '==', 'published')
-    .where('citySlug', '==', 'canakkale')
-    .orderBy('publishedAt', 'desc')
-    .limit(30)
+cityNewsService.server.ts
+  └→ isPostgresReadsEnabled() ?
+       → Drizzle query: news WHERE status='published' AND city_slug='canakkale'
+       → fallback to Firebase if empty
+     : → Firebase: news.where('citySlug', '==', 'canakkale')
 ```
 
-When `POSTGRES_READS_ENABLED` is flipped in a future phase, the service layer
-can swap to Drizzle/Neon queries without changing the UI.
+---
+
+## Storage (Phase 2)
+
+Media storage uses an abstraction layer at `src/lib/storage/`:
+
+| Backend  | Role | Notes |
+|----------|------|-------|
+| R2       | Primary (new uploads) | Requires R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY |
+| Firebase | Read-only fallback    | Existing media URLs pass through unchanged |
+
+```ts
+import { getStorage, getMediaUrl } from '@/lib/storage'
+
+// New uploads go to R2
+const storage = getStorage()
+await storage.upload('news/cover/abc.webp', buffer, { contentType: 'image/webp' })
+
+// Resolve any URL — handles Firebase legacy, R2 keys, and external CDNs
+const url = getMediaUrl(item.coverImageUrl)
+```
+
+No existing Firebase Storage files are deleted or migrated automatically.
 
 ---
 

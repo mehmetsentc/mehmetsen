@@ -19,15 +19,39 @@ const COOKIE_MAX_AGE_YEAR = 60 * 60 * 24 * 365
 const CMS_SESSION_COOKIE = 'cms_session'
 
 /**
- * City tenant routes that get rewritten to /city-site/* internally.
- * Public URLs stay clean. Unmatched paths on city subdomains fall through
- * to normal national routes (e.g. /haber/[slug] works on city subdomains).
+ * City tenant path → internal rewrite target.
+ * Keys are the public URL paths; values are the internal /city-site/* target.
+ * `/feed`, `/yerel`, and category paths all resolve to the city homepage feed.
  */
-const CITY_REWRITE_PATHS = new Set(['/', '/etkinlik', '/spor', '/ilceler'])
+const CITY_PATH_REWRITES: Record<string, string> = {
+  '/': '/city-site',
+  '/feed': '/city-site',
+  '/yerel': '/city-site',
+  '/etkinlik': '/city-site/etkinlik',
+  '/spor': '/city-site/spor',
+  '/ilceler': '/city-site/ilceler',
+}
 
-// Read the visitor country from common CDN/edge headers. On Vercel this is
-// `x-vercel-ip-country`; Cloudflare uses `cf-ipcountry`. `request.geo` is no
-// longer populated in Next.js 15, so we rely on headers.
+/**
+ * National browsing paths that should NOT render on city subdomains.
+ * These get redirected to city home (`/`) so users never see national content.
+ * Article pages (/haber/[slug]) are intentionally NOT here — they pass through.
+ */
+const CITY_REDIRECT_TO_HOME = new Set([
+  '/discover',
+  '/cok-okunanlar',
+  '/reels',
+  '/skor',
+  '/futbol-canli',
+  '/influencer',
+])
+
+function isCityRedirectPath(pathname: string): boolean {
+  if (CITY_REDIRECT_TO_HOME.has(pathname)) return true
+  if (pathname.startsWith('/kategori/') || pathname === '/kategori') return true
+  return false
+}
+
 function detectCountry(request: NextRequest): string {
   const fromHeader =
     request.headers.get('x-vercel-ip-country') ||
@@ -38,12 +62,75 @@ function detectCountry(request: NextRequest): string {
   return fromHeader.trim().toUpperCase()
 }
 
+interface TenantInfo { slug: string; provinceSlug: string }
+
+/**
+ * Build a city-site rewrite response with tenant headers, cookies, and geo.
+ */
+function buildCityRewrite(
+  request: NextRequest,
+  targetPath: string,
+  tenant: TenantInfo
+): NextResponse {
+  const rewriteUrl = request.nextUrl.clone()
+  rewriteUrl.pathname = targetPath
+
+  const country = detectCountry(request)
+  const existingLang = request.cookies.get(LANGUAGE_COOKIE)?.value
+  const existingCountry = request.cookies.get(COUNTRY_COOKIE)?.value
+
+  const rewriteHeaders = new Headers(request.headers)
+  rewriteHeaders.set(TENANT_HEADER, tenant.slug)
+  rewriteHeaders.set(TENANT_PROVINCE_HEADER, tenant.provinceSlug)
+
+  const existingCookieStr = rewriteHeaders.get('Cookie') || ''
+  const tenantCookies = `${TENANT_COOKIE}=${tenant.slug}; ${TENANT_PROVINCE_COOKIE}=${tenant.provinceSlug}`
+  rewriteHeaders.set(
+    'Cookie',
+    existingCookieStr ? `${existingCookieStr}; ${tenantCookies}` : tenantCookies
+  )
+
+  if (country && existingCountry !== country) {
+    rewriteHeaders.set(COUNTRY_COOKIE, country)
+  }
+  if (!isLanguage(existingLang) && country) {
+    rewriteHeaders.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country))
+  }
+
+  const response = NextResponse.rewrite(rewriteUrl, {
+    request: { headers: rewriteHeaders },
+  })
+
+  if (country && existingCountry !== country) {
+    response.cookies.set(COUNTRY_COOKIE, country, {
+      path: '/',
+      maxAge: COOKIE_MAX_AGE_YEAR,
+      sameSite: 'lax',
+    })
+  }
+  if (!isLanguage(existingLang) && country) {
+    response.cookies.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country), {
+      path: '/',
+      maxAge: COOKIE_MAX_AGE_YEAR,
+      sameSite: 'lax',
+    })
+  }
+
+  const existingTenant = request.cookies.get(TENANT_COOKIE)?.value
+  if (existingTenant !== tenant.slug) {
+    response.cookies.set(TENANT_COOKIE, tenant.slug, {
+      path: '/',
+      maxAge: COOKIE_MAX_AGE_YEAR,
+      sameSite: 'lax',
+    })
+  }
+
+  return response
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // /admin/* için edge-level guard. Detaylı rol/permission kontrolü server
-  // action ve API route'larında zaten yapılıyor; bu sadece anonim trafiği
-  // login'e yönlendiren defense-in-depth.
   if (pathname.startsWith('/admin')) {
     const token = request.cookies.get(CMS_SESSION_COOKIE)?.value
     const session = await verifyCmsSessionToken(token)
@@ -58,7 +145,6 @@ export async function middleware(request: NextRequest) {
   // ── City Network tenant resolution ──────────────────────────────────────
   const tenant = await resolveTenantFromRequest(request)
 
-  // DEBUG: ?debugmw=1 returns middleware state as JSON (remove after debugging)
   if (request.nextUrl.searchParams.get('debugmw') === '1') {
     return NextResponse.json({
       host: request.headers.get('host'),
@@ -69,79 +155,28 @@ export async function middleware(request: NextRequest) {
   }
 
   if (tenant) {
-    // On city subdomains, /feed should show city news — redirect to city home.
-    if (pathname === '/feed' || pathname === '/feed/') {
+    // Normalise trailing slash
+    const cleanPath = pathname.endsWith('/') && pathname !== '/'
+      ? pathname.slice(0, -1)
+      : pathname
+
+    // National-only paths on city subdomain → redirect to city home
+    if (isCityRedirectPath(cleanPath)) {
       const homeUrl = request.nextUrl.clone()
       homeUrl.pathname = '/'
-      return NextResponse.redirect(homeUrl)
+      return NextResponse.redirect(homeUrl, 302)
     }
 
-    // Rewrite city-specific paths to internal /city-site/* routes.
-    // Other paths (e.g. /haber/[slug]) fall through to normal routing.
-    if (CITY_REWRITE_PATHS.has(pathname)) {
-      const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = pathname === '/' ? '/city-site' : `/city-site${pathname}`
+    // District sub-route: /ilceler/gelibolu → /city-site/ilceler/gelibolu
+    const districtMatch = cleanPath.match(/^\/ilceler\/([a-z0-9-]+)$/)
+    if (districtMatch) {
+      return buildCityRewrite(request, `/city-site/ilceler/${districtMatch[1]}`, tenant)
+    }
 
-      const country = detectCountry(request)
-      const existingLang = request.cookies.get(LANGUAGE_COOKIE)?.value
-      const existingCountry = request.cookies.get(COUNTRY_COOKIE)?.value
-
-      // Build a NEW mutable headers object — request.headers is ReadonlyHeaders
-      // in Next.js 15 Edge middleware, so calling .set() on it silently fails.
-      const rewriteHeaders = new Headers(request.headers)
-
-      // Tenant — set as x-headers (primary) AND baked into the Cookie header
-      // (reliable fallback). In Next.js 15 on Vercel, x-headers set via
-      // NextResponse.rewrite({ request: { headers } }) can be dropped on the
-      // edge→serverless boundary. Cookies in the Cookie header are always
-      // forwarded to the serverless function.
-      rewriteHeaders.set(TENANT_HEADER, tenant.slug)
-      rewriteHeaders.set(TENANT_PROVINCE_HEADER, tenant.provinceSlug)
-      const existingCookieStr = rewriteHeaders.get('Cookie') || ''
-      const tenantCookies = `${TENANT_COOKIE}=${tenant.slug}; ${TENANT_PROVINCE_COOKIE}=${tenant.provinceSlug}`
-      rewriteHeaders.set(
-        'Cookie',
-        existingCookieStr ? `${existingCookieStr}; ${tenantCookies}` : tenantCookies
-      )
-
-      if (country && existingCountry !== country) {
-        rewriteHeaders.set(COUNTRY_COOKIE, country)
-      }
-      if (!isLanguage(existingLang) && country) {
-        rewriteHeaders.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country))
-      }
-
-      const response = NextResponse.rewrite(rewriteUrl, {
-        request: { headers: rewriteHeaders },
-      })
-
-      // Set country/language cookies on response
-      if (country && existingCountry !== country) {
-        response.cookies.set(COUNTRY_COOKIE, country, {
-          path: '/',
-          maxAge: COOKIE_MAX_AGE_YEAR,
-          sameSite: 'lax',
-        })
-      }
-      if (!isLanguage(existingLang) && country) {
-        response.cookies.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country), {
-          path: '/',
-          maxAge: COOKIE_MAX_AGE_YEAR,
-          sameSite: 'lax',
-        })
-      }
-
-      // Set tenant cookie
-      const existingTenant = request.cookies.get(TENANT_COOKIE)?.value
-      if (existingTenant !== tenant.slug) {
-        response.cookies.set(TENANT_COOKIE, tenant.slug, {
-          path: '/',
-          maxAge: COOKIE_MAX_AGE_YEAR,
-          sameSite: 'lax',
-        })
-      }
-
-      return response
+    // Direct path rewrites (/, /feed, /etkinlik, /spor, /ilceler, /yerel)
+    const rewriteTarget = CITY_PATH_REWRITES[cleanPath]
+    if (rewriteTarget) {
+      return buildCityRewrite(request, rewriteTarget, tenant)
     }
   }
 
