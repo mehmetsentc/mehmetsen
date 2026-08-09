@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Download, Share, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -11,16 +12,38 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
 }
 
-const DISMISS_KEY = 'nahaber:pwa-install-dismissed-at'
-const DISMISS_DAYS = 14
+const DISMISS_COOKIE = 'nahaber_pwa_dismissed'
+const DISMISS_LS_KEY = 'nahaber:pwa-install-dismissed'
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365 // 1 year
 
 type IOSBrowser = 'safari' | 'chrome' | 'other' | null
 
 function isStandaloneDisplay(): boolean {
+  if (typeof window === 'undefined') return false
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   )
+}
+
+function isDismissed(): boolean {
+  try {
+    if (localStorage.getItem(DISMISS_LS_KEY) === '1') return true
+  } catch { /* ignore */ }
+  try {
+    if (document.cookie.includes(`${DISMISS_COOKIE}=1`)) return true
+  } catch { /* ignore */ }
+  return false
+}
+
+function persistDismiss(): void {
+  try {
+    localStorage.setItem(DISMISS_LS_KEY, '1')
+  } catch { /* ignore */ }
+  try {
+    document.cookie = `${DISMISS_COOKIE}=1; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`
+  } catch { /* ignore */ }
 }
 
 /**
@@ -78,40 +101,36 @@ function iosGuide(iosBrowser: IOSBrowser): { summary: string; steps: string[] } 
  *   JS ile native install tetiklenemez — navigator.share() da Ana Ekrana Ekle vermez.
  */
 export function PWAInstallPrompt() {
+  const pathname = usePathname()
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [iosBrowser, setIOSBrowser] = useState<IOSBrowser>(null)
   const [installed, setInstalled] = useState(false)
   const [iosGuideOpen, setIOSGuideOpen] = useState(false)
+  const hasDismissedRef = useRef(false)
 
-  const isRecentlyDismissed = useCallback((): boolean => {
-    try {
-      const at = localStorage.getItem(DISMISS_KEY)
-      if (!at) return false
-      const ts = Number(at)
-      if (!Number.isFinite(ts)) return false
-      return Date.now() - ts < DISMISS_DAYS * 86_400_000
-    } catch {
-      return false
-    }
-  }, [])
+  const isHomepage = pathname === '/'
 
   useEffect(() => {
     setInstalled(isStandaloneDisplay())
     const { isIOS: ios, iosBrowser: browser } = detectIOSBrowser()
     setIsIOS(ios)
     setIOSBrowser(browser)
+    hasDismissedRef.current = isDismissed()
   }, [])
 
   useEffect(() => {
+    if (!isHomepage) { setVisible(false); return }
     if (installed) return
-    if (isRecentlyDismissed()) return
+    if (hasDismissedRef.current) return
 
     const onPrompt = (e: Event) => {
       e.preventDefault()
       setDeferred(e as BeforeInstallPromptEvent)
-      window.setTimeout(() => setVisible(true), 4_500)
+      if (!hasDismissedRef.current) {
+        window.setTimeout(() => setVisible(true), 4_500)
+      }
     }
 
     const onInstalled = () => {
@@ -122,9 +141,10 @@ export function PWAInstallPrompt() {
     window.addEventListener('beforeinstallprompt', onPrompt)
     window.addEventListener('appinstalled', onInstalled)
 
-    // iOS never fires beforeinstallprompt — soft guide after engagement delay
     if (isIOS) {
-      const t = window.setTimeout(() => setVisible(true), 6_000)
+      const t = window.setTimeout(() => {
+        if (!hasDismissedRef.current) setVisible(true)
+      }, 6_000)
       return () => {
         clearTimeout(t)
         window.removeEventListener('beforeinstallprompt', onPrompt)
@@ -136,16 +156,13 @@ export function PWAInstallPrompt() {
       window.removeEventListener('beforeinstallprompt', onPrompt)
       window.removeEventListener('appinstalled', onInstalled)
     }
-  }, [installed, isIOS, isRecentlyDismissed])
+  }, [installed, isIOS, isHomepage])
 
   const dismiss = useCallback(() => {
     setVisible(false)
     setIOSGuideOpen(false)
-    try {
-      localStorage.setItem(DISMISS_KEY, String(Date.now()))
-    } catch {
-      /* ignore */
-    }
+    hasDismissedRef.current = true
+    persistDismiss()
   }, [])
 
   const install = useCallback(async () => {
