@@ -242,7 +242,7 @@ const getNewsBySlugCached = unstable_cache(
 
     return findByNormalizedSlug(slug)
   },
-  ['news-by-slug-v2'],
+  ['news-by-slug-v3'],
   { revalidate: 300, tags: ['news-post'] }
 )
 

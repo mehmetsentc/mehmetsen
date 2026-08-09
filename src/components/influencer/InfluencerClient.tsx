@@ -9,7 +9,7 @@ import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import { ROUTES } from '@/constants/routes'
 import { resolveTimelineImageUrl } from '@/lib/feedMediaUtils'
 import { formatTimelineRelative } from '@/lib/timelineUtils'
-import { formatCount } from '@/lib/postUtils'
+import { formatCount, getPostPublicSource } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 import type { Post } from '@/types/post'
 
@@ -33,6 +33,7 @@ function matchesPlatform(post: Post, platform: Platform): boolean {
 }
 
 function InfluencerCard({ post }: { post: Post }) {
+  const publicSource = getPostPublicSource(post)
   const { url: imageUrl, isFallback } = resolveTimelineImageUrl(post)
   const rel = formatTimelineRelative(post.publishedAt)
   const href =
@@ -89,10 +90,10 @@ function InfluencerCard({ post }: { post: Post }) {
               {formatCount(post.commentsCount)}
             </span>
           ) : null}
-          {post.source ? (
+          {publicSource ? (
             <span className="ml-auto flex items-center gap-0.5 truncate">
               <ExternalLink className="h-3 w-3 shrink-0" />
-              {post.source}
+              {publicSource}
             </span>
           ) : null}
         </div>

@@ -324,7 +324,7 @@ function normalizeInfographic(data: NewsDocument['infographic']): PostInfographi
   return {
     title: data.title?.trim() || undefined,
     stats,
-    source: data.source?.trim() || undefined,
+    source: formatPublicSourceLabel(data.source?.trim()) || undefined,
   }
 }
 

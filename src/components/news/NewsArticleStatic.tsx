@@ -6,7 +6,7 @@ import { ChevronRight, Clock, Hash, MapPin, User } from 'lucide-react'
 import type { MediaItem, Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { getArticleBylineName, getPostCoverAlt } from '@/lib/postUtils'
+import { getArticleBylineName, getPostCoverAlt, getPostPublicSource, formatPublicSourceLabel } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
@@ -129,6 +129,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
   const publishedLabel = formatPublished(publishedAt)
   const updatedLabel = formatPublished(updatedAt)
   const bylineName = getArticleBylineName(post)
+  const publicSource = getPostPublicSource(post)
   const hasTags = post.tags.length > 0
   const hasCity = Boolean(post.city || post.citySlug)
   const hasBodyBlocks = Boolean(post.bodyBlocks && post.bodyBlocks.length > 0)
@@ -253,7 +254,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
             <InfographicBlock
               title={post.infographic.title}
               stats={post.infographic.stats}
-              source={post.infographic.source}
+              source={formatPublicSourceLabel(post.infographic.source) || undefined}
             />
           ) : null}
 
@@ -314,7 +315,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
           <ArticleRelatedGridStatic posts={relatedPosts} />
 
           {/* Kaynak satırı */}
-          {(post.source || post.sourceUrl) && (
+          {(publicSource || post.sourceUrl) && (
             <div className="mt-6 border-t border-[rgb(var(--color-border))] pt-4 text-sm text-[rgb(var(--color-muted))]">
               <span className="font-semibold">Kaynak: </span>
               {post.sourceUrl ? (
@@ -324,10 +325,10 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
                   rel="noopener noreferrer nofollow"
                   className="underline hover:text-[rgb(var(--color-text))]"
                 >
-                  {post.source || new URL(post.sourceUrl).hostname.replace(/^www\./, '')}
+                  {publicSource || new URL(post.sourceUrl).hostname.replace(/^www\./, '')}
                 </a>
               ) : (
-                <span>{post.source}</span>
+                <span>{publicSource}</span>
               )}
             </div>
           )}

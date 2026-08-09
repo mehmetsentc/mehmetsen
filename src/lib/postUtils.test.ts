@@ -43,8 +43,16 @@ function basePost(overrides: Partial<Post> = {}): Post {
 describe('formatPublicSourceLabel', () => {
   it('strips internal ingestion labels from public attribution', () => {
     expect(formatPublicSourceLabel('Çan İnsesi (scraper)')).toBe('Çan İnsesi')
+    expect(formatPublicSourceLabel('Can İnsesi (scraper)')).toBe('Can İnsesi')
     expect(formatPublicSourceLabel('Milliyet (rss)')).toBe('Milliyet')
     expect(formatPublicSourceLabel('NaHaber')).toBe('NaHaber')
+  })
+
+  it('strips fullwidth parens and trailing suffix variants', () => {
+    expect(formatPublicSourceLabel('Çan İnsesi（scraper）')).toBe('Çan İnsesi')
+    expect(formatPublicSourceLabel('Milliyet | scraper')).toBe('Milliyet')
+    expect(formatPublicSourceLabel('Hürriyet scraper')).toBe('Hürriyet')
+    expect(formatPublicSourceLabel('Sabah - RSS')).toBe('Sabah')
   })
 })
 

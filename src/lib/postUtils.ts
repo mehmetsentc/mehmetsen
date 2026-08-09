@@ -108,14 +108,24 @@ export function formatCount(count: number): string {
   return String(count)
 }
 
+const INGESTION_TAG =
+  '(?:scraper|rss|feed|ingest|worker|crawler|bot|harvester|sync)'
+
 /** Strip internal ingestion labels from public source attribution. */
 export function formatPublicSourceLabel(source: string | null | undefined): string {
   const trimmed = (source ?? '').trim()
   if (!trimmed) return ''
   return trimmed
-    .replace(/\s*\((?:scraper|rss|feed|ingest|worker)\)\s*/gi, ' ')
+    .replace(new RegExp(`\\s*[\\(（]\\s*${INGESTION_TAG}\\s*[\\)）]\\s*`, 'gi'), ' ')
+    .replace(new RegExp(`\\s*[|·•—–-]\\s*${INGESTION_TAG}\\s*$`, 'gi'), '')
+    .replace(new RegExp(`\\s+${INGESTION_TAG}\\s*$`, 'gi'), '')
     .replace(/\s{2,}/g, ' ')
     .trim()
+}
+
+/** Public-facing source label for a post (author card, Kaynak link, badges). */
+export function getPostPublicSource(post: Pick<Post, 'source'>): string {
+  return formatPublicSourceLabel(post.source)
 }
 
 /** Public byline — syndicated news shows the site brand, not upstream RSS labels. */

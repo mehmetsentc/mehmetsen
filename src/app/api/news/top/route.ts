@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminFirestore, Collections } from '@/lib/firebase/admin'
+import { formatPublicSourceLabel } from '@/lib/postUtils'
 
 export const runtime = 'nodejs'
 export const revalidate = 120
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
         imageUrl: (d.coverImageUrl as string | null) ?? null,
         categoryId: String(d.categoryId ?? ''),
         publishedAt: Number(d.publishedAt ?? 0),
-        source: d.source ? String(d.source) : undefined,
+        source: d.source ? formatPublicSourceLabel(String(d.source)) || undefined : undefined,
         spot: d.spot ? String(d.spot) : undefined,
       }
     })

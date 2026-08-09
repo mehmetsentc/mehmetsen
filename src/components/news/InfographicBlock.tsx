@@ -1,3 +1,5 @@
+import { formatPublicSourceLabel } from '@/lib/postUtils'
+
 interface InfographicStat {
   label: string
   value: string
@@ -13,6 +15,7 @@ interface InfographicBlockProps {
 /** Data-story infographic block for articles and feeds. */
 export function InfographicBlock({ title, stats, source }: InfographicBlockProps) {
   if (stats.length === 0) return null
+  const publicSource = formatPublicSourceLabel(source)
 
   return (
     <figure
@@ -44,8 +47,8 @@ export function InfographicBlock({ title, stats, source }: InfographicBlockProps
           </div>
         ))}
       </div>
-      {source ? (
-        <p className="px-5 py-2 text-[11px] text-[rgb(var(--color-muted))]">Kaynak: {source}</p>
+      {publicSource ? (
+        <p className="px-5 py-2 text-[11px] text-[rgb(var(--color-muted))]">Kaynak: {publicSource}</p>
       ) : null}
     </figure>
   )

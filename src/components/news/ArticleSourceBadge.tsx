@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { formatPublicSourceLabel } from '@/lib/postUtils'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BadgeCheck, ExternalLink, Info, ShieldCheck, X } from 'lucide-react'
 import type { Post } from '@/types/post'
@@ -19,6 +19,7 @@ interface ArticleSourceBadgeProps {
  */
 export function ArticleSourceBadge({ post }: ArticleSourceBadgeProps) {
   const [open, setOpen] = useState(false)
+  const publicSource = formatPublicSourceLabel(post.source)
 
   // Heuristik: NaHaber kendi editörleri tarafından üretilmişse "doğrulanmış"
   // sayılır. RSS-only haberlerde "kaynak: X" şeklinde nötr rozet.
@@ -44,7 +45,7 @@ export function ArticleSourceBadge({ post }: ArticleSourceBadgeProps) {
         ) : (
           <>
             <Info className="h-3.5 w-3.5" />
-            Kaynak: {post.source || 'haber kaynağı'}
+            Kaynak: {publicSource || 'haber kaynağı'}
           </>
         )}
       </button>
@@ -82,7 +83,7 @@ export function ArticleSourceBadge({ post }: ArticleSourceBadgeProps) {
                 </button>
               </header>
               <div className="space-y-4 px-5 py-5">
-                <Row label="Yayın Kaynağı" value={post.source || 'Belirtilmemiş'} />
+                <Row label="Yayın Kaynağı" value={publicSource || 'Belirtilmemiş'} />
                 {post.sourceUrl ? (
                   <Row
                     label="Orijinal Bağlantı"

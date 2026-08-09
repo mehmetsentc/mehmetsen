@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { User } from 'lucide-react'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { getArticleBylineName } from '@/lib/postUtils'
+import { getArticleBylineName, getPostPublicSource } from '@/lib/postUtils'
 import { ROUTES } from '@/constants/routes'
 import type { Post } from '@/types/post'
 
@@ -22,6 +22,7 @@ function hasPublicAuthorProfile(post: Post): boolean {
 
 export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
   const byline = getArticleBylineName(post)
+  const publicSource = getPostPublicSource(post)
   const category = getCategoryLabel(post.categoryId)
   const showProfile = hasPublicAuthorProfile(post)
   const href = showProfile ? ROUTES.AUTHOR(post.authorUsername.trim()) : null
@@ -80,8 +81,8 @@ export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
             NaHaber AI Editörü
           </p>
         ) : null}
-        {post.source ? (
-          <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">Kaynak: {post.source}</p>
+        {publicSource ? (
+          <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">Kaynak: {publicSource}</p>
         ) : null}
         {href ? (
           <p className="mt-2 text-xs font-semibold text-[rgb(var(--color-brand))]">
