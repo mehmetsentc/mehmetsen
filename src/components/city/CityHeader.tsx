@@ -3,7 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, Bell } from 'lucide-react'
+import { Search } from 'lucide-react'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { cn } from '@/lib/utils'
 import { getCityLogoPath } from '@/lib/cityBrand'
@@ -60,13 +61,11 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
           >
             <Search className="h-5 w-5" strokeWidth={2} />
           </button>
-          <Link
-            href="/notifications"
-            className="flex h-10 w-10 items-center justify-center text-white"
-            aria-label="Bildirimler"
-          >
-            <Bell className="h-5 w-5" strokeWidth={2} />
-          </Link>
+          <NotificationBell
+            variant="onBrand"
+            iconClassName="h-5 w-5"
+            buttonClassName="relative flex h-10 w-10 items-center justify-center text-white"
+          />
         </div>
       </div>
     </header>

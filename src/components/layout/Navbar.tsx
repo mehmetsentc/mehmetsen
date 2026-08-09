@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, Menu, Bell, User } from 'lucide-react'
+import { Search, Menu, User } from 'lucide-react'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
@@ -87,13 +88,10 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             >
               <Search className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
             </button>
-            <Link
-              href={ROUTES.NOTIFICATIONS}
-              className="flex h-11 w-11 items-center justify-center text-white"
-              aria-label="Bildirimler"
-            >
-              <Bell className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
-            </Link>
+            <NotificationBell
+              variant="onBrand"
+              iconClassName={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')}
+            />
             <Link
               href={profileHref}
               className="flex h-11 w-11 items-center justify-center text-white"

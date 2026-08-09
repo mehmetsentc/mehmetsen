@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { Search, Bell } from 'lucide-react'
+import { Search } from 'lucide-react'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { getCityLogoPath } from '@/lib/cityBrand'
 import { cn } from '@/lib/utils'
@@ -54,13 +55,7 @@ export function CityNavbar({ cityName, provinceSlug }: CityNavbarProps) {
           >
             <Search className="h-[22px] w-[22px]" strokeWidth={2} />
           </button>
-          <Link
-            href="/notifications"
-            className="flex h-11 w-11 items-center justify-center text-white"
-            aria-label="Bildirimler"
-          >
-            <Bell className="h-[22px] w-[22px]" strokeWidth={2} />
-          </Link>
+          <NotificationBell variant="onBrand" />
         </div>
       </div>
     </header>

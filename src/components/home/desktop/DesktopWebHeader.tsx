@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Menu, PanelLeftClose, Search } from 'lucide-react'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
 import { BreakingNewsBand } from '@/components/home/desktop/BreakingNewsBand'
@@ -197,6 +198,12 @@ export function DesktopWebHeader({
             <Search className="h-4 w-4" />
           </Link>
 
+          <NotificationBell
+            variant="onBrand"
+            iconClassName="h-4 w-4"
+            buttonClassName="relative flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-lg text-white/90 transition-colors hover:bg-white/15 hover:text-white"
+          />
+
           <DesktopHeaderAuth variant="onBrand" className="shrink-0 self-center" />
         </HeaderBar>
 
@@ -258,6 +265,11 @@ export function DesktopWebHeader({
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <span className="hidden sm:inline">Ara</span>
           </Link>
+          <NotificationBell
+            variant="onBrand"
+            iconClassName="h-4 w-4"
+            buttonClassName="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/90 transition-colors hover:bg-white/15 hover:text-white"
+          />
           <DesktopThemeToggle variant="onBrand" />
           <DesktopHeaderAuth variant="onBrand" />
         </div>
