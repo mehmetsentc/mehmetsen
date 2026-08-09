@@ -58,8 +58,18 @@ export async function middleware(request: NextRequest) {
   const tenant = await resolveTenantFromRequest(request)
 
   if (tenant) {
-    request.headers.set(TENANT_HEADER, tenant.slug)
-    request.headers.set(TENANT_PROVINCE_HEADER, tenant.provinceSlug)
+    // Build a NEW mutable headers object — request.headers is ReadonlyHeaders
+    // in Next.js 15 Edge middleware, so calling .set() on it silently fails.
+    const rewriteHeaders = new Headers(request.headers)
+    rewriteHeaders.set(TENANT_HEADER, tenant.slug)
+    rewriteHeaders.set(TENANT_PROVINCE_HEADER, tenant.provinceSlug)
+
+    // On city subdomains, /feed should show city news — redirect to city home.
+    if (pathname === '/feed' || pathname === '/feed/') {
+      const homeUrl = request.nextUrl.clone()
+      homeUrl.pathname = '/'
+      return NextResponse.redirect(homeUrl)
+    }
 
     // Rewrite city-specific paths to internal /city-site/* routes.
     // Other paths (e.g. /haber/[slug]) fall through to normal routing.
@@ -72,14 +82,14 @@ export async function middleware(request: NextRequest) {
       const existingLang = request.cookies.get(LANGUAGE_COOKIE)?.value
       const existingCountry = request.cookies.get(COUNTRY_COOKIE)?.value
       if (country && existingCountry !== country) {
-        request.cookies.set(COUNTRY_COOKIE, country)
+        rewriteHeaders.set(COUNTRY_COOKIE, country)
       }
       if (!isLanguage(existingLang) && country) {
-        request.cookies.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country))
+        rewriteHeaders.set(LANGUAGE_COOKIE, resolveDefaultLanguage(country))
       }
 
       const response = NextResponse.rewrite(rewriteUrl, {
-        request: { headers: request.headers },
+        request: { headers: rewriteHeaders },
       })
 
       // Set country/language cookies on response
