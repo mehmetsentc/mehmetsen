@@ -22,6 +22,7 @@ import { getCategoryFamily, getHomeFeedCategoryFamily } from '@/constants/config
 import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
 import { slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isPostgresReadsEnabled } from '@/db'
+import { DISTRICT_DISPLAY_NAMES } from '@/constants/cities'
 
 interface NewsDocument {
   title?: string
@@ -35,6 +36,9 @@ interface NewsDocument {
   publishedAt?: number | { _seconds?: number }
   citySlug?: string
   city?: string
+  district?: string
+  districtSlug?: string
+  tags?: string[]
   views?: number
   likesCount?: number
   commentsCount?: number
@@ -46,6 +50,51 @@ interface NewsDocument {
   seoTitle?: string
   videoUrl?: string
   readingMinutes?: number
+}
+
+/** District slug/name tag variants for Firestore array-contains (biga, Biga, #Biga, …). */
+function districtTagVariants(districtSlug: string): string[] {
+  const slug = districtSlug.trim().toLowerCase()
+  const variants = new Set<string>([slug])
+  const displayName = DISTRICT_DISPLAY_NAMES[slug]
+  if (displayName) {
+    variants.add(displayName)
+    const lower = displayName.toLocaleLowerCase('tr-TR')
+    variants.add(lower)
+    if (lower.length > 0) {
+      variants.add(lower.charAt(0).toLocaleUpperCase('tr-TR') + lower.slice(1))
+    }
+  }
+  for (const value of [...variants]) {
+    variants.add(`#${value}`)
+  }
+  return [...variants]
+}
+
+function normalizeDistrictTag(tag: string): string {
+  return tag.replace(/^#+/, '').trim().toLocaleLowerCase('tr-TR')
+}
+
+/** True when a published doc belongs to the requested city district (tags, districtSlug, or district name). */
+function newsDocMatchesDistrict(
+  data: NewsDocument,
+  citySlug: string,
+  districtSlug: string
+): boolean {
+  const docCity = (data.citySlug || '').trim().toLowerCase()
+  if (docCity && docCity !== citySlug) return false
+
+  const docDistrictSlug = (data.districtSlug || '').trim().toLowerCase()
+  if (docDistrictSlug === districtSlug) return true
+
+  const displayName = (DISTRICT_DISPLAY_NAMES[districtSlug] || '').toLocaleLowerCase('tr-TR')
+  const docDistrictName = (data.district || '').trim().toLocaleLowerCase('tr-TR')
+  if (displayName && docDistrictName === displayName) return true
+
+  const tagSet = new Set(
+    (Array.isArray(data.tags) ? data.tags : []).map((tag) => normalizeDistrictTag(String(tag)))
+  )
+  return districtTagVariants(districtSlug).some((variant) => tagSet.has(normalizeDistrictTag(variant)))
 }
 
 function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
@@ -244,48 +293,69 @@ const getCityNewsByDistrictCached = unstable_cache(
   async (citySlug: string, districtSlug: string, limitCount: number) => {
     try {
       const db = getAdminFirestore()
-      const snap = await db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .where('citySlug', '==', citySlug)
-        .where('districtSlug', '==', districtSlug)
-        .orderBy('publishedAt', 'desc')
-        .limit(limitCount)
-        .get()
-
+      const seen = new Set<string>()
       const items: NewsItem[] = []
-      for (const doc of snap.docs) {
-        const item = docToNewsItem(doc.id, doc.data() as NewsDocument)
-        if (item) items.push(item)
+
+      const addDoc = (id: string, data: NewsDocument) => {
+        if (seen.has(id)) return
+        if (!newsDocMatchesDistrict(data, citySlug, districtSlug)) return
+        const item = docToNewsItem(id, data)
+        if (!item) return
+        seen.add(id)
+        items.push(item)
       }
 
-      if (items.length === 0) {
-        const fallback = await db
+      // Primary: district slug/name in tags[] (geoEngine + manual tagging).
+      const variants = districtTagVariants(districtSlug)
+      await Promise.allSettled(
+        variants.map(async (variant) => {
+          const snap = await db
+            .collection(NEWS_COLLECTION)
+            .where('status', '==', 'published')
+            .where('tags', 'array-contains', variant)
+            .limit(limitCount * 3)
+            .get()
+
+          for (const doc of snap.docs) {
+            addDoc(doc.id, doc.data() as NewsDocument)
+          }
+        })
+      )
+
+      // Secondary: scan recent city news for districtSlug / district / tags matches.
+      if (items.length < limitCount) {
+        const citySnap = await db
           .collection(NEWS_COLLECTION)
           .where('status', '==', 'published')
           .where('citySlug', '==', citySlug)
           .orderBy('publishedAt', 'desc')
-          .limit(limitCount)
+          .limit(Math.max(limitCount * 5, 100))
           .get()
 
-        for (const doc of fallback.docs) {
-          const item = docToNewsItem(doc.id, doc.data() as NewsDocument)
-          if (item) items.push(item)
+        for (const doc of citySnap.docs) {
+          addDoc(doc.id, doc.data() as NewsDocument)
         }
       }
-      return items
+
+      items.sort((a, b) => {
+        const ta = a.publishedAt ? Date.parse(a.publishedAt) : 0
+        const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0
+        return tb - ta
+      })
+
+      return items.slice(0, limitCount)
     } catch (error) {
       console.warn('[cityNewsService] getCityNewsByDistrict failed:', error)
       return []
     }
   },
-  ['city-news-district-v1'],
+  ['city-news-district-v2'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
 /**
  * Fetch published news for a city + district, newest first.
- * Falls back to city-wide news if no district-specific results.
+ * Matches district via tags[], districtSlug, or district display name.
  */
 export async function getCityNewsByDistrict(
   citySlug: string,
