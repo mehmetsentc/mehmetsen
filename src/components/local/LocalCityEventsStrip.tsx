@@ -10,6 +10,8 @@ import {
   formatEventDayBadge,
   getEventCategoryLabel,
   getEventCategoryStyle,
+  getUpcomingStartsAtLowerBound,
+  isEventUpcoming,
   resolveEventImageUrl,
 } from '@/lib/eventUtils'
 import { cn } from '@/lib/utils'
@@ -130,9 +132,9 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
     const q = query(
       collection(db, Collections.EVENTS),
       where('citySlug', '==', citySlug),
-      where('startsAt', '>=', nowIso),
+      where('startsAt', '>=', getUpcomingStartsAtLowerBound(nowIso)),
       orderBy('startsAt', 'asc'),
-      limit(15)
+      limit(30)
     )
 
     async function fetchStrip() {
@@ -142,7 +144,7 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
         if (cancelled) return
         docs = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as NaEvent))
-          .filter((e) => e.status !== 'cancelled')
+          .filter((e) => e.status !== 'cancelled' && isEventUpcoming(e, nowIso))
           .slice(0, 10)
       } catch {
         // Firestore failed (likely missing composite index) — try aggregate
@@ -161,7 +163,7 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
             const data = await res.json()
             const all: NaEvent[] = Array.isArray(data.events) ? data.events : []
             docs = all
-              .filter((e) => e.startsAt >= nowIso && e.status !== 'cancelled')
+              .filter((e) => isEventUpcoming(e, nowIso) && e.status !== 'cancelled')
               .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
               .slice(0, 10)
           }

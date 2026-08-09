@@ -1,7 +1,6 @@
 import {
   endOfDay,
   endOfWeek,
-  isWithinInterval,
   startOfDay,
   startOfWeek,
 } from 'date-fns'
@@ -71,8 +70,9 @@ export function filterCityEvents(
 
     if (range) {
       const start = new Date(event.startsAt)
-      if (Number.isNaN(start.getTime())) return false
-      if (!isWithinInterval(start, range)) return false
+      const end = new Date(event.endsAt ?? event.startsAt)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false
+      if (end < range.start || start > range.end) return false
     }
 
     return true

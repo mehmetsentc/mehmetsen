@@ -129,6 +129,28 @@ export function formatEventDisplayDate(event: EventDateFields): string {
   return formatEventDateTime(event.startsAt, event.endsAt, event.dateLabel)
 }
 
+/** When an event is no longer active — `endsAt` when set, otherwise `startsAt`. */
+export function getEventActiveUntilIso(event: EventDateFields): string {
+  return event.endsAt?.trim() || event.startsAt
+}
+
+/** True while the event has not ended (multi-day / bienal-safe). */
+export function isEventUpcoming(
+  event: EventDateFields,
+  nowIso: string = new Date().toISOString()
+): boolean {
+  return getEventActiveUntilIso(event) >= nowIso
+}
+
+/** Firestore lookback so ongoing events with past `startsAt` still fetch. */
+export const UPCOMING_EVENT_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000
+
+export function getUpcomingStartsAtLowerBound(
+  nowIso: string = new Date().toISOString()
+): string {
+  return new Date(new Date(nowIso).getTime() - UPCOMING_EVENT_LOOKBACK_MS).toISOString()
+}
+
 /** True when event is free to attend (explicit flag or no ticket URL). */
 export function isEventFree(event: { isFree?: boolean; ticketUrl?: string }): boolean {
   if (event.isFree === true) return true

@@ -5,6 +5,7 @@ import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
 import { eventProviders, getEnabledProviders } from '@/services/eventProviders'
 import { providerLog } from '@/services/eventProviders/shared'
 import type { EventTimelineStatus, NaEvent } from '@/types/event'
+import { isEventUpcoming } from '@/lib/eventUtils'
 
 /**
  * Daily server-side sync: scrape Biletix / Bubilet / Biletino for all 81
@@ -46,8 +47,11 @@ function parseSourceHash(eventId: string, source?: string): string {
   return idx >= 0 ? eventId.slice(idx + 1) : eventId
 }
 
-function timelineStatusFor(startsAt: string, nowIso: string): EventTimelineStatus {
-  return startsAt >= nowIso ? 'upcoming' : 'past'
+function timelineStatusFor(
+  event: Pick<NaEvent, 'startsAt' | 'endsAt'>,
+  nowIso: string
+): EventTimelineStatus {
+  return isEventUpcoming(event, nowIso) ? 'upcoming' : 'past'
 }
 
 function toFirestorePayload(
@@ -65,7 +69,7 @@ function toFirestorePayload(
     sourceId: event.sourceId ?? event.externalId ?? sourceHash,
     sourceHash,
     fingerprint: event.fingerprint ?? buildEventFingerprint(event),
-    timelineStatus: event.timelineStatus ?? timelineStatusFor(event.startsAt, nowIso),
+    timelineStatus: event.timelineStatus ?? timelineStatusFor(event, nowIso),
     syncedAt,
   }
 }
@@ -163,7 +167,7 @@ function isUnchanged(
 
   const nextFingerprint = event.fingerprint ?? buildEventFingerprint(event)
   const storedFingerprint = existing.fingerprint as string | undefined
-  const nextTimeline = timelineStatusFor(event.startsAt, nowIso)
+  const nextTimeline = timelineStatusFor(event, nowIso)
   const storedTimeline = existing.timelineStatus as EventTimelineStatus | undefined
 
   if (!storedFingerprint) return false

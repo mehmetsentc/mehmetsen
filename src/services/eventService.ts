@@ -14,6 +14,10 @@ import {
 import { db, Collections } from '@/lib/firebase/firestore'
 import { devLog, withTimeout } from '@/lib/asyncUtils'
 import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
+import {
+  getUpcomingStartsAtLowerBound,
+  isEventUpcoming,
+} from '@/lib/eventUtils'
 import type { EventCategory, EventReview, EventTimelineStatus, NaEvent } from '@/types/event'
 
 export const EVENT_PAGE_SIZE = 12
@@ -47,22 +51,19 @@ function isVisible(event: NaEvent): boolean {
 
 function effectiveTimelineStatus(event: NaEvent, nowIso: string): EventTimelineStatus {
   // Always derive from actual date — Firestore timelineStatus field can be stale
-  return event.startsAt >= nowIso ? 'upcoming' : 'past'
+  return isEventUpcoming(event, nowIso) ? 'upcoming' : 'past'
 }
 
 function matchesTimeRange(event: NaEvent, timeRange: EventTimeRange, nowIso: string): boolean {
-  // Use startsAt as the primary date; fall back to endsAt if available
   const eventDate = event.startsAt ?? ''
   const endDate = event.endsAt ?? eventDate
 
   if (timeRange === 'upcoming') {
-    // Upcoming: event hasn't ended yet (endDate >= now)
-    return endDate >= nowIso
-  } else {
-    // Past: event ended, but no older than 3 days
-    const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
-    return endDate < nowIso && eventDate >= threeDaysAgo
+    return isEventUpcoming(event, nowIso)
   }
+
+  const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+  return endDate < nowIso && eventDate >= threeDaysAgo
 }
 
 /** Client-side filter for live aggregate results and Firestore fallback scans. */
@@ -107,9 +108,9 @@ async function runOrderedFallback(
 
   const constraints: Parameters<typeof query>[1][] = []
 
-  // Add date filter so past events don't flood the upcoming list
+  // Widen the window so multi-day events that already started still fetch.
   if (timeRange === 'upcoming') {
-    constraints.push(where('startsAt', '>=', nowIso))
+    constraints.push(where('startsAt', '>=', getUpcomingStartsAtLowerBound(nowIso)))
   } else {
     const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
     constraints.push(where('startsAt', '<', nowIso))
@@ -162,8 +163,7 @@ export const eventService = {
       const constraints: Parameters<typeof query>[1][] = []
 
       if (timeRange === 'upcoming') {
-        // Only events that haven't ended yet
-        constraints.push(where('startsAt', '>=', nowIso))
+        constraints.push(where('startsAt', '>=', getUpcomingStartsAtLowerBound(nowIso)))
       } else {
         // Past: ended, within last 3 days
         const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
@@ -184,7 +184,10 @@ export const eventService = {
         'events'
       )
 
-      const events = snap.docs.map(toEvent).filter(isVisible)
+      const events = snap.docs
+        .map(toEvent)
+        .filter(isVisible)
+        .filter((event) => matchesTimeRange(event, timeRange, nowIso))
 
       if (events.length === 0 && !cursor) {
         return runOrderedFallback(options, nowIso, 'empty-primary')
