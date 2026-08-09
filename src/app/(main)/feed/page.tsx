@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { FeedPageClient } from '@/components/feed/FeedPageClient'
 import { FeedStructuredData } from '@/components/home/desktop/FeedStructuredData'
 import { getSiteUrl } from '@/lib/seo'
 import { getLcpPreload } from '@/lib/lcpImage'
 import { getHomeFeedInitialData } from '@/services/newsService.server'
 import { ROUTES } from '@/constants/routes'
-import { getActiveTenant } from '@/lib/tenantContext'
 
 /**
  * force-dynamic prevents Vercel CDN from caching this page with ISR.
@@ -15,6 +15,8 @@ import { getActiveTenant } from '@/lib/tenantContext'
  * by middleware.
  */
 export const dynamic = 'force-dynamic'
+
+const NATIONAL_HOSTS = new Set(['nahaber.com', 'www.nahaber.com', 'localhost', '127.0.0.1'])
 
 const siteUrl = getSiteUrl()
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -69,11 +71,17 @@ export const metadata: Metadata = {
 }
 
 export default async function FeedPage() {
-  // Belt-and-suspenders: if middleware rewrite to /city-site didn't fire
-  // (edge config issue, build mismatch), fall back to the root page which
-  // renders city content independently of middleware.
-  const tenant = await getActiveTenant()
-  if (tenant) redirect('/')
+  // If this is a city subdomain (middleware rewrite to /city-site didn't fire),
+  // redirect to root which renders city content independently of middleware.
+  // Uses a direct host check — no dynamic imports that could silently fail
+  // in this serverless bundle.
+  if (process.env.CITY_NETWORK_ENABLED === 'true') {
+    const h = await headers()
+    const host = (h.get('host') ?? '').split(':')[0].toLowerCase()
+    if (!NATIONAL_HOSTS.has(host) && host.endsWith('.nahaber.com')) {
+      redirect('/')
+    }
+  }
 
   const data = await getHomeFeedInitialData()
 

@@ -1,13 +1,15 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { LocalNewsClient } from '@/components/local/LocalNewsClient'
 import { getBreakingSliderItems } from '@/services/newsService.server'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { NewsItem } from '@/types/newsItem'
-import { getActiveTenant } from '@/lib/tenantContext'
 
 export const dynamic = 'force-dynamic'
+
+const NATIONAL_HOSTS = new Set(['nahaber.com', 'www.nahaber.com', 'localhost', '127.0.0.1'])
 
 const siteUrl = getSiteUrl()
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -39,8 +41,13 @@ export const metadata: Metadata = {
 }
 
 export default async function LocalNewsPage() {
-  const tenant = await getActiveTenant()
-  if (tenant) redirect('/')
+  if (process.env.CITY_NETWORK_ENABLED === 'true') {
+    const h = await headers()
+    const host = (h.get('host') ?? '').split(':')[0].toLowerCase()
+    if (!NATIONAL_HOSTS.has(host) && host.endsWith('.nahaber.com')) {
+      redirect('/')
+    }
+  }
 
   const jsonLd = {
     '@context': 'https://schema.org',
