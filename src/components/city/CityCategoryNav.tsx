@@ -14,7 +14,7 @@ export function CityCategoryNav() {
   }
 
   const navItems: CategoryNavItem[] = [
-    { id: '__all', label: 'Tümü', href: '/' },
+    { id: '__all', label: 'Hepsi', href: '/' },
     ...categories.map((cat) => ({
       id: cat.id,
       label: cat.name,

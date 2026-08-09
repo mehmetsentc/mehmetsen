@@ -350,11 +350,44 @@ const getCityCategoriesCached = unstable_cache(
         idSet.add(cat.parentId)
       }
     }
-    return DEFAULT_CATEGORIES
-      .filter((cat) => idSet.has(cat.id) && !cat.parentId)
-      .map((cat) => ({ id: cat.id, name: cat.name, slug: cat.slug ?? cat.id }))
+
+    const {
+      CITY_CATEGORY_CHIPS,
+      CITY_DYNAMIC_NAV_CHIP_IDS,
+      CITY_DYNAMIC_NAV_EXCLUDED_IDS,
+    } = await import('@/constants/cityCategories')
+
+    const chipByCategoryId = new Map(
+      CITY_CATEGORY_CHIPS
+        .filter((chip) => chip.categoryId)
+        .map((chip) => [chip.categoryId!, chip])
+    )
+
+    const results: CityCategory[] = []
+    const seen = new Set<string>()
+
+    for (const categoryId of CITY_DYNAMIC_NAV_CHIP_IDS) {
+      if (!idSet.has(categoryId) || seen.has(categoryId)) continue
+      const chip = chipByCategoryId.get(categoryId)
+      results.push({
+        id: categoryId,
+        name: chip?.label ?? categoryId,
+        slug: categoryId,
+      })
+      seen.add(categoryId)
+    }
+
+    for (const cat of DEFAULT_CATEGORIES) {
+      if (cat.parentId || !idSet.has(cat.id)) continue
+      if (CITY_DYNAMIC_NAV_EXCLUDED_IDS.has(cat.id) || seen.has(cat.id)) continue
+      if (chipByCategoryId.has(cat.id)) continue
+      results.push({ id: cat.id, name: cat.name, slug: cat.slug ?? cat.id })
+      seen.add(cat.id)
+    }
+
+    return results
   },
-  ['city-categories-v1'],
+  ['city-categories-v2'],
   { revalidate: 300, tags: ['city-news'] }
 )
 
