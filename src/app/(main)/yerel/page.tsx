@@ -1,39 +1,22 @@
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { LocalNewsClient } from '@/components/local/LocalNewsClient'
 import { getBreakingSliderItems } from '@/services/newsService.server'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { NewsItem } from '@/types/newsItem'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityNews, getCityCategories } from '@/services/cityNewsService.server'
-import { CityFeedClient } from '@/components/city/CityFeedClient'
-import { CityLayoutClient } from '@/components/city/CityLayoutClient'
+import { getCitySlugFromHeaders } from '@/lib/cityHost'
 
 export const dynamic = 'force-dynamic'
-
-const NATIONAL_HOSTS = new Set(['nahaber.com', 'www.nahaber.com', 'localhost', '127.0.0.1'])
 
 const siteUrl = getSiteUrl()
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 const canonicalUrl = `${siteUrl}${ROUTES.LOCAL}`
 const ogImage = buildCategoryOgUrl('Yerel Haberler — 81 İlden Son Dakika', 'Yerel')
 
-function getCitySlugFromHost(host: string): string | null {
-  const clean = host.split(':')[0].toLowerCase()
-  if (NATIONAL_HOSTS.has(clean)) return null
-  const m = clean.match(/^([a-z0-9-]+)\.nahaber\.com$/)
-  if (m && m[1] !== 'www') return m[1]
-  const local = clean.match(/^([a-z0-9-]+)\.localhost$/)
-  if (local) return local[1]
-  return null
-}
-
 export async function generateMetadata(): Promise<Metadata> {
-  const h = await headers()
-  const citySlug = getCitySlugFromHost(
-    h.get('x-forwarded-host') || h.get('host') || ''
-  )
+  const citySlug = await getCitySlugFromHeaders()
 
   if (citySlug) {
     const cityName = getCityCategoryName(citySlug)
@@ -79,27 +62,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LocalNewsPage() {
-  const h = await headers()
-  const citySlug = getCitySlugFromHost(
-    h.get('x-forwarded-host') || h.get('host') || ''
-  )
+  const citySlug = await getCitySlugFromHeaders()
 
   if (citySlug) {
-    const displayName = getCityCategoryName(citySlug)
-    const [items, categories] = await Promise.all([
-      getCityNews(citySlug, 30),
-      getCityCategories(citySlug),
-    ])
-    return (
-      <CityLayoutClient
-        tenantSlug={citySlug}
-        displayName={displayName}
-        provinceSlug={citySlug}
-        categories={categories}
-      >
-        <CityFeedClient citySlug={citySlug} initialItems={items} categories={categories} />
-      </CityLayoutClient>
-    )
+    redirect('/')
   }
 
   const jsonLd = {
