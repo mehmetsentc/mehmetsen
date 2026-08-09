@@ -37,7 +37,8 @@ export async function getActiveTenant(): Promise<ActiveTenant | null> {
     // 3. Direct host detection — middleware-independent fallback.
     // If middleware didn't run (e.g. build mismatch, edge config issue),
     // we can still detect the city subdomain from the Host header.
-    const host = (h.get('host') ?? '').replace(/:.*/, '').toLowerCase()
+    // Prefer x-forwarded-host (Vercel proxy) over host (may be internal).
+    const host = ((h.get('x-forwarded-host') || h.get('host')) ?? '').replace(/:.*/, '').toLowerCase()
     const prodMatch = host.match(/^([a-z0-9-]+)\.nahaber\.com$/)
     const localhostMatch = host.match(/^([a-z0-9-]+)\.localhost$/)
     const subdomainSlug = (prodMatch?.[1] !== 'www' && prodMatch?.[1]) ||
