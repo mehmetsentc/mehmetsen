@@ -24,6 +24,8 @@ import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 import { ROUTES } from '@/constants/routes'
 import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
+import { getAdminCategoryGroups } from '@/constants/config'
+import { getCategoryLabel } from '@/lib/newsMapper'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -206,6 +208,102 @@ function SeoPreview({ post }: { post: AdminNewsItem }) {
   )
 }
 
+// ── Inline category changer ────────────────────────────────────────────────
+function InlineCategoryChanger({
+  postId,
+  categoryId,
+  onCategoryChange,
+  disabled,
+}: {
+  postId: string
+  categoryId: string
+  onCategoryChange: (postId: string, categoryId: string) => Promise<void>
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [localCategoryId, setLocalCategoryId] = useState(categoryId)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setLocalCategoryId(categoryId)
+  }, [categoryId, postId])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const label = getCategoryLabel(localCategoryId) || localCategoryId || 'Kategori'
+
+  const handleSelect = async (next: string) => {
+    if (!next || next === localCategoryId || saving) {
+      setOpen(false)
+      return
+    }
+    const prev = localCategoryId
+    setLocalCategoryId(next)
+    setSaving(true)
+    setOpen(false)
+    try {
+      await onCategoryChange(postId, next)
+    } catch {
+      setLocalCategoryId(prev)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={() => !disabled && !saving && setOpen((v) => !v)}
+        disabled={disabled || saving}
+        className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[10px] font-medium text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] disabled:opacity-50"
+        title="Kategori değiştir"
+      >
+        <Tag className="h-2.5 w-2.5" />
+        <span>{label}</span>
+        {saving ? (
+          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+        ) : (
+          <ChevronDown className={cn('h-2.5 w-2.5 opacity-60 transition-transform', open && 'rotate-180')} />
+        )}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-52 max-h-64 overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl">
+          {getAdminCategoryGroups().map((group) => (
+            <div key={group.label} className="mb-2 last:mb-0">
+              <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                {group.label}
+              </p>
+              {group.categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => void handleSelect(cat.id)}
+                  className={cn(
+                    'block w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[rgb(var(--color-surface))]',
+                    cat.id === localCategoryId &&
+                      'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                  )}
+                >
+                  {cat.parentId ? `↳ ${cat.name}` : cat.name}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── News Row ───────────────────────────────────────────────────────────────
 function newsHasShareImage(post: AdminNewsItem): boolean {
   if (post.coverImageUrl?.trim()) return true
@@ -330,6 +428,7 @@ function NewsRow({
   onReject,
   onRemove,
   onEdit,
+  onCategoryChange,
   actionLoading,
 }: {
   post: AdminNewsItem
@@ -339,6 +438,7 @@ function NewsRow({
   onReject: (p: AdminNewsItem) => void
   onRemove: (id: string) => void
   onEdit: (p: AdminNewsItem) => void
+  onCategoryChange: (postId: string, categoryId: string) => Promise<void>
   actionLoading: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -513,7 +613,12 @@ function NewsRow({
             )}
           </div>
           <div className="mt-1 flex flex-wrap gap-3 text-[10px] text-[rgb(var(--color-muted))]">
-            {post.categoryId && <span className="flex items-center gap-1"><Tag className="h-2.5 w-2.5" />{post.categoryId}</span>}
+            <InlineCategoryChanger
+              postId={post.id}
+              categoryId={post.categoryId ?? ''}
+              onCategoryChange={onCategoryChange}
+              disabled={busy}
+            />
             {post.readingTimeMinutes && <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{post.readingTimeMinutes} dk okuma</span>}
             {(post as AdminNewsItem & { citySlug?: string }).citySlug && <span className="flex items-center gap-1"><Globe className="h-2.5 w-2.5" />{(post as AdminNewsItem & { citySlug?: string }).citySlug}</span>}
             <span className="flex items-center gap-1 font-semibold tabular-nums text-[rgb(var(--color-text))]" title="Oturum başına en fazla 1 sayım">
@@ -1105,6 +1210,43 @@ function AdminNewsDesktopPage() {
     setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p))
   }
 
+  const handleCategoryChange = useCallback(async (postId: string, categoryId: string) => {
+    const prevPost = posts.find((p) => p.id === postId)
+    if (!prevPost) return
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, categoryId, isBreaking: categoryId === 'son-dakika' }
+          : p
+      )
+    )
+
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/news/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          categoryId,
+          isBreaking: categoryId === 'son-dakika',
+        }),
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(err.error ?? 'Kategori güncellenemedi')
+      }
+      toast.success('Kategori güncellendi')
+    } catch (e) {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? prevPost : p)))
+      toast.error(e instanceof Error ? e.message : 'Kategori güncellenemedi')
+      throw e
+    }
+  }, [posts])
+
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const next = new Set(prev)
@@ -1381,6 +1523,7 @@ function AdminNewsDesktopPage() {
                 onReject={handleReject}
                 onRemove={handleRemove}
                 onEdit={handleEdit}
+                onCategoryChange={handleCategoryChange}
                 actionLoading={actionLoading}
               />
             ))
