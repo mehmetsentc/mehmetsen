@@ -208,6 +208,7 @@ export async function GET(
   const photo = await embedCoverTopImage(
     [overrideImage, ...(article ? bestImageCandidates(article) : [])],
     W, H, 84,
+    true, // full-bleed cover — no pillarbox/letterbox
   )
 
   const title = clampHeadline(rawTitle, TITLE_MAX)

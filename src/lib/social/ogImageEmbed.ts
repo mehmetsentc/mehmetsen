@@ -64,6 +64,8 @@ export async function embedCoverTopImage(
   targetW: number,
   targetH: number,
   quality = 84,
+  /** When true, always crop to fill — no contain+blur pillarbox fallback. */
+  forceCover = false,
 ): Promise<string> {
   const targetAspect = targetW / targetH
 
@@ -82,7 +84,7 @@ export async function embedCoverTopImage(
       const srcAspect = srcW / srcH
 
       const aspectRatio = srcAspect / targetAspect
-      const needsContainBlur = aspectRatio < 0.85 || aspectRatio > 1.18
+      const needsContainBlur = !forceCover && (aspectRatio < 0.85 || aspectRatio > 1.18)
 
       let jpeg: Buffer
 

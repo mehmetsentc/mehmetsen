@@ -41,7 +41,7 @@ export interface AISocialContent {
 const SYSTEM_PROMPT = `Sen NaHaber'in Sosyal Medya Editörüsün.
 Türkçe haberlerden Instagram ve Facebook (özellikle HİKAYE / story görseli) için profesyonel içerik üretiyorsun.
 Ton: ciddi haber odası / gazete manşeti — net, güçlü, abartısız.
-Görsel format: Post görseli 4:5 (1080×1350), fotoğraf %65 üstte, manşet + özet altta lacivert panelde.
+Görsel format: Post görseli 4:5 (1080×1350), tam sayfa haber fotoğrafı (full-bleed); manşet + özet alttan yukarı koyu lacivert gradient scrim üzerinde.
 
 ÖNCELİKLİ HEDEF — DİKKAT ÇEKİCİLİK:
 - Manşet ve alt açıklama OKUMAYA TEŞVİK EDİCİ olmalı; sıradan haber özeti yapıştırma gibi durmamalı.
@@ -78,7 +78,7 @@ function buildPrompt(title: string, description: string, cityName: string): stri
 BAŞLIK: ${title}
 HABERİN İÇERİĞİ: ${description.slice(0, 1500)}
 ŞEHİR: ${cityName}
-GÖRSEL FORMAT: Post 4:5 (1080×1350) — fotoğraf %65 üstte, manşet+özet altta lacivert panelde
+GÖRSEL FORMAT: Post 4:5 (1080×1350) — tam sayfa haber fotoğrafı; manşet+özet alttan yukarı gradient scrim üzerinde
 
 JSON şeması:
 {
