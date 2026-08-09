@@ -15,6 +15,8 @@ import { getNewsBySlug, getSuggestedPostsServer } from '@/services/newsService.s
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { ROUTES } from '@/constants/routes'
 import { getLcpPreload } from '@/lib/lcpImage'
+import { getActiveTenant } from '@/lib/tenantContext'
+import { getCitySlugFromHeaders } from '@/lib/cityHost'
 
 // ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
 export const revalidate = 300
@@ -76,9 +78,15 @@ export default async function NewsDetailPage({ params }: PageProps) {
   const jsonLd = buildNewsArticleJsonLd(post)
   const breadcrumbJsonLd = buildNewsBreadcrumbJsonLd(post)
   const videoJsonLd = buildVideoObjectJsonLd(post)
+
+  const tenant = await getActiveTenant()
+  const hostCitySlug = tenant ? null : await getCitySlugFromHeaders()
+  const citySlug = tenant?.provinceSlug ?? hostCitySlug
+
   const relatedPosts = await getSuggestedPostsServer(post.id, {
     categoryId: post.categoryId ?? 'gundem',
     limit: 4,
+    ...(citySlug ? { citySlug, tags: post.tags } : {}),
   })
 
   const heroImage = post.coverImageUrl?.trim() || null
@@ -113,7 +121,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
       <ArticleCopyGuard />
       <ArticlePageChrome post={post} />
       <NewsArticleStatic post={post} relatedPosts={relatedPosts} />
-      <NewsArticleInteractive post={post} />
+      <NewsArticleInteractive post={post} citySlug={citySlug} />
     </>
   )
 }

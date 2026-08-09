@@ -62,9 +62,11 @@ const ArticleReactions = dynamic(
 
 interface NewsArticleInteractiveProps {
   post: Post
+  /** When set (city subdomain), related rail is scoped to this province slug. */
+  citySlug?: string | null
 }
 
-export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
+export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiveProps) {
   const [suggested, setSuggested] = useState<Post[]>([])
   const { leadText, bodyText } = parseArticleContent(post)
 
@@ -86,12 +88,14 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
     const loadRelated = async () => {
       if (cancelled) return
       try {
-        // /api/feed/category → 5 dk ISR cache, direkt Firestore okuması yok
         const categoryId = post.categoryId ?? 'gundem'
-        const res = await fetch(`/api/feed/category?id=${categoryId}&limit=12`)
+        const res = citySlug
+          ? await fetch(`/api/city/news?category=${encodeURIComponent(categoryId)}&limit=12`)
+          : await fetch(`/api/feed/category?id=${encodeURIComponent(categoryId)}&limit=12`)
         if (!res.ok || cancelled) return
-        const data = (await res.json()) as CategoryFeedPage
-        const filtered = data.items
+        const data = (await res.json()) as CategoryFeedPage | { items: CategoryFeedPage['items'] }
+        const items = 'items' in data ? data.items : []
+        const filtered = items
           .filter((i) => i.id !== post.id)
           .slice(0, 8)
           .map(newsItemToPost)
@@ -114,7 +118,7 @@ export function NewsArticleInteractive({ post }: NewsArticleInteractiveProps) {
       cancelled = true
       globalThis.clearTimeout(t)
     }
-  }, [post.id, post.categoryId])
+  }, [post.id, post.categoryId, citySlug])
 
   return (
     <NewsArticlePage className="pb-10" articleId={post.id}>

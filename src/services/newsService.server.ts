@@ -828,20 +828,62 @@ export async function getOnThisDayNews(
   return items.slice(0, limitCount)
 }
 
+function normalizeSuggestedTag(tag: string): string {
+  return tag.replace(/^#+/, '').trim().toLocaleLowerCase('tr-TR')
+}
+
+/** Prefer same category, then overlapping tags (city tenants). */
+function rankSuggestedPosts(
+  posts: Post[],
+  options: { categoryId?: string | null; tags?: string[] }
+): Post[] {
+  const categoryId = options.categoryId?.trim()
+  const refTags = new Set(
+    (options.tags ?? []).map(normalizeSuggestedTag).filter(Boolean)
+  )
+
+  if (!categoryId && refTags.size === 0) return posts
+
+  return [...posts].sort((a, b) => {
+    const aCat = categoryId && a.categoryId === categoryId ? 1 : 0
+    const bCat = categoryId && b.categoryId === categoryId ? 1 : 0
+    if (aCat !== bCat) return bCat - aCat
+
+    if (refTags.size > 0) {
+      const aTagScore = (a.tags ?? []).filter((t) => refTags.has(normalizeSuggestedTag(t))).length
+      const bTagScore = (b.tags ?? []).filter((t) => refTags.has(normalizeSuggestedTag(t))).length
+      if (aTagScore !== bTagScore) return bTagScore - aTagScore
+    }
+
+    return 0
+  })
+}
+
 /** Published posts in the same category for crawlable internal links. Cached 10 min per category. */
 const getSuggestedPostsCached = unstable_cache(
-  async (categoryId: string | null, fetchLimit: number): Promise<Post[]> => {
+  async (categoryId: string | null, citySlug: string | null, fetchLimit: number): Promise<Post[]> => {
     try {
       const db = getAdminFirestore()
-      const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
+      let q = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
+
+      if (citySlug) {
+        const snap = await q
+          .where('citySlug', '==', citySlug)
+          .orderBy('publishedAt', 'desc')
+          .limit(fetchLimit)
+          .get()
+        return snap.docs
+          .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+          .filter((post): post is Post => post !== null)
+      }
 
       const snap = categoryId
-        ? await base
+        ? await q
             .where('categoryId', '==', categoryId)
             .orderBy('publishedAt', 'desc')
             .limit(fetchLimit)
             .get()
-        : await base.orderBy('publishedAt', 'desc').limit(fetchLimit).get()
+        : await q.orderBy('publishedAt', 'desc').limit(fetchLimit).get()
 
       return snap.docs
         .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
@@ -851,18 +893,23 @@ const getSuggestedPostsCached = unstable_cache(
       return []
     }
   },
-  ['suggested-posts-v1'],
+  ['suggested-posts-v2'],
   { revalidate: 600, tags: ['news-post'] }
 )
 
 export async function getSuggestedPostsServer(
   excludeId: string,
-  options?: { categoryId?: string; limit?: number }
+  options?: { categoryId?: string; limit?: number; citySlug?: string; tags?: string[] }
 ): Promise<Post[]> {
   const limitCount = options?.limit ?? 4
   const categoryId = options?.categoryId?.trim() || null
-  const posts = await getSuggestedPostsCached(categoryId, limitCount + 5)
-  return posts.filter((post) => post.id !== excludeId).slice(0, limitCount)
+  const citySlug = options?.citySlug?.trim().toLowerCase() || null
+  const fetchLimit = citySlug ? Math.max(limitCount + 20, 30) : limitCount + 5
+  const posts = await getSuggestedPostsCached(categoryId, citySlug, fetchLimit)
+  const ranked = citySlug
+    ? rankSuggestedPosts(posts, { categoryId, tags: options?.tags })
+    : posts
+  return ranked.filter((post) => post.id !== excludeId).slice(0, limitCount)
 }
 
 function tagVariants(raw: string): string[] {
