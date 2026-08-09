@@ -1,7 +1,19 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCityCategoryName } from '@/constants/cities'
+import { getCityIconMetadata } from '@/lib/cityBrand'
+
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getActiveTenant()
+  if (!tenant) return {}
+
+  const icons = getCityIconMetadata(tenant.provinceSlug)
+  if (!icons) return {}
+
+  return { icons }
+}
 
 /**
  * City tenant layout — wraps all city-site pages.

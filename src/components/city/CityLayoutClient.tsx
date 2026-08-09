@@ -21,14 +21,16 @@ interface CityLayoutClientProps {
 
 const CityShell = memo(function CityShell({
   displayName,
+  provinceSlug,
   children,
 }: {
   displayName: string
+  provinceSlug: string
   children: React.ReactNode
 }) {
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]">
-      <CityHeader cityName={displayName} />
+      <CityHeader cityName={displayName} provinceSlug={provinceSlug} />
 
       <PullToRefresh>
         <main
@@ -63,7 +65,7 @@ export function CityLayoutClient({
             <CityTenantProvider
               tenant={{ slug: tenantSlug, displayName, provinceSlug }}
             >
-              <CityShell displayName={displayName}>
+              <CityShell displayName={displayName} provinceSlug={provinceSlug}>
                 {children}
               </CityShell>
             </CityTenantProvider>
