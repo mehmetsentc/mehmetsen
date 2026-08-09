@@ -434,7 +434,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
     }
 
-    // ── Onyedi Tivi markalı görsel — OG route (1080×1080) ────────────────
+    // ── Onyedi Tivi markalı görsel — OG route (1080×1350 · 4:5) ────────────────
     // ?v=timestamp → CDN + Next.js data cache bypass — her paylaşımda taze görsel
     const socialImageUrl: string = `https://nahaber.com/api/og/social/${id}?v=${Date.now()}`
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)

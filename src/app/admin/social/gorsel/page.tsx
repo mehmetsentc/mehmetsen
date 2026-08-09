@@ -5,7 +5,7 @@
  *
  * Onyedi Tivi stilinde sosyal medya görsel üretici.
  * Son 48 saatteki haberleri listeler; her haber için
- * /api/og/social/[id] endpoint'i üzerinden 1080×1080 görsel sunar.
+ * /api/og/social/[id] endpoint'i üzerinden 1080×1350 görsel sunar.
  */
 
 import { useEffect, useState } from 'react'
@@ -212,7 +212,7 @@ export default function SosyalGorselPage() {
             <p className="text-sm">Sol listeden bir haber seçin</p>
             <p className="mt-1 text-xs opacity-60">
               Seçilen haber için Onyedi Tivi stilinde<br />
-              1080×1080 sosyal medya görseli önizlemesi görünür
+              1080×1350 sosyal medya görseli önizlemesi görünür
             </p>
           </div>
         )}
@@ -221,7 +221,7 @@ export default function SosyalGorselPage() {
           <>
             {/* Preview frame */}
             <div className="relative overflow-hidden rounded-2xl shadow-2xl shadow-black/60"
-                 style={{ width: 400, height: 400 }}>
+                 style={{ width: 360, height: 450 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={ogUrl(selected.id)}
@@ -253,7 +253,7 @@ export default function SosyalGorselPage() {
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
               >
                 <Download className="h-4 w-4" />
-                1080×1080 İndir
+                1080×1350 İndir
               </button>
               <a
                 href={ogUrl(selected.id)}
@@ -268,7 +268,9 @@ export default function SosyalGorselPage() {
 
             {/* Info chips */}
             <div className="flex gap-3 text-xs text-slate-500">
-              <span>1080 × 1080 px</span>
+              <span>1080 × 1350 px</span>
+              <span>·</span>
+              <span>4:5</span>
               <span>·</span>
               <span>PNG</span>
               <span>·</span>

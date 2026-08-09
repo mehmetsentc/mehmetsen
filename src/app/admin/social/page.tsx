@@ -1560,7 +1560,7 @@ export default function SocialPage() {
                       alt="OG önizleme"
                       className={cn(
                         'w-full bg-slate-900 object-contain',
-                        previewMode === 'story' ? 'max-h-[380px]' : 'aspect-square max-h-[340px]'
+                        previewMode === 'story' ? 'max-h-[380px]' : 'aspect-[4/5] max-h-[400px]'
                       )}
                     />
                   </div>

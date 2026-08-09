@@ -1,17 +1,19 @@
 /**
  * GET /api/og/social/[id]
  *
- * ONYEDİTİVİ — 1080×1080 Instagram & Facebook Post görseli (1:1)
+ * ONYEDİTİVİ — 1080×1350 Instagram & Facebook Post görseli (4:5)
  * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout (~54/42 — feed okunabilirliği için metne biraz daha alan):
+ * Layout (~60/36 — fotoğraf baskın, feed okunabilirliği korunur):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
- *   │   HABER FOTOĞRAFI       │  ~54% (580px) — object-fit: cover
- *   │   (kenardan kenara)     │  üst bölümü doldurur
+ *   │                         │
+ *   │   HABER FOTOĞRAFI       │  ~60% (810px) — object-fit: cover
+ *   │   (kenardan kenara)     │  üst bölümü DOLDURUR
+ *   │                         │
  *   ├─── nahaber.com ─────────┤  kırmızı bar + beyaz pill (48px)
  *   │   MANŞET (Playfair)     │
- *   │   özet (büyük, net)     │  ~42% — lacivert (452px)
+ *   │   özet (büyük, net)     │  ~36% — lacivert (492px)
  *   │   #hashtag              │
  *   └─────────────────────────┘
  *
@@ -99,12 +101,12 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
-// Boyutlar — 1:1 kare (~54% foto / ~42% metin — Instagram feed okunabilirliği)
+// Boyutlar — 4:5 dikey post (~60% foto / ~36% metin — Instagram feed baskın fotoğraf)
 const W = 1080
-const H = 1080
-const PHOTO_H = 580   // ~54%
+const H = 1350
+const PHOTO_H = 810   // ~60%
 const MID_H   = 48    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // 452px (~42%)
+const TITLE_H = H - PHOTO_H - MID_H  // 492px (~36%)
 const TEXT_PAD_TOP = 36
 const TEXT_PAD_SIDE = 42
 const TEXT_PAD_BOTTOM = 28
@@ -216,7 +218,7 @@ export async function GET(
   const titleLines = title.split('\n').filter(Boolean)
   const titlePlainLen = titleLines.join('').length
 
-  // Alt ~42% metin bandı — güçlü Playfair manşet + yüksek kontrast özet (feed okunabilirliği)
+  // Alt ~36% metin bandı — güçlü Playfair manşet + yüksek kontrast özet (feed okunabilirliği)
   const titleSize =
     titleLines.length >= 3 ? (titlePlainLen > 55 ? 42 : 46) :
     titleLines.length === 2 ? (titlePlainLen > 52 ? 46 : titlePlainLen > 36 ? 50 : 54) :
@@ -270,7 +272,7 @@ export async function GET(
 
           {/* Alt gradient → lacivert */}
           <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 100,
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 140,
             background: `linear-gradient(to top,${NAVY} 0%,rgba(13,35,85,0.5) 45%,transparent 100%)`,
             display: 'flex',
           }} />
@@ -326,7 +328,7 @@ export async function GET(
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.28)', display: 'flex' }} />
         </div>
 
-        {/* ── MANŞET + ÖZET ALANI (alt ~40%) ── */}
+        {/* ── MANŞET + ÖZET ALANI (alt ~36%) ── */}
         <div style={{
           width: W, height: TITLE_H, flexShrink: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
