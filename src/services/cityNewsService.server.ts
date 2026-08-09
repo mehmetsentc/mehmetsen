@@ -279,3 +279,89 @@ export async function getCityNewsByDistrict(
     limit
   )
 }
+
+// ─── Dynamic city categories ────────────────────────────────────────────────
+
+export interface CityCategory {
+  id: string
+  name: string
+  slug: string
+}
+
+const getCityCategoriesCached = unstable_cache(
+  async (citySlug: string): Promise<CityCategory[]> => {
+    const { DEFAULT_CATEGORIES } = await import('@/constants/config')
+
+    let distinctCategoryIds: string[] = []
+
+    if (isPostgresReadsEnabled()) {
+      try {
+        const { getDb, schema } = await import('@/db')
+        const { eq, and, sql } = await import('drizzle-orm')
+        const db = getDb()
+
+        const rows = await db
+          .selectDistinct({ categoryId: schema.news.categoryId })
+          .from(schema.news)
+          .where(
+            and(
+              eq(schema.news.status, 'published'),
+              eq(schema.news.citySlug, citySlug),
+              sql`${schema.news.categoryId} IS NOT NULL`
+            )
+          )
+
+        distinctCategoryIds = rows
+          .map((r) => r.categoryId)
+          .filter((id): id is string => Boolean(id))
+      } catch (error) {
+        console.warn('[cityNewsService] getCityCategories Postgres failed, falling back:', error)
+      }
+    }
+
+    if (distinctCategoryIds.length === 0) {
+      try {
+        const db = getAdminFirestore()
+        const snap = await db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where('citySlug', '==', citySlug)
+          .select('categoryId')
+          .get()
+
+        const categorySet = new Set<string>()
+        for (const doc of snap.docs) {
+          const catId = doc.data().categoryId
+          if (catId && typeof catId === 'string') {
+            categorySet.add(catId.trim())
+          }
+        }
+        distinctCategoryIds = Array.from(categorySet)
+      } catch (error) {
+        console.warn('[cityNewsService] getCityCategories Firebase failed:', error)
+        return []
+      }
+    }
+
+    const idSet = new Set(distinctCategoryIds)
+    // Also include parent categories when subcategories have articles
+    for (const cat of DEFAULT_CATEGORIES) {
+      if (cat.parentId && idSet.has(cat.id)) {
+        idSet.add(cat.parentId)
+      }
+    }
+    return DEFAULT_CATEGORIES
+      .filter((cat) => idSet.has(cat.id) && !cat.parentId)
+      .map((cat) => ({ id: cat.id, name: cat.name, slug: cat.slug ?? cat.id }))
+  },
+  ['city-categories-v1'],
+  { revalidate: 300, tags: ['city-news'] }
+)
+
+/**
+ * Returns only top-level categories that have at least one published article
+ * for the given city. Used to build the city nav dynamically.
+ */
+export async function getCityCategories(citySlug: string): Promise<CityCategory[]> {
+  return getCityCategoriesCached(citySlug.trim().toLowerCase())
+}

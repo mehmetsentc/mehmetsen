@@ -1,37 +1,30 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { CityCategoryChips } from './CityCategoryChips'
-import { CityNewsItem } from './CityNewsItem'
-import { CityNewsList } from './CityNewsList'
+import { MobileFeedCardNews } from '@/components/feed/MobileFeedCard'
+import { CategoryNav, type CategoryNavItem } from '@/components/layout/CategoryNav'
 import type { NewsItem } from '@/types/newsItem'
+import type { CityCategory } from '@/services/cityNewsService.server'
 
 interface CityFeedClientProps {
   citySlug: string
   initialItems: NewsItem[]
-  title?: string
+  categories: CityCategory[]
 }
 
-export function CityFeedClient({ citySlug, initialItems, title }: CityFeedClientProps) {
-  const [activeChip, setActiveChip] = useState('tumu')
+export function CityFeedClient({ citySlug, initialItems, categories }: CityFeedClientProps) {
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [items, setItems] = useState(initialItems)
   const [loading, setLoading] = useState(false)
 
   const handleCategorySelect = useCallback(
-    async (chipId: string, categoryId: string | null) => {
-      setActiveChip(chipId)
+    async (categoryId: string | null) => {
+      setActiveCategory(categoryId)
 
-      if (chipId === 'tumu') {
+      if (!categoryId) {
         setItems(initialItems)
         return
       }
-
-      if (chipId === 'video') {
-        setItems(initialItems.filter((item) => item.videoUrl))
-        return
-      }
-
-      if (!categoryId) return
 
       setLoading(true)
       try {
@@ -51,27 +44,46 @@ export function CityFeedClient({ citySlug, initialItems, title }: CityFeedClient
     [citySlug, initialItems]
   )
 
+  const navItems: CategoryNavItem[] = [
+    { id: '__all', label: 'Tümü', href: '/' },
+    ...categories.map((cat) => ({
+      id: cat.id,
+      label: cat.name,
+      href: `/kategori/${cat.slug}`,
+    })),
+  ]
+
   return (
-    <div className="space-y-4">
-      {title && (
-        <h1 className="text-lg font-semibold text-[rgb(var(--color-text-primary))]">
-          {title}
-        </h1>
-      )}
-      <CityCategoryChips activeId={activeChip} onSelect={handleCategorySelect} />
+    <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10 max-md:pt-4">
+      <CategoryNav
+        categories={navItems}
+        onCategorySelect={handleCategorySelect}
+        activeCategoryId={activeCategory}
+      />
 
       {loading ? (
-        <CityNewsList.Skeleton count={6} />
+        <div className="sd-feed">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="sd-feed__skeleton">
+              <div className="sd-feed__skeleton-time animate-pulse bg-[rgb(var(--color-border))]" />
+              <div className="sd-feed__skeleton-title animate-pulse bg-[rgb(var(--color-border))]" />
+              <div className="sd-feed__skeleton-media animate-pulse bg-[rgb(var(--color-border))]" />
+            </div>
+          ))}
+        </div>
       ) : items.length > 0 ? (
-        <div className="divide-y divide-[rgb(var(--color-border))]">
+        <div className="sd-feed">
           {items.map((item, i) => (
-            <CityNewsItem key={item.id} item={item} priority={i < 3} />
+            <MobileFeedCardNews key={item.id} item={item} priority={i === 0} />
           ))}
         </div>
       ) : (
         <div className="py-16 text-center">
-          <p className="text-sm text-[rgb(var(--color-text-secondary))]">
-            Bu kategoride henüz haber yok.
+          <p className="text-lg font-semibold text-[rgb(var(--color-text))]">
+            Henüz haber yok
+          </p>
+          <p className="mt-1 text-sm text-[rgb(var(--color-text-secondary))]">
+            Bu kategoride henüz haber bulunmuyor.
           </p>
         </div>
       )}

@@ -6,7 +6,7 @@ import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { NewsItem } from '@/types/newsItem'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityNews } from '@/services/cityNewsService.server'
+import { getCityNews, getCityCategories } from '@/services/cityNewsService.server'
 import { CityFeedClient } from '@/components/city/CityFeedClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 
@@ -86,14 +86,18 @@ export default async function LocalNewsPage() {
 
   if (citySlug) {
     const displayName = getCityCategoryName(citySlug)
-    const items = await getCityNews(citySlug, 30)
+    const [items, categories] = await Promise.all([
+      getCityNews(citySlug, 30),
+      getCityCategories(citySlug),
+    ])
     return (
       <CityLayoutClient
         tenantSlug={citySlug}
         displayName={displayName}
         provinceSlug={citySlug}
+        categories={categories}
       >
-        <CityFeedClient citySlug={citySlug} initialItems={items} />
+        <CityFeedClient citySlug={citySlug} initialItems={items} categories={categories} />
       </CityLayoutClient>
     )
   }

@@ -7,7 +7,7 @@ import { getLcpPreload } from '@/lib/lcpImage'
 import { getHomeFeedInitialData } from '@/services/newsService.server'
 import { ROUTES } from '@/constants/routes'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityNews } from '@/services/cityNewsService.server'
+import { getCityNews, getCityCategories } from '@/services/cityNewsService.server'
 import { CityFeedClient } from '@/components/city/CityFeedClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 
@@ -101,14 +101,18 @@ export default async function FeedPage() {
 
   if (citySlug) {
     const displayName = getCityCategoryName(citySlug)
-    const items = await getCityNews(citySlug, 30)
+    const [items, categories] = await Promise.all([
+      getCityNews(citySlug, 30),
+      getCityCategories(citySlug),
+    ])
     return (
       <CityLayoutClient
         tenantSlug={citySlug}
         displayName={displayName}
         provinceSlug={citySlug}
+        categories={categories}
       >
-        <CityFeedClient citySlug={citySlug} initialItems={items} />
+        <CityFeedClient citySlug={citySlug} initialItems={items} categories={categories} />
       </CityLayoutClient>
     )
   }

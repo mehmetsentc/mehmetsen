@@ -1,21 +1,21 @@
 'use client'
 
 import { memo, Suspense } from 'react'
-import { usePathname } from 'next/navigation'
 import { CityTenantProvider } from '@/store/cityTenantContext'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { NetworkProvider } from '@/store/networkContext'
 import { AppStateProvider } from '@/store/appStateContext'
 import { UserLocationProvider } from '@/store/userLocationContext'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
-import { CityHeader } from './CityHeader'
-import { CityMobileNav } from './CityMobileNav'
-import { cn } from '@/lib/utils'
+import { CityNavbar } from './CityNavbar'
+import { MobileNav } from '@/components/layout/MobileNav'
+import type { CityCategory } from '@/services/cityNewsService.server'
 
 interface CityLayoutClientProps {
   tenantSlug: string
   displayName: string
   provinceSlug: string
+  categories: CityCategory[]
   children: React.ReactNode
 }
 
@@ -30,20 +30,20 @@ const CityShell = memo(function CityShell({
 }) {
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]">
-      <CityHeader cityName={displayName} provinceSlug={provinceSlug} />
+      <CityNavbar cityName={displayName} provinceSlug={provinceSlug} />
 
       <PullToRefresh>
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto max-w-2xl px-4 pb-24 pt-4"
+          className="content-main content-main-newspaper desktop-newspaper"
         >
           {children}
         </main>
       </PullToRefresh>
 
       <Suspense fallback={null}>
-        <CityMobileNav />
+        <MobileNav />
       </Suspense>
     </div>
   )
@@ -53,10 +53,9 @@ export function CityLayoutClient({
   tenantSlug,
   displayName,
   provinceSlug,
+  categories,
   children,
 }: CityLayoutClientProps) {
-  const pathname = usePathname()
-
   return (
     <AuthGuard requireAuth={false}>
       <UserLocationProvider>
