@@ -1,23 +1,27 @@
 /**
  * Queue freshness gates — keep publish/approval near source time.
- * Tunable via env; defaults match the 12h ops purge window.
+ * Tunable via env; defaults allow backlog to drain before skipping.
+ *
+ * IMPORTANT: If the cron stops running, items must NOT become permanently
+ * unreachable. Queue age (how long the item sat waiting) uses a generous
+ * 48h default. Source age (how old the original article is) stays at 24h.
  */
 
 const HOUR = 60 * 60 * 1000
 
 /** Default RSS accept window when a worker does not set maxAgeMs. */
 export const DEFAULT_RSS_MAX_AGE_MS = Number(
-  process.env.NEWSROOM_DEFAULT_RSS_MAX_AGE_MS ?? 12 * HOUR
+  process.env.NEWSROOM_DEFAULT_RSS_MAX_AGE_MS ?? 24 * HOUR
 )
 
 /** Skip at process time if sourcePublishedAt is older than this. */
 export const MAX_SOURCE_AGE_MS = Number(
-  process.env.NEWSROOM_QUEUE_MAX_SOURCE_AGE_MS ?? 12 * HOUR
+  process.env.NEWSROOM_QUEUE_MAX_SOURCE_AGE_MS ?? 24 * HOUR
 )
 
 /** Skip/purge if the queue row itself is older than this. */
 export const MAX_QUEUE_AGE_MS = Number(
-  process.env.NEWSROOM_QUEUE_MAX_PENDING_AGE_MS ?? 12 * HOUR
+  process.env.NEWSROOM_QUEUE_MAX_PENDING_AGE_MS ?? 48 * HOUR
 )
 
 /** Tighter window for breaking / gundem. */

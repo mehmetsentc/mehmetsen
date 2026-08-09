@@ -1,6 +1,11 @@
 /**
  * Process pending newsQueue items — pipeline → newsDrafts (pending_review).
  * Auto-publish only when NEWSROOM_AUTO_PUBLISH_ENABLED=1.
+ *
+ * Throughput tuning (env vars):
+ *   NEWSROOM_QUEUE_BATCH_SIZE — items claimed per run (default 50)
+ *   NEWSROOM_QUEUE_CONCURRENCY — parallel pipeline jobs (default 6)
+ *   NEWSROOM_QUEUE_BUDGET_MS  — wall-clock budget in ms (default 250000)
  */
 import type { Firestore } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -17,15 +22,18 @@ import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import { NEWSROOM_AUTO_PUBLISH_ENABLED } from '@/services/newsroom/config'
 
-const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 16)
+const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 50)
+const CONCURRENCY = Math.max(1, Math.min(12, Number(process.env.NEWSROOM_QUEUE_CONCURRENCY ?? 6)))
+const WALL_CLOCK_BUDGET_MS = Number(process.env.NEWSROOM_QUEUE_BUDGET_MS ?? 250_000)
 
-// Her job: stage1 (50s×2) + stage3 (40s) ≈ 140s max.
-// 140s wall-clock budget: Vercel 300s limitinden 160s önce çıkılır.
-const WALL_CLOCK_BUDGET_MS = 140_000
+export interface ProcessQueueOptions {
+  skipFreshnessCheck?: boolean
+}
 
 export async function processNewsQueue(
   db: Firestore = getAdminFirestore(),
-  batchSize = DEFAULT_BATCH_SIZE
+  batchSize = DEFAULT_BATCH_SIZE,
+  options: ProcessQueueOptions = {}
 ): Promise<QueueProcessStats> {
   const startTime = Date.now()
 
@@ -54,29 +62,32 @@ export async function processNewsQueue(
     return stats
   }
   stats.picked = batch.length
+  if (batch.length === 0) return stats
 
-  for (const job of batch) {
-    if (Date.now() - startTime > WALL_CLOCK_BUDGET_MS) {
-      console.warn(`[processNewsQueue] wall-clock budget (${WALL_CLOCK_BUDGET_MS / 1000}s) aşıldı, kalan job'lar sonraki çalışmaya bırakıldı`)
-      // Release unprocessed claimed jobs so they are not stuck in processing
-      const remaining = batch.slice(batch.indexOf(job))
-      for (const leftover of remaining) {
-        try {
-          await releaseQueueClaim(db, leftover.id)
-        } catch (err) {
-          console.error(`[processNewsQueue] releaseQueueClaim failed for ${leftover.id}:`, err)
-        }
-      }
-      break
+  let budgetExceeded = false
+
+  async function processJob(job: (typeof batch)[number]): Promise<void> {
+    if (budgetExceeded) {
+      try { await releaseQueueClaim(db, job.id) } catch { /* ignore */ }
+      return
     }
+    if (Date.now() - startTime > WALL_CLOCK_BUDGET_MS) {
+      budgetExceeded = true
+      console.warn(`[processNewsQueue] wall-clock budget (${WALL_CLOCK_BUDGET_MS / 1000}s) aşıldı`)
+      try { await releaseQueueClaim(db, job.id) } catch { /* ignore */ }
+      return
+    }
+
     const { data } = job
 
     try {
-      const staleReason = staleQueueReason(data)
-      if (staleReason) {
-        await markQueueSkipped(db, job.id, staleReason)
-        stats.skipped += 1
-        continue
+      if (!options.skipFreshnessCheck) {
+        const staleReason = staleQueueReason(data)
+        if (staleReason) {
+          await markQueueSkipped(db, job.id, staleReason)
+          stats.skipped += 1
+          return
+        }
       }
 
       const result = await processNewsroomArticle(db, data.input, {
@@ -115,5 +126,29 @@ export async function processNewsQueue(
     }
   }
 
+  // Process in parallel with bounded concurrency
+  const queue = [...batch]
+  const workers: Promise<void>[] = []
+  for (let i = 0; i < Math.min(CONCURRENCY, queue.length); i++) {
+    workers.push(
+      (async () => {
+        while (queue.length > 0 && !budgetExceeded) {
+          const job = queue.shift()
+          if (!job) break
+          await processJob(job)
+        }
+      })()
+    )
+  }
+  await Promise.all(workers)
+
+  // Release any remaining jobs that weren't processed due to budget
+  if (budgetExceeded) {
+    for (const job of queue) {
+      try { await releaseQueueClaim(db, job.id) } catch { /* ignore */ }
+    }
+  }
+
+  console.log(`[processNewsQueue] done: picked=${stats.picked} pub=${stats.published} draft=${stats.drafted} skip=${stats.skipped} fail=${stats.failed} elapsed=${Date.now() - startTime}ms`)
   return stats
 }

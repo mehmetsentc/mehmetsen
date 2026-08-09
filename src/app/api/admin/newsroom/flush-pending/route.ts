@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       .get()
     if (pendingSnap.empty) break
 
-    const result = await processNewsQueue(db, 40)
+    const result = await processNewsQueue(db, 40, { skipFreshnessCheck: true })
     queueStats.rounds += 1
     queueStats.published += result.published
     queueStats.drafted += result.drafted

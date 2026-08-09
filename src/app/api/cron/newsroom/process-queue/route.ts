@@ -5,7 +5,9 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-const handler = createNewsroomCronHandler('process-queue', () => processNewsQueue())
+const handler = createNewsroomCronHandler('process-queue', () =>
+  processNewsQueue(undefined, undefined, { skipFreshnessCheck: false })
+)
 
 export const GET = handler.GET
 export const POST = handler.POST

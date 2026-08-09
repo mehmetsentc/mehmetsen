@@ -83,6 +83,7 @@ export default function CronMonitorPage() {
   const [triggering, setTriggering] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [flushing, setFlushing] = useState(false)
+  const [fastProcessing, setFastProcessing] = useState(false)
 
   const load = useCallback(async (withPendingDetails = false) => {
     try {
@@ -213,6 +214,31 @@ export default function CronMonitorPage() {
     }
   }
 
+  const fastProcessQueue = async () => {
+    if (fastProcessing) return
+    setFastProcessing(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/newsroom/process-now', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ batchSize: 80, maxRounds: 5, skipFreshness: true }),
+      })
+      const data = (await res.json()) as { ok?: boolean; message?: string; error?: string; hasMore?: boolean }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      toast.success(data.message || 'Kuyruk işlendi')
+      if (data.hasMore) toast('Kuyrukta hâlâ bekleyen var, tekrar çalıştırabilirsiniz', { icon: 'ℹ️' })
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Hızlı işlem başarısız')
+    } finally {
+      setFastProcessing(false)
+    }
+  }
+
   const triggerJob = async (jobId: string) => {
     if (triggering) return
     setTriggering(jobId)
@@ -275,6 +301,15 @@ export default function CronMonitorPage() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold"
           >
             Takılıları temizle
+          </button>
+          <button
+            type="button"
+            disabled={fastProcessing || triggering != null}
+            onClick={() => void fastProcessQueue()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {fastProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />}
+            Kuyruğu hızlı işle
           </button>
           <button
             type="button"

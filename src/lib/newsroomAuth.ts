@@ -22,6 +22,10 @@ export async function isNewsroomAuthorized(request: Request): Promise<boolean> {
     const authHeader = request.headers.get('authorization')
     if (authHeader === `Bearer ${newsroomSecret}`) return true
 
+    // Vercel Cron may also use x-vercel-cron-auth-token header
+    const vercelCronToken = request.headers.get('x-vercel-cron-auth-token')
+    if (vercelCronToken === newsroomSecret) return true
+
     try {
       const url = new URL(request.url)
       const qSecret = url.searchParams.get('secret') || url.searchParams.get('cron_secret')
