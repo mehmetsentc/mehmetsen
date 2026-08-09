@@ -4,16 +4,17 @@
  * ONYEDİTİVİ — 1080×1350 Instagram & Facebook Post görseli (4:5)
  * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout (~65/33 — fotoğraf baskın, feed okunabilirliği korunur):
+ * Layout (full-bleed photo + bottom gradient scrim):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  ~65% (880px) — object-fit: cover
- *   │   (kenardan kenara)     │  üst bölümü DOLDURUR
+ *   │   HABER FOTOĞRAFI       │  1080×1350 full-bleed (sharp cover)
+ *   │   (kenardan kenara)     │
  *   │                         │
- *   ├─── nahaber.com ─────────┤  ince kırmızı bar + beyaz pill (32px)
+ *   │ ─── gradient scrim ─── │  koyu lacivert → şeffaf
+ *   │   nahaber.com ince bar  │
  *   │   MANŞET (Playfair)     │
- *   │   özet (büyük, net)     │  ~33% — lacivert (438px)
+ *   │   özet (büyük, net)     │
  *   │   #hashtag              │
  *   └─────────────────────────┘
  *
@@ -101,15 +102,11 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
-// Boyutlar — 4:5 dikey post (~65% foto / ~33% metin — Instagram feed baskın fotoğraf)
+// Boyutlar — 4:5 dikey post (full-bleed fotoğraf + alt gradient scrim)
 const W = 1080
 const H = 1350
-const PHOTO_H = 880   // ~65% — fotoğraf alanı daha baskın
-const MID_H   = 32    // ince kırmızı geçiş barı (önceki 48'den)
-const TITLE_H = H - PHOTO_H - MID_H  // 438px (~33%)
-const TEXT_PAD_TOP = 32
-const TEXT_PAD_SIDE = 40
-const TEXT_PAD_BOTTOM = 24
+const TEXT_PAD_SIDE = 48
+const TEXT_PAD_BOTTOM = 40
 
 // Renkler
 const NAVY   = '#0d2355'   // OnyediTivi koyu lacivert
@@ -210,7 +207,7 @@ export async function GET(
 
   const photo = await embedCoverTopImage(
     [overrideImage, ...(article ? bestImageCandidates(article) : [])],
-    W, PHOTO_H, 84,
+    W, H, 84,
   )
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
@@ -218,7 +215,7 @@ export async function GET(
   const titleLines = title.split('\n').filter(Boolean)
   const titlePlainLen = titleLines.join('').length
 
-  // Alt ~36% metin bandı — güçlü Playfair manşet + yüksek kontrast özet (feed okunabilirliği)
+  // Full-bleed photo with gradient scrim — güçlü Playfair manşet + yüksek kontrast özet
   const titleSize =
     titleLines.length >= 3 ? (titlePlainLen > 55 ? 42 : 46) :
     titleLines.length === 2 ? (titlePlainLen > 52 ? 46 : titlePlainLen > 36 ? 50 : 54) :
@@ -249,92 +246,87 @@ export async function GET(
 
     return new ImageResponse(
       <div style={{
-        width: W, height: H, display: 'flex', flexDirection: 'column',
+        width: W, height: H, display: 'flex',
         fontFamily: bodyFamily,
         background: NAVY, overflow: 'hidden',
+        position: 'relative',
       }}>
 
-        {/* ── FOTOĞRAF (~60%) ── */}
+        {/* ── FULL-BLEED FOTOĞRAF ── */}
+        {photo ? (
+          <img src={photo} alt="" width={W} height={H}
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: W, height: H,
+              display: 'flex',
+            }} />
+        ) : (
+          <div style={{ position: 'absolute', top: 0, left: 0, width: W, height: H, display: 'flex', background: NAVY }} />
+        )}
+
+        {/* ── GRADIENT SCRIM (alt → üst: koyu lacivert → şeffaf) ── */}
         <div style={{
-          width: W, height: PHOTO_H,
-          position: 'relative', display: 'flex', flexShrink: 0, overflow: 'hidden',
-          background: NAVY,
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 820,
+          background: `linear-gradient(to top, rgba(13,35,85,0.97) 0%, rgba(13,35,85,0.92) 18%, rgba(13,35,85,0.78) 34%, rgba(13,35,85,0.50) 52%, rgba(13,35,85,0.22) 70%, transparent 100%)`,
+          display: 'flex',
+        }} />
+
+        {/* ── OnyediTivi logo badge — sağ üst ── */}
+        <div style={{
+          position: 'absolute', top: 20, right: 20,
+          display: 'flex', alignItems: 'center',
+          background: 'rgba(13,35,85,0.9)', borderRadius: 12,
+          padding: '9px 18px 9px 9px', gap: 10,
         }}>
-          {photo ? (
-            <img src={photo} alt="" width={W} height={PHOTO_H}
-              style={{
-                width: W, height: PHOTO_H,
-                display: 'flex',
-              }} />
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', background: NAVY }} />
-          )}
-
-          {/* Alt gradient → lacivert */}
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 140,
-            background: `linear-gradient(to top,${NAVY} 0%,rgba(13,35,85,0.5) 45%,transparent 100%)`,
-            display: 'flex',
-          }} />
-
-          {/* OnyediTivi logo badge — sağ üst */}
-          <div style={{
-            position: 'absolute', top: 20, right: 20,
-            display: 'flex', alignItems: 'center',
-            background: 'rgba(13,35,85,0.9)', borderRadius: 12,
-            padding: '9px 18px 9px 9px', gap: 10,
-          }}>
-            <div style={{ width: 44, height: 44, position: 'relative',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <div style={{ position: 'absolute', width: 44, height: 40,
-                background: '#8bbde0', borderRadius: '45% 55% 50% 50% / 50% 50% 55% 45%',
-                display: 'flex' }} />
-              <div style={{ position: 'absolute', width: 38, height: 38,
-                background: BLUE, borderRadius: '38% 62% 55% 45% / 45% 55% 62% 38%',
-                display: 'flex' }} />
-              <div style={{ position: 'absolute', width: 32, height: 32,
-                background: NAVY, borderRadius: '50%', display: 'flex',
-                alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: 0 }}>
-                  <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 15, lineHeight: 1, display: 'flex' }}>1</span>
-                  <span style={{ color: LBLUE, fontWeight: 900, fontSize: 15, lineHeight: 1, display: 'flex' }}>7</span>
-                </span>
-              </div>
+          <div style={{ width: 44, height: 44, position: 'relative',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ position: 'absolute', width: 44, height: 40,
+              background: '#8bbde0', borderRadius: '45% 55% 50% 50% / 50% 50% 55% 45%',
+              display: 'flex' }} />
+            <div style={{ position: 'absolute', width: 38, height: 38,
+              background: BLUE, borderRadius: '38% 62% 55% 45% / 45% 55% 62% 38%',
+              display: 'flex' }} />
+            <div style={{ position: 'absolute', width: 32, height: 32,
+              background: NAVY, borderRadius: '50%', display: 'flex',
+              alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: 0 }}>
+                <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 15, lineHeight: 1, display: 'flex' }}>1</span>
+                <span style={{ color: LBLUE, fontWeight: 900, fontSize: 15, lineHeight: 1, display: 'flex' }}>7</span>
+              </span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 15, letterSpacing: 0.5, display: 'flex' }}>ONYEDiTiVi</span>
-              <span style={{ color: LBLUE, fontWeight: 600, fontSize: 10, letterSpacing: 2.5, display: 'flex' }}>HABERLERi</span>
-            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 15, letterSpacing: 0.5, display: 'flex' }}>ONYEDiTiVi</span>
+            <span style={{ color: LBLUE, fontWeight: 600, fontSize: 10, letterSpacing: 2.5, display: 'flex' }}>HABERLERi</span>
           </div>
         </div>
 
-        {/* ── GEÇİŞ SATIRI: ince kırmızı bar + nahaber.com pill ── */}
+        {/* ── TEXT OVERLAY — positioned at bottom over gradient ── */}
         <div style={{
-          width: W, height: MID_H, flexShrink: 0,
-          background: RED,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '0 28px', gap: 0,
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          display: 'flex', flexDirection: 'column',
+          padding: `0 ${TEXT_PAD_SIDE}px ${TEXT_PAD_BOTTOM}px`,
         }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.28)', display: 'flex' }} />
+          {/* ── İnce kırmızı accent + nahaber.com pill ── */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: '#ffffff', borderRadius: 40,
-            padding: '4px 14px',
-            margin: '0 14px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 0, marginBottom: 24,
           }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: RED, display: 'flex', flexShrink: 0 }} />
-            <span style={{ color: RED, fontSize: 15, fontWeight: 800, letterSpacing: 0.2, display: 'flex' }}>nahaber.com</span>
+            <div style={{ flex: 1, height: 2, background: RED, display: 'flex' }} />
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'rgba(255,255,255,0.95)', borderRadius: 40,
+              padding: '4px 14px',
+              margin: '0 14px',
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: RED, display: 'flex', flexShrink: 0 }} />
+              <span style={{ color: RED, fontSize: 15, fontWeight: 800, letterSpacing: 0.2, display: 'flex' }}>nahaber.com</span>
+            </div>
+            <div style={{ flex: 1, height: 2, background: RED, display: 'flex' }} />
           </div>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.28)', display: 'flex' }} />
-        </div>
 
-        {/* ── MANŞET + ÖZET ALANI (alt ~33%) ── */}
-        <div style={{
-          width: W, height: TITLE_H, flexShrink: 0,
-          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-          padding: `${TEXT_PAD_TOP}px ${TEXT_PAD_SIDE}px ${TEXT_PAD_BOTTOM}px`, background: NAVY,
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 14, flex: 1, overflow: 'hidden' }}>
+          {/* Manşet + özet content block */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 14, overflow: 'hidden', marginBottom: 20 }}>
             <div style={{
               width: 4, borderRadius: 2, background: RED, flexShrink: 0,
               alignSelf: 'stretch', display: 'flex', marginTop: 4, minHeight: 44,
@@ -354,33 +346,35 @@ export async function GET(
                     color: '#ffffff', fontFamily: headlineFamily, fontWeight: 900,
                     fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: 0.15,
                     display: 'flex',
+                    textShadow: '0 2px 12px rgba(0,0,0,0.5)',
                   }}>{line}</span>
                 ))}
               </div>
-              {/* Ayırıcı + özet — near-white, daha büyük punto */}
+              {/* Ayırıcı + özet */}
               {spot ? (
                 <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 16,
-                  paddingTop: 24,
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                  paddingTop: 20,
                 }}>
                   <div style={{
                     width: 80, height: 2, borderRadius: 1,
-                    background: 'rgba(255,255,255,0.32)', display: 'flex', flexShrink: 0,
+                    background: 'rgba(255,255,255,0.38)', display: 'flex', flexShrink: 0,
                   }} />
                   <span style={{
-                    color: '#ffffff', fontFamily: bodyFamily, fontWeight: 600,
+                    color: 'rgba(255,255,255,0.95)', fontFamily: bodyFamily, fontWeight: 600,
                     fontSize: spotSize, lineHeight: spotLineHeight,
                     letterSpacing: 0.15, display: 'flex', flexDirection: 'column',
+                    textShadow: '0 1px 8px rgba(0,0,0,0.4)',
                   }}>{spot}</span>
                 </div>
               ) : null}
             </div>
           </div>
-          {/* Hashtags */}
+
+          {/* Hashtags — bottom */}
           <span style={{
             color: LBLUE, fontFamily: bodyFamily, fontSize: 17,
             fontWeight: 600, letterSpacing: 1.1, display: 'flex',
-            marginTop: 16,
           }}>#NaHaber  #Çanakkale  #SonDakika</span>
         </div>
 
