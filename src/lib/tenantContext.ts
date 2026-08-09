@@ -16,8 +16,6 @@ export interface ActiveTenant {
  * Returns null when running on the national site or when city network is off.
  */
 export async function getActiveTenant(): Promise<ActiveTenant | null> {
-  if (process.env.CITY_NETWORK_ENABLED !== 'true') return null
-
   try {
     const h = await headers()
 

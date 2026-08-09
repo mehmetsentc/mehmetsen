@@ -67,7 +67,7 @@ export default async function IlcePage({ params }: PageProps) {
           {cityName} · {district.name}
         </p>
       </div>
-      <CityFeedClient citySlug={citySlug} initialItems={items} categories={categories} />
+      <CityFeedClient citySlug={citySlug} initialItems={items} />
     </CityLayoutClient>
   )
 }

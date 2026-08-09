@@ -15,3 +15,9 @@ export function isCitySectionActive(pathname: string, href: string): boolean {
   }
   return path === href || path.startsWith(`${href}/`)
 }
+
+/** Main city feed surfaces where dynamic category nav is shown. */
+export function isCityFeedPath(pathname: string): boolean {
+  const path = normalizeCityPath(pathname)
+  return path === '/' || path === '/feed' || path === '/yerel'
+}

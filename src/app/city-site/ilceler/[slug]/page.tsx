@@ -6,7 +6,7 @@ import {
   getDistrictsForProvince,
   DISTRICT_DISPLAY_NAMES,
 } from '@/constants/cities'
-import { getCityNewsByDistrict, getCityCategories } from '@/services/cityNewsService.server'
+import { getCityNewsByDistrict } from '@/services/cityNewsService.server'
 import { CityFeedClient } from '@/components/city/CityFeedClient'
 
 export const dynamic = 'force-dynamic'
@@ -41,16 +41,9 @@ export default async function CityDistrictPage({ params }: PageProps) {
   const district = districts.find((d) => d.slug === slug)
   if (!district) notFound()
 
-  const [items, categories] = await Promise.all([
-    getCityNewsByDistrict(tenant.provinceSlug, slug, 30),
-    getCityCategories(tenant.provinceSlug),
-  ])
+  const items = await getCityNewsByDistrict(tenant.provinceSlug, slug, 30)
 
   return (
-    <CityFeedClient
-      citySlug={tenant.provinceSlug}
-      initialItems={items}
-      categories={categories}
-    />
+    <CityFeedClient citySlug={tenant.provinceSlug} initialItems={items} />
   )
 }

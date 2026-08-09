@@ -9,7 +9,9 @@ import { UserLocationProvider } from '@/store/userLocationContext'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { CityNavbar } from './CityNavbar'
 import { CitySectionNav } from './CitySectionNav'
+import { CityCategoryNav } from './CityCategoryNav'
 import { CityMobileNav } from './CityMobileNav'
+import { CityCategoryProvider } from '@/store/cityCategoryContext'
 import type { CityCategory } from '@/services/cityNewsService.server'
 
 interface CityLayoutClientProps {
@@ -23,31 +25,36 @@ interface CityLayoutClientProps {
 const CityShell = memo(function CityShell({
   displayName,
   provinceSlug,
+  categories,
   children,
 }: {
   displayName: string
   provinceSlug: string
+  categories: CityCategory[]
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-[rgb(var(--color-surface))]">
-      <CityNavbar cityName={displayName} provinceSlug={provinceSlug} />
-      <CitySectionNav />
+    <CityCategoryProvider categories={categories}>
+      <div className="min-h-screen bg-[rgb(var(--color-surface))]">
+        <CityNavbar cityName={displayName} provinceSlug={provinceSlug} />
+        <CitySectionNav />
+        <CityCategoryNav />
 
-      <PullToRefresh>
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="content-main content-main-newspaper desktop-newspaper"
-        >
-          {children}
-        </main>
-      </PullToRefresh>
+        <PullToRefresh>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="content-main content-main-newspaper desktop-newspaper"
+          >
+            {children}
+          </main>
+        </PullToRefresh>
 
-      <Suspense fallback={null}>
-        <CityMobileNav />
-      </Suspense>
-    </div>
+        <Suspense fallback={null}>
+          <CityMobileNav />
+        </Suspense>
+      </div>
+    </CityCategoryProvider>
   )
 })
 
@@ -66,7 +73,11 @@ export function CityLayoutClient({
             <CityTenantProvider
               tenant={{ slug: tenantSlug, displayName, provinceSlug }}
             >
-              <CityShell displayName={displayName} provinceSlug={provinceSlug}>
+              <CityShell
+                displayName={displayName}
+                provinceSlug={provinceSlug}
+                categories={categories}
+              >
                 {children}
               </CityShell>
             </CityTenantProvider>

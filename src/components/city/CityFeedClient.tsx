@@ -1,27 +1,29 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { MobileFeedCardNews } from '@/components/feed/MobileFeedCard'
-import { CategoryNav, type CategoryNavItem } from '@/components/layout/CategoryNav'
+import { useCityCategoryFilter } from '@/store/cityCategoryContext'
 import type { NewsItem } from '@/types/newsItem'
-import type { CityCategory } from '@/services/cityNewsService.server'
 
 interface CityFeedClientProps {
   citySlug: string
   initialItems: NewsItem[]
-  categories: CityCategory[]
 }
 
-export function CityFeedClient({ citySlug, initialItems, categories }: CityFeedClientProps) {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+export function CityFeedClient({ citySlug, initialItems }: CityFeedClientProps) {
+  const { activeCategoryId } = useCityCategoryFilter()
   const [items, setItems] = useState(initialItems)
   const [loading, setLoading] = useState(false)
 
-  const handleCategorySelect = useCallback(
-    async (categoryId: string | null) => {
-      setActiveCategory(categoryId)
+  useEffect(() => {
+    setItems(initialItems)
+  }, [initialItems])
 
-      if (!categoryId) {
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCategory() {
+      if (!activeCategoryId) {
         setItems(initialItems)
         return
       }
@@ -29,38 +31,27 @@ export function CityFeedClient({ citySlug, initialItems, categories }: CityFeedC
       setLoading(true)
       try {
         const res = await fetch(
-          `/api/city/news?city=${encodeURIComponent(citySlug)}&category=${encodeURIComponent(categoryId)}&limit=30`
+          `/api/city/news?city=${encodeURIComponent(citySlug)}&category=${encodeURIComponent(activeCategoryId)}&limit=30`
         )
-        if (res.ok) {
+        if (!cancelled && res.ok) {
           const data = await res.json()
           setItems(data.items ?? [])
         }
       } catch (err) {
         console.warn('[CityFeed] category fetch failed:', err)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
-    },
-    [citySlug, initialItems]
-  )
+    }
 
-  const navItems: CategoryNavItem[] = [
-    { id: '__all', label: 'Tümü', href: '/' },
-    ...categories.map((cat) => ({
-      id: cat.id,
-      label: cat.name,
-      href: `/kategori/${cat.slug}`,
-    })),
-  ]
+    void loadCategory()
+    return () => {
+      cancelled = true
+    }
+  }, [activeCategoryId, citySlug, initialItems])
 
   return (
     <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10 max-md:pt-4">
-      <CategoryNav
-        categories={navItems}
-        onCategorySelect={handleCategorySelect}
-        activeCategoryId={activeCategory}
-      />
-
       {loading ? (
         <div className="sd-feed">
           {[...Array(4)].map((_, i) => (

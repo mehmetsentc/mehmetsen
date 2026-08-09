@@ -115,8 +115,6 @@ export async function resolveTenant(slug: string): Promise<CityTenant | null> {
 export async function resolveTenantFromRequest(
   request: NextRequest
 ): Promise<CityTenant | null> {
-  if (process.env.CITY_NETWORK_ENABLED !== 'true') return null
-
   const hostname = request.headers.get('host') ?? ''
 
   // 1. Subdomain detection
