@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { formatPublicSourceLabel } from '@/lib/postUtils'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BadgeCheck, ExternalLink, Info, ShieldCheck, X } from 'lucide-react'
