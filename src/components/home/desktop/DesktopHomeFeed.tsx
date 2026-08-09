@@ -63,9 +63,15 @@ interface DesktopHomeFeedProps {
   data: HomeFeedInitialData
   cityMode?: boolean
   cityName?: string
+  districtName?: string
 }
 
-export function DesktopHomeFeed({ data, cityMode = false, cityName }: DesktopHomeFeedProps) {
+export function DesktopHomeFeed({
+  data,
+  cityMode = false,
+  cityName,
+  districtName,
+}: DesktopHomeFeedProps) {
   const lazyRailIds = cityMode
     ? (Object.keys(data.categoryRails) as HomeCategorySlug[])
     : HOME_FEED_DESKTOP_LAZY_RAILS
@@ -169,11 +175,17 @@ export function DesktopHomeFeed({ data, cityMode = false, cityName }: DesktopHom
     <div className="desktop-home-feed">
       <h1 className="sr-only">
         {cityMode && cityName
-          ? `${cityName} Haberleri — NaHaber`
+          ? districtName
+            ? `${districtName} Haberleri — ${cityName} | NaHaber`
+            : `${cityName} Haberleri — NaHaber`
           : 'NaHaber — Türkiye Gündem, Son Dakika ve Güncel Haberler'}
       </h1>
 
-      <NewspaperMasthead lastUpdated={layout.lastUpdated} cityName={cityName} />
+      <NewspaperMasthead
+        lastUpdated={layout.lastUpdated}
+        cityName={cityName}
+        districtName={districtName}
+      />
 
       <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
 

@@ -527,20 +527,59 @@ function bucketCityCategoryRails(
   return rails
 }
 
+const EMPTY_HOME_FEED: HomeFeedInitialData = {
+  breaking: [],
+  featured: [],
+  latest: [],
+  trending: [],
+  trendFeed: [],
+  mostRead: [],
+  categoryRails: {},
+}
+
+function deriveRailCategoriesFromPool(pool: NewsItem[]): HomeCategorySlug[] {
+  return HOME_CATEGORY_RAILS.filter((category) => {
+    const family = new Set(getHomeFeedCategoryFamily(category))
+    return pool.some((item) => item.category && family.has(item.category))
+  })
+}
+
+function buildCityFeedFromPool(
+  pool: NewsItem[],
+  railCategoryIds: readonly HomeCategorySlug[]
+): HomeFeedInitialData {
+  if (pool.length === 0) return EMPTY_HOME_FEED
+
+  const now = Date.now()
+  const nonBreaking = pool.filter((item) => !isCityBreakingItem(item))
+  const categoryRails = bucketCityCategoryRails(pool, railCategoryIds)
+  const slimRails: HomeFeedInitialData['categoryRails'] = {}
+  for (const [key, items] of Object.entries(categoryRails)) {
+    slimRails[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])
+  }
+
+  const trending = pickTrending(nonBreaking, 6, undefined, now)
+  const withViews = nonBreaking.filter((p) => typeof p.views === 'number' && (p.views ?? 0) > 0)
+  const mostRead =
+    withViews.length > 0
+      ? [...withViews].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 6)
+      : nonBreaking.slice(0, 6)
+
+  return {
+    breaking: slimNewsItemsForFeed(pool.filter(isCityBreakingItem).slice(0, 8)),
+    featured: slimNewsItemsForFeed(bucketCityFeatured(pool, HOME_FEATURED_LIMIT)),
+    latest: slimNewsItemsForFeed(rankFeedHotAware(nonBreaking, now).slice(0, 16)),
+    trending: slimNewsItemsForFeed(trending),
+    trendFeed: slimNewsItemsForFeed(pickTrendFeed(nonBreaking, 12, now)),
+    mostRead: slimNewsItemsForFeed(mostRead),
+    categoryRails: slimRails,
+  }
+}
+
 const getCityHomeFeedCached = unstable_cache(
   async (citySlug: string): Promise<HomeFeedInitialData> => {
     const pool = await getCityNews(citySlug, 60)
-    if (pool.length === 0) {
-      return {
-        breaking: [],
-        featured: [],
-        latest: [],
-        trending: [],
-        trendFeed: [],
-        mostRead: [],
-        categoryRails: {},
-      }
-    }
+    if (pool.length === 0) return EMPTY_HOME_FEED
 
     const cityCategories = await getCityCategories(citySlug)
     const railCategoryIds = cityCategories
@@ -549,36 +588,33 @@ const getCityHomeFeedCached = unstable_cache(
         (HOME_CATEGORY_RAILS as readonly string[]).includes(id)
       )
 
-    const now = Date.now()
-    const nonBreaking = pool.filter((item) => !isCityBreakingItem(item))
-    const categoryRails = bucketCityCategoryRails(pool, railCategoryIds)
-    const slimRails: HomeFeedInitialData['categoryRails'] = {}
-    for (const [key, items] of Object.entries(categoryRails)) {
-      slimRails[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])
-    }
-
-    const trending = pickTrending(nonBreaking, 6, undefined, now)
-    const withViews = nonBreaking.filter((p) => typeof p.views === 'number' && (p.views ?? 0) > 0)
-    const mostRead =
-      withViews.length > 0
-        ? [...withViews].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 6)
-        : nonBreaking.slice(0, 6)
-
-    return {
-      breaking: slimNewsItemsForFeed(pool.filter(isCityBreakingItem).slice(0, 8)),
-      featured: slimNewsItemsForFeed(bucketCityFeatured(pool, HOME_FEATURED_LIMIT)),
-      latest: slimNewsItemsForFeed(rankFeedHotAware(nonBreaking, now).slice(0, 16)),
-      trending: slimNewsItemsForFeed(trending),
-      trendFeed: slimNewsItemsForFeed(pickTrendFeed(nonBreaking, 12, now)),
-      mostRead: slimNewsItemsForFeed(mostRead),
-      categoryRails: slimRails,
-    }
+    return buildCityFeedFromPool(pool, railCategoryIds)
   },
   ['city-home-feed-v1'],
+  { revalidate: 120, tags: ['city-news'] }
+)
+
+const getCityDistrictFeedCached = unstable_cache(
+  async (citySlug: string, districtSlug: string): Promise<HomeFeedInitialData> => {
+    const pool = await getCityNewsByDistrict(citySlug, districtSlug, 60)
+    return buildCityFeedFromPool(pool, deriveRailCategoriesFromPool(pool))
+  },
+  ['city-district-feed-v1'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
 /** National-style homepage feed payload scoped to a city tenant. */
 export async function getCityHomeFeedInitialData(citySlug: string): Promise<HomeFeedInitialData> {
   return getCityHomeFeedCached(citySlug.trim().toLowerCase())
+}
+
+/** National-style homepage feed payload scoped to a city district. */
+export async function getCityDistrictFeedInitialData(
+  citySlug: string,
+  districtSlug: string
+): Promise<HomeFeedInitialData> {
+  return getCityDistrictFeedCached(
+    citySlug.trim().toLowerCase(),
+    districtSlug.trim().toLowerCase()
+  )
 }

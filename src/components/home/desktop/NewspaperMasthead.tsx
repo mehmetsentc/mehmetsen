@@ -8,9 +8,10 @@ import { ROUTES } from '@/constants/routes'
 interface NewspaperMastheadProps {
   lastUpdated?: string
   cityName?: string
+  districtName?: string
 }
 
-export function NewspaperMasthead({ lastUpdated, cityName }: NewspaperMastheadProps) {
+export function NewspaperMasthead({ lastUpdated, cityName, districtName }: NewspaperMastheadProps) {
   const edition = resolveNewspaperEdition()
   const updatedLabel = lastUpdated
     ? new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(
@@ -47,6 +48,11 @@ export function NewspaperMasthead({ lastUpdated, cityName }: NewspaperMastheadPr
           />
         )}
       </Link>
+      {districtName ? (
+        <p className="mt-2 text-center text-sm font-bold text-[rgb(var(--color-text-secondary))]">
+          {districtName} Haberleri
+        </p>
+      ) : null}
       <p className="mt-1 mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgb(var(--color-muted))]">
         Dijital Gazete · Türkiye
       </p>

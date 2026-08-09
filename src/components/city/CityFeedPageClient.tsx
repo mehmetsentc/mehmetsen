@@ -38,6 +38,8 @@ function DesktopFeedPlaceholder() {
 interface CityFeedPageClientProps {
   homeFeedData: HomeFeedInitialData
   cityName: string
+  /** When set, scopes the feed to a district and shows a section label. */
+  districtName?: string
 }
 
 function CityFeedScrollHeaderConfig({ homeFeedData }: { homeFeedData: HomeFeedInitialData }) {
@@ -96,7 +98,7 @@ function useDesktopFeedReady() {
   return desktopReady
 }
 
-function CityFeedPageBody({ homeFeedData, cityName }: CityFeedPageClientProps) {
+function CityFeedPageBody({ homeFeedData, cityName, districtName }: CityFeedPageClientProps) {
   const desktopReady = useDesktopFeedReady()
   const categoryRailIds = Object.keys(homeFeedData.categoryRails) as HomeCategorySlug[]
 
@@ -105,6 +107,16 @@ function CityFeedPageBody({ homeFeedData, cityName }: CityFeedPageClientProps) {
       <CityFeedScrollHeaderConfig homeFeedData={homeFeedData} />
 
       <div className="lg:hidden">
+        {districtName ? (
+          <div className="mx-auto w-full max-w-3xl px-4 pb-2 max-md:pt-2">
+            <h1 className="text-xl font-bold text-[rgb(var(--color-text))]">
+              {districtName} Haberleri
+            </h1>
+            <p className="mt-1 text-sm text-[rgb(var(--color-text-secondary))]">
+              {cityName} · {districtName}
+            </p>
+          </div>
+        ) : null}
         <HomeFeed
           data={homeFeedData}
           cityMode
@@ -115,7 +127,12 @@ function CityFeedPageBody({ homeFeedData, cityName }: CityFeedPageClientProps) {
       <div className="hidden lg:block">
         {desktopReady ? (
           <DesktopNewspaperShell>
-            <DesktopHomeFeed data={homeFeedData} cityMode cityName={cityName} />
+            <DesktopHomeFeed
+              data={homeFeedData}
+              cityMode
+              cityName={cityName}
+              districtName={districtName}
+            />
           </DesktopNewspaperShell>
         ) : (
           <DesktopFeedPlaceholder />
