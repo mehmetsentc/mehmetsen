@@ -58,6 +58,16 @@ export async function middleware(request: NextRequest) {
   // ── City Network tenant resolution ──────────────────────────────────────
   const tenant = await resolveTenantFromRequest(request)
 
+  // DEBUG: ?debugmw=1 returns middleware state as JSON (remove after debugging)
+  if (request.nextUrl.searchParams.get('debugmw') === '1') {
+    return NextResponse.json({
+      host: request.headers.get('host'),
+      pathname,
+      CITY_NETWORK_ENABLED: process.env.CITY_NETWORK_ENABLED ?? '(not set)',
+      tenant: tenant ? { slug: tenant.slug, provinceSlug: tenant.provinceSlug } : null,
+    })
+  }
+
   if (tenant) {
     // On city subdomains, /feed should show city news — redirect to city home.
     if (pathname === '/feed' || pathname === '/feed/') {
