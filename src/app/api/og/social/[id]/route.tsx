@@ -4,16 +4,16 @@
  * ONYEDİTİVİ — 1080×1350 Instagram & Facebook Post görseli (4:5)
  * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout (~60/36 — fotoğraf baskın, feed okunabilirliği korunur):
+ * Layout (~65/33 — fotoğraf baskın, feed okunabilirliği korunur):
  *   ┌─────────────────────────┐
  *   │  [Logo badge sağ üst]   │
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  ~60% (810px) — object-fit: cover
+ *   │   HABER FOTOĞRAFI       │  ~65% (880px) — object-fit: cover
  *   │   (kenardan kenara)     │  üst bölümü DOLDURUR
  *   │                         │
- *   ├─── nahaber.com ─────────┤  kırmızı bar + beyaz pill (48px)
+ *   ├─── nahaber.com ─────────┤  ince kırmızı bar + beyaz pill (32px)
  *   │   MANŞET (Playfair)     │
- *   │   özet (büyük, net)     │  ~36% — lacivert (492px)
+ *   │   özet (büyük, net)     │  ~33% — lacivert (438px)
  *   │   #hashtag              │
  *   └─────────────────────────┘
  *
@@ -101,15 +101,15 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
-// Boyutlar — 4:5 dikey post (~60% foto / ~36% metin — Instagram feed baskın fotoğraf)
+// Boyutlar — 4:5 dikey post (~65% foto / ~33% metin — Instagram feed baskın fotoğraf)
 const W = 1080
 const H = 1350
-const PHOTO_H = 810   // ~60%
-const MID_H   = 48    // kırmızı geçiş barı
-const TITLE_H = H - PHOTO_H - MID_H  // 492px (~36%)
-const TEXT_PAD_TOP = 36
-const TEXT_PAD_SIDE = 42
-const TEXT_PAD_BOTTOM = 28
+const PHOTO_H = 880   // ~65% — fotoğraf alanı daha baskın
+const MID_H   = 32    // ince kırmızı geçiş barı (önceki 48'den)
+const TITLE_H = H - PHOTO_H - MID_H  // 438px (~33%)
+const TEXT_PAD_TOP = 32
+const TEXT_PAD_SIDE = 40
+const TEXT_PAD_BOTTOM = 24
 
 // Renkler
 const NAVY   = '#0d2355'   // OnyediTivi koyu lacivert
@@ -308,40 +308,40 @@ export async function GET(
           </div>
         </div>
 
-        {/* ── GEÇİŞ SATIRI: tam kırmızı bar + nahaber.com pill ── */}
+        {/* ── GEÇİŞ SATIRI: ince kırmızı bar + nahaber.com pill ── */}
         <div style={{
           width: W, height: MID_H, flexShrink: 0,
           background: RED,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '0 32px', gap: 0,
+          padding: '0 28px', gap: 0,
         }}>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.28)', display: 'flex' }} />
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
+            display: 'flex', alignItems: 'center', gap: 6,
             background: '#ffffff', borderRadius: 40,
-            padding: '7px 20px',
-            margin: '0 18px',
+            padding: '4px 14px',
+            margin: '0 14px',
           }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: RED, display: 'flex', flexShrink: 0 }} />
-            <span style={{ color: RED, fontSize: 19, fontWeight: 800, letterSpacing: 0.2, display: 'flex' }}>nahaber.com</span>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: RED, display: 'flex', flexShrink: 0 }} />
+            <span style={{ color: RED, fontSize: 15, fontWeight: 800, letterSpacing: 0.2, display: 'flex' }}>nahaber.com</span>
           </div>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.28)', display: 'flex' }} />
         </div>
 
-        {/* ── MANŞET + ÖZET ALANI (alt ~36%) ── */}
+        {/* ── MANŞET + ÖZET ALANI (alt ~33%) ── */}
         <div style={{
           width: W, height: TITLE_H, flexShrink: 0,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           padding: `${TEXT_PAD_TOP}px ${TEXT_PAD_SIDE}px ${TEXT_PAD_BOTTOM}px`, background: NAVY,
         }}>
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 16, flex: 1, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 14, flex: 1, overflow: 'hidden' }}>
             <div style={{
-              width: 5, borderRadius: 3, background: RED, flexShrink: 0,
-              alignSelf: 'stretch', display: 'flex', marginTop: 4, minHeight: 48,
+              width: 4, borderRadius: 2, background: RED, flexShrink: 0,
+              alignSelf: 'stretch', display: 'flex', marginTop: 4, minHeight: 44,
             }} />
             <div style={{
               display: 'flex', flexDirection: 'column', gap: 0,
-              maxWidth: W - TEXT_PAD_SIDE * 2 - 24, flex: 1, overflow: 'hidden',
+              maxWidth: W - TEXT_PAD_SIDE * 2 - 22, flex: 1, overflow: 'hidden',
             }}>
               {/* Manşet — Playfair display; yüksek kontrast beyaz */}
               <div style={{
@@ -360,8 +360,8 @@ export async function GET(
               {/* Ayırıcı + özet — near-white, daha büyük punto */}
               {spot ? (
                 <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 20,
-                  paddingTop: 30,
+                  display: 'flex', flexDirection: 'column', gap: 16,
+                  paddingTop: 24,
                 }}>
                   <div style={{
                     width: 80, height: 2, borderRadius: 1,
