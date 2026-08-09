@@ -214,11 +214,13 @@ function InlineCategoryChanger({
   categoryId,
   onCategoryChange,
   disabled,
+  variant = 'metadata',
 }: {
   postId: string
   categoryId: string
   onCategoryChange: (postId: string, categoryId: string) => Promise<void>
   disabled?: boolean
+  variant?: 'metadata' | 'action'
 }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -258,25 +260,38 @@ function InlineCategoryChanger({
     }
   }
 
+  const isAction = variant === 'action'
+
   return (
     <div ref={ref} className="relative inline-flex items-center">
       <button
         type="button"
         onClick={() => !disabled && !saving && setOpen((v) => !v)}
         disabled={disabled || saving}
-        className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[10px] font-medium text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] disabled:opacity-50"
-        title="Kategori değiştir"
+        title={isAction ? `Kategori: ${label}` : 'Kategori değiştir'}
+        className={cn(
+          isAction
+            ? 'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40 border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+            : 'inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[10px] font-medium text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] disabled:opacity-50'
+        )}
       >
-        <Tag className="h-2.5 w-2.5" />
-        <span>{label}</span>
+        <Tag className={isAction ? 'h-3 w-3' : 'h-2.5 w-2.5'} />
+        <span>{isAction ? 'Kategori' : label}</span>
         {saving ? (
-          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+          <Loader2 className={cn('animate-spin', isAction ? 'h-3 w-3' : 'h-2.5 w-2.5')} />
         ) : (
-          <ChevronDown className={cn('h-2.5 w-2.5 opacity-60 transition-transform', open && 'rotate-180')} />
+          <ChevronDown className={cn(
+            'opacity-60 transition-transform',
+            isAction ? 'h-2.5 w-2.5 opacity-50' : 'h-2.5 w-2.5',
+            open && 'rotate-180'
+          )} />
         )}
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-52 max-h-64 overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl">
+        <div className={cn(
+          'absolute top-full z-50 mt-1 w-52 max-h-64 overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl',
+          isAction ? 'right-0' : 'left-0'
+        )}>
           {getAdminCategoryGroups().map((group) => (
             <div key={group.label} className="mb-2 last:mb-0">
               <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
@@ -725,6 +740,13 @@ function NewsRow({
                 showSeo ? 'border-blue-500 bg-blue-600 text-white' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]')}>
               <BarChart3 className="h-3 w-3" />SEO
             </button>
+            <InlineCategoryChanger
+              postId={post.id}
+              categoryId={post.categoryId ?? ''}
+              onCategoryChange={onCategoryChange}
+              disabled={busy}
+              variant="action"
+            />
             <button onClick={() => onEdit(post)}
               className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-[11px] font-bold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]"
               title="Düzenle">
