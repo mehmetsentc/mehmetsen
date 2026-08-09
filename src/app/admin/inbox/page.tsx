@@ -291,17 +291,14 @@ export default function AdminInboxPage() {
   const [disconnecting, setDisconnecting] = useState(false)
   const [envMissing, setEnvMissing] = useState(false)
 
+  const [callbackError, setCallbackError] = useState('')
+
   // Check URL for post-OAuth callback params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('connected') === '1') {
-      // Clean URL without reload
-      window.history.replaceState({}, '', '/admin/inbox')
-    }
+    window.history.replaceState({}, '', '/admin/inbox')
     const err = params.get('error')
-    if (err) {
-      window.history.replaceState({}, '', '/admin/inbox')
-    }
+    if (err) setCallbackError(`OAuth hatası: ${err}`)
   }, [])
 
   const fetchStatus = useCallback(async () => {
@@ -399,7 +396,16 @@ export default function AdminInboxPage() {
         ) : envMissing ? (
           <WrongEnvState />
         ) : !status?.connected ? (
-          <NotConnectedState canManage={canManage} />
+          <>
+            {callbackError && (
+              <div className="mx-auto mt-4 max-w-2xl px-4">
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                  {callbackError}
+                </div>
+              </div>
+            )}
+            <NotConnectedState canManage={canManage} />
+          </>
         ) : (
           <>
             {/* Message list */}

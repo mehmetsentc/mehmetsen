@@ -6,8 +6,9 @@
 import { NextResponse } from 'next/server'
 import { exchangeCodeForTokens } from '@/lib/gmail/oauth'
 import { decrypt } from '@/lib/gmail/crypto'
-import { saveTokens, getIntegration } from '@/services/gmailService'
-import { getAdminFirestore } from '@/lib/firebase/admin'
+import { saveTokens } from '@/services/gmailService'
+import { getAdminFirestore, getAdminAuth } from '@/lib/firebase/admin'
+import { isSuperAdminEmailServer, getBootstrapAdminUids } from '@/lib/cmsSecrets.server'
 
 export const runtime = 'nodejs'
 
@@ -42,16 +43,23 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${adminUrl}?error=invalid_state`)
     }
 
-    // Verify the uid is a valid CMS user with system:settings
-    const db = getAdminFirestore()
-    const userDoc = await db.collection('users').doc(uid).get()
-    if (!userDoc.exists) {
-      return NextResponse.redirect(`${adminUrl}?error=user_not_found`)
-    }
-    const userData = userDoc.data()!
-    const role = userData.cmsRole as string
-    if (!['super_admin', 'managing_editor'].includes(role) && !userData.permissions?.includes('system:settings')) {
-      return NextResponse.redirect(`${adminUrl}?error=insufficient_role`)
+    // Verify the uid is a valid CMS user with system:settings permission.
+    // Mirror the same precedence as verifyCmsToken in cmsAuthServer.ts.
+    const authUser = await getAdminAuth().getUser(uid)
+    const email = authUser.email ?? ''
+
+    if (!isSuperAdminEmailServer(email) && !getBootstrapAdminUids().includes(uid)) {
+      // Fall back to Firestore role document (field is 'role', not 'cmsRole')
+      const db = getAdminFirestore()
+      const userDoc = await db.collection('users').doc(uid).get()
+      if (!userDoc.exists) {
+        return NextResponse.redirect(`${adminUrl}?error=user_not_found`)
+      }
+      const userData = userDoc.data()!
+      const role = (userData.role ?? '') as string
+      if (!['super_admin', 'managing_editor'].includes(role) && !userData.permissions?.includes('system:settings')) {
+        return NextResponse.redirect(`${adminUrl}?error=insufficient_role`)
+      }
     }
 
     // Exchange code for tokens
