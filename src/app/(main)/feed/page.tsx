@@ -71,16 +71,13 @@ export const metadata: Metadata = {
 }
 
 export default async function FeedPage() {
-  // If this is a city subdomain (middleware rewrite to /city-site didn't fire),
-  // redirect to root which renders city content independently of middleware.
-  // Uses a direct host check — no dynamic imports that could silently fail
-  // in this serverless bundle.
-  if (process.env.CITY_NETWORK_ENABLED === 'true') {
-    const h = await headers()
-    const host = (h.get('host') ?? '').split(':')[0].toLowerCase()
-    if (!NATIONAL_HOSTS.has(host) && host.endsWith('.nahaber.com')) {
-      redirect('/')
-    }
+  // City subdomain guard: if this request is on a city subdomain
+  // (e.g. canakkale.nahaber.com), redirect to root which renders city
+  // content inline. This fires when middleware rewrite to /city-site fails.
+  const h = await headers()
+  const host = (h.get('host') ?? '').split(':')[0].toLowerCase()
+  if (!NATIONAL_HOSTS.has(host) && host.endsWith('.nahaber.com')) {
+    redirect('/')
   }
 
   const data = await getHomeFeedInitialData()

@@ -41,12 +41,10 @@ export const metadata: Metadata = {
 }
 
 export default async function LocalNewsPage() {
-  if (process.env.CITY_NETWORK_ENABLED === 'true') {
-    const h = await headers()
-    const host = (h.get('host') ?? '').split(':')[0].toLowerCase()
-    if (!NATIONAL_HOSTS.has(host) && host.endsWith('.nahaber.com')) {
-      redirect('/')
-    }
+  const h = await headers()
+  const host = (h.get('host') ?? '').split(':')[0].toLowerCase()
+  if (!NATIONAL_HOSTS.has(host) && host.endsWith('.nahaber.com')) {
+    redirect('/')
   }
 
   const jsonLd = {
