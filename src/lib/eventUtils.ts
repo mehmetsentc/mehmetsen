@@ -32,12 +32,25 @@ export function getEventCategoryStyle(category: EventCategory): string {
   return CATEGORY_STYLES[category] ?? CATEGORY_STYLES.other
 }
 
+type EventDateFields = {
+  startsAt: string
+  endsAt?: string
+  dateLabel?: string
+}
+
 /**
  * Formats an event's date/time in Turkish, e.g. "7 Haziran 2026, 20:00".
  * When an end time on the same day is provided it renders a range:
  * "7 Haziran 2026, 20:00 – 23:00".
+ * Prefers `dateLabel` for recurring / approximate municipal events.
  */
-export function formatEventDateTime(startsAt: string, endsAt?: string): string {
+export function formatEventDateTime(
+  startsAt: string,
+  endsAt?: string,
+  dateLabel?: string
+): string {
+  if (dateLabel?.trim()) return dateLabel.trim()
+
   const start = new Date(startsAt)
   if (Number.isNaN(start.getTime())) return ''
 
@@ -110,6 +123,68 @@ export function resolveEventImageUrl(url: string | null | undefined): string | n
 
   // Unknown host: return the absolute URL and let the <img> try directly.
   return absolute
+}
+
+export function formatEventDisplayDate(event: EventDateFields): string {
+  return formatEventDateTime(event.startsAt, event.endsAt, event.dateLabel)
+}
+
+/** True when event is free to attend (explicit flag or no ticket URL). */
+export function isEventFree(event: { isFree?: boolean; ticketUrl?: string }): boolean {
+  if (event.isFree === true) return true
+  if (event.isFree === false) return false
+  return !event.ticketUrl?.trim()
+}
+
+const EVENT_TYPE_TAG_LABELS: Record<string, string> = {
+  festival: 'Festival',
+  bienal: 'Bienal',
+  'yarışma': 'Yarışma',
+  yarismasi: 'Yarışma',
+  konser: 'Konser',
+  'panayır': 'Panayır',
+  panayiri: 'Panayır',
+  'şenlik': 'Şenlik',
+  senlik: 'Şenlik',
+  spor: 'Spor',
+  fuar: 'Fuar',
+  film: 'Film',
+  'kültür': 'Kültür',
+  kultur: 'Kültür',
+}
+
+const EVENT_TYPE_TAG_STYLES: Record<string, string> = {
+  festival: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+  bienal: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200',
+  'yarışma': 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
+  yarismasi: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
+  konser: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
+  'panayır': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+  panayiri: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+  'şenlik': 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-200',
+  senlik: 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-200',
+  spor: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200',
+  fuar: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200',
+  film: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200',
+  'kültür': 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
+  kultur: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
+}
+
+/** Display tags excluding Ücretsiz / halka açık (shown as separate badges). */
+export function getEventTypeTags(tags?: string[]): string[] {
+  if (!Array.isArray(tags)) return []
+  const skip = new Set(['ücretsiz', 'ucretsiz', 'halka açık', 'halka acik'])
+  return tags.filter((tag) => !skip.has(tag.trim().toLocaleLowerCase('tr-TR')))
+}
+
+export function getEventTypeTagLabel(tag: string): string {
+  const key = tag.trim().toLocaleLowerCase('tr-TR')
+  return EVENT_TYPE_TAG_LABELS[key] ?? tag
+}
+
+export function getEventTypeTagStyle(tag: string): string {
+  const key = tag.trim().toLocaleLowerCase('tr-TR')
+  return EVENT_TYPE_TAG_STYLES[key] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
 }
 
 /** Short day badge, e.g. "7 Haz" used on compact cards. */

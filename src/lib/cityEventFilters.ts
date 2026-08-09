@@ -27,6 +27,7 @@ export const DEFAULT_CITY_EVENT_FILTERS: CityEventFilterState = {
 }
 
 export function getEventDistrictSlug(event: NaEvent): string | null {
+  if (event.districtSlug?.trim()) return event.districtSlug.trim().toLowerCase()
   const text = [event.venue, event.address, event.city].filter(Boolean).join(' ')
   if (!text.trim()) return null
   return extractDistrictSlugFromText(text)

@@ -4,13 +4,15 @@ import { useState } from 'react'
 import { CalendarDays, MapPin, PartyPopper, Ticket } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  formatEventDateTime,
   formatEventDayBadge,
+  formatEventDisplayDate,
   getEventCategoryLabel,
   getEventCategoryStyle,
+  isEventFree,
   resolveEventImageUrl,
 } from '@/lib/eventUtils'
 import type { NaEvent } from '@/types/event'
+import { CityEventBadges } from './CityEventBadges'
 
 interface CityEventGridCardProps {
   event: NaEvent
@@ -18,11 +20,12 @@ interface CityEventGridCardProps {
 }
 
 export function CityEventGridCard({ event, compact = false }: CityEventGridCardProps) {
-  const dateLabel = formatEventDateTime(event.startsAt, event.endsAt)
+  const dateLabel = formatEventDisplayDate(event)
   const { day, month } = formatEventDayBadge(event.startsAt)
   const [imageFailed, setImageFailed] = useState(false)
   const coverImageUrl = resolveEventImageUrl(event.coverImageUrl)
   const showImage = !!coverImageUrl && !imageFailed
+  const free = isEventFree(event)
 
   return (
     <article
@@ -72,6 +75,8 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
         >
           {getEventCategoryLabel(event.category)}
         </span>
+
+        <CityEventBadges event={event} layout="overlay" />
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 p-3">
@@ -112,9 +117,13 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
             <Ticket className="h-3.5 w-3.5" />
             Bilet Al
           </a>
+        ) : free ? (
+          <div className="mt-auto pt-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+            Halka açık · giriş ücretsiz
+          </div>
         ) : (
           <div className="mt-auto pt-1 text-[11px] font-medium text-[rgb(var(--color-text-secondary))]">
-            Ücretsiz / Bilgi yok
+            Bilgi yok
           </div>
         )}
       </div>

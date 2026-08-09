@@ -62,6 +62,15 @@ export interface NaEvent {
   lat?: number
   /** Optional venue longitude (when a provider exposes coordinates). */
   lng?: number
+  /** İlçe slug for city event filters (e.g. "merkez", "bozcaada"). */
+  districtSlug?: string
+  /** Human-readable date when exact times vary (recurring / approximate). */
+  dateLabel?: string
+  /** Free-form tags shown on city cards (e.g. "Ücretsiz", "festival"). */
+  tags?: string[]
+  /** Explicit free/public flags for municipal events. */
+  isFree?: boolean
+  isPublic?: boolean
   /** Community average rating (1–5), maintained by eventReviews sync. */
   averageRating?: number
   /** Number of user ratings. */

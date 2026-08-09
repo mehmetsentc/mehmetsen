@@ -34,6 +34,7 @@
     "approve-news-drafts": "node scripts/approve-news-drafts.mjs",
     "init-storage": "node scripts/init-storage-folders.mjs",
     "init-firestore": "node scripts/init-firestore-collections.mjs",
+    "seed-canakkale-events": "node scripts/seed-canakkale-events.mjs",
     "format": "prettier --write .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

@@ -3,25 +3,28 @@
 import { useState } from 'react'
 import { CalendarDays, MapPin, PartyPopper, Ticket } from 'lucide-react'
 import {
-  formatEventDateTime,
   formatEventDayBadge,
+  formatEventDisplayDate,
   getEventCategoryLabel,
   getEventCategoryStyle,
+  isEventFree,
   resolveEventImageUrl,
 } from '@/lib/eventUtils'
 import { cn } from '@/lib/utils'
 import type { NaEvent } from '@/types/event'
+import { CityEventBadges } from './CityEventBadges'
 
 interface CityEventListCardProps {
   event: NaEvent
 }
 
 export function CityEventListCard({ event }: CityEventListCardProps) {
-  const dateLabel = formatEventDateTime(event.startsAt, event.endsAt)
+  const dateLabel = formatEventDisplayDate(event)
   const { day, month } = formatEventDayBadge(event.startsAt)
   const [imageFailed, setImageFailed] = useState(false)
   const coverImageUrl = resolveEventImageUrl(event.coverImageUrl)
   const showImage = !!coverImageUrl && !imageFailed
+  const free = isEventFree(event)
 
   return (
     <article className="flex gap-3 overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2.5 shadow-sm">
@@ -54,14 +57,17 @@ export function CityEventListCard({ event }: CityEventListCardProps) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-        <span
-          className={cn(
-            'inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold',
-            getEventCategoryStyle(event.category)
-          )}
-        >
-          {getEventCategoryLabel(event.category)}
-        </span>
+        <div className="flex flex-wrap items-center gap-1">
+          <span
+            className={cn(
+              'inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold',
+              getEventCategoryStyle(event.category)
+            )}
+          >
+            {getEventCategoryLabel(event.category)}
+          </span>
+          <CityEventBadges event={event} layout="inline" showFree={false} />
+        </div>
 
         <h3 className="line-clamp-2 text-sm font-bold leading-snug text-[rgb(var(--color-text))]">
           {event.title}
@@ -82,7 +88,7 @@ export function CityEventListCard({ event }: CityEventListCardProps) {
         )}
       </div>
 
-      {event.ticketUrl && (
+      {event.ticketUrl ? (
         <a
           href={event.ticketUrl}
           target="_blank"
@@ -92,7 +98,11 @@ export function CityEventListCard({ event }: CityEventListCardProps) {
           <Ticket className="mb-0.5 h-4 w-4" />
           Bilet
         </a>
-      )}
+      ) : free ? (
+        <div className="flex shrink-0 flex-col items-center justify-center self-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[10px] font-bold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
+          Ücretsiz
+        </div>
+      ) : null}
     </article>
   )
 }
