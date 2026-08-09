@@ -138,3 +138,4 @@ export async function resolveTenantFromRequest(
 export const TENANT_HEADER = 'x-nahaber-tenant'
 export const TENANT_PROVINCE_HEADER = 'x-nahaber-province'
 export const TENANT_COOKIE = 'nahaber_tenant'
+export const TENANT_PROVINCE_COOKIE = 'nahaber_province'

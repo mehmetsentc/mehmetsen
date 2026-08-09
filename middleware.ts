@@ -12,6 +12,7 @@ import {
   TENANT_HEADER,
   TENANT_PROVINCE_HEADER,
   TENANT_COOKIE,
+  TENANT_PROVINCE_COOKIE,
 } from '@/lib/tenant'
 
 const COOKIE_MAX_AGE_YEAR = 60 * 60 * 24 * 365
@@ -58,12 +59,6 @@ export async function middleware(request: NextRequest) {
   const tenant = await resolveTenantFromRequest(request)
 
   if (tenant) {
-    // Build a NEW mutable headers object — request.headers is ReadonlyHeaders
-    // in Next.js 15 Edge middleware, so calling .set() on it silently fails.
-    const rewriteHeaders = new Headers(request.headers)
-    rewriteHeaders.set(TENANT_HEADER, tenant.slug)
-    rewriteHeaders.set(TENANT_PROVINCE_HEADER, tenant.provinceSlug)
-
     // On city subdomains, /feed should show city news — redirect to city home.
     if (pathname === '/feed' || pathname === '/feed/') {
       const homeUrl = request.nextUrl.clone()
@@ -77,10 +72,28 @@ export async function middleware(request: NextRequest) {
       const rewriteUrl = request.nextUrl.clone()
       rewriteUrl.pathname = pathname === '/' ? '/city-site' : `/city-site${pathname}`
 
-      // Forward country/language cookies for first-time visitors
       const country = detectCountry(request)
       const existingLang = request.cookies.get(LANGUAGE_COOKIE)?.value
       const existingCountry = request.cookies.get(COUNTRY_COOKIE)?.value
+
+      // Build a NEW mutable headers object — request.headers is ReadonlyHeaders
+      // in Next.js 15 Edge middleware, so calling .set() on it silently fails.
+      const rewriteHeaders = new Headers(request.headers)
+
+      // Tenant — set as x-headers (primary) AND baked into the Cookie header
+      // (reliable fallback). In Next.js 15 on Vercel, x-headers set via
+      // NextResponse.rewrite({ request: { headers } }) can be dropped on the
+      // edge→serverless boundary. Cookies in the Cookie header are always
+      // forwarded to the serverless function.
+      rewriteHeaders.set(TENANT_HEADER, tenant.slug)
+      rewriteHeaders.set(TENANT_PROVINCE_HEADER, tenant.provinceSlug)
+      const existingCookieStr = rewriteHeaders.get('Cookie') || ''
+      const tenantCookies = `${TENANT_COOKIE}=${tenant.slug}; ${TENANT_PROVINCE_COOKIE}=${tenant.provinceSlug}`
+      rewriteHeaders.set(
+        'Cookie',
+        existingCookieStr ? `${existingCookieStr}; ${tenantCookies}` : tenantCookies
+      )
+
       if (country && existingCountry !== country) {
         rewriteHeaders.set(COUNTRY_COOKIE, country)
       }
