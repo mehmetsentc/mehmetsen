@@ -1,13 +1,64 @@
 import { redirect } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
+import { getActiveTenant } from '@/lib/tenantContext'
+import { getCityCategoryName } from '@/constants/cities'
+import { getCityNews } from '@/services/cityNewsService.server'
+import { CityFeedClient } from '@/components/city/CityFeedClient'
+import { CityLayoutClient } from '@/components/city/CityLayoutClient'
+import type { Metadata } from 'next'
+import { getSiteUrl } from '@/lib/seo'
+
+// force-dynamic so the host header is available at request time
+export const dynamic = 'force-dynamic'
+
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getActiveTenant()
+  if (!tenant) return {}
+
+  const cityName = getCityCategoryName(tenant.provinceSlug)
+  const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const siteUrl = getSiteUrl()
+
+  return {
+    title: `${cityName} Haberleri — ${siteName}`,
+    description: `${cityName} son dakika yerel haberler, gündem, etkinlikler ve spor haberleri.`,
+    openGraph: {
+      title: `${cityName} Haberleri — ${siteName}`,
+      description: `${cityName} şehrinden son dakika yerel haberler ve güncel gelişmeler.`,
+      url: siteUrl,
+      type: 'website',
+      locale: 'tr_TR',
+      siteName,
+    },
+  }
+}
 
 /**
- * Root `/` lands on the feed (one hop). Uses `redirect` (307) instead of
- * `permanentRedirect` (308) so browsers do NOT cache this redirect.
- * City subdomains never reach this component — middleware rewrites `/` to
- * `/city-site` before this runs. Caching a 308 here would cause city
- * subdomain visitors to loop back to /feed forever after one bad visit.
+ * Root `/` handler.
+ *
+ * City subdomains: middleware normally rewrites `/` → `/city-site`, but if
+ * the middleware is unavailable (build mismatch, edge config issue, etc.),
+ * we detect the city from the Host header and render city content inline.
+ * This makes city routing middleware-independent.
+ *
+ * National site: redirect to /feed (307, not 308, so browsers don't cache it).
  */
-export default function Home() {
+export default async function Home() {
+  const tenant = await getActiveTenant()
+
+  if (tenant) {
+    const items = await getCityNews(tenant.provinceSlug, 30)
+    const displayName = getCityCategoryName(tenant.provinceSlug)
+    return (
+      <CityLayoutClient
+        tenantSlug={tenant.slug}
+        displayName={displayName}
+        provinceSlug={tenant.provinceSlug}
+      >
+        <CityFeedClient citySlug={tenant.provinceSlug} initialItems={items} />
+      </CityLayoutClient>
+    )
+  }
+
   redirect(ROUTES.FEED)
 }
