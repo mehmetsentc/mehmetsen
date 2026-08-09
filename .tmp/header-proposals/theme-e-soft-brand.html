@@ -1,0 +1,164 @@
+<!DOCTYPE html><html lang=tr><head><meta charset=utf-8><title>theme</title><style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #e8eaef;
+      color: #0f172a;
+      padding: 24px;
+    }
+    h1 { font-size: 1.25rem; margin-bottom: 8px; }
+    .note { color: #64748b; font-size: 0.875rem; margin-bottom: 28px; }
+    .theme {
+      margin-bottom: 40px;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+    }
+    .theme-label {
+      padding: 10px 16px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .page {
+      background: #fafafa;
+      padding-bottom: 28px;
+    }
+    .bar {
+      width: 100%;
+    }
+    .inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      min-height: 52px;
+    }
+    .inner.sec {
+      min-height: 40px;
+      justify-content: center;
+      gap: 18px;
+      padding: 8px 16px;
+    }
+    .wm { font-family: Georgia, "Times New Roman", serif; font-size: 1.65rem; font-weight: 700; letter-spacing: -0.02em; }
+    .wm .na { color: #fff; }
+    .wm .haber { color: #fff5eb; }
+    .wm .dot { font-size: 0.55em; font-weight: 600; opacity: 0.9; }
+    .nav { display: flex; gap: 14px; flex: 1; overflow: hidden; }
+    .nav a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .sec a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0.9;
+    }
+    .search {
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: #64748b;
+      white-space: nowrap;
+    }
+    .btn {
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .burger { color: #fff; font-size: 18px; width: 28px; text-align: center; }
+    .content {
+      max-width: 1100px;
+      margin: 20px auto 0;
+      padding: 0 16px;
+    }
+    .logo-big { font-family: Georgia, serif; font-size: 2rem; font-weight: 800; }
+    .logo-big .n { color: #0f172a; }
+    .logo-big .h { color: #e50914; }
+    .ad {
+      margin-top: 14px;
+      height: 72px;
+      background: linear-gradient(90deg, #1e293b, #334155);
+      border-radius: 4px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+    .guide {
+      max-width: 1100px;
+      margin: 0 auto;
+      height: 0;
+      border-left: 1px dashed rgba(229,9,20,0.35);
+      border-right: 1px dashed rgba(229,9,20,0.35);
+      position: relative;
+      pointer-events: none;
+    }
+
+    /* A — Dark brand (live) */
+    .a .top { background: #0F172A; }
+    .a .bot { background: #1E293B; }
+
+    /* B — Red + navy */
+    .b .top { background: #E50914; }
+    .b .bot { background: #0F172A; }
+
+    /* C — Navy + light secondary */
+    .c .top { background: #0F172A; }
+    .c .bot { background: #F1F5F9; }
+    .c .sec a { color: #0f172a; opacity: 0.85; }
+
+    /* D — Charcoal */
+    .d .top { background: #111111; }
+    .d .bot { background: #1A1A1A; }
+    .d .wm .haber { color: #E50914; }
+
+    /* E — Soft brand */
+    .e .top { background: #0F172A; box-shadow: inset 0 -2px 0 #9f1239; }
+    .e .bot { background: #1E293B; }
+    .e .wm .haber { color: #fda4af; }
+  </style>
+body{padding:0;background:#e8eaef}
+.theme{margin:0;border-radius:0;box-shadow:none}
+</head><body><section class="theme e" id="theme-e">
+    <div class="theme-label">E — Soft Brand · koyu navy + muted kırmızı vurgu</div>
+    <div class="page">
+      <div class="bar top"><div class="inner">
+        <span class="burger">☰</span>
+        <span class="wm"><span class="na">Na</span><span class="haber">Haber</span><span class="dot">.com</span></span>
+        <div class="nav">
+          <a>Son Dakika</a><a>Gündem</a><a>Spor</a><a>Ekonomi</a><a>Dünya</a><a>Teknoloji</a><a>Yerel</a>
+        </div>
+        <span class="search">🔍 Ara</span>
+        <span class="btn">Giriş</span>
+      </div></div>
+      <div class="bar bot"><div class="inner sec">
+        <a>Politika</a><a>Finans</a><a>Sağlık</a><a>Kültür Sanat</a><a>Magazin</a><a>Yaşam</a><a>Eğitim</a><a>Video</a><a>Turizm</a>
+      </div></div>
+      <div class="content">
+        <div class="logo-big"><span class="n">Na</span><span class="h">Haber</span></div>
+        <div class="ad">ÖNE ÇIKAN / REKLAM ALANI — content hizası</div>
+      </div>
+    </div>
+  </section></body></html>

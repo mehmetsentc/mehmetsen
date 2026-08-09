@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NaHaber — Haber Kategorileri & RSS Kaynakları</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #222; }
+  header { background: #1a1a2e; color: #fff; padding: 24px 32px; }
+  header h1 { font-size: 22px; font-weight: 700; }
+  header p { font-size: 13px; color: #aab; margin-top: 4px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 16px 32px; background: #fff; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 10; }
+  .tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid transparent; transition: all .15s; white-space: nowrap; }
+  .tab:hover { opacity: .85; }
+  .tab.active { border-color: currentColor; background: #fff !important; }
+  .content { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; color: #fff; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  thead th { padding: 10px 14px; font-size: 12px; font-weight: 700; text-align: left; color: #fff; }
+  tbody tr:nth-child(even) { background: #f8f9fa; }
+  tbody tr:hover { background: #eef4ff; }
+  td { padding: 9px 14px; font-size: 13px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  td a { color: #0563c1; text-decoration: none; font-family: monospace; font-size: 12px; word-break: break-all; }
+  td a:hover { text-decoration: underline; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .cat { font-weight: 600; color: #444; }
+  .stars { color: #f4a500; letter-spacing: -1px; }
+  .ozet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .ozet-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); cursor: pointer; transition: box-shadow .15s; border-left: 4px solid; }
+  .ozet-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+  .ozet-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .ozet-card p { font-size: 12px; color: #666; }
+  @media (max-width: 600px) {
+    .content { padding: 16px; }
+    .tabs { padding: 10px 16px; }
+    header { padding: 16px; }
+    td { font-size: 12px; padding: 7px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🗞 NaHaber — Haber Kategorileri & RSS Kaynak Rehberi</h1>
+  <p>15 kategori · 200+ RSS kaynağı · Tüm Türkiye haberleri</p>
+</header>
+
+<div class="tabs" id="tabBar"></div>
+
+<div class="content" id="mainContent"></div>
+
+<script>
+const categories = [
+  {
+    id: 'ozet', label: '📋 Özet', color: '#1a1a2e', thColor: '#1a1a2e',
+    title: 'Tüm Kategoriler', isGrid: true,
+    items: [
+      { num: '1', name: 'GÜNDEM / ULUSAL', desc: 'Son dakika, siyaset, Türkiye gündemi', color: '#C00000' },
+      { num: '2', name: 'YEREL HABERLER', desc: '81 il için yerel gazeteler, bölge haberleri', color: '#1F7A4D' },
+      { num: '3', name: 'DÜNYA HABERLERİ', desc: 'Uluslararası ajanslar, bölgesel haberler', color: '#1A237E' },
+      { num: '4', name: 'EKONOMİ / FİNANS', desc: 'Borsa, finans, kripto, emlak, tarım', color: '#2E7D32' },
+      { num: '5', name: 'SPOR', desc: 'Futbol, basketbol, voleybol, genel spor', color: '#B71C1C' },
+      { num: '6', name: 'TEKNOLOJİ / BİLİM', desc: 'Teknoloji, bilim, uzay, yapay zeka', color: '#4527A0' },
+      { num: '7', name: 'SAĞLIK', desc: 'Sağlık, beslenme, tıp, aile haberleri', color: '#00695C' },
+      { num: '8', name: 'TURİZM / SEYAHAT', desc: 'Turizm sektörü, seyahat, otelcilik', color: '#E65100' },
+      { num: '9', name: 'KÜLTÜR / SANAT', desc: 'Kültür, sanat, sinema, magazin, kitap', color: '#880E4F' },
+      { num: '10', name: 'EĞİTİM', desc: 'Eğitim, sınav, üniversite, yurtdışı', color: '#1565C0' },
+      { num: '11', name: 'OTOMOTİV', desc: 'Otomobil, TOGG, elektrikli araç', color: '#37474F' },
+      { num: '12', name: 'YAŞAM / MAGAZİN', desc: 'Yaşam tarzı, gastronomi, moda, astroloji', color: '#6A1B9A' },
+      { num: '13', name: 'ÇEVRE / ENERJİ', desc: 'Çevre, iklim, enerji, tarım, afet', color: '#1B5E20' },
+      { num: '14', name: 'DİN', desc: 'Din haberleri, Diyanet, hac/umre', color: '#4E342E' },
+      { num: '15', name: 'HABER AJANSLARI', desc: 'AA, İHA, DHA, Reuters, BBC, DW, AFP', color: '#212121' },
+    ]
+  },
+  {
+    id: 'gundem', label: '🔴 Gündem', color: '#C00000', thColor: '#C00000',
+    title: 'GÜNDEM / ULUSAL HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Tür'],
+    rows: [
+      ['Son Dakika','NTV Gündem','https://www.ntv.com.tr/gundem.rss','⭐⭐⭐⭐⭐','TV/Dijital'],
+      ['Son Dakika','CNN Türk Tümü','https://www.cnnturk.com/feed/rss/all/news','⭐⭐⭐⭐⭐','TV/Dijital'],
+      ['Son Dakika','A Haber Anasayfa','https://www.ahaber.com.tr/rss/anasayfa.xml','⭐⭐⭐⭐','TV'],
+      ['Son Dakika','TRT Haber','http://www.trthaber.com/sondakika.rss','⭐⭐⭐⭐⭐','Kamu TV'],
+      ['Son Dakika','Habertürk','https://www.haberturk.com/rss/anasayfa','⭐⭐⭐⭐⭐','TV/Dijital'],
+      ['Son Dakika','Sabah Son Dakika','https://www.sabah.com.tr/rss/sondakika.xml','⭐⭐⭐⭐','Gazete'],
+      ['Son Dakika','Milliyet Son Dakika','http://www.milliyet.com.tr/rss/rssNew/SonDakikaRss.xml','⭐⭐⭐⭐','Gazete'],
+      ['Türkiye/Gündem','NTV Türkiye','https://www.ntv.com.tr/turkiye.rss','⭐⭐⭐⭐⭐','TV'],
+      ['Türkiye/Gündem','Hürriyet Gündem','http://www.hurriyet.com.tr/rss/gundem','⭐⭐⭐⭐⭐','Gazete'],
+      ['Türkiye/Gündem','Sabah Gündem','https://www.sabah.com.tr/rss/gundem.xml','⭐⭐⭐⭐','Gazete'],
+      ['Türkiye/Gündem','Sözcü Son Dakika','https://www.sozcu.com.tr/rss/son-dakika.xml','⭐⭐⭐⭐','Gazete'],
+      ['Türkiye/Gündem','Cumhuriyet','http://www.cumhuriyet.com.tr/rss/son_dakika.xml','⭐⭐⭐⭐','Gazete'],
+      ['Siyaset','Milliyet Siyaset','http://www.milliyet.com.tr/rss/rssNew/siyasetRss.xml','⭐⭐⭐⭐','Gazete'],
+      ['Siyaset','Yeni Şafak Gündem','https://www.yenisafak.com/rss?xml=gundem','⭐⭐⭐','Gazete'],
+      ['Genel','Ensonhaber','http://www.ensonhaber.com/rss/ensonhaber.xml','⭐⭐⭐','Dijital'],
+      ['Genel','Takvim Güncel','https://www.takvim.com.tr/rss/guncel.xml','⭐⭐⭐','Gazete'],
+      ['Genel','A Haber Gündem','https://www.ahaber.com.tr/rss/gundem.xml','⭐⭐⭐⭐','TV'],
+      ['Analiz','A Haber Analiz','https://www.ahaber.com.tr/rss/analiz.xml','⭐⭐⭐','TV/Analiz'],
+    ]
+  },
+  {
+    id: 'yerel', label: '📍 Yerel', color: '#1F7A4D', thColor: '#1F7A4D',
+    title: 'YEREL HABER KAYNAKLARI (81 İL)',
+    cols: ['Bölge/İl', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Not'],
+    rows: [
+      ['Tüm TR','Google News TR Dinamik','https://news.google.com/rss/search?q={ŞEHİR}+when:1d&hl=tr&gl=TR','⭐⭐⭐⭐⭐','{şehir} değiştir'],
+      ['Tüm TR','Haberler.com','https://www.haberler.com/rss/','⭐⭐⭐⭐','Ana portal'],
+      ['Tüm TR','İHA Tüm Haberler','https://www.iha.com.tr/rss.aspx','⭐⭐⭐⭐','Ajans'],
+      ['Tüm TR','DHA Tüm Haberler','https://www.dha.com.tr/rss.xml','⭐⭐⭐⭐','Ajans'],
+      ['Tüm TR','ANKA Ajansı','https://www.ankahaber.net/rss/','⭐⭐⭐⭐','Ajans'],
+      ['Çanakkale','Çanakkale Haber','https://www.canakkalehaber.com/rss/','⭐⭐⭐⭐','Yerel gazete'],
+      ['Çanakkale','Çanakkale Olay','https://www.canakkaleolay.com/rss/','⭐⭐⭐⭐','Yerel gazete'],
+      ['Çanakkale','Kanal 17','https://www.kanal17.com.tr/rss/','⭐⭐⭐⭐','Yerel TV'],
+      ['Çanakkale','Boğaz Gazetesi','https://www.bogazgazetesi.com.tr/rss/','⭐⭐⭐','Yerel gazete'],
+      ['Çanakkale','Çanakkale Aynalıpazar','https://www.canakkaleaynalipazar.com/rss/','⭐⭐⭐','Yerel gazete'],
+      ['Çanakkale','Biga\'nın Sesi','https://www.biganinsesi.com/rss/','⭐⭐⭐','İlçe gazetesi'],
+      ['Çanakkale','Gelibolu Gaste','https://www.gelibolugaste.com/rss/','⭐⭐⭐','İlçe gazetesi'],
+      ['Çanakkale','Bozcaada Haber','https://www.bozcaadahaber.net/rss/','⭐⭐⭐','İlçe gazetesi'],
+      ['İstanbul','Google News İstanbul','https://news.google.com/rss/search?q=İstanbul+when:1d&hl=tr&gl=TR','⭐⭐⭐⭐','Dinamik'],
+      ['Ankara','Google News Ankara','https://news.google.com/rss/search?q=Ankara+when:1d&hl=tr&gl=TR','⭐⭐⭐⭐','Dinamik'],
+      ['İzmir','Google News İzmir','https://news.google.com/rss/search?q=İzmir+when:1d&hl=tr&gl=TR','⭐⭐⭐⭐','Dinamik'],
+      ['Antalya','Google News Antalya','https://news.google.com/rss/search?q=Antalya+when:1d&hl=tr&gl=TR','⭐⭐⭐⭐','Dinamik'],
+      ['Bursa','Google News Bursa','https://news.google.com/rss/search?q=Bursa+when:1d&hl=tr&gl=TR','⭐⭐⭐⭐','Dinamik'],
+      ['Adana','Sabah Adana','https://www.sabah.com.tr/rss/adana.xml','⭐⭐⭐⭐','Ulusal+yerel'],
+      ['Trabzon','Google News Trabzon','https://news.google.com/rss/search?q=Trabzon+when:1d&hl=tr&gl=TR','⭐⭐⭐','Dinamik'],
+      ['Gaziantep','Google News Gaziantep','https://news.google.com/rss/search?q=Gaziantep+when:1d&hl=tr&gl=TR','⭐⭐⭐','Dinamik'],
+      ['Konya','Google News Konya','https://news.google.com/rss/search?q=Konya+when:1d&hl=tr&gl=TR','⭐⭐⭐','Dinamik'],
+    ]
+  },
+  {
+    id: 'dunya', label: '🌍 Dünya', color: '#1A237E', thColor: '#283593',
+    title: 'DÜNYA HABERLERİ KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Bölge'],
+    rows: [
+      ['Dünya - TR','NTV Dünya','https://www.ntv.com.tr/dunya.rss','⭐⭐⭐⭐⭐','Genel'],
+      ['Dünya - TR','Hürriyet Dünya','http://www.hurriyet.com.tr/rss/dunya','⭐⭐⭐⭐⭐','Genel'],
+      ['Dünya - TR','Sabah Dünya','https://www.sabah.com.tr/rss/dunya.xml','⭐⭐⭐⭐','Genel'],
+      ['Dünya - TR','CNN Türk Dünya','https://www.cnnturk.com/feed/rss/dunya/news','⭐⭐⭐⭐','Genel'],
+      ['Dünya - TR','A Haber Dünya','https://www.ahaber.com.tr/rss/dunya.xml','⭐⭐⭐⭐','Genel'],
+      ['Dünya - TR','Milliyet Dünya','http://www.milliyet.com.tr/rss/rssNew/dunyaRss.xml','⭐⭐⭐⭐','Genel'],
+      ['Dünya - TR','BBC Türkçe','http://feeds.bbci.co.uk/turkce/rss.xml','⭐⭐⭐⭐⭐','Küresel/TR'],
+      ['Dünya - TR','DW Türkçe','http://rss.dw.com/rdf/rss-tur-all','⭐⭐⭐⭐⭐','Küresel/TR'],
+      ['Dünya - TR','Sputnik Türkçe','https://tr.sputniknews.com/export/rss2/archive/index.xml','⭐⭐⭐','Rusya'],
+      ['Orta Doğu','AA Güncel','https://www.aa.com.tr/tr/rss/default?cat=guncel','⭐⭐⭐⭐⭐','Orta Doğu'],
+      ['Orta Doğu','Al Jazeera TR','https://www.aljazeera.com.tr/feed','⭐⭐⭐⭐','Orta Doğu'],
+      ['Avrupa','EuroNews Türkçe','https://tr.euronews.com/rss','⭐⭐⭐⭐','Avrupa'],
+      ['EN','Reuters Top News','https://feeds.reuters.com/reuters/topNews','⭐⭐⭐⭐⭐','Küresel'],
+      ['EN','BBC World','http://feeds.bbci.co.uk/news/world/rss.xml','⭐⭐⭐⭐⭐','Küresel'],
+      ['EN','Al Jazeera EN','https://www.aljazeera.com/xml/rss/all.xml','⭐⭐⭐⭐','Küresel'],
+      ['EN','Daily Sabah','https://www.dailysabah.com/rss','⭐⭐⭐⭐','TR/Küresel'],
+      ['EN','Hurriyet Daily','https://www.hurriyetdailynews.com/rss','⭐⭐⭐⭐','TR/Küresel'],
+    ]
+  },
+  {
+    id: 'ekonomi', label: '💹 Ekonomi', color: '#2E7D32', thColor: '#388E3C',
+    title: 'EKONOMİ / FİNANS HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Ekonomi Genel','NTV Ekonomi','https://www.ntv.com.tr/ekonomi.rss','⭐⭐⭐⭐⭐','Genel'],
+      ['Ekonomi Genel','Hürriyet Ekonomi','http://www.hurriyet.com.tr/rss/ekonomi','⭐⭐⭐⭐⭐','Genel'],
+      ['Ekonomi Genel','Sabah Ekonomi','https://www.sabah.com.tr/rss/ekonomi.xml','⭐⭐⭐⭐','Genel'],
+      ['Ekonomi Genel','CNN Türk Ekonomi','https://www.cnnturk.com/feed/rss/ekonomi/news','⭐⭐⭐⭐','Genel'],
+      ['Ekonomi Genel','Milliyet Ekonomi','http://www.milliyet.com.tr/rss/rssNew/ekonomiRss.xml','⭐⭐⭐⭐','Genel'],
+      ['Ekonomi Genel','A Haber Ekonomi','https://www.ahaber.com.tr/rss/ekonomi.xml','⭐⭐⭐⭐','Genel'],
+      ['Ekonomi Genel','Sözcü Ekonomi','https://www.sozcu.com.tr/rss/ekonomi.xml','⭐⭐⭐⭐','Genel'],
+      ['Borsa/Finans','Dünya Gazetesi','https://www.dunya.com/rss?dunya','⭐⭐⭐⭐⭐','Borsa/İş'],
+      ['Borsa/Finans','Finans Gündem','http://www.finansgundem.com/rss','⭐⭐⭐⭐','Borsa'],
+      ['Borsa/Finans','BigPara (Hürriyet)','http://bigpara.hurriyet.com.tr/rss/','⭐⭐⭐⭐','Borsa/Döviz'],
+      ['Borsa/Finans','Investing.com TR','https://tr.investing.com/rss/news.rss','⭐⭐⭐⭐⭐','Piyasalar'],
+      ['Kripto Para','Google News Kripto TR','https://news.google.com/rss/search?q=kripto+bitcoin+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Kripto'],
+      ['Emlak','Milliyet Emlak','http://www.milliyet.com.tr/rss/rssNew/konutemlakRss.xml','⭐⭐⭐⭐','Emlak'],
+      ['Emlak','Sözcü Emlak','https://www.sozcu.com.tr/rss/emlak.xml','⭐⭐⭐','Emlak'],
+      ['Tarım/Gıda','TOBB Haberler','https://www.tobb.org.tr/Sayfalar/RssFeeder.php?List=Haberler','⭐⭐⭐⭐','Ticaret/Tarım'],
+      ['Enerji/Petrol','Google News Enerji TR','https://news.google.com/rss/search?q=enerji+petrol+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Enerji'],
+    ]
+  },
+  {
+    id: 'spor', label: '⚽ Spor', color: '#B71C1C', thColor: '#C62828',
+    title: 'SPOR HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Kapsam'],
+    rows: [
+      ['Spor Genel','NTV Spor','https://www.ntv.com.tr/spor.rss','⭐⭐⭐⭐⭐','Tüm sporlar'],
+      ['Spor Genel','Hürriyet Spor','http://www.hurriyet.com.tr/rss/spor','⭐⭐⭐⭐⭐','Tüm sporlar'],
+      ['Spor Genel','Sabah Spor','https://www.sabah.com.tr/rss/spor.xml','⭐⭐⭐⭐','Tüm sporlar'],
+      ['Spor Genel','CNN Türk Spor','https://www.cnnturk.com/feed/rss/spor/news','⭐⭐⭐⭐','Tüm sporlar'],
+      ['Spor Genel','Sözcü Spor','https://www.sozcu.com.tr/rss/spor.xml','⭐⭐⭐⭐','Tüm sporlar'],
+      ['Spor Genel','Mynet Spor','http://spor.mynet.com/rss','⭐⭐⭐','Tüm sporlar'],
+      ['Futbol','TRT Spor','https://www.trtsport.com/rss','⭐⭐⭐⭐⭐','Milli/Genel'],
+      ['Futbol','Sabah Galatasaray','https://www.sabah.com.tr/rss/galatasaray.xml','⭐⭐⭐⭐','GS'],
+      ['Futbol','Sabah Fenerbahçe','https://www.sabah.com.tr/rss/fenerbahce.xml','⭐⭐⭐⭐','FB'],
+      ['Futbol','Sabah Beşiktaş','https://www.sabah.com.tr/rss/besiktas.xml','⭐⭐⭐⭐','BJK'],
+      ['Futbol','Sabah Trabzonspor','https://www.sabah.com.tr/rss/trabzonspor.xml','⭐⭐⭐⭐','TS'],
+      ['Futbol','Google News Süper Lig','https://news.google.com/rss/search?q=Süper+Lig+maç&hl=tr&gl=TR','⭐⭐⭐','Süper Lig'],
+      ['Basketbol','Google News BSL','https://news.google.com/rss/search?q=basketbol+BSL+Türkiye&hl=tr&gl=TR','⭐⭐⭐','BSL'],
+      ['Voleybol','Google News Voleybol','https://news.google.com/rss/search?q=voleybol+TVF+Türkiye&hl=tr&gl=TR','⭐⭐⭐','TVF'],
+    ]
+  },
+  {
+    id: 'tek', label: '💻 Teknoloji', color: '#4527A0', thColor: '#512DA8',
+    title: 'TEKNOLOJİ / BİLİM HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Teknoloji Genel','NTV Teknoloji','https://www.ntv.com.tr/teknoloji.rss','⭐⭐⭐⭐⭐','Genel'],
+      ['Teknoloji Genel','Hürriyet Teknoloji','http://www.hurriyet.com.tr/rss/teknoloji','⭐⭐⭐⭐','Genel'],
+      ['Teknoloji Genel','Sabah Teknoloji','https://www.sabah.com.tr/rss/teknoloji.xml','⭐⭐⭐⭐','Genel'],
+      ['Teknoloji Genel','CNN Türk Bilim-Tek','https://www.cnnturk.com/feed/rss/bilim-teknoloji/news','⭐⭐⭐⭐','Genel'],
+      ['Teknoloji Genel','Milliyet Teknoloji','http://www.milliyet.com.tr/rss/rssNew/teknolojiRss.xml','⭐⭐⭐⭐','Genel'],
+      ['Teknoloji Genel','Webrazzi','https://webrazzi.com/feed/','⭐⭐⭐⭐','Startup/YZ'],
+      ['Yapay Zeka','Google News YZ TR','https://news.google.com/rss/search?q=yapay+zeka+AI+Türkiye&hl=tr&gl=TR','⭐⭐⭐','YZ/AI'],
+      ['Bilim','TÜBİTAK Bilim Genç','https://bilimgenc.tubitak.gov.tr/rss.xml','⭐⭐⭐⭐⭐','Bilim'],
+      ['Bilim','NTV Bilim','https://www.ntv.com.tr/bilim.rss','⭐⭐⭐⭐','Bilim/Uzay'],
+      ['Uzay','Google News Uzay TR','https://news.google.com/rss/search?q=uzay+NASA+keşif&hl=tr&gl=TR','⭐⭐⭐','Uzay'],
+      ['Siber Güvenlik','Google News Siber','https://news.google.com/rss/search?q=siber+güvenlik+hack&hl=tr&gl=TR','⭐⭐⭐','Siber'],
+      ['Oyun/Gaming','Google News Oyun TR','https://news.google.com/rss/search?q=oyun+gaming+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Gaming'],
+    ]
+  },
+  {
+    id: 'saglik', label: '🏥 Sağlık', color: '#00695C', thColor: '#00796B',
+    title: 'SAĞLIK HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Sağlık Genel','NTV Sağlık','https://www.ntv.com.tr/saglik.rss','⭐⭐⭐⭐⭐','Genel'],
+      ['Sağlık Genel','Hürriyet Sağlık','http://www.hurriyet.com.tr/rss/saglik','⭐⭐⭐⭐','Genel'],
+      ['Sağlık Genel','CNN Türk Sağlık','https://www.cnnturk.com/feed/rss/saglik/news','⭐⭐⭐⭐','Genel'],
+      ['Sağlık Genel','A Haber Sağlık','https://www.ahaber.com.tr/rss/saglik.xml','⭐⭐⭐⭐','Genel'],
+      ['Sağlık Genel','Sözcü Sağlık','https://www.sozcu.com.tr/rss/saglik.xml','⭐⭐⭐⭐','Genel'],
+      ['Sağlık Genel','AA Sağlık','https://www.aa.com.tr/tr/rss/default?cat=saglik','⭐⭐⭐⭐⭐','Resmi/Ajans'],
+      ['Beslenme/Diyet','Milliyet Diyet','http://www.milliyet.com.tr/rss/rssNew/diyetRss.xml','⭐⭐⭐⭐','Diyet'],
+      ['Beslenme/Diyet','Onedio Sağlık','https://onedio.com/Publisher/publisher-saglik.rss','⭐⭐⭐','Yaşam/Sağlık'],
+      ['Aile/Çocuk','Milliyet Aile','http://www.milliyet.com.tr/rss/rssNew/aileRss.xml','⭐⭐⭐⭐','Aile'],
+      ['Tıp/Araştırma','Google News Tıp TR','https://news.google.com/rss/search?q=tıp+sağlık+araştırma&hl=tr&gl=TR','⭐⭐⭐','Tıp'],
+    ]
+  },
+  {
+    id: 'turizm', label: '✈️ Turizm', color: '#E65100', thColor: '#EF6C00',
+    title: 'TURİZM / SEYAHAT HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Turizm Sektörü','Turizm Haber Merkezi','https://www.turizmhabermerkezi.net/rss.xml','⭐⭐⭐⭐','Sektörel'],
+      ['Turizm Sektörü','Turizm Gazetesi','https://www.turizmgazetesi.com/rss.xml','⭐⭐⭐⭐','Sektörel'],
+      ['Turizm Sektörü','Turizm Güncel','https://www.turizmguncel.com/en/sayfa/rss','⭐⭐⭐⭐','Sektörel'],
+      ['Turizm Sektörü','Turizm Günlüğü','https://www.turizmgunlugu.com/feed/','⭐⭐⭐⭐','Sektörel'],
+      ['Turizm Sektörü','Turizm Aktüel','https://www.turizmaktuel.com/feed/','⭐⭐⭐⭐','Sektörel'],
+      ['Turizm Sektörü','TourismToday','https://www.tourismtoday.net/feed/','⭐⭐⭐⭐','Sektörel'],
+      ['Turizm Sektörü','Turizm News','https://www.turizmnews.com/rss.html','⭐⭐⭐⭐','Sektörel'],
+      ['Turizm Sektörü','Turizm Ekstra','https://www.turizmekstra.com/feed/','⭐⭐⭐','Sektörel'],
+      ['Seyahat/Gezi','NTV Seyahat','https://www.ntv.com.tr/seyahat.rss','⭐⭐⭐⭐⭐','Seyahat'],
+      ['Seyahat/Gezi','CNN Türk Seyahat','https://www.cnnturk.com/feed/rss/seyahat/news','⭐⭐⭐⭐','Seyahat'],
+      ['Seyahat/Gezi','Milliyet Tatil','http://www.milliyet.com.tr/rss/rssNew/milliyettatilRss.xml','⭐⭐⭐⭐','Tatil/Gezi'],
+      ['Seyahat/Gezi','Sabah Turizm','https://www.sabah.com.tr/rss/turizm.xml','⭐⭐⭐⭐','Turizm'],
+      ['Havacılık','Google News THY','https://news.google.com/rss/search?q=THY+havayolu+havacılık&hl=tr&gl=TR','⭐⭐⭐','Havacılık'],
+      ['Otelcilik','Google News Otel','https://news.google.com/rss/search?q=otel+turizm+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Otelcilik'],
+    ]
+  },
+  {
+    id: 'kultur', label: '🎭 Kültür-Sanat', color: '#880E4F', thColor: '#AD1457',
+    title: 'KÜLTÜR / SANAT / MAGAZİN KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Kültür/Sanat','NTV Sanat','https://www.ntv.com.tr/sanat.rss','⭐⭐⭐⭐⭐','Sanat/Kültür'],
+      ['Kültür/Sanat','CNN Türk Kültür','https://www.cnnturk.com/feed/rss/kultur-sanat/news','⭐⭐⭐⭐','Kültür'],
+      ['Kültür/Sanat','Sabah Kültür-Sanat','https://www.sabah.com.tr/rss/kultur-sanat.xml','⭐⭐⭐⭐','Kültür'],
+      ['Magazin','Hürriyet Magazin','http://www.hurriyet.com.tr/rss/magazin','⭐⭐⭐⭐⭐','Ünlü/Magazin'],
+      ['Magazin','CNN Türk Magazin','https://www.cnnturk.com/feed/rss/magazin/news','⭐⭐⭐⭐','Magazin'],
+      ['Magazin','Sabah Magazin','https://www.sabah.com.tr/rss/magazin.xml','⭐⭐⭐⭐','Magazin'],
+      ['Magazin','A Haber Magazin','https://www.ahaber.com.tr/rss/magazin.xml','⭐⭐⭐⭐','Magazin'],
+      ['Magazin','Milliyet Magazin','http://www.milliyet.com.tr/rss/rssNew/magazinRss.xml','⭐⭐⭐⭐','Magazin'],
+      ['Sinema/Dizi','Onedio Dizi & Film','https://onedio.com/Publisher/publisher-dizi+%26+film.rss','⭐⭐⭐','Dizi/Film'],
+      ['Sinema/Dizi','Mynet Sinema','http://sinema.mynet.com/rss/RSS-enyeniler/rss.xml','⭐⭐⭐','Sinema'],
+      ['Kitap/Edebiyat','Milliyet Kitap','http://www.milliyet.com.tr/rss/rssNew/kitapRss.xml','⭐⭐⭐⭐','Kitap'],
+      ['Tarih','A Haber Tarih','https://www.ahaber.com.tr/rss/tarih.xml','⭐⭐⭐','Tarih'],
+      ['Müzik','Google News Müzik TR','https://news.google.com/rss/search?q=müzik+konser+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Müzik'],
+    ]
+  },
+  {
+    id: 'egitim', label: '📚 Eğitim', color: '#1565C0', thColor: '#1976D2',
+    title: 'EĞİTİM HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Eğitim Genel','NTV Eğitim','https://www.ntv.com.tr/egitim.rss','⭐⭐⭐⭐⭐','Genel'],
+      ['Eğitim Genel','Milliyet Eğitim','http://www.milliyet.com.tr/rss/rssNew/egitimRss.xml','⭐⭐⭐⭐','Genel'],
+      ['Eğitim Genel','Sözcü Eğitim','https://www.sozcu.com.tr/rss/egitim.xml','⭐⭐⭐⭐','Genel'],
+      ['Eğitim Genel','Onedio Eğitim','https://onedio.com/Publisher/publisher-egitim.rss','⭐⭐⭐','Genel'],
+      ['Sınav/YKS','Google News YKS LGS','https://news.google.com/rss/search?q=YKS+LGS+sınav&hl=tr&gl=TR','⭐⭐⭐','Sınav'],
+      ['Üniversite','Google News Üniversite','https://news.google.com/rss/search?q=üniversite+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Üniversite'],
+      ['Yurtdışı/Burs','Google News Burs','https://news.google.com/rss/search?q=yurtdışı+eğitim+burs&hl=tr&gl=TR','⭐⭐⭐','Burs'],
+      ['MEB/Politika','Google News MEB','https://news.google.com/rss/search?q=MEB+eğitim+politika&hl=tr&gl=TR','⭐⭐⭐','Politika'],
+    ]
+  },
+  {
+    id: 'oto', label: '🚗 Otomotiv', color: '#37474F', thColor: '#455A64',
+    title: 'OTOMOTİV HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Otomobil Genel','NTV Otomobil','https://www.ntv.com.tr/otomobil.rss','⭐⭐⭐⭐⭐','Otomobil'],
+      ['Otomobil Genel','CNN Türk Otomobil','https://www.cnnturk.com/feed/rss/otomobil/news','⭐⭐⭐⭐','Otomobil'],
+      ['Otomobil Genel','Sabah Otomobil','https://www.sabah.com.tr/rss/otomobil.xml','⭐⭐⭐⭐','Otomobil'],
+      ['Otomobil Genel','Milliyet Otomobil','http://www.milliyet.com.tr/rss/rssNew/otomobilRss.xml','⭐⭐⭐⭐','Otomobil'],
+      ['Otomobil Genel','Takvim Otomobil','https://www.takvim.com.tr/rss/otomobil.xml','⭐⭐⭐','Otomobil'],
+      ['Elektrikli Araç','Google News EV TR','https://news.google.com/rss/search?q=elektrikli+araç+EV+Türkiye&hl=tr&gl=TR','⭐⭐⭐','EV'],
+      ['TOGG','Google News TOGG','https://news.google.com/rss/search?q=TOGG+Türkiye&hl=tr&gl=TR','⭐⭐⭐','TOGG'],
+      ['Motorsport','Google News F1 TR','https://news.google.com/rss/search?q=Formula+1+motorsport&hl=tr&gl=TR','⭐⭐⭐','F1'],
+      ['Trafik','Google News Trafik','https://news.google.com/rss/search?q=trafik+kaza+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Trafik'],
+    ]
+  },
+  {
+    id: 'yasam', label: '🍽 Yaşam', color: '#6A1B9A', thColor: '#7B1FA2',
+    title: 'YAŞAM / MAGAZİN / GASTRONOMİ KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Yaşam Genel','NTV Yaşam','https://www.ntv.com.tr/yasam.rss','⭐⭐⭐⭐⭐','Yaşam tarzı'],
+      ['Yaşam Genel','CNN Türk Yaşam','https://www.cnnturk.com/feed/rss/yasam/news','⭐⭐⭐⭐','Yaşam'],
+      ['Yaşam Genel','Sabah Yaşam','https://www.sabah.com.tr/rss/yasam.xml','⭐⭐⭐⭐','Yaşam'],
+      ['Yaşam Genel','A Haber Yaşam','https://www.ahaber.com.tr/rss/yasam.xml','⭐⭐⭐⭐','Yaşam'],
+      ['Yaşam Genel','Onedio Yaşam','https://onedio.com/Publisher/publisher-yasam.rss','⭐⭐⭐','Yaşam/Liste'],
+      ['Gastronomi','NTV Yemek','https://www.ntv.com.tr/yasam/yemek.rss','⭐⭐⭐⭐⭐','Yemek'],
+      ['Gastronomi','Milliyet Yemek','http://www.milliyet.com.tr/rss/rssNew/yemekRss.xml','⭐⭐⭐⭐','Tarif'],
+      ['Gastronomi','Onedio Yemek','https://onedio.com/Publisher/publisher-yemek.rss','⭐⭐⭐','Tarif'],
+      ['Moda/Stil','Habertürk Stil','https://www.haberturk.com/rss/stil','⭐⭐⭐⭐','Moda'],
+      ['Kadın','Habertürk Kadın','https://www.haberturk.com/rss/kadin','⭐⭐⭐⭐','Kadın'],
+      ['Kadın','Sözcü Yaşam','https://www.sozcu.com.tr/rss/yasam.xml','⭐⭐⭐⭐','Yaşam/Kadın'],
+      ['Astroloji','Hürriyet Astroloji','http://www.hurriyet.com.tr/rss/astroloji','⭐⭐⭐','Burç'],
+    ]
+  },
+  {
+    id: 'cevre', label: '🌱 Çevre-Enerji', color: '#1B5E20', thColor: '#2E7D32',
+    title: 'ÇEVRE / ENERJİ / TARIM HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Çevre/İklim','BBC Türkçe','http://feeds.bbci.co.uk/turkce/rss.xml','⭐⭐⭐⭐⭐','Genel/Çevre'],
+      ['Çevre/İklim','DW Türkçe','http://rss.dw.com/rdf/rss-tur-all','⭐⭐⭐⭐⭐','İklim/Çevre'],
+      ['Çevre/İklim','Google News İklim TR','https://news.google.com/rss/search?q=iklim+değişikliği+Türkiye&hl=tr&gl=TR','⭐⭐⭐','İklim'],
+      ['Çevre/İklim','Google News Çevre TR','https://news.google.com/rss/search?q=çevre+doğa+orman&hl=tr&gl=TR','⭐⭐⭐','Çevre/Doğa'],
+      ['Çevre/İklim','Google News Orman Yangın','https://news.google.com/rss/search?q=orman+yangın+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Yangın'],
+      ['Enerji','Google News Enerji TR','https://news.google.com/rss/search?q=enerji+elektrik+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Enerji'],
+      ['Enerji','Google News Yenilenebilir','https://news.google.com/rss/search?q=yenilenebilir+enerji+güneş+rüzgar&hl=tr&gl=TR','⭐⭐⭐','Yenilenebilir'],
+      ['Tarım/Gıda','Google News Tarım TR','https://news.google.com/rss/search?q=tarım+hasat+çiftçi+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Tarım'],
+      ['Tarım/Gıda','TOBB Haberler','https://www.tobb.org.tr/Sayfalar/RssFeeder.php?List=Haberler','⭐⭐⭐⭐','Ticaret/Tarım'],
+      ['Deprem/Afet','AFAD RSS','https://www.afad.gov.tr/rss','⭐⭐⭐⭐⭐','Resmi/Afet'],
+      ['Deprem/Afet','Google News Deprem TR','https://news.google.com/rss/search?q=deprem+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Deprem'],
+      ['Su/Deniz','Google News Deniz Çevre','https://news.google.com/rss/search?q=deniz+su+kirliliği+Türkiye&hl=tr&gl=TR','⭐⭐⭐','Su/Deniz'],
+    ]
+  },
+  {
+    id: 'din', label: '🕌 Din', color: '#4E342E', thColor: '#5D4037',
+    title: 'DİN / MANEVİYAT HABER KAYNAKLARI',
+    cols: ['Alt Kategori', 'Kaynak', 'RSS URL', 'Güvenilirlik', 'Odak'],
+    rows: [
+      ['Din Genel','A Haber Din','https://www.ahaber.com.tr/rss/din.xml','⭐⭐⭐⭐','Din haberleri'],
+      ['Din Genel','Diyanet İşleri','https://www.diyanet.gov.tr/rss/haberler.xml','⭐⭐⭐⭐⭐','Resmi din'],
+      ['Din Genel','Google News Din TR','https://news.google.com/rss/search?q=din+diyanet+cami&hl=tr&gl=TR','⭐⭐⭐','Din'],
+      ['Ramazan/İbadet','Google News Ramazan TR','https://news.google.com/rss/search?q=ramazan+iftar+sahur&hl=tr&gl=TR','⭐⭐⭐','Ramazan'],
+      ['Hac/Umre','Google News Hac TR','https://news.google.com/rss/search?q=hac+umre+Mekke&hl=tr&gl=TR','⭐⭐⭐','Hac/Umre'],
+    ]
+  },
+  {
+    id: 'ajans', label: '📡 Ajanslar', color: '#212121', thColor: '#424242',
+    title: 'HABER AJANSLARI — DOĞRUDAN RSS',
+    cols: ['Ajans', 'Kaynak Adı', 'RSS URL', 'Ülke', 'Kapsam'],
+    rows: [
+      ['AA - Türkiye','AA Güncel','https://www.aa.com.tr/tr/rss/default?cat=guncel','Türkiye','Genel/Resmi'],
+      ['AA - Türkiye','AA Spor','https://www.aa.com.tr/tr/rss/default?cat=spor','Türkiye','Spor'],
+      ['AA - Türkiye','AA Ekonomi','https://www.aa.com.tr/tr/rss/default?cat=ekonomi','Türkiye','Ekonomi'],
+      ['AA - Türkiye','AA Sağlık','https://www.aa.com.tr/tr/rss/default?cat=saglik','Türkiye','Sağlık'],
+      ['AA - Türkiye','AA Teknoloji','https://www.aa.com.tr/tr/rss/default?cat=teknoloji','Türkiye','Teknoloji'],
+      ['AA - EN','AA English','https://www.aa.com.tr/en/rss/default?cat=latest-news','TR/Global','İngilizce'],
+      ['İHA','İHA Tüm Haberler','https://www.iha.com.tr/rss.aspx','Türkiye','Genel'],
+      ['DHA','DHA Tüm Haberler','https://www.dha.com.tr/rss.xml','Türkiye','Genel'],
+      ['ANKA','ANKA Ajansı','https://www.ankahaber.net/rss/','Türkiye','Genel'],
+      ['Reuters','Reuters Top News','https://feeds.reuters.com/reuters/topNews','UK/Global','Küresel'],
+      ['Reuters','Reuters Business','https://feeds.reuters.com/reuters/businessNews','UK/Global','İş/Ekonomi'],
+      ['BBC','BBC Türkçe','http://feeds.bbci.co.uk/turkce/rss.xml','UK','Türkçe/Küresel'],
+      ['BBC','BBC World','http://feeds.bbci.co.uk/news/world/rss.xml','UK','Küresel'],
+      ['DW','DW Türkçe','http://rss.dw.com/rdf/rss-tur-all','Almanya','Türkçe/Küresel'],
+      ['Al Jazeera','Al Jazeera TR','https://www.aljazeera.com.tr/feed','Katar','Orta Doğu/TR'],
+      ['Al Jazeera','Al Jazeera EN','https://www.aljazeera.com/xml/rss/all.xml','Katar','Küresel'],
+      ['Sputnik','Sputnik Türkçe','https://tr.sputniknews.com/export/rss2/archive/index.xml','Rusya','Alternatif'],
+      ['EuroNews','EuroNews Türkçe','https://tr.euronews.com/rss','AB','Avrupa'],
+    ]
+  }
+];
+
+// Build tabs
+const tabBar = document.getElementById('tabBar');
+const mainContent = document.getElementById('mainContent');
+
+categories.forEach((cat, idx) => {
+  const tab = document.createElement('div');
+  tab.className = 'tab' + (idx === 0 ? ' active' : '');
+  tab.textContent = cat.label;
+  tab.style.background = cat.color;
+  tab.style.color = '#fff';
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('sec-' + cat.id).classList.add('active');
+  };
+  tabBar.appendChild(tab);
+
+  const sec = document.createElement('div');
+  sec.className = 'section' + (idx === 0 ? ' active' : '');
+  sec.id = 'sec-' + cat.id;
+
+  const title = document.createElement('div');
+  title.className = 'section-title';
+  title.style.background = cat.color;
+  title.textContent = cat.title;
+  sec.appendChild(title);
+
+  if (cat.isGrid) {
+    const grid = document.createElement('div');
+    grid.className = 'ozet-grid';
+    cat.items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'ozet-card';
+      card.style.borderColor = item.color;
+      card.innerHTML = `<h3 style="color:${item.color}">${item.num}. ${item.name}</h3><p>${item.desc}</p>`;
+      grid.appendChild(card);
+    });
+    sec.appendChild(grid);
+  } else {
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const tr = document.createElement('tr');
+    tr.style.background = cat.thColor;
+    cat.cols.forEach(col => {
+      const th = document.createElement('th');
+      th.textContent = col;
+      th.style.background = cat.thColor;
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    cat.rows.forEach((row, ri) => {
+      const tr2 = document.createElement('tr');
+      row.forEach((cell, ci) => {
+        const td = document.createElement('td');
+        if (ci === 2) {
+          const a = document.createElement('a');
+          a.href = cell;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = cell;
+          td.appendChild(a);
+        } else if (ci === 3) {
+          td.innerHTML = cell;
+        } else {
+          td.textContent = cell;
+          if (ci === 0) td.className = 'cat';
+        }
+        tr2.appendChild(td);
+      });
+      tbody.appendChild(tr2);
+    });
+    table.appendChild(tbody);
+    sec.appendChild(table);
+  }
+
+  mainContent.appendChild(sec);
+});
+</script>
+</body>
+</html>

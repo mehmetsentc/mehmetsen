@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { turkeyYmdNow } from '@/lib/turkeyCalendar'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -209,7 +210,8 @@ export async function POST(request: Request) {
     const ipHash = ip ? privacyHash(ip) : ''
     const visitorHash = privacyHash(visitorId)
     const userId = await verifiedUserId(request)
-    const today = new Date().toISOString().slice(0, 10)
+    // Europe/Istanbul calendar day — aligns with admin "Bugün" filter
+    const today = turkeyYmdNow()
     const now = FieldValue.serverTimestamp()
     const expiresAt = Timestamp.fromMillis(Date.now() + 90 * 24 * 60 * 60 * 1000)
     const dailyRef = db.collection(Collections.ANALYTICS_DAILY).doc(today)

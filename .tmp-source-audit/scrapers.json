@@ -1,0 +1,281 @@
+[
+  {
+    "id": "scraper-ankara-yerel",
+    "label": "Ankara Yerel Haber (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.ankarayerelhaber.com/",
+    "listUrls": [
+      "https://www.ankarayerelhaber.com/"
+    ],
+    "kind": "scraper",
+    "ok": false,
+    "elapsed": 268,
+    "reason": "fetch failed",
+    "probedUrl": "https://www.ankarayerelhaber.com/"
+  },
+  {
+    "id": "scraper-canakkale-gundem",
+    "label": "Çanakkale Gündem (scraper)",
+    "enabled": true,
+    "feedUrl": "https://canakkalegundem.net/",
+    "listUrls": [
+      "https://canakkalegundem.net/",
+      "https://canakkalegundem.net/son-dakika"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 341,
+    "reason": "html 198kb",
+    "length": 202698,
+    "html": true,
+    "probedUrl": "https://canakkalegundem.net/"
+  },
+  {
+    "id": "scraper-konya-ovahaber",
+    "label": "Konya Ova Haber (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.konyaovahaber.com/",
+    "listUrls": [
+      "https://www.konyaovahaber.com/"
+    ],
+    "kind": "scraper",
+    "ok": false,
+    "elapsed": 352,
+    "reason": "fetch failed",
+    "probedUrl": "https://www.konyaovahaber.com/"
+  },
+  {
+    "id": "scraper-antalya-olay",
+    "label": "Antalya Olay (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.antalyaolay.com/",
+    "listUrls": [
+      "https://www.antalyaolay.com/"
+    ],
+    "kind": "scraper",
+    "ok": false,
+    "elapsed": 407,
+    "reason": "fetch failed",
+    "probedUrl": "https://www.antalyaolay.com/"
+  },
+  {
+    "id": "scraper-istanbul-gazete",
+    "label": "İstanbul Gazete (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.istanbulgazetesi.com.tr/",
+    "listUrls": [
+      "https://www.istanbulgazetesi.com.tr/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 497,
+    "reason": "html 136kb",
+    "length": 138929,
+    "html": true,
+    "probedUrl": "https://www.istanbulgazetesi.com.tr/"
+  },
+  {
+    "id": "scraper-canakkale-can-insesi",
+    "label": "Çan İnsesi (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.caninsesi.com.tr/",
+    "listUrls": [
+      "https://www.caninsesi.com.tr/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 511,
+    "reason": "html 210kb",
+    "length": 214792,
+    "html": true,
+    "probedUrl": "https://www.caninsesi.com.tr/"
+  },
+  {
+    "id": "scraper-canakkale-tontv",
+    "label": "Ton TV (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.tontv.com.tr/canakkale-haber",
+    "listUrls": [
+      "https://www.tontv.com.tr/canakkale-haber",
+      "https://www.tontv.com.tr/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 616,
+    "reason": "html 89kb",
+    "length": 91369,
+    "html": true,
+    "probedUrl": "https://www.tontv.com.tr/canakkale-haber"
+  },
+  {
+    "id": "scraper-gaziantep-olay",
+    "label": "Gaziantep Olay (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.gaziantepolay.com/",
+    "listUrls": [
+      "https://www.gaziantepolay.com/"
+    ],
+    "kind": "scraper",
+    "ok": false,
+    "elapsed": 851,
+    "reason": "fetch failed",
+    "probedUrl": "https://www.gaziantepolay.com/"
+  },
+  {
+    "id": "scraper-kayseri-ses",
+    "label": "Kayseri Ses (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.kayseri.com.tr/",
+    "listUrls": [
+      "https://www.kayseri.com.tr/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 783,
+    "reason": "html 63kb",
+    "length": 64265,
+    "html": true,
+    "probedUrl": "https://www.kayseri.com.tr/"
+  },
+  {
+    "id": "scraper-samsun-yerel",
+    "label": "Samsun Yerel Haber (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.samsunhaber.com/",
+    "listUrls": [
+      "https://www.samsunhaber.com/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 948,
+    "reason": "html 135kb",
+    "length": 138288,
+    "html": true,
+    "probedUrl": "https://www.samsunhaber.com/"
+  },
+  {
+    "id": "scraper-diyarbakir-haber",
+    "label": "Diyarbakır Haber (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.diyarbakirhaber.com.tr/",
+    "listUrls": [
+      "https://www.diyarbakirhaber.com.tr/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 1014,
+    "reason": "html 7kb",
+    "length": 7638,
+    "html": true,
+    "probedUrl": "https://www.diyarbakirhaber.com.tr/"
+  },
+  {
+    "id": "scraper-erzurum-haber",
+    "label": "Erzurum Haber (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.erzurumhaber.com.tr/",
+    "listUrls": [
+      "https://www.erzurumhaber.com.tr/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 768,
+    "reason": "html 180kb",
+    "length": 184028,
+    "html": true,
+    "probedUrl": "https://www.erzurumhaber.com.tr/"
+  },
+  {
+    "id": "scraper-trabzon-haber",
+    "label": "Trabzon Haber (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.trabzonhaber.com/",
+    "listUrls": [
+      "https://www.trabzonhaber.com/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 1353,
+    "reason": "html 10kb",
+    "length": 9913,
+    "html": true,
+    "probedUrl": "https://www.trabzonhaber.com/"
+  },
+  {
+    "id": "scraper-bursa-olay",
+    "label": "Bursa Olay (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.bursaolay.com/",
+    "listUrls": [
+      "https://www.bursaolay.com/",
+      "https://www.bursaolay.com/son-dakika"
+    ],
+    "kind": "scraper",
+    "ok": false,
+    "status": 200,
+    "elapsed": 695,
+    "reason": "no feed items",
+    "length": 114,
+    "probedUrl": "https://www.bursaolay.com/"
+  },
+  {
+    "id": "scraper-canakkale-tekinugurlu",
+    "label": "Tekin Uğurlu (scraper)",
+    "enabled": true,
+    "feedUrl": "https://tekinugurlu.com/",
+    "listUrls": [
+      "https://tekinugurlu.com/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 1176,
+    "reason": "html 351kb",
+    "length": 359688,
+    "html": true,
+    "probedUrl": "https://tekinugurlu.com/"
+  },
+  {
+    "id": "scraper-izmir-yasamgazetesi",
+    "label": "İzmir Yaşam Gazetesi (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.izmirgazetesi.com.tr/",
+    "listUrls": [
+      "https://www.izmirgazetesi.com.tr/"
+    ],
+    "kind": "scraper",
+    "ok": true,
+    "status": 200,
+    "elapsed": 2456,
+    "reason": "html 63kb",
+    "length": 64633,
+    "html": true,
+    "probedUrl": "https://www.izmirgazetesi.com.tr/"
+  },
+  {
+    "id": "scraper-canakkale-kaleninsesi",
+    "label": "Kalenin Sesi (scraper)",
+    "enabled": true,
+    "feedUrl": "https://www.kaleninsesi.com/",
+    "listUrls": [
+      "https://www.kaleninsesi.com/",
+      "https://www.kaleninsesi.com/son-dakika"
+    ],
+    "kind": "scraper",
+    "ok": false,
+    "status": 403,
+    "elapsed": 272,
+    "reason": "HTTP 403",
+    "length": 5644,
+    "probedUrl": "https://www.kaleninsesi.com/"
+  }
+]

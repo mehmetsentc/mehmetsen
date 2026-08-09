@@ -60,7 +60,7 @@ const CITY_SITE_CANAKKALE = {
   displayName: 'Çanakkale',
   domain: 'canakkale.nahaber.com',
   provinceSlug: 'canakkale',
-  isActive: false,
+  isActive: true,
 } as const
 
 const SEED_CATEGORIES = [

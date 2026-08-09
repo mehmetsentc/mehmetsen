@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-07-28T23:04:44.976Z",
+  "opts": {
+    "action": "scan",
+    "apply": false,
+    "minWords": 220,
+    "limit": 500,
+    "outFile": ""
+  },
+  "buckets": {
+    "under80": 4,
+    "under120": 6,
+    "under220": 6,
+    "noSource": 0,
+    "featured": 0
+  },
+  "scanned": 500,
+  "rows": [
+    {
+      "id": "iVHgFY1eSIkJabKn8oGq",
+      "words": 67,
+      "chars": 614,
+      "title": "Ahbaplar Suç Örgütü soruşturmasında 5 ismin ifadesine başvurulacak",
+      "slug": "ahbaplar-suc-orgutu-sorusturmasinda-5-ismin-ifadesine-basvurulacak",
+      "categoryId": "gundem",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://ankahaber.net/haber/ahbaplar-suc-orgutu-sorusturmasinda-ece-uner-fatih-portakal-feyza-altun-gokhan-ozoguz-ve-oyk",
+      "publishedAt": 1784713721779
+    },
+    {
+      "id": "hVnFi0h8oALqutpw6bo8",
+      "words": 74,
+      "chars": 530,
+      "title": "Fethiye Göcek'teki orman yangınına müdahale güçlendirildi",
+      "slug": "fethiye-gocekteki-orman-yanginina-mudahale-guclendirildi",
+      "categoryId": "yerel-haber",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://ankahaber.net/haber/fethiye-gocek-teki-orman-yanginina-mudahale-guclendirildi-hava-ve-kara-ekipleri-artirildi-63",
+      "publishedAt": 1784727370753
+    },
+    {
+      "id": "uBEIvbvN0JswtcWPEgs2",
+      "words": 74,
+      "chars": 584,
+      "title": "7. Burhaniye Kitap Fuarı Bugün Başlıyor",
+      "slug": "7-burhaniye-kitap-fuari-bugun-basliyor",
+      "categoryId": "kultur",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://ankahaber.net/haber/7-burhaniye-kitap-fuari-bugun-basliyor-a9d32804",
+      "publishedAt": 1784713516032
+    },
+    {
+      "id": "HAkJq2HFnxu1CHiHgrnc",
+      "words": 77,
+      "chars": 575,
+      "title": "Muğla'da 'Özgür Özel İletişim Ofisi' açılıyor",
+      "slug": "muglada-ozgur-ozel-iletisim-ofisi-aciliyor",
+      "categoryId": "siyaset",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://ankahaber.net/haber/mugla-da-ozgur-ozel-iletisim-ofisi-aciliyor-64d3b030",
+      "publishedAt": 1784713843037
+    },
+    {
+      "id": "dQeUSTM8bVRM06rw6WlV",
+      "words": 98,
+      "chars": 787,
+      "title": "Kuşadası’nın iki mahallesinde sabah sporu etkinlikleri devam ediyor",
+      "slug": "kusadasinin-iki-mahallesinde-sabah-sporu-etkinlikleri-devam-ediyor",
+      "categoryId": "yerel-haber",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://ankahaber.net/haber/kusadasi-nin-iki-mahallesinde-sabah-sporu-etkinlikleri-devam-ediyor-5ce89f3d",
+      "publishedAt": 1784727395125
+    },
+    {
+      "id": "96jxzIZ5f4ASHCApj0EZ",
+      "words": 103,
+      "chars": 800,
+      "title": "Efeler Belediye Başkanı Yetişkin'den Gıda Çarşısı esnafına ziyaret",
+      "slug": "efeler-belediye-baskani-yetiskinden-gida-carsisi-esnafina-ziyaret",
+      "categoryId": "yerel-haber",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://ankahaber.net/haber/efeler-belediye-baskani-yetiskin-den-gida-carsisi-esnafina-ziyaret-9a655220",
+      "publishedAt": 1784727288892
+    }
+  ]
+}

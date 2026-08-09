@@ -1,0 +1,2211 @@
+{
+  "generatedAt": "2026-08-02T16:17:09.975Z",
+  "inventory": {
+    "rssTotal": 213,
+    "rssEnabled": 154,
+    "rssDisabled": 59,
+    "portalsTotal": 344,
+    "portalsEnabled": 341,
+    "portalsDisabled": 3,
+    "scrapersTotal": 17,
+    "scrapersEnabled": 17
+  },
+  "summaries": {
+    "rss": {
+      "total": 154,
+      "ok": 151,
+      "fail": 3,
+      "rate": 98
+    },
+    "portalsSample": {
+      "total": 52,
+      "ok": 41,
+      "fail": 11,
+      "rate": 79
+    },
+    "scrapers": {
+      "total": 17,
+      "ok": 11,
+      "fail": 6,
+      "rate": 65
+    },
+    "custom": {
+      "total": 5,
+      "ok": 4,
+      "fail": 1,
+      "rate": 80
+    }
+  },
+  "rssByCategory": {
+    "Ekonomi/Finans": {
+      "ok": 14,
+      "fail": 0
+    },
+    "Gündem/Genel": {
+      "ok": 25,
+      "fail": 1
+    },
+    "Spor": {
+      "ok": 14,
+      "fail": 0
+    },
+    "Kripto": {
+      "ok": 5,
+      "fail": 0
+    },
+    "Teknoloji": {
+      "ok": 17,
+      "fail": 0
+    },
+    "Magazin": {
+      "ok": 3,
+      "fail": 0
+    },
+    "Dünya": {
+      "ok": 13,
+      "fail": 0
+    },
+    "Sağlık": {
+      "ok": 8,
+      "fail": 0
+    },
+    "Siyaset": {
+      "ok": 5,
+      "fail": 0
+    },
+    "Gastronomi": {
+      "ok": 3,
+      "fail": 0
+    },
+    "Yaşam": {
+      "ok": 3,
+      "fail": 0
+    },
+    "Otomobil": {
+      "ok": 5,
+      "fail": 0
+    },
+    "Son Dakika": {
+      "ok": 3,
+      "fail": 0
+    },
+    "Turizm/Gezi": {
+      "ok": 16,
+      "fail": 0
+    },
+    "Google News": {
+      "ok": 2,
+      "fail": 0
+    },
+    "Kıbrıs": {
+      "ok": 15,
+      "fail": 2
+    }
+  },
+  "rssFailures": [
+    {
+      "id": "turizaktuel",
+      "label": "Turizm Aktüel",
+      "category": "Gündem/Genel",
+      "reason": "fetch failed",
+      "url": "https://www.turizaktuel.com/feed/"
+    },
+    {
+      "id": "kibrisbulteni",
+      "label": "Kıbrıs Bülteni",
+      "category": "Kıbrıs",
+      "reason": "fetch failed",
+      "url": "https://www.kibrisbulteni.com/feed"
+    },
+    {
+      "id": "diyalog-kibris",
+      "label": "Diyalog Gazetesi (KKTC)",
+      "category": "Kıbrıs",
+      "reason": "empty (114b)",
+      "url": "https://www.diyalog.com/rss"
+    }
+  ],
+  "rssOk": [
+    {
+      "id": "bloomberght",
+      "label": "Bloomberg HT",
+      "category": "Ekonomi/Finans",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 204,
+      "itemCount": 20
+    },
+    {
+      "id": "dha",
+      "label": "DHA (Demirören)",
+      "category": "Gündem/Genel",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 167,
+      "itemCount": 100
+    },
+    {
+      "id": "haberturk",
+      "label": "Habertürk",
+      "category": "Gündem/Genel",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 251,
+      "itemCount": 30
+    },
+    {
+      "id": "haberturk-ekonomi",
+      "label": "Habertürk Ekonomi",
+      "category": "Ekonomi/Finans",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 253,
+      "itemCount": 30
+    },
+    {
+      "id": "trt",
+      "label": "TRT Haber",
+      "category": "Gündem/Genel",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 303,
+      "itemCount": 20
+    },
+    {
+      "id": "dunya-ekonomi",
+      "label": "Dünya Gazetesi",
+      "category": "Ekonomi/Finans",
+      "reason": "25 items",
+      "usedAlt": false,
+      "elapsed": 395,
+      "itemCount": 25
+    },
+    {
+      "id": "gazeteduvar",
+      "label": "Gazete Duvar",
+      "category": "Gündem/Genel",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 270,
+      "itemCount": 100
+    },
+    {
+      "id": "sozcu",
+      "label": "Sözcü",
+      "category": "Gündem/Genel",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 400,
+      "itemCount": 50
+    },
+    {
+      "id": "t24",
+      "label": "T24",
+      "category": "Gündem/Genel",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 275,
+      "itemCount": 100
+    },
+    {
+      "id": "haberturk-spor",
+      "label": "Habertürk Spor",
+      "category": "Spor",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 228,
+      "itemCount": 30
+    },
+    {
+      "id": "sozcu-otomotiv",
+      "label": "Sözcü — Otomotiv",
+      "category": "Gündem/Genel",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 71,
+      "itemCount": 50
+    },
+    {
+      "id": "sozcu-basketbol",
+      "label": "Sözcü — Basketbol",
+      "category": "Spor",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 282,
+      "itemCount": 50
+    },
+    {
+      "id": "sozcu-voleybol",
+      "label": "Sözcü — Voleybol",
+      "category": "Spor",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 296,
+      "itemCount": 50
+    },
+    {
+      "id": "ntv-ekonomi",
+      "label": "NTV Ekonomi",
+      "category": "Ekonomi/Finans",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 556,
+      "itemCount": 20
+    },
+    {
+      "id": "ntv",
+      "label": "NTV",
+      "category": "Gündem/Genel",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 570,
+      "itemCount": 20
+    },
+    {
+      "id": "ekonomim",
+      "label": "Ekonomim",
+      "category": "Ekonomi/Finans",
+      "reason": "25 items",
+      "usedAlt": false,
+      "elapsed": 570,
+      "itemCount": 25
+    },
+    {
+      "id": "cnn",
+      "label": "CNN Türk",
+      "category": "Gündem/Genel",
+      "reason": "35 items",
+      "usedAlt": false,
+      "elapsed": 607,
+      "itemCount": 35
+    },
+    {
+      "id": "kriptokoin",
+      "label": "Kriptokoin.com",
+      "category": "Kripto",
+      "reason": "73 items",
+      "usedAlt": false,
+      "elapsed": 40,
+      "itemCount": 73
+    },
+    {
+      "id": "sozcu-bilim-teknoloji",
+      "label": "Sözcü — Bilim & Teknoloji",
+      "category": "Teknoloji",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 204,
+      "itemCount": 50
+    },
+    {
+      "id": "sabah-magazin",
+      "label": "Sabah Magazin",
+      "category": "Magazin",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 495,
+      "itemCount": 10
+    },
+    {
+      "id": "sozcu-kripto",
+      "label": "Sözcü — Kripto",
+      "category": "Kripto",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 278,
+      "itemCount": 50
+    },
+    {
+      "id": "milliyet-magazin",
+      "label": "Milliyet Magazin",
+      "category": "Magazin",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 677,
+      "itemCount": 20
+    },
+    {
+      "id": "sozcu-borsa",
+      "label": "Sözcü — Borsa",
+      "category": "Ekonomi/Finans",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 321,
+      "itemCount": 50
+    },
+    {
+      "id": "sozcu-dunyadan-spor",
+      "label": "Sözcü — Dünyadan Spor (Futbol)",
+      "category": "Spor",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 408,
+      "itemCount": 50
+    },
+    {
+      "id": "reuters-world",
+      "label": "Reuters World",
+      "category": "Dünya",
+      "reason": "39 items",
+      "usedAlt": false,
+      "elapsed": 43,
+      "itemCount": 39
+    },
+    {
+      "id": "cointelegraph",
+      "label": "CoinTelegraph",
+      "category": "Kripto",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 198,
+      "itemCount": 30
+    },
+    {
+      "id": "sozcu-saglik",
+      "label": "Sözcü — Sağlık",
+      "category": "Sağlık",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 344,
+      "itemCount": 50
+    },
+    {
+      "id": "sabah",
+      "label": "Sabah",
+      "category": "Gündem/Genel",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 345,
+      "itemCount": 10
+    },
+    {
+      "id": "ap-news",
+      "label": "Associated Press",
+      "category": "Dünya",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 206,
+      "itemCount": 100
+    },
+    {
+      "id": "independent-tr",
+      "label": "Independent Türkçe",
+      "category": "Gündem/Genel",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 274,
+      "itemCount": 10
+    },
+    {
+      "id": "euronews-tr",
+      "label": "Euronews Türkçe",
+      "category": "Gündem/Genel",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 306,
+      "itemCount": 50
+    },
+    {
+      "id": "milliyet",
+      "label": "Milliyet",
+      "category": "Gündem/Genel",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 415,
+      "itemCount": 20
+    },
+    {
+      "id": "dw-english",
+      "label": "DW English",
+      "category": "Dünya",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 215,
+      "itemCount": 100
+    },
+    {
+      "id": "aljazeera",
+      "label": "Al Jazeera English",
+      "category": "Dünya",
+      "reason": "25 items",
+      "usedAlt": false,
+      "elapsed": 348,
+      "itemCount": 25
+    },
+    {
+      "id": "coindesk",
+      "label": "CoinDesk",
+      "category": "Kripto",
+      "reason": "25 items",
+      "usedAlt": false,
+      "elapsed": 605,
+      "itemCount": 25
+    },
+    {
+      "id": "cumhuriyet",
+      "label": "Cumhuriyet",
+      "category": "Gündem/Genel",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 476,
+      "itemCount": 100
+    },
+    {
+      "id": "techcrunch",
+      "label": "TechCrunch",
+      "category": "Teknoloji",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 199,
+      "itemCount": 20
+    },
+    {
+      "id": "fanatik",
+      "label": "Fanatik",
+      "category": "Spor",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 41,
+      "itemCount": 100
+    },
+    {
+      "id": "karar",
+      "label": "Karar",
+      "category": "Gündem/Genel",
+      "reason": "40 items",
+      "usedAlt": false,
+      "elapsed": 590,
+      "itemCount": 40
+    },
+    {
+      "id": "cnbc-int",
+      "label": "CNBC Markets",
+      "category": "Ekonomi/Finans",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 407,
+      "itemCount": 30
+    },
+    {
+      "id": "fotomac",
+      "label": "Fotomaç",
+      "category": "Spor",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 38,
+      "itemCount": 100
+    },
+    {
+      "id": "arstechnica",
+      "label": "Ars Technica",
+      "category": "Teknoloji",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 222,
+      "itemCount": 20
+    },
+    {
+      "id": "theverge",
+      "label": "The Verge",
+      "category": "Teknoloji",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 334,
+      "itemCount": 10
+    },
+    {
+      "id": "guardian",
+      "label": "The Guardian",
+      "category": "Dünya",
+      "reason": "45 items",
+      "usedAlt": false,
+      "elapsed": 455,
+      "itemCount": 45
+    },
+    {
+      "id": "ajansspor",
+      "label": "Ajansspor",
+      "category": "Spor",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 49,
+      "itemCount": 100
+    },
+    {
+      "id": "wired",
+      "label": "Wired",
+      "category": "Teknoloji",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 312,
+      "itemCount": 50
+    },
+    {
+      "id": "saglik-tr",
+      "label": "Sağlık Haberleri (TR)",
+      "category": "Sağlık",
+      "reason": "76 items",
+      "usedAlt": false,
+      "elapsed": 41,
+      "itemCount": 76
+    },
+    {
+      "id": "aa",
+      "label": "Anadolu Ajansı",
+      "category": "Gündem/Genel",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 296,
+      "itemCount": 30
+    },
+    {
+      "id": "sky-news",
+      "label": "Sky News",
+      "category": "Dünya",
+      "reason": "7 items",
+      "usedAlt": false,
+      "elapsed": 426,
+      "itemCount": 7
+    },
+    {
+      "id": "nature-news",
+      "label": "Nature News",
+      "category": "Dünya",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 181,
+      "itemCount": 100
+    },
+    {
+      "id": "webtekno",
+      "label": "Webtekno (TR)",
+      "category": "Teknoloji",
+      "reason": "36 items",
+      "usedAlt": false,
+      "elapsed": 232,
+      "itemCount": 36
+    },
+    {
+      "id": "btchaber",
+      "label": "BtcHaber",
+      "category": "Kripto",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 890,
+      "itemCount": 10
+    },
+    {
+      "id": "f1-espn",
+      "label": "ESPN F1",
+      "category": "Spor",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 301,
+      "itemCount": 30
+    },
+    {
+      "id": "trt-spor",
+      "label": "TRT Spor",
+      "category": "Spor",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 193,
+      "itemCount": 20
+    },
+    {
+      "id": "mit-tech",
+      "label": "MIT Technology Review",
+      "category": "Teknoloji",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 220,
+      "itemCount": 10
+    },
+    {
+      "id": "venturebeat",
+      "label": "VentureBeat",
+      "category": "Teknoloji",
+      "reason": "7 items",
+      "usedAlt": false,
+      "elapsed": 486,
+      "itemCount": 7
+    },
+    {
+      "id": "who-news",
+      "label": "WHO News",
+      "category": "Sağlık",
+      "reason": "25 items",
+      "usedAlt": false,
+      "elapsed": 290,
+      "itemCount": 25
+    },
+    {
+      "id": "milliyet-spor",
+      "label": "Milliyet Spor",
+      "category": "Spor",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 201,
+      "itemCount": 20
+    },
+    {
+      "id": "haberturk-politika",
+      "label": "Habertürk Siyaset",
+      "category": "Siyaset",
+      "reason": "4 items",
+      "usedAlt": false,
+      "elapsed": 45,
+      "itemCount": 4
+    },
+    {
+      "id": "shiftdelete",
+      "label": "ShiftDelete (TR)",
+      "category": "Teknoloji",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 446,
+      "itemCount": 20
+    },
+    {
+      "id": "anka-haber",
+      "label": "ANKA Haber Ajansı",
+      "category": "Gündem/Genel",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 44,
+      "itemCount": 100
+    },
+    {
+      "id": "espn-soccer",
+      "label": "ESPN Soccer",
+      "category": "Spor",
+      "reason": "15 items",
+      "usedAlt": false,
+      "elapsed": 268,
+      "itemCount": 15
+    },
+    {
+      "id": "trt-politika",
+      "label": "TRT Haber Siyaset",
+      "category": "Siyaset",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 65,
+      "itemCount": 20
+    },
+    {
+      "id": "france24-en",
+      "label": "France 24 English",
+      "category": "Dünya",
+      "reason": "22 items",
+      "usedAlt": false,
+      "elapsed": 274,
+      "itemCount": 22
+    },
+    {
+      "id": "bbc-sport",
+      "label": "BBC Sport",
+      "category": "Spor",
+      "reason": "67 items",
+      "usedAlt": false,
+      "elapsed": 295,
+      "itemCount": 67
+    },
+    {
+      "id": "bbc-world",
+      "label": "BBC World News",
+      "category": "Dünya",
+      "reason": "24 items",
+      "usedAlt": false,
+      "elapsed": 188,
+      "itemCount": 24
+    },
+    {
+      "id": "gastronomi-google-news",
+      "label": "Gastronomi (Google News)",
+      "category": "Gastronomi",
+      "reason": "28 items",
+      "usedAlt": false,
+      "elapsed": 45,
+      "itemCount": 28
+    },
+    {
+      "id": "apple-newsroom",
+      "label": "Apple Newsroom",
+      "category": "Teknoloji",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 195,
+      "itemCount": 20
+    },
+    {
+      "id": "ntv-turkiye",
+      "label": "NTV Türkiye",
+      "category": "Gündem/Genel",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 89,
+      "itemCount": 20
+    },
+    {
+      "id": "ntv-yasam",
+      "label": "NTV Yaşam",
+      "category": "Yaşam",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 81,
+      "itemCount": 20
+    },
+    {
+      "id": "milliyet-siyaset",
+      "label": "Milliyet Siyaset",
+      "category": "Siyaset",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 158,
+      "itemCount": 20
+    },
+    {
+      "id": "ntv-saglik",
+      "label": "NTV Sağlık",
+      "category": "Sağlık",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 91,
+      "itemCount": 20
+    },
+    {
+      "id": "sabah-ekonomi",
+      "label": "Sabah Ekonomi",
+      "category": "Ekonomi/Finans",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 77,
+      "itemCount": 10
+    },
+    {
+      "id": "sabah-spor",
+      "label": "Sabah Spor",
+      "category": "Spor",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 67,
+      "itemCount": 10
+    },
+    {
+      "id": "milliyet-gastronomi",
+      "label": "Milliyet Gastronomi",
+      "category": "Gastronomi",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 179,
+      "itemCount": 50
+    },
+    {
+      "id": "bloomberg-int",
+      "label": "Bloomberg Markets",
+      "category": "Ekonomi/Finans",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 1032,
+      "itemCount": 20
+    },
+    {
+      "id": "google-blog",
+      "label": "Google Blog",
+      "category": "Teknoloji",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 351,
+      "itemCount": 20
+    },
+    {
+      "id": "sabah-teknoloji",
+      "label": "Sabah Teknoloji",
+      "category": "Teknoloji",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 43,
+      "itemCount": 100
+    },
+    {
+      "id": "sabah-saglik",
+      "label": "Sabah Sağlık",
+      "category": "Sağlık",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 77,
+      "itemCount": 10
+    },
+    {
+      "id": "ntv-otomobil",
+      "label": "NTV Otomobil",
+      "category": "Otomobil",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 276,
+      "itemCount": 20
+    },
+    {
+      "id": "sabah-sondakika",
+      "label": "Sabah Son Dakika",
+      "category": "Son Dakika",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 184,
+      "itemCount": 50
+    },
+    {
+      "id": "cdc-news",
+      "label": "CDC Newsroom",
+      "category": "Sağlık",
+      "reason": "1835 items",
+      "usedAlt": false,
+      "elapsed": 193,
+      "itemCount": 1835
+    },
+    {
+      "id": "sabah-dunya",
+      "label": "Sabah Dünya",
+      "category": "Dünya",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 297,
+      "itemCount": 10
+    },
+    {
+      "id": "openai-blog",
+      "label": "OpenAI Blog",
+      "category": "Teknoloji",
+      "reason": "1105 items",
+      "usedAlt": false,
+      "elapsed": 370,
+      "itemCount": 1105
+    },
+    {
+      "id": "takvim-magazin",
+      "label": "Takvim Magazin",
+      "category": "Magazin",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 395,
+      "itemCount": 100
+    },
+    {
+      "id": "microsoft-blog",
+      "label": "Microsoft Blog",
+      "category": "Teknoloji",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 463,
+      "itemCount": 10
+    },
+    {
+      "id": "sabah-yasam",
+      "label": "Sabah Yaşam",
+      "category": "Yaşam",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 310,
+      "itemCount": 10
+    },
+    {
+      "id": "cnnturk-bilim",
+      "label": "CNN Türk Bilim Teknoloji",
+      "category": "Teknoloji",
+      "reason": "80 items",
+      "usedAlt": false,
+      "elapsed": 43,
+      "itemCount": 80
+    },
+    {
+      "id": "milliyet-saglik",
+      "label": "Milliyet Sağlık",
+      "category": "Sağlık",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 205,
+      "itemCount": 20
+    },
+    {
+      "id": "sabah-kultur-sanat",
+      "label": "Sabah Kültür Sanat",
+      "category": "Turizm/Gezi",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 353,
+      "itemCount": 10
+    },
+    {
+      "id": "science-daily",
+      "label": "Science Daily",
+      "category": "Dünya",
+      "reason": "60 items",
+      "usedAlt": false,
+      "elapsed": 681,
+      "itemCount": 60
+    },
+    {
+      "id": "cnnturk-ekonomi",
+      "label": "CNN Türk Ekonomi",
+      "category": "Ekonomi/Finans",
+      "reason": "35 items",
+      "usedAlt": false,
+      "elapsed": 138,
+      "itemCount": 35
+    },
+    {
+      "id": "dw-turkish",
+      "label": "DW Türkçe",
+      "category": "Dünya",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 40,
+      "itemCount": 100
+    },
+    {
+      "id": "otomobil-google-news",
+      "label": "Otomobil (Google News)",
+      "category": "Otomobil",
+      "reason": "78 items",
+      "usedAlt": false,
+      "elapsed": 47,
+      "itemCount": 78
+    },
+    {
+      "id": "cnnturk-spor",
+      "label": "CNN Türk Spor",
+      "category": "Spor",
+      "reason": "35 items",
+      "usedAlt": false,
+      "elapsed": 221,
+      "itemCount": 35
+    },
+    {
+      "id": "milliyet-teknoloji",
+      "label": "Milliyet Teknoloji",
+      "category": "Teknoloji",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 422,
+      "itemCount": 20
+    },
+    {
+      "id": "cnnturk-saglik",
+      "label": "CNN Türk Sağlık",
+      "category": "Sağlık",
+      "reason": "35 items",
+      "usedAlt": false,
+      "elapsed": 262,
+      "itemCount": 35
+    },
+    {
+      "id": "google-news-tr",
+      "label": "Google Haberler Türkiye",
+      "category": "Google News",
+      "reason": "34 items",
+      "usedAlt": false,
+      "elapsed": 39,
+      "itemCount": 34
+    },
+    {
+      "id": "ntv-teknoloji",
+      "label": "NTV Teknoloji",
+      "category": "Teknoloji",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 281,
+      "itemCount": 20
+    },
+    {
+      "id": "cnnturk-otomobil",
+      "label": "CNN Türk Otomobil",
+      "category": "Otomobil",
+      "reason": "35 items",
+      "usedAlt": false,
+      "elapsed": 251,
+      "itemCount": 35
+    },
+    {
+      "id": "cnnturk-yasam",
+      "label": "CNN Türk Yaşam",
+      "category": "Yaşam",
+      "reason": "35 items",
+      "usedAlt": false,
+      "elapsed": 266,
+      "itemCount": 35
+    },
+    {
+      "id": "milliyet-sondakika",
+      "label": "Milliyet Son Dakika",
+      "category": "Son Dakika",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 317,
+      "itemCount": 20
+    },
+    {
+      "id": "ensonhaber",
+      "label": "Ensonhaber",
+      "category": "Gündem/Genel",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 220,
+      "itemCount": 50
+    },
+    {
+      "id": "milliyet-ekonomi",
+      "label": "Milliyet Ekonomi",
+      "category": "Ekonomi/Finans",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 425,
+      "itemCount": 20
+    },
+    {
+      "id": "cnnturk-kultur",
+      "label": "CNN Türk Kültür Sanat",
+      "category": "Turizm/Gezi",
+      "reason": "35 items",
+      "usedAlt": false,
+      "elapsed": 384,
+      "itemCount": 35
+    },
+    {
+      "id": "milliyet-dunya",
+      "label": "Milliyet Dünya",
+      "category": "Dünya",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 366,
+      "itemCount": 20
+    },
+    {
+      "id": "ntv-sondakika",
+      "label": "NTV Son Dakika",
+      "category": "Son Dakika",
+      "reason": "20 items",
+      "usedAlt": false,
+      "elapsed": 100,
+      "itemCount": 20
+    },
+    {
+      "id": "iha-gundem",
+      "label": "İHA Gündem",
+      "category": "Gündem/Genel",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 93,
+      "itemCount": 100
+    },
+    {
+      "id": "milliyet-otomobil",
+      "label": "Milliyet Otomobil",
+      "category": "Otomobil",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 238,
+      "itemCount": 50
+    },
+    {
+      "id": "turizm-google-news",
+      "label": "Turizm (Google News)",
+      "category": "Turizm/Gezi",
+      "reason": "65 items",
+      "usedAlt": false,
+      "elapsed": 46,
+      "itemCount": 65
+    },
+    {
+      "id": "yeniasir",
+      "label": "Yeni Asır",
+      "category": "Gündem/Genel",
+      "reason": "50 items",
+      "usedAlt": false,
+      "elapsed": 374,
+      "itemCount": 50
+    },
+    {
+      "id": "cumhuriyet-gundem",
+      "label": "Cumhuriyet Gündem",
+      "category": "Gündem/Genel",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 185,
+      "itemCount": 100
+    },
+    {
+      "id": "aa-gundem",
+      "label": "AA Gündem",
+      "category": "Gündem/Genel",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 217,
+      "itemCount": 30
+    },
+    {
+      "id": "sabah-turizm",
+      "label": "Sabah Turizm",
+      "category": "Turizm/Gezi",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 78,
+      "itemCount": 10
+    },
+    {
+      "id": "google-news-tr-ekonomi",
+      "label": "Google Haberler TR Ekonomi",
+      "category": "Ekonomi/Finans",
+      "reason": "70 items",
+      "usedAlt": false,
+      "elapsed": 203,
+      "itemCount": 70
+    },
+    {
+      "id": "turizmgazetesi",
+      "label": "Turizm Gazetesi",
+      "category": "Turizm/Gezi",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 40,
+      "itemCount": 100
+    },
+    {
+      "id": "aa-ekonomi",
+      "label": "AA Ekonomi",
+      "category": "Ekonomi/Finans",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 239,
+      "itemCount": 30
+    },
+    {
+      "id": "gezi-google-news",
+      "label": "Gezi (Google News)",
+      "category": "Turizm/Gezi",
+      "reason": "27 items",
+      "usedAlt": false,
+      "elapsed": 44,
+      "itemCount": 27
+    },
+    {
+      "id": "google-news-tr-ulusal",
+      "label": "Google Haberler TR Ulusal",
+      "category": "Google News",
+      "reason": "42 items",
+      "usedAlt": false,
+      "elapsed": 331,
+      "itemCount": 42
+    },
+    {
+      "id": "lezzet-com",
+      "label": "Lezzet.com",
+      "category": "Gastronomi",
+      "reason": "40 items",
+      "usedAlt": false,
+      "elapsed": 768,
+      "itemCount": 40
+    },
+    {
+      "id": "google-news-tr-politika",
+      "label": "Google Haberler TR Politika",
+      "category": "Siyaset",
+      "reason": "38 items",
+      "usedAlt": false,
+      "elapsed": 336,
+      "itemCount": 38
+    },
+    {
+      "id": "lonely-planet-tr",
+      "label": "Lonely Planet Türkiye (Google News)",
+      "category": "Turizm/Gezi",
+      "reason": "9 items",
+      "usedAlt": false,
+      "elapsed": 40,
+      "itemCount": 9
+    },
+    {
+      "id": "ntv-seyahat",
+      "label": "NTV Seyahat",
+      "category": "Turizm/Gezi",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 43,
+      "itemCount": 100
+    },
+    {
+      "id": "aa-politika",
+      "label": "AA Politika",
+      "category": "Siyaset",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 230,
+      "itemCount": 30
+    },
+    {
+      "id": "kibris-google-news",
+      "label": "Kıbrıs Haberleri (Google News)",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 40,
+      "itemCount": 100
+    },
+    {
+      "id": "kibris-kaza-google-news",
+      "label": "Kıbrıs Kaza/Asayiş (Google News)",
+      "category": "Kıbrıs",
+      "reason": "40 items",
+      "usedAlt": false,
+      "elapsed": 46,
+      "itemCount": 40
+    },
+    {
+      "id": "cnnturk-seyahat",
+      "label": "CNN Türk Seyahat",
+      "category": "Turizm/Gezi",
+      "reason": "35 items",
+      "usedAlt": false,
+      "elapsed": 126,
+      "itemCount": 35
+    },
+    {
+      "id": "aa-turizm",
+      "label": "AA Turizm / Yaşam",
+      "category": "Turizm/Gezi",
+      "reason": "30 items",
+      "usedAlt": false,
+      "elapsed": 371,
+      "itemCount": 30
+    },
+    {
+      "id": "milliyet-seyahat",
+      "label": "Milliyet Seyahat",
+      "category": "Turizm/Gezi",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 71,
+      "itemCount": 100
+    },
+    {
+      "id": "gezginler",
+      "label": "Gezginler.net",
+      "category": "Gündem/Genel",
+      "reason": "6 items",
+      "usedAlt": true,
+      "elapsed": 114,
+      "itemCount": 6
+    },
+    {
+      "id": "turizmaktuel",
+      "label": "Turizm Aktüel",
+      "category": "Turizm/Gezi",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 60,
+      "itemCount": 100
+    },
+    {
+      "id": "starkibris",
+      "label": "Star Kıbrıs",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 39,
+      "itemCount": 100
+    },
+    {
+      "id": "yeniduzen-kibris",
+      "label": "Yeni Düzen (KKTC)",
+      "category": "Kıbrıs",
+      "reason": "40 items",
+      "usedAlt": false,
+      "elapsed": 341,
+      "itemCount": 40
+    },
+    {
+      "id": "turizmguncel",
+      "label": "Turizm Güncel",
+      "category": "Turizm/Gezi",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 38,
+      "itemCount": 100
+    },
+    {
+      "id": "hurriyet-seyahat",
+      "label": "Hürriyet Seyahat",
+      "category": "Turizm/Gezi",
+      "reason": "99 items",
+      "usedAlt": false,
+      "elapsed": 229,
+      "itemCount": 99
+    },
+    {
+      "id": "turizmajansi",
+      "label": "Turizm Ajansı",
+      "category": "Turizm/Gezi",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 520,
+      "itemCount": 100
+    },
+    {
+      "id": "turizmekonomi",
+      "label": "Turizm Ekonomi",
+      "category": "Ekonomi/Finans",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 36,
+      "itemCount": 100
+    },
+    {
+      "id": "detaykibris",
+      "label": "Detay Kıbrıs",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 43,
+      "itemCount": 100
+    },
+    {
+      "id": "turizmnews",
+      "label": "Turizm News",
+      "category": "Turizm/Gezi",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 50,
+      "itemCount": 100
+    },
+    {
+      "id": "tourismtoday",
+      "label": "Tourism Today",
+      "category": "Gündem/Genel",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 44,
+      "itemCount": 100
+    },
+    {
+      "id": "polis-kktc",
+      "label": "KKTC Polis Teşkilatı",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": false,
+      "elapsed": 37,
+      "itemCount": 100
+    },
+    {
+      "id": "gundemkibris",
+      "label": "Gündem Kıbrıs",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 39,
+      "itemCount": 100
+    },
+    {
+      "id": "kibrisgercek",
+      "label": "Kıbrıs Gerçek",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 43,
+      "itemCount": 100
+    },
+    {
+      "id": "kibrisgazetesi",
+      "label": "Kıbrıs Gazetesi",
+      "category": "Kıbrıs",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 577,
+      "itemCount": 10
+    },
+    {
+      "id": "havadiskibris",
+      "label": "Havadis Kıbrıs",
+      "category": "Kıbrıs",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 1105,
+      "itemCount": 10
+    },
+    {
+      "id": "haberkibris",
+      "label": "Haber Kıbrıs",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 40,
+      "itemCount": 100
+    },
+    {
+      "id": "kibrispostasi",
+      "label": "Kıbrıs Postası",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 412,
+      "itemCount": 100
+    },
+    {
+      "id": "sondakikacyprus",
+      "label": "Son Dakika Cyprus",
+      "category": "Kıbrıs",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 1605,
+      "itemCount": 10
+    },
+    {
+      "id": "otomobilhaber",
+      "label": "OtomobilHaber.com",
+      "category": "Otomobil",
+      "reason": "10 items",
+      "usedAlt": false,
+      "elapsed": 3256,
+      "itemCount": 10
+    },
+    {
+      "id": "sondakika-kibris",
+      "label": "Son Dakika Kıbrıs (Sondakika.com)",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 156,
+      "itemCount": 100
+    },
+    {
+      "id": "bugunkibris",
+      "label": "Bugün Kıbrıs",
+      "category": "Kıbrıs",
+      "reason": "100 items",
+      "usedAlt": true,
+      "elapsed": 428,
+      "itemCount": 100
+    }
+  ],
+  "rssDisabled": [
+    {
+      "id": "iha",
+      "label": "İHA",
+      "category": "Gündem/Genel",
+      "url": "https://www.iha.com.tr/rss.aspx"
+    },
+    {
+      "id": "haberler",
+      "label": "Haberler.com",
+      "category": "Gündem/Genel",
+      "url": "https://www.haberler.com/rss/"
+    },
+    {
+      "id": "sondakika",
+      "label": "Sondakika.com",
+      "category": "Son Dakika",
+      "url": "https://www.sondakika.com/rss/"
+    },
+    {
+      "id": "mynet",
+      "label": "Mynet Haber",
+      "category": "Gündem/Genel",
+      "url": "https://www.mynet.com/haber/rss/gundem"
+    },
+    {
+      "id": "reuters",
+      "label": "Reuters",
+      "category": "Dünya",
+      "url": "https://feeds.reuters.com/reuters/topNews"
+    },
+    {
+      "id": "bbc",
+      "label": "BBC Türkçe",
+      "category": "Gündem/Genel",
+      "url": "https://feeds.bbci.co.uk/turkce/rss.xml"
+    },
+    {
+      "id": "hurriyet",
+      "label": "Hürriyet",
+      "category": "Gündem/Genel",
+      "url": "https://www.hurriyet.com.tr/rss/gundem"
+    },
+    {
+      "id": "posta-magazin",
+      "label": "Posta Magazin",
+      "category": "Magazin",
+      "url": "https://www.posta.com.tr/rss/magazin"
+    },
+    {
+      "id": "ntv-spor",
+      "label": "NTV Spor",
+      "category": "Spor",
+      "url": "https://www.ntvspor.net/rss/tum-haberler"
+    },
+    {
+      "id": "hurriyet-spor",
+      "label": "Hürriyet Spor",
+      "category": "Spor",
+      "url": "https://www.hurriyet.com.tr/rss/spor"
+    },
+    {
+      "id": "sozcu-world-cup",
+      "label": "Sözcü — 2026 FIFA Dünya Kupası (arşiv)",
+      "category": "Spor",
+      "url": "https://www.sozcu.com.tr/feeds-rss-category-2026-fifa-dunya-kupasi"
+    },
+    {
+      "id": "gnews-world-cup-tr",
+      "label": "Google News — 2026 Dünya Kupası (Türkçe, arşiv)",
+      "category": "Spor",
+      "url": "https://news.google.com/rss/search?q=%222026+D%C3%BCnya+Kupas%C4%B1%22+OR+%22FIFA+Dünya+Kupası%22&hl=tr&gl=TR&ceid=TR:tr"
+    },
+    {
+      "id": "gnews-milli-takim-wc",
+      "label": "Google News — Milli Takım Dünya Kupası (arşiv)",
+      "category": "Gündem/Genel",
+      "url": "https://news.google.com/rss/search?q=%22A+Milli+Tak%C4%B1m%22+%22D%C3%BCnya+Kupas%C4%B1%22&hl=tr&gl=TR&ceid=TR:tr"
+    },
+    {
+      "id": "gnews-world-cup-results",
+      "label": "Google News — Dünya Kupası Maç Sonuçları (arşiv)",
+      "category": "Spor",
+      "url": "https://news.google.com/rss/search?q=%22d%C3%BCnya+kupas%C4%B1%22+%28ma%C3%A7+sonucu+OR+%22ma%C3%A7%C4%B1%22+OR+%22golleri%22+OR+%22kazand%C4%B1%22+OR+%22elendi%22%29&hl=tr&gl=TR&ceid=TR:tr"
+    },
+    {
+      "id": "sozcu-son-dakika",
+      "label": "Sözcü — Son Dakika",
+      "category": "Son Dakika",
+      "url": "https://www.sozcu.com.tr/feeds-rss-category-son-dakika"
+    },
+    {
+      "id": "yenisafak",
+      "label": "Yeni Şafak",
+      "category": "Gündem/Genel",
+      "url": "https://www.yenisafak.com/rss"
+    },
+    {
+      "id": "medyascope",
+      "label": "Medyascope",
+      "category": "Gündem/Genel",
+      "url": "https://medyascope.tv/feed/"
+    },
+    {
+      "id": "birgün",
+      "label": "BirGün",
+      "category": "Gündem/Genel",
+      "url": "https://www.birgun.net/feed/rss"
+    },
+    {
+      "id": "sporx",
+      "label": "Sporx",
+      "category": "Spor",
+      "url": "https://www.sporx.com/rss/"
+    },
+    {
+      "id": "goal-tr",
+      "label": "Goal.com Türkçe",
+      "category": "Spor",
+      "url": "https://www.goal.com/feeds/tr/news"
+    },
+    {
+      "id": "nih-news",
+      "label": "NIH News",
+      "category": "Sağlık",
+      "url": "https://www.nih.gov/news-events/feed.xml"
+    },
+    {
+      "id": "egitim-tr",
+      "label": "Eğitim Haberleri (TR)",
+      "category": "Gündem/Genel",
+      "url": "https://news.google.com/rss/search?q=eğitim+okul+üniversite+YKS+LGS+MEB&hl=tr&gl=TR&ceid=TR:tr"
+    },
+    {
+      "id": "turizm-tr",
+      "label": "Turizm Haberleri (TR)",
+      "category": "Turizm/Gezi",
+      "url": "https://news.google.com/rss/search?q=turizm+otel+tatil+sezon+Türkiye&hl=tr&gl=TR&ceid=TR:tr"
+    },
+    {
+      "id": "takvim-spor",
+      "label": "Takvim Spor",
+      "category": "Spor",
+      "url": "https://news.google.com/rss/search?q=site:takvim.com.tr+spor&hl=tr&gl=TR&ceid=TR:tr"
+    },
+    {
+      "id": "transfermarkt-news",
+      "label": "Transfermarkt News",
+      "category": "Spor",
+      "url": "https://news.google.com/rss/search?q=transfermarkt+transfer+futbol&hl=tr&gl=TR&ceid=TR:tr"
+    },
+    {
+      "id": "uefa-news",
+      "label": "UEFA News",
+      "category": "Spor",
+      "url": "https://news.google.com/rss/search?q=UEFA+Champions+League+Europa+League&hl=en&gl=US&ceid=US:en"
+    },
+    {
+      "id": "nyt-world",
+      "label": "New York Times World",
+      "category": "Dünya",
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
+    },
+    {
+      "id": "wapo-world",
+      "label": "Washington Post World",
+      "category": "Dünya",
+      "url": "https://feeds.washingtonpost.com/rss/world"
+    },
+    {
+      "id": "donanimhaber",
+      "label": "Donanım Haber (TR)",
+      "category": "Teknoloji",
+      "url": "https://www.donanimhaber.com/rss/"
+    },
+    {
+      "id": "chip-tr",
+      "label": "Chip Online TR",
+      "category": "Teknoloji",
+      "url": "https://news.google.com/rss/search?q=site:chip.com.tr&hl=tr&gl=TR&ceid=TR:tr"
+    },
+    {
+      "id": "ntv-politika",
+      "label": "NTV Politika",
+      "category": "Siyaset",
+      "url": "https://www.ntv.com.tr/politika.rss"
+    },
+    {
+      "id": "aa-siyaset",
+      "label": "Anadolu Ajansı Siyaset",
+      "category": "Siyaset",
+      "url": "https://www.aa.com.tr/tr/rss/default?cat=siyaset"
+    },
+    {
+      "id": "hurriyet-siyaset",
+      "label": "Hürriyet Siyaset",
+      "category": "Siyaset",
+      "url": "https://www.hurriyet.com.tr/rss/siyaset"
+    },
+    {
+      "id": "lancet",
+      "label": "The Lancet",
+      "category": "Sağlık",
+      "url": "https://www.thelancet.com/rssfeed/lancet_online.xml"
+    },
+    {
+      "id": "medimagazin",
+      "label": "Medimagazin (TR)",
+      "category": "Magazin",
+      "url": "https://medimagazin.com.tr/feed/"
+    },
+    {
+      "id": "saglik-aktuel",
+      "label": "Sağlık Aktüel (TR)",
+      "category": "Sağlık",
+      "url": "https://www.saglikaktuel.com/rss.xml"
+    },
+    {
+      "id": "hurriyet-magazin",
+      "label": "Hürriyet Magazin",
+      "category": "Magazin",
+      "url": "https://www.hurriyet.com.tr/rss/magazin"
+    },
+    {
+      "id": "variety",
+      "label": "Variety",
+      "category": "Magazin",
+      "url": "https://variety.com/feed/"
+    },
+    {
+      "id": "billboard",
+      "label": "Billboard",
+      "category": "Magazin",
+      "url": "https://www.billboard.com/feed/"
+    },
+    {
+      "id": "tmz-news",
+      "label": "TMZ",
+      "category": "Magazin",
+      "url": "https://www.tmz.com/rss.xml"
+    },
+    {
+      "id": "hollywood-reporter",
+      "label": "Hollywood Reporter",
+      "category": "Magazin",
+      "url": "https://www.hollywoodreporter.com/c/news/feed/"
+    },
+    {
+      "id": "yemek-com",
+      "label": "Yemek.com",
+      "category": "Gastronomi",
+      "url": "https://www.yemek.com/rss/"
+    },
+    {
+      "id": "hurriyet-gastronomi",
+      "label": "Hürriyet Gastronomi",
+      "category": "Gastronomi",
+      "url": "https://www.hurriyet.com.tr/rss/yazarlar"
+    },
+    {
+      "id": "ahaber",
+      "label": "A Haber",
+      "category": "Gündem/Genel",
+      "url": "https://www.ahaber.com.tr/rss/gundem.xml"
+    },
+    {
+      "id": "ahaber-ekonomi",
+      "label": "A Haber Ekonomi",
+      "category": "Ekonomi/Finans",
+      "url": "https://www.ahaber.com.tr/rss/ekonomi.xml"
+    },
+    {
+      "id": "ahaber-spor",
+      "label": "A Haber Spor",
+      "category": "Spor",
+      "url": "https://www.ahaber.com.tr/rss/spor.xml"
+    },
+    {
+      "id": "ahaber-dunya",
+      "label": "A Haber Dünya",
+      "category": "Dünya",
+      "url": "https://www.ahaber.com.tr/rss/dunya.xml"
+    },
+    {
+      "id": "ahaber-saglik",
+      "label": "A Haber Sağlık",
+      "category": "Sağlık",
+      "url": "https://www.ahaber.com.tr/rss/saglik.xml"
+    },
+    {
+      "id": "ahaber-teknoloji",
+      "label": "A Haber Teknoloji",
+      "category": "Teknoloji",
+      "url": "https://www.ahaber.com.tr/rss/teknoloji.xml"
+    },
+    {
+      "id": "hurriyet-ekonomi",
+      "label": "Hürriyet Ekonomi",
+      "category": "Ekonomi/Finans",
+      "url": "https://www.hurriyet.com.tr/rss/ekonomi"
+    },
+    {
+      "id": "hurriyet-teknoloji",
+      "label": "Hürriyet Teknoloji",
+      "category": "Teknoloji",
+      "url": "https://www.hurriyet.com.tr/rss/teknoloji"
+    },
+    {
+      "id": "trt-sondakika",
+      "label": "TRT Haber Son Dakika",
+      "category": "Son Dakika",
+      "url": "https://www.trthaber.com/sondakika.rss"
+    },
+    {
+      "id": "sputnik-tr",
+      "label": "Sputnik Türkçe",
+      "category": "Dünya",
+      "url": "https://tr.sputniknews.com/export/rss2/archive/index.xml"
+    },
+    {
+      "id": "yeniakit",
+      "label": "Yeni Akit",
+      "category": "Gündem/Genel",
+      "url": "https://www.yeniakit.com.tr/rss/haber"
+    },
+    {
+      "id": "bigpara",
+      "label": "Bigpara (Hürriyet)",
+      "category": "Ekonomi/Finans",
+      "url": "https://bigpara.hurriyet.com.tr/rss/"
+    },
+    {
+      "id": "finansgundem",
+      "label": "Finansgundem",
+      "category": "Ekonomi/Finans",
+      "url": "https://www.finansgundem.com/rss"
+    },
+    {
+      "id": "arabalar-com-tr",
+      "label": "Arabalar.com.tr",
+      "category": "Otomobil",
+      "url": "https://www.arabalar.com.tr/rss"
+    },
+    {
+      "id": "hurriyet-otomobil",
+      "label": "Hürriyet Otomobil",
+      "category": "Otomobil",
+      "url": "https://www.hurriyet.com.tr/rss/otomobil"
+    },
+    {
+      "id": "haberturk-sondakika",
+      "label": "Habertürk Son Dakika",
+      "category": "Son Dakika",
+      "url": "https://www.haberturk.com/rss/haber/sondakika.xml"
+    }
+  ],
+  "portalFailures": [
+    {
+      "id": "portal-adana-cukurovapress",
+      "reason": "no feed items",
+      "url": "https://www.cukurovapress.com/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-cankiri-haberci18",
+      "reason": "HTTP 404",
+      "url": "https://www.haberci18.com/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-erzurum-pusula",
+      "reason": "no feed items",
+      "url": "https://www.gazetepusula.net/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-edirne-gazetesi",
+      "reason": "HTTP 404",
+      "url": "https://www.edirnegazetesi.com.tr/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-igdir-dogus",
+      "reason": "HTTP 404",
+      "url": "https://www.igdirdogusgazetesi.com/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-mersin-guney",
+      "reason": "empty (0b)",
+      "url": "https://www.guneygazetesi.com/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-nigde-gunaydin",
+      "reason": "HTTP 410",
+      "url": "https://www.nigdegunaydin.com/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-sivas-memleket",
+      "reason": "no feed items",
+      "url": "https://www.sivasmemleket.com.tr/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-rize-gazete53",
+      "reason": "HTTP 500",
+      "url": "https://www.gazete53.com/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-tokat-haber",
+      "reason": "timeout",
+      "url": "https://www.tokathaber.com/rss",
+      "enabled": true
+    },
+    {
+      "id": "portal-trabzon-haber61",
+      "reason": "timeout",
+      "url": "https://www.haber61.net/rss",
+      "enabled": true
+    }
+  ],
+  "portalOk": [
+    {
+      "id": "portal-can-insesi",
+      "reason": "20 items"
+    },
+    {
+      "id": "portal-erzurum-haber",
+      "reason": "20 items"
+    },
+    {
+      "id": "portal-canakkale-gundem",
+      "reason": "20 items"
+    },
+    {
+      "id": "portal-burdur-gazete",
+      "reason": "20 items"
+    },
+    {
+      "id": "portal-gumushane-haber29",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-adana-5ocak",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-canakkale-kaleninsesi",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-izmir-haberleri",
+      "reason": "50 items"
+    },
+    {
+      "id": "portal-nigde-haber",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-antalya-ekspres",
+      "reason": "30 items"
+    },
+    {
+      "id": "portal-kayseri-gunaydin",
+      "reason": "31 items"
+    },
+    {
+      "id": "portal-van-sehri",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-kirsehir-memleket",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-biga-insesi",
+      "reason": "30 items"
+    },
+    {
+      "id": "portal-aydin-ses",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-cankiri-postasi",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-malatya-haber",
+      "reason": "10 items"
+    },
+    {
+      "id": "portal-bayburt-gundem",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-bingol-online",
+      "reason": "50 items"
+    },
+    {
+      "id": "portal-diyarbakir-guneydogu",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-ardahan-haber",
+      "reason": "20 items"
+    },
+    {
+      "id": "portal-ankara-sonsoz",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-bolu-hakimiyet",
+      "reason": "20 items"
+    },
+    {
+      "id": "portal-siirt-medya",
+      "reason": "27 items"
+    },
+    {
+      "id": "portal-gaziantep-ekspres",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-hakkari-yuksekovahaber",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-kayseri-gundem",
+      "reason": "100 items"
+    },
+    {
+      "id": "portal-kahramanmaras-manset",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-malatya-sonsoz",
+      "reason": "20 items"
+    },
+    {
+      "id": "portal-konya-merhaba",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-mugla-fethiye",
+      "reason": "100 items"
+    },
+    {
+      "id": "portal-aksaray-yenigun",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-istanbul-bakirkoy",
+      "reason": "10 items"
+    },
+    {
+      "id": "portal-kars-hakimiyet",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-istanbul-sariyer",
+      "reason": "10 items"
+    },
+    {
+      "id": "portal-balikesir-24saat",
+      "reason": "10 items"
+    },
+    {
+      "id": "portal-siirt-artisiirt",
+      "reason": "100 items"
+    },
+    {
+      "id": "portal-yozgat-ileri",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-tekirdag-habertrak",
+      "reason": "15 items"
+    },
+    {
+      "id": "portal-van-bolgegazetesi",
+      "reason": "40 items"
+    },
+    {
+      "id": "portal-kirikkale-haber71",
+      "reason": "25 items"
+    }
+  ],
+  "scraperFailures": [
+    {
+      "id": "scraper-ankara-yerel",
+      "label": "Ankara Yerel Haber (scraper)",
+      "reason": "fetch failed",
+      "url": "https://www.ankarayerelhaber.com/"
+    },
+    {
+      "id": "scraper-konya-ovahaber",
+      "label": "Konya Ova Haber (scraper)",
+      "reason": "fetch failed",
+      "url": "https://www.konyaovahaber.com/"
+    },
+    {
+      "id": "scraper-antalya-olay",
+      "label": "Antalya Olay (scraper)",
+      "reason": "fetch failed",
+      "url": "https://www.antalyaolay.com/"
+    },
+    {
+      "id": "scraper-gaziantep-olay",
+      "label": "Gaziantep Olay (scraper)",
+      "reason": "fetch failed",
+      "url": "https://www.gaziantepolay.com/"
+    },
+    {
+      "id": "scraper-bursa-olay",
+      "label": "Bursa Olay (scraper)",
+      "reason": "no feed items",
+      "url": "https://www.bursaolay.com/"
+    },
+    {
+      "id": "scraper-canakkale-kaleninsesi",
+      "label": "Kalenin Sesi (scraper)",
+      "reason": "HTTP 403",
+      "url": "https://www.kaleninsesi.com/"
+    }
+  ],
+  "scraperOk": [
+    {
+      "id": "scraper-canakkale-gundem",
+      "label": "Çanakkale Gündem (scraper)",
+      "reason": "html 198kb"
+    },
+    {
+      "id": "scraper-istanbul-gazete",
+      "label": "İstanbul Gazete (scraper)",
+      "reason": "html 136kb"
+    },
+    {
+      "id": "scraper-canakkale-can-insesi",
+      "label": "Çan İnsesi (scraper)",
+      "reason": "html 210kb"
+    },
+    {
+      "id": "scraper-canakkale-tontv",
+      "label": "Ton TV (scraper)",
+      "reason": "html 89kb"
+    },
+    {
+      "id": "scraper-kayseri-ses",
+      "label": "Kayseri Ses (scraper)",
+      "reason": "html 63kb"
+    },
+    {
+      "id": "scraper-samsun-yerel",
+      "label": "Samsun Yerel Haber (scraper)",
+      "reason": "html 135kb"
+    },
+    {
+      "id": "scraper-diyarbakir-haber",
+      "label": "Diyarbakır Haber (scraper)",
+      "reason": "html 7kb"
+    },
+    {
+      "id": "scraper-erzurum-haber",
+      "label": "Erzurum Haber (scraper)",
+      "reason": "html 180kb"
+    },
+    {
+      "id": "scraper-trabzon-haber",
+      "label": "Trabzon Haber (scraper)",
+      "reason": "html 10kb"
+    },
+    {
+      "id": "scraper-canakkale-tekinugurlu",
+      "label": "Tekin Uğurlu (scraper)",
+      "reason": "html 351kb"
+    },
+    {
+      "id": "scraper-izmir-yasamgazetesi",
+      "label": "İzmir Yaşam Gazetesi (scraper)",
+      "reason": "html 63kb"
+    }
+  ],
+  "customResults": [
+    {
+      "id": "anka-sondakika",
+      "label": "ANKA Son Dakika",
+      "ok": true,
+      "reason": "html 117kb",
+      "url": "https://ankahaber.net/kategori/sondakika"
+    },
+    {
+      "id": "anka-yerel",
+      "label": "ANKA Yerel",
+      "ok": true,
+      "reason": "html 150kb",
+      "url": "https://ankahaber.net/kategori/yerel-haberler"
+    },
+    {
+      "id": "afad-deprem",
+      "label": "AFAD Deprem API",
+      "ok": false,
+      "reason": "HTTP 500",
+      "url": "https://deprem.afad.gov.tr/apiv2/event/filter?minmag=4&orderby=timedesc&limit=5"
+    },
+    {
+      "id": "aa-gundem-page",
+      "label": "AA Gündem HTML",
+      "ok": true,
+      "reason": "html 451kb",
+      "url": "https://www.aa.com.tr/tr/gundem"
+    },
+    {
+      "id": "hn-top",
+      "label": "Hacker News Firebase",
+      "ok": true,
+      "reason": "json 4501b",
+      "url": "https://hacker-news.firebaseio.com/v0/topstories.json"
+    }
+  ]
+}

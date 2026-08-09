@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-07-28T23:05:44.509Z",
+  "opts": {
+    "action": "draft",
+    "apply": true,
+    "minWords": 220,
+    "limit": 500,
+    "outFile": ""
+  },
+  "buckets": {
+    "under80": 0,
+    "under120": 0,
+    "under220": 1,
+    "noSource": 0,
+    "featured": 0
+  },
+  "scanned": 500,
+  "rows": [
+    {
+      "id": "AC8IpTSzc2VODnGRyDdu",
+      "words": 202,
+      "chars": 1716,
+      "title": "Malazgirt’te yol seferberliği: Hasretpınar yolunda ulaşım konforu artıyor",
+      "slug": "malazgirtte-yol-seferberligi-hasretpinar-yolunda-ulasim-konforu-artiyor",
+      "categoryId": "yerel-haber",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://haber49.net/malazgirtte-yol-seferberligi-hasretpinar-yolunda-ulasim-konforu-artiyor",
+      "publishedAt": 1784677334170
+    }
+  ]
+}

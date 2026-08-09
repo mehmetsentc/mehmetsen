@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-07-28T23:06:15.142Z",
+  "opts": {
+    "action": "scan",
+    "apply": false,
+    "minWords": 220,
+    "limit": 500,
+    "outFile": ""
+  },
+  "buckets": {
+    "under80": 0,
+    "under120": 0,
+    "under220": 0,
+    "noSource": 0,
+    "featured": 0
+  },
+  "scanned": 500,
+  "rows": []
+}

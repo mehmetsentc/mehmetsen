@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-07-28T23:05:22.818Z",
+  "opts": {
+    "action": "draft",
+    "apply": true,
+    "minWords": 220,
+    "limit": 500,
+    "outFile": ""
+  },
+  "buckets": {
+    "under80": 0,
+    "under120": 0,
+    "under220": 1,
+    "noSource": 0,
+    "featured": 0
+  },
+  "scanned": 500,
+  "rows": [
+    {
+      "id": "C5kNjHXfUeRSZMAx1686",
+      "words": 212,
+      "chars": 1777,
+      "title": "İran'dan ABD'ye 'nükleer santrallere saldırı' uyarısı",
+      "slug": "irandan-abdye-nukleer-santrallere-saldiri-uyarisi",
+      "categoryId": "dunya",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://www.ekonomim.com/dunya/irandan-abdye-nukleer-santrallere-saldiri-uyarisi-haberi-907469",
+      "publishedAt": 1784677660575
+    }
+  ]
+}

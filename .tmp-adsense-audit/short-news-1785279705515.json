@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-07-28T23:01:45.515Z",
+  "opts": {
+    "action": "scan",
+    "apply": false,
+    "minWords": 220,
+    "limit": 200,
+    "outFile": ""
+  },
+  "buckets": {
+    "under80": 1,
+    "under120": 4,
+    "under220": 5,
+    "noSource": 0,
+    "featured": 0
+  },
+  "scanned": 200,
+  "rows": [
+    {
+      "id": "gxt22uZMejyaxpj7fDsY",
+      "words": 60,
+      "chars": 505,
+      "title": "Kayseri’de beton mikserinin pompası patladı: 1 yaralı",
+      "slug": "kayseride-beton-mikserinin-pompasi-patladi-1-yarali",
+      "categoryId": "yerel-haber",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://www.cumhuriyet.com.tr/turkiye/kayseri-de-beton-mikserinin-pompasi-patladi-1-yarali-2523986",
+      "publishedAt": 1785098558306
+    },
+    {
+      "id": "CA16xyp5joD25mabFiVd",
+      "words": 88,
+      "chars": 694,
+      "title": "Konya'da acı olay: Oltasını düşürdüğü gölette boğularak hayatını kaybetti",
+      "slug": "konyada-aci-olay-oltasini-dusurdugu-golette-bogularak-hayatini-kaybetti",
+      "categoryId": "yerel-haber",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://www.cumhuriyet.com.tr/turkiye/konya-da-aci-olay-oltasini-dusurdugu-golette-bogularak-hayatini-kaybetti-2523989",
+      "publishedAt": 1785134948045
+    },
+    {
+      "id": "8QgAWgpyv735zUE24SHa",
+      "words": 95,
+      "chars": 800,
+      "title": "Ayvalık’ta Birlik Ortopedik Engelliler Derneği'nden Kaymakam Çimşit’e ziyaret",
+      "slug": "ayvalikta-birlik-ortopedik-engelliler-derneginden-kaymakam-cimsite-ziyaret-2",
+      "categoryId": "yerel-haber",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://ankahaber.net/haber/ayvalik-ta-birlik-ortopedik-engelliler-dernegi-nden-kaymakam-cimsit-e-ziyaret-462f477b",
+      "publishedAt": 1785134913472
+    },
+    {
+      "id": "kLbclRDmnXdrQ12eQD9R",
+      "words": 95,
+      "chars": 800,
+      "title": "Ayvalık’ta Birlik Ortopedik Engelliler Derneği'nden Kaymakam Çimşit’e ziyaret",
+      "slug": "ayvalikta-birlik-ortopedik-engelliler-derneginden-kaymakam-cimsite-ziyaret",
+      "categoryId": "yerel-haber",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://ankahaber.net/haber/ayvalik-ta-birlik-ortopedik-engelliler-dernegi-nden-kaymakam-cimsit-e-ziyaret-462f477b",
+      "publishedAt": 1785134117380
+    },
+    {
+      "id": "QBW9qvdM8T12eDzQxopK",
+      "words": 149,
+      "chars": 1142,
+      "title": "Siirt’te Hafif Ticari Araç Takla Attı, Sürücü Kazayı Yara Almadan Atlattı",
+      "slug": "siirtte-hafif-ticari-arac-takla-atti-surucu-kazayi-yara-almadan-atlatti",
+      "categoryId": "asayis",
+      "featured": false,
+      "hasSourceUrl": true,
+      "sourceUrl": "https://www.haberler.com/3-sayfa/siirt-te-hafif-ticari-arac-takla-atti-surucu-20086195-haberi/",
+      "publishedAt": 1785080072030
+    }
+  ]
+}

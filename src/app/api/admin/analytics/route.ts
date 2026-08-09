@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { addTurkeyDays, turkeyDayBounds, turkeyYmdNow } from '@/lib/turkeyCalendar'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -40,13 +41,13 @@ interface VitalsDoc {
   TTFB?: MetricBuckets
 }
 
+/** Calendar days in Europe/Istanbul — matches Turkish "Bugün" and daily doc keys. */
 function dateRange(period: Period): string[] {
   const days: string[] = []
   const n = period === 'today' ? 1 : period === '7d' ? 7 : 30
+  const today = turkeyYmdNow()
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date()
-    d.setUTCDate(d.getUTCDate() - i)
-    days.push(d.toISOString().slice(0, 10))
+    days.push(addTurkeyDays(today, -i))
   }
   return days
 }
@@ -98,7 +99,7 @@ export async function GET(request: Request) {
   try {
     const db = getAdminFirestore()
 
-    const periodStart = new Date(`${dates[0]}T00:00:00.000Z`)
+    const periodStart = new Date(turkeyDayBounds(dates[0]).startMs)
     const [usersCountSnap, postsCountSnap, topPostsSnap, recentEventsSnap, recentSessionsSnap, ...dailySnaps] = await Promise.all([
       db.collection('users').count().get().catch(() => null),
       db.collection(Collections.NEWS).where('status', '==', 'published').count().get().catch(() => null),
