@@ -35,6 +35,7 @@
     "init-storage": "node scripts/init-storage-folders.mjs",
     "init-firestore": "node scripts/init-firestore-collections.mjs",
     "seed-canakkale-events": "node scripts/seed-canakkale-events.mjs",
+    "seed-troya-festival-2026": "node scripts/seed-troya-festival-2026.mjs",
     "format": "prettier --write .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
