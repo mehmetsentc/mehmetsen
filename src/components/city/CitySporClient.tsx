@@ -17,6 +17,12 @@ export function CitySporClient({
 }: CitySporClientProps) {
   return (
     <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10 max-md:pt-4">
+      <header className="mb-4 px-1">
+        <h1 className="text-xl font-bold text-[rgb(var(--color-text))]">
+          {cityName} Spor Haberleri
+        </h1>
+      </header>
+
       {initialItems.length > 0 ? (
         <div className="sd-feed">
           {initialItems.map((item, i) => (

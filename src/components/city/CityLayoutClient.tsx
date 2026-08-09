@@ -8,7 +8,8 @@ import { AppStateProvider } from '@/store/appStateContext'
 import { UserLocationProvider } from '@/store/userLocationContext'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { CityNavbar } from './CityNavbar'
-import { MobileNav } from '@/components/layout/MobileNav'
+import { CitySectionNav } from './CitySectionNav'
+import { CityMobileNav } from './CityMobileNav'
 import type { CityCategory } from '@/services/cityNewsService.server'
 
 interface CityLayoutClientProps {
@@ -31,6 +32,7 @@ const CityShell = memo(function CityShell({
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]">
       <CityNavbar cityName={displayName} provinceSlug={provinceSlug} />
+      <CitySectionNav />
 
       <PullToRefresh>
         <main
@@ -43,7 +45,7 @@ const CityShell = memo(function CityShell({
       </PullToRefresh>
 
       <Suspense fallback={null}>
-        <MobileNav />
+        <CityMobileNav />
       </Suspense>
     </div>
   )

@@ -5,24 +5,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Calendar, Trophy, MapPin } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { CITY_BOTTOM_NAV } from '@/constants/cityCategories'
+import { isCitySectionActive } from '@/lib/cityPaths'
 import { cn } from '@/lib/utils'
 
-interface NavItem {
-  icon: LucideIcon
-  label: string
-  href: string
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { icon: Home, label: 'Ana Feed', href: '/' },
-  { icon: Calendar, label: 'Etkinlik', href: '/etkinlik' },
-  { icon: Trophy, label: 'Spor', href: '/spor' },
-  { icon: MapPin, label: 'İlçeler', href: '/ilceler' },
-]
-
-function isActive(pathname: string, href: string): boolean {
-  if (href === '/') return pathname === '/'
-  return pathname.startsWith(href)
+const ICONS: Record<(typeof CITY_BOTTOM_NAV)[number]['iconName'], LucideIcon> = {
+  home: Home,
+  calendar: Calendar,
+  trophy: Trophy,
+  'map-pin': MapPin,
 }
 
 function CityMobileNavInner() {
@@ -37,11 +28,12 @@ function CityMobileNavInner() {
         className="flex items-end pb-[var(--safe-bottom)]"
         style={{ height: 'calc(3.5rem + var(--safe-bottom, 0px))' }}
       >
-        {NAV_ITEMS.map((item) => {
-          const active = isActive(pathname, item.href)
+        {CITY_BOTTOM_NAV.map((item) => {
+          const Icon = ICONS[item.iconName]
+          const active = isCitySectionActive(pathname, item.href)
           return (
             <Link
-              key={item.href}
+              key={item.id}
               href={item.href}
               prefetch
               aria-label={item.label}
@@ -52,7 +44,7 @@ function CityMobileNavInner() {
                   : 'text-[rgb(var(--color-nav-inactive))]'
               )}
             >
-              <item.icon
+              <Icon
                 className="h-[22px] w-[22px]"
                 strokeWidth={active ? 2.25 : 1.75}
               />

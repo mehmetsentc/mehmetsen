@@ -21,17 +21,22 @@ export function CityDistrictsClient({
   districts,
 }: CityDistrictsClientProps) {
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-[rgb(var(--color-text))]">
-        {cityName} İlçeleri
-      </h1>
+    <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10 max-md:pt-4">
+      <header className="mb-4 px-1">
+        <h1 className="text-xl font-bold text-[rgb(var(--color-text))]">
+          {cityName} İlçeleri
+        </h1>
+        <p className="mt-1 text-sm text-[rgb(var(--color-text-secondary))]">
+          İlçenizi seçerek yerel haberleri görüntüleyin
+        </p>
+      </header>
 
       {districts.length > 0 ? (
         <div className="grid gap-2 sm:grid-cols-2">
           {districts.map((district) => (
             <Link
               key={district.slug}
-              href={`/yerel/${citySlug}`}
+              href={`/ilceler/${district.slug}`}
               className={cn(
                 'flex items-center justify-between rounded-xl',
                 'border border-[rgb(var(--color-border))]',
