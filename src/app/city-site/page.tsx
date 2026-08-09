@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityNews } from '@/services/cityNewsService.server'
-import { CityFeedClient } from '@/components/city/CityFeedClient'
+import { getCityHomeFeedInitialData } from '@/services/cityNewsService.server'
+import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,9 +34,10 @@ export default async function CityHomePage() {
   const tenant = await getActiveTenant()
   if (!tenant) return null
 
-  const items = await getCityNews(tenant.provinceSlug, 30)
+  const cityName = getCityCategoryName(tenant.provinceSlug)
+  const homeFeedData = await getCityHomeFeedInitialData(tenant.provinceSlug)
 
   return (
-    <CityFeedClient citySlug={tenant.provinceSlug} initialItems={items} />
+    <CityFeedPageClient homeFeedData={homeFeedData} cityName={cityName} />
   )
 }

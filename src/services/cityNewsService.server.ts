@@ -10,7 +10,17 @@ import { unstable_cache } from 'next/cache'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import type { NewsItem } from '@/types/newsItem'
-import { getCategoryFamily } from '@/constants/config'
+import {
+  HOME_CATEGORY_RAIL_FETCH,
+  HOME_CATEGORY_RAIL_GUNDEM_FETCH,
+  HOME_CATEGORY_RAILS,
+  HOME_FEATURED_LIMIT,
+  type HomeCategorySlug,
+  type HomeFeedInitialData,
+} from '@/types/newsItem'
+import { getCategoryFamily, getHomeFeedCategoryFamily } from '@/constants/config'
+import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
+import { slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isPostgresReadsEnabled } from '@/db'
 
 interface NewsDocument {
@@ -29,6 +39,8 @@ interface NewsDocument {
   likesCount?: number
   commentsCount?: number
   isBreaking?: boolean
+  featured?: boolean
+  featuredAt?: number | { _seconds?: number }
   source?: string
   articleFormat?: string
   seoTitle?: string
@@ -62,6 +74,13 @@ function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
     likesCount: data.likesCount,
     commentsCount: data.commentsCount,
     breaking: data.isBreaking,
+    featured: data.featured === true,
+    featuredAt:
+      typeof data.featuredAt === 'number' && data.featuredAt > 0
+        ? new Date(data.featuredAt).toISOString()
+        : data.featuredAt && typeof (data.featuredAt as { _seconds?: number })._seconds === 'number'
+          ? new Date((data.featuredAt as { _seconds: number })._seconds * 1000).toISOString()
+          : undefined,
     articleFormat: data.articleFormat as NewsItem['articleFormat'],
     seoTitle: data.seoTitle?.trim(),
     readingMinutes: data.readingMinutes,
@@ -397,4 +416,99 @@ const getCityCategoriesCached = unstable_cache(
  */
 export async function getCityCategories(citySlug: string): Promise<CityCategory[]> {
   return getCityCategoriesCached(citySlug.trim().toLowerCase())
+}
+
+// ─── City homepage feed (national layout, city-scoped pool) ───────────────────
+
+function isCityBreakingItem(item: NewsItem): boolean {
+  if (item.articleFormat === 'column' || item.articleFormat === 'analysis') return false
+  return item.breaking === true || item.category === 'son-dakika'
+}
+
+function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
+  const aPub = Date.parse(a.publishedAt ?? a.createdAt ?? '') || 0
+  const bPub = Date.parse(b.publishedAt ?? b.createdAt ?? '') || 0
+  const aPin = Date.parse(a.featuredAt ?? '') || aPub
+  const bPin = Date.parse(b.featuredAt ?? '') || bPub
+  if (aPin !== bPin) return bPin - aPin
+  return bPub - aPub
+}
+
+function bucketCityFeatured(pool: NewsItem[], limit: number): NewsItem[] {
+  const featured = pool.filter((p) => p.featured === true).sort(compareFeaturedPriority)
+  if (featured.length >= limit) return featured.slice(0, limit)
+  const seen = new Set(featured.map((i) => i.id))
+  const withImages = pool.filter((p) => p.imageUrl && !seen.has(p.id))
+  return [...featured, ...withImages].slice(0, limit)
+}
+
+function bucketCityCategoryRails(
+  pool: NewsItem[],
+  categories: readonly HomeCategorySlug[],
+  perCategory = HOME_CATEGORY_RAIL_FETCH
+): Partial<Record<HomeCategorySlug, NewsItem[]>> {
+  const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
+  for (const category of categories) {
+    const family = new Set(getHomeFeedCategoryFamily(category))
+    const limit = category === 'gundem' ? HOME_CATEGORY_RAIL_GUNDEM_FETCH : perCategory
+    const items = pool.filter((item) => item.category && family.has(item.category)).slice(0, limit)
+    if (items.length > 0) rails[category] = items
+  }
+  return rails
+}
+
+const getCityHomeFeedCached = unstable_cache(
+  async (citySlug: string): Promise<HomeFeedInitialData> => {
+    const pool = await getCityNews(citySlug, 60)
+    if (pool.length === 0) {
+      return {
+        breaking: [],
+        featured: [],
+        latest: [],
+        trending: [],
+        trendFeed: [],
+        mostRead: [],
+        categoryRails: {},
+      }
+    }
+
+    const cityCategories = await getCityCategories(citySlug)
+    const railCategoryIds = cityCategories
+      .map((c) => c.id)
+      .filter((id): id is HomeCategorySlug =>
+        (HOME_CATEGORY_RAILS as readonly string[]).includes(id)
+      )
+
+    const now = Date.now()
+    const nonBreaking = pool.filter((item) => !isCityBreakingItem(item))
+    const categoryRails = bucketCityCategoryRails(pool, railCategoryIds)
+    const slimRails: HomeFeedInitialData['categoryRails'] = {}
+    for (const [key, items] of Object.entries(categoryRails)) {
+      slimRails[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])
+    }
+
+    const trending = pickTrending(nonBreaking, 6, undefined, now)
+    const withViews = nonBreaking.filter((p) => typeof p.views === 'number' && (p.views ?? 0) > 0)
+    const mostRead =
+      withViews.length > 0
+        ? [...withViews].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 6)
+        : nonBreaking.slice(0, 6)
+
+    return {
+      breaking: slimNewsItemsForFeed(pool.filter(isCityBreakingItem).slice(0, 8)),
+      featured: slimNewsItemsForFeed(bucketCityFeatured(pool, HOME_FEATURED_LIMIT)),
+      latest: slimNewsItemsForFeed(rankFeedHotAware(nonBreaking, now).slice(0, 16)),
+      trending: slimNewsItemsForFeed(trending),
+      trendFeed: slimNewsItemsForFeed(pickTrendFeed(nonBreaking, 12, now)),
+      mostRead: slimNewsItemsForFeed(mostRead),
+      categoryRails: slimRails,
+    }
+  },
+  ['city-home-feed-v1'],
+  { revalidate: 120, tags: ['city-news'] }
+)
+
+/** National-style homepage feed payload scoped to a city tenant. */
+export async function getCityHomeFeedInitialData(citySlug: string): Promise<HomeFeedInitialData> {
+  return getCityHomeFeedCached(citySlug.trim().toLowerCase())
 }

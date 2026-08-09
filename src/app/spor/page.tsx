@@ -5,7 +5,7 @@ import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { CitySporClient } from '@/components/city/CitySporClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
-import { getCityCategories, getCityNewsByCategory } from '@/services/cityNewsService.server'
+import { getCityNewsByCategory } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,17 +35,13 @@ export default async function SporPage() {
   }
 
   const cityName = getCityCategoryName(citySlug)
-  const [items, categories] = await Promise.all([
-    getCityNewsByCategory(citySlug, 'spor', 30),
-    getCityCategories(citySlug),
-  ])
+  const items = await getCityNewsByCategory(citySlug, 'spor', 30)
 
   return (
     <CityLayoutClient
       tenantSlug={citySlug}
       displayName={cityName}
       provinceSlug={citySlug}
-      categories={categories}
     >
       <CitySporClient citySlug={citySlug} cityName={cityName} initialItems={items} />
     </CityLayoutClient>

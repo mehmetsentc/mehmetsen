@@ -5,7 +5,6 @@ import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { CityEventsClient } from '@/components/city/CityEventsClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
-import { getCityCategories } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,14 +34,12 @@ export default async function EtkinlikPage() {
   }
 
   const cityName = getCityCategoryName(citySlug)
-  const categories = await getCityCategories(citySlug)
 
   return (
     <CityLayoutClient
       tenantSlug={citySlug}
       displayName={cityName}
       provinceSlug={citySlug}
-      categories={categories}
     >
       <CityEventsClient citySlug={citySlug} cityName={cityName} />
     </CityLayoutClient>

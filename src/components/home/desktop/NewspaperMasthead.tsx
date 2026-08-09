@@ -7,9 +7,10 @@ import { ROUTES } from '@/constants/routes'
 
 interface NewspaperMastheadProps {
   lastUpdated?: string
+  cityName?: string
 }
 
-export function NewspaperMasthead({ lastUpdated }: NewspaperMastheadProps) {
+export function NewspaperMasthead({ lastUpdated, cityName }: NewspaperMastheadProps) {
   const edition = resolveNewspaperEdition()
   const updatedLabel = lastUpdated
     ? new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(
@@ -32,12 +33,19 @@ export function NewspaperMasthead({ lastUpdated }: NewspaperMastheadProps) {
         </div>
       </div>
 
-      <Link href={ROUTES.FEED} className="block no-underline">
-        <BrandWordmark
-          variant="default"
-          size="lg"
-          className="nl-masthead__title font-black"
-        />
+      <Link href={cityName ? '/' : ROUTES.FEED} className="block no-underline">
+        {cityName ? (
+          <p className="nl-masthead__title m-0 font-serif text-4xl font-black tracking-tight text-[rgb(var(--color-text))]">
+            {cityName}{' '}
+            <span className="text-[rgb(var(--color-brand))]">NaHaber</span>
+          </p>
+        ) : (
+          <BrandWordmark
+            variant="default"
+            size="lg"
+            className="nl-masthead__title font-black"
+          />
+        )}
       </Link>
       <p className="mt-1 mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgb(var(--color-muted))]">
         Dijital Gazete · Türkiye

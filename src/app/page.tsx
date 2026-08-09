@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityNews, getCityCategories } from '@/services/cityNewsService.server'
-import { CityFeedClient } from '@/components/city/CityFeedClient'
+import { getCityHomeFeedInitialData } from '@/services/cityNewsService.server'
+import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 
@@ -56,19 +56,15 @@ export default async function Home() {
 
   if (citySlug) {
     const slug = tenant?.slug ?? citySlug
-    const [items, categories] = await Promise.all([
-      getCityNews(citySlug, 30),
-      getCityCategories(citySlug),
-    ])
     const displayName = getCityCategoryName(citySlug)
+    const homeFeedData = await getCityHomeFeedInitialData(citySlug)
     return (
       <CityLayoutClient
         tenantSlug={slug}
         displayName={displayName}
         provinceSlug={citySlug}
-        categories={categories}
       >
-        <CityFeedClient citySlug={citySlug} initialItems={items} />
+        <CityFeedPageClient homeFeedData={homeFeedData} cityName={displayName} />
       </CityLayoutClient>
     )
   }

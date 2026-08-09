@@ -7,9 +7,9 @@ import {
 } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { CityFeedClient } from '@/components/city/CityFeedClient'
+import { MobileFeedCardNews } from '@/components/feed/MobileFeedCard'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
-import { getCityCategories, getCityNewsByDistrict } from '@/services/cityNewsService.server'
+import { getCityNewsByDistrict } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,17 +47,13 @@ export default async function IlcePage({ params }: PageProps) {
   if (!district) notFound()
 
   const cityName = getCityCategoryName(citySlug)
-  const [items, categories] = await Promise.all([
-    getCityNewsByDistrict(citySlug, slug, 30),
-    getCityCategories(citySlug),
-  ])
+  const items = await getCityNewsByDistrict(citySlug, slug, 30)
 
   return (
     <CityLayoutClient
       tenantSlug={citySlug}
       displayName={cityName}
       provinceSlug={citySlug}
-      categories={categories}
     >
       <div className="mx-auto w-full max-w-3xl px-4 pb-2 max-md:pt-2">
         <h1 className="text-xl font-bold text-[rgb(var(--color-text))]">
@@ -67,7 +63,21 @@ export default async function IlcePage({ params }: PageProps) {
           {cityName} · {district.name}
         </p>
       </div>
-      <CityFeedClient citySlug={citySlug} initialItems={items} />
+      <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10">
+        {items.length > 0 ? (
+          <div className="sd-feed">
+            {items.map((item, i) => (
+              <MobileFeedCardNews key={item.id} item={item} priority={i === 0} />
+            ))}
+          </div>
+        ) : (
+          <div className="py-16 text-center">
+            <p className="text-lg font-semibold text-[rgb(var(--color-text))]">
+              Henüz haber yok
+            </p>
+          </div>
+        )}
+      </div>
     </CityLayoutClient>
   )
 }

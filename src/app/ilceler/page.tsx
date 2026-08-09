@@ -5,7 +5,6 @@ import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { CityDistrictsClient } from '@/components/city/CityDistrictsClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
-import { getCityCategories } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,17 +34,13 @@ export default async function IlcelerPage() {
   }
 
   const cityName = getCityCategoryName(citySlug)
-  const [districts, categories] = await Promise.all([
-    Promise.resolve(getDistrictsForProvince(citySlug)),
-    getCityCategories(citySlug),
-  ])
+  const districts = getDistrictsForProvince(citySlug)
 
   return (
     <CityLayoutClient
       tenantSlug={citySlug}
       displayName={cityName}
       provinceSlug={citySlug}
-      categories={categories}
     >
       <CityDistrictsClient citySlug={citySlug} cityName={cityName} districts={districts} />
     </CityLayoutClient>

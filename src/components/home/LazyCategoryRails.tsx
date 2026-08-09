@@ -12,17 +12,20 @@ import {
 
 interface LazyCategoryRailsProps {
   initialRails: Partial<Record<HomeCategorySlug, NewsItem[]>>
+  /** When set, only render rails for these categories (city tenants). */
+  categoryIds?: readonly HomeCategorySlug[]
 }
 
 /**
  * SSR rayları hemen; kalan kategoriler kısa gecikmeyle tek pool-cached API çağrısıyla.
  */
-export function LazyCategoryRails({ initialRails }: LazyCategoryRailsProps) {
-  const merged = useMergedCategoryRails(initialRails, HOME_CATEGORY_RAILS)
+export function LazyCategoryRails({ initialRails, categoryIds }: LazyCategoryRailsProps) {
+  const ensureCategories = categoryIds ?? HOME_CATEGORY_RAILS
+  const merged = useMergedCategoryRails(initialRails, ensureCategories, categoryIds ? 0 : 2500)
 
   return (
     <>
-      {HOME_CATEGORY_RAILS.map((categoryId) => {
+      {ensureCategories.map((categoryId) => {
         const items = merged[categoryId]
         if (!items?.length) return null
         return (

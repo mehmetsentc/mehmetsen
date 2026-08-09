@@ -13,14 +13,17 @@ import { GamesRail } from '@/components/home/GamesRail'
 import { LazySection } from '@/components/home/LazySection'
 import { LazyCategoryRails } from '@/components/home/LazyCategoryRails'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
-import type { HomeFeedInitialData } from '@/types/newsItem'
+import type { HomeFeedInitialData, HomeCategorySlug } from '@/types/newsItem'
 import { FEATURED_CAROUSEL_LIMIT, HOME_FEATURED_LIMIT } from '@/types/newsItem'
 
 interface HomeFeedProps {
   data: HomeFeedInitialData
+  /** City tenant — hides national-only sections and scopes category rails. */
+  cityMode?: boolean
+  categoryRailIds?: readonly HomeCategorySlug[]
 }
 
-export function HomeFeed({ data }: HomeFeedProps) {
+export function HomeFeed({ data, cityMode = false, categoryRailIds }: HomeFeedProps) {
   const { breaking, featured, latest, trending, mostRead, categoryRails } = data
 
   const breakingIds = useMemo(() => new Set(breaking.map((b) => b.id)), [breaking])
@@ -81,22 +84,28 @@ export function HomeFeed({ data }: HomeFeedProps) {
       </section>
 
       <TrendingRail items={trending} />
-      <LocationPermission />
+      {!cityMode ? <LocationPermission /> : null}
 
       <MustReadSection items={mostRead} />
 
-      <LazySection minHeight={220}>
-        <GamesRail />
-      </LazySection>
+      {!cityMode ? (
+        <LazySection minHeight={220}>
+          <GamesRail />
+        </LazySection>
+      ) : null}
 
-      {/* Kategori rayları — Öne Çıkan haberler burada da kendi kategorilerinde görünür */}
-      <LazyCategoryRails initialRails={categoryRails} />
+      <LazyCategoryRails
+        initialRails={categoryRails}
+        categoryIds={cityMode ? categoryRailIds : undefined}
+      />
 
-      <LazySection minHeight={280}>
-        <LocalNewsSection />
-      </LazySection>
+      {!cityMode ? (
+        <LazySection minHeight={280}>
+          <LocalNewsSection />
+        </LazySection>
+      ) : null}
 
-      {moreItems.length > 0 || hasMore ? (
+      {!cityMode && (moreItems.length > 0 || hasMore) ? (
         <section className="home-section" aria-label="Daha fazla haber">
           <MobileMagazineFeed
             items={moreItems}
