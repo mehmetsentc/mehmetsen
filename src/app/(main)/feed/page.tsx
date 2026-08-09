@@ -42,7 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
     const cityName = getCityCategoryName(citySlug)
     const cityOrigin = `https://${citySlug}.nahaber.com`
     return {
-      title: `${cityName} Haberleri — ${siteName}`,
+      title: `${cityName} Haberleri`,
       description: `${cityName} son dakika yerel haberler, gündem, etkinlikler ve spor haberleri.`,
       alternates: { canonical: cityOrigin },
       openGraph: {
