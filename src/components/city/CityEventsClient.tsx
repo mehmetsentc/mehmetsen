@@ -24,6 +24,7 @@ import {
   type CityEventViewMode,
 } from '@/lib/cityEventFilters'
 import { cn } from '@/lib/utils'
+import type { EventTimeRange } from '@/services/eventService'
 import { CityEventFiltersPanel } from './CityEventFiltersPanel'
 import { CityEventGridCard, CityEventGridCardSkeleton } from './CityEventGridCard'
 import { CityEventListCard, CityEventListCardSkeleton } from './CityEventListCard'
@@ -40,10 +41,16 @@ const SORT_OPTIONS: Array<{ id: CityEventSort; label: string }> = [
   { id: 'rating', label: 'Popülerlik' },
 ]
 
+const TIME_RANGE_OPTIONS: Array<{ id: EventTimeRange; label: string }> = [
+  { id: 'upcoming', label: 'Yaklaşan' },
+  { id: 'past', label: 'Geçmiş' },
+]
+
 export function CityEventsClient({ citySlug, cityName }: CityEventsClientProps) {
+  const [timeRange, setTimeRange] = useState<EventTimeRange>('upcoming')
   const { events, loading, error, retry } = useEvents({
     citySlug,
-    timeRange: 'upcoming',
+    timeRange,
   })
 
   const [filters, setFilters] = useState<CityEventFilterState>(DEFAULT_CITY_EVENT_FILTERS)
@@ -135,20 +142,44 @@ export function CityEventsClient({ citySlug, cityName }: CityEventsClientProps) 
         <div className="min-w-0 flex-1">
           <CityEventTopSellers events={featuredEvents} loading={loading} />
 
-          {/* Toolbar: sort + view toggle + count */}
+          {/* Toolbar: time range + sort + view toggle + count */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-[rgb(var(--color-text-secondary))]">
-              {loading ? (
-                'Yükleniyor…'
-              ) : (
-                <>
-                  <span className="font-semibold text-[rgb(var(--color-text))]">
-                    {filteredEvents.length}
-                  </span>{' '}
-                  etkinlik
-                </>
-              )}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <div
+                className="inline-flex rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-0.5"
+                role="group"
+                aria-label="Zaman aralığı"
+              >
+                {TIME_RANGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setTimeRange(opt.id)}
+                    aria-pressed={timeRange === opt.id}
+                    className={cn(
+                      'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm',
+                      timeRange === opt.id
+                        ? 'bg-[rgb(var(--color-brand))] text-white'
+                        : 'text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-text))]'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm text-[rgb(var(--color-text-secondary))]">
+                {loading ? (
+                  'Yükleniyor…'
+                ) : (
+                  <>
+                    <span className="font-semibold text-[rgb(var(--color-text))]">
+                      {filteredEvents.length}
+                    </span>{' '}
+                    etkinlik
+                  </>
+                )}
+              </p>
+            </div>
 
             <div className="flex items-center gap-2">
               <label className="sr-only" htmlFor="city-event-sort">
@@ -237,7 +268,9 @@ export function CityEventsClient({ citySlug, cityName }: CityEventsClientProps) 
               <p className="mt-3 text-sm font-medium text-[rgb(var(--color-text))]">
                 {activeFilterCount > 0
                   ? 'Seçili filtrelere uygun etkinlik bulunamadı.'
-                  : 'Yaklaşan etkinlik bulunamadı.'}
+                  : timeRange === 'past'
+                    ? 'Geçmiş etkinlik bulunamadı.'
+                    : 'Yaklaşan etkinlik bulunamadı.'}
               </p>
               {activeFilterCount > 0 && (
                 <button

@@ -17,10 +17,14 @@ import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
 import {
   getUpcomingStartsAtLowerBound,
   isEventUpcoming,
+  PAST_EVENT_LOOKBACK_MS,
 } from '@/lib/eventUtils'
 import type { EventCategory, EventReview, EventTimelineStatus, NaEvent } from '@/types/event'
 
 export const EVENT_PAGE_SIZE = 12
+/** City etkinlik pages load the full local catalog in one request (no infinite scroll). */
+const CITY_EVENT_FETCH_TARGET = 120
+const FETCH_BATCH_SIZE = 50
 const QUERY_TIMEOUT_MS = 15_000
 
 export type EventTimeRange = 'upcoming' | 'past'
@@ -62,8 +66,8 @@ function matchesTimeRange(event: NaEvent, timeRange: EventTimeRange, nowIso: str
     return isEventUpcoming(event, nowIso)
   }
 
-  const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
-  return endDate < nowIso && eventDate >= threeDaysAgo
+  const pastLower = new Date(new Date(nowIso).getTime() - PAST_EVENT_LOOKBACK_MS).toISOString()
+  return endDate < nowIso && eventDate >= pastLower
 }
 
 /** Client-side filter for live aggregate results and Firestore fallback scans. */
@@ -114,9 +118,9 @@ function buildEventQueryConstraints(options: {
   if (timeRange === 'upcoming') {
     constraints.push(where('startsAt', '>=', getUpcomingStartsAtLowerBound(nowIso)))
   } else {
-    const threeDaysAgo = new Date(new Date(nowIso).getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    const pastLower = new Date(new Date(nowIso).getTime() - PAST_EVENT_LOOKBACK_MS).toISOString()
     constraints.push(where('startsAt', '<', nowIso))
-    constraints.push(where('startsAt', '>=', threeDaysAgo))
+    constraints.push(where('startsAt', '>=', pastLower))
   }
 
   constraints.push(orderBy('startsAt', sortDir))
@@ -130,7 +134,7 @@ async function fetchAnnualCityEvents(citySlug: string): Promise<NaEvent[]> {
     collection(db, Collections.EVENTS),
     where('citySlug', '==', citySlug),
     where('recurrence', '==', 'annual'),
-    limit(100)
+    limit(150)
   )
   const snap = await withTimeout(
     enqueueFirestoreRead(() => getDocs(q)),
@@ -152,6 +156,114 @@ function mergeEventLists(primary: NaEvent[], extra: NaEvent[]): NaEvent[] {
   return merged
 }
 
+function collectVisibleEvents(
+  docs: QueryDocumentSnapshot[],
+  options: {
+    citySlug?: string
+    category?: EventCategory
+    timeRange: EventTimeRange
+    nowIso: string
+  },
+  seen: Set<string>,
+  bucket: NaEvent[]
+): void {
+  const { citySlug, category, timeRange, nowIso } = options
+  for (const docSnap of docs) {
+    const event = toEvent(docSnap)
+    if (!isVisible(event)) continue
+    if (!matchesTimeRange(event, timeRange, nowIso)) continue
+    if (citySlug && event.citySlug !== citySlug) continue
+    if (category && event.category !== category) continue
+    if (seen.has(event.id)) continue
+    seen.add(event.id)
+    bucket.push(event)
+  }
+}
+
+/**
+ * Keeps reading Firestore pages until `targetCount` visible events are collected
+ * or the query is exhausted. Avoids returning sparse pages when cancelled/past
+ * ticket rows dominate early `startsAt` ordering.
+ */
+async function fetchVisibleEventsPaginated(
+  options: GetEventsOptions,
+  nowIso: string,
+  targetCount: number
+): Promise<GetEventsResult> {
+  const { citySlug, category, cursor: initialCursor } = options
+  const timeRange = options.timeRange ?? 'upcoming'
+  const sortDir = timeRange === 'past' ? 'desc' : 'asc'
+
+  const seen = new Set<string>()
+  const collected: NaEvent[] = []
+  let cursor: QueryDocumentSnapshot | undefined = initialCursor
+  let lastDoc: QueryDocumentSnapshot | null = null
+  let exhausted = false
+
+  while (collected.length < targetCount) {
+    const constraints = buildEventQueryConstraints({
+      citySlug,
+      category,
+      timeRange,
+      nowIso,
+      sortDir,
+      pageSize: FETCH_BATCH_SIZE,
+      cursor,
+    })
+
+    const snap = await withTimeout(
+      enqueueFirestoreRead(() =>
+        getDocs(query(collection(db, Collections.EVENTS), ...constraints))
+      ),
+      QUERY_TIMEOUT_MS,
+      'events-paginated'
+    )
+
+    if (snap.empty) {
+      exhausted = true
+      break
+    }
+
+    lastDoc = snap.docs[snap.docs.length - 1] ?? null
+    collectVisibleEvents(
+      snap.docs,
+      { citySlug, category, timeRange, nowIso },
+      seen,
+      collected
+    )
+
+    if (snap.docs.length < FETCH_BATCH_SIZE) {
+      exhausted = true
+      break
+    }
+
+    cursor = lastDoc ?? undefined
+  }
+
+  let events = sortEventsByTimeRange(collected, timeRange).slice(0, targetCount)
+
+  if (timeRange === 'upcoming' && citySlug && !category && !initialCursor) {
+    try {
+      const annual = await fetchAnnualCityEvents(citySlug)
+      events = sortEventsByTimeRange(
+        mergeEventLists(events, annual).filter((event) =>
+          matchesTimeRange(event, timeRange, nowIso)
+        ),
+        timeRange
+      ).slice(0, targetCount)
+    } catch (annualError) {
+      console.warn('[eventService] annual city events fetch failed:', annualError)
+    }
+  }
+
+  return {
+    events,
+    lastDoc,
+    hasMore: !exhausted && collected.length >= targetCount,
+    source: 'firestore',
+  }
+}
+
 async function runOrderedFallback(
   options: GetEventsOptions,
   nowIso: string,
@@ -159,42 +271,16 @@ async function runOrderedFallback(
 ): Promise<GetEventsResult> {
   const { citySlug, category, cursor } = options
   const timeRange = options.timeRange ?? 'upcoming'
-  const sortDir = timeRange === 'past' ? 'desc' : 'asc'
-  const FALLBACK_FETCH = EVENT_PAGE_SIZE * 4
+  const targetCount =
+    citySlug && !category && !cursor ? CITY_EVENT_FETCH_TARGET : EVENT_PAGE_SIZE * 4
 
-  devLog('eventService', 'ordered fallback', { reason, citySlug, category, timeRange })
+  devLog('eventService', 'ordered fallback', { reason, citySlug, category, timeRange, targetCount })
 
-  const constraints = buildEventQueryConstraints({
-    citySlug,
-    category,
-    timeRange,
-    nowIso,
-    sortDir,
-    pageSize: FALLBACK_FETCH,
-    cursor,
-  })
-
-  const snap = await withTimeout(
-    enqueueFirestoreRead(() =>
-      getDocs(query(collection(db, Collections.EVENTS), ...constraints))
-    ),
-    QUERY_TIMEOUT_MS,
-    'events-fallback'
-  )
-
-  let events = filterEventsForQuery(snap.docs.map(toEvent), {
-    citySlug,
-    category,
-    timeRange,
-    nowIso,
-  })
-  events = events.slice(0, EVENT_PAGE_SIZE)
-
-  return {
-    events,
-    lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-    hasMore: snap.docs.length === FALLBACK_FETCH,
-    source: 'firestore',
+  try {
+    return await fetchVisibleEventsPaginated(options, nowIso, targetCount)
+  } catch (fallbackError) {
+    console.error('[eventService] ordered fallback paginated fetch failed:', fallbackError)
+    throw fallbackError
   }
 }
 
@@ -208,55 +294,20 @@ export const eventService = {
     const nowIso = new Date().toISOString()
     const { citySlug, category, cursor } = options
     const timeRange = options.timeRange ?? 'upcoming'
-    const sortDir = timeRange === 'past' ? 'desc' : 'asc'
 
     devLog('eventService', 'getEvents', { citySlug, category, timeRange, hasCursor: !!cursor })
 
+    const targetCount =
+      citySlug && !category && !cursor ? CITY_EVENT_FETCH_TARGET : EVENT_PAGE_SIZE
+
     try {
-      const constraints = buildEventQueryConstraints({
-        citySlug,
-        category,
-        timeRange,
-        nowIso,
-        sortDir,
-        pageSize: EVENT_PAGE_SIZE,
-        cursor,
-      })
+      const result = await fetchVisibleEventsPaginated(options, nowIso, targetCount)
 
-      const q = query(collection(db, Collections.EVENTS), ...constraints)
-      const snap = await withTimeout(
-        enqueueFirestoreRead(() => getDocs(q)),
-        QUERY_TIMEOUT_MS,
-        'events'
-      )
-
-      let events = snap.docs
-        .map(toEvent)
-        .filter(isVisible)
-        .filter((event) => matchesTimeRange(event, timeRange, nowIso))
-
-      if (timeRange === 'upcoming' && citySlug && !category && !cursor) {
-        try {
-          const annual = await fetchAnnualCityEvents(citySlug)
-          events = mergeEventLists(events, annual).filter((event) =>
-            matchesTimeRange(event, timeRange, nowIso)
-          )
-          events = sortEventsByTimeRange(events, timeRange).slice(0, EVENT_PAGE_SIZE)
-        } catch (annualError) {
-          console.warn('[eventService] annual city events fetch failed:', annualError)
-        }
-      }
-
-      if (events.length === 0 && !cursor) {
+      if (result.events.length === 0 && !cursor) {
         return runOrderedFallback(options, nowIso, 'empty-primary')
       }
 
-      return {
-        events,
-        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length === EVENT_PAGE_SIZE,
-        source: 'firestore',
-      }
+      return result
     } catch (error) {
       console.warn('[eventService] getEvents failed, ordered fallback:', error)
 

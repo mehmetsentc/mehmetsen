@@ -148,6 +148,9 @@ export function isEventUpcoming(
 /** Firestore lookback so ongoing events with past `startsAt` still fetch. */
 export const UPCOMING_EVENT_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000
 
+/** How far back the "Geçmiş" tab lists ended events. */
+export const PAST_EVENT_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000
+
 export function getUpcomingStartsAtLowerBound(
   nowIso: string = new Date().toISOString()
 ): string {
