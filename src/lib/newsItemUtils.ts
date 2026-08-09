@@ -1,5 +1,6 @@
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
+import { formatPublicSourceLabel } from '@/lib/postUtils'
 import type { NewsItem } from '@/types/newsItem'
 
 type TimestampLike =
@@ -116,8 +117,8 @@ export function docToNewsItem(
     videoUrl: String(raw.videoUrl ?? '').trim() || undefined,
     category: categoryId || undefined,
     source:
-      String(raw.sourceLabel ?? '').trim() ||
-      String(raw.source ?? '').trim() ||
+      formatPublicSourceLabel(String(raw.sourceLabel ?? '')) ||
+      formatPublicSourceLabel(String(raw.source ?? '')) ||
       undefined,
     author: String(raw.author ?? '').trim() || undefined,
     url: String(raw.sourceUrl ?? '').trim() || undefined,

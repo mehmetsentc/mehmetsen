@@ -108,6 +108,16 @@ export function formatCount(count: number): string {
   return String(count)
 }
 
+/** Strip internal ingestion labels from public source attribution. */
+export function formatPublicSourceLabel(source: string | null | undefined): string {
+  const trimmed = (source ?? '').trim()
+  if (!trimmed) return ''
+  return trimmed
+    .replace(/\s*\((?:scraper|rss|feed|ingest|worker)\)\s*/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 /** Public byline — syndicated news shows the site brand, not upstream RSS labels. */
 export function getArticleBylineName(post: Post): string {
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'

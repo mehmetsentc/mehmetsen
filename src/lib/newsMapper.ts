@@ -5,6 +5,7 @@ import { getCityCategoryName } from '@/constants/cities'
 import { formatCityLabel } from '@/lib/location'
 import { buildFeedTeaser } from '@/lib/newsContentCleanup'
 import { shouldShowBreakingBadge } from '@/lib/newsBreaking'
+import { formatPublicSourceLabel } from '@/lib/postUtils'
 import { sanitizeArticleBlocks, type ArticleBlock } from '@/lib/articleBlocks'
 
 /** Matches the live Firestore `news` collection schema. */
@@ -173,7 +174,10 @@ export function inferPostType(data: NewsDocument): PostType {
 }
 
 export function resolveSource(data: NewsDocument, author: string): string {
-  if (data.source?.trim()) return data.source.trim()
+  const fromDoc =
+    formatPublicSourceLabel(data.sourceLabel) ||
+    formatPublicSourceLabel(data.source)
+  if (fromDoc) return fromDoc
   if (author && author !== 'nahaber') return author
   return DEFAULT_SOURCE
 }

@@ -36,7 +36,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Çanakkale ────────────────────────────────────────────────────────────
   {
     id: 'scraper-canakkale-kaleninsesi',
-    label: 'Kalenin Sesi (scraper)',
+    label: 'Kalenin Sesi',
     enabled: false, // 2026-08-02 audit: HTTP 403
     listUrls: ['https://www.kaleninsesi.com/', 'https://www.kaleninsesi.com/son-dakika'],
     linkPattern: '/\\d{5,}',
@@ -45,7 +45,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'scraper-canakkale-gundem',
-    label: 'Çanakkale Gündem (scraper)',
+    label: 'Çanakkale Gündem',
     enabled: true,
     listUrls: ['https://canakkalegundem.net/', 'https://canakkalegundem.net/son-dakika'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -54,7 +54,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'scraper-canakkale-can-insesi',
-    label: 'Çan İnsesi (scraper)',
+    label: 'Çan İnsesi',
     enabled: true,
     listUrls: ['https://www.caninsesi.com.tr/'],
     linkPattern: '/haber/|/detay/|/\\d{5,}',
@@ -63,7 +63,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'scraper-canakkale-tontv',
-    label: 'Ton TV (scraper)',
+    label: 'Ton TV',
     enabled: true,
     listUrls: ['https://www.tontv.com.tr/canakkale-haber', 'https://www.tontv.com.tr/'],
     linkPattern: '/haber/\\d+/',
@@ -74,7 +74,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Bursa ─────────────────────────────────────────────────────────────────
   {
     id: 'scraper-bursa-olay',
-    label: 'Bursa Olay (scraper)',
+    label: 'Bursa Olay',
     enabled: false, // 2026-08-02 audit: no usable page body
     listUrls: ['https://www.bursaolay.com/', 'https://www.bursaolay.com/son-dakika'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -85,7 +85,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── İzmir ─────────────────────────────────────────────────────────────────
   {
     id: 'scraper-izmir-yasamgazetesi',
-    label: 'İzmir Yaşam Gazetesi (scraper)',
+    label: 'İzmir Yaşam Gazetesi',
     enabled: true,
     listUrls: ['https://www.izmirgazetesi.com.tr/'],
     linkPattern: '/haber/|/detay/|/\\d{4,}',
@@ -96,7 +96,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Ankara ────────────────────────────────────────────────────────────────
   {
     id: 'scraper-ankara-yerel',
-    label: 'Ankara Yerel Haber (scraper)',
+    label: 'Ankara Yerel Haber',
     enabled: false, // 2026-08-02 audit: fetch failed
     listUrls: ['https://www.ankarayerelhaber.com/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -107,7 +107,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── İstanbul ─────────────────────────────────────────────────────────────
   {
     id: 'scraper-istanbul-gazete',
-    label: 'İstanbul Gazete (scraper)',
+    label: 'İstanbul Gazete',
     enabled: true,
     listUrls: ['https://www.istanbulgazetesi.com.tr/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -118,7 +118,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Antalya ───────────────────────────────────────────────────────────────
   {
     id: 'scraper-antalya-olay',
-    label: 'Antalya Olay (scraper)',
+    label: 'Antalya Olay',
     enabled: false, // 2026-08-02 audit: fetch failed
     listUrls: ['https://www.antalyaolay.com/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -129,7 +129,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Konya ─────────────────────────────────────────────────────────────────
   {
     id: 'scraper-konya-ovahaber',
-    label: 'Konya Ova Haber (scraper)',
+    label: 'Konya Ova Haber',
     enabled: false, // 2026-08-02 audit: fetch failed
     listUrls: ['https://www.konyaovahaber.com/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -140,7 +140,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Kayseri ───────────────────────────────────────────────────────────────
   {
     id: 'scraper-kayseri-ses',
-    label: 'Kayseri Ses (scraper)',
+    label: 'Kayseri Ses',
     enabled: true,
     listUrls: ['https://www.kayseri.com.tr/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -151,7 +151,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Trabzon ───────────────────────────────────────────────────────────────
   {
     id: 'scraper-trabzon-haber',
-    label: 'Trabzon Haber (scraper)',
+    label: 'Trabzon Haber',
     enabled: true,
     listUrls: ['https://www.trabzonhaber.com/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -162,7 +162,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Samsun ────────────────────────────────────────────────────────────────
   {
     id: 'scraper-samsun-yerel',
-    label: 'Samsun Yerel Haber (scraper)',
+    label: 'Samsun Yerel Haber',
     enabled: true,
     listUrls: ['https://www.samsunhaber.com/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -173,7 +173,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Gaziantep ─────────────────────────────────────────────────────────────
   {
     id: 'scraper-gaziantep-olay',
-    label: 'Gaziantep Olay (scraper)',
+    label: 'Gaziantep Olay',
     enabled: false, // 2026-08-02 audit: fetch failed
     listUrls: ['https://www.gaziantepolay.com/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -184,7 +184,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Diyarbakır ────────────────────────────────────────────────────────────
   {
     id: 'scraper-diyarbakir-haber',
-    label: 'Diyarbakır Haber (scraper)',
+    label: 'Diyarbakır Haber',
     enabled: true,
     listUrls: ['https://www.diyarbakirhaber.com.tr/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -195,7 +195,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Erzurum ───────────────────────────────────────────────────────────────
   {
     id: 'scraper-erzurum-haber',
-    label: 'Erzurum Haber (scraper)',
+    label: 'Erzurum Haber',
     enabled: true,
     listUrls: ['https://www.erzurumhaber.com.tr/'],
     linkPattern: '/haber/|/\\d{5,}',
@@ -206,7 +206,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // ── Çanakkale — ek kaynaklar ──────────────────────────────────────────────
   {
     id: 'scraper-canakkale-tekinugurlu',
-    label: 'Tekin Uğurlu (scraper)',
+    label: 'Tekin Uğurlu',
     enabled: true,
     listUrls: ['https://tekinugurlu.com/'],
     linkPattern: '/\\d{4,}|/haber/',
@@ -219,7 +219,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   // Makale URL pattern: /{kategori}/{slug}-{7-haneli-id}
   {
     id: 'dha-city-adana',
-    label: 'DHA Adana (scraper)',
+    label: 'DHA Adana',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/adana-haber/'],
     linkPattern: '/-\\d{7}',
@@ -228,7 +228,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-adiyaman',
-    label: 'DHA Adıyaman (scraper)',
+    label: 'DHA Adıyaman',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/adiyaman-haber/'],
     linkPattern: '/-\\d{7}',
@@ -237,7 +237,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-afyonkarahisar',
-    label: 'DHA Afyonkarahisar (scraper)',
+    label: 'DHA Afyonkarahisar',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/afyonkarahisar-haber/'],
     linkPattern: '/-\\d{7}',
@@ -246,7 +246,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-agri',
-    label: 'DHA Ağrı (scraper)',
+    label: 'DHA Ağrı',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/agri-haber/'],
     linkPattern: '/-\\d{7}',
@@ -255,7 +255,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-aksaray',
-    label: 'DHA Aksaray (scraper)',
+    label: 'DHA Aksaray',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/aksaray-haber/'],
     linkPattern: '/-\\d{7}',
@@ -264,7 +264,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-amasya',
-    label: 'DHA Amasya (scraper)',
+    label: 'DHA Amasya',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/amasya-haber/'],
     linkPattern: '/-\\d{7}',
@@ -273,7 +273,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-ankara',
-    label: 'DHA Ankara (scraper)',
+    label: 'DHA Ankara',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/ankara-haber/'],
     linkPattern: '/-\\d{7}',
@@ -282,7 +282,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-antalya',
-    label: 'DHA Antalya (scraper)',
+    label: 'DHA Antalya',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/antalya-haber/'],
     linkPattern: '/-\\d{7}',
@@ -291,7 +291,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-ardahan',
-    label: 'DHA Ardahan (scraper)',
+    label: 'DHA Ardahan',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/ardahan-haber/'],
     linkPattern: '/-\\d{7}',
@@ -300,7 +300,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-artvin',
-    label: 'DHA Artvin (scraper)',
+    label: 'DHA Artvin',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/artvin-haber/'],
     linkPattern: '/-\\d{7}',
@@ -309,7 +309,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-aydin',
-    label: 'DHA Aydın (scraper)',
+    label: 'DHA Aydın',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/aydin-haber/'],
     linkPattern: '/-\\d{7}',
@@ -318,7 +318,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-balikesir',
-    label: 'DHA Balıkesir (scraper)',
+    label: 'DHA Balıkesir',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/balikesir-haber/'],
     linkPattern: '/-\\d{7}',
@@ -327,7 +327,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-bartin',
-    label: 'DHA Bartın (scraper)',
+    label: 'DHA Bartın',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/bartin-haber/'],
     linkPattern: '/-\\d{7}',
@@ -336,7 +336,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-batman',
-    label: 'DHA Batman (scraper)',
+    label: 'DHA Batman',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/batman-haber/'],
     linkPattern: '/-\\d{7}',
@@ -345,7 +345,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-bayburt',
-    label: 'DHA Bayburt (scraper)',
+    label: 'DHA Bayburt',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/bayburt-haber/'],
     linkPattern: '/-\\d{7}',
@@ -354,7 +354,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-bilecik',
-    label: 'DHA Bilecik (scraper)',
+    label: 'DHA Bilecik',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/bilecik-haber/'],
     linkPattern: '/-\\d{7}',
@@ -363,7 +363,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-bingol',
-    label: 'DHA Bingöl (scraper)',
+    label: 'DHA Bingöl',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/bingol-haber/'],
     linkPattern: '/-\\d{7}',
@@ -372,7 +372,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-bitlis',
-    label: 'DHA Bitlis (scraper)',
+    label: 'DHA Bitlis',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/bitlis-haber/'],
     linkPattern: '/-\\d{7}',
@@ -381,7 +381,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-bolu',
-    label: 'DHA Bolu (scraper)',
+    label: 'DHA Bolu',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/bolu-haber/'],
     linkPattern: '/-\\d{7}',
@@ -390,7 +390,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-burdur',
-    label: 'DHA Burdur (scraper)',
+    label: 'DHA Burdur',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/burdur-haber/'],
     linkPattern: '/-\\d{7}',
@@ -399,7 +399,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-bursa',
-    label: 'DHA Bursa (scraper)',
+    label: 'DHA Bursa',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/bursa-haber/'],
     linkPattern: '/-\\d{7}',
@@ -408,7 +408,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-canakkale',
-    label: 'DHA Çanakkale (scraper)',
+    label: 'DHA Çanakkale',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/canakkale-haber/'],
     linkPattern: '/-\\d{7}',
@@ -417,7 +417,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-cankiri',
-    label: 'DHA Çankırı (scraper)',
+    label: 'DHA Çankırı',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/cankiri-haber/'],
     linkPattern: '/-\\d{7}',
@@ -426,7 +426,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-corum',
-    label: 'DHA Çorum (scraper)',
+    label: 'DHA Çorum',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/corum-haber/'],
     linkPattern: '/-\\d{7}',
@@ -435,7 +435,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-denizli',
-    label: 'DHA Denizli (scraper)',
+    label: 'DHA Denizli',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/denizli-haber/'],
     linkPattern: '/-\\d{7}',
@@ -444,7 +444,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-diyarbakir',
-    label: 'DHA Diyarbakır (scraper)',
+    label: 'DHA Diyarbakır',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/diyarbakir-haber/'],
     linkPattern: '/-\\d{7}',
@@ -453,7 +453,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-duzce',
-    label: 'DHA Düzce (scraper)',
+    label: 'DHA Düzce',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/duzce-haber/'],
     linkPattern: '/-\\d{7}',
@@ -462,7 +462,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-edirne',
-    label: 'DHA Edirne (scraper)',
+    label: 'DHA Edirne',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/edirne-haber/'],
     linkPattern: '/-\\d{7}',
@@ -471,7 +471,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-elazig',
-    label: 'DHA Elazığ (scraper)',
+    label: 'DHA Elazığ',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/elazig-haber/'],
     linkPattern: '/-\\d{7}',
@@ -480,7 +480,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-erzincan',
-    label: 'DHA Erzincan (scraper)',
+    label: 'DHA Erzincan',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/erzincan-haber/'],
     linkPattern: '/-\\d{7}',
@@ -489,7 +489,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-erzurum',
-    label: 'DHA Erzurum (scraper)',
+    label: 'DHA Erzurum',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/erzurum-haber/'],
     linkPattern: '/-\\d{7}',
@@ -498,7 +498,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-eskisehir',
-    label: 'DHA Eskişehir (scraper)',
+    label: 'DHA Eskişehir',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/eskisehir-haber/'],
     linkPattern: '/-\\d{7}',
@@ -507,7 +507,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-gaziantep',
-    label: 'DHA Gaziantep (scraper)',
+    label: 'DHA Gaziantep',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/gaziantep-haber/'],
     linkPattern: '/-\\d{7}',
@@ -516,7 +516,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-giresun',
-    label: 'DHA Giresun (scraper)',
+    label: 'DHA Giresun',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/giresun-haber/'],
     linkPattern: '/-\\d{7}',
@@ -525,7 +525,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-gumushane',
-    label: 'DHA Gümüşhane (scraper)',
+    label: 'DHA Gümüşhane',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/gumushane-haber/'],
     linkPattern: '/-\\d{7}',
@@ -534,7 +534,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-hakkari',
-    label: 'DHA Hakkari (scraper)',
+    label: 'DHA Hakkari',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/hakkari-haber/'],
     linkPattern: '/-\\d{7}',
@@ -543,7 +543,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-hatay',
-    label: 'DHA Hatay (scraper)',
+    label: 'DHA Hatay',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/hatay-haber/'],
     linkPattern: '/-\\d{7}',
@@ -552,7 +552,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-igdir',
-    label: 'DHA Iğdır (scraper)',
+    label: 'DHA Iğdır',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/igdir-haber/'],
     linkPattern: '/-\\d{7}',
@@ -561,7 +561,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-isparta',
-    label: 'DHA Isparta (scraper)',
+    label: 'DHA Isparta',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/isparta-haber/'],
     linkPattern: '/-\\d{7}',
@@ -570,7 +570,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-istanbul',
-    label: 'DHA İstanbul (scraper)',
+    label: 'DHA İstanbul',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/istanbul-haber/'],
     linkPattern: '/-\\d{7}',
@@ -579,7 +579,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-izmir',
-    label: 'DHA İzmir (scraper)',
+    label: 'DHA İzmir',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/izmir-haber/'],
     linkPattern: '/-\\d{7}',
@@ -588,7 +588,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kahramanmaras',
-    label: 'DHA Kahramanmaraş (scraper)',
+    label: 'DHA Kahramanmaraş',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kahramanmaras-haber/'],
     linkPattern: '/-\\d{7}',
@@ -597,7 +597,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-karabuk',
-    label: 'DHA Karabük (scraper)',
+    label: 'DHA Karabük',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/karabuk-haber/'],
     linkPattern: '/-\\d{7}',
@@ -606,7 +606,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-karaman',
-    label: 'DHA Karaman (scraper)',
+    label: 'DHA Karaman',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/karaman-haber/'],
     linkPattern: '/-\\d{7}',
@@ -615,7 +615,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kars',
-    label: 'DHA Kars (scraper)',
+    label: 'DHA Kars',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kars-haber/'],
     linkPattern: '/-\\d{7}',
@@ -624,7 +624,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kastamonu',
-    label: 'DHA Kastamonu (scraper)',
+    label: 'DHA Kastamonu',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kastamonu-haber/'],
     linkPattern: '/-\\d{7}',
@@ -633,7 +633,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kayseri',
-    label: 'DHA Kayseri (scraper)',
+    label: 'DHA Kayseri',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kayseri-haber/'],
     linkPattern: '/-\\d{7}',
@@ -642,7 +642,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kirikkale',
-    label: 'DHA Kırıkkale (scraper)',
+    label: 'DHA Kırıkkale',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kirikkale-haber/'],
     linkPattern: '/-\\d{7}',
@@ -651,7 +651,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kirklareli',
-    label: 'DHA Kırklareli (scraper)',
+    label: 'DHA Kırklareli',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kirklareli-haber/'],
     linkPattern: '/-\\d{7}',
@@ -660,7 +660,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kirsehir',
-    label: 'DHA Kırşehir (scraper)',
+    label: 'DHA Kırşehir',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kirsehir-haber/'],
     linkPattern: '/-\\d{7}',
@@ -669,7 +669,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kilis',
-    label: 'DHA Kilis (scraper)',
+    label: 'DHA Kilis',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kilis-haber/'],
     linkPattern: '/-\\d{7}',
@@ -678,7 +678,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kocaeli',
-    label: 'DHA Kocaeli (scraper)',
+    label: 'DHA Kocaeli',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kocaeli-haber/'],
     linkPattern: '/-\\d{7}',
@@ -687,7 +687,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-konya',
-    label: 'DHA Konya (scraper)',
+    label: 'DHA Konya',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/konya-haber/'],
     linkPattern: '/-\\d{7}',
@@ -696,7 +696,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-kutahya',
-    label: 'DHA Kütahya (scraper)',
+    label: 'DHA Kütahya',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/kutahya-haber/'],
     linkPattern: '/-\\d{7}',
@@ -705,7 +705,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-malatya',
-    label: 'DHA Malatya (scraper)',
+    label: 'DHA Malatya',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/malatya-haber/'],
     linkPattern: '/-\\d{7}',
@@ -714,7 +714,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-manisa',
-    label: 'DHA Manisa (scraper)',
+    label: 'DHA Manisa',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/manisa-haber/'],
     linkPattern: '/-\\d{7}',
@@ -723,7 +723,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-mardin',
-    label: 'DHA Mardin (scraper)',
+    label: 'DHA Mardin',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/mardin-haber/'],
     linkPattern: '/-\\d{7}',
@@ -732,7 +732,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-mersin',
-    label: 'DHA Mersin (scraper)',
+    label: 'DHA Mersin',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/mersin-haber/'],
     linkPattern: '/-\\d{7}',
@@ -741,7 +741,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-mugla',
-    label: 'DHA Muğla (scraper)',
+    label: 'DHA Muğla',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/mugla-haber/'],
     linkPattern: '/-\\d{7}',
@@ -750,7 +750,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-mus',
-    label: 'DHA Muş (scraper)',
+    label: 'DHA Muş',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/mus-haber/'],
     linkPattern: '/-\\d{7}',
@@ -759,7 +759,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-nevsehir',
-    label: 'DHA Nevşehir (scraper)',
+    label: 'DHA Nevşehir',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/nevsehir-haber/'],
     linkPattern: '/-\\d{7}',
@@ -768,7 +768,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-nigde',
-    label: 'DHA Niğde (scraper)',
+    label: 'DHA Niğde',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/nigde-haber/'],
     linkPattern: '/-\\d{7}',
@@ -777,7 +777,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-ordu',
-    label: 'DHA Ordu (scraper)',
+    label: 'DHA Ordu',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/ordu-haber/'],
     linkPattern: '/-\\d{7}',
@@ -786,7 +786,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-osmaniye',
-    label: 'DHA Osmaniye (scraper)',
+    label: 'DHA Osmaniye',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/osmaniye-haber/'],
     linkPattern: '/-\\d{7}',
@@ -795,7 +795,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-rize',
-    label: 'DHA Rize (scraper)',
+    label: 'DHA Rize',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/rize-haber/'],
     linkPattern: '/-\\d{7}',
@@ -804,7 +804,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-sakarya',
-    label: 'DHA Sakarya (scraper)',
+    label: 'DHA Sakarya',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/sakarya-haber/'],
     linkPattern: '/-\\d{7}',
@@ -813,7 +813,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-samsun',
-    label: 'DHA Samsun (scraper)',
+    label: 'DHA Samsun',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/samsun-haber/'],
     linkPattern: '/-\\d{7}',
@@ -822,7 +822,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-siirt',
-    label: 'DHA Siirt (scraper)',
+    label: 'DHA Siirt',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/siirt-haber/'],
     linkPattern: '/-\\d{7}',
@@ -831,7 +831,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-sinop',
-    label: 'DHA Sinop (scraper)',
+    label: 'DHA Sinop',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/sinop-haber/'],
     linkPattern: '/-\\d{7}',
@@ -840,7 +840,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-sivas',
-    label: 'DHA Sivas (scraper)',
+    label: 'DHA Sivas',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/sivas-haber/'],
     linkPattern: '/-\\d{7}',
@@ -849,7 +849,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-sanliurfa',
-    label: 'DHA Şanlıurfa (scraper)',
+    label: 'DHA Şanlıurfa',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/sanliurfa-haber/'],
     linkPattern: '/-\\d{7}',
@@ -858,7 +858,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-sirnak',
-    label: 'DHA Şırnak (scraper)',
+    label: 'DHA Şırnak',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/sirnak-haber/'],
     linkPattern: '/-\\d{7}',
@@ -867,7 +867,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-tekirdag',
-    label: 'DHA Tekirdağ (scraper)',
+    label: 'DHA Tekirdağ',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/tekirdag-haber/'],
     linkPattern: '/-\\d{7}',
@@ -876,7 +876,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-tokat',
-    label: 'DHA Tokat (scraper)',
+    label: 'DHA Tokat',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/tokat-haber/'],
     linkPattern: '/-\\d{7}',
@@ -885,7 +885,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-trabzon',
-    label: 'DHA Trabzon (scraper)',
+    label: 'DHA Trabzon',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/trabzon-haber/'],
     linkPattern: '/-\\d{7}',
@@ -894,7 +894,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-tunceli',
-    label: 'DHA Tunceli (scraper)',
+    label: 'DHA Tunceli',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/tunceli-haber/'],
     linkPattern: '/-\\d{7}',
@@ -903,7 +903,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-usak',
-    label: 'DHA Uşak (scraper)',
+    label: 'DHA Uşak',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/usak-haber/'],
     linkPattern: '/-\\d{7}',
@@ -912,7 +912,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-van',
-    label: 'DHA Van (scraper)',
+    label: 'DHA Van',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/van-haber/'],
     linkPattern: '/-\\d{7}',
@@ -921,7 +921,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-yalova',
-    label: 'DHA Yalova (scraper)',
+    label: 'DHA Yalova',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/yalova-haber/'],
     linkPattern: '/-\\d{7}',
@@ -930,7 +930,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-yozgat',
-    label: 'DHA Yozgat (scraper)',
+    label: 'DHA Yozgat',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/yozgat-haber/'],
     linkPattern: '/-\\d{7}',
@@ -939,7 +939,7 @@ export const SCRAPER_PORTAL_FEEDS: ScraperSource[] = [
   },
   {
     id: 'dha-city-zonguldak',
-    label: 'DHA Zonguldak (scraper)',
+    label: 'DHA Zonguldak',
     enabled: true,
     listUrls: ['http://www.dha.com.tr/zonguldak-haber/'],
     linkPattern: '/-\\d{7}',

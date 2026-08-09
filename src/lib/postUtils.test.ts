@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getPostDetailHref, isReelsVideoPost } from '@/lib/postUtils'
+import { formatPublicSourceLabel, getPostDetailHref, isReelsVideoPost } from '@/lib/postUtils'
 import type { Post } from '@/types/post'
 
 function basePost(overrides: Partial<Post> = {}): Post {
@@ -39,6 +39,14 @@ function basePost(overrides: Partial<Post> = {}): Post {
     ...overrides,
   } as Post
 }
+
+describe('formatPublicSourceLabel', () => {
+  it('strips internal ingestion labels from public attribution', () => {
+    expect(formatPublicSourceLabel('Çan İnsesi (scraper)')).toBe('Çan İnsesi')
+    expect(formatPublicSourceLabel('Milliyet (rss)')).toBe('Milliyet')
+    expect(formatPublicSourceLabel('NaHaber')).toBe('NaHaber')
+  })
+})
 
 describe('getPostDetailHref', () => {
   it('opens news articles with video on /haber/[slug]', () => {
