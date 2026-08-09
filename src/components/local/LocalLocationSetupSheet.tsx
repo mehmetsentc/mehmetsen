@@ -21,8 +21,8 @@ interface LocalLocationSetupSheetProps {
 }
 
 /**
- * Yerel Haber’e ilk girişte konum yoksa:
- * otomatik GPS veya manuel şehir seçimi.
+ * Yerel Haber'de konum izni reddedildiğinde veya otomatik tespit başarısız olduğunda:
+ * GPS tekrar dene veya manuel şehir seç.
  */
 export function LocalLocationSetupSheet({
   open,

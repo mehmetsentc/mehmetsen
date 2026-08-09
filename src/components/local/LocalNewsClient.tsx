@@ -40,8 +40,7 @@ function LocalNewsBody({ breakingItems = [], initialCitySlug }: LocalNewsClientP
     // eslint-disable-next-line react-hooks/exhaustive-deps -- URL deep-link only
   }, [searchParams])
 
-  const showSetup =
-    !isDesktop && (state.needsLocationSetup || state.locationState === 'denied' || state.requestingGps)
+  const showSetup = !isDesktop && state.needsLocationSetup
 
   return (
     <>

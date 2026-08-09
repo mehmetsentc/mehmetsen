@@ -288,7 +288,7 @@ export function useLocalNewsPage(initialCitySlug?: string) {
   )
 
   const requestGeolocation = useCallback(
-    async (opts?: { force?: boolean }) => {
+    async (opts?: { force?: boolean; silent?: boolean }) => {
       if (!opts?.force && (requestedRef.current || userPickedRef.current)) return
       requestedRef.current = true
       geoAbortRef.current = false
@@ -310,7 +310,9 @@ export function useLocalNewsPage(initialCitySlug?: string) {
 
         const pos = await getCurrentPosition()
         if (geoAbortRef.current) return
-        applyDetectedCity(pos.coords.latitude, pos.coords.longitude, 'geolocation')
+        applyDetectedCity(pos.coords.latitude, pos.coords.longitude, 'geolocation', {
+          silent: opts?.silent,
+        })
       } catch (err) {
         if (geoAbortRef.current) return
 
@@ -319,7 +321,9 @@ export function useLocalNewsPage(initialCitySlug?: string) {
         if (code === 1) {
           requestedRef.current = false
           setLocationState('denied')
-          toast.error('Konum izni reddedildi. Antalya gibi şehrinizi listeden seçin.')
+          if (!opts?.silent) {
+            toast.error('Konum izni reddedildi. Şehrinizi listeden seçin.')
+          }
           return
         }
 
@@ -327,13 +331,15 @@ export function useLocalNewsPage(initialCitySlug?: string) {
         const ip = await detectCityViaIp()
         if (geoAbortRef.current) return
         if (ip?.citySlug || (ip && (ip.lat !== 0 || ip.lng !== 0))) {
-          applyDetectedCity(ip.lat, ip.lng, 'ip', { citySlug: ip.citySlug })
+          applyDetectedCity(ip.lat, ip.lng, 'ip', { citySlug: ip.citySlug, silent: opts?.silent })
           return
         }
 
         requestedRef.current = false
         setLocationState('denied')
-        toast.error('Konum alınamadı. Şehir listesinden Antalya’yı seçebilirsiniz.')
+        if (!opts?.silent) {
+          toast.error('Konum alınamadı. Şehir listesinden seçebilirsiniz.')
+        }
       }
     },
     [applyDetectedCity]
@@ -365,31 +371,43 @@ export function useLocalNewsPage(initialCitySlug?: string) {
       return
     }
 
-    // Bilinçli seçim yoksa GPS/IP otomatik çalıştırma — kullanıcıya seçenek sunulur.
     if (userPickedRef.current || userPickedCity || city) {
       requestedRef.current = true
       return
     }
 
+    // Global konum bağlamı hazır olana kadar bekle (çift GPS isteğini önler)
+    if (!userLocation.ready) return
+
     if (
-      userLocation.ready &&
+      userLocation.citySlug &&
       (userLocation.source === 'geolocation' ||
         userLocation.source === 'manual' ||
-        userLocation.source === 'profile') &&
-      userLocation.citySlug
+        userLocation.source === 'profile' ||
+        userLocation.source === 'ip')
     ) {
       const province = TURKISH_PROVINCES.find((p) => p.slug === userLocation.citySlug)
       if (province) {
-        applyCity(province, userLocation.source === 'geolocation' ? 'granted' : 'stored')
+        applyCity(
+          province,
+          userLocation.source === 'geolocation' ? 'granted' : 'stored'
+        )
         setUserPickedCity(true)
         writeLocalNewsCitySlug(province.slug)
+        router.replace(ROUTES.LOCAL_CITY(province.slug))
       }
+      return
     }
+
+    // İlk ziyaret: GPS/IP ile otomatik şehir tespiti (izin reddinde manuel seçim sheet'i)
+    void requestGeolocation({ silent: true })
   }, [
     applyCity,
     city,
     initialCitySlug,
     pathname,
+    requestGeolocation,
+    router,
     storedCitySlug,
     userLocation.citySlug,
     userLocation.ready,
@@ -508,8 +526,7 @@ export function useLocalNewsPage(initialCitySlug?: string) {
 
   const needsLocationSetup =
     !city &&
-    locationState !== 'requesting' &&
-    locationState !== 'granted' &&
+    locationState === 'denied' &&
     !userPickedCity &&
     !hasExplicitLocationChoice()
 
