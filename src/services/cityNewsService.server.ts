@@ -378,106 +378,94 @@ export interface CityCategory {
   slug: string
 }
 
+/** Map raw category ids to ordered CityCategory nav entries (chips first). */
+async function mapCategoryIdSetToCityCategories(idSet: Set<string>): Promise<CityCategory[]> {
+  const { DEFAULT_CATEGORIES } = await import('@/constants/config')
+  const {
+    CITY_CATEGORY_CHIPS,
+    CITY_DYNAMIC_NAV_CHIP_IDS,
+    CITY_DYNAMIC_NAV_EXCLUDED_IDS,
+  } = await import('@/constants/cityCategories')
+
+  const chipByCategoryId = new Map(
+    CITY_CATEGORY_CHIPS
+      .filter((chip) => chip.categoryId)
+      .map((chip) => [chip.categoryId!, chip])
+  )
+
+  const results: CityCategory[] = []
+  const seen = new Set<string>()
+
+  for (const categoryId of CITY_DYNAMIC_NAV_CHIP_IDS) {
+    if (!idSet.has(categoryId) || seen.has(categoryId)) continue
+    const chip = chipByCategoryId.get(categoryId)
+    results.push({
+      id: categoryId,
+      name: chip?.label ?? categoryId,
+      slug: categoryId,
+    })
+    seen.add(categoryId)
+  }
+
+  for (const cat of DEFAULT_CATEGORIES) {
+    if (cat.parentId || !idSet.has(cat.id)) continue
+    if (CITY_DYNAMIC_NAV_EXCLUDED_IDS.has(cat.id) || seen.has(cat.id)) continue
+    if (chipByCategoryId.has(cat.id)) continue
+    results.push({ id: cat.id, name: cat.name, slug: cat.slug ?? cat.id })
+    seen.add(cat.id)
+  }
+
+  return results
+}
+
+/**
+ * Derive sidebar/nav categories from a city news pool — same family matching
+ * as feed category rails so empty categories never appear in the menu.
+ */
+export async function deriveCityCategoriesFromPool(pool: NewsItem[]): Promise<CityCategory[]> {
+  if (pool.length === 0) return []
+
+  const { DEFAULT_CATEGORIES } = await import('@/constants/config')
+  const { CITY_DYNAMIC_NAV_CHIP_IDS, CITY_DYNAMIC_NAV_EXCLUDED_IDS } = await import(
+    '@/constants/cityCategories'
+  )
+
+  const idSet = new Set<string>()
+
+  for (const categoryId of CITY_DYNAMIC_NAV_CHIP_IDS) {
+    const family = new Set(getHomeFeedCategoryFamily(categoryId))
+    if (pool.some((item) => item.category && family.has(item.category))) {
+      idSet.add(categoryId)
+    }
+  }
+
+  for (const item of pool) {
+    const catId = item.category?.trim()
+    if (!catId) continue
+    const def = DEFAULT_CATEGORIES.find((c) => c.id === catId)
+    if (def?.parentId) {
+      idSet.add(def.parentId)
+    } else if (
+      def &&
+      !def.parentId &&
+      !CITY_DYNAMIC_NAV_EXCLUDED_IDS.has(catId) &&
+      !CITY_DYNAMIC_NAV_CHIP_IDS.includes(catId)
+    ) {
+      idSet.add(catId)
+    }
+  }
+
+  return mapCategoryIdSetToCityCategories(idSet)
+}
+
+const CITY_CATEGORY_POOL_LIMIT = 500
+
 const getCityCategoriesCached = unstable_cache(
   async (citySlug: string): Promise<CityCategory[]> => {
-    const { DEFAULT_CATEGORIES } = await import('@/constants/config')
-
-    let distinctCategoryIds: string[] = []
-
-    if (isPostgresReadsEnabled()) {
-      try {
-        const { getDb, schema } = await import('@/db')
-        const { eq, and, sql } = await import('drizzle-orm')
-        const db = getDb()
-
-        const rows = await db
-          .selectDistinct({ categoryId: schema.news.categoryId })
-          .from(schema.news)
-          .where(
-            and(
-              eq(schema.news.status, 'published'),
-              eq(schema.news.citySlug, citySlug),
-              sql`${schema.news.categoryId} IS NOT NULL`
-            )
-          )
-
-        distinctCategoryIds = rows
-          .map((r) => r.categoryId)
-          .filter((id): id is string => Boolean(id))
-      } catch (error) {
-        console.warn('[cityNewsService] getCityCategories Postgres failed, falling back:', error)
-      }
-    }
-
-    if (distinctCategoryIds.length === 0) {
-      try {
-        const db = getAdminFirestore()
-        const snap = await db
-          .collection(NEWS_COLLECTION)
-          .where('status', '==', 'published')
-          .where('citySlug', '==', citySlug)
-          .select('categoryId')
-          .get()
-
-        const categorySet = new Set<string>()
-        for (const doc of snap.docs) {
-          const catId = doc.data().categoryId
-          if (catId && typeof catId === 'string') {
-            categorySet.add(catId.trim())
-          }
-        }
-        distinctCategoryIds = Array.from(categorySet)
-      } catch (error) {
-        console.warn('[cityNewsService] getCityCategories Firebase failed:', error)
-        return []
-      }
-    }
-
-    const idSet = new Set(distinctCategoryIds)
-    // Also include parent categories when subcategories have articles
-    for (const cat of DEFAULT_CATEGORIES) {
-      if (cat.parentId && idSet.has(cat.id)) {
-        idSet.add(cat.parentId)
-      }
-    }
-
-    const {
-      CITY_CATEGORY_CHIPS,
-      CITY_DYNAMIC_NAV_CHIP_IDS,
-      CITY_DYNAMIC_NAV_EXCLUDED_IDS,
-    } = await import('@/constants/cityCategories')
-
-    const chipByCategoryId = new Map(
-      CITY_CATEGORY_CHIPS
-        .filter((chip) => chip.categoryId)
-        .map((chip) => [chip.categoryId!, chip])
-    )
-
-    const results: CityCategory[] = []
-    const seen = new Set<string>()
-
-    for (const categoryId of CITY_DYNAMIC_NAV_CHIP_IDS) {
-      if (!idSet.has(categoryId) || seen.has(categoryId)) continue
-      const chip = chipByCategoryId.get(categoryId)
-      results.push({
-        id: categoryId,
-        name: chip?.label ?? categoryId,
-        slug: categoryId,
-      })
-      seen.add(categoryId)
-    }
-
-    for (const cat of DEFAULT_CATEGORIES) {
-      if (cat.parentId || !idSet.has(cat.id)) continue
-      if (CITY_DYNAMIC_NAV_EXCLUDED_IDS.has(cat.id) || seen.has(cat.id)) continue
-      if (chipByCategoryId.has(cat.id)) continue
-      results.push({ id: cat.id, name: cat.name, slug: cat.slug ?? cat.id })
-      seen.add(cat.id)
-    }
-
-    return results
+    const pool = await getCityNews(citySlug, CITY_CATEGORY_POOL_LIMIT)
+    return deriveCityCategoriesFromPool(pool)
   },
-  ['city-categories-v2'],
+  ['city-categories-v3'],
   { revalidate: 300, tags: ['city-news'] }
 )
 
@@ -612,7 +600,7 @@ const getCityHomeFeedCached = unstable_cache(
     const pool = await getCityNews(citySlug, 60)
     if (pool.length === 0) return EMPTY_HOME_FEED
 
-    const cityCategories = await getCityCategories(citySlug)
+    const cityCategories = await deriveCityCategoriesFromPool(pool)
     const railCategoryIds = cityCategories
       .map((c) => c.id)
       .filter((id): id is HomeCategorySlug =>

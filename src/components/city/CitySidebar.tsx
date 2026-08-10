@@ -27,14 +27,13 @@ import {
   buildCitySectionNavItems,
   type CitySidebarNavItem,
 } from '@/lib/citySidebarNav'
-import type { CityCategory } from '@/services/cityNewsService.server'
+import { useCityCategoryFilter } from '@/store/cityCategoryContext'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 interface CitySidebarProps {
   cityName: string
   provinceSlug: string
-  categories: CityCategory[]
   className?: string
   mobileOpen?: boolean
   desktopOpen?: boolean
@@ -94,7 +93,6 @@ function NavLink({
 function CitySidebarInner({
   cityName,
   provinceSlug,
-  categories,
   className,
   mobileOpen,
   desktopOpen = false,
@@ -104,6 +102,7 @@ function CitySidebarInner({
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout, loading } = useAuth()
+  const { categories } = useCityCategoryFilter()
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [submitOpen, setSubmitOpen] = useState(false)

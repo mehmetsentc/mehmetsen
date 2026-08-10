@@ -53,12 +53,10 @@ function CityCategoryHashScroll() {
 const CityShell = memo(function CityShell({
   displayName,
   provinceSlug,
-  categories,
   children,
 }: {
   displayName: string
   provinceSlug: string
-  categories: CityCategory[]
   children: React.ReactNode
 }) {
   const { isDesktop } = usePlatformLayout()
@@ -81,7 +79,6 @@ const CityShell = memo(function CityShell({
       <CitySidebar
         cityName={displayName}
         provinceSlug={provinceSlug}
-        categories={categories}
         mobileOpen={drawerOpen}
         desktopOpen={desktopSidebarOpen}
         onMobileClose={() => setMobileDrawerOpen(false)}
@@ -136,7 +133,6 @@ export function CityLayoutClient({
                   <CityShell
                     displayName={displayName}
                     provinceSlug={provinceSlug}
-                    categories={categories}
                   >
                     {children}
                   </CityShell>
