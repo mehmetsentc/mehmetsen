@@ -4,6 +4,7 @@ export type EventCategory =
   | 'party'
   | 'exhibition'
   | 'theater'
+  | 'cinema'
   | 'other'
 
 export type EventStatus = 'published' | 'draft' | 'cancelled'

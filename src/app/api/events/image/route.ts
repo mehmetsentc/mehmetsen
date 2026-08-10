@@ -25,6 +25,7 @@ const BROWSER_UA =
 function refererFor(hostname: string): string {
   if (hostname.endsWith('biletix.com')) return 'https://www.biletix.com/'
   if (hostname.endsWith('bubilet.com.tr')) return 'https://www.bubilet.com.tr/'
+  if (hostname.endsWith('paribucineverse.com')) return 'https://www.paribucineverse.com/'
   return `https://${hostname}/`
 }
 

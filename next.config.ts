@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: 'www.biletix.com' },
       { protocol: 'https', hostname: 'cdn.bubilet.com.tr' },
+      { protocol: 'https', hostname: 'www.paribucineverse.com' },
       ...NEWS_IMAGE_REMOTE_PATTERNS,
     ],
   },

@@ -13,6 +13,7 @@ const CATEGORY_LABELS: Record<EventCategory, string> = {
   party: 'Parti',
   exhibition: 'Sergi',
   theater: 'Tiyatro',
+  cinema: 'Sinema',
   other: 'Diğer',
 }
 
@@ -22,6 +23,7 @@ const CATEGORY_STYLES: Record<EventCategory, string> = {
   party: 'bg-pink-50 text-pink-700 dark:bg-pink-950 dark:text-pink-300',
   exhibition: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
   theater: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+  cinema: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
   other: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
 }
 
@@ -89,6 +91,8 @@ export const EVENT_IMAGE_ALLOWED_HOSTS: readonly string[] = [
   'cdn.bubilet.com.tr',
   'www.bubilet.com.tr',
   'bubilet.com.tr',
+  'www.paribucineverse.com',
+  'paribucineverse.com',
 ]
 
 /** True when `hostname` is an allowed event-image host. */
@@ -185,6 +189,8 @@ const EVENT_TYPE_TAG_LABELS: Record<string, string> = {
   spor: 'Spor',
   fuar: 'Fuar',
   film: 'Film',
+  sinema: 'Sinema',
+  cinema: 'Sinema',
   'kültür': 'Kültür',
   kultur: 'Kültür',
 }
@@ -202,6 +208,8 @@ const EVENT_TYPE_TAG_STYLES: Record<string, string> = {
   spor: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200',
   fuar: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200',
   film: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200',
+  sinema: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
+  cinema: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
   'kültür': 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
   kultur: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
 }

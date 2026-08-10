@@ -140,6 +140,7 @@ export function mapCategory(raw: string | null | undefined): EventCategory {
   if (has('sergi', 'exhibition', 'müze', 'museum', 'expo', 'fuar')) return 'exhibition'
   if (has('tiyatro', 'theatre', 'theater', 'sahne', 'oyun', 'stand', 'gösteri', 'show', 'arts'))
     return 'theater'
+  if (has('sinema', 'film', 'cinema', 'movie')) return 'cinema'
   if (has('konser', 'concert', 'müzik', 'music', 'live')) return 'concert'
   return 'other'
 }

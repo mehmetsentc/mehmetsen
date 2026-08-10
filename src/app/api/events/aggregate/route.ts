@@ -26,6 +26,7 @@ const VALID_CATEGORIES: ReadonlySet<string> = new Set<EventCategory>([
   'party',
   'exhibition',
   'theater',
+  'cinema',
   'other',
 ])
 

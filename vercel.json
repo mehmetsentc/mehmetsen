@@ -8,6 +8,9 @@
     "src/app/api/events/sync/route.ts": {
       "memory": 1024
     },
+    "src/app/api/cron/paribu-canakkale/route.ts": {
+      "memory": 1024
+    },
     "src/app/api/cron/newsroom/breaking/route.ts": {
       "memory": 1024
     },
@@ -185,6 +188,10 @@
     {
       "path": "/api/events/sync",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/paribu-canakkale",
+      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/newsroom/archive",

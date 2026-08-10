@@ -341,6 +341,26 @@ Kod tabanında video feed ve kullanıcı içeriği **`news`** collection'ında t
 
 **Meta:** Son sync istatistikleri `meta/eventSync` belgesinde (admin panelden okunur).
 
+### Paribu Cineverse — Çanakkale sinema seansları
+
+Paribu Cineverse **17 Çanakkale Burda** vizyondaki filmler ve seans saatleri günlük olarak `events` koleksiyonuna yazılır (`source: paribu-cineverse`, `category: cinema`, etiket `Sinema`).
+
+| Alan | Değer |
+|------|--------|
+| Doc id | `paribu-17burda-{filmSlug}-{YYYY-MM-DD}` |
+| `citySlug` / `districtSlug` | `canakkale` / `merkez` |
+| `venue` | Paribu Cineverse 17 Çanakkale Burda |
+| `ticketUrl` | Paribu biletleme veya sinema sayfası |
+| `dateLabel` | Günün seans saatleri (örn. `12:45 · 15:00`) |
+
+**Kaynak:** `https://www.paribucineverse.com/sinemalar/17-burda` (+ `?tarih=DD-MM-YYYY` ile yakın günler).
+
+**Zamanlama:** Vercel cron `0 5 * * *` UTC → her sabah **08:00 İstanbul**. Manuel: `npm run sync-paribu-canakkale`.
+
+**Auth:** `GET/POST /api/cron/paribu-canakkale` — `Authorization: Bearer $CRON_SECRET` (veya `$EVENTS_SYNC_SECRET`).
+
+**Meta:** Son sync istatistikleri `meta/paribuCineverseSync` belgesinde.
+
 ---
 
 ## Storage Setup
