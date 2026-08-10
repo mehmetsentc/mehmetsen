@@ -1,7 +1,14 @@
+import { unstable_cache } from 'next/cache'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
+import {
+  addIstanbulCalendarDays,
+  getIstanbulTodayStartIso,
+  isSameOrAfterIstanbulCalendarDay,
+  resolveEventSchedule,
+} from '@/lib/annualEventDates'
+import { resolveEventFilterCategory } from '@/lib/cityEventFilters'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
-import { resolveEventSchedule } from '@/lib/annualEventDates'
 import {
   getUpcomingStartsAtLowerBound,
   isEventUpcoming,
@@ -12,6 +19,26 @@ import type { NaEvent } from '@/types/event'
 
 const CITY_EVENT_FETCH_TARGET = 120
 const FETCH_BATCH_SIZE = 50
+const CITY_CINEMA_FEED_LIMIT = 8
+const CITY_CINEMA_NEAR_TERM_DAYS = 7
+
+function isNearTermCityEvent(event: NaEvent, nowIso: string): boolean {
+  const { startsAt } = resolveEventSchedule(event, nowIso)
+  const todayStart = getIstanbulTodayStartIso(nowIso)
+  const nearEnd = addIstanbulCalendarDays(todayStart, CITY_CINEMA_NEAR_TERM_DAYS)
+  return (
+    isSameOrAfterIstanbulCalendarDay(startsAt, todayStart) &&
+    isSameOrAfterIstanbulCalendarDay(nearEnd, startsAt)
+  )
+}
+
+function filterCityCinemaEvents(events: NaEvent[], nowIso: string): NaEvent[] {
+  return events
+    .filter((event) => resolveEventFilterCategory(event) === 'cinema')
+    .filter((event) => isNearTermCityEvent(event, nowIso))
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    .slice(0, CITY_CINEMA_FEED_LIMIT)
+}
 
 function isVisible(event: NaEvent): boolean {
   return event.status !== 'draft' && event.status !== 'cancelled'
@@ -129,6 +156,21 @@ export async function getCityEventsServer(
 /**
  * Ana etkinlik listesi için SSR prefetch — boş HTML + client fetch CLS’ini keser.
  */
+const getCityCinemaEventsCached = unstable_cache(
+  async (citySlug: string): Promise<NaEvent[]> => {
+    const nowIso = new Date().toISOString()
+    const events = await getCityEventsServer(citySlug, 'upcoming', 80)
+    return filterCityCinemaEvents(events, nowIso)
+  },
+  ['city-cinema-events-v1'],
+  { revalidate: 120, tags: ['city-events'] }
+)
+
+/** Today + near-term cinema rows for city Ana Feed (Paribu / Sinema tag). */
+export async function getCityCinemaEventsServer(citySlug: string): Promise<NaEvent[]> {
+  return getCityCinemaEventsCached(citySlug.trim().toLowerCase())
+}
+
 export async function getUpcomingEventsServer(limitCount = 12): Promise<NaEvent[]> {
   try {
     const db = getAdminFirestore()

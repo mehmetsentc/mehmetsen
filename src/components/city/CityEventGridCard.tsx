@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CalendarDays, MapPin, PartyPopper, Ticket } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { resolveEventFilterCategory } from '@/lib/cityEventFilters'
 import {
   formatEventDayBadge,
   formatEventDisplayDate,
@@ -26,6 +27,7 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
   const coverImageUrl = resolveEventImageUrl(event.coverImageUrl)
   const showImage = !!coverImageUrl && !imageFailed
   const free = isEventFree(event)
+  const category = resolveEventFilterCategory(event)
 
   return (
     <article
@@ -70,10 +72,10 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
         <span
           className={cn(
             'pill absolute right-2 top-2 text-[10px] font-semibold',
-            getEventCategoryStyle(event.category)
+            getEventCategoryStyle(category)
           )}
         >
-          {getEventCategoryLabel(event.category)}
+          {getEventCategoryLabel(category)}
         </span>
 
         <CityEventBadges event={event} layout="overlay" />

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
 import { getCityHomeFeedInitialData } from '@/services/cityNewsService.server'
+import { getCityCinemaEventsServer } from '@/services/eventService.server'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 export const dynamic = 'force-dynamic'
 
@@ -35,9 +36,16 @@ export default async function CityHomePage() {
   if (!tenant) return null
 
   const cityName = getCityCategoryName(tenant.provinceSlug)
-  const homeFeedData = await getCityHomeFeedInitialData(tenant.provinceSlug)
+  const [homeFeedData, cinemaEvents] = await Promise.all([
+    getCityHomeFeedInitialData(tenant.provinceSlug),
+    getCityCinemaEventsServer(tenant.provinceSlug),
+  ])
 
   return (
-    <CityFeedPageClient homeFeedData={homeFeedData} cityName={cityName} />
+    <CityFeedPageClient
+      homeFeedData={homeFeedData}
+      cityName={cityName}
+      cinemaEvents={cinemaEvents}
+    />
   )
 }

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { HomeFeed } from '@/components/home/HomeFeed'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import type { HomeFeedInitialData, HomeCategorySlug } from '@/types/newsItem'
+import type { NaEvent } from '@/types/event'
 
 const DesktopHomeFeed = dynamic(
   () => import('@/components/home/desktop/DesktopHomeFeed').then((m) => m.DesktopHomeFeed),
@@ -38,6 +39,7 @@ function DesktopFeedPlaceholder() {
 interface CityFeedPageClientProps {
   homeFeedData: HomeFeedInitialData
   cityName: string
+  cinemaEvents?: NaEvent[]
   /** When set, scopes the feed to a district and shows a section label. */
   districtName?: string
   /** Section page title (e.g. "Çanakkale Spor Haberleri"). */
@@ -100,7 +102,13 @@ function useDesktopFeedReady() {
   return desktopReady
 }
 
-function CityFeedPageBody({ homeFeedData, cityName, districtName, sectionTitle }: CityFeedPageClientProps) {
+function CityFeedPageBody({
+  homeFeedData,
+  cityName,
+  cinemaEvents = [],
+  districtName,
+  sectionTitle,
+}: CityFeedPageClientProps) {
   const desktopReady = useDesktopFeedReady()
   const categoryRailIds = Object.keys(homeFeedData.categoryRails) as HomeCategorySlug[]
 
@@ -125,6 +133,8 @@ function CityFeedPageBody({ homeFeedData, cityName, districtName, sectionTitle }
           data={homeFeedData}
           cityMode
           categoryRailIds={categoryRailIds}
+          cinemaEvents={cinemaEvents}
+          cityName={cityName}
         />
       </div>
 
@@ -135,6 +145,7 @@ function CityFeedPageBody({ homeFeedData, cityName, districtName, sectionTitle }
               data={homeFeedData}
               cityMode
               cityName={cityName}
+              cinemaEvents={cinemaEvents}
               districtName={districtName}
               sectionTitle={sectionTitle}
             />

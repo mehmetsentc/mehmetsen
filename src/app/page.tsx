@@ -4,6 +4,7 @@ import { ROUTES } from '@/constants/routes'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
 import { getCityHomeFeedInitialData, getCityCategories } from '@/services/cityNewsService.server'
+import { getCityCinemaEventsServer } from '@/services/eventService.server'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
@@ -57,8 +58,11 @@ export default async function Home() {
   if (citySlug) {
     const slug = tenant?.slug ?? citySlug
     const displayName = getCityCategoryName(citySlug)
-    const homeFeedData = await getCityHomeFeedInitialData(citySlug)
-    const categories = await getCityCategories(citySlug)
+    const [homeFeedData, categories, cinemaEvents] = await Promise.all([
+      getCityHomeFeedInitialData(citySlug),
+      getCityCategories(citySlug),
+      getCityCinemaEventsServer(citySlug),
+    ])
     return (
       <CityLayoutClient
         tenantSlug={slug}
@@ -66,7 +70,11 @@ export default async function Home() {
         provinceSlug={citySlug}
         categories={categories}
       >
-        <CityFeedPageClient homeFeedData={homeFeedData} cityName={displayName} />
+        <CityFeedPageClient
+          homeFeedData={homeFeedData}
+          cityName={displayName}
+          cinemaEvents={cinemaEvents}
+        />
       </CityLayoutClient>
     )
   }

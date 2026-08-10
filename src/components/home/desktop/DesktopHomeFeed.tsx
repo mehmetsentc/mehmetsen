@@ -17,6 +17,7 @@ import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStr
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import { NewspaperMasthead } from '@/components/home/desktop/NewspaperMasthead'
 import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
+import { CityCinemaEventsStrip } from '@/components/city/CityCinemaEventsStrip'
 import {
   HeroImageOnly,
   ImageStory,
@@ -38,6 +39,7 @@ import {
   type HomeFeedInitialData,
   type NewsItem,
 } from '@/types/newsItem'
+import type { NaEvent } from '@/types/event'
 
 const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
 const CATEGORY_ROW_2 = HOME_FEED_DESKTOP_LAZY_RAILS
@@ -63,6 +65,7 @@ interface DesktopHomeFeedProps {
   data: HomeFeedInitialData
   cityMode?: boolean
   cityName?: string
+  cinemaEvents?: NaEvent[]
   districtName?: string
   sectionTitle?: string
 }
@@ -71,6 +74,7 @@ export function DesktopHomeFeed({
   data,
   cityMode = false,
   cityName,
+  cinemaEvents = [],
   districtName,
   sectionTitle,
 }: DesktopHomeFeedProps) {
@@ -200,6 +204,16 @@ export function DesktopHomeFeed({
         <div className="mb-8 border-b border-[rgb(var(--color-border))] pb-8">
           <DesktopSectionHeader title="Öne Çıkan" href={sectionHref} />
           <DesktopFeaturedGrid items={layout.featuredSlider} />
+        </div>
+      ) : null}
+
+      {cityMode && cinemaEvents.length > 0 ? (
+        <div className="mb-8 border-b border-[rgb(var(--color-border))] pb-8">
+          <CityCinemaEventsStrip
+            events={cinemaEvents}
+            cityName={cityName}
+            variant="desktop"
+          />
         </div>
       ) : null}
 

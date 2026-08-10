@@ -12,8 +12,10 @@ import { TrendingRail } from '@/components/home/TrendingRail'
 import { GamesRail } from '@/components/home/GamesRail'
 import { LazySection } from '@/components/home/LazySection'
 import { LazyCategoryRails } from '@/components/home/LazyCategoryRails'
+import { CityCinemaEventsStrip } from '@/components/city/CityCinemaEventsStrip'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import type { HomeFeedInitialData, HomeCategorySlug } from '@/types/newsItem'
+import type { NaEvent } from '@/types/event'
 import { FEATURED_CAROUSEL_LIMIT, HOME_FEATURED_LIMIT } from '@/types/newsItem'
 
 interface HomeFeedProps {
@@ -21,9 +23,17 @@ interface HomeFeedProps {
   /** City tenant — hides national-only sections and scopes category rails. */
   cityMode?: boolean
   categoryRailIds?: readonly HomeCategorySlug[]
+  cinemaEvents?: NaEvent[]
+  cityName?: string
 }
 
-export function HomeFeed({ data, cityMode = false, categoryRailIds }: HomeFeedProps) {
+export function HomeFeed({
+  data,
+  cityMode = false,
+  categoryRailIds,
+  cinemaEvents = [],
+  cityName,
+}: HomeFeedProps) {
   const { breaking, featured, latest, trending, mostRead, categoryRails } = data
 
   const breakingIds = useMemo(() => new Set(breaking.map((b) => b.id)), [breaking])
@@ -71,6 +81,11 @@ export function HomeFeed({ data, cityMode = false, categoryRailIds }: HomeFeedPr
         <div className="order-3 mt-0 max-md:mt-5">
           <MarketTicker />
         </div>
+        {cityMode && cinemaEvents.length > 0 ? (
+          <div className="order-4 mt-5">
+            <CityCinemaEventsStrip events={cinemaEvents} cityName={cityName} />
+          </div>
+        ) : null}
       </div>
 
       <section className="home-section max-md:!mb-6 max-md:!mt-7 max-md:!px-0" aria-label="Son haberler">
