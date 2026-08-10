@@ -7,9 +7,10 @@ import { ArrowLeft, Check, X, Pencil, MoreHorizontal } from 'lucide-react'
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db, Collections } from '@/lib/firebase/firestore'
 import { adminNewsService, type AdminNewsSource } from '@/services/adminNewsService'
-import { getCategoryLabel } from '@/lib/newsMapper'
+import { getMobileCategoryLabel, updateNewsCategory } from '@/lib/mobileAdminCategory'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { cn } from '@/lib/utils'
+import { MobileCategorySheet } from './MobileCategorySheet'
 
 interface ReviewDoc {
   id: string
@@ -41,6 +42,8 @@ export function MobileApprovalReview({ id }: { id: string }) {
   const [toast, setToast] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [categorySaving, setCategorySaving] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -150,6 +153,26 @@ export function MobileApprovalReview({ id }: { id: string }) {
     }
   }
 
+  async function onCategorySelect(categoryId: string) {
+    if (!docData || categoryId === docData.categoryId) {
+      setCategoryOpen(false)
+      return
+    }
+    const prev = docData.categoryId
+    setCategorySaving(true)
+    setDocData({ ...docData, categoryId })
+    try {
+      await updateNewsCategory(id, categoryId)
+      flash('Kategori güncellendi')
+      setCategoryOpen(false)
+    } catch (e) {
+      setDocData((d) => (d ? { ...d, categoryId: prev } : d))
+      flash(e instanceof Error ? e.message : 'Kategori güncellenemedi')
+    } finally {
+      setCategorySaving(false)
+    }
+  }
+
   async function onReject(reason?: string) {
     setBusy(true)
     setRejectOpen(false)
@@ -224,9 +247,14 @@ export function MobileApprovalReview({ id }: { id: string }) {
         ) : null}
 
         <div className="mb-2 flex flex-wrap gap-1.5">
-          <span className="rounded-md bg-[rgb(var(--color-brand))]/10 px-2 py-1 text-[10px] font-bold uppercase text-[rgb(var(--color-brand))]">
-            {getCategoryLabel(docData.categoryId) || 'Kategori'}
-          </span>
+          <button
+            type="button"
+            onClick={() => setCategoryOpen(true)}
+            disabled={categorySaving}
+            className="flex min-h-11 items-center rounded-md bg-[rgb(var(--color-brand))]/10 px-3 py-2 text-[10px] font-bold uppercase text-[rgb(var(--color-brand))] disabled:opacity-60"
+          >
+            {getMobileCategoryLabel(docData.categoryId) || 'Kategori'} ›
+          </button>
           {docData.isBreaking ? (
             <span className="rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-bold uppercase text-red-600">
               Son Dakika
@@ -339,6 +367,15 @@ export function MobileApprovalReview({ id }: { id: string }) {
           </div>
         </div>
       ) : null}
+
+      <MobileCategorySheet
+        open={categoryOpen}
+        onClose={() => setCategoryOpen(false)}
+        categoryId={docData.categoryId}
+        onSelect={onCategorySelect}
+        saving={categorySaving}
+        title="Kategori değiştir"
+      />
 
       {toast ? (
         <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center px-4">
