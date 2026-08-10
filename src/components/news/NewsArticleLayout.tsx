@@ -140,17 +140,16 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
           </div>
         </header>
 
-        {/* Featured image — tam görsel, kırpma yok */}
+        {/* Featured image — responsive hero cap, object-cover */}
         {imageUrl && (
-          <figure className="relative">
-            <div className="w-full overflow-hidden bg-[rgb(var(--color-surface))]">
+          <figure className="relative mx-auto w-full">
+            <div className="news-article-hero">
               <SafeNewsImage
                 src={imageUrl}
                 alt={getPostCoverAlt(post)}
-                width={1600}
-                height={900}
+                fill
                 quality={imageQualityForTier(tier)}
-                className="h-auto w-full"
+                className="object-cover object-center"
                 sizes={scaleSizesForTier('(max-width: 768px) 100vw, 768px', tier)}
                 priority
               />

@@ -71,16 +71,16 @@ function VideoHero({ item, title, posterFallback }: {
   )
 }
 
-/** Hero görsel (tek görsel veya hero olarak seçilen ilk image) — tam görsel, kırpma yok. */
+/** Hero görsel — responsive yükseklik sınırı, object-cover (portrait dev banner olmaz). */
 function ImageHero({ item, title }: { item: MediaItem; title: string }) {
   return (
-    <figure className="relative">
-      <div className="relative news-article-hero w-full overflow-hidden bg-[rgb(var(--color-surface))]">
+    <figure className="relative mx-auto w-full">
+      <div className="news-article-hero">
         <SliderImage
           src={item.url}
           alt={item.alt ?? item.caption ?? title}
           priority
-          fit="natural"
+          fit="cover"
         />
         <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/70">
           nahaber.com
