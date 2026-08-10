@@ -529,7 +529,8 @@ export function AdminNewsEditor({
       setSpot(nextSpot)
       setSummary(nextSummary)
       setContent(nextContent)
-      setBodyBlocks(nextBlocks)      setSeoTitle(clampSeoTitle(data.seoTitle?.trim() || nextTitle))
+      setBodyBlocks(nextBlocks)
+      setSeoTitle(clampSeoTitle(data.seoTitle?.trim() || nextTitle))
       setSeoDescription(clampSeoDescription(data.seoDescription?.trim() || nextSummary))
       if (data.categoryId?.trim()) setCategoryId(data.categoryId.trim())
       if (data.suggestedCountrySlug?.trim()) {
