@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import {
   Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Activity, Timer, RefreshCw,
-  List, ChevronDown,
+  List, ChevronDown, Trash2, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -84,6 +84,9 @@ export default function CronMonitorPage() {
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [flushing, setFlushing] = useState(false)
   const [fastProcessing, setFastProcessing] = useState(false)
+  const [purgingHours, setPurgingHours] = useState<number | null>(null)
+  const [publishingItemId, setPublishingItemId] = useState<string | null>(null)
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
 
   const load = useCallback(async (withPendingDetails = false) => {
     try {
@@ -239,6 +242,84 @@ export default function CronMonitorPage() {
     }
   }
 
+  const purgeOlderThan = async (hours: number) => {
+    if (purgingHours !== null) return
+    const ok = window.confirm(`${hours} saatten eski tüm bekleyen haberler silinecek. Devam?`)
+    if (!ok) return
+    setPurgingHours(hours)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/queue?purgeOlderThan=${hours}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = (await res.json()) as { ok?: boolean; deleted?: number; error?: string }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      toast.success(`${data.deleted ?? 0} haber silindi (${hours}s+)`)
+      await load(pendingOpen)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Silme hatası')
+    } finally {
+      setPurgingHours(null)
+    }
+  }
+
+  const deleteQueueItem = async (id: string) => {
+    if (deletingItemId) return
+    setDeletingItemId(id)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/queue?id=${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = (await res.json()) as { ok?: boolean; error?: string }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      setPendingItems((prev) => prev.filter((i) => i.id !== id))
+      setQueuePending((prev) => (prev != null ? prev - 1 : prev))
+      toast.success('Haber kuyruktan silindi')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Silme hatası')
+    } finally {
+      setDeletingItemId(null)
+    }
+  }
+
+  const publishQueueItem = async (id: string) => {
+    if (publishingItemId) return
+    setPublishingItemId(id)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/queue', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'process-one', id }),
+      })
+      const data = (await res.json()) as {
+        ok?: boolean; published?: number; drafted?: number; failed?: number; error?: string
+      }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      if (data.published) {
+        toast.success('Haber yayınlandı!')
+        setPendingItems((prev) => prev.filter((i) => i.id !== id))
+        setQueuePending((prev) => (prev != null ? prev - 1 : prev))
+      } else if (data.drafted) {
+        toast('Haber taslak olarak oluşturuldu — onay kuyruğunda', { icon: '✍️' })
+        setPendingItems((prev) => prev.filter((i) => i.id !== id))
+        setQueuePending((prev) => (prev != null ? prev - 1 : prev))
+      } else if (data.failed) {
+        toast.error('İşlem başarısız — haber kuyruğa geri döndü')
+      } else {
+        toast('İşlendi ama sonuç belirsiz', { icon: 'ℹ️' })
+      }
+      await load(pendingOpen)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Yayınlama hatası')
+    } finally {
+      setPublishingItemId(null)
+    }
+  }
+
   const triggerJob = async (jobId: string) => {
     if (triggering) return
     setTriggering(jobId)
@@ -340,25 +421,45 @@ export default function CronMonitorPage() {
 
         {pendingOpen && (
           <div className="overflow-hidden rounded-2xl border border-amber-300 bg-[rgb(var(--color-card))] dark:border-amber-700">
-            <div className="flex items-center justify-between border-b border-amber-200 bg-amber-50 px-5 py-3 dark:border-amber-800 dark:bg-amber-900/20">
-              <div className="flex items-center gap-2">
-                <List className="h-4 w-4 text-amber-600" />
-                <h2 className="text-sm font-bold text-amber-900 dark:text-amber-100">
-                  Kuyrukta bekleyen haberler
-                </h2>
-                {queuePending != null && (
-                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-800 dark:text-amber-200">
-                    {queuePending} adet
-                  </span>
-                )}
+            <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 dark:border-amber-800 dark:bg-amber-900/20">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <List className="h-4 w-4 text-amber-600" />
+                  <h2 className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                    Kuyrukta bekleyen haberler
+                  </h2>
+                  {queuePending != null && (
+                    <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-800 dark:text-amber-200">
+                      {queuePending} adet
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={togglePendingPanel}
+                  className="text-xs text-amber-700 hover:underline dark:text-amber-300"
+                >
+                  Kapat
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={togglePendingPanel}
-                className="text-xs text-amber-700 hover:underline dark:text-amber-300"
-              >
-                Kapat
-              </button>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {[6, 12, 24].map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    disabled={purgingHours !== null}
+                    onClick={() => void purgeOlderThan(h)}
+                    className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300"
+                  >
+                    {purgingHours === h ? (
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-2.5 w-2.5" />
+                    )}
+                    {h} saat öncesini sil
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="max-h-[400px] divide-y divide-[rgb(var(--color-border))] overflow-y-auto">
               {pendingLoading && pendingItems.length === 0 ? (
@@ -401,6 +502,34 @@ export default function CronMonitorPage() {
                             <span className="text-red-500">{item.attempts} deneme</span>
                           )}
                         </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          title="Hemen Yayınla"
+                          disabled={publishingItemId === item.id || deletingItemId === item.id}
+                          onClick={() => void publishQueueItem(item.id)}
+                          className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          {publishingItemId === item.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Zap className="h-3 w-3" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          title="Kuyruktan Sil"
+                          disabled={deletingItemId === item.id || publishingItemId === item.id}
+                          onClick={() => void deleteQueueItem(item.id)}
+                          className="flex h-6 w-6 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {deletingItemId === item.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                        </button>
                       </div>
                     </div>
                   ))}

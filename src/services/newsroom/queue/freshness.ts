@@ -19,9 +19,9 @@ export const MAX_SOURCE_AGE_MS = Number(
   process.env.NEWSROOM_QUEUE_MAX_SOURCE_AGE_MS ?? 24 * HOUR
 )
 
-/** Skip/purge if the queue row itself is older than this. */
+/** Skip/purge if the queue row itself is older than this. Default 24h (override via env). */
 export const MAX_QUEUE_AGE_MS = Number(
-  process.env.NEWSROOM_QUEUE_MAX_PENDING_AGE_MS ?? 48 * HOUR
+  process.env.NEWSROOM_QUEUE_MAX_PENDING_AGE_MS ?? 24 * HOUR
 )
 
 /** Tighter window for breaking / gundem. */
