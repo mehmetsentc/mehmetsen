@@ -2008,6 +2008,81 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
 
+  // ══════════════════════════════════════════════════════════════════
+  // ETKİNLİK / KONSER / FESTIVAL — EventNews.com.tr
+  // Kaynak: kaynak gösterilerek kullanılabilir (eventnews.com.tr)
+  // ══════════════════════════════════════════════════════════════════
+  {
+    id: 'eventnews-etkinlik',
+    label: 'EventNews Etkinlik',
+    feedUrl: 'https://www.eventnews.com.tr/rss_event_2.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:eventnews.com.tr+etkinlik&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'eventnews-festival',
+    label: 'EventNews Festival',
+    feedUrl: 'https://www.eventnews.com.tr/rss_festival_3.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:eventnews.com.tr+festival&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'eventnews-konser',
+    label: 'EventNews Konser',
+    feedUrl: 'https://www.eventnews.com.tr/rss_konser_5.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:eventnews.com.tr+konser&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'eventnews-turizm',
+    label: 'EventNews Turizm',
+    feedUrl: 'https://www.eventnews.com.tr/rss_turizm_1499.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:eventnews.com.tr+turizm&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'eventnews-gastronomi',
+    label: 'EventNews Gastronomi',
+    feedUrl: 'https://www.eventnews.com.tr/rss_gastronomi_1441.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:eventnews.com.tr+gastronomi&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'eventnews-kultur',
+    label: 'EventNews Kültür Sanat',
+    feedUrl: 'https://www.eventnews.com.tr/rss_kultur-sanat_845.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:eventnews.com.tr+kultur-sanat&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'eventnews-mekan',
+    label: 'EventNews Mekan',
+    feedUrl: 'https://www.eventnews.com.tr/rss_mekan_1572.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:eventnews.com.tr+mekan&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+
   // KIBRIS / KKTC — Yerel haberler, kazalar, gündem, Lefkoşa
   // ══════════════════════════════════════════════════════════════════
   {

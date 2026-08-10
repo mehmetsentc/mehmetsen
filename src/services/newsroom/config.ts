@@ -139,6 +139,8 @@ export const MAGAZINE_NEWS_SOURCE_IDS = [
   'takvim-magazin', 'cnnturk-kultur', 'cnnturk-yasam',
   'ntv-yasam', 'sabah-kultur-sanat', 'ntv-kultur',
   'gecce',
+  'eventnews-kultur', 'eventnews-konser', 'eventnews-festival',
+  'eventnews-etkinlik', 'eventnews-mekan',
 ] as const
 
 /**
@@ -164,6 +166,7 @@ export const GUNDEM_SOURCE_IDS = [
 /** Gastronomi kaynakları — yalnızca enabled RSS. Kapalı: yemek-com, hurriyet-gastronomi */
 export const GASTRONOMI_SOURCE_IDS = [
   'gastronomi-google-news', 'lezzet-com', 'milliyet-gastronomi',
+  'eventnews-gastronomi',
 ] as const
 
 /** Otomobil kaynakları — yalnızca enabled RSS. Kapalı: oto-com-tr, arabalar-com-tr, hurriyet-otomobil */
@@ -180,6 +183,7 @@ export const TURIZM_SOURCE_IDS = [
   'turizmajansi', 'turizmnews', 'turizmaktuel', 'turizmguncel',
   'tourismtoday',
   'aa-turizm', 'hurriyet-seyahat', 'ntv-seyahat', 'sabah-turizm',
+  'eventnews-turizm',
 ] as const
 
 /** Kıbrıs / KKTC kaynakları — yalnızca enabled RSS. Kapalı: diyalog-kibris, kibrisbulteni */
