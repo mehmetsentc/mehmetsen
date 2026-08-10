@@ -6,7 +6,7 @@
  */
 
 const CITY_LOGOS: Record<string, string> = {
-  canakkale: '/brand/cities/canakkale/icon-512.png',
+  canakkale: '/brand/cities/canakkale/icon-192.png',
 }
 
 const CITY_ICONS: Record<string, { icon32: string; icon192: string; icon512: string; apple: string; favicon: string }> = {
