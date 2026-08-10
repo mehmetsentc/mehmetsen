@@ -116,7 +116,7 @@ const nextConfig: NextConfig = {
       // OG images: 24h CDN cache
       {
         source: '/api/og/(.*)',
-        headers: [{ key: 'Cache-Control', value: 's-maxage=86400, stale-while-revalidate=3600' }],
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400' }],
       },
       // RSS feeds: 5 min CDN cache
       {

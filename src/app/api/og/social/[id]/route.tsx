@@ -25,6 +25,7 @@ import path from 'path'
 import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
+import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
 import { clampAtWordBoundary, clampCompleteHeadline } from '@/lib/social/feedCaption'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 
@@ -373,7 +374,7 @@ export async function GET(
       {
         width: W, height: H,
         ...(fonts.length > 0 ? { fonts } : {}),
-        headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=300' },
+        headers: { 'Cache-Control': OG_IMAGE_CACHE_CONTROL },
       }
     )
   } catch {

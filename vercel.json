@@ -89,7 +89,7 @@
     },
     {
       "path": "/api/cron/newsroom/process-queue",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/newsroom/queue-purge",

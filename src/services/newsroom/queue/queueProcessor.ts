@@ -2,14 +2,17 @@
  * Process pending newsQueue items — pipeline → newsDrafts (pending_review).
  * Auto-publish only when NEWSROOM_AUTO_PUBLISH_ENABLED=1.
  *
- * Throughput tuning (env vars):
- *   NEWSROOM_QUEUE_BATCH_SIZE — items claimed per run (default 50)
- *   NEWSROOM_QUEUE_CONCURRENCY — parallel pipeline jobs (default 6)
+ * Throughput tuning (env vars — override for emergency speed-up):
+ *   NEWSROOM_QUEUE_BATCH_SIZE — items claimed per run (default 20)
+ *   NEWSROOM_QUEUE_CONCURRENCY — parallel pipeline jobs (default 2)
  *   NEWSROOM_QUEUE_BUDGET_MS  — wall-clock budget in ms (default 250000)
+ *
+ * Cron schedule: every 15 min in vercel.json (~96 runs/day vs every 5 min at 288).
  */
 import type { Firestore } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { linkFingerprintToNews } from '@/services/newsroom/detection/sourceFingerprint'
+import { detectQueueDuplicate } from '@/services/newsroom/queue/queueDuplicateCheck'
 import {
   claimPendingQueueItems,
   markQueueFailed,
@@ -22,8 +25,8 @@ import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import { NEWSROOM_AUTO_PUBLISH_ENABLED } from '@/services/newsroom/config'
 
-const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 50)
-const CONCURRENCY = Math.max(1, Math.min(12, Number(process.env.NEWSROOM_QUEUE_CONCURRENCY ?? 6)))
+const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 20)
+const CONCURRENCY = Math.max(1, Math.min(12, Number(process.env.NEWSROOM_QUEUE_CONCURRENCY ?? 2)))
 const WALL_CLOCK_BUDGET_MS = Number(process.env.NEWSROOM_QUEUE_BUDGET_MS ?? 250_000)
 
 export interface ProcessQueueOptions {
@@ -88,6 +91,17 @@ export async function processNewsQueue(
           stats.skipped += 1
           return
         }
+      }
+
+      const duplicateHit = await detectQueueDuplicate(db, data)
+      if (duplicateHit) {
+        console.log(
+          `[processNewsQueue] duplicate skip ${job.id}` +
+            (duplicateHit.existingNewsId ? ` → ${duplicateHit.existingNewsId}` : '')
+        )
+        await markQueueSkipped(db, job.id, duplicateHit.reason)
+        stats.skipped += 1
+        return
       }
 
       const result = await processNewsroomArticle(db, data.input, {

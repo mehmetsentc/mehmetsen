@@ -31,6 +31,7 @@ import {
   type SocialPublishOverrides,
 } from '@/lib/social/publishOneSocial'
 import { buildSocialImagePayload } from '@/lib/social/carouselImages'
+import { buildOgSocialUrl } from '@/lib/social/ogCacheVersion'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -341,8 +342,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // ?v=timestamp → CDN + data cache bypass — her zaman taze OG görseli
-    const socialImageUrl = `https://nahaber.com/api/og/social/${id}?v=${Date.now()}`
+    const socialImageUrl = buildOgSocialUrl(id, {
+      title,
+      socialHeadline: socialContent.headline,
+      imageUrl: extractImageUrl(data),
+      updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
+        ? data.updatedAt
+        : undefined,
+    })
     const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data)
 
     const payload: SocialPublishPayload = {

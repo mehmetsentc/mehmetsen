@@ -23,6 +23,7 @@ import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
 import { buildSocialImagePayload } from '@/lib/social/carouselImages'
+import { buildOgSocialUrl, buildOgStoryUrl } from '@/lib/social/ogCacheVersion'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -461,8 +462,17 @@ export async function publishOneSocial(
       console.warn(`[publishOneSocial] social fields pre-save failed ${newsId}:`, err)
     }
 
-    const socialImageUrl = `https://nahaber.com/api/og/social/${newsId}?v=${Date.now()}`
-    const storyImageUrl  = `https://nahaber.com/api/og/story/${newsId}?v=${Date.now()}`
+    const ogVersionFields = {
+      title,
+      socialHeadline: socialContent.headline,
+      socialStorySummary: socialContent.storySummary,
+      imageUrl: extractImageUrl(data),
+      updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
+        ? data.updatedAt
+        : undefined,
+    }
+    const socialImageUrl = buildOgSocialUrl(newsId, ogVersionFields)
+    const storyImageUrl = buildOgStoryUrl(newsId, ogVersionFields)
 
     // Hybrid carousel: 2+ kaynak görsel → slide1 branded OG + orijinaller
     const imagePayload = shouldPost

@@ -36,7 +36,7 @@ interface PendingQueueItem {
 
 const JOBS = [
   { id: 'news-fetch', label: 'Haber Çekme', desc: 'Breaking + gündem RSS → kuyruk işle', schedule: 'Manuel / 15 dk', icon: '📰' },
-  { id: 'process-queue', label: 'Kuyruk İşle', desc: 'Bekleyen haberleri AI ile yazıp yayınla', schedule: 'Her 5 dk', icon: '⚙️' },
+  { id: 'process-queue', label: 'Kuyruk İşle', desc: 'Bekleyen haberleri AI ile yazıp yayınla', schedule: 'Her 15 dk', icon: '⚙️' },
   { id: 'draft-reprocess', label: 'Taslak AI Yeniden', desc: 'Onay kuyruğundaki taslakları yeniden yaz/yayınla', schedule: 'Her 10 dk', icon: '✍️' },
   { id: 'breaking', label: 'Son Dakika RSS', desc: 'Breaking kaynaklarını çeker', schedule: 'Her 15 dk', icon: '⚡' },
   { id: 'gundem', label: 'Gündem RSS', desc: 'Ulusal gündem kaynakları', schedule: 'Her 20 dk', icon: '🗞️' },

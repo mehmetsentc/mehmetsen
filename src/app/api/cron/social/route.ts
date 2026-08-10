@@ -48,6 +48,7 @@ import type {
   SocialPublishResult,
 } from '@/lib/social/types'
 import { buildSocialImagePayload } from '@/lib/social/carouselImages'
+import { buildOgSocialUrl, buildOgStoryUrl } from '@/lib/social/ogCacheVersion'
 
 
 export const runtime = 'nodejs'
@@ -297,7 +298,15 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         console.warn(`[cron/social] story AI fields update failed ${id}:`, err)
       }
 
-      const storyImageUrl: string = `https://nahaber.com/api/og/story/${id}?v=${Date.now()}`
+      const storyImageUrl: string = buildOgStoryUrl(id, {
+        title,
+        socialHeadline: headline,
+        socialStorySummary: storySummary,
+        imageUrl: extractImageUrl(data),
+        updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
+          ? data.updatedAt
+          : undefined,
+      })
       const storyPayload: SocialPublishPayload = {
         newsId:      id,
         title:       headline,
@@ -434,9 +443,15 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
     }
 
-    // ── Onyedi Tivi markalı görsel — OG route (1080×1350 · 4:5) ────────────────
-    // ?v=timestamp → CDN + Next.js data cache bypass — her paylaşımda taze görsel
-    const socialImageUrl: string = `https://nahaber.com/api/og/social/${id}?v=${Date.now()}`
+    // Stable content hash — CDN cache hit unless headline/image changes
+    const socialImageUrl: string = buildOgSocialUrl(id, {
+      title,
+      socialHeadline: socialContent.headline,
+      imageUrl: originalImageUrl,
+      updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
+        ? data.updatedAt
+        : undefined,
+    })
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
     const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data)
