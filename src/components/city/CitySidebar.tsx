@@ -21,7 +21,7 @@ import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
 import { SidebarThemeToggle } from '@/components/layout/SidebarThemeToggle'
 import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
 import { getCityLogoPath } from '@/lib/cityBrand'
-import { isCitySectionActive } from '@/lib/cityPaths'
+import { isCitySectionActive, isCityFeedPath } from '@/lib/cityPaths'
 import {
   buildCityCategoryNavItems,
   buildCitySectionNavItems,
@@ -65,10 +65,22 @@ function NavLink({
       : isCitySectionActive(pathname, item.href)
   const Icon = item.icon
 
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (item.href.startsWith('/#')) {
+      const targetId = item.href.slice(2)
+      if (isCityFeedPath(pathname)) {
+        e.preventDefault()
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        window.history.replaceState(null, '', item.href)
+      }
+    }
+    onNavigate?.()
+  }
+
   return (
     <Link
       href={item.href}
-      onClick={onNavigate}
+      onClick={handleClick}
       data-accent={item.accent}
       className={cn('app-sidebar__item', active && 'is-active')}
       aria-current={active ? 'page' : undefined}

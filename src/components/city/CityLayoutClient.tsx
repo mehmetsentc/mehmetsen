@@ -1,6 +1,7 @@
 'use client'
 
-import { memo, Suspense, useCallback } from 'react'
+import { memo, Suspense, useCallback, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { CityTenantProvider } from '@/store/cityTenantContext'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { NetworkProvider } from '@/store/networkContext'
@@ -8,6 +9,7 @@ import { AppStateProvider } from '@/store/appStateContext'
 import { UserLocationProvider } from '@/store/userLocationContext'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { ScrollHeaderProvider } from '@/context/ScrollHeaderContext'
+import { UiEffects } from '@/components/layout/UiEffects'
 import { CityCategoryProvider } from '@/store/cityCategoryContext'
 import { useUiStore } from '@/store/uiStore'
 import { usePlatformLayout } from '@/hooks/usePlatformLayout'
@@ -16,6 +18,7 @@ import { CitySectionNav } from './CitySectionNav'
 import { CityMobileNav } from './CityMobileNav'
 import { CitySidebar } from './CitySidebar'
 import type { CityCategory } from '@/services/cityNewsService.server'
+import { isCityFeedPath } from '@/lib/cityPaths'
 
 interface CityLayoutClientProps {
   tenantSlug: string
@@ -23,6 +26,28 @@ interface CityLayoutClientProps {
   provinceSlug: string
   categories: CityCategory[]
   children: React.ReactNode
+}
+
+/** Scroll to category rail when landing on feed with a hash (sidebar deep links). */
+function CityCategoryHashScroll() {
+  const pathname = usePathname()
+
+  useEffect(() => {
+    if (!isCityFeedPath(pathname)) return
+    const hash = window.location.hash
+    if (!hash.startsWith('#category-rail-')) return
+
+    const targetId = hash.slice(1)
+    const scrollToTarget = () => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
+    scrollToTarget()
+    const retry = window.setTimeout(scrollToTarget, 800)
+    return () => window.clearTimeout(retry)
+  }, [pathname])
+
+  return null
 }
 
 const CityShell = memo(function CityShell({
@@ -106,6 +131,8 @@ export function CityLayoutClient({
                 tenant={{ slug: tenantSlug, displayName, provinceSlug }}
               >
                 <CityCategoryProvider categories={categories}>
+                  <UiEffects />
+                  <CityCategoryHashScroll />
                   <CityShell
                     displayName={displayName}
                     provinceSlug={provinceSlug}
