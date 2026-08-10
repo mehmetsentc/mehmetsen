@@ -105,7 +105,8 @@ const W = 1080
 const H = 1350
 const TEXT_PAD_SIDE = 48
 const TEXT_PAD_BOTTOM = 44
-const PANEL_H = 430
+const PANEL_H = 470
+const LOGO_SIZE = 88
 
 const NAVY = '#0d2355'
 const LBLUE = '#62b8e8'
@@ -117,12 +118,22 @@ const NAHABER_ICON_CANDIDATES = [
   'brand/icon-192.png',
 ]
 
+function mimeFromBuffer(buf: Buffer, filePath: string): string {
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xd8) return 'image/jpeg'
+  if (buf.length >= 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    return 'image/png'
+  }
+  const ext = path.extname(filePath).slice(1).toLowerCase()
+  if (ext === 'png') return 'image/png'
+  if (ext === 'ico') return 'image/x-icon'
+  return 'image/jpeg'
+}
+
 async function loadPublicAssetDataUri(relativePath: string): Promise<string | null> {
   try {
     const filePath = path.join(process.cwd(), 'public', relativePath)
     const buf = await readFile(filePath)
-    const ext = path.extname(filePath).slice(1).toLowerCase()
-    const mime = ext === 'png' ? 'image/png' : ext === 'ico' ? 'image/x-icon' : 'image/jpeg'
+    const mime = mimeFromBuffer(buf, filePath)
     return `data:${mime};base64,${buf.toString('base64')}`
   } catch {
     return null
@@ -232,14 +243,14 @@ export async function GET(
   const titlePlainLen = titleLines.join('').length
 
   const titleSize =
-    titleLines.length >= 3 ? (titlePlainLen > 55 ? 44 : 48) :
-    titleLines.length === 2 ? (titlePlainLen > 52 ? 48 : titlePlainLen > 36 ? 52 : 56) :
-    titlePlainLen > 58 ? 48 :
-    titlePlainLen > 48 ? 52 :
-    titlePlainLen > 36 ? 56 :
-    titlePlainLen > 24 ? 60 :
-    titlePlainLen > 16 ? 64 : 68
-  const titleLineHeight = titleLines.length >= 2 ? 1.28 : 1.22
+    titleLines.length >= 3 ? (titlePlainLen > 55 ? 60 : 64) :
+    titleLines.length === 2 ? (titlePlainLen > 52 ? 64 : titlePlainLen > 36 ? 68 : 72) :
+    titlePlainLen > 58 ? 64 :
+    titlePlainLen > 48 ? 68 :
+    titlePlainLen > 36 ? 70 :
+    titlePlainLen > 24 ? 72 :
+    72
+  const titleLineHeight = titleLines.length >= 2 ? 1.26 : 1.2
 
   try {
     const [fonts, brand] = await Promise.all([loadPostFonts(), loadBrandAssets()])
@@ -282,11 +293,11 @@ export async function GET(
           <img
             src={brand.onyeditiviLogo}
             alt=""
-            width={56}
-            height={56}
+            width={LOGO_SIZE}
+            height={LOGO_SIZE}
             style={{
-              position: 'absolute', top: 24, left: 24,
-              width: 56, height: 56,
+              position: 'absolute', top: 28, left: 28,
+              width: LOGO_SIZE, height: LOGO_SIZE,
               display: 'flex',
             }}
           />
@@ -306,11 +317,11 @@ export async function GET(
             gap: 12, marginBottom: 18,
           }}>
             <div style={{
-              width: 4, height: 22, borderRadius: 2,
+              width: 4, height: 28, borderRadius: 2,
               background: LBLUE, flexShrink: 0, display: 'flex',
             }} />
             <span style={{
-              color: '#ffffff', fontWeight: 800, fontSize: 22,
+              color: '#ffffff', fontWeight: 800, fontSize: 30,
               letterSpacing: 2.5, display: 'flex',
             }}>{categoryLabel}</span>
           </div>
