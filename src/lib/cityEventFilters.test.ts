@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterCityEvents } from '@/lib/cityEventFilters'
+import { extractCategoryOptions, filterCityEvents } from '@/lib/cityEventFilters'
 import type { NaEvent } from '@/types/event'
 
 const AUG_10_2026_NOON_TR = '2026-08-10T09:00:00.000Z'
@@ -15,6 +15,37 @@ function makeEvent(overrides: Partial<NaEvent> & Pick<NaEvent, 'startsAt'>): NaE
     ...overrides,
   }
 }
+
+describe('extractCategoryOptions', () => {
+  it('returns only categories present in events, preserving canonical order', () => {
+    const events = [
+      makeEvent({ id: 'cinema-1', category: 'cinema', startsAt: '2026-08-10T18:00:00.000Z' }),
+      makeEvent({ id: 'sergi-1', category: 'exhibition', startsAt: '2026-08-11T10:00:00.000Z' }),
+    ]
+
+    expect(extractCategoryOptions(events).map((c) => c.id)).toEqual(['exhibition', 'cinema'])
+  })
+
+  it('includes Diğer only when other-category events exist', () => {
+    const withOther = [
+      makeEvent({ id: 'other-1', category: 'other', startsAt: '2026-08-10T18:00:00.000Z' }),
+    ]
+    const withoutOther = [
+      makeEvent({ id: 'concert-1', category: 'concert', startsAt: '2026-08-10T18:00:00.000Z' }),
+    ]
+
+    expect(extractCategoryOptions(withOther).some((c) => c.id === 'other')).toBe(true)
+    expect(extractCategoryOptions(withoutOther).some((c) => c.id === 'other')).toBe(false)
+  })
+
+  it('omits empty categories like Konser when no concert events', () => {
+    const events = [
+      makeEvent({ id: 'cinema-1', category: 'cinema', startsAt: '2026-08-10T18:00:00.000Z' }),
+    ]
+
+    expect(extractCategoryOptions(events).map((c) => c.label)).toEqual(['Sinema'])
+  })
+})
 
 describe('filterCityEvents dateFilter', () => {
   it('Bugün excludes exhibitions that started in July even if still running', () => {

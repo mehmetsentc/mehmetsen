@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { EVENT_CATEGORIES } from '@/lib/eventUtils'
+import type { EventCategory } from '@/types/event'
 import type { CityEventDateFilter, CityEventFilterState } from '@/lib/cityEventFilters'
 
 const DATE_OPTIONS: Array<{ id: CityEventDateFilter; label: string }> = [
@@ -14,10 +14,13 @@ const DATE_OPTIONS: Array<{ id: CityEventDateFilter; label: string }> = [
 interface CityEventFiltersPanelProps {
   filters: CityEventFilterState
   onChange: (next: CityEventFilterState) => void
+  categoryOptions: Array<{ id: EventCategory; label: string }>
   venueOptions: string[]
   districtOptions: Array<{ slug: string; name: string }>
   onReset?: () => void
   className?: string
+  /** Hide category section when quick chips are shown elsewhere (mobile bar). */
+  hideCategorySection?: boolean
 }
 
 function FilterSection({
@@ -41,17 +44,20 @@ function Chip({
   active,
   onClick,
   children,
+  size = 'default',
 }: {
   active: boolean
   onClick: () => void
   children: React.ReactNode
+  size?: 'default' | 'compact'
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+        'shrink-0 rounded-full font-medium transition-colors',
+        size === 'compact' ? 'px-3 py-1.5 text-xs' : 'px-3 py-1.5 text-sm',
         active
           ? 'bg-[rgb(var(--color-brand))] text-white shadow-sm'
           : 'bg-[rgb(var(--color-surface-raised))] text-[rgb(var(--color-text-secondary))] ring-1 ring-[rgb(var(--color-border))] hover:text-[rgb(var(--color-text))]'
@@ -62,13 +68,84 @@ function Chip({
   )
 }
 
+interface CityEventQuickFiltersProps {
+  filters: CityEventFilterState
+  onChange: (next: CityEventFilterState) => void
+  categoryOptions: Array<{ id: EventCategory; label: string }>
+  /** Show date chips alongside categories (tablet bar). */
+  showDateFilters?: boolean
+  className?: string
+}
+
+/** Horizontal quick-filter chips for mobile sticky bar and tablet top bar. */
+export function CityEventQuickFilters({
+  filters,
+  onChange,
+  categoryOptions,
+  showDateFilters = false,
+  className,
+}: CityEventQuickFiltersProps) {
+  const set = (patch: Partial<CityEventFilterState>) =>
+    onChange({ ...filters, ...patch })
+
+  return (
+    <div className={cn('flex flex-col gap-2', className)}>
+      {showDateFilters && (
+        <div
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide"
+          role="group"
+          aria-label="Tarih filtresi"
+        >
+          {DATE_OPTIONS.map((opt) => (
+            <Chip
+              key={opt.id}
+              active={filters.dateFilter === opt.id}
+              onClick={() => set({ dateFilter: opt.id })}
+              size="compact"
+            >
+              {opt.label}
+            </Chip>
+          ))}
+        </div>
+      )}
+      {categoryOptions.length > 0 && (
+        <div
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide"
+          role="group"
+          aria-label="Kategori filtresi"
+        >
+          <Chip
+            active={!filters.category}
+            onClick={() => set({ category: null })}
+            size="compact"
+          >
+            Tümü
+          </Chip>
+          {categoryOptions.map((cat) => (
+            <Chip
+              key={cat.id}
+              active={filters.category === cat.id}
+              onClick={() => set({ category: cat.id })}
+              size="compact"
+            >
+              {cat.label}
+            </Chip>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function CityEventFiltersPanel({
   filters,
   onChange,
+  categoryOptions,
   venueOptions,
   districtOptions,
   onReset,
   className,
+  hideCategorySection = false,
 }: CityEventFiltersPanelProps) {
   const set = (patch: Partial<CityEventFilterState>) =>
     onChange({ ...filters, ...patch })
@@ -89,22 +166,24 @@ export function CityEventFiltersPanel({
         </div>
       </FilterSection>
 
-      <FilterSection title="Kategori">
-        <div className="flex flex-wrap gap-2">
-          <Chip active={!filters.category} onClick={() => set({ category: null })}>
-            Tümü
-          </Chip>
-          {EVENT_CATEGORIES.map((cat) => (
-            <Chip
-              key={cat.id}
-              active={filters.category === cat.id}
-              onClick={() => set({ category: cat.id })}
-            >
-              {cat.label}
+      {!hideCategorySection && categoryOptions.length > 0 && (
+        <FilterSection title="Kategori">
+          <div className="flex flex-wrap gap-2">
+            <Chip active={!filters.category} onClick={() => set({ category: null })}>
+              Tümü
             </Chip>
-          ))}
-        </div>
-      </FilterSection>
+            {categoryOptions.map((cat) => (
+              <Chip
+                key={cat.id}
+                active={filters.category === cat.id}
+                onClick={() => set({ category: cat.id })}
+              >
+                {cat.label}
+              </Chip>
+            ))}
+          </div>
+        </FilterSection>
+      )}
 
       {venueOptions.length > 0 && (
         <FilterSection title="Mekan">

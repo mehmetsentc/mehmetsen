@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Clapperboard, ExternalLink, RefreshCw } from 'lucide-react'
 import type { BoxOfficeWeeklyData } from '@/services/boxOfficeTurkiyeService'
 import { BOX_OFFICE_BASE } from '@/services/boxOfficeTurkiyeService'
+import { cn } from '@/lib/utils'
 
 function FilmRow({
   rank,
@@ -43,7 +44,11 @@ function FilmRow({
   )
 }
 
-export function BoxOfficeWeeklyWidget() {
+export function BoxOfficeWeeklyWidget({
+  variant = 'default',
+}: {
+  variant?: 'default' | 'compact'
+}) {
   const [data, setData] = useState<BoxOfficeWeeklyData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -82,17 +87,22 @@ export function BoxOfficeWeeklyWidget() {
       : ''
 
   return (
-    <section className="mb-5 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm overflow-hidden">
+    <section
+      className={cn(
+        'overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm',
+        variant === 'compact' ? 'mb-0' : 'mb-5'
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgb(var(--color-border))] px-4 py-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
-            <Clapperboard className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgb(var(--color-brand))]/10">
+            <Clapperboard className="h-4 w-4 text-[rgb(var(--color-brand))]" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-[rgb(var(--color-text))] lg:text-base">
+            <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">
               Haftalık Gişe
             </h2>
-            <p className="text-[11px] text-[rgb(var(--color-text-secondary))] lg:text-xs">
+            <p className="text-[11px] text-[rgb(var(--color-text-secondary))]">
               Türkiye sinema hasılatı · {weekLabel}
             </p>
           </div>
@@ -107,15 +117,17 @@ export function BoxOfficeWeeklyWidget() {
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <a
-            href={data?.detailUrl ?? `${BOX_OFFICE_BASE}/hafta/yillar`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
-          >
-            Box Office Türkiye
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          {variant !== 'compact' && (
+            <a
+              href={data?.detailUrl ?? `${BOX_OFFICE_BASE}/hafta/yillar`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+            >
+              Box Office Türkiye
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
         </div>
       </div>
 
@@ -129,47 +141,51 @@ export function BoxOfficeWeeklyWidget() {
         </div>
       ) : data ? (
         <>
-          <div className="grid grid-cols-3 gap-2 border-b border-[rgb(var(--color-border))] px-4 py-3 text-center">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                Seyirci
-              </p>
-              <p className="mt-0.5 text-sm font-bold text-[rgb(var(--color-text))]">
-                {data.totalAudience}
-              </p>
+          {variant !== 'compact' && (
+            <div className="grid grid-cols-3 gap-2 border-b border-[rgb(var(--color-border))] px-4 py-3 text-center">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                  Seyirci
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-[rgb(var(--color-text))]">
+                  {data.totalAudience}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                  Hasılat
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-[rgb(var(--color-text))]">
+                  {data.totalRevenue}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                  Film
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-[rgb(var(--color-text))]">
+                  {data.filmCount}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                Hasılat
-              </p>
-              <p className="mt-0.5 text-sm font-bold text-[rgb(var(--color-text))]">
-                {data.totalRevenue}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                Film
-              </p>
-              <p className="mt-0.5 text-sm font-bold text-[rgb(var(--color-text))]">
-                {data.filmCount}
-              </p>
-            </div>
-          </div>
+          )}
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[320px]">
+            <table className="w-full min-w-[280px]">
               <thead>
                 <tr className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/50 text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                  <th className="py-2 pl-3 pr-2 text-left font-semibold w-8">#</th>
+                  <th className="w-8 py-2 pl-3 pr-2 text-left font-semibold">#</th>
                   <th className="py-2 pr-3 text-left font-semibold">Film</th>
-                  <th className="py-2 pr-3 text-right font-semibold hidden sm:table-cell">
-                    Seyirci
-                  </th>
-                  <th className="py-2 pr-3 text-right font-semibold">Hafta hasılat</th>
+                  {variant !== 'compact' && (
+                    <th className="hidden py-2 pr-3 text-right font-semibold sm:table-cell">
+                      Seyirci
+                    </th>
+                  )}
+                  <th className="py-2 pr-3 text-right font-semibold">Hasılat</th>
                 </tr>
               </thead>
               <tbody>
-                {data.films.slice(0, 8).map((film) => (
+                {data.films.slice(0, variant === 'compact' ? 5 : 8).map((film) => (
                   <FilmRow
                     key={`${film.rank}-${film.title}`}
                     rank={film.rank}
@@ -182,6 +198,19 @@ export function BoxOfficeWeeklyWidget() {
               </tbody>
             </table>
           </div>
+          {variant === 'compact' && (
+            <div className="border-t border-[rgb(var(--color-border))] px-4 py-2.5">
+              <a
+                href={data.detailUrl ?? `${BOX_OFFICE_BASE}/hafta/yillar`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[rgb(var(--color-brand))] hover:underline"
+              >
+                Tüm gişe verileri
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
         </>
       ) : null}
     </section>

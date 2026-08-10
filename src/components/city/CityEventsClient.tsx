@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CalendarDays,
+  ChevronDown,
   Filter,
   LayoutGrid,
   List,
@@ -15,6 +16,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet'
 import {
   countActiveFilters,
   DEFAULT_CITY_EVENT_FILTERS,
+  extractCategoryOptions,
   extractDistrictOptions,
   extractVenueOptions,
   filterCityEvents,
@@ -27,7 +29,10 @@ import {
 import { cn } from '@/lib/utils'
 import type { EventTimeRange } from '@/services/eventService'
 import type { NaEvent } from '@/types/event'
-import { CityEventFiltersPanel } from './CityEventFiltersPanel'
+import {
+  CityEventFiltersPanel,
+  CityEventQuickFilters,
+} from './CityEventFiltersPanel'
 import { CityEventGridCard, CityEventGridCardSkeleton } from './CityEventGridCard'
 import { CityEventListCard, CityEventListCardSkeleton } from './CityEventListCard'
 import { CityEventTopSellers } from './CityEventTopSellers'
@@ -76,13 +81,25 @@ export function CityEventsClient({
   const [sort, setSort] = useState<CityEventSort>('date')
   const [viewMode, setViewMode] = useState<CityEventViewMode>('grid')
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const [tabletFiltersExpanded, setTabletFiltersExpanded] = useState(false)
 
   const allDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
+  const categoryOptions = useMemo(() => extractCategoryOptions(displayEvents), [displayEvents])
   const venueOptions = useMemo(() => extractVenueOptions(displayEvents), [displayEvents])
   const districtOptions = useMemo(
     () => extractDistrictOptions(displayEvents, allDistricts),
     [displayEvents, allDistricts]
   )
+
+  // Drop stale category when the loaded event set no longer includes it.
+  useEffect(() => {
+    if (
+      filters.category &&
+      !categoryOptions.some((cat) => cat.id === filters.category)
+    ) {
+      setFilters((prev) => ({ ...prev, category: null }))
+    }
+  }, [categoryOptions, filters.category])
 
   const filteredEvents = useMemo(() => {
     const filtered = filterCityEvents(displayEvents, filters)
@@ -91,44 +108,52 @@ export function CityEventsClient({
 
   const featuredEvents = useMemo(() => pickFeaturedEvents(filteredEvents), [filteredEvents])
   const activeFilterCount = countActiveFilters(filters)
+  const hasCinemaEvents = categoryOptions.some((cat) => cat.id === 'cinema')
 
   const handleResetFilters = () => setFilters(DEFAULT_CITY_EVENT_FILTERS)
 
   const showEmpty = !loading && !error && filteredEvents.length === 0
   const showSkeletons = loading && displayEvents.length === 0
 
+  const gridClassName = cn(
+    'grid gap-3 md:gap-4',
+    viewMode === 'grid'
+      ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+      : 'grid-cols-1'
+  )
+
   return (
     <div className="w-full pb-8 pt-3 max-md:pt-2">
       {/* Page header */}
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <header className="mb-3 flex flex-wrap items-start justify-between gap-3 md:mb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))]/10">
               <CalendarDays className="h-5 w-5 text-[rgb(var(--color-brand))]" />
             </span>
             <div>
-              <h1 className="text-lg font-black tracking-tight text-[rgb(var(--color-text))] lg:text-xl">
+              <h1 className="text-lg font-black tracking-tight text-[rgb(var(--color-text))] xl:text-xl">
                 {cityName} Etkinlikleri
               </h1>
-              <p className="text-xs text-[rgb(var(--color-text-secondary))] lg:text-sm">
-                Konser, tiyatro, festival ve daha fazlası
+              <p className="text-xs text-[rgb(var(--color-text-secondary))] md:text-sm">
+                Konser, sinema, tiyatro, festival ve daha fazlası
               </p>
             </div>
           </div>
         </div>
 
-        {/* Mobile filter trigger */}
+        {/* Mobile + tablet filter trigger */}
         <button
           type="button"
           onClick={() => setFilterSheetOpen(true)}
           className={cn(
-            'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold lg:hidden',
+            'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold xl:hidden',
             'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
             'text-[rgb(var(--color-text))] shadow-sm'
           )}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          Filtrele
+          Filtreler
           {activeFilterCount > 0 && (
             <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] px-1.5 text-[10px] font-bold text-white">
               {activeFilterCount}
@@ -137,31 +162,105 @@ export function CityEventsClient({
         </button>
       </header>
 
-      <div className="flex gap-6 lg:gap-8">
-        {/* Desktop sidebar */}
+      {/* Mobile: sticky quick category + date chips */}
+      <div
+        className={cn(
+          'sticky top-0 z-20 -mx-1 mb-3 border-b border-[rgb(var(--color-border))]/80',
+          'bg-[rgb(var(--color-bg))]/95 px-1 py-2 backdrop-blur-md md:hidden'
+        )}
+      >
+        <CityEventQuickFilters
+          filters={filters}
+          onChange={setFilters}
+          categoryOptions={categoryOptions}
+          showDateFilters
+        />
+      </div>
+
+      <div className="flex gap-6 xl:gap-8">
+        {/* Desktop xl+ sidebar rail */}
         <aside
-          className="hidden w-56 shrink-0 lg:block xl:w-64"
+          className="hidden w-56 shrink-0 xl:block xl:w-64"
           aria-label="Etkinlik filtreleri"
         >
-          <div className="sticky top-4 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 shadow-sm">
-            <div className="mb-1 flex items-center gap-2">
-              <Filter className="h-4 w-4 text-[rgb(var(--color-brand))]" />
-              <span className="text-sm font-bold text-[rgb(var(--color-text))]">Filtreler</span>
+          <div className="sticky top-4 space-y-4">
+            <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
+                <Filter className="h-4 w-4 text-[rgb(var(--color-brand))]" />
+                <span className="text-sm font-bold text-[rgb(var(--color-text))]">Filtreler</span>
+              </div>
+              <CityEventFiltersPanel
+                filters={filters}
+                onChange={setFilters}
+                categoryOptions={categoryOptions}
+                venueOptions={venueOptions}
+                districtOptions={districtOptions}
+                onReset={activeFilterCount > 0 ? handleResetFilters : undefined}
+              />
             </div>
-            <CityEventFiltersPanel
-              filters={filters}
-              onChange={setFilters}
-              venueOptions={venueOptions}
-              districtOptions={districtOptions}
-              onReset={activeFilterCount > 0 ? handleResetFilters : undefined}
-            />
+            {hasCinemaEvents && (
+              <div className="hidden xl:block">
+                <BoxOfficeWeeklyWidgetClient variant="compact" />
+              </div>
+            )}
           </div>
         </aside>
 
         {/* Main content */}
         <div className="min-w-0 flex-1">
-          <BoxOfficeWeeklyWidgetClient />
+          {/* Tablet md–xl: collapsible filter bar */}
+          <div className="mb-4 hidden md:block xl:hidden">
+            <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3 shadow-sm">
+              <CityEventQuickFilters
+                filters={filters}
+                onChange={setFilters}
+                categoryOptions={categoryOptions}
+                showDateFilters
+              />
+              <button
+                type="button"
+                onClick={() => setTabletFiltersExpanded((open) => !open)}
+                className="mt-3 flex w-full items-center justify-between rounded-lg bg-[rgb(var(--color-surface-raised))] px-3 py-2 text-sm font-semibold text-[rgb(var(--color-text))]"
+                aria-expanded={tabletFiltersExpanded}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-[rgb(var(--color-brand))]" />
+                  Mekan & ilçe
+                  {activeFilterCount > 0 && (
+                    <span className="rounded-full bg-[rgb(var(--color-brand))] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    tabletFiltersExpanded && 'rotate-180'
+                  )}
+                />
+              </button>
+              {tabletFiltersExpanded && (
+                <div className="mt-3 border-t border-[rgb(var(--color-border))] pt-3">
+                  <CityEventFiltersPanel
+                    filters={filters}
+                    onChange={setFilters}
+                    categoryOptions={categoryOptions}
+                    venueOptions={venueOptions}
+                    districtOptions={districtOptions}
+                    onReset={activeFilterCount > 0 ? handleResetFilters : undefined}
+                    hideCategorySection
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
           <CityEventTopSellers events={featuredEvents} loading={showSkeletons} />
+
+          {/* Box office in main column on mobile/tablet; xl uses sidebar when cinema events exist */}
+          <div className={cn('mb-5', hasCinemaEvents && 'xl:hidden')}>
+            <BoxOfficeWeeklyWidgetClient />
+          </div>
 
           {/* Toolbar: time range + sort + view toggle + count */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -224,7 +323,7 @@ export function CityEventsClient({
               </select>
 
               <div
-                className="hidden items-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-0.5 lg:flex"
+                className="hidden items-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-0.5 md:flex"
                 role="group"
                 aria-label="Görünüm"
               >
@@ -260,7 +359,7 @@ export function CityEventsClient({
 
           {showSkeletons ? (
             viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+              <div className={gridClassName}>
                 {Array.from({ length: 6 }, (_, i) => (
                   <CityEventGridCardSkeleton key={i} />
                 ))}
@@ -304,22 +403,13 @@ export function CityEventsClient({
               )}
             </div>
           ) : viewMode === 'grid' ? (
-            <>
-              {/* Mobile: always compact list */}
-              <div className="space-y-3 lg:hidden">
-                {filteredEvents.map((event) => (
-                  <CityEventListCard key={event.id} event={event} />
-                ))}
-              </div>
-              {/* Desktop: grid */}
-              <div className="hidden grid-cols-2 gap-4 lg:grid xl:grid-cols-3">
-                {filteredEvents.map((event) => (
-                  <CityEventGridCard key={event.id} event={event} />
-                ))}
-              </div>
-            </>
+            <div className={gridClassName}>
+              {filteredEvents.map((event) => (
+                <CityEventGridCard key={event.id} event={event} />
+              ))}
+            </div>
           ) : (
-            <div className="space-y-3 max-sm:space-y-2.5">
+            <div className="space-y-3">
               {filteredEvents.map((event) => (
                 <CityEventListCard key={event.id} event={event} />
               ))}
@@ -328,16 +418,17 @@ export function CityEventsClient({
         </div>
       </div>
 
-      {/* Mobile filter sheet */}
+      {/* Mobile/tablet filter sheet */}
       <BottomSheet
         open={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
-        title="Filtrele"
+        title="Filtreler"
         size="lg"
       >
         <CityEventFiltersPanel
           filters={filters}
           onChange={setFilters}
+          categoryOptions={categoryOptions}
           venueOptions={venueOptions}
           districtOptions={districtOptions}
           onReset={activeFilterCount > 0 ? handleResetFilters : undefined}

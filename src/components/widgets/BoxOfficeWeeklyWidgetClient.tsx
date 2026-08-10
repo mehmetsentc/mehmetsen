@@ -10,6 +10,12 @@ const BoxOfficeWeeklyWidget = dynamic(
   { ssr: false }
 )
 
-export function BoxOfficeWeeklyWidgetClient() {
-  return <BoxOfficeWeeklyWidget />
+interface BoxOfficeWeeklyWidgetClientProps {
+  variant?: 'default' | 'compact'
+}
+
+export function BoxOfficeWeeklyWidgetClient({
+  variant = 'default',
+}: BoxOfficeWeeklyWidgetClientProps) {
+  return <BoxOfficeWeeklyWidget variant={variant} />
 }

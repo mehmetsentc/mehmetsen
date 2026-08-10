@@ -30,14 +30,14 @@ export function CityEventTopSellers({
       </div>
 
       <div
-        className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide snap-x snap-mandatory"
+        className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide snap-x snap-mandatory md:gap-4"
         aria-label={title}
       >
         {loading
           ? [...Array(4)].map((_, i) => (
               <div
                 key={i}
-                className="w-[calc(40vw-0.5rem)] shrink-0 snap-start sm:w-[180px] lg:w-[220px]"
+                className="w-[min(72vw,280px)] shrink-0 snap-start md:w-[calc(50%-0.5rem)] md:max-w-[320px] xl:w-[240px]"
               >
                 <CityEventGridCardSkeleton compact />
               </div>
@@ -45,7 +45,7 @@ export function CityEventTopSellers({
           : events.map((event) => (
               <div
                 key={event.id}
-                className="w-[calc(40vw-0.5rem)] shrink-0 snap-start sm:w-[180px] lg:w-[220px]"
+                className="w-[min(72vw,280px)] shrink-0 snap-start md:w-[calc(50%-0.5rem)] md:max-w-[320px] xl:w-[240px]"
               >
                 <CityEventGridCard event={event} compact />
               </div>

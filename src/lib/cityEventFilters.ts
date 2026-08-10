@@ -7,7 +7,7 @@ import {
   isSameOrAfterIstanbulCalendarDay,
   resolveEventSchedule,
 } from '@/lib/annualEventDates'
-import { isEventUpcoming } from '@/lib/eventUtils'
+import { EVENT_CATEGORIES, isEventUpcoming } from '@/lib/eventUtils'
 import type { EventCategory, NaEvent } from '@/types/event'
 
 export type CityEventDateFilter = 'all' | 'today' | 'tomorrow' | 'thisWeek'
@@ -103,6 +103,19 @@ export function sortCityEvents(events: NaEvent[], sort: CityEventSort): NaEvent[
     default:
       return copy.sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   }
+}
+
+/** Categories present in the current event list — "Diğer" only when needed. */
+export function extractCategoryOptions(
+  events: NaEvent[]
+): Array<{ id: EventCategory; label: string }> {
+  const present = new Set<EventCategory>()
+  for (const event of events) {
+    present.add(event.category ?? 'other')
+  }
+  return EVENT_CATEGORIES.filter((cat) => cat.id !== 'other' && present.has(cat.id)).concat(
+    present.has('other') ? [{ id: 'other' as const, label: 'Diğer' }] : []
+  )
 }
 
 export function extractVenueOptions(events: NaEvent[]): string[] {
