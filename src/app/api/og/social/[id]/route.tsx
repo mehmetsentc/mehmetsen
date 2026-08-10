@@ -2,45 +2,42 @@
  * GET /api/og/social/[id]
  *
  * ONYEDİTİVİ — 1080×1350 Instagram & Facebook Post görseli (4:5)
- * Renk paleti: OnyediTivi laciveri (#0d2355) + NaHaber kırmızısı (#CC0000)
  *
- * Layout (full-bleed photo + bottom gradient scrim):
+ * Layout (approved onyeditivi card):
  *   ┌─────────────────────────┐
- *   │  [Logo badge sağ üst]   │
+ *   │ [17 logo]               │  küçük onyeditivi badge sol üst
  *   │                         │
- *   │   HABER FOTOĞRAFI       │  1080×1350 full-bleed (sharp cover)
- *   │   (kenardan kenara)     │
+ *   │   HABER FOTOĞRAFI       │  full-bleed cover
  *   │                         │
- *   │ ─── gradient scrim ─── │  koyu lacivert → şeffaf
- *   │   nahaber.com ince bar  │
- *   │   MANŞET (Playfair)     │
- *   │   özet (büyük, net)     │
- *   │   #hashtag              │
+ *   │ ─── gradient scrim ───  │
+ *   │  ▌ KATEGORİ             │  lacivert panel + açık mavi accent
+ *   │  MANŞET (Inter bold)    │
+ *   │  ──── [NaHaber] ────    │  ince mavi çizgi + favicon ortada
  *   └─────────────────────────┘
  *
  * Preview (Firestore olmadan):
- *   /api/og/social/sample?title=...&spot=...&image=https://...
+ *   /api/og/social/sample?title=...&image=...&category=gundem
  */
 export const runtime = 'nodejs'
 
+import { readFile } from 'fs/promises'
+import path from 'path'
 import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
-import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteHeadline } from '@/lib/social/feedCaption'
+import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
-/** Manşet — 1–2 tematik satır tercih; kelime ortasından kesilmez */
-const TITLE_MAX = 72
-/** Özet — tam cümleler, büyük punto; cümle/kelime ortasından kesilmez (CTA yok) */
-const SPOT_MAX = 160
+const TITLE_MAX = 90
 
 interface ArticleOGData {
   title: string
-  spot: string
   socialHeadline: string
-  socialStorySummary: string
+  categoryId: string
+  isBreaking: boolean
   imageUrl: string
   thumbnail: string
   coverImageUrl: string
@@ -54,20 +51,23 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
   try {
     const res = await fetch(`${FIREBASE_URL}/${id}?key=${apiKey}`, { cache: 'no-store' })
     if (!res.ok) return null
-    const data = await res.json() as { fields?: Record<string, { stringValue?: string }> }
+    const data = await res.json() as {
+      fields?: Record<string, { stringValue?: string; booleanValue?: boolean }>
+    }
     const f = data.fields
     if (!f) return null
     const str = (v?: { stringValue?: string }) => v?.stringValue?.trim() || ''
+    const categoryId = str(f.categoryId) || str(f.category)
     return {
-      title:              str(f.title),
-      spot:               str(f.spot) || str(f.summary) || str(f.description),
-      socialHeadline:     str(f.socialHeadline),
-      socialStorySummary: str(f.socialStorySummary),
-      imageUrl:           str(f.imageUrl),
-      thumbnail:          str(f.thumbnail),
-      coverImageUrl:      str(f.coverImageUrl),
-      featuredImage:      str(f.featuredImage),
-      image:              str(f.image),
+      title: str(f.title),
+      socialHeadline: str(f.socialHeadline),
+      categoryId,
+      isBreaking: f.isBreaking?.booleanValue === true || categoryId === 'son-dakika',
+      imageUrl: str(f.imageUrl),
+      thumbnail: str(f.thumbnail),
+      coverImageUrl: str(f.coverImageUrl),
+      featuredImage: str(f.featuredImage),
+      image: str(f.image),
     }
   } catch { return null }
 }
@@ -78,7 +78,6 @@ function bestImageCandidates(a: ArticleOGData): string[] {
     .filter((u) => isUsableImageUrl(u))
 }
 
-/** Manşet: 1–3 tematik satır (\\n); toplam karakter limiti. */
 function clampHeadline(s: string, max: number): string {
   const lines = s
     .replace(/\r\n/g, '\n')
@@ -102,22 +101,43 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
-// Boyutlar — 4:5 dikey post (full-bleed fotoğraf + alt gradient scrim)
 const W = 1080
 const H = 1350
 const TEXT_PAD_SIDE = 48
-const TEXT_PAD_BOTTOM = 40
+const TEXT_PAD_BOTTOM = 44
+const PANEL_H = 430
 
-// Renkler
-const NAVY   = '#0d2355'   // OnyediTivi koyu lacivert
-const RED    = '#CC0000'   // NaHaber kırmızısı
-const BLUE   = '#2563b8'   // OnyediTivi orta mavi
-const LBLUE  = '#62b8e8'   // OnyediTivi açık mavi (hashtag)
-
-/** Manşet — gazete ciddiyeti (serif display) */
-const FONT_HEADLINE = 'Playfair Display'
-/** Özet / UI — okunaklı sans */
+const NAVY = '#0d2355'
+const LBLUE = '#62b8e8'
 const FONT_BODY = 'Inter'
+
+const ONYEDITIVI_LOGO = 'brand/onyeditivi/logo.png'
+const NAHABER_ICON_CANDIDATES = [
+  'brand/cities/canakkale/icon-192.png',
+  'brand/icon-192.png',
+]
+
+async function loadPublicAssetDataUri(relativePath: string): Promise<string | null> {
+  try {
+    const filePath = path.join(process.cwd(), 'public', relativePath)
+    const buf = await readFile(filePath)
+    const ext = path.extname(filePath).slice(1).toLowerCase()
+    const mime = ext === 'png' ? 'image/png' : ext === 'ico' ? 'image/x-icon' : 'image/jpeg'
+    return `data:${mime};base64,${buf.toString('base64')}`
+  } catch {
+    return null
+  }
+}
+
+async function loadBrandAssets(): Promise<{ onyeditiviLogo: string | null; nahaberIcon: string | null }> {
+  const onyeditiviLogo = await loadPublicAssetDataUri(ONYEDITIVI_LOGO)
+  let nahaberIcon: string | null = null
+  for (const candidate of NAHABER_ICON_CANDIDATES) {
+    nahaberIcon = await loadPublicAssetDataUri(candidate)
+    if (nahaberIcon) break
+  }
+  return { onyeditiviLogo, nahaberIcon }
+}
 
 async function loadGoogleFont(family: string, weight: number): Promise<ArrayBuffer | null> {
   try {
@@ -146,13 +166,10 @@ type OgFont = { name: string; data: ArrayBuffer; weight: OgFontWeight; style: 'n
 
 async function loadPostFonts(): Promise<OgFont[]> {
   const specs: Array<{ name: string; weight: OgFontWeight }> = [
-    { name: FONT_HEADLINE, weight: 700 },
-    { name: FONT_HEADLINE, weight: 900 },
-    { name: FONT_BODY, weight: 400 },
-    { name: FONT_BODY, weight: 500 },
     { name: FONT_BODY, weight: 600 },
     { name: FONT_BODY, weight: 700 },
     { name: FONT_BODY, weight: 800 },
+    { name: FONT_BODY, weight: 900 },
   ]
   const loaded = await Promise.all(
     specs.map(async (s) => {
@@ -179,8 +196,9 @@ export async function GET(
   const { id } = await params
   const q = req.nextUrl.searchParams
   const overrideTitle = q.get('title')?.trim() || ''
-  const overrideSpot  = q.get('spot')?.trim()  || ''
   const overrideImage = q.get('image')?.trim() || ''
+  const overrideCategory = q.get('category')?.trim() || ''
+  const overrideBreaking = q.get('breaking') === '1' || q.get('breaking') === 'true'
 
   let article: ArticleOGData | null = null
   if (id !== 'sample' && id !== 'preview') {
@@ -194,56 +212,43 @@ export async function GET(
     ''
   if (!rawTitle) {
     if (id === 'sample' || id === 'preview') {
-      return new Response('sample için ?title= (ve ?spot=) gerekli', { status: 400 })
+      return new Response('sample için ?title= (ve isteğe ?image= ?category=) gerekli', { status: 400 })
     }
     return new Response('Haber bulunamadi', { status: 404 })
   }
 
-  const rawSpot =
-    overrideSpot ||
-    article?.socialStorySummary ||
-    article?.spot ||
-    ''
+  const categoryId = overrideCategory || article?.categoryId || 'gundem'
+  const isBreaking = overrideBreaking || article?.isBreaking || categoryId === 'son-dakika'
+  const categoryLabel = getSocialPostCategoryLabel(categoryId, isBreaking)
 
   const photo = await embedCoverTopImage(
     [overrideImage, ...(article ? bestImageCandidates(article) : [])],
     W, H, 84,
-    true, // full-bleed cover — no pillarbox/letterbox
+    true,
   )
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
-  const spot  = rawSpot ? clampCompleteSentences(rawSpot, SPOT_MAX) : ''
   const titleLines = title.split('\n').filter(Boolean)
   const titlePlainLen = titleLines.join('').length
 
-  // Full-bleed photo with gradient scrim — güçlü Playfair manşet + yüksek kontrast özet
   const titleSize =
-    titleLines.length >= 3 ? (titlePlainLen > 55 ? 42 : 46) :
-    titleLines.length === 2 ? (titlePlainLen > 52 ? 46 : titlePlainLen > 36 ? 50 : 54) :
-    titlePlainLen > 58 ? 46 :
-    titlePlainLen > 48 ? 50 :
-    titlePlainLen > 36 ? 54 :
-    titlePlainLen > 24 ? 58 :
-    titlePlainLen > 16 ? 62 : 66
-  const titleLineHeight = titleLines.length >= 2 ? 1.3 : 1.24
-
-  const spotLen = spot.length
-  const spotSize =
-    spotLen > 140 ? 30 :
-    spotLen > 100 ? 32 :
-    spotLen > 70 ? 34 : 36
-  const spotLineHeight = 1.52
+    titleLines.length >= 3 ? (titlePlainLen > 55 ? 44 : 48) :
+    titleLines.length === 2 ? (titlePlainLen > 52 ? 48 : titlePlainLen > 36 ? 52 : 56) :
+    titlePlainLen > 58 ? 48 :
+    titlePlainLen > 48 ? 52 :
+    titlePlainLen > 36 ? 56 :
+    titlePlainLen > 24 ? 60 :
+    titlePlainLen > 16 ? 64 : 68
+  const titleLineHeight = titleLines.length >= 2 ? 1.28 : 1.22
 
   try {
-    const fonts = await loadPostFonts()
-    const hasHeadlineFont = fonts.some((f) => f.name === FONT_HEADLINE)
+    const [fonts, brand] = await Promise.all([loadPostFonts(), loadBrandAssets()])
     const hasBodyFont = fonts.some((f) => f.name === FONT_BODY)
-    const headlineFamily = hasHeadlineFont
-      ? `"${FONT_HEADLINE}", "Times New Roman", Georgia, serif`
-      : '"Times New Roman", Georgia, serif'
     const bodyFamily = hasBodyFont
       ? `"${FONT_BODY}", "Helvetica Neue", Helvetica, Arial, sans-serif`
       : '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
+    const faviconSize = 36
 
     return new ImageResponse(
       <div style={{
@@ -253,7 +258,7 @@ export async function GET(
         position: 'relative',
       }}>
 
-        {/* ── FULL-BLEED FOTOĞRAF ── */}
+        {/* Full-bleed photo */}
         {photo ? (
           <img src={photo} alt="" width={W} height={H}
             style={{
@@ -265,118 +270,92 @@ export async function GET(
           <div style={{ position: 'absolute', top: 0, left: 0, width: W, height: H, display: 'flex', background: NAVY }} />
         )}
 
-        {/* ── GRADIENT SCRIM (alt → üst: koyu lacivert → şeffaf) ── */}
+        {/* Gradient scrim — photo → lacivert panel */}
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 820,
-          background: `linear-gradient(to top, rgba(13,35,85,0.97) 0%, rgba(13,35,85,0.92) 18%, rgba(13,35,85,0.78) 34%, rgba(13,35,85,0.50) 52%, rgba(13,35,85,0.22) 70%, transparent 100%)`,
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: PANEL_H + 120,
+          background: `linear-gradient(to top, rgba(13,35,85,1) 0%, rgba(13,35,85,0.98) 22%, rgba(13,35,85,0.88) 42%, rgba(13,35,85,0.55) 62%, rgba(13,35,85,0.18) 82%, transparent 100%)`,
           display: 'flex',
         }} />
 
-        {/* ── OnyediTivi logo badge — sağ üst ── */}
-        <div style={{
-          position: 'absolute', top: 20, right: 20,
-          display: 'flex', alignItems: 'center',
-          background: 'rgba(13,35,85,0.9)', borderRadius: 12,
-          padding: '9px 18px 9px 9px', gap: 10,
-        }}>
-          <div style={{ width: 44, height: 44, position: 'relative',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <div style={{ position: 'absolute', width: 44, height: 40,
-              background: '#8bbde0', borderRadius: '45% 55% 50% 50% / 50% 50% 55% 45%',
-              display: 'flex' }} />
-            <div style={{ position: 'absolute', width: 38, height: 38,
-              background: BLUE, borderRadius: '38% 62% 55% 45% / 45% 55% 62% 38%',
-              display: 'flex' }} />
-            <div style={{ position: 'absolute', width: 32, height: 32,
-              background: NAVY, borderRadius: '50%', display: 'flex',
-              alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: 0 }}>
-                <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 15, lineHeight: 1, display: 'flex' }}>1</span>
-                <span style={{ color: LBLUE, fontWeight: 900, fontSize: 15, lineHeight: 1, display: 'flex' }}>7</span>
-              </span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 15, letterSpacing: 0.5, display: 'flex' }}>ONYEDiTiVi</span>
-            <span style={{ color: LBLUE, fontWeight: 600, fontSize: 10, letterSpacing: 2.5, display: 'flex' }}>HABERLERi</span>
-          </div>
-        </div>
+        {/* Onyeditivi 17 logo — sol üst */}
+        {brand.onyeditiviLogo ? (
+          <img
+            src={brand.onyeditiviLogo}
+            alt=""
+            width={56}
+            height={56}
+            style={{
+              position: 'absolute', top: 24, left: 24,
+              width: 56, height: 56,
+              display: 'flex',
+            }}
+          />
+        ) : null}
 
-        {/* ── TEXT OVERLAY — positioned at bottom over gradient ── */}
+        {/* Bottom text panel */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: PANEL_H,
           display: 'flex', flexDirection: 'column',
           padding: `0 ${TEXT_PAD_SIDE}px ${TEXT_PAD_BOTTOM}px`,
+          justifyContent: 'flex-end',
         }}>
-          {/* ── İnce kırmızı accent + nahaber.com pill ── */}
+          {/* Category row — light-blue accent + label */}
+          <div style={{
+            display: 'flex', flexDirection: 'row', alignItems: 'center',
+            gap: 12, marginBottom: 18,
+          }}>
+            <div style={{
+              width: 4, height: 22, borderRadius: 2,
+              background: LBLUE, flexShrink: 0, display: 'flex',
+            }} />
+            <span style={{
+              color: '#ffffff', fontWeight: 800, fontSize: 22,
+              letterSpacing: 2.5, display: 'flex',
+            }}>{categoryLabel}</span>
+          </div>
+
+          {/* Headline */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 8,
+            marginBottom: 28,
+            maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
+            overflow: 'hidden',
+          }}>
+            {titleLines.map((line, i) => (
+              <span key={i} style={{
+                color: '#ffffff', fontWeight: 800,
+                fontSize: titleSize, lineHeight: titleLineHeight,
+                letterSpacing: 0.1, display: 'flex',
+              }}>{line}</span>
+            ))}
+          </div>
+
+          {/* Thin blue line + centered NaHaber favicon */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: 0, marginBottom: 24,
+            position: 'relative', height: faviconSize, width: '100%',
           }}>
-            <div style={{ flex: 1, height: 2, background: RED, display: 'flex' }} />
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,0.95)', borderRadius: 40,
-              padding: '4px 14px',
-              margin: '0 14px',
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: RED, display: 'flex', flexShrink: 0 }} />
-              <span style={{ color: RED, fontSize: 15, fontWeight: 800, letterSpacing: 0.2, display: 'flex' }}>nahaber.com</span>
-            </div>
-            <div style={{ flex: 1, height: 2, background: RED, display: 'flex' }} />
-          </div>
-
-          {/* Manşet + özet content block */}
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 14, overflow: 'hidden', marginBottom: 20 }}>
-            <div style={{
-              width: 4, borderRadius: 2, background: RED, flexShrink: 0,
-              alignSelf: 'stretch', display: 'flex', marginTop: 4, minHeight: 44,
+              position: 'absolute', left: 0, right: 0, top: '50%',
+              height: 2, background: LBLUE, display: 'flex',
             }} />
-            <div style={{
-              display: 'flex', flexDirection: 'column', gap: 0,
-              maxWidth: W - TEXT_PAD_SIDE * 2 - 22, flex: 1, overflow: 'hidden',
-            }}>
-              {/* Manşet — Playfair display; yüksek kontrast beyaz */}
+            {brand.nahaberIcon ? (
               <div style={{
-                display: 'flex', flexDirection: 'column', gap: 6,
-                maxHeight: Math.round(titleSize * titleLineHeight * 2.55),
-                overflow: 'hidden',
+                position: 'relative', zIndex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: NAVY, padding: '0 10px',
               }}>
-                {titleLines.map((line, i) => (
-                  <span key={i} style={{
-                    color: '#ffffff', fontFamily: headlineFamily, fontWeight: 900,
-                    fontSize: titleSize, lineHeight: titleLineHeight, letterSpacing: 0.15,
-                    display: 'flex',
-                    textShadow: '0 2px 12px rgba(0,0,0,0.5)',
-                  }}>{line}</span>
-                ))}
+                <img
+                  src={brand.nahaberIcon}
+                  alt=""
+                  width={faviconSize}
+                  height={faviconSize}
+                  style={{ width: faviconSize, height: faviconSize, display: 'flex', borderRadius: 6 }}
+                />
               </div>
-              {/* Ayırıcı + özet */}
-              {spot ? (
-                <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 14,
-                  paddingTop: 20,
-                }}>
-                  <div style={{
-                    width: 80, height: 2, borderRadius: 1,
-                    background: 'rgba(255,255,255,0.38)', display: 'flex', flexShrink: 0,
-                  }} />
-                  <span style={{
-                    color: 'rgba(255,255,255,0.95)', fontFamily: bodyFamily, fontWeight: 600,
-                    fontSize: spotSize, lineHeight: spotLineHeight,
-                    letterSpacing: 0.15, display: 'flex', flexDirection: 'column',
-                    textShadow: '0 1px 8px rgba(0,0,0,0.4)',
-                  }}>{spot}</span>
-                </div>
-              ) : null}
-            </div>
+            ) : null}
           </div>
-
-          {/* Hashtags — bottom */}
-          <span style={{
-            color: LBLUE, fontFamily: bodyFamily, fontSize: 17,
-            fontWeight: 600, letterSpacing: 1.1, display: 'flex',
-          }}>#NaHaber  #Çanakkale  #SonDakika</span>
         </div>
 
       </div>,
