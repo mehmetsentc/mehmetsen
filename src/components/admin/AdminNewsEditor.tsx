@@ -10,7 +10,14 @@ import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/E
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
 import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
-import { getAdminCategoryGroups } from '@/constants/config'
+import {
+  getAdminCategoryGroups,
+  getSubcategories,
+  YEREL_HABER_CATEGORY_ID,
+  isYerelCategoryTree,
+  resolveYerelCategoryParts,
+  composeYerelCategoryId,
+} from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import { WORLD_COUNTRIES, findCountryBySlug, resolveCountrySlug } from '@/constants/countries'
@@ -189,6 +196,14 @@ export function AdminNewsEditor({
     )
   })
   const isWorldCategory = categoryId === 'dunya'
+  const yerelCategoryParts = useMemo(() => resolveYerelCategoryParts(categoryId), [categoryId])
+  const yerelSubcategories = useMemo(
+    () => getSubcategories(YEREL_HABER_CATEGORY_ID),
+    []
+  )
+  const mainCategoryValue = isYerelCategoryTree(categoryId)
+    ? YEREL_HABER_CATEGORY_ID
+    : categoryId
   const availableDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
   const [thumbnail, setThumbnail] = useState(post?.coverImageUrl ?? '')
   const [imageCaption, setImageCaption] = useState(sanitizeCaptionValue(post?.imageCaption) || '')
@@ -954,10 +969,16 @@ export function AdminNewsEditor({
       <div>
         <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Kategori</label>
         <select
-          value={categoryId}
+          value={mainCategoryValue}
           onChange={(e) => {
             const next = e.target.value
-            setCategoryId(next)
+            if (next === YEREL_HABER_CATEGORY_ID) {
+              if (!isYerelCategoryTree(categoryId)) {
+                setCategoryId(YEREL_HABER_CATEGORY_ID)
+              }
+            } else {
+              setCategoryId(next)
+            }
             if (next === 'dunya') {
               setCitySlug('')
               setDistrictSlug('')
@@ -993,6 +1014,27 @@ export function AdminNewsEditor({
         </select>
       </div>
     </div>
+
+    {isYerelCategoryTree(categoryId) && (
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+          Alt kategori
+          <span className="ml-1 font-normal">(Yerel Haber)</span>
+        </label>
+        <select
+          value={yerelCategoryParts.subcategoryId ?? ''}
+          onChange={(e) => setCategoryId(composeYerelCategoryId(e.target.value || null))}
+          className={fieldInputCls}
+        >
+          <option value="">— Genel yerel —</option>
+          {yerelSubcategories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    )}
 
     <div className="space-y-2">
       {isWorldCategory ? (

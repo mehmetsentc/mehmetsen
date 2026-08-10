@@ -38,6 +38,10 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'trend',       name: 'Trending',    slug: 'trend',       iconName: 'flame',        color: '#FF6B35' },
   { id: 'gundem',      name: 'Gündem',      slug: 'gundem',      iconName: 'newspaper',    color: '#EF4444' },
   { id: 'yerel-haber', name: 'Yerel Haber', slug: 'yerel-haber', iconName: 'map-pin',      color: '#059669' },
+  { id: 'yerel-gundem',   name: 'Yerel Gündem',   slug: 'yerel-gundem',   iconName: 'newspaper',    color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-spor',     name: 'Yerel Spor',     slug: 'yerel-spor',     iconName: 'trophy',       color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-etkinlik', name: 'Yerel Etkinlik', slug: 'yerel-etkinlik', iconName: 'calendar',     color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-sinema',   name: 'Yerel Sinema',   slug: 'yerel-sinema',   iconName: 'film',         color: '#059669', parentId: 'yerel-haber' },
   { id: 'siyaset',     name: 'Siyaset',     slug: 'siyaset',     iconName: 'landmark',     color: '#7C3AED' },
   { id: 'dunya',       name: 'Dünya',       slug: 'dunya',       iconName: 'globe',        color: '#6B7280' },
   { id: 'kibris-haberleri', name: 'Kıbrıs Haberleri', slug: 'kibris-haberleri', iconName: 'flag', color: '#0E7490' },
@@ -117,7 +121,10 @@ export function getAdminCategoryGroups(): Array<{ label: string; categories: Cat
     categories: ids.flatMap((id) => {
       const parent = DEFAULT_CATEGORIES.find((c) => c.id === id)
       if (!parent) return []
-      const items = [parent, ...getSubcategories(id)]
+      const items =
+        id === YEREL_HABER_CATEGORY_ID
+          ? [parent]
+          : [parent, ...getSubcategories(id)]
       return items.filter((cat) => {
         if (used.has(cat.id)) return false
         used.add(cat.id)
@@ -167,6 +174,36 @@ export function getYerelAdminCategoryGroups(): Array<{ label: string; categories
     label: 'Yerel',
     categories: [parent, ...getSubcategories(YEREL_HABER_CATEGORY_ID)],
   }]
+}
+
+/** True when categoryId is Yerel Haber or one of its subcategories. */
+export function isYerelCategoryTree(categoryId: string): boolean {
+  const cat = categoryId?.trim().toLowerCase() ?? ''
+  if (YEREL_CATEGORY_IDS.has(cat)) return true
+  const parent = getParentCategory(cat)
+  return parent != null && YEREL_CATEGORY_IDS.has(parent.id)
+}
+
+/** Split stored categoryId into Yerel parent + optional subcategory. */
+export function resolveYerelCategoryParts(categoryId: string): {
+  parentId: string
+  subcategoryId: string | null
+} {
+  const cat = categoryId?.trim() ?? ''
+  if (!cat || YEREL_CATEGORY_IDS.has(cat)) {
+    return { parentId: YEREL_HABER_CATEGORY_ID, subcategoryId: null }
+  }
+  const parent = getParentCategory(cat)
+  if (parent && YEREL_CATEGORY_IDS.has(parent.id)) {
+    return { parentId: YEREL_HABER_CATEGORY_ID, subcategoryId: cat }
+  }
+  return { parentId: cat, subcategoryId: null }
+}
+
+/** Compose Firestore categoryId from Yerel subcategory selection (empty → yerel-haber). */
+export function composeYerelCategoryId(subcategoryId: string | null | undefined): string {
+  const sub = subcategoryId?.trim()
+  return sub || YEREL_HABER_CATEGORY_ID
 }
 
 /**
