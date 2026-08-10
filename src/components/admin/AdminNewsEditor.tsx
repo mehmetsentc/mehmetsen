@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
@@ -10,6 +10,8 @@ import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/E
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
 import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
+import { articleBlocksToPlainText } from '@/lib/articleBlocks'
+import { deriveSeoKeywords, extractSeoKeywordsFromAiPayload } from '@/lib/seoKeywords'
 import {
   getAdminCategoryGroups,
   getSubcategories,
@@ -224,6 +226,7 @@ export function AdminNewsEditor({
   )
   const [seoKeywordInput, setSeoKeywordInput] = useState('')
   const [aiKwLoading, setAiKwLoading] = useState(false)
+  const autoKwAttemptedRef = useRef(false)
   const seoTitleUsesFallback = mode === 'edit' && !storedSeoTitle
   const seoDescriptionUsesFallback = mode === 'edit' && !storedSeoDescription
   const [isBreaking, setIsBreaking] = useState<boolean>(post?.isBreaking ?? false)
@@ -299,31 +302,73 @@ export function AdminNewsEditor({
     setTagInput('')
   }
 
-  const generateAiKeywords = async () => {
+  const generateAiKeywords = async (opts?: { silent?: boolean }) => {
+    if (aiKwLoading) return
     setAiKwLoading(true)
     try {
       const token = await auth.currentUser?.getIdToken() ?? ''
-      const input = [title, content || summary].filter(Boolean).join('\n\n').slice(0, 2000)
+      if (!token) {
+        toast.error('Oturum süresi doldu — sayfayı yenileyin')
+        return
+      }
+      const bodyText =
+        content.trim() ||
+        articleBlocksToPlainText(bodyBlocks).trim() ||
+        summary.trim() ||
+        spot.trim()
+      const input = [title, bodyText].filter(Boolean).join('\n\n').slice(0, 2000)
+      if (!input.trim()) {
+        if (!opts?.silent) toast.error('Anahtar kelime üretmek için başlık veya içerik gerekli')
+        return
+      }
       const res = await fetch('/api/admin/ai-assist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ mode: 'keywords', input }),
+        signal: AbortSignal.timeout(90_000),
       })
-      const data = await res.json() as { keywords?: string[] }
-      if (Array.isArray(data.keywords) && data.keywords.length > 0) {
-        setSeoKeywords((prev) => [
-          ...new Set([...prev, ...data.keywords!.map((k: string) => k.trim().toLowerCase()).filter(Boolean)]),
-        ])
-        toast.success(`${data.keywords.length} anahtar kelime eklendi`)
-      } else {
-        toast.error('AI anahtar kelime üretemedi')
+      const data = await res.json() as {
+        keywords?: string[]
+        seoKeywords?: string[]
+        error?: string
       }
-    } catch {
-      toast.error('AI isteği başarısız')
+      if (!res.ok) {
+        throw new Error(data.error || `AI isteği başarısız (${res.status})`)
+      }
+      let nextKeywords = extractSeoKeywordsFromAiPayload(data)
+      if (nextKeywords.length === 0) {
+        nextKeywords = deriveSeoKeywords(title, tags, spot || summary)
+      }
+      if (nextKeywords.length === 0) {
+        if (!opts?.silent) toast.error('AI anahtar kelime üretemedi')
+        return
+      }
+      setSeoKeywords((prev) => [...new Set([...prev, ...nextKeywords])])
+      if (!opts?.silent) toast.success(`${nextKeywords.length} anahtar kelime eklendi`)
+    } catch (error) {
+      const fallback = deriveSeoKeywords(title, tags, spot || summary)
+      if (fallback.length > 0) {
+        setSeoKeywords((prev) => [...new Set([...prev, ...fallback])])
+        if (!opts?.silent) toast.success(`${fallback.length} anahtar kelime (yedek) eklendi`)
+      } else if (!opts?.silent) {
+        toast.error(error instanceof Error ? error.message : 'AI isteği başarısız')
+      }
     } finally {
       setAiKwLoading(false)
     }
   }
+
+  useEffect(() => {
+    autoKwAttemptedRef.current = false
+  }, [post?.id])
+
+  useEffect(() => {
+    if (autoKwAttemptedRef.current) return
+    if (seoKeywords.length > 0) return
+    if (!title.trim()) return
+    autoKwAttemptedRef.current = true
+    void generateAiKeywords({ silent: true })
+  }, [post?.id, seoKeywords.length, title])
 
   const buildPayload = () => {
     const country = countrySlug ? findCountryBySlug(countrySlug) : undefined
@@ -486,8 +531,7 @@ export function AdminNewsEditor({
       setSpot(nextSpot)
       setSummary(nextSummary)
       setContent(nextContent)
-      setBodyBlocks(nextBlocks)
-      setSeoTitle(clampSeoTitle(data.seoTitle?.trim() || nextTitle))
+      setBodyBlocks(nextBlocks)      setSeoTitle(clampSeoTitle(data.seoTitle?.trim() || nextTitle))
       setSeoDescription(clampSeoDescription(data.seoDescription?.trim() || nextSummary))
       if (data.categoryId?.trim()) setCategoryId(data.categoryId.trim())
       if (data.suggestedCountrySlug?.trim()) {
@@ -515,7 +559,13 @@ export function AdminNewsEditor({
         void label
       }
       if (Array.isArray(data.tags)) setTags(data.tags)
-      if (Array.isArray(data.seoKeywords)) setSeoKeywords(data.seoKeywords)
+      {
+        const aiKeywords =
+          Array.isArray(data.seoKeywords) && data.seoKeywords.length > 0
+            ? data.seoKeywords
+            : deriveSeoKeywords(nextTitle, Array.isArray(data.tags) ? data.tags : tags, nextSpot)
+        if (aiKeywords.length > 0) setSeoKeywords(aiKeywords)
+      }
       setThumbnail(nextThumbnail)
       setImageCaption(sanitizeCaptionValue(data.imageCaption) || imageCaption || nextTitle)
       setAdditionalImages(nextAdditional)
@@ -1367,7 +1417,7 @@ export function AdminNewsEditor({
           <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">🔑 SEO Anahtar Kelimeler</label>
           <button
             type="button"
-            onClick={generateAiKeywords}
+            onClick={() => void generateAiKeywords()}
             disabled={aiKwLoading}
             className="flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
           >

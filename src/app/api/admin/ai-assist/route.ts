@@ -14,6 +14,7 @@ import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 import type { AiPromptType } from '@/types/aiEditor'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { resolveCountryFromText } from '@/constants/countries'
+import { deriveSeoKeywords, extractSeoKeywordsFromAiPayload } from '@/lib/seoKeywords'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -38,13 +39,6 @@ function stripAiHtmlLeak(text: string): string {
   return stripHtmlToNewsPlainText(text)
 }
 
-const TR_STOP_WORDS = new Set([
-  've', 'ile', 'de', 'da', 'den', 'dan', 'bir', 'bu', 'için', 'olan',
-  'olarak', 'ise', 'gibi', 'çok', 'daha', 'en', 'ne', 'her', 'ya',
-  'mi', 'mı', 'mu', 'mü', 'ama', 'ancak', 'hem', 'kadar', 'sonra',
-  'önce', 'üzere', 'dolayı', 'rağmen', 'karşı', 'arasında',
-])
-
 /** Truncate text at the last word boundary within maxLen. */
 function clampAtWordBoundary(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text
@@ -64,16 +58,6 @@ function clampAtSentenceBoundary(text: string, maxLen: number): string {
   return sp > maxLen * 0.6 ? cut.slice(0, sp) : cut
 }
 
-/** Derive SEO keywords from title, tags and spot when AI fails to produce them. */
-function deriveSeoKeywords(title: string, tags: string[], spot: string): string[] {
-  const words = `${title} ${spot}`
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
-    .split(/\s+/)
-    .filter(w => w.length >= 3 && !TR_STOP_WORDS.has(w))
-  const unique = [...new Set([...tags.map(t => t.toLowerCase()), ...words])]
-  return unique.slice(0, 10)
-}
 const CATEGORY_LIST = DEFAULT_CATEGORIES.map((category) => `${category.id}: ${category.name}`).join(', ')
 
 /** CMS tek-tuş: editör tarzı + net manşet, JSON şeması korunur */
@@ -615,6 +599,15 @@ export async function POST(request: Request) {
         articleFormat,
         promptVersions: personaMeta?.promptVersions ?? null,
       })
+    }
+
+    if (mode === 'keywords') {
+      const titleLine = input.split('\n').find((line) => line.trim())?.trim() ?? ''
+      let keywords = extractSeoKeywordsFromAiPayload(parsed)
+      if (keywords.length === 0) {
+        keywords = deriveSeoKeywords(titleLine, [], input.slice(0, 500))
+      }
+      return NextResponse.json({ success: true, mode, keywords })
     }
 
     return NextResponse.json({ success: true, mode, ...parsed })
