@@ -1,22 +1,37 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { Search } from 'lucide-react'
+import { Search, Menu, User } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
+import { useAuth } from '@/hooks/useAuth'
+import { ROUTES } from '@/constants/routes'
 import { getCityLogoPath } from '@/lib/cityBrand'
 import { cn } from '@/lib/utils'
 
 interface CityNavbarProps {
   cityName: string
   provinceSlug: string
+  onMenuClick?: () => void
 }
 
-export function CityNavbar({ cityName, provinceSlug }: CityNavbarProps) {
+export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarProps) {
   const router = useRouter()
+  const { user, loading } = useAuth()
+  const [hydrated, setHydrated] = useState(false)
   const logoSrc = getCityLogoPath(provinceSlug)
+
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  const profileHref =
+    hydrated && !loading && user
+      ? ROUTES.PROFILE(user.username || user.uid)
+      : ROUTES.LOGIN
 
   return (
     <header
@@ -28,6 +43,15 @@ export function CityNavbar({ cityName, provinceSlug }: CityNavbarProps) {
       style={{ height: 'calc(72px + env(safe-area-inset-top, 0px))' }}
     >
       <div className="newspaper-layout-inner flex h-[72px] items-center gap-1">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+          aria-label="Menü"
+        >
+          <Menu className="h-6 w-6" strokeWidth={2} />
+        </button>
+
         <Link href="/" className="flex min-w-0 flex-1 items-center gap-2" aria-label={`${cityName} NaHaber`}>
           {logoSrc ? (
             <Image
@@ -56,6 +80,13 @@ export function CityNavbar({ cityName, provinceSlug }: CityNavbarProps) {
             <Search className="h-[22px] w-[22px]" strokeWidth={2} />
           </button>
           <NotificationBell variant="onBrand" />
+          <Link
+            href={profileHref}
+            className="flex h-11 w-11 items-center justify-center text-white"
+            aria-label="Profil"
+          >
+            <User className="h-[22px] w-[22px]" strokeWidth={2} />
+          </Link>
         </div>
       </div>
     </header>

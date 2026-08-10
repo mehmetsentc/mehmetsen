@@ -282,6 +282,15 @@ export const SIDEBAR_TOOLS: SidebarNavItem[] = [
 /** Keşfet önizleme — tam listeye geçildi; 0 = hepsi açık */
 export const SIDEBAR_EXPLORE_PREVIEW = 0
 
+/** Category icon/accent lookup for city sidebar and other scoped nav surfaces. */
+export function getSidebarCategoryIcon(categoryId: string): LucideIcon {
+  return ICON_BY_ID[categoryId] ?? Newspaper
+}
+
+export function getSidebarCategoryAccent(categoryId: string): SidebarAccent {
+  return ACCENT_BY_ID[categoryId] ?? 'muted'
+}
+
 /** Düz liste: ana + çocuklar (render için). */
 export function flattenSidebarItems(items: SidebarNavItem[]): SidebarNavItem[] {
   const out: SidebarNavItem[] = []

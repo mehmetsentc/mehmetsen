@@ -9,7 +9,7 @@ import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
-import { getCityDistrictFeedInitialData } from '@/services/cityNewsService.server'
+import { getCityDistrictFeedInitialData, getCityCategories } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,12 +48,14 @@ export default async function IlcePage({ params }: PageProps) {
 
   const cityName = getCityCategoryName(citySlug)
   const homeFeedData = await getCityDistrictFeedInitialData(citySlug, slug)
+  const categories = await getCityCategories(citySlug)
 
   return (
     <CityLayoutClient
       tenantSlug={citySlug}
       displayName={cityName}
       provinceSlug={citySlug}
+      categories={categories}
     >
       <CityFeedPageClient
         homeFeedData={homeFeedData}

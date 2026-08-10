@@ -4,6 +4,7 @@ import { getActiveTenant } from '@/lib/tenantContext'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCityCategoryName } from '@/constants/cities'
 import { getCityIconMetadata } from '@/lib/cityBrand'
+import { getCityCategories } from '@/services/cityNewsService.server'
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getActiveTenant()
@@ -32,12 +33,14 @@ export default async function CityLayout({
   }
 
   const displayName = getCityCategoryName(tenant.provinceSlug)
+  const categories = await getCityCategories(tenant.provinceSlug)
 
   return (
     <CityLayoutClient
       tenantSlug={tenant.slug}
       displayName={displayName}
       provinceSlug={tenant.provinceSlug}
+      categories={categories}
     >
       {children}
     </CityLayoutClient>

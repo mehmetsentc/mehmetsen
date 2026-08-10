@@ -30,7 +30,7 @@ export function CategoryRail({ categoryId, title, items }: CategoryRailProps) {
   const categoryHref = ROUTES.CATEGORY(categoryId)
 
   return (
-    <section className="home-section" aria-label={heading}>
+    <section id={`category-rail-${categoryId}`} className="home-section scroll-mt-24" aria-label={heading}>
       <div className="home-rail-title justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <span className="home-rail-accent shrink-0" aria-hidden />
