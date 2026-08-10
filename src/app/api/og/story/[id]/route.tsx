@@ -35,9 +35,111 @@ import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
-const TITLE_MAX = 90
+/** Story manşet — uzun başlıklar özet alanına taşmasın diye daha sıkı */
+const TITLE_MAX = 72
 /** Kısa özet — 2–3 satır, cümle/kelime ortasından kesilmez */
 const SUMMARY_MAX = 160
+
+const HEADLINE_MAX_LINES = 3
+const HEADLINE_MIN_SIZE = 56
+const HEADLINE_GAP_BELOW = 22
+
+/** Inter 800 yaklaşık ortalama glif genişliği (Satori word-wrap simülasyonu) */
+function avgGlyphWidth(fontSize: number): number {
+  return fontSize * 0.55
+}
+
+function estimateWrapLines(text: string, fontSize: number, maxWidth: number): number {
+  const plain = text.replace(/\s+/g, ' ').trim()
+  if (!plain) return 0
+  const words = plain.split(' ')
+  const charW = avgGlyphWidth(fontSize)
+  const spaceW = fontSize * 0.28
+  let lines = 1
+  let lineW = 0
+  for (const word of words) {
+    const wordW = word.length * charW
+    if (lineW === 0) {
+      lineW = wordW
+    } else if (lineW + spaceW + wordW > maxWidth) {
+      lines++
+      lineW = wordW
+    } else {
+      lineW += spaceW + wordW
+    }
+  }
+  return lines
+}
+
+function truncateToMaxLines(
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  maxLines: number,
+): string {
+  const plain = text.replace(/\s+/g, ' ').trim()
+  if (!plain) return ''
+  const words = plain.split(' ')
+  const charW = avgGlyphWidth(fontSize)
+  const spaceW = fontSize * 0.28
+  let lines = 1
+  let lineW = 0
+  let result = ''
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]
+    const wordW = word.length * charW
+    const extra = lineW === 0 ? wordW : spaceW + wordW
+    if (lineW > 0 && lineW + extra > maxWidth) {
+      lines++
+      if (lines > maxLines) {
+        const trimmed = result.trim()
+        return trimmed.length > 0 ? `${trimmed}…` : `${word.slice(0, 12)}…`
+      }
+      lineW = wordW
+    } else {
+      lineW += extra
+    }
+    result += (result ? ' ' : '') + word
+  }
+  return result
+}
+
+function resolveStoryHeadlineLayout(titlePlain: string, contentWidth: number): {
+  displayTitle: string
+  titleSize: number
+  titleLineHeight: number
+  titleWrapLines: number
+  titleBlockHeight: number
+} {
+  const len = titlePlain.length
+  let titleSize =
+    len > 62 ? 68 :
+    len > 52 ? 72 :
+    len > 42 ? 76 :
+    len > 32 ? 80 :
+    len > 22 ? 84 :
+    88
+
+  let wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
+  while (wrapLines > HEADLINE_MAX_LINES && titleSize > HEADLINE_MIN_SIZE) {
+    titleSize -= 4
+    wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
+  }
+
+  let displayTitle = titlePlain
+  if (wrapLines > HEADLINE_MAX_LINES) {
+    displayTitle = truncateToMaxLines(titlePlain, titleSize, contentWidth, HEADLINE_MAX_LINES)
+    wrapLines = HEADLINE_MAX_LINES
+  }
+
+  const titleLineHeight =
+    wrapLines >= 3 ? 1.26 :
+    wrapLines >= 2 ? 1.28 :
+    1.22
+  const titleBlockHeight = Math.ceil(titleSize * titleLineHeight * wrapLines)
+
+  return { displayTitle, titleSize, titleLineHeight, titleWrapLines: wrapLines, titleBlockHeight }
+}
 
 interface ArticleOGData {
   title: string
@@ -145,7 +247,7 @@ const W = 1080
 const H = 1920
 const TEXT_PAD_SIDE = 48
 const TEXT_PAD_BOTTOM = 52
-const PANEL_H = 840
+const PANEL_H = 880
 const LOGO_SIZE = 110
 
 const NAVY = '#0d2355'
@@ -284,8 +386,10 @@ export async function GET(
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
   const summary = resolveStorySummary(article, overrideSummary, overrideSpot)
-  const titleLines = title.split('\n').filter(Boolean)
-  const titlePlainLen = titleLines.join('').length
+  const titlePlain = title.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+  const contentWidth = W - TEXT_PAD_SIDE * 2
+  const headline = resolveStoryHeadlineLayout(titlePlain, contentWidth)
+  const { displayTitle, titleSize, titleLineHeight, titleBlockHeight } = headline
 
   const summaryLen = summary.length
   const summarySize =
@@ -293,16 +397,6 @@ export async function GET(
     summaryLen > 100 ? 36 :
     summaryLen > 70 ? 38 : 40
   const summaryLineHeight = 1.46
-
-  const titleSize =
-    titleLines.length >= 3 ? (titlePlainLen > 55 ? 70 : 74) :
-    titleLines.length === 2 ? (titlePlainLen > 52 ? 74 : titlePlainLen > 36 ? 80 : 84) :
-    titlePlainLen > 58 ? 74 :
-    titlePlainLen > 48 ? 78 :
-    titlePlainLen > 36 ? 82 :
-    titlePlainLen > 24 ? 86 :
-    90
-  const titleLineHeight = titleLines.length >= 2 ? 1.28 : 1.22
 
   try {
     const [fonts, brand] = await Promise.all([loadStoryFonts(), loadBrandAssets()])
@@ -383,27 +477,26 @@ export async function GET(
             }}>{categoryLabel}</span>
           </div>
 
-          {/* Headline — büyük punto, hikaye okunabilirliği */}
+          {/* Headline — max 3 satır, özet ile çakışmayı önler */}
           <div style={{
-            display: 'flex', flexDirection: 'column', gap: 10,
-            marginBottom: summary ? 24 : 36,
-            maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
+            display: 'flex', flexDirection: 'column',
+            marginBottom: summary ? HEADLINE_GAP_BELOW : 36,
+            minHeight: titleBlockHeight,
+            maxHeight: titleBlockHeight,
             overflow: 'hidden',
           }}>
-            {titleLines.map((line, i) => (
-              <span key={i} style={{
-                color: '#ffffff', fontWeight: 800,
-                fontSize: titleSize, lineHeight: titleLineHeight,
-                letterSpacing: 0.1, display: 'flex',
-              }}>{line}</span>
-            ))}
+            <span style={{
+              color: '#ffffff', fontWeight: 800,
+              fontSize: titleSize, lineHeight: titleLineHeight,
+              letterSpacing: 0.1, display: 'flex',
+            }}>{displayTitle}</span>
           </div>
 
           {/* Ayraç + kısa özet */}
           {summary ? (
             <div style={{
               display: 'flex', flexDirection: 'column', gap: 18,
-              marginBottom: 28, flex: 1, overflow: 'hidden',
+              marginBottom: 28, flexShrink: 0, overflow: 'hidden',
             }}>
               <div style={{
                 display: 'flex', flexDirection: 'row', alignItems: 'center',
