@@ -27,7 +27,9 @@ import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
 import {
   getAdminCategoryGroups,
   getYerelAdminCategoryGroups,
+  getYerelSubcategoryShortLabel,
   isYerelNewsItem,
+  YEREL_HABER_CATEGORY_ID,
 } from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
 
@@ -321,7 +323,11 @@ function InlineCategoryChanger({
                       'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
                   )}
                 >
-                  {cat.parentId ? `↳ ${cat.name}` : cat.name}
+                  {cat.parentId
+                    ? `↳ ${getYerelSubcategoryShortLabel(cat)}`
+                    : cat.id === YEREL_HABER_CATEGORY_ID
+                      ? 'Yerel Haber (genel)'
+                      : cat.name}
                 </button>
               ))}
             </div>

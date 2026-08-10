@@ -67,6 +67,7 @@ const SEED_CATEGORIES = [
   { id: 'trend', name: 'Trending', slug: 'trend', parentId: null, iconName: 'flame', color: '#FF6B35', isStandalone: false },
   { id: 'gundem', name: 'Gündem', slug: 'gundem', parentId: null, iconName: 'newspaper', color: '#EF4444', isStandalone: false },
   { id: 'yerel-haber', name: 'Yerel Haber', slug: 'yerel-haber', parentId: null, iconName: 'map-pin', color: '#059669', isStandalone: false },
+  { id: 'yerel-asayis', name: 'Yerel Asayiş', slug: 'yerel-asayis', parentId: 'yerel-haber', iconName: 'shield-alert', color: '#059669', isStandalone: false },
   { id: 'yerel-gundem', name: 'Yerel Gündem', slug: 'yerel-gundem', parentId: 'yerel-haber', iconName: 'newspaper', color: '#059669', isStandalone: false },
   { id: 'yerel-spor', name: 'Yerel Spor', slug: 'yerel-spor', parentId: 'yerel-haber', iconName: 'trophy', color: '#059669', isStandalone: false },
   { id: 'yerel-etkinlik', name: 'Yerel Etkinlik', slug: 'yerel-etkinlik', parentId: 'yerel-haber', iconName: 'calendar', color: '#059669', isStandalone: false },

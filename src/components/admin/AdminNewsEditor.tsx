@@ -14,7 +14,8 @@ import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { deriveSeoKeywords, extractSeoKeywordsFromAiPayload } from '@/lib/seoKeywords'
 import {
   getAdminCategoryGroups,
-  getSubcategories,
+  getYerelSubcategories,
+  getYerelSubcategoryShortLabel,
   YEREL_HABER_CATEGORY_ID,
   isYerelCategoryTree,
   resolveYerelCategoryParts,
@@ -199,10 +200,7 @@ export function AdminNewsEditor({
   })
   const isWorldCategory = categoryId === 'dunya'
   const yerelCategoryParts = useMemo(() => resolveYerelCategoryParts(categoryId), [categoryId])
-  const yerelSubcategories = useMemo(
-    () => getSubcategories(YEREL_HABER_CATEGORY_ID),
-    []
-  )
+  const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
   const mainCategoryValue = isYerelCategoryTree(categoryId)
     ? YEREL_HABER_CATEGORY_ID
     : categoryId
@@ -1079,7 +1077,7 @@ export function AdminNewsEditor({
           <option value="">— Genel yerel —</option>
           {yerelSubcategories.map((cat) => (
             <option key={cat.id} value={cat.id}>
-              {cat.name}
+              {getYerelSubcategoryShortLabel(cat)}
             </option>
           ))}
         </select>

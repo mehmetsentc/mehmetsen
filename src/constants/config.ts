@@ -38,6 +38,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'trend',       name: 'Trending',    slug: 'trend',       iconName: 'flame',        color: '#FF6B35' },
   { id: 'gundem',      name: 'Gündem',      slug: 'gundem',      iconName: 'newspaper',    color: '#EF4444' },
   { id: 'yerel-haber', name: 'Yerel Haber', slug: 'yerel-haber', iconName: 'map-pin',      color: '#059669' },
+  { id: 'yerel-asayis',   name: 'Yerel Asayiş',   slug: 'yerel-asayis',   iconName: 'shield-alert', color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-gundem',   name: 'Yerel Gündem',   slug: 'yerel-gundem',   iconName: 'newspaper',    color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-spor',     name: 'Yerel Spor',     slug: 'yerel-spor',     iconName: 'trophy',       color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-etkinlik', name: 'Yerel Etkinlik', slug: 'yerel-etkinlik', iconName: 'calendar',     color: '#059669', parentId: 'yerel-haber' },
@@ -155,7 +156,40 @@ export function getParentCategory(categoryId: string): CategoryDef | undefined {
 
 export const YEREL_HABER_CATEGORY_ID = 'yerel-haber'
 
+/** Preferred order for Yerel subcategory pickers (admin list + editor). */
+export const YEREL_SUBCATEGORY_IDS = [
+  'yerel-asayis',
+  'yerel-gundem',
+  'yerel-spor',
+  'yerel-etkinlik',
+  'yerel-sinema',
+] as const
+
 const YEREL_CATEGORY_IDS = new Set([YEREL_HABER_CATEGORY_ID, 'yerel'])
+
+/** Short label for Yerel subcategories in admin dropdowns (e.g. "Yerel Gündem" → "Gündem"). */
+export function getYerelSubcategoryShortLabel(cat: CategoryDef): string {
+  if (cat.id === YEREL_HABER_CATEGORY_ID || !cat.parentId) return cat.name
+  if (YEREL_CATEGORY_IDS.has(cat.parentId)) {
+    return cat.name.replace(/^Yerel\s+/i, '')
+  }
+  return cat.name
+}
+
+/** Yerel child categories in stable display order; falls back to getSubcategories order. */
+export function getYerelSubcategories(): CategoryDef[] {
+  const subs = getSubcategories(YEREL_HABER_CATEGORY_ID)
+  const byId = new Map(subs.map((c) => [c.id, c]))
+  const ordered = YEREL_SUBCATEGORY_IDS.flatMap((id) => {
+    const cat = byId.get(id)
+    return cat ? [cat] : []
+  })
+  const seen = new Set(ordered.map((c) => c.id))
+  for (const cat of subs) {
+    if (!seen.has(cat.id)) ordered.push(cat)
+  }
+  return ordered
+}
 
 /** True when a news item belongs to the Yerel category tree (admin inline changer scope). */
 export function isYerelNewsItem(categoryId: string, citySlug?: string | null): boolean {
@@ -172,7 +206,7 @@ export function getYerelAdminCategoryGroups(): Array<{ label: string; categories
   if (!parent) return []
   return [{
     label: 'Yerel',
-    categories: [parent, ...getSubcategories(YEREL_HABER_CATEGORY_ID)],
+    categories: [parent, ...getYerelSubcategories()],
   }]
 }
 
