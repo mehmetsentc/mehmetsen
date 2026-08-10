@@ -43,6 +43,10 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'yerel-spor',     name: 'Yerel Spor',     slug: 'yerel-spor',     iconName: 'trophy',       color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-etkinlik', name: 'Yerel Etkinlik', slug: 'yerel-etkinlik', iconName: 'calendar',     color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-sinema',   name: 'Yerel Sinema',   slug: 'yerel-sinema',   iconName: 'film',         color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-magazin',  name: 'Yerel Magazin',  slug: 'yerel-magazin',  iconName: 'star',         color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-egitim',   name: 'Yerel Eğitim',   slug: 'yerel-egitim',   iconName: 'graduation-cap', color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-finans',   name: 'Yerel Finans',   slug: 'yerel-finans',   iconName: 'chart-line',   color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-kariyer',  name: 'Yerel Kariyer',  slug: 'yerel-kariyer',  iconName: 'briefcase',    color: '#059669', parentId: 'yerel-haber' },
   { id: 'siyaset',     name: 'Siyaset',     slug: 'siyaset',     iconName: 'landmark',     color: '#7C3AED' },
   { id: 'dunya',       name: 'Dünya',       slug: 'dunya',       iconName: 'globe',        color: '#6B7280' },
   { id: 'kibris-haberleri', name: 'Kıbrıs Haberleri', slug: 'kibris-haberleri', iconName: 'flag', color: '#0E7490' },
@@ -163,7 +167,24 @@ export const YEREL_SUBCATEGORY_IDS = [
   'yerel-spor',
   'yerel-etkinlik',
   'yerel-sinema',
+  'yerel-magazin',
+  'yerel-egitim',
+  'yerel-finans',
+  'yerel-kariyer',
 ] as const
+
+/** Yerel alt kategori → ulusal kategori (Türkiye feed çift görünürlük). */
+export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
+  'yerel-asayis': 'asayis',
+  'yerel-gundem': 'gundem',
+  'yerel-spor': 'spor',
+  'yerel-etkinlik': 'etkinlikler',
+  'yerel-sinema': 'sinema',
+  'yerel-magazin': 'magazin',
+  'yerel-egitim': 'egitim',
+  'yerel-finans': 'finans-piyasa',
+  'yerel-kariyer': 'is-kariyer',
+}
 
 const YEREL_CATEGORY_IDS = new Set([YEREL_HABER_CATEGORY_ID, 'yerel'])
 
@@ -245,11 +266,26 @@ export function composeYerelCategoryId(subcategoryId: string | null | undefined)
  * Used to query Firestore for "show all sport news" (spor + futbol + basketbol + ...).
  * Includes ALL subcategories so the parent "Tümü" view shows every branch.
  */
+/** Yerel alt kategoriler whose mapped national id is in the given family set. */
+export function getYerelIdsMappedToCategoryFamily(familyIds: string[]): string[] {
+  const familySet = new Set(familyIds)
+  return Object.entries(YEREL_TO_NATIONAL_CATEGORY_MAP)
+    .filter(([, nationalId]) => familySet.has(nationalId))
+    .map(([yerelId]) => yerelId)
+}
+
+/** National category id for a yerel subcategory (for feed routing / display). */
+export function getNationalCategoryForYerelSubcategory(yerelCategoryId: string): string | null {
+  return YEREL_TO_NATIONAL_CATEGORY_MAP[yerelCategoryId] ?? null
+}
+
 export function getCategoryFamily(parentId: string): string[] {
-  return [
+  const base = [
     parentId,
     ...getSubcategories(parentId).map((c) => c.id),
   ]
+  const yerelIds = getYerelIdsMappedToCategoryFamily(base)
+  return [...new Set([...base, ...yerelIds])]
 }
 
 /**
@@ -258,8 +294,9 @@ export function getCategoryFamily(parentId: string): string[] {
  * Firestore `in` limiti: en fazla 10 id.
  */
 export function getHomeFeedCategoryFamily(parentId: string): string[] {
-  const ids = [parentId, ...getSubcategories(parentId).map((c) => c.id)]
-  return [...new Set(ids)].slice(0, 10)
+  const base = [parentId, ...getSubcategories(parentId).map((c) => c.id)]
+  const yerelIds = getYerelIdsMappedToCategoryFamily(base)
+  return [...new Set([...base, ...yerelIds])].slice(0, 10)
 }
 
 /**

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, useRef, Suspense } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
@@ -26,9 +27,11 @@ import { ROUTES } from '@/constants/routes'
 import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
 import {
   getAdminCategoryGroups,
-  getYerelAdminCategoryGroups,
+  getYerelSubcategories,
   getYerelSubcategoryShortLabel,
-  isYerelNewsItem,
+  isYerelCategoryTree,
+  resolveYerelCategoryParts,
+  composeYerelCategoryId,
   YEREL_HABER_CATEGORY_ID,
 } from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -215,10 +218,82 @@ function SeoPreview({ post }: { post: AdminNewsItem }) {
 }
 
 // ── Inline category changer ────────────────────────────────────────────────
+function CategoryDropdownPortal({
+  anchorRef,
+  open,
+  onClose,
+  align = 'left',
+  children,
+}: {
+  anchorRef: React.RefObject<HTMLElement | null>
+  open: boolean
+  onClose: () => void
+  align?: 'left' | 'right'
+  children: React.ReactNode
+}) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [style, setStyle] = useState<{ top: number; left: number; width: number } | null>(null)
+
+  const updatePosition = useCallback(() => {
+    const anchor = anchorRef.current
+    if (!anchor) return
+    const rect = anchor.getBoundingClientRect()
+    const width = 208
+    const margin = 8
+    const panelMaxH = 256
+    const spaceBelow = window.innerHeight - rect.bottom - margin
+    const spaceAbove = rect.top - margin
+    const openUp = spaceBelow < 180 && spaceAbove > spaceBelow
+    const top = openUp
+      ? Math.max(margin, rect.top - Math.min(panelMaxH, spaceAbove))
+      : rect.bottom + 4
+    const left = align === 'right'
+      ? Math.min(rect.right - width, window.innerWidth - width - margin)
+      : Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin))
+    setStyle({ top, left, width })
+  }, [anchorRef, align])
+
+  useEffect(() => {
+    if (!open) return
+    updatePosition()
+    const onScroll = () => updatePosition()
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [open, updatePosition])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (panelRef.current?.contains(t)) return
+      if (anchorRef.current?.contains(t)) return
+      onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open, onClose, anchorRef])
+
+  if (!open || typeof document === 'undefined' || !style) return null
+
+  return createPortal(
+    <div
+      ref={panelRef}
+      style={{ position: 'fixed', top: style.top, left: style.left, width: style.width, zIndex: 9999 }}
+      className="max-h-64 overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl"
+    >
+      {children}
+    </div>,
+    document.body
+  )
+}
+
 function InlineCategoryChanger({
   postId,
   categoryId,
-  citySlug,
   onCategoryChange,
   disabled,
   variant = 'metadata',
@@ -233,39 +308,31 @@ function InlineCategoryChanger({
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [localCategoryId, setLocalCategoryId] = useState(categoryId)
-  const ref = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
-  const categoryGroups = useMemo(
-    () => (isYerelNewsItem(categoryId, citySlug)
-      ? getYerelAdminCategoryGroups()
-      : getAdminCategoryGroups()),
-    [categoryId, citySlug]
-  )
+  const categoryGroups = useMemo(() => getAdminCategoryGroups(), [])
+  const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
+  const yerelParts = useMemo(() => resolveYerelCategoryParts(localCategoryId), [localCategoryId])
+  const isYerel = isYerelCategoryTree(localCategoryId)
+  const mainCategoryId = isYerel ? YEREL_HABER_CATEGORY_ID : localCategoryId
 
   useEffect(() => {
     setLocalCategoryId(categoryId)
   }, [categoryId, postId])
 
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+  const label = useMemo(() => {
+    if (isYerel && yerelParts.subcategoryId) {
+      const sub = yerelSubcategories.find((c) => c.id === yerelParts.subcategoryId)
+      return sub ? `Yerel · ${getYerelSubcategoryShortLabel(sub)}` : 'Yerel Haber'
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+    return getCategoryLabel(localCategoryId) || localCategoryId || 'Kategori'
+  }, [isYerel, yerelParts.subcategoryId, yerelSubcategories, localCategoryId])
 
-  const label = getCategoryLabel(localCategoryId) || localCategoryId || 'Kategori'
-
-  const handleSelect = async (next: string) => {
-    if (!next || next === localCategoryId || saving) {
-      setOpen(false)
-      return
-    }
+  const applyCategory = async (next: string) => {
+    if (!next || next === localCategoryId || saving) return
     const prev = localCategoryId
     setLocalCategoryId(next)
     setSaving(true)
-    setOpen(false)
     try {
       await onCategoryChange(postId, next)
     } catch {
@@ -275,11 +342,29 @@ function InlineCategoryChanger({
     }
   }
 
+  const handleMainSelect = async (next: string) => {
+    setOpen(false)
+    if (next === YEREL_HABER_CATEGORY_ID) {
+      await applyCategory(composeYerelCategoryId(yerelParts.subcategoryId))
+    } else {
+      await applyCategory(next)
+    }
+  }
+
+  const handleYerelSubSelect = async (subId: string) => {
+    await applyCategory(composeYerelCategoryId(subId || null))
+  }
+
   const isAction = variant === 'action'
+  const selectCls = cn(
+    'rounded-md border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[10px] font-medium text-[rgb(var(--color-text))] focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50',
+    isAction ? 'px-2 py-1.5' : 'px-1.5 py-0.5'
+  )
 
   return (
-    <div ref={ref} className="relative inline-flex items-center">
+    <div className="inline-flex flex-wrap items-center gap-1">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => !disabled && !saving && setOpen((v) => !v)}
         disabled={disabled || saving}
@@ -302,38 +387,52 @@ function InlineCategoryChanger({
           )} />
         )}
       </button>
-      {open && (
-        <div className={cn(
-          'absolute top-full z-50 mt-1 w-52 max-h-64 overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl',
-          isAction ? 'right-0' : 'left-0'
-        )}>
-          {categoryGroups.map((group) => (
-            <div key={group.label} className="mb-2 last:mb-0">
-              <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                {group.label}
-              </p>
-              {group.categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => void handleSelect(cat.id)}
-                  className={cn(
-                    'block w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[rgb(var(--color-surface))]',
-                    cat.id === localCategoryId &&
-                      'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                  )}
-                >
-                  {cat.parentId
-                    ? `↳ ${getYerelSubcategoryShortLabel(cat)}`
-                    : cat.id === YEREL_HABER_CATEGORY_ID
-                      ? 'Yerel Haber (genel)'
-                      : cat.name}
-                </button>
-              ))}
-            </div>
+
+      {isYerel && (
+        <select
+          value={yerelParts.subcategoryId ?? ''}
+          disabled={disabled || saving}
+          onChange={(e) => void handleYerelSubSelect(e.target.value)}
+          className={selectCls}
+          title="Yerel alt kategori"
+        >
+          <option value="">Genel yerel</option>
+          {yerelSubcategories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {getYerelSubcategoryShortLabel(cat)}
+            </option>
           ))}
-        </div>
+        </select>
       )}
+
+      <CategoryDropdownPortal
+        anchorRef={buttonRef}
+        open={open}
+        onClose={() => setOpen(false)}
+        align={isAction ? 'right' : 'left'}
+      >
+        {categoryGroups.map((group) => (
+          <div key={group.label} className="mb-2 last:mb-0">
+            <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              {group.label}
+            </p>
+            {group.categories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => void handleMainSelect(cat.id)}
+                className={cn(
+                  'block w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[rgb(var(--color-surface))]',
+                  cat.id === mainCategoryId &&
+                    'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                )}
+              >
+                {cat.parentId ? `↳ ${cat.name}` : cat.name}
+              </button>
+            ))}
+          </div>
+        ))}
+      </CategoryDropdownPortal>
     </div>
   )
 }

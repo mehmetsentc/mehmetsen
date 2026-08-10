@@ -1014,8 +1014,8 @@ export function AdminNewsEditor({
       </select>
     </div>
 
-    <div className="grid grid-cols-2 gap-3">
-      <div>
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="min-w-[140px] flex-1">
         <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Kategori</label>
         <select
           value={mainCategoryValue}
@@ -1049,7 +1049,26 @@ export function AdminNewsEditor({
           ))}
         </select>
       </div>
-      <div>
+      {isYerelCategoryTree(categoryId) && (
+        <div className="min-w-[140px] flex-1">
+          <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+            Yerel alt kategori
+          </label>
+          <select
+            value={yerelCategoryParts.subcategoryId ?? ''}
+            onChange={(e) => setCategoryId(composeYerelCategoryId(e.target.value || null))}
+            className={fieldInputCls}
+          >
+            <option value="">— Genel yerel —</option>
+            {yerelSubcategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {getYerelSubcategoryShortLabel(cat)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div className="min-w-[140px] flex-1">
         <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Durum</label>
         <select
           value={status}
@@ -1063,27 +1082,6 @@ export function AdminNewsEditor({
         </select>
       </div>
     </div>
-
-    {isYerelCategoryTree(categoryId) && (
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
-          Alt kategori
-          <span className="ml-1 font-normal">(Yerel Haber)</span>
-        </label>
-        <select
-          value={yerelCategoryParts.subcategoryId ?? ''}
-          onChange={(e) => setCategoryId(composeYerelCategoryId(e.target.value || null))}
-          className={fieldInputCls}
-        >
-          <option value="">— Genel yerel —</option>
-          {yerelSubcategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {getYerelSubcategoryShortLabel(cat)}
-            </option>
-          ))}
-        </select>
-      </div>
-    )}
 
     <div className="space-y-2">
       {isWorldCategory ? (
