@@ -11,6 +11,12 @@
     "src/app/api/cron/paribu-canakkale/route.ts": {
       "memory": 1024
     },
+    "src/app/api/cron/boxoffice-weekly/route.ts": {
+      "memory": 1024
+    },
+    "src/app/api/cron/newsroom/sinema/route.ts": {
+      "memory": 1024
+    },
     "src/app/api/cron/newsroom/breaking/route.ts": {
       "memory": 1024
     },
@@ -192,6 +198,14 @@
     {
       "path": "/api/cron/paribu-canakkale",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/boxoffice-weekly",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/sinema",
+      "schedule": "45 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/archive",

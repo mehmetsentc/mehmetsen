@@ -31,6 +31,7 @@ import { CityEventFiltersPanel } from './CityEventFiltersPanel'
 import { CityEventGridCard, CityEventGridCardSkeleton } from './CityEventGridCard'
 import { CityEventListCard, CityEventListCardSkeleton } from './CityEventListCard'
 import { CityEventTopSellers } from './CityEventTopSellers'
+import { BoxOfficeWeeklyWidgetClient } from '@/components/widgets/BoxOfficeWeeklyWidgetClient'
 
 interface CityEventsClientProps {
   citySlug: string
@@ -159,6 +160,7 @@ export function CityEventsClient({
 
         {/* Main content */}
         <div className="min-w-0 flex-1">
+          <BoxOfficeWeeklyWidgetClient />
           <CityEventTopSellers events={featuredEvents} loading={showSkeletons} />
 
           {/* Toolbar: time range + sort + view toggle + count */}

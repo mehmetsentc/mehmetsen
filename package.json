@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "sync-events": "node scripts/sync-events.mjs",
     "sync-paribu-canakkale": "node scripts/sync-paribu-canakkale.mjs",
+    "sync-boxoffice-weekly": "node scripts/sync-boxoffice-weekly.mjs",
     "ingest-news": "node scripts/ingest-news.mjs",
     "ingest-news-batch": "node scripts/ingest-news-batch.mjs",
     "newsroom-ingest": "node scripts/newsroom-ingest.mjs",

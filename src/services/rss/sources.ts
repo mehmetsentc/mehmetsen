@@ -1185,6 +1185,13 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     enabled: true,
   },
   {
+    id: 'box-office-turkiye',
+    label: 'Box Office Türkiye',
+    feedUrl: 'https://boxofficeturkiye.com/feed/news.atom',
+    maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
     id: 'variety',
     label: 'Variety',
     feedUrl: 'https://variety.com/feed/',

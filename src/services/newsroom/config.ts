@@ -198,6 +198,9 @@ export const GEZI_SOURCE_IDS = [
   'cnnturk-seyahat', 'lonely-planet-tr',
 ] as const
 
+/** Sinema kaynakları — Box Office Türkiye Atom (sinema worker, forcedCategoryId: sinema). */
+export const SINEMA_SOURCE_IDS = ['box-office-turkiye'] as const
+
 export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
   'local-news': {
     id: 'local-news',
@@ -395,6 +398,14 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     schedule: '15m',
     description: 'Milliyet Magazin, Posta, Variety, Billboard, TMZ — ünlüler, eğlence, müzik, sinema.',
     cronPath: '/api/cron/newsroom/magazine',
+  },
+  'sinema-news': {
+    id: 'sinema-news',
+    name: 'Sinema Worker',
+    nameTr: 'Sinema Worker',
+    schedule: '4h',
+    description: 'Box Office Türkiye Atom — vizyon, gişe, film/dizi haberleri (AI editör, sinema kategorisi).',
+    cronPath: '/api/cron/newsroom/sinema',
   },
   recategorize: {
     id: 'recategorize',
