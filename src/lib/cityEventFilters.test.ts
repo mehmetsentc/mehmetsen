@@ -15,8 +15,10 @@ function makeEvent(overrides: Partial<NaEvent> & Pick<NaEvent, 'startsAt'>): NaE
     description: '',
     city: 'Çanakkale',
     citySlug: 'canakkale',
+    venue: 'Test Venue',
     category: 'exhibition',
     status: 'published',
+    createdAt: AUG_10_2026_NOON_TR,
     ...overrides,
   }
 }

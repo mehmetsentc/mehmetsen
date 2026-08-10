@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import type { AnyNode } from 'domhandler'
 import { slugifyCity } from '@/lib/location'
 import {
   extractJsonLd,
@@ -253,7 +254,7 @@ function buildMovieDay(
   dateParam: string,
   sessions: ParibuSession[],
   meta: ParibuMovieMeta | undefined,
-  scope: cheerio.Cheerio<cheerio.Element>
+  scope: cheerio.Cheerio<AnyNode>
 ): ParibuMovieDay {
   const genre =
     scope.find('#movieGenre').first().text().trim() ||
