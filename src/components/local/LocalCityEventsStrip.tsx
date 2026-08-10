@@ -1,37 +1,55 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
-import { CalendarDays, ChevronRight, MapPin, PartyPopper, Ticket } from 'lucide-react'
+import { CalendarDays, ChevronRight, Film, MapPin, PartyPopper, Ticket } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { db, Collections } from '@/lib/firebase/firestore'
+import { resolveEventFilterCategory } from '@/lib/cityEventFilters'
 import {
   formatEventDayBadge,
   getEventCategoryLabel,
   getEventCategoryStyle,
   getUpcomingStartsAtLowerBound,
-  isEventUpcoming,
   resolveEventImageUrl,
 } from '@/lib/eventUtils'
+import {
+  filterLocalCityStripEvents,
+  type LocalCityEventsStripFilter,
+} from '@/lib/localCityEventsStrip'
 import { cn } from '@/lib/utils'
 import type { NaEvent } from '@/types/event'
 
 const STRIP_TIMEOUT_MS = 8_000
+const FETCH_LIMIT = 40
 
 interface LocalCityEventsStripProps {
   citySlug: string
   cityName: string
+  /** When `cinema`, shows today + near-term Sinema-tagged events only. */
+  filter?: LocalCityEventsStripFilter
+  /** Use `/etkinlik` instead of national `/events?sehir=`. */
+  cityTenantMode?: boolean
 }
 
-function EventMiniCard({ event }: { event: NaEvent }) {
+function EventMiniCard({
+  event,
+  fallbackHref,
+}: {
+  event: NaEvent
+  fallbackHref: string
+}) {
   const { day, month } = formatEventDayBadge(event.startsAt)
   const [imageFailed, setImageFailed] = useState(false)
   const coverUrl = resolveEventImageUrl(event.coverImageUrl)
   const showImage = !!coverUrl && !imageFailed
+  const category = resolveEventFilterCategory(event)
+  const cardHref = event.ticketUrl?.trim() || fallbackHref
+  const isExternal = Boolean(event.ticketUrl?.trim())
 
-  return (
-    <article className="flex w-[160px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
+  const card = (
+    <article className="flex w-[160px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm transition-shadow hover:shadow-md">
       {/* Cover image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[rgb(var(--color-surface-elevated))]">
         {showImage ? (
@@ -58,14 +76,14 @@ function EventMiniCard({ event }: { event: NaEvent }) {
           </div>
         )}
 
-        {/* Category pill */}
+        {/* Category pill — uses tags/source so Paribu Sinema rows stay labelled. */}
         <span
           className={cn(
             'pill absolute right-2 top-2 text-[10px] font-semibold',
-            getEventCategoryStyle(event.category)
+            getEventCategoryStyle(category)
           )}
         >
-          {getEventCategoryLabel(event.category)}
+          {getEventCategoryLabel(category)}
         </span>
       </div>
 
@@ -84,20 +102,34 @@ function EventMiniCard({ event }: { event: NaEvent }) {
           </p>
         )}
 
-        {event.ticketUrl && (
-          <a
-            href={event.ticketUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="mt-auto inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white"
-          >
+        {event.ticketUrl ? (
+          <span className="mt-auto inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white">
             <Ticket className="h-2.5 w-2.5" />
             Bilet
-          </a>
-        )}
+          </span>
+        ) : null}
       </div>
     </article>
+  )
+
+  if (isExternal) {
+    return (
+      <a
+        href={cardHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="shrink-0 snap-start"
+        aria-label={`${event.title} — bilet al`}
+      >
+        {card}
+      </a>
+    )
+  }
+
+  return (
+    <Link href={cardHref} className="shrink-0 snap-start" aria-label={event.title}>
+      {card}
+    </Link>
   )
 }
 
@@ -114,11 +146,25 @@ function EventMiniCardSkeleton() {
   )
 }
 
-export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStripProps) {
+export function LocalCityEventsStrip({
+  citySlug,
+  cityName,
+  filter = 'all',
+  cityTenantMode = false,
+}: LocalCityEventsStripProps) {
   const [events, setEvents] = useState<NaEvent[]>([])
   const [loading, setLoading] = useState(true)
 
-  const eventsHref = `${ROUTES.EVENTS}?sehir=${encodeURIComponent(citySlug)}`
+  const eventsHref = useMemo(() => {
+    if (cityTenantMode) return ROUTES.CITY_EVENTS
+    return `${ROUTES.EVENTS}?sehir=${encodeURIComponent(citySlug)}`
+  }, [citySlug, cityTenantMode])
+
+  const isCinema = filter === 'cinema'
+  const sectionIcon = isCinema ? Film : CalendarDays
+  const SectionIcon = sectionIcon
+  const sectionTitle = isCinema ? `${cityName} Sineması` : `${cityName} Etkinlikleri`
+  const ctaLabel = isCinema ? 'Tüm sinema seansları' : 'Tüm etkinlikleri gör'
 
   useEffect(() => {
     let cancelled = false
@@ -134,7 +180,7 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
       where('citySlug', '==', citySlug),
       where('startsAt', '>=', getUpcomingStartsAtLowerBound(nowIso)),
       orderBy('startsAt', 'asc'),
-      limit(30)
+      limit(FETCH_LIMIT)
     )
 
     async function fetchStrip() {
@@ -142,10 +188,8 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
       try {
         const snap = await getDocs(q)
         if (cancelled) return
-        docs = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as NaEvent))
-          .filter((e) => e.status !== 'cancelled' && isEventUpcoming(e, nowIso))
-          .slice(0, 10)
+        docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as NaEvent))
+        docs = filterLocalCityStripEvents(docs, filter, nowIso)
       } catch {
         // Firestore failed (likely missing composite index) — try aggregate
       }
@@ -154,18 +198,17 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
 
       if (docs.length === 0) {
         try {
-          const res = await fetch(
-            `/api/events/aggregate?citySlug=${encodeURIComponent(citySlug)}`,
-            { signal: controller.signal, cache: 'no-store' }
-          )
+          const params = new URLSearchParams({ citySlug })
+          if (isCinema) params.set('category', 'cinema')
+          const res = await fetch(`/api/events/aggregate?${params.toString()}`, {
+            signal: controller.signal,
+            cache: 'no-store',
+          })
           if (cancelled) return
           if (res.ok) {
             const data = await res.json()
             const all: NaEvent[] = Array.isArray(data.events) ? data.events : []
-            docs = all
-              .filter((e) => isEventUpcoming(e, nowIso) && e.status !== 'cancelled')
-              .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-              .slice(0, 10)
+            docs = filterLocalCityStripEvents(all, filter, nowIso)
           }
         } catch {
           // aggregate also failed — show nothing
@@ -184,18 +227,18 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
       cancelled = true
       clearTimeout(timer)
     }
-  }, [citySlug])
+  }, [citySlug, filter, isCinema])
 
   if (!loading && events.length === 0) return null
 
   return (
-    <section className="mb-4 mt-1">
+    <section className="mb-4 mt-1" aria-label={sectionTitle}>
       {/* Header */}
       <div className="mb-2 flex items-center justify-between px-3">
         <div className="flex items-center gap-1.5">
-          <CalendarDays className="h-4 w-4 text-blue-600" />
+          <SectionIcon className="h-4 w-4 text-blue-600" />
           <span className="text-[13px] font-bold text-[rgb(var(--color-text))]">
-            {cityName} Etkinlikleri
+            {sectionTitle}
           </span>
         </div>
         <Link
@@ -211,18 +254,23 @@ export function LocalCityEventsStrip({ citySlug, cityName }: LocalCityEventsStri
       <div className="flex gap-3 overflow-x-auto px-3 pb-1 scrollbar-hide snap-x snap-mandatory">
         {loading
           ? [...Array(4)].map((_, i) => <EventMiniCardSkeleton key={i} />)
-          : events.map((event) => <EventMiniCard key={event.id} event={event} />)}
+          : events.map((event) => (
+              <EventMiniCard
+                key={event.id}
+                event={event}
+                fallbackHref={eventsHref}
+              />
+            ))}
       </div>
 
-      {/* Tüm etkinlikleri gör */}
       {!loading && events.length > 0 && (
         <div className="mt-3 px-3">
           <Link
             href={eventsHref}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
           >
-            <CalendarDays className="h-4 w-4" />
-            Tüm etkinlikleri gör
+            <SectionIcon className="h-4 w-4" />
+            {ctaLabel}
             <ChevronRight className="h-4 w-4" />
           </Link>
         </div>

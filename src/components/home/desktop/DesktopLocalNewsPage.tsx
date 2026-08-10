@@ -67,10 +67,17 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
         </p>
       ) : null}
 
-      {/* Şehre özel etkinlikler şeridi — event yoksa strip null döner */}
-      {city && (
-        <LocalCityEventsStrip citySlug={city.slug} cityName={city.name} />
-      )}
+      {/* Şehre özel etkinlik / sinema şeritleri — event yoksa strip null döner */}
+      {city ? (
+        <>
+          <LocalCityEventsStrip citySlug={city.slug} cityName={city.name} />
+          <LocalCityEventsStrip
+            citySlug={city.slug}
+            cityName={city.name}
+            filter="cinema"
+          />
+        </>
+      ) : null}
 
       <DesktopAdBanner slot="category-yerel-haber-top" size="large" className="mb-8" />
 

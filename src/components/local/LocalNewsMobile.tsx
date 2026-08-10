@@ -70,10 +70,17 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
         </p>
       </header>
 
-      {/* Şehre özel etkinlikler şeridi — event yoksa strip null döner */}
-      {city && (
-        <LocalCityEventsStrip citySlug={city.slug} cityName={city.name} />
-      )}
+      {/* Şehre özel etkinlik / sinema şeritleri — event yoksa strip null döner */}
+      {city ? (
+        <>
+          <LocalCityEventsStrip citySlug={city.slug} cityName={city.name} />
+          <LocalCityEventsStrip
+            citySlug={city.slug}
+            cityName={city.name}
+            filter="cinema"
+          />
+        </>
+      ) : null}
 
       {showingGeneralFallback && city && !loading ? (
         <p className="mx-3 mb-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">
