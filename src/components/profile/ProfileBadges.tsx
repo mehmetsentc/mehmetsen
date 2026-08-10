@@ -139,7 +139,7 @@ export function ProfileBadges({ user }: ProfileBadgesProps) {
         </div>
       </CardHeader>
       <CardBody>
-        <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-4 md:grid-cols-8">
+        <div className="grid grid-cols-4 gap-2.5 sm:gap-3 md:grid-cols-4 lg:grid-cols-8">
           {achievements.map((a, i) => {
             const cls = ACCENT_CLS[a.accent]
             return (

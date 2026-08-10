@@ -113,7 +113,7 @@ export function ProfileHeader({
 
   return (
     <>
-      <header className="px-4 py-5 sm:px-0 sm:py-7">
+      <header className="py-5 sm:py-7">
 
         {/* ── Üst kısım: avatar + butonlar ── */}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-10 md:gap-14">
@@ -240,7 +240,7 @@ export function ProfileHeader({
 
         {/* ── Haber butonları — sadece kendi profili ── */}
         {isOwnProfile && (
-          <div className="mt-5 flex gap-3">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={() => setShowNewsModal(true)}

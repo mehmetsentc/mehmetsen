@@ -35,7 +35,7 @@ export function ProfilePageClient({
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
+      <div className="profile-page-shell flex min-h-[50vh] flex-col items-center justify-center gap-3 py-8">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
         <p className="text-sm text-[rgb(var(--color-muted))]">Profil yükleniyor...</p>
       </div>
@@ -44,14 +44,16 @@ export function ProfilePageClient({
 
   if (error || !profile) {
     return (
-      <div className="profile-card flex min-h-[50vh] flex-col items-center justify-center gap-4 border-dashed p-8 text-center">
-        <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Kullanıcı bulunamadı</p>
-        <p className="max-w-sm text-sm text-[rgb(var(--color-muted))]">
-          @{username} geçerli bir profil değil veya henüz kayıt tamamlanmamış.
-        </p>
-        <Link href={ROUTES.FEED}>
-          <Button variant="primary">Ana sayfaya dön</Button>
-        </Link>
+      <div className="profile-page-shell py-8">
+        <div className="profile-card flex min-h-[50vh] flex-col items-center justify-center gap-4 border-dashed p-8 text-center">
+          <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Kullanıcı bulunamadı</p>
+          <p className="max-w-sm text-sm text-[rgb(var(--color-muted))]">
+            @{username} geçerli bir profil değil veya henüz kayıt tamamlanmamış.
+          </p>
+          <Link href={ROUTES.FEED}>
+            <Button variant="primary">Ana sayfaya dön</Button>
+          </Link>
+        </div>
       </div>
     )
   }
@@ -59,7 +61,7 @@ export function ProfilePageClient({
   const isOwnProfile = authUser?.uid === profile.uid
 
   return (
-    <div className="mx-auto w-full space-y-2">
+    <div className="profile-page-shell w-full space-y-2 pb-6">
       {/* Kendi profilindeyse ve profil eksikse tamamlama popup'ı göster */}
       {isOwnProfile && authUser && <ProfileCompleteModal user={authUser} />}
 
@@ -74,7 +76,7 @@ export function ProfilePageClient({
       />
 
       {/* F5: Rozetler + okuma istatistikleri */}
-      <div className="space-y-3 px-4 pt-2 sm:px-0">
+      <div className="profile-page-section">
         <ProfileBadges user={profile} />
         <ProfileReadingStats userId={profile.uid} isOwnProfile={isOwnProfile} />
       </div>

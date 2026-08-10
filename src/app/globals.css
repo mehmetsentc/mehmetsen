@@ -2827,6 +2827,47 @@
   .profile-empty-icon {
     @apply text-[rgb(var(--color-border))];
   }
+
+  /** Profile page — centered column, responsive across breakpoints */
+  .profile-page-shell {
+    width: 100%;
+    max-width: var(--layout-content-newspaper, min(1280px, 100%));
+    margin-inline: auto;
+    padding-inline: max(var(--layout-gutter), env(safe-area-inset-left, 0px))
+      max(var(--layout-gutter), env(safe-area-inset-right, 0px));
+  }
+
+  @media (min-width: 768px) {
+    .profile-page-shell {
+      padding-inline: var(--layout-gutter);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .profile-page-shell {
+      padding-inline: 0;
+    }
+  }
+
+  .profile-page-section {
+    @apply space-y-3 pt-2;
+  }
+
+  .profile-most-read-track {
+    @apply scrollbar-hide flex gap-3 overflow-x-auto pb-3;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .profile-most-read-track > a {
+    scroll-snap-align: start;
+  }
+
+  @media (min-width: 1280px) {
+    .profile-most-read-track {
+      @apply mx-0;
+    }
+  }
 }
 
 @layer utilities {

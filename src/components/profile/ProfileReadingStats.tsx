@@ -75,7 +75,7 @@ export function ProfileReadingStats({ userId, isOwnProfile }: ProfileReadingStat
         </CardTitle>
       </CardHeader>
       <CardBody>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:gap-3 md:grid-cols-4">
           {cards.map((c) => (
             <div
               key={c.label}

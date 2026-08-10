@@ -33,12 +33,12 @@ export function ProfileMostRead({
   if (topPosts.length < 2) return null
 
   return (
-    <section className="mb-4" aria-label={title}>
-      <div className="flex items-center gap-2 px-4 pb-3 sm:px-0">
-        <TrendingUp className="h-4 w-4 text-[rgb(var(--color-brand))]" />
+    <section className="mb-4 min-w-0" aria-label={title}>
+      <div className="flex items-center gap-2 pb-3">
+        <TrendingUp className="h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" />
         <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">{title}</h2>
       </div>
-      <div className="scrollbar-hide flex gap-3 overflow-x-auto px-4 pb-3 sm:px-0">
+      <div className="profile-most-read-track -mx-[max(var(--layout-gutter),env(safe-area-inset-left,0px))] px-[max(var(--layout-gutter),env(safe-area-inset-left,0px))] sm:mx-0 sm:px-0 lg:mx-0 lg:px-0">
         {topPosts.map((post) => (
           <MostReadCard key={post.id} post={post as TimelinePost} />
         ))}
@@ -60,7 +60,7 @@ function MostReadCard({ post }: { post: TimelinePost }) {
   return (
     <Link
       href={href}
-      className="group flex w-[260px] min-w-[260px] flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm transition-shadow hover:shadow-md sm:w-[280px] sm:min-w-[280px]"
+      className="group flex w-[220px] min-w-[220px] flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm transition-shadow hover:shadow-md sm:w-[260px] sm:min-w-[260px] md:w-[280px] md:min-w-[280px]"
     >
       <div className="relative aspect-[3/2] w-full overflow-hidden bg-[rgb(var(--color-border))]">
         <SafeNewsImage

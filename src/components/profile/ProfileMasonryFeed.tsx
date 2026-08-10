@@ -48,7 +48,7 @@ export function ProfileMasonryFeed({
   }
 
   return (
-    <div className="px-2 pt-4 sm:px-0">
+    <div className="min-w-0 pt-4">
       <AdaptiveMasonry slots={slots} priorityCount={2} />
     </div>
   )
