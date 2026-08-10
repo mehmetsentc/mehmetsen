@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { extractCategoryOptions, filterCityEvents } from '@/lib/cityEventFilters'
+import {
+  extractCategoryOptions,
+  filterCityEvents,
+  resolveEventFilterCategory,
+} from '@/lib/cityEventFilters'
 import type { NaEvent } from '@/types/event'
 
 const AUG_10_2026_NOON_TR = '2026-08-10T09:00:00.000Z'
@@ -8,6 +12,7 @@ function makeEvent(overrides: Partial<NaEvent> & Pick<NaEvent, 'startsAt'>): NaE
   return {
     id: 'test-event',
     title: 'Test',
+    description: '',
     city: 'Çanakkale',
     citySlug: 'canakkale',
     category: 'exhibition',
@@ -44,6 +49,34 @@ describe('extractCategoryOptions', () => {
     ]
 
     expect(extractCategoryOptions(events).map((c) => c.label)).toEqual(['Sinema'])
+  })
+
+  it('detects Sinema from tags when category field is other', () => {
+    const events = [
+      makeEvent({
+        id: 'paribu-1',
+        category: 'other',
+        tags: ['Sinema', 'Komedi'],
+        source: 'paribu-cineverse',
+        startsAt: '2026-08-10T18:00:00.000Z',
+      }),
+      makeEvent({ id: 'sergi-1', category: 'exhibition', startsAt: '2026-08-11T10:00:00.000Z' }),
+    ]
+
+    expect(extractCategoryOptions(events).map((c) => c.id)).toEqual(['exhibition', 'cinema'])
+  })
+
+  it('detects Sinema from paribu source when category is missing', () => {
+    const event = makeEvent({
+      id: 'paribu-legacy',
+      category: 'other',
+      source: 'paribu-cineverse',
+      tags: ['Aksiyon'],
+      startsAt: '2026-08-10T18:00:00.000Z',
+    })
+
+    expect(resolveEventFilterCategory(event)).toBe('cinema')
+    expect(extractCategoryOptions([event]).map((c) => c.label)).toEqual(['Sinema'])
   })
 })
 
@@ -109,5 +142,28 @@ describe('filterCityEvents dateFilter', () => {
     )
 
     expect(filtered.map((e) => e.id)).toEqual(['tomorrow'])
+  })
+
+  it('Sinema filter matches tag-only Paribu cinema events', () => {
+    const cinema = makeEvent({
+      id: 'paribu-tag',
+      category: 'other',
+      tags: ['Sinema'],
+      source: 'paribu-cineverse',
+      startsAt: '2026-08-10T18:00:00.000Z',
+    })
+    const concert = makeEvent({
+      id: 'concert',
+      category: 'concert',
+      startsAt: '2026-08-10T20:00:00.000Z',
+    })
+
+    const filtered = filterCityEvents(
+      [cinema, concert],
+      { dateFilter: 'all', category: 'cinema', venue: null, districtSlug: null },
+      AUG_10_2026_NOON_TR
+    )
+
+    expect(filtered.map((e) => e.id)).toEqual(['paribu-tag'])
   })
 })

@@ -35,6 +35,35 @@ export function getEventDistrictSlug(event: NaEvent): string | null {
   return extractDistrictSlugFromText(text)
 }
 
+const CINEMA_TAG_HINTS = new Set(['sinema', 'film', 'cinema', 'movie'])
+
+function tagIndicatesCinema(tags?: string[]): boolean {
+  if (!Array.isArray(tags)) return false
+  return tags.some((tag) => CINEMA_TAG_HINTS.has(tag.trim().toLocaleLowerCase('tr-TR')))
+}
+
+function isParibuCinemaEvent(event: NaEvent): boolean {
+  const source = (event.source ?? '').toLocaleLowerCase('tr-TR')
+  const provider = (event.provider ?? '').toLocaleLowerCase('tr-TR')
+  return (
+    source.includes('paribu') ||
+    source.includes('cineverse') ||
+    provider.includes('paribu') ||
+    provider.includes('cineverse')
+  )
+}
+
+/**
+ * Effective category for city filters — uses tags/source when the stored
+ * `category` field is stale (e.g. Paribu rows tagged "Sinema" but saved as other).
+ */
+export function resolveEventFilterCategory(event: NaEvent): EventCategory {
+  if (event.category === 'cinema') return 'cinema'
+  if (tagIndicatesCinema(event.tags)) return 'cinema'
+  if (isParibuCinemaEvent(event)) return 'cinema'
+  return event.category ?? 'other'
+}
+
 /** Match sidebar date chips by resolved `startsAt` Istanbul calendar day (strict for Bugün/Yarın). */
 export function matchesCityEventDateFilter(
   event: NaEvent,
@@ -72,7 +101,12 @@ export function filterCityEvents(
   nowIso: string = new Date().toISOString()
 ): NaEvent[] {
   return events.filter((event) => {
-    if (filters.category && event.category !== filters.category) return false
+    if (
+      filters.category &&
+      resolveEventFilterCategory(event) !== filters.category
+    ) {
+      return false
+    }
 
     if (filters.venue && event.venue !== filters.venue) return false
 
@@ -111,7 +145,7 @@ export function extractCategoryOptions(
 ): Array<{ id: EventCategory; label: string }> {
   const present = new Set<EventCategory>()
   for (const event of events) {
-    present.add(event.category ?? 'other')
+    present.add(resolveEventFilterCategory(event))
   }
   return EVENT_CATEGORIES.filter((cat) => cat.id !== 'other' && present.has(cat.id)).concat(
     present.has('other') ? [{ id: 'other' as const, label: 'Diğer' }] : []
