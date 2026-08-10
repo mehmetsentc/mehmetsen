@@ -12,11 +12,13 @@
  *   │ ─── gradient scrim ───  │
  *   │  ▌ KATEGORİ             │  lacivert panel + açık mavi accent
  *   │  MANŞET (Inter bold)    │  büyük punto (~70–90px)
+ *   │  ── ayraç ──            │  açık mavi + muted çizgi
+ *   │  kısa özet (Inter)      │  ~120–160 karakter, 2–3 satır
  *   │  ──── [NaHaber] ────    │  ince mavi çizgi + favicon ortada
  *   └─────────────────────────┘
  *
  * Preview (Firestore olmadan):
- *   /api/og/story/sample?title=...&image=...&category=gundem
+ *   /api/og/story/sample?title=...&summary=...&image=...&category=gundem&breaking=1
  */
 export const runtime = 'nodejs'
 
@@ -25,17 +27,25 @@ import path from 'path'
 import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
-import { clampAtWordBoundary, clampCompleteHeadline } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
+import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
 const TITLE_MAX = 90
+/** Kısa özet — 2–3 satır, cümle/kelime ortasından kesilmez */
+const SUMMARY_MAX = 160
 
 interface ArticleOGData {
   title: string
   socialHeadline: string
+  socialStorySummary: string
+  summary: string
+  spot: string
+  seoDescription: string
+  content: string
   categoryId: string
   isBreaking: boolean
   imageUrl: string
@@ -61,6 +71,11 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
     return {
       title: str(f.title),
       socialHeadline: str(f.socialHeadline),
+      socialStorySummary: str(f.socialStorySummary),
+      summary: str(f.summary),
+      spot: str(f.spot),
+      seoDescription: str(f.seoDescription),
+      content: str(f.content),
       categoryId,
       isBreaking: f.isBreaking?.booleanValue === true || categoryId === 'son-dakika',
       imageUrl: str(f.imageUrl),
@@ -101,11 +116,35 @@ function clampHeadline(s: string, max: number): string {
   return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
 }
 
+function extractFirstParagraph(content: string): string {
+  const plain = stripHtmlToNewsPlainText(content)
+  return plain.split(/\n+/).map((s) => s.trim()).filter(Boolean)[0] || ''
+}
+
+function resolveStorySummary(
+  article: ArticleOGData | null,
+  overrideSummary: string,
+  overrideSpot: string,
+): string {
+  const raw =
+    overrideSummary ||
+    overrideSpot ||
+    article?.socialStorySummary ||
+    article?.summary ||
+    article?.spot ||
+    article?.seoDescription ||
+    extractFirstParagraph(article?.content || '') ||
+    ''
+  const plain = stripHtmlToNewsPlainText(raw).replace(/\s+/g, ' ').trim()
+  if (!plain) return ''
+  return clampCompleteSentences(plain, SUMMARY_MAX)
+}
+
 const W = 1080
 const H = 1920
 const TEXT_PAD_SIDE = 48
 const TEXT_PAD_BOTTOM = 52
-const PANEL_H = 760
+const PANEL_H = 840
 const LOGO_SIZE = 110
 
 const NAVY = '#0d2355'
@@ -177,6 +216,8 @@ type OgFont = { name: string; data: ArrayBuffer; weight: OgFontWeight; style: 'n
 
 async function loadStoryFonts(): Promise<OgFont[]> {
   const specs: Array<{ name: string; weight: OgFontWeight }> = [
+    { name: FONT_BODY, weight: 400 },
+    { name: FONT_BODY, weight: 500 },
     { name: FONT_BODY, weight: 600 },
     { name: FONT_BODY, weight: 700 },
     { name: FONT_BODY, weight: 800 },
@@ -207,6 +248,8 @@ export async function GET(
   const { id } = await params
   const q = req.nextUrl.searchParams
   const overrideTitle = q.get('title')?.trim() || ''
+  const overrideSummary = q.get('summary')?.trim() || ''
+  const overrideSpot = q.get('spot')?.trim() || ''
   const overrideImage = q.get('image')?.trim() || ''
   const overrideCategory = q.get('category')?.trim() || ''
   const overrideBreaking = q.get('breaking') === '1' || q.get('breaking') === 'true'
@@ -239,8 +282,16 @@ export async function GET(
   )
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
+  const summary = resolveStorySummary(article, overrideSummary, overrideSpot)
   const titleLines = title.split('\n').filter(Boolean)
   const titlePlainLen = titleLines.join('').length
+
+  const summaryLen = summary.length
+  const summarySize =
+    summaryLen > 140 ? 34 :
+    summaryLen > 100 ? 36 :
+    summaryLen > 70 ? 38 : 40
+  const summaryLineHeight = 1.46
 
   const titleSize =
     titleLines.length >= 3 ? (titlePlainLen > 55 ? 70 : 74) :
@@ -334,7 +385,7 @@ export async function GET(
           {/* Headline — büyük punto, hikaye okunabilirliği */}
           <div style={{
             display: 'flex', flexDirection: 'column', gap: 10,
-            marginBottom: 36,
+            marginBottom: summary ? 24 : 36,
             maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
             overflow: 'hidden',
           }}>
@@ -346,6 +397,36 @@ export async function GET(
               }}>{line}</span>
             ))}
           </div>
+
+          {/* Ayraç + kısa özet */}
+          {summary ? (
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 18,
+              marginBottom: 28, flex: 1, overflow: 'hidden',
+            }}>
+              <div style={{
+                display: 'flex', flexDirection: 'row', alignItems: 'center',
+                width: '100%',
+              }}>
+                <div style={{
+                  width: 56, height: 2, borderRadius: 1,
+                  background: LBLUE, flexShrink: 0, display: 'flex',
+                }} />
+                <div style={{
+                  flex: 1, height: 2, borderRadius: 1,
+                  background: 'rgba(255,255,255,0.28)',
+                  display: 'flex',
+                }} />
+              </div>
+              <span style={{
+                color: '#ffffff', fontWeight: 400,
+                fontSize: summarySize, lineHeight: summaryLineHeight,
+                letterSpacing: 0.05, display: 'flex',
+                maxHeight: Math.round(summarySize * summaryLineHeight * 3.4),
+                overflow: 'hidden',
+              }}>{summary}</span>
+            </div>
+          ) : null}
 
           {/* Thin blue line + centered NaHaber favicon */}
           <div style={{
