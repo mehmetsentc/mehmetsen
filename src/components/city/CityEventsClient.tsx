@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { getDistrictsForProvince } from '@/constants/cities'
 import { useEvents } from '@/hooks/useEvents'
+import { filterEventsForQuery } from '@/services/eventService'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import {
   countActiveFilters,
@@ -60,9 +61,15 @@ export function CityEventsClient({
     timeRange,
   })
 
-  const hasSsrSeed = initialEvents.length > 0 && timeRange === 'upcoming'
-  const displayEvents =
-    hasSsrSeed && loading && events.length === 0 ? initialEvents : events
+  const rawDisplayEvents =
+    initialEvents.length > 0 && timeRange === 'upcoming' && loading && events.length === 0
+      ? initialEvents
+      : events
+
+  const displayEvents = useMemo(
+    () => filterEventsForQuery(rawDisplayEvents, { timeRange }),
+    [rawDisplayEvents, timeRange]
+  )
 
   const [filters, setFilters] = useState<CityEventFilterState>(DEFAULT_CITY_EVENT_FILTERS)
   const [sort, setSort] = useState<CityEventSort>('date')
@@ -81,7 +88,7 @@ export function CityEventsClient({
     return sortCityEvents(filtered, sort)
   }, [displayEvents, filters, sort])
 
-  const featuredEvents = useMemo(() => pickFeaturedEvents(displayEvents), [displayEvents])
+  const featuredEvents = useMemo(() => pickFeaturedEvents(filteredEvents), [filteredEvents])
   const activeFilterCount = countActiveFilters(filters)
 
   const handleResetFilters = () => setFilters(DEFAULT_CITY_EVENT_FILTERS)

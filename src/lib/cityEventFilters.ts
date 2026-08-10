@@ -1,10 +1,12 @@
-import {
-  endOfDay,
-  endOfWeek,
-  startOfDay,
-  startOfWeek,
-} from 'date-fns'
 import { extractDistrictSlugFromText } from '@/constants/cities'
+import {
+  addIstanbulCalendarDays,
+  getIstanbulDayOfWeek,
+  getIstanbulTodayStartIso,
+  isSameIstanbulCalendarDay,
+  isSameOrAfterIstanbulCalendarDay,
+  resolveEventSchedule,
+} from '@/lib/annualEventDates'
 import { isEventUpcoming } from '@/lib/eventUtils'
 import type { EventCategory, NaEvent } from '@/types/event'
 
@@ -33,32 +35,42 @@ export function getEventDistrictSlug(event: NaEvent): string | null {
   return extractDistrictSlugFromText(text)
 }
 
-function getDateRange(filter: CityEventDateFilter): { start: Date; end: Date } | null {
-  const now = new Date()
+/** Match sidebar date chips by resolved `startsAt` Istanbul calendar day (strict for Bugün/Yarın). */
+export function matchesCityEventDateFilter(
+  event: NaEvent,
+  filter: CityEventDateFilter,
+  nowIso: string = new Date().toISOString()
+): boolean {
+  if (filter === 'all') return true
+
+  const { startsAt } = resolveEventSchedule(event, nowIso)
+
   switch (filter) {
     case 'today':
-      return { start: startOfDay(now), end: endOfDay(now) }
+      return isSameIstanbulCalendarDay(startsAt, nowIso)
     case 'tomorrow': {
-      const tomorrow = new Date(now)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      return { start: startOfDay(tomorrow), end: endOfDay(tomorrow) }
+      const tomorrowStart = addIstanbulCalendarDays(getIstanbulTodayStartIso(nowIso), 1)
+      return isSameIstanbulCalendarDay(startsAt, tomorrowStart)
     }
-    case 'thisWeek':
-      return {
-        start: startOfWeek(now, { weekStartsOn: 1 }),
-        end: endOfWeek(now, { weekStartsOn: 1 }),
-      }
+    case 'thisWeek': {
+      const todayStart = getIstanbulTodayStartIso(nowIso)
+      const weekStart = addIstanbulCalendarDays(todayStart, -getIstanbulDayOfWeek(nowIso))
+      const weekEnd = addIstanbulCalendarDays(weekStart, 6)
+      return (
+        isSameOrAfterIstanbulCalendarDay(startsAt, weekStart) &&
+        isSameOrAfterIstanbulCalendarDay(weekEnd, startsAt)
+      )
+    }
     default:
-      return null
+      return true
   }
 }
 
 export function filterCityEvents(
   events: NaEvent[],
-  filters: CityEventFilterState
+  filters: CityEventFilterState,
+  nowIso: string = new Date().toISOString()
 ): NaEvent[] {
-  const range = getDateRange(filters.dateFilter)
-
   return events.filter((event) => {
     if (filters.category && event.category !== filters.category) return false
 
@@ -69,12 +81,7 @@ export function filterCityEvents(
       if (slug !== filters.districtSlug) return false
     }
 
-    if (range) {
-      const start = new Date(event.startsAt)
-      const end = new Date(event.endsAt ?? event.startsAt)
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false
-      if (end < range.start || start > range.end) return false
-    }
+    if (!matchesCityEventDateFilter(event, filters.dateFilter, nowIso)) return false
 
     return true
   })

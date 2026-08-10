@@ -60,6 +60,43 @@ export function isSameOrAfterIstanbulCalendarDay(eventIso: string, referenceIso:
   return compareIstanbulCalendarDays(eventIso, referenceIso) >= 0
 }
 
+/** True when both instants fall on the same Istanbul calendar date. */
+export function isSameIstanbulCalendarDay(aIso: string, bIso: string): boolean {
+  return compareIstanbulCalendarDays(aIso, bIso) === 0
+}
+
+/** Monday = 0 … Sunday = 6 (Istanbul local weekday). */
+export function getIstanbulDayOfWeek(iso: string): number {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: ISTANBUL_TZ,
+    weekday: 'short',
+  }).format(new Date(iso))
+  const map: Record<string, number> = {
+    Mon: 0,
+    Tue: 1,
+    Wed: 2,
+    Thu: 3,
+    Fri: 4,
+    Sat: 5,
+    Sun: 6,
+  }
+  return map[weekday] ?? 0
+}
+
+/** Shift an Istanbul calendar date by `days` (midnight Istanbul on the result day). */
+export function addIstanbulCalendarDays(iso: string, days: number): string {
+  const { year, month, day } = istanbulCalendarParts(iso)
+  const shifted = new Date(Date.UTC(year, month - 1, day + days))
+  return istanbulLocalToUtcIso(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + 1,
+    shifted.getUTCDate(),
+    0,
+    0,
+    0
+  )
+}
+
 /** UTC ISO for an Istanbul-local wall-clock (TR is UTC+3, no DST). */
 function istanbulLocalToUtcIso(
   year: number,
