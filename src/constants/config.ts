@@ -146,6 +146,29 @@ export function getParentCategory(categoryId: string): CategoryDef | undefined {
   return DEFAULT_CATEGORIES.find((c) => c.id === cat.parentId)
 }
 
+export const YEREL_HABER_CATEGORY_ID = 'yerel-haber'
+
+const YEREL_CATEGORY_IDS = new Set([YEREL_HABER_CATEGORY_ID, 'yerel'])
+
+/** True when a news item belongs to the Yerel category tree (admin inline changer scope). */
+export function isYerelNewsItem(categoryId: string, citySlug?: string | null): boolean {
+  const cat = categoryId?.trim().toLowerCase() ?? ''
+  if (YEREL_CATEGORY_IDS.has(cat)) return true
+  if (citySlug?.trim()) return true
+  const parent = getParentCategory(cat)
+  return parent != null && YEREL_CATEGORY_IDS.has(parent.id)
+}
+
+/** Admin dropdown — Yerel parent + child categories only (future subcats via parentId). */
+export function getYerelAdminCategoryGroups(): Array<{ label: string; categories: CategoryDef[] }> {
+  const parent = DEFAULT_CATEGORIES.find((c) => c.id === YEREL_HABER_CATEGORY_ID)
+  if (!parent) return []
+  return [{
+    label: 'Yerel',
+    categories: [parent, ...getSubcategories(YEREL_HABER_CATEGORY_ID)],
+  }]
+}
+
 /**
  * All category ids that belong to a parent (inclusive).
  * Used to query Firestore for "show all sport news" (spor + futbol + basketbol + ...).

@@ -24,7 +24,11 @@ import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 import { ROUTES } from '@/constants/routes'
 import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
-import { getAdminCategoryGroups } from '@/constants/config'
+import {
+  getAdminCategoryGroups,
+  getYerelAdminCategoryGroups,
+  isYerelNewsItem,
+} from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -212,12 +216,14 @@ function SeoPreview({ post }: { post: AdminNewsItem }) {
 function InlineCategoryChanger({
   postId,
   categoryId,
+  citySlug,
   onCategoryChange,
   disabled,
   variant = 'metadata',
 }: {
   postId: string
   categoryId: string
+  citySlug?: string | null
   onCategoryChange: (postId: string, categoryId: string) => Promise<void>
   disabled?: boolean
   variant?: 'metadata' | 'action'
@@ -226,6 +232,13 @@ function InlineCategoryChanger({
   const [saving, setSaving] = useState(false)
   const [localCategoryId, setLocalCategoryId] = useState(categoryId)
   const ref = useRef<HTMLDivElement>(null)
+
+  const categoryGroups = useMemo(
+    () => (isYerelNewsItem(categoryId, citySlug)
+      ? getYerelAdminCategoryGroups()
+      : getAdminCategoryGroups()),
+    [categoryId, citySlug]
+  )
 
   useEffect(() => {
     setLocalCategoryId(categoryId)
@@ -292,7 +305,7 @@ function InlineCategoryChanger({
           'absolute top-full z-50 mt-1 w-52 max-h-64 overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl',
           isAction ? 'right-0' : 'left-0'
         )}>
-          {getAdminCategoryGroups().map((group) => (
+          {categoryGroups.map((group) => (
             <div key={group.label} className="mb-2 last:mb-0">
               <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
                 {group.label}
@@ -631,6 +644,7 @@ function NewsRow({
             <InlineCategoryChanger
               postId={post.id}
               categoryId={post.categoryId ?? ''}
+              citySlug={post.citySlug}
               onCategoryChange={onCategoryChange}
               disabled={busy}
             />
@@ -743,6 +757,7 @@ function NewsRow({
             <InlineCategoryChanger
               postId={post.id}
               categoryId={post.categoryId ?? ''}
+              citySlug={post.citySlug}
               onCategoryChange={onCategoryChange}
               disabled={busy}
               variant="action"
