@@ -1,6 +1,7 @@
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { resolveEventSchedule } from '@/lib/annualEventDates'
 import {
   getUpcomingStartsAtLowerBound,
   isEventUpcoming,
@@ -17,15 +18,15 @@ function isVisible(event: NaEvent): boolean {
 }
 
 function matchesTimeRange(event: NaEvent, timeRange: EventTimeRange, nowIso: string): boolean {
-  const eventDate = event.startsAt ?? ''
-  const endDate = event.endsAt ?? eventDate
-
   if (timeRange === 'upcoming') {
     return isEventUpcoming(event, nowIso)
   }
 
+  if (isEventUpcoming(event, nowIso)) return false
+
+  const resolved = resolveEventSchedule(event, nowIso)
   const pastLower = new Date(new Date(nowIso).getTime() - PAST_EVENT_LOOKBACK_MS).toISOString()
-  return endDate < nowIso && eventDate >= pastLower
+  return resolved.startsAt >= pastLower
 }
 
 function sortEventsByTimeRange(events: NaEvent[], timeRange: EventTimeRange): NaEvent[] {

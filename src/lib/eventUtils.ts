@@ -1,6 +1,10 @@
 import { format, isSameDay } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { resolveEventSchedule } from '@/lib/annualEventDates'
+import {
+  getIstanbulTodayStartIso,
+  isSameOrAfterIstanbulCalendarDay,
+  resolveEventSchedule,
+} from '@/lib/annualEventDates'
 import type { EventCategory } from '@/types/event'
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
@@ -137,15 +141,19 @@ export function getEventActiveUntilIso(event: EventDateFields, nowIso?: string):
   return resolved.endsAt?.trim() || resolved.startsAt
 }
 
-/** True while the event has not ended (multi-day / bienal-safe). */
+/**
+ * True when the event's resolved `startsAt` calendar date is today or later (Istanbul).
+ * Ongoing multi-day events that started before today are not upcoming.
+ */
 export function isEventUpcoming(
   event: EventDateFields,
   nowIso: string = new Date().toISOString()
 ): boolean {
-  return getEventActiveUntilIso(event, nowIso) >= nowIso
+  const resolved = resolveEventSchedule(event, nowIso)
+  return isSameOrAfterIstanbulCalendarDay(resolved.startsAt, nowIso)
 }
 
-/** Firestore lookback so ongoing events with past `startsAt` still fetch. */
+/** @deprecated Upcoming queries use start-of-today (Istanbul), not a lookback window. */
 export const UPCOMING_EVENT_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000
 
 /** How far back the "Geçmiş" tab lists ended events. */
@@ -154,7 +162,7 @@ export const PAST_EVENT_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000
 export function getUpcomingStartsAtLowerBound(
   nowIso: string = new Date().toISOString()
 ): string {
-  return new Date(new Date(nowIso).getTime() - UPCOMING_EVENT_LOOKBACK_MS).toISOString()
+  return getIstanbulTodayStartIso(nowIso)
 }
 
 /** True when event is free to attend (explicit flag or no ticket URL). */

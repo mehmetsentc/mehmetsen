@@ -4,7 +4,7 @@ const ISTANBUL_TZ = 'Europe/Istanbul'
 
 type ScheduleInput = Pick<NaEvent, 'startsAt' | 'endsAt' | 'recurrence'>
 
-function istanbulParts(iso: string): {
+export function istanbulCalendarParts(iso: string): {
   year: number
   month: number
   day: number
@@ -34,6 +34,30 @@ function istanbulParts(iso: string): {
     minute: get('minute'),
     second: get('second'),
   }
+}
+
+function istanbulParts(iso: string) {
+  return istanbulCalendarParts(iso)
+}
+
+/** UTC ISO for midnight at the start of today's calendar date in Istanbul. */
+export function getIstanbulTodayStartIso(nowIso: string = new Date().toISOString()): string {
+  const { year, month, day } = istanbulCalendarParts(nowIso)
+  return istanbulLocalToUtcIso(year, month, day, 0, 0, 0)
+}
+
+/** Compare two instants by Istanbul calendar date (year, month, day). */
+export function compareIstanbulCalendarDays(aIso: string, bIso: string): number {
+  const a = istanbulCalendarParts(aIso)
+  const b = istanbulCalendarParts(bIso)
+  if (a.year !== b.year) return a.year - b.year
+  if (a.month !== b.month) return a.month - b.month
+  return a.day - b.day
+}
+
+/** True when `eventIso`'s Istanbul calendar date is on or after `referenceIso`'s. */
+export function isSameOrAfterIstanbulCalendarDay(eventIso: string, referenceIso: string): boolean {
+  return compareIstanbulCalendarDays(eventIso, referenceIso) >= 0
 }
 
 /** UTC ISO for an Istanbul-local wall-clock (TR is UTC+3, no DST). */

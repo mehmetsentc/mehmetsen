@@ -5,6 +5,7 @@ import {
   startOfWeek,
 } from 'date-fns'
 import { extractDistrictSlugFromText } from '@/constants/cities'
+import { isEventUpcoming } from '@/lib/eventUtils'
 import type { EventCategory, NaEvent } from '@/types/event'
 
 export type CityEventDateFilter = 'all' | 'today' | 'tomorrow' | 'thisWeek'
@@ -118,13 +119,18 @@ export function extractDistrictOptions(
   return districts.filter((d) => slugs.has(d.slug))
 }
 
-/** Featured / popular strip — rating-backed when available, else soonest. */
-export function pickFeaturedEvents(events: NaEvent[], limit = 8): NaEvent[] {
-  const rated = events.filter((e) => (e.ratingCount ?? 0) > 0)
+/** Featured / popular strip — upcoming-start only; rating-backed when available, else soonest. */
+export function pickFeaturedEvents(
+  events: NaEvent[],
+  limit = 8,
+  nowIso: string = new Date().toISOString()
+): NaEvent[] {
+  const upcoming = events.filter((e) => isEventUpcoming(e, nowIso))
+  const rated = upcoming.filter((e) => (e.ratingCount ?? 0) > 0)
   if (rated.length >= 3) {
     return sortCityEvents(rated, 'rating').slice(0, limit)
   }
-  return sortCityEvents(events, 'date').slice(0, limit)
+  return sortCityEvents(upcoming, 'date').slice(0, limit)
 }
 
 export function countActiveFilters(filters: CityEventFilterState): number {

@@ -14,6 +14,7 @@ import {
 import { db, Collections } from '@/lib/firebase/firestore'
 import { devLog, withTimeout } from '@/lib/asyncUtils'
 import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
+import { resolveEventSchedule } from '@/lib/annualEventDates'
 import {
   getUpcomingStartsAtLowerBound,
   isEventUpcoming,
@@ -59,15 +60,15 @@ function effectiveTimelineStatus(event: NaEvent, nowIso: string): EventTimelineS
 }
 
 function matchesTimeRange(event: NaEvent, timeRange: EventTimeRange, nowIso: string): boolean {
-  const eventDate = event.startsAt ?? ''
-  const endDate = event.endsAt ?? eventDate
-
   if (timeRange === 'upcoming') {
     return isEventUpcoming(event, nowIso)
   }
 
+  if (isEventUpcoming(event, nowIso)) return false
+
+  const resolved = resolveEventSchedule(event, nowIso)
   const pastLower = new Date(new Date(nowIso).getTime() - PAST_EVENT_LOOKBACK_MS).toISOString()
-  return endDate < nowIso && eventDate >= pastLower
+  return resolved.startsAt >= pastLower
 }
 
 /** Client-side filter for live aggregate results and Firestore fallback scans. */
