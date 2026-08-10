@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityNewsByCategory } from '@/services/cityNewsService.server'
-import { CitySporClient } from '@/components/city/CitySporClient'
+import { getCitySporFeedInitialData } from '@/services/cityNewsService.server'
+import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,13 +24,14 @@ export default async function CitySporPage() {
   if (!tenant) return null
 
   const cityName = getCityCategoryName(tenant.provinceSlug)
-  const items = await getCityNewsByCategory(tenant.provinceSlug, 'spor', 30)
+  const homeFeedData = await getCitySporFeedInitialData(tenant.provinceSlug)
+  const sectionTitle = `${cityName} Spor Haberleri`
 
   return (
-    <CitySporClient
-      citySlug={tenant.provinceSlug}
+    <CityFeedPageClient
+      homeFeedData={homeFeedData}
       cityName={cityName}
-      initialItems={items}
+      sectionTitle={sectionTitle}
     />
   )
 }

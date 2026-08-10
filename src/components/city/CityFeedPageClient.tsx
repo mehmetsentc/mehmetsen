@@ -40,6 +40,8 @@ interface CityFeedPageClientProps {
   cityName: string
   /** When set, scopes the feed to a district and shows a section label. */
   districtName?: string
+  /** Section page title (e.g. "Çanakkale Spor Haberleri"). */
+  sectionTitle?: string
 }
 
 function CityFeedScrollHeaderConfig({ homeFeedData }: { homeFeedData: HomeFeedInitialData }) {
@@ -98,7 +100,7 @@ function useDesktopFeedReady() {
   return desktopReady
 }
 
-function CityFeedPageBody({ homeFeedData, cityName, districtName }: CityFeedPageClientProps) {
+function CityFeedPageBody({ homeFeedData, cityName, districtName, sectionTitle }: CityFeedPageClientProps) {
   const desktopReady = useDesktopFeedReady()
   const categoryRailIds = Object.keys(homeFeedData.categoryRails) as HomeCategorySlug[]
 
@@ -107,14 +109,16 @@ function CityFeedPageBody({ homeFeedData, cityName, districtName }: CityFeedPage
       <CityFeedScrollHeaderConfig homeFeedData={homeFeedData} />
 
       <div className="lg:hidden">
-        {districtName ? (
+        {districtName || sectionTitle ? (
           <div className="mx-auto w-full max-w-3xl px-4 pb-2 max-md:pt-2">
             <h1 className="text-xl font-bold text-[rgb(var(--color-text))]">
-              {districtName} Haberleri
+              {sectionTitle ?? `${districtName} Haberleri`}
             </h1>
-            <p className="mt-1 text-sm text-[rgb(var(--color-text-secondary))]">
-              {cityName} · {districtName}
-            </p>
+            {districtName && !sectionTitle ? (
+              <p className="mt-1 text-sm text-[rgb(var(--color-text-secondary))]">
+                {cityName} · {districtName}
+              </p>
+            ) : null}
           </div>
         ) : null}
         <HomeFeed
@@ -132,6 +136,7 @@ function CityFeedPageBody({ homeFeedData, cityName, districtName }: CityFeedPage
               cityMode
               cityName={cityName}
               districtName={districtName}
+              sectionTitle={sectionTitle}
             />
           </DesktopNewspaperShell>
         ) : (

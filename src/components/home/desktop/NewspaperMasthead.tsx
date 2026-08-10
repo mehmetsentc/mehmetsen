@@ -9,9 +9,15 @@ interface NewspaperMastheadProps {
   lastUpdated?: string
   cityName?: string
   districtName?: string
+  sectionTitle?: string
 }
 
-export function NewspaperMasthead({ lastUpdated, cityName, districtName }: NewspaperMastheadProps) {
+export function NewspaperMasthead({
+  lastUpdated,
+  cityName,
+  districtName,
+  sectionTitle,
+}: NewspaperMastheadProps) {
   const edition = resolveNewspaperEdition()
   const updatedLabel = lastUpdated
     ? new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(
@@ -48,7 +54,11 @@ export function NewspaperMasthead({ lastUpdated, cityName, districtName }: Newsp
           />
         )}
       </Link>
-      {districtName ? (
+      {sectionTitle ? (
+        <p className="mt-2 text-center text-sm font-bold text-[rgb(var(--color-text-secondary))]">
+          {sectionTitle}
+        </p>
+      ) : districtName ? (
         <p className="mt-2 text-center text-sm font-bold text-[rgb(var(--color-text-secondary))]">
           {districtName} Haberleri
         </p>

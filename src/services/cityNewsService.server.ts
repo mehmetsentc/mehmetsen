@@ -18,6 +18,7 @@ import {
   type HomeCategorySlug,
   type HomeFeedInitialData,
 } from '@/types/newsItem'
+import { getThemedCategorySectionIds } from '@/constants/categorySections'
 import { getCategoryFamily, getHomeFeedCategoryFamily } from '@/constants/config'
 import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
 import { slimNewsItemsForFeed } from '@/lib/newsItemUtils'
@@ -514,7 +515,7 @@ function bucketCityFeatured(pool: NewsItem[], limit: number): NewsItem[] {
 
 function bucketCityCategoryRails(
   pool: NewsItem[],
-  categories: readonly HomeCategorySlug[],
+  categories: readonly string[],
   perCategory = HOME_CATEGORY_RAIL_FETCH
 ): Partial<Record<HomeCategorySlug, NewsItem[]>> {
   const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
@@ -522,9 +523,35 @@ function bucketCityCategoryRails(
     const family = new Set(getHomeFeedCategoryFamily(category))
     const limit = category === 'gundem' ? HOME_CATEGORY_RAIL_GUNDEM_FETCH : perCategory
     const items = pool.filter((item) => item.category && family.has(item.category)).slice(0, limit)
-    if (items.length > 0) rails[category] = items
+    if (items.length > 0) rails[category as HomeCategorySlug] = items
   }
   return rails
+}
+
+/** Spor alt kategorileri (futbol, basketbol, …) için ray bucket — Ana Feed ile aynı görsel dil. */
+function bucketCitySectionRails(
+  pool: NewsItem[],
+  sectionIds: readonly string[],
+  perCategory = HOME_CATEGORY_RAIL_FETCH
+): Partial<Record<HomeCategorySlug, NewsItem[]>> {
+  const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
+  for (const sectionId of sectionIds) {
+    const family = new Set(getHomeFeedCategoryFamily(sectionId))
+    const items = pool.filter((item) => item.category && family.has(item.category)).slice(0, perCategory)
+    if (items.length > 0) {
+      rails[sectionId as HomeCategorySlug] = items
+    }
+  }
+  return rails
+}
+
+function deriveSporRailSectionIds(pool: NewsItem[]): string[] {
+  const sectionIds = getThemedCategorySectionIds('spor')
+  const withContent = sectionIds.filter((id) => {
+    const family = new Set(getHomeFeedCategoryFamily(id))
+    return pool.some((item) => item.category && family.has(item.category))
+  })
+  return withContent.length > 0 ? withContent : ['spor']
 }
 
 const EMPTY_HOME_FEED: HomeFeedInitialData = {
@@ -546,13 +573,17 @@ function deriveRailCategoriesFromPool(pool: NewsItem[]): HomeCategorySlug[] {
 
 function buildCityFeedFromPool(
   pool: NewsItem[],
-  railCategoryIds: readonly HomeCategorySlug[]
+  railCategoryIds: readonly string[],
+  bucketRails: (
+    pool: NewsItem[],
+    ids: readonly string[]
+  ) => Partial<Record<HomeCategorySlug, NewsItem[]>> = bucketCityCategoryRails
 ): HomeFeedInitialData {
   if (pool.length === 0) return EMPTY_HOME_FEED
 
   const now = Date.now()
   const nonBreaking = pool.filter((item) => !isCityBreakingItem(item))
-  const categoryRails = bucketCityCategoryRails(pool, railCategoryIds)
+  const categoryRails = bucketRails(pool, railCategoryIds)
   const slimRails: HomeFeedInitialData['categoryRails'] = {}
   for (const [key, items] of Object.entries(categoryRails)) {
     slimRails[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])
@@ -617,4 +648,19 @@ export async function getCityDistrictFeedInitialData(
     citySlug.trim().toLowerCase(),
     districtSlug.trim().toLowerCase()
   )
+}
+
+const getCitySporFeedCached = unstable_cache(
+  async (citySlug: string): Promise<HomeFeedInitialData> => {
+    const pool = await getCityNewsByCategory(citySlug, 'spor', 60)
+    const railSectionIds = deriveSporRailSectionIds(pool)
+    return buildCityFeedFromPool(pool, railSectionIds, bucketCitySectionRails)
+  },
+  ['city-spor-feed-v1'],
+  { revalidate: 120, tags: ['city-news'] }
+)
+
+/** Ana Feed layout payload scoped to city spor (+ alt kategoriler). */
+export async function getCitySporFeedInitialData(citySlug: string): Promise<HomeFeedInitialData> {
+  return getCitySporFeedCached(citySlug.trim().toLowerCase())
 }

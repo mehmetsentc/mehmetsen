@@ -64,6 +64,7 @@ interface DesktopHomeFeedProps {
   cityMode?: boolean
   cityName?: string
   districtName?: string
+  sectionTitle?: string
 }
 
 export function DesktopHomeFeed({
@@ -71,6 +72,7 @@ export function DesktopHomeFeed({
   cityMode = false,
   cityName,
   districtName,
+  sectionTitle,
 }: DesktopHomeFeedProps) {
   const lazyRailIds = cityMode
     ? (Object.keys(data.categoryRails) as HomeCategorySlug[])
@@ -170,33 +172,38 @@ export function DesktopHomeFeed({
   )
   const hasHero = layout.heroLead
   const hasHeroAside = layout.heroRight.length > 0
+  const sectionHref = sectionTitle ? ROUTES.CITY_SPOR : ROUTES.CATEGORY('gundem')
+  const streamSectionTitle = sectionTitle ? 'Spor' : 'Gündem'
 
   return (
     <div className="desktop-home-feed">
       <h1 className="sr-only">
-        {cityMode && cityName
-          ? districtName
-            ? `${districtName} Haberleri — ${cityName} | NaHaber`
-            : `${cityName} Haberleri — NaHaber`
-          : 'NaHaber — Türkiye Gündem, Son Dakika ve Güncel Haberler'}
+        {sectionTitle
+          ? `${sectionTitle} — ${cityName ?? 'NaHaber'}`
+          : cityMode && cityName
+            ? districtName
+              ? `${districtName} Haberleri — ${cityName} | NaHaber`
+              : `${cityName} Haberleri — NaHaber`
+            : 'NaHaber — Türkiye Gündem, Son Dakika ve Güncel Haberler'}
       </h1>
 
       <NewspaperMasthead
         lastUpdated={layout.lastUpdated}
         cityName={cityName}
         districtName={districtName}
+        sectionTitle={sectionTitle}
       />
 
       <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
 
       {layout.featuredSlider.length > 0 ? (
         <div className="mb-8 border-b border-[rgb(var(--color-border))] pb-8">
-          <DesktopSectionHeader title="Öne Çıkan" href={ROUTES.CATEGORY('gundem')} />
+          <DesktopSectionHeader title="Öne Çıkan" href={sectionHref} />
           <DesktopFeaturedGrid items={layout.featuredSlider} />
         </div>
       ) : null}
 
-      <DesktopSectionHeader title="Haberler" href={ROUTES.CATEGORY('gundem')} />
+      <DesktopSectionHeader title="Haberler" href={sectionHref} />
 
       {hasHero ? (
         <section
@@ -245,8 +252,8 @@ export function DesktopHomeFeed({
       <QuickHeadlineStrip items={layout.quickHeadlines} />
 
       {layout.moreGrid.length > 0 ? (
-        <section className={DESKTOP_SECTION_DIVIDER} aria-label="Gündem">
-          <DesktopSectionHeader title="Gündem" href={ROUTES.CATEGORY('gundem')} />
+        <section className={DESKTOP_SECTION_DIVIDER} aria-label={streamSectionTitle}>
+          <DesktopSectionHeader title={streamSectionTitle} href={sectionHref} />
           <div className={FOUR_CARD_GRID}>
             {layout.moreGrid.map((item) => (
               <ImageStory key={item.id} item={item} aspect="video" />

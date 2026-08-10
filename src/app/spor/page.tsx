@@ -3,9 +3,9 @@ import { redirect } from 'next/navigation'
 import { getCityCategoryName } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { CitySporClient } from '@/components/city/CitySporClient'
+import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
-import { getCityNewsByCategory, getCityCategories } from '@/services/cityNewsService.server'
+import { getCitySporFeedInitialData, getCityCategories } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,8 +35,9 @@ export default async function SporPage() {
   }
 
   const cityName = getCityCategoryName(citySlug)
-  const items = await getCityNewsByCategory(citySlug, 'spor', 30)
+  const homeFeedData = await getCitySporFeedInitialData(citySlug)
   const categories = await getCityCategories(citySlug)
+  const sectionTitle = `${cityName} Spor Haberleri`
 
   return (
     <CityLayoutClient
@@ -45,7 +46,11 @@ export default async function SporPage() {
       provinceSlug={citySlug}
       categories={categories}
     >
-      <CitySporClient citySlug={citySlug} cityName={cityName} initialItems={items} />
+      <CityFeedPageClient
+        homeFeedData={homeFeedData}
+        cityName={cityName}
+        sectionTitle={sectionTitle}
+      />
     </CityLayoutClient>
   )
 }
