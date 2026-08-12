@@ -5,8 +5,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import {
   Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Activity, Timer, RefreshCw,
-  List, ChevronDown, Trash2, Zap,
+  List, ChevronDown, Trash2, Zap, Pencil,
 } from 'lucide-react'
+import { QueueItemEditor } from '@/components/admin/QueueItemEditor'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow, format } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -87,6 +88,7 @@ export default function CronMonitorPage() {
   const [purgingHours, setPurgingHours] = useState<number | null>(null)
   const [publishingItemId, setPublishingItemId] = useState<string | null>(null)
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
 
   const load = useCallback(async (withPendingDetails = false) => {
     try {
@@ -506,8 +508,25 @@ export default function CronMonitorPage() {
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
-                          title="Hemen Yayınla"
-                          disabled={publishingItemId === item.id || deletingItemId === item.id}
+                          title="Düzenle"
+                          disabled={
+                            editingItemId === item.id ||
+                            publishingItemId === item.id ||
+                            deletingItemId === item.id
+                          }
+                          onClick={() => setEditingItemId(item.id)}
+                          className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Hemen Yayınla (AI)"
+                          disabled={
+                            publishingItemId === item.id ||
+                            deletingItemId === item.id ||
+                            editingItemId === item.id
+                          }
                           onClick={() => void publishQueueItem(item.id)}
                           className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
@@ -520,7 +539,11 @@ export default function CronMonitorPage() {
                         <button
                           type="button"
                           title="Kuyruktan Sil"
-                          disabled={deletingItemId === item.id || publishingItemId === item.id}
+                          disabled={
+                            deletingItemId === item.id ||
+                            publishingItemId === item.id ||
+                            editingItemId === item.id
+                          }
                           onClick={() => void deleteQueueItem(item.id)}
                           className="flex h-6 w-6 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                         >
@@ -576,6 +599,33 @@ export default function CronMonitorPage() {
             </div>
           ))}
         </div>
+
+        {editingItemId && (
+          <QueueItemEditor
+            queueId={editingItemId}
+            onClose={() => setEditingItemId(null)}
+            onSaved={(data) => {
+              setPendingItems((prev) =>
+                prev.map((item) =>
+                  item.id === editingItemId
+                    ? {
+                        ...item,
+                        title: data.title || item.title,
+                        source: data.source || item.source,
+                        category: data.categoryId || item.category,
+                      }
+                    : item
+                )
+              )
+            }}
+            onPublished={() => {
+              setPendingItems((prev) => prev.filter((i) => i.id !== editingItemId))
+              setQueuePending((prev) => (prev != null ? prev - 1 : prev))
+              setEditingItemId(null)
+              void load(pendingOpen)
+            }}
+          />
+        )}
 
         <div className="grid gap-6 xl:grid-cols-3">
           <div className="space-y-3 xl:col-span-1">
