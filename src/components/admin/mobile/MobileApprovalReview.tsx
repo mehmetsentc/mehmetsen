@@ -294,24 +294,33 @@ export function MobileApprovalReview({ id }: { id: string }) {
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/95 px-3 pt-2 backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/95 px-2 pt-2 backdrop-blur"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="mx-auto flex max-w-lg gap-2">
+        <div className="mx-auto flex max-w-lg gap-1.5">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setRejectOpen(true)}
+            className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-red-300 text-sm font-semibold text-red-600 disabled:opacity-60"
+          >
+            <X className="h-4 w-4 shrink-0" />
+            Reddet
+          </button>
           <Link
             href={`/admin/news/${id}/edit`}
-            className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-[rgb(var(--color-border))] text-sm font-semibold text-[rgb(var(--color-text))]"
+            className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-[rgb(var(--color-border))] text-sm font-semibold text-[rgb(var(--color-text))]"
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-4 w-4 shrink-0" />
             Düzenle
           </Link>
           <button
             type="button"
             disabled={busy}
             onClick={() => void onApprove()}
-            className="flex min-h-12 flex-[1.4] items-center justify-center gap-2 rounded-xl bg-[rgb(var(--color-brand))] text-sm font-bold text-white disabled:opacity-60"
+            className="flex min-h-11 min-w-0 flex-[1.2] items-center justify-center gap-1 rounded-xl bg-[rgb(var(--color-brand))] text-sm font-bold text-white disabled:opacity-60"
           >
-            <Check className="h-4 w-4" />
+            <Check className="h-4 w-4 shrink-0" />
             Onayla
           </button>
         </div>

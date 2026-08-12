@@ -13,8 +13,8 @@ import { MobileNotificationsSheet } from '@/components/admin/mobile/MobileNotifi
 function AdminMain({ children }: { children: React.ReactNode }) {
   const { hideChrome } = useMobileAdmin()
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto">
-      <div className={hideChrome ? undefined : 'max-md:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]'}>
+    <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <div className={hideChrome ? 'min-w-0' : 'min-w-0 max-md:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]'}>
         {children}
       </div>
     </main>
@@ -25,14 +25,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <AdminGuard>
       <MobileAdminProvider>
-        <div className="admin-shell flex h-screen overflow-hidden bg-[rgb(var(--color-bg))]">
+        <div className="admin-shell flex h-screen min-w-0 overflow-hidden bg-[rgb(var(--color-bg))]">
           <div className="hidden md:block">
             <Suspense fallback={<div className="h-screen w-[248px] bg-[rgb(var(--admin-sidebar))]" />}>
               <CMSSidebar />
             </Suspense>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-hidden">
             <MobileAdminHeader />
             <AdminMain>{children}</AdminMain>
             <MobileAdminBottomNav />

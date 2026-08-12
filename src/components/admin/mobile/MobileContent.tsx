@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import {
   Check,
+  ExternalLink,
   MoreHorizontal,
   Newspaper,
+  Pencil,
   Search,
   Share2,
   Smartphone,
@@ -58,7 +60,7 @@ export function MobileContent() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [q, setQ] = useState('')
-  const [menuId, setMenuId] = useState<string | null>(null)
+  const [actionsPost, setActionsPost] = useState<AdminNewsItem | null>(null)
   const [actionId, setActionId] = useState<string | null>(null)
   const [categoryPost, setCategoryPost] = useState<AdminNewsItem | null>(null)
   const [categorySaving, setCategorySaving] = useState(false)
@@ -149,6 +151,7 @@ export function MobileContent() {
       return
     }
     setActionId(post.id)
+    setActionsPost(null)
     try {
       await adminNewsService.approve(post.id, post.adminSource)
       setPosts((items) => items.filter((p) => p.id !== post.id))
@@ -163,6 +166,7 @@ export function MobileContent() {
   async function handleReject(post: AdminNewsItem, reason?: string) {
     setActionId(post.id)
     setRejectPost(null)
+    setActionsPost(null)
     try {
       await adminNewsService.reject(post.id, post.adminSource, reason)
       setPosts((items) => items.filter((p) => p.id !== post.id))
@@ -175,7 +179,7 @@ export function MobileContent() {
   }
 
   async function handleRemove(post: AdminNewsItem) {
-    setMenuId(null)
+    setActionsPost(null)
     if (!window.confirm('Bu haberi kaldırmak istediğinize emin misiniz?')) return
     setActionId(post.id)
     try {
@@ -212,8 +216,23 @@ export function MobileContent() {
     flash(mode === 'story' ? 'Hikâye paylaşıldı' : 'Post paylaşıldı')
   }
 
+  function openShare(post: AdminNewsItem, mode: SocialShareMode) {
+    setActionsPost(null)
+    setShareTarget({ post, mode })
+  }
+
+  function openCategory(post: AdminNewsItem) {
+    setActionsPost(null)
+    setCategoryPost(post)
+  }
+
+  function openReject(post: AdminNewsItem) {
+    setActionsPost(null)
+    setRejectPost(post)
+  }
+
   return (
-    <div className="px-4 py-4">
+    <div className="min-w-0 overflow-x-hidden px-4 py-4">
       <div className="mb-3">
         <h1 className="text-xl font-bold tracking-tight text-[rgb(var(--color-text))]">İçerik</h1>
         <p className="text-sm text-[rgb(var(--color-muted))]">Haber odası arşivi</p>
@@ -226,7 +245,7 @@ export function MobileContent() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Başlık, kategori, yazar…"
-          className="h-11 w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] pl-10 pr-3 text-[15px] text-[rgb(var(--color-text))] outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/30"
+          className="h-11 w-full min-w-0 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] pl-10 pr-3 text-[15px] text-[rgb(var(--color-text))] outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/30"
           enterKeyHint="search"
         />
       </div>
@@ -261,24 +280,21 @@ export function MobileContent() {
           <p className="mt-2 text-sm font-semibold text-[rgb(var(--color-text))]">Haber bulunamadı.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+        <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
           {filtered.map((post) => {
             const badge = STATUS[post.status ?? 'draft'] ?? STATUS.draft
             const when = post.publishedAt ?? post.createdAt
             const busy = actionId === post.id
-            const canShare = newsHasShareImage(post)
             const isPending = post.status === 'pending'
-            const isPublished = post.status === 'published'
+            const editHref = isPending
+              ? `/admin/approvals/${post.id}?source=${post.adminSource === 'newsDrafts' ? 'newsDrafts' : 'news'}`
+              : `/admin/news/${post.id}/edit`
 
             return (
-              <div key={post.id} className="relative border-b border-[rgb(var(--color-border))] last:border-b-0">
+              <div key={post.id} className="border-b border-[rgb(var(--color-border))] last:border-b-0">
                 <Link
-                  href={
-                    isPending
-                      ? `/admin/approvals/${post.id}?source=${post.adminSource === 'newsDrafts' ? 'newsDrafts' : 'news'}`
-                      : `/admin/news/${post.id}/edit`
-                  }
-                  className="flex gap-3 px-3 py-3 active:bg-[rgb(var(--color-surface))]"
+                  href={editHref}
+                  className="flex min-w-0 gap-3 px-3 py-3 active:bg-[rgb(var(--color-surface))]"
                 >
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[rgb(var(--color-surface))]">
                     {post.coverImageUrl ? (
@@ -286,7 +302,7 @@ export function MobileContent() {
                       <img src={post.coverImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
                     ) : null}
                   </div>
-                  <div className="min-w-0 flex-1 pr-8">
+                  <div className="min-w-0 flex-1">
                     <span className={cn('text-[10px] font-bold uppercase tracking-wide', badge.cls)}>
                       {badge.label}
                       {post.isBreaking ? ' · SON DAKİKA' : ''}
@@ -294,7 +310,7 @@ export function MobileContent() {
                     <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug text-[rgb(var(--color-text))]">
                       {post.title}
                     </p>
-                    <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
+                    <p className="mt-1 truncate text-[11px] text-[rgb(var(--color-muted))]">
                       {getMobileCategoryLabel(post.categoryId ?? '')}
                       {when
                         ? ` · ${formatDistanceToNow(new Date(when), { locale: tr, addSuffix: true })}`
@@ -304,123 +320,36 @@ export function MobileContent() {
                   </div>
                 </Link>
 
-                <button
-                  type="button"
-                  className="absolute right-1 top-2 flex h-11 w-11 items-center justify-center rounded-xl text-[rgb(var(--color-muted))]"
-                  aria-label="İşlemler"
-                  onClick={() => setMenuId((id) => (id === post.id ? null : post.id))}
-                >
-                  <MoreHorizontal className="h-5 w-5" />
-                </button>
-
-                <div className="flex flex-wrap gap-1.5 border-t border-[rgb(var(--color-border))]/60 px-2 py-2">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setCategoryPost(post)}
-                    className="flex min-h-11 items-center gap-1 rounded-xl border border-[rgb(var(--color-border))] px-3 text-[11px] font-bold text-[rgb(var(--color-text))] disabled:opacity-50"
-                  >
-                    <Tag className="h-3.5 w-3.5" />
-                    Kategori
-                  </button>
-
+                <div className="flex min-w-0 gap-2 border-t border-[rgb(var(--color-border))]/60 px-2 py-2">
                   {isPending ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void handleApprove(post)}
-                        className="flex min-h-11 items-center gap-1 rounded-xl bg-emerald-600 px-3 text-[11px] font-bold text-white disabled:opacity-50"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        Onayla
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => setRejectPost(post)}
-                        className="flex min-h-11 items-center gap-1 rounded-xl bg-red-600 px-3 text-[11px] font-bold text-white disabled:opacity-50"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        Reddet
-                      </button>
-                    </>
-                  ) : null}
-
-                  {isPublished ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={!canShare || busy}
-                        onClick={() => setShareTarget({ post, mode: 'story' })}
-                        className={cn(
-                          'flex min-h-11 items-center gap-1 rounded-xl border px-3 text-[11px] font-bold disabled:opacity-40',
-                          post.storyPublished
-                            ? 'border-violet-300 text-violet-700'
-                            : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))]'
-                        )}
-                      >
-                        <Smartphone className="h-3.5 w-3.5" />
-                        Hikâye
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!canShare || busy}
-                        onClick={() => setShareTarget({ post, mode: 'post' })}
-                        className={cn(
-                          'flex min-h-11 items-center gap-1 rounded-xl border px-3 text-[11px] font-bold disabled:opacity-40',
-                          post.socialPublished
-                            ? 'border-sky-300 text-sky-700'
-                            : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))]'
-                        )}
-                      >
-                        <Share2 className="h-3.5 w-3.5" />
-                        Post
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-
-                {menuId === post.id ? (
-                  <div className="absolute right-3 top-12 z-10 min-w-[160px] overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-xl">
-                    <Link
-                      href={`/admin/news/${post.id}/edit`}
-                      className="flex min-h-11 items-center px-4 text-sm font-semibold text-[rgb(var(--color-text))]"
-                      onClick={() => setMenuId(null)}
-                    >
-                      Düzenle
-                    </Link>
-                    {isPublished && post.slug ? (
-                      <a
-                        href={`/haber/${post.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex min-h-11 items-center px-4 text-sm font-semibold text-[rgb(var(--color-text))]"
-                        onClick={() => setMenuId(null)}
-                      >
-                        Önizle
-                      </a>
-                    ) : null}
-                    {isPending ? (
-                      <Link
-                        href={`/admin/approvals/${post.id}?source=${post.adminSource === 'newsDrafts' ? 'newsDrafts' : 'news'}`}
-                        className="flex min-h-11 items-center px-4 text-sm font-semibold text-[rgb(var(--color-brand))]"
-                        onClick={() => setMenuId(null)}
-                      >
-                        İncele
-                      </Link>
-                    ) : null}
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => void handleRemove(post)}
-                      className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-sm font-semibold text-red-600 disabled:opacity-50"
+                      onClick={() => void handleApprove(post)}
+                      className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white disabled:opacity-50"
                     >
-                      <Trash2 className="h-4 w-4" />
-                      Sil
+                      <Check className="h-4 w-4 shrink-0" />
+                      Onayla
                     </button>
-                  </div>
-                ) : null}
+                  ) : (
+                    <Link
+                      href={`/admin/news/${post.id}/edit`}
+                      className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[rgb(var(--color-border))] px-3 text-sm font-semibold text-[rgb(var(--color-text))]"
+                    >
+                      <Pencil className="h-4 w-4 shrink-0" />
+                      Düzenle
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-label="Daha fazla işlem"
+                    onClick={() => setActionsPost(post)}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] disabled:opacity-50"
+                  >
+                    <MoreHorizontal className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             )
           })}
@@ -436,6 +365,21 @@ export function MobileContent() {
         >
           {loadingMore ? 'Yükleniyor…' : 'Daha fazla'}
         </button>
+      ) : null}
+
+      {actionsPost ? (
+        <ContentActionsSheet
+          post={actionsPost}
+          busy={actionId === actionsPost.id}
+          canShare={newsHasShareImage(actionsPost)}
+          onClose={() => setActionsPost(null)}
+          onCategory={() => openCategory(actionsPost)}
+          onApprove={() => void handleApprove(actionsPost)}
+          onReject={() => openReject(actionsPost)}
+          onShareStory={() => openShare(actionsPost, 'story')}
+          onSharePost={() => openShare(actionsPost, 'post')}
+          onRemove={() => void handleRemove(actionsPost)}
+        />
       ) : null}
 
       <MobileCategorySheet
@@ -465,7 +409,8 @@ export function MobileContent() {
         <div className="fixed inset-0 z-[70] md:hidden">
           <button type="button" className="absolute inset-0 bg-black/45" onClick={() => setRejectPost(null)} />
           <div
-            className="absolute inset-x-0 bottom-0 space-y-2 rounded-t-2xl bg-[rgb(var(--color-card))] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            className="absolute inset-x-0 bottom-0 space-y-2 rounded-t-2xl bg-[rgb(var(--color-card))] p-4"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
             role="dialog"
             aria-label="Reddetme nedeni"
           >
@@ -492,6 +437,146 @@ export function MobileContent() {
           </div>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function ContentActionsSheet({
+  post,
+  busy,
+  canShare,
+  onClose,
+  onCategory,
+  onApprove,
+  onReject,
+  onShareStory,
+  onSharePost,
+  onRemove,
+}: {
+  post: AdminNewsItem
+  busy: boolean
+  canShare: boolean
+  onClose: () => void
+  onCategory: () => void
+  onApprove: () => void
+  onReject: () => void
+  onShareStory: () => void
+  onSharePost: () => void
+  onRemove: () => void
+}) {
+  const isPending = post.status === 'pending'
+  const isPublished = post.status === 'published'
+  const reviewHref = `/admin/approvals/${post.id}?source=${post.adminSource === 'newsDrafts' ? 'newsDrafts' : 'news'}`
+
+  return (
+    <div className="fixed inset-0 z-[70] md:hidden">
+      <button type="button" className="absolute inset-0 bg-black/45" aria-label="Kapat" onClick={onClose} />
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-[rgb(var(--color-card))] p-2"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        role="dialog"
+        aria-label="Haber işlemleri"
+      >
+        <div className="flex justify-center pt-2">
+          <span className="h-1 w-10 rounded-full bg-[rgb(var(--color-border))]" />
+        </div>
+        <p className="truncate px-3 py-2 text-sm font-bold text-[rgb(var(--color-text))]">{post.title}</p>
+
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onCategory}
+          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-[rgb(var(--color-text))] disabled:opacity-50"
+        >
+          <Tag className="h-4 w-4" />
+          Kategori
+        </button>
+
+        {isPending ? (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onApprove}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-emerald-600 disabled:opacity-50"
+            >
+              <Check className="h-4 w-4" />
+              Onayla
+            </button>
+            <Link
+              href={reviewHref}
+              onClick={onClose}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[rgb(var(--color-brand))]"
+            >
+              <ExternalLink className="h-4 w-4" />
+              İncele
+            </Link>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onReject}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-red-600 disabled:opacity-50"
+            >
+              <X className="h-4 w-4" />
+              Reddet
+            </button>
+          </>
+        ) : null}
+
+        {isPublished ? (
+          <>
+            <button
+              type="button"
+              disabled={!canShare || busy}
+              onClick={onShareStory}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-[rgb(var(--color-text))] disabled:opacity-40"
+            >
+              <Smartphone className="h-4 w-4" />
+              Hikâye paylaş
+            </button>
+            <button
+              type="button"
+              disabled={!canShare || busy}
+              onClick={onSharePost}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-[rgb(var(--color-text))] disabled:opacity-40"
+            >
+              <Share2 className="h-4 w-4" />
+              Post paylaş
+            </button>
+            {post.slug ? (
+              <a
+                href={`/haber/${post.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onClose}
+                className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[rgb(var(--color-text))]"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Önizle
+              </a>
+            ) : null}
+          </>
+        ) : null}
+
+        <Link
+          href={`/admin/news/${post.id}/edit`}
+          onClick={onClose}
+          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[rgb(var(--color-text))]"
+        >
+          <Pencil className="h-4 w-4" />
+          Düzenle
+        </Link>
+
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onRemove}
+          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-red-600 disabled:opacity-50"
+        >
+          <Trash2 className="h-4 w-4" />
+          Sil
+        </button>
+      </div>
     </div>
   )
 }

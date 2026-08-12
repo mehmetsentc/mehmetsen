@@ -399,14 +399,14 @@ export default function CronMonitorPage() {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-w-0 flex-col overflow-x-hidden">
       <CMSHeader title="Cron İzleme" subtitle="Zamanlanmış görev monitörü" />
-      <div className="space-y-6 p-6">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="min-w-0 space-y-6 p-4 md:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <button
             type="button"
             onClick={() => void load()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold sm:w-auto"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             Yenile
@@ -414,7 +414,7 @@ export default function CronMonitorPage() {
           <button
             type="button"
             onClick={() => void cleanupStuck()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold sm:w-auto"
           >
             Takılıları temizle
           </button>
@@ -422,7 +422,7 @@ export default function CronMonitorPage() {
             type="button"
             disabled={fastProcessing || triggering != null}
             onClick={() => void fastProcessQueue()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
           >
             {fastProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />}
             Kuyruğu hızlı işle
@@ -431,7 +431,7 @@ export default function CronMonitorPage() {
             type="button"
             disabled={flushing || triggering != null}
             onClick={() => void flushAllPending()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60 sm:w-auto"
           >
             {flushing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
             Tek tuş: Tüm bekleyenleri yayınla
@@ -441,7 +441,7 @@ export default function CronMonitorPage() {
               type="button"
               onClick={togglePendingPanel}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors',
+                'inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold transition-colors sm:w-auto',
                 pendingOpen
                   ? 'bg-amber-200 text-amber-900 ring-1 ring-amber-400 dark:bg-amber-800/60 dark:text-amber-100 dark:ring-amber-600'
                   : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200'
@@ -512,33 +512,35 @@ export default function CronMonitorPage() {
                   {pendingItems.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-[rgb(var(--color-surface))]"
+                      className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))] sm:flex-row sm:items-start sm:gap-3 sm:px-5"
                     >
-                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
-                        <Clock className="h-3 w-3 text-amber-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-bold text-[rgb(var(--color-text))]">
-                          {item.title}
-                        </p>
-                        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[rgb(var(--color-muted))]">
-                          {item.source && <span>{item.source}</span>}
-                          {item.category && (
-                            <span className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 font-medium">
-                              {item.category}
-                            </span>
-                          )}
-                          {item.createdAt > 0 && (
-                            <span>
-                              {formatDistanceToNow(new Date(item.createdAt), { locale: tr, addSuffix: true })}
-                            </span>
-                          )}
-                          {item.attempts > 0 && (
-                            <span className="text-red-500">{item.attempts} deneme</span>
-                          )}
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                          <Clock className="h-3 w-3 text-amber-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-2 text-xs font-bold text-[rgb(var(--color-text))] sm:truncate">
+                            {item.title}
+                          </p>
+                          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[rgb(var(--color-muted))]">
+                            {item.source && <span>{item.source}</span>}
+                            {item.category && (
+                              <span className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 font-medium">
+                                {item.category}
+                              </span>
+                            )}
+                            {item.createdAt > 0 && (
+                              <span>
+                                {formatDistanceToNow(new Date(item.createdAt), { locale: tr, addSuffix: true })}
+                              </span>
+                            )}
+                            {item.attempts > 0 && (
+                              <span className="text-red-500">{item.attempts} deneme</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
+                      <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-1">
                         <button
                           type="button"
                           title="Düzenle"
@@ -548,9 +550,9 @@ export default function CronMonitorPage() {
                             deletingItemId === item.id
                           }
                           onClick={() => setEditingItemId(item.id)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                          className="flex h-11 w-11 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 sm:h-6 sm:w-6"
                         >
-                          <Pencil className="h-3 w-3" />
+                          <Pencil className="h-4 w-4 sm:h-3 sm:w-3" />
                         </button>
                         <button
                           type="button"
@@ -561,12 +563,12 @@ export default function CronMonitorPage() {
                             editingItemId === item.id
                           }
                           onClick={() => void publishQueueItem(item.id)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                          className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 sm:h-6 sm:w-6"
                         >
                           {publishingItemId === item.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin sm:h-3 sm:w-3" />
                           ) : (
-                            <Zap className="h-3 w-3" />
+                            <Zap className="h-4 w-4 sm:h-3 sm:w-3" />
                           )}
                         </button>
                         <button
@@ -578,12 +580,12 @@ export default function CronMonitorPage() {
                             editingItemId === item.id
                           }
                           onClick={() => void deleteQueueItem(item.id)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                          className="flex h-11 w-11 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 sm:h-6 sm:w-6"
                         >
                           {deletingItemId === item.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin sm:h-3 sm:w-3" />
                           ) : (
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4 sm:h-3 sm:w-3" />
                           )}
                         </button>
                       </div>
@@ -612,7 +614,7 @@ export default function CronMonitorPage() {
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Toplam Çalışma', value: stats.total, color: 'text-[rgb(var(--color-text))]' },
             { label: 'Başarılı', value: stats.success, color: 'text-emerald-600' },
