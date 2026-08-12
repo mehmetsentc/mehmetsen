@@ -1,7 +1,9 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import { revalidatePath } from 'next/cache'
+import { isYerelCategoryTree } from '@/constants/config'
 import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
+import { normalizePublishedLocalCategory } from '@/lib/news/nationalLocalCategoryRouting'
 import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { recordStoryInLibrary } from '@/services/newsroom/dedupe/storyLibraryService'
@@ -118,12 +120,18 @@ export async function publishQueueItemManual(
   const content = input.originalContent?.trim() || input.originalSummary?.trim() || ''
   const summary = input.originalSummary?.trim() || content.slice(0, 280)
   const imageUrl = input.imageUrl?.trim() || ''
-  const categoryId = input.forcedCategoryId?.trim() || ''
+  const categoryIdRaw = input.forcedCategoryId?.trim() || ''
   const city = input.forcedCity?.trim() || ''
   const citySlug = input.forcedCitySlug?.trim() || ''
   const sourceLabel = input.sourceLabel?.trim() || ''
-  const tags = input.extraTags ?? []
+  const tagsRaw = input.extraTags ?? []
   const isBreaking = input.isBreaking ?? false
+
+  const { categoryId, tags } = normalizePublishedLocalCategory(
+    categoryIdRaw,
+    citySlug,
+    tagsRaw,
+  )
 
   const now = Date.now()
   const slug = buildNewsSlug(title)
@@ -200,7 +208,10 @@ export async function publishQueueItemManual(
   try {
     revalidateHomeFeedCaches()
     if (categoryId) revalidatePath(`/kategori/${categoryId}`)
-    if (categoryId === 'yerel-haber') revalidatePath('/yerel')
+    if (categoryIdRaw !== categoryId) revalidatePath(`/kategori/${categoryIdRaw}`)
+    if (isYerelCategoryTree(categoryIdRaw) || isYerelCategoryTree(categoryId)) {
+      revalidatePath('/yerel')
+    }
     revalidatePath(`/haber/${slug}`)
     void notifyPublishedArticle(slug).catch(() => {})
   } catch {

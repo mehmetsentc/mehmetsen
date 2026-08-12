@@ -10,6 +10,7 @@ import { verifyAdminRequest } from '@/lib/adminAuth'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
 import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
 import { buildNewsSlug } from '@/lib/newsSlug'
+import { normalizePublishedLocalCategory } from '@/lib/news/nationalLocalCategoryRouting'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
 
@@ -40,12 +41,18 @@ export async function POST(request: Request, context: RouteContext) {
   const content = input.originalContent?.trim() || input.originalSummary?.trim() || ''
   const summary = input.originalSummary?.trim() || content.slice(0, 280)
   const imageUrl = input.imageUrl?.trim() || ''
-  const categoryId = input.forcedCategoryId?.trim() || ''
+  const categoryIdRaw = input.forcedCategoryId?.trim() || ''
   const city = input.forcedCity?.trim() || ''
   const citySlug = input.forcedCitySlug?.trim() || ''
   const sourceLabel = input.sourceLabel?.trim() || ''
-  const tags = input.extraTags ?? []
+  const tagsRaw = input.extraTags ?? []
   const isBreaking = input.isBreaking ?? false
+
+  const { categoryId, tags } = normalizePublishedLocalCategory(
+    categoryIdRaw,
+    citySlug,
+    tagsRaw,
+  )
 
   const now = Date.now()
   const slug = buildNewsSlug(title)
@@ -111,7 +118,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     revalidateHomeFeedCaches()
     if (categoryId) revalidatePath(`/kategori/${categoryId}`)
-    if (categoryId === 'yerel-haber') revalidatePath('/yerel')
+    if (categoryIdRaw !== categoryId) revalidatePath(`/kategori/${categoryIdRaw}`)
     revalidatePath(`/haber/${slug}`)
     void notifyPublishedArticle(slug).catch(() => {})
   } catch { /* best-effort */ }

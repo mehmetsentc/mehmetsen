@@ -48,6 +48,10 @@ import {
   mergeNationalFootballTags,
   resolveNationalFootballLocalRouting,
 } from '@/lib/news/nationalFootballRouting'
+import {
+  mergeNationalLocalTags,
+  resolveNationalLocalDualRouting,
+} from '@/lib/news/nationalLocalCategoryRouting'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
 import {
   createDuplicateNewsStub,
@@ -1175,6 +1179,36 @@ export async function processNewsroomArticle(
       }
     }
 
+    // ── Yerel + ulusal çift görünürlük (magazin, gündem, spor vb.) ─────────────
+    let articleTags = nationalFootballRouting
+      ? mergeNationalFootballTags(geo.tags)
+      : [...(geo.tags ?? [])]
+
+    if (!nationalFootballRouting && !articleIsAbroad) {
+      const nationalLocalDualRouting = resolveNationalLocalDualRouting(
+        resolvedCategory,
+        resolvedCitySlug || citySlug,
+        articleIsAbroad,
+      )
+      if (nationalLocalDualRouting) {
+        const priorCategory = resolvedCategory
+        resolvedCategory = nationalLocalDualRouting.nationalCategoryId
+        classification.categoryId = nationalLocalDualRouting.nationalCategoryId
+        articleTags = mergeNationalLocalTags(
+          articleTags,
+          nationalLocalDualRouting.yerelTag,
+        )
+        if (priorCategory !== resolvedCategory) {
+          console.log(
+            `[newsroom/yerel] Ulusal+yerel: ${priorCategory} → ${resolvedCategory} (+${nationalLocalDualRouting.yerelTag})`,
+          )
+          classification.overrides.push(
+            `yerel dual → ${resolvedCategory} + ${nationalLocalDualRouting.yerelTag}`,
+          )
+        }
+      }
+    }
+
     const isBreaking = classification.isBreaking
     const breakingScore = computeBreakingScore(
       workingInput,
@@ -1355,9 +1389,7 @@ export async function processNewsroomArticle(
         : location?.country ?? country ?? 'Türkiye',
       countrySlug: articleIsAbroad ? countrySlug || '' : '',
       location: location ?? null,
-      tags: nationalFootballRouting
-        ? mergeNationalFootballTags(geo.tags)
-        : geo.tags,
+      tags: articleTags,
       ...(nationalFootballRouting ? { nationalSport: true } : {}),
       type: 'news' as const,
       source: workingInput.sourceLabel ?? null,
