@@ -19,7 +19,7 @@ import {
   type HomeFeedInitialData,
 } from '@/types/newsItem'
 import { getThemedCategorySectionIds } from '@/constants/categorySections'
-import { getCategoryFamily, getHomeFeedCategoryFamily } from '@/constants/config'
+import { getCategoryFamily, getHomeFeedCategoryFamily, getNationalCategoryForYerelSubcategory } from '@/constants/config'
 import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
 import { slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isPostgresReadsEnabled } from '@/db'
@@ -442,6 +442,13 @@ export async function deriveCityCategoriesFromPool(pool: NewsItem[]): Promise<Ci
   for (const item of pool) {
     const catId = item.category?.trim()
     if (!catId) continue
+
+    const yerelNational = getNationalCategoryForYerelSubcategory(catId)
+    if (yerelNational) {
+      idSet.add(yerelNational)
+      continue
+    }
+
     const def = DEFAULT_CATEGORIES.find((c) => c.id === catId)
     if (def?.parentId) {
       idSet.add(def.parentId)

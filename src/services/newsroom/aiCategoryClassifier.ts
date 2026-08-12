@@ -14,6 +14,15 @@
  */
 
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import {
+  getYerelSubcategories,
+  getYerelSubcategoryShortLabel,
+  YEREL_HABER_CATEGORY_ID,
+} from '@/constants/config'
+
+const YEREL_SUBCATEGORIES = getYerelSubcategories().map((c) => c.id) as readonly string[]
+
+export type YerelSubcategory = (typeof YEREL_SUBCATEGORIES)[number]
 
 const CATEGORIES = [
   'gundem',
@@ -207,6 +216,91 @@ JSON formatında yanıt ver:
         resolvedId !== categoryId
           ? `${parsed.reason ?? ''} [override→astroloji]`.trim()
           : parsed.reason ?? '',
+    }
+  } catch {
+    return null
+  }
+}
+
+export interface YerelClassifierResult {
+  categoryId: YerelSubcategory
+  confidence: number
+  reason: string
+}
+
+/**
+ * Classify a local news article into a specific yerel subcategory.
+ * Called when the national classifier returns yerel-haber without a subcategory.
+ */
+export async function classifyYerelSubcategory(
+  title: string,
+  content: string,
+): Promise<YerelClassifierResult | null> {
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (!deepseekKey) return null
+
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
+  const yerelCats = getYerelSubcategories()
+  const categoryList = yerelCats
+    .map((c) => `  - ${c.id}: ${getYerelSubcategoryShortLabel(c)}`)
+    .join('\n')
+
+  const prompt = `Sen deneyimli bir Türk yerel haber editörüsün. Aşağıdaki TEK BİR il/ilçeyi kapsayan yerel haber için EN UYGUN yerel alt kategoriyi seç.
+
+BAŞLIK: ${title}
+İÇERİK (ilk 300 kelime): ${content.slice(0, 1500)}
+
+YEREL ALT KATEGORİ SEÇENEKLERİ:
+${categoryList}
+
+KURALLAR:
+- Yalnızca yukarıdaki yerel-* id'lerinden birini seç.
+- ${YEREL_HABER_CATEGORY_ID} kullanma — mutlaka en uygun alt kategoriyi seç.
+- Belediye/siyaset → yerel-siyaset. Kaza/suç/operasyon → yerel-asayis. Spor kulübü → yerel-spor.
+- Okul/üniversite → yerel-egitim. Hastane/sağlık → yerel-saglik. Etkinlik/festival → yerel-etkinlik veya yerel-festival.
+
+JSON formatında yanıt ver:
+{"categoryId": "yerel-xxx", "confidence": 85, "reason": "kısa açıklama"}`
+
+  try {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${deepseekKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
+        max_tokens: 200,
+        messages: [
+          { role: 'system', content: 'Sen bir Türk yerel haber kategorileme uzmanısın. Yalnızca JSON döndür.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+
+    if (!res.ok) return null
+
+    const json = await res.json() as {
+      choices?: Array<{ message?: { content?: string } }>
+    }
+    const raw = json.choices?.[0]?.message?.content?.trim()
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
+    const categoryId = parsed.categoryId?.trim() ?? ''
+    const confidence = Number(parsed.confidence ?? 0)
+
+    if (!YEREL_SUBCATEGORIES.includes(categoryId) || confidence < 70) return null
+
+    return {
+      categoryId: categoryId as YerelSubcategory,
+      confidence,
+      reason: parsed.reason ?? '',
     }
   } catch {
     return null

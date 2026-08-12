@@ -1,4 +1,5 @@
 import { resolveLocalNewsCitySlug } from '@/constants/cities'
+import { isYerelCategoryTree } from '@/constants/config'
 import { computeEngagementScore } from '@/lib/engagementScore'
 import { shouldShowBreakingBadge, shouldShowTrendingFlag } from '@/lib/newsBreaking'
 import type { TimelinePost } from '@/types/post'
@@ -53,7 +54,7 @@ export function isYerelHaberEligible(post: TimelinePost): boolean {
 
   if (NATIONAL_ONLY_CATEGORIES.has(cat)) return false
 
-  if (cat === YEREL_HABER_CATEGORY) return Boolean(citySlug)
+  if (isYerelCategoryTree(cat)) return true
 
   return Boolean(citySlug)
 }
@@ -102,7 +103,7 @@ export function isLocalFeedItem(post: TimelinePost, userCitySlug?: string | null
 
   const provinceSlug = resolveLocalNewsCitySlug(rawCity)
   const postCity = post.citySlug?.trim().toLowerCase()
-  const isYerelCategory = post.categoryId?.trim().toLowerCase() === YEREL_HABER_CATEGORY
+  const isYerelCategory = isYerelCategoryTree(post.categoryId ?? '')
 
   if (postCity === rawCity || postCity === provinceSlug) {
     return isYerelCategory || Boolean(postCity)

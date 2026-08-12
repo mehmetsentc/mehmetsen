@@ -29,8 +29,14 @@ import {
   resolveBreakingFlags,
 } from '@/services/newsroom/breakingPriority'
 import { categoryEngine } from '@/services/newsroom/categoryEngine'
-import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
+import { classifyArticleCategory, classifyYerelSubcategory } from '@/services/newsroom/aiCategoryClassifier'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import {
+  isYerelCategoryTree,
+  resolveYerelSubcategoryForLocalNews,
+  shouldLocalizeCategory,
+  YEREL_HABER_CATEGORY_ID,
+} from '@/constants/config'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
 import { factChecker } from '@/services/newsroom/factChecker'
 import { geoEngine } from '@/services/newsroom/geoEngine'
@@ -900,7 +906,8 @@ export async function processNewsroomArticle(
     //   - VE içerikten şehir bulunamadıysa
     // Örnek sorun (önceki davranış): Muğla gazetesinden alınan Hakkari haberi → geo.city = "Hakkari"
     // ama forcedCitySlug = "mugla" eziyordu. Artık içerik şehri korunur.
-    const finalCategoryIsLocal = classification.categoryId === 'yerel-haber'
+    const finalCategoryIsLocal =
+      isYerelCategoryTree(classification.categoryId) || Boolean(geo.citySlug || geo.city)
     const articleIsAbroad =
       classification.categoryId === 'dunya' ||
       Boolean(country && country !== 'Türkiye') ||
@@ -969,6 +976,38 @@ export async function processNewsroomArticle(
       ? ''
       : normalizeCitySlug(location?.city ? slugifyCity(location.city) : citySlug)
     const cityCategory = resolvedCitySlug ? cityCategoryId(resolvedCitySlug) : ''
+
+    // ── Yerel alt kategori ataması ─────────────────────────────────────────
+    if (!articleIsAbroad && shouldLocalizeCategory(classification.categoryId, resolvedCitySlug || citySlug)) {
+      const priorCategory = classification.categoryId
+      let yerelCategory = resolveYerelSubcategoryForLocalNews(
+        classification.categoryId,
+        resolvedCitySlug || citySlug,
+      )
+
+      if (yerelCategory === YEREL_HABER_CATEGORY_ID) {
+        try {
+          const yerelCheck = await classifyYerelSubcategory(
+            rewritten.title,
+            rewritten.description ?? rewritten.summary ?? '',
+          )
+          if (yerelCheck?.categoryId) {
+            yerelCategory = yerelCheck.categoryId
+          }
+        } catch {
+          // Non-blocking — keep yerel-haber fallback
+        }
+      }
+
+      if (yerelCategory !== priorCategory) {
+        console.log(
+          `[newsroom/yerel] Alt kategori: ${priorCategory} → ${yerelCategory}`
+        )
+        classification.categoryId = yerelCategory
+        classification.overrides.push(`yerel alt kategori → ${yerelCategory}`)
+      }
+    }
+
     const resolvedCategory = classification.categoryId || cityCategory
 
     const isBreaking = classification.isBreaking
@@ -1256,7 +1295,7 @@ export async function processNewsroomArticle(
         const { revalidateHomeFeedCaches } = await import('@/lib/revalidateHome')
         revalidateHomeFeedCaches()
         if (resolvedCategory) revalidatePath(`/kategori/${resolvedCategory}`)
-        if (resolvedCategory === 'yerel-haber') revalidatePath('/yerel')
+        if (isYerelCategoryTree(resolvedCategory)) revalidatePath('/yerel')
         if (slug) revalidatePath(`/haber/${slug}`)
         if (personaAuthors?.authorUsername) {
           revalidatePath(`/yazar/${personaAuthors.authorUsername}`)

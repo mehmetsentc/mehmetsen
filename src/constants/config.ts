@@ -53,6 +53,21 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'yerel-egitim',   name: 'Yerel Eğitim',   slug: 'yerel-egitim',   iconName: 'graduation-cap', color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-finans',   name: 'Yerel Finans',   slug: 'yerel-finans',   iconName: 'chart-line',   color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-kariyer',  name: 'Yerel Kariyer',  slug: 'yerel-kariyer',  iconName: 'briefcase',    color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-ekonomi',  name: 'Yerel Ekonomi',  slug: 'yerel-ekonomi',  iconName: 'trending-up',  color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-emlak',    name: 'Yerel Emlak',    slug: 'yerel-emlak',    iconName: 'building-2',   color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-enerji',   name: 'Yerel Enerji',   slug: 'yerel-enerji',   iconName: 'bolt',         color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-teknoloji', name: 'Yerel Teknoloji', slug: 'yerel-teknoloji', iconName: 'cpu',       color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-bilim',    name: 'Yerel Bilim',    slug: 'yerel-bilim',    iconName: 'flask',        color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-cevre-iklim', name: 'Yerel Çevre & İklim', slug: 'yerel-cevre-iklim', iconName: 'tree-pine', color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-oyun-espor', name: 'Yerel Oyun & Espor', slug: 'yerel-oyun-espor', iconName: 'gamepad-2', color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-din-inanc', name: 'Yerel Din & İnanç', slug: 'yerel-din-inanc', iconName: 'moon-star', color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-tiyatro',  name: 'Yerel Tiyatro',  slug: 'yerel-tiyatro',  iconName: 'theater',      color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-festival', name: 'Yerel Festival', slug: 'yerel-festival', iconName: 'party-popper', color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-gastronomi', name: 'Yerel Gastronomi', slug: 'yerel-gastronomi', iconName: 'utensils', color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-otomobil', name: 'Yerel Otomobil', slug: 'yerel-otomobil', iconName: 'car',          color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-meteoroloji', name: 'Yerel Meteoroloji', slug: 'yerel-meteoroloji', iconName: 'cloud-rain', color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-turizm',   name: 'Yerel Turizm',   slug: 'yerel-turizm',   iconName: 'plane',        color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-tarih',    name: 'Yerel Tarih',    slug: 'yerel-tarih',    iconName: 'book-open',    color: '#059669', parentId: 'yerel-haber' },
   { id: 'siyaset',     name: 'Siyaset',     slug: 'siyaset',     iconName: 'landmark',     color: '#7C3AED' },
   { id: 'dunya',       name: 'Dünya',       slug: 'dunya',       iconName: 'globe',        color: '#6B7280' },
   { id: 'kibris-haberleri', name: 'Kıbrıs Haberleri', slug: 'kibris-haberleri', iconName: 'flag', color: '#0E7490' },
@@ -172,17 +187,32 @@ export const YEREL_SUBCATEGORY_IDS = [
   'yerel-gundem',
   'yerel-siyaset',
   'yerel-spor',
+  'yerel-ekonomi',
+  'yerel-finans',
+  'yerel-emlak',
+  'yerel-enerji',
+  'yerel-kariyer',
+  'yerel-teknoloji',
   'yerel-etkinlik',
   'yerel-sinema',
   'yerel-kultur',
+  'yerel-tiyatro',
   'yerel-konser',
+  'yerel-festival',
   'yerel-magazin',
-  'yerel-saglik',
   'yerel-yasam',
-  'yerel-gezi',
+  'yerel-saglik',
+  'yerel-bilim',
   'yerel-egitim',
-  'yerel-finans',
-  'yerel-kariyer',
+  'yerel-cevre-iklim',
+  'yerel-din-inanc',
+  'yerel-gastronomi',
+  'yerel-otomobil',
+  'yerel-meteoroloji',
+  'yerel-turizm',
+  'yerel-gezi',
+  'yerel-tarih',
+  'yerel-oyun-espor',
 ] as const
 
 /** Yerel alt kategori → ulusal kategori (Türkiye feed çift görünürlük). */
@@ -191,18 +221,80 @@ export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
   'yerel-gundem': 'gundem',
   'yerel-siyaset': 'siyaset',
   'yerel-spor': 'spor',
+  'yerel-ekonomi': 'ekonomi',
+  'yerel-finans': 'finans-piyasa',
+  'yerel-emlak': 'emlak-konut',
+  'yerel-enerji': 'enerji',
+  'yerel-kariyer': 'is-kariyer',
+  'yerel-teknoloji': 'teknoloji',
   'yerel-etkinlik': 'etkinlikler',
   'yerel-sinema': 'sinema',
   'yerel-kultur': 'kultur',
+  'yerel-tiyatro': 'tiyatro',
   'yerel-konser': 'konser',
+  'yerel-festival': 'festival',
   'yerel-magazin': 'magazin',
-  'yerel-saglik': 'saglik',
   'yerel-yasam': 'yasam',
-  'yerel-gezi': 'gezi',
+  'yerel-saglik': 'saglik',
+  'yerel-bilim': 'bilim',
   'yerel-egitim': 'egitim',
-  'yerel-finans': 'finans-piyasa',
-  'yerel-kariyer': 'is-kariyer',
+  'yerel-cevre-iklim': 'cevre-iklim',
+  'yerel-din-inanc': 'din-inanc',
+  'yerel-gastronomi': 'gastronomi',
+  'yerel-otomobil': 'otomobil',
+  'yerel-meteoroloji': 'meteoroloji',
+  'yerel-turizm': 'turizm',
+  'yerel-gezi': 'gezi',
+  'yerel-tarih': 'tarih',
+  'yerel-oyun-espor': 'oyun-espor',
 }
+
+/** National branch categories → yerel subcategory (sport, ekonomi alt dalları vb.). */
+const NATIONAL_BRANCH_TO_YEREL: Record<string, string> = {
+  futbol: 'yerel-spor',
+  basketbol: 'yerel-spor',
+  voleybol: 'yerel-spor',
+  hentbol: 'yerel-spor',
+  atletizm: 'yerel-spor',
+  gures: 'yerel-spor',
+  'dunya-kupasi-2026': 'yerel-spor',
+  borsa: 'yerel-finans',
+  kripto: 'yerel-finans',
+  'finans-piyasa': 'yerel-finans',
+  'emlak-konut': 'yerel-emlak',
+  energi: 'yerel-enerji',
+  'is-kariyer': 'yerel-kariyer',
+  tiyatro: 'yerel-tiyatro',
+  festival: 'yerel-festival',
+  astroloji: 'yerel-yasam',
+  moda: 'yerel-yasam',
+  'anne-cocuk': 'yerel-yasam',
+  dekorasyon: 'yerel-yasam',
+  iliskiler: 'yerel-yasam',
+}
+
+let nationalToYerelCache: Record<string, string> | null = null
+
+function getNationalToYerelMap(): Record<string, string> {
+  if (!nationalToYerelCache) {
+    nationalToYerelCache = {
+      ...Object.fromEntries(
+        Object.entries(YEREL_TO_NATIONAL_CATEGORY_MAP).map(([yerel, national]) => [national, yerel])
+      ),
+      ...NATIONAL_BRANCH_TO_YEREL,
+    }
+  }
+  return nationalToYerelCache
+}
+
+/** Categories that must never be converted to a yerel subcategory. */
+const NON_LOCALIZABLE_CATEGORIES = new Set([
+  'dunya',
+  'kibris-haberleri',
+  'son-dakika',
+  'trend',
+  'influencer',
+])
 
 const YEREL_CATEGORY_IDS = new Set([YEREL_HABER_CATEGORY_ID, 'yerel'])
 
@@ -295,6 +387,40 @@ export function getYerelIdsMappedToCategoryFamily(familyIds: string[]): string[]
 /** National category id for a yerel subcategory (for feed routing / display). */
 export function getNationalCategoryForYerelSubcategory(yerelCategoryId: string): string | null {
   return YEREL_TO_NATIONAL_CATEGORY_MAP[yerelCategoryId] ?? null
+}
+
+/** Map a national (or branch) category id to the best yerel subcategory. */
+export function mapNationalCategoryToYerelSubcategory(nationalCategoryId: string): string | null {
+  const id = nationalCategoryId?.trim().toLowerCase() ?? ''
+  if (!id || id === YEREL_HABER_CATEGORY_ID) return null
+  return getNationalToYerelMap()[id] ?? null
+}
+
+/** True when a news item should receive a specific yerel subcategory. */
+export function shouldLocalizeCategory(categoryId: string, citySlug?: string | null): boolean {
+  const cat = categoryId?.trim().toLowerCase() ?? ''
+  if (NON_LOCALIZABLE_CATEGORIES.has(cat)) return false
+  if (isYerelCategoryTree(cat)) return true
+  return Boolean(citySlug?.trim())
+}
+
+/**
+ * Resolve the best yerel subcategory for local news.
+ * Falls back to yerel-haber when no mapping exists.
+ */
+export function resolveYerelSubcategoryForLocalNews(
+  categoryId: string,
+  citySlug?: string | null,
+): string {
+  const cat = categoryId?.trim().toLowerCase() ?? ''
+  if (!shouldLocalizeCategory(cat, citySlug)) return cat
+  if (cat.startsWith('yerel-') && cat !== YEREL_HABER_CATEGORY_ID) return cat
+  return mapNationalCategoryToYerelSubcategory(cat) ?? YEREL_HABER_CATEGORY_ID
+}
+
+/** Comma-separated yerel subcategory ids for AI prompts. */
+export function getYerelSubcategoryIdsForPrompt(): string {
+  return YEREL_SUBCATEGORY_IDS.join('|')
 }
 
 export function getCategoryFamily(parentId: string): string[] {

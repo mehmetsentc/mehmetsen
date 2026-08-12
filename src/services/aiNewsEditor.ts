@@ -1,4 +1,4 @@
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, getYerelSubcategoryIdsForPrompt } from '@/constants/config'
 import {
   buildFeedTeaser,
   cleanupNewsBody,
@@ -265,23 +265,37 @@ ADIM 3 — UZMAN KATEGORİ KONTROLÜ (eşleşirse dur, devam etme)
 ADIM 4 — YEREL mi ULUSAL mi? (EN KRİTİK ADIM)
 
   ┌─ YERELLİK TESTİ ──────────────────────────────────────────┐
-  │  Aşağıdakilerin HEPSİ doğruysa → "yerel-haber":           │
+  │  Aşağıdakilerin HEPSİ doğruysa → yerel alt kategori seç:   │
   │  ✓ Olay TAM OLARAK tek bir Türk şehri/ilçesinde geçiyor   │
   │  ✓ Diğer şehirlerde benzer bir etki/sonuç yaratmıyor      │
   │  ✓ Türkiye genelinde politika/yasa/ekonomi değişikliği YOK│
   └────────────────────────────────────────────────────────────┘
 
-  YERELLİK TESTİ ÖRNEKLERİ — yerel-haber seç:
-    "Konya'da trafik kazası: 2 yaralı"         → yerel-haber
-    "Trabzon Belediyesi park yapıyor"           → yerel-haber
-    "Erzurum'da bıçaklı kavga"                 → yerel-haber
-    "İzmir'de berber emeklilere döner ısmarlıyor" → yerel-haber
-    "Adana'da uyuşturucu operasyonu"            → yerel-haber
-    "Bursa'da yangın çıktı, 1 kişi öldü"       → yerel-haber
-    "Mersin'de kaplumbağa kurtarıldı"           → yerel-haber
-    "Gaziantep Büyükşehir metroyu açıyor"       → yerel-haber
-    "Kayseri Valisi açıklama yaptı"             → yerel-haber
-    "Antalya'da tatilci denizde boğuldu"        → yerel-haber
+  YEREL HABERLERDE KATEGORİ ATAMA:
+  - Genel yerel-haber KULLANMA — içeriğe en uygun yerel alt kategoriyi seç.
+  - Seçenekler: ${getYerelSubcategoryIdsForPrompt()}
+  - Hiçbiri uymuyorsa (çok nadir) → yerel-gundem
+  - Örnekler:
+    Belediye kararı / valilik → yerel-siyaset
+    Trafik kazası / suç / operasyon → yerel-asayis
+    Yerel spor kulübü maçı → yerel-spor
+    Okul / üniversite → yerel-egitim
+    Hastane / sağlık olayı → yerel-saglik
+    Şehirdeki konser / festival → yerel-konser / yerel-festival
+    Yerel işletme / fabrika → yerel-ekonomi
+    MGM uyarısı / fırtına → yerel-meteoroloji
+
+  YERELLİK TESTİ ÖRNEKLERİ — yerel alt kategori seç:
+    "Konya'da trafik kazası: 2 yaralı"         → yerel-asayis
+    "Trabzon Belediyesi park yapıyor"           → yerel-siyaset
+    "Erzurum'da bıçaklı kavga"                 → yerel-asayis
+    "İzmir'de berber emeklilere döner ısmarlıyor" → yerel-yasam
+    "Adana'da uyuşturucu operasyonu"            → yerel-asayis
+    "Bursa'da yangın çıktı, 1 kişi öldü"       → yerel-asayis
+    "Mersin'de kaplumbağa kurtarıldı"           → yerel-gundem
+    "Gaziantep Büyükşehir metroyu açıyor"       → yerel-siyaset
+    "Kayseri Valisi açıklama yaptı"             → yerel-siyaset
+    "Antalya'da tatilci denizde boğuldu"        → yerel-asayis
 
   ULUSAL TEST ÖRNEKLERİ — gundem veya son-dakika seç:
     "İstanbul'da 6.5 büyüklüğünde deprem"      → son-dakika (tüm ülke etkisi)
@@ -290,12 +304,12 @@ ADIM 4 — YEREL mi ULUSAL mi? (EN KRİTİK ADIM)
     "Asgari ücret zammı açıklandı"              → ekonomi (ulusal)
     "Ankara'da büyük terör saldırısı"           → son-dakika
 
-  SINIR DURUMLARI — hep yerel-haber:
+  SINIR DURUMLARI — yerel alt kategori:
     ✗ "Büyük" veya "feci" kelimesi tek şehir olayını ulusal yapmaz
-    ✗ Ölü sayısı az bile olsa tek şehirde kaldıysa → yerel-haber
-    ✗ Belediye başkanı konuşması → yerel-haber (siyaset DEĞİL)
-    ✗ Valilik açıklaması → yerel-haber
-    ✗ Yerel spor kulübü haberi → yerel-haber (futbol/spor DEĞİL)
+    ✗ Ölü sayısı az bile olsa tek şehirde kaldıysa → yerel-asayis veya yerel-gundem
+    ✗ Belediye başkanı konuşması → yerel-siyaset (siyaset DEĞİL)
+    ✗ Valilik açıklaması → yerel-siyaset
+    ✗ Yerel spor kulübü haberi → yerel-spor (futbol/spor DEĞİL)
 
 ADIM 5 — GÜNDEM mi SON DAKİKA mı?
   Eğer ulusal/genel bir Türkiye haberi ise:
