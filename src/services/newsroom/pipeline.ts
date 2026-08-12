@@ -37,6 +37,10 @@ import {
   shouldLocalizeCategory,
   YEREL_HABER_CATEGORY_ID,
 } from '@/constants/config'
+import {
+  mergeNationalFootballTags,
+  resolveNationalFootballLocalRouting,
+} from '@/lib/news/nationalFootballRouting'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
 import {
   findStoryLibraryMatch,
@@ -1003,8 +1007,31 @@ export async function processNewsroomArticle(
       : normalizeCitySlug(location?.city ? slugifyCity(location.city) : citySlug)
     const cityCategory = resolvedCitySlug ? cityCategoryId(resolvedCitySlug) : ''
 
+    // ── Süper Lig / 1. Lig: ulusal futbol + citySlug (genel Spor + yerel Spor) ──
+    const nationalFootballRouting = resolveNationalFootballLocalRouting(
+      `${rewritten.title} ${rewritten.description ?? rewritten.summary ?? ''}`,
+      resolvedCitySlug || citySlug,
+      articleIsAbroad,
+    )
+    if (nationalFootballRouting) {
+      const priorCategory = classification.categoryId
+      classification.categoryId = nationalFootballRouting.categoryId
+      classification.overrides.push(
+        `profesyonel lig (${nationalFootballRouting.league}: ${nationalFootballRouting.clubName}) → ${nationalFootballRouting.categoryId}`,
+      )
+      if (priorCategory !== nationalFootballRouting.categoryId) {
+        console.log(
+          `[newsroom/spor] Ulusal futbol: ${priorCategory} → ${nationalFootballRouting.categoryId} (${nationalFootballRouting.clubName})`,
+        )
+      }
+    }
+
     // ── Yerel alt kategori ataması ─────────────────────────────────────────
-    if (!articleIsAbroad && shouldLocalizeCategory(classification.categoryId, resolvedCitySlug || citySlug)) {
+    if (
+      !nationalFootballRouting &&
+      !articleIsAbroad &&
+      shouldLocalizeCategory(classification.categoryId, resolvedCitySlug || citySlug)
+    ) {
       const priorCategory = classification.categoryId
       let yerelCategory = resolveYerelSubcategoryForLocalNews(
         classification.categoryId,
@@ -1200,7 +1227,10 @@ export async function processNewsroomArticle(
         : location?.country ?? country ?? 'Türkiye',
       countrySlug: articleIsAbroad ? countrySlug || '' : '',
       location: location ?? null,
-      tags: geo.tags,
+      tags: nationalFootballRouting
+        ? mergeNationalFootballTags(geo.tags)
+        : geo.tags,
+      ...(nationalFootballRouting ? { nationalSport: true } : {}),
       type: 'news' as const,
       source: workingInput.sourceLabel ?? null,
       sourceUrl: workingInput.sourceUrl ?? '',

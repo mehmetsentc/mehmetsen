@@ -256,7 +256,8 @@ ${categoryList}
 KURALLAR:
 - Yalnızca yukarıdaki yerel-* id'lerinden birini seç.
 - ${YEREL_HABER_CATEGORY_ID} kullanma — mutlaka en uygun alt kategoriyi seç.
-- Belediye/siyaset → yerel-siyaset. Kaza/suç/operasyon → yerel-asayis. Spor kulübü → yerel-spor.
+- Belediye/siyaset → yerel-siyaset. Kaza/suç/operasyon → yerel-asayis. Yerel/amatör spor kulübü → yerel-spor.
+- Süper Lig / Trendyol 1. Lig kulüpleri (Galatasaray, Fenerbahçe, Beşiktaş, …) → yerel-spor DEĞİL; pipeline ulusal futbol'a yönlendirir.
 - Okul/üniversite → yerel-egitim. Hastane/sağlık → yerel-saglik. Etkinlik/festival → yerel-etkinlik veya yerel-festival.
 
 JSON formatında yanıt ver:
