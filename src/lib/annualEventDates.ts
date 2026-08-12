@@ -126,7 +126,11 @@ function buildOccurrence(
 
 /**
  * Annual municipal / festival events keep month-day-time in stored ISO templates.
- * Rolls forward to the current or next occurrence so listings survive year boundaries.
+ * Maps the template onto the current Istanbul calendar year.
+ *
+ * Important: do NOT jump finished occurrences to next year. That made ended
+ * festivals (e.g. 8–10 Ağustos) look "upcoming" under Yaklaşan/Tümü until
+ * the following January. After New Year, `nowYear` advances naturally.
  */
 export function resolveEventSchedule(
   event: ScheduleInput,
@@ -137,14 +141,7 @@ export function resolveEventSchedule(
   }
 
   const nowYear = istanbulParts(nowIso).year
-
-  for (const year of [nowYear, nowYear + 1]) {
-    const occ = buildOccurrence(event.startsAt, event.endsAt, year)
-    const activeUntil = occ.endsAt ?? occ.startsAt
-    if (activeUntil >= nowIso) return occ
-  }
-
-  return buildOccurrence(event.startsAt, event.endsAt, nowYear + 1)
+  return buildOccurrence(event.startsAt, event.endsAt, nowYear)
 }
 
 export function withResolvedSchedule<T extends ScheduleInput>(

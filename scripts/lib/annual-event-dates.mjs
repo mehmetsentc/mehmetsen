@@ -40,12 +40,9 @@ function buildOccurrence(templateStartIso, templateEndIso, year) {
 export function resolveAnnualOccurrence(templateStartIso, templateEndIso, now = new Date()) {
   const nowIso = now.toISOString()
   const nowYear = istanbulParts(nowIso).year
-  for (const year of [nowYear, nowYear + 1]) {
-    const occ = buildOccurrence(templateStartIso, templateEndIso, year)
-    const activeUntil = occ.endsAt ?? occ.startsAt
-    if (activeUntil >= nowIso) return occ
-  }
-  return buildOccurrence(templateStartIso, templateEndIso, nowYear + 1)
+  // Keep the current-year occurrence even after it ends so finished annual
+  // festivals classify as past (not next-year "upcoming").
+  return buildOccurrence(templateStartIso, templateEndIso, nowYear)
 }
 
 export function toAnnualDateLabel(dateLabel) {

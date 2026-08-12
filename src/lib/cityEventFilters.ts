@@ -66,28 +66,14 @@ export function resolveEventFilterCategory(event: NaEvent): EventCategory {
 }
 
 /**
- * Tümü on Yaklaşan: resolved start day is today or later, or the event is a
- * multi-day occurrence still running today (Istanbul calendar).
+ * Tümü on Yaklaşan: today + future, or multi-day still running
+ * (end calendar day ≥ today). Fully ended before today → false.
  */
 export function matchesCityEventUpcomingAllDateFilter(
   event: NaEvent,
   nowIso: string = new Date().toISOString()
 ): boolean {
-  const { startsAt, endsAt } = resolveEventSchedule(event, nowIso)
-
-  if (isSameOrAfterIstanbulCalendarDay(startsAt, nowIso)) {
-    return true
-  }
-
-  const endIso = endsAt?.trim()
-  if (!endIso || endIso < nowIso) {
-    return false
-  }
-
-  return (
-    isSameOrAfterIstanbulCalendarDay(nowIso, startsAt) &&
-    isSameOrAfterIstanbulCalendarDay(endIso, nowIso)
-  )
+  return isEventUpcoming(event, nowIso)
 }
 
 /** Match sidebar date chips by resolved `startsAt` Istanbul calendar day (strict for Bugün/Yarın). */

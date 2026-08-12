@@ -194,6 +194,38 @@ describe('filterCityEvents dateFilter', () => {
     expect(filtered.map((e) => e.id)).toEqual(['today-event', 'future-event'])
   })
 
+  it('Tümü on Yaklaşan excludes finished annual (yıllık) festivals without next-year roll', () => {
+    const now = '2026-08-12T09:00:00.000Z'
+    const finishedRange = makeEvent({
+      id: 'dostluk',
+      startsAt: '2026-07-01T07:00:00.000Z',
+      endsAt: '2026-08-10T18:00:00.000Z',
+      recurrence: 'annual',
+      dateLabel: '1 Temmuz – 10 Ağustos (yıllık)',
+    })
+    const finishedWeekend = makeEvent({
+      id: 'plaj',
+      startsAt: '2026-08-08T07:00:00.000Z',
+      endsAt: '2026-08-10T18:00:00.000Z',
+      recurrence: 'annual',
+      dateLabel: '8-10 Ağustos (yıllık)',
+    })
+    const futureAnnual = makeEvent({
+      id: 'future-annual',
+      startsAt: '2026-08-20T18:00:00.000Z',
+      recurrence: 'annual',
+    })
+
+    const filtered = filterCityEvents(
+      [finishedRange, finishedWeekend, futureAnnual],
+      { dateFilter: 'all', category: null, venue: null, districtSlug: null },
+      now,
+      { timeRange: 'upcoming' }
+    )
+
+    expect(filtered.map((e) => e.id)).toEqual(['future-annual'])
+  })
+
   it('Tümü on Yaklaşan keeps multi-day events still running today', () => {
     const ongoingExhibition = makeEvent({
       id: 'ongoing-exhibition',

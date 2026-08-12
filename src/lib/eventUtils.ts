@@ -146,15 +146,26 @@ export function getEventActiveUntilIso(event: EventDateFields, nowIso?: string):
 }
 
 /**
- * True when the event's resolved `startsAt` calendar date is today or later (Istanbul).
- * Ongoing multi-day events that started before today are not upcoming.
+ * True when the event is today/future, or a multi-day event still running
+ * (resolved end calendar day is today or later) — Istanbul calendar.
  */
 export function isEventUpcoming(
   event: EventDateFields,
   nowIso: string = new Date().toISOString()
 ): boolean {
   const resolved = resolveEventSchedule(event, nowIso)
-  return isSameOrAfterIstanbulCalendarDay(resolved.startsAt, nowIso)
+
+  if (isSameOrAfterIstanbulCalendarDay(resolved.startsAt, nowIso)) {
+    return true
+  }
+
+  const endIso = resolved.endsAt?.trim()
+  if (!endIso) return false
+
+  return (
+    isSameOrAfterIstanbulCalendarDay(nowIso, resolved.startsAt) &&
+    isSameOrAfterIstanbulCalendarDay(endIso, nowIso)
+  )
 }
 
 /** @deprecated Upcoming queries use start-of-today (Istanbul), not a lookback window. */
