@@ -20,6 +20,19 @@ export const NEWSROOM_LOW_CONFIDENCE_THRESHOLD = Number(
 )
 
 /**
+ * AI Ana Editör otomatik yayın — false ise chief editor "publish" dese bile taslakta kalır.
+ * Varsayılan: true (CHIEF_EDITOR_AUTO_PUBLISH=0 veya false ile kapatılır).
+ */
+export const CHIEF_EDITOR_AUTO_PUBLISH =
+  process.env.CHIEF_EDITOR_AUTO_PUBLISH !== '0' &&
+  process.env.CHIEF_EDITOR_AUTO_PUBLISH !== 'false'
+
+/** Chief editor categoryConfidence/overallScore eşiği — altında hold (pending_review). */
+export const CHIEF_EDITOR_CONFIDENCE_THRESHOLD = Number(
+  process.env.CHIEF_EDITOR_CONFIDENCE_THRESHOLD ?? 72
+)
+
+/**
  * Gate/confidence düşükse Stage1'i kaç kez yeniden çalıştır.
  * 1 = ilk yazım + 1 düzeltme (varsayılan).
  */

@@ -14,12 +14,19 @@ import { Collections } from '@/lib/firebase/admin'
 import { aiNewsEditor, type AiRewriteResult } from '@/services/aiNewsEditor'
 import { geminiEditArticle, isGeminiConfigured } from '@/lib/ai/gemini'
 import {
+  CHIEF_EDITOR_AUTO_PUBLISH,
+  CHIEF_EDITOR_CONFIDENCE_THRESHOLD,
   NEWSROOM_AUTO_PUBLISH_ENABLED,
   NEWSROOM_AUTO_PUBLISH_THRESHOLD,
   NEWSROOM_LOW_CONFIDENCE_THRESHOLD,
   NEWSROOM_REWRITE_MAX_RETRIES,
   NEWSROOM_RETRY_CONFIDENCE_RELAX,
 } from '@/services/newsroom/config'
+import {
+  chiefEditorAllowsPublish,
+  runChiefEditor,
+  type ChiefEditorResult,
+} from '@/services/newsroom/chiefEditor'
 import { runMultiStageEditor, type MultiStageResult } from '@/services/newsroom/editors/multiStageEditor'
 import { moderateContent } from '@/services/moderationService'
 import { newsDraftService } from '@/services/newsDraftService'
@@ -43,6 +50,7 @@ import {
 } from '@/lib/news/nationalFootballRouting'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
 import {
+  createDuplicateNewsStub,
   findStoryLibraryMatch,
   recordStoryInLibrary,
 } from '@/services/newsroom/dedupe/storyLibraryService'
@@ -1061,7 +1069,111 @@ export async function processNewsroomArticle(
       }
     }
 
-    const resolvedCategory = classification.categoryId || cityCategory
+    let resolvedCategory = classification.categoryId || cityCategory
+
+    // ── AI ANA EDİTÖR — rewrite sonrası nihai kategori + yayın kararı ─────────
+    let chiefEditorResult: ChiefEditorResult | null = null
+    if (!workingInput.skipAiRewrite) {
+      let recentTitles: string[] = []
+      try {
+        const recentSnap = await db
+          .collection(Collections.NEWS)
+          .orderBy('createdAt', 'desc')
+          .limit(40)
+          .get()
+        recentTitles = recentSnap.docs
+          .map((d) => (d.data() as { title?: string }).title ?? '')
+          .filter(Boolean)
+      } catch {
+        // non-blocking
+      }
+
+      try {
+        chiefEditorResult = await runChiefEditor({
+          title: rewritten.title,
+          spot: (rewritten as AiRewriteResult).spot ?? rewritten.summary ?? '',
+          summary: rewritten.summary,
+          description: rewritten.description ?? '',
+          categoryId: resolvedCategory,
+          categoryConfidence: classification.categoryConfidence,
+          tags: nationalFootballRouting
+            ? mergeNationalFootballTags(geo.tags)
+            : geo.tags,
+          sourceLabel: workingInput.sourceLabel,
+          sourceUrl: workingInput.sourceUrl,
+          originalTitle: workingInput.originalTitle,
+          city: articleIsAbroad ? null : city ?? null,
+          district: articleIsAbroad ? null : district ?? null,
+          country: country ?? 'Türkiye',
+          isBreaking: classification.isBreaking,
+          factCheckScore: factCheck.confidenceScore,
+          wordCount: countPlainWords(rewritten.description ?? ''),
+          recentTitles,
+        })
+
+        console.log(
+          `[newsroom/chiefEditor] ${chiefEditorResult.decision}` +
+            ` cat=${chiefEditorResult.categoryId}` +
+            ` conf=${chiefEditorResult.categoryConfidence}` +
+            ` score=${chiefEditorResult.overallScore}` +
+            (chiefEditorResult.isDuplicate ? ' DUPLICATE' : '') +
+            ` — ${chiefEditorResult.categoryReason.slice(0, 80)}`,
+        )
+
+        if (chiefEditorResult.isDuplicate) {
+          const similar = await findSimilarPublishedArticle(
+            db,
+            rewritten.title,
+            rewritten.description,
+          )
+          await createDuplicateNewsStub(db, input, {
+            existingNewsId: similar?.newsId ?? 'unknown',
+            reason: chiefEditorResult.categoryReason || 'AI duplikat tespit',
+          }).catch(() => {})
+          console.log(
+            `[newsroom/chiefEditor] duplicate → tekrarlayan, yayın yok: ${workingInput.sourceUrl?.slice(0, 80)}`,
+          )
+          return { outcome: 'skipped' }
+        }
+
+        if (chiefEditorResult.decision === 'reject') {
+          console.warn(
+            `[newsroom/chiefEditor] rejected: ${chiefEditorResult.issues.join('; ') || chiefEditorResult.categoryReason}`,
+          )
+          return { outcome: 'skipped' }
+        }
+
+        if (
+          chiefEditorResult.categoryConfidence >= CHIEF_EDITOR_CONFIDENCE_THRESHOLD &&
+          chiefEditorResult.categoryId !== resolvedCategory
+        ) {
+          console.log(
+            `[newsroom/chiefEditor] kategori: ${resolvedCategory} → ${chiefEditorResult.categoryId}`,
+          )
+          classification.overrides.push(
+            `chiefEditor → ${chiefEditorResult.categoryId}`,
+          )
+          resolvedCategory = chiefEditorResult.categoryId
+          classification.categoryId = chiefEditorResult.categoryId
+          classification.categoryConfidence = chiefEditorResult.categoryConfidence
+        }
+
+        if (chiefEditorResult.finalTitle && chiefEditorResult.finalTitle !== rewritten.title) {
+          rewritten.title = chiefEditorResult.finalTitle
+        }
+        if (
+          chiefEditorResult.finalSummary &&
+          chiefEditorResult.finalSummary !== rewritten.summary
+        ) {
+          rewritten.summary = chiefEditorResult.finalSummary
+        }
+      } catch (err) {
+        console.warn(
+          '[newsroom/chiefEditor] failed:',
+          err instanceof Error ? err.message : err,
+        )
+      }
+    }
 
     const isBreaking = classification.isBreaking
     const breakingScore = computeBreakingScore(
@@ -1139,11 +1251,27 @@ export async function processNewsroomArticle(
         ? Math.max(40, NEWSROOM_AUTO_PUBLISH_THRESHOLD - NEWSROOM_RETRY_CONFIDENCE_RELAX)
         : NEWSROOM_AUTO_PUBLISH_THRESHOLD
 
+    // Chief editor hold: düşük güven veya hold kararı → onay bekliyor
+    const chiefEditorHold =
+      Boolean(chiefEditorResult) &&
+      (!CHIEF_EDITOR_AUTO_PUBLISH ||
+        !chiefEditorAllowsPublish(chiefEditorResult!) ||
+        chiefEditorResult!.decision === 'hold')
+
+    if (chiefEditorHold && chiefEditorResult) {
+      console.warn(
+        `[newsroom/chiefEditor] hold (decision=${chiefEditorResult.decision},` +
+          ` conf=${chiefEditorResult.categoryConfidence},` +
+          ` autoPublish=${CHIEF_EDITOR_AUTO_PUBLISH}): ${workingInput.sourceUrl?.slice(0, 80)}`,
+      )
+    }
+
     // AUTO_PUBLISH / REQUIRES_APPROVAL: kalite kapısını geçerse yayın.
-    // Yalnızca DRAFT_ONLY persona veya düşük güven / gate / moderasyon → taslak.
+    // Yalnızca DRAFT_ONLY persona veya düşük güven / gate / moderasyon / chief editor → taslak.
     // NEWSROOM_AUTO_PUBLISH_ENABLED=false ise hiçbir şey otomatik yayınlanmaz.
     const needsDraft =
       !NEWSROOM_AUTO_PUBLISH_ENABLED ||
+      chiefEditorHold ||
       gateDraft ||
       isFallbackContent ||
       factCheck.confidenceScore < confidenceThreshold ||
@@ -1241,6 +1369,8 @@ export async function processNewsroomArticle(
         ...(moderation.decision === 'review' ? moderation.reasons : []),
         ...(incompleteText ? ['incomplete_text'] : []),
         ...(personaRequiresApproval ? ['ai_editor_requires_approval'] : []),
+        ...(chiefEditorHold ? ['chief_editor_hold'] : []),
+        ...(chiefEditorResult?.issues ?? []),
       ],
       aiGenerated: true,
       rssFingerprint: fingerprint,
@@ -1254,8 +1384,17 @@ export async function processNewsroomArticle(
       updatedAt: now,
       editorId: workingInput.editorId,
       editorType: workingInput.editorType,
-      confidenceScore: factCheck.confidenceScore,
+      confidenceScore: chiefEditorResult?.overallScore ?? factCheck.confidenceScore,
       factCheckFlags: factCheck.flags,
+      ...(chiefEditorResult
+        ? {
+            chiefEditorDecision: chiefEditorResult.decision,
+            chiefEditorScore: chiefEditorResult.overallScore,
+            chiefEditorCategoryConfidence: chiefEditorResult.categoryConfidence,
+            chiefEditorModel: chiefEditorResult.modelUsed,
+            categoryReason: chiefEditorResult.categoryReason || null,
+          }
+        : {}),
       isBreaking,
       priorityScore,
       breakingScore,
