@@ -3,6 +3,8 @@
  */
 import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
+import { createDuplicateNewsStub, findStoryLibraryMatchQuick } from '@/services/newsroom/dedupe/storyLibraryService'
+import type { QueueDuplicateHit } from '@/services/newsroom/queue/queueDuplicateCheck'
 import type { NewsQueueDocument, QueueEnqueueInput } from '@/services/newsroom/queue/types'
 import { staleQueueReason } from '@/services/newsroom/queue/freshness'
 
@@ -23,6 +25,19 @@ export async function enqueueNewsItem(
   item: QueueEnqueueInput
 ): Promise<string> {
   const now = Date.now()
+
+  const libraryQuick = await findStoryLibraryMatchQuick(db, {
+    rssFingerprint: item.input.rssFingerprint ?? item.fingerprintHash,
+    sourceUrl: item.input.sourceUrl,
+    existingNewsId: item.existingNewsId,
+  })
+  if (libraryQuick) {
+    console.log(
+      `[enqueueNewsItem] duplicateLibraryHit skip enqueue → ${libraryQuick.firstNewsId}` +
+        ` (${libraryQuick.matchMethod})`
+    )
+    return `library-skip-${item.fingerprintHash}`
+  }
 
   // Dedupe pending/processing jobs for same fingerprint
   const existing = await queueCollection(db)
@@ -310,4 +325,37 @@ export async function markQueueSkipped(
     claimedAt: null,
     updatedAt: Date.now(),
   })
+}
+
+/** Mark queue item as cross-source duplicate — no AI; optional tekrarlayan stub for audit. */
+export async function markQueueDuplicate(
+  db: Firestore,
+  queueId: string,
+  hit: QueueDuplicateHit,
+  input: QueueEnqueueInput['input']
+): Promise<{ stubId?: string }> {
+  let stubId: string | undefined
+  if (hit.existingNewsId) {
+    try {
+      stubId = await createDuplicateNewsStub(db, input, {
+        existingNewsId: hit.existingNewsId,
+        reason: hit.reason,
+      })
+    } catch (err) {
+      console.warn('[markQueueDuplicate] stub create failed:', err)
+    }
+  }
+
+  await queueCollection(db).doc(queueId).update({
+    status: 'skipped',
+    lastError: hit.reason.slice(0, 200),
+    duplicateOf: hit.existingNewsId ?? null,
+    duplicateStubId: stubId ?? null,
+    leaseOwner: null,
+    leaseExpiresAt: null,
+    claimedAt: null,
+    updatedAt: Date.now(),
+  })
+
+  return { stubId }
 }

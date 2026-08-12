@@ -170,6 +170,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /newsroomStoryLibrary/{entryId} {
+      allow read, write: if false;
+    }
+
     // Cron monitor — CMS staff okur; yazma yalnız Admin SDK
     match /cronRuns/{runId} {
       allow read: if isCmsStaff();

@@ -15,11 +15,13 @@ import { linkFingerprintToNews } from '@/services/newsroom/detection/sourceFinge
 import { detectQueueDuplicate } from '@/services/newsroom/queue/queueDuplicateCheck'
 import {
   claimPendingQueueItems,
+  markQueueDuplicate,
   markQueueFailed,
   markQueuePublished,
   markQueueSkipped,
   releaseQueueClaim,
 } from '@/services/newsroom/queue/newsQueueService'
+import { recordStoryInLibrary } from '@/services/newsroom/dedupe/storyLibraryService'
 import { staleQueueReason } from '@/services/newsroom/queue/freshness'
 import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
@@ -52,6 +54,7 @@ export async function processNewsQueue(
     failed: 0,
     deadLetter: 0,
     skipped: 0,
+    duplicateLibraryHits: 0,
     errors: [],
   }
 
@@ -97,9 +100,15 @@ export async function processNewsQueue(
       if (duplicateHit) {
         console.log(
           `[processNewsQueue] duplicate skip ${job.id}` +
-            (duplicateHit.existingNewsId ? ` → ${duplicateHit.existingNewsId}` : '')
+            (duplicateHit.existingNewsId ? ` → ${duplicateHit.existingNewsId}` : '') +
+            (duplicateHit.libraryHit ? ` [library:${duplicateHit.matchMethod}]` : '')
         )
-        await markQueueSkipped(db, job.id, duplicateHit.reason)
+        if (duplicateHit.libraryHit) {
+          await markQueueDuplicate(db, job.id, duplicateHit, data.input)
+          stats.duplicateLibraryHits += 1
+        } else {
+          await markQueueSkipped(db, job.id, duplicateHit.reason)
+        }
         stats.skipped += 1
         return
       }
@@ -114,11 +123,23 @@ export async function processNewsQueue(
         await markQueuePublished(db, job.id, result.newsId ?? '')
         if (result.newsId) {
           await linkFingerprintToNews(db, data.sourceId, data.fingerprintHash, result.newsId)
+          await recordStoryInLibrary(db, data.input, {
+            newsId: result.newsId,
+            title: data.input.originalTitle,
+            citySlug: data.input.forcedCitySlug ?? null,
+          })
         }
         if (result.outcome === 'updated') stats.updated += 1
         else stats.published += 1
       } else if (result.outcome === 'created') {
         await markQueuePublished(db, job.id, result.newsId ?? 'draft')
+        if (result.newsId) {
+          await recordStoryInLibrary(db, data.input, {
+            newsId: result.newsId,
+            title: data.input.originalTitle,
+            citySlug: data.input.forcedCitySlug ?? null,
+          })
+        }
         stats.drafted += 1
       } else if (result.outcome === 'skipped') {
         await markQueueSkipped(db, job.id, 'duplicate or unchanged')
@@ -163,6 +184,10 @@ export async function processNewsQueue(
     }
   }
 
-  console.log(`[processNewsQueue] done: picked=${stats.picked} pub=${stats.published} draft=${stats.drafted} skip=${stats.skipped} fail=${stats.failed} elapsed=${Date.now() - startTime}ms`)
+  console.log(
+    `[processNewsQueue] done: picked=${stats.picked} pub=${stats.published} draft=${stats.drafted}` +
+      ` skip=${stats.skipped} libraryDup=${stats.duplicateLibraryHits} fail=${stats.failed}` +
+      ` elapsed=${Date.now() - startTime}ms`
+  )
   return stats
 }

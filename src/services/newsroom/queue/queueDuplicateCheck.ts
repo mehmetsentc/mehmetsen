@@ -5,11 +5,15 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
+import { findStoryLibraryMatch } from '@/services/newsroom/dedupe/storyLibraryService'
 import type { NewsQueueDocument } from '@/services/newsroom/queue/types'
 
 export interface QueueDuplicateHit {
   reason: string
   existingNewsId?: string
+  /** True when matched via newsroomStoryLibrary (cross-source topic gate) */
+  libraryHit?: boolean
+  matchMethod?: string
 }
 
 async function findExistingByFingerprint(
@@ -96,6 +100,28 @@ export async function detectQueueDuplicate(
   }
 
   const body = [input.originalSummary, input.originalContent].filter(Boolean).join(' ').slice(0, 500)
+
+  const libraryMatch = await findStoryLibraryMatch(db, {
+    title: input.originalTitle,
+    body,
+    sourceUrl: input.sourceUrl,
+    rssFingerprint: fingerprint,
+    citySlug: input.forcedCitySlug,
+    existingNewsId: data.existingNewsId,
+  })
+  if (libraryMatch) {
+    console.log(
+      `[queueDuplicateCheck] duplicateLibraryHit ${libraryMatch.matchMethod}` +
+        ` → ${libraryMatch.firstNewsId} (${libraryMatch.reason})`
+    )
+    return {
+      reason: `duplicateLibraryHit:${libraryMatch.reason}`,
+      existingNewsId: libraryMatch.firstNewsId,
+      libraryHit: true,
+      matchMethod: libraryMatch.matchMethod,
+    }
+  }
+
   const similar = await findSimilarPublishedArticle(db, input.originalTitle, body)
   if (similar && similar.newsId !== data.existingNewsId) {
     return { reason: 'duplicate', existingNewsId: similar.newsId }

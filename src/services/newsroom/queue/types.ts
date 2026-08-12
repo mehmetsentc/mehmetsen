@@ -42,5 +42,7 @@ export interface QueueProcessStats {
   failed: number
   deadLetter: number
   skipped: number
+  /** Cross-source duplicates blocked by newsroomStoryLibrary before AI */
+  duplicateLibraryHits: number
   errors: string[]
 }

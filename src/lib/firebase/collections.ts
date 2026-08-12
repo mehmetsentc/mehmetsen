@@ -40,6 +40,8 @@ export const Collections = {
   RSS_FEEDS:      'rssFeeds',
   /** Ingestion source metadata */
   SOURCES:        'sources',
+  /** Processed-story library — cross-source duplicate gate (Admin SDK only) */
+  NEWSROOM_STORY_LIBRARY: 'newsroomStoryLibrary',
 
   // ── AI Editorial Newsroom V2 (personas) ───────────────────────────────────
   /** Persistent AI editor identities (private config) */

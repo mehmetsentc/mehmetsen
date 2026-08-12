@@ -124,7 +124,12 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   // ── Özel kategoriler ────────────────────────────────────────────────────────
   { id: 'son-dakika',    name: 'Son Dakika',    slug: 'son-dakika',    iconName: 'zap',         color: '#EF4444' },
   { id: 'etkinlikler',   name: 'Etkinlikler',   slug: 'etkinlikler',   iconName: 'calendar',    color: '#8B5CF6' },
+  /** Cross-source duplicate stubs — hidden from main nav, audit-only */
+  { id: 'tekrarlayan',   name: 'Tekrarlayan Haber', slug: 'tekrarlayan', iconName: 'copy',    color: '#9CA3AF', standalone: true },
 ]
+
+/** Category id for AI-skipped cross-source duplicate stubs */
+export const TEKRARLAYAN_CATEGORY_ID = 'tekrarlayan'
 
 /** Admin CMS haber editörü — gruplu kategori seçici (tek kaynak: DEFAULT_CATEGORIES). */
 const ADMIN_CATEGORY_GROUP_DEFS: Array<{ label: string; ids: string[] }> = [

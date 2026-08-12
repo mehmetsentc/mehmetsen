@@ -38,6 +38,10 @@ import {
   YEREL_HABER_CATEGORY_ID,
 } from '@/constants/config'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
+import {
+  findStoryLibraryMatch,
+  recordStoryInLibrary,
+} from '@/services/newsroom/dedupe/storyLibraryService'
 import { factChecker } from '@/services/newsroom/factChecker'
 import { geoEngine } from '@/services/newsroom/geoEngine'
 import { resolveCountryFromText } from '@/constants/countries'
@@ -469,6 +473,28 @@ export async function processNewsroomArticle(
       existing.id !== options.reprocessDraftId
     ) {
       return { outcome: 'skipped' }
+    }
+  }
+
+  if (options.changeType !== 'updated' && !options.reprocessDraftId) {
+    const libraryBody = [input.originalSummary, input.originalContent]
+      .filter(Boolean)
+      .join(' ')
+      .slice(0, 500)
+    const libraryHit = await findStoryLibraryMatch(db, {
+      title: input.originalTitle,
+      body: libraryBody,
+      sourceUrl: input.sourceUrl,
+      rssFingerprint: fingerprint,
+      citySlug: input.forcedCitySlug,
+      existingNewsId: options.existingNewsId,
+    })
+    if (libraryHit) {
+      console.log(
+        `[newsroom/pipeline] duplicateLibraryHit ${libraryHit.matchMethod}` +
+          ` → ${libraryHit.firstNewsId} (${libraryHit.reason})`
+      )
+      return { outcome: 'skipped', newsId: libraryHit.firstNewsId }
     }
   }
 
@@ -1249,6 +1275,11 @@ export async function processNewsroomArticle(
         console.log(
           `[newsroom] demoted thin/live ${targetNewsId} → draft (confidence=${factCheck.confidenceScore})`
         )
+        await recordStoryInLibrary(db, input, {
+          newsId: targetNewsId,
+          title: rewritten.title,
+          citySlug: doc.citySlug,
+        })
         return { outcome: 'updated', lowConfidence: true, newsId: targetNewsId }
       }
 
@@ -1270,6 +1301,11 @@ export async function processNewsroomArticle(
       }
 
       console.log(`[newsroom] updated ${targetNewsId} (confidence=${factCheck.confidenceScore})`)
+      await recordStoryInLibrary(db, input, {
+        newsId: targetNewsId,
+        title: rewritten.title,
+        citySlug: doc.citySlug,
+      })
       return { outcome: 'updated', lowConfidence, newsId: targetNewsId }
     }
 
@@ -1306,6 +1342,11 @@ export async function processNewsroomArticle(
       console.log(
         `[newsroom] auto-published ${newsId} (confidence=${factCheck.confidenceScore}, retry=${rewriteAttempt})`
       )
+      await recordStoryInLibrary(db, input, {
+        newsId,
+        title: rewritten.title,
+        citySlug: doc.citySlug,
+      })
       return { outcome: 'published', lowConfidence, newsId }
     }
 
@@ -1332,11 +1373,21 @@ export async function processNewsroomArticle(
         },
         { merge: true }
       )
+      await recordStoryInLibrary(db, input, {
+        newsId: options.reprocessDraftId,
+        title: rewritten.title,
+        citySlug: doc.citySlug,
+      })
       return { outcome: 'created', lowConfidence, newsId: options.reprocessDraftId }
     }
 
-    await db.collection(Collections.NEWS_DRAFTS).add(draftPayload)
-    return { outcome: 'created', lowConfidence }
+    const draftRef = await db.collection(Collections.NEWS_DRAFTS).add(draftPayload)
+    await recordStoryInLibrary(db, input, {
+      newsId: draftRef.id,
+      title: rewritten.title,
+      citySlug: doc.citySlug,
+    })
+    return { outcome: 'created', lowConfidence, newsId: draftRef.id }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     // Duplikat veya İngilizce içerik skip → sessizce atla, hata değil
