@@ -288,6 +288,14 @@ export const EDITOR_REGISTRY: Record<EditorId, EditorMetadata> = {
     schedule: 'pipeline',
     description: 'İl, ilçe ve ülke çıkarımı; citySlug ve etiket zenginleştirme.',
   },
+  'chief-editor': {
+    id: 'chief-editor',
+    name: 'Chief Editor',
+    nameTr: 'Ana Editör',
+    schedule: 'pipeline',
+    description:
+      'Pipeline final gate — duplikat / kategori / yayın kararı; isDuplicate → newsDrafts stub, yayın yok.',
+  },
   archive: {
     id: 'archive',
     name: 'Archive Editor',

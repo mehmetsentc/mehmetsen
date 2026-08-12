@@ -16,6 +16,7 @@ export type EditorId =
   | 'fact-checker'
   | 'category-engine'
   | 'geo-engine'
+  | 'chief-editor'
   | 'archive'
   | 'afad-deprem'
   | 'finans'

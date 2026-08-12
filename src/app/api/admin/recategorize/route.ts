@@ -1,9 +1,9 @@
 /**
- * POST /api/admin/recategorize
+ * GET/POST /api/admin/recategorize
  * Re-classifies existing articles using GPT + heuristics.
- * Bearer token required (CRON_SECRET or CMS super_admin).
+ * Bearer token required (CRON_SECRET). Vercel cron uses GET daily.
  *
- * Body: { limit?: number; dryRun?: boolean }
+ * Body (POST) / query (GET): { limit?: number; dryRun?: boolean }
  * Re-categorizes articles that still have categoryId='ekonomi' OR low confidence.
  */
 import { NextResponse } from 'next/server'
@@ -71,16 +71,9 @@ SADECE JSON döndür: {"category":"<slug>"}`,
   }
 }
 
-export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  let body: { limit?: number; dryRun?: boolean } = {}
-  try { body = await request.json() } catch { /* ignore */ }
-
-  const limit = Math.min(body.limit ?? 50, 200)
-  const dryRun = body.dryRun ?? false
+async function runRecategorize(opts: { limit?: number; dryRun?: boolean }) {
+  const limit = Math.min(opts.limit ?? 50, 200)
+  const dryRun = opts.dryRun ?? false
 
   const db = getAdminFirestore()
   const startMs = Date.now()
@@ -157,7 +150,7 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({
+  return {
     checked: candidates.length,
     updated,
     unchanged,
@@ -165,5 +158,32 @@ export async function POST(request: Request) {
     dryRun,
     durationMs: Date.now() - startMs,
     changes,
+  }
+}
+
+/** Vercel Cron (GET + Bearer CRON_SECRET) — günlük düşük-güven kategori düzeltme. */
+export async function GET(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const { searchParams } = new URL(request.url)
+  const limit = Number(searchParams.get('limit') || 50)
+  const dryRun = searchParams.get('dryRun') === '1' || searchParams.get('dryRun') === 'true'
+  const result = await runRecategorize({
+    limit: Number.isFinite(limit) ? limit : 50,
+    dryRun,
   })
+  return NextResponse.json(result)
+}
+
+export async function POST(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  let body: { limit?: number; dryRun?: boolean } = {}
+  try { body = await request.json() } catch { /* ignore */ }
+
+  const result = await runRecategorize(body)
+  return NextResponse.json(result)
 }

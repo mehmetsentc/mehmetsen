@@ -5,10 +5,15 @@ import Link from 'next/link'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { auth } from '@/lib/firebase/auth'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
-import { Bot, Loader2, RefreshCw, Sparkles, Archive } from 'lucide-react'
+import { Bot, Loader2, RefreshCw, Sparkles, Archive, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import type { AiEditorDocument } from '@/types/aiEditor'
+import { EDITOR_REGISTRY } from '@/services/newsroom/config'
+
+const PIPELINE_COMPONENTS = Object.values(EDITOR_REGISTRY).filter(
+  (e) => e.schedule === 'pipeline'
+)
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -249,6 +254,54 @@ export default function AiEditorsAdminPage() {
               </tbody>
             </table>
           )}
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+          <div className="flex items-center gap-2 border-b border-[rgb(var(--color-border))] px-4 py-3">
+            <Layers className="h-4 w-4 text-[rgb(var(--color-primary))]" />
+            <div>
+              <p className="text-sm font-semibold text-[rgb(var(--color-text))]">
+                Pipeline bileşenleri
+              </p>
+              <p className="text-xs text-[rgb(var(--color-muted))]">
+                Firestore persona değil — process-queue içinde çalışan registry bileşenleri
+              </p>
+            </div>
+          </div>
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-[rgb(var(--color-border))] bg-black/[0.02] text-xs uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Bileşen</th>
+                <th className="px-4 py-3 font-semibold">Rol</th>
+                <th className="px-4 py-3 font-semibold">Çalışma</th>
+                <th className="px-4 py-3 font-semibold">Durum</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PIPELINE_COMPONENTS.map((component) => (
+                <tr
+                  key={component.id}
+                  className="border-b border-[rgb(var(--color-border))] last:border-0"
+                >
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-[rgb(var(--color-text))]">{component.nameTr}</p>
+                    <p className="text-xs text-[rgb(var(--color-muted))]">{component.id}</p>
+                  </td>
+                  <td className="max-w-md px-4 py-3 text-xs text-[rgb(var(--color-muted))]">
+                    {component.description}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-700">
+                      pipeline
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-medium text-emerald-600">Aktif</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

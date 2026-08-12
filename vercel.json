@@ -152,8 +152,20 @@
       "schedule": "15 */4 * * *"
     },
     {
+      "path": "/api/cron/newsroom/turizm",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/gezi",
+      "schedule": "50 * * * *"
+    },
+    {
       "path": "/api/cron/newsroom/otomobil",
       "schedule": "45 */4 * * *"
+    },
+    {
+      "path": "/api/admin/recategorize",
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/cron/newsroom/trend",

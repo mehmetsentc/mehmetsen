@@ -54,8 +54,8 @@ Kaynak: `src/services/newsroom/config.ts` + `vercel.json` cron eşleşmesi.
 | `sinema-news` | Box Office Türkiye Atom | 4h | `45 */4 * * *` | — |
 | `gastronomi-news` | Lezzet, gastronomi RSS | 30m | `15 */4 * * *` | — |
 | `otomobil-news` | Otomobil RSS | 30m | `45 */4 * * *` | — |
-| **`turizm-news`** | Turizm sektör RSS | 30m | **Yok** | Route var, cron kayıtlı değil |
-| **`gezi-news`** | Seyahat / destinasyon | 1h | **Yok** | Route var, cron kayıtlı değil |
+| **`turizm-news`** | Turizm sektör RSS | 30m | `*/30 * * * *` | — |
+| **`gezi-news`** | Seyahat / destinasyon | 1h | `50 * * * *` | — |
 | `kibris-haberleri` | KKTC kaynakları | 30m | `0 * * * *` | — |
 | `finans` | BloombergHT, Dünya… | 30m | `0 * * * *` | — |
 | `kripto` | CoinDesk, CoinTelegraph | 30m | `20 * * * *` | — |
@@ -90,7 +90,7 @@ Kaynak: `src/services/newsroom/config.ts` + `vercel.json` cron eşleşmesi.
 | `fact-checker` | confidenceScore; düşükse newsDrafts | Beklenen — pipeline adımı |
 | `category-engine` | AI kategori ataması | Beklenen |
 | `geo-engine` | il/ilçe çıkarımı | Beklenen |
-| **`chiefEditor`** | Ana editör — duplikat/kategori/yayın kararı | **EDITOR_REGISTRY'de yok**; `pipeline.ts` içinde çalışır |
+| **`chief-editor`** | Ana editör — duplikat/kategori/yayın kararı | Registry + AI Editörler UI (pipeline bölümü) |
 
 ### Bakım / yardımcı worker'lar
 
@@ -105,7 +105,7 @@ Kaynak: `src/services/newsroom/config.ts` + `vercel.json` cron eşleşmesi.
 | `weather` | Büyük iller hava durumu | `0 */2 * * *` | — |
 | `video-queue` | Video kuyruğa ekleme | `0 */6 * * *` | — |
 | `video-process` | AI video senaryo | `25 */3 * * *` | — |
-| **`recategorize`** | Düşük güven kategori düzeltme | daily (config) | **vercel.json'da cron yok** — yalnızca manuel/admin |
+| **`recategorize`** | Düşük güven kategori düzeltme | daily | `0 3 * * *` → `/api/admin/recategorize` (CRON_SECRET) |
 | `world-cup-2026` | Dünya Kupası (arşiv) | off | Ingest kapalı — bilinçli |
 
 ### Kuyruk / altyapı cron'ları (worker değil)
@@ -137,11 +137,11 @@ Kaynak: `src/lib/ai/editorial/seedEditors.ts` — Admin → **AI Editörler** sa
 | `ipek-demir` | Magazin | magazin | — |
 | `melis-kaya` | Yerel (Çanakkale) | yerel-* alt kategoriler | localConfig: ilçeler |
 | `asli-tan` | Kültür / Sinema | sinema, kultur | — |
-| `derya-akin` | Turizm | turizm | Worker cron eksik (turizm-news) |
+| `derya-akin` | Turizm | turizm | Worker cron aktif (turizm-news) |
 | `emre-sancar` | Gastronomi | gastronomi | — |
 | `zeynep-er` | Otomobil | otomobil | — |
 | `baran-eren` | Kıbrıs | kibris-haberleri | — |
-| `burak-celik` | Gezi | gezi | Worker cron eksik (gezi-news) |
+| `burak-celik` | Gezi | gezi | Worker cron aktif (gezi-news) |
 | `oguz-ata` | Astroloji | astroloji | — |
 | `nahaber-redaksiyon` | İç redaksiyon | — | assignableForNews: false |
 | `nahaber-seo` | SEO kopya | — | Internal agent |
@@ -165,10 +165,22 @@ Persona editörler **RSS worker değildir** — pipeline rewrite aşamasında ha
 | Duplikat | `isDuplicate` → `createDuplicateNewsStub`, yayın yok |
 | Kategori | DeepSeek V4 + tüm `DEFAULT_CATEGORIES` |
 | Auto-publish | `CHIEF_EDITOR_AUTO_PUBLISH` env (varsayılan açık) |
-| Registry | **EDITOR_REGISTRY'de kayıtlı değil** — AI Editörler UI'da görünmez |
+| Registry | `EDITOR_REGISTRY['chief-editor']` — schedule: `pipeline` |
+| Admin UI | AI Editörler → **Pipeline bileşenleri** bölümünde görünür |
 | Fallback | API key yoksa `chiefEditorFallback` — duplikat kontrolü **devre dışı** |
 
-**Kısmen shipped:** Pipeline'da aktif; admin envanterinde ve cron'da yok. Duplikat stub'ları üretiyor ama CMS filtresi (düzeltme öncesi) bunları göstermiyordu.
+**Shipped:** Pipeline'da aktif; registry + AI Editörler UI'da pipeline bileşeni olarak listelenir.
+
+---
+
+## Düzeltmeler (12 Ağustos 2026 — deploy)
+
+| Madde | Yapılan |
+|-------|---------|
+| P1 turizm/gezi cron | `vercel.json`: turizm `*/30`, gezi `50 * * * *` |
+| P2 recategorize cron | Günlük `0 3 * * *` → `/api/admin/recategorize` (GET + CRON_SECRET) |
+| P2 chiefEditor UI | `chief-editor` registry + AI Editörler pipeline listesi |
+| P0 Tekrar Haber | Önceki commit — `listDuplicateNews` |
 
 ---
 
@@ -177,10 +189,10 @@ Persona editörler **RSS worker değildir** — pipeline rewrite aşamasında ha
 | Öncelik | Bileşen | Sorun | Öneri |
 |---------|---------|-------|-------|
 | P0 | Tekrar Haber CMS filtresi | newsDrafts rejected stub'ları sorgulanmıyordu | **Düzeltildi** (`listDuplicateNews`) |
-| P1 | `turizm-news` | Cron yok | `vercel.json`'a ekle |
-| P1 | `gezi-news` | Cron yok | `vercel.json`'a ekle |
-| P2 | `recategorize` | Günlük cron tanımlı değil | Cron ekle veya admin-only olarak belgele |
-| P2 | `chiefEditor` | Registry/UI dışı | EDITOR_REGISTRY'ye pipeline bileşeni olarak ekle |
+| P1 | `turizm-news` | Cron yoktu | **Düzeltildi** — vercel cron |
+| P1 | `gezi-news` | Cron yoktu | **Düzeltildi** — vercel cron |
+| P2 | `recategorize` | Günlük cron yoktu | **Düzeltildi** — `0 3 * * *` |
+| P2 | `chiefEditor` | Registry/UI dışıydı | **Düzeltildi** — `chief-editor` + UI |
 | P3 | `aiNewsEditor` duplikat | Stub yok, sadece throw | chiefEditor/queue yolu yeterli; isteğe bağlı stub |
 | P3 | `world-cup-2026` | Ingest kapalı | Bilinçli arşiv |
 
