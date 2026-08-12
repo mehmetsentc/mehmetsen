@@ -5,22 +5,56 @@ import { Mail } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { CONTACT_EMAIL, FOOTER_BOTTOM_LINKS } from '@/constants/siteLegalLinks'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
+import type { CityCategory } from '@/services/cityNewsService.server'
 
-const SOCIAL = [
-  { label: 'X',         href: process.env.NEXT_PUBLIC_X_URL        ?? 'https://x.com/nahabercom' },
-  { label: 'Facebook',  href: process.env.NEXT_PUBLIC_FACEBOOK_URL  ?? 'https://www.facebook.com/nahabercom' },
-  { label: 'Instagram', href: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? 'https://www.instagram.com/nahabercom' },
-  { label: 'YouTube',   href: process.env.NEXT_PUBLIC_YOUTUBE_URL   ?? 'https://www.youtube.com/@nahabercom' },
+/* ─────────────────────────────────────────────────────────────────────────────
+   Kategori slug → tematik grup haritası
+   Haritada olmayan slug'lar → HABERLER sütununa düşer (default)
+───────────────────────────────────────────────────────────────────────────── */
+type CatGroup = 'life' | 'culture'
+
+const SLUG_TO_GROUP: Record<string, CatGroup> = {
+  // YAŞAM
+  yasam: 'life', turizm: 'life', gezi: 'life', saglik: 'life',
+  gastronomi: 'life', magazin: 'life', muzeler: 'life',
+  'cevre-iklim': 'life', 'din-inanc': 'life',
+  spor: 'life', futbol: 'life', basketbol: 'life',
+  // KÜLTÜR & TEKNOLOJİ
+  kultur: 'culture', 'kultur-sanat': 'culture',
+  sinema: 'culture', tiyatro: 'culture', konser: 'culture',
+  egitim: 'culture', tarih: 'culture', etkinlik: 'culture',
+  teknoloji: 'culture', bilim: 'culture', otomobil: 'culture',
+  meteoroloji: 'culture', 'hava-durumu': 'culture', 'oyun-espor': 'culture',
+}
+
+function groupCategories(cats: CityCategory[]) {
+  const news: CityCategory[] = []
+  const life: CityCategory[] = []
+  const culture: CityCategory[] = []
+  for (const cat of cats) {
+    // ID veya slug üzerinden eşleştir
+    const g = SLUG_TO_GROUP[cat.id] ?? SLUG_TO_GROUP[cat.slug]
+    if (g === 'life') life.push(cat)
+    else if (g === 'culture') culture.push(cat)
+    else news.push(cat)
+  }
+  return { news, life, culture }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Sabit linkler
+───────────────────────────────────────────────────────────────────────────── */
+// Haberlerin altına eklenen statik sayfalar
+const NEWS_STATIC = [
+  { label: 'Ana Sayfa',   href: '/' },
+  { label: 'Etkinlik',    href: '/etkinlik' },
+  { label: 'İlçeler',     href: '/ilceler' },
+  { label: 'Müzeler',     href: '/muzeler' },
 ] as const
 
-/** Sabit bölümler — gerçek route'u olan sayfalar. */
-const STATIC_SECTIONS = [
-  { label: 'Ana Sayfa',       href: '/' },
-  { label: 'Etkinlik',        href: '/etkinlik' },
-  { label: 'Spor',            href: '/spor' },
-  { label: 'İlçeler',         href: '/ilceler' },
-  { label: 'Müzeler',         href: '/muzeler' },
-  { label: 'RSS Beslemeleri', href: 'https://nahaber.com/rss', external: true },
+// Yaşam sütununun altına eklenen statik
+const LIFE_STATIC = [
+  { label: 'Spor', href: '/spor' },
 ] as const
 
 const KURUMSAL = [
@@ -29,39 +63,104 @@ const KURUMSAL = [
   { label: 'Editoryal İlkeler', href: '/editoryal-ilkeler' },
   { label: 'Reklam',            href: '/iletisim' },
   { label: 'İletişim',          href: '/iletisim' },
+  { label: 'RSS Beslemeleri',   href: 'https://nahaber.com/rss' },
 ] as const
 
 const HESAP = [
-  { label: 'Giriş Yap',       href: '/giris' },
-  { label: 'Üye Ol',          href: '/kayit' },
-  { label: 'Hesap Ayarları',  href: '/hesap/ayarlar' },
-  { label: 'Mobil Uygulama',  href: '/mobil-uygulama' },
+  { label: 'Giriş Yap',      href: '/giris' },
+  { label: 'Üye Ol',         href: '/kayit' },
+  { label: 'Hesap Ayarları', href: '/hesap/ayarlar' },
+  { label: 'Mobil Uygulama', href: '/mobil-uygulama' },
 ] as const
 
+const SOCIAL = [
+  { label: 'X',         href: process.env.NEXT_PUBLIC_X_URL        ?? 'https://x.com/nahabercom' },
+  { label: 'Facebook',  href: process.env.NEXT_PUBLIC_FACEBOOK_URL  ?? 'https://www.facebook.com/nahabercom' },
+  { label: 'Instagram', href: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? 'https://www.instagram.com/nahabercom' },
+  { label: 'YouTube',   href: process.env.NEXT_PUBLIC_YOUTUBE_URL   ?? 'https://www.youtube.com/@nahabercom' },
+] as const
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Yardımcı: link listesi render
+───────────────────────────────────────────────────────────────────────────── */
+type SimpleLink = { label: string; href: string }
+
+function FooterLinks({ items, external = false }: { items: readonly SimpleLink[]; external?: boolean }) {
+  return (
+    <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+      {items.map((l) =>
+        external && l.href.startsWith('http') ? (
+          <li key={l.label}>
+            <a href={l.href} target="_blank" rel="noopener noreferrer"
+              className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
+            >
+              {l.label}
+            </a>
+          </li>
+        ) : (
+          <li key={l.label}>
+            <Link href={l.href}
+              className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
+            >
+              {l.label}
+            </Link>
+          </li>
+        )
+      )}
+    </ul>
+  )
+}
+
+function CategoryLinks({ cats }: { cats: CityCategory[] }) {
+  return (
+    <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+      {cats.map((cat) => (
+        <li key={cat.id}>
+          <Link href={`/#category-rail-${cat.id}`}
+            className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
+          >
+            {cat.name}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function ColHeader({ title }: { title: string }) {
+  return (
+    <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[rgb(var(--color-text))]">
+      {title}
+    </h2>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Ana bileşen
+───────────────────────────────────────────────────────────────────────────── */
 interface CityFooterProps {
   cityName: string
   provinceSlug: string
 }
 
 export function CityFooter({ cityName }: CityFooterProps) {
-  // Sadece bu şehirde gerçekten haberi olan kategoriler — context'ten gelir
   const { categories } = useCityCategoryFilter()
-
+  const { news, life, culture } = groupCategories(categories)
   const year = new Date().getFullYear()
 
-  // Kategori hash linkleri — sidebar ile aynı mekanizma, gerçek route yok, feed'e scroll
-  const categoryLinks = categories.map((cat) => ({
-    label: cat.name,
-    href: `/#category-rail-${cat.id}`,
-  }))
+  // Dinamik kategori linkleri (hash anchor)
+  const newsLinks: SimpleLink[] = news.map((c) => ({ label: c.name, href: `/#category-rail-${c.id}` }))
+  const lifeLinks: SimpleLink[] = life.map((c) => ({ label: c.name, href: `/#category-rail-${c.id}` }))
+  const cultureLinks: SimpleLink[] = culture.map((c) => ({ label: c.name, href: `/#category-rail-${c.id}` }))
 
   return (
     <footer
       className="mt-10 border-t border-[rgb(var(--color-border))] font-[family-name:var(--font-inter,Inter,system-ui,sans-serif)]"
       role="contentinfo"
     >
-      {/* ── Mobil footer ── */}
-      <div className="block px-4 pt-7 pb-6 space-y-6 lg:hidden">
+      {/* ══════════ MOBİL ══════════ */}
+      <div className="block px-4 pt-7 pb-6 space-y-5 lg:hidden">
+        {/* Logo */}
         <div className="flex items-center gap-2.5">
           <BrandLogo size="sm" />
           <div className="leading-tight">
@@ -71,17 +170,12 @@ export function CityFooter({ cityName }: CityFooterProps) {
             <span className="block text-lg font-black text-[rgb(var(--color-text))]">NaHaber</span>
           </div>
         </div>
-        <p className="text-[11px] leading-relaxed text-[rgb(var(--color-muted))] -mt-3">
-          {cityName} haberleri, etkinlikleri ve güncel bilgiler
-        </p>
 
-        {/* Dinamik kategoriler — chip */}
-        {categoryLinks.length > 0 && (
+        {/* Kategori chips — hepsini tek satırda chip */}
+        {categories.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {categoryLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
+            {[...newsLinks, ...lifeLinks, ...cultureLinks].map((l) => (
+              <Link key={l.href} href={l.href}
                 className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-[12px] font-medium text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))]"
               >
                 {l.label}
@@ -90,7 +184,7 @@ export function CityFooter({ cityName }: CityFooterProps) {
           </div>
         )}
 
-        {/* Sosyal medya */}
+        {/* Sosyal */}
         <div className="flex items-center gap-4 border-t border-[rgb(var(--color-border))] pt-4">
           {SOCIAL.map((s) => (
             <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer me"
@@ -122,10 +216,10 @@ export function CityFooter({ cityName }: CityFooterProps) {
         </p>
       </div>
 
-      {/* ── Desktop footer ── */}
+      {/* ══════════ DESKTOP ══════════ */}
       <div className="hidden lg:block pt-8">
-        {/* Logo + şehir adı */}
-        <div className="mb-8 flex items-center gap-2.5">
+        {/* Logo */}
+        <div className="mb-6 flex items-center gap-2.5">
           <BrandLogo size="md" />
           <div className="leading-tight">
             <span className="block text-[11px] font-bold uppercase tracking-widest text-[rgb(var(--color-muted))]">
@@ -135,86 +229,76 @@ export function CityFooter({ cityName }: CityFooterProps) {
           </div>
         </div>
 
-        {/* Sütunlar */}
-        <div className="mb-8 border-t border-[rgb(var(--color-border))] pt-8">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
+        {/* Sütun ızgarası — nahaber.com ile aynı yapı */}
+        <div className="border-t border-[rgb(var(--color-border))] pt-8 mb-8">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-6">
 
-            {/* Kategoriler — sadece gerçek haberi olanlar */}
-            <nav aria-label="Kategoriler">
-              <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[rgb(var(--color-text))]">
-                Haberler
-              </h2>
-              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-                {categoryLinks.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href}
-                      className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            {/* Sabit bölümler */}
-            <nav aria-label="Bölümler">
-              <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[rgb(var(--color-text))]">
-                Bölümler
-              </h2>
-              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-                {STATIC_SECTIONS.map((link) => (
-                  <li key={link.href}>
-                    {'external' in link && link.external ? (
-                      <a href={link.href} target="_blank" rel="noopener noreferrer"
+            {/* 1) HABERLER — haber/politika kategorileri + statik sayfalar */}
+            <nav aria-label="Haberler">
+              <ColHeader title="Haberler" />
+              <CategoryLinks cats={news} />
+              {NEWS_STATIC.length > 0 && (
+                <ul className="m-0 mt-2.5 flex list-none flex-col gap-2.5 p-0 border-t border-[rgb(var(--color-border))] pt-2.5">
+                  {NEWS_STATIC.map((l) => (
+                    <li key={l.href}>
+                      <Link href={l.href}
                         className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
                       >
-                        {link.label}
-                      </a>
-                    ) : (
-                      <Link href={link.href}
-                        className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
-                      >
-                        {link.label}
+                        {l.label}
                       </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </nav>
 
-            {/* Kurumsal */}
+            {/* 2) YAŞAM — turizm/sağlık/spor vb. kategoriler */}
+            {(life.length > 0 || LIFE_STATIC.length > 0) && (
+              <nav aria-label="Yaşam">
+                <ColHeader title="Yaşam" />
+                <CategoryLinks cats={life} />
+                {LIFE_STATIC.length > 0 && (
+                  <ul className="m-0 mt-2.5 flex list-none flex-col gap-2.5 p-0 border-t border-[rgb(var(--color-border))] pt-2.5">
+                    {LIFE_STATIC.map((l) => (
+                      <li key={l.href}>
+                        <Link href={l.href}
+                          className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
+                        >
+                          {l.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </nav>
+            )}
+
+            {/* 3) KÜLTÜR & TEKNOLOJİ */}
+            {culture.length > 0 && (
+              <nav aria-label="Kültür ve Teknoloji">
+                <ColHeader title="Kültür & Teknoloji" />
+                <CategoryLinks cats={culture} />
+              </nav>
+            )}
+
+            {/* 4) KURUMSAL */}
             <nav aria-label="Kurumsal">
-              <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[rgb(var(--color-text))]">
-                Kurumsal
-              </h2>
-              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-                {KURUMSAL.map((link) => (
-                  <li key={link.label}>
-                    <Link href={link.href}
-                      className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <ColHeader title="Kurumsal" />
+              <FooterLinks items={KURUMSAL} external />
             </nav>
 
-            {/* Hesap */}
+            {/* 5) HESAP */}
             <nav aria-label="Hesap"
-              className="col-span-2 sm:col-span-1 lg:col-span-1 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-8"
+              className="col-span-2 sm:col-span-1 lg:col-span-1 lg:border-l lg:border-[rgb(var(--color-border))] lg:pl-6"
             >
-              <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[rgb(var(--color-text))]">
-                Hesap
-              </h2>
-              <ul className="m-0 flex list-none flex-col gap-3 p-0">
-                {HESAP.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href}
+              <ColHeader title="Hesap" />
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                {HESAP.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href}
                       className="text-[13px] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:underline"
                     >
-                      {link.label}
+                      {l.label}
                     </Link>
                   </li>
                 ))}
@@ -232,7 +316,7 @@ export function CityFooter({ cityName }: CityFooterProps) {
         </div>
 
         {/* Sosyal medya */}
-        <div className="mb-6 flex flex-wrap gap-3">
+        <div className="mb-6 flex flex-wrap gap-4">
           {SOCIAL.map((s) => (
             <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer me"
               aria-label={`NaHaber ${s.label}`}
@@ -244,7 +328,7 @@ export function CityFooter({ cityName }: CityFooterProps) {
         </div>
 
         {/* Alt çizgi */}
-        <div className="border-t border-[rgb(var(--color-border))] pt-5">
+        <div className="border-t border-[rgb(var(--color-border))] pt-5 pb-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <p className="m-0 text-[11px] text-[rgb(var(--color-muted))]">
               © {year}{' '}
@@ -253,12 +337,12 @@ export function CityFooter({ cityName }: CityFooterProps) {
             </p>
             <nav aria-label="Yasal bağlantılar">
               <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0">
-                {FOOTER_BOTTOM_LINKS.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href}
+                {FOOTER_BOTTOM_LINKS.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href}
                       className="text-[11px] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:underline"
                     >
-                      {link.label}
+                      {l.label}
                     </Link>
                   </li>
                 ))}
