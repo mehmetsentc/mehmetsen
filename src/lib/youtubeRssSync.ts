@@ -7,6 +7,8 @@
  * yayınlar CMS'te "içerik yok" olarak görünüyordu.
  */
 
+import { shouldSkipYouTubeRssEntry } from '@/lib/liveBroadcastDetect'
+
 interface RssEntry {
   videoId: string
   title: string
@@ -163,15 +165,25 @@ export async function syncYouTubeRss(channelId: string): Promise<YouTubeRssSyncR
       continue
     }
 
+    // Canlı yayın / shorts / video-only — NaHaber'de oynatılamayan kaynak videoları atla.
+    // Önceden hepsi categoryId=teknoloji ile yayınlanıyordu (yanlış kategori + boş/video-only).
+    const gate = shouldSkipYouTubeRssEntry(entry.title, entry.description)
+    if (gate.skip) {
+      skipped++
+      console.log(
+        `[youtube-rss] skipped (${gate.reason}): ${entry.title.slice(0, 80)}`
+      )
+      continue
+    }
+
     const slug = `video-${entry.videoId}`
-    const publishedMs = Date.parse(entry.publishedAt)
     const embedUrl = `https://www.youtube.com/embed/${entry.videoId}`
     const thumbnailUrl = `https://i.ytimg.com/vi/${entry.videoId}/hqdefault.jpg`
     const fields = buildArticleFields(entry)
     const now = Date.now()
 
-    // Açıklamasız / ince → draft; dolu açıklama → published
-    const status = fields.hasUsableBody ? 'published' : 'draft'
+    // Surviving items still need editorial review — never auto-publish as teknoloji.
+    const status = 'draft' as const
 
     await db.collection(Collections.NEWS).add({
       title: entry.title,
@@ -180,7 +192,8 @@ export async function syncYouTubeRss(channelId: string): Promise<YouTubeRssSyncR
       spot: fields.spot,
       description: fields.description,
       content: fields.content,
-      categoryId: 'teknoloji',
+      // Do not force teknoloji — YouTube channel mix is usually politics/live, not tech.
+      categoryId: 'gundem',
       status,
       source: 'YouTube',
       sourceUrl: `https://www.youtube.com/watch?v=${entry.videoId}`,
@@ -190,18 +203,15 @@ export async function syncYouTubeRss(channelId: string): Promise<YouTubeRssSyncR
       coverImageUrl: thumbnailUrl,
       thumbnail: thumbnailUrl,
       rssFingerprint: fingerprint,
-      publishedAt: status === 'published' ? (Number.isFinite(publishedMs) ? publishedMs : now) : null,
+      publishedAt: null,
       createdAt: now,
       updatedAt: now,
       postType: 'video',
       moderationNote:
-        status === 'draft'
-          ? 'YouTube açıklaması yetersiz — spot/içerik AI veya editör ile tamamlanmalı'
-          : null,
+        'YouTube RSS — otomatik yayın kapalı; canlı/#Canlı/#shorts zaten filtrelendi. Editör onayı gerekir.',
     })
 
-    if (status === 'published') ingested++
-    else drafted++
+    drafted++
   }
 
   return { channelId, fetched: entries.length, ingested, skipped, drafted }

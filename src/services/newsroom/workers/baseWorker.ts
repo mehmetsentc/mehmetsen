@@ -2,37 +2,7 @@
  * Shared RSS worker — fetch → fingerprint diff → enqueue → sync fingerprints.
  */
 
-// ─── Canlı yayın + tanıtım içerik filtreleri ───────────────────────────────
-// Bu kalıplarla eşleşen RSS haberleri hiç Firestore'a yazılmaz.
-// Silinen haberler de bu şekilde yeniden oluşturulmaz çünkü fingerprint
-// "görüldü" olarak işaretlenerek sonraki çalışmalarda atlanır.
-
-const CANLI_TITLE_PATTERNS: RegExp[] = [
-  /#\s*canlı/i,
-  /\bcanlı\s*yayın/i,
-  /\bcanlıyayın/i,
-  /\bcanlı\s*takip/i,
-  /\bcanlı\s*anlatım/i,
-  /\bcanlı\s*blog/i,
-  /\/\s*#\s*canlı/i,          // "Başlık / #Canlı"
-]
-
-const PROMO_CONTENT_PATTERNS: RegExp[] = [
-  /sosyal medya hesaplarımızı takip etmeyi unutmayın/i,
-  /whatsapp\.com\/channel\//i,
-  /bsky\.app\/profile\//i,
-  /t\.me\/[a-z0-9_]+/i,       // Telegram kanal linkleri
-]
-
-function isSkippableRssItem(title: string, summary: string, content: string): boolean {
-  if (CANLI_TITLE_PATTERNS.some(p => p.test(title))) return true
-  const body = summary + ' ' + content
-  if (PROMO_CONTENT_PATTERNS.some(p => p.test(body))) return true
-  return false
-}
-// ───────────────────────────────────────────────────────────────────────────
-
-import type { Firestore } from 'firebase-admin/firestore'
+import { isLiveBroadcastContent } from '@/lib/liveBroadcastDetect'
 import { normalizeCitySlug } from '@/constants/cities'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { fetchRssItems, type RssFeedItem } from '@/services/rss/rssFetcher'
@@ -47,6 +17,24 @@ import { enqueueNewsItem } from '@/services/newsroom/queue/newsQueueService'
 import { DEFAULT_RSS_MAX_AGE_MS } from '@/services/newsroom/queue/freshness'
 import type { EditorId, NewsroomArticleInput, NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
+
+// ─── Canlı yayın + tanıtım içerik filtreleri ───────────────────────────────
+// Eşleşen RSS haberleri hiç enqueue edilmez; fingerprint yine yazılır.
+const PROMO_CONTENT_PATTERNS: RegExp[] = [
+  /sosyal medya hesaplarımızı takip etmeyi unutmayın/i,
+  /whatsapp\.com\/channel\//i,
+  /bsky\.app\/profile\//i,
+  /t\.me\/[a-z0-9_]+/i,
+]
+
+function isSkippableRssItem(title: string, summary: string, content: string): boolean {
+  if (isLiveBroadcastContent(title, content, summary)) return true
+  const body = summary + ' ' + content
+  if (PROMO_CONTENT_PATTERNS.some((p) => p.test(body))) return true
+  return false
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 
 export interface RssWorkerOptions {
   workerId: EditorId

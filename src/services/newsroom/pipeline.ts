@@ -128,6 +128,7 @@ function isLiveBroadcastContent(title: string, content?: string, summary?: strin
 
   const CANLI_PATTERNS = [
     '#canlı', '# canlı', '#canli', '# canli',
+    '#shorts', '# shorts', '#short',
     'canlı yayın', 'canli yayin', 'canlı takip',
     'canlıyayın', '#canlıyayın', 'canlı anlatım',
     'canlı blog', 'canlı izle', 'canlı izleyin',

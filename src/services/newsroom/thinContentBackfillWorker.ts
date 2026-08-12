@@ -15,6 +15,7 @@ import { countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
 import type { DocumentReference } from 'firebase-admin/firestore'
+import { isLiveBroadcastTitle } from '@/lib/liveBroadcastDetect'
 
 export function newsBodyPlainText(data: Record<string, unknown>): string {
   return String(data.description ?? data.content ?? data.body ?? '').trim()
@@ -140,6 +141,24 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
       data.postType === 'video' ||
       String(data.slug || '').startsWith('video-') ||
       String(data.rssFingerprint || '').startsWith('youtube-rss:')
+
+    // Canlı/#Canlı/#shorts YouTube — doldurma; yayından çek
+    if (isVideoPost && isLiveBroadcastTitle(title)) {
+      try {
+        await demoteToDraft(
+          doc.ref,
+          now,
+          'YouTube canlı/#Canlı/#shorts — NaHaber video-only junk, otomatik taslak'
+        )
+        result.drafted++
+      } catch (err) {
+        result.failed++
+        result.errors.push(
+          `${doc.id}: live youtube demote failed: ${err instanceof Error ? err.message : String(err)}`
+        )
+      }
+      continue
+    }
 
     if (words < 20 && isVideoPost) {
       const summary = String(data.summary || '').trim()
