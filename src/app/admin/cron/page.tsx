@@ -89,6 +89,8 @@ export default function CronMonitorPage() {
   const [publishingItemId, setPublishingItemId] = useState<string | null>(null)
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [editorBusy, setEditorBusy] = useState(false)
+  const pauseAutoRefresh = editingItemId !== null || editorBusy
 
   const load = useCallback(async (withPendingDetails = false) => {
     try {
@@ -157,10 +159,41 @@ export default function CronMonitorPage() {
   }, [pendingItems.length, pendingLoading, pendingLoadedAll])
 
   useEffect(() => {
+    if (pauseAutoRefresh) return
     void load(pendingOpen)
     const t = setInterval(() => void load(pendingOpen), 20_000)
     return () => clearInterval(t)
-  }, [load, pendingOpen])
+  }, [load, pendingOpen, pauseAutoRefresh])
+
+  const closeQueueEditor = useCallback(() => {
+    setEditingItemId(null)
+    setEditorBusy(false)
+  }, [])
+
+  const handleEditorSaved = useCallback((data: { title?: string; source?: string; categoryId?: string }) => {
+    setPendingItems((prev) =>
+      prev.map((item) =>
+        item.id === editingItemId
+          ? {
+              ...item,
+              title: data.title || item.title,
+              source: data.source || item.source,
+              category: data.categoryId || item.category,
+            }
+          : item
+      )
+    )
+  }, [editingItemId])
+
+  const handleEditorPublished = useCallback(() => {
+    const id = editingItemId
+    if (!id) return
+    setPendingItems((prev) => prev.filter((i) => i.id !== id))
+    setQueuePending((prev) => (prev != null ? prev - 1 : prev))
+    setEditingItemId(null)
+    setEditorBusy(false)
+    void load(pendingOpen)
+  }, [editingItemId, load, pendingOpen])
 
   const togglePendingPanel = useCallback(() => {
     const next = !pendingOpen
@@ -603,27 +636,10 @@ export default function CronMonitorPage() {
         {editingItemId && (
           <QueueItemEditor
             queueId={editingItemId}
-            onClose={() => setEditingItemId(null)}
-            onSaved={(data) => {
-              setPendingItems((prev) =>
-                prev.map((item) =>
-                  item.id === editingItemId
-                    ? {
-                        ...item,
-                        title: data.title || item.title,
-                        source: data.source || item.source,
-                        category: data.categoryId || item.category,
-                      }
-                    : item
-                )
-              )
-            }}
-            onPublished={() => {
-              setPendingItems((prev) => prev.filter((i) => i.id !== editingItemId))
-              setQueuePending((prev) => (prev != null ? prev - 1 : prev))
-              setEditingItemId(null)
-              void load(pendingOpen)
-            }}
+            onClose={closeQueueEditor}
+            onBusyChange={setEditorBusy}
+            onSaved={handleEditorSaved}
+            onPublished={handleEditorPublished}
           />
         )}
 

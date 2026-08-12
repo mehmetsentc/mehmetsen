@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Pencil, Save, Send, Sparkles, Wand2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { auth } from '@/lib/firebase/auth'
@@ -48,6 +48,7 @@ export interface QueueEditorData {
 interface QueueItemEditorProps {
   queueId: string
   onClose: () => void
+  onBusyChange?: (busy: boolean) => void
   onSaved?: (data: QueueEditorData) => void
   onPublished?: (result: { newsId: string; slug: string }) => void
 }
@@ -55,7 +56,10 @@ interface QueueItemEditorProps {
 const fieldCls =
   'w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500'
 
-export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: QueueItemEditorProps) {
+export function QueueItemEditor({ queueId, onClose, onBusyChange, onSaved, onPublished }: QueueItemEditorProps) {
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -75,6 +79,10 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
 
   const categoryGroups = useMemo(() => getAdminCategoryGroups(), [])
   const showCityFields = categoryId === YEREL_HABER_CATEGORY_ID || categoryId.startsWith('yerel-')
+
+  useEffect(() => {
+    onBusyChange?.(loading || saving || publishing || aiPreparing)
+  }, [loading, saving, publishing, aiPreparing, onBusyChange])
 
   useEffect(() => {
     let cancelled = false
@@ -106,7 +114,7 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
         })
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Kuyruk öğesi yüklenemedi')
-        onClose()
+        onCloseRef.current()
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -115,9 +123,23 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
     return () => {
       cancelled = true
     }
-  }, [queueId, onClose])
+  }, [queueId])
 
-  function buildPayload() {
+type QueuePayload = {
+  title: string
+  summary: string
+  content: string
+  imageUrl: string
+  categoryId: string
+  city: string
+  citySlug: string
+  district: string
+  source: string
+  tags: string[]
+  isBreaking: boolean
+}
+
+  function buildPayload(overrides?: Partial<QueuePayload>): QueuePayload {
     const city = TURKISH_PROVINCES.find((p) => p.slug === citySlug)?.name ?? ''
     return {
       title,
@@ -134,26 +156,35 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
         .map((t) => t.trim())
         .filter(Boolean),
       isBreaking,
+      ...overrides,
     }
+  }
+
+  async function persistToQueue(
+    overrides?: Partial<QueuePayload>,
+    options?: { silent?: boolean },
+  ): Promise<QueueEditorData | null> {
+    const token = (await auth.currentUser?.getIdToken()) ?? ''
+    const res = await fetch(`/api/admin/newsroom/queue/${queueId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(buildPayload(overrides)),
+    })
+    const data = (await res.json()) as QueueEditorData & { error?: string }
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+    if (!options?.silent) toast.success('Kuyruk kaydı güncellendi')
+    onSaved?.({ ...data, id: queueId })
+    return { ...data, id: queueId }
   }
 
   async function handleSave() {
     if (saving || publishing || aiPreparing) return
     setSaving(true)
     try {
-      const token = (await auth.currentUser?.getIdToken()) ?? ''
-      const res = await fetch(`/api/admin/newsroom/queue/${queueId}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(buildPayload()),
-      })
-      const data = (await res.json()) as QueueEditorData & { error?: string }
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      toast.success('Kuyruk kaydı güncellendi')
-      onSaved?.({ ...data, id: queueId })
+      await persistToQueue()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Kaydetme başarısız')
     } finally {
@@ -200,6 +231,14 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
       const nextContent = stripHtmlToNewsPlainText(data.content?.trim() || content)
       const nextImage = data.imageOrder?.[0]?.trim() || imageUrl
 
+      let nextCategoryId = categoryId
+      let nextCitySlug = citySlug
+      let nextDistrict = district
+      let nextTags = tagsText
+        .split(/[,;]+/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+
       setTitle(nextTitle)
       setSummary(nextSummary)
       setContent(nextContent)
@@ -207,38 +246,70 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
 
       if (data.suggestedCountrySlug?.trim()) {
         if (!data.categoryId?.trim() || data.categoryId === 'gundem') {
+          nextCategoryId = 'dunya'
           setCategoryId('dunya')
         } else if (data.categoryId?.trim()) {
-          setCategoryId(data.categoryId.trim())
+          nextCategoryId = data.categoryId.trim()
+          setCategoryId(nextCategoryId)
         }
+        nextCitySlug = ''
+        nextDistrict = ''
         setCitySlug('')
         setDistrict('')
       } else {
-        if (data.categoryId?.trim()) setCategoryId(data.categoryId.trim())
-        if (data.suggestedCitySlug?.trim()) setCitySlug(data.suggestedCitySlug.trim())
+        if (data.categoryId?.trim()) {
+          nextCategoryId = data.categoryId.trim()
+          setCategoryId(nextCategoryId)
+        }
+        if (data.suggestedCitySlug?.trim()) {
+          nextCitySlug = data.suggestedCitySlug.trim()
+          setCitySlug(nextCitySlug)
+        }
         if (data.suggestedDistrictSlug?.trim()) {
           const provinceSlug = data.suggestedCitySlug?.trim() || citySlug
           const districts = getDistrictsForProvince(provinceSlug)
           const found = districts.find((d) => d.slug === data.suggestedDistrictSlug?.trim())
-          setDistrict(found?.name || data.suggestedDistrictSlug.trim())
+          nextDistrict = found?.name || data.suggestedDistrictSlug.trim()
+          setDistrict(nextDistrict)
         }
       }
 
       if (Array.isArray(data.tags) && data.tags.length > 0) {
+        nextTags = data.tags
         setTagsText(data.tags.join(', '))
+      }
+
+      const cityName = TURKISH_PROVINCES.find((p) => p.slug === nextCitySlug)?.name ?? ''
+      try {
+        await persistToQueue(
+          {
+            title: nextTitle,
+            summary: nextSummary,
+            content: nextContent,
+            imageUrl: nextImage,
+            categoryId: nextCategoryId,
+            city: cityName,
+            citySlug: nextCitySlug,
+            district: nextDistrict,
+            tags: nextTags,
+          },
+          { silent: true },
+        )
+      } catch (saveErr) {
+        console.warn('[QueueItemEditor] AI sonrası otomatik kayıt başarısız:', saveErr)
       }
 
       const editorLabel = data.editorName?.trim()
       toast.success(
         editorLabel
           ? data.gateDecision === 'publish'
-            ? `${editorLabel} ile yayıma hazırlandı`
-            : `${editorLabel} ile hazırlandı; incelemeye alındı`
+            ? `${editorLabel} ile yayıma hazırlandı — kaydedildi`
+            : `${editorLabel} ile hazırlandı; incelemeye alındı — kaydedildi`
           : data.gateDecision === 'publish'
-            ? 'Haber yayıma hazırlandı'
+            ? 'Haber yayıma hazırlandı — kaydedildi'
             : data.qualityScore != null
-              ? `Haber hazırlandı (kalite: %${data.qualityScore})`
-              : 'Haber AI ile hazırlandı — kaydetmeden önce inceleyin'
+              ? `Haber hazırlandı (kalite: %${data.qualityScore}) — kaydedildi`
+              : 'Haber AI ile hazırlandı — kaydedildi, inceleyin'
       )
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'AI editör isteği başarısız')
