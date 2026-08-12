@@ -56,7 +56,7 @@ export interface CityBottomNavItem {
 }
 
 export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
-  { id: 'feed', label: 'Ana Feed', href: '/', iconName: 'home' },
+  { id: 'feed', label: 'Ana Sayfa', href: '/', iconName: 'home' },
   { id: 'etkinlik', label: 'Etkinlik', href: '/etkinlik', iconName: 'calendar' },
   { id: 'spor', label: 'Spor', href: '/spor', iconName: 'trophy' },
   { id: 'ilceler', label: 'İlçeler', href: '/ilceler', iconName: 'map-pin' },
