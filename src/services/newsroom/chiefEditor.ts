@@ -21,6 +21,10 @@ import {
   CHIEF_EDITOR_AUTO_PUBLISH,
   CHIEF_EDITOR_CONFIDENCE_THRESHOLD,
 } from '@/services/newsroom/config'
+import {
+  computeArticleSimilarity,
+  SIMILARITY_THRESHOLD,
+} from '@/services/newsroom/dedupe/similarityEngine'
 
 const VALID_CATEGORY_IDS = new Set(
   DEFAULT_CATEGORIES.filter((c) => c.id !== TEKRARLAYAN_CATEGORY_ID).map((c) => c.id),
@@ -207,7 +211,53 @@ function parseResult(
   }
 }
 
+/**
+ * Non-AI duplicate gate for fallback path (no DeepSeek key / API failure).
+ * Compares title (+ body) against `recentTitles` using the same similarity
+ * engine as the pipeline's final-gate stub lookup.
+ */
+export function findFallbackTitleDuplicate(
+  input: Pick<ChiefEditorInput, 'title' | 'summary' | 'description' | 'recentTitles'>,
+): { matchedTitle: string; similarity: number } | null {
+  const recent = input.recentTitles
+  if (!recent?.length) return null
+
+  const body = input.description || input.summary || ''
+  let best: { matchedTitle: string; similarity: number } | null = null
+
+  for (const candidate of recent) {
+    const matchedTitle = candidate?.trim()
+    if (!matchedTitle) continue
+    const similarity = computeArticleSimilarity(input.title, body, matchedTitle, '')
+    if (similarity >= SIMILARITY_THRESHOLD && (!best || similarity > best.similarity)) {
+      best = { matchedTitle, similarity }
+    }
+  }
+
+  return best
+}
+
 export function chiefEditorFallback(input: ChiefEditorInput): ChiefEditorResult {
+  const duplicateHit = findFallbackTitleDuplicate(input)
+  if (duplicateHit) {
+    return {
+      decision: 'reject',
+      isDuplicate: true,
+      categoryId: TEKRARLAYAN_CATEGORY_ID,
+      categoryConfidence: input.categoryConfidence,
+      categoryReason:
+        `fallback titleSimilarity:${duplicateHit.similarity.toFixed(2)} — ` +
+        duplicateHit.matchedTitle.slice(0, 80),
+      overallScore: 0,
+      contentQuality: 0,
+      issues: ['chief_editor_fallback', 'duplicate_title_match'],
+      finalTitle: input.title,
+      finalSummary: input.summary,
+      finalTags: input.tags,
+      modelUsed: 'fallback',
+    }
+  }
+
   const score = Math.round(
     ((input.factCheckScore ?? 60) + input.categoryConfidence) / 2,
   )
