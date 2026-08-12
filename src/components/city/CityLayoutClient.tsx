@@ -17,6 +17,7 @@ import { CityNavbar } from './CityNavbar'
 import { CitySectionNav } from './CitySectionNav'
 import { CityMobileNav } from './CityMobileNav'
 import { CitySidebar } from './CitySidebar'
+import { CityFooter } from './CityFooter'
 import type { CityCategory } from '@/services/cityNewsService.server'
 import { isCityFeedPath } from '@/lib/cityPaths'
 
@@ -101,6 +102,9 @@ const CityShell = memo(function CityShell({
           >
             {children}
           </main>
+          <div className="content-main content-main-newspaper desktop-newspaper pb-6">
+            <CityFooter cityName={displayName} provinceSlug={provinceSlug} />
+          </div>
         </div>
       </PullToRefresh>
 
