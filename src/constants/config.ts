@@ -445,7 +445,13 @@ export function getCategoryFamily(parentId: string): string[] {
 export function getHomeFeedCategoryFamily(parentId: string): string[] {
   const base = [parentId, ...getSubcategories(parentId).map((c) => c.id)]
   const yerelIds = getYerelIdsMappedToCategoryFamily(base)
-  return [...new Set([...base, ...yerelIds])].slice(0, 10)
+  const combined = [...new Set([...base, ...yerelIds])]
+  if (combined.length <= 10) return combined
+
+  // Firestore `in` max 10 — always keep parent + yerel mirrors for dual visibility.
+  const priority = new Set([parentId, ...yerelIds])
+  const rest = base.filter((id) => !priority.has(id))
+  return [...priority, ...rest].slice(0, 10)
 }
 
 /**
