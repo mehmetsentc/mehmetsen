@@ -10,6 +10,7 @@ import {
 import { db } from '@/lib/firebase/firestore'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { docToNewsItem, sortNewsByDate } from '@/lib/newsItemUtils'
+import { isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { getCategoryFamily } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
 import type { NaEvent } from '@/types/event'
@@ -111,15 +112,19 @@ export async function getBreakingNews(limitCount = 12): Promise<NewsItem[]> {
   }
 }
 
-/** Featured agenda slider — yalnızca CMS Öne Çıkan (kategori filler yok). */
+/** Featured agenda slider — yalnızca CMS Öne Çıkan (ulusal; yerel pinler hariç). */
 export async function getFeaturedNews(limitCount = 10): Promise<NewsItem[]> {
-  const scanLimit = Math.max(limitCount * 3, 24)
+  const scanLimit = Math.max(limitCount * 5, 40)
 
   const fromFeatured = await queryPublished(
     [where('featured', '==', true), orderBy('publishedAt', 'desc')],
     scanLimit
   )
-  return fromFeatured.slice(0, limitCount)
+  return fromFeatured
+    .filter((item) =>
+      isNationalFeaturedEligible({ citySlug: item.citySlug, category: item.category })
+    )
+    .slice(0, limitCount)
 }
 
 /** Category rail items. */

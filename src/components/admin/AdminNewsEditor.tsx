@@ -1194,7 +1194,7 @@ export function AdminNewsEditor({
         <div>
           <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Öne Çıkan</p>
           <p className="text-[11px] text-[rgb(var(--color-muted))]">
-            Ana sayfa öne çıkan slider&apos;ında görünür. Açınca haber otomatik Yayında olur.
+            Ulusal haberlerde nahaber.com öne çıkan slider&apos;ında; şehirli/yerel haberlerde ilgili şehir ana sayfasında görünür. Açınca haber otomatik Yayında olur.
           </p>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
+import { isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { getCategoryFamily, getHomeFeedCategoryFamily } from '@/constants/config'
 import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
 import {
@@ -321,11 +322,15 @@ function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
 
 /**
  * CMS “Öne Çıkan” — kategori bağımsız, yalnızca `featured === true`.
+ * Yerel / citySlug pinleri ulusal ana sayfaya girmez (şehir sayfasına gider).
  * Gündem filler yok; haber kendi kategori rayında ayrıca kalır.
  */
 function bucketFeatured(pool: NewsItem[], limit: number, pinned: NewsItem[] = []): NewsItem[] {
-  const featuredPinned = pinned.filter((p) => p.featured === true)
-  const featuredPool = pool.filter((p) => p.featured === true)
+  const isNationalPin = (p: NewsItem) =>
+    p.featured === true &&
+    isNationalFeaturedEligible({ citySlug: p.citySlug, category: p.category })
+  const featuredPinned = pinned.filter(isNationalPin)
+  const featuredPool = pool.filter(isNationalPin)
   const candidates = [...featuredPinned, ...featuredPool].sort(compareFeaturedPriority)
   const seen = new Set<string>()
   const ordered: NewsItem[] = []
@@ -349,6 +354,15 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
   const mergeDocs = (docs: QueryDocumentSnapshot[]) => {
     for (const item of mapAdminDocs(docs)) {
       if (!item.featured) continue
+      // Local/city featured pins belong on city homepages, not nahaber.com.
+      if (
+        !isNationalFeaturedEligible({
+          citySlug: item.citySlug,
+          category: item.category,
+        })
+      ) {
+        continue
+      }
       byId.set(item.id, item)
     }
   }
@@ -398,7 +412,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v9'],
+  ['home-featured-v10'],
   { revalidate: 600, tags: ['home-feed'] }
 )
 

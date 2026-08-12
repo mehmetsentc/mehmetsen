@@ -119,6 +119,7 @@ function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
     category: data.categoryId?.trim() || data.category?.trim() || undefined,
     source: data.source?.trim() || undefined,
     city: data.city?.trim() || undefined,
+    citySlug: data.citySlug?.trim().toLowerCase() || undefined,
     publishedAt,
     views: data.views,
     likesCount: data.likesCount,
@@ -500,10 +501,23 @@ function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
   return bPub - aPub
 }
 
-function bucketCityFeatured(pool: NewsItem[], limit: number): NewsItem[] {
-  const featured = pool.filter((p) => p.featured === true).sort(compareFeaturedPriority)
-  if (featured.length >= limit) return featured.slice(0, limit)
-  const seen = new Set(featured.map((i) => i.id))
+function bucketCityFeatured(
+  pool: NewsItem[],
+  limit: number,
+  pinned: NewsItem[] = []
+): NewsItem[] {
+  const featuredPinned = pinned.filter((p) => p.featured === true)
+  const featuredPool = pool.filter((p) => p.featured === true)
+  const candidates = [...featuredPinned, ...featuredPool].sort(compareFeaturedPriority)
+  const seen = new Set<string>()
+  const featured: NewsItem[] = []
+  for (const item of candidates) {
+    if (seen.has(item.id)) continue
+    seen.add(item.id)
+    featured.push(item)
+    if (featured.length >= limit) return featured
+  }
+  // Fill remaining slots with recent image stories (city carousel fallback).
   const withImages = pool.filter((p) => p.imageUrl && !seen.has(p.id))
   return [...featured, ...withImages].slice(0, limit)
 }
@@ -549,6 +563,75 @@ function deriveSporRailSectionIds(pool: NewsItem[]): string[] {
   return withContent.length > 0 ? withContent : ['spor']
 }
 
+/**
+ * CMS “Öne Çıkan” for a city tenant — uses existing featured indexes, then
+ * filters by citySlug (avoids waiting on a status+citySlug+featured composite).
+ */
+async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<NewsItem[]> {
+  const db = getAdminFirestore()
+  const scan = Math.max(limit * 8, 80)
+  const byId = new Map<string, NewsItem>()
+  const normalized = citySlug.trim().toLowerCase()
+
+  const mergeDocs = (docs: Array<{ id: string; data: () => NewsDocument }>) => {
+    for (const doc of docs) {
+      const item = docToNewsItem(doc.id, doc.data())
+      if (!item?.featured) continue
+      const itemCity = (item.citySlug || '').trim().toLowerCase()
+      if (itemCity !== normalized) continue
+      byId.set(item.id, item)
+    }
+  }
+
+  try {
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('featured', '==', true)
+      .orderBy('featuredAt', 'desc')
+      .limit(scan)
+      .get()
+    mergeDocs(snap.docs)
+  } catch (error) {
+    console.warn('[cityNewsService] city featuredAt order failed:', error)
+  }
+
+  try {
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('featured', '==', true)
+      .orderBy('publishedAt', 'desc')
+      .limit(scan)
+      .get()
+    mergeDocs(snap.docs)
+  } catch (error) {
+    console.warn('[cityNewsService] city featured query failed:', error)
+  }
+
+  // Prefer a direct city scan when global featured scan missed older pins.
+  if (byId.size < limit) {
+    try {
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where('citySlug', '==', normalized)
+        .orderBy('publishedAt', 'desc')
+        .limit(Math.max(limit * 10, 100))
+        .get()
+      for (const doc of snap.docs) {
+        const item = docToNewsItem(doc.id, doc.data() as NewsDocument)
+        if (!item?.featured) continue
+        byId.set(item.id, item)
+      }
+    } catch (error) {
+      console.warn('[cityNewsService] city featured citySlug scan failed:', error)
+    }
+  }
+
+  return [...byId.values()].sort(compareFeaturedPriority).slice(0, limit)
+}
+
 const EMPTY_HOME_FEED: HomeFeedInitialData = {
   breaking: [],
   featured: [],
@@ -572,9 +655,10 @@ function buildCityFeedFromPool(
   bucketRails: (
     pool: NewsItem[],
     ids: readonly string[]
-  ) => Partial<Record<HomeCategorySlug, NewsItem[]>> = bucketCityCategoryRails
+  ) => Partial<Record<HomeCategorySlug, NewsItem[]>> = bucketCityCategoryRails,
+  featuredPinned: NewsItem[] = []
 ): HomeFeedInitialData {
-  if (pool.length === 0) return EMPTY_HOME_FEED
+  if (pool.length === 0 && featuredPinned.length === 0) return EMPTY_HOME_FEED
 
   const now = Date.now()
   const nonBreaking = pool.filter((item) => !isCityBreakingItem(item))
@@ -593,7 +677,9 @@ function buildCityFeedFromPool(
 
   return {
     breaking: slimNewsItemsForFeed(pool.filter(isCityBreakingItem).slice(0, 8)),
-    featured: slimNewsItemsForFeed(bucketCityFeatured(pool, HOME_FEATURED_LIMIT)),
+    featured: slimNewsItemsForFeed(
+      bucketCityFeatured(pool, HOME_FEATURED_LIMIT, featuredPinned)
+    ),
     latest: slimNewsItemsForFeed(rankFeedHotAware(nonBreaking, now).slice(0, 16)),
     trending: slimNewsItemsForFeed(trending),
     trendFeed: slimNewsItemsForFeed(pickTrendFeed(nonBreaking, 12, now)),
@@ -604,8 +690,11 @@ function buildCityFeedFromPool(
 
 const getCityHomeFeedCached = unstable_cache(
   async (citySlug: string): Promise<HomeFeedInitialData> => {
-    const pool = await getCityNews(citySlug, 60)
-    if (pool.length === 0) return EMPTY_HOME_FEED
+    const [pool, featuredPinned] = await Promise.all([
+      getCityNews(citySlug, 60),
+      fetchCityFeaturedNews(citySlug, HOME_FEATURED_LIMIT),
+    ])
+    if (pool.length === 0 && featuredPinned.length === 0) return EMPTY_HOME_FEED
 
     const cityCategories = await deriveCityCategoriesFromPool(pool)
     const railCategoryIds = cityCategories
@@ -614,9 +703,9 @@ const getCityHomeFeedCached = unstable_cache(
         (HOME_CATEGORY_RAILS as readonly string[]).includes(id)
       )
 
-    return buildCityFeedFromPool(pool, railCategoryIds)
+    return buildCityFeedFromPool(pool, railCategoryIds, bucketCityCategoryRails, featuredPinned)
   },
-  ['city-home-feed-v1'],
+  ['city-home-feed-v2'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -625,7 +714,7 @@ const getCityDistrictFeedCached = unstable_cache(
     const pool = await getCityNewsByDistrict(citySlug, districtSlug, 60)
     return buildCityFeedFromPool(pool, deriveRailCategoriesFromPool(pool))
   },
-  ['city-district-feed-v1'],
+  ['city-district-feed-v2'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -651,7 +740,7 @@ const getCitySporFeedCached = unstable_cache(
     const railSectionIds = deriveSporRailSectionIds(pool)
     return buildCityFeedFromPool(pool, railSectionIds, bucketCitySectionRails)
   },
-  ['city-spor-feed-v1'],
+  ['city-spor-feed-v2'],
   { revalidate: 120, tags: ['city-news'] }
 )
 

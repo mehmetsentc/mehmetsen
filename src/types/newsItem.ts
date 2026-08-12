@@ -14,6 +14,8 @@ export type NewsItem = {
   author?: string
   url?: string
   city?: string
+  /** Province slug — local/city-tenant scoping for feeds and featured pins. */
+  citySlug?: string
   locationCity?: string
   province?: string
   eventDate?: string

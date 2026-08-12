@@ -5,6 +5,7 @@
  */
 import { FieldValue, type Firestore } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
+import { isLocalScopedNews } from '@/lib/featuredScope'
 import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 
 function toEpochMs(value: unknown): number {
@@ -35,6 +36,8 @@ export type FeaturedPinRow = {
   id: string
   featuredAt: number
   publishedAt: number
+  /** Empty = national pin; otherwise city tenant slug. */
+  scopeKey: string
 }
 
 /** Pin time for ranking — never 0 when the article has a publish date. */
@@ -81,8 +84,10 @@ export async function backfillMissingFeaturedAt(db: Firestore): Promise<number> 
 }
 
 /**
- * Keep at most `limit` homepage pins. Newest featuredAt wins; `keepId` is
- * always retained when present (the article just pinned in CMS).
+ * Keep at most `limit` pins per scope.
+ * National pins (no citySlug / non-yerel) share one pool for nahaber.com.
+ * Each citySlug has its own pool for that city's homepage featured rail.
+ * Newest featuredAt wins; `keepId` is always retained when present.
  */
 export async function demoteExcessFeaturedPins(
   db: Firestore,
@@ -99,25 +104,44 @@ export async function demoteExcessFeaturedPins(
 
   const rows: FeaturedPinRow[] = snap.docs.map((doc) => {
     const data = doc.data()
+    const citySlug = String(data.citySlug ?? '').trim().toLowerCase()
+    const categoryId = String(data.categoryId ?? data.category ?? '').trim()
+    const local = isLocalScopedNews({ citySlug, categoryId })
     return {
       id: doc.id,
       featuredAt: featuredPinTime(data),
       publishedAt: toEpochMs(data.publishedAt) || toEpochMs(data.createdAt),
+      // Yerel without citySlug stays out of the national demotion pool.
+      scopeKey: local ? (citySlug || `__yerel__:${doc.id}`) : '',
     }
   })
 
-  rows.sort((a, b) => {
-    if (keepId) {
-      if (a.id === keepId && b.id !== keepId) return -1
-      if (b.id === keepId && a.id !== keepId) return 1
+  const byScope = new Map<string, FeaturedPinRow[]>()
+  for (const row of rows) {
+    const list = byScope.get(row.scopeKey) ?? []
+    list.push(row)
+    byScope.set(row.scopeKey, list)
+  }
+
+  const demote: FeaturedPinRow[] = []
+  for (const scoped of byScope.values()) {
+    // One-off yerel docs without citySlug: never auto-demote against others.
+    if (scoped.length === 1 && scoped[0].scopeKey.startsWith('__yerel__:')) {
+      continue
     }
-    if (a.featuredAt !== b.featuredAt) return b.featuredAt - a.featuredAt
-    return b.publishedAt - a.publishedAt
-  })
+    scoped.sort((a, b) => {
+      if (keepId) {
+        if (a.id === keepId && b.id !== keepId) return -1
+        if (b.id === keepId && a.id !== keepId) return 1
+      }
+      if (a.featuredAt !== b.featuredAt) return b.featuredAt - a.featuredAt
+      return b.publishedAt - a.publishedAt
+    })
+    if (scoped.length > limit) demote.push(...scoped.slice(limit))
+  }
 
-  if (rows.length <= limit) return 0
+  if (demote.length === 0) return 0
 
-  const demote = rows.slice(limit)
   const batchSize = 400
   let demoted = 0
 
@@ -137,3 +161,4 @@ export async function demoteExcessFeaturedPins(
 
   return demoted
 }
+

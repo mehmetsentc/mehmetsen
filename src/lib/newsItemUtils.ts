@@ -123,6 +123,7 @@ export function docToNewsItem(
     author: String(raw.author ?? '').trim() || undefined,
     url: String(raw.sourceUrl ?? '').trim() || undefined,
     city: String(raw.city ?? '').trim() || undefined,
+    citySlug: String(raw.citySlug ?? '').trim().toLowerCase() || undefined,
     locationCity: String(raw.locationCity ?? raw.city ?? '').trim() || undefined,
     province: String(raw.province ?? '').trim() || undefined,
     createdAt: parseFirestoreTimestamp(raw.createdAt as TimestampLike),

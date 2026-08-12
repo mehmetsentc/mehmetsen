@@ -11,6 +11,8 @@ export function revalidateHomeFeedCaches(): void {
     revalidateTag('feed-slider')
     revalidateTag('feed-timeline')
     revalidateTag('breaking-news')
+    // City tenant featured rails share CMS Öne Çıkan pins.
+    revalidateTag('city-news')
   } catch {
     /* best-effort */
   }
