@@ -13,6 +13,12 @@ import {
   type AiPublishPolicy,
 } from '@/types/aiEditor'
 import { defaultModelAssignmentsForSeed, SEED_AI_EDITORS, type SeedEditorSpec } from './seedEditors'
+import { SEED_CITY_AI_EDITORS } from './seedCityEditors'
+
+/** National personas + 81 city local editors. */
+export function allSeedEditorSpecs(): SeedEditorSpec[] {
+  return [...SEED_AI_EDITORS, ...SEED_CITY_AI_EDITORS]
+}
 
 export function normalizeEditorSlug(raw: string): string {
   return raw
@@ -53,11 +59,11 @@ export async function listAiEditors(opts?: {
   limit?: number
 }): Promise<AiEditorDocument[]> {
   const db = getAdminFirestore()
-  const snap = await db.collection(Collections.AI_EDITORS).limit(200).get()
+  const snap = await db.collection(Collections.AI_EDITORS).limit(400).get()
   let editors = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AiEditorDocument, 'id'>) }))
   if (opts?.status) editors = editors.filter((e) => e.status === opts.status)
   editors.sort((a, b) => a.name.localeCompare(b.name, 'tr'))
-  return editors.slice(0, opts?.limit ?? 100)
+  return editors.slice(0, opts?.limit ?? 300)
 }
 
 export async function getActivePrompt(
@@ -136,6 +142,8 @@ export interface CreateAiEditorInput {
   primarySpecialization?: string
   specializations?: string[]
   categoryIds?: string[]
+  managedCategories?: string[]
+  citySlug?: string | null
   languages?: string[]
   publishPolicy?: AiPublishPolicy
   capabilities?: Partial<AiEditorDocument['capabilities']>
@@ -182,6 +190,10 @@ export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEdit
     primarySpecialization: (input.primarySpecialization ?? '').trim(),
     specializations: input.specializations ?? [],
     categoryIds: input.categoryIds ?? [],
+    managedCategories: input.managedCategories?.length
+      ? input.managedCategories
+      : input.categoryIds ?? [],
+    citySlug: input.citySlug ?? null,
     languages: input.languages?.length ? input.languages : ['tr'],
     status: 'active',
     isAI: true,
@@ -311,6 +323,9 @@ export async function archiveAiEditor(id: string): Promise<AiEditorDocument> {
 }
 
 async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<'created' | 'updated' | 'skipped'> {
+  const managedCategories = spec.managedCategories?.length
+    ? spec.managedCategories
+    : spec.categoryIds
   const existing = await getAiEditorBySlug(spec.slug)
   if (existing && existing.status === 'active') {
     await updateAiEditor(
@@ -323,6 +338,8 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
         primarySpecialization: spec.primarySpecialization,
         specializations: spec.specializations,
         categoryIds: spec.categoryIds,
+        managedCategories,
+        citySlug: spec.citySlug ?? null,
         capabilities: { ...DEFAULT_AI_CAPABILITIES, ...spec.capabilities },
         personaType: spec.personaType,
         desk: spec.desk,
@@ -352,6 +369,8 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
         primarySpecialization: spec.primarySpecialization,
         specializations: spec.specializations,
         categoryIds: spec.categoryIds,
+        managedCategories,
+        citySlug: spec.citySlug ?? null,
         capabilities: { ...DEFAULT_AI_CAPABILITIES, ...spec.capabilities },
         personaType: spec.personaType,
         desk: spec.desk,
@@ -378,6 +397,8 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
     primarySpecialization: spec.primarySpecialization,
     specializations: spec.specializations,
     categoryIds: spec.categoryIds,
+    managedCategories,
+    citySlug: spec.citySlug ?? null,
     capabilities: spec.capabilities,
     modelAssignments: defaultModelAssignmentsForSeed(spec),
     prompts: spec.prompts,
@@ -403,7 +424,7 @@ export async function seedDefaultAiEditors(createdBy: string | null = 'system'):
   const created: string[] = []
   const updated: string[] = []
   const skipped: string[] = []
-  for (const spec of SEED_AI_EDITORS) {
+  for (const spec of allSeedEditorSpecs()) {
     const result = await seedOne(spec, createdBy)
     if (result === 'created') created.push(spec.slug)
     else if (result === 'updated') updated.push(spec.slug)
@@ -416,7 +437,7 @@ export async function seedDefaultAiEditors(createdBy: string | null = 'system'):
 export async function enableAutoPublishForActiveEditors(
   changedBy: string | null = 'system'
 ): Promise<{ updated: string[]; skipped: string[] }> {
-  const editors = await listAiEditors({ status: 'active', limit: 100 })
+  const editors = await listAiEditors({ status: 'active', limit: 300 })
   const updated: string[] = []
   const skipped: string[] = []
   for (const editor of editors) {
@@ -451,12 +472,15 @@ export async function refreshStylePromptsFromSeed(changedBy: string | null): Pro
     'video',
     'source',
   ]
-  for (const spec of SEED_AI_EDITORS) {
+  for (const spec of allSeedEditorSpecs()) {
     const existing = await getAiEditorBySlug(spec.slug)
     if (!existing) {
       missing.push(spec.slug)
       continue
     }
+    const managedCategories = spec.managedCategories?.length
+      ? spec.managedCategories
+      : spec.categoryIds
     await updateAiEditor(
       existing.id,
       {
@@ -467,6 +491,8 @@ export async function refreshStylePromptsFromSeed(changedBy: string | null): Pro
         primarySpecialization: spec.primarySpecialization,
         specializations: spec.specializations,
         categoryIds: spec.categoryIds,
+        managedCategories,
+        citySlug: spec.citySlug ?? null,
         personaType: spec.personaType,
         desk: spec.desk,
         editorialMission: spec.editorialMission,

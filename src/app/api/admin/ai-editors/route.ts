@@ -12,6 +12,8 @@ import type { AiPublishPolicy } from '@/types/aiEditor'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+/** Seed syncs national + 81 city editors — allow long run. */
+export const maxDuration = 300
 
 export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'ai:use')
@@ -21,7 +23,7 @@ export async function GET(request: Request) {
   const status = url.searchParams.get('status') as 'active' | 'disabled' | 'archived' | null
   const editors = await listAiEditors({
     status: status || undefined,
-    limit: 100,
+    limit: 300,
   })
   return NextResponse.json({ success: true, editors })
 }
@@ -72,6 +74,10 @@ export async function POST(request: Request) {
         ? body.specializations.map(String)
         : undefined,
       categoryIds: Array.isArray(body.categoryIds) ? body.categoryIds.map(String) : undefined,
+      managedCategories: Array.isArray(body.managedCategories)
+        ? body.managedCategories.map(String)
+        : undefined,
+      citySlug: body.citySlug != null ? String(body.citySlug) || null : undefined,
       capabilities: (body.capabilities as object | undefined) as never,
       publishPolicy: (body.publishPolicy as AiPublishPolicy | undefined) ?? 'AUTO_PUBLISH',
       prompts: (body.prompts as object | undefined) as never,

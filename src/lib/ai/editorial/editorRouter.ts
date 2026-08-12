@@ -3,6 +3,8 @@ import { getAiEditorById, listAiEditors } from './aiEditorService'
 import { hintCategoryFromText } from './categoryHint'
 import { normalizeCitySlug } from '@/constants/cities'
 import { slugifyCity } from '@/lib/location'
+import { isYerelCategoryTree } from '@/constants/config'
+import { resolveManagedCategories, resolveEditorCitySlug } from './editorPastNews'
 
 /** Default category → seed editor slug (Admin can override via editor.categoryIds). */
 export const FALLBACK_CATEGORY_EDITOR_SLUG: Record<string, string> = {
@@ -32,13 +34,13 @@ export const FALLBACK_CATEGORY_EDITOR_SLUG: Record<string, string> = {
   gures: 'deniz-erdem',
   'dunya-kupasi-2026': 'deniz-erdem',
   saglik: 'ipek-demir',
-  yasam: 'selin-aras',
-  astroloji: 'selin-aras',
-  moda: 'selin-aras',
-  'anne-cocuk': 'selin-aras',
-  dekorasyon: 'selin-aras',
-  iliskiler: 'selin-aras',
-  gastronomi: 'selin-aras',
+  yasam: 'su-eren',
+  astroloji: 'su-eren',
+  moda: 'su-eren',
+  'anne-cocuk': 'su-eren',
+  dekorasyon: 'su-eren',
+  iliskiler: 'su-eren',
+  gastronomi: 'nil-ozkan',
   kultur: 'asli-tan',
   sinema: 'asli-tan',
   tiyatro: 'asli-tan',
@@ -53,8 +55,8 @@ export const FALLBACK_CATEGORY_EDITOR_SLUG: Record<string, string> = {
   meteoroloji: 'baran-eren',
   magazin: 'melis-kaya',
   'yerel-haber': 'burak-celik',
-  'din-inanc': 'selin-aras',
-  etkinlikler: 'selin-aras',
+  'din-inanc': 'yunus-kara',
+  etkinlikler: 'ceren-yildiz',
 }
 
 /** Secondary desk suggestions by primary category / event. */
@@ -79,7 +81,7 @@ const CACHE_MS = 60_000
 
 async function activeEditors(): Promise<AiEditorDocument[]> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.editors
-  const editors = await listAiEditors({ status: 'active', limit: 100 })
+  const editors = await listAiEditors({ status: 'active', limit: 300 })
   cache = { at: Date.now(), editors }
   return editors
 }
@@ -132,6 +134,34 @@ export function aiEditorForcesDraft(
   return policy === 'DRAFT_ONLY'
 }
 
+function editorManagesCategory(editor: AiEditorDocument, categoryId: string): boolean {
+  const managed = resolveManagedCategories(editor)
+  if (managed.includes(categoryId)) return true
+  return editor.categoryIds?.includes(categoryId) ?? false
+}
+
+function pickLocalEditor(
+  assignable: AiEditorDocument[],
+  citySlug: string | null | undefined
+): AiEditorDocument | undefined {
+  const city = citySlug?.trim().toLowerCase()
+  if (city) {
+    const byCity = assignable.find(
+      (e) =>
+        e.personaType === 'local_editor' &&
+        (resolveEditorCitySlug(e) === city || e.slug === `yerel-${city}`)
+    )
+    if (byCity) return byCity
+  }
+  return (
+    assignable.find(
+      (e) => e.personaType === 'local_editor' && !resolveEditorCitySlug(e) && e.slug === 'burak-celik'
+    ) ||
+    assignable.find((e) => e.personaType === 'local_editor' && !resolveEditorCitySlug(e)) ||
+    findBySlug(assignable, 'burak-celik')
+  )
+}
+
 /**
  * Pure assignment over an in-memory editor list (unit-testable).
  */
@@ -169,7 +199,7 @@ export function pickAiEditorFromList(
         (e.personaType === 'columnist' || (e.capabilities.columnEnabled && e.columnName))
     )
     const byCat = categoryId
-      ? withColumn.find((e) => e.categoryIds.includes(categoryId))
+      ? withColumn.find((e) => editorManagesCategory(e, categoryId))
       : undefined
     if (byCat) return byCat
     if (withColumn[0]) return withColumn[0]
@@ -178,31 +208,28 @@ export function pickAiEditorFromList(
   if (input.isBreaking || categoryId === 'son-dakika') {
     const breaking =
       assignable.find(
-        (e) => e.capabilities.breakingEnabled && e.categoryIds.includes('son-dakika')
+        (e) => e.capabilities.breakingEnabled && editorManagesCategory(e, 'son-dakika')
       ) || findBySlug(assignable, 'arda-sahin')
     if (breaking) return breaking
   }
 
-  if (categoryId === 'yerel-haber' || (citySlug && categoryId === 'yerel-haber')) {
-    const local =
-      assignable.find((e) => e.personaType === 'local_editor') ||
-      findBySlug(assignable, 'burak-celik')
+  const isYerel = categoryId ? isYerelCategoryTree(categoryId) : false
+  if (isYerel || (citySlug && categoryId === 'yerel-haber')) {
+    const local = pickLocalEditor(assignable, citySlug)
     if (local) return local
   }
 
-  // City present + no strong national category → prefer local desk
+  // City present + local signal → prefer city desk
   if (citySlug && (!categoryId || categoryId === 'gundem')) {
-    const localSignal = hint?.categoryId === 'yerel-haber'
+    const localSignal = hint?.categoryId === 'yerel-haber' || isYerel
     if (localSignal) {
-      const local =
-        assignable.find((e) => e.personaType === 'local_editor') ||
-        findBySlug(assignable, 'burak-celik')
+      const local = pickLocalEditor(assignable, citySlug)
       if (local) return local
     }
   }
 
   if (categoryId) {
-    const byList = assignable.find((e) => e.categoryIds.includes(categoryId))
+    const byList = assignable.find((e) => editorManagesCategory(e, categoryId))
     if (byList) return byList
 
     const slug = FALLBACK_CATEGORY_SLUG[categoryId]
@@ -213,6 +240,44 @@ export function pickAiEditorFromList(
   }
 
   return findBySlug(assignable, 'selin-aras') ?? assignable[0] ?? null
+}
+
+/**
+ * CMS dropdown: editors relevant to category/city first, then the rest.
+ */
+export function partitionEditorsForSelection(
+  editors: AiEditorDocument[],
+  opts: { categoryId?: string | null; citySlug?: string | null }
+): { recommended: AiEditorDocument[]; others: AiEditorDocument[] } {
+  const assignable = editors.filter(
+    (e) => e.status === 'active' && isAssignableNewsEditor(e)
+  )
+  const categoryId = opts.categoryId?.trim() || ''
+  const city = opts.citySlug?.trim().toLowerCase() || ''
+  const recommended: AiEditorDocument[] = []
+  const others: AiEditorDocument[] = []
+
+  for (const editor of assignable) {
+    const cityMatch =
+      Boolean(city) &&
+      (resolveEditorCitySlug(editor) === city || editor.slug === `yerel-${city}`)
+    const categoryMatch = categoryId
+      ? editorManagesCategory(editor, categoryId) ||
+        (isYerelCategoryTree(categoryId) && editor.personaType === 'local_editor' && !resolveEditorCitySlug(editor))
+      : false
+    if (cityMatch || categoryMatch) recommended.push(editor)
+    else others.push(editor)
+  }
+
+  // City-specific first within recommended
+  recommended.sort((a, b) => {
+    const aCity = city && resolveEditorCitySlug(a) === city ? 0 : 1
+    const bCity = city && resolveEditorCitySlug(b) === city ? 0 : 1
+    if (aCity !== bCity) return aCity - bCity
+    return a.name.localeCompare(b.name, 'tr')
+  })
+
+  return { recommended, others }
 }
 
 /**

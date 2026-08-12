@@ -130,17 +130,19 @@ export default function AiEditorsAdminPage() {
   const active = editors.filter((e) => e.status === 'active').length
   const columns = editors.filter((e) => e.capabilities?.columnEnabled).length
   const autoPublish = editors.filter((e) => e.publishPolicy === 'AUTO_PUBLISH').length
+  const cityEditors = editors.filter((e) => e.personaType === 'local_editor' && e.citySlug).length
 
   return (
     <div className="flex flex-col">
       <CMSHeader
         title="AI Editörler"
-        subtitle="Çok ajanlı dijital newsroom — masa editörleri, yerel ağ, köşe yazarları"
+        subtitle="Çok ajanlı dijital newsroom — masa editörleri, 81 il yerel ağ, köşe yazarları"
       />
       <div className="space-y-6 p-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Kpi label="Toplam" value={editors.length} />
           <Kpi label="Aktif" value={active} />
+          <Kpi label="İl editörü" value={cityEditors} />
           <Kpi label="Köşe açık" value={columns} />
           <Kpi label="Otomatik yayın" value={`${autoPublish}/${editors.length || 0}`} small />
         </div>
@@ -203,6 +205,7 @@ export default function AiEditorsAdminPage() {
                 <tr>
                   <th className="px-4 py-3 font-semibold">Editör</th>
                   <th className="px-4 py-3 font-semibold">Uzmanlık</th>
+                  <th className="px-4 py-3 font-semibold">Masa / İl</th>
                   <th className="px-4 py-3 font-semibold">Politika</th>
                   <th className="px-4 py-3 font-semibold">Durum</th>
                   <th className="px-4 py-3 font-semibold" />
@@ -232,6 +235,19 @@ export default function AiEditorsAdminPage() {
                       <div className="text-[10px] opacity-70">
                         {editor.personaType || 'desk'} · AI
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[rgb(var(--color-muted))]">
+                      {editor.citySlug ? (
+                        <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-700">
+                          {editor.citySlug}
+                        </span>
+                      ) : (
+                        <span className="opacity-70">
+                          {(editor.managedCategories ?? editor.categoryIds ?? [])
+                            .slice(0, 3)
+                            .join(', ') || '—'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700">

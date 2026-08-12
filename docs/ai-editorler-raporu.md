@@ -121,37 +121,52 @@ Kaynak: `src/services/newsroom/config.ts` + `vercel.json` cron eşleşmesi.
 
 ## AI Persona editörleri (`aiEditors` Firestore)
 
-Kaynak: `src/lib/ai/editorial/seedEditors.ts` — Admin → **AI Editörler** sayfası.
+Kaynak: `src/lib/ai/editorial/seedEditors.ts` + `seedCityEditors.ts` — Admin → **AI Editörler** → Seed / Sync Roster.
 
-| Slug | Rol / Masa | Kategoriler | Not |
-|------|------------|-------------|-----|
+### Ulusal masa editörleri
+
+| Slug | Rol / Masa | Kategoriler (`managedCategories`) | Not |
+|------|------------|-----------------------------------|-----|
 | `selin-aras` | Genel Yayın AI Editörü | gundem, trend | Senior editor, fallback hedefi |
 | `arda-sahin` | Son Dakika | son-dakika, asayis | Breaking editor |
 | `ece-yalin` | Gündem & Kamu | gundem | Desk editor |
 | `mert-karaca` | Politika | siyaset | — |
-| `defne-aksoy` | Dünya | dunya | — |
-| `kerem-aydin` | Ekonomi / Finans | finans-piyasa, borsa, ekonomi | — |
+| `defne-aksoy` | Dünya | dunya, kibris-haberleri | — |
+| `kerem-aydin` | Ekonomi / Finans | finans-piyasa, borsa, ekonomi… | — |
 | `deniz-erdem` | Spor | futbol, basketbol, voleybol… | — |
-| `can-tunc` | Teknoloji | teknoloji, bilim | — |
-| `leyla-arin` | Sağlık | saglik | — |
-| `ipek-demir` | Magazin | magazin | — |
-| `melis-kaya` | Yerel (Çanakkale) | yerel-* alt kategoriler | localConfig: ilçeler |
-| `asli-tan` | Kültür / Sinema | sinema, kultur | — |
-| `derya-akin` | Turizm | turizm | Worker cron aktif (turizm-news) |
-| `emre-sancar` | Gastronomi | gastronomi | — |
-| `zeynep-er` | Otomobil | otomobil | — |
-| `baran-eren` | Kıbrıs | kibris-haberleri | — |
-| `burak-celik` | Gezi | gezi | Worker cron aktif (gezi-news) |
-| `oguz-ata` | Astroloji | astroloji | — |
-| `nahaber-redaksiyon` | İç redaksiyon | — | assignableForNews: false |
-| `nahaber-seo` | SEO kopya | — | Internal agent |
-| `nahaber-dogrulama` | Doğrulama | — | Internal agent |
-| `alp-ersoy` | Köşe yazarı | çeşitli | Columnist |
-| `derin-akal` | Köşe yazarı | çeşitli | — |
-| `koray-demir` | Köşe yazarı | çeşitli | — |
-| `lara-yaman` | Köşe yazarı | çeşitli | — |
-| `eda-sonmez` | Köşe yazarı | çeşitli | — |
-| `deniz-alp` | Köşe yazarı | çeşitli | — |
+| `can-tunc` | Teknoloji | teknoloji, bilim/oyun | — |
+| `leyla-arin` | Bilim | bilim | — |
+| `ipek-demir` | Sağlık | saglik | — |
+| `melis-kaya` | Magazin | magazin | — |
+| `asli-tan` | Kültür / Sinema | sinema, kultur… | — |
+| `derya-akin` | Turizm | turizm, gezi | — |
+| `emre-sancar` | Otomobil | otomobil | — |
+| `zeynep-er` | Eğitim | egitim | — |
+| `baran-eren` | Çevre & İklim | cevre-iklim, meteoroloji | — |
+| `nil-ozkan` | Gastronomi | gastronomi | Yeni masa |
+| `su-eren` | Yaşam | yasam, moda… | Yeni masa |
+| `yunus-kara` | Din & İnanç | din-inanc | Yeni masa |
+| `ceren-yildiz` | Etkinlikler | etkinlikler | Yeni masa |
+| `burak-celik` | Yerel Koordinatör | yerel-* | İl editörü yoksa yedek |
+| `oguz-ata` | Video | — | — |
+| `nahaber-redaksiyon` / `seo` / `dogrulama` | İç ajanlar | — | assignableForNews: false |
+| Köşe yazarları (6) | columnist | çeşitli | assignableForNews: false |
+
+### İl yerel editörleri (81)
+
+- Slug şeması: `yerel-{provinceSlug}` (örn. `yerel-canakkale`)
+- `personaType: local_editor`, `citySlug: <il>`
+- `managedCategories`: `yerel-haber` + tüm yerel alt kategoriler
+- Benzersiz Türkçe gazeteci-tarzı isimler (`seedCityEditors.ts`)
+- Yönlendirme: `citySlug` eşleşince il editörü; yoksa `burak-celik`
+
+### CMS seçim
+
+Admin haber editöründe kategori / şehir seçilince **ÖNERİLEN** grupta ilgili masa + il editörü listelenir.
+
+### Geçmiş haber bağlamı
+
+`fetchEditorPastNews` — rewrite/review sırasında son N yayınlanmış haberi `citySlug` veya `managedCategories[0]` ile Firestore `news` koleksiyonundan çeker; `buildEditorPrompt` system promptuna ekler.
 
 Persona editörler **RSS worker değildir** — pipeline rewrite aşamasında haber tarzı / masa seçimi için kullanılır.
 

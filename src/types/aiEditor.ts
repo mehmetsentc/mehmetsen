@@ -95,6 +95,16 @@ export interface AiEditorDocument {
   primarySpecialization: string
   specializations: string[]
   categoryIds: string[]
+  /**
+   * Categories this editor manages for CMS selection + past-news review.
+   * Defaults to categoryIds when omitted (legacy docs).
+   */
+  managedCategories?: string[]
+  /**
+   * City tenant / province slug for local_editor personas (e.g. canakkale).
+   * National desk editors leave this null/undefined.
+   */
+  citySlug?: string | null
   languages: string[]
   status: AiEditorStatus
   isAI: true

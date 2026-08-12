@@ -85,11 +85,17 @@ type AiEditorOption = {
   personaType?: string
   assignableForNews?: boolean
   primarySpecialization?: string
+  categoryIds?: string[]
+  managedCategories?: string[]
+  citySlug?: string | null
 }
 
 function aiEditorGroupLabel(editor: AiEditorOption): string {
   if (editor.personaType === 'columnist') return 'AI KÖŞE YAZARLARI'
-  if (editor.personaType === 'local_editor') return 'YEREL'
+  if (editor.personaType === 'local_editor') {
+    if (editor.citySlug) return `YEREL · ${editor.citySlug.toLocaleUpperCase('tr-TR')}`
+    return 'YEREL'
+  }
   if (editor.personaType === 'breaking_editor') return 'SON DAKİKA'
   if (editor.personaType === 'senior_editor') return 'GENEL'
   if (
@@ -100,6 +106,25 @@ function aiEditorGroupLabel(editor: AiEditorOption): string {
     return 'İÇ AJANLAR'
   }
   return (editor.desk || editor.primarySpecialization || 'MASA').toLocaleUpperCase('tr-TR')
+}
+
+function editorMatchesContext(
+  editor: AiEditorOption,
+  categoryId: string,
+  citySlug: string
+): boolean {
+  const city = citySlug.trim().toLowerCase()
+  if (city && (editor.citySlug === city || editor.slug === `yerel-${city}`)) return true
+  const cat = categoryId.trim()
+  if (!cat) return false
+  const managed = editor.managedCategories?.length
+    ? editor.managedCategories
+    : editor.categoryIds ?? []
+  if (managed.includes(cat)) return true
+  if (cat.startsWith('yerel-') && editor.personaType === 'local_editor' && !editor.citySlug) {
+    return true
+  }
+  return false
 }
 
 export type AdminNewsEditorMode = 'create' | 'edit'
@@ -439,16 +464,25 @@ export function AdminNewsEditor({
       ),
     [aiEditors]
   )
+  const recommendedEditors = useMemo(
+    () =>
+      assignableEditors.filter((e) => editorMatchesContext(e, categoryId, citySlug)),
+    [assignableEditors, categoryId, citySlug]
+  )
+  const otherEditors = useMemo(() => {
+    const recIds = new Set(recommendedEditors.map((e) => e.id))
+    return assignableEditors.filter((e) => !recIds.has(e.id))
+  }, [assignableEditors, recommendedEditors])
   const editorsByGroup = useMemo(() => {
     const map = new Map<string, AiEditorOption[]>()
-    for (const editor of assignableEditors) {
+    for (const editor of otherEditors) {
       const group = aiEditorGroupLabel(editor)
       const list = map.get(group) ?? []
       list.push(editor)
       map.set(group, list)
     }
     return [...map.entries()]
-  }, [assignableEditors])
+  }, [otherEditors])
 
   const aiPrepareButtonLabel = useMemo(() => {
     if (isAutoEditor) {
@@ -814,6 +848,15 @@ export function AdminNewsEditor({
           >
             <option value={AI_EDITOR_AUTO}>✨ Otomatik — NaHaber Akıllı Yönlendirme</option>
             <option value="">Manuel (CMS kullanıcısı)</option>
+            {recommendedEditors.length > 0 && (
+              <optgroup label="ÖNERİLEN (kategori / şehir)">
+                {recommendedEditors.map((editor) => (
+                  <option key={`rec-${editor.id}`} value={editor.id}>
+                    {editor.name} — {editor.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
             {editorsByGroup.map(([group, list]) => (
               <optgroup key={group} label={group}>
                 {list.map((editor) => (

@@ -10,6 +10,7 @@ import { hintCategoryFromText } from '@/lib/ai/editorial/categoryHint'
 import { buildLocalQueries, buildCanakkaleQueries } from '@/lib/ai/editorial/localQueryBuilder'
 import { resolveModelForEditor } from '@/lib/ai/editorial/modelRouter'
 import { SEED_AI_EDITORS } from '@/lib/ai/editorial/seedEditors'
+import { SEED_CITY_AI_EDITORS } from '@/lib/ai/editorial/seedCityEditors'
 import { normalizeEditorSlug } from '@/lib/ai/editorial/aiEditorService'
 import {
   DEFAULT_AI_CAPABILITIES,
@@ -44,6 +45,14 @@ vi.mock('@/lib/ai/editorial/aiEditorService', async (importOriginal) => {
     })),
   }
 })
+
+vi.mock('@/lib/ai/editorial/editorPastNews', () => ({
+  fetchEditorPastNews: vi.fn(async () => []),
+  formatPastNewsForPrompt: vi.fn(() => ''),
+  resolveManagedCategories: (editor: { managedCategories?: string[]; categoryIds?: string[] }) =>
+    editor.managedCategories?.length ? editor.managedCategories : editor.categoryIds ?? [],
+  resolveEditorCitySlug: (editor: { citySlug?: string | null }) => editor.citySlug ?? null,
+}))
 
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 
@@ -113,6 +122,15 @@ describe('seed editors', () => {
       expect(spec.personaType).toBeTruthy()
       expect(spec.desk).toBeTruthy()
     }
+  })
+
+  it('seeds 81 unique city local editors', () => {
+    expect(SEED_CITY_AI_EDITORS.length).toBe(81)
+    const slugs = SEED_CITY_AI_EDITORS.map((s) => s.slug)
+    expect(new Set(slugs).size).toBe(81)
+    expect(SEED_CITY_AI_EDITORS.every((s) => s.personaType === 'local_editor')).toBe(true)
+    expect(SEED_CITY_AI_EDITORS.every((s) => Boolean(s.citySlug))).toBe(true)
+    expect(SEED_CITY_AI_EDITORS.some((s) => s.slug === 'yerel-canakkale')).toBe(true)
   })
 
   it('only DRAFT_ONLY forces draft; AUTO_PUBLISH and REQUIRES_APPROVAL allow publish', () => {
@@ -223,6 +241,28 @@ describe('EditorRouter category map', () => {
     expect(pickAiEditorFromList(editors, { text: 'CHP Genel Başkanı açıklama yaptı' })?.slug).toBe(
       'mert-karaca'
     )
+  })
+
+  it('prefers city-specific local editor when citySlug matches', () => {
+    const editors = [
+      ...seedRosterEditors(),
+      fakeEditor({
+        id: 'id-yerel-canakkale',
+        slug: 'yerel-canakkale',
+        name: 'Çanakkale Editör',
+        personaType: 'local_editor',
+        citySlug: 'canakkale',
+        categoryIds: ['yerel-haber'],
+        managedCategories: ['yerel-haber'],
+        desk: 'Yerel · Çanakkale',
+      }),
+    ]
+    expect(
+      pickAiEditorFromList(editors, {
+        categoryId: 'yerel-haber',
+        citySlug: 'canakkale',
+      })?.slug
+    ).toBe('yerel-canakkale')
   })
 
   it('excludes internal agents from news auto-routing', () => {

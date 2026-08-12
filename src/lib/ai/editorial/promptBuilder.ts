@@ -5,6 +5,10 @@ import {
   TARGET_NEWS_BODY_WORDS_MIN,
   MIN_NEWS_BODY_WORDS,
 } from '@/lib/contentQuality'
+import {
+  fetchEditorPastNews,
+  formatPastNewsForPrompt,
+} from './editorPastNews'
 
 export interface PromptBuildInput {
   editor: AiEditorDocument
@@ -16,6 +20,9 @@ export interface PromptBuildInput {
   province?: string
   district?: string
   extraUserNotes?: string
+  /** Include last N managed-category / city news for consistency checks. Default true for news/breaking/review. */
+  includePastNews?: boolean
+  pastNewsLimit?: number
 }
 
 export interface BuiltPrompt {
@@ -24,6 +31,7 @@ export interface BuiltPrompt {
   promptVersions: Partial<Record<AiPromptType, number>>
   editorId: string
   editorVersion: number
+  pastNewsCount?: number
 }
 
 const INJECTION_GUARD = `
@@ -60,13 +68,33 @@ export async function buildEditorPrompt(input: PromptBuildInput): Promise<BuiltP
           .join('\n')
       : ''
 
+  const shouldPastNews =
+    input.includePastNews ??
+    (input.task === 'news' || input.task === 'breaking' || input.task === 'review')
+
+  let pastNewsBlock = ''
+  let pastNewsCount = 0
+  if (shouldPastNews) {
+    try {
+      const past = await fetchEditorPastNews(input.editor, {
+        limit: input.pastNewsLimit ?? 8,
+      })
+      pastNewsCount = past.length
+      pastNewsBlock = formatPastNewsForPrompt(past)
+    } catch {
+      pastNewsBlock = ''
+    }
+  }
+
   const systemParts = [
     core?.content?.trim() ||
       `Sen ${input.editor.name}, ${input.editor.title} (NaHaber AI Editörü). Olgu temelli Türkçe gazete dili. Kaynakta olmayan bilgi uydurma.`,
     taskPrompt?.content?.trim() || '',
     input.task === 'news' || input.task === 'breaking' ? NEWS_FORMAT_LOCK : '',
     input.categoryId ? `Kategori bağlamı: ${input.categoryId}` : '',
+    input.editor.citySlug ? `İl masa (citySlug): ${input.editor.citySlug}` : '',
     locationBlock,
+    pastNewsBlock,
     input.editor.editorialMission
       ? `Editöryal görev: ${input.editor.editorialMission}`
       : '',
@@ -103,5 +131,6 @@ export async function buildEditorPrompt(input: PromptBuildInput): Promise<BuiltP
     },
     editorId: input.editor.id,
     editorVersion: input.editor.version,
+    pastNewsCount,
   }
 }
