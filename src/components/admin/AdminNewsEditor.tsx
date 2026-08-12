@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles,
+  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
@@ -90,10 +90,16 @@ type AiEditorOption = {
   citySlug?: string | null
 }
 
+function cityDisplayName(citySlug: string): string {
+  return TURKISH_PROVINCES.find((p) => p.slug === citySlug)?.name ?? citySlug
+}
+
 function aiEditorGroupLabel(editor: AiEditorOption): string {
   if (editor.personaType === 'columnist') return 'AI KÖŞE YAZARLARI'
   if (editor.personaType === 'local_editor') {
-    if (editor.citySlug) return `YEREL · ${editor.citySlug.toLocaleUpperCase('tr-TR')}`
+    if (editor.citySlug) {
+      return `YEREL · ${cityDisplayName(editor.citySlug).toLocaleUpperCase('tr-TR')}`
+    }
     return 'YEREL'
   }
   if (editor.personaType === 'breaking_editor') return 'SON DAKİKA'
@@ -106,6 +112,21 @@ function aiEditorGroupLabel(editor: AiEditorOption): string {
     return 'İÇ AJANLAR'
   }
   return (editor.desk || editor.primarySpecialization || 'MASA').toLocaleUpperCase('tr-TR')
+}
+
+/** Dropdown sort key: category/desk or city name — not editor personal name. */
+function aiEditorLabelSortKey(editor: AiEditorOption): string {
+  if (editor.personaType === 'local_editor') {
+    if (editor.citySlug) return cityDisplayName(editor.citySlug)
+    return 'Yerel'
+  }
+  return (editor.desk || editor.primarySpecialization || aiEditorGroupLabel(editor)).trim()
+}
+
+function compareAiEditorsByLabel(a: AiEditorOption, b: AiEditorOption): number {
+  const byLabel = aiEditorLabelSortKey(a).localeCompare(aiEditorLabelSortKey(b), 'tr')
+  if (byLabel !== 0) return byLabel
+  return a.name.localeCompare(b.name, 'tr')
 }
 
 function editorMatchesContext(
@@ -186,6 +207,7 @@ export function AdminNewsEditor({
   onSaved,
 }: AdminNewsEditorProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const reactId = useId()
   const mediaPostId = post?.id ?? `draft-${reactId.replace(/:/g, '')}`
 
@@ -466,7 +488,10 @@ export function AdminNewsEditor({
   )
   const recommendedEditors = useMemo(
     () =>
-      assignableEditors.filter((e) => editorMatchesContext(e, categoryId, citySlug)),
+      assignableEditors
+        .filter((e) => editorMatchesContext(e, categoryId, citySlug))
+        .slice()
+        .sort(compareAiEditorsByLabel),
     [assignableEditors, categoryId, citySlug]
   )
   const otherEditors = useMemo(() => {
@@ -482,6 +507,8 @@ export function AdminNewsEditor({
       map.set(group, list)
     }
     return [...map.entries()]
+      .map(([group, list]) => [group, list.slice().sort(compareAiEditorsByLabel)] as const)
+      .sort(([groupA], [groupB]) => groupA.localeCompare(groupB, 'tr'))
   }, [otherEditors])
 
   const aiPrepareButtonLabel = useMemo(() => {
@@ -764,9 +791,22 @@ export function AdminNewsEditor({
   const handleCancel = () => {
     if (variant === 'drawer') {
       onClose?.()
-    } else {
-      router.back()
+      return
     }
+    const from = searchParams.get('from')
+    if (from === 'approvals' && post?.id) {
+      const source = searchParams.get('source') || 'newsDrafts'
+      const rapid = searchParams.get('mode') === 'rapid'
+      router.push(
+        `/admin/approvals/${post.id}?source=${encodeURIComponent(source)}${rapid ? '&mode=rapid' : ''}`
+      )
+      return
+    }
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+      return
+    }
+    router.push(ROUTES.ADMIN.NEWS)
   }
 
   const formFields = (
@@ -792,13 +832,16 @@ export function AdminNewsEditor({
         <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Slug (URL)</label>
         <span className="text-[10px] text-amber-600 dark:text-amber-400">⚠ Değiştirmek mevcut URL&apos;yi bozabilir</span>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="shrink-0 text-[11px] text-[rgb(var(--color-muted))]">nahaber.com/haber/</span>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="hidden shrink-0 text-[11px] text-[rgb(var(--color-muted))] sm:inline">
+          nahaber.com/haber/
+        </span>
+        <span className="shrink-0 text-[11px] text-[rgb(var(--color-muted))] sm:hidden">/haber/</span>
         <input
           type="text"
           value={slug}
           onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))}
-          className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm font-mono text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-orange-400"
+          className="min-w-0 flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm font-mono text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-orange-400"
           placeholder="haber-slug..."
         />
       </div>
@@ -1584,7 +1627,7 @@ export function AdminNewsEditor({
             className="flex h-11 w-11 items-center justify-center rounded-xl text-[rgb(var(--color-muted))] md:hidden"
             aria-label="Geri"
           >
-            <X className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
           {mode === 'create' ? <Plus className="hidden h-4 w-4 text-blue-500 md:block" /> : <Pencil className="hidden h-4 w-4 text-blue-500 md:block" />}
           <span className="truncate text-sm font-bold text-[rgb(var(--color-text))]">{headerTitle}</span>

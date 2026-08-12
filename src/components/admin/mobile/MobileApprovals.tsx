@@ -136,7 +136,7 @@ export function MobileApprovals() {
         {allItems.length > 0 ? (
           <Link
             href={`/admin/approvals/${allItems[0].id}?source=${allItems[0].adminSource}&mode=rapid`}
-            className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-bold text-white"
+            className="flex min-h-11 items-center rounded-xl bg-[rgb(var(--color-brand))] px-4 text-xs font-bold text-white"
           >
             Hızlı Onay
           </Link>
@@ -157,7 +157,7 @@ export function MobileApprovals() {
             type="button"
             onClick={() => setChip(c.id)}
             className={cn(
-              'shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold',
+              'shrink-0 rounded-full px-3.5 py-2.5 text-xs font-semibold min-h-11',
               chip === c.id
                 ? 'bg-[rgb(var(--color-brand))] text-white'
                 : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]'

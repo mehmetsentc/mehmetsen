@@ -308,7 +308,7 @@ export function MobileApprovalReview({ id }: { id: string }) {
             Reddet
           </button>
           <Link
-            href={`/admin/news/${id}/edit`}
+            href={`/admin/news/${id}/edit?from=approvals&source=${source}${rapid ? '&mode=rapid' : ''}`}
             className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-[rgb(var(--color-border))] text-sm font-semibold text-[rgb(var(--color-text))]"
           >
             <Pencil className="h-4 w-4 shrink-0" />

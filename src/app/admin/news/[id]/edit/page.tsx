@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -8,7 +8,7 @@ import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
 import { adminNewsService } from '@/services/adminNewsService'
 import type { Post } from '@/types/post'
 
-export default function AdminNewsEditPage() {
+function AdminNewsEditInner() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const [post, setPost] = useState<Post | null>(null)
@@ -47,5 +47,19 @@ export default function AdminNewsEditPage() {
         username={user.username}
       />
     </div>
+  )
+}
+
+export default function AdminNewsEditPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
+        </div>
+      }
+    >
+      <AdminNewsEditInner />
+    </Suspense>
   )
 }
