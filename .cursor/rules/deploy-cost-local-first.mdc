@@ -1,0 +1,25 @@
+---
+description: Local-first deploy — no mid-day [deploy] without explicit user approval; batch once/twice daily
+alwaysApply: true
+---
+
+# Deploy cost gate (local-first)
+
+## Workflow (zorunlu)
+
+1. **Lokal:** Tüm değişiklikler, izleme ve doğrulama önce lokalde yapılır. Gün içinde production deploy yok.
+2. **Onay:** Kullanıcı açıkça deploy onaylamadan `[deploy]` / `[force-deploy]` commit veya push yapma.
+3. **Batch:** Onay gelince biriken iş **tek commit + tek push** ile gider (`[deploy]` mesajında).
+
+## Agent kuralları
+
+- Kullanıcı “deploy et / push [deploy] / canlıya al” demeden **asla** `[deploy]` veya `[force-deploy]` kullanma.
+- Ara commit’lerde `[deploy]` yazma; local accumulation varsayılanıdır.
+- Onay sonrası: `npm run deploy:allowed` (slot varsa) → tek batch commit → push.
+- Acil override yalnızca kullanıcı isterse: `[force-deploy]` veya `FORCE_DEPLOY=1`.
+
+## Vercel
+
+- `ignoreCommand` → `node scripts/vercel-ignored-build.mjs`
+- `[deploy]` yoksa build atlanır; günde en fazla ~2 prod build (24s pencere).
+- Docs/markdown-only değişiklikler build tetiklemez.

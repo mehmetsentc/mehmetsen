@@ -1,6 +1,7 @@
 {
   "framework": "nextjs",
   "installCommand": "npm ci",
+  "ignoreCommand": "node scripts/vercel-ignored-build.mjs",
   "regions": [
     "fra1"
   ],

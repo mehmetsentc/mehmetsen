@@ -68,7 +68,9 @@ Korunan sık job’lar:
 
 ### 5. Build dakikaları
 
-Ağustos başı–13’ü arasında yaklaşık **256 `[deploy]`** commit — sık prod build, Build Minutes overage riski. (Manuel: preview’da biriktir.)
+Ağustos başı–13’ü arasında yaklaşık **256 `[deploy]`** commit — sık prod build, Build Minutes overage riski.
+
+**Deploy gate (13 Ağu P1):** local-first batch — gün boyu lokal biriktir; kullanıcı onayı → tek `[deploy]` push. Vercel `ignoreCommand` (`scripts/vercel-ignored-build.mjs`): `[deploy]` yoksa / docs-only ise / son 24s’te ≥2 READY prod deploy varsa build atlanır. Acil: `[force-deploy]`. Lokal: `npm run deploy:allowed` / `deploy:batch`.
 
 ## Tahmini fatura dağılımı (~$97) — Usage doğrulanamadı
 
@@ -93,8 +95,22 @@ Ağustos başı–13’ü arasında yaklaşık **256 `[deploy]`** commit — sı
 
 1. **Kart güncelle** — $97.52 tahsilatı için (ödeme ayarına dokunulmadı).
 2. **Usage Dashboard** — Fluid / Edge / Image / ISR / Build satır tutarlarını doğrula (`vercel usage` API şu an 500).
-3. **Deploy frekansı** — preview’da biriktir; prod’a daha az `[deploy]`.
+3. **Deploy frekansı** — ✅ gate eklendi: local → onay → batch `[deploy]` (max ~2/gün). Agent’lar onay olmadan `[deploy]` push etmez (`.cursor/rules/deploy-cost-local-first.mdc`).
 4. **P2** — uzun worker’ları Cloud Scheduler + Cloud Run’a taşı (maliyet Vercel→GCP kayar).
+
+## Local-first deploy akışı
+
+| Adım | Ne yapılır |
+|------|------------|
+| 1. Lokal | Değişiklik + izleme/test lokalde; ara commit’lerde **`[deploy]` yok** |
+| 2. Onay | Kullanıcı “deploy / canlıya al” der |
+| 3. Slot | `npm run deploy:allowed` (Istanbul günü, max 2) |
+| 4. Batch | Biriken iş **tek** commit + push; mesajda `[deploy]` |
+| Acil | `[force-deploy]` veya `FORCE_DEPLOY=1` (kotayı bypass) |
+
+**Maliyet:** Evet — Build Minutes + soğuk pipeline düşer. ~256 deploy/ay → ~2/gün (~60/ay) ≈ **%~75+ build dakikası** azalması (yaklaşık; Usage doğrulanmalı).
+
+Opsiyonel hook: `git config core.hooksPath scripts/git-hooks` (pre-push kota kontrolü).
 
 ## İlgili commit’ler
 
