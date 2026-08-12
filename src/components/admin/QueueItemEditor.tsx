@@ -1,12 +1,30 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2, Pencil, Save, Send, X } from 'lucide-react'
+import { Loader2, Pencil, Save, Send, Sparkles, Wand2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { auth } from '@/lib/firebase/auth'
-import { getAdminCategoryGroups, YEREL_HABER_CATEGORY_ID } from '@/constants/config'
-import { TURKISH_PROVINCES } from '@/constants/cities'
+import { getAdminCategoryGroups, isYerelCategoryTree, YEREL_HABER_CATEGORY_ID } from '@/constants/config'
+import { getDistrictsForProvince, TURKISH_PROVINCES } from '@/constants/cities'
+import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 import { cn } from '@/lib/utils'
+
+interface PublishReadyAiResult {
+  title?: string
+  spot?: string
+  summary?: string
+  content?: string
+  categoryId?: string
+  tags?: string[]
+  imageOrder?: string[]
+  qualityScore?: number
+  gateDecision?: 'publish' | 'review'
+  editorName?: string | null
+  suggestedCitySlug?: string | null
+  suggestedDistrictSlug?: string | null
+  suggestedCountrySlug?: string | null
+  error?: string
+}
 
 export interface QueueEditorData {
   id: string
@@ -41,6 +59,7 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [aiPreparing, setAiPreparing] = useState(false)
   const [title, setTitle] = useState('')
   const [summary, setSummary] = useState('')
   const [content, setContent] = useState('')
@@ -119,7 +138,7 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
   }
 
   async function handleSave() {
-    if (saving || publishing) return
+    if (saving || publishing || aiPreparing) return
     setSaving(true)
     try {
       const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -142,8 +161,94 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
     }
   }
 
+  async function runAiPrepare() {
+    if (aiPreparing || saving || publishing) return
+    const rawInput = stripHtmlToNewsPlainText(
+      [title, summary, content].filter(Boolean).join('\n\n').trim()
+    )
+    if (rawInput.length < 80) {
+      toast.error('AI editör için en az 80 karakter ham haber metni girin')
+      return
+    }
+
+    setAiPreparing(true)
+    try {
+      const currentUser = auth.currentUser
+      if (!currentUser) throw new Error('Giriş gerekli')
+      const token = await currentUser.getIdToken()
+      const imageUrls = imageUrl.trim() ? [imageUrl.trim()] : []
+      const res = await fetch('/api/admin/ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          mode: 'publish-ready',
+          input: rawInput,
+          imageUrls,
+          articleFormat: 'standard',
+          autoRoute: true,
+          ...(categoryId ? { categoryId } : {}),
+          ...(citySlug ? { citySlug } : {}),
+          isBreaking,
+        }),
+      })
+      const data = (await res.json()) as PublishReadyAiResult
+      if (!res.ok) throw new Error(data.error || 'AI editör haberi hazırlayamadı')
+
+      const nextTitle = stripHtmlToNewsPlainText(data.title?.trim() || title)
+      const nextSpot = stripHtmlToNewsPlainText(data.spot?.trim() || '')
+      const nextSummary = stripHtmlToNewsPlainText(data.summary?.trim() || summary || nextSpot)
+      const nextContent = stripHtmlToNewsPlainText(data.content?.trim() || content)
+      const nextImage = data.imageOrder?.[0]?.trim() || imageUrl
+
+      setTitle(nextTitle)
+      setSummary(nextSummary)
+      setContent(nextContent)
+      if (nextImage) setImageUrl(nextImage)
+
+      if (data.suggestedCountrySlug?.trim()) {
+        if (!data.categoryId?.trim() || data.categoryId === 'gundem') {
+          setCategoryId('dunya')
+        } else if (data.categoryId?.trim()) {
+          setCategoryId(data.categoryId.trim())
+        }
+        setCitySlug('')
+        setDistrict('')
+      } else {
+        if (data.categoryId?.trim()) setCategoryId(data.categoryId.trim())
+        if (data.suggestedCitySlug?.trim()) setCitySlug(data.suggestedCitySlug.trim())
+        if (data.suggestedDistrictSlug?.trim()) {
+          const provinceSlug = data.suggestedCitySlug?.trim() || citySlug
+          const districts = getDistrictsForProvince(provinceSlug)
+          const found = districts.find((d) => d.slug === data.suggestedDistrictSlug?.trim())
+          setDistrict(found?.name || data.suggestedDistrictSlug.trim())
+        }
+      }
+
+      if (Array.isArray(data.tags) && data.tags.length > 0) {
+        setTagsText(data.tags.join(', '))
+      }
+
+      const editorLabel = data.editorName?.trim()
+      toast.success(
+        editorLabel
+          ? data.gateDecision === 'publish'
+            ? `${editorLabel} ile yayıma hazırlandı`
+            : `${editorLabel} ile hazırlandı; incelemeye alındı`
+          : data.gateDecision === 'publish'
+            ? 'Haber yayıma hazırlandı'
+            : data.qualityScore != null
+              ? `Haber hazırlandı (kalite: %${data.qualityScore})`
+              : 'Haber AI ile hazırlandı — kaydetmeden önce inceleyin'
+      )
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'AI editör isteği başarısız')
+    } finally {
+      setAiPreparing(false)
+    }
+  }
+
   async function handlePublish() {
-    if (saving || publishing) return
+    if (saving || publishing || aiPreparing) return
     if (!title.trim()) {
       toast.error('Başlık gerekli')
       return
@@ -212,6 +317,27 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
           </div>
         ) : (
           <>
+            <div className="border-b border-[rgb(var(--color-border))] px-5 py-3">
+              <button
+                type="button"
+                onClick={() => void runAiPrepare()}
+                disabled={aiPreparing || saving || publishing}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 px-4 py-3 text-sm font-black text-white shadow-md transition hover:from-amber-400 hover:to-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {aiPreparing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                ✨ Uzman AI Editörle Haberi Hazırla
+              </button>
+              <p className="mt-2 text-[11px] leading-relaxed text-[rgb(var(--color-muted))]">
+                Otomatik masa yönlendirme ile başlık, özet, içerik
+                {isYerelCategoryTree(categoryId) ? ', yerel kategori' : ', kategori'}
+                ve etiketleri doldurur. Kaydet veya yayına almadan önce inceleyin.
+              </p>
+            </div>
+
             <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">Başlık</label>
@@ -319,32 +445,48 @@ export function QueueItemEditor({ queueId, onClose, onSaved, onPublished }: Queu
               </label>
             </div>
 
-            <div className="flex flex-col gap-2 border-t border-[rgb(var(--color-border))] px-5 py-4 sm:flex-row sm:justify-end">
+            <div className="sticky bottom-0 flex flex-col gap-2 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
-                onClick={onClose}
-                className="rounded-xl border border-[rgb(var(--color-border))] px-4 py-2.5 text-sm font-semibold"
+                onClick={() => void runAiPrepare()}
+                disabled={aiPreparing || saving || publishing}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50 sm:order-first"
               >
-                İptal
+                {aiPreparing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3.5 w-3.5" />
+                )}
+                Uzman AI ile hazırla
               </button>
-              <button
-                type="button"
-                disabled={saving || publishing}
-                onClick={() => void handleSave()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-600 px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-900/20"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Kaydet
-              </button>
-              <button
-                type="button"
-                disabled={saving || publishing}
-                onClick={() => void handlePublish()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Yayına al
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={aiPreparing}
+                  className="rounded-xl border border-[rgb(var(--color-border))] px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+                >
+                  İptal
+                </button>
+                <button
+                  type="button"
+                  disabled={saving || publishing || aiPreparing}
+                  onClick={() => void handleSave()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-600 px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-900/20"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Kaydet
+                </button>
+                <button
+                  type="button"
+                  disabled={saving || publishing || aiPreparing}
+                  onClick={() => void handlePublish()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Yayına al
+                </button>
+              </div>
             </div>
           </>
         )}
