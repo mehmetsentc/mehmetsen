@@ -32,7 +32,109 @@ import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
-const TITLE_MAX = 90
+/** Post manşet — uzun başlıklar footer'a taşmasın diye daha sıkı */
+const TITLE_MAX = 72
+
+const HEADLINE_MAX_LINES = 3
+const HEADLINE_MIN_SIZE = 48
+const HEADLINE_GAP_ABOVE_FOOTER = 28
+
+/** Inter 800 yaklaşık ortalama glif genişliği (Satori word-wrap simülasyonu) */
+function avgGlyphWidth(fontSize: number): number {
+  return fontSize * 0.55
+}
+
+function estimateWrapLines(text: string, fontSize: number, maxWidth: number): number {
+  const plain = text.replace(/\s+/g, ' ').trim()
+  if (!plain) return 0
+  const words = plain.split(' ')
+  const charW = avgGlyphWidth(fontSize)
+  const spaceW = fontSize * 0.28
+  let lines = 1
+  let lineW = 0
+  for (const word of words) {
+    const wordW = word.length * charW
+    if (lineW === 0) {
+      lineW = wordW
+    } else if (lineW + spaceW + wordW > maxWidth) {
+      lines++
+      lineW = wordW
+    } else {
+      lineW += spaceW + wordW
+    }
+  }
+  return lines
+}
+
+function truncateToMaxLines(
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  maxLines: number,
+): string {
+  const plain = text.replace(/\s+/g, ' ').trim()
+  if (!plain) return ''
+  const words = plain.split(' ')
+  const charW = avgGlyphWidth(fontSize)
+  const spaceW = fontSize * 0.28
+  let lines = 1
+  let lineW = 0
+  let result = ''
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]
+    const wordW = word.length * charW
+    const extra = lineW === 0 ? wordW : spaceW + wordW
+    if (lineW > 0 && lineW + extra > maxWidth) {
+      lines++
+      if (lines > maxLines) {
+        const trimmed = result.trim()
+        return trimmed.length > 0 ? `${trimmed}…` : `${word.slice(0, 12)}…`
+      }
+      lineW = wordW
+    } else {
+      lineW += extra
+    }
+    result += (result ? ' ' : '') + word
+  }
+  return result
+}
+
+function resolvePostHeadlineLayout(titlePlain: string, contentWidth: number): {
+  displayTitle: string
+  titleSize: number
+  titleLineHeight: number
+  titleWrapLines: number
+  titleBlockHeight: number
+} {
+  const len = titlePlain.length
+  let titleSize =
+    len > 62 ? 56 :
+    len > 52 ? 58 :
+    len > 42 ? 62 :
+    len > 32 ? 64 :
+    len > 22 ? 66 :
+    72
+
+  let wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
+  while (wrapLines > HEADLINE_MAX_LINES && titleSize > HEADLINE_MIN_SIZE) {
+    titleSize -= 4
+    wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
+  }
+
+  let displayTitle = titlePlain
+  if (wrapLines > HEADLINE_MAX_LINES) {
+    displayTitle = truncateToMaxLines(titlePlain, titleSize, contentWidth, HEADLINE_MAX_LINES)
+    wrapLines = HEADLINE_MAX_LINES
+  }
+
+  const titleLineHeight =
+    wrapLines >= 3 ? 1.26 :
+    wrapLines >= 2 ? 1.28 :
+    1.22
+  const titleBlockHeight = Math.ceil(titleSize * titleLineHeight * wrapLines)
+
+  return { displayTitle, titleSize, titleLineHeight, titleWrapLines: wrapLines, titleBlockHeight }
+}
 
 interface ArticleOGData {
   title: string
@@ -105,8 +207,8 @@ function clampHeadline(s: string, max: number): string {
 const W = 1080
 const H = 1350
 const TEXT_PAD_SIDE = 48
-const TEXT_PAD_BOTTOM = 44
-const PANEL_H = 470
+const TEXT_PAD_BOTTOM = 52
+const PANEL_H = 510
 const LOGO_SIZE = 88
 
 const NAVY = '#0d2355'
@@ -240,18 +342,10 @@ export async function GET(
   )
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
-  const titleLines = title.split('\n').filter(Boolean)
-  const titlePlainLen = titleLines.join('').length
-
-  const titleSize =
-    titleLines.length >= 3 ? (titlePlainLen > 55 ? 60 : 64) :
-    titleLines.length === 2 ? (titlePlainLen > 52 ? 64 : titlePlainLen > 36 ? 68 : 72) :
-    titlePlainLen > 58 ? 64 :
-    titlePlainLen > 48 ? 68 :
-    titlePlainLen > 36 ? 70 :
-    titlePlainLen > 24 ? 72 :
-    72
-  const titleLineHeight = titleLines.length >= 2 ? 1.26 : 1.2
+  const titlePlain = title.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+  const contentWidth = W - TEXT_PAD_SIDE * 2
+  const headline = resolvePostHeadlineLayout(titlePlain, contentWidth)
+  const { displayTitle, titleSize, titleLineHeight, titleBlockHeight } = headline
 
   try {
     const [fonts, brand] = await Promise.all([loadPostFonts(), loadBrandAssets()])
@@ -288,8 +382,6 @@ export async function GET(
           background: `linear-gradient(to top, rgba(13,35,85,1) 0%, rgba(13,35,85,0.98) 22%, rgba(13,35,85,0.88) 42%, rgba(13,35,85,0.55) 62%, rgba(13,35,85,0.18) 82%, transparent 100%)`,
           display: 'flex',
         }} />
-
-        {/* Onyeditivi 17 logo — sol üst */}
         {brand.onyeditiviLogo ? (
           <img
             src={brand.onyeditiviLogo}
@@ -304,49 +396,54 @@ export async function GET(
           />
         ) : null}
 
-        {/* Bottom text panel */}
+        {/* Bottom text panel — footer sabit, metin yukarıda kalır */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           height: PANEL_H,
           display: 'flex', flexDirection: 'column',
           padding: `0 ${TEXT_PAD_SIDE}px ${TEXT_PAD_BOTTOM}px`,
-          justifyContent: 'flex-end',
         }}>
-          {/* Category row — light-blue accent + label */}
           <div style={{
-            display: 'flex', flexDirection: 'row', alignItems: 'center',
-            gap: 12, marginBottom: 18,
+            flex: 1, minHeight: 0,
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
           }}>
+            {/* Category row — light-blue accent + label */}
             <div style={{
-              width: 4, height: 28, borderRadius: 2,
-              background: LBLUE, flexShrink: 0, display: 'flex',
-            }} />
-            <span style={{
-              color: '#ffffff', fontWeight: 800, fontSize: 30,
-              letterSpacing: 2.5, display: 'flex',
-            }}>{categoryLabel}</span>
-          </div>
+              display: 'flex', flexDirection: 'row', alignItems: 'center',
+              gap: 12, marginBottom: 18, flexShrink: 0,
+            }}>
+              <div style={{
+                width: 4, height: 28, borderRadius: 2,
+                background: LBLUE, flexShrink: 0, display: 'flex',
+              }} />
+              <span style={{
+                color: '#ffffff', fontWeight: 800, fontSize: 30,
+                letterSpacing: 2.5, display: 'flex',
+              }}>{categoryLabel}</span>
+            </div>
 
-          {/* Headline */}
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 8,
-            marginBottom: 28,
-            maxHeight: Math.round(titleSize * titleLineHeight * 3.2),
-            overflow: 'hidden',
-          }}>
-            {titleLines.map((line, i) => (
-              <span key={i} style={{
+            {/* Headline — max 3 satır, footer ile çakışmayı önler */}
+            <div style={{
+              display: 'flex', flexDirection: 'column',
+              marginBottom: HEADLINE_GAP_ABOVE_FOOTER,
+              minHeight: titleBlockHeight,
+              maxHeight: titleBlockHeight,
+              flexShrink: 0,
+              overflow: 'hidden',
+            }}>
+              <span style={{
                 color: '#ffffff', fontWeight: 800,
                 fontSize: titleSize, lineHeight: titleLineHeight,
                 letterSpacing: 0.1, display: 'flex',
-              }}>{line}</span>
-            ))}
+              }}>{displayTitle}</span>
+            </div>
           </div>
 
-          {/* Thin blue line + centered NaHaber favicon */}
+          {/* Thin blue line + centered NaHaber favicon — rezerve alt bölge */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative', height: faviconSize, width: '100%',
+            flexShrink: 0,
           }}>
             <div style={{
               position: 'absolute', left: 0, right: 0, top: '50%',
