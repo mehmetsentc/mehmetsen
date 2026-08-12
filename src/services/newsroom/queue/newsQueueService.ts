@@ -335,15 +335,13 @@ export async function markQueueDuplicate(
   input: QueueEnqueueInput['input']
 ): Promise<{ stubId?: string }> {
   let stubId: string | undefined
-  if (hit.existingNewsId) {
-    try {
-      stubId = await createDuplicateNewsStub(db, input, {
-        existingNewsId: hit.existingNewsId,
-        reason: hit.reason,
-      })
-    } catch (err) {
-      console.warn('[markQueueDuplicate] stub create failed:', err)
-    }
+  try {
+    stubId = await createDuplicateNewsStub(db, input, {
+      existingNewsId: hit.existingNewsId ?? 'unknown',
+      reason: hit.reason,
+    })
+  } catch (err) {
+    console.warn('[markQueueDuplicate] stub create failed:', err)
   }
 
   await queueCollection(db).doc(queueId).update({

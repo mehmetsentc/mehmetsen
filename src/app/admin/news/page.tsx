@@ -1113,11 +1113,9 @@ function AdminNewsDesktopPage() {
       const catFilter = searchTerm.trim() ? undefined : categoryFilterRef.current || undefined
       // İl filtresi — Firestore'a doğrudan geçirilir (server-side)
       const citySlugFilter = searchTerm.trim() ? undefined : cityFilterRef.current || undefined
-      // 'duplicate' filtresi: Firestore'dan pending'leri çek, client-side isDuplicate filtrele
-      const fsFilter: AdminNewsFilter = filter === 'duplicate' ? 'pending' : filter
       const [result, tagResults] = await Promise.all([
-        adminNewsService.list(fsFilter, cursor, catFilter, filter === 'duplicate' ? 500 : (searchTerm.trim() ? 500 : undefined), citySlugFilter),
-        searchTerm.trim() ? adminNewsService.searchByTag(searchTerm) : Promise.resolve([]),
+        adminNewsService.list(filter, cursor, catFilter, filter === 'duplicate' ? 500 : (searchTerm.trim() ? 500 : undefined), citySlugFilter),
+        searchTerm.trim() && filter !== 'duplicate' ? adminNewsService.searchByTag(searchTerm) : Promise.resolve([]),
       ])
       if (myGen !== loadGenRef.current) return
       // Tag sorgusu sonuçlarını merge et — 500 limitinin dışındaki eski haberler de görünsün

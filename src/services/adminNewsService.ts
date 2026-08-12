@@ -266,6 +266,10 @@ export const adminNewsService = {
       return listPendingQueue(lastDoc)
     }
 
+    if (filter === 'duplicate') {
+      return listDuplicateNews(lastDoc, categoryId, limitOverride, citySlug)
+    }
+
     const status = statusConstraint(filter)
     const filterConstraints: QueryConstraint[] = []
     if (filter === 'featured') filterConstraints.push(where('featured', '==', true))
@@ -655,6 +659,86 @@ function queueDocToPost(id: string, data: Record<string, unknown>): AdminNewsIte
     createdAt,
     updatedAt: createdAt,
     adminSource: 'newsQueue',
+  }
+}
+
+/** Tekrar haberler: newsDrafts audit stub'ları + news.isDuplicate (editorial review). */
+async function listDuplicateNews(
+  lastDoc?: QueryDocumentSnapshot,
+  categoryId?: string,
+  limitOverride?: number,
+  citySlug?: string
+): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
+  const pageSize = limitOverride ?? PAGE_SIZE
+  const items: AdminNewsItem[] = []
+  const seen = new Set<string>()
+
+  const draftAttempts: QueryConstraint[][] = [
+    [
+      where('isDuplicate', '==', true),
+      orderBy('createdAt', 'desc'),
+      ...(lastDoc ? [startAfter(lastDoc)] : []),
+      limit(pageSize),
+    ],
+    [where('isDuplicate', '==', true), orderBy('updatedAt', 'desc'), limit(pageSize)],
+    [where('isDuplicate', '==', true), limit(pageSize)],
+    [where('categoryId', '==', 'tekrarlayan'), orderBy('createdAt', 'desc'), limit(pageSize)],
+    [where('categoryId', '==', 'tekrarlayan'), limit(pageSize)],
+  ]
+
+  let draftLastDoc: QueryDocumentSnapshot | null = null
+  for (const constraints of draftAttempts) {
+    try {
+      const snap = await getDocs(query(collection(db, Collections.NEWS_DRAFTS), ...constraints))
+      if (snap.empty && constraints !== draftAttempts[draftAttempts.length - 1]) continue
+      for (const d of snap.docs) {
+        const data = d.data() as NewsDocument
+        if (data.isDuplicate !== true && data.categoryId !== 'tekrarlayan') continue
+        if (seen.has(d.id)) continue
+        seen.add(d.id)
+        items.push(draftDocToPost(d.id, data))
+      }
+      draftLastDoc = snap.docs[snap.docs.length - 1] ?? null
+      if (items.length > 0) break
+    } catch (err) {
+      console.warn('[adminNewsService] duplicate drafts attempt failed:', err)
+    }
+  }
+
+  if (items.length < pageSize) {
+    const newsAttempts: QueryConstraint[][] = [
+      [where('isDuplicate', '==', true), orderBy('createdAt', 'desc'), limit(pageSize - items.length)],
+      [where('isDuplicate', '==', true), orderBy('updatedAt', 'desc'), limit(pageSize - items.length)],
+      [where('isDuplicate', '==', true), limit(pageSize - items.length)],
+    ]
+    for (const constraints of newsAttempts) {
+      try {
+        const snap = await fetchAdminNewsSnap(constraints)
+        if (snap.empty && constraints !== newsAttempts[newsAttempts.length - 1]) continue
+        for (const d of snap.docs) {
+          if (seen.has(d.id)) continue
+          seen.add(d.id)
+          const data = d.data() as NewsDocument
+          items.push(withSocialFlags(adminNewsDocToPost(d.id, data), data as Record<string, unknown>, 'news'))
+        }
+        if (items.length > 0) break
+      } catch (err) {
+        console.warn('[adminNewsService] duplicate news attempt failed:', err)
+      }
+    }
+  }
+
+  let posts = items
+  if (categoryId) posts = posts.filter((p) => p.categoryId === categoryId)
+  if (citySlug) posts = posts.filter((p) => p.citySlug === citySlug)
+
+  posts.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+  const sliced = posts.slice(0, pageSize)
+
+  return {
+    posts: sliced,
+    lastDoc: draftLastDoc,
+    hasMore: items.length >= pageSize,
   }
 }
 
