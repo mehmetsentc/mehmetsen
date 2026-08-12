@@ -420,6 +420,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     categoryId: data.categoryId?.trim() || data.category?.trim() || '',
     city: data.city?.trim() || null,
     citySlug: data.citySlug?.trim() || null,
+    district: data.district?.trim() || data.location?.district?.trim() || null,
     districtSlug: data.districtSlug?.trim() || null,
     location: data.location ?? null,
     tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],

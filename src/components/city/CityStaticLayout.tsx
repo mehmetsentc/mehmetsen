@@ -21,7 +21,7 @@ interface CityStaticLayoutProps {
 
 export function CityStaticLayout({ cityName, provinceSlug, children }: CityStaticLayoutProps) {
   return (
-    <CityCategoryProvider categories={[]}>
+    <CityCategoryProvider categories={[]} hasSpor={false}>
       <div className="min-h-screen bg-[rgb(var(--color-surface))]">
         {/* Navbar — onMenuClick verilmez, menü butonu pasif kalır */}
         <CityNavbar cityName={cityName} provinceSlug={provinceSlug} />

@@ -9,7 +9,7 @@ import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
-import { getCityDistrictFeedInitialData, getCityCategories } from '@/services/cityNewsService.server'
+import { getCityDistrictFeedInitialData, getCityNavPresence } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,15 +47,18 @@ export default async function IlcePage({ params }: PageProps) {
   if (!district) notFound()
 
   const cityName = getCityCategoryName(citySlug)
-  const homeFeedData = await getCityDistrictFeedInitialData(citySlug, slug)
-  const categories = await getCityCategories(citySlug)
+  const [homeFeedData, navPresence] = await Promise.all([
+    getCityDistrictFeedInitialData(citySlug, slug),
+    getCityNavPresence(citySlug),
+  ])
 
   return (
     <CityLayoutClient
       tenantSlug={citySlug}
       displayName={cityName}
       provinceSlug={citySlug}
-      categories={categories}
+      categories={navPresence.categories}
+      hasSpor={navPresence.hasSpor}
     >
       <CityFeedPageClient
         homeFeedData={homeFeedData}

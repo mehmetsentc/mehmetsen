@@ -102,13 +102,13 @@ function CitySidebarInner({
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout, loading } = useAuth()
-  const { categories } = useCityCategoryFilter()
+  const { categories, hasSpor } = useCityCategoryFilter()
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [submitOpen, setSubmitOpen] = useState(false)
 
   const logoSrc = getCityLogoPath(provinceSlug)
-  const sectionItems = buildCitySectionNavItems()
+  const sectionItems = buildCitySectionNavItems({ hasSpor })
   const categoryItems = buildCityCategoryNavItems(categories)
 
   useEffect(() => {

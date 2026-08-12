@@ -146,6 +146,66 @@ describe('filterCityEvents dateFilter', () => {
     expect(filtered.map((e) => e.id)).toEqual(['tomorrow'])
   })
 
+  it('Yarın includes multi-day events spanning tomorrow (Istanbul calendar)', () => {
+    const now = '2026-08-13T09:00:00.000Z' // 13 Ağustos öğlen TR
+    const spanningFestival = makeEvent({
+      id: 'altin-sardalya',
+      startsAt: '2026-08-13T07:00:00.000Z',
+      endsAt: '2026-08-17T18:00:00.000Z',
+    })
+    const troia = makeEvent({
+      id: 'troia',
+      startsAt: '2026-08-08T07:00:00.000Z',
+      endsAt: '2026-08-16T18:00:00.000Z',
+    })
+    const startsTomorrow = makeEvent({
+      id: 'starts-tomorrow',
+      startsAt: '2026-08-13T21:00:00.000Z', // 14 Ağustos 00:00 TR
+    })
+    const futureOnly = makeEvent({
+      id: 'future-only',
+      startsAt: '2026-08-20T18:00:00.000Z',
+    })
+    const finishedBefore = makeEvent({
+      id: 'finished-before',
+      startsAt: '2026-08-08T07:00:00.000Z',
+      endsAt: '2026-08-10T18:00:00.000Z',
+    })
+
+    const filtered = filterCityEvents(
+      [spanningFestival, troia, startsTomorrow, futureOnly, finishedBefore],
+      { dateFilter: 'tomorrow', category: null, venue: null, districtSlug: null },
+      now
+    )
+
+    expect(filtered.map((e) => e.id).sort()).toEqual(
+      ['altin-sardalya', 'starts-tomorrow', 'troia'].sort()
+    )
+  })
+
+  it('Yarın excludes previous-day cinema whose endsAt only spills past midnight', () => {
+    const now = '2026-08-13T09:00:00.000Z'
+    const lateNightSpill = makeEvent({
+      id: 'spider-man-today',
+      startsAt: '2026-08-13T07:30:00.000Z',
+      endsAt: '2026-08-13T21:30:00.000Z', // 14 Ağustos 00:30 TR
+      category: 'cinema',
+    })
+    const trulySpanning = makeEvent({
+      id: 'festival',
+      startsAt: '2026-08-13T07:00:00.000Z',
+      endsAt: '2026-08-17T18:00:00.000Z',
+    })
+
+    const filtered = filterCityEvents(
+      [lateNightSpill, trulySpanning],
+      { dateFilter: 'tomorrow', category: null, venue: null, districtSlug: null },
+      now
+    )
+
+    expect(filtered.map((e) => e.id)).toEqual(['festival'])
+  })
+
   it('Sinema filter matches tag-only Paribu cinema events', () => {
     const cinema = makeEvent({
       id: 'paribu-tag',

@@ -17,7 +17,7 @@ import {
 import { cityCategoryId, slugifyCity, toFirestoreLocation, type PostLocation } from '@/lib/location'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCategoryFamily } from '@/constants/config'
+import { getHomeFeedCategoryFamily } from '@/constants/config'
 import { filterPostsByFeedSource } from '@/lib/feedSource'
 import { YEREL_HABER_CATEGORY, isYerelHaberEligible } from '@/lib/feedRanking'
 import { db, Collections, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
@@ -138,7 +138,7 @@ function buildNewsTimelineQueryConstraints(
     constraints.push(where('isBreaking', '==', true))
   } else if (options?.categoryId) {
     // Parent kategorileri (spor, kultur) → tüm alt kategorileri de kapsa
-    const family = getCategoryFamily(options.categoryId)
+    const family = getHomeFeedCategoryFamily(options.categoryId)
     if (family.length > 1) {
       constraints.push(where('categoryId', 'in', family))
     } else {
@@ -453,8 +453,8 @@ export const postService = {
         .filter((p) => isPubliclyVisibleStatus(p.status))
         .filter(hasVideoContent)
 
-    const { getCategoryFamily } = await import('@/constants/config')
-    const family = getCategoryFamily(categoryId)
+    const { getHomeFeedCategoryFamily } = await import('@/constants/config')
+    const family = getHomeFeedCategoryFamily(categoryId)
 
     try {
       const constraints = [

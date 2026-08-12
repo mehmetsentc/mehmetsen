@@ -5,6 +5,8 @@ import type { CityCategory } from '@/services/cityNewsService.server'
 
 interface CityCategoryContextValue {
   categories: CityCategory[]
+  /** Spor section pill — false when city has zero spor-family news. */
+  hasSpor: boolean
   activeCategoryId: string | null
   setActiveCategoryId: (id: string | null) => void
 }
@@ -13,9 +15,11 @@ const CityCategoryContext = createContext<CityCategoryContextValue | null>(null)
 
 export function CityCategoryProvider({
   categories,
+  hasSpor = false,
   children,
 }: {
   categories: CityCategory[]
+  hasSpor?: boolean
   children: ReactNode
 }) {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
@@ -26,7 +30,7 @@ export function CityCategoryProvider({
 
   return (
     <CityCategoryContext.Provider
-      value={{ categories, activeCategoryId, setActiveCategoryId: setCategory }}
+      value={{ categories, hasSpor, activeCategoryId, setActiveCategoryId: setCategory }}
     >
       {children}
     </CityCategoryContext.Provider>

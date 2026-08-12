@@ -42,6 +42,15 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'yerel-gundem',   name: 'Yerel Gündem',   slug: 'yerel-gundem',   iconName: 'newspaper',    color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-siyaset',  name: 'Yerel Siyaset',  slug: 'yerel-siyaset',  iconName: 'landmark',     color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-spor',     name: 'Yerel Spor',     slug: 'yerel-spor',     iconName: 'trophy',       color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-futbol',   name: 'Yerel Futbol',   slug: 'yerel-futbol',   iconName: 'circle-dot',   color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-basketbol', name: 'Yerel Basketbol', slug: 'yerel-basketbol', iconName: 'circle',     color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-voleybol', name: 'Yerel Voleybol', slug: 'yerel-voleybol', iconName: 'circle',       color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-hentbol',  name: 'Yerel Hentbol',  slug: 'yerel-hentbol',  iconName: 'circle',       color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-atletizm', name: 'Yerel Atletizm', slug: 'yerel-atletizm', iconName: 'zap',          color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-gures',    name: 'Yerel Güreş',    slug: 'yerel-gures',    iconName: 'swords',       color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-tenis',    name: 'Yerel Tenis',    slug: 'yerel-tenis',    iconName: 'circle',       color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-yuzme',    name: 'Yerel Yüzme',    slug: 'yerel-yuzme',    iconName: 'waves',        color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-motor-sporlari', name: 'Yerel Motor Sporları', slug: 'yerel-motor-sporlari', iconName: 'gauge', color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-etkinlik', name: 'Yerel Etkinlik', slug: 'yerel-etkinlik', iconName: 'calendar',     color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-sinema',   name: 'Yerel Sinema',   slug: 'yerel-sinema',   iconName: 'film',         color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-kultur',   name: 'Yerel Kültür',   slug: 'yerel-kultur',   iconName: 'palette',      color: '#059669', parentId: 'yerel-haber' },
@@ -68,6 +77,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'yerel-meteoroloji', name: 'Yerel Meteoroloji', slug: 'yerel-meteoroloji', iconName: 'cloud-rain', color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-turizm',   name: 'Yerel Turizm',   slug: 'yerel-turizm',   iconName: 'plane',        color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-tarih',    name: 'Yerel Tarih',    slug: 'yerel-tarih',    iconName: 'book-open',    color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-duyuru',   name: 'Yerel Duyuru',   slug: 'yerel-duyuru',   iconName: 'megaphone',    color: '#059669', parentId: 'yerel-haber' },
   { id: 'siyaset',     name: 'Siyaset',     slug: 'siyaset',     iconName: 'landmark',     color: '#7C3AED' },
   { id: 'dunya',       name: 'Dünya',       slug: 'dunya',       iconName: 'globe',        color: '#6B7280' },
   { id: 'kibris-haberleri', name: 'Kıbrıs Haberleri', slug: 'kibris-haberleri', iconName: 'flag', color: '#0E7490' },
@@ -192,6 +202,15 @@ export const YEREL_SUBCATEGORY_IDS = [
   'yerel-gundem',
   'yerel-siyaset',
   'yerel-spor',
+  'yerel-futbol',
+  'yerel-basketbol',
+  'yerel-voleybol',
+  'yerel-hentbol',
+  'yerel-atletizm',
+  'yerel-gures',
+  'yerel-tenis',
+  'yerel-yuzme',
+  'yerel-motor-sporlari',
   'yerel-ekonomi',
   'yerel-finans',
   'yerel-emlak',
@@ -218,7 +237,14 @@ export const YEREL_SUBCATEGORY_IDS = [
   'yerel-gezi',
   'yerel-tarih',
   'yerel-oyun-espor',
+  'yerel-duyuru',
 ] as const
+
+/**
+ * Yerel-only alt kategoriler — ulusal ana sayfa raylarında gösterilmez
+ * (çift feed haritasına da eklenmez; şehir / yerel bölümünde kalır).
+ */
+export const YEREL_HOMEPAGE_EXCLUDED_IDS = new Set<string>(['yerel-duyuru'])
 
 /** Yerel alt kategori → ulusal kategori (Türkiye feed çift görünürlük). */
 export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
@@ -226,6 +252,15 @@ export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
   'yerel-gundem': 'gundem',
   'yerel-siyaset': 'siyaset',
   'yerel-spor': 'spor',
+  'yerel-futbol': 'futbol',
+  'yerel-basketbol': 'basketbol',
+  'yerel-voleybol': 'voleybol',
+  'yerel-hentbol': 'hentbol',
+  'yerel-atletizm': 'atletizm',
+  'yerel-gures': 'gures',
+  'yerel-tenis': 'spor',
+  'yerel-yuzme': 'spor',
+  'yerel-motor-sporlari': 'spor',
   'yerel-ekonomi': 'ekonomi',
   'yerel-finans': 'finans-piyasa',
   'yerel-emlak': 'emlak-konut',
@@ -256,12 +291,12 @@ export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
 
 /** National branch categories → yerel subcategory (sport, ekonomi alt dalları vb.). */
 const NATIONAL_BRANCH_TO_YEREL: Record<string, string> = {
-  futbol: 'yerel-spor',
-  basketbol: 'yerel-spor',
-  voleybol: 'yerel-spor',
-  hentbol: 'yerel-spor',
-  atletizm: 'yerel-spor',
-  gures: 'yerel-spor',
+  futbol: 'yerel-futbol',
+  basketbol: 'yerel-basketbol',
+  voleybol: 'yerel-voleybol',
+  hentbol: 'yerel-hentbol',
+  atletizm: 'yerel-atletizm',
+  gures: 'yerel-gures',
   'dunya-kupasi-2026': 'yerel-spor',
   borsa: 'yerel-finans',
   kripto: 'yerel-finans',
@@ -441,17 +476,35 @@ export function getCategoryFamily(parentId: string): string[] {
  * Ana sayfa kategori rayları — standalone alt kategoriler dahil
  * (ör. Spor rayında futbol/basketbol haberleri de görünsün).
  * Firestore `in` limiti: en fazla 10 id.
+ * YEREL_HOMEPAGE_EXCLUDED_IDS (ör. yerel-duyuru) ana sayfa rayına girmez;
+ * istenen parentId'nin kendisi sorgulanıyorsa korunur.
+ *
+ * Limit aşımında ulusal alt dallar (futbol/basketbol…) öncelikli tutulur;
+ * dual-route haberler ulusal categoryId ile yazıldığı için yerel ayna id'ler
+ * ikincil sıradadır (yerel-futbol vb. şişirmesin).
  */
 export function getHomeFeedCategoryFamily(parentId: string): string[] {
   const base = [parentId, ...getSubcategories(parentId).map((c) => c.id)]
-  const yerelIds = getYerelIdsMappedToCategoryFamily(base)
-  const combined = [...new Set([...base, ...yerelIds])]
+  const yerelIds = getYerelIdsMappedToCategoryFamily(base).filter(
+    (id) => !YEREL_HOMEPAGE_EXCLUDED_IDS.has(id)
+  )
+  const combined = [...new Set([...base, ...yerelIds])].filter(
+    (id) => id === parentId || !YEREL_HOMEPAGE_EXCLUDED_IDS.has(id)
+  )
   if (combined.length <= 10) return combined
 
-  // Firestore `in` max 10 — always keep parent + yerel mirrors for dual visibility.
-  const priority = new Set([parentId, ...yerelIds])
-  const rest = base.filter((id) => !priority.has(id))
-  return [...priority, ...rest].slice(0, 10)
+  // Firestore `in` max 10 — parent + national children first, then yerel mirrors.
+  const ordered = [
+    parentId,
+    ...base.filter((id) => id !== parentId && !YEREL_HOMEPAGE_EXCLUDED_IDS.has(id)),
+    ...yerelIds.filter((id) => id !== parentId && !base.includes(id)),
+  ]
+  return [...new Set(ordered)].slice(0, 10)
+}
+
+/** True when category should stay off national homepage rails / featured filler. */
+export function isYerelHomepageExcluded(categoryId: string): boolean {
+  return YEREL_HOMEPAGE_EXCLUDED_IDS.has(categoryId?.trim().toLowerCase() ?? '')
 }
 
 /**

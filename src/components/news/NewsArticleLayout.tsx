@@ -142,7 +142,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
 
         {/* Featured image — responsive hero cap, object-cover */}
         {imageUrl && (
-          <figure className="relative mx-auto w-full">
+          <figure className="news-article-hero-block relative">
             <div className="news-article-hero">
               <SafeNewsImage
                 src={imageUrl}

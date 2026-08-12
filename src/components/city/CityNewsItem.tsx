@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { cn } from '@/lib/utils'
+import { newsItemCategoryLabel } from '@/lib/newsItemUtils'
 import type { NewsItem } from '@/types/newsItem'
 
 interface CityNewsItemProps {
@@ -21,6 +22,7 @@ export function CityNewsItem({ item, priority = false }: CityNewsItemProps) {
     : ''
 
   const href = `/haber/${item.slug}`
+  const categoryLabel = newsItemCategoryLabel(item)
 
   return (
     <Link href={href} className="group block" prefetch={false}>
@@ -49,12 +51,12 @@ export function CityNewsItem({ item, priority = false }: CityNewsItemProps) {
           </h3>
 
           <div className="flex items-center gap-2 text-xs text-[rgb(var(--color-text-secondary))]">
-            {item.category && (
-              <span className="font-medium capitalize">
-                {item.category.replace(/-/g, ' ')}
+            {categoryLabel ? (
+              <span className="font-medium uppercase tracking-wide text-[rgb(var(--color-brand))]">
+                {categoryLabel}
               </span>
-            )}
-            {item.category && timeAgo && <span>·</span>}
+            ) : null}
+            {categoryLabel && timeAgo ? <span>·</span> : null}
             {timeAgo && <time>{timeAgo}</time>}
           </div>
         </div>

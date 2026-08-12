@@ -16,6 +16,10 @@ export type NewsItem = {
   city?: string
   /** Province slug — local/city-tenant scoping for feeds and featured pins. */
   citySlug?: string
+  /** İlçe display name from geo engine / CMS (e.g. "Biga"). */
+  district?: string
+  /** İlçe slug (e.g. "biga") — preferred for lookup via DISTRICT_DISPLAY_NAMES. */
+  districtSlug?: string
   locationCity?: string
   province?: string
   eventDate?: string

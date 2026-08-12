@@ -100,7 +100,7 @@ const SYSTEM_PROMPT = `Sen NaHaber'in Genel Yayın Yönetmeni'sin (Ana Editör).
 ## SPOR — SÜPER LİG / 1. LİG
 - Süper Lig, Trendyol Süper Lig, 1. Lig, TFF 1. Lig maç/transfer/puan → futbol
 - Galatasaray, Fenerbahçe, Beşiktaş, Trabzonspor, Başakşehir vb. profesyonel lig → futbol
-- Yerel amatör/küme maçı tek şehirde → yerel-spor
+- Yerel amatör/küme maçı tek şehirde → branşa göre yerel-futbol / yerel-basketbol / yerel-voleybol / …; belirsizse yerel-spor
 - Basketbol → basketbol, Voleybol → voleybol (futbol ile karıştırma)
 
 ## YEREL ALT KATEGORİLER
@@ -122,6 +122,7 @@ ${getYerelSubcategoryIdsForPrompt().split('|').map((id) => `  - ${id}`).join('\n
 | Yemek / tarif / restoran / şef | gastronomi |
 | Araba / TOGG / yeni model (kaza değil) | otomobil |
 | Tek şehir trafik kazası / suç / yangın | yerel-asayis veya yerel-gundem |
+| Belediye/kaymakamlık duyurusu / ilan | yerel-duyuru |
 | iPhone / AI / yazılım / siber | teknoloji |
 | Burç / astroloji / günlük burç | astroloji (yasam DEĞİL) |
 | Ünlü özel hayatı / skandal | magazin |

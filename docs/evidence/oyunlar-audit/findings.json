@@ -1,0 +1,278 @@
+[
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "Hub HTTP 200",
+    "detail": "https://www.nahaber.com/oyunlar"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "Hub oyun kartı: 10",
+    "detail": "/oyunlar/tavla, /oyunlar/yilan, /oyunlar/satranc, /oyunlar/sudoku, /oyunlar/tetris, /oyunlar/kelime, /oyunlar/adam-asmaca, /oyunlar/hafiza, /oyunlar/mayin, /oyunlar/2048"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "Footer link /kategori/oyun-espor",
+    "detail": "status=200"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "Footer link /iletisim",
+    "detail": "status=200"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "tavla yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/oyunlar/tavla gated=true playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "yilan yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fyilan gated=false playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "satranc yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fsatranc gated=true playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "sudoku yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fsudoku gated=false playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "tetris yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Ftetris gated=true playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "kelime yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fkelime gated=true playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "adam-asmaca yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fadam-asmaca gated=true playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "hafiza yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fhafiza gated=false playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "mayin yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fmayin gated=true playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "ok",
+    "title": "2048 yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2F2048 gated=true playing=false"
+  },
+  {
+    "scope": "desktop-national",
+    "severity": "medium",
+    "title": "Konsol hataları",
+    "detail": "Loading the script 'https://api.onesignal.com/sync/34fc9360-b922-4230-bac4-bc4b237664cf/web?callback=__jp0' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com https://apis.google.com https://www.gstatic.com https://accounts.google.com https://www.google.com https://cdn.onesignal.com https://s3.tradingview.com https://charting-library.tradingview-widget.com https://static.tradingview.com https://pagead2.googlesyndication.com\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked."
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "Hub HTTP 200",
+    "detail": "https://www.nahaber.com/oyunlar"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "Hub oyun kartı: 10",
+    "detail": "/oyunlar/tavla, /oyunlar/yilan, /oyunlar/satranc, /oyunlar/sudoku, /oyunlar/tetris, /oyunlar/kelime, /oyunlar/adam-asmaca, /oyunlar/hafiza, /oyunlar/mayin, /oyunlar/2048"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "Footer link /kategori/oyun-espor",
+    "detail": "status=200"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "Footer link /iletisim",
+    "detail": "status=200"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "tavla yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Ftavla gated=false playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "yilan yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fyilan gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "satranc yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fsatranc gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "sudoku yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fsudoku gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "tetris yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Ftetris gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "kelime yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fkelime gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "adam-asmaca yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fadam-asmaca gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "hafiza yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fhafiza gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "mayin yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2Fmayin gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "ok",
+    "title": "2048 yükleme",
+    "detail": "http=200 url=https://www.nahaber.com/register?next=%2Foyunlar%2F2048 gated=true playing=false"
+  },
+  {
+    "scope": "mobile-national",
+    "severity": "medium",
+    "title": "Konsol hataları",
+    "detail": "Loading the script 'https://api.onesignal.com/sync/34fc9360-b922-4230-bac4-bc4b237664cf/web?callback=__jp0' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com https://apis.google.com https://www.gstatic.com https://accounts.google.com https://www.google.com https://cdn.onesignal.com https://s3.tradingview.com https://charting-library.tradingview-widget.com https://static.tradingview.com https://pagead2.googlesyndication.com\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. | Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "Hub HTTP 200",
+    "detail": "https://canakkale.nahaber.com/oyunlar"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "Hub oyun kartı: 10",
+    "detail": "/oyunlar/tavla, /oyunlar/yilan, /oyunlar/satranc, /oyunlar/sudoku, /oyunlar/tetris, /oyunlar/kelime, /oyunlar/adam-asmaca, /oyunlar/hafiza, /oyunlar/mayin, /oyunlar/2048"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "Footer link /kategori/oyun-espor",
+    "detail": "status=200"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "Footer link /iletisim",
+    "detail": "status=200"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "tavla yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/oyunlar/tavla gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "yilan yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2Fyilan gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "satranc yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2Fsatranc gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "sudoku yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2Fsudoku gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "tetris yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2Ftetris gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "kelime yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2Fkelime gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "adam-asmaca yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2Fadam-asmaca gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "hafiza yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2Fhafiza gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "mayin yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2Fmayin gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "ok",
+    "title": "2048 yükleme",
+    "detail": "http=200 url=https://canakkale.nahaber.com/register?next=%2Foyunlar%2F2048 gated=true playing=false"
+  },
+  {
+    "scope": "mobile-canakkale",
+    "severity": "medium",
+    "title": "Konsol hataları",
+    "detail": "Loading the script 'https://api.onesignal.com/sync/34fc9360-b922-4230-bac4-bc4b237664cf/web?callback=__jp0' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com https://apis.google.com https://www.gstatic.com https://accounts.google.com https://www.google.com https://cdn.onesignal.com https://s3.tradingview.com https://charting-library.tradingview-widget.com https://static.tradingview.com https://pagead2.googlesyndication.com\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. | Connecting to 'https://pagead2.googlesyndication.com/pagead/ping?e=1' violates the following Content Security Policy directive: \"connect-src 'self' https://*.googleapis.com https://oauth2.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firebasestorage.googleapis.com https://www.google-analytics.com https://vitals.vercel-insights.com https://nahaberapp.firebaseapp.com https://api.open-meteo.com https://air-quality-api.open-meteo.com https://*.onesignal.com https://onesignal.com wss://*.onesignal.com https://*.tradingview.com wss://*.tradingview.com\". The action has been blocked. | Fetch API cannot load https://pagead2.googlesyndication.com/pagead/ping?e=1. Refused to connect because it violates the document's Content Security Policy."
+  },
+  {
+    "scope": "desktop-canakkale",
+    "severity": "ok",
+    "title": "Hub HTTP 200 cards=10",
+    "detail": "https://canakkale.nahaber.com/oyunlar"
+  }
+]

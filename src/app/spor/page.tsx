@@ -5,7 +5,7 @@ import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
-import { getCitySporFeedInitialData, getCityCategories } from '@/services/cityNewsService.server'
+import { getCitySporFeedInitialData, getCityNavPresence } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,8 +35,10 @@ export default async function SporPage() {
   }
 
   const cityName = getCityCategoryName(citySlug)
-  const homeFeedData = await getCitySporFeedInitialData(citySlug)
-  const categories = await getCityCategories(citySlug)
+  const [homeFeedData, navPresence] = await Promise.all([
+    getCitySporFeedInitialData(citySlug),
+    getCityNavPresence(citySlug),
+  ])
   const sectionTitle = `${cityName} Spor Haberleri`
 
   return (
@@ -44,7 +46,8 @@ export default async function SporPage() {
       tenantSlug={citySlug}
       displayName={cityName}
       provinceSlug={citySlug}
-      categories={categories}
+      categories={navPresence.categories}
+      hasSpor={navPresence.hasSpor}
     >
       <CityFeedPageClient
         homeFeedData={homeFeedData}

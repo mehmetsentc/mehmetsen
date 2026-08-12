@@ -3,21 +3,15 @@
 import { memo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Calendar, Trophy, MapPin } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import { CITY_BOTTOM_NAV } from '@/constants/cityCategories'
+import { buildCitySectionNavItems } from '@/lib/citySidebarNav'
 import { isCitySectionActive } from '@/lib/cityPaths'
+import { useCityCategoryFilter } from '@/store/cityCategoryContext'
 import { cn } from '@/lib/utils'
-
-const ICONS: Record<(typeof CITY_BOTTOM_NAV)[number]['iconName'], LucideIcon> = {
-  home: Home,
-  calendar: Calendar,
-  trophy: Trophy,
-  'map-pin': MapPin,
-}
 
 function CityMobileNavInner() {
   const pathname = usePathname()
+  const { hasSpor } = useCityCategoryFilter()
+  const items = buildCitySectionNavItems({ hasSpor })
 
   return (
     <nav
@@ -28,8 +22,8 @@ function CityMobileNavInner() {
         className="flex items-end pb-[var(--safe-bottom)]"
         style={{ height: 'calc(3.5rem + var(--safe-bottom, 0px))' }}
       >
-        {CITY_BOTTOM_NAV.map((item) => {
-          const Icon = ICONS[item.iconName]
+        {items.map((item) => {
+          const Icon = item.icon
           const active = isCitySectionActive(pathname, item.href)
           return (
             <Link

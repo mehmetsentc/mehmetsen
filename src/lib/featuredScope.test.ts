@@ -10,6 +10,8 @@ describe('featuredScope', () => {
   it('treats yerel category tree as local-scoped', () => {
     expect(isLocalScopedNews({ category: 'yerel-haber' })).toBe(true)
     expect(isLocalScopedNews({ categoryId: 'yerel-spor' })).toBe(true)
+    expect(isLocalScopedNews({ categoryId: 'yerel-futbol' })).toBe(true)
+    expect(isLocalScopedNews({ categoryId: 'yerel-duyuru' })).toBe(true)
     expect(isNationalFeaturedEligible({ category: 'yerel-gundem' })).toBe(false)
   })
 

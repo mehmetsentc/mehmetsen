@@ -8,7 +8,7 @@ import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isNationalFeaturedEligible } from '@/lib/featuredScope'
-import { getCategoryFamily, getHomeFeedCategoryFamily } from '@/constants/config'
+import { getHomeFeedCategoryFamily, isYerelHomepageExcluded } from '@/constants/config'
 import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
 import {
   addTurkeyDays,
@@ -59,7 +59,7 @@ async function queryPublishedByCategory(
   const db = getAdminFirestore()
 
   try {
-    const family = getCategoryFamily(categoryId)
+    const family = getHomeFeedCategoryFamily(categoryId)
     const baseQuery = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
     const snap = await (
       family.length > 1
@@ -301,13 +301,19 @@ async function getHomeNewsPool(poolSize = 40): Promise<NewsItem[]> {
   return getHomeNewsPoolCached(poolSize)
 }
 
+function isHomepageEligibleItem(item: NewsItem): boolean {
+  const cat = item.category?.trim() ?? ''
+  if (cat && isYerelHomepageExcluded(cat)) return false
+  return true
+}
+
 function isBreakingPoolItem(item: NewsItem): boolean {
   if (item.articleFormat === 'column' || item.articleFormat === 'analysis') return false
   return item.breaking === true || item.category === 'son-dakika'
 }
 
 function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
-  return pool.filter(isBreakingPoolItem).slice(0, limit)
+  return pool.filter((item) => isHomepageEligibleItem(item) && isBreakingPoolItem(item)).slice(0, limit)
 }
 
 /** CMS pin time first; missing featuredAt falls back to publish time (legacy RSS pins). */
@@ -484,7 +490,7 @@ function bucketCategoryRails(
     const family = new Set(getHomeFeedCategoryFamily(category))
     const limit = category === 'gundem' ? HOME_CATEGORY_RAIL_GUNDEM_FETCH : perCategory
     const items = pool
-      .filter((item) => item.category && family.has(item.category))
+      .filter((item) => item.category && family.has(item.category) && isHomepageEligibleItem(item))
       .slice(0, limit)
     if (items.length > 0) rails[category] = items
   }
@@ -574,8 +580,9 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 
   const now = Date.now()
+  const homePool = pool.filter(isHomepageEligibleItem)
   // Kategori rayları featured’ı dışlamaz — haber hem Öne Çıkan’da hem kendi kategorisinde.
-  const categoryRails = await fillCategoryRails(pool, HOME_FEED_SSR_RAILS, HOME_CATEGORY_RAIL_FETCH)
+  const categoryRails = await fillCategoryRails(homePool, HOME_FEED_SSR_RAILS, HOME_CATEGORY_RAIL_FETCH)
 
   const slimRails: HomeFeedInitialData['categoryRails'] = {}
   for (const [key, items] of Object.entries(categoryRails)) {
@@ -583,12 +590,12 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 
   return {
-    breaking: slimNewsItemsForFeed(bucketBreaking(pool, 8)),
+    breaking: slimNewsItemsForFeed(bucketBreaking(homePool, 8)),
     featured: slimNewsItemsForFeed(bucketFeatured(pool, HOME_FEATURED_LIMIT, featuredPinned)),
-    latest: slimNewsItemsForFeed(bucketLatest(pool, 16, now)),
-    trending: slimNewsItemsForFeed(bucketTrending(pool, 6, now)),
-    trendFeed: slimNewsItemsForFeed(bucketTrendFeed(pool, 12, now)),
-    mostRead: slimNewsItemsForFeed(bucketMostRead(pool, 6)),
+    latest: slimNewsItemsForFeed(bucketLatest(homePool, 16, now)),
+    trending: slimNewsItemsForFeed(bucketTrending(homePool, 6, now)),
+    trendFeed: slimNewsItemsForFeed(bucketTrendFeed(homePool, 12, now)),
+    mostRead: slimNewsItemsForFeed(bucketMostRead(homePool, 6)),
     categoryRails: slimRails,
   }
 }
@@ -597,7 +604,7 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
 export async function getHomeCategoryRailsLazy(
   categories?: HomeCategorySlug[]
 ): Promise<Partial<Record<HomeCategorySlug, NewsItem[]>>> {
-  const pool = await getHomeNewsPool(40)
+  const pool = (await getHomeNewsPool(40)).filter(isHomepageEligibleItem)
   if (pool.length === 0) return {}
   const wanted =
     categories && categories.length > 0
@@ -617,7 +624,7 @@ const getHomeCategoryItemsCached = unstable_cache(
   async (category: string, limitCount: number) => {
     try {
       const db = getAdminFirestore()
-      const family = getCategoryFamily(category)
+      const family = getHomeFeedCategoryFamily(category)
       const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
       const snap = await (
         family.length > 1
@@ -691,7 +698,7 @@ async function hasPublishedBefore(beforeMs: number, categoryId?: string): Promis
       .limit(1)
 
     if (categoryId) {
-      const family = getCategoryFamily(categoryId)
+      const family = getHomeFeedCategoryFamily(categoryId)
       q = db
         .collection(NEWS_COLLECTION)
         .where('status', '==', 'published')
@@ -729,7 +736,7 @@ async function fetchPublishedInDay(
     .limit(DAY_FEED_MAX_ITEMS)
 
   if (categoryId) {
-    const family = getCategoryFamily(categoryId)
+    const family = getHomeFeedCategoryFamily(categoryId)
     q = db
       .collection(NEWS_COLLECTION)
       .where('status', '==', 'published')

@@ -1,4 +1,8 @@
 import { ROUTES } from '@/constants/routes'
+import {
+  resolveDistrictDisplayLabel,
+  withDistrictCategoryLabel,
+} from '@/lib/districtLabel'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { formatPublicSourceLabel } from '@/lib/postUtils'
 import type { NewsItem } from '@/types/newsItem'
@@ -124,6 +128,15 @@ export function docToNewsItem(
     url: String(raw.sourceUrl ?? '').trim() || undefined,
     city: String(raw.city ?? '').trim() || undefined,
     citySlug: String(raw.citySlug ?? '').trim().toLowerCase() || undefined,
+    district:
+      String(raw.district ?? '').trim() ||
+      (raw.location &&
+      typeof raw.location === 'object' &&
+      typeof (raw.location as { district?: unknown }).district === 'string'
+        ? String((raw.location as { district: string }).district).trim()
+        : '') ||
+      undefined,
+    districtSlug: String(raw.districtSlug ?? '').trim().toLowerCase() || undefined,
     locationCity: String(raw.locationCity ?? raw.city ?? '').trim() || undefined,
     province: String(raw.province ?? '').trim() || undefined,
     createdAt: parseFirestoreTimestamp(raw.createdAt as TimestampLike),
@@ -169,6 +182,8 @@ export function slimNewsItemForFeed(item: NewsItem): NewsItem {
   if (item.imageUrl) slim.imageUrl = item.imageUrl
   if (item.videoUrl) slim.videoUrl = item.videoUrl
   if (item.category) slim.category = item.category
+  if (item.district) slim.district = item.district
+  if (item.districtSlug) slim.districtSlug = item.districtSlug
 
   const publishedAt = item.publishedAt ?? item.createdAt
   if (publishedAt) slim.publishedAt = publishedAt
@@ -192,8 +207,16 @@ export function newsItemDetailHref(item: Pick<NewsItem, 'id' | 'slug'>): string 
   return ROUTES.NEWS_DETAIL(item.id)
 }
 
+export function newsItemDistrictLabel(item: NewsItem): string | null {
+  return resolveDistrictDisplayLabel({
+    district: item.district,
+    districtSlug: item.districtSlug,
+  })
+}
+
+/** Category badge text — includes ilçe when geo/CMS set it (e.g. "Yerel Siyaset · Biga"). */
 export function newsItemCategoryLabel(item: NewsItem): string {
-  return getCategoryLabel(item.category)
+  return withDistrictCategoryLabel(getCategoryLabel(item.category), newsItemDistrictLabel(item))
 }
 
 export function sortNewsByDate(items: NewsItem[]): NewsItem[] {

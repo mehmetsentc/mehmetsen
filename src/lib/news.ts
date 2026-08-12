@@ -11,7 +11,7 @@ import { db } from '@/lib/firebase/firestore'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { docToNewsItem, sortNewsByDate } from '@/lib/newsItemUtils'
 import { isNationalFeaturedEligible } from '@/lib/featuredScope'
-import { getCategoryFamily } from '@/constants/config'
+import { getHomeFeedCategoryFamily } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
 import type { NaEvent } from '@/types/event'
 
@@ -129,7 +129,7 @@ export async function getFeaturedNews(limitCount = 10): Promise<NewsItem[]> {
 
 /** Category rail items. */
 export async function getNewsByCategory(category: string, limitCount = 10): Promise<NewsItem[]> {
-  const family = getCategoryFamily(category)
+  const family = getHomeFeedCategoryFamily(category)
   const scanLimit = Math.max(limitCount * 2, 20)
 
   if (family.length > 1) {

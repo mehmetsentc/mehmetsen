@@ -4,6 +4,10 @@ import Link from 'next/link'
 import { Play, Radio, Sparkles, Bookmark } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
+import {
+  resolveDistrictDisplayLabel,
+  withDistrictCategoryLabel,
+} from '@/lib/districtLabel'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { hasVideoContent } from '@/lib/postUtils'
 import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
@@ -25,7 +29,11 @@ export function useCardMeta(post: TimelinePost) {
   const href = categoryPostHref(post)
   const image = categoryPostImage(post) || FEED_FALLBACK_LOGO
   const summary = categoryPostSummary(post)
-  const label = getCategoryLabel(post.categoryId)
+  const districtLabel = resolveDistrictDisplayLabel({
+    district: post.district ?? post.location?.district,
+    districtSlug: post.districtSlug,
+  })
+  const label = withDistrictCategoryLabel(getCategoryLabel(post.categoryId), districtLabel)
   const time = formatNewsRelative(postIso(post))
   const isVideo = hasVideoContent(post)
   const reading = post.readingTimeMinutes

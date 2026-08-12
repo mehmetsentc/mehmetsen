@@ -1,8 +1,10 @@
 import { extractDistrictSlugFromText } from '@/constants/cities'
 import {
   addIstanbulCalendarDays,
+  compareIstanbulCalendarDays,
   getIstanbulDayOfWeek,
   getIstanbulTodayStartIso,
+  istanbulCalendarParts,
   isSameIstanbulCalendarDay,
   isSameOrAfterIstanbulCalendarDay,
   resolveEventSchedule,
@@ -76,7 +78,44 @@ export function matchesCityEventUpcomingAllDateFilter(
   return isEventUpcoming(event, nowIso)
 }
 
-/** Match sidebar date chips by resolved `startsAt` Istanbul calendar day (strict for Bugün/Yarın). */
+/**
+ * Late-night cinema endsAt often spills a few hours past midnight (last seans + runtime).
+ * Those should not count as "happening" on the next Istanbul calendar day.
+ */
+const LATE_NIGHT_SPILL_END_HOUR = 6
+
+/**
+ * True when the event occurs on the given Istanbul calendar day:
+ * - resolved start falls on that day, or
+ * - multi-day / ongoing: started before the day and still active on it
+ *   (excluding previous-day late-night endsAt spill before 06:00).
+ */
+export function eventOccursOnIstanbulCalendarDay(
+  startsAt: string,
+  endsAt: string | undefined,
+  dayIso: string
+): boolean {
+  if (isSameIstanbulCalendarDay(startsAt, dayIso)) return true
+
+  const endIso = endsAt?.trim()
+  if (!endIso) return false
+
+  if (compareIstanbulCalendarDays(startsAt, dayIso) >= 0) return false
+  if (compareIstanbulCalendarDays(endIso, dayIso) < 0) return false
+
+  // Previous evening show ending shortly after midnight → not "tomorrow".
+  if (
+    compareIstanbulCalendarDays(endIso, dayIso) === 0 &&
+    istanbulCalendarParts(endIso).hour < LATE_NIGHT_SPILL_END_HOUR &&
+    isSameIstanbulCalendarDay(startsAt, addIstanbulCalendarDays(dayIso, -1))
+  ) {
+    return false
+  }
+
+  return true
+}
+
+/** Match sidebar date chips by Istanbul calendar day (Bugün = start-only; Yarın = start or spanning). */
 export function matchesCityEventDateFilter(
   event: NaEvent,
   filter: CityEventDateFilter,
@@ -90,14 +129,16 @@ export function matchesCityEventDateFilter(
     return true
   }
 
-  const { startsAt } = resolveEventSchedule(event, nowIso)
+  const { startsAt, endsAt } = resolveEventSchedule(event, nowIso)
 
   switch (filter) {
     case 'today':
+      // Strict: only events whose start is today (long July exhibitions stay out).
       return isSameIstanbulCalendarDay(startsAt, nowIso)
     case 'tomorrow': {
+      // Istanbul calendar "Yarın": starts tomorrow, or still running through tomorrow.
       const tomorrowStart = addIstanbulCalendarDays(getIstanbulTodayStartIso(nowIso), 1)
-      return isSameIstanbulCalendarDay(startsAt, tomorrowStart)
+      return eventOccursOnIstanbulCalendarDay(startsAt, endsAt, tomorrowStart)
     }
     case 'thisWeek': {
       const todayStart = getIstanbulTodayStartIso(nowIso)

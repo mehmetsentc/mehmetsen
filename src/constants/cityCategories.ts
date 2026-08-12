@@ -21,6 +21,7 @@ export const CITY_CATEGORY_CHIPS: readonly CityCategoryChip[] = [
   { id: 'kultur', label: 'Kültür Sanat', categoryId: 'kultur' },
   { id: 'turizm', label: 'Turizm', categoryId: 'turizm' },
   { id: 'spor', label: 'Spor', categoryId: 'spor' },
+  { id: 'duyuru', label: 'Duyuru', categoryId: 'yerel-duyuru' },
   { id: 'video', label: 'Video', categoryId: null },
 ] as const
 
@@ -61,3 +62,12 @@ export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
   { id: 'spor', label: 'Spor', href: '/spor', iconName: 'trophy' },
   { id: 'ilceler', label: 'İlçeler', href: '/ilceler', iconName: 'map-pin' },
 ] as const
+
+/**
+ * Structural section pills always shown in city header / bottom nav.
+ * Spor is news-backed (hidden when the city has zero spor family articles).
+ */
+export const CITY_ALWAYS_VISIBLE_SECTION_IDS = new Set<string>(['feed', 'etkinlik', 'ilceler'])
+
+/** Section id that requires at least one published city spor (+ family) item. */
+export const CITY_NEWS_BACKED_SECTION_ID = 'spor' as const

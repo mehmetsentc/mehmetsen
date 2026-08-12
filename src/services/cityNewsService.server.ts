@@ -120,6 +120,8 @@ function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
     source: data.source?.trim() || undefined,
     city: data.city?.trim() || undefined,
     citySlug: data.citySlug?.trim().toLowerCase() || undefined,
+    district: data.district?.trim() || data.location?.district?.trim() || undefined,
+    districtSlug: data.districtSlug?.trim().toLowerCase() || undefined,
     publishedAt,
     views: data.views,
     likesCount: data.likesCount,
@@ -156,6 +158,8 @@ async function getCityNewsFromPostgres(citySlug: string, limitCount: number): Pr
         categoryId: schema.news.categoryId,
         source: schema.news.source,
         cityName: schema.news.cityName,
+        districtName: schema.news.districtName,
+        districtSlug: schema.news.districtSlug,
         publishedAt: schema.news.publishedAt,
         viewsCount: schema.news.viewsCount,
         likesCount: schema.news.likesCount,
@@ -184,6 +188,8 @@ async function getCityNewsFromPostgres(citySlug: string, limitCount: number): Pr
       category: r.categoryId ?? undefined,
       source: r.source ?? undefined,
       city: r.cityName ?? undefined,
+      district: r.districtName ?? undefined,
+      districtSlug: r.districtSlug ?? undefined,
       publishedAt: r.publishedAt?.toISOString(),
       views: r.viewsCount,
       likesCount: r.likesCount,
@@ -226,7 +232,7 @@ const getCityNewsCached = unstable_cache(
       return []
     }
   },
-  ['city-news-feed-v2'],
+  ['city-news-feed-v3'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -245,7 +251,7 @@ const getCityNewsByCategoryCached = unstable_cache(
   async (citySlug: string, categoryId: string, limitCount: number) => {
     try {
       const db = getAdminFirestore()
-      const family = getCategoryFamily(categoryId)
+      const family = getHomeFeedCategoryFamily(categoryId)
 
       let q = db
         .collection(NEWS_COLLECTION)
@@ -351,7 +357,7 @@ const getCityNewsByDistrictCached = unstable_cache(
       return []
     }
   },
-  ['city-news-district-v2'],
+  ['city-news-district-v3'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -377,6 +383,26 @@ export interface CityCategory {
   id: string
   name: string
   slug: string
+}
+
+/** Categories with ≥1 city article + section presence flags (same pool, no N+1). */
+export interface CityNavPresence {
+  categories: CityCategory[]
+  /** True when pool has spor / yerel-spor / spor subcategory news. */
+  hasSpor: boolean
+}
+
+function poolHasSporNews(pool: NewsItem[]): boolean {
+  if (pool.length === 0) return false
+  // Uncapped family for presence — homepage 10-limit must not hide spor section.
+  const family = new Set(getCategoryFamily('spor'))
+  return pool.some((item) => {
+    const cat = item.category?.trim()
+    if (!cat) return false
+    if (family.has(cat)) return true
+    const national = getNationalCategoryForYerelSubcategory(cat)
+    return Boolean(national && family.has(national))
+  })
 }
 
 /** Map raw category ids to ordered CityCategory nav entries (chips first). */
@@ -450,6 +476,12 @@ export async function deriveCityCategoriesFromPool(pool: NewsItem[]): Promise<Ci
       continue
     }
 
+    // Yerel-only alt kategori (ör. yerel-duyuru) — chip id doğrudan ekle
+    if ((CITY_DYNAMIC_NAV_CHIP_IDS as readonly string[]).includes(catId)) {
+      idSet.add(catId)
+      continue
+    }
+
     const def = DEFAULT_CATEGORIES.find((c) => c.id === catId)
     if (def?.parentId) {
       idSet.add(def.parentId)
@@ -466,23 +498,38 @@ export async function deriveCityCategoriesFromPool(pool: NewsItem[]): Promise<Ci
   return mapCategoryIdSetToCityCategories(idSet)
 }
 
+/** Categories + Spor section presence from one city news pool. */
+export async function deriveCityNavPresenceFromPool(pool: NewsItem[]): Promise<CityNavPresence> {
+  const categories = await deriveCityCategoriesFromPool(pool)
+  return { categories, hasSpor: poolHasSporNews(pool) }
+}
+
 const CITY_CATEGORY_POOL_LIMIT = 500
 
-const getCityCategoriesCached = unstable_cache(
-  async (citySlug: string): Promise<CityCategory[]> => {
+const getCityNavPresenceCached = unstable_cache(
+  async (citySlug: string): Promise<CityNavPresence> => {
     const pool = await getCityNews(citySlug, CITY_CATEGORY_POOL_LIMIT)
-    return deriveCityCategoriesFromPool(pool)
+    return deriveCityNavPresenceFromPool(pool)
   },
-  ['city-categories-v3'],
+  ['city-nav-presence-v1'],
   { revalidate: 300, tags: ['city-news'] }
 )
+
+/**
+ * Non-empty city news categories + whether Spor section should show.
+ * Single pool read — no per-category Firestore queries.
+ */
+export async function getCityNavPresence(citySlug: string): Promise<CityNavPresence> {
+  return getCityNavPresenceCached(citySlug.trim().toLowerCase())
+}
 
 /**
  * Returns only top-level categories that have at least one published article
  * for the given city. Used to build the city nav dynamically.
  */
 export async function getCityCategories(citySlug: string): Promise<CityCategory[]> {
-  return getCityCategoriesCached(citySlug.trim().toLowerCase())
+  const { categories } = await getCityNavPresence(citySlug)
+  return categories
 }
 
 // ─── City homepage feed (national layout, city-scoped pool) ───────────────────
@@ -697,15 +744,12 @@ const getCityHomeFeedCached = unstable_cache(
     if (pool.length === 0 && featuredPinned.length === 0) return EMPTY_HOME_FEED
 
     const cityCategories = await deriveCityCategoriesFromPool(pool)
-    const railCategoryIds = cityCategories
-      .map((c) => c.id)
-      .filter((id): id is HomeCategorySlug =>
-        (HOME_CATEGORY_RAILS as readonly string[]).includes(id)
-      )
+    // All non-empty city categories (incl. yerel-only chips like yerel-duyuru).
+    const railCategoryIds = cityCategories.map((c) => c.id)
 
     return buildCityFeedFromPool(pool, railCategoryIds, bucketCityCategoryRails, featuredPinned)
   },
-  ['city-home-feed-v2'],
+  ['city-home-feed-v4'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -714,7 +758,7 @@ const getCityDistrictFeedCached = unstable_cache(
     const pool = await getCityNewsByDistrict(citySlug, districtSlug, 60)
     return buildCityFeedFromPool(pool, deriveRailCategoriesFromPool(pool))
   },
-  ['city-district-feed-v2'],
+  ['city-district-feed-v3'],
   { revalidate: 120, tags: ['city-news'] }
 )
 

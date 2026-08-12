@@ -42,6 +42,32 @@ describe('resolveNationalLocalDualRouting', () => {
   it('skips generic yerel-haber without subcategory mapping', () => {
     expect(resolveNationalLocalDualRouting('yerel-haber', 'istanbul')).toBeNull()
   })
+
+  it('keeps yerel-duyuru as yerel-only (no national dual map)', () => {
+    expect(resolveNationalLocalDualRouting('yerel-duyuru', 'canakkale')).toBeNull()
+    expect(normalizePublishedLocalCategory('yerel-duyuru', 'canakkale', [])).toEqual({
+      categoryId: 'yerel-duyuru',
+      tags: [],
+    })
+  })
+
+  it('maps yerel-futbol to national futbol with yerel tag', () => {
+    expect(resolveNationalLocalDualRouting('yerel-futbol', 'canakkale')).toEqual({
+      nationalCategoryId: 'futbol',
+      yerelTag: 'yerel-futbol',
+    })
+    expect(normalizePublishedLocalCategory('yerel-basketbol', 'canakkale', [])).toEqual({
+      categoryId: 'basketbol',
+      tags: ['yerel-basketbol'],
+    })
+  })
+
+  it('maps national futbol + citySlug to yerel-futbol tag', () => {
+    expect(resolveNationalLocalDualRouting('futbol', 'canakkale')).toEqual({
+      nationalCategoryId: 'futbol',
+      yerelTag: 'yerel-futbol',
+    })
+  })
 })
 
 describe('mergeNationalLocalTags', () => {

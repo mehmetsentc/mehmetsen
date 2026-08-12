@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { DEFAULT_CATEGORIES, getSubcategories, getCategoryFamily, getParentCategory, type CategoryDef } from '@/constants/config'
+import { DEFAULT_CATEGORIES, getSubcategories, getHomeFeedCategoryFamily, getParentCategory, type CategoryDef } from '@/constants/config'
 import { CategoryPageClient } from '@/components/category/CategoryPageClient'
 import { CategoryStructuredData } from '@/components/category/CategoryStructuredData'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
@@ -31,7 +31,7 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
           .limit(20)
           .get()
       : await (() => {
-          const family = getCategoryFamily(categoryId)
+          const family = getHomeFeedCategoryFamily(categoryId)
           return (
             family.length > 1
               ? baseQ.where('categoryId', 'in', family)

@@ -26,6 +26,7 @@ interface CityLayoutClientProps {
   displayName: string
   provinceSlug: string
   categories: CityCategory[]
+  hasSpor?: boolean
   children: React.ReactNode
 }
 
@@ -120,6 +121,7 @@ export function CityLayoutClient({
   displayName,
   provinceSlug,
   categories,
+  hasSpor = false,
   children,
 }: CityLayoutClientProps) {
   return (
@@ -131,7 +133,7 @@ export function CityLayoutClient({
               <CityTenantProvider
                 tenant={{ slug: tenantSlug, displayName, provinceSlug }}
               >
-                <CityCategoryProvider categories={categories}>
+                <CityCategoryProvider categories={categories} hasSpor={hasSpor}>
                   <UiEffects />
                   <CityCategoryHashScroll />
                   <CityShell

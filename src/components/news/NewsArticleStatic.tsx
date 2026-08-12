@@ -35,8 +35,8 @@ function VideoHero({ item, title, posterFallback }: {
 }) {
   const isEmbed = isEmbedPlayerUrl(item.url)
   return (
-    <figure className="relative bg-black">
-      <div className="relative aspect-[16/9] w-full overflow-hidden">
+    <figure className="news-article-hero-block relative">
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-black">
         {isEmbed ? (
           <iframe
             src={item.url.includes('?') ? `${item.url}&playsinline=1` : `${item.url}?rel=0&modestbranding=1&playsinline=1`}
@@ -61,7 +61,7 @@ function VideoHero({ item, title, posterFallback }: {
         </span>
       </div>
       {(item.caption || item.credit) && (
-        <figcaption className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2 text-xs text-[rgb(var(--color-muted))]">
+        <figcaption className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2 text-xs text-[rgb(var(--color-muted))]">
           {item.caption}
           {item.caption && item.credit && <span className="mx-1">·</span>}
           {item.credit && <span className="font-medium">{item.credit}</span>}
@@ -74,7 +74,7 @@ function VideoHero({ item, title, posterFallback }: {
 /** Hero görsel — responsive yükseklik sınırı, object-cover (portrait dev banner olmaz). */
 function ImageHero({ item, title }: { item: MediaItem; title: string }) {
   return (
-    <figure className="relative mx-auto w-full">
+    <figure className="news-article-hero-block relative">
       <div className="news-article-hero">
         <SliderImage
           src={item.url}
@@ -87,7 +87,7 @@ function ImageHero({ item, title }: { item: MediaItem; title: string }) {
         </span>
       </div>
       {(item.caption || item.credit) && (
-        <figcaption className="px-4 py-2 text-xs text-[rgb(var(--color-muted))] sm:px-8">
+        <figcaption className="py-2 text-xs text-[rgb(var(--color-muted))]">
           {item.caption}
           {item.caption && item.credit && <span className="mx-1">·</span>}
           {item.credit && <span className="font-medium">{item.credit}</span>}

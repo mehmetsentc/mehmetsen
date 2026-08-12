@@ -17,6 +17,15 @@ const SPORT_CATEGORY_IDS = new Set([
   'atletizm',
   'gures',
   'yerel-spor',
+  'yerel-futbol',
+  'yerel-basketbol',
+  'yerel-voleybol',
+  'yerel-hentbol',
+  'yerel-atletizm',
+  'yerel-gures',
+  'yerel-tenis',
+  'yerel-yuzme',
+  'yerel-motor-sporlari',
   'dunya-kupasi-2026',
 ])
 

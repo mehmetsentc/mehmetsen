@@ -62,6 +62,8 @@ export interface Post {
   categoryId: string
   city?: string | null
   citySlug?: string | null
+  /** İlçe display name (geo / CMS). */
+  district?: string | null
   districtSlug?: string | null
   location?: PostLocation | null
   tags: string[]

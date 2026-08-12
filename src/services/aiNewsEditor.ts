@@ -278,12 +278,13 @@ ADIM 4 — YEREL mi ULUSAL mi? (EN KRİTİK ADIM)
   - Örnekler:
     Belediye kararı / valilik → yerel-siyaset
     Trafik kazası / suç / operasyon → yerel-asayis
-    Yerel spor kulübü maçı → yerel-spor
+    Yerel spor kulübü maçı → branşa göre yerel-futbol / yerel-basketbol / yerel-voleybol / yerel-tenis / yerel-hentbol / yerel-atletizm / yerel-gures / yerel-yuzme / yerel-motor-sporlari; belirsizse yerel-spor
     Okul / üniversite → yerel-egitim
     Hastane / sağlık olayı → yerel-saglik
     Şehirdeki konser / festival → yerel-konser / yerel-festival
     Yerel işletme / fabrika → yerel-ekonomi
     MGM uyarısı / fırtına → yerel-meteoroloji
+    Belediye/kaymakamlık duyurusu / ilan / resmi açıklama → yerel-duyuru
 
   YERELLİK TESTİ ÖRNEKLERİ — yerel alt kategori seç:
     "Konya'da trafik kazası: 2 yaralı"         → yerel-asayis
@@ -296,6 +297,10 @@ ADIM 4 — YEREL mi ULUSAL mi? (EN KRİTİK ADIM)
     "Gaziantep Büyükşehir metroyu açıyor"       → yerel-siyaset
     "Kayseri Valisi açıklama yaptı"             → yerel-siyaset
     "Antalya'da tatilci denizde boğuldu"        → yerel-asayis
+    "Çanakkale Belediyesi su kesintisi duyurusu" → yerel-duyuru
+    "Bursa'da imar planı askıya alındı ilanı"    → yerel-duyuru
+    "Çanakkalespor amatör maç kazandı"         → yerel-futbol
+    "Bandırma basketbol takımı galip"          → yerel-basketbol
 
   ULUSAL TEST ÖRNEKLERİ — gundem veya son-dakika seç:
     "İstanbul'da 6.5 büyüklüğünde deprem"      → son-dakika (tüm ülke etkisi)
@@ -309,7 +314,7 @@ ADIM 4 — YEREL mi ULUSAL mi? (EN KRİTİK ADIM)
     ✗ Ölü sayısı az bile olsa tek şehirde kaldıysa → yerel-asayis veya yerel-gundem
     ✗ Belediye başkanı konuşması → yerel-siyaset (siyaset DEĞİL)
     ✗ Valilik açıklaması → yerel-siyaset
-    ✗ Yerel spor kulübü haberi → yerel-spor (futbol/spor DEĞİL)
+    ✗ Yerel spor kulübü haberi → yerel-futbol/yerel-spor (ulusal futbol/spor DEĞİL)
 
 ADIM 5 — GÜNDEM mi SON DAKİKA mı?
   Eğer ulusal/genel bir Türkiye haberi ise:
