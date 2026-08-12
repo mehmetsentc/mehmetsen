@@ -168,4 +168,68 @@ describe('filterCityEvents dateFilter', () => {
 
     expect(filtered.map((e) => e.id)).toEqual(['paribu-tag'])
   })
+
+  it('Tümü on Yaklaşan excludes finished past events', () => {
+    const finishedJuly = makeEvent({
+      id: 'finished-july',
+      startsAt: '2026-07-01T07:00:00.000Z',
+      endsAt: '2026-07-31T18:00:00.000Z',
+    })
+    const todayEvent = makeEvent({
+      id: 'today-event',
+      startsAt: '2026-08-10T18:00:00.000Z',
+    })
+    const futureEvent = makeEvent({
+      id: 'future-event',
+      startsAt: '2026-08-15T18:00:00.000Z',
+    })
+
+    const filtered = filterCityEvents(
+      [finishedJuly, todayEvent, futureEvent],
+      { dateFilter: 'all', category: null, venue: null, districtSlug: null },
+      AUG_10_2026_NOON_TR,
+      { timeRange: 'upcoming' }
+    )
+
+    expect(filtered.map((e) => e.id)).toEqual(['today-event', 'future-event'])
+  })
+
+  it('Tümü on Yaklaşan keeps multi-day events still running today', () => {
+    const ongoingExhibition = makeEvent({
+      id: 'ongoing-exhibition',
+      startsAt: '2026-07-01T07:00:00.000Z',
+      endsAt: '2026-08-31T18:00:00.000Z',
+      category: 'exhibition',
+    })
+    const futureEvent = makeEvent({
+      id: 'future-event',
+      startsAt: '2026-08-15T18:00:00.000Z',
+    })
+
+    const filtered = filterCityEvents(
+      [ongoingExhibition, futureEvent],
+      { dateFilter: 'all', category: null, venue: null, districtSlug: null },
+      AUG_10_2026_NOON_TR,
+      { timeRange: 'upcoming' }
+    )
+
+    expect(filtered.map((e) => e.id)).toEqual(['ongoing-exhibition', 'future-event'])
+  })
+
+  it('Tümü on Geçmiş does not apply upcoming-only date constraint', () => {
+    const finishedJuly = makeEvent({
+      id: 'finished-july',
+      startsAt: '2026-07-01T07:00:00.000Z',
+      endsAt: '2026-07-31T18:00:00.000Z',
+    })
+
+    const filtered = filterCityEvents(
+      [finishedJuly],
+      { dateFilter: 'all', category: null, venue: null, districtSlug: null },
+      AUG_10_2026_NOON_TR,
+      { timeRange: 'past' }
+    )
+
+    expect(filtered.map((e) => e.id)).toEqual(['finished-july'])
+  })
 })

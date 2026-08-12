@@ -13,6 +13,7 @@ import type { EventCategory, NaEvent } from '@/types/event'
 export type CityEventDateFilter = 'all' | 'today' | 'tomorrow' | 'thisWeek'
 export type CityEventSort = 'date' | 'title' | 'rating'
 export type CityEventViewMode = 'grid' | 'list'
+export type CityEventTimeRange = 'upcoming' | 'past'
 
 export interface CityEventFilterState {
   dateFilter: CityEventDateFilter
@@ -64,13 +65,44 @@ export function resolveEventFilterCategory(event: NaEvent): EventCategory {
   return event.category ?? 'other'
 }
 
+/**
+ * Tümü on Yaklaşan: resolved start day is today or later, or the event is a
+ * multi-day occurrence still running today (Istanbul calendar).
+ */
+export function matchesCityEventUpcomingAllDateFilter(
+  event: NaEvent,
+  nowIso: string = new Date().toISOString()
+): boolean {
+  const { startsAt, endsAt } = resolveEventSchedule(event, nowIso)
+
+  if (isSameOrAfterIstanbulCalendarDay(startsAt, nowIso)) {
+    return true
+  }
+
+  const endIso = endsAt?.trim()
+  if (!endIso || endIso < nowIso) {
+    return false
+  }
+
+  return (
+    isSameOrAfterIstanbulCalendarDay(nowIso, startsAt) &&
+    isSameOrAfterIstanbulCalendarDay(endIso, nowIso)
+  )
+}
+
 /** Match sidebar date chips by resolved `startsAt` Istanbul calendar day (strict for Bugün/Yarın). */
 export function matchesCityEventDateFilter(
   event: NaEvent,
   filter: CityEventDateFilter,
-  nowIso: string = new Date().toISOString()
+  nowIso: string = new Date().toISOString(),
+  options?: { timeRange?: CityEventTimeRange }
 ): boolean {
-  if (filter === 'all') return true
+  if (filter === 'all') {
+    if (options?.timeRange === 'upcoming') {
+      return matchesCityEventUpcomingAllDateFilter(event, nowIso)
+    }
+    return true
+  }
 
   const { startsAt } = resolveEventSchedule(event, nowIso)
 
@@ -98,7 +130,8 @@ export function matchesCityEventDateFilter(
 export function filterCityEvents(
   events: NaEvent[],
   filters: CityEventFilterState,
-  nowIso: string = new Date().toISOString()
+  nowIso: string = new Date().toISOString(),
+  options?: { timeRange?: CityEventTimeRange }
 ): NaEvent[] {
   return events.filter((event) => {
     if (
@@ -115,7 +148,7 @@ export function filterCityEvents(
       if (slug !== filters.districtSlug) return false
     }
 
-    if (!matchesCityEventDateFilter(event, filters.dateFilter, nowIso)) return false
+    if (!matchesCityEventDateFilter(event, filters.dateFilter, nowIso, options)) return false
 
     return true
   })

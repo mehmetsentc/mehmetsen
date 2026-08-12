@@ -102,9 +102,9 @@ export function CityEventsClient({
   }, [categoryOptions, filters.category])
 
   const filteredEvents = useMemo(() => {
-    const filtered = filterCityEvents(displayEvents, filters)
+    const filtered = filterCityEvents(displayEvents, filters, undefined, { timeRange })
     return sortCityEvents(filtered, sort)
-  }, [displayEvents, filters, sort])
+  }, [displayEvents, filters, sort, timeRange])
 
   const featuredEvents = useMemo(() => pickFeaturedEvents(filteredEvents), [filteredEvents])
   const activeFilterCount = countActiveFilters(filters)
