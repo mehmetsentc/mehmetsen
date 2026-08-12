@@ -5,7 +5,7 @@ import { getUpcomingEventsServer } from '@/services/eventService.server'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
-export const revalidate = 60
+export const revalidate = 180
 
 const siteUrl = getSiteUrl()
 

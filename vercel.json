@@ -6,16 +6,16 @@
   ],
   "functions": {
     "src/app/api/events/sync/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/cron/paribu-canakkale/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/cron/boxoffice-weekly/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/cron/newsroom/sinema/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/cron/newsroom/breaking/route.ts": {
       "memory": 1024
@@ -27,16 +27,16 @@
       "memory": 1024
     },
     "src/app/api/cron/newsroom/national/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/cron/newsroom/gundem/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/cron/newsroom/local/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/admin/backfill-breaking/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/cron/newsroom/thin-content-backfill/route.ts": {
       "memory": 1024
@@ -57,10 +57,10 @@
       "memory": 1024
     },
     "src/app/api/admin/backfill-images/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/admin/recategorize/route.ts": {
-      "memory": 1024
+      "memory": 512
     },
     "src/app/api/ai/pipeline/route.ts": {
       "memory": 1024
@@ -69,7 +69,7 @@
   "crons": [
     {
       "path": "/api/cron/newsroom/afad",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/newsroom/breaking",
@@ -93,7 +93,7 @@
     },
     {
       "path": "/api/cron/newsroom/queue-purge",
-      "schedule": "20 * * * *"
+      "schedule": "20 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/draft-reprocess",
@@ -101,43 +101,43 @@
     },
     {
       "path": "/api/cron/newsroom/national",
-      "schedule": "0 */1 * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/gundem",
-      "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/finans",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/politics",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/sports",
-      "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/world",
-      "schedule": "5 * * * *"
-    },
-    {
-      "path": "/api/cron/newsroom/weather",
       "schedule": "0 */2 * * *"
     },
     {
+      "path": "/api/cron/newsroom/gundem",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/finans",
+      "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/politics",
+      "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/sports",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/world",
+      "schedule": "5 */2 * * *"
+    },
+    {
+      "path": "/api/cron/newsroom/weather",
+      "schedule": "0 */4 * * *"
+    },
+    {
       "path": "/api/cron/newsroom/technology",
-      "schedule": "10 * * * *"
+      "schedule": "10 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/kripto",
-      "schedule": "20 * * * *"
+      "schedule": "20 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/health",
-      "schedule": "35 * * * *"
+      "schedule": "35 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/entertainment",
@@ -153,11 +153,11 @@
     },
     {
       "path": "/api/cron/newsroom/turizm",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/newsroom/gezi",
-      "schedule": "50 * * * *"
+      "schedule": "50 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/otomobil",
@@ -169,7 +169,7 @@
     },
     {
       "path": "/api/cron/newsroom/trend",
-      "schedule": "50 */3 * * *"
+      "schedule": "50 */6 * * *"
     },
     {
       "path": "/api/cron/newsroom/video-process",
@@ -181,7 +181,7 @@
     },
     {
       "path": "/api/cron/youtube-rss",
-      "schedule": "0 * * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/cron/weather-news",
@@ -225,11 +225,11 @@
     },
     {
       "path": "/api/cron/newsroom/aa-content",
-      "schedule": "40 * * * *"
+      "schedule": "40 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/anka-breaking",
-      "schedule": "*/30 * * * *"
+      "schedule": "5 * * * *"
     },
     {
       "path": "/api/cron/newsroom/anka-local",
@@ -237,23 +237,23 @@
     },
     {
       "path": "/api/cron/newsroom/voleybol",
-      "schedule": "15 */2 * * *"
+      "schedule": "15 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/basketbol",
-      "schedule": "25 */2 * * *"
+      "schedule": "25 */4 * * *"
     },
     {
       "path": "/api/cron/newsroom/futbol",
-      "schedule": "5 * * * *"
+      "schedule": "5 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/borsa",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/cron/newsroom/bilim-teknoloji",
-      "schedule": "45 */3 * * *"
+      "schedule": "45 */6 * * *"
     },
     {
       "path": "/api/cron/newsroom/saglik-sozcu",
@@ -261,7 +261,7 @@
     },
     {
       "path": "/api/cron/newsroom/sozcu-breaking",
-      "schedule": "0 * * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/expire-breaking",
@@ -269,11 +269,11 @@
     },
     {
       "path": "/api/cron/newsroom/freenews",
-      "schedule": "0 * * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/cron/newsroom/kibris",
-      "schedule": "0 * * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/cron/on-this-day",
@@ -297,7 +297,7 @@
     },
     {
       "path": "/api/cron/editorial-review",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 */6 * * *"
     }
   ]
 }

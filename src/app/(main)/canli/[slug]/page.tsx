@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { LiveBlogView } from '@/components/news/LiveBlogView'
 import { getNewsBySlug } from '@/services/newsService.server'
 
-export const revalidate = 30
+export const revalidate = 120
 
 type PageProps = {
   params: Promise<{ slug: string }>

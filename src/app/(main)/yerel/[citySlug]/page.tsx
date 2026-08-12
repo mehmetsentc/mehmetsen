@@ -7,7 +7,7 @@ import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import type { NewsItem } from '@/types/newsItem'
 
-export const revalidate = 60
+export const revalidate = 180
 
 const PROVINCE_BY_SLUG = new Map(TURKISH_PROVINCES.map((p) => [p.slug, p]))
 

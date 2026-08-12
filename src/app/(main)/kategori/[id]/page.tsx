@@ -244,7 +244,7 @@ export function generateStaticParams() {
   return DEFAULT_CATEGORIES.map((cat) => ({ id: cat.slug }))
 }
 
-export const revalidate = 60
+export const revalidate = 180
 
 export default async function CategoryPage({ params }: Props) {
   const { id } = await params
