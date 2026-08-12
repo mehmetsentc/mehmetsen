@@ -52,22 +52,31 @@ export function clampCompleteHeadline(s: string, max: number, softMax = max + 16
   return clampAtWordBoundary(plain, max)
 }
 
-/** Tam cümle(ler) sınırında kısalt; mümkün değilse kelime sınırında.
+/** Cümle sonu: .!?… + isteğe bağlı kapanış tırnak/parantez (örn. gelmek.') */
+const SENTENCE_END_RE = /[.!?…]["'»”’)\]]*(?=\s|$)/g
+const COMPLETE_SENTENCE_TAIL_RE = /[.!?…]["'»”’)\]]*$/
+
+/**
+ * Tam cümle(ler) sınırında kısalt; mümkün değilse kelime sınırında.
  * softMax: cümle softMax içinde bitiyorsa tamamını koru (yarım "taburcu" engeli).
+ * Tırnaklı bitişleri de tanır: "…gelmek.' 5 yıldır…" → ilk cümlede durur.
  */
 export function clampCompleteSentences(s: string, max: number, softMax = max + 24): string {
   const t = s.replace(/\s+/g, ' ').trim()
   if (!t) return ''
   if (t.length <= max) return t
-  if (t.length <= softMax && /[.!?]$/.test(t)) return t
+  if (t.length <= softMax && COMPLETE_SENTENCE_TAIL_RE.test(t)) return t
   const slice = t.slice(0, Math.max(max, softMax))
-  const ends = ['. ', '! ', '? ']
-    .map((p) => slice.lastIndexOf(p))
-    .concat(/[.!?]$/.test(slice) ? [slice.length - 1] : [-1])
-  const best = Math.max(...ends)
-  if (best >= Math.min(36, Math.floor(max * 0.35))) {
-    const end = slice[best] === ' ' ? best : best + 1
-    return slice.slice(0, end).trim()
+  const minEnd = Math.min(36, Math.floor(max * 0.35))
+  let best = -1
+  SENTENCE_END_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = SENTENCE_END_RE.exec(slice)) !== null) {
+    const end = m.index + m[0].length
+    if (end >= minEnd) best = end
+  }
+  if (best >= minEnd) {
+    return slice.slice(0, best).trim()
   }
   return clampAtWordBoundary(t, max)
 }

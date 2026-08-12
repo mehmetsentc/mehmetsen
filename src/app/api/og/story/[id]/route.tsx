@@ -37,23 +37,36 @@ const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}
 
 /** Story manşet — uzun başlıklar özet alanına taşmasın diye daha sıkı */
 const TITLE_MAX = 72
-/** Kısa özet — 2–3 satır, cümle/kelime ortasından kesilmez */
-const SUMMARY_MAX = 160
+/** Kısa özet — 2–3 satır; AI storySummary ile hizalı, cümle/kelime ortasından kesilmez */
+const SUMMARY_MAX = 200
 
 const HEADLINE_MAX_LINES = 3
 const HEADLINE_MIN_SIZE = 56
 const HEADLINE_GAP_BELOW = 22
+const SUMMARY_MAX_LINES = 3
+const SUMMARY_MIN_SIZE = 30
+
+/** Cümle sonu: .!?… + isteğe bağlı kapanış tırnak/parantez */
+const STORY_SENTENCE_END_RE = /[.!?…]["'»”’)\]]*(?=\s|$)/g
+const STORY_COMPLETE_TAIL_RE = /[.!?…]["'»”’)\]]*$/
+const STORY_DANGLING_TAIL_RE =
+  /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten)\s*$/iu
 
 /** Inter 800 yaklaşık ortalama glif genişliği (Satori word-wrap simülasyonu) */
-function avgGlyphWidth(fontSize: number): number {
-  return fontSize * 0.55
+function avgGlyphWidth(fontSize: number, weight: 'bold' | 'regular' = 'bold'): number {
+  return fontSize * (weight === 'regular' ? 0.48 : 0.55)
 }
 
-function estimateWrapLines(text: string, fontSize: number, maxWidth: number): number {
+function estimateWrapLines(
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  weight: 'bold' | 'regular' = 'bold',
+): number {
   const plain = text.replace(/\s+/g, ' ').trim()
   if (!plain) return 0
   const words = plain.split(' ')
-  const charW = avgGlyphWidth(fontSize)
+  const charW = avgGlyphWidth(fontSize, weight)
   const spaceW = fontSize * 0.28
   let lines = 1
   let lineW = 0
@@ -71,16 +84,30 @@ function estimateWrapLines(text: string, fontSize: number, maxWidth: number): nu
   return lines
 }
 
+function stripDanglingTail(text: string): string {
+  let out = text.trim()
+  for (let i = 0; i < 6; i++) {
+    const next = out.replace(STORY_DANGLING_TAIL_RE, '').trim()
+    if (next === out) break
+    out = next
+  }
+  return out
+}
+
+/** Satır taşarsa kelime sınırında kes; mümkünse son tam cümlede dur; sarkan bağlaçları at. */
 function truncateToMaxLines(
   text: string,
   fontSize: number,
   maxWidth: number,
   maxLines: number,
+  weight: 'bold' | 'regular' = 'bold',
 ): string {
   const plain = text.replace(/\s+/g, ' ').trim()
   if (!plain) return ''
+  if (estimateWrapLines(plain, fontSize, maxWidth, weight) <= maxLines) return plain
+
   const words = plain.split(' ')
-  const charW = avgGlyphWidth(fontSize)
+  const charW = avgGlyphWidth(fontSize, weight)
   const spaceW = fontSize * 0.28
   let lines = 1
   let lineW = 0
@@ -91,17 +118,33 @@ function truncateToMaxLines(
     const extra = lineW === 0 ? wordW : spaceW + wordW
     if (lineW > 0 && lineW + extra > maxWidth) {
       lines++
-      if (lines > maxLines) {
-        const trimmed = result.trim()
-        return trimmed.length > 0 ? `${trimmed}…` : `${word.slice(0, 12)}…`
-      }
+      if (lines > maxLines) break
       lineW = wordW
     } else {
       lineW += extra
     }
     result += (result ? ' ' : '') + word
   }
-  return result
+
+  let trimmed = stripDanglingTail(result)
+  if (!trimmed) trimmed = result.trim()
+
+  // Mümkünse son tam cümlede bitir (yarım ikinci cümle bırakma)
+  if (!STORY_COMPLETE_TAIL_RE.test(trimmed)) {
+    const minEnd = Math.min(36, Math.floor(trimmed.length * 0.35))
+    let best = -1
+    STORY_SENTENCE_END_RE.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = STORY_SENTENCE_END_RE.exec(trimmed)) !== null) {
+      const end = m.index + m[0].length
+      if (end >= minEnd) best = end
+    }
+    if (best >= minEnd) {
+      return trimmed.slice(0, best).trim()
+    }
+    return `${trimmed}…`
+  }
+  return trimmed
 }
 
 function resolveStoryHeadlineLayout(titlePlain: string, contentWidth: number): {
@@ -120,16 +163,19 @@ function resolveStoryHeadlineLayout(titlePlain: string, contentWidth: number): {
     len > 22 ? 84 :
     88
 
-  let wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
+  let wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth, 'bold')
   while (wrapLines > HEADLINE_MAX_LINES && titleSize > HEADLINE_MIN_SIZE) {
     titleSize -= 4
-    wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
+    wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth, 'bold')
   }
 
   let displayTitle = titlePlain
   if (wrapLines > HEADLINE_MAX_LINES) {
-    displayTitle = truncateToMaxLines(titlePlain, titleSize, contentWidth, HEADLINE_MAX_LINES)
-    wrapLines = HEADLINE_MAX_LINES
+    displayTitle = truncateToMaxLines(titlePlain, titleSize, contentWidth, HEADLINE_MAX_LINES, 'bold')
+    wrapLines = Math.min(
+      HEADLINE_MAX_LINES,
+      Math.max(1, estimateWrapLines(displayTitle.replace(/…$/, ''), titleSize, contentWidth, 'bold')),
+    )
   }
 
   const titleLineHeight =
@@ -139,6 +185,42 @@ function resolveStoryHeadlineLayout(titlePlain: string, contentWidth: number): {
   const titleBlockHeight = Math.ceil(titleSize * titleLineHeight * wrapLines)
 
   return { displayTitle, titleSize, titleLineHeight, titleWrapLines: wrapLines, titleBlockHeight }
+}
+
+function resolveStorySummaryLayout(summaryPlain: string, contentWidth: number): {
+  displaySummary: string
+  summarySize: number
+  summaryLineHeight: number
+  summaryWrapLines: number
+  summaryBlockHeight: number
+} {
+  const len = summaryPlain.length
+  let summarySize =
+    len > 160 ? 32 :
+    len > 120 ? 34 :
+    len > 90 ? 36 :
+    len > 60 ? 38 : 40
+
+  const summaryLineHeight = 1.46
+  let wrapLines = estimateWrapLines(summaryPlain, summarySize, contentWidth, 'regular')
+  while (wrapLines > SUMMARY_MAX_LINES && summarySize > SUMMARY_MIN_SIZE) {
+    summarySize -= 2
+    wrapLines = estimateWrapLines(summaryPlain, summarySize, contentWidth, 'regular')
+  }
+
+  let displaySummary = summaryPlain
+  if (wrapLines > SUMMARY_MAX_LINES) {
+    displaySummary = truncateToMaxLines(
+      summaryPlain, summarySize, contentWidth, SUMMARY_MAX_LINES, 'regular',
+    )
+    wrapLines = Math.min(
+      SUMMARY_MAX_LINES,
+      Math.max(1, estimateWrapLines(displaySummary.replace(/…$/, ''), summarySize, contentWidth, 'regular')),
+    )
+  }
+
+  const summaryBlockHeight = Math.ceil(summarySize * summaryLineHeight * wrapLines)
+  return { displaySummary, summarySize, summaryLineHeight, summaryWrapLines: wrapLines, summaryBlockHeight }
 }
 
 interface ArticleOGData {
@@ -390,13 +472,13 @@ export async function GET(
   const contentWidth = W - TEXT_PAD_SIDE * 2
   const headline = resolveStoryHeadlineLayout(titlePlain, contentWidth)
   const { displayTitle, titleSize, titleLineHeight, titleBlockHeight } = headline
-
-  const summaryLen = summary.length
-  const summarySize =
-    summaryLen > 140 ? 34 :
-    summaryLen > 100 ? 36 :
-    summaryLen > 70 ? 38 : 40
-  const summaryLineHeight = 1.46
+  const summaryLayout = resolveStorySummaryLayout(summary, contentWidth)
+  const {
+    displaySummary,
+    summarySize,
+    summaryLineHeight,
+    summaryBlockHeight,
+  } = summaryLayout
 
   try {
     const [fonts, brand] = await Promise.all([loadStoryFonts(), loadBrandAssets()])
@@ -480,7 +562,7 @@ export async function GET(
           {/* Headline — max 3 satır, özet ile çakışmayı önler */}
           <div style={{
             display: 'flex', flexDirection: 'column',
-            marginBottom: summary ? HEADLINE_GAP_BELOW : 36,
+            marginBottom: displaySummary ? HEADLINE_GAP_BELOW : 36,
             minHeight: titleBlockHeight,
             maxHeight: titleBlockHeight,
             overflow: 'hidden',
@@ -493,10 +575,10 @@ export async function GET(
           </div>
 
           {/* Ayraç + kısa özet */}
-          {summary ? (
+          {displaySummary ? (
             <div style={{
               display: 'flex', flexDirection: 'column', gap: 18,
-              marginBottom: 28, flexShrink: 0, overflow: 'hidden',
+              marginBottom: 28, flexShrink: 0,
             }}>
               <div style={{
                 display: 'flex', flexDirection: 'row', alignItems: 'center',
@@ -516,9 +598,10 @@ export async function GET(
                 color: '#ffffff', fontWeight: 400,
                 fontSize: summarySize, lineHeight: summaryLineHeight,
                 letterSpacing: 0.05, display: 'flex',
-                maxHeight: Math.round(summarySize * summaryLineHeight * 3.4),
+                minHeight: summaryBlockHeight,
+                maxHeight: summaryBlockHeight,
                 overflow: 'hidden',
-              }}>{summary}</span>
+              }}>{displaySummary}</span>
             </div>
           ) : null}
 
