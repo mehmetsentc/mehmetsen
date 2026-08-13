@@ -2,6 +2,9 @@
  * Process pending newsQueue items — pipeline → newsDrafts (pending_review).
  * Auto-publish only when NEWSROOM_AUTO_PUBLISH_ENABLED=1.
  *
+ * Claim order: newest-first (createdAt DESC / LIFO) — see claimPendingQueueItems.
+ * Cron + CMS "Kuyruğu hızlı işle" share this path; batch/concurrency unchanged.
+ *
  * Throughput tuning (env vars — override for emergency speed-up):
  *   NEWSROOM_QUEUE_BATCH_SIZE — items claimed per run (default 20)
  *   NEWSROOM_QUEUE_CONCURRENCY — parallel pipeline jobs (default 2)

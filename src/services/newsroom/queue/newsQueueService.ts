@@ -129,6 +129,15 @@ export async function releaseQueueClaim(
   })
 }
 
+/**
+ * Claim pending/failed queue jobs — always newest-first (createdAt DESC / LIFO).
+ *
+ * Kuyruk claim sırası: her zaman en yeni `createdAt` önce.
+ * Hem cron `/api/cron/newsroom/process-queue` hem CMS "Kuyruğu hızlı işle"
+ * (`/api/admin/newsroom/process-now`) bu fonksiyonu kullanır; batch/concurrency
+ * aynı kalır, sadece hangi işlerin claim edildiği değişir.
+ * Eski backlog taze haberi boğmasın — fair-share yok, bilinçli LIFO.
+ */
 export async function claimPendingQueueItems(
   db: Firestore,
   limit: number
@@ -142,44 +151,126 @@ export async function claimPendingQueueItems(
     await reclaimExpiredLeases(db, limit)
   }
 
-  async function fetchPage(
+  /** Newest page via DESC index, or ASC + limitToLast (same ASC composite index). */
+  async function fetchNewestPage(
     status: 'pending' | 'failed',
     pageSize: number,
     cursor: QueryDocumentSnapshot | null,
-    order: 'desc' | 'asc'
-  ) {
-    let q = queueCollection(db).where('status', '==', status).orderBy('createdAt', order).limit(pageSize)
-    if (cursor) q = q.startAfter(cursor)
-    return q.get()
+    mode: 'desc' | 'asc-tail'
+  ): Promise<{ docs: QueryDocumentSnapshot[]; exhausted: boolean }> {
+    if (mode === 'desc') {
+      let q = queueCollection(db)
+        .where('status', '==', status)
+        .orderBy('createdAt', 'desc')
+        .limit(pageSize)
+      if (cursor) q = q.startAfter(cursor)
+      const snap = await q.get()
+      return { docs: snap.docs, exhausted: snap.size < pageSize }
+    }
+
+    // ASC index only: limitToLast = kuyruğun en yeni N kaydı (FIFO başı değil).
+    let q = queueCollection(db)
+      .where('status', '==', status)
+      .orderBy('createdAt', 'asc')
+      .limitToLast(pageSize)
+    if (cursor) q = q.endBefore(cursor)
+    const snap = await q.get()
+    // limitToLast ASC döner → reverse ederek newest-first iterasyon
+    const docs = snap.docs.slice().reverse()
+    return { docs, exhausted: snap.size < pageSize }
+  }
+
+  async function tryClaimDoc(
+    status: 'pending' | 'failed',
+    doc: QueryDocumentSnapshot,
+    data: NewsQueueDocument
+  ): Promise<boolean> {
+    if (ATOMIC_CLAIM) {
+      try {
+        const ok = await db.runTransaction(async (tx) => {
+          const fresh = await tx.get(doc.ref)
+          if (!fresh.exists) return false
+          const current = fresh.data() as NewsQueueDocument
+          if (current.status !== status) return false
+          if (current.scheduledAt > now || current.attempts >= current.maxAttempts) return false
+          if (staleQueueReason(current)) return false
+          tx.update(doc.ref, {
+            status: 'processing',
+            leaseOwner: owner,
+            leaseExpiresAt,
+            claimedAt: now,
+            updatedAt: now,
+          })
+          return true
+        })
+        if (!ok) return false
+        claimed.push({
+          id: doc.id,
+          data: {
+            ...data,
+            status: 'processing',
+            leaseOwner: owner,
+            leaseExpiresAt,
+            claimedAt: now,
+          },
+        })
+        return true
+      } catch (error) {
+        console.warn(`[newsQueue] claim transaction failed for ${doc.id}:`, error)
+        return false
+      }
+    }
+
+    await doc.ref.update({
+      status: 'processing',
+      leaseOwner: owner,
+      leaseExpiresAt,
+      claimedAt: now,
+      updatedAt: now,
+    })
+    claimed.push({
+      id: doc.id,
+      data: {
+        ...data,
+        status: 'processing',
+        leaseOwner: owner,
+        leaseExpiresAt,
+        claimedAt: now,
+      },
+    })
+    return true
   }
 
   async function claimStatus(status: 'pending' | 'failed', remaining: number): Promise<void> {
     if (remaining <= 0) return
 
-    // Prefer newest-first. If DESC index is missing, ASC + skip-stale paging
-    // still reaches fresh jobs instead of burning the whole batch on 12h+ junk.
-    let order: 'desc' | 'asc' = 'desc'
+    let mode: 'desc' | 'asc-tail' = 'desc'
     try {
-      await fetchPage(status, 1, null, 'desc')
+      await fetchNewestPage(status, 1, null, 'desc')
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       if (!msg.includes('index') && (error as { code?: number }).code !== 9) throw error
-      console.warn('[newsQueue] createdAt desc index missing — falling back to asc + stale skip')
-      order = 'asc'
+      console.warn(
+        '[newsQueue] createdAt desc index missing — falling back to asc+limitToLast (still newest-first)'
+      )
+      mode = 'asc-tail'
     }
 
     let cursor: QueryDocumentSnapshot | null = null
     let pages = 0
-    const maxPages = order === 'asc' ? 25 : 5
+    const maxPages = 8
 
     while (claimed.length < limit && pages < maxPages) {
       pages += 1
       const need = limit - claimed.length
-      const snap = await fetchPage(status, Math.max(need * 4, 40), cursor, order)
-      if (snap.empty) break
-      cursor = snap.docs[snap.docs.length - 1]!
+      const pageSize = Math.max(need * 4, 40)
+      const { docs, exhausted } = await fetchNewestPage(status, pageSize, cursor, mode)
+      if (docs.length === 0) break
 
-      for (const doc of snap.docs) {
+      // Next page: older than the oldest doc in this newest-first page
+      cursor = docs[docs.length - 1]!
+
+      for (const doc of docs) {
         if (claimed.length >= limit) break
         const data = doc.data() as NewsQueueDocument
         if ((data.scheduledAt ?? 0) > now || data.attempts >= data.maxAttempts) continue
@@ -194,60 +285,10 @@ export async function claimPendingQueueItems(
           continue
         }
 
-        if (ATOMIC_CLAIM) {
-          try {
-            const ok = await db.runTransaction(async (tx) => {
-              const fresh = await tx.get(doc.ref)
-              if (!fresh.exists) return false
-              const current = fresh.data() as NewsQueueDocument
-              if (current.status !== status) return false
-              if (current.scheduledAt > now || current.attempts >= current.maxAttempts) return false
-              if (staleQueueReason(current)) return false
-              tx.update(doc.ref, {
-                status: 'processing',
-                leaseOwner: owner,
-                leaseExpiresAt,
-                claimedAt: now,
-                updatedAt: now,
-              })
-              return true
-            })
-            if (!ok) continue
-            claimed.push({
-              id: doc.id,
-              data: {
-                ...data,
-                status: 'processing',
-                leaseOwner: owner,
-                leaseExpiresAt,
-                claimedAt: now,
-              },
-            })
-          } catch (error) {
-            console.warn(`[newsQueue] claim transaction failed for ${doc.id}:`, error)
-          }
-        } else {
-          await doc.ref.update({
-            status: 'processing',
-            leaseOwner: owner,
-            leaseExpiresAt,
-            claimedAt: now,
-            updatedAt: now,
-          })
-          claimed.push({
-            id: doc.id,
-            data: {
-              ...data,
-              status: 'processing',
-              leaseOwner: owner,
-              leaseExpiresAt,
-              claimedAt: now,
-            },
-          })
-        }
+        await tryClaimDoc(status, doc, data)
       }
 
-      if (snap.size < Math.max(need * 4, 40)) break
+      if (exhausted) break
     }
   }
 

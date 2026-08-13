@@ -1,8 +1,9 @@
 /**
  * POST /api/admin/newsroom/process-now
  *
- * "Kuyruğu Şimdi İşle" — Triggers process-queue immediately with larger batch
+ * CMS "Kuyruğu hızlı işle" — Triggers process-queue immediately with larger batch
  * and bypasses freshness check for backlog recovery scenarios.
+ * Claim sırası cron ile aynı: newest-first (createdAt DESC) via claimPendingQueueItems.
  *
  * Body (optional):
  *   { batchSize?: number, maxRounds?: number, skipFreshness?: boolean }
