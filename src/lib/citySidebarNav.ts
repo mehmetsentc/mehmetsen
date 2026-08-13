@@ -11,6 +11,7 @@ import {
   CITY_BOTTOM_NAV,
   CITY_NEWS_BACKED_SECTION_ID,
 } from '@/constants/cityCategories'
+import { ROUTES } from '@/constants/routes'
 import {
   getSidebarCategoryAccent,
   getSidebarCategoryIcon,
@@ -61,7 +62,7 @@ export function buildCityCategoryNavItems(categories: CityCategory[]): CitySideb
   return categories.map((cat) => ({
     id: cat.id,
     label: cat.name,
-    href: `/#category-rail-${cat.id}`,
+    href: ROUTES.CATEGORY(cat.slug || cat.id),
     icon: getSidebarCategoryIcon(cat.id),
     accent: getSidebarCategoryAccent(cat.id),
   }))

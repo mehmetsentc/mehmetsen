@@ -810,3 +810,26 @@ const getCitySporFeedCached = unstable_cache(
 export async function getCitySporFeedInitialData(citySlug: string): Promise<HomeFeedInitialData> {
   return getCitySporFeedCached(citySlug.trim().toLowerCase())
 }
+
+const getCityCategoryFeedCached = unstable_cache(
+  async (citySlug: string, categoryId: string): Promise<HomeFeedInitialData> => {
+    const pool = await getCityNewsByCategory(citySlug, categoryId, 60)
+    return buildCityFeedFromPool(pool, [categoryId])
+  },
+  ['city-category-feed-v1'],
+  { revalidate: 120, tags: ['city-news'] }
+)
+
+/**
+ * Ana Feed layout payload for a city category pill
+ * (siyaset family includes yerel-siyaset via getHomeFeedCategoryFamily).
+ */
+export async function getCityCategoryFeedInitialData(
+  citySlug: string,
+  categoryId: string
+): Promise<HomeFeedInitialData> {
+  return getCityCategoryFeedCached(
+    citySlug.trim().toLowerCase(),
+    categoryId.trim().toLowerCase()
+  )
+}

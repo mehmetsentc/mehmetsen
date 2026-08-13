@@ -116,7 +116,7 @@ function CategoryLinks({ cats }: { cats: CityCategory[] }) {
     <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
       {cats.map((cat) => (
         <li key={cat.id}>
-          <Link href={`/#category-rail-${cat.id}`}
+          <Link href={`/kategori/${cat.slug || cat.id}`}
             className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
           >
             {cat.name}
@@ -148,10 +148,19 @@ export function CityFooter({ cityName }: CityFooterProps) {
   const { news, life, culture } = groupCategories(categories)
   const year = new Date().getFullYear()
 
-  // Dinamik kategori linkleri (hash anchor)
-  const newsLinks: SimpleLink[] = news.map((c) => ({ label: c.name, href: `/#category-rail-${c.id}` }))
-  const lifeLinks: SimpleLink[] = life.map((c) => ({ label: c.name, href: `/#category-rail-${c.id}` }))
-  const cultureLinks: SimpleLink[] = culture.map((c) => ({ label: c.name, href: `/#category-rail-${c.id}` }))
+  // Dinamik kategori linkleri (şehir kategori sayfası)
+  const newsLinks: SimpleLink[] = news.map((c) => ({
+    label: c.name,
+    href: `/kategori/${c.slug || c.id}`,
+  }))
+  const lifeLinks: SimpleLink[] = life.map((c) => ({
+    label: c.name,
+    href: `/kategori/${c.slug || c.id}`,
+  }))
+  const cultureLinks: SimpleLink[] = culture.map((c) => ({
+    label: c.name,
+    href: `/kategori/${c.slug || c.id}`,
+  }))
 
   return (
     <footer

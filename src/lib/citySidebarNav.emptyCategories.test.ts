@@ -53,7 +53,9 @@ describe('city header empty-category filter', () => {
       'yerel-duyuru',
     ])
     expect(buildCityCategoryNavItems([{ id: 'yerel-duyuru', name: 'Duyuru', slug: 'yerel-duyuru' }])[0]
-      .href).toBe('/#category-rail-yerel-duyuru')
+      .href).toBe('/kategori/yerel-duyuru')
+    expect(buildCityCategoryNavItems([{ id: 'siyaset', name: 'Siyaset', slug: 'siyaset' }])[0]
+      .href).toBe('/kategori/siyaset')
   })
 
   it('deriveCityNavPresenceFromPool detects spor + yerel-duyuru without empty chips', async () => {

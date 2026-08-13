@@ -21,7 +21,7 @@ const CMS_SESSION_COOKIE = 'cms_session'
 /**
  * City tenant path → internal rewrite target.
  * Keys are the public URL paths; values are the internal /city-site/* target.
- * `/feed`, `/yerel`, and category paths all resolve to the city homepage feed.
+ * `/feed`, `/yerel` resolve to the city homepage feed; `/kategori/[slug]` rewrites to city-site.
  */
 const CITY_PATH_REWRITES: Record<string, string> = {
   '/': '/city-site',
@@ -35,7 +35,7 @@ const CITY_PATH_REWRITES: Record<string, string> = {
 /**
  * National browsing paths that should NOT render on city subdomains.
  * These get redirected to city home (`/`) so users never see national content.
- * Article pages (/haber/[slug]) are intentionally NOT here — they pass through.
+ * Article pages (/haber/[slug]) pass through; /kategori/[slug] rewrites to city-site.
  */
 const CITY_REDIRECT_TO_HOME = new Set([
   '/discover',
@@ -44,12 +44,11 @@ const CITY_REDIRECT_TO_HOME = new Set([
   '/skor',
   '/futbol-canli',
   '/influencer',
+  '/kategori',
 ])
 
 function isCityRedirectPath(pathname: string): boolean {
-  if (CITY_REDIRECT_TO_HOME.has(pathname)) return true
-  if (pathname.startsWith('/kategori/') || pathname === '/kategori') return true
-  return false
+  return CITY_REDIRECT_TO_HOME.has(pathname)
 }
 
 function detectCountry(request: NextRequest): string {
@@ -171,6 +170,12 @@ export async function middleware(request: NextRequest) {
     const districtMatch = cleanPath.match(/^\/ilceler\/([a-z0-9-]+)$/)
     if (districtMatch) {
       return buildCityRewrite(request, `/city-site/ilceler/${districtMatch[1]}`, tenant)
+    }
+
+    // Category page: /kategori/siyaset → /city-site/kategori/siyaset (city-scoped family)
+    const categoryMatch = cleanPath.match(/^\/kategori\/([a-z0-9-]+)$/)
+    if (categoryMatch) {
+      return buildCityRewrite(request, `/city-site/kategori/${categoryMatch[1]}`, tenant)
     }
 
     // Direct path rewrites (/, /feed, /etkinlik, /spor, /ilceler, /yerel)
