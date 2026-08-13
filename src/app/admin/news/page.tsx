@@ -24,7 +24,7 @@ import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 import { ROUTES } from '@/constants/routes'
-import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
+import { getCityCategoryName, normalizeCitySlug, TURKISH_PROVINCES } from '@/constants/cities'
 import {
   getAdminCategoryGroups,
   getYerelSubcategories,
@@ -479,6 +479,103 @@ function InlineCategoryChanger({
   )
 }
 
+function cityDisplayLabel(slug: string): string {
+  const normalized = normalizeCitySlug(slug)
+  if (!normalized) return ''
+  return (
+    TURKISH_PROVINCES.find((p) => p.slug === normalized)?.name
+    || getCityCategoryName(normalized)
+    || slug
+  )
+}
+
+function InlineCityChanger({
+  postId,
+  citySlug,
+  onCityChange,
+  disabled,
+  variant = 'metadata',
+}: {
+  postId: string
+  citySlug?: string | null
+  onCityChange: (postId: string, citySlug: string, cityName: string) => Promise<void>
+  disabled?: boolean
+  variant?: 'metadata' | 'action'
+}) {
+  const [saving, setSaving] = useState(false)
+  const [localSlug, setLocalSlug] = useState(() => normalizeCitySlug(citySlug?.trim() || '') || '')
+
+  useEffect(() => {
+    setLocalSlug(normalizeCitySlug(citySlug?.trim() || '') || '')
+  }, [citySlug, postId])
+
+  const applyCity = async (next: string) => {
+    if (next === localSlug || saving) return
+    const prev = localSlug
+    setLocalSlug(next)
+    setSaving(true)
+    try {
+      await onCityChange(postId, next, next ? cityDisplayLabel(next) : '')
+    } catch {
+      setLocalSlug(prev)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const isAction = variant === 'action'
+  const label = localSlug ? cityDisplayLabel(localSlug) : 'Ulusal / yok'
+
+  return (
+    <label
+      className={cn(
+        'inline-flex items-center gap-1',
+        isAction
+          ? 'rounded-lg border border-[rgb(var(--color-border))] px-2 py-1.5 hover:bg-[rgb(var(--color-surface))]'
+          : 'rounded-md px-1 py-0.5 hover:bg-[rgb(var(--color-surface))]'
+      )}
+      title="İl / konum değiştir"
+    >
+      <Globe className={cn(
+        'shrink-0 text-[rgb(var(--color-muted))]',
+        isAction ? 'h-3 w-3' : 'h-2.5 w-2.5'
+      )} />
+      {isAction && (
+        <span className="text-[11px] font-bold text-[rgb(var(--color-text))]">İl</span>
+      )}
+      <select
+        value={localSlug}
+        disabled={disabled || saving}
+        onChange={(e) => void applyCity(e.target.value)}
+        aria-label="İl / konum"
+        className={cn(
+          'max-w-[9.5rem] cursor-pointer appearance-none bg-transparent focus:outline-none disabled:opacity-50',
+          isAction
+            ? 'text-[11px] font-bold text-[rgb(var(--color-text))]'
+            : 'text-[10px] font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+        )}
+        title={label}
+      >
+        <option value="">Ulusal / yok</option>
+        {localSlug
+          && !TURKISH_PROVINCES.some((p) => p.slug === localSlug) && (
+          <option value={localSlug}>{cityDisplayLabel(localSlug)}</option>
+        )}
+        {TURKISH_PROVINCES.map((p) => (
+          <option key={p.slug} value={p.slug}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      {saving ? (
+        <Loader2 className={cn('animate-spin text-[rgb(var(--color-muted))]', isAction ? 'h-3 w-3' : 'h-2.5 w-2.5')} />
+      ) : (
+        <ChevronDown className={cn('shrink-0 opacity-50', isAction ? 'h-2.5 w-2.5' : 'h-2.5 w-2.5')} />
+      )}
+    </label>
+  )
+}
+
 // ── News Row ───────────────────────────────────────────────────────────────
 function newsHasShareImage(post: AdminNewsItem): boolean {
   if (post.coverImageUrl?.trim()) return true
@@ -604,6 +701,7 @@ function NewsRow({
   onRemove,
   onEdit,
   onCategoryChange,
+  onCityChange,
   actionLoading,
 }: {
   post: AdminNewsItem
@@ -614,6 +712,7 @@ function NewsRow({
   onRemove: (id: string) => void
   onEdit: (p: AdminNewsItem) => void
   onCategoryChange: (postId: string, categoryId: string) => Promise<void>
+  onCityChange: (postId: string, citySlug: string, cityName: string) => Promise<void>
   actionLoading: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -802,8 +901,13 @@ function NewsRow({
               onCategoryChange={onCategoryChange}
               disabled={busy}
             />
+            <InlineCityChanger
+              postId={post.id}
+              citySlug={post.citySlug ?? post.city}
+              onCityChange={onCityChange}
+              disabled={busy}
+            />
             {post.readingTimeMinutes && <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{post.readingTimeMinutes} dk okuma</span>}
-            {(post as AdminNewsItem & { citySlug?: string }).citySlug && <span className="flex items-center gap-1"><Globe className="h-2.5 w-2.5" />{(post as AdminNewsItem & { citySlug?: string }).citySlug}</span>}
             <span className="flex items-center gap-1 font-semibold tabular-nums text-[rgb(var(--color-text))]" title="Oturum başına en fazla 1 sayım">
               <Eye className="h-2.5 w-2.5" />
               {formatCount(post.viewsCount ?? 0)} görüntülenme
@@ -914,6 +1018,13 @@ function NewsRow({
               categoryId={post.categoryId ?? ''}
               citySlug={post.citySlug}
               onCategoryChange={onCategoryChange}
+              disabled={busy}
+              variant="action"
+            />
+            <InlineCityChanger
+              postId={post.id}
+              citySlug={post.citySlug ?? post.city}
+              onCityChange={onCityChange}
               disabled={busy}
               variant="action"
             />
@@ -1518,6 +1629,51 @@ function AdminNewsDesktopPage() {
     }
   }, [posts])
 
+  const handleCityChange = useCallback(async (postId: string, citySlug: string, cityName: string) => {
+    const prevPost = posts.find((p) => p.id === postId)
+    if (!prevPost) return
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              citySlug: citySlug || null,
+              city: cityName || null,
+              districtSlug: null,
+              district: null,
+            }
+          : p
+      )
+    )
+
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/news/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          citySlug: citySlug || '',
+          city: cityName || '',
+          districtSlug: '',
+          district: '',
+        }),
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(err.error ?? 'İl güncellenemedi')
+      }
+      toast.success(citySlug ? `İl: ${cityName}` : 'İl kaldırıldı (ulusal)')
+    } catch (e) {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? prevPost : p)))
+      toast.error(e instanceof Error ? e.message : 'İl güncellenemedi')
+      throw e
+    }
+  }, [posts])
+
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const next = new Set(prev)
@@ -1878,6 +2034,7 @@ function AdminNewsDesktopPage() {
                 onRemove={handleRemove}
                 onEdit={handleEdit}
                 onCategoryChange={handleCategoryChange}
+                onCityChange={handleCityChange}
                 actionLoading={actionLoading}
               />
             ))
