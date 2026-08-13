@@ -32,6 +32,14 @@ describe('yerel spor alt kategorileri', () => {
     }
   })
 
+  it('lists spor branches as CMS yerel alt kategori siblings (with Spor)', () => {
+    const pickerIds = getYerelSubcategories().map((c) => c.id)
+    expect(pickerIds).toContain('yerel-spor')
+    for (const id of YEREL_SPOR_BRANCH_IDS) {
+      expect(pickerIds).toContain(id)
+    }
+  })
+
   it('maps national sport branches to matching yerel ids', () => {
     expect(mapNationalCategoryToYerelSubcategory('futbol')).toBe('yerel-futbol')
     expect(mapNationalCategoryToYerelSubcategory('basketbol')).toBe('yerel-basketbol')

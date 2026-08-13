@@ -196,7 +196,10 @@ export function getParentCategory(categoryId: string): CategoryDef | undefined {
 
 export const YEREL_HABER_CATEGORY_ID = 'yerel-haber'
 
-/** Preferred order for Yerel subcategory pickers (admin list + editor). */
+/**
+ * Registered Yerel subcategory ids (prompt order + completeness check).
+ * CMS/mobile pickers use `getYerelSubcategories()` (Turkish A–Z by short label).
+ */
 export const YEREL_SUBCATEGORY_IDS = [
   'yerel-asayis',
   'yerel-gundem',
@@ -249,7 +252,7 @@ export const YEREL_HOMEPAGE_EXCLUDED_IDS = new Set<string>(['yerel-duyuru'])
 /** Yerel alt kategori → ulusal kategori (Türkiye feed çift görünürlük). */
 export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
   'yerel-asayis': 'asayis',
-  'yerel-gundem': 'gundem',
+  // yerel-gundem: ulusal Gündem'e dual-feed YOK — yalnızca şehir / yerel-gundem sayfalarında
   'yerel-siyaset': 'siyaset',
   'yerel-spor': 'spor',
   'yerel-futbol': 'futbol',
@@ -347,10 +350,15 @@ export function getYerelSubcategoryShortLabel(cat: CategoryDef): string {
   return cat.name
 }
 
-/** Yerel child categories in stable display order; falls back to getSubcategories order. */
+/**
+ * Yerel child categories for CMS / mobile pickers.
+ * Includes every `parentId: yerel-haber` def (duyuru, spor branşları, …),
+ * sorted by Turkish short label so items like Duyuru are findable.
+ */
 export function getYerelSubcategories(): CategoryDef[] {
   const subs = getSubcategories(YEREL_HABER_CATEGORY_ID)
   const byId = new Map(subs.map((c) => [c.id, c]))
+  // Prefer known ids first so orphan/mis-parented defs don't hide registered ones.
   const ordered = YEREL_SUBCATEGORY_IDS.flatMap((id) => {
     const cat = byId.get(id)
     return cat ? [cat] : []
@@ -359,7 +367,13 @@ export function getYerelSubcategories(): CategoryDef[] {
   for (const cat of subs) {
     if (!seen.has(cat.id)) ordered.push(cat)
   }
-  return ordered
+  return ordered.sort((a, b) =>
+    getYerelSubcategoryShortLabel(a).localeCompare(
+      getYerelSubcategoryShortLabel(b),
+      'tr',
+      { sensitivity: 'base' },
+    ),
+  )
 }
 
 /** True when a news item belongs to the Yerel category tree (admin inline changer scope). */
