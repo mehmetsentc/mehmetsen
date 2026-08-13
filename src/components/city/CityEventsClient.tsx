@@ -36,7 +36,6 @@ import {
 import { CityEventGridCard, CityEventGridCardSkeleton } from './CityEventGridCard'
 import { CityEventListCard, CityEventListCardSkeleton } from './CityEventListCard'
 import { CityEventTopSellers } from './CityEventTopSellers'
-import { BoxOfficeWeeklyWidgetClient } from '@/components/widgets/BoxOfficeWeeklyWidgetClient'
 
 interface CityEventsClientProps {
   citySlug: string
@@ -108,7 +107,6 @@ export function CityEventsClient({
 
   const featuredEvents = useMemo(() => pickFeaturedEvents(filteredEvents), [filteredEvents])
   const activeFilterCount = countActiveFilters(filters)
-  const hasCinemaEvents = categoryOptions.some((cat) => cat.id === 'cinema')
 
   const handleResetFilters = () => setFilters(DEFAULT_CITY_EVENT_FILTERS)
 
@@ -198,11 +196,6 @@ export function CityEventsClient({
                 onReset={activeFilterCount > 0 ? handleResetFilters : undefined}
               />
             </div>
-            {hasCinemaEvents && (
-              <div className="hidden xl:block">
-                <BoxOfficeWeeklyWidgetClient variant="compact" />
-              </div>
-            )}
           </div>
         </aside>
 
@@ -256,11 +249,6 @@ export function CityEventsClient({
           </div>
 
           <CityEventTopSellers events={featuredEvents} loading={showSkeletons} />
-
-          {/* Box office in main column on mobile/tablet; xl uses sidebar when cinema events exist */}
-          <div className={cn('mb-5', hasCinemaEvents && 'xl:hidden')}>
-            <BoxOfficeWeeklyWidgetClient />
-          </div>
 
           {/* Toolbar: time range + sort + view toggle + count */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
