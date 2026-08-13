@@ -11,14 +11,16 @@ type LockupSize = 'sm' | 'md'
 const SIZE = {
   /** Header bars — equal height logo + wordmark (~36px), wider gap */
   sm: {
-    box: 'h-9 w-9',
+    logo: 'h-9 w-9',
+    textH: 'h-9',
     px: 36,
     text: 'text-[1.35rem]',
     gap: 'gap-4',
   },
   /** Sidebar */
   md: {
-    box: 'h-8 w-8',
+    logo: 'h-8 w-8',
+    textH: 'h-8',
     px: 32,
     text: 'text-lg',
     gap: 'gap-3.5',
@@ -78,13 +80,14 @@ export function CityBrandLockup({
         alt=""
         width={s.px}
         height={s.px}
-        className={cn(s.box, 'shrink-0 rounded-md object-contain')}
+        className={cn(s.logo, 'shrink-0 rounded-md object-contain')}
         priority={priority}
       />
       <span
         className={cn(
-          'flex min-w-0 items-center truncate font-black leading-none tracking-tight',
-          s.box,
+          // Height only (not logo w-*) — previous s.box (w-9) clipped wordmark to "Ça"
+          'inline-flex min-w-0 max-w-full items-center truncate font-black leading-none tracking-tight',
+          s.textH,
           s.text
         )}
       >
