@@ -241,6 +241,14 @@ function parseOwnStorageObjectPath(url: string): { bucket?: string; objectPath: 
       return { bucket: decodeURIComponent(m[1]), objectPath: decodeURIComponent(m[2]) }
     }
 
+    // https://BUCKET.firebasestorage.app/o/ENCODED?alt=media  (yeni host)
+    if (host.endsWith('.firebasestorage.app')) {
+      const m = u.pathname.match(/^\/o\/(.+)$/)
+      if (!m) return null
+      const bucket = host.replace(/\.firebasestorage\.app$/i, '')
+      return { bucket, objectPath: decodeURIComponent(m[1]) }
+    }
+
     // https://storage.googleapis.com/BUCKET/path/to/file.jpg
     if (host === 'storage.googleapis.com') {
       const parts = u.pathname.replace(/^\//, '').split('/')

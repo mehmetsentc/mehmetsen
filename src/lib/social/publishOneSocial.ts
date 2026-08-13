@@ -127,6 +127,23 @@ export function isSkippableForSocial(data: Record<string, unknown>): boolean {
   return false
 }
 
+/** FB veya IG feed post ID'si var mı? */
+export function hasMetaFeedPublish(data: Record<string, unknown>): boolean {
+  const fb = typeof data.facebookPostId === 'string' && data.facebookPostId.trim().length > 0
+  const ig = typeof data.instagramMediaId === 'string' && data.instagramMediaId.trim().length > 0
+  return fb || ig
+}
+
+/**
+ * Feed paylaşımı tamam mı?
+ * Threads-only TEXT success + socialPublished=true eski bug'ında IG/FB boş kalırdı —
+ * bunları "tamamlanmamış" sayıp cron'un yeniden denemesine izin ver.
+ */
+export function isSocialFeedComplete(data: Record<string, unknown>): boolean {
+  if (data.socialPublished !== true) return false
+  return hasMetaFeedPublish(data)
+}
+
 // ── Yardımcı fonksiyonlar ─────────────────────────────────────────────────────
 
 function extractImageUrl(data: Record<string, unknown>): string | undefined {
@@ -315,7 +332,7 @@ export async function publishOneSocial(
       shouldPost  =
         autoShare!.autoPost &&
         isCanakkaleArticle(data) &&
-        data.socialPublished !== true &&
+        !isSocialFeedComplete(data) &&
         allowsAutoPost(rule)
       shouldStory =
         autoShare!.autoStory &&
@@ -325,7 +342,7 @@ export async function publishOneSocial(
 
     // Force değilse ve zaten yayınlandıysa atla (mode/manual açıkken)
     if (!force) {
-      if (shouldPost && data.socialPublished === true) shouldPost = false
+      if (shouldPost && isSocialFeedComplete(data)) shouldPost = false
       if (shouldStory && data.storyPublished === true) shouldStory = false
     }
 
@@ -341,11 +358,17 @@ export async function publishOneSocial(
       return skipped(newsId, reason)
     }
 
-    // Platform seçimi (varsayılan: hepsi)
-    const wantFb = overrides?.platforms?.facebook !== false
-    const wantIg = overrides?.platforms?.instagram !== false
-    const wantTw = overrides?.platforms?.twitter !== false  // X varsayılan: açık
-    const wantTh = overrides?.platforms?.threads !== false  // Threads varsayılan: açık
+    // Platform seçimi (varsayılan: hepsi). Force değilse zaten yayınlanmış platformları atla.
+    let wantFb = overrides?.platforms?.facebook !== false
+    let wantIg = overrides?.platforms?.instagram !== false
+    let wantTw = overrides?.platforms?.twitter !== false  // X varsayılan: açık
+    let wantTh = overrides?.platforms?.threads !== false  // Threads varsayılan: açık
+    if (!force) {
+      if (wantFb && typeof data.facebookPostId === 'string' && data.facebookPostId) wantFb = false
+      if (wantIg && typeof data.instagramMediaId === 'string' && data.instagramMediaId) wantIg = false
+      if (wantTw && typeof data.twitterTweetId === 'string' && data.twitterTweetId) wantTw = false
+      if (wantTh && typeof data.threadsPostId === 'string' && data.threadsPostId) wantTh = false
+    }
 
     if (shouldPost && !wantFb && !wantIg && !wantTw && !wantTh) {
       return skipped(newsId, 'Post için en az bir platform seçilmeli (Facebook / Instagram / X / Threads)')
@@ -540,20 +563,40 @@ export async function publishOneSocial(
 
       result.post = { attempted: true, facebook: fbResult, instagram: igResult, twitter: twResult, threads: thResult }
 
-      if (fbResult.success || igResult.success || twResult.success || thResult.success) {
+      // Threads TEXT fallback "başarı" sayılınca socialPublished=true oluyordu → IG/FB bir daha denenmiyordu.
+      // Tamamlama: FB veya IG başarılı (veya ikisi de istenmiyor ve X/Threads oldu).
+      const primaryOk = fbResult.success || igResult.success
+      const textOnlyOk =
+        !wantFb &&
+        !wantIg &&
+        (twResult.success || thResult.success)
+      const alreadyHadPrimary = hasMetaFeedPublish(data)
+
+      if (primaryOk || textOnlyOk || twResult.success || thResult.success || alreadyHadPrimary) {
         const update: Record<string, unknown> = {
-          socialPublished:   true,
-          socialPublishedAt: FieldValue.serverTimestamp(),
-          socialImageUrl: imagePayload.imageUrl || socialImageUrl,
           socialHeadline:      socialContent.headline,
           socialStorySummary:  socialContent.storySummary,
           socialCaption:       socialContent.caption,
           socialHashtags:      socialContent.hashtags,
         }
+        if (imagePayload.imageUrl || socialImageUrl) {
+          update.socialImageUrl = imagePayload.imageUrl || socialImageUrl
+        }
         if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
         if (igResult.platformId) update.instagramMediaId = igResult.platformId
         if (twResult.platformId) update.twitterTweetId   = twResult.platformId
         if (thResult.platformId) update.threadsPostId    = thResult.platformId
+
+        if (primaryOk || textOnlyOk || alreadyHadPrimary) {
+          update.socialPublished = true
+          update.socialPublishedAt = FieldValue.serverTimestamp()
+        } else {
+          // Yalnızca Threads/X oldu — IG/FB için cron tekrar denesin
+          console.warn(
+            `[publishOneSocial] POST partial (TH/X only) — ${newsId}; socialPublished bırakılmadı (IG/FB retry)`,
+          )
+        }
+
         await db.collection(Collections.NEWS).doc(newsId).update(update)
         console.log(`[publishOneSocial] POST ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success} X:${twResult.success} TH:${thResult.success}`)
       } else {

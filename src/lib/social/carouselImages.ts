@@ -87,21 +87,33 @@ export function collectNewsImageUrls(data: Record<string, unknown>): string[] {
   return urls
 }
 
+/** Dinamik /api/og/* — 503 dönebilir; Meta'ya asla image_url olarak verilmez. */
+export function isDynamicOgApiUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return /\/api\/og\/(social|story)\//i.test(u.pathname)
+  } catch {
+    return /\/api\/og\/(social|story)\//i.test(url)
+  }
+}
+
 /**
  * Harici / hotlink riskli görseli JPEG'e çevirip Storage'a yükle.
- * Kendi CDN'imizdeyse URL'yi olduğu gibi bırak (hızlı yol).
+ * Kendi CDN'imizdeyse URL'yi olduğu gibi bırak (hızlı yol) — forceRehost hariç.
  * Başarısızsa null — çağıran slide'ı atlar.
  */
 export async function ensurePublicCarouselImageUrl(
   imageUrl: string,
   newsId: string,
-  slideIndex: number
+  slideIndex: number,
+  opts?: { forceRehost?: boolean },
 ): Promise<string | null> {
   const url = normalizeAbsoluteImageUrl(imageUrl)
   if (!url || !isUsableImageUrl(url)) return null
+  if (isDynamicOgApiUrl(url)) return null
 
-  // Kendi hostlarımız Meta tarafından sorunsuz çekilir
-  if (isOwnHostUrl(url) && !/\.webp(\?|$)/i.test(url)) {
+  // Kendi hostlarımız Meta tarafından sorunsuz çekilir (Meta publish öncesi forceRehost kullan)
+  if (!opts?.forceRehost && isOwnHostUrl(url) && !/\.webp(\?|$)/i.test(url)) {
     return url
   }
 
@@ -135,9 +147,45 @@ export interface CarouselPayloadImages {
 }
 
 /**
+ * Ham haber fotoğrafını JPEG olarak Storage'a sabitle (Meta image_url için).
+ * Passthrough yok — kendi CDN URL'si bile indirilip yeniden yüklenir.
+ */
+async function forceRehostArticleImage(
+  imageUrl: string,
+  newsId: string,
+  kind: 'post' | 'story',
+): Promise<string | null> {
+  const url = normalizeAbsoluteImageUrl(imageUrl)
+  if (!url || !isUsableImageUrl(url) || isDynamicOgApiUrl(url)) return null
+
+  const jpeg = await fetchImageAsJpegBuffer(url, {
+    maxWidth: kind === 'story' ? 1080 : 1440,
+    maxHeight: kind === 'story' ? 1920 : 1440,
+    quality: 88,
+  })
+  if (!jpeg) {
+    console.warn(
+      `[carouselImages] force rehost download failed — ${newsId} (${kind}): ${url.slice(0, 100)}`,
+    )
+    return null
+  }
+
+  const uploaded = await uploadSocialImage(
+    jpeg,
+    newsId,
+    `${newsId}-raw-${kind}.jpg`,
+  )
+  if (!uploaded) {
+    console.warn(`[carouselImages] force rehost upload failed — ${newsId} (${kind})`)
+    return null
+  }
+  return uploaded
+}
+
+/**
  * Markalı OG'yi üret → lacivert/boş kontrol → Storage'a sabitle.
  * Meta'ya dinamik /api/og URL vermek yerine statik JPEG verir (cold-start / CDN navy cache riskini keser).
- * OG başarısızsa orijinal haber fotoğrafına düşer (solid blue post yok).
+ * OG 503/navy/timeout → ham foto zorla rehost (asla /api/og URL'si dönülmez — IG/FB kırılır, Threads TEXT'e düşer).
  */
 export async function materializeBrandedOgForPublish(
   brandedOgUrl: string,
@@ -145,14 +193,18 @@ export async function materializeBrandedOgForPublish(
   fallbackImageUrl: string,
   kind: 'post' | 'story' = 'post',
 ): Promise<string> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  let sawDefinitiveOgFailure = false
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (sawDefinitiveOgFailure) break
     try {
       const res = await fetch(brandedOgUrl, {
-        signal: AbortSignal.timeout(45_000),
+        signal: AbortSignal.timeout(25_000),
         redirect: 'follow',
         headers: {
           Accept: 'image/png,image/jpeg,image/*,*/*;q=0.8',
-          'User-Agent': 'NaHaber-SocialBot/1.0',
+          'User-Agent':
+            'Mozilla/5.0 (compatible; NaHaber-SocialBot/1.1; +https://www.nahaber.com)',
         },
         cache: 'no-store',
       })
@@ -160,21 +212,26 @@ export async function materializeBrandedOgForPublish(
         console.warn(
           `[carouselImages] OG HTTP ${res.status} attempt ${attempt + 1} — ${newsId} (${kind})`,
         )
-        await sleep(800 * (attempt + 1))
+        // 503 = kapak yok (kasıtlı); yeniden denemek zaman yakar, ham foto'ya geç
+        if (res.status === 503 || res.status === 404 || res.status === 410) {
+          sawDefinitiveOgFailure = true
+          break
+        }
+        await sleep(600 * (attempt + 1))
         continue
       }
       const buf = Buffer.from(await res.arrayBuffer())
       if (buf.length < 1024) {
         console.warn(`[carouselImages] OG too small attempt ${attempt + 1} — ${newsId}`)
-        await sleep(500 * (attempt + 1))
+        await sleep(400 * (attempt + 1))
         continue
       }
       if (await isMostlyNavyImage(buf)) {
         console.warn(
           `[carouselImages] OG navy-dominant attempt ${attempt + 1} — ${newsId} (cover missing)`,
         )
-        await sleep(800 * (attempt + 1))
-        continue
+        sawDefinitiveOgFailure = true
+        break
       }
 
       const jpeg = await sharp(buf, { failOn: 'none' })
@@ -194,25 +251,37 @@ export async function materializeBrandedOgForPublish(
         `[carouselImages] OG materialize failed attempt ${attempt + 1} — ${newsId}:`,
         err instanceof Error ? err.message : err,
       )
-      await sleep(800 * (attempt + 1))
+      await sleep(600 * (attempt + 1))
     }
   }
 
   const fallback = normalizeAbsoluteImageUrl(fallbackImageUrl)
-  if (fallback && isUsableImageUrl(fallback)) {
-    const rehosted = await ensurePublicCarouselImageUrl(fallback, newsId, kind === 'story' ? 0 : 1)
+  if (fallback && isUsableImageUrl(fallback) && !isDynamicOgApiUrl(fallback)) {
+    const rehosted = await forceRehostArticleImage(fallback, newsId, kind)
     if (rehosted) {
       console.warn(
         `[carouselImages] OG failed → raw article image fallback — ${newsId} (${kind})`,
       )
       return rehosted
     }
+    // Son çare: force rehost olmasa bile own-host passthrough (Meta çekebilir)
+    const passthrough = await ensurePublicCarouselImageUrl(
+      fallback,
+      newsId,
+      kind === 'story' ? 0 : 1,
+    )
+    if (passthrough && !isDynamicOgApiUrl(passthrough)) {
+      console.warn(
+        `[carouselImages] OG failed → passthrough cover URL — ${newsId} (${kind})`,
+      )
+      return passthrough
+    }
   }
 
   console.error(
-    `[carouselImages] no publishable image after OG+fallback — ${newsId}; using branded URL last resort`,
+    `[carouselImages] no publishable image after OG+fallback — ${newsId} (${kind}); refusing dynamic OG URL`,
   )
-  return brandedOgUrl
+  return ''
 }
 
 /**
@@ -237,6 +306,11 @@ export async function buildSocialImagePayload(
     fallbackImageUrl,
     'post',
   )
+
+  if (!slide1) {
+    console.error(`[carouselImages] no slide1 image — ${newsId}; publish will fail for IG`)
+    return { imageUrl: '', mode: 'single' }
+  }
 
   if (originals.length < 2) {
     console.log(`[carouselImages] single — ${newsId} (${originals.length} kaynak görsel)`)

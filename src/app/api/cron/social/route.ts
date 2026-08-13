@@ -32,6 +32,7 @@ import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } fr
 import {
   isOwnContent,
   isSkippableForSocial,
+  isSocialFeedComplete,
   isStoryEligible as isStoryEligibleShared,
 } from '@/lib/social/publishOneSocial'
 import { getCategoryRulesDoc } from '@/lib/social/categoryRulesStore'
@@ -119,19 +120,19 @@ async function isAlreadyPublished(
   newsId: string,
   title: string
 ): Promise<boolean> {
-  // 1. ID ile doğrudan kontrol (birincil)
+  // 1. ID ile doğrudan kontrol (birincil) — Threads-only "tamam" sayılmaz
   const doc = await db.collection(Collections.NEWS).doc(newsId).get()
-  if (doc.exists && doc.data()?.socialPublished === true) return true
+  if (doc.exists && isSocialFeedComplete(doc.data() as Record<string, unknown>)) return true
 
-  // 2. Aynı başlıkla daha önce paylaşılmış mı? (başlık eşleşmesi)
+  // 2. Aynı başlıkla daha önce FB/IG'ye paylaşılmış mı?
   const snap = await db
     .collection(Collections.NEWS)
     .where('socialPublished', '==', true)
     .where('title', '==', title)
-    .limit(1)
+    .limit(5)
     .get()
 
-  return !snap.empty
+  return snap.docs.some((d) => isSocialFeedComplete(d.data() as Record<string, unknown>))
 }
 
 async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
@@ -184,7 +185,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const candidates = merged.filter(doc => {
       const d = doc.data() as Record<string, unknown>
       // Video haberlerini atla
-      if (d.socialPublished || d.hasVideo || d.isVideo) return false
+      if (isSocialFeedComplete(d) || d.hasVideo || d.isVideo) return false
       // Çanakkale haberi değilse atla (geniş kontrol)
       if (!isCanakkale(d)) return false
       // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
@@ -390,10 +391,14 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const alreadyDone = await isAlreadyPublished(db, id, title)
     if (alreadyDone) {
       console.log(`[cron/social] Duplikat atlandı — ${id}: "${title}"`)
-      // Tutarsızlık varsa düzelt
-      await db.collection(Collections.NEWS).doc(id).update({ socialPublished: true })
       continue
     }
+
+    // Platform ID varsa yeniden paylaşma (Threads-only partial recovery)
+    const skipFb = typeof data.facebookPostId === 'string' && !!data.facebookPostId.trim()
+    const skipIg = typeof data.instagramMediaId === 'string' && !!data.instagramMediaId.trim()
+    const skipTw = typeof data.twitterTweetId === 'string' && !!data.twitterTweetId.trim()
+    const skipTh = typeof data.threadsPostId === 'string' && !!data.threadsPostId.trim()
 
     // Spot / özet metin (AI için kısa bağlam)
     const spot: string =
@@ -481,53 +486,71 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     )
 
     // ── Facebook ──────────────────────────────────────────────────────────
-    let fbResult: SocialPublishResult = { success: false, error: 'not attempted' }
-    try {
-      fbResult = await publishToFacebook(payload)
-    } catch (err) {
-      fbResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    let fbResult: SocialPublishResult = {
+      success: false,
+      error: skipFb ? 'already published' : 'not attempted',
     }
-
-    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+    if (!skipFb) {
+      try {
+        fbResult = await publishToFacebook(payload)
+      } catch (err) {
+        fbResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+    }
 
     // ── Instagram ─────────────────────────────────────────────────────────
-    let igResult: SocialPublishResult = { success: false, error: 'not attempted' }
-    try {
-      igResult = await publishToInstagram(payload)
-    } catch (err) {
-      igResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    let igResult: SocialPublishResult = {
+      success: false,
+      error: skipIg ? 'already published' : 'not attempted',
     }
-
-    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+    if (!skipIg) {
+      try {
+        igResult = await publishToInstagram(payload)
+      } catch (err) {
+        igResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
+    }
 
     // ── X (Twitter) ───────────────────────────────────────────────────────
-    let twResult: SocialPublishResult = { success: false, error: 'not attempted' }
-    try {
-      twResult = await publishToTwitter(payload)
-    } catch (err) {
-      twResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    let twResult: SocialPublishResult = {
+      success: false,
+      error: skipTw ? 'already published' : 'not attempted',
+    }
+    if (!skipTw) {
+      try {
+        twResult = await publishToTwitter(payload)
+      } catch (err) {
+        twResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+      await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
     }
 
-    await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
-
     // ── Threads ───────────────────────────────────────────────────────────
-    let thResult: SocialPublishResult = { success: false, error: 'not attempted' }
-    try {
-      thResult = await publishToThreads(payload)
-      console.log(`[cron/social] Threads → ${id}: ${thResult.success ? '✓' : thResult.error}`)
-    } catch (err) {
-      thResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+    let thResult: SocialPublishResult = {
+      success: false,
+      error: skipTh ? 'already published' : 'not attempted',
+    }
+    if (!skipTh) {
+      try {
+        thResult = await publishToThreads(payload)
+        console.log(`[cron/social] Threads → ${id}: ${thResult.success ? '✓' : thResult.error}`)
+      } catch (err) {
+        thResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
     }
 
     // ── Firestore güncelle ────────────────────────────────────────────────
-    const markedDone = fbResult.success || igResult.success || twResult.success || thResult.success
+    const hasFb = skipFb || fbResult.success
+    const hasIg = skipIg || igResult.success
+    const primaryOk = hasFb || hasIg
+    const anyNewOk = fbResult.success || igResult.success || twResult.success || thResult.success
 
-    if (markedDone) {
+    if (anyNewOk || primaryOk) {
       try {
         const update: Record<string, unknown> = {
-          socialPublished:   true,
-          socialPublishedAt: FieldValue.serverTimestamp(),
-          socialImageUrl:    socialImageUrl ?? null,
+          socialImageUrl:    imagePayload.imageUrl || socialImageUrl || null,
           socialHeadline:      socialContent.headline,
           socialStorySummary:  socialContent.storySummary,
           socialHashtags:    socialContent.hashtags,
@@ -536,8 +559,18 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         if (igResult.platformId) update.instagramMediaId = igResult.platformId
         if (twResult.platformId) update.twitterTweetId   = twResult.platformId
         if (thResult.platformId) update.threadsPostId    = thResult.platformId
+
+        if (primaryOk) {
+          update.socialPublished = true
+          update.socialPublishedAt = FieldValue.serverTimestamp()
+          succeeded++
+        } else {
+          console.warn(
+            `[cron/social] POST partial (TH/X only) — ${id}; socialPublished bırakılmadı (IG/FB retry)`,
+          )
+          failed++
+        }
         await db.collection(Collections.NEWS).doc(id).update(update)
-        succeeded++
       } catch (err) {
         console.error(`[cron/social] Firestore update failed for ${id}:`, err)
         failed++
@@ -551,6 +584,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       console.warn(`  TH: ${thResult.error}`)
     }
 
+    const markedDone = primaryOk
     results.push({ newsId: id, title, facebook: fbResult, instagram: igResult, twitter: twResult, threads: thResult, markedDone })
     await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
   }
