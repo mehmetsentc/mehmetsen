@@ -6,7 +6,16 @@
  */
 
 const CITY_LOGOS: Record<string, string> = {
+  /** Official mark (favicon set from same source) */
   canakkale: '/brand/cities/canakkale/icon-192.png',
+}
+
+/** Equal-height logo + "City NaHaber" wordmark (transparent PNG). */
+const CITY_HEADER_LOCKUPS: Record<string, { onBrand: string; default: string }> = {
+  canakkale: {
+    onBrand: '/brand/cities/canakkale/header-lockup-compact-transparent.png',
+    default: '/brand/cities/canakkale/header-lockup-compact-light-transparent.png',
+  },
 }
 
 const CITY_ICONS: Record<string, { icon32: string; icon192: string; icon512: string; apple: string; favicon: string }> = {
@@ -24,6 +33,19 @@ const CITY_ICONS: Record<string, { icon32: string; icon192: string; icon512: str
  */
 export function getCityLogoPath(provinceSlug: string): string | null {
   return CITY_LOGOS[provinceSlug] ?? null
+}
+
+/**
+ * Equal-height horizontal lockup (logo icon + city wordmark), or null.
+ * @param variant onBrand = dark header (white city name); default = light surfaces
+ */
+export function getCityHeaderLockupPath(
+  provinceSlug: string,
+  variant: 'onBrand' | 'default' = 'onBrand'
+): string | null {
+  const entry = CITY_HEADER_LOCKUPS[provinceSlug]
+  if (!entry) return null
+  return entry[variant]
 }
 
 /**

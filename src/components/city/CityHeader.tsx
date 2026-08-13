@@ -7,7 +7,7 @@ import { Search } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { cn } from '@/lib/utils'
-import { getCityLogoPath } from '@/lib/cityBrand'
+import { getCityHeaderLockupPath, getCityLogoPath } from '@/lib/cityBrand'
 
 interface CityHeaderProps {
   cityName: string
@@ -16,6 +16,7 @@ interface CityHeaderProps {
 
 export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
   const router = useRouter()
+  const lockupSrc = provinceSlug ? getCityHeaderLockupPath(provinceSlug) : null
   const logoSrc = provinceSlug ? getCityLogoPath(provinceSlug) : null
 
   return (
@@ -27,16 +28,35 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
       )}
     >
       <div className="flex h-14 items-center gap-1.5 px-3">
-        <Link href="/" className="flex min-w-0 flex-1 items-center gap-2" aria-label={`${cityName} NaHaber`}>
-          {logoSrc ? (
+        <Link
+          href="/"
+          className="flex min-w-0 flex-1 items-center gap-2"
+          aria-label={`${cityName} NaHaber`}
+        >
+          {lockupSrc ? (
             <Image
-              src={logoSrc}
+              src={lockupSrc}
               alt={`${cityName} NaHaber`}
-              width={36}
+              width={420}
               height={36}
-              className="h-9 w-9 rounded-md object-contain"
+              className="h-9 w-auto max-w-full object-contain object-left"
               priority
             />
+          ) : logoSrc ? (
+            <>
+              <Image
+                src={logoSrc}
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 shrink-0 rounded-md object-contain"
+                priority
+              />
+              <span className="flex h-9 min-w-0 items-center truncate text-[1.35rem] font-black leading-none tracking-tight">
+                <span className="text-white">{cityName}</span>
+                <span className="ml-1.5 text-[#E50914]">NaHaber</span>
+              </span>
+            </>
           ) : (
             <>
               <BrandWordmark variant="onBrand" size="sm" className="font-black text-[1.35rem]" />
@@ -44,11 +64,6 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
                 {cityName}
               </span>
             </>
-          )}
-          {logoSrc && (
-            <span className="truncate text-sm font-bold text-white/90">
-              {cityName} <span className="text-white/60">NaHaber</span>
-            </span>
           )}
         </Link>
 

@@ -20,7 +20,7 @@ import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
 import { SidebarThemeToggle } from '@/components/layout/SidebarThemeToggle'
 import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
-import { getCityLogoPath } from '@/lib/cityBrand'
+import { getCityHeaderLockupPath, getCityLogoPath } from '@/lib/cityBrand'
 import { isCitySectionActive } from '@/lib/cityPaths'
 import {
   buildCityCategoryNavItems,
@@ -84,6 +84,7 @@ function CitySidebarInner({
   const [searchQuery, setSearchQuery] = useState('')
   const [submitOpen, setSubmitOpen] = useState(false)
 
+  const lockupSrc = getCityHeaderLockupPath(provinceSlug, 'default')
   const logoSrc = getCityLogoPath(provinceSlug)
   const sectionItems = buildCitySectionNavItems({ hasSpor })
   const categoryItems = buildCityCategoryNavItems(categories)
@@ -158,20 +159,36 @@ function CitySidebarInner({
             className="flex min-w-0 items-center gap-2"
             aria-label={`${cityName} NaHaber`}
           >
-            {logoSrc ? (
+            {lockupSrc ? (
               <Image
-                src={logoSrc}
+                src={lockupSrc}
                 alt={`${cityName} NaHaber`}
-                width={32}
+                width={360}
                 height={32}
-                className="h-8 w-8 rounded-md object-contain"
+                className="h-8 w-auto max-w-full object-contain object-left"
               />
+            ) : logoSrc ? (
+              <>
+                <Image
+                  src={logoSrc}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 shrink-0 rounded-md object-contain"
+                />
+                <span className="flex h-8 min-w-0 items-center truncate text-lg font-black leading-none tracking-tight text-[rgb(var(--color-text))]">
+                  {cityName}
+                  <span className="ml-1.5 text-[#E50914]">NaHaber</span>
+                </span>
+              </>
             ) : (
-              <BrandWordmark variant="default" size="sm" className="truncate font-black text-lg" />
+              <>
+                <BrandWordmark variant="default" size="sm" className="truncate font-black text-lg" />
+                <span className="truncate text-sm font-bold text-[rgb(var(--color-text))]">
+                  {cityName}
+                </span>
+              </>
             )}
-            <span className="truncate text-sm font-bold text-[rgb(var(--color-text))]">
-              {cityName}
-            </span>
           </Link>
           <button
             type="button"
