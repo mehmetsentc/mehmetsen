@@ -52,6 +52,7 @@ export async function POST(request: Request, context: RouteContext) {
     categoryIdRaw,
     citySlug,
     tagsRaw,
+    { title, body: content },
   )
 
   const now = Date.now()

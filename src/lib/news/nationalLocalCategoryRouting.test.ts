@@ -1,17 +1,102 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isLocalPrimaryScope,
   mergeNationalLocalTags,
   normalizePublishedLocalCategory,
+  resolveCategoryForLocalVsNationalScope,
   resolveNationalLocalDualRouting,
 } from '@/lib/news/nationalLocalCategoryRouting'
 
+describe('isLocalPrimaryScope', () => {
+  it('flags city-in-title topical local news', () => {
+    expect(
+      isLocalPrimaryScope("Van'da konut satışları Temmuz'da azaldı", '', 'van'),
+    ).toBe(true)
+    expect(
+      isLocalPrimaryScope(
+        "Van Gölü'nde Mavi Nefes seferberliği: 23 ton katı atık toplandı",
+        'Van Gölü kıyılarında temizlik çalışması yapıldı.',
+        'van',
+      ),
+    ).toBe(true)
+    expect(
+      isLocalPrimaryScope(
+        "Yalova'da 'Sağlıklı Hayat Saatleri'nde Ayak Sağlığına Dikkat Çekildi",
+        '',
+        'yalova',
+      ),
+    ).toBe(true)
+  })
+
+  it('keeps national interest with location as non-local-primary', () => {
+    expect(
+      isLocalPrimaryScope(
+        'Türkiye genelinde konut satışları arttı',
+        'İstanbul lider oldu.',
+        'istanbul',
+      ),
+    ).toBe(false)
+    expect(
+      isLocalPrimaryScope(
+        'Sağlık Bakanlığı aşı takvimini açıkladı',
+        'Bakanlık Ankara’da basın toplantısı yaptı.',
+        'ankara',
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('resolveCategoryForLocalVsNationalScope', () => {
+  it('maps national topical → yerel-* for local-primary city news', () => {
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'emlak-konut',
+        "Van'da konut satışları Temmuz'da azaldı",
+        '',
+        'van',
+      ),
+    ).toBe('yerel-emlak')
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'cevre-iklim',
+        "Van Gölü'nde atık toplandı",
+        'katı atık seferberliği',
+        'van',
+      ),
+    ).toBe('yerel-cevre-iklim')
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'saglik',
+        "Yalova'da Sağlıklı Hayat Saatleri",
+        '',
+        'yalova',
+      ),
+    ).toBe('yerel-saglik')
+  })
+
+  it('keeps national category when not local-primary', () => {
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'emlak-konut',
+        'Türkiye genelinde konut satışları arttı',
+        'İstanbul öne çıktı',
+        'istanbul',
+      ),
+    ).toBe('emlak-konut')
+  })
+})
+
 describe('resolveNationalLocalDualRouting', () => {
-  it('maps yerel-magazin to national magazin with yerel tag', () => {
-    const routing = resolveNationalLocalDualRouting('yerel-magazin', 'istanbul')
-    expect(routing).toEqual({
-      nationalCategoryId: 'magazin',
-      yerelTag: 'yerel-magazin',
+  it('keeps yerel-emlak as yerel (no national remap)', () => {
+    expect(resolveNationalLocalDualRouting('yerel-emlak', 'van')).toBeNull()
+    expect(normalizePublishedLocalCategory('yerel-emlak', 'van', [])).toEqual({
+      categoryId: 'yerel-emlak',
+      tags: [],
     })
+  })
+
+  it('keeps yerel-magazin as yerel (no national remap)', () => {
+    expect(resolveNationalLocalDualRouting('yerel-magazin', 'istanbul')).toBeNull()
   })
 
   it('keeps national magazin with citySlug and adds yerel-magazin tag', () => {
@@ -59,14 +144,11 @@ describe('resolveNationalLocalDualRouting', () => {
     })
   })
 
-  it('maps yerel-futbol to national futbol with yerel tag', () => {
-    expect(resolveNationalLocalDualRouting('yerel-futbol', 'canakkale')).toEqual({
-      nationalCategoryId: 'futbol',
-      yerelTag: 'yerel-futbol',
-    })
+  it('keeps yerel-futbol as yerel (no national remap)', () => {
+    expect(resolveNationalLocalDualRouting('yerel-futbol', 'canakkale')).toBeNull()
     expect(normalizePublishedLocalCategory('yerel-basketbol', 'canakkale', [])).toEqual({
-      categoryId: 'basketbol',
-      tags: ['yerel-basketbol'],
+      categoryId: 'yerel-basketbol',
+      tags: [],
     })
   })
 
@@ -91,10 +173,21 @@ describe('mergeNationalLocalTags', () => {
 })
 
 describe('normalizePublishedLocalCategory', () => {
-  it('normalizes yerel-magazin for manual publish', () => {
+  it('keeps yerel-magazin for manual publish', () => {
     expect(normalizePublishedLocalCategory('yerel-magazin', 'istanbul', [])).toEqual({
-      categoryId: 'magazin',
-      tags: ['yerel-magazin'],
+      categoryId: 'yerel-magazin',
+      tags: [],
+    })
+  })
+
+  it('local-primary title remaps national topical on publish', () => {
+    expect(
+      normalizePublishedLocalCategory('emlak-konut', 'van', [], {
+        title: "Van'da konut satışları Temmuz'da azaldı",
+      }),
+    ).toEqual({
+      categoryId: 'yerel-emlak',
+      tags: [],
     })
   })
 })

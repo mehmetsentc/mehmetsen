@@ -103,6 +103,21 @@ const SYSTEM_PROMPT = `Sen NaHaber'in Genel Yayın Yönetmeni'sin (Ana Editör).
 - Yerel amatör/küme maçı tek şehirde → branşa göre yerel-futbol / yerel-basketbol / yerel-voleybol / …; belirsizse yerel-spor
 - Basketbol → basketbol, Voleybol → voleybol (futbol ile karıştırma)
 
+## YEREL vs ULUSAL (EN KRİTİK — konu şehri ezmesin)
+YEREL BİRİNCİL → yerel-* (city ile):
+- Başlıkta tek şehir ("Van'da", "Yalova'da", ilçe adı) + yerel kapsam
+- Belediye / valilik / kaymakam / ilçe istatistik / yerel etkinlik / yerel çevre
+- "Van'da konut satışları" → yerel-emlak (emlak-konut DEĞİL)
+- "Van Gölü atık toplama" → yerel-cevre-iklim (cevre-iklim DEĞİL)
+- "Yalova sağlık etkinliği" → yerel-saglik (saglik DEĞİL)
+- "Çiftlikköy kent mobilyası" → yerel-yasam veya yerel-gundem
+- "Çayıralan yöresel lezzet" → yerel-gastronomi
+
+ULUSAL BİRİNCİL → ulusal kategori (şehir yalnızca konumsa OK):
+- Türkiye geneli, çok şehir, bakanlık/politika, TCMB/piyasa, ulusal yasa
+- "Türkiye genelinde konut satışları" → emlak-konut
+- "Sağlık Bakanlığı aşı takvimi" → saglik
+
 ## YEREL ALT KATEGORİLER
 Tek il/ilçe olayı için genel yerel-haber KULLANMA — en uygun yerel alt kategoriyi seç:
 ${getYerelSubcategoryIdsForPrompt().split('|').map((id) => `  - ${id}`).join('\n')}
@@ -119,9 +134,13 @@ ${getYerelSubcategoryIdsForPrompt().split('|').map((id) => `  - ${id}`).join('\n
 | Futbol / Süper Lig / gol / transfer / FIFA / UEFA | futbol |
 | Basketbol / NBA / EuroLeague / BSL | basketbol |
 | Voleybol / Sultanlar Ligi / Efeler Ligi | voleybol |
-| Yemek / tarif / restoran / şef | gastronomi |
+| Yemek / tarif / restoran / şef (ulusal) | gastronomi |
+| Tek şehir yöresel yemek | yerel-gastronomi |
 | Araba / TOGG / yeni model (kaza değil) | otomobil |
 | Tek şehir trafik kazası / suç / yangın | yerel-asayis veya yerel-gundem |
+| Tek şehir konut/emlak istatistiği | yerel-emlak |
+| Tek şehir sağlık etkinliği | yerel-saglik |
+| Tek şehir çevre temizliği / göl | yerel-cevre-iklim |
 | Belediye/kaymakamlık duyurusu / ilan | yerel-duyuru |
 | iPhone / AI / yazılım / siber | teknoloji |
 | Burç / astroloji / günlük burç | astroloji (yasam DEĞİL) |

@@ -307,7 +307,7 @@ const NATIONAL_BRANCH_TO_YEREL: Record<string, string> = {
   kripto: 'yerel-finans',
   'finans-piyasa': 'yerel-finans',
   'emlak-konut': 'yerel-emlak',
-  energi: 'yerel-enerji',
+  enerji: 'yerel-enerji',
   'is-kariyer': 'yerel-kariyer',
   tiyatro: 'yerel-tiyatro',
   festival: 'yerel-festival',

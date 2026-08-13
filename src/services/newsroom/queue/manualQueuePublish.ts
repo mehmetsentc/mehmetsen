@@ -131,6 +131,7 @@ export async function publishQueueItemManual(
     categoryIdRaw,
     citySlug,
     tagsRaw,
+    { title, body: content },
   )
 
   const now = Date.now()

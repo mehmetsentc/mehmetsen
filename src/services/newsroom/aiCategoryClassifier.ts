@@ -107,7 +107,7 @@ const CATEGORY_DESCRIPTIONS: Record<NewsCategory, string> = {
   gastronomi:    'Yemek, tarif, restoran haberleri, şef, Michelin yıldızı, mutfak kültürü, foodie',
   otomobil:      'Araba, araç, otomobil, motosiklet, trafik, elektrikli araç, TOGG, yeni model tanıtımı',
   tarih:         'Tarih, arkeoloji, tarihi yıldönümü, Osmanlı/Cumhuriyet tarihi',
-  'yerel-haber': 'Yalnızca TÜRKİYE\'deki tek bir il/ilçeyi kapsayan yerel olay: belediye kararı, belediye başkanı açıklaması, zabıta uygulaması, yerel kaza, yerel yangın, ilçe etkinliği, karne töreni, mahalle haberi. YURT DIŞI ve KKTC haberleri için ASLA kullanma.',
+  'yerel-haber': 'Yalnızca TÜRKİYE\'deki tek bir il/ilçeyi kapsayan yerel olay. Tercihen doğrudan yerel-* alt kategori kullan (yerel-emlak, yerel-saglik, yerel-cevre-iklim, yerel-gundem…). YURT DIŞI ve KKTC için ASLA kullanma.',
 }
 
 export interface ClassifierResult {
@@ -147,23 +147,27 @@ ${categoryList}
 TEMEL KURALLAR (hepsini uygula):
 1. KAYNAK ADINI VE KAYNAK GAZETENİN ŞEHRİNİ GÖRMEZDEN GEL — "Bursa Gazetesi", "Milliyet Magazin", "Sabah Spor" gibi kaynak isimleri kategoriye etki ETMEMELİ. Haberin GERÇEK coğrafyası ve içeriği her şeyi belirler.
 2. YURT DIŞI HABER ALTIN KURALI — Olay İngiltere, ABD, Almanya, Fransa, Gazze, Ukrayna veya Türkiye DIŞINDA herhangi bir yerde geçiyorsa → KESİNLİKLE "dunya". Kaynak gazete Bursa'dan çıksa bile, haber İngiltere'deki bir olaysa → "dunya". Asla "yerel-haber" değil.
-3. yerel-haber → SADECE olayın geçtiği yer Türkiye'deki tek bir il/ilçe ise. "Bursa Gazetesi İngiltere'deki haberi yazdı" → dunya.
-4. Siyasi/meclis/seçim/hükümet içeriği → mutlaka "siyaset" (kaynak spor gazetesi bile olsa)
-5. Ekonomi/borsa/döviz/şirket haberi → mutlaka "ekonomi"
-6. SPOR BRANŞI AYIRT ETME — KESİNLİKLE karıştırma:
+3. YEREL vs ULUSAL (konu şehri EZMESİN):
+   - Başlıkta tek şehir ("Van'da", "Yalova'da") + yerel kapsam → "yerel-haber" (pipeline yerel-emlak/yerel-saglik/yerel-cevre-iklim'e map eder). ASLA doğrudan emlak-konut/saglik/cevre-iklim seçme.
+   - "Van'da konut satışları" → yerel-haber (emlak-konut DEĞİL). "Van Gölü atık toplama" → yerel-haber. "Yalova sağlık etkinliği" → yerel-haber.
+   - Türkiye geneli / bakanlık / TCMB / çok şehir / ulusal politika → ulusal kategori; şehir yalnızca konumsa city olarak kalabilir.
+4. yerel-haber → SADECE olayın geçtiği yer Türkiye'deki tek bir il/ilçe ise. "Bursa Gazetesi İngiltere'deki haberi yazdı" → dunya.
+5. Siyasi/meclis/seçim/hükümet içeriği → mutlaka "siyaset" (kaynak spor gazetesi bile olsa)
+6. Ekonomi/borsa/döviz/şirket haberi → mutlaka "ekonomi" — AMA tek şehir istatistiği/yerel işletme ise → yerel-haber
+7. SPOR BRANŞI AYIRT ETME — KESİNLİKLE karıştırma:
    - Basketbol, NBA, EuroLeague, BSL, Fenerbahçe Beko, Anadolu Efes, Galatasaray Nef → "basketbol" (ASLA "futbol" değil)
    - Voleybol, Sultanlar Ligi, Efeler Ligi, CEV, FIVB, milli voleybol → "voleybol" (ASLA "futbol" değil)
    - Futbol, Süper Lig, Şampiyonlar Ligi, FIFA, UEFA, top/gol/penaltı → "futbol" (ASLA "basketbol" veya "voleybol" değil)
    - Kulüp adı (Fenerbahçe, Galatasaray, Beşiktaş) branşı belirlemez — metnin SPOR BRANŞINA bak
    - "Fenerbahçe Beko şampiyon" → basketbol. "Fenerbahçe 3-1 Galatasaray" → futbol.
-7. Yemek/restoran/şef/tarif haberi → "gastronomi"
-8. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil"
-9. Sinema filmi/vizyona girenler → "sinema", tiyatro oyunu → "tiyatro", konser haberi → "konser"
-10. Magazin = SADECE ünlülerin kişisel hayatı, ilişkisi, skandalı, dedikodu
-11. ASTROLOJİ / BURÇ — KESİN:
+8. Yemek/restoran/şef/tarif haberi → "gastronomi" — tek ilçe yöresel lezzet → yerel-haber
+9. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil"
+10. Sinema filmi/vizyona girenler → "sinema", tiyatro oyunu → "tiyatro", konser haberi → "konser"
+11. Magazin = SADECE ünlülerin kişisel hayatı, ilişkisi, skandalı, dedikodu
+12. ASTROLOJİ / BURÇ — KESİN:
    - Günlük/haftalık burç yorumu, burç adı (Yay, Koç, …), yükselen, retrosu, zodyak → "astroloji"
    - Bu içerikler için ASLA "yasam" veya "iliskiler" seçme
-12. Mevcut kategori doğruysa onayla, yanlışsa düzelt
+13. Mevcut kategori doğruysa onayla, yanlışsa düzelt
 
 JSON formatında yanıt ver:
 {"categoryId": "kategori-adı", "confidence": 85, "reason": "kısa açıklama"}`
@@ -258,7 +262,10 @@ KURALLAR:
 - ${YEREL_HABER_CATEGORY_ID} kullanma — mutlaka en uygun alt kategoriyi seç.
 - Belediye/siyaset → yerel-siyaset. Kaza/suç/operasyon → yerel-asayis. Yerel/amatör spor kulübü → branşa göre yerel-futbol/yerel-basketbol/yerel-voleybol/yerel-tenis/…; branş belirsizse yerel-spor.
 - Süper Lig / Trendyol 1. Lig kulüpleri (Galatasaray, Fenerbahçe, Beşiktaş, …) → yerel-spor DEĞİL; pipeline ulusal futbol'a yönlendirir.
-- Okul/üniversite → yerel-egitim. Hastane/sağlık → yerel-saglik. Etkinlik/festival → yerel-etkinlik veya yerel-festival.
+- Okul/üniversite → yerel-egitim. Hastane/sağlık/yerel sağlık etkinliği → yerel-saglik.
+- Tek şehir konut/emlak/kira/satış istatistiği → yerel-emlak (ulusal emlak-konut DEĞİL).
+- Tek şehir/göl çevre temizliği, yerel atık, yerel kirlilik → yerel-cevre-iklim.
+- Etkinlik/festival → yerel-etkinlik veya yerel-festival. Yöresel yemek → yerel-gastronomi.
 - Belediye/kaymakamlık duyurusu, resmi ilan, askıya alma, su/elektrik kesintisi duyurusu → yerel-duyuru (siyaset kararı değilse).
 
 JSON formatında yanıt ver:

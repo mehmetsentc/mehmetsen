@@ -245,76 +245,65 @@ ADIM 2 — SPOR KONTROLÜ
     F1/MotoGP/tenis/boks/yüzme/kayak/golf → "spor".
   • Spor değilse → ADIM 3'e geç.
 
-ADIM 3 — UZMAN KATEGORİ KONTROLÜ (eşleşirse dur, devam etme)
-  • Ekonomi (borsa/döviz/faiz/enflasyon/TCMB/şirket bilançosu/kripto) → "ekonomi"
-  • Siyaset (Cumhurbaşkanı kararı, TBMM, parti haberi, seçim) → "siyaset"
-  • Teknoloji (Apple/Google/AI/yazılım/siber/uzay/drone/robot) → "teknoloji"
-  • Sağlık (hastalık/ilaç/pandemi/aşı/WHO/sağlık bakanlığı) → "saglik"
-  • Bilim (araştırma/keşif/NASA/uzay bilimi/iklim bilimi) → "bilim"
-  • Hava durumu / MGM uyarısı / fırtına / sıcaklık rekoru → "meteoroloji"
-  • Yemek/restoran/şef/tarif/Michelin/MasterChef → "gastronomi"
-  • Turizm/otel/tatil/sezon/uçak bileti/seyahat rehberi → "turizm"
-  • Gezi/rota/kamp/doğa yürüyüşü/seyahat deneyimi → "gezi"
-  • Asayiş/suç/operasyon/gözaltı/cinayet/hırsızlık (tek şehir değilse) → "asayis"
-  • Araba/araç/TOGG/trafik/motosiklet → "otomobil" (KURAL: trafik kazası → yerel-haber veya gundem, otomobil değil)
-  • Sinema/tiyatro/opera/müze/edebiyat/ödül töreni → "kultur"
-  • Konser/müzik etkinliği/albüm çıkışı → "kultur"
-  • Ünlü özel hayatı/evlilik-boşanma/dizi fragmanı/dedikodu → "magazin"
-  • Hiçbiri eşleşmiyorsa → ADIM 4'e geç.
-
-ADIM 4 — YEREL mi ULUSAL mi? (EN KRİTİK ADIM)
-
-  ┌─ YERELLİK TESTİ ──────────────────────────────────────────┐
-  │  Aşağıdakilerin HEPSİ doğruysa → yerel alt kategori seç:   │
-  │  ✓ Olay TAM OLARAK tek bir Türk şehri/ilçesinde geçiyor   │
-  │  ✓ Diğer şehirlerde benzer bir etki/sonuç yaratmıyor      │
-  │  ✓ Türkiye genelinde politika/yasa/ekonomi değişikliği YOK│
+ADIM 3 — YEREL mi ULUSAL mi? (KONU ŞEHRİ EZMESİN — önce bunu çöz)
+  ┌─ YEREL BİRİNCİL TESTİ ────────────────────────────────────┐
+  │  Aşağıdakilerden biri doğruysa → yerel-* seç (ADIM 4'e ATLAMA): │
+  │  ✓ Başlıkta tek şehir güçlü ("Van'da", "Yalova'da", ilçe) │
+  │  ✓ Belediye / valilik / kaymakam / ilçe / mahalle işi     │
+  │  ✓ Tek ile ait istatistik, yerel etkinlik, yerel çevre     │
+  │  ✓ Türkiye geneli politika/yasa/bakanlık/TCMB YOK         │
   └────────────────────────────────────────────────────────────┘
 
-  YEREL HABERLERDE KATEGORİ ATAMA:
+  YEREL HABERLERDE KATEGORİ:
   - Genel yerel-haber KULLANMA — içeriğe en uygun yerel alt kategoriyi seç.
   - Seçenekler: ${getYerelSubcategoryIdsForPrompt()}
   - Hiçbiri uymuyorsa (çok nadir) → yerel-gundem
-  - Örnekler:
-    Belediye kararı / valilik → yerel-siyaset
-    Trafik kazası / suç / operasyon → yerel-asayis
-    Yerel spor kulübü maçı → branşa göre yerel-futbol / yerel-basketbol / yerel-voleybol / yerel-tenis / yerel-hentbol / yerel-atletizm / yerel-gures / yerel-yuzme / yerel-motor-sporlari; belirsizse yerel-spor
-    Okul / üniversite → yerel-egitim
-    Hastane / sağlık olayı → yerel-saglik
-    Şehirdeki konser / festival → yerel-konser / yerel-festival
-    Yerel işletme / fabrika → yerel-ekonomi
-    MGM uyarısı / fırtına → yerel-meteoroloji
-    Belediye/kaymakamlık duyurusu / ilan / resmi açıklama → yerel-duyuru
+  - Konu emlak/konut/kira (tek şehir) → yerel-emlak (emlak-konut DEĞİL)
+  - Konu sağlık etkinliği/hastane (tek şehir) → yerel-saglik (saglik DEĞİL)
+  - Konu çevre/göl/atık (tek şehir) → yerel-cevre-iklim (cevre-iklim DEĞİL)
+  - Belediye kararı / valilik → yerel-siyaset
+  - Trafik kazası / suç / operasyon → yerel-asayis
+  - Yerel spor kulübü → branşa göre yerel-futbol / …; belirsizse yerel-spor
+  - Okul / üniversite → yerel-egitim
+  - Yöresel yemek → yerel-gastronomi
+  - Kent mobilyası / mahalle yaşam → yerel-yasam veya yerel-gundem
+  - Belediye duyurusu / ilan → yerel-duyuru
 
-  YERELLİK TESTİ ÖRNEKLERİ — yerel alt kategori seç:
-    "Konya'da trafik kazası: 2 yaralı"         → yerel-asayis
-    "Trabzon Belediyesi park yapıyor"           → yerel-siyaset
-    "Erzurum'da bıçaklı kavga"                 → yerel-asayis
-    "İzmir'de berber emeklilere döner ısmarlıyor" → yerel-yasam
-    "Adana'da uyuşturucu operasyonu"            → yerel-asayis
-    "Bursa'da yangın çıktı, 1 kişi öldü"       → yerel-asayis
-    "Mersin'de kaplumbağa kurtarıldı"           → yerel-gundem
-    "Gaziantep Büyükşehir metroyu açıyor"       → yerel-siyaset
-    "Kayseri Valisi açıklama yaptı"             → yerel-siyaset
-    "Antalya'da tatilci denizde boğuldu"        → yerel-asayis
-    "Çanakkale Belediyesi su kesintisi duyurusu" → yerel-duyuru
-    "Bursa'da imar planı askıya alındı ilanı"    → yerel-duyuru
-    "Çanakkalespor amatör maç kazandı"         → yerel-futbol
-    "Bandırma basketbol takımı galip"          → yerel-basketbol
+  YEREL ÖRNEKLER:
+    "Van'da konut satışları Temmuz'da azaldı"     → yerel-emlak
+    "Van Gölü'nde atık toplama seferberliği"      → yerel-cevre-iklim
+    "Yalova'da Sağlıklı Hayat Saatleri"           → yerel-saglik
+    "Çiftlikköy'de kent mobilyaları üretimi"      → yerel-yasam
+    "Çayıralan'da yöresel lezzetler"              → yerel-gastronomi
+    "Konya'da trafik kazası: 2 yaralı"            → yerel-asayis
+    "Trabzon Belediyesi park yapıyor"              → yerel-siyaset
+    "Çanakkale Belediyesi su kesintisi duyurusu"  → yerel-duyuru
 
-  ULUSAL TEST ÖRNEKLERİ — gundem veya son-dakika seç:
-    "İstanbul'da 6.5 büyüklüğünde deprem"      → son-dakika (tüm ülke etkisi)
-    "Türkiye genelinde sel uyarısı verildi"     → gundem (Türkiye geneli)
-    "Türkiye-Yunanistan sınırında gerilim"      → siyaset/dunya
-    "Asgari ücret zammı açıklandı"              → ekonomi (ulusal)
-    "Ankara'da büyük terör saldırısı"           → son-dakika
+  ULUSAL BİRİNCİL (şehir yalnızca konum — ADIM 4 uzman kategoriye geç):
+    "Türkiye genelinde konut satışları arttı"     → emlak-konut
+    "Sağlık Bakanlığı aşı takvimini açıkladı"     → saglik
+    "TCMB faiz kararını açıkladı"                 → finans-piyasa / ekonomi
+    "İstanbul'da 6.5 büyüklüğünde deprem"         → son-dakika
+  • Yerel birincil DEĞİLSE → ADIM 4'e geç.
 
-  SINIR DURUMLARI — yerel alt kategori:
-    ✗ "Büyük" veya "feci" kelimesi tek şehir olayını ulusal yapmaz
-    ✗ Ölü sayısı az bile olsa tek şehirde kaldıysa → yerel-asayis veya yerel-gundem
-    ✗ Belediye başkanı konuşması → yerel-siyaset (siyaset DEĞİL)
-    ✗ Valilik açıklaması → yerel-siyaset
-    ✗ Yerel spor kulübü haberi → yerel-futbol/yerel-spor (ulusal futbol/spor DEĞİL)
+ADIM 4 — UZMAN KATEGORİ (yalnızca ULUSAL birincil haberler)
+  • Ekonomi (borsa/döviz/faiz/enflasyon/TCMB/şirket bilançosu/kripto) → "ekonomi"
+  • Siyaset (Cumhurbaşkanı kararı, TBMM, parti haberi, seçim) → "siyaset"
+  • Teknoloji (Apple/Google/AI/yazılım/siber/uzay/drone/robot) → "teknoloji"
+  • Sağlık (ulusal hastalık/ilaç/pandemi/aşı/WHO/sağlık bakanlığı) → "saglik"
+  • Bilim (araştırma/keşif/NASA/uzay bilimi/iklim bilimi) → "bilim"
+  • Hava durumu / MGM uyarısı / fırtına / sıcaklık rekoru → "meteoroloji"
+  • Yemek/restoran/şef/tarif/Michelin/MasterChef (ulusal) → "gastronomi"
+  • Turizm/otel/tatil/sezon/uçak bileti/seyahat rehberi → "turizm"
+  • Gezi/rota/kamp/doğa yürüyüşü/seyahat deneyimi → "gezi"
+  • Asayiş/suç/operasyon (çok şehir / ulusal) → "asayis"
+  • Araba/araç/TOGG/trafik/motosiklet → "otomobil" (KURAL: trafik kazası tek şehir → yerel-asayis)
+  • Sinema/tiyatro/opera/müze/edebiyat/ödül töreni → "kultur"
+  • Konser/müzik etkinliği/albüm çıkışı → "kultur"
+  • Ünlü özel hayatı/evlilik-boşanma/dizi fragmanı/dedikodu → "magazin"
+  • Emlak/konut (Türkiye geneli / piyasa) → "emlak-konut"
+  • Çevre/iklim (ulusal politika / ülke çapı) → "cevre-iklim"
+  • Hiçbiri eşleşmiyorsa → ADIM 5'e geç.
 
 ADIM 5 — GÜNDEM mi SON DAKİKA mı?
   Eğer ulusal/genel bir Türkiye haberi ise:

@@ -113,11 +113,34 @@ YAŞAM ALT DALLARI (EN SPESİFİK OLANI SEÇ — ebeveyn yasam'ı yalnızca alt 
 - iliskiler: İlişki/evlilik rehberi (burç ilişki yorumu → astroloji; ünlü dedikodu → magazin)
 - yasam: Genel yaşam — yalnızca yukarıdaki alt dallara uymuyorsa
 
-YERELLİK TESTİ:
-Aşağıdakilerin hepsi doğruysa → yerel-haber:
+YERELLİK vs ULUSAL — KONU (emlak/sağlık/çevre) ŞEHRİ EZMESİN:
+
+YEREL BİRİNCİL (categoryId = yerel-* alt kategori; city doldur):
+✓ Başlıkta tek şehir güçlü ("Van'da…", "Yalova'da…", "Çiftlikköy'de…")
+✓ Belediye / valilik / kaymakam / ilçe / mahalle işi
+✓ Tek ile ait istatistik, yerel etkinlik, yerel çevre temizliği
+→ Konu emlak olsa bile → yerel-emlak (emlak-konut DEĞİL)
+→ Konu sağlık olsa bile → yerel-saglik (saglik DEĞİL)
+→ Konu çevre olsa bile → yerel-cevre-iklim (cevre-iklim DEĞİL)
+→ Konu gastronomi/yaşam olsa bile → yerel-gastronomi / yerel-yasam
+
+ULUSAL BİRİNCİL (ulusal kategori OK; city yalnızca konum ise doldur):
+✓ Türkiye geneli / çok şehir / bakanlık-politika / TCMB-piyasa / ulusal yasa
+✓ Konum yalnızca örnek veya geçiş ("İstanbul'da açıklanan faiz kararı" → finans)
+
+ÖRNEKLER:
+• "Van'da konut satışları Temmuz'da azaldı" → yerel-emlak (+ city: Van)
+• "Van Gölü'nde atık toplama seferberliği" → yerel-cevre-iklim
+• "Yalova'da Sağlıklı Hayat Saatleri" → yerel-saglik
+• "Çiftlikköy'de kent mobilyaları üretimi" → yerel-yasam veya yerel-gundem
+• "Türkiye genelinde konut satışları arttı" → emlak-konut
+• "Sağlık Bakanlığı aşı takvimini açıkladı" → saglik (şehir geçse bile)
+
+YERELLİK TESTİ (hepsi doğruysa yerel-*):
 ✓ Olay tek bir Türk şehri/ilçesinde geçiyor
 ✓ Diğer şehirlerde benzer etki yok
 ✓ Türkiye genelinde politika/yasa/ekonomi değişikliği yok
+Genel "yerel-haber" KULLANMA — yerel-emlak|yerel-saglik|yerel-cevre-iklim|yerel-gundem|… seç.
 
 KONUM KURALLARI (ZORUNLU):
 - categoryId = dunya → country: olayın geçtiği ülke (Türkçe ad: Japonya, Almanya, ABD…). city/district: null
@@ -146,7 +169,7 @@ ${input.forcedCategoryId ? `\nÖnerilen kategori: ${input.forcedCategoryId} (iç
 
 JSON formatında kategori bilgisi döndür:
 {
-  "categoryId": "string (dunya-kupasi-2026|futbol|basketbol|voleybol|hentbol|atletizm|gures|spor|son-dakika|siyaset|ekonomi|borsa|kripto|finans-piyasa|emlak-konut|enerji|is-kariyer|teknoloji|saglik|bilim|egitim|cevre-iklim|oyun-espor|din-inanc|dunya|kibris-haberleri|magazin|kultur|sinema|tiyatro|konser|festival|yasam|astroloji|moda|anne-cocuk|dekorasyon|iliskiler|gastronomi|otomobil|meteoroloji|turizm|gezi|tarih|asayis|yerel-haber|gundem)",
+  "categoryId": "string (dunya-kupasi-2026|futbol|basketbol|voleybol|hentbol|atletizm|gures|spor|son-dakika|siyaset|ekonomi|borsa|kripto|finans-piyasa|emlak-konut|enerji|is-kariyer|teknoloji|saglik|bilim|egitim|cevre-iklim|oyun-espor|din-inanc|dunya|kibris-haberleri|magazin|kultur|sinema|tiyatro|konser|festival|yasam|astroloji|moda|anne-cocuk|dekorasyon|iliskiler|gastronomi|otomobil|meteoroloji|turizm|gezi|tarih|asayis|yerel-haber|yerel-emlak|yerel-saglik|yerel-cevre-iklim|yerel-gundem|yerel-ekonomi|yerel-gastronomi|yerel-yasam|yerel-asayis|yerel-siyaset|yerel-egitim|yerel-duyuru|gundem)",
   "isBreaking": boolean,
   "confidence": number (0-100),
   "city": "string veya null (haberin geçtiği Türk şehri, kaynak gazete şehri DEĞİL)",
@@ -165,6 +188,10 @@ const VALID_CATEGORIES = new Set([
   'magazin', 'kultur', 'sinema', 'tiyatro', 'konser', 'festival',
   'yasam', 'astroloji', 'moda', 'anne-cocuk', 'dekorasyon', 'iliskiler',
   'gastronomi', 'otomobil', 'meteoroloji', 'turizm', 'gezi', 'tarih', 'asayis',
+  'yerel-asayis', 'yerel-gundem', 'yerel-siyaset', 'yerel-spor', 'yerel-futbol',
+  'yerel-basketbol', 'yerel-voleybol', 'yerel-ekonomi', 'yerel-emlak', 'yerel-saglik',
+  'yerel-cevre-iklim', 'yerel-egitim', 'yerel-yasam', 'yerel-gastronomi', 'yerel-duyuru',
+  'yerel-kultur', 'yerel-magazin', 'yerel-etkinlik', 'yerel-meteoroloji', 'yerel-turizm',
 ])
 
 function normalizeCategoryId(raw: string): string {

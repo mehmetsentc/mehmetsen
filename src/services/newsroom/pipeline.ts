@@ -41,7 +41,6 @@ import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import {
   isYerelCategoryTree,
   resolveYerelSubcategoryForLocalNews,
-  shouldLocalizeCategory,
   YEREL_HABER_CATEGORY_ID,
 } from '@/constants/config'
 import {
@@ -50,6 +49,8 @@ import {
 } from '@/lib/news/nationalFootballRouting'
 import {
   mergeNationalLocalTags,
+  isLocalPrimaryScope,
+  resolveCategoryForLocalVsNationalScope,
   resolveNationalLocalDualRouting,
 } from '@/lib/news/nationalLocalCategoryRouting'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
@@ -1039,38 +1040,62 @@ export async function processNewsroomArticle(
       }
     }
 
-    // ── Yerel alt kategori ataması ─────────────────────────────────────────
-    if (
-      !nationalFootballRouting &&
-      !articleIsAbroad &&
-      shouldLocalizeCategory(classification.categoryId, resolvedCitySlug || citySlug)
-    ) {
+    // ── Yerel vs ulusal kapsam: yerel birincil → yerel-*; ulusal+konum → ulusal ──
+    const scopeCitySlug = resolvedCitySlug || citySlug
+    const scopeBody = rewritten.description ?? rewritten.summary ?? ''
+    if (!nationalFootballRouting && !articleIsAbroad && scopeCitySlug) {
       const priorCategory = classification.categoryId
-      let yerelCategory = resolveYerelSubcategoryForLocalNews(
-        classification.categoryId,
-        resolvedCitySlug || citySlug,
+      const localPrimary = isLocalPrimaryScope(
+        rewritten.title,
+        scopeBody,
+        scopeCitySlug,
       )
+      const needsYerelRefine =
+        localPrimary ||
+        isYerelCategoryTree(priorCategory) ||
+        priorCategory === YEREL_HABER_CATEGORY_ID
 
-      if (yerelCategory === YEREL_HABER_CATEGORY_ID) {
-        try {
-          const yerelCheck = await classifyYerelSubcategory(
-            rewritten.title,
-            rewritten.description ?? rewritten.summary ?? '',
-          )
-          if (yerelCheck?.categoryId) {
-            yerelCategory = yerelCheck.categoryId
-          }
-        } catch {
-          // Non-blocking — keep yerel-haber fallback
-        }
-      }
-
-      if (yerelCategory !== priorCategory) {
-        console.log(
-          `[newsroom/yerel] Alt kategori: ${priorCategory} → ${yerelCategory}`
+      if (needsYerelRefine) {
+        let yerelCategory = resolveCategoryForLocalVsNationalScope(
+          priorCategory,
+          rewritten.title,
+          scopeBody,
+          scopeCitySlug,
         )
-        classification.categoryId = yerelCategory
-        classification.overrides.push(`yerel alt kategori → ${yerelCategory}`)
+
+        // Generic yerel-haber veya eşleme yoksa AI alt kategori
+        if (yerelCategory === YEREL_HABER_CATEGORY_ID) {
+          yerelCategory = resolveYerelSubcategoryForLocalNews(
+            priorCategory,
+            scopeCitySlug,
+          )
+        }
+        if (yerelCategory === YEREL_HABER_CATEGORY_ID) {
+          try {
+            const yerelCheck = await classifyYerelSubcategory(
+              rewritten.title,
+              scopeBody,
+            )
+            if (yerelCheck?.categoryId) {
+              yerelCategory = yerelCheck.categoryId
+            }
+          } catch {
+            // Non-blocking — keep yerel-haber fallback
+          }
+        }
+
+        if (yerelCategory !== priorCategory) {
+          console.log(
+            `[newsroom/yerel] Alt kategori: ${priorCategory} → ${yerelCategory}` +
+              (localPrimary ? ' (yerel-birincil)' : ''),
+          )
+          classification.categoryId = yerelCategory
+          classification.overrides.push(
+            localPrimary
+              ? `yerel birincil → ${yerelCategory}`
+              : `yerel alt kategori → ${yerelCategory}`,
+          )
+        }
       }
     }
 
@@ -1180,7 +1205,30 @@ export async function processNewsroomArticle(
       }
     }
 
-    // ── Yerel + ulusal çift görünürlük (magazin, gündem, spor vb.) ─────────────
+    // ── Yerel birincil: chiefEditor ulusal topical'a çektiyse geri al ─────────
+    if (
+      !nationalFootballRouting &&
+      !articleIsAbroad &&
+      (resolvedCitySlug || citySlug) &&
+      isLocalPrimaryScope(rewritten.title, scopeBody, resolvedCitySlug || citySlug)
+    ) {
+      const corrected = resolveCategoryForLocalVsNationalScope(
+        resolvedCategory,
+        rewritten.title,
+        scopeBody,
+        resolvedCitySlug || citySlug,
+      )
+      if (corrected !== resolvedCategory) {
+        console.log(
+          `[newsroom/yerel] yerel-birincil düzeltme: ${resolvedCategory} → ${corrected}`,
+        )
+        classification.overrides.push(`yerel birincil (post-chief) → ${corrected}`)
+        resolvedCategory = corrected
+        classification.categoryId = corrected
+      }
+    }
+
+    // ── Ulusal birincil + citySlug: yerel etiket (categoryId ulusal kalır) ─────
     let articleTags = nationalFootballRouting
       ? mergeNationalFootballTags(geo.tags)
       : [...(geo.tags ?? [])]
@@ -1205,6 +1253,10 @@ export async function processNewsroomArticle(
           )
           classification.overrides.push(
             `yerel dual → ${resolvedCategory} + ${nationalLocalDualRouting.yerelTag}`,
+          )
+        } else {
+          console.log(
+            `[newsroom/yerel] Ulusal+konum etiket: ${resolvedCategory} (+${nationalLocalDualRouting.yerelTag})`,
           )
         }
       }
