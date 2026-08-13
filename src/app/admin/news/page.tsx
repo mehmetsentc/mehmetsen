@@ -33,6 +33,12 @@ import {
   resolveYerelCategoryParts,
   composeYerelCategoryId,
   YEREL_HABER_CATEGORY_ID,
+  getKibrisSubcategories,
+  getKibrisSubcategoryShortLabel,
+  isKibrisCategoryTree,
+  resolveKibrisCategoryParts,
+  composeKibrisCategoryId,
+  KIBRIS_HABERLERI_CATEGORY_ID,
 } from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
 
@@ -314,9 +320,16 @@ function InlineCategoryChanger({
 
   const categoryGroups = useMemo(() => getAdminCategoryGroups(), [])
   const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
+  const kibrisSubcategories = useMemo(() => getKibrisSubcategories(), [])
   const yerelParts = useMemo(() => resolveYerelCategoryParts(localCategoryId), [localCategoryId])
+  const kibrisParts = useMemo(() => resolveKibrisCategoryParts(localCategoryId), [localCategoryId])
   const isYerel = isYerelCategoryTree(localCategoryId)
-  const mainCategoryId = isYerel ? YEREL_HABER_CATEGORY_ID : localCategoryId
+  const isKibris = isKibrisCategoryTree(localCategoryId)
+  const mainCategoryId = isYerel
+    ? YEREL_HABER_CATEGORY_ID
+    : isKibris
+      ? KIBRIS_HABERLERI_CATEGORY_ID
+      : localCategoryId
 
   useEffect(() => {
     setLocalCategoryId(categoryId)
@@ -327,8 +340,12 @@ function InlineCategoryChanger({
       const sub = yerelSubcategories.find((c) => c.id === yerelParts.subcategoryId)
       return sub ? `Yerel · ${getYerelSubcategoryShortLabel(sub)}` : 'Yerel Haber'
     }
+    if (isKibris && kibrisParts.subcategoryId) {
+      const sub = kibrisSubcategories.find((c) => c.id === kibrisParts.subcategoryId)
+      return sub ? `Kıbrıs · ${getKibrisSubcategoryShortLabel(sub)}` : 'Kıbrıs Haberleri'
+    }
     return getCategoryLabel(localCategoryId) || localCategoryId || 'Kategori'
-  }, [isYerel, yerelParts.subcategoryId, yerelSubcategories, localCategoryId])
+  }, [isYerel, isKibris, yerelParts.subcategoryId, kibrisParts.subcategoryId, yerelSubcategories, kibrisSubcategories, localCategoryId])
 
   const applyCategory = async (next: string) => {
     if (!next || next === localCategoryId || saving) return
@@ -348,6 +365,8 @@ function InlineCategoryChanger({
     setOpen(false)
     if (next === YEREL_HABER_CATEGORY_ID) {
       await applyCategory(composeYerelCategoryId(yerelParts.subcategoryId))
+    } else if (next === KIBRIS_HABERLERI_CATEGORY_ID) {
+      await applyCategory(composeKibrisCategoryId(kibrisParts.subcategoryId))
     } else {
       await applyCategory(next)
     }
@@ -355,6 +374,10 @@ function InlineCategoryChanger({
 
   const handleYerelSubSelect = async (subId: string) => {
     await applyCategory(composeYerelCategoryId(subId || null))
+  }
+
+  const handleKibrisSubSelect = async (subId: string) => {
+    await applyCategory(composeKibrisCategoryId(subId || null))
   }
 
   const isAction = variant === 'action'
@@ -402,6 +425,23 @@ function InlineCategoryChanger({
           {yerelSubcategories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {getYerelSubcategoryShortLabel(cat)}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {isKibris && (
+        <select
+          value={kibrisParts.subcategoryId ?? ''}
+          disabled={disabled || saving}
+          onChange={(e) => void handleKibrisSubSelect(e.target.value)}
+          className={selectCls}
+          title="Kıbrıs alt kategori"
+        >
+          <option value="">Genel Kıbrıs</option>
+          {kibrisSubcategories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {getKibrisSubcategoryShortLabel(cat)}
             </option>
           ))}
         </select>

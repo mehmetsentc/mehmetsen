@@ -3,7 +3,7 @@ import { getAiEditorById, listAiEditors } from './aiEditorService'
 import { hintCategoryFromText } from './categoryHint'
 import { normalizeCitySlug } from '@/constants/cities'
 import { slugifyCity } from '@/lib/location'
-import { isYerelCategoryTree } from '@/constants/config'
+import { isYerelCategoryTree, isKibrisCategoryTree } from '@/constants/config'
 import { resolveManagedCategories, resolveEditorCitySlug } from './editorPastNews'
 
 /** Default category → seed editor slug (Admin can override via editor.categoryIds). */
@@ -214,6 +214,7 @@ export function pickAiEditorFromList(
   }
 
   const isYerel = categoryId ? isYerelCategoryTree(categoryId) : false
+  const isKibris = categoryId ? isKibrisCategoryTree(categoryId) : false
   if (isYerel || (citySlug && categoryId === 'yerel-haber')) {
     const local = pickLocalEditor(assignable, citySlug)
     if (local) return local
@@ -232,7 +233,7 @@ export function pickAiEditorFromList(
     const byList = assignable.find((e) => editorManagesCategory(e, categoryId))
     if (byList) return byList
 
-    const slug = FALLBACK_CATEGORY_SLUG[categoryId]
+    const slug = (FALLBACK_CATEGORY_SLUG[categoryId] ?? (isKibrisCategoryTree(categoryId) ? 'defne-aksoy' : undefined))
     if (slug) {
       const bySlug = findBySlug(assignable, slug)
       if (bySlug) return bySlug

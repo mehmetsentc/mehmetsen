@@ -14,6 +14,7 @@ import {
   DEFAULT_CATEGORIES,
   TEKRARLAYAN_CATEGORY_ID,
   getYerelSubcategoryIdsForPrompt,
+  getKibrisSubcategoryIdsForPrompt,
 } from '@/constants/config'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { deepseekChatCompletion, getDeepSeekApiKey, getDeepSeekModel } from '@/lib/ai/deepseekClient'
@@ -122,12 +123,16 @@ ULUSAL BİRİNCİL → ulusal kategori (şehir yalnızca konumsa OK):
 Tek il/ilçe olayı için genel yerel-haber KULLANMA — en uygun yerel alt kategoriyi seç:
 ${getYerelSubcategoryIdsForPrompt().split('|').map((id) => `  - ${id}`).join('\n')}
 
+## KIBRIS ALT KATEGORİLER
+KKTC / Lefkoşa / Gazimağusa / Girne haberleri için genel kibris-haberleri yerine en uygun kibris-* seç:
+${getKibrisSubcategoryIdsForPrompt().split('|').map((id) => `  - ${id}`).join('\n')}
+
 ## KATEGORİ KURALLARI (kaynak adı kategoriyi BELİRLEMEZ)
 | İçerik ipuçları | Doğru kategori |
 |---|---|
 | Cumhurbaşkanı / TBMM / seçim / bakan / parti | siyaset |
 | Yabancı ülke / savaş / NATO / BM | dunya |
-| KKTC / Lefkoşa / Gazimağusa | kibris-haberleri |
+| KKTC / Lefkoşa / Gazimağusa (konuya göre) | kibris-siyaset / kibris-spor / kibris-asayis… |
 | Borsa / döviz / faiz / TCMB / hisse | finans-piyasa veya borsa |
 | Kripto / Bitcoin / blockchain | kripto |
 | Deprem ≥4.5 / darbe / suikast / büyük afet | son-dakika |

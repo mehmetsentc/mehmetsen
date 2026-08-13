@@ -4,12 +4,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Loader2, X } from 'lucide-react'
 import {
   composeYerelCategoryId,
+  composeKibrisCategoryId,
   getAdminCategoryGroups,
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
+  getKibrisSubcategories,
+  getKibrisSubcategoryShortLabel,
   isYerelCategoryTree,
+  isKibrisCategoryTree,
   resolveYerelCategoryParts,
+  resolveKibrisCategoryParts,
   YEREL_HABER_CATEGORY_ID,
+  KIBRIS_HABERLERI_CATEGORY_ID,
 } from '@/lib/mobileAdminCategory'
 import { cn } from '@/lib/utils'
 
@@ -32,14 +38,22 @@ export function MobileCategorySheet({
 }: MobileCategorySheetProps) {
   const categoryGroups = useMemo(() => getAdminCategoryGroups(), [])
   const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
-  const [step, setStep] = useState<'main' | 'yerel'>('main')
+  const kibrisSubcategories = useMemo(() => getKibrisSubcategories(), [])
+  const [step, setStep] = useState<'main' | 'yerel' | 'kibris'>('main')
 
   const yerelParts = useMemo(() => resolveYerelCategoryParts(categoryId), [categoryId])
-  const mainCategoryId = isYerelCategoryTree(categoryId) ? YEREL_HABER_CATEGORY_ID : categoryId
+  const kibrisParts = useMemo(() => resolveKibrisCategoryParts(categoryId), [categoryId])
+  const mainCategoryId = isYerelCategoryTree(categoryId)
+    ? YEREL_HABER_CATEGORY_ID
+    : isKibrisCategoryTree(categoryId)
+      ? KIBRIS_HABERLERI_CATEGORY_ID
+      : categoryId
 
   useEffect(() => {
     if (!open) return
-    setStep(isYerelCategoryTree(categoryId) ? 'yerel' : 'main')
+    if (isYerelCategoryTree(categoryId)) setStep('yerel')
+    else if (isKibrisCategoryTree(categoryId)) setStep('kibris')
+    else setStep('main')
   }, [open, categoryId])
 
   if (!open) return null
@@ -57,11 +71,19 @@ export function MobileCategorySheet({
       setStep('yerel')
       return
     }
+    if (next === KIBRIS_HABERLERI_CATEGORY_ID) {
+      setStep('kibris')
+      return
+    }
     await pick(next)
   }
 
   async function pickYerelSub(subId: string) {
     await pick(composeYerelCategoryId(subId || null))
+  }
+
+  async function pickKibrisSub(subId: string) {
+    await pick(composeKibrisCategoryId(subId || null))
   }
 
   return (
@@ -77,7 +99,7 @@ export function MobileCategorySheet({
           <span className="h-1 w-10 rounded-full bg-[rgb(var(--color-border))]" />
         </div>
         <div className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-3">
-          {step === 'yerel' ? (
+          {step === 'yerel' || step === 'kibris' ? (
             <button
               type="button"
               onClick={() => setStep('main')}
@@ -88,7 +110,7 @@ export function MobileCategorySheet({
             </button>
           ) : null}
           <h2 className="min-w-0 flex-1 text-base font-bold text-[rgb(var(--color-text))]">
-            {step === 'yerel' ? 'Yerel alt kategori' : title}
+            {step === 'yerel' ? 'Yerel alt kategori' : step === 'kibris' ? 'Kıbrıs alt kategori' : title}
           </h2>
           {saving ? <Loader2 className="h-5 w-5 animate-spin text-[rgb(var(--color-muted))]" /> : null}
           <button
@@ -126,6 +148,38 @@ export function MobileCategorySheet({
                 ))}
               </div>
             ))
+          ) : step === 'kibris' ? (
+            <>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void pickKibrisSub('')}
+                className={cn(
+                  'flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-medium disabled:opacity-50',
+                  !kibrisParts.subcategoryId
+                    ? 'bg-[rgb(var(--color-brand))]/10 font-semibold text-[rgb(var(--color-brand))]'
+                    : 'text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+                )}
+              >
+                Genel Kıbrıs
+              </button>
+              {kibrisSubcategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void pickKibrisSub(cat.id)}
+                  className={cn(
+                    'flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-medium disabled:opacity-50',
+                    cat.id === kibrisParts.subcategoryId
+                      ? 'bg-[rgb(var(--color-brand))]/10 font-semibold text-[rgb(var(--color-brand))]'
+                      : 'text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]'
+                  )}
+                >
+                  {getKibrisSubcategoryShortLabel(cat)}
+                </button>
+              ))}
+            </>
           ) : (
             <>
               <button

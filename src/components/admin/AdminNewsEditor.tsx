@@ -20,6 +20,12 @@ import {
   isYerelCategoryTree,
   resolveYerelCategoryParts,
   composeYerelCategoryId,
+  getKibrisSubcategories,
+  getKibrisSubcategoryShortLabel,
+  KIBRIS_HABERLERI_CATEGORY_ID,
+  isKibrisCategoryTree,
+  resolveKibrisCategoryParts,
+  composeKibrisCategoryId,
 } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
@@ -248,9 +254,13 @@ export function AdminNewsEditor({
   const isWorldCategory = categoryId === 'dunya'
   const yerelCategoryParts = useMemo(() => resolveYerelCategoryParts(categoryId), [categoryId])
   const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
+  const kibrisCategoryParts = useMemo(() => resolveKibrisCategoryParts(categoryId), [categoryId])
+  const kibrisSubcategories = useMemo(() => getKibrisSubcategories(), [])
   const mainCategoryValue = isYerelCategoryTree(categoryId)
     ? YEREL_HABER_CATEGORY_ID
-    : categoryId
+    : isKibrisCategoryTree(categoryId)
+      ? KIBRIS_HABERLERI_CATEGORY_ID
+      : categoryId
   const availableDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
   const [thumbnail, setThumbnail] = useState(post?.coverImageUrl ?? '')
   const [imageCaption, setImageCaption] = useState(sanitizeCaptionValue(post?.imageCaption) || '')
@@ -1111,6 +1121,10 @@ export function AdminNewsEditor({
               if (!isYerelCategoryTree(categoryId)) {
                 setCategoryId(YEREL_HABER_CATEGORY_ID)
               }
+            } else if (next === KIBRIS_HABERLERI_CATEGORY_ID) {
+              if (!isKibrisCategoryTree(categoryId)) {
+                setCategoryId(KIBRIS_HABERLERI_CATEGORY_ID)
+              }
             } else {
               setCategoryId(next)
             }
@@ -1149,6 +1163,25 @@ export function AdminNewsEditor({
             {yerelSubcategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {getYerelSubcategoryShortLabel(cat)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {isKibrisCategoryTree(categoryId) && (
+        <div className="min-w-[140px] flex-1">
+          <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+            Kıbrıs alt kategori
+          </label>
+          <select
+            value={kibrisCategoryParts.subcategoryId ?? ''}
+            onChange={(e) => setCategoryId(composeKibrisCategoryId(e.target.value || null))}
+            className={fieldInputCls}
+          >
+            <option value="">— Genel Kıbrıs —</option>
+            {kibrisSubcategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {getKibrisSubcategoryShortLabel(cat)}
               </option>
             ))}
           </select>

@@ -2,7 +2,7 @@
  * Category Engine — normalizes AI-assigned categories, applies editor overrides,
  * and post-validates with keyword heuristics.
  */
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, isKibrisCategoryTree } from '@/constants/config'
 import type { NewsroomEditorType } from '@/services/newsroom/types'
 
 const CATEGORY_ALIASES: Record<string, string> = {
@@ -847,7 +847,8 @@ export function validateCategoryClassification(
   }
 
   // ── KKTC / Kuzey Kıbrıs — gündem/dünya/yerel'e düşmesin ─────────────────
-  if (kibris && categoryId !== 'kibris-haberleri') {
+  // Preserve existing kibris-* alt kategori; otherwise force parent for later AI refine.
+  if (kibris && !isKibrisCategoryTree(categoryId)) {
     overrides.push(`kibris-keywords → kibris-haberleri (was ${categoryId})`)
     categoryId = 'kibris-haberleri'
     categoryConfidence = Math.max(categoryConfidence, 91)
@@ -861,9 +862,11 @@ export function validateCategoryClassification(
       categoryId = 'siyaset'
       categoryConfidence = Math.max(categoryConfidence, 90)
     } else if (kibris) {
-      overrides.push(`${prevCat}-source ama kibris-keywords → kibris-haberleri`)
-      categoryId = 'kibris-haberleri'
-      categoryConfidence = Math.max(categoryConfidence, 90)
+      if (!isKibrisCategoryTree(categoryId)) {
+        overrides.push(`${prevCat}-source ama kibris-keywords → kibris-haberleri`)
+        categoryId = 'kibris-haberleri'
+        categoryConfidence = Math.max(categoryConfidence, 90)
+      }
     } else if (dunya) {
       overrides.push(`${prevCat}-source ama dunya-keywords → dunya`)
       categoryId = 'dunya'

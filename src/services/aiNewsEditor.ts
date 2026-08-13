@@ -1,4 +1,4 @@
-import { DEFAULT_CATEGORIES, getYerelSubcategoryIdsForPrompt } from '@/constants/config'
+import { DEFAULT_CATEGORIES, getYerelSubcategoryIdsForPrompt, getKibrisSubcategoryIdsForPrompt } from '@/constants/config'
 import {
   buildFeedTeaser,
   cleanupNewsBody,
@@ -258,6 +258,9 @@ ADIM 3 — YEREL mi ULUSAL mi? (KONU ŞEHRİ EZMESİN — önce bunu çöz)
   - Genel yerel-haber KULLANMA — içeriğe en uygun yerel alt kategoriyi seç.
   - Seçenekler: ${getYerelSubcategoryIdsForPrompt()}
   - Hiçbiri uymuyorsa (çok nadir) → yerel-gundem
+  - KKTC / Kıbrıs (Lefkoşa, Gazimağusa, Girne): yerel-* DEĞİL — kibris-* kullan
+  - Kıbrıs seçenekleri: ${getKibrisSubcategoryIdsForPrompt()}
+  - Genel kibris-haberleri yerine mümkünse kibris-siyaset / kibris-spor / kibris-asayis vb. seç
   - Konu emlak/konut/kira (tek şehir) → yerel-emlak (emlak-konut DEĞİL)
   - Konu sağlık etkinliği/hastane (tek şehir) → yerel-saglik (saglik DEĞİL)
   - Konu çevre/göl/atık (tek şehir) → yerel-cevre-iklim (cevre-iklim DEĞİL)

@@ -36,12 +36,14 @@ import {
   resolveBreakingFlags,
 } from '@/services/newsroom/breakingPriority'
 import { categoryEngine } from '@/services/newsroom/categoryEngine'
-import { classifyArticleCategory, classifyYerelSubcategory } from '@/services/newsroom/aiCategoryClassifier'
+import { classifyArticleCategory, classifyYerelSubcategory, classifyKibrisSubcategory } from '@/services/newsroom/aiCategoryClassifier'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import {
   isYerelCategoryTree,
   resolveYerelSubcategoryForLocalNews,
   YEREL_HABER_CATEGORY_ID,
+  isKibrisCategoryTree,
+  KIBRIS_HABERLERI_CATEGORY_ID,
 } from '@/constants/config'
 import {
   mergeNationalFootballTags,
@@ -1095,6 +1097,32 @@ export async function processNewsroomArticle(
               ? `yerel birincil → ${yerelCategory}`
               : `yerel alt kategori → ${yerelCategory}`,
           )
+        }
+      }
+    }
+
+    // ── Kıbrıs alt kategori refine ───────────────────────────────────────────
+    {
+      const priorCategory = classification.categoryId || ''
+      if (isKibrisCategoryTree(priorCategory) || priorCategory === KIBRIS_HABERLERI_CATEGORY_ID) {
+        let kibrisCategory = priorCategory
+        if (kibrisCategory === KIBRIS_HABERLERI_CATEGORY_ID) {
+          try {
+            const kibrisCheck = await classifyKibrisSubcategory(
+              rewritten.title,
+              scopeBody,
+            )
+            if (kibrisCheck?.categoryId) {
+              kibrisCategory = kibrisCheck.categoryId
+            }
+          } catch {
+            // Non-blocking
+          }
+        }
+        if (kibrisCategory !== priorCategory) {
+          console.log(`[newsroom/kibris] Alt kategori: ${priorCategory} → ${kibrisCategory}`)
+          classification.categoryId = kibrisCategory
+          classification.overrides.push(`kibris alt kategori → ${kibrisCategory}`)
         }
       }
     }

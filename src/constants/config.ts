@@ -81,6 +81,46 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'siyaset',     name: 'Siyaset',     slug: 'siyaset',     iconName: 'landmark',     color: '#7C3AED' },
   { id: 'dunya',       name: 'Dünya',       slug: 'dunya',       iconName: 'globe',        color: '#6B7280' },
   { id: 'kibris-haberleri', name: 'Kıbrıs Haberleri', slug: 'kibris-haberleri', iconName: 'flag', color: '#0E7490' },
+  { id: 'kibris-asayis',   name: 'Kıbrıs Asayiş',   slug: 'kibris-asayis',   iconName: 'shield-alert', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-gundem',   name: 'Kıbrıs Gündem',   slug: 'kibris-gundem',   iconName: 'newspaper',    color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-siyaset',  name: 'Kıbrıs Siyaset',  slug: 'kibris-siyaset',  iconName: 'landmark',     color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-spor',     name: 'Kıbrıs Spor',     slug: 'kibris-spor',     iconName: 'trophy',       color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-futbol',   name: 'Kıbrıs Futbol',   slug: 'kibris-futbol',   iconName: 'circle-dot',   color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-basketbol', name: 'Kıbrıs Basketbol', slug: 'kibris-basketbol', iconName: 'circle',     color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-voleybol', name: 'Kıbrıs Voleybol', slug: 'kibris-voleybol', iconName: 'circle',       color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-hentbol',  name: 'Kıbrıs Hentbol',  slug: 'kibris-hentbol',  iconName: 'circle',       color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-atletizm', name: 'Kıbrıs Atletizm', slug: 'kibris-atletizm', iconName: 'zap',          color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-gures',    name: 'Kıbrıs Güreş',    slug: 'kibris-gures',    iconName: 'swords',       color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-tenis',    name: 'Kıbrıs Tenis',    slug: 'kibris-tenis',    iconName: 'circle',       color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-yuzme',    name: 'Kıbrıs Yüzme',    slug: 'kibris-yuzme',    iconName: 'waves',        color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-motor-sporlari', name: 'Kıbrıs Motor Sporları', slug: 'kibris-motor-sporlari', iconName: 'gauge', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-etkinlik', name: 'Kıbrıs Etkinlik', slug: 'kibris-etkinlik', iconName: 'calendar',     color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-sinema',   name: 'Kıbrıs Sinema',   slug: 'kibris-sinema',   iconName: 'film',         color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-kultur',   name: 'Kıbrıs Kültür',   slug: 'kibris-kultur',   iconName: 'palette',      color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-konser',   name: 'Kıbrıs Konser',   slug: 'kibris-konser',   iconName: 'music',        color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-magazin',  name: 'Kıbrıs Magazin',  slug: 'kibris-magazin',  iconName: 'star',         color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-saglik',   name: 'Kıbrıs Sağlık',   slug: 'kibris-saglik',   iconName: 'heart',        color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-yasam',    name: 'Kıbrıs Yaşam',    slug: 'kibris-yasam',    iconName: 'leaf',         color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-gezi',     name: 'Kıbrıs Gezi',     slug: 'kibris-gezi',     iconName: 'map',          color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-egitim',   name: 'Kıbrıs Eğitim',   slug: 'kibris-egitim',   iconName: 'graduation-cap', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-finans',   name: 'Kıbrıs Finans',   slug: 'kibris-finans',   iconName: 'chart-line',   color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-kariyer',  name: 'Kıbrıs Kariyer',  slug: 'kibris-kariyer',  iconName: 'briefcase',    color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-ekonomi',  name: 'Kıbrıs Ekonomi',  slug: 'kibris-ekonomi',  iconName: 'trending-up',  color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-emlak',    name: 'Kıbrıs Emlak',    slug: 'kibris-emlak',    iconName: 'building-2',   color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-enerji',   name: 'Kıbrıs Enerji',   slug: 'kibris-enerji',   iconName: 'bolt',         color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-teknoloji', name: 'Kıbrıs Teknoloji', slug: 'kibris-teknoloji', iconName: 'cpu',       color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-bilim',    name: 'Kıbrıs Bilim',    slug: 'kibris-bilim',    iconName: 'flask',        color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-cevre-iklim', name: 'Kıbrıs Çevre & İklim', slug: 'kibris-cevre-iklim', iconName: 'tree-pine', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-oyun-espor', name: 'Kıbrıs Oyun & Espor', slug: 'kibris-oyun-espor', iconName: 'gamepad-2', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-din-inanc', name: 'Kıbrıs Din & İnanç', slug: 'kibris-din-inanc', iconName: 'moon-star', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-tiyatro',  name: 'Kıbrıs Tiyatro',  slug: 'kibris-tiyatro',  iconName: 'theater',      color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-festival', name: 'Kıbrıs Festival', slug: 'kibris-festival', iconName: 'party-popper', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-gastronomi', name: 'Kıbrıs Gastronomi', slug: 'kibris-gastronomi', iconName: 'utensils', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-otomobil', name: 'Kıbrıs Otomobil', slug: 'kibris-otomobil', iconName: 'car',          color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-meteoroloji', name: 'Kıbrıs Meteoroloji', slug: 'kibris-meteoroloji', iconName: 'cloud-rain', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-turizm',   name: 'Kıbrıs Turizm',   slug: 'kibris-turizm',   iconName: 'plane',        color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-tarih',    name: 'Kıbrıs Tarih',    slug: 'kibris-tarih',    iconName: 'book-open',    color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-duyuru',   name: 'Kıbrıs Duyuru',   slug: 'kibris-duyuru',   iconName: 'megaphone',    color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'ekonomi',     name: 'Ekonomi',     slug: 'ekonomi',     iconName: 'trending-up',  color: '#F59E0B' },
   { id: 'borsa',       name: 'Borsa',       slug: 'borsa',       iconName: 'bar-chart-2',  color: '#22C55E', parentId: 'ekonomi', standalone: true },
   { id: 'kripto',      name: 'Kripto',      slug: 'kripto',      iconName: 'bitcoin',      color: '#F7931A', parentId: 'ekonomi', standalone: true },
@@ -163,7 +203,7 @@ export function getAdminCategoryGroups(): Array<{ label: string; categories: Cat
       const parent = DEFAULT_CATEGORIES.find((c) => c.id === id)
       if (!parent) return []
       const items =
-        id === YEREL_HABER_CATEGORY_ID
+        id === YEREL_HABER_CATEGORY_ID || id === KIBRIS_HABERLERI_CATEGORY_ID
           ? [parent]
           : [parent, ...getSubcategories(id)]
       return items.filter((cat) => {
@@ -242,6 +282,126 @@ export const YEREL_SUBCATEGORY_IDS = [
   'yerel-oyun-espor',
   'yerel-duyuru',
 ] as const
+
+
+export const KIBRIS_HABERLERI_CATEGORY_ID = 'kibris-haberleri'
+
+/**
+ * Registered Kıbrıs subcategory ids (same topics as Yerel, under kibris-haberleri).
+ * CMS/mobile pickers use `getKibrisSubcategories()` (Turkish A–Z by short label).
+ */
+export const KIBRIS_SUBCATEGORY_IDS = [
+  'kibris-asayis',
+  'kibris-gundem',
+  'kibris-siyaset',
+  'kibris-spor',
+  'kibris-futbol',
+  'kibris-basketbol',
+  'kibris-voleybol',
+  'kibris-hentbol',
+  'kibris-atletizm',
+  'kibris-gures',
+  'kibris-tenis',
+  'kibris-yuzme',
+  'kibris-motor-sporlari',
+  'kibris-ekonomi',
+  'kibris-finans',
+  'kibris-emlak',
+  'kibris-enerji',
+  'kibris-kariyer',
+  'kibris-teknoloji',
+  'kibris-etkinlik',
+  'kibris-sinema',
+  'kibris-kultur',
+  'kibris-tiyatro',
+  'kibris-konser',
+  'kibris-festival',
+  'kibris-magazin',
+  'kibris-yasam',
+  'kibris-saglik',
+  'kibris-bilim',
+  'kibris-egitim',
+  'kibris-cevre-iklim',
+  'kibris-din-inanc',
+  'kibris-gastronomi',
+  'kibris-otomobil',
+  'kibris-meteoroloji',
+  'kibris-turizm',
+  'kibris-gezi',
+  'kibris-tarih',
+  'kibris-oyun-espor',
+  'kibris-duyuru',
+] as const
+
+const KIBRIS_CATEGORY_IDS = new Set([KIBRIS_HABERLERI_CATEGORY_ID])
+
+/** Short label for Kıbrıs subcategories in admin dropdowns (e.g. "Kıbrıs Gündem" → "Gündem"). */
+export function getKibrisSubcategoryShortLabel(cat: CategoryDef): string {
+  if (cat.id === KIBRIS_HABERLERI_CATEGORY_ID || !cat.parentId) return cat.name
+  if (KIBRIS_CATEGORY_IDS.has(cat.parentId)) {
+    return cat.name.replace(/^Kıbrıs\s+/i, '')
+  }
+  return cat.name
+}
+
+/**
+ * Kıbrıs child categories for CMS / mobile pickers.
+ * Same topic set as Yerel, sorted by Turkish short label.
+ */
+export function getKibrisSubcategories(): CategoryDef[] {
+  const subs = getSubcategories(KIBRIS_HABERLERI_CATEGORY_ID)
+  const byId = new Map(subs.map((c) => [c.id, c]))
+  const ordered = KIBRIS_SUBCATEGORY_IDS.flatMap((id) => {
+    const cat = byId.get(id)
+    return cat ? [cat] : []
+  })
+  const seen = new Set(ordered.map((c) => c.id))
+  for (const cat of subs) {
+    if (!seen.has(cat.id)) ordered.push(cat)
+  }
+  return ordered.sort((a, b) =>
+    getKibrisSubcategoryShortLabel(a).localeCompare(
+      getKibrisSubcategoryShortLabel(b),
+      'tr',
+      { sensitivity: 'base' },
+    ),
+  )
+}
+
+/** True when categoryId is Kıbrıs Haberleri or one of its subcategories. */
+export function isKibrisCategoryTree(categoryId: string): boolean {
+  const cat = categoryId?.trim().toLowerCase() ?? ''
+  if (KIBRIS_CATEGORY_IDS.has(cat)) return true
+  const parent = getParentCategory(cat)
+  return parent != null && KIBRIS_CATEGORY_IDS.has(parent.id)
+}
+
+/** Split stored categoryId into Kıbrıs parent + optional subcategory. */
+export function resolveKibrisCategoryParts(categoryId: string): {
+  parentId: string
+  subcategoryId: string | null
+} {
+  const cat = categoryId?.trim() ?? ''
+  if (!cat || KIBRIS_CATEGORY_IDS.has(cat)) {
+    return { parentId: KIBRIS_HABERLERI_CATEGORY_ID, subcategoryId: null }
+  }
+  const parent = getParentCategory(cat)
+  if (parent && KIBRIS_CATEGORY_IDS.has(parent.id)) {
+    return { parentId: KIBRIS_HABERLERI_CATEGORY_ID, subcategoryId: cat }
+  }
+  return { parentId: cat, subcategoryId: null }
+}
+
+/** Compose Firestore categoryId from Kıbrıs subcategory selection (empty → kibris-haberleri). */
+export function composeKibrisCategoryId(subcategoryId: string | null | undefined): string {
+  const sub = subcategoryId?.trim()
+  return sub || KIBRIS_HABERLERI_CATEGORY_ID
+}
+
+/** Pipe-separated kıbrıs subcategory ids for AI prompts. */
+export function getKibrisSubcategoryIdsForPrompt(): string {
+  return KIBRIS_SUBCATEGORY_IDS.join('|')
+}
 
 /**
  * Yerel-only alt kategoriler — ulusal ana sayfa raylarında gösterilmez
@@ -456,6 +616,7 @@ export function mapNationalCategoryToYerelSubcategory(nationalCategoryId: string
 export function shouldLocalizeCategory(categoryId: string, citySlug?: string | null): boolean {
   const cat = categoryId?.trim().toLowerCase() ?? ''
   if (NON_LOCALIZABLE_CATEGORIES.has(cat)) return false
+  if (isKibrisCategoryTree(cat)) return false
   if (isYerelCategoryTree(cat)) return true
   return Boolean(citySlug?.trim())
 }

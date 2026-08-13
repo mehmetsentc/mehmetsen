@@ -6,6 +6,8 @@ import {
   DEFAULT_CATEGORIES,
   YEREL_TO_NATIONAL_CATEGORY_MAP,
   getYerelSubcategoryShortLabel,
+  getKibrisSubcategoryShortLabel,
+  isKibrisCategoryTree,
   type CategoryDef,
 } from '@/constants/config'
 
@@ -30,6 +32,16 @@ const SPORT_CATEGORY_IDS = new Set([
   'yerel-yuzme',
   'yerel-motor-sporlari',
   'dunya-kupasi-2026',
+  'kibris-spor',
+  'kibris-futbol',
+  'kibris-basketbol',
+  'kibris-voleybol',
+  'kibris-hentbol',
+  'kibris-atletizm',
+  'kibris-gures',
+  'kibris-tenis',
+  'kibris-yuzme',
+  'kibris-motor-sporlari',
 ])
 
 /** Fixed uppercase labels for ids whose display names are long or ambiguous. */
@@ -109,6 +121,14 @@ export function getSocialPostCategoryLabel(
     const yerelCat = getCategoryById(cat)
     if (yerelCat) {
       return toTurkishUpper(getYerelSubcategoryShortLabel(yerelCat))
+    }
+  }
+
+  if (isKibrisCategoryTree(cat) && cat !== 'kibris-haberleri') {
+    if (SPORT_CATEGORY_IDS.has(cat)) return 'SPOR'
+    const kibrisCat = getCategoryById(cat)
+    if (kibrisCat) {
+      return toTurkishUpper(getKibrisSubcategoryShortLabel(kibrisCat))
     }
   }
 

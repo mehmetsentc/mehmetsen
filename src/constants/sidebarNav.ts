@@ -246,7 +246,11 @@ function buildCategoryItem(entry: (typeof SIDEBAR_CATEGORY_ORDER)[number]): Side
   if (!def) return null
 
   const accent = entry.accent ?? ACCENT_BY_ID[def.id] ?? 'muted'
-  const children = getSubcategories(def.id).map((sub) => toChildItem(sub, accent))
+  // Kıbrıs alt kategorileri CMS'te seçilir; sidebar'ı şişirmemek için children yok (yerel gibi).
+  const children =
+    def.id === 'kibris-haberleri'
+      ? []
+      : getSubcategories(def.id).map((sub) => toChildItem(sub, accent))
 
   return {
     id: def.id,

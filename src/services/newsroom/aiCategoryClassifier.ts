@@ -18,6 +18,9 @@ import {
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
   YEREL_HABER_CATEGORY_ID,
+  getKibrisSubcategories,
+  getKibrisSubcategoryShortLabel,
+  KIBRIS_HABERLERI_CATEGORY_ID,
 } from '@/constants/config'
 
 const YEREL_SUBCATEGORIES = getYerelSubcategories().map((c) => c.id) as readonly string[]
@@ -72,7 +75,7 @@ const CATEGORY_DESCRIPTIONS: Record<NewsCategory, string> = {
   gundem:        'Türkiye genelini veya birden fazla ili etkileyen genel gündem. Eğitim/çevre/moda için özel kategorileri tercih et. Tek il/ilçe haberleri → yerel-haber.',
   siyaset:       'Siyasi partiler, seçimler, meclis, hükümet, cumhurbaşkanı, CHP, AKP, MHP politikası',
   dunya:         'Uluslararası haberler, yabancı ülkeler, savaş, diplomasi, NATO, AB, BM (KKTC haberleri için kullanma)',
-  'kibris-haberleri': 'Kuzey Kıbrıs Türk Cumhuriyeti (KKTC): Lefkoşa, Gazimağusa, Girne, KKTC siyaseti, cumhurbaşkanı, meclis, kuzey kıbrıs yerel haberleri. Güney Kıbrıs/Yunan haberleri değil.',
+  'kibris-haberleri': 'KKTC / Kuzey Kıbrıs genel haberi. Alt konu belliyse pipeline kibris-* (kibris-siyaset, kibris-spor, kibris-asayis…) atar. Güney Kıbrıs/Yunan haberleri değil.',
   ekonomi:       'Genel ekonomi: şirket, ticaret, makroekonomi (alt dal belli değilse)',
   'finans-piyasa': 'Borsa, döviz, faiz, TCMB, hisse, yatırım, menkul kıymet',
   'emlak-konut': 'Konut, emlak, kira, mortgage, gayrimenkul, TOKİ',
@@ -308,6 +311,97 @@ JSON formatında yanıt ver:
 
     return {
       categoryId: categoryId as YerelSubcategory,
+      confidence,
+      reason: parsed.reason ?? '',
+    }
+  } catch {
+    return null
+  }
+}
+
+const KIBRIS_SUBCATEGORIES = getKibrisSubcategories().map((c) => c.id) as readonly string[]
+
+export type KibrisSubcategory = (typeof KIBRIS_SUBCATEGORIES)[number]
+
+export interface KibrisClassifierResult {
+  categoryId: KibrisSubcategory
+  confidence: number
+  reason: string
+}
+
+/**
+ * Classify a KKTC / Kıbrıs news article into a specific kibris-* subcategory.
+ * Called when the national classifier returns kibris-haberleri without a subcategory.
+ */
+export async function classifyKibrisSubcategory(
+  title: string,
+  content: string,
+): Promise<KibrisClassifierResult | null> {
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
+  if (!deepseekKey) return null
+
+  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
+  const kibrisCats = getKibrisSubcategories()
+  const categoryList = kibrisCats
+    .map((c) => `  - ${c.id}: ${getKibrisSubcategoryShortLabel(c)}`)
+    .join('\n')
+
+  const prompt = `Sen deneyimli bir Kıbrıs (KKTC) haber editörüsün. Aşağıdaki KKTC / Kuzey Kıbrıs haberi için EN UYGUN kıbrıs alt kategorisini seç.
+
+BAŞLIK: ${title}
+İÇERİK (ilk 300 kelime): ${content.slice(0, 1500)}
+
+KIBRIS ALT KATEGORİ SEÇENEKLERİ:
+${categoryList}
+
+KURALLAR:
+- Yalnızca yukarıdaki kibris-* id'lerinden birini seç.
+- ${KIBRIS_HABERLERI_CATEGORY_ID} kullanma — mutlaka en uygun alt kategoriyi seç.
+- Meclis/cumhurbaşkanı/parti → kibris-siyaset. Kaza/suç/polis → kibris-asayis.
+- KTFF / futbol → kibris-futbol; branş belirsiz spor → kibris-spor.
+- Resmi duyuru/ilan → kibris-duyuru. Ekonomi/iş → kibris-ekonomi.
+- Güney Kıbrıs / Yunanistan haberi ise bu sınıflandırıcıyı kullanma.
+
+JSON formatında yanıt ver:
+{"categoryId": "kibris-xxx", "confidence": 85, "reason": "kısa açıklama"}`
+
+  try {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${deepseekKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
+        max_tokens: 200,
+        messages: [
+          { role: 'system', content: 'Sen bir Kıbrıs haber kategorileme uzmanısın. Yalnızca JSON döndür.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+
+    if (!res.ok) return null
+
+    const json = await res.json() as {
+      choices?: Array<{ message?: { content?: string } }>
+    }
+    const raw = json.choices?.[0]?.message?.content?.trim()
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
+    const categoryId = parsed.categoryId?.trim() ?? ''
+    const confidence = Number(parsed.confidence ?? 0)
+
+    if (!KIBRIS_SUBCATEGORIES.includes(categoryId) || confidence < 70) return null
+
+    return {
+      categoryId: categoryId as KibrisSubcategory,
       confidence,
       reason: parsed.reason ?? '',
     }

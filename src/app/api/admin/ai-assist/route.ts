@@ -4,7 +4,7 @@ import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { generateImageAnalysis, type ImageAnalysis } from '@/lib/ai/imageSeo'
 import { researchLiveNews } from '@/lib/ai/liveResearch'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, isKibrisCategoryTree } from '@/constants/config'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
@@ -559,7 +559,7 @@ export async function POST(request: Request) {
           ? 'publish'
           : 'review'
       const countryFromText =
-        categoryId === 'dunya' || categoryId === 'kibris-haberleri'
+        categoryId === 'dunya' || isKibrisCategoryTree(categoryId)
           ? resolveCountryFromText(`${title}\n${spot}\n${content}\n${tags.join(' ')}`)
           : null
       return NextResponse.json({
