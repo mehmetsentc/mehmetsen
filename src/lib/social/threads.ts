@@ -17,10 +17,12 @@
  *   TEXT  — text only (fallback when no image)
  */
 import type { SocialPublishPayload, SocialPublishResult } from './types'
-import { clampAtWordBoundary } from './feedCaption'
+import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from './feedCaption'
 
 const THREADS_API_BASE = 'https://graph.threads.net/v1.0'
-const THREADS_CAPTION_LIMIT = 500
+/** Meta Threads API: post text max 500 characters (emojis = UTF-8 bytes). */
+export const THREADS_CAPTION_LIMIT = 500
+const THREADS_CTA = 'Haberin devamını oku'
 const CONTAINER_POLL_INTERVAL_MS = 2000
 const CONTAINER_POLL_MAX_ATTEMPTS = 15 // 30s max wait
 
@@ -30,13 +32,16 @@ const CONTAINER_POLL_MAX_ATTEMPTS = 15 // 30s max wait
  * Threads caption (max 500 chars):
  *   📰 {başlık}
  *
- *   {kısa açıklama}
+ *   {kısa açıklama — cümle sınırında kısaltılır}
  *
+ *   Haberin devamını oku
  *   {articleUrl}
  *
  *   #tag1 #tag2
+ *
+ * CTA + URL için yer bırakılır; gövde asla cümle ortasından kesilmez.
  */
-function buildThreadsCaption(payload: SocialPublishPayload): string {
+export function buildThreadsCaption(payload: SocialPublishPayload): string {
   const title = (payload.title ?? '').replace(/\s+/g, ' ').trim()
   const body  = (payload.description ?? '').replace(/\s+/g, ' ').trim()
   const url   = payload.articleUrl?.trim() ?? ''
@@ -44,10 +49,12 @@ function buildThreadsCaption(payload: SocialPublishPayload): string {
     .map(t => (String(t).trim().startsWith('#') ? String(t).trim() : `#${String(t).trim()}`))
     .join(' ')
 
+  const linkBlock = url ? `${THREADS_CTA}\n${url}` : ''
+
   const assemble = (t: string, b: string, withTags: boolean): string => {
     const parts: string[] = [`📰 ${t}`]
     if (b) { parts.push(''); parts.push(b) }
-    if (url) { parts.push(''); parts.push(url) }
+    if (linkBlock) { parts.push(''); parts.push(linkBlock) }
     if (withTags && tags) { parts.push(''); parts.push(tags) }
     return parts.join('\n')
   }
@@ -56,24 +63,25 @@ function buildThreadsCaption(payload: SocialPublishPayload): string {
   let caption = assemble(title, body, true)
   if (caption.length <= THREADS_CAPTION_LIMIT) return caption
 
-  // 2. Hashtag'siz
+  // 2. Hashtag'siz — CTA + URL korunsun
   caption = assemble(title, body, false)
   if (caption.length <= THREADS_CAPTION_LIMIT) return caption
 
-  // 3. Açıklamayı kısalt
+  // 3. Açıklamayı tam cümle sınırında kısalt (CTA + URL + manşet sabit)
   const overhead = assemble(title, '', false).length + (body ? 2 : 0)
-  const bodyBudget = Math.max(60, THREADS_CAPTION_LIMIT - overhead - 4)
-  const shortBody = clampAtWordBoundary(body, bodyBudget)
+  const bodyBudget = Math.max(40, THREADS_CAPTION_LIMIT - overhead - 4)
+  const shortBody = clampCompleteSentences(body, bodyBudget)
   caption = assemble(title, shortBody, false)
   if (caption.length <= THREADS_CAPTION_LIMIT) return caption
 
-  // 4. Açıklama yok, başlık kıs
-  const urlOverhead = url ? url.length + 2 : 0
-  const titleBudget = Math.max(40, THREADS_CAPTION_LIMIT - urlOverhead - 4)
-  const shortTitle  = clampAtWordBoundary(title, titleBudget)
+  // 4. Açıklama yok; manşeti mümkünse tam tut, gerekirse kelime sınırında kıs
+  const linkOverhead = linkBlock ? linkBlock.length + 2 : 0
+  const titleBudget = Math.max(40, THREADS_CAPTION_LIMIT - linkOverhead - 4) // "📰 " + newlines
+  const shortTitle = clampCompleteHeadline(title, titleBudget)
   caption = assemble(shortTitle, '', false)
   if (caption.length <= THREADS_CAPTION_LIMIT) return caption
 
+  // Asla URL/CTA'yı ortadan kesme — limit aşarsa CTA'sız manşet (nadir)
   return clampAtWordBoundary(`📰 ${shortTitle}`, THREADS_CAPTION_LIMIT)
 }
 
