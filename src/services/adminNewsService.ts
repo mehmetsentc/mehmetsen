@@ -76,6 +76,9 @@ export type AdminNewsFilter =
   | 'removed'
   | 'featured'
 
+/** Admin list sort — date = newest first; views = viewsCount desc. */
+export type AdminNewsSort = 'date' | 'views'
+
 export type AdminNewsSource = 'news' | 'newsDrafts' | 'newsQueue'
 
 export interface AdminNewsItem extends Post {
@@ -246,7 +249,8 @@ function mapAdminNewsDocs(
   docs: QueryDocumentSnapshot[],
   filter: AdminNewsFilter,
   categoryId?: string,
-  citySlug?: string
+  citySlug?: string,
+  sort: AdminNewsSort = 'date'
 ): AdminNewsItem[] {
   const sorted = [...docs].sort(
     (a, b) =>
@@ -281,11 +285,15 @@ function mapAdminNewsDocs(
     posts = posts.filter((p) => p.status === 'draft')
   }
 
-  posts.sort((a, b) => {
-    const aMs = Date.parse(a.createdAt) || 0
-    const bMs = Date.parse(b.createdAt) || 0
-    return bMs - aMs
-  })
+  if (sort === 'views') {
+    posts.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+  } else {
+    posts.sort((a, b) => {
+      const aMs = Date.parse(a.createdAt) || 0
+      const bMs = Date.parse(b.createdAt) || 0
+      return bMs - aMs
+    })
+  }
   return posts
 }
 
@@ -299,19 +307,20 @@ export const adminNewsService = {
     lastDoc?: QueryDocumentSnapshot,
     categoryId?: string,
     limitOverride?: number,
-    citySlug?: string
+    citySlug?: string,
+    sort: AdminNewsSort = 'date'
   ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
     const pageSize = limitOverride ?? PAGE_SIZE
     if (filter === 'pending') {
-      return listPendingQueue(lastDoc)
+      return listPendingQueue(lastDoc, sort)
     }
 
     if (filter === 'review') {
-      return listReviewQueue(lastDoc, categoryId, limitOverride, citySlug)
+      return listReviewQueue(lastDoc, categoryId, limitOverride, citySlug, sort)
     }
 
     if (filter === 'duplicate') {
-      return listDuplicateNews(lastDoc, categoryId, limitOverride, citySlug)
+      return listDuplicateNews(lastDoc, categoryId, limitOverride, citySlug, sort)
     }
 
     const status = statusConstraint(filter)
@@ -322,6 +331,8 @@ export const adminNewsService = {
     if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
     if (citySlug) filterConstraints.push(where('citySlug', '==', citySlug))
 
+    const viewsOverFetch = Math.max(pageSize * 10, 500)
+
     // Draft/pending rows often lack createdAt/publishedAt. Firestore orderBy on a
     // missing field returns an empty snapshot (success) — so we must keep trying
     // weaker queries when a status filter yields zero docs.
@@ -329,27 +340,66 @@ export const adminNewsService = {
     // client-side sort in mapAdminNewsDocs — otherwise updatedAt-ordered fetches
     // can return recently-edited old articles while newer articles fall outside
     // the page window.
-    const queryAttempts: QueryConstraint[][] = [
-      [...filterConstraints, orderBy('createdAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
-      [...filterConstraints, orderBy('updatedAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
-      [...filterConstraints, orderBy('publishedAt', 'desc'), limit(pageSize)],
-      [...filterConstraints, limit(pageSize * 2)],
-      [limit(Math.max(pageSize * 3, 150))],
-    ]
+    // views: prefer real viewsCount ordering; fall back to over-fetch + in-memory sort
+    // when composite indexes (categoryId/status + viewsCount) are missing.
+    const queryAttempts: QueryConstraint[][] =
+      sort === 'views'
+        ? [
+            [
+              ...filterConstraints,
+              orderBy('viewsCount', 'desc'),
+              ...(lastDoc ? [startAfter(lastDoc)] : []),
+              limit(pageSize),
+            ],
+            [...filterConstraints, orderBy('viewsCount', 'desc'), limit(pageSize)],
+            [...filterConstraints, orderBy('createdAt', 'desc'), limit(viewsOverFetch)],
+            [...filterConstraints, limit(viewsOverFetch)],
+            [orderBy('viewsCount', 'desc'), limit(viewsOverFetch)],
+            [limit(viewsOverFetch)],
+          ]
+        : [
+            [
+              ...filterConstraints,
+              orderBy('createdAt', 'desc'),
+              ...(lastDoc ? [startAfter(lastDoc)] : []),
+              limit(pageSize),
+            ],
+            [
+              ...filterConstraints,
+              orderBy('updatedAt', 'desc'),
+              ...(lastDoc ? [startAfter(lastDoc)] : []),
+              limit(pageSize),
+            ],
+            [...filterConstraints, orderBy('publishedAt', 'desc'), limit(pageSize)],
+            [...filterConstraints, limit(pageSize * 2)],
+            [limit(Math.max(pageSize * 3, 150))],
+          ]
 
     let lastError: unknown = null
     for (let i = 0; i < queryAttempts.length; i++) {
       const constraints = queryAttempts[i]!
       const isLast = i === queryAttempts.length - 1
+      // First two views attempts use orderBy('viewsCount') — cursor pagination is valid there.
+      const isViewsOrderedAttempt = sort === 'views' && i <= 1
       try {
         const snap = await fetchAdminNewsSnap(constraints)
-        const allFiltered = mapAdminNewsDocs(snap.docs, filter, categoryId, citySlug)
+        const allFiltered = mapAdminNewsDocs(snap.docs, filter, categoryId, citySlug, sort)
         const posts = allFiltered.slice(0, pageSize)
         // Empty ordered query ≠ "no drafts" — try next attempt while filter is set.
-        const hasServerFilter = !!(status || filter === 'removed' || filter === 'featured' || citySlug)
+        const hasServerFilter = !!(
+          status ||
+          filter === 'removed' ||
+          filter === 'featured' ||
+          citySlug ||
+          categoryId
+        )
         if (posts.length === 0 && hasServerFilter && !isLast) continue
-        // Classic cursor pagination: a full page of filtered results implies another page may exist.
-        const hasMore = posts.length >= pageSize
+        // Classic cursor pagination only when Firestore already ordered by viewsCount;
+        // over-fetch fallbacks are a single ranked page (same as search/city bulk).
+        const hasMore =
+          sort === 'views'
+            ? isViewsOrderedAttempt && posts.length >= pageSize && snap.docs.length >= pageSize
+            : posts.length >= pageSize
         return {
           posts,
           lastDoc: snap.docs[snap.docs.length - 1] ?? null,
@@ -749,20 +799,30 @@ async function listReviewQueue(
   lastDoc?: QueryDocumentSnapshot,
   categoryId?: string,
   limitOverride?: number,
-  citySlug?: string
+  citySlug?: string,
+  sort: AdminNewsSort = 'date'
 ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
   const pageSize = limitOverride ?? PAGE_SIZE
   const filterConstraints: QueryConstraint[] = [where('needsReview', '==', true)]
   if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
   if (citySlug) filterConstraints.push(where('citySlug', '==', citySlug))
 
-  const queryAttempts: QueryConstraint[][] = [
-    [...filterConstraints, orderBy('createdAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
-    [...filterConstraints, orderBy('updatedAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
-    [...filterConstraints, orderBy('publishedAt', 'desc'), limit(pageSize)],
-    [...filterConstraints, limit(pageSize * 2)],
-    [where('needsReview', '==', true), limit(Math.max(pageSize * 3, 150))],
-  ]
+  const queryAttempts: QueryConstraint[][] =
+    sort === 'views'
+      ? [
+          [...filterConstraints, orderBy('viewsCount', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
+          [...filterConstraints, orderBy('viewsCount', 'desc'), limit(pageSize)],
+          [...filterConstraints, orderBy('createdAt', 'desc'), limit(Math.max(pageSize * 10, 500))],
+          [...filterConstraints, limit(Math.max(pageSize * 10, 500))],
+          [where('needsReview', '==', true), limit(Math.max(pageSize * 3, 150))],
+        ]
+      : [
+          [...filterConstraints, orderBy('createdAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
+          [...filterConstraints, orderBy('updatedAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
+          [...filterConstraints, orderBy('publishedAt', 'desc'), limit(pageSize)],
+          [...filterConstraints, limit(pageSize * 2)],
+          [where('needsReview', '==', true), limit(Math.max(pageSize * 3, 150))],
+        ]
 
   let lastError: unknown = null
   for (let i = 0; i < queryAttempts.length; i++) {
@@ -770,7 +830,7 @@ async function listReviewQueue(
     const isLast = i === queryAttempts.length - 1
     try {
       const snap = await fetchAdminNewsSnap(constraints)
-      const posts = mapAdminNewsDocs(snap.docs, 'published', categoryId, citySlug).filter(
+      const posts = mapAdminNewsDocs(snap.docs, 'published', categoryId, citySlug, sort).filter(
         (p) => p.needsReview === true
       )
       if (posts.length === 0 && !isLast) continue
@@ -778,7 +838,7 @@ async function listReviewQueue(
       return {
         posts: sliced,
         lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: sliced.length >= pageSize,
+        hasMore: sort === 'views' ? i <= 1 && sliced.length >= pageSize : sliced.length >= pageSize,
       }
     } catch (error) {
       lastError = error
@@ -795,7 +855,8 @@ async function listDuplicateNews(
   lastDoc?: QueryDocumentSnapshot,
   categoryId?: string,
   limitOverride?: number,
-  citySlug?: string
+  citySlug?: string,
+  sort: AdminNewsSort = 'date'
 ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
   const pageSize = limitOverride ?? PAGE_SIZE
   const items: AdminNewsItem[] = []
@@ -860,7 +921,11 @@ async function listDuplicateNews(
   if (categoryId) posts = posts.filter((p) => p.categoryId === categoryId)
   if (citySlug) posts = posts.filter((p) => postMatchesCitySlug(p, citySlug))
 
-  posts.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+  if (sort === 'views') {
+    posts.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+  } else {
+    posts.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+  }
   const sliced = posts.slice(0, pageSize)
 
   return {
@@ -871,7 +936,8 @@ async function listDuplicateNews(
 }
 
 async function listPendingQueue(
-  lastDoc?: QueryDocumentSnapshot
+  lastDoc?: QueryDocumentSnapshot,
+  sort: AdminNewsSort = 'date'
 ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
   const items: AdminNewsItem[] = []
   // Over-fetch so skipping duplicate stubs still fills a page
@@ -964,6 +1030,9 @@ async function listPendingQueue(
     }
 
     const totalHasMore = draftDocCount >= fetchLimit || items.length >= PAGE_SIZE
+    if (sort === 'views') {
+      items.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+    }
     return {
       posts: items.slice(0, PAGE_SIZE),
       lastDoc: draftLastDoc,
@@ -990,6 +1059,9 @@ async function listPendingQueue(
       )
       for (const d of qSnap.docs) results.push(queueDocToPost(d.id, d.data() as Record<string, unknown>))
     } catch { /* ignore */ }
+    if (sort === 'views') {
+      results.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+    }
     return { posts: results.slice(0, PAGE_SIZE), lastDoc: null, hasMore: false }
   }
 }

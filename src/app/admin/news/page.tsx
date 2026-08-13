@@ -9,12 +9,12 @@ import {
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X,
   ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star,
-  Facebook, Instagram, ChevronDown,
+  Facebook, Instagram, ChevronDown, ArrowDownWideNarrow,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
 import { MobileContent } from '@/components/admin/mobile/MobileContent'
-import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
+import { adminNewsService, type AdminNewsFilter, type AdminNewsItem, type AdminNewsSort } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import { formatCount } from '@/lib/postUtils'
@@ -1067,6 +1067,7 @@ function AdminNewsDesktopPage() {
     }
   }, [searchParams])
   const [search, setSearch] = useState(qParam)
+  const [sortBy, setSortBy] = useState<AdminNewsSort>('date')
 
   useEffect(() => {
     const q = searchParams.get('q') ?? ''
@@ -1094,6 +1095,9 @@ function AdminNewsDesktopPage() {
 
   const cityFilterRef = useRef(cityFilter)
   cityFilterRef.current = cityFilter
+
+  const sortByRef = useRef(sortBy)
+  sortByRef.current = sortBy
 
   // Generation counter — discard stale in-flight loads when category/filter changes mid-fetch
   const loadGenRef = useRef(0)
@@ -1128,13 +1132,16 @@ function AdminNewsDesktopPage() {
         searchTerm.trim() || citySlugFilter
           ? undefined
           : categoryFilterRef.current || undefined
+      const sort = sortByRef.current
       const bulkLimit =
-        filter === 'duplicate' || searchTerm.trim() || citySlugFilter ? 500 : undefined
+        filter === 'duplicate' || searchTerm.trim() || citySlugFilter || sort === 'views'
+          ? 500
+          : undefined
       const tagTerm =
         searchTerm.trim() ||
         (citySlugFilter && page === 0 ? getCityCategoryName(citySlugFilter) : '')
       const [result, tagResults] = await Promise.all([
-        adminNewsService.list(filter, cursor, catFilter, bulkLimit, citySlugFilter),
+        adminNewsService.list(filter, cursor, catFilter, bulkLimit, citySlugFilter, sort),
         tagTerm && filter !== 'duplicate'
           ? adminNewsService.searchByTag(tagTerm)
           : Promise.resolve([]),
@@ -1147,17 +1154,24 @@ function AdminNewsDesktopPage() {
         if (!seen.has(p.id)) { seen.add(p.id); merged.push(p) }
       }
       // Tekrar → isDuplicate/tekrarlayan; Onay Bekliyor → tekrarları dışla
-      const filtered =
+      let filtered =
         filter === 'duplicate'
           ? merged.filter((p) => p.isDuplicate === true || p.categoryId === 'tekrarlayan')
           : filter === 'pending'
             ? merged.filter((p) => p.isDuplicate !== true && p.categoryId !== 'tekrarlayan')
             : merged
+      if (sort === 'views') {
+        filtered = [...filtered].sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+      }
       setPosts(filtered)
       setCurrentPage(page)
-      // Bulk (arama / il) tek sayfada toplanır; hasMore yalnızca gerçek sayfalama için
+      // Bulk (arama / il / görüntülenme) tek sayfada toplanır; hasMore yalnızca gerçek sayfalama için
       const effectiveHasMore =
-        !searchTerm.trim() && !citySlugFilter && result.hasMore && filtered.length > 0
+        !searchTerm.trim() &&
+        !citySlugFilter &&
+        sort !== 'views' &&
+        result.hasMore &&
+        filtered.length > 0
       setHasNext(effectiveHasMore)
       if (effectiveHasMore && result.lastDoc && !pageCursorsRef.current[page + 1]) {
         pageCursorsRef.current[page + 1] = result.lastDoc
@@ -1178,7 +1192,7 @@ function AdminNewsDesktopPage() {
 
   useEffect(() => {
     if (authLoading) return
-    // Reset pagination on filter, category, or city change.
+    // Reset pagination on filter, category, city, or sort change.
     pageCursorsRef.current = [null]
     setCurrentPage(0)
     setKnownPages(1)
@@ -1186,7 +1200,7 @@ function AdminNewsDesktopPage() {
     const tid = setTimeout(() => { void load(0) }, 0)
     return () => clearTimeout(tid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, categoryFilter, cityFilter, authLoading])
+  }, [filter, categoryFilter, cityFilter, sortBy, authLoading])
 
   const handleApprove = async (post: AdminNewsItem) => {
     setActionLoading(post.id)
@@ -1579,23 +1593,40 @@ function AdminNewsDesktopPage() {
               </button>
             ))}
           </div>
-          <div className="relative ml-auto max-w-64 flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
-            <input type="text" value={search} onChange={e => {
-              const val = e.target.value
-              setSearch(val)
-              // Debounce — arama değişince kategori filtresi olmadan yeniden yükle
-              if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-              searchDebounceRef.current = setTimeout(() => {
-                pageCursorsRef.current = [null]
-                setCurrentPage(0)
-                setKnownPages(1)
-                setHasNext(false)
-                void load(0, val)
-              }, 350)
-            }}
-              placeholder="Başlıkta ara..."
-              className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2 pl-8 pr-3 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <div className="relative flex items-center gap-2 ml-auto">
+            <label className="sr-only" htmlFor="admin-news-sort">Sıralama</label>
+            <div className="relative">
+              <ArrowDownWideNarrow className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
+              <select
+                id="admin-news-sort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as AdminNewsSort)}
+                className="appearance-none rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2 pl-8 pr-8 text-sm font-medium text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="Sıralama"
+              >
+                <option value="date">En yeni</option>
+                <option value="views">En çok görüntülenen</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
+            </div>
+            <div className="relative max-w-64 flex-1">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
+              <input type="text" value={search} onChange={e => {
+                const val = e.target.value
+                setSearch(val)
+                // Debounce — arama değişince kategori filtresi olmadan yeniden yükle
+                if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+                searchDebounceRef.current = setTimeout(() => {
+                  pageCursorsRef.current = [null]
+                  setCurrentPage(0)
+                  setKnownPages(1)
+                  setHasNext(false)
+                  void load(0, val)
+                }, 350)
+              }}
+                placeholder="Başlıkta ara..."
+                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2 pl-8 pr-3 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
           </div>
           <button onClick={() => load(currentPage)}
             className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]">
@@ -1713,7 +1744,7 @@ function AdminNewsDesktopPage() {
           )}
         </div>
 
-        {!search.trim() && !cityFilter && filtered.length > 0 && (hasNext || knownPages > 1 || currentPage > 0) && (
+        {!search.trim() && !cityFilter && sortBy !== 'views' && filtered.length > 0 && (hasNext || knownPages > 1 || currentPage > 0) && (
           <PaginationBar
             currentPage={currentPage}
             knownPages={knownPages}
