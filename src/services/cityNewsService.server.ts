@@ -40,6 +40,8 @@ interface NewsDocument {
   city?: string
   district?: string
   districtSlug?: string
+  /** Legacy nested location; prefer top-level district fields when present. */
+  location?: { district?: string } | null
   tags?: string[]
   views?: number
   likesCount?: number
