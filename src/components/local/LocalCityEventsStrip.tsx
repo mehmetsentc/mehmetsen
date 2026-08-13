@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
 import { CalendarDays, ChevronRight, Film, MapPin, PartyPopper, Ticket } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import { dedupeEvents } from '@/lib/eventDedupe'
 import { db, Collections } from '@/lib/firebase/firestore'
 import { resolveEventFilterCategory } from '@/lib/cityEventFilters'
 import {
@@ -16,13 +17,15 @@ import {
 } from '@/lib/eventUtils'
 import {
   filterLocalCityStripEvents,
+  LOCAL_CITY_EVENTS_STRIP_LIMIT,
   type LocalCityEventsStripFilter,
 } from '@/lib/localCityEventsStrip'
 import { cn } from '@/lib/utils'
 import type { NaEvent } from '@/types/event'
 
 const STRIP_TIMEOUT_MS = 8_000
-const FETCH_LIMIT = 40
+/** Oversample — many synced rows may be soft-cancelled and filtered client-side. */
+const FETCH_LIMIT = 80
 
 interface LocalCityEventsStripProps {
   citySlug: string
@@ -196,7 +199,10 @@ export function LocalCityEventsStrip({
 
       if (cancelled) return
 
-      if (docs.length === 0) {
+      // Sparse Firestore catalogs (e.g. mass soft-cancelled Antalya rows) still
+      // return 1–2 published hits — only fall back when empty left the strip
+      // stuck. Prefer live aggregate whenever we are under the carousel budget.
+      if (docs.length < LOCAL_CITY_EVENTS_STRIP_LIMIT) {
         try {
           const params = new URLSearchParams({ citySlug })
           if (isCinema) params.set('category', 'cinema')
@@ -208,10 +214,11 @@ export function LocalCityEventsStrip({
           if (res.ok) {
             const data = await res.json()
             const all: NaEvent[] = Array.isArray(data.events) ? data.events : []
-            docs = filterLocalCityStripEvents(all, filter, nowIso)
+            const live = filterLocalCityStripEvents(all, filter, nowIso)
+            docs = filterLocalCityStripEvents(dedupeEvents([...docs, ...live]), filter, nowIso)
           }
         } catch {
-          // aggregate also failed — show nothing
+          // aggregate also failed — keep whatever Firestore returned
         }
       }
 

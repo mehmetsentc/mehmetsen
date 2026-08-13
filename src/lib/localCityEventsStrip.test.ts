@@ -22,6 +22,18 @@ describe('filterLocalCityStripEvents', () => {
     const events = [
       makeEvent({ id: 'a', category: 'concert', startsAt: '2026-08-11T18:00:00.000Z' }),
       makeEvent({ id: 'b', startsAt: '2026-08-10T17:00:00.000Z' }),
+      makeEvent({
+        id: 'cancelled',
+        category: 'concert',
+        status: 'cancelled',
+        startsAt: '2026-08-10T18:00:00.000Z',
+      }),
+      makeEvent({
+        id: 'draft',
+        category: 'concert',
+        status: 'draft',
+        startsAt: '2026-08-10T19:00:00.000Z',
+      }),
     ]
     expect(filterLocalCityStripEvents(events, 'all', nowIso).map((e) => e.id)).toEqual(['b', 'a'])
   })

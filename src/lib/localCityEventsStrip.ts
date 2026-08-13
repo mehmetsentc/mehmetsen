@@ -10,7 +10,8 @@ import type { NaEvent } from '@/types/event'
 export type LocalCityEventsStripFilter = 'all' | 'cinema'
 
 const CINEMA_NEAR_TERM_DAYS = 7
-const STRIP_LIMIT = 10
+export const LOCAL_CITY_EVENTS_STRIP_LIMIT = 10
+const STRIP_LIMIT = LOCAL_CITY_EVENTS_STRIP_LIMIT
 
 /** Keep published upcoming events; optionally cinema-only for the next week. */
 export function filterLocalCityStripEvents(
@@ -19,7 +20,10 @@ export function filterLocalCityStripEvents(
   nowIso: string = new Date().toISOString()
 ): NaEvent[] {
   const upcoming = events.filter(
-    (event) => event.status !== 'cancelled' && isEventUpcoming(event, nowIso)
+    (event) =>
+      event.status !== 'cancelled' &&
+      event.status !== 'draft' &&
+      isEventUpcoming(event, nowIso)
   )
 
   if (filter === 'all') {

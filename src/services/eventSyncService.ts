@@ -165,6 +165,12 @@ function isUnchanged(
 ): boolean {
   if (!existing) return false
 
+  // Soft-removed / draft rows must be rewritten so a later successful scrape
+  // can republish them. Skipping on fingerprint alone left Antalya (and other
+  // cities) stuck on `cancelled` after a partial provider feed.
+  const existingStatus = existing.status as NaEvent['status'] | undefined
+  if (existingStatus === 'cancelled' || existingStatus === 'draft') return false
+
   const nextFingerprint = event.fingerprint ?? buildEventFingerprint(event)
   const storedFingerprint = existing.fingerprint as string | undefined
   const nextTimeline = timelineStatusFor(event, nowIso)
@@ -260,11 +266,16 @@ async function markPastEvents(db: Firestore): Promise<number> {
 /**
  * Soft-remove provider events that disappeared from a successful provider feed.
  * Skipped for providers that failed during this run to avoid mass false positives.
+ *
+ * Also skipped for city×provider pairs that contributed zero scraped rows —
+ * an empty successful response (rate-limit, blocked IP, facet miss) must not
+ * wipe that city's published catalog.
  */
 async function markRemovedEvents(
   db: Firestore,
   scrapedIds: Set<string>,
-  successfulProviders: string[]
+  successfulProviders: string[],
+  scrapedCitiesByProvider: Map<string, Set<string>>
 ): Promise<number> {
   if (successfulProviders.length === 0) return 0
 
@@ -272,6 +283,9 @@ async function markRemovedEvents(
   let markedRemoved = 0
 
   for (const providerId of successfulProviders) {
+    const citiesWithHits = scrapedCitiesByProvider.get(providerId)
+    if (!citiesWithHits || citiesWithHits.size === 0) continue
+
     // Use cursor-based pagination so we never re-read the same docs.
     // Without startAfter, the loop reads the same first 400 forever when
     // nothing is being cancelled — causing an infinite read loop.
@@ -298,6 +312,8 @@ async function markRemovedEvents(
       let batchCount = 0
 
       for (const doc of snap.docs) {
+        const citySlug = (doc.data().citySlug as string | undefined)?.trim()
+        if (!citySlug || !citiesWithHits.has(citySlug)) continue
         if (!scrapedIds.has(doc.id)) {
           batch.update(doc.ref, {
             status: 'cancelled',
@@ -343,12 +359,24 @@ export const eventSyncService = {
 
     const successfulProviders = providers.filter((id) => !failedProviders.includes(id))
     const scrapedIds = new Set(events.map((e) => e.id))
+    const scrapedCitiesByProvider = new Map<string, Set<string>>()
+    for (const event of events) {
+      const source = event.source?.trim()
+      const citySlug = event.citySlug?.trim()
+      if (!source || !citySlug) continue
+      let cities = scrapedCitiesByProvider.get(source)
+      if (!cities) {
+        cities = new Set()
+        scrapedCitiesByProvider.set(source, cities)
+      }
+      cities.add(citySlug)
+    }
     providerLog('sync', 'marking removed provider events')
     // Safety guard: if scraped 0 events, providers likely failed silently (e.g. IP blocked).
     // Skip markRemovedEvents to avoid mass-cancelling all Firestore events.
     const markedRemoved =
       events.length > 0
-        ? await markRemovedEvents(db, scrapedIds, successfulProviders)
+        ? await markRemovedEvents(db, scrapedIds, successfulProviders, scrapedCitiesByProvider)
         : 0
     if (events.length === 0) {
       console.warn('[eventSync] scraped 0 events — markRemovedEvents skipped to protect existing data')

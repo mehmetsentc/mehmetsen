@@ -10,6 +10,7 @@ import {
   eventService,
   filterEventsForQuery,
   sortEventsByTimeRange,
+  EVENT_PAGE_SIZE,
   type EventTimeRange,
   type EventsDataSource,
 } from '@/services/eventService'
@@ -123,7 +124,7 @@ export function useEvents({
       setDataSource(nextSource)
       retryOnceRef.current = false
 
-      if (reset && nextEvents.length === 0 && !city) {
+      if (reset && nextEvents.length < (city ? EVENT_PAGE_SIZE : 1)) {
         try {
           const aggregate = await fetchAggregatedEvents(
             { citySlug: isNearby ? null : city, category: cat ?? null },
@@ -141,7 +142,7 @@ export function useEvents({
               ),
               range
             )
-            if (filtered.length > 0) {
+            if (filtered.length > nextEvents.length) {
               setEvents(filtered)
               setHasMore(false)
               lastDocRef.current = null
