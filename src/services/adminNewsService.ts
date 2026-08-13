@@ -14,12 +14,25 @@ import {
   type QueryConstraint,
 } from 'firebase/firestore'
 import { cityCategoryId, slugifyCity, toFirestoreLocation, type PostLocation } from '@/lib/location'
+import { normalizeCitySlug } from '@/constants/cities'
 import { auth } from '@/lib/firebase/auth'
 import { Collections, db, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
 import { buildFeedTeaser } from '@/lib/newsContentCleanup'
 import { mapNewsSnapshot, type NewsDocument } from '@/lib/newsMapper'
 import { postService } from '@/services/postService'
 import type { MediaItem, Post, PostStatus } from '@/types/post'
+
+/** Match citySlug including district → province aliases. */
+function postMatchesCitySlug(
+  post: { citySlug?: string | null; city?: string | null },
+  citySlug: string
+): boolean {
+  const want = normalizeCitySlug(citySlug)
+  if (!want) return true
+  const raw = post.citySlug?.trim() || post.city?.trim() || ''
+  if (!raw) return false
+  return normalizeCitySlug(raw) === want
+}
 
 /**
  * `MediaItem[]`'i Firestore'a güvenli yazılacak hâle getirir.
@@ -253,8 +266,9 @@ function mapAdminNewsDocs(
   }
 
   // Enforce citySlug in-memory for fallback queries that may drop the constraint.
+  // Normalize so ilçe / legacy slug aliases still match the selected province chip.
   if (citySlug) {
-    posts = posts.filter((p) => p.citySlug === citySlug)
+    posts = posts.filter((p) => postMatchesCitySlug(p, citySlug))
   }
 
   if (filter === 'removed') {
@@ -844,7 +858,7 @@ async function listDuplicateNews(
 
   let posts = items
   if (categoryId) posts = posts.filter((p) => p.categoryId === categoryId)
-  if (citySlug) posts = posts.filter((p) => p.citySlug === citySlug)
+  if (citySlug) posts = posts.filter((p) => postMatchesCitySlug(p, citySlug))
 
   posts.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
   const sliced = posts.slice(0, pageSize)

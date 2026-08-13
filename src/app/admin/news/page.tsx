@@ -1120,13 +1120,24 @@ function AdminNewsDesktopPage() {
     const searchTerm = searchOverride !== undefined ? searchOverride : search
     try {
       const cursor = pageCursorsRef.current[page] ?? undefined
-      // Arama aktifken kategori filtresi kaldırılır — tüm haberlerde arar
-      const catFilter = searchTerm.trim() ? undefined : categoryFilterRef.current || undefined
-      // İl filtresi — Firestore'a doğrudan geçirilir (server-side)
+      // İl chip seçiliyken citySlug otoriterdir — Yerel (veya başka) kategori
+      // Enerji / Çevre gibi citySlug'lı ulusal konuları gizlemesin.
+      // Arama da kategori filtresini kaldırır (tüm arşivde arar).
       const citySlugFilter = searchTerm.trim() ? undefined : cityFilterRef.current || undefined
+      const catFilter =
+        searchTerm.trim() || citySlugFilter
+          ? undefined
+          : categoryFilterRef.current || undefined
+      const bulkLimit =
+        filter === 'duplicate' || searchTerm.trim() || citySlugFilter ? 500 : undefined
+      const tagTerm =
+        searchTerm.trim() ||
+        (citySlugFilter && page === 0 ? getCityCategoryName(citySlugFilter) : '')
       const [result, tagResults] = await Promise.all([
-        adminNewsService.list(filter, cursor, catFilter, filter === 'duplicate' ? 500 : (searchTerm.trim() ? 500 : undefined), citySlugFilter),
-        searchTerm.trim() && filter !== 'duplicate' ? adminNewsService.searchByTag(searchTerm) : Promise.resolve([]),
+        adminNewsService.list(filter, cursor, catFilter, bulkLimit, citySlugFilter),
+        tagTerm && filter !== 'duplicate'
+          ? adminNewsService.searchByTag(tagTerm)
+          : Promise.resolve([]),
       ])
       if (myGen !== loadGenRef.current) return
       // Tag sorgusu sonuçlarını merge et — 500 limitinin dışındaki eski haberler de görünsün
@@ -1144,7 +1155,9 @@ function AdminNewsDesktopPage() {
             : merged
       setPosts(filtered)
       setCurrentPage(page)
-      const effectiveHasMore = result.hasMore && filtered.length > 0
+      // Bulk (arama / il) tek sayfada toplanır; hasMore yalnızca gerçek sayfalama için
+      const effectiveHasMore =
+        !searchTerm.trim() && !citySlugFilter && result.hasMore && filtered.length > 0
       setHasNext(effectiveHasMore)
       if (effectiveHasMore && result.lastDoc && !pageCursorsRef.current[page + 1]) {
         pageCursorsRef.current[page + 1] = result.lastDoc
@@ -1460,8 +1473,20 @@ function AdminNewsDesktopPage() {
   return (
     <div className="flex flex-col">
       <CMSHeader
-        title={categoryFilter ? `Haberler — ${categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1).replace('-', ' ')}` : 'Haberler'}
-        subtitle={categoryFilter ? `${categoryFilter} kategorisi filtresi aktif` : 'İçerik editörü ve onay merkezi'}
+        title={
+          cityFilter
+            ? `Haberler — ${getCityCategoryName(cityFilter)}`
+            : categoryFilter
+              ? `Haberler — ${categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1).replace('-', ' ')}`
+              : 'Haberler'
+        }
+        subtitle={
+          cityFilter
+            ? `${getCityCategoryName(cityFilter)} il filtresi (tüm kategoriler, citySlug)`
+            : categoryFilter
+              ? `${categoryFilter} kategorisi filtresi aktif`
+              : 'İçerik editörü ve onay merkezi'
+        }
       />
       <div className="p-6 space-y-4">
         {/* Category quick-filter chips — buttons (not Links) so soft-nav cannot freeze the row */}
@@ -1688,7 +1713,7 @@ function AdminNewsDesktopPage() {
           )}
         </div>
 
-        {!search.trim() && filtered.length > 0 && (hasNext || knownPages > 1 || currentPage > 0) && (
+        {!search.trim() && !cityFilter && filtered.length > 0 && (hasNext || knownPages > 1 || currentPage > 0) && (
           <PaginationBar
             currentPage={currentPage}
             knownPages={knownPages}
