@@ -391,13 +391,13 @@ export async function POST(request: Request) {
     try { thResult = await publishToThreads(payload) }
     catch (e) { thResult = { success: false, error: String(e) } }
 
-    const anySuccess = fbResult.success || igResult.success || twResult.success || thResult.success
+    // Threads/X-only "başarı" socialPublished=true yazmamalı — IG/FB retry kilitlenir.
+    const primaryOk = fbResult.success || igResult.success
+    const anySuccess = primaryOk || twResult.success || thResult.success
 
     if (anySuccess) {
       const update: Record<string, unknown> = {
-        socialPublished: true,
-        socialPublishedAt: FieldValue.serverTimestamp(),
-        socialImageUrl,
+        socialImageUrl: imagePayload.imageUrl || socialImageUrl,
         socialHeadline: socialContent.headline,
         socialStorySummary: socialContent.storySummary,
         socialHashtags: socialContent.hashtags,
@@ -406,6 +406,14 @@ export async function POST(request: Request) {
       if ('platformId' in igResult && igResult.platformId) update.instagramMediaId = igResult.platformId
       if ('platformId' in twResult && twResult.platformId) update.twitterTweetId   = twResult.platformId
       if ('platformId' in thResult && thResult.platformId) update.threadsPostId    = thResult.platformId
+      if (primaryOk) {
+        update.socialPublished = true
+        update.socialPublishedAt = FieldValue.serverTimestamp()
+      } else {
+        console.warn(
+          `[force-reshare] POST partial (TH/X only) — ${id}; socialPublished bırakılmadı (IG/FB retry)`,
+        )
+      }
       await db.collection(Collections.NEWS).doc(id).update(update).catch(() => {})
     }
 

@@ -72,5 +72,13 @@ service firebase.storage {
       allow read: if true;
       allow write: if isOwner(userId) && isValidAvatar();
     }
+
+    // Social publish assets — Meta (IG/FB) must fetch these anonymously.
+    // Without public read, materializeBrandedOg → Storage URL returns 403 and
+    // Graph API fails with IG 9004 / FB 324 while Threads TEXT still "succeeds".
+    match /social-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // admin SDK only
+    }
   }
 }
