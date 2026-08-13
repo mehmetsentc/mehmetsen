@@ -108,9 +108,17 @@ export async function resolveTenant(slug: string): Promise<CityTenant | null> {
 }
 
 /**
+ * Edge-safe tenant resolve for middleware — hardcoded map only.
+ * Never import drizzle/DB on the Edge runtime (crashes the whole middleware).
+ */
+function resolveTenantEdgeSafe(slug: string): CityTenant | null {
+  return HARDCODED_TENANTS[slug] ?? null
+}
+
+/**
  * Resolve city tenant from an incoming request.
  * Checks subdomain first, then ?tenant= query param (dev fallback).
- * Returns null when CITY_NETWORK_ENABLED is not 'true'.
+ * Middleware must stay edge-safe (no DB); server components use resolveTenant().
  */
 export async function resolveTenantFromRequest(
   request: NextRequest
@@ -120,13 +128,13 @@ export async function resolveTenantFromRequest(
   // 1. Subdomain detection
   const subdomain = extractCitySubdomain(hostname)
   if (subdomain) {
-    return resolveTenant(subdomain)
+    return resolveTenantEdgeSafe(subdomain)
   }
 
   // 2. Dev fallback: ?tenant=canakkale
   const tenantParam = request.nextUrl.searchParams.get('tenant')
   if (tenantParam) {
-    return resolveTenant(tenantParam.toLowerCase())
+    return resolveTenantEdgeSafe(tenantParam.toLowerCase())
   }
 
   return null

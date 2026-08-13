@@ -1,22 +1,30 @@
 import { MainLayoutClient } from '@/components/layout/MainLayoutClient'
+import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { resolveTenant } from '@/lib/tenant'
-import { CityStaticLayout } from '@/components/city/CityStaticLayout'
+import { getCityNavPresence } from '@/services/cityNewsService.server'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const citySlug = await getCitySlugFromHeaders()
 
   if (citySlug) {
-    // (main) sayfaları city subdomain'de CityStaticLayout ile sarmalanır:
-    // CityNavbar (header) + CityFooter sağlar, ulusal navbar hiç eklenmez.
+    // City subdomain: full city chrome (ScrollHeader + category pills).
+    // CityStaticLayout lacked ScrollHeaderProvider and crashed desktop /kategori/*.
     const tenant = await resolveTenant(citySlug)
-    const cityName = tenant?.displayName ?? citySlug
     const provinceSlug = tenant?.provinceSlug ?? citySlug
+    const cityName = tenant?.displayName ?? citySlug
+    const { categories, hasSpor } = await getCityNavPresence(provinceSlug)
 
     return (
-      <CityStaticLayout cityName={cityName} provinceSlug={provinceSlug}>
+      <CityLayoutClient
+        tenantSlug={tenant?.slug ?? citySlug}
+        displayName={cityName}
+        provinceSlug={provinceSlug}
+        categories={categories}
+        hasSpor={hasSpor}
+      >
         {children}
-      </CityStaticLayout>
+      </CityLayoutClient>
     )
   }
 

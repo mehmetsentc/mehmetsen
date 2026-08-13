@@ -2,13 +2,18 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { DEFAULT_CATEGORIES, getSubcategories, getHomeFeedCategoryFamily, getParentCategory, type CategoryDef } from '@/constants/config'
+import { getCityCategoryName } from '@/constants/cities'
 import { CategoryPageClient } from '@/components/category/CategoryPageClient'
 import { CategoryStructuredData } from '@/components/category/CategoryStructuredData'
+import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { resolveCityCategoryRoute } from '@/lib/cityCategoryRoute'
+import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import { getCityCategoryFeedInitialData } from '@/services/cityNewsService.server'
 import type { TimelinePost } from '@/types/post'
 import { getWorldCup2026Data } from '@/services/sportsApi/worldCup2026'
 import { getLcpPreload } from '@/lib/lcpImage'
@@ -198,6 +203,20 @@ function getCategoryKeywords(cat: CategoryDef, siteName: string): string[] {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
+
+  // City subdomain: city-scoped title (middleware rewrite may be unavailable).
+  const citySlug = await getCitySlugFromHeaders()
+  if (citySlug) {
+    const resolved = resolveCityCategoryRoute(id)
+    if (!resolved) return { title: 'Kategori', robots: { index: false, follow: false } }
+    const cityName = getCityCategoryName(citySlug)
+    const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+    return {
+      title: `${cityName} ${resolved.label} Haberleri`,
+      description: `${cityName} ${resolved.label.toLowerCase()} haberleri. ${siteName}'de ${cityName} gündemini takip edin.`,
+    }
+  }
+
   const cat = getCategoryMeta(id)
   if (!cat) return { title: 'Kategori', robots: { index: false, follow: false } }
 
@@ -241,13 +260,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export function generateStaticParams() {
-  return DEFAULT_CATEGORIES.map((cat) => ({ id: cat.slug }))
+  // City hosts need per-request Host detection — do not statically shell this route.
+  // National pages still render on demand (and via CDN once headers opt into dynamic).
+  return []
 }
 
-export const revalidate = 180
+/** Host-aware (city vs national) — must not serve a shared static shell across subdomains. */
+export const dynamic = 'force-dynamic'
 
 export default async function CategoryPage({ params }: Props) {
   const { id } = await params
+
+  // City subdomain: city-scoped Ana Feed layout (siyaset family incl. yerel-siyaset).
+  // Middleware rewrite to /city-site/kategori is best-effort; this path is host-aware.
+  const citySlug = await getCitySlugFromHeaders()
+  if (citySlug) {
+    const resolved = resolveCityCategoryRoute(id)
+    if (!resolved) notFound()
+
+    const cityName = getCityCategoryName(citySlug)
+    const homeFeedData = await getCityCategoryFeedInitialData(citySlug, resolved.categoryId)
+    return (
+      <CityFeedPageClient
+        homeFeedData={homeFeedData}
+        cityName={cityName}
+        sectionTitle={`${cityName} ${resolved.label} Haberleri`}
+      />
+    )
+  }
+
   const cat = getCategoryMeta(id)
   if (!cat) notFound()
 

@@ -3,45 +3,54 @@
 /**
  * CityStaticLayout
  *
- * Hafif sarmalayıcı — (main) route group içindeki sayfalar city subdomain'de
- * açıldığında CityLayoutClient kullanılamaz (kategoriler yüklenmez, context yok).
- * Bu bileşen sadece CityNavbar + CityFooter + CityCategoryProvider (boş liste)
- * sarar; sidebar/pull-to-refresh vs. eklenmez.
+ * Hafif sarmalayıcı — legacy fallback. Prefer CityLayoutClient in (main)/layout
+ * (ScrollHeaderProvider + non-empty category pills). Kept for defensive imports.
  */
 
+import { ScrollHeaderProvider } from '@/context/ScrollHeaderContext'
 import { CityCategoryProvider } from '@/store/cityCategoryContext'
+import type { CityCategory } from '@/services/cityNewsService.server'
 import { CityNavbar } from './CityNavbar'
+import { CitySectionNav } from './CitySectionNav'
 import { CityFooter } from './CityFooter'
 
 interface CityStaticLayoutProps {
   cityName: string
   provinceSlug: string
   children: React.ReactNode
+  categories?: CityCategory[]
+  hasSpor?: boolean
 }
 
-export function CityStaticLayout({ cityName, provinceSlug, children }: CityStaticLayoutProps) {
+export function CityStaticLayout({
+  cityName,
+  provinceSlug,
+  children,
+  categories = [],
+  hasSpor = false,
+}: CityStaticLayoutProps) {
   return (
-    <CityCategoryProvider categories={[]} hasSpor={false}>
-      <div className="min-h-screen bg-[rgb(var(--color-surface))]">
-        {/* Navbar — onMenuClick verilmez, menü butonu pasif kalır */}
-        <CityNavbar cityName={cityName} provinceSlug={provinceSlug} />
+    <ScrollHeaderProvider>
+      <CityCategoryProvider categories={categories} hasSpor={hasSpor}>
+        <div className="min-h-screen bg-[rgb(var(--color-surface))]">
+          <CityNavbar cityName={cityName} provinceSlug={provinceSlug} />
+          <CitySectionNav />
 
-        {/* İçerik + footer */}
-        <div className="content-stage content-stage-newspaper">
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="content-main content-main-newspaper desktop-newspaper"
-          >
-            {children}
-          </main>
+          <div className="content-stage content-stage-newspaper">
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="content-main content-main-newspaper desktop-newspaper"
+            >
+              {children}
+            </main>
 
-          <div className="content-main content-main-newspaper desktop-newspaper pb-6">
-            {/* Kategoriler boş → sadece Kurumsal + Hesap sütunları görünür */}
-            <CityFooter cityName={cityName} provinceSlug={provinceSlug} />
+            <div className="content-main content-main-newspaper desktop-newspaper pb-6">
+              <CityFooter cityName={cityName} provinceSlug={provinceSlug} />
+            </div>
           </div>
         </div>
-      </div>
-    </CityCategoryProvider>
+      </CityCategoryProvider>
+    </ScrollHeaderProvider>
   )
 }
