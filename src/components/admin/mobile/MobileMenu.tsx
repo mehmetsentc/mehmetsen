@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   Newspaper, Clock, Archive, Video, BrainCircuit, Bot, Search, Share2,
   BarChart3, Users, UserCog, UserCheck, Settings, Mail, Inbox, ArrowLeft,
-  Megaphone, Tag, LogOut,
+  Megaphone, Tag, LogOut, Flame,
 } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useAuth } from '@/hooks/useAuth'
@@ -51,6 +51,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/admin/social', label: 'Sosyal Medya', icon: Share2, perm: 'news:read' },
       { href: '/admin/ads', label: 'Reklamlar', icon: Megaphone, perm: 'seo:edit' },
       { href: '/admin/analytics', label: 'Analitik', icon: BarChart3, perm: 'analytics:read' },
+      { href: '/admin/most-read', label: 'En Çok Okunanlar', icon: Flame, perm: 'analytics:read' },
     ],
   },
   {

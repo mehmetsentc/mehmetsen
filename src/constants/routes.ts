@@ -77,6 +77,7 @@ export const ROUTES = {
     CRON: '/admin/cron',
     API_MANAGEMENT: '/admin/api-management',
     ANALYTICS: '/admin/analytics',
+    MOST_READ: '/admin/most-read',
     SETTINGS: '/admin/settings',
     CATEGORIES: '/admin/categories',
     REPORTS: '/admin/reports',

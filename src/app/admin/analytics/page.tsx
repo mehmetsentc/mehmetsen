@@ -222,6 +222,12 @@ export default function AnalyticsPage() {
         subtitle="Sayfa görüntülenme ve trafik istatistikleri"
         actions={
           <div className="flex items-center gap-2">
+            <a
+              href="/admin/most-read"
+              className="hidden items-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-xs font-bold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] sm:inline-flex"
+            >
+              En Çok Okunanlar
+            </a>
             {PERIODS.map(p => (
               <button key={p.id} onClick={() => setPeriod(p.id)}
                 className={cn('rounded-lg px-3 py-1.5 text-xs font-bold transition-all',

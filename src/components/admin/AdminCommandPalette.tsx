@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Search, Newspaper, Plus, Clock, Bot, BarChart3, Settings,
   Users, Share2, Inbox, Zap, FileText, Archive, Video, Megaphone,
-  BrainCircuit, LayoutDashboard, Mail,
+  BrainCircuit, LayoutDashboard, Mail, Flame,
 } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { ROUTES } from '@/constants/routes'
@@ -164,6 +164,14 @@ const COMMANDS: CommandItem[] = [
     label: 'Analitik',
     href: ROUTES.ADMIN.ANALYTICS,
     icon: BarChart3,
+    group: 'Genel',
+    requiredPermissions: ['analytics:read'],
+  },
+  {
+    id: 'most-read',
+    label: 'En Çok Okunanlar',
+    href: ROUTES.ADMIN.MOST_READ,
+    icon: Flame,
     group: 'Genel',
     requiredPermissions: ['analytics:read'],
   },

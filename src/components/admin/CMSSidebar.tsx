@@ -92,6 +92,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
       { href: '/admin/analytics', label: 'Analitik', icon: BarChart3, requiredPermissions: ['analytics:read'] },
+      { href: '/admin/most-read', label: 'En Çok Okunanlar', icon: Flame, requiredPermissions: ['analytics:read'] },
     ],
   },
   {

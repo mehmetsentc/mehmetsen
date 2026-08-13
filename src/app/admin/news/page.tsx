@@ -1074,7 +1074,16 @@ function AdminNewsDesktopPage() {
   const [filter, setFilter] = useState<AdminNewsFilter>(initialFilter)
   // Local category state — Link soft-nav was freezing pills after the first click.
   // Drive the UI like status filters; keep the URL in sync via replace.
-  const [categoryFilter, setCategoryFilter] = useState(categoryParam)
+  const [categoryFilter, setCategoryFilter] = useState(
+    categoryParam.startsWith('yerel-') && categoryParam !== YEREL_CATEGORY_ID
+      ? YEREL_CATEGORY_ID
+      : categoryParam,
+  )
+  const [subcategoryFilter, setSubcategoryFilter] = useState(
+    categoryParam.startsWith('yerel-') && categoryParam !== YEREL_CATEGORY_ID
+      ? categoryParam
+      : '',
+  )
   const [cityFilter, setCityFilter] = useState('')
   const pendingCategoryRef = useRef<string | null>(null)
   const cachedCitiesRef = useRef<{ slug: string; name: string; count: number }[]>([])
@@ -1087,7 +1096,13 @@ function AdminNewsDesktopPage() {
       }
       return
     }
-    setCategoryFilter(categoryParam)
+    if (categoryParam.startsWith('yerel-') && categoryParam !== YEREL_CATEGORY_ID) {
+      setCategoryFilter(YEREL_CATEGORY_ID)
+      setSubcategoryFilter(categoryParam)
+    } else {
+      setCategoryFilter(categoryParam)
+      if (!categoryParam.startsWith('yerel-')) setSubcategoryFilter('')
+    }
   }, [categoryParam])
 
   // İl filtresi yalnızca Yerel kategorisinde anlamlı; çıkınca temizle
@@ -1095,8 +1110,9 @@ function AdminNewsDesktopPage() {
     if (categoryFilter !== YEREL_CATEGORY_ID) {
       if (cityFilter) setCityFilter('')
       cachedCitiesRef.current = []
+      if (subcategoryFilter) setSubcategoryFilter('')
     }
-  }, [categoryFilter, cityFilter])
+  }, [categoryFilter, cityFilter, subcategoryFilter])
 
   useEffect(() => {
     const fp = searchParams.get('filter') ?? ''
@@ -1107,12 +1123,15 @@ function AdminNewsDesktopPage() {
     }
   }, [searchParams])
   const [search, setSearch] = useState(qParam)
-  const [sortBy, setSortBy] = useState<AdminNewsSort>('date')
+  const sortParam = searchParams.get('sort')
+  const [sortBy, setSortBy] = useState<AdminNewsSort>(sortParam === 'views' ? 'views' : 'date')
 
   useEffect(() => {
     const q = searchParams.get('q') ?? ''
     if (q && q !== search) setSearch(q)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate from URL only when q changes
+    const s = searchParams.get('sort')
+    if (s === 'views' || s === 'date') setSortBy(s)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate from URL only when params change
   }, [searchParams])
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [posts, setPosts] = useState<AdminNewsItem[]>([])
@@ -1136,6 +1155,9 @@ function AdminNewsDesktopPage() {
   const cityFilterRef = useRef(cityFilter)
   cityFilterRef.current = cityFilter
 
+  const subcategoryFilterRef = useRef(subcategoryFilter)
+  subcategoryFilterRef.current = subcategoryFilter
+
   const sortByRef = useRef(sortBy)
   sortByRef.current = sortBy
 
@@ -1151,11 +1173,23 @@ function AdminNewsDesktopPage() {
   }, [router, searchParams])
 
   const selectCategory = useCallback((nextCategory: string) => {
-    if (nextCategory === categoryFilterRef.current) return
+    const sameMain = nextCategory === categoryFilterRef.current
+    if (sameMain && !subcategoryFilterRef.current && nextCategory !== YEREL_CATEGORY_ID) return
+    if (sameMain && !subcategoryFilterRef.current && nextCategory === YEREL_CATEGORY_ID) return
     pendingCategoryRef.current = nextCategory
-    if (nextCategory !== YEREL_CATEGORY_ID) setCityFilter('')
+    if (nextCategory !== YEREL_CATEGORY_ID) {
+      setCityFilter('')
+    }
+    setSubcategoryFilter('')
     setCategoryFilter(nextCategory)
     syncCategoryToUrl(nextCategory)
+  }, [syncCategoryToUrl])
+
+  const selectYerelSubcategory = useCallback((subId: string) => {
+    const next = subId === subcategoryFilterRef.current ? '' : subId
+    setSubcategoryFilter(next)
+    pendingCategoryRef.current = next || YEREL_CATEGORY_ID
+    syncCategoryToUrl(next || YEREL_CATEGORY_ID)
   }, [syncCategoryToUrl])
 
   const load = useCallback(async (page: number, searchOverride?: string) => {
@@ -1168,13 +1202,21 @@ function AdminNewsDesktopPage() {
       // Enerji / Çevre gibi citySlug'lı ulusal konuları gizlemesin.
       // Arama da kategori filtresini kaldırır (tüm arşivde arar).
       const citySlugFilter = searchTerm.trim() ? undefined : cityFilterRef.current || undefined
+      const subFilter = subcategoryFilterRef.current || undefined
+      const rawCat = categoryFilterRef.current || undefined
+      // Yerel parent → geniş ağaç (yerel-*); alt kategori seçiliyse exact id.
+      const expandYerelTree = rawCat === YEREL_CATEGORY_ID && !subFilter && !citySlugFilter
       const catFilter =
         searchTerm.trim() || citySlugFilter
           ? undefined
-          : categoryFilterRef.current || undefined
+          : subFilter || (expandYerelTree ? undefined : rawCat)
       const sort = sortByRef.current
       const bulkLimit =
-        filter === 'duplicate' || searchTerm.trim() || citySlugFilter || sort === 'views'
+        filter === 'duplicate' ||
+        searchTerm.trim() ||
+        citySlugFilter ||
+        sort === 'views' ||
+        expandYerelTree
           ? 500
           : undefined
       const tagTerm =
@@ -1200,15 +1242,21 @@ function AdminNewsDesktopPage() {
           : filter === 'pending'
             ? merged.filter((p) => p.isDuplicate !== true && p.categoryId !== 'tekrarlayan')
             : merged
+      if (expandYerelTree) {
+        filtered = filtered.filter(
+          (p) => isYerelCategoryTree(p.categoryId) || Boolean(p.citySlug?.trim() || p.city?.trim()),
+        )
+      }
       if (sort === 'views') {
         filtered = [...filtered].sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
       }
       setPosts(filtered)
       setCurrentPage(page)
-      // Bulk (arama / il / görüntülenme) tek sayfada toplanır; hasMore yalnızca gerçek sayfalama için
+      // Bulk (arama / il / görüntülenme / yerel ağaç) tek sayfada toplanır
       const effectiveHasMore =
         !searchTerm.trim() &&
         !citySlugFilter &&
+        !expandYerelTree &&
         sort !== 'views' &&
         result.hasMore &&
         filtered.length > 0
@@ -1240,7 +1288,7 @@ function AdminNewsDesktopPage() {
     const tid = setTimeout(() => { void load(0) }, 0)
     return () => clearTimeout(tid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, categoryFilter, cityFilter, sortBy, authLoading])
+  }, [filter, categoryFilter, cityFilter, subcategoryFilter, sortBy, authLoading])
 
   const handleApprove = async (post: AdminNewsItem) => {
     setActionLoading(post.id)
@@ -1523,6 +1571,7 @@ function AdminNewsDesktopPage() {
     (p) => p.status === 'pending' && !p.isDuplicate && p.categoryId !== 'tekrarlayan'
   ).length
   const isYerel = categoryFilter === YEREL_CATEGORY_ID
+  const yerelSubcategoryChips = useMemo(() => getYerelSubcategories(), [])
 
   return (
     <div className="flex flex-col">
@@ -1573,6 +1622,39 @@ function AdminNewsDesktopPage() {
             </button>
           ))}
         </div>
+
+        {/* Yerel → alt kategori chips (yerel-* exact filter; parent = tüm yerel ağaç) */}
+        {isYerel && (
+          <div className="relative z-10 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              type="button"
+              onClick={() => selectYerelSubcategory('')}
+              className={cn(
+                'flex-shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-all',
+                !subcategoryFilter
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'border border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
+              )}
+            >
+              Tüm yerel alt
+            </button>
+            {yerelSubcategoryChips.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => selectYerelSubcategory(sub.id)}
+                className={cn(
+                  'flex-shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-all',
+                  subcategoryFilter === sub.id
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'border border-emerald-500/30 text-emerald-700/80 hover:text-emerald-800 dark:text-emerald-300/80',
+                )}
+              >
+                {getYerelSubcategoryShortLabel(sub)}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Yerel → il (province) filter chips */}
         {isYerel && (
@@ -1640,7 +1722,15 @@ function AdminNewsDesktopPage() {
               <select
                 id="admin-news-sort"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as AdminNewsSort)}
+                onChange={(e) => {
+                  const next = e.target.value as AdminNewsSort
+                  setSortBy(next)
+                  const params = new URLSearchParams(searchParams.toString())
+                  if (next === 'views') params.set('sort', 'views')
+                  else params.delete('sort')
+                  const qs = params.toString()
+                  router.replace(qs ? `${ROUTES.ADMIN.NEWS}?${qs}` : ROUTES.ADMIN.NEWS, { scroll: false })
+                }}
                 className="appearance-none rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2 pl-8 pr-8 text-sm font-medium text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 title="Sıralama"
               >
@@ -1649,6 +1739,16 @@ function AdminNewsDesktopPage() {
               </select>
               <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
             </div>
+            {sortBy === 'views' && (
+              <a
+                href={ROUTES.ADMIN.MOST_READ}
+                className="hidden items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] sm:inline-flex"
+                title="Kategori kırılımlı okunurluk panosu"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                Pano
+              </a>
+            )}
             <div className="relative max-w-64 flex-1">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
               <input type="text" value={search} onChange={e => {
