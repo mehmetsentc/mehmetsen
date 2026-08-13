@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 const OG_SITE = 'https://nahaber.com'
 
 /** Bump when OG renderer behavior changes so Meta/CDN stale navy cards are busted. */
-const OG_RENDER_REV = '3'
+const OG_RENDER_REV = '4'
 
 export interface OgCacheVersionInput {
   title?: string

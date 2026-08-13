@@ -27,6 +27,7 @@ import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
 import { clampAtWordBoundary, clampCompleteHeadline } from '@/lib/social/feedCaption'
+import { repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 
 const PROJECT_ID = 'nahaberapp'
@@ -139,6 +140,8 @@ function resolvePostHeadlineLayout(titlePlain: string, contentWidth: number): {
 interface ArticleOGData {
   title: string
   socialHeadline: string
+  summary: string
+  spot: string
   categoryId: string
   isBreaking: boolean
   imageUrl: string
@@ -164,6 +167,8 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
     return {
       title: str(f.title),
       socialHeadline: str(f.socialHeadline),
+      summary: str(f.summary),
+      spot: str(f.spot),
       categoryId,
       isBreaking: f.isBreaking?.booleanValue === true || categoryId === 'son-dakika',
       imageUrl: str(f.imageUrl),
@@ -321,8 +326,15 @@ export async function GET(
 
   const rawTitle =
     overrideTitle ||
-    article?.socialHeadline ||
-    article?.title ||
+    (article
+      ? repairSocialHeadline(
+          article.socialHeadline || article.title,
+          article.title,
+          [article.socialHeadline, article.title, article.summary, article.spot]
+            .filter(Boolean)
+            .join('\n'),
+        )
+      : '') ||
     ''
   if (!rawTitle) {
     if (id === 'sample' || id === 'preview') {

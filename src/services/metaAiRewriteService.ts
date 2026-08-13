@@ -15,6 +15,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
 import { clampCompleteSentences } from '@/lib/social/feedCaption'
+import { repairSocialCopyAgainstSource } from '@/lib/social/socialFactualFidelity'
 
 const LLAMA_URL = 'https://api.llama.com/v1/chat/completions'
 const LLAMA_MODEL = 'Llama-3.3-70B-Instruct'
@@ -37,12 +38,18 @@ export const PLATFORM_CAPTION_MAX: Record<SocialAiPlatform, number> = {
 const SYSTEM_PROMPT = `Sen NaHaber ve Onyedi Tivi için Türkçe sosyal medya AI editörüsün.
 Facebook, Instagram, Threads, X ve Hikâye paylaşımları için özgün caption / özet üretiyorsun.
 
-AMAÇ: Organik erişim. Başlık manşetini AYNEN kullanma; aynı kelime torbasını yeniden dizme.
+AMAÇ: Organik erişim + doğru bilgi. Başlık manşetini AYNEN kopyalama; ama olguyu bozma. Caption hem merak uyandırsın hem bilgilendirsin.
+
+OLGU SADAKATİ — KESİN:
+- Sayı, özel isim, yer adı ve isim tamlamasının baş ismini koru.
+- YASAK: "15 hava aracı müdahale etti" → "15 hava müdahale etti". DOĞRU: "15 hava aracı müdahale etti".
+- "itfaiye ekibi", "orman yangını", "yerleşim yeri" gibi tamlamalarda isim düşürme.
+- Rakam uydurma / değiştirme yasak. Türkçe dilbilgisi doğru olsun.
 
 KURALLAR:
-1) caption: Haberi 1–2 özgün cümlede özetle. Başlıktaki kelime dizilimini kopyalama.
+1) caption: Haberi 1–2 özgün cümlede özetle. İlk cümle merak + doğru olgu; ikinci cümle (varsa) etki/sonuç. Başlıktaki kelime dizilimini aynen kopyalama ama kritik kelimeleri atma.
 2) Ton: Ciddi yerel haber odası. Clickbait yasak ("şok", "inanılmaz", "son dakika bomba", sahte vaat).
-3) Uzunluk: caption toplam max 220 karakter; en fazla 2 cümle; emoji en fazla 1 (tercihen yok — 📍 şehir satırını sistem ekler).
+3) Uzunluk: caption toplam max 220 karakter; en fazla 2 cümle; emoji en fazla 1 (tercihen yok — 📍 şehir satırını sistem ekler). Karakter için tamlama ismini (aracı vb.) ASLA kesme.
 4) URL / https / www / "tıkla" / "haberimizde" / "devamını oku" caption içinde YASAK.
 5) hashtags: max 2; yalnızca #Çanakkale ve/veya #SonDakika. Konuya uymuyorsa boş dizi []. Başka etiket YASAK.
 6) comment_text: Kısa yönlendirme, link YOK (sistem haber URL’sini ekler). Örn: "Haberin detayı:" veya "Ayrıntılar:"
@@ -116,9 +123,15 @@ function enforceHashtags(tags: unknown): string[] {
 function clampCaption(caption: string, max = 220): string {
   const t = stripUrls(caption).replace(/\s+/g, ' ').trim()
   if (t.length <= max) return t
+  const bySentence = clampCompleteSentences(t, max, max + 24)
+  if (bySentence && bySentence.length <= max + 24) return bySentence.trim()
   const slice = t.slice(0, max)
   const sp = slice.lastIndexOf(' ')
   return (sp > 80 ? slice.slice(0, sp) : slice).trim()
+}
+
+function finalizeCaption(caption: string, title: string, content: string, max = 220): string {
+  return clampCaption(repairSocialCopyAgainstSource(caption, title, content), max)
 }
 
 function fallbackRewrite(title: string, content: string, city: string): MetaAiRewriteResult {
@@ -132,7 +145,7 @@ function fallbackRewrite(title: string, content: string, city: string): MetaAiRe
   }
   // Keep ~2 sentences
   const parts = caption.split(/(?<=[.!?…])\s+/).filter(Boolean).slice(0, 2)
-  caption = clampCaption(parts.join(' '))
+  caption = finalizeCaption(parts.join(' '), title, content)
   return {
     caption,
     hashtags: ['#Çanakkale', '#SonDakika'],
@@ -157,7 +170,11 @@ function parseLlamaJson(raw: string): { caption?: string; hashtags?: string[]; c
   }
 }
 
-async function readCache(cacheKey: string): Promise<MetaAiRewriteResult | null> {
+async function readCache(
+  cacheKey: string,
+  title: string,
+  content: string,
+): Promise<MetaAiRewriteResult | null> {
   try {
     const snap = await getAdminFirestore().collection('aiRewriteCache').doc(cacheKey).get()
     if (!snap.exists) return null
@@ -171,7 +188,7 @@ async function readCache(cacheKey: string): Promise<MetaAiRewriteResult | null> 
     if (!createdAt || Date.now() - createdAt > CACHE_TTL_MS) return null
     if (!d.caption?.trim()) return null
     return {
-      caption: clampCaption(d.caption),
+      caption: finalizeCaption(d.caption, title, content),
       hashtags: enforceHashtags(d.hashtags),
       comment_text: stripUrls(d.comment_text || 'Haberin detayı:'),
       source: 'cache',
@@ -241,7 +258,7 @@ export async function rewriteForSocial(
   const cacheKey = hashRewriteKey(title, content, opts?.articleUrl)
 
   if (!opts?.skipCache) {
-    const cached = await readCache(cacheKey)
+    const cached = await readCache(cacheKey, title, content)
     if (cached) {
       console.log(`[metaAiRewrite] cache hit key=${cacheKey}`)
       return cached
@@ -312,7 +329,7 @@ JSON üret.`
     }
 
     const result: MetaAiRewriteResult = {
-      caption: clampCaption(parsed.caption),
+      caption: finalizeCaption(parsed.caption, title, content),
       hashtags: enforceHashtags(parsed.hashtags),
       comment_text: stripUrls(parsed.comment_text || 'Haberin detayı:'),
       source: 'llama',
@@ -350,13 +367,14 @@ export async function rewriteForPlatform(
 
   const ai = await rewriteForSocial(title, content, city, opts)
   const max = PLATFORM_CAPTION_MAX[platform]
-  let caption = ai.caption
+  let caption = finalizeCaption(ai.caption, title, content, max)
   if (platform === 'story') {
     // clampCaption kelime ortasında bırakabilir; hikâyede yalnızca tam cümle.
     // softMax: 2. cümle biraz taşarsa tamamını koru (yarım "can" engeli).
     caption = clampCompleteSentences(caption, max, max + 32)
+    caption = repairSocialCopyAgainstSource(caption, title, content)
   } else if (caption.length > max) {
-    caption = clampCaption(caption, max)
+    caption = finalizeCaption(caption, title, content, max)
   }
 
   if (ai.source === 'fallback' || ai.error) {

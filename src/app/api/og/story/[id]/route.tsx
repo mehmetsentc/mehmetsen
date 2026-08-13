@@ -29,6 +29,7 @@ import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 
@@ -367,8 +368,19 @@ function resolveStorySummary(
     ''
   const plain = stripHtmlToNewsPlainText(raw).replace(/\s+/g, ' ').trim()
   if (!plain) return ''
+  const source = [
+    article?.title,
+    article?.socialHeadline,
+    article?.summary,
+    article?.spot,
+    article?.seoDescription,
+    extractFirstParagraph(article?.content || ''),
+  ]
+    .filter(Boolean)
+    .join('\n')
+  const faithful = repairSocialCopyAgainstSource(plain, article?.title || '', source)
   // softMax: 2. tam cümle biraz taşarsa koru; yarım cümle asla
-  return clampCompleteSentences(plain, SUMMARY_MAX, SUMMARY_MAX + 32)
+  return clampCompleteSentences(faithful, SUMMARY_MAX, SUMMARY_MAX + 32)
 }
 
 const W = 1080
@@ -492,8 +504,21 @@ export async function GET(
 
   const rawTitle =
     overrideTitle ||
-    article?.socialHeadline ||
-    article?.title ||
+    (article
+      ? repairSocialHeadline(
+          article.socialHeadline || article.title,
+          article.title,
+          [
+            article.socialHeadline,
+            article.title,
+            article.summary,
+            article.spot,
+            extractFirstParagraph(article.content || ''),
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        )
+      : '') ||
     ''
   if (!rawTitle) {
     if (id === 'sample' || id === 'preview') {

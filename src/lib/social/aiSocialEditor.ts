@@ -13,6 +13,7 @@
  */
 
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from './feedCaption'
+import { repairSocialCopyAgainstSource } from './socialFactualFidelity'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -43,25 +44,36 @@ Türkçe haberlerden Instagram ve Facebook (özellikle HİKAYE / story görseli)
 Ton: ciddi haber odası / gazete manşeti — net, güçlü, abartısız.
 Görsel format: Post görseli 4:5 (1080×1350), tam sayfa haber fotoğrafı (full-bleed); manşet + özet alttan yukarı koyu lacivert gradient scrim üzerinde.
 
+ÇİFT HEDEF (ikisi birden zorunlu):
+1) MERAK: Manşet ve post metni feed'de kaydırırken "dur, bunu okuyayım" dedirtsin; çarpıcı detay / beklenmedik açı / güçlü rakam öne çıksın.
+2) BİLGİ + OLGUSAL SADAKAT: Okuyucu manşetten ve caption'dan ne olduğunu doğru anlasın. Kısaltırken anlam taşıyan kelime ASLA düşürme.
+
+OLGU SADAKATİ — KESİN:
+- Kaynaktaki sayı, özel isim, yer adı, unvan ve isim tamlamasının baş ismini KORU.
+- YASAK örnek: "15 hava aracı müdahale etti" → "15 hava müdahale etti" (yanlış + dilbilgisi bozuk). DOĞRU: "15 hava aracı müdahale etti".
+- Benzer: "itfaiye ekibi", "orman yangını", "yerleşim yeri", "jandarma ekipleri" — tamlama ismini atma.
+- Rakamı yuvarlama / değiştirme / uydurma YASAK. Haberde yoksa ekleme.
+- Türkçe dilbilgisi doğru olsun: özne tam ve anlamlı; "15 hava müdahale etti" gibi eksik isim tamlaması YASAK.
+
 ÖNCELİKLİ HEDEF — DİKKAT ÇEKİCİLİK:
 - Manşet ve alt açıklama OKUMAYA TEŞVİK EDİCİ olmalı; sıradan haber özeti yapıştırma gibi durmamalı.
-- Merak uyandır, çarpıcı detayı öne çıkar, beklenmedik açıyı vurgula — ama doğruluktan asla taviz verme.
-- Feed'de kaydırılırken "dur, bunu okuyayım" dedirtecek ifade gücü hedefle.
+- Merak uyandır, çarpıcı detayı öne çıkar — ama doğruluktan asla taviz verme.
 - Ucuz clickbait / sahte vaat / abartılı şok dili YASAK — NaHaber güvenilir haber tonu korunur.
 
 KURALLAR:
-- headline: Gazete ciddiyetiyle DİKKAT ÇEKİCİ TÜRKÇE manşet (max ${HEADLINE_MAX} karakter). Okuyucuyu durduracak kadar etkili; soru, çarpıcı rakam, beklenmedik açı kullanılabilir.
+- headline: Gazete ciddiyetiyle DİKKAT ÇEKİCİ + BİLGİLENDİRİCİ TÜRKÇE manşet (max ${HEADLINE_MAX} karakter). Merak + doğru olgu birlikte.
   * UZUNLUK / SATIR: Ya TEK SATIRDA sığacak kadar kısa ve vurucu OL, YA DA 2–3 tematik satır için satır sonlarını \\n ile belirt (ör. "Çanakkale enflasyonunda\\nsürpriz düşüş"). Her satır kısa vurucu öbek olsun. Uzun sarkan tek cümle YASAK — 4+ satıra rastgele sarılmasın. Max 3 satır.
   * Curiosity gap OK (beklenmedik açı, gerilim, çarpıcı rakam); ucuz clickbait / sahte vaat YASAK.
   * TAM kelimeler; yarım cümle / kesik kelime YASAK. "5 yaşındaki" / "vurulan" gibi sıfat veya fiilimsede BITIRME — isim veya fiille bitir (ör. "…Karan taburcu oldu"). Nokta ile bitirme (gazete manşeti gibi).
+  * Karakter sınırı için kelime atmak zorundaysan önce sıfat/bağlaç at; sayı + isim tamlamasını (hava aracı vb.) ASLA atma — gerekirse manşeti yeniden kur.
 - storySummary: Manşetin ALTINDA görünecek TAM FAYDALI ÖZET. 1 veya 2 TAM cümle; toplam max ${STORY_SUMMARY_MAX} karakter. Her cümle nokta, ünlem veya soru işareti ile bitsin. Asla cümleyi veya kelimeyi ortadan kesme.
   * 1. görev — ANLAŞILIRLIK: Ne olduğu net olsun (kim/ne/nerede + ana olay). Okuyucu özetten haberi anlamalı; teaser / "ipuucu verip sakla" YASAK.
   * 2. görev — MERAK + DERİNLİK İŞTAHI: Özetin kendisi de ilgi çekici olsun; monoton "X açıklandı, Y yapıldı" kalıplarına düşme. Etki, sonuç veya sürpriz detayı öne çıkar — "git oku" demeden.
   * YASAK meta CTA kalıpları (özetten ASLA kullanma): "haberimizde", "detayları haberimizde", "detaylar için", "devamı için", "devamını oku", "tıklayın", "tıkla", "linkten", "haberi oku", "ayrıntılar", "işte detaylar" vb.
-  * Sade, akıcı Türkçe; jargon ve abartı yok.
+  * Sade, akıcı, dilbilgisi doğru Türkçe; jargon ve abartı yok. Olgu kelimelerini düşürme.
 - caption: Facebook/Instagram POST açıklama gövdesi (URL ve hashtag YOK — sistem ekler).
-  * AMAÇ: Feed'de kaydıran kullanıcıyı yakalamak — ilk cümle merak + bilgi birleşimi olsun.
-  * İçerik: (1) Haberin TAM manşetini yansıtan açılış cümlesi/paragrafı — manşet anlamı eksik/yarım kalmasın.
+  * AMAÇ: Feed'de kaydıran kullanıcıyı yakalamak — ilk cümle merak + doğru bilgi birleşimi olsun.
+  * İçerik: (1) Haberin TAM manşetini yansıtan açılış cümlesi/paragrafı — manşet anlamı eksik/yarım kalmasın; sayı/isim/tamlama doğru.
     (2) TAM kısa özet: ne oldu + önemli detay/etki — okunabilir 2–3 paragraf.
   * Toplam ~400–800 karakter. 1. paragraf emoji ile başlasın. Paragraflar arasında boş satır (\\n\\n).
   * YALNIZCA tamamlanmış cümleler; yarım cümle, kesik kelime, "…" ile biten teaser YASAK.
@@ -73,7 +85,7 @@ KURALLAR:
 
 function buildPrompt(title: string, description: string, cityName: string): string {
   return `Aşağıdaki haber için sosyal medya + hikaye görseli içeriği oluştur.
-ÖNEMLİ: Başlık ve açıklamalar DİKKAT ÇEKİCİ ve OKUMAYA TEŞVİK EDİCİ olmalı — feed'de kaydıran kullanıcıyı durduracak güçte. Sıradan haber özeti yapıştırma gibi durmasın. Doğruluktan taviz vermeden merak uyandır.
+ÖNEMLİ: Başlık ve açıklamalar hem DİKKAT ÇEKİCİ / MERAK UYANDIRICI hem BİLGİLENDİRİCİ olsun. Sıradan özet yapıştırma. Doğruluktan taviz yok: sayı, isim, "hava aracı" gibi tamlama isimlerini düşürme; Türkçe dilbilgisi doğru olsun.
 
 BAŞLIK: ${title}
 HABERİN İÇERİĞİ: ${description.slice(0, 1500)}
@@ -82,9 +94,9 @@ GÖRSEL FORMAT: Post 4:5 (1080×1350) — tam sayfa haber fotoğrafı; manşet+�
 
 JSON şeması:
 {
-  "headline": "string (max ${HEADLINE_MAX} karakter: tek satır VEYA 2-3 satır \\n ile; sarkan uzun cümle yok; nokta yok; DİKKAT ÇEKİCİ — okumaya teşvik edici)",
-  "storySummary": "string (1-2 tam cümle, max ${STORY_SUMMARY_MAX} karakter: ne oldu + etki/sonuç net; meta CTA YASAK — haberimizde/tıkla/devamı yok; noktalama ile bitsin; MERAK UYANDIRICI olsun)",
-  "caption": "string (2-3 paragraf: tam manşet anlamı + tam kısa özet; 400-800 karakter; emoji ile başlar; \\n\\n; URL yok; yarım cümle yok; ilk cümle YAKALAYICI olsun)",
+  "headline": "string (max ${HEADLINE_MAX} karakter: tek satır VEYA 2-3 satır \\n ile; sarkan uzun cümle yok; nokta yok; merak + doğru olgu; tamlama ismi düşürme)",
+  "storySummary": "string (1-2 tam cümle, max ${STORY_SUMMARY_MAX} karakter: ne oldu + etki/sonuç net; olgu sadık; meta CTA YASAK — haberimizde/tıkla/devamı yok; noktalama ile bitsin; merak uyandırıcı)",
+  "caption": "string (2-3 paragraf: tam manşet anlamı + tam kısa özet; 400-800 karakter; emoji ile başlar; \\n\\n; URL yok; yarım cümle yok; ilk cümle yakalayıcı + doğru)",
   "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5"],
   "altText": "string (10-20 kelime, SEO açıklaması)"
 }`
@@ -173,7 +185,7 @@ function fallbackStorySummary(title: string, caption: string): string {
   return clampAtWordBoundary(`${clamped.replace(/[.!?…]+$/, '')}.`, STORY_SUMMARY_MAX)
 }
 
-function parseAISocialJSON(raw: string, title: string): AISocialContent | null {
+function parseAISocialJSON(raw: string, title: string, description = ''): AISocialContent | null {
   try {
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
     const p = JSON.parse(cleaned) as Partial<AISocialContent>
@@ -183,10 +195,11 @@ function parseAISocialJSON(raw: string, title: string): AISocialContent | null {
       ? p.hashtags.map((t) => { const s = String(t).trim(); return s.startsWith('#') ? s : `#${s}` }).slice(0, 5)
       : ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye']
     while (tags.length < 5) tags.push('#NaHaber')
-    const caption = clampCaptionBody(str(p.caption, `📰 ${title}`), CAPTION_MAX)
-    const headline = clampHeadline(str(p.headline, title), HEADLINE_MAX)
+    const fidelity = (s: string) => repairSocialCopyAgainstSource(s, title, description)
+    const caption = clampCaptionBody(fidelity(str(p.caption, `📰 ${title}`)), CAPTION_MAX)
+    const headline = clampHeadline(fidelity(str(p.headline, title)), HEADLINE_MAX)
     const storySummary = clampCompleteSentences(
-      stripMetaCtas(str(p.storySummary, fallbackStorySummary(title, caption))),
+      fidelity(stripMetaCtas(str(p.storySummary, fallbackStorySummary(title, caption)))),
       STORY_SUMMARY_MAX,
       STORY_SUMMARY_MAX + 32,
     )
@@ -236,7 +249,7 @@ async function generateWithGemini(
     if (data.error) { console.error('[aiSocialEditor] Gemini error:', data.error.message); return null }
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
     if (!raw) return null
-    return parseAISocialJSON(raw, title)
+    return parseAISocialJSON(raw, title, description)
   } catch (err) {
     console.error('[aiSocialEditor] Gemini exception:', err)
     return null
@@ -272,7 +285,7 @@ async function generateWithDeepSeek(
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
     const raw = data.choices?.[0]?.message?.content?.trim()
     if (!raw) return null
-    return parseAISocialJSON(raw, title)
+    return parseAISocialJSON(raw, title, description)
   } catch (err) {
     console.error('[aiSocialEditor] DeepSeek exception:', err)
     return null

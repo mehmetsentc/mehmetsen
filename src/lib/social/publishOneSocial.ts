@@ -19,6 +19,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload, SocialPublishResult } from '@/lib/social/types'
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
@@ -509,6 +510,19 @@ export async function publishOneSocial(
     } catch (err) {
       console.warn(`[publishOneSocial] Meta AI story/caption rewrite skipped ${newsId}:`, err)
     }
+
+    // Olgu sadakati: AI'nin düşürdüğü tamlama isimlerini (hava aracı vb.) geri koy
+    socialContent.headline = repairSocialHeadline(socialContent.headline, title, bodyText || spot)
+    socialContent.storySummary = repairSocialCopyAgainstSource(
+      socialContent.storySummary,
+      title,
+      bodyText || spot,
+    )
+    socialContent.caption = repairSocialCopyAgainstSource(
+      socialContent.caption,
+      title,
+      bodyText || spot,
+    )
 
     // Hikâye özeti: daima tam cümle (override dahil) — OG mid-word clip önlemi
     socialContent.storySummary = clampCompleteSentences(

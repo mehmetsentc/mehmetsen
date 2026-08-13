@@ -1,4 +1,7 @@
-/** Social post card category labels (ONYEDİTİVİ template). */
+/** Social post card category labels (ONYEDİTİVİ template).
+ * Overlay yalnızca kategori şeridi (SON DAKİKA / SPOR…); manşet olgu sadakati
+ * socialFactualFidelity + AI promptlarında uygulanır.
+ */
 import {
   DEFAULT_CATEGORIES,
   YEREL_TO_NATIONAL_CATEGORY_MAP,
