@@ -1,11 +1,13 @@
 /**
  * Pre-AI duplicate detection for newsQueue items.
- * Skips DeepSeek/Gemini when the article already exists or is near-duplicate.
+ * Skips DeepSeek/Gemini when the article already exists, is near-duplicate,
+ * or a stronger peer is already waiting in the queue.
  */
 import type { Firestore } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
 import { findStoryLibraryMatch } from '@/services/newsroom/dedupe/storyLibraryService'
+import { findQueuePeerDuplicate } from '@/services/newsroom/queue/queueDuplicateSweep'
 import type { NewsQueueDocument } from '@/services/newsroom/queue/types'
 
 export interface QueueDuplicateHit {
@@ -14,6 +16,18 @@ export interface QueueDuplicateHit {
   /** True when matched via newsroomStoryLibrary (cross-source topic gate) */
   libraryHit?: boolean
   matchMethod?: string
+  /** Intra-queue peer duplicate */
+  peerQueueId?: string
+  peerTitle?: string
+  similarity?: number
+  qualityScore?: number
+  peerQualityScore?: number
+  /** Drop this queue job (weaker duplicate) */
+  dropSelf?: boolean
+  /** Drop the peer queue job (this one is better) */
+  dropPeer?: boolean
+  /** Borderline — flag for AI/admin review, do not auto-delete */
+  needsReview?: boolean
 }
 
 async function findExistingByFingerprint(
@@ -65,7 +79,8 @@ async function findLinkedNewsFromFingerprint(
  */
 export async function detectQueueDuplicate(
   db: Firestore,
-  data: NewsQueueDocument
+  data: NewsQueueDocument,
+  options: { queueId?: string; skipPeerCheck?: boolean } = {}
 ): Promise<QueueDuplicateHit | null> {
   if (data.changeType === 'updated') return null
 
@@ -127,5 +142,50 @@ export async function detectQueueDuplicate(
     return { reason: 'duplicate', existingNewsId: similar.newsId }
   }
 
+  // Intra-queue peer — before AI burn
+  if (!options.skipPeerCheck) {
+    try {
+      const peer = await findQueuePeerDuplicate(db, data, options.queueId)
+      if (peer) {
+        console.log(
+          `[queueDuplicateCheck] queuePeer ${peer.similarity.toFixed(2)}` +
+            ` → ${peer.peerQueueId} dropSelf=${peer.dropSelf} dropPeer=${peer.dropPeer}` +
+            ` review=${peer.needsReview}`
+        )
+        return {
+          reason: peer.reason,
+          peerQueueId: peer.peerQueueId,
+          peerTitle: peer.peerTitle,
+          similarity: peer.similarity,
+          qualityScore: peer.qualityScore,
+          peerQualityScore: peer.peerQualityScore,
+          dropSelf: peer.dropSelf,
+          dropPeer: peer.dropPeer,
+          needsReview: peer.needsReview,
+        }
+      }
+    } catch (err) {
+      console.warn('[queueDuplicateCheck] peer check failed:', err)
+    }
+  }
+
   return null
+}
+
+/** Attach quality + duplicate flags without changing status (admin/AI review). */
+export async function flagQueueDuplicateSuspect(
+  db: Firestore,
+  queueId: string,
+  hit: QueueDuplicateHit,
+  inputQualityScore?: number
+): Promise<void> {
+  await db.collection(Collections.NEWS_QUEUE).doc(queueId).update({
+    queueDuplicateSuspect: true,
+    queueDuplicateOf: hit.peerQueueId ?? hit.existingNewsId ?? null,
+    queueDuplicateRole: hit.dropSelf ? 'weaker' : hit.dropPeer ? 'keeper' : 'review',
+    queueDuplicateSimilarity: hit.similarity ?? null,
+    qualityScore: hit.qualityScore ?? inputQualityScore ?? null,
+    peerQualityScore: hit.peerQualityScore ?? null,
+    updatedAt: Date.now(),
+  })
 }

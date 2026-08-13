@@ -23,6 +23,16 @@ export interface NewsQueueDocument {
   createdAt: number
   scheduledAt: number
   updatedAt: number
+  /** Cross-source / published duplicate target */
+  duplicateOf?: string | null
+  duplicateStubId?: string | null
+  /** Intra-queue near-duplicate flags (before AI) */
+  queueDuplicateSuspect?: boolean
+  queueDuplicateOf?: string | null
+  queueDuplicateRole?: 'keeper' | 'weaker' | 'review' | null
+  queueDuplicateSimilarity?: number | null
+  qualityScore?: number | null
+  peerQualityScore?: number | null
 }
 
 export interface QueueEnqueueInput {

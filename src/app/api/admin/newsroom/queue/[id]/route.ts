@@ -41,6 +41,12 @@ export async function GET(request: Request, context: RouteContext) {
       status: data.status,
       createdAt: data.createdAt,
     }),
+    queueDuplicateSuspect: data.queueDuplicateSuspect === true,
+    queueDuplicateRole: data.queueDuplicateRole ?? null,
+    queueDuplicateOf: data.queueDuplicateOf ?? null,
+    queueDuplicateSimilarity: data.queueDuplicateSimilarity ?? null,
+    qualityScore: data.qualityScore ?? null,
+    peerQualityScore: data.peerQualityScore ?? null,
   })
 }
 

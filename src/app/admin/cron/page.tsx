@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import {
   Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Activity, Timer, RefreshCw,
-  List, ChevronDown, Trash2, Zap, Pencil,
+  List, ChevronDown, Trash2, Zap, Pencil, Copy,
 } from 'lucide-react'
 import { QueueItemEditor } from '@/components/admin/QueueItemEditor'
 import { cn } from '@/lib/utils'
@@ -33,6 +33,12 @@ interface PendingQueueItem {
   category: string | null
   createdAt: number
   attempts: number
+  queueDuplicateSuspect?: boolean
+  queueDuplicateRole?: string | null
+  queueDuplicateOf?: string | null
+  queueDuplicateSimilarity?: number | null
+  qualityScore?: number | null
+  peerQualityScore?: number | null
 }
 
 const JOBS = [
@@ -86,6 +92,8 @@ export default function CronMonitorPage() {
   const [flushing, setFlushing] = useState(false)
   const [fastProcessing, setFastProcessing] = useState(false)
   const [purgingHours, setPurgingHours] = useState<number | null>(null)
+  const [purgingDuplicates, setPurgingDuplicates] = useState(false)
+  const [dupFilterOnly, setDupFilterOnly] = useState(false)
   const [publishingItemId, setPublishingItemId] = useState<string | null>(null)
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
@@ -299,6 +307,42 @@ export default function CronMonitorPage() {
     }
   }
 
+  const purgeLowQualityDuplicates = async () => {
+    if (purgingDuplicates) return
+    const ok = window.confirm(
+      'Kuyruktaki benzer haberler taranacak; düşük kaliteli tekrarlar atlanacak/silinecek.\n' +
+        'Benzersiz iyi haberler korunur. Devam?'
+    )
+    if (!ok) return
+    setPurgingDuplicates(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/queue?purgeDuplicates=1&hard=1&limit=400', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = (await res.json()) as {
+        ok?: boolean
+        deleted?: number
+        skipped?: number
+        flagged?: number
+        clusters?: number
+        scanned?: number
+        error?: string
+      }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      toast.success(
+        `Tarama: ${data.scanned ?? 0} · küme: ${data.clusters ?? 0} · ` +
+          `silinen: ${(data.deleted ?? 0) + (data.skipped ?? 0)} · inceleme: ${data.flagged ?? 0}`
+      )
+      await load(true)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Tekrar silme hatası')
+    } finally {
+      setPurgingDuplicates(false)
+    }
+  }
+
   const deleteQueueItem = async (id: string) => {
     if (deletingItemId) return
     setDeletingItemId(id)
@@ -398,6 +442,11 @@ export default function CronMonitorPage() {
     running: runs.filter((r) => r.status === 'running').length,
   }
 
+  const visiblePendingItems = dupFilterOnly
+    ? pendingItems.filter((i) => i.queueDuplicateSuspect)
+    : pendingItems
+  const dupCount = pendingItems.filter((i) => i.queueDuplicateSuspect).length
+
   return (
     <div className="flex min-w-0 flex-col overflow-x-hidden">
       <CMSHeader title="Cron İzleme" subtitle="Zamanlanmış görev monitörü" />
@@ -482,7 +531,7 @@ export default function CronMonitorPage() {
                   <button
                     key={h}
                     type="button"
-                    disabled={purgingHours !== null}
+                    disabled={purgingHours !== null || purgingDuplicates}
                     onClick={() => void purgeOlderThan(h)}
                     className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300"
                   >
@@ -494,6 +543,32 @@ export default function CronMonitorPage() {
                     {h} saat öncesini sil
                   </button>
                 ))}
+                <button
+                  type="button"
+                  disabled={purgingDuplicates || purgingHours !== null}
+                  onClick={() => void purgeLowQualityDuplicates()}
+                  className="inline-flex items-center gap-1 rounded-md border border-orange-400 bg-orange-50 px-2.5 py-1 text-[10px] font-bold text-orange-800 hover:bg-orange-100 disabled:opacity-50 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-200"
+                >
+                  {purgingDuplicates ? (
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                  ) : (
+                    <Copy className="h-2.5 w-2.5" />
+                  )}
+                  Düşük kaliteli tekrarları sil
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDupFilterOnly((v) => !v)}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-bold',
+                    dupFilterOnly
+                      ? 'border-violet-500 bg-violet-100 text-violet-900 dark:bg-violet-900/40 dark:text-violet-100'
+                      : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]'
+                  )}
+                >
+                  <AlertTriangle className="h-2.5 w-2.5" />
+                  Tekrarlar{dupCount > 0 ? ` (${dupCount})` : ''}
+                </button>
               </div>
             </div>
             <div className="max-h-[400px] divide-y divide-[rgb(var(--color-border))] overflow-y-auto">
@@ -503,13 +578,13 @@ export default function CronMonitorPage() {
                     <div key={i} className="h-10 animate-pulse rounded-lg bg-[rgb(var(--color-surface))]" />
                   ))}
                 </div>
-              ) : pendingItems.length === 0 ? (
+              ) : visiblePendingItems.length === 0 ? (
                 <div className="py-10 text-center text-sm text-[rgb(var(--color-muted))]">
-                  Kuyrukta bekleyen haber yok
+                  {dupFilterOnly ? 'İşaretli tekrar yok — önce tarama çalıştırın' : 'Kuyrukta bekleyen haber yok'}
                 </div>
               ) : (
                 <>
-                  {pendingItems.map((item) => (
+                  {visiblePendingItems.map((item) => (
                     <div
                       key={item.id}
                       className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))] sm:flex-row sm:items-start sm:gap-3 sm:px-5"
@@ -527,6 +602,27 @@ export default function CronMonitorPage() {
                             {item.category && (
                               <span className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 font-medium">
                                 {item.category}
+                              </span>
+                            )}
+                            {item.queueDuplicateSuspect && (
+                              <span
+                                className={cn(
+                                  'rounded px-1.5 py-0.5 font-bold',
+                                  item.queueDuplicateRole === 'weaker'
+                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                    : item.queueDuplicateRole === 'keeper'
+                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+                                      : 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
+                                )}
+                              >
+                                {item.queueDuplicateRole === 'weaker'
+                                  ? 'Tekrar (zayıf)'
+                                  : item.queueDuplicateRole === 'keeper'
+                                    ? 'Tekrar (tutulan)'
+                                    : 'Tekrar?'}
+                                {typeof item.qualityScore === 'number'
+                                  ? ` · Q${Math.round(item.qualityScore)}`
+                                  : ''}
                               </span>
                             )}
                             {item.createdAt > 0 && (

@@ -5,6 +5,8 @@ import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
 import { createDuplicateNewsStub, findStoryLibraryMatchQuick } from '@/services/newsroom/dedupe/storyLibraryService'
 import type { QueueDuplicateHit } from '@/services/newsroom/queue/queueDuplicateCheck'
+import { findQueuePeerDuplicate } from '@/services/newsroom/queue/queueDuplicateSweep'
+import { scoreFromArticleInput } from '@/services/newsroom/queue/queueQualityCompare'
 import type { NewsQueueDocument, QueueEnqueueInput } from '@/services/newsroom/queue/types'
 import { staleQueueReason } from '@/services/newsroom/queue/freshness'
 
@@ -50,6 +52,84 @@ export async function enqueueNewsItem(
     return existing.docs[0]!.id
   }
 
+  const qualityScore = scoreFromArticleInput(item.input)
+
+  // Near-duplicate already in queue (different fingerprint / cross-source)
+  let peerFlags: Partial<NewsQueueDocument> = {}
+  try {
+    const probe: NewsQueueDocument = {
+      status: 'pending',
+      workerId: item.workerId,
+      changeType: item.changeType,
+      input: item.input,
+      existingNewsId: item.existingNewsId ?? null,
+      sourceId: item.sourceId,
+      fingerprintHash: item.fingerprintHash,
+      attempts: 0,
+      maxAttempts: DEFAULT_MAX_ATTEMPTS,
+      createdAt: now,
+      scheduledAt: now,
+      updatedAt: now,
+    }
+    const peer = await findQueuePeerDuplicate(db, probe)
+    if (peer) {
+      if (peer.dropSelf) {
+        console.log(
+          `[enqueueNewsItem] queuePeer weaker skip → ${peer.peerQueueId}` +
+            ` (q=${peer.qualityScore}<${peer.peerQualityScore})`
+        )
+        return `peer-skip-${item.fingerprintHash}`
+      }
+      if (peer.dropPeer) {
+        try {
+          await markQueueSkipped(
+            db,
+            peer.peerQueueId,
+            `queuePeerDuplicate:weaker:${peer.similarity.toFixed(2)}`
+          )
+          await queueCollection(db).doc(peer.peerQueueId).update({
+            queueDuplicateSuspect: true,
+            queueDuplicateRole: 'weaker',
+            queueDuplicateSimilarity: peer.similarity,
+            qualityScore: peer.peerQualityScore,
+            peerQualityScore: peer.qualityScore,
+          })
+        } catch (err) {
+          console.warn('[enqueueNewsItem] drop peer failed:', err)
+        }
+        peerFlags = {
+          queueDuplicateSuspect: true,
+          queueDuplicateOf: peer.peerQueueId,
+          queueDuplicateRole: 'keeper',
+          queueDuplicateSimilarity: peer.similarity,
+          qualityScore,
+          peerQualityScore: peer.peerQualityScore,
+        }
+      } else if (peer.needsReview) {
+        peerFlags = {
+          queueDuplicateSuspect: true,
+          queueDuplicateOf: peer.peerQueueId,
+          queueDuplicateRole: 'review',
+          queueDuplicateSimilarity: peer.similarity,
+          qualityScore,
+          peerQualityScore: peer.peerQualityScore,
+        }
+        try {
+          await queueCollection(db).doc(peer.peerQueueId).update({
+            queueDuplicateSuspect: true,
+            queueDuplicateRole: 'review',
+            queueDuplicateSimilarity: peer.similarity,
+            updatedAt: now,
+          })
+        } catch {
+          /* non-critical */
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[enqueueNewsItem] peer check failed:', err)
+  }
+
   const doc: NewsQueueDocument = {
     status: 'pending',
     workerId: item.workerId,
@@ -68,6 +148,8 @@ export async function enqueueNewsItem(
     createdAt: now,
     scheduledAt: now,
     updatedAt: now,
+    qualityScore,
+    ...peerFlags,
   }
 
   const ref = await queueCollection(db).add(doc)
@@ -390,6 +472,12 @@ export async function markQueueDuplicate(
     lastError: hit.reason.slice(0, 200),
     duplicateOf: hit.existingNewsId ?? null,
     duplicateStubId: stubId ?? null,
+    queueDuplicateSuspect: Boolean(hit.peerQueueId || hit.libraryHit),
+    queueDuplicateOf: hit.peerQueueId ?? hit.existingNewsId ?? null,
+    queueDuplicateRole: hit.dropSelf ? 'weaker' : hit.dropPeer ? 'keeper' : 'review',
+    queueDuplicateSimilarity: hit.similarity ?? null,
+    qualityScore: hit.qualityScore ?? null,
+    peerQualityScore: hit.peerQualityScore ?? null,
     leaseOwner: null,
     leaseExpiresAt: null,
     claimedAt: null,

@@ -43,6 +43,12 @@ export interface QueueEditorData {
   workerId?: string
   status?: string
   createdAt?: number
+  queueDuplicateSuspect?: boolean
+  queueDuplicateRole?: string | null
+  queueDuplicateOf?: string | null
+  queueDuplicateSimilarity?: number | null
+  qualityScore?: number | null
+  peerQualityScore?: number | null
 }
 
 interface QueueItemEditorProps {
@@ -76,13 +82,32 @@ export function QueueItemEditor({ queueId, onClose, onBusyChange, onSaved, onPub
   const [tagsText, setTagsText] = useState('')
   const [isBreaking, setIsBreaking] = useState(false)
   const [meta, setMeta] = useState<{ workerId?: string; status?: string; createdAt?: number }>({})
+  const [dupMeta, setDupMeta] = useState<{
+    suspect: boolean
+    role: string | null
+    peerId: string | null
+    similarity: number | null
+    qualityScore: number | null
+    peerQualityScore: number | null
+    peerTitle?: string | null
+    decisionReason?: string | null
+  }>({
+    suspect: false,
+    role: null,
+    peerId: null,
+    similarity: null,
+    qualityScore: null,
+    peerQualityScore: null,
+  })
+  const [comparingDup, setComparingDup] = useState(false)
+  const [deletingPeer, setDeletingPeer] = useState(false)
 
   const categoryGroups = useMemo(() => getAdminCategoryGroups(), [])
   const showCityFields = categoryId === YEREL_HABER_CATEGORY_ID || categoryId.startsWith('yerel-')
 
   useEffect(() => {
-    onBusyChange?.(loading || saving || publishing || aiPreparing)
-  }, [loading, saving, publishing, aiPreparing, onBusyChange])
+    onBusyChange?.(loading || saving || publishing || aiPreparing || comparingDup || deletingPeer)
+  }, [loading, saving, publishing, aiPreparing, comparingDup, deletingPeer, onBusyChange])
 
   useEffect(() => {
     let cancelled = false
@@ -111,6 +136,14 @@ export function QueueItemEditor({ queueId, onClose, onBusyChange, onSaved, onPub
           workerId: data.workerId,
           status: data.status,
           createdAt: data.createdAt,
+        })
+        setDupMeta({
+          suspect: data.queueDuplicateSuspect === true,
+          role: data.queueDuplicateRole ?? null,
+          peerId: data.queueDuplicateOf ?? null,
+          similarity: data.queueDuplicateSimilarity ?? null,
+          qualityScore: data.qualityScore ?? null,
+          peerQualityScore: data.peerQualityScore ?? null,
         })
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Kuyruk öğesi yüklenemedi')
@@ -319,7 +352,7 @@ type QueuePayload = {
   }
 
   async function handlePublish() {
-    if (saving || publishing || aiPreparing) return
+    if (saving || publishing || aiPreparing || comparingDup || deletingPeer) return
     if (!title.trim()) {
       toast.error('Başlık gerekli')
       return
@@ -347,6 +380,90 @@ type QueuePayload = {
       toast.error(e instanceof Error ? e.message : 'Yayınlama başarısız')
     } finally {
       setPublishing(false)
+    }
+  }
+
+  async function runAiDuplicateCompare() {
+    if (comparingDup || saving || publishing || aiPreparing) return
+    setComparingDup(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/queue', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'compare-duplicates', id: queueId, useAi: true }),
+      })
+      const data = (await res.json()) as {
+        ok?: boolean
+        isDuplicate?: boolean
+        message?: string
+        peerQueueId?: string
+        peerTitle?: string
+        similarity?: number
+        qualityScore?: number
+        peerQualityScore?: number
+        keepSelf?: boolean
+        decisionReason?: string
+        error?: string
+      }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      if (!data.isDuplicate) {
+        toast.success(data.message || 'Kuyrukta benzer haber yok')
+        setDupMeta((prev) => ({ ...prev, suspect: false }))
+        return
+      }
+      setDupMeta({
+        suspect: true,
+        role: data.keepSelf ? 'keeper' : 'weaker',
+        peerId: data.peerQueueId ?? null,
+        similarity: data.similarity ?? null,
+        qualityScore: data.qualityScore ?? null,
+        peerQualityScore: data.peerQualityScore ?? null,
+        peerTitle: data.peerTitle ?? null,
+        decisionReason: data.decisionReason ?? null,
+      })
+      toast.success(
+        data.keepSelf
+          ? `Bu kayıt daha kaliteli (Q${Math.round(data.qualityScore ?? 0)} > Q${Math.round(data.peerQualityScore ?? 0)})`
+          : `Bu kayıt daha zayıf — tekrar silinebilir (Q${Math.round(data.qualityScore ?? 0)} < Q${Math.round(data.peerQualityScore ?? 0)})`
+      )
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'AI karşılaştırma başarısız')
+    } finally {
+      setComparingDup(false)
+    }
+  }
+
+  async function deleteWeakerDuplicate() {
+    if (deletingPeer || !dupMeta.peerId) return
+    const targetId = dupMeta.role === 'weaker' ? queueId : dupMeta.peerId
+    const label = dupMeta.role === 'weaker' ? 'bu zayıf kayıt' : 'eşleşen zayıf tekrar'
+    const ok = window.confirm(`Düşük kaliteli tekrar silinecek (${label}). Devam?`)
+    if (!ok) return
+    setDeletingPeer(true)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/queue?id=${encodeURIComponent(targetId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = (await res.json()) as { ok?: boolean; error?: string }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      toast.success('Zayıf tekrar kuyruktan silindi')
+      if (targetId === queueId) {
+        onClose()
+        return
+      }
+      setDupMeta((prev) => ({
+        ...prev,
+        suspect: false,
+        peerId: null,
+        role: 'keeper',
+      }))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Silme başarısız')
+    } finally {
+      setDeletingPeer(false)
     }
   }
 
@@ -389,10 +506,76 @@ type QueuePayload = {
         ) : (
           <>
             <div className="border-b border-[rgb(var(--color-border))] px-5 py-3">
+              {(dupMeta.suspect || comparingDup) && (
+                <div
+                  className={cn(
+                    'mb-3 rounded-xl border px-3 py-2.5 text-xs',
+                    dupMeta.role === 'weaker'
+                      ? 'border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100'
+                      : 'border-violet-300 bg-violet-50 text-violet-950 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100'
+                  )}
+                >
+                  <p className="font-bold">
+                    {dupMeta.role === 'weaker'
+                      ? 'Kuyruk tekrarı — bu kayıt daha zayıf görünüyor'
+                      : dupMeta.role === 'keeper'
+                        ? 'Kuyruk tekrarı — bu kayıt tutuluyor'
+                        : 'Olası kuyruk tekrarı — AI incelemesi'}
+                  </p>
+                  <p className="mt-1 opacity-90">
+                    {dupMeta.peerTitle ? `Eşleşen: ${dupMeta.peerTitle}` : null}
+                    {typeof dupMeta.similarity === 'number'
+                      ? ` · benzerlik ${(dupMeta.similarity * 100).toFixed(0)}%`
+                      : ''}
+                    {typeof dupMeta.qualityScore === 'number'
+                      ? ` · kalite ${Math.round(dupMeta.qualityScore)}`
+                      : ''}
+                    {typeof dupMeta.peerQualityScore === 'number'
+                      ? ` vs ${Math.round(dupMeta.peerQualityScore)}`
+                      : ''}
+                  </p>
+                  {dupMeta.decisionReason && (
+                    <p className="mt-1 text-[11px] opacity-80">{dupMeta.decisionReason}</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={comparingDup || deletingPeer}
+                      onClick={() => void runAiDuplicateCompare()}
+                      className="inline-flex items-center gap-1 rounded-lg bg-violet-700 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-violet-600 disabled:opacity-50"
+                    >
+                      {comparingDup ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                      AI ile kalite karşılaştır
+                    </button>
+                    {dupMeta.peerId && (
+                      <button
+                        type="button"
+                        disabled={deletingPeer || comparingDup}
+                        onClick={() => void deleteWeakerDuplicate()}
+                        className="inline-flex items-center gap-1 rounded-lg bg-red-700 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-600 disabled:opacity-50"
+                      >
+                        {deletingPeer ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                        Zayıf tekrarı sil
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {!dupMeta.suspect && (
+                <button
+                  type="button"
+                  disabled={comparingDup || aiPreparing || saving || publishing}
+                  onClick={() => void runAiDuplicateCompare()}
+                  className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-violet-300 bg-violet-50 px-3 py-2 text-xs font-bold text-violet-900 hover:bg-violet-100 disabled:opacity-50 dark:border-violet-700 dark:bg-violet-950/30 dark:text-violet-100"
+                >
+                  {comparingDup ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                  Kuyruk tekrarı / AI kalite kontrolü
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => void runAiPrepare()}
-                disabled={aiPreparing || saving || publishing}
+                disabled={aiPreparing || saving || publishing || comparingDup}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 px-4 py-3 text-sm font-black text-white shadow-md transition hover:from-amber-400 hover:to-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {aiPreparing ? (

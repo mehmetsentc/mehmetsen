@@ -103,21 +103,71 @@ export async function processNewsQueue(
         }
       }
 
-      const duplicateHit = await detectQueueDuplicate(db, data)
+      const duplicateHit = await detectQueueDuplicate(db, data, { queueId: job.id })
       if (duplicateHit) {
         console.log(
           `[processNewsQueue] duplicate skip ${job.id}` +
             (duplicateHit.existingNewsId ? ` → ${duplicateHit.existingNewsId}` : '') +
+            (duplicateHit.peerQueueId ? ` peer→${duplicateHit.peerQueueId}` : '') +
             (duplicateHit.libraryHit ? ` [library:${duplicateHit.matchMethod}]` : '')
         )
-        if (duplicateHit.libraryHit) {
+
+        // Intra-queue: drop weaker peer, keep this job when we are the keeper
+        if (duplicateHit.peerQueueId && duplicateHit.dropPeer && !duplicateHit.dropSelf) {
+          try {
+            await markQueueSkipped(
+              db,
+              duplicateHit.peerQueueId,
+              `queuePeerDuplicate:weaker:${(duplicateHit.similarity ?? 0).toFixed(2)}`
+            )
+          } catch (err) {
+            console.warn(`[processNewsQueue] drop peer ${duplicateHit.peerQueueId} failed:`, err)
+          }
+          // Continue processing the stronger item — do not skip this job
+        } else if (duplicateHit.peerQueueId && duplicateHit.needsReview && !duplicateHit.dropSelf) {
+          const mine = duplicateHit.qualityScore ?? 0
+          const theirs = duplicateHit.peerQualityScore ?? 0
+          try {
+            const { flagQueueDuplicateSuspect } = await import(
+              '@/services/newsroom/queue/queueDuplicateCheck'
+            )
+            await flagQueueDuplicateSuspect(db, job.id, {
+              ...duplicateHit,
+              dropSelf: mine < theirs,
+              dropPeer: mine > theirs,
+              needsReview: true,
+            })
+            await flagQueueDuplicateSuspect(db, duplicateHit.peerQueueId, {
+              ...duplicateHit,
+              dropSelf: mine > theirs,
+              dropPeer: mine < theirs,
+              needsReview: true,
+            })
+          } catch {
+            /* non-critical */
+          }
+          // Borderline: only auto-skip when clearly weaker — protect unique good news
+          if (mine + 2 < theirs) {
+            await markQueueSkipped(db, job.id, `${duplicateHit.reason}:review_weaker`)
+            stats.skipped += 1
+            return
+          }
+          // Stronger or near-tie → continue to AI / editor path
+        } else if (duplicateHit.peerQueueId && duplicateHit.dropSelf) {
+          await markQueueSkipped(db, job.id, duplicateHit.reason)
+          stats.skipped += 1
+          return
+        } else if (duplicateHit.libraryHit) {
           await markQueueDuplicate(db, job.id, duplicateHit, data.input)
           stats.duplicateLibraryHits += 1
-        } else {
+          stats.skipped += 1
+          return
+        } else if (!duplicateHit.peerQueueId || duplicateHit.dropSelf !== false) {
+          // Published / fingerprint / similar hit
           await markQueueSkipped(db, job.id, duplicateHit.reason)
+          stats.skipped += 1
+          return
         }
-        stats.skipped += 1
-        return
       }
 
       const result = await processNewsroomArticle(db, data.input, {

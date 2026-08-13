@@ -93,6 +93,12 @@ export async function GET(request: Request) {
       category: string | null
       createdAt: number
       attempts: number
+      queueDuplicateSuspect?: boolean
+      queueDuplicateRole?: string | null
+      queueDuplicateOf?: string | null
+      queueDuplicateSimilarity?: number | null
+      qualityScore?: number | null
+      peerQualityScore?: number | null
     }> | undefined
 
     if (wantPendingDetails) {
@@ -115,6 +121,16 @@ export async function GET(request: Request) {
           category: (input.forcedCategoryId as string) ?? null,
           createdAt: (data.createdAt as number) ?? 0,
           attempts: (data.attempts as number) ?? 0,
+          queueDuplicateSuspect: data.queueDuplicateSuspect === true,
+          queueDuplicateRole: (data.queueDuplicateRole as string) ?? null,
+          queueDuplicateOf: (data.queueDuplicateOf as string) ?? null,
+          queueDuplicateSimilarity:
+            typeof data.queueDuplicateSimilarity === 'number'
+              ? data.queueDuplicateSimilarity
+              : null,
+          qualityScore: typeof data.qualityScore === 'number' ? data.qualityScore : null,
+          peerQualityScore:
+            typeof data.peerQualityScore === 'number' ? data.peerQualityScore : null,
         }
       })
     }
