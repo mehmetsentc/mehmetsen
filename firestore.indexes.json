@@ -872,27 +872,6 @@
         { "fieldPath": "citySlug", "order": "ASCENDING" },
         { "fieldPath": "recurrence", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "newsroomStoryLibrary",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "processedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "newsroomStoryLibrary",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "rssFingerprints", "arrayConfig": "CONTAINS" }
-      ]
-    },
-    {
-      "collectionGroup": "newsroomStoryLibrary",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "sourceUrls", "arrayConfig": "CONTAINS" }
-      ]
     }
   ],
   "fieldOverrides": []
