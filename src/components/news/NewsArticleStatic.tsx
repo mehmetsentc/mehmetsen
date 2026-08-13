@@ -21,6 +21,7 @@ import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
 import { ArticleRelatedGridStatic } from '@/components/news/ArticleRelatedGridStatic'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
+import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 
 interface NewsArticleStaticProps {
   post: Post
@@ -311,6 +312,8 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
           )}
 
           <ArticleAuthorBox post={post} />
+
+          <NewsletterSignup source="article" variant="inline" />
 
           <ArticleRelatedGridStatic posts={relatedPosts} />
 

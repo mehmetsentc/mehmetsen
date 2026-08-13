@@ -85,6 +85,7 @@ export const ROUTES = {
     ARCHIVE: '/admin/archive',
     SUBMISSIONS: '/admin/submissions',
     INBOX: '/admin/inbox',
+    NEWSLETTER: '/admin/newsletter',
     APPROVALS: '/admin/approvals',
     MENU: '/admin/menu',
     QUICK: '/admin/quick',

@@ -8,6 +8,7 @@ import { ShareButton } from '@/components/post/ShareButton'
 import { PostComments } from '@/components/post/PostComments'
 import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
 import { NextArticleCard } from '@/components/news/NextArticleCard'
+import { NewsletterPrompt } from '@/components/newsletter/NewsletterPrompt'
 import { ArticleReaderTools } from '@/components/news/ArticleReaderTools'
 import { ArticleSourceBadge } from '@/components/news/ArticleSourceBadge'
 import { useLike } from '@/hooks/useLike'
@@ -178,6 +179,8 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
           <NextArticleCard nextPost={suggested[0]} />
         </section>
       )}
+
+      <NewsletterPrompt />
     </NewsArticlePage>
   )
 }

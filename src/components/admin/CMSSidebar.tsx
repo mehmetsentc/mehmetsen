@@ -135,6 +135,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/social', label: 'Sosyal Medya', icon: Share2, requiredPermissions: ['news:read'] },
       { href: '/admin/social/gorsel', label: 'Görsel Üretici', icon: Film, requiredPermissions: ['news:read'] },
+      { href: '/admin/newsletter', label: 'E-posta Bülteni', icon: Mail, requiredPermissions: ['users:read'] },
       { href: '/admin/seo', label: 'SEO Yönetimi', icon: Search, requiredPermissions: ['seo:read'] },
       { href: '/admin/ads', label: 'Reklam Yönetimi', icon: Megaphone, requiredPermissions: ['seo:edit'] },
     ],

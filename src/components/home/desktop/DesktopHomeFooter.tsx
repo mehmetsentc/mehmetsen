@@ -12,6 +12,7 @@ import {
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl } from '@/lib/seo'
 import { cn } from '@/lib/utils'
+import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 
 /* ─── Mobil footer için kısa kategori listesi ─── */
 const MOBILE_QUICK_LINKS = [
@@ -126,6 +127,10 @@ export function DesktopHomeFooter() {
           ))}
         </div>
 
+        <div className="border-t border-[rgb(var(--color-border))] pt-5">
+          <NewsletterSignup source="desktop-home" variant="compact" />
+        </div>
+
         {/* Sosyal medya */}
         <div className="flex items-center gap-4 border-t border-[rgb(var(--color-border))] pt-4">
           {SOCIAL.map((s) => (
@@ -203,6 +208,10 @@ export function DesktopHomeFooter() {
             </ul>
           </nav>
         </div>
+      </div>
+
+      <div className="mb-8 max-w-lg">
+        <NewsletterSignup source="desktop-home" variant="compact" />
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">

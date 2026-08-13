@@ -20,6 +20,7 @@ const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
   { prefix: '/admin/ai', title: 'AI Asistan', backHref: '/admin/menu' },
   { prefix: '/admin/seo', title: 'SEO', backHref: '/admin/menu' },
   { prefix: '/admin/social', title: 'Sosyal Medya', backHref: '/admin/menu' },
+  { prefix: '/admin/newsletter', title: 'E-posta Bülteni', backHref: '/admin/menu' },
   { prefix: '/admin/ads', title: 'Reklamlar', backHref: '/admin/menu' },
   { prefix: '/admin/analytics', title: 'Analitik', backHref: '/admin/menu' },
   { prefix: '/admin/most-read', title: 'En Çok Okunanlar', backHref: '/admin/menu' },

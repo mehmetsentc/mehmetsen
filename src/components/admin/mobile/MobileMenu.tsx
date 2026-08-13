@@ -49,6 +49,7 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/admin/seo', label: 'SEO', icon: Search, perm: 'seo:read' },
       { href: '/admin/social', label: 'Sosyal Medya', icon: Share2, perm: 'news:read' },
+      { href: '/admin/newsletter', label: 'E-posta Bülteni', icon: Mail, perm: 'users:read' },
       { href: '/admin/ads', label: 'Reklamlar', icon: Megaphone, perm: 'seo:edit' },
       { href: '/admin/analytics', label: 'Analitik', icon: BarChart3, perm: 'analytics:read' },
       { href: '/admin/most-read', label: 'En Çok Okunanlar', icon: Flame, perm: 'analytics:read' },

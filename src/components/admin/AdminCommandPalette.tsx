@@ -176,6 +176,14 @@ const COMMANDS: CommandItem[] = [
     requiredPermissions: ['analytics:read'],
   },
   {
+    id: 'newsletter',
+    label: 'E-posta Bülteni',
+    href: ROUTES.ADMIN.NEWSLETTER,
+    icon: Mail,
+    group: 'Dağıtım',
+    requiredPermissions: ['users:read'],
+  },
+  {
     id: 'users',
     label: 'Kullanıcılar',
     href: ROUTES.ADMIN.USERS,

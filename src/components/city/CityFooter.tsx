@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Mail } from 'lucide-react'
+import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { CONTACT_EMAIL, FOOTER_BOTTOM_LINKS } from '@/constants/siteLegalLinks'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
@@ -205,6 +206,10 @@ export function CityFooter({ cityName }: CityFooterProps) {
           ))}
         </div>
 
+        <div className="border-t border-[rgb(var(--color-border))] pt-5">
+          <NewsletterSignup source="city-footer" variant="compact" />
+        </div>
+
         {/* Yasal */}
         <div className="flex flex-wrap gap-x-3 gap-y-2">
           {FOOTER_BOTTOM_LINKS.map((l) => (
@@ -322,6 +327,10 @@ export function CityFooter({ cityName }: CityFooterProps) {
               </ul>
             </nav>
           </div>
+        </div>
+
+        <div className="mb-8 max-w-md">
+          <NewsletterSignup source="city-footer" variant="compact" />
         </div>
 
         {/* Sosyal medya */}

@@ -1,6 +1,6 @@
 /**
  * POST /api/newsletter/subscribe
- * Persists an email newsletter subscription with marketing consent.
+ * Persists an email newsletter subscription with marketing consent (KVKK).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -13,12 +13,20 @@ export const dynamic = 'force-dynamic'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const ALLOWED_SOURCES = new Set([
+  'desktop-home',
+  'article',
+  'article-prompt',
+  'city-footer',
+  'city-home',
+  'bulten-page',
+])
+
 function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase()
 }
 
 function emailDocId(email: string): string {
-  // Firestore doc ids can't contain `/`; emails are otherwise safe after normalize.
   return email.replace(/\//g, '_')
 }
 
@@ -28,9 +36,13 @@ export async function POST(req: NextRequest) {
     return rateLimitResponse()
   }
 
-  let body: { email?: string; marketingConsent?: boolean }
+  let body: { email?: string; marketingConsent?: boolean; source?: string }
   try {
-    body = (await req.json()) as { email?: string; marketingConsent?: boolean }
+    body = (await req.json()) as {
+      email?: string
+      marketingConsent?: boolean
+      source?: string
+    }
   } catch {
     return NextResponse.json({ error: 'Geçersiz istek' }, { status: 400 })
   }
@@ -47,13 +59,22 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  const source =
+    typeof body.source === 'string' && ALLOWED_SOURCES.has(body.source)
+      ? body.source
+      : 'desktop-home'
+
   try {
     const db = getAdminFirestore()
     const ref = db.collection(Collections.NEWSLETTER_SUBSCRIBERS).doc(emailDocId(email))
     const existing = await ref.get()
 
     if (existing.exists && existing.data()?.status === 'active') {
-      return NextResponse.json({ ok: true, message: 'Bu e-posta zaten kayıtlı', alreadySubscribed: true })
+      return NextResponse.json({
+        ok: true,
+        message: 'Bu e-posta zaten kayıtlı',
+        alreadySubscribed: true,
+      })
     }
 
     await ref.set(
@@ -61,7 +82,9 @@ export async function POST(req: NextRequest) {
         email,
         status: 'active',
         marketingConsent: true,
-        source: 'desktop-home',
+        consentText:
+          'NaHaber haber bülteni e-postalarını almak istiyorum. Kişisel verilerimin KVKK kapsamında bülten gönderimi için işlenmesine açık rıza veriyorum.',
+        source,
         ipHash: ip === 'unknown' ? null : ip.slice(0, 64),
         subscribedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
