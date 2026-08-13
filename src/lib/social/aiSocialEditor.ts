@@ -12,15 +12,16 @@
  * Env: GEMINI_API_KEY, GEMINI_MODEL (default: gemini-2.5-flash)
  */
 
-import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from './feedCaption'
+import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from './feedCaption'
 import { repairSocialCopyAgainstSource } from './socialFactualFidelity'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const DEEPSEEK_BASE = 'https://api.deepseek.com/v1/chat/completions'
 
-/** Kısa ama TAM manşet; yarım sıfat kesimi olmasın (max 78) */
-const HEADLINE_MAX = 78
+/** Kısa ama TAM manşet; yarım sıfat kesimi olmasın (max 96, softMax ile tam başlık) */
+const HEADLINE_MAX = 96
+const HEADLINE_SOFT_MAX = 120
 /** Tam özet için biraz daha alan; lacivert panel sığacak şekilde */
 const STORY_SUMMARY_MAX = 200
 /** Post caption gövdesi — cümle ortasından kesilmez; URL/hashtag publisher ekler */
@@ -112,7 +113,7 @@ function stripMetaCtas(s: string): string {
 }
 
 /** Manşet: isteğe bağlı \\n ile 1–3 tematik satır; karakter limiti satırlar toplamında. */
-function clampHeadline(s: string, max: number): string {
+function clampHeadline(s: string, max: number, sourceTitle = ''): string {
   const lines = s
     .replace(/\r\n/g, '\n')
     .split('\n')
@@ -120,11 +121,13 @@ function clampHeadline(s: string, max: number): string {
     .filter(Boolean)
     .slice(0, 3)
   if (lines.length === 0) return ''
-  if (lines.length === 1) return clampCompleteHeadline(lines[0], max)
+  if (lines.length === 1) {
+    return fitCompleteHeadline(lines[0], sourceTitle || lines[0], max, HEADLINE_SOFT_MAX)
+  }
   // Çok satır: toplam max'ı satırlara orantılı dağıt; aşarsa son satırdan kısalt
   let joined = lines.join('\n')
   if (joined.replace(/\n/g, '').length <= max && joined.length <= max + lines.length - 1) {
-    return joined
+    return fitCompleteHeadline(joined.replace(/\n/g, ' '), sourceTitle || joined, max, HEADLINE_SOFT_MAX)
   }
   const budget = max
   const out: string[] = []
@@ -139,7 +142,10 @@ function clampHeadline(s: string, max: number): string {
     used += part.length
     if (used >= budget) break
   }
-  return out.join('\n')
+  const multi = out.join('\n')
+  return multi
+    ? fitCompleteHeadline(multi.replace(/\n/g, ' '), sourceTitle || multi, max, HEADLINE_SOFT_MAX)
+    : fitCompleteHeadline(lines.join(' '), sourceTitle || lines.join(' '), max, HEADLINE_SOFT_MAX)
 }
 
 /** Caption gövdesi: paragraf yapısını koru; aşırı uzunsa cümle sınırında kısalt. */
@@ -197,7 +203,7 @@ function parseAISocialJSON(raw: string, title: string, description = ''): AISoci
     while (tags.length < 5) tags.push('#NaHaber')
     const fidelity = (s: string) => repairSocialCopyAgainstSource(s, title, description)
     const caption = clampCaptionBody(fidelity(str(p.caption, `📰 ${title}`)), CAPTION_MAX)
-    const headline = clampHeadline(fidelity(str(p.headline, title)), HEADLINE_MAX)
+    const headline = clampHeadline(fidelity(str(p.headline, title)), HEADLINE_MAX, title)
     const storySummary = clampCompleteSentences(
       fidelity(stripMetaCtas(str(p.storySummary, fallbackStorySummary(title, caption)))),
       STORY_SUMMARY_MAX,

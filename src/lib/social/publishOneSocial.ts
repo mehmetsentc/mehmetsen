@@ -18,7 +18,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload, SocialPublishResult } from '@/lib/social/types'
-import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from '@/lib/social/feedCaption'
 import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
@@ -436,7 +436,7 @@ export async function publishOneSocial(
     if (!socialContent) {
       const fallbackSpot = spot.replace(/\s+/g, ' ').trim()
       socialContent = {
-        headline: clampCompleteHeadline(title, 78),
+        headline: fitCompleteHeadline(title, title, 96, 120),
         storySummary: (() => {
           const cleaned = fallbackSpot
             .replace(/\b(detaylar(?:ı|ın)?\s+(?:için\s+)?(?:haberimizde|tıklayın)|haberimizde|haberin\s+devamı|devamı\s+için|devamını\s+oku|tıklayın)\b/giu, '')
@@ -513,6 +513,7 @@ export async function publishOneSocial(
 
     // Olgu sadakati: AI'nin düşürdüğü tamlama isimlerini (hava aracı vb.) geri koy
     socialContent.headline = repairSocialHeadline(socialContent.headline, title, bodyText || spot)
+    socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 96, 120)
     socialContent.storySummary = repairSocialCopyAgainstSource(
       socialContent.storySummary,
       title,

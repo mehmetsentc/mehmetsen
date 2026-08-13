@@ -26,19 +26,30 @@ import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
-import { clampAtWordBoundary, clampCompleteHeadline } from '@/lib/social/feedCaption'
+import {
+  clampAtWordBoundary,
+  fitCompleteHeadline,
+  hasDanglingHeadlineTail,
+  stripDanglingHeadlineTail,
+} from '@/lib/social/feedCaption'
 import { repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
-/** Post manşet — uzun başlıklar footer'a taşmasın diye daha sıkı */
-const TITLE_MAX = 72
+/** Post manşet — softMax ile tam başlık korunur; layout font/satır ile sığdırır */
+const TITLE_MAX = 96
+const TITLE_SOFT_MAX = 120
 
-const HEADLINE_MAX_LINES = 3
-const HEADLINE_MIN_SIZE = 48
-const HEADLINE_GAP_ABOVE_FOOTER = 28
+const HEADLINE_MAX_LINES = 4
+const HEADLINE_MIN_SIZE = 42
+const HEADLINE_GAP_ABOVE_FOOTER = 24
+
+/** Cümle / öbek sonu — manşet ortasında sessiz kesim yok */
+const POST_SENTENCE_END_RE = /[.!?…]["'»”’)\]]*(?=\s|$)/g
+const POST_COMPLETE_TAIL_RE = /[.!?…]["'»”’)\]]*$/
+const POST_CLAUSE_END_RE = /[,;:](?=\s|$)/g
 
 /** Inter 800 yaklaşık ortalama glif genişliği (Satori word-wrap simülasyonu) */
 function avgGlyphWidth(fontSize: number): number {
@@ -67,6 +78,7 @@ function estimateWrapLines(text: string, fontSize: number, maxWidth: number): nu
   return lines
 }
 
+/** Satır taşarsa kelime sınırında kes; sarkan sıfatları at; mümkünse son tam öbekte dur. */
 function truncateToMaxLines(
   text: string,
   fontSize: number,
@@ -75,6 +87,10 @@ function truncateToMaxLines(
 ): string {
   const plain = text.replace(/\s+/g, ' ').trim()
   if (!plain) return ''
+  if (estimateWrapLines(plain, fontSize, maxWidth) <= maxLines) {
+    return stripDanglingHeadlineTail(plain)
+  }
+
   const words = plain.split(' ')
   const charW = avgGlyphWidth(fontSize)
   const spaceW = fontSize * 0.28
@@ -87,17 +103,58 @@ function truncateToMaxLines(
     const extra = lineW === 0 ? wordW : spaceW + wordW
     if (lineW > 0 && lineW + extra > maxWidth) {
       lines++
-      if (lines > maxLines) {
-        const trimmed = result.trim()
-        return trimmed.length > 0 ? `${trimmed}…` : `${word.slice(0, 12)}…`
-      }
+      if (lines > maxLines) break
       lineW = wordW
     } else {
       lineW += extra
     }
     result += (result ? ' ' : '') + word
   }
-  return result
+
+  let trimmed = stripDanglingHeadlineTail(result)
+  if (!trimmed) trimmed = result.trim()
+
+  // Mümkünse son tam cümlede bitir
+  if (!POST_COMPLETE_TAIL_RE.test(trimmed)) {
+    const minEnd = Math.min(36, Math.floor(trimmed.length * 0.35))
+    let best = -1
+    POST_SENTENCE_END_RE.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = POST_SENTENCE_END_RE.exec(trimmed)) !== null) {
+      const end = m.index + m[0].length
+      if (end >= minEnd) best = end
+    }
+    if (best >= minEnd) {
+      return trimmed.slice(0, best).trim()
+    }
+    // Cümle yoksa virgül/iki nokta öbeğinde dur (…kaybetti, …)
+    POST_CLAUSE_END_RE.lastIndex = 0
+    best = -1
+    while ((m = POST_CLAUSE_END_RE.exec(trimmed)) !== null) {
+      const end = m.index + m[0].length
+      if (end >= minEnd) best = end
+    }
+    if (best >= minEnd) {
+      const clause = stripDanglingHeadlineTail(trimmed.slice(0, best).replace(/[,;:]+$/, '').trim())
+      if (clause.length >= minEnd) return clause
+    }
+    // Son çare: ellipsis — CSS overflow ile sessiz kesim yok
+    const withEllipsis = `${trimmed.replace(/[…]+$/, '')}…`
+    if (estimateWrapLines(withEllipsis, fontSize, maxWidth) <= maxLines) {
+      return withEllipsis
+    }
+    const words2 = trimmed.split(' ')
+    while (words2.length > 1) {
+      words2.pop()
+      const candidate = stripDanglingHeadlineTail(words2.join(' '))
+      if (!candidate) continue
+      if (POST_COMPLETE_TAIL_RE.test(candidate)) return candidate
+      const ell = `${candidate}…`
+      if (estimateWrapLines(ell, fontSize, maxWidth) <= maxLines) return ell
+    }
+    return withEllipsis
+  }
+  return trimmed
 }
 
 function resolvePostHeadlineLayout(titlePlain: string, contentWidth: number): {
@@ -109,27 +166,59 @@ function resolvePostHeadlineLayout(titlePlain: string, contentWidth: number): {
 } {
   const len = titlePlain.length
   let titleSize =
-    len > 62 ? 56 :
-    len > 52 ? 58 :
-    len > 42 ? 62 :
+    len > 90 ? 48 :
+    len > 78 ? 50 :
+    len > 62 ? 54 :
+    len > 52 ? 56 :
+    len > 42 ? 60 :
     len > 32 ? 64 :
     len > 22 ? 66 :
-    72
+    70
 
   let wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
+  // Önce font küçült — tam manşet sığsın (yarım "ağır" bırakma)
   while (wrapLines > HEADLINE_MAX_LINES && titleSize > HEADLINE_MIN_SIZE) {
-    titleSize -= 4
+    titleSize -= 2
     wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
   }
 
   let displayTitle = titlePlain
-  if (wrapLines > HEADLINE_MAX_LINES) {
+  if (wrapLines > HEADLINE_MAX_LINES || hasDanglingHeadlineTail(titlePlain)) {
     displayTitle = truncateToMaxLines(titlePlain, titleSize, contentWidth, HEADLINE_MAX_LINES)
-    wrapLines = HEADLINE_MAX_LINES
+    // Hâlâ sığmıyorsa / sarkıyorsa bir kademe daha küçültüp tekrar dene
+    while (
+      titleSize > HEADLINE_MIN_SIZE &&
+      (estimateWrapLines(displayTitle, titleSize, contentWidth) > HEADLINE_MAX_LINES ||
+        (hasDanglingHeadlineTail(displayTitle) && !displayTitle.endsWith('…')))
+    ) {
+      titleSize -= 2
+      displayTitle = truncateToMaxLines(titlePlain, titleSize, contentWidth, HEADLINE_MAX_LINES)
+      if (
+        estimateWrapLines(titlePlain, titleSize, contentWidth) <= HEADLINE_MAX_LINES &&
+        !hasDanglingHeadlineTail(titlePlain)
+      ) {
+        displayTitle = titlePlain
+        break
+      }
+    }
+    wrapLines = Math.min(
+      HEADLINE_MAX_LINES,
+      Math.max(1, estimateWrapLines(displayTitle.replace(/…$/, ''), titleSize, contentWidth)),
+    )
+  }
+
+  // Güvenlik: display asla tahmin edilen satır sayısını aşmasın
+  if (estimateWrapLines(displayTitle, titleSize, contentWidth) > HEADLINE_MAX_LINES) {
+    displayTitle = truncateToMaxLines(displayTitle, titleSize, contentWidth, HEADLINE_MAX_LINES)
+    wrapLines = Math.min(
+      HEADLINE_MAX_LINES,
+      Math.max(1, estimateWrapLines(displayTitle.replace(/…$/, ''), titleSize, contentWidth)),
+    )
   }
 
   const titleLineHeight =
-    wrapLines >= 3 ? 1.26 :
+    wrapLines >= 4 ? 1.22 :
+    wrapLines >= 3 ? 1.24 :
     wrapLines >= 2 ? 1.28 :
     1.22
   const titleBlockHeight = Math.ceil(titleSize * titleLineHeight * wrapLines)
@@ -186,15 +275,17 @@ function bestImageCandidates(a: ArticleOGData): string[] {
     .filter((u) => isUsableImageUrl(u))
 }
 
-function clampHeadline(s: string, max: number): string {
+function clampHeadline(s: string, max: number, sourceTitle = ''): string {
   const lines = s
     .replace(/\r\n/g, '\n')
     .split('\n')
     .map((l) => l.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
-    .slice(0, 3)
+    .slice(0, 4)
   if (lines.length === 0) return ''
-  if (lines.length === 1) return clampCompleteHeadline(lines[0], max)
+  if (lines.length === 1) {
+    return fitCompleteHeadline(lines[0], sourceTitle || lines[0], max, TITLE_SOFT_MAX)
+  }
   let used = 0
   const out: string[] = []
   for (let i = 0; i < lines.length; i++) {
@@ -206,14 +297,17 @@ function clampHeadline(s: string, max: number): string {
     out.push(part)
     used += part.length
   }
-  return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
+  const joined = out.join('\n')
+  if (joined && !hasDanglingHeadlineTail(joined.replace(/\n/g, ' '))) return joined
+  return fitCompleteHeadline(lines.join(' '), sourceTitle || lines.join(' '), max, TITLE_SOFT_MAX)
 }
 
 const W = 1080
 const H = 1350
 const TEXT_PAD_SIDE = 48
 const TEXT_PAD_BOTTOM = 52
-const PANEL_H = 510
+/** 4 satır manşet + kategori + footer için biraz daha yüksek panel */
+const PANEL_H = 560
 const LOGO_SIZE = 88
 
 const NAVY = '#0d2355'
@@ -324,6 +418,7 @@ export async function GET(
     try { article = await fetchArticle(id) } catch { return fallbackImageResponse() }
   }
 
+  const sourceTitle = article?.title || overrideTitle || ''
   const rawTitle =
     overrideTitle ||
     (article
@@ -362,7 +457,8 @@ export async function GET(
     })
   }
 
-  const title = clampHeadline(rawTitle, TITLE_MAX)
+  // Kesilmiş socialHeadline (…ağır) varsa kaynak title ile tamamla; softMax ile tam manşet
+  const title = clampHeadline(rawTitle, TITLE_MAX, sourceTitle)
   const titlePlain = title.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
   const contentWidth = W - TEXT_PAD_SIDE * 2
   const headline = resolvePostHeadlineLayout(titlePlain, contentWidth)
@@ -439,19 +535,18 @@ export async function GET(
               }}>{categoryLabel}</span>
             </div>
 
-            {/* Headline — max 3 satır, footer ile çakışmayı önler */}
+            {/* Headline — max 4 satır; metin önceden sığdırılır, CSS clip yok */}
             <div style={{
               display: 'flex', flexDirection: 'column',
               marginBottom: HEADLINE_GAP_ABOVE_FOOTER,
               minHeight: titleBlockHeight,
-              maxHeight: titleBlockHeight,
               flexShrink: 0,
-              overflow: 'hidden',
             }}>
               <span style={{
                 color: '#ffffff', fontWeight: 800,
                 fontSize: titleSize, lineHeight: titleLineHeight,
                 letterSpacing: 0.1, display: 'flex',
+                flexShrink: 0,
               }}>{displayTitle}</span>
             </div>
           </div>

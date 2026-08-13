@@ -21,7 +21,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import type { SocialPublishPayload } from '@/lib/social/types'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
-import { clampAtWordBoundary } from '@/lib/social/feedCaption'
+import { fitCompleteHeadline } from '@/lib/social/feedCaption'
 import { buildSocialImagePayload } from '@/lib/social/carouselImages'
 
 export const runtime = 'nodejs'
@@ -128,8 +128,8 @@ async function handleRequest(request: Request) {
   let socialContent = await generateSocialContent(title, description, cityName)
   if (!socialContent) {
     socialContent = {
-      headline: clampAtWordBoundary(title, 52),
-      storySummary: `${clampAtWordBoundary(title, 120)}.`,
+      headline: fitCompleteHeadline(title, title, 96, 120),
+      storySummary: `${fitCompleteHeadline(title, title, 120, 140)}.`,
       caption:  `📰 ${title}`,
       hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
       altText:  title,

@@ -28,7 +28,7 @@ import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
-import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from '@/lib/social/feedCaption'
 import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
@@ -36,8 +36,9 @@ import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
-/** Story manşet — uzun başlıklar özet alanına taşmasın diye daha sıkı */
-const TITLE_MAX = 72
+/** Story manşet — softMax ile tam başlık; layout satır/font ile sığdırır */
+const TITLE_MAX = 96
+const TITLE_SOFT_MAX = 120
 /** Kısa özet — 2–3 satır; AI storySummary ile hizalı, cümle/kelime ortasından kesilmez */
 const SUMMARY_MAX = 200
 
@@ -51,7 +52,7 @@ const SUMMARY_MIN_SIZE = 30
 const STORY_SENTENCE_END_RE = /[.!?…]["'»”’)\]]*(?=\s|$)/g
 const STORY_COMPLETE_TAIL_RE = /[.!?…]["'»”’)\]]*$/
 const STORY_DANGLING_TAIL_RE =
-  /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten)\s*$/iu
+  /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten|ağır|hafif|kritik|ciddi|ölümcül)\s*$/iu
 
 /**
  * Inter glif genişliği (Satori word-wrap simülasyonu).
@@ -324,7 +325,7 @@ function bestImageCandidates(a: ArticleOGData): string[] {
     .filter((u) => isUsableImageUrl(u))
 }
 
-function clampHeadline(s: string, max: number): string {
+function clampHeadline(s: string, max: number, sourceTitle = ''): string {
   const lines = s
     .replace(/\r\n/g, '\n')
     .split('\n')
@@ -332,7 +333,9 @@ function clampHeadline(s: string, max: number): string {
     .filter(Boolean)
     .slice(0, 3)
   if (lines.length === 0) return ''
-  if (lines.length === 1) return clampCompleteHeadline(lines[0], max)
+  if (lines.length === 1) {
+    return fitCompleteHeadline(lines[0], sourceTitle || lines[0], max, TITLE_SOFT_MAX)
+  }
   let used = 0
   const out: string[] = []
   for (let i = 0; i < lines.length; i++) {
@@ -344,7 +347,10 @@ function clampHeadline(s: string, max: number): string {
     out.push(part)
     used += part.length
   }
-  return out.join('\n') || clampCompleteHeadline(lines.join(' '), max)
+  const joined = out.join('\n')
+  return joined
+    ? fitCompleteHeadline(joined.replace(/\n/g, ' '), sourceTitle || joined, max, TITLE_SOFT_MAX)
+    : fitCompleteHeadline(lines.join(' '), sourceTitle || lines.join(' '), max, TITLE_SOFT_MAX)
 }
 
 function extractFirstParagraph(content: string): string {
@@ -502,6 +508,7 @@ export async function GET(
     try { article = await fetchArticle(id) } catch { return fallbackImageResponse() }
   }
 
+  const sourceTitle = article?.title || overrideTitle || ''
   const rawTitle =
     overrideTitle ||
     (article
@@ -546,7 +553,7 @@ export async function GET(
     })
   }
 
-  const title = clampHeadline(rawTitle, TITLE_MAX)
+  const title = clampHeadline(rawTitle, TITLE_MAX, sourceTitle)
   const summary = resolveStorySummary(article, overrideSummary, overrideSpot)
   const titlePlain = title.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
   const contentWidth = W - TEXT_PAD_SIDE * 2

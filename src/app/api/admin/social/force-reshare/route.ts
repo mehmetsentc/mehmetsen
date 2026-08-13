@@ -23,7 +23,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload } from '@/lib/social/types'
-import { clampAtWordBoundary, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from '@/lib/social/feedCaption'
 import {
   publishOneSocial,
   type PublishSocialMode,
@@ -329,7 +329,7 @@ export async function POST(request: Request) {
     let socialContent = await generateSocialContent(title, aiContext, cityName)
     if (!socialContent) {
       socialContent = {
-        headline: clampAtWordBoundary(title, 52),
+        headline: fitCompleteHeadline(title, title, 96, 120),
         storySummary: spot
           ? clampCompleteSentences(
               /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,

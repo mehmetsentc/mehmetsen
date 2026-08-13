@@ -15,25 +15,38 @@ const DEFAULT_HASHTAGS = ['#NaHaber', '#Çanakkale', '#SonDakika']
 
 /** Manşet sonunda bırakılmaması gereken bağlaç / sıfat / yarım öbekler */
 const DANGLING_TAIL_RE =
-  /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten)\s*$/iu
+  /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten|ağır|hafif|kritik|ciddi|ölümcül)\s*$/iu
 
-export function clampAtWordBoundary(s: string, max: number): string {
-  const t = s.replace(/\s+/g, ' ').trim()
-  if (t.length <= max) return t
-  const slice = t.slice(0, max)
-  const sp = slice.lastIndexOf(' ')
-  let out = (sp > max * 0.45 ? slice.slice(0, sp) : slice).trim()
-  // Yarım anlam bırakma: "…5 yaşındaki" / "…vurulan" gibi sarkan sıfat/fiilimsi
-  for (let i = 0; i < 6; i++) {
+export function stripDanglingHeadlineTail(s: string): string {
+  let out = s.replace(/\s+/g, ' ').trim()
+  for (let i = 0; i < 8; i++) {
     const next = out.replace(DANGLING_TAIL_RE, '').trim()
     if (next === out) break
     out = next
   }
+  return out
+}
+
+export function hasDanglingHeadlineTail(s: string): boolean {
+  const t = s.replace(/\s+/g, ' ').trim()
+  if (!t) return false
+  return DANGLING_TAIL_RE.test(t)
+}
+
+export function clampAtWordBoundary(s: string, max: number): string {
+  const t = s.replace(/\s+/g, ' ').trim()
+  if (t.length <= max) return stripDanglingHeadlineTail(t)
+  const slice = t.slice(0, max)
+  const sp = slice.lastIndexOf(' ')
+  let out = (sp > max * 0.45 ? slice.slice(0, sp) : slice).trim()
+  // Yarım anlam bırakma: "…5 yaşındaki" / "…ağır" / "…vurulan" gibi sarkan sıfat/fiilimsi
+  out = stripDanglingHeadlineTail(out)
   // Aşırı kısaldıysa orijinal kelime sınırına geri dön (boş manşet olmasın)
   if (out.length < Math.min(24, Math.floor(max * 0.35))) {
     out = (sp > max * 0.45 ? slice.slice(0, sp) : slice)
       .replace(/\s+(ve|veya|ile|için|olan|ama|fakat|ancak|ki|:|,)\s*$/iu, '')
       .trim()
+    out = stripDanglingHeadlineTail(out)
   }
   return out
 }
@@ -42,14 +55,61 @@ export function clampAtWordBoundary(s: string, max: number): string {
  * Manşet için: mümkünse limiti aşmadan TAM başlığı koru;
  * kısaltmak zorundaysa kelime sınırında + sarkan sıfat temizliği.
  * Max'ı biraz esnetmek (softMax) yarım cümleyi önlemek için tercih edilir.
+ *
+ * ÖNEMLİ: max altında olsa bile sarkan sıfat/bağlaç ASLA bırakılmaz
+ * (örn. "…çocuğu ağır" → ya softMax ile "yaralı" korunur ya "ağır" düşer).
  */
-export function clampCompleteHeadline(s: string, max: number, softMax = max + 16): string {
+export function clampCompleteHeadline(s: string, max: number, softMax = max + 24): string {
   const t = s.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').trim()
   if (!t) return ''
   const plain = t.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-  if (plain.length <= max) return t.includes('\n') ? t : plain
-  if (plain.length <= softMax) return plain
+  if (!plain) return ''
+
+  // softMax içinde tam metin sığıyorsa koru (yarım "yaralı" düşmesin)
+  if (plain.length <= softMax && !hasDanglingHeadlineTail(plain)) {
+    return t.includes('\n') && plain.length <= max ? t : plain
+  }
+  if (plain.length <= softMax) {
+    // Sarkan kuyruk var ama softMax içinde — önce kaynak uzun metni olduğu gibi dene
+    // (çoğu zaman AI yarım bıraktı; çağıran fitCompleteHeadline ile tamamlar)
+    const stripped = stripDanglingHeadlineTail(plain)
+    if (stripped.length >= Math.min(24, Math.floor(max * 0.45))) return stripped
+  }
+  if (plain.length <= max && !hasDanglingHeadlineTail(plain)) {
+    return t.includes('\n') ? t : plain
+  }
   return clampAtWordBoundary(plain, max)
+}
+
+/**
+ * Manşet adayı + kaynak başlık: kesilmiş önek veya sarkan kuyruk varsa
+ * daha uzun/tam başlığı tercih et (OG + AI yolları).
+ */
+export function fitCompleteHeadline(
+  candidate: string,
+  sourceTitle: string,
+  max: number,
+  softMax = max + 24,
+): string {
+  const cand = (candidate || '').replace(/\s+/g, ' ').trim()
+  const source = (sourceTitle || '').replace(/\s+/g, ' ').trim()
+  if (!cand && !source) return ''
+  if (!cand) return clampCompleteHeadline(source, max, softMax)
+  if (!source) return clampCompleteHeadline(cand, max, softMax)
+
+  const cl = cand.toLocaleLowerCase('tr-TR')
+  const sl = source.toLocaleLowerCase('tr-TR')
+  let best = cand
+  // Aday, kaynak başlığın kesilmiş önekiyse (…ağır vs …ağır yaralı) kaynağı al
+  if (sl.startsWith(cl) && source.length > cand.length) {
+    best = source
+  } else if (hasDanglingHeadlineTail(cand) && !hasDanglingHeadlineTail(source) && source.length >= cand.length - 8) {
+    best = source
+  } else if (hasDanglingHeadlineTail(cand) && source.length > cand.length) {
+    best = source
+  }
+
+  return clampCompleteHeadline(best, max, softMax)
 }
 
 /** Cümle sonu: .!?… + isteğe bağlı kapanış tırnak/parantez (örn. gelmek.') */

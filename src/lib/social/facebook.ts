@@ -30,7 +30,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { buildSocialImagePayload } from './carouselImages'
 import { buildOgSocialUrl } from './ogCacheVersion'
-import { clampAtWordBoundary, clampCompleteHeadline } from './feedCaption'
+import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from './feedCaption'
 import { repairSocialCopyAgainstSource, repairSocialHeadline } from './socialFactualFidelity'
 import { generateSocialContent } from './aiSocialEditor'
 import { rewriteForSocial, rewriteForPlatform, logAiRewrite } from '@/services/metaAiRewriteService'
@@ -736,7 +736,7 @@ export async function testFacebookPost(
   let socialContent = await generateSocialContent(title, spot, cityName)
   if (!socialContent) {
     socialContent = {
-      headline: clampCompleteHeadline(title, 78),
+      headline: fitCompleteHeadline(title, title, 96, 120),
       storySummary: spot ? clampCompleteSentences(spot, 200, 232) : `${clampAtWordBoundary(title, 120)}.`,
       caption: spot || title,
       hashtags: ['#Çanakkale', '#SonDakika'],
@@ -744,6 +744,7 @@ export async function testFacebookPost(
     }
   }
   socialContent.headline = repairSocialHeadline(socialContent.headline, title, spot)
+  socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 96, 120)
   socialContent.storySummary = repairSocialCopyAgainstSource(socialContent.storySummary, title, spot)
   socialContent.caption = repairSocialCopyAgainstSource(socialContent.caption, title, spot)
 

@@ -27,7 +27,7 @@ import { publishToThreads } from '@/lib/social/threads'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
-import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from '@/lib/social/feedCaption'
 import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 
 import {
@@ -277,7 +277,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
 
       // AI içerik — headline + storySummary Firestore'a yazılsın (OG route okur)
-      let headline = clampCompleteHeadline(title, 78)
+      let headline = fitCompleteHeadline(title, title, 96, 120)
       let storySummary = spot
         ? clampCompleteSentences(
             /[.!?…]["'»”’)\]]*$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
@@ -316,6 +316,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
 
       headline = repairSocialHeadline(headline, title, spot)
+      headline = fitCompleteHeadline(headline, title, 96, 120)
       storySummary = repairSocialCopyAgainstSource(storySummary, title, spot)
 
       // OG route sosyal alanları okusun diye önce kaydet
@@ -471,7 +472,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         ? `📰 ${spot.trim()}`
         : `📰 ${title.trim()}`
       socialContent = {
-        headline: clampCompleteHeadline(title, 78),
+        headline: fitCompleteHeadline(title, title, 96, 120),
         storySummary: spot
           ? clampCompleteSentences(
               /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
