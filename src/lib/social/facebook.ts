@@ -18,7 +18,6 @@ import sharp from 'sharp'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { resolveFacebookCredentials } from './facebookCredentials'
 import { PRIMARY_FACEBOOK_SITE_ID } from './facebookAppStore'
-import { clampCompleteSentences } from './feedCaption'
 import {
   checkFacebookRateLimit,
   recordFacebookPublish,
