@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
   const steps: DiagStep[] = []
   const envFbToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? ''
-  const pageId     = process.env.FACEBOOK_PAGE_ID?.trim() ?? ''
+  let pageId = process.env.FACEBOOK_PAGE_ID?.trim() ?? ''
   const igBizId    = process.env.INSTAGRAM_BUSINESS_ID?.trim() ?? ''
 
   // ── 0. Firestore token kontrolü (cron'un gerçekte kullandığı token) ───────
@@ -54,18 +54,62 @@ export async function GET(request: Request) {
     steps.push({ name: 'Firestore Token Okuma', ok: false, detail: `Firestore erişim hatası: ${String(e)}` })
   }
 
-  // Cron'un kullandığı gerçek token (tokenStore mantığı)
-  const fbToken = fsFbToken || envFbToken
-  const igToken = fsIgToken || process.env.INSTAGRAM_ACCESS_TOKEN?.trim() || fbToken
+  // Cron'un kullandığı gerçek token (BYO custom → Firestore socialMedia → env)
+  let fbToken = fsFbToken || envFbToken
+  let igToken = fsIgToken || process.env.INSTAGRAM_ACCESS_TOKEN?.trim() || fbToken
+  let byoMode = 'global'
+  let byoAppId = ''
+  let byoAppSecret = ''
+  try {
+    const { resolveFacebookCredentials } = await import('@/lib/social/facebookCredentials')
+    const {
+      toPublicSiteApp,
+      getSiteFacebookApp,
+      getDecryptedAppSecret,
+      PRIMARY_FACEBOOK_SITE_ID,
+    } = await import('@/lib/social/facebookAppStore')
+    const siteId = PRIMARY_FACEBOOK_SITE_ID
+    const stored = await getSiteFacebookApp(siteId)
+    const pub = toPublicSiteApp(siteId, stored)
+    const creds = await resolveFacebookCredentials(siteId)
+    byoMode = creds.mode
+    if (creds.mode === 'custom' && creds.accessToken) {
+      fbToken = creds.accessToken
+      if (creds.pageId) pageId = creds.pageId
+      byoAppId = creds.appId ?? ''
+      byoAppSecret = (await getDecryptedAppSecret(siteId)) ?? ''
+    }
+    steps.push({
+      name: 'BYO Facebook App (onyeditivi)',
+      ok: creds.mode === 'custom',
+      detail: [
+        `mode=${creds.mode}`,
+        `appId=${creds.appId ?? '—'}`,
+        `appName=${creds.appName ?? '—'}`,
+        `hasSecret=${pub.hasFbAppSecret}`,
+        `hasPageToken=${pub.hasFbPageToken}`,
+        creds.mode === 'global'
+          ? '⚠️ global app kullanıldı — Admin’de kendi App’inizi bağlayın'
+          : '✓ özel app credentials aktif',
+        'Display Name: Meta Console’da “Publisher” olmalı (kodla değişmez)',
+      ].join(' | '),
+    })
+  } catch (e) {
+    steps.push({
+      name: 'BYO Facebook App (onyeditivi)',
+      ok: false,
+      detail: `Okunamadı: ${String(e)}`,
+    })
+  }
 
   steps.push({
     name: 'Token Kaynağı',
     ok: !!(fbToken && pageId && igBizId),
     detail: [
-      `Kaynak: ${fsTokenSource === 'firestore' ? '⚠️ Firestore (env\'i override ediyor)' : '✓ Env var'}`,
+      `Kaynak: ${byoMode === 'custom' ? '✓ BYO custom app' : fsTokenSource === 'firestore' ? '⚠️ Firestore (env\'i override ediyor)' : '✓ Env var'}`,
       `FACEBOOK_PAGE_ACCESS_TOKEN (env): ${envFbToken ? `${envFbToken.length} karakter` : '✗ EKSİK'}`,
       `Firestore facebookPageToken: ${fsFbToken ? `${fsFbToken.length} karakter` : 'boş'}`,
-      `Aktif token: ${fbToken ? `✓ (${fbToken.length} karakter, kaynak: ${fsTokenSource})` : '✗ YOK'}`,
+      `Aktif token: ${fbToken ? `✓ (${fbToken.length} karakter, kaynak: ${byoMode === 'custom' ? 'byo' : fsTokenSource})` : '✗ YOK'}`,
       `FACEBOOK_PAGE_ID: ${pageId ? `✓ ${pageId}` : '✗ EKSİK'}`,
       `INSTAGRAM_BUSINESS_ID: ${igBizId ? `✓ ${igBizId}` : '✗ EKSİK'}`,
     ].join(' | '),
@@ -89,8 +133,12 @@ export async function GET(request: Request) {
   // ── 3. Token tipi / süre (/debug_token) ───────────────────────────────────
   // App access token (app_id|app_secret) preferred — page token as access_token
   // often works for expiry/type but scopes may be incomplete.
-  const appId = process.env.FACEBOOK_APP_ID?.trim() || process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() || ''
-  const appSecret = process.env.FACEBOOK_APP_SECRET?.trim() || ''
+  const appId =
+    byoAppId ||
+    process.env.FACEBOOK_APP_ID?.trim() ||
+    process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() ||
+    ''
+  const appSecret = byoAppSecret || process.env.FACEBOOK_APP_SECRET?.trim() || ''
   const debugAccessToken = appId && appSecret ? `${appId}|${appSecret}` : fbToken
   const expiryRes = await fetch(
     `${GRAPH}/debug_token?input_token=${encodeURIComponent(fbToken)}&access_token=${encodeURIComponent(debugAccessToken)}`

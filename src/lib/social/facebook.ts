@@ -9,14 +9,15 @@
  * Never posts via /{page-id}/feed with link.
  * Never puts https URLs in the caption.
  *
- * Env (server-only):
- *   FACEBOOK_PAGE_ID           — Page ID (e.g. 167304713122153)
- *   FACEBOOK_PAGE_ACCESS_TOKEN — long-lived Page access token
- *   (Firestore config/socialMedia.facebookPageToken overrides env token if set)
+ * Credentials (BYO App):
+ *   Prefer per-site app in Firestore config/socialFacebookApps (onyeditivi primary).
+ *   Fallback: FACEBOOK_PAGE_ID + FACEBOOK_PAGE_ACCESS_TOKEN / config/socialMedia
+ *   (logs "global app kullanıldı" on fallback).
  */
 import sharp from 'sharp'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
-import { getSocialTokens } from './tokenStore'
+import { resolveFacebookCredentials } from './facebookCredentials'
+import { PRIMARY_FACEBOOK_SITE_ID } from './facebookAppStore'
 import { clampCompleteSentences } from './feedCaption'
 import {
   checkFacebookRateLimit,
@@ -313,8 +314,9 @@ async function publishPhotoPost(
 export async function publishFacebookStory(
   payload: SocialPublishPayload,
 ): Promise<SocialPublishResult> {
-  const pageId = process.env.FACEBOOK_PAGE_ID?.trim()
-  const { fbToken: accessToken } = await getSocialTokens()
+  const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
+  const pageId = creds.pageId
+  const accessToken = creds.accessToken
 
   if (!pageId || !accessToken) {
     return { success: false, error: 'FACEBOOK_PAGE_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik' }
@@ -475,14 +477,19 @@ async function publishFacebookStoryViaUrl(
 export async function publishToFacebook(
   payload: SocialPublishPayload,
 ): Promise<SocialPublishResult> {
-  const pageId = process.env.FACEBOOK_PAGE_ID?.trim()
-  const { fbToken: accessToken } = await getSocialTokens()
+  const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
+  const pageId = creds.pageId
+  const accessToken = creds.accessToken
 
   if (!pageId || !accessToken) {
     const err = 'FACEBOOK_PAGE_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik'
     console.error(`[facebook] ${err}`)
     return { success: false, error: err }
   }
+
+  console.log(
+    `[facebook] publish mode=${creds.mode} site=${creds.siteId} app=${creds.appName ?? creds.appId ?? '?'} news=${payload.newsId}`,
+  )
 
   // Deferred queue (hourly overflow)
   try {
@@ -666,7 +673,19 @@ function buildArticleUrl(id: string, data: Record<string, unknown>): string {
  */
 export async function testFacebookPost(
   newsId: string,
-): Promise<SocialPublishResult & { newsId: string; title?: string; caption?: string; imageUrl?: string; ai?: unknown }> {
+): Promise<
+  SocialPublishResult & {
+    newsId: string
+    title?: string
+    caption?: string
+    imageUrl?: string
+    ai?: unknown
+    credentialMode?: string
+    appId?: string | null
+    appName?: string | null
+    attributionHint?: string
+  }
+> {
   const id = newsId.trim()
   if (!id) {
     return { success: false, error: 'newsId zorunlu', newsId: '' }
@@ -753,6 +772,7 @@ export async function testFacebookPost(
   }).catch(() => {})
 
   const result = await publishToFacebook(payload)
+  const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
 
   if (result.success && result.platformId) {
     await db
@@ -773,6 +793,13 @@ export async function testFacebookPost(
     title,
     caption,
     imageUrl: imagePayload.imageUrl,
+    credentialMode: creds.mode,
+    appId: creds.appId,
+    appName: creds.appName,
+    attributionHint:
+      creds.mode === 'custom'
+        ? `Post altında "${creds.appName || 'App'} paylaştı" görünmeli (kendi app).`
+        : 'Global app kullanıldı — etikette "Publisher" / eski "NaHaber Social Publisher" görünebilir. BYO app bağlayın.',
     ai: {
       source: aiPreview.source,
       caption: aiPreview.caption,

@@ -12,7 +12,7 @@ import {
   Share2, CheckCircle2, XCircle, RefreshCw, Loader2,
   Facebook, Instagram, ExternalLink, Play, Tag, Image as ImageIcon,
   Newspaper, BookImage, Search, KeyRound, Stethoscope, X, Copy,
-  EyeOff, Layers, Zap,
+  EyeOff, Layers, Zap, ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
@@ -273,6 +273,24 @@ export default function SocialPage() {
   const [newIgToken, setNewIgToken] = useState('')
   const [savingToken, setSavingToken] = useState(false)
   const [tokenResult, setTokenResult] = useState<{ ok: boolean; message: string; permissions?: string[]; note?: string } | null>(null)
+
+  // BYO Facebook App (onyeditivi primary)
+  const [byoLoading, setByoLoading] = useState(false)
+  const [byoSaving, setByoSaving] = useState(false)
+  const [byoOauthLoading, setByoOauthLoading] = useState(false)
+  const [byoAppId, setByoAppId] = useState('')
+  const [byoAppSecret, setByoAppSecret] = useState('')
+  const [byoAppName, setByoAppName] = useState('')
+  const [byoPageToken, setByoPageToken] = useState('')
+  const [byoStatus, setByoStatus] = useState<{
+    hasFbAppSecret: boolean
+    hasFbPageToken: boolean
+    fbAppId: string | null
+    fbAppName: string | null
+    fbPageId: string | null
+    encryptionReady: boolean
+    globalAppReminder?: string
+  } | null>(null)
 
   const deferredHeadline = useDeferredValue(headline)
   const deferredSpot = useDeferredValue(
@@ -914,6 +932,159 @@ export default function SocialPage() {
     }
   }
 
+  const loadByoApp = useCallback(async () => {
+    if (!user) return
+    setByoLoading(true)
+    try {
+      const idToken = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/facebook-app?siteId=onyeditivi', {
+        headers: { Authorization: `Bearer ${idToken}` },
+      })
+      const data = await res.json() as {
+        site?: {
+          fbAppId: string | null
+          fbAppName: string | null
+          hasFbAppSecret: boolean
+          hasFbPageToken: boolean
+          fbPageId: string | null
+        }
+        encryptionReady?: boolean
+        globalAppReminder?: string
+        error?: string
+      }
+      if (!res.ok) {
+        toast.error(data.error ?? 'BYO app yüklenemedi')
+        return
+      }
+      setByoAppId(data.site?.fbAppId ?? '')
+      setByoAppName(data.site?.fbAppName ?? '')
+      setByoStatus({
+        hasFbAppSecret: Boolean(data.site?.hasFbAppSecret),
+        hasFbPageToken: Boolean(data.site?.hasFbPageToken),
+        fbAppId: data.site?.fbAppId ?? null,
+        fbAppName: data.site?.fbAppName ?? null,
+        fbPageId: data.site?.fbPageId ?? null,
+        encryptionReady: Boolean(data.encryptionReady),
+        globalAppReminder: data.globalAppReminder,
+      })
+    } catch (err) {
+      console.error(err)
+      toast.error('BYO app yüklenemedi')
+    } finally {
+      setByoLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (user) void loadByoApp()
+  }, [user, loadByoApp])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const fbApp = params.get('fbApp')
+    if (!fbApp) return
+    if (fbApp === 'ok') {
+      toast.success(
+        `Özel Facebook App bağlandı${params.get('pageName') ? `: ${params.get('pageName')}` : ''}`,
+      )
+      void loadByoApp()
+    } else if (fbApp === 'error') {
+      toast.error(params.get('message') || 'Facebook OAuth hatası')
+    }
+    params.delete('fbApp')
+    params.delete('message')
+    params.delete('pageName')
+    params.delete('pageId')
+    params.delete('siteId')
+    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`
+    window.history.replaceState({}, '', next)
+  }, [loadByoApp])
+
+  const saveByoApp = async () => {
+    if (!user || byoSaving) return
+    if (!byoAppId.trim()) {
+      toast.error('App ID gerekli')
+      return
+    }
+    setByoSaving(true)
+    try {
+      const idToken = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/facebook-app', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          siteId: 'onyeditivi',
+          fbAppId: byoAppId.trim(),
+          fbAppName: byoAppName.trim() || 'Onyeditivi Publisher',
+          ...(byoAppSecret.trim() ? { fbAppSecret: byoAppSecret.trim() } : {}),
+          ...(byoPageToken.trim() ? { fbPageAccessToken: byoPageToken.trim() } : {}),
+        }),
+      })
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string }
+      if (res.ok && data.ok) {
+        toast.success(data.message ?? 'Kaydedildi')
+        setByoAppSecret('')
+        setByoPageToken('')
+        await loadByoApp()
+      } else {
+        toast.error(data.error ?? 'Kaydedilemedi')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Bağlantı hatası')
+    } finally {
+      setByoSaving(false)
+    }
+  }
+
+  const startByoOauth = async () => {
+    if (!user || byoOauthLoading) return
+    setByoOauthLoading(true)
+    try {
+      const idToken = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/facebook-app/oauth?siteId=onyeditivi', {
+        headers: { Authorization: `Bearer ${idToken}` },
+      })
+      const data = await res.json() as { ok?: boolean; oauthUrl?: string; error?: string }
+      if (res.ok && data.oauthUrl) {
+        window.location.href = data.oauthUrl
+        return
+      }
+      toast.error(data.error ?? 'OAuth başlatılamadı')
+    } catch (err) {
+      console.error(err)
+      toast.error('OAuth hatası')
+    } finally {
+      setByoOauthLoading(false)
+    }
+  }
+
+  const clearByoApp = async () => {
+    if (!user || !confirm('onyeditivi özel Facebook App kaydını silmek istediğinize emin misiniz?')) return
+    try {
+      const idToken = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch('/api/admin/social/facebook-app?siteId=onyeditivi', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${idToken}` },
+      })
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string }
+      if (res.ok) {
+        toast.success(data.message ?? 'Temizlendi')
+        setByoAppId('')
+        setByoAppName('')
+        setByoAppSecret('')
+        setByoPageToken('')
+        await loadByoApp()
+      } else {
+        toast.error(data.error ?? 'Silinemedi')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Silme hatası')
+    }
+  }
+
   const runDiagnose = async () => {
     if (!user || diagnosing) return
     setDiagnosing(true)
@@ -1408,6 +1579,131 @@ export default function SocialPage() {
             </div>
           </div>
         )}
+
+        {/* BYO Facebook App — onyeditivi primary publisher */}
+        <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <h3 className="text-base font-bold text-[rgb(var(--color-text))]">
+                  Kendi Facebook Uygulamanı Bağla (Önerilen)
+                </h3>
+                {byoLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-[rgb(var(--color-muted))]" />}
+              </div>
+              <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
+                Paylaşımlarınızın &apos;NaHaber paylaştı&apos; yerine kendi markanızla görünmesi ve erişimin %300 artması için kendi Facebook App&apos;inizi bağlayın. 2 dakika sürer.
+              </p>
+              <p className="mt-2 text-sm">
+                <a
+                  href="/docs/kendi-facebook-app-nasil-olusturulur"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline"
+                >
+                  Rehber: Kendi Facebook App nasıl oluşturulur
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+                <span className="mx-2 text-[rgb(var(--color-muted))]">·</span>
+                <span className="text-[rgb(var(--color-muted))]">
+                  Site: <code className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 text-xs">onyeditivi</code>
+                </span>
+              </p>
+            </div>
+            <button type="button" onClick={() => void loadByoApp()} disabled={byoLoading} className={btnSecondary}>
+              {byoLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Yenile
+            </button>
+          </div>
+
+          <div className="mb-3 flex flex-wrap gap-2 text-xs">
+            <span className={cn(
+              'rounded-full px-2.5 py-1 font-medium',
+              byoStatus?.fbAppId ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]',
+            )}>
+              App ID: {byoStatus?.fbAppId ? '✓' : '—'}
+            </span>
+            <span className={cn(
+              'rounded-full px-2.5 py-1 font-medium',
+              byoStatus?.hasFbAppSecret ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]',
+            )}>
+              Secret: {byoStatus?.hasFbAppSecret ? '✓ şifreli' : '—'}
+            </span>
+            <span className={cn(
+              'rounded-full px-2.5 py-1 font-medium',
+              byoStatus?.hasFbPageToken ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
+            )}>
+              Page Token: {byoStatus?.hasFbPageToken ? '✓ özel app' : 'gerekli'}
+            </span>
+            {!byoStatus?.encryptionReady && (
+              <span className="rounded-full bg-red-100 px-2.5 py-1 font-medium text-red-800 dark:bg-red-950 dark:text-red-200">
+                SECRET_ENCRYPTION_KEY eksik
+              </span>
+            )}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input
+              value={byoAppId}
+              onChange={(e) => setByoAppId(e.target.value)}
+              placeholder="Facebook App ID *"
+              className={cn(inputClass, 'font-mono text-sm')}
+              autoComplete="off"
+            />
+            <input
+              value={byoAppName}
+              onChange={(e) => setByoAppName(e.target.value)}
+              placeholder="Display Name (örn. Onyeditivi Publisher)"
+              className={inputClass}
+              autoComplete="off"
+            />
+            <input
+              type="password"
+              value={byoAppSecret}
+              onChange={(e) => setByoAppSecret(e.target.value)}
+              placeholder={byoStatus?.hasFbAppSecret ? 'App Secret (değiştirmek için yazın)' : 'App Secret *'}
+              className={cn(inputClass, 'font-mono text-sm')}
+              autoComplete="new-password"
+            />
+            <input
+              type="password"
+              value={byoPageToken}
+              onChange={(e) => setByoPageToken(e.target.value)}
+              placeholder={byoStatus?.hasFbPageToken ? 'Page Token (opsiyonel — değiştir)' : 'Page Access Token (veya OAuth)'}
+              className={cn(inputClass, 'font-mono text-sm')}
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void saveByoApp()}
+              disabled={byoSaving || !byoAppId.trim()}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {byoSaving ? <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" /> : null}
+              Kaydet
+            </button>
+            <button
+              type="button"
+              onClick={() => void startByoOauth()}
+              disabled={byoOauthLoading || !byoStatus?.fbAppId || !byoStatus?.hasFbAppSecret}
+              className={btnSecondary}
+            >
+              {byoOauthLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+              Sayfa Token Al (OAuth)
+            </button>
+            <button type="button" onClick={() => void clearByoApp()} className="text-sm text-red-600 hover:underline">
+              Özel app’i kaldır
+            </button>
+          </div>
+
+          <p className="mt-4 rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            {byoStatus?.globalAppReminder ||
+              'Global Meta App Display Name’i Facebook Developer Console’da “NaHaber Social Publisher” → “Publisher” olarak değiştirin (kodla yapılamaz).'}
+          </p>
+        </div>
 
         {showTokenPanel && (
           <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 shadow-sm">
