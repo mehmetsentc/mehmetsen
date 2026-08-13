@@ -22,8 +22,16 @@ describe('resolveNationalLocalDualRouting', () => {
     })
   })
 
-  it('maps yerel-gundem to gundem', () => {
-    expect(resolveNationalLocalDualRouting('yerel-gundem', 'bursa')).toEqual({
+  it('keeps yerel-gundem as yerel-only (no national dual map)', () => {
+    expect(resolveNationalLocalDualRouting('yerel-gundem', 'bursa')).toBeNull()
+    expect(normalizePublishedLocalCategory('yerel-gundem', 'bursa', [])).toEqual({
+      categoryId: 'yerel-gundem',
+      tags: [],
+    })
+  })
+
+  it('can tag national gundem + citySlug with yerel-gundem without remapping category', () => {
+    expect(resolveNationalLocalDualRouting('gundem', 'bursa')).toEqual({
       nationalCategoryId: 'gundem',
       yerelTag: 'yerel-gundem',
     })

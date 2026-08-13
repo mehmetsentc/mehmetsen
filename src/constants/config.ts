@@ -294,6 +294,8 @@ export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
 
 /** National branch categories → yerel subcategory (sport, ekonomi alt dalları vb.). */
 const NATIONAL_BRANCH_TO_YEREL: Record<string, string> = {
+  // One-way: ulusal gundem → yerel etiket/şehir yerelleştirme; dual-feed haritasında yok
+  gundem: 'yerel-gundem',
   futbol: 'yerel-futbol',
   basketbol: 'yerel-basketbol',
   voleybol: 'yerel-voleybol',
