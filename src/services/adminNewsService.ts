@@ -830,7 +830,9 @@ async function listReviewQueue(
     const isLast = i === queryAttempts.length - 1
     try {
       const snap = await fetchAdminNewsSnap(constraints)
-      const posts = mapAdminNewsDocs(snap.docs, 'published', categoryId, citySlug, sort).filter(
+      // Badge/"İnceledim" key off needsReview — do NOT also require status=published
+      // (that wiped the İnceleme filter while Tümü still showed violet badges).
+      const posts = mapAdminNewsDocs(snap.docs, 'all', categoryId, citySlug, sort).filter(
         (p) => p.needsReview === true
       )
       if (posts.length === 0 && !isLast) continue
