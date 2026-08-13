@@ -13,6 +13,9 @@ const BROWSER_UA =
 
 const UNSUPPORTED_EXT = /\.(svg|bmp|tiff?)(\?|$)/i
 
+/** Onyeditivi post/story kartındaki lacivert (#0d2355) — foto yoksa bu ton hakim olur. */
+const NAVY_RGB = { r: 13, g: 35, b: 85 }
+
 export function normalizeAbsoluteImageUrl(url: string | undefined | null): string {
   const raw = (url ?? '').trim()
   if (!raw) return ''
@@ -36,6 +39,51 @@ export function pickBestImageUrl(candidates: Array<string | undefined | null>): 
     if (isUsableImageUrl(c)) return normalizeAbsoluteImageUrl(c)
   }
   return ''
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Üst bölgede lacivert (#0d2355) hakim mi?
+ * Kapak gömülemediğinde OG kartı solid navy + metin üretir; Meta bunu "başarılı" sayıp yayınlar.
+ */
+export async function isMostlyNavyImage(
+  buf: Buffer,
+  opts?: { sampleTopRatio?: number; threshold?: number },
+): Promise<boolean> {
+  const sampleTopRatio = opts?.sampleTopRatio ?? 0.38
+  const threshold = opts?.threshold ?? 0.82
+  try {
+    const meta = await sharp(buf, { failOn: 'none' }).metadata()
+    const w = meta.width ?? 0
+    const h = meta.height ?? 0
+    if (w < 8 || h < 8) return true
+
+    const sampleH = Math.max(8, Math.floor(h * sampleTopRatio))
+    const { data, info } = await sharp(buf, { failOn: 'none' })
+      .extract({ left: 0, top: 0, width: w, height: sampleH })
+      .resize(48, 36, { fit: 'fill' })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+
+    const channels = info.channels
+    const pixels = info.width * info.height
+    if (pixels <= 0) return true
+
+    let navy = 0
+    for (let i = 0; i < data.length; i += channels) {
+      const dr = Math.abs(data[i] - NAVY_RGB.r)
+      const dg = Math.abs(data[i + 1] - NAVY_RGB.g)
+      const db = Math.abs(data[i + 2] - NAVY_RGB.b)
+      if (dr <= 18 && dg <= 22 && db <= 28) navy++
+    }
+    return navy / pixels >= threshold
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -70,10 +118,12 @@ export async function embedCoverTopImage(
   const targetAspect = targetW / targetH
 
   const seen = new Set<string>()
+  const tried: string[] = []
   for (const c of candidates) {
     const url = normalizeAbsoluteImageUrl(c)
     if (!url || seen.has(url) || !isUsableImageUrl(url)) continue
     seen.add(url)
+    tried.push(url.slice(0, 100))
     try {
       const buf = await downloadImageBuffer(url)
       if (!buf) continue
@@ -81,6 +131,10 @@ export async function embedCoverTopImage(
       const meta = await sharp(buf, { failOn: 'none' }).metadata()
       const srcW = meta.width ?? 1
       const srcH = meta.height ?? 1
+      if (!meta.width || !meta.height) {
+        console.warn(`[ogImageEmbed] no dimensions for ${url.slice(0, 100)}`)
+        continue
+      }
       const srcAspect = srcW / srcH
 
       const aspectRatio = srcAspect / targetAspect
@@ -100,9 +154,18 @@ export async function embedCoverTopImage(
       }
 
       return `data:image/jpeg;base64,${jpeg.toString('base64')}`
-    } catch {
+    } catch (err) {
+      console.warn(
+        `[ogImageEmbed] embed failed ${url.slice(0, 100)}:`,
+        err instanceof Error ? err.message : err,
+      )
       continue
     }
+  }
+  if (tried.length > 0) {
+    console.warn(`[ogImageEmbed] all candidates failed (${tried.length}): ${tried.join(' | ')}`)
+  } else {
+    console.warn('[ogImageEmbed] no usable image candidates')
   }
   return ''
 }
@@ -162,12 +225,63 @@ async function compositeContainBlur(
     .toBuffer()
 }
 
-/** Download image buffer with UA/Referer spoofing. Returns null on failure. */
-async function downloadImageBuffer(url: string): Promise<Buffer | null> {
+/** Own Firebase / GCS buckets — public fetch flaky olabilir; Admin SDK yedek. */
+const OWN_STORAGE_HOST =
+  /(^|\.)firebasestorage\.app$|(^|\.)googleapis\.com$|(^|\.)nahaber\.com$|(^|\.)onyeditivi\.com$/i
+
+function parseOwnStorageObjectPath(url: string): { bucket?: string; objectPath: string } | null {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.toLowerCase()
+
+    // https://firebasestorage.googleapis.com/v0/b/BUCKET/o/ENCODED?alt=media
+    if (host === 'firebasestorage.googleapis.com') {
+      const m = u.pathname.match(/^\/v0\/b\/([^/]+)\/o\/(.+)$/)
+      if (!m) return null
+      return { bucket: decodeURIComponent(m[1]), objectPath: decodeURIComponent(m[2]) }
+    }
+
+    // https://storage.googleapis.com/BUCKET/path/to/file.jpg
+    if (host === 'storage.googleapis.com') {
+      const parts = u.pathname.replace(/^\//, '').split('/')
+      if (parts.length < 2) return null
+      const bucket = parts[0]
+      const objectPath = parts.slice(1).map((p) => decodeURIComponent(p)).join('/')
+      if (!/nahaber|onyeditivi|firebasestorage\.app/i.test(bucket)) return null
+      return { bucket, objectPath }
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
+async function downloadViaAdminStorage(url: string): Promise<Buffer | null> {
+  const parsed = parseOwnStorageObjectPath(url)
+  if (!parsed) return null
+  try {
+    const { getAdminStorage } = await import('@/lib/firebase/admin')
+    const storage = getAdminStorage()
+    const bucket = parsed.bucket ? storage.bucket(parsed.bucket) : storage.bucket()
+    const [buf] = await bucket.file(parsed.objectPath).download()
+    if (!buf || buf.length < 64) return null
+    console.log(`[ogImageEmbed] admin storage hit ${parsed.objectPath.slice(0, 80)} (${buf.length}b)`)
+    return Buffer.from(buf)
+  } catch (err) {
+    console.warn(
+      `[ogImageEmbed] admin storage miss ${url.slice(0, 100)}:`,
+      err instanceof Error ? err.message : err,
+    )
+    return null
+  }
+}
+
+async function downloadImageBufferOnce(url: string, timeoutMs: number): Promise<Buffer | null> {
   try {
     const host = new URL(url).hostname
     const res = await fetch(url, {
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(timeoutMs),
       redirect: 'follow',
       headers: {
         'User-Agent': BROWSER_UA,
@@ -175,12 +289,40 @@ async function downloadImageBuffer(url: string): Promise<Buffer | null> {
         Referer: refererFor(host),
       },
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.warn(`[ogImageEmbed] HTTP ${res.status} for ${url.slice(0, 120)}`)
+      return null
+    }
     const buf = Buffer.from(await res.arrayBuffer())
     return buf.length >= 64 ? buf : null
-  } catch {
+  } catch (err) {
+    console.warn(
+      `[ogImageEmbed] fetch failed ${url.slice(0, 100)}:`,
+      err instanceof Error ? err.message : err,
+    )
     return null
   }
+}
+
+/** Download image buffer with UA/Referer spoofing + retries + own-bucket Admin fallback. */
+async function downloadImageBuffer(url: string): Promise<Buffer | null> {
+  const timeouts = [12_000, 16_000, 20_000]
+  for (let i = 0; i < timeouts.length; i++) {
+    const buf = await downloadImageBufferOnce(url, timeouts[i])
+    if (buf) return buf
+    if (i < timeouts.length - 1) await sleep(250 * (i + 1))
+  }
+
+  try {
+    const host = new URL(url).hostname
+    if (OWN_STORAGE_HOST.test(host)) {
+      const viaAdmin = await downloadViaAdminStorage(url)
+      if (viaAdmin) return viaAdmin
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
 }
 
 function refererFor(hostname: string): string {
@@ -213,22 +355,8 @@ export async function fetchImageAsJpegBuffer(
   const quality = opts?.quality ?? 82
 
   try {
-    const host = new URL(url).hostname
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(12_000),
-      redirect: 'follow',
-      headers: {
-        'User-Agent': BROWSER_UA,
-        Accept: 'image/avif,image/webp,image/apng,image/jpeg,image/png,image/*,*/*;q=0.8',
-        Referer: refererFor(host),
-      },
-    })
-    if (!res.ok) {
-      console.warn(`[ogImageEmbed] HTTP ${res.status} for ${url.slice(0, 120)}`)
-      return null
-    }
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length < 64) return null
+    const buf = await downloadImageBuffer(url)
+    if (!buf) return null
 
     return await sharp(buf, { failOn: 'none' })
       .rotate()

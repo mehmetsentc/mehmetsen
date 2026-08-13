@@ -22,7 +22,7 @@ import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } fr
 import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
-import { buildSocialImagePayload } from '@/lib/social/carouselImages'
+import { buildSocialImagePayload, materializeBrandedOgForPublish } from '@/lib/social/carouselImages'
 import { buildOgSocialUrl, buildOgStoryUrl } from '@/lib/social/ogCacheVersion'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
@@ -472,12 +472,19 @@ export async function publishOneSocial(
         : undefined,
     }
     const socialImageUrl = buildOgSocialUrl(newsId, ogVersionFields)
-    const storyImageUrl = buildOgStoryUrl(newsId, ogVersionFields)
+    const storyOgUrl = buildOgStoryUrl(newsId, ogVersionFields)
 
     // Hybrid carousel: 2+ kaynak görsel → slide1 branded OG + orijinaller
+    // Markalı OG Storage'a sabitlenir; lacivert/kapaksız kart Meta'ya gitmez.
     const imagePayload = shouldPost
-      ? await buildSocialImagePayload(newsId, socialImageUrl, data)
+      ? await buildSocialImagePayload(newsId, socialImageUrl, data, {
+          fallbackImageUrl: coverImage,
+        })
       : { imageUrl: socialImageUrl, mode: 'single' as const }
+
+    const storyImageUrl = shouldStory
+      ? await materializeBrandedOgForPublish(storyOgUrl, newsId, coverImage, 'story')
+      : storyOgUrl
 
     const result: PublishOneSocialResult = {
       ok: false,
@@ -537,7 +544,7 @@ export async function publishOneSocial(
         const update: Record<string, unknown> = {
           socialPublished:   true,
           socialPublishedAt: FieldValue.serverTimestamp(),
-          socialImageUrl,
+          socialImageUrl: imagePayload.imageUrl || socialImageUrl,
           socialHeadline:      socialContent.headline,
           socialStorySummary:  socialContent.storySummary,
           socialCaption:       socialContent.caption,

@@ -2,6 +2,9 @@ import { createHash } from 'node:crypto'
 
 const OG_SITE = 'https://nahaber.com'
 
+/** Bump when OG renderer behavior changes so Meta/CDN stale navy cards are busted. */
+const OG_RENDER_REV = '3'
+
 export interface OgCacheVersionInput {
   title?: string
   socialHeadline?: string
@@ -16,7 +19,7 @@ export function buildOgCacheVersion(fields: OgCacheVersionInput): string {
   const summary = (fields.socialStorySummary || '').trim().slice(0, 80)
   const image = (fields.imageUrl || '').trim()
   const updated = fields.updatedAt != null ? String(fields.updatedAt) : ''
-  const payload = `${headline}|${summary}|${image}|${updated}`
+  const payload = `${OG_RENDER_REV}|${headline}|${summary}|${image}|${updated}`
   return createHash('sha256').update(payload).digest('hex').slice(0, 12)
 }
 

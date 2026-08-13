@@ -460,11 +460,20 @@ export async function GET(
   const isBreaking = overrideBreaking || article?.isBreaking || categoryId === 'son-dakika'
   const categoryLabel = getSocialPostCategoryLabel(categoryId, isBreaking)
 
-  const photo = await embedCoverTopImage(
-    [overrideImage, ...(article ? bestImageCandidates(article) : [])],
-    W, H, 84,
-    true,
-  )
+  const imageCandidates = [overrideImage, ...(article ? bestImageCandidates(article) : [])]
+  const photo = await embedCoverTopImage(imageCandidates, W, H, 84, true)
+
+  // Kapaksız lacivert kartı Meta'ya verme — solid blue story/post önlenir.
+  if (!photo) {
+    console.error(`[og/story] cover embed failed id=${id} candidates=${imageCandidates.filter(Boolean).length}`)
+    return new Response('OG cover image unavailable', {
+      status: 503,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+        'Retry-After': '3',
+      },
+    })
+  }
 
   const title = clampHeadline(rawTitle, TITLE_MAX)
   const summary = resolveStorySummary(article, overrideSummary, overrideSpot)
@@ -498,16 +507,12 @@ export async function GET(
       }}>
 
         {/* Full-bleed photo */}
-        {photo ? (
-          <img src={photo} alt="" width={W} height={H}
-            style={{
-              position: 'absolute', top: 0, left: 0,
-              width: W, height: H,
-              display: 'flex',
-            }} />
-        ) : (
-          <div style={{ position: 'absolute', top: 0, left: 0, width: W, height: H, display: 'flex', background: NAVY }} />
-        )}
+        <img src={photo} alt="" width={W} height={H}
+          style={{
+            position: 'absolute', top: 0, left: 0,
+            width: W, height: H,
+            display: 'flex',
+          }} />
 
         {/* Gradient scrim — photo → lacivert panel */}
         <div style={{

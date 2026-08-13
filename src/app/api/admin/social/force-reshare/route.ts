@@ -350,7 +350,9 @@ export async function POST(request: Request) {
         ? data.updatedAt
         : undefined,
     })
-    const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data)
+    const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data, {
+      fallbackImageUrl: extractImageUrl(data),
+    })
 
     const payload: SocialPublishPayload = {
       newsId: id,

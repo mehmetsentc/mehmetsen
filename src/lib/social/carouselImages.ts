@@ -5,8 +5,10 @@
  *   Slide 1  → markalı OG (/api/og/social/{id})
  *   Slide 2+ → orijinal görseller (gerekirse Sharp + Storage rehost)
  */
+import sharp from 'sharp'
 import {
   fetchImageAsJpegBuffer,
+  isMostlyNavyImage,
   isUsableImageUrl,
   normalizeAbsoluteImageUrl,
 } from './ogImageEmbed'
@@ -25,6 +27,10 @@ function isOwnHostUrl(url: string): boolean {
   } catch {
     return false
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function addUrl(urls: string[], seen: Set<string>, raw: unknown): void {
@@ -129,24 +135,117 @@ export interface CarouselPayloadImages {
 }
 
 /**
+ * Markalı OG'yi üret → lacivert/boş kontrol → Storage'a sabitle.
+ * Meta'ya dinamik /api/og URL vermek yerine statik JPEG verir (cold-start / CDN navy cache riskini keser).
+ * OG başarısızsa orijinal haber fotoğrafına düşer (solid blue post yok).
+ */
+export async function materializeBrandedOgForPublish(
+  brandedOgUrl: string,
+  newsId: string,
+  fallbackImageUrl: string,
+  kind: 'post' | 'story' = 'post',
+): Promise<string> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(brandedOgUrl, {
+        signal: AbortSignal.timeout(45_000),
+        redirect: 'follow',
+        headers: {
+          Accept: 'image/png,image/jpeg,image/*,*/*;q=0.8',
+          'User-Agent': 'NaHaber-SocialBot/1.0',
+        },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        console.warn(
+          `[carouselImages] OG HTTP ${res.status} attempt ${attempt + 1} — ${newsId} (${kind})`,
+        )
+        await sleep(800 * (attempt + 1))
+        continue
+      }
+      const buf = Buffer.from(await res.arrayBuffer())
+      if (buf.length < 1024) {
+        console.warn(`[carouselImages] OG too small attempt ${attempt + 1} — ${newsId}`)
+        await sleep(500 * (attempt + 1))
+        continue
+      }
+      if (await isMostlyNavyImage(buf)) {
+        console.warn(
+          `[carouselImages] OG navy-dominant attempt ${attempt + 1} — ${newsId} (cover missing)`,
+        )
+        await sleep(800 * (attempt + 1))
+        continue
+      }
+
+      const jpeg = await sharp(buf, { failOn: 'none' })
+        .jpeg({ quality: 88, mozjpeg: true })
+        .toBuffer()
+      const uploaded = await uploadSocialImage(
+        jpeg,
+        newsId,
+        `${newsId}-og-${kind}.jpg`,
+      )
+      if (uploaded) {
+        console.log(`[carouselImages] materialized OG → storage — ${newsId} (${kind})`)
+        return uploaded
+      }
+    } catch (err) {
+      console.warn(
+        `[carouselImages] OG materialize failed attempt ${attempt + 1} — ${newsId}:`,
+        err instanceof Error ? err.message : err,
+      )
+      await sleep(800 * (attempt + 1))
+    }
+  }
+
+  const fallback = normalizeAbsoluteImageUrl(fallbackImageUrl)
+  if (fallback && isUsableImageUrl(fallback)) {
+    const rehosted = await ensurePublicCarouselImageUrl(fallback, newsId, kind === 'story' ? 0 : 1)
+    if (rehosted) {
+      console.warn(
+        `[carouselImages] OG failed → raw article image fallback — ${newsId} (${kind})`,
+      )
+      return rehosted
+    }
+  }
+
+  console.error(
+    `[carouselImages] no publishable image after OG+fallback — ${newsId}; using branded URL last resort`,
+  )
+  return brandedOgUrl
+}
+
+/**
  * Markalı OG + orijinal görsellerden publish payload alanlarını üret.
  * 1 görsel → single; 2+ → carousel (max 10). Bozuk secondary'ler atlanır.
  */
 export async function buildSocialImagePayload(
   newsId: string,
   brandedOgUrl: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  opts?: { fallbackImageUrl?: string },
 ): Promise<CarouselPayloadImages> {
   const originals = collectNewsImageUrls(data)
+  const fallbackImageUrl =
+    opts?.fallbackImageUrl ||
+    originals[0] ||
+    ''
+
+  const slide1 = await materializeBrandedOgForPublish(
+    brandedOgUrl,
+    newsId,
+    fallbackImageUrl,
+    'post',
+  )
 
   if (originals.length < 2) {
     console.log(`[carouselImages] single — ${newsId} (${originals.length} kaynak görsel)`)
-    return { imageUrl: brandedOgUrl, mode: 'single' }
+    return { imageUrl: slide1, mode: 'single' }
   }
 
   // Slide 1 = branded OG; slide 2+ = orijinaller (max IG_CAROUSEL_MAX toplam)
   const secondaryCandidates = originals.slice(0, IG_CAROUSEL_MAX - 1)
-  const prepared: string[] = [brandedOgUrl]
+  const prepared: string[] = [slide1]
 
   for (let i = 0; i < secondaryCandidates.length; i++) {
     if (prepared.length >= IG_CAROUSEL_MAX) break
@@ -169,14 +268,14 @@ export async function buildSocialImagePayload(
     console.warn(
       `[carouselImages] carousel build failed → single fallback — ${newsId}`
     )
-    return { imageUrl: brandedOgUrl, mode: 'single' }
+    return { imageUrl: slide1, mode: 'single' }
   }
 
   console.log(
     `[carouselImages] carousel — ${newsId} (${prepared.length} slides, ${originals.length} kaynak)`
   )
   return {
-    imageUrl: brandedOgUrl,
+    imageUrl: slide1,
     imageUrls: prepared,
     mode: 'carousel',
   }

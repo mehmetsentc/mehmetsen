@@ -141,7 +141,9 @@ async function handleRequest(request: Request) {
 
   // ── 3. Onyedi Tivi markalı görsel — OG route URL (1080×1080, Edge cached) ──
   const socialImageUrl: string = `https://nahaber.com/api/og/social/${docId}`
-  const imagePayload = await buildSocialImagePayload(docId, socialImageUrl, data)
+  const imagePayload = await buildSocialImagePayload(docId, socialImageUrl, data, {
+    fallbackImageUrl: typeof data.imageUrl === 'string' ? data.imageUrl : undefined,
+  })
   steps.overlayResult = `OG route → ${socialImageUrl} (${imagePayload.mode})`
   if (imagePayload.imageUrls) steps.carouselSlides = imagePayload.imageUrls.length
 

@@ -47,7 +47,7 @@ import type {
   SocialPublishPayload,
   SocialPublishResult,
 } from '@/lib/social/types'
-import { buildSocialImagePayload } from '@/lib/social/carouselImages'
+import { buildSocialImagePayload, materializeBrandedOgForPublish } from '@/lib/social/carouselImages'
 import { buildOgSocialUrl, buildOgStoryUrl } from '@/lib/social/ogCacheVersion'
 
 
@@ -298,7 +298,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         console.warn(`[cron/social] story AI fields update failed ${id}:`, err)
       }
 
-      const storyImageUrl: string = buildOgStoryUrl(id, {
+      const storyOgUrl: string = buildOgStoryUrl(id, {
         title,
         socialHeadline: headline,
         socialStorySummary: storySummary,
@@ -307,6 +307,13 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           ? data.updatedAt
           : undefined,
       })
+      const coverForStory = extractImageUrl(data) || ''
+      const storyImageUrl = await materializeBrandedOgForPublish(
+        storyOgUrl,
+        id,
+        coverForStory,
+        'story',
+      )
       const storyPayload: SocialPublishPayload = {
         newsId:      id,
         title:       headline,
@@ -454,7 +461,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     })
     console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
 
-    const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data)
+    const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data, {
+      fallbackImageUrl: originalImageUrl,
+    })
 
     // Post: TAM manşet + AI özet; URL/hashtag publisher (buildFeedCaption) ekler
     const payload: SocialPublishPayload = {
