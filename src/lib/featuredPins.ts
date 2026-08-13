@@ -85,8 +85,9 @@ export async function backfillMissingFeaturedAt(db: Firestore): Promise<number> 
 
 /**
  * Keep at most `limit` pins per scope.
- * National pins (no citySlug / non-yerel) share one pool for nahaber.com.
- * Each citySlug has its own pool for that city's homepage featured rail.
+ * Scope keys off the Yerel category tree — not mere citySlug presence.
+ * National (non-yerel) pins share one pool for nahaber.com, even with a city.
+ * Each city's yerel pins share a pool for that city homepage featured rail.
  * Newest featuredAt wins; `keepId` is always retained when present.
  */
 export async function demoteExcessFeaturedPins(
@@ -106,7 +107,8 @@ export async function demoteExcessFeaturedPins(
     const data = doc.data()
     const citySlug = String(data.citySlug ?? '').trim().toLowerCase()
     const categoryId = String(data.categoryId ?? data.category ?? '').trim()
-    const local = isLocalScopedNews({ citySlug, categoryId })
+    // citySlug alone must not pull a national-category pin into a city pool.
+    const local = isLocalScopedNews({ categoryId })
     return {
       id: doc.id,
       featuredAt: featuredPinTime(data),

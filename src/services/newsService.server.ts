@@ -328,13 +328,14 @@ function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
 
 /**
  * CMS “Öne Çıkan” — kategori bağımsız, yalnızca `featured === true`.
- * Yerel / citySlug pinleri ulusal ana sayfaya girmez (şehir sayfasına gider).
+ * Yerel kategori ağacı pinleri ulusal ana sayfaya girmez (şehir sayfasına gider).
+ * citySlug tek başına dışlamaz — Gündem/Son Dakika + şehir ulusal kalır.
  * Gündem filler yok; haber kendi kategori rayında ayrıca kalır.
  */
 function bucketFeatured(pool: NewsItem[], limit: number, pinned: NewsItem[] = []): NewsItem[] {
   const isNationalPin = (p: NewsItem) =>
     p.featured === true &&
-    isNationalFeaturedEligible({ citySlug: p.citySlug, category: p.category })
+    isNationalFeaturedEligible({ category: p.category })
   const featuredPinned = pinned.filter(isNationalPin)
   const featuredPool = pool.filter(isNationalPin)
   const candidates = [...featuredPinned, ...featuredPool].sort(compareFeaturedPriority)
@@ -360,13 +361,8 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
   const mergeDocs = (docs: QueryDocumentSnapshot[]) => {
     for (const item of mapAdminDocs(docs)) {
       if (!item.featured) continue
-      // Local/city featured pins belong on city homepages, not nahaber.com.
-      if (
-        !isNationalFeaturedEligible({
-          citySlug: item.citySlug,
-          category: item.category,
-        })
-      ) {
+      // Yerel-category featured pins belong on city homepages, not nahaber.com.
+      if (!isNationalFeaturedEligible({ category: item.category })) {
         continue
       }
       byId.set(item.id, item)

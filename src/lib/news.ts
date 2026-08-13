@@ -112,7 +112,7 @@ export async function getBreakingNews(limitCount = 12): Promise<NewsItem[]> {
   }
 }
 
-/** Featured agenda slider — yalnızca CMS Öne Çıkan (ulusal; yerel pinler hariç). */
+/** Featured agenda slider — yalnızca CMS Öne Çıkan (ulusal; yerel kategori pinleri hariç). */
 export async function getFeaturedNews(limitCount = 10): Promise<NewsItem[]> {
   const scanLimit = Math.max(limitCount * 5, 40)
 
@@ -121,9 +121,7 @@ export async function getFeaturedNews(limitCount = 10): Promise<NewsItem[]> {
     scanLimit
   )
   return fromFeatured
-    .filter((item) =>
-      isNationalFeaturedEligible({ citySlug: item.citySlug, category: item.category })
-    )
+    .filter((item) => isNationalFeaturedEligible({ category: item.category }))
     .slice(0, limitCount)
 }
 

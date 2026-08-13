@@ -21,6 +21,7 @@ import {
 import { getThemedCategorySectionIds } from '@/constants/categorySections'
 import { getCategoryFamily, getHomeFeedCategoryFamily, getNationalCategoryForYerelSubcategory } from '@/constants/config'
 import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
+import { isCityFeaturedEligible } from '@/lib/featuredScope'
 import { slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isPostgresReadsEnabled } from '@/db'
 import { DISTRICT_DISPLAY_NAMES } from '@/constants/cities'
@@ -553,8 +554,15 @@ function bucketCityFeatured(
   limit: number,
   pinned: NewsItem[] = []
 ): NewsItem[] {
-  const featuredPinned = pinned.filter((p) => p.featured === true)
-  const featuredPool = pool.filter((p) => p.featured === true)
+  // City Öne Çıkan pins: yerel category only (pinned already filtered; pool may mix).
+  const isCityPin = (p: NewsItem) =>
+    p.featured === true && isCityFeaturedEligible({
+      citySlug: p.citySlug,
+      category: p.category,
+      forCitySlug: p.citySlug || '',
+    })
+  const featuredPinned = pinned.filter(isCityPin)
+  const featuredPool = pool.filter(isCityPin)
   const candidates = [...featuredPinned, ...featuredPool].sort(compareFeaturedPriority)
   const seen = new Set<string>()
   const featured: NewsItem[] = []
@@ -611,8 +619,8 @@ function deriveSporRailSectionIds(pool: NewsItem[]): string[] {
 }
 
 /**
- * CMS “Öne Çıkan” for a city tenant — uses existing featured indexes, then
- * filters by citySlug (avoids waiting on a status+citySlug+featured composite).
+ * CMS “Öne Çıkan” for a city tenant — yerel category tree + matching citySlug.
+ * National categories with a city stay on nahaber.com, not city featured.
  */
 async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<NewsItem[]> {
   const db = getAdminFirestore()
@@ -620,12 +628,20 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
   const byId = new Map<string, NewsItem>()
   const normalized = citySlug.trim().toLowerCase()
 
+  const accept = (item: NewsItem | null): item is NewsItem =>
+    Boolean(
+      item?.featured &&
+        isCityFeaturedEligible({
+          citySlug: item.citySlug,
+          category: item.category,
+          forCitySlug: normalized,
+        })
+    )
+
   const mergeDocs = (docs: Array<{ id: string; data: () => NewsDocument }>) => {
     for (const doc of docs) {
       const item = docToNewsItem(doc.id, doc.data())
-      if (!item?.featured) continue
-      const itemCity = (item.citySlug || '').trim().toLowerCase()
-      if (itemCity !== normalized) continue
+      if (!accept(item)) continue
       byId.set(item.id, item)
     }
   }
@@ -668,7 +684,7 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
         .get()
       for (const doc of snap.docs) {
         const item = docToNewsItem(doc.id, doc.data() as NewsDocument)
-        if (!item?.featured) continue
+        if (!accept(item)) continue
         byId.set(item.id, item)
       }
     } catch (error) {
@@ -749,7 +765,7 @@ const getCityHomeFeedCached = unstable_cache(
 
     return buildCityFeedFromPool(pool, railCategoryIds, bucketCityCategoryRails, featuredPinned)
   },
-  ['city-home-feed-v4'],
+  ['city-home-feed-v5'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
