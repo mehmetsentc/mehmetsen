@@ -37,7 +37,12 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const items: CmsNotification[] = snap.docs.map((doc) => {
+        const items: CmsNotification[] = snap.docs
+          .filter((doc) => {
+            const d = doc.data()
+            return d.isDuplicate !== true && d.categoryId !== 'tekrarlayan'
+          })
+          .map((doc) => {
           const d = doc.data()
           const createdAt =
             typeof d.createdAt === 'number'

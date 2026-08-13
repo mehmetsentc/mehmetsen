@@ -102,11 +102,27 @@ async function adminFetch(path: string, method: 'POST' | 'DELETE', body?: object
   }
 }
 
+/** Duplikat / tekrarlayan audit stub — Onay Bekliyor dışında tutulur. */
+function isDuplicateNewsData(data: NewsDocument | Record<string, unknown>): boolean {
+  return data.isDuplicate === true || data.categoryId === 'tekrarlayan'
+}
+
 function draftDocToPost(id: string, data: NewsDocument): AdminNewsItem {
   const post = adminNewsDocToPost(id, data)
+  const draftStatus = String((data as { draftStatus?: unknown }).draftStatus ?? '')
+  const isDup = isDuplicateNewsData(data)
+  // Rejected / duplicate stubs must not look like "Onay Bekliyor" (Bekliyor badge).
+  // Keep approve UI possible via isDuplicate + TEKRAR; status reflects stub state.
+  const status: PostStatus =
+    isDup || draftStatus === 'rejected'
+      ? 'archived'
+      : draftStatus === 'approved'
+        ? 'published'
+        : 'pending'
   return {
     ...withSocialFlags(post, data as Record<string, unknown>, 'newsDrafts'),
-    status: 'pending',
+    status,
+    isDuplicate: isDup || post.isDuplicate === true,
   }
 }
 
@@ -610,10 +626,37 @@ export const adminNewsService = {
           where('draftStatus', '==', 'pending_review')
         )
       )
-      counts.pending_review = draftSnap.data().count
-      counts.pending = (counts.pending ?? 0) + draftSnap.data().count
+      let pendingReview = draftSnap.data().count
+      // Tekrar haber stub'ları Onay Bekliyor sayacına girmesin
+      try {
+        const dupPendingSnap = await getCountFromServer(
+          query(
+            collection(db, Collections.NEWS_DRAFTS),
+            where('draftStatus', '==', 'pending_review'),
+            where('isDuplicate', '==', true)
+          )
+        )
+        pendingReview = Math.max(0, pendingReview - dupPendingSnap.data().count)
+      } catch {
+        /* compound index yoksa listPendingQueue client filter yeterli */
+      }
+      counts.pending_review = pendingReview
+      counts.pending = (counts.pending ?? 0) + pendingReview
     } catch {
       counts.pending_review = 0
+    }
+    // Legacy news: pending + isDuplicate → yalnızca Tekrar Haber
+    try {
+      const dupNewsPending = await getCountFromServer(
+        query(
+          collection(db, VIDEO_FEED_COLLECTION),
+          where('status', '==', 'pending'),
+          where('isDuplicate', '==', true)
+        )
+      )
+      counts.pending = Math.max(0, (counts.pending ?? 0) - dupNewsPending.data().count)
+    } catch {
+      /* ignore */
     }
     try {
       const reviewSnap = await getCountFromServer(
@@ -817,23 +860,25 @@ async function listPendingQueue(
   lastDoc?: QueryDocumentSnapshot
 ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
   const items: AdminNewsItem[] = []
+  // Over-fetch so skipping duplicate stubs still fills a page
+  const fetchLimit = Math.max(PAGE_SIZE * 3, 150)
 
   try {
-    // 1. newsDrafts with pending_review
+    // 1. newsDrafts with pending_review (exclude tekrar / isDuplicate)
     const draftAttemptConstraints: QueryConstraint[][] = [
       [
         where('draftStatus', '==', 'pending_review'),
         orderBy('updatedAt', 'desc'),
         ...(lastDoc ? [startAfter(lastDoc)] : []),
-        limit(PAGE_SIZE),
+        limit(fetchLimit),
       ],
       [
         where('draftStatus', '==', 'pending_review'),
         orderBy('createdAt', 'desc'),
         ...(lastDoc ? [startAfter(lastDoc)] : []),
-        limit(PAGE_SIZE),
+        limit(fetchLimit),
       ],
-      [where('draftStatus', '==', 'pending_review'), limit(PAGE_SIZE)],
+      [where('draftStatus', '==', 'pending_review'), limit(fetchLimit)],
     ]
 
     let draftLastDoc: QueryDocumentSnapshot | null = null
@@ -845,7 +890,10 @@ async function listPendingQueue(
           continue
         }
         for (const d of snap.docs) {
-          items.push(draftDocToPost(d.id, d.data() as NewsDocument))
+          const data = d.data() as NewsDocument
+          if (isDuplicateNewsData(data)) continue
+          items.push(draftDocToPost(d.id, data))
+          if (items.length >= PAGE_SIZE) break
         }
         draftLastDoc = snap.docs[snap.docs.length - 1] ?? null
         draftDocCount = snap.docs.length
@@ -855,12 +903,12 @@ async function listPendingQueue(
       }
     }
 
-    // 2. Legacy news collection with status=pending
+    // 2. Legacy news collection with status=pending (exclude isDuplicate / tekrarlayan)
     if (items.length < PAGE_SIZE) {
       const legacyAttempts: QueryConstraint[][] = [
-        [where('status', '==', 'pending'), orderBy('updatedAt', 'desc'), limit(PAGE_SIZE - items.length)],
-        [where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(PAGE_SIZE - items.length)],
-        [where('status', '==', 'pending'), limit(PAGE_SIZE - items.length)],
+        [where('status', '==', 'pending'), orderBy('updatedAt', 'desc'), limit(fetchLimit)],
+        [where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(fetchLimit)],
+        [where('status', '==', 'pending'), limit(fetchLimit)],
       ]
       for (const constraints of legacyAttempts) {
         try {
@@ -868,7 +916,9 @@ async function listPendingQueue(
           if (legacySnap.empty && constraints !== legacyAttempts[legacyAttempts.length - 1]) continue
           for (const d of legacySnap.docs) {
             const data = d.data() as NewsDocument
+            if (isDuplicateNewsData(data)) continue
             items.push(withSocialFlags(adminNewsDocToPost(d.id, data), data as Record<string, unknown>, 'news'))
+            if (items.length >= PAGE_SIZE) break
           }
           break
         } catch (err) {
@@ -899,9 +949,9 @@ async function listPendingQueue(
       }
     }
 
-    const totalHasMore = draftDocCount === PAGE_SIZE || items.length >= PAGE_SIZE
+    const totalHasMore = draftDocCount >= fetchLimit || items.length >= PAGE_SIZE
     return {
-      posts: items,
+      posts: items.slice(0, PAGE_SIZE),
       lastDoc: draftLastDoc,
       hasMore: totalHasMore,
     }
@@ -911,9 +961,14 @@ async function listPendingQueue(
     const results: AdminNewsItem[] = []
     try {
       const snap = await getDocs(
-        query(collection(db, Collections.NEWS_DRAFTS), where('draftStatus', '==', 'pending_review'), limit(PAGE_SIZE))
+        query(collection(db, Collections.NEWS_DRAFTS), where('draftStatus', '==', 'pending_review'), limit(fetchLimit))
       )
-      for (const d of snap.docs) results.push(draftDocToPost(d.id, d.data() as NewsDocument))
+      for (const d of snap.docs) {
+        const data = d.data() as NewsDocument
+        if (isDuplicateNewsData(data)) continue
+        results.push(draftDocToPost(d.id, data))
+        if (results.length >= PAGE_SIZE) break
+      }
     } catch { /* ignore */ }
     try {
       const qSnap = await getDocs(
@@ -921,6 +976,6 @@ async function listPendingQueue(
       )
       for (const d of qSnap.docs) results.push(queueDocToPost(d.id, d.data() as Record<string, unknown>))
     } catch { /* ignore */ }
-    return { posts: results, lastDoc: null, hasMore: false }
+    return { posts: results.slice(0, PAGE_SIZE), lastDoc: null, hasMore: false }
   }
 }

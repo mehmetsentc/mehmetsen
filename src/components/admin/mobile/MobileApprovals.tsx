@@ -50,20 +50,24 @@ export function MobileApprovals() {
     return onSnapshot(
       q,
       (snap) => {
-        const next = snap.docs.map((d) => {
-          const data = d.data()
-          return {
-            id: d.id,
-            title: (data.title as string) ?? '',
-            source: (data.source as string) ?? '',
-            categoryId: (data.categoryId as string) ?? '',
-            createdAt: tsToMs(data.createdAt),
-            image: (data.imageUrl as string) || (data.thumbnail as string) || (data.coverImageUrl as string) || '',
-            confidenceScore: data.confidenceScore as number | undefined,
-            isBreaking: Boolean(data.isBreaking) || data.categoryId === 'son-dakika',
-            adminSource: 'newsDrafts' as const,
-          }
-        })
+        const next = snap.docs
+          .map((d) => {
+            const data = d.data()
+            return {
+              id: d.id,
+              title: (data.title as string) ?? '',
+              source: (data.source as string) ?? '',
+              categoryId: (data.categoryId as string) ?? '',
+              createdAt: tsToMs(data.createdAt),
+              image: (data.imageUrl as string) || (data.thumbnail as string) || (data.coverImageUrl as string) || '',
+              confidenceScore: data.confidenceScore as number | undefined,
+              isBreaking: Boolean(data.isBreaking) || data.categoryId === 'son-dakika',
+              isDuplicate: data.isDuplicate === true || data.categoryId === 'tekrarlayan',
+              adminSource: 'newsDrafts' as const,
+            }
+          })
+          // Tekrar haberler yalnızca Tekrar Haber listesinde
+          .filter((item) => !item.isDuplicate)
         setItems(next)
         setLoading(false)
       },

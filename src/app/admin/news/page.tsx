@@ -584,9 +584,12 @@ function NewsRow({
   const [storyPublished, setStoryPublished] = useState(!!post.storyPublished)
   const [popoverMode, setPopoverMode] = useState<SocialShareMode | null>(null)
   const busy = actionLoading === post.id || sharingMode !== null
-  const badge = post.needsReview
-    ? STATUS_BADGE.review
-    : (STATUS_BADGE[post.status ?? 'draft'] ?? STATUS_BADGE.draft)
+  // Tekrar haber: yalnızca TEKRAR rozeti — Bekliyor/Arşiv yanıltıcı
+  const badge = post.isDuplicate
+    ? null
+    : post.needsReview
+      ? STATUS_BADGE.review
+      : (STATUS_BADGE[post.status ?? 'draft'] ?? STATUS_BADGE.draft)
   const canShare = newsHasShareImage(post)
 
   useEffect(() => {
@@ -737,7 +740,9 @@ function NewsRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2 flex-wrap">
             <p className="line-clamp-2 text-sm font-semibold text-[rgb(var(--color-text))] flex-1">{post.title}</p>
-            <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', badge.cls)}>{badge.label}</span>
+            {badge && (
+              <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', badge.cls)}>{badge.label}</span>
+            )}
             {post.featured && (
               <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                 <Star className="h-2.5 w-2.5 fill-current" />Öne Çıkan
@@ -778,14 +783,14 @@ function NewsRow({
         {/* Actions */}
         <div className="flex shrink-0 flex-col gap-1 items-end">
           <div className="flex flex-wrap justify-end gap-1">
-            {(post.status === 'pending' || post.status === 'draft' || post.needsReview) && (
+            {(post.isDuplicate || post.status === 'pending' || post.status === 'draft' || post.needsReview) && (
               <button onClick={() => onApprove(post)} disabled={busy}
                 className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
                 {busy && !sharingMode ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
                 {post.needsReview ? 'İnceledim' : 'Onayla'}
               </button>
             )}
-            {post.status === 'pending' && !post.needsReview && (
+            {(post.isDuplicate || (post.status === 'pending' && !post.needsReview)) && (
               <button onClick={() => onReject(post)} disabled={busy}
                 className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-50">
                 <XCircle className="h-3 w-3" />Reddet
@@ -1130,8 +1135,13 @@ function AdminNewsDesktopPage() {
       for (const p of tagResults) {
         if (!seen.has(p.id)) { seen.add(p.id); merged.push(p) }
       }
-      // Tekrar haber filtresi → client-side isDuplicate === true
-      const filtered = filter === 'duplicate' ? merged.filter(p => p.isDuplicate === true) : merged
+      // Tekrar → isDuplicate/tekrarlayan; Onay Bekliyor → tekrarları dışla
+      const filtered =
+        filter === 'duplicate'
+          ? merged.filter((p) => p.isDuplicate === true || p.categoryId === 'tekrarlayan')
+          : filter === 'pending'
+            ? merged.filter((p) => p.isDuplicate !== true && p.categoryId !== 'tekrarlayan')
+            : merged
       setPosts(filtered)
       setCurrentPage(page)
       const effectiveHasMore = result.hasMore && filtered.length > 0
@@ -1442,7 +1452,9 @@ function AdminNewsDesktopPage() {
     return haystack.includes(term)
   })
 
-  const pendingCount = posts.filter(p => p.status === 'pending').length
+  const pendingCount = posts.filter(
+    (p) => p.status === 'pending' && !p.isDuplicate && p.categoryId !== 'tekrarlayan'
+  ).length
   const isYerel = categoryFilter === YEREL_CATEGORY_ID
 
   return (

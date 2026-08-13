@@ -114,7 +114,16 @@ export function MobileApprovalReview({ id }: { id: string }) {
         orderBy('createdAt', 'desc'),
         limit(80)
       )
-    ).then((snap) => setQueueIds(snap.docs.map((d) => d.id)))
+    ).then((snap) =>
+      setQueueIds(
+        snap.docs
+          .filter((d) => {
+            const data = d.data()
+            return data.isDuplicate !== true && data.categoryId !== 'tekrarlayan'
+          })
+          .map((d) => d.id)
+      )
+    )
   }, [rapid, source])
 
   const progress = useMemo(() => {
