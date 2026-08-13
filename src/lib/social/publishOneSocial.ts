@@ -477,38 +477,24 @@ export async function publishOneSocial(
         .filter(Boolean)
     }
 
-    // Meta AI: hikâye özeti (OG görsele yazılır) + post caption gövdesi.
-    // Platform publisher'lar da rewrite çağırır; 24h cache ile tekrar Llama yok.
-    // Fail → mevcut socialContent kalır (gönderi atlanmaz).
+    // Meta AI: yalnızca hikâye özeti (story OG). Post caption DeepSeek'de kalır —
+    // IG/FB publisher'lar platform-scoped rewrite yapar. Story-length Meta AI
+    // caption'ı post gövdesine yazmak Instagram'ı "…avukat Dr." ince metne düşürüyordu.
     try {
       const metaAi = await rewriteForPlatform(
         title,
-        socialContent.caption || spot || title,
+        socialContent.storySummary || spot || title,
         cityName,
         'story',
         { articleUrl, newsId },
       )
       if (metaAi.enabled) {
-        if (!overrides?.storySummary?.trim()) {
+        if (!overrides?.storySummary?.trim() && metaAi.caption.trim()) {
           socialContent.storySummary = metaAi.caption
-        }
-        if (!overrides?.caption?.trim()) {
-          socialContent.caption = metaAi.caption
-        }
-        if (metaAi.hashtags.length && (!overrides?.hashtags || overrides.hashtags.length === 0)) {
-          socialContent.hashtags = [
-            ...metaAi.hashtags,
-            ...socialContent.hashtags.filter(
-              (t) =>
-                !metaAi.hashtags.some(
-                  (h) => h.toLocaleLowerCase('tr-TR') === String(t).toLocaleLowerCase('tr-TR'),
-                ),
-            ),
-          ].slice(0, 5)
         }
       }
     } catch (err) {
-      console.warn(`[publishOneSocial] Meta AI story/caption rewrite skipped ${newsId}:`, err)
+      console.warn(`[publishOneSocial] Meta AI story rewrite skipped ${newsId}:`, err)
     }
 
     // Olgu sadakati: AI'nin düşürdüğü tamlama isimlerini (hava aracı vb.) geri koy

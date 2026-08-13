@@ -772,6 +772,7 @@ export async function testFacebookPost(
   const aiPreview = await rewriteForSocial(title, socialContent.caption || spot || title, cityName, {
     articleUrl,
     newsId: id,
+    platform: 'facebook',
   })
   const caption =
     `${aiPreview.caption}\n\n📍 ${cityName}` +

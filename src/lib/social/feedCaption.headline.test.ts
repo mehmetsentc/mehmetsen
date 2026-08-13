@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  clampCompleteSentences,
+  endsWithCompleteSentence,
   fitCompleteHeadline,
+  isIncompleteCaption,
   isIncompleteHeadline,
+  isThinSocialCaption,
   pickCompleteOgHeadline,
   shortenToLastCompleteClause,
   stripTrailingHeadlineJunk,
@@ -67,5 +71,38 @@ describe('complete OG headlines', () => {
   it('keeps Turkish apostrophe headlines that are complete', () => {
     const ok = "Çanakkale'de yerel seçim sonuçları açıklandı"
     expect(isIncompleteHeadline(ok)).toBe(false)
+  })
+})
+
+describe('complete captions (Meta AI / Dr. abbrev)', () => {
+  it('does not treat Dr. as a complete sentence end', () => {
+    const cut =
+      "Türkiye'nin 2025 gelir vergisi rekortmenleri açıklandı; listede 23. sırada yer alan avukat Dr."
+    expect(endsWithCompleteSentence(cut)).toBe(false)
+    expect(isIncompleteCaption(cut)).toBe(true)
+  })
+
+  it('clampCompleteSentences skips Dr. and 23. false sentence ends', () => {
+    const full =
+      "Türkiye'nin 2025 gelir vergisi rekortmenleri açıklandı. Listede 23. sırada yer alan avukat Dr. Gönenç Gürkaynak dikkat çeken bir çıkış yaptı."
+    const out = clampCompleteSentences(full, 110, 140)
+    expect(out.toLocaleLowerCase('tr-TR')).not.toMatch(/avukat dr\.?\s*$/)
+    expect(isIncompleteCaption(out)).toBe(false)
+    expect(endsWithCompleteSentence(out) || out.includes('açıklandı')).toBe(true)
+  })
+
+  it('flags thin Meta AI vs rich DeepSeek body', () => {
+    const meta =
+      "📊 Türkiye'nin 2025 gelir vergisi rekortmenleri açıklandı; listede 23. sırada yer alan avukat Dr."
+    const deepseek =
+      "🔥 Bigalı vergi rekortmeni avukat Dr. Gönenç Gürkaynak listede 23. sırada yer aldı.\n\nAçıklamasında şatafat eleştirilerine yanıt verdi ve vergi ödeyerek dolara meydan okuduğunu söyledi.\n\nDetaylar yerel gündemde geniş yer buldu."
+    expect(isThinSocialCaption(meta, deepseek)).toBe(true)
+  })
+
+  it('accepts a complete mid-length caption', () => {
+    const ok =
+      "📊 Türkiye'nin 2025 gelir vergisi rekortmenleri açıklandı. Listede 23. sırada yer alan avukat Dr. Gönenç Gürkaynak dikkat çeken bir çıkış yaptı."
+    expect(isIncompleteCaption(ok)).toBe(false)
+    expect(isThinSocialCaption(ok)).toBe(false)
   })
 })

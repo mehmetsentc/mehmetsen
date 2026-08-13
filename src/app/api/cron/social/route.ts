@@ -485,10 +485,43 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
     }
 
+    // Olgu sadakati + tamamlanmış manşet (OG overlay DeepSeek headline kullanır)
+    socialContent.headline = repairSocialHeadline(
+      socialContent.headline,
+      title,
+      bodyText || spot,
+    )
+    socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 120, 160)
+    socialContent.caption = repairSocialCopyAgainstSource(
+      socialContent.caption,
+      title,
+      bodyText || spot,
+    )
+    if (socialContent.storySummary) {
+      socialContent.storySummary = repairSocialCopyAgainstSource(
+        socialContent.storySummary,
+        title,
+        bodyText || spot,
+      )
+    }
+
+    // OG route Firestore socialHeadline okusun — paylaşmadan önce kaydet
+    try {
+      await db.collection(Collections.NEWS).doc(id).update({
+        socialHeadline: socialContent.headline,
+        socialStorySummary: socialContent.storySummary || null,
+        socialCaption: socialContent.caption,
+        socialHashtags: socialContent.hashtags,
+      })
+    } catch (err) {
+      console.warn(`[cron/social] social fields pre-save failed ${id}:`, err)
+    }
+
     // Stable content hash — CDN cache hit unless headline/image changes
     const socialImageUrl: string = buildOgSocialUrl(id, {
       title,
       socialHeadline: socialContent.headline,
+      socialStorySummary: socialContent.storySummary,
       imageUrl: originalImageUrl,
       updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
         ? data.updatedAt
@@ -499,6 +532,25 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data, {
       fallbackImageUrl: originalImageUrl,
     })
+    if (!imagePayload.imageUrl) {
+      console.error(`[cron/social] no publishable image — skip post ${id}`)
+      failed++
+      results.push({
+        newsId: id,
+        title,
+        facebook: { success: false, error: 'no image' },
+        instagram: { success: false, error: 'no image' },
+        twitter: { success: false, error: 'skipped' },
+        threads: { success: false, error: 'skipped' },
+        markedDone: false,
+      })
+      continue
+    }
+    if (imagePayload.imageUrl.includes('-raw-')) {
+      console.error(
+        `[cron/social] WARNING raw cover without manşet overlay — ${id} url=${imagePayload.imageUrl.slice(0, 120)}`,
+      )
+    }
 
     // Post: TAM manşet + AI özet; URL/hashtag publisher (buildFeedCaption) ekler
     const payload: SocialPublishPayload = {

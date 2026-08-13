@@ -342,9 +342,28 @@ export async function POST(request: Request) {
       }
     }
 
+    socialContent.headline = fitCompleteHeadline(
+      socialContent.headline || title,
+      title,
+      120,
+      160,
+    )
+
+    try {
+      await db.collection(Collections.NEWS).doc(id).update({
+        socialHeadline: socialContent.headline,
+        socialStorySummary: socialContent.storySummary || null,
+        socialCaption: socialContent.caption,
+        socialHashtags: socialContent.hashtags,
+      })
+    } catch (err) {
+      console.warn(`[force-reshare] social fields pre-save failed ${id}:`, err)
+    }
+
     const socialImageUrl = buildOgSocialUrl(id, {
       title,
       socialHeadline: socialContent.headline,
+      socialStorySummary: socialContent.storySummary,
       imageUrl: extractImageUrl(data),
       updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
         ? data.updatedAt

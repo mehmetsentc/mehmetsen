@@ -19,7 +19,7 @@
  */
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { getSocialTokens } from './tokenStore'
-import { buildFeedCaption } from './feedCaption'
+import { buildFeedCaption, isIncompleteCaption, isThinSocialCaption } from './feedCaption'
 import { resolveCarouselUrls } from './carouselImages'
 import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 
@@ -42,17 +42,32 @@ function buildInstagramCaption(payload: SocialPublishPayload): string {
 }
 
 /**
- * Meta AI ile gövdeyi özgünleştir; fail → yerel caption.
+ * Meta AI ile gövdeyi özgünleştir; ince/yarım/fail → DeepSeek (payload.description).
  * URL + hashtag buildFeedCaption tarafından eklenir.
+ * Manşet overlay Meta AI üretmez — OG görsel ayrı pipeline.
  */
 async function resolveInstagramCaption(payload: SocialPublishPayload): Promise<string> {
   const city = payload.cityName?.trim() || 'Çanakkale'
-  const content = (payload.description ?? '').trim() || payload.title
+  const deepseekBody = (payload.description ?? '').trim()
+  const content = deepseekBody || payload.title
   const ai = await rewriteForPlatform(payload.title, content, city, 'instagram', {
     articleUrl: payload.articleUrl,
     newsId: payload.newsId,
   })
   if (!ai.enabled) return buildInstagramCaption(payload)
+
+  const metaBody = (ai.caption || '').trim()
+  const metaOk =
+    !!metaBody &&
+    !isIncompleteCaption(metaBody) &&
+    !isThinSocialCaption(metaBody, deepseekBody)
+
+  if (!metaOk) {
+    console.warn(
+      `[instagram] Meta AI caption rejected (thin/incomplete) news=${payload.newsId} — DeepSeek body`,
+    )
+    return buildInstagramCaption(payload)
+  }
 
   const baseTags = payload.hashtags ?? []
   const merged =
@@ -70,7 +85,7 @@ async function resolveInstagramCaption(payload: SocialPublishPayload): Promise<s
 
   return buildFeedCaption({
     title: payload.title,
-    body: ai.caption,
+    body: metaBody,
     articleUrl: payload.articleUrl,
     hashtags: merged,
     maxLen: IG_CAPTION_LIMIT,

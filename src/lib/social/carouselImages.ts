@@ -33,6 +33,34 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * OG self-fetch adayları: Vercel internal host önce (apex WAF/403 riskini keser),
+ * sonra public www/apex.
+ */
+function ogFetchCandidates(brandedOgUrl: string): string[] {
+  const out: string[] = []
+  const push = (u: string) => {
+    const t = u.trim()
+    if (t && !out.includes(t)) out.push(t)
+  }
+  try {
+    const u = new URL(brandedOgUrl)
+    const vercelHost = process.env.VERCEL_URL?.replace(/^https?:\/\//, '').trim()
+    if (vercelHost) {
+      push(`https://${vercelHost}${u.pathname}${u.search}`)
+    }
+    push(brandedOgUrl)
+    if (u.hostname === 'nahaber.com') {
+      push(`https://www.nahaber.com${u.pathname}${u.search}`)
+    } else if (u.hostname === 'www.nahaber.com') {
+      push(`https://nahaber.com${u.pathname}${u.search}`)
+    }
+  } catch {
+    push(brandedOgUrl)
+  }
+  return out
+}
+
 function addUrl(urls: string[], seen: Set<string>, raw: unknown): void {
   if (typeof raw !== 'string') return
   const url = normalizeAbsoluteImageUrl(raw)
@@ -185,6 +213,7 @@ async function forceRehostArticleImage(
 /**
  * Markalı OG'yi üret → lacivert/boş kontrol → Storage'a sabitle.
  * Meta'ya dinamik /api/og URL vermek yerine statik JPEG verir (cold-start / CDN navy cache riskini keser).
+ * Self-fetch: VERCEL_URL önce (public apex WAF 403 → raw fallback bug'ını önler).
  * OG 503/navy/timeout → ham foto zorla rehost (asla /api/og URL'si dönülmez — IG/FB kırılır, Threads TEXT'e düşer).
  */
 export async function materializeBrandedOgForPublish(
@@ -194,64 +223,85 @@ export async function materializeBrandedOgForPublish(
   kind: 'post' | 'story' = 'post',
 ): Promise<string> {
   let sawDefinitiveOgFailure = false
+  const candidates = ogFetchCandidates(brandedOgUrl)
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (const fetchUrl of candidates) {
     if (sawDefinitiveOgFailure) break
-    try {
-      const res = await fetch(brandedOgUrl, {
-        signal: AbortSignal.timeout(25_000),
-        redirect: 'follow',
-        headers: {
-          Accept: 'image/png,image/jpeg,image/*,*/*;q=0.8',
-          'User-Agent':
-            'Mozilla/5.0 (compatible; NaHaber-SocialBot/1.1; +https://www.nahaber.com)',
-        },
-        cache: 'no-store',
-      })
-      if (!res.ok) {
-        console.warn(
-          `[carouselImages] OG HTTP ${res.status} attempt ${attempt + 1} — ${newsId} (${kind})`,
-        )
-        // 503 = kapak yok (kasıtlı); yeniden denemek zaman yakar, ham foto'ya geç
-        if (res.status === 503 || res.status === 404 || res.status === 410) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (sawDefinitiveOgFailure) break
+      try {
+        const res = await fetch(fetchUrl, {
+          signal: AbortSignal.timeout(25_000),
+          redirect: 'follow',
+          headers: {
+            Accept: 'image/png,image/jpeg,image/*,*/*;q=0.8',
+            'User-Agent':
+              'Mozilla/5.0 (compatible; NaHaber-SocialBot/1.1; +https://www.nahaber.com)',
+          },
+          cache: 'no-store',
+        })
+        if (!res.ok) {
+          console.warn(
+            `[carouselImages] OG HTTP ${res.status} attempt ${attempt + 1} — ${newsId} (${kind}) host=${(() => {
+              try {
+                return new URL(fetchUrl).hostname
+              } catch {
+                return '?'
+              }
+            })()}`,
+          )
+          // 503 = kapak yok (kasıtlı); 403/401 = WAF — diğer host adayına geç
+          if (res.status === 503 || res.status === 404 || res.status === 410) {
+            sawDefinitiveOgFailure = true
+            break
+          }
+          if (res.status === 403 || res.status === 401) {
+            break // next candidate host
+          }
+          await sleep(600 * (attempt + 1))
+          continue
+        }
+        const buf = Buffer.from(await res.arrayBuffer())
+        if (buf.length < 1024) {
+          console.warn(`[carouselImages] OG too small attempt ${attempt + 1} — ${newsId}`)
+          await sleep(400 * (attempt + 1))
+          continue
+        }
+        if (await isMostlyNavyImage(buf)) {
+          console.warn(
+            `[carouselImages] OG navy-dominant attempt ${attempt + 1} — ${newsId} (cover missing)`,
+          )
           sawDefinitiveOgFailure = true
           break
         }
-        await sleep(600 * (attempt + 1))
-        continue
-      }
-      const buf = Buffer.from(await res.arrayBuffer())
-      if (buf.length < 1024) {
-        console.warn(`[carouselImages] OG too small attempt ${attempt + 1} — ${newsId}`)
-        await sleep(400 * (attempt + 1))
-        continue
-      }
-      if (await isMostlyNavyImage(buf)) {
-        console.warn(
-          `[carouselImages] OG navy-dominant attempt ${attempt + 1} — ${newsId} (cover missing)`,
-        )
-        sawDefinitiveOgFailure = true
-        break
-      }
 
-      const jpeg = await sharp(buf, { failOn: 'none' })
-        .jpeg({ quality: 88, mozjpeg: true })
-        .toBuffer()
-      const uploaded = await uploadSocialImage(
-        jpeg,
-        newsId,
-        `${newsId}-og-${kind}.jpg`,
-      )
-      if (uploaded) {
-        console.log(`[carouselImages] materialized OG → storage — ${newsId} (${kind})`)
-        return uploaded
+        const jpeg = await sharp(buf, { failOn: 'none' })
+          .jpeg({ quality: 88, mozjpeg: true })
+          .toBuffer()
+        const uploaded = await uploadSocialImage(
+          jpeg,
+          newsId,
+          `${newsId}-og-${kind}.jpg`,
+        )
+        if (uploaded) {
+          console.log(
+            `[carouselImages] materialized OG → storage — ${newsId} (${kind}) via=${(() => {
+              try {
+                return new URL(fetchUrl).hostname
+              } catch {
+                return 'ok'
+              }
+            })()}`,
+          )
+          return uploaded
+        }
+      } catch (err) {
+        console.warn(
+          `[carouselImages] OG materialize failed attempt ${attempt + 1} — ${newsId}:`,
+          err instanceof Error ? err.message : err,
+        )
+        await sleep(600 * (attempt + 1))
       }
-    } catch (err) {
-      console.warn(
-        `[carouselImages] OG materialize failed attempt ${attempt + 1} — ${newsId}:`,
-        err instanceof Error ? err.message : err,
-      )
-      await sleep(600 * (attempt + 1))
     }
   }
 
@@ -259,8 +309,8 @@ export async function materializeBrandedOgForPublish(
   if (fallback && isUsableImageUrl(fallback) && !isDynamicOgApiUrl(fallback)) {
     const rehosted = await forceRehostArticleImage(fallback, newsId, kind)
     if (rehosted) {
-      console.warn(
-        `[carouselImages] OG failed → raw article image fallback — ${newsId} (${kind})`,
+      console.error(
+        `[carouselImages] OG FAILED → RAW cover (no manşet overlay) — ${newsId} (${kind}); check OG self-fetch / cover embed`,
       )
       return rehosted
     }
@@ -271,8 +321,8 @@ export async function materializeBrandedOgForPublish(
       kind === 'story' ? 0 : 1,
     )
     if (passthrough && !isDynamicOgApiUrl(passthrough)) {
-      console.warn(
-        `[carouselImages] OG failed → passthrough cover URL — ${newsId} (${kind})`,
+      console.error(
+        `[carouselImages] OG FAILED → passthrough RAW cover — ${newsId} (${kind})`,
       )
       return passthrough
     }

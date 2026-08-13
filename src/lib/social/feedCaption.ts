@@ -277,51 +277,129 @@ const COMPLETE_SENTENCE_TAIL_RE = /[.!?…]["'»”’)\]]*$/
 const CLAUSE_END_RE = /[;:](?=\s|$)/g
 
 /**
+ * Unvan / sayı kısaltmaları — "Dr." / "23." cümle sonu DEĞİL.
+ * Meta AI "…avukat Dr." kesiminde nokta yüzünden yanlış "tam cümle" sayılıyordu.
+ */
+const ABBREV_BEFORE_DOT_RE =
+  /(?:^|[\s(/[{])(?:(?:[Dd]r|[Mm]r|[Mm]rs|[Mm]s|[Pp]rof|[Aa]v|[Ss]n|[Vv][bs]|[Bb]n|[Yy]rd\.?\s*[Dd]o[çc]|[Hh]z|[Nn]o|[Ss]ay|[Cc]ad|[Ss]ok|[Mm]ah)|(?:\d{1,4}))$/u
+
+/** Caption sonunda bırakılmaması gereken unvan / yarım öbek */
+const CAPTION_DANGLING_TAIL_RE =
+  /\s+(?:Dr|Av|Prof|Sn|Mr|Mrs|Ms|vs|Vb|No|Yrd\.?\s*Do[çc])\.?\s*$/iu
+
+function isAbbreviationDot(text: string, dotIndex: number): boolean {
+  return ABBREV_BEFORE_DOT_RE.test(text.slice(0, dotIndex))
+}
+
+/** Gerçek cümle sonu mu? "Dr." / "23." sayılmaz. */
+export function endsWithCompleteSentence(s: string): boolean {
+  const t = s.replace(/\s+/g, ' ').trim()
+  if (!t) return false
+  const m = COMPLETE_SENTENCE_TAIL_RE.exec(t)
+  if (!m) return false
+  if (m[0].startsWith('.') && isAbbreviationDot(t, m.index)) return false
+  return true
+}
+
+function findLastRealSentenceEnd(slice: string, minEnd: number): number {
+  let best = -1
+  SENTENCE_END_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = SENTENCE_END_RE.exec(slice)) !== null) {
+    const end = m.index + m[0].length
+    if (slice[m.index] === '.' && isAbbreviationDot(slice, m.index)) continue
+    if (end >= minEnd) best = end
+  }
+  return best
+}
+
+/**
+ * Caption / özet yarım mı? Unvan kesimi (…avukat Dr.), sarkan bağlaç, zarf-fiil.
+ */
+export function isIncompleteCaption(s: string): boolean {
+  const t = s.replace(/\s+/g, ' ').trim()
+  if (!t) return true
+  if (CAPTION_DANGLING_TAIL_RE.test(t)) return true
+  if (hasDanglingHeadlineTail(t)) return true
+  if (ENDS_WITH_GERUND_RE.test(t)) return true
+  if (GERUND_PLUS_CASE_RE.test(t)) return true
+  if (hasUnbalancedQuotes(t)) return true
+  // Uzun metin noktasız / kısaltma noktasıyla bitiyorsa kesilmiş say
+  if (t.length >= 48 && !endsWithCompleteSentence(t) && /[,;:\-–—]\s*$/.test(t)) return true
+  if (t.length >= 48 && COMPLETE_SENTENCE_TAIL_RE.test(t) && !endsWithCompleteSentence(t)) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Meta AI caption DeepSeek/kaynak özetine göre ince veya yarım mı?
+ * İnceyse publisher DeepSeek caption'a düşmeli.
+ */
+export function isThinSocialCaption(caption: string, richerSource?: string): boolean {
+  const c = (caption || '').replace(/\s+/g, ' ').trim()
+  if (!c) return true
+  if (isIncompleteCaption(c)) return true
+  if (c.length < 90) return true
+  const src = (richerSource || '').replace(/\s+/g, ' ').trim()
+  // Kaynak belirgin zengin + AI çok kısa → ince
+  if (src.length >= 220 && c.length < Math.min(160, Math.floor(src.length * 0.35))) {
+    return true
+  }
+  return false
+}
+
+/**
  * Tam cümle(ler) sınırında kısalt; mümkün değilse kelime sınırında.
  * softMax: cümle softMax içinde bitiyorsa tamamını koru (yarım "taburcu" engeli).
  * Tırnaklı bitişleri de tanır: "…gelmek.' 5 yıldır…" → ilk cümlede durur.
  *
  * ÖNEMLİ: max altında olsa bile yarım cümle/kelime ASLA dönmez.
  * (Eski erken return: len<=max → incomplete Meta AI / spot metni olduğu gibi kalıyordu.)
+ * "Dr." / "23." gibi kısaltma noktaları cümle sonu sayılmaz.
  */
 export function clampCompleteSentences(s: string, max: number, softMax = max + 24): string {
   const t = s.replace(/\s+/g, ' ').trim()
   if (!t) return ''
 
-  const complete = COMPLETE_SENTENCE_TAIL_RE.test(t)
+  const complete = endsWithCompleteSentence(t)
   if (complete && t.length <= max) return t
   if (complete && t.length <= softMax) return t
 
   const slice = t.slice(0, Math.max(max, softMax))
   const minEnd = Math.min(36, Math.floor(max * 0.35))
 
-  const lastEnd = (re: RegExp): number => {
-    let best = -1
-    re.lastIndex = 0
-    let m: RegExpExecArray | null
-    while ((m = re.exec(slice)) !== null) {
-      const end = m.index + m[0].length
-      if (end >= minEnd) best = end
-    }
-    return best
-  }
-
-  const hard = lastEnd(SENTENCE_END_RE)
+  const hard = findLastRealSentenceEnd(slice, minEnd)
   if (hard >= minEnd) {
-    return slice.slice(0, hard).trim()
+    const cut = slice.slice(0, hard).trim()
+    if (!isIncompleteCaption(cut)) return cut
+    // "…Dr." seçildiyse bir önceki gerçek cümleye gerile
+    const earlier = findLastRealSentenceEnd(slice.slice(0, Math.max(0, hard - 1)), minEnd)
+    if (earlier >= minEnd) return slice.slice(0, earlier).trim()
   }
 
   // Hiç .!? yok ama metin yarım → ;/: ile biten yan cümlede dur (Fethiye "…atladı; … can")
   if (!complete) {
-    const soft = lastEnd(CLAUSE_END_RE)
-    if (soft >= minEnd) {
-      return slice.slice(0, soft).trim().replace(/[;:]+$/, '.')
+    let best = -1
+    CLAUSE_END_RE.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = CLAUSE_END_RE.exec(slice)) !== null) {
+      const end = m.index + m[0].length
+      if (end >= minEnd) best = end
+    }
+    if (best >= minEnd) {
+      return slice.slice(0, best).trim().replace(/[;:]+$/, '.')
     }
   }
 
-  // Son çare: kelime sınırı — max'tan kısa yarım metni olduğu gibi bırakma
+  // Son çare: kelime sınırı — unvan kuyruğunu (…avukat Dr.) düşür
   const budget = Math.min(max, Math.max(minEnd, Math.floor(max * 0.9)))
-  return clampAtWordBoundary(t, t.length <= max ? budget : max)
+  let byWord = clampAtWordBoundary(t, t.length <= max ? budget : max)
+  if (CAPTION_DANGLING_TAIL_RE.test(byWord)) {
+    const stripped = byWord.replace(CAPTION_DANGLING_TAIL_RE, '').trim()
+    if (stripped.length >= minEnd) byWord = stripped
+  }
+  return byWord
 }
 
 export interface FeedCaptionInput {
