@@ -3,6 +3,7 @@ import {
   Calendar,
   Trophy,
   MapPin,
+  Briefcase,
   LayoutGrid,
   type LucideIcon,
 } from 'lucide-react'
@@ -32,6 +33,7 @@ const SECTION_ICONS: Record<(typeof CITY_BOTTOM_NAV)[number]['iconName'], Lucide
   calendar: Calendar,
   trophy: Trophy,
   'map-pin': MapPin,
+  briefcase: Briefcase,
 }
 
 export interface CitySectionNavOptions {
@@ -39,7 +41,7 @@ export interface CitySectionNavOptions {
   hasSpor?: boolean
 }
 
-/** City section tabs — Ana Feed, Etkinlik, Spor?, İlçeler. */
+/** City section tabs — Ana Feed, Etkinlik, İş, Spor?, İlçeler. */
 export function buildCitySectionNavItems(
   options: CitySectionNavOptions = {}
 ): CitySidebarNavItem[] {
@@ -53,7 +55,12 @@ export function buildCitySectionNavItems(
     label: item.label,
     href: item.href,
     icon: SECTION_ICONS[item.iconName],
-    accent: item.id === 'spor' ? 'spor' : item.id === 'etkinlik' ? 'yerel' : 'brand',
+    accent:
+      item.id === 'spor'
+        ? 'spor'
+        : item.id === 'etkinlik' || item.id === 'is-ilanlari'
+          ? 'yerel'
+          : 'brand',
   }))
 }
 

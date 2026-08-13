@@ -58,6 +58,7 @@ export const ROUTES = {
   /** City tenant routes (served on city subdomains) */
   CITY_FEED: '/',
   CITY_EVENTS: '/etkinlik',
+  CITY_JOBS: '/is-ilanlari',
   CITY_SPOR: '/spor',
   CITY_DISTRICTS: '/ilceler',
   ADMIN: {
@@ -144,6 +145,7 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname === ROUTES.APP) return true
   // City tenant routes are all public
   if (pathname === ROUTES.CITY_EVENTS || pathname.startsWith('/etkinlik')) return true
+  if (pathname === ROUTES.CITY_JOBS || pathname.startsWith('/is-ilanlari')) return true
   if (pathname === ROUTES.CITY_SPOR) return true
   if (pathname === ROUTES.CITY_DISTRICTS || pathname.startsWith('/ilceler')) return true
   return false

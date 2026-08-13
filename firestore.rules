@@ -99,6 +99,12 @@ service cloud.firestore {
       allow update: if isAdmin() || isEventRatingAggregateUpdate();
     }
 
+    // City job board — public read; writes only via Admin SDK cron/sync.
+    match /jobListings/{listingId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /eventReviews/{reviewId} {
       allow read: if true;
       allow create: if isSignedIn()

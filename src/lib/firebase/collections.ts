@@ -15,6 +15,8 @@ export const Collections = {
   CATEGORIES: 'categories',
   EVENTS:     'events',
   EVENT_REVIEWS: 'eventReviews',
+  /** City job board (İŞKUR / manual) — doc id: `iskur_{sourceId}` or `manual_{id}` */
+  JOB_LISTINGS: 'jobListings',
   REPORTS:         'reports',
   BLOCKS:          'blocks',
   NOTIFICATIONS:   'notifications',

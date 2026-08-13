@@ -53,12 +53,13 @@ export interface CityBottomNavItem {
   id: string
   label: string
   href: string
-  iconName: 'home' | 'calendar' | 'trophy' | 'map-pin'
+  iconName: 'home' | 'calendar' | 'trophy' | 'map-pin' | 'briefcase'
 }
 
 export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
   { id: 'feed', label: 'Ana Sayfa', href: '/', iconName: 'home' },
   { id: 'etkinlik', label: 'Etkinlik', href: '/etkinlik', iconName: 'calendar' },
+  { id: 'is-ilanlari', label: 'İş', href: '/is-ilanlari', iconName: 'briefcase' },
   { id: 'spor', label: 'Spor', href: '/spor', iconName: 'trophy' },
   { id: 'ilceler', label: 'İlçeler', href: '/ilceler', iconName: 'map-pin' },
 ] as const
@@ -67,7 +68,12 @@ export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
  * Structural section pills always shown in city header / bottom nav.
  * Spor is news-backed (hidden when the city has zero spor family articles).
  */
-export const CITY_ALWAYS_VISIBLE_SECTION_IDS = new Set<string>(['feed', 'etkinlik', 'ilceler'])
+export const CITY_ALWAYS_VISIBLE_SECTION_IDS = new Set<string>([
+  'feed',
+  'etkinlik',
+  'is-ilanlari',
+  'ilceler',
+])
 
 /** Section id that requires at least one published city spor (+ family) item. */
 export const CITY_NEWS_BACKED_SECTION_ID = 'spor' as const

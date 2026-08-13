@@ -23,9 +23,9 @@ function item(category: string): NewsItem {
 }
 
 describe('city header empty-category filter', () => {
-  it('always keeps Ana Sayfa, Etkinlik, İlçeler', () => {
+  it('always keeps Ana Sayfa, Etkinlik, İş İlanları, İlçeler', () => {
     const sections = buildCitySectionNavItems({ hasSpor: false })
-    expect(sections.map((s) => s.id)).toEqual(['feed', 'etkinlik', 'ilceler'])
+    expect(sections.map((s) => s.id)).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'ilceler'])
     for (const id of CITY_ALWAYS_VISIBLE_SECTION_IDS) {
       expect(sections.some((s) => s.id === id)).toBe(true)
     }
@@ -48,6 +48,7 @@ describe('city header empty-category filter', () => {
     expect(items.map((i) => i.id)).toEqual([
       'feed',
       'etkinlik',
+      'is-ilanlari',
       'ilceler',
       'siyaset',
       'yerel-duyuru',

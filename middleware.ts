@@ -28,6 +28,7 @@ const CITY_PATH_REWRITES: Record<string, string> = {
   '/feed': '/city-site',
   '/yerel': '/city-site',
   '/etkinlik': '/city-site/etkinlik',
+  '/is-ilanlari': '/city-site/is-ilanlari',
   '/spor': '/city-site/spor',
   '/ilceler': '/city-site/ilceler',
 }

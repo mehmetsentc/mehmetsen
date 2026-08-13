@@ -49,6 +49,7 @@ function groupCategories(cats: CityCategory[]) {
 const NEWS_STATIC = [
   { label: 'Ana Sayfa',   href: '/' },
   { label: 'Etkinlik',    href: '/etkinlik' },
+  { label: 'İş İlanları', href: '/is-ilanlari' },
   { label: 'İlçeler',     href: '/ilceler' },
   { label: 'Müzeler',     href: '/muzeler' },
 ] as const
