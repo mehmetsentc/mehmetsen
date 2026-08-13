@@ -1,13 +1,12 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
+import { CityBrandLockup } from '@/components/city/CityBrandLockup'
 import { cn } from '@/lib/utils'
-import { getCityHeaderLockupPath, getCityLogoPath } from '@/lib/cityBrand'
 
 interface CityHeaderProps {
   cityName: string
@@ -16,8 +15,6 @@ interface CityHeaderProps {
 
 export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
   const router = useRouter()
-  const lockupSrc = provinceSlug ? getCityHeaderLockupPath(provinceSlug) : null
-  const logoSrc = provinceSlug ? getCityLogoPath(provinceSlug) : null
 
   return (
     <header
@@ -30,37 +27,21 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
       <div className="flex h-14 items-center gap-1.5 px-3">
         <Link
           href="/"
-          className="flex min-w-0 flex-1 items-center gap-[3px]"
+          className="flex min-w-0 flex-1 items-center"
           aria-label={`${cityName} NaHaber`}
         >
-          {lockupSrc ? (
-            <Image
-              src={lockupSrc}
-              alt={`${cityName} NaHaber`}
-              width={420}
-              height={36}
-              className="h-9 w-auto max-w-full border-0 bg-transparent p-0 object-contain object-left"
+          {provinceSlug ? (
+            <CityBrandLockup
+              cityName={cityName}
+              provinceSlug={provinceSlug}
+              tone="onBrand"
+              size="sm"
               priority
             />
-          ) : logoSrc ? (
-            <>
-              <Image
-                src={logoSrc}
-                alt=""
-                width={36}
-                height={36}
-                className="h-9 w-9 shrink-0 border-0 bg-transparent p-0 object-contain"
-                priority
-              />
-              <span className="flex h-9 min-w-0 items-center truncate text-[1.35rem] font-black leading-none tracking-tight">
-                <span className="text-white">{cityName}</span>
-                <span className="ml-1.5 text-[#E50914]">NaHaber</span>
-              </span>
-            </>
           ) : (
             <>
               <BrandWordmark variant="onBrand" size="sm" className="font-black text-[1.35rem]" />
-              <span className="truncate text-xs font-bold uppercase tracking-wider text-white/80">
+              <span className="ml-2 truncate text-xs font-bold uppercase tracking-wider text-white/80">
                 {cityName}
               </span>
             </>

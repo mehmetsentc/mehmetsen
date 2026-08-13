@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Search, Menu, User } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
-import { BrandWordmark } from '@/components/brand/BrandWordmark'
+import { CityBrandLockup } from '@/components/city/CityBrandLockup'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
-import { getCityHeaderLockupPath, getCityLogoPath } from '@/lib/cityBrand'
 import { cn } from '@/lib/utils'
 
 interface CityNavbarProps {
@@ -22,8 +20,6 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
   const router = useRouter()
   const { user, loading } = useAuth()
   const [hydrated, setHydrated] = useState(false)
-  const lockupSrc = getCityHeaderLockupPath(provinceSlug, 'onBrand')
-  const logoSrc = getCityLogoPath(provinceSlug)
 
   useEffect(() => {
     setHydrated(true)
@@ -55,39 +51,16 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
 
         <Link
           href="/"
-          className="flex min-w-0 flex-1 items-center gap-[3px]"
+          className="flex min-w-0 flex-1 items-center"
           aria-label={`${cityName} NaHaber`}
         >
-          {lockupSrc ? (
-            <Image
-              src={lockupSrc}
-              alt={`${cityName} NaHaber`}
-              width={480}
-              height={40}
-              className="h-10 w-auto max-w-full border-0 bg-transparent p-0 object-contain object-left"
-              priority
-            />
-          ) : logoSrc ? (
-            <>
-              <Image
-                src={logoSrc}
-                alt=""
-                width={40}
-                height={40}
-                className="h-10 w-10 shrink-0 border-0 bg-transparent p-0 object-contain"
-                priority
-              />
-              <span className="flex h-10 min-w-0 items-center truncate text-[1.5rem] font-black leading-none tracking-tight">
-                <span className="text-white">{cityName}</span>
-                <span className="ml-1.5 text-[#E50914]">NaHaber</span>
-              </span>
-            </>
-          ) : (
-            <>
-              <BrandWordmark variant="onBrand" size="md" className="font-black" />
-              <span className="truncate text-sm font-bold text-white/90">{cityName}</span>
-            </>
-          )}
+          <CityBrandLockup
+            cityName={cityName}
+            provinceSlug={provinceSlug}
+            tone="onBrand"
+            size="sm"
+            priority
+          />
         </Link>
 
         <div className="flex shrink-0 items-center">

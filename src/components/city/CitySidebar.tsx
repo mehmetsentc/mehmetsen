@@ -2,7 +2,6 @@
 
 import { memo, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Search,
@@ -16,11 +15,10 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
-import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
 import { SidebarThemeToggle } from '@/components/layout/SidebarThemeToggle'
 import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
-import { getCityHeaderLockupPath, getCityLogoPath } from '@/lib/cityBrand'
+import { CityBrandLockup } from '@/components/city/CityBrandLockup'
 import { isCitySectionActive } from '@/lib/cityPaths'
 import {
   buildCityCategoryNavItems,
@@ -84,8 +82,6 @@ function CitySidebarInner({
   const [searchQuery, setSearchQuery] = useState('')
   const [submitOpen, setSubmitOpen] = useState(false)
 
-  const lockupSrc = getCityHeaderLockupPath(provinceSlug, 'default')
-  const logoSrc = getCityLogoPath(provinceSlug)
   const sectionItems = buildCitySectionNavItems({ hasSpor })
   const categoryItems = buildCityCategoryNavItems(categories)
 
@@ -156,39 +152,15 @@ function CitySidebarInner({
           <Link
             href="/"
             onClick={closeDrawer}
-            className="flex min-w-0 items-center gap-[3px]"
+            className="flex min-w-0 items-center"
             aria-label={`${cityName} NaHaber`}
           >
-            {lockupSrc ? (
-              <Image
-                src={lockupSrc}
-                alt={`${cityName} NaHaber`}
-                width={360}
-                height={32}
-                className="h-8 w-auto max-w-full border-0 bg-transparent p-0 object-contain object-left"
-              />
-            ) : logoSrc ? (
-              <>
-                <Image
-                  src={logoSrc}
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 shrink-0 border-0 bg-transparent p-0 object-contain"
-                />
-                <span className="flex h-8 min-w-0 items-center truncate text-lg font-black leading-none tracking-tight text-[rgb(var(--color-text))]">
-                  {cityName}
-                  <span className="ml-1.5 text-[#E50914]">NaHaber</span>
-                </span>
-              </>
-            ) : (
-              <>
-                <BrandWordmark variant="default" size="sm" className="truncate font-black text-lg" />
-                <span className="truncate text-sm font-bold text-[rgb(var(--color-text))]">
-                  {cityName}
-                </span>
-              </>
-            )}
+            <CityBrandLockup
+              cityName={cityName}
+              provinceSlug={provinceSlug}
+              tone="default"
+              size="md"
+            />
           </Link>
           <button
             type="button"
