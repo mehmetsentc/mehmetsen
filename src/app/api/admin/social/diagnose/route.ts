@@ -89,9 +89,9 @@ export async function GET(request: Request) {
         `hasSecret=${pub.hasFbAppSecret}`,
         `hasPageToken=${pub.hasFbPageToken}`,
         creds.mode === 'global'
-          ? '⚠️ global app kullanıldı — Admin’de kendi App’inizi bağlayın'
+          ? '⚠️ global app — Firestore BYO yok / ONYEDITIVI_FB_* yok. Meta Display Name değiştirin veya Admin’de BYO bağlayın'
           : '✓ özel app credentials aktif',
-        'Display Name: Meta Console’da “Publisher” olmalı (kodla değişmez)',
+        'Display Name: Meta Console’da değiştirilir (kodla olmaz)',
       ].join(' | '),
     })
   } catch (e) {
@@ -108,6 +108,7 @@ export async function GET(request: Request) {
     detail: [
       `Kaynak: ${byoMode === 'custom' ? '✓ BYO custom app' : fsTokenSource === 'firestore' ? '⚠️ Firestore (env\'i override ediyor)' : '✓ Env var'}`,
       `FACEBOOK_PAGE_ACCESS_TOKEN (env): ${envFbToken ? `${envFbToken.length} karakter` : '✗ EKSİK'}`,
+      `ONYEDITIVI_FB_APP_ID (env): ${process.env.ONYEDITIVI_FB_APP_ID?.trim() ? '✓' : '—'}`,
       `Firestore facebookPageToken: ${fsFbToken ? `${fsFbToken.length} karakter` : 'boş'}`,
       `Aktif token: ${fbToken ? `✓ (${fbToken.length} karakter, kaynak: ${byoMode === 'custom' ? 'byo' : fsTokenSource})` : '✗ YOK'}`,
       `FACEBOOK_PAGE_ID: ${pageId ? `✓ ${pageId}` : '✗ EKSİK'}`,

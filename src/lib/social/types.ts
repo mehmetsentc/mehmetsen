@@ -26,6 +26,11 @@ export interface SocialPublishResult {
   success: boolean
   platformId?: string  // Facebook post ID or Instagram media ID
   error?: string
+  /** Facebook only: custom (BYO) vs global Meta app */
+  credentialMode?: 'custom' | 'global'
+  /** Facebook Meta App ID used for this post (attribution source) */
+  appId?: string | null
+  appName?: string | null
 }
 
 /** Combined result from the cron runner for one news item. */

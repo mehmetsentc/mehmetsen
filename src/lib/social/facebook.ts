@@ -31,6 +31,7 @@ import { ROUTES } from '@/constants/routes'
 import { buildSocialImagePayload } from './carouselImages'
 import { buildOgSocialUrl } from './ogCacheVersion'
 import { clampAtWordBoundary, clampCompleteHeadline } from './feedCaption'
+import { repairSocialCopyAgainstSource, repairSocialHeadline } from './socialFactualFidelity'
 import { generateSocialContent } from './aiSocialEditor'
 import { rewriteForSocial, rewriteForPlatform, logAiRewrite } from '@/services/metaAiRewriteService'
 
@@ -481,14 +482,23 @@ export async function publishToFacebook(
   const pageId = creds.pageId
   const accessToken = creds.accessToken
 
+  const credMeta = {
+    credentialMode: creds.mode,
+    appId: creds.appId,
+    appName: creds.appName,
+  } as const
+
   if (!pageId || !accessToken) {
-    const err = 'FACEBOOK_PAGE_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik'
+    const err =
+      creds.mode === 'custom'
+        ? 'BYO Facebook pageId/token eksik'
+        : 'FACEBOOK_PAGE_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik'
     console.error(`[facebook] ${err}`)
-    return { success: false, error: err }
+    return { success: false, error: err, ...credMeta }
   }
 
   console.log(
-    `[facebook] publish mode=${creds.mode} site=${creds.siteId} app=${creds.appName ?? creds.appId ?? '?'} news=${payload.newsId}`,
+    `[facebook] publish mode=${creds.mode} source=${creds.source} site=${creds.siteId} app_id=${creds.appId ?? 'none'} appName=${creds.appName ?? '?'} news=${payload.newsId}`,
   )
 
   // Deferred queue (hourly overflow)
@@ -507,7 +517,7 @@ export async function publishToFacebook(
     if (untilMs > Date.now()) {
       const msg = `Facebook: kuyruk bekleniyor (deferredUntil=${new Date(untilMs).toISOString()})`
       console.log(`[facebook] ${msg} news=${payload.newsId}`)
-      return { success: false, error: msg }
+      return { success: false, error: msg, ...credMeta }
     }
   } catch (err) {
     console.warn(`[facebook] deferred check failed news=${payload.newsId}:`, err)
@@ -526,7 +536,7 @@ export async function publishToFacebook(
       }
     }
     console.log(`[facebook] rate skip news=${payload.newsId}: ${rate.reason}`)
-    return { success: false, error: rate.reason }
+    return { success: false, error: rate.reason, ...credMeta }
   }
 
   const imageCandidate =
@@ -536,13 +546,13 @@ export async function publishToFacebook(
   if (!imageCandidate) {
     const msg = 'Facebook: image_url yok — atlandı'
     console.error(`[facebook] ${msg} news=${payload.newsId}`)
-    return { success: false, error: msg }
+    return { success: false, error: msg, ...credMeta }
   }
 
   const imageCheck = await validatePublicImage(imageCandidate)
   if (!imageCheck.ok) {
     console.error(`[facebook] ${imageCheck.reason} news=${payload.newsId}`)
-    return { success: false, error: imageCheck.reason }
+    return { success: false, error: imageCheck.reason, ...credMeta }
   }
 
   const articleUrl = payload.articleUrl?.trim()
@@ -598,7 +608,7 @@ export async function publishToFacebook(
         error: result.error ?? aiError,
         cacheKey,
       }).catch(() => {})
-      return result
+      return { ...result, ...credMeta }
     }
 
     await recordFacebookPublish(payload.title, result.platformId)
@@ -607,7 +617,11 @@ export async function publishToFacebook(
       await getAdminFirestore()
         .collection(Collections.NEWS)
         .doc(payload.newsId)
-        .update({ facebookDeferredUntil: FieldValue.delete() })
+        .update({
+          facebookDeferredUntil: FieldValue.delete(),
+          facebookAppId: creds.appId ?? null,
+          facebookCredentialMode: creds.mode,
+        })
     } catch {
       /* ignore */
     }
@@ -631,11 +645,14 @@ export async function publishToFacebook(
       cacheKey,
     }).catch(() => {})
 
-    return { success: true, platformId: result.platformId }
+    console.log(
+      `[facebook] published ok news=${payload.newsId} post_id=${result.platformId} mode=${creds.mode} app_id=${creds.appId ?? 'none'}`,
+    )
+    return { success: true, platformId: result.platformId, ...credMeta }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`[facebook] unexpected error news=${payload.newsId}:`, err)
-    return { success: false, error: msg }
+    return { success: false, error: msg, ...credMeta }
   }
 }
 
@@ -726,6 +743,9 @@ export async function testFacebookPost(
       altText: title,
     }
   }
+  socialContent.headline = repairSocialHeadline(socialContent.headline, title, spot)
+  socialContent.storySummary = repairSocialCopyAgainstSource(socialContent.storySummary, title, spot)
+  socialContent.caption = repairSocialCopyAgainstSource(socialContent.caption, title, spot)
 
   const socialImageUrl = buildOgSocialUrl(id, {
     title,

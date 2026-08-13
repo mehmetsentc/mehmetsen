@@ -83,13 +83,33 @@ export default function KendiFacebookAppDocsPage() {
 
       <section className="mt-10 rounded-2xl border border-amber-300/60 bg-amber-50 p-5 dark:border-amber-800 dark:bg-amber-950/40">
         <h2 className="mb-2 text-base font-bold text-[rgb(var(--color-text))]">
-          Global App Display Name hatırlatması
+          Bugün hemen (kod Display Name değiştiremez)
         </h2>
-        <p className="text-sm text-[rgb(var(--color-muted))]">
-          Fallback olarak kullanılan ortak Meta App’in Display Name’i Facebook Developer Console’da
-          hâlâ <strong>“NaHaber Social Publisher”</strong> ise hemen{' '}
-          <strong>“Publisher”</strong> olarak değiştirin. Bu işlem kodla yapılamaz; Meta panelinden
-          Settings → Basic → Display Name.
+        <ol className="list-decimal space-y-2 pl-5 text-sm text-[rgb(var(--color-muted))]">
+          <li>
+            <a
+              href="https://developers.facebook.com/apps/"
+              className="underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              developers.facebook.com/apps
+            </a>{' '}
+            → kullanılan App (global NaHaber Social Publisher) → Settings → Basic
+          </li>
+          <li>
+            Display Name’i <strong>Onyeditivi Publisher</strong> veya <strong>Publisher</strong> yapın →
+            Save Changes
+          </li>
+          <li>
+            Yeni postlarda etiket değişir. Eski postlar eski etiketi tutabilir.
+          </li>
+        </ol>
+        <p className="mt-3 text-sm text-[rgb(var(--color-muted))]">
+          Kalıcı çözüm: kendi App’inizi Admin’e bağlayın veya Vercel env{' '}
+          <code className="rounded bg-[rgb(var(--color-surface))] px-1 text-xs">ONYEDITIVI_FB_APP_ID</code> +{' '}
+          <code className="rounded bg-[rgb(var(--color-surface))] px-1 text-xs">ONYEDITIVI_FB_PAGE_ACCESS_TOKEN</code>{' '}
+          (token bu App’ten üretilmiş olmalı).
         </p>
       </section>
 

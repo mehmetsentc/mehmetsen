@@ -289,6 +289,13 @@ export default function SocialPage() {
     fbAppName: string | null
     fbPageId: string | null
     encryptionReady: boolean
+    activeMode?: 'custom' | 'global'
+    activeSource?: string
+    activeAppId?: string | null
+    activeAppName?: string | null
+    siteEnvConfigured?: boolean
+    attributionBlocked?: string
+    setupHint?: string | null
     globalAppReminder?: string
   } | null>(null)
 
@@ -949,6 +956,13 @@ export default function SocialPage() {
           fbPageId: string | null
         }
         encryptionReady?: boolean
+        activeMode?: 'custom' | 'global'
+        activeSource?: string
+        activeAppId?: string | null
+        activeAppName?: string | null
+        siteEnvConfigured?: boolean
+        attributionBlocked?: string
+        setupHint?: string | null
         globalAppReminder?: string
         error?: string
       }
@@ -965,6 +979,13 @@ export default function SocialPage() {
         fbAppName: data.site?.fbAppName ?? null,
         fbPageId: data.site?.fbPageId ?? null,
         encryptionReady: Boolean(data.encryptionReady),
+        activeMode: data.activeMode,
+        activeSource: data.activeSource,
+        activeAppId: data.activeAppId ?? null,
+        activeAppName: data.activeAppName ?? null,
+        siteEnvConfigured: Boolean(data.siteEnvConfigured),
+        attributionBlocked: data.attributionBlocked,
+        setupHint: data.setupHint,
         globalAppReminder: data.globalAppReminder,
       })
     } catch (err) {
@@ -1619,9 +1640,17 @@ export default function SocialPage() {
           <div className="mb-3 flex flex-wrap gap-2 text-xs">
             <span className={cn(
               'rounded-full px-2.5 py-1 font-medium',
+              byoStatus?.activeMode === 'custom'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200',
+            )}>
+              Aktif: {byoStatus?.activeMode === 'custom' ? `✓ özel app (${byoStatus.activeSource ?? 'byo'})` : '⚠️ GLOBAL app'}
+            </span>
+            <span className={cn(
+              'rounded-full px-2.5 py-1 font-medium',
               byoStatus?.fbAppId ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]',
             )}>
-              App ID: {byoStatus?.fbAppId ? '✓' : '—'}
+              App ID: {byoStatus?.fbAppId ? '✓ Firestore' : byoStatus?.siteEnvConfigured ? '✓ env' : '—'}
             </span>
             <span className={cn(
               'rounded-full px-2.5 py-1 font-medium',
@@ -1641,6 +1670,27 @@ export default function SocialPage() {
               </span>
             )}
           </div>
+
+          {byoStatus?.activeMode !== 'custom' && (
+            <div className="mb-4 rounded-xl border border-red-300 bg-red-50 px-3 py-3 text-sm text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100">
+              <p className="font-bold">BYO henüz aktif değil — etiket hâlâ global app’ten geliyor</p>
+              <p className="mt-1">
+                {byoStatus?.attributionBlocked ||
+                  'Firestore’da onyeditivi app kaydı yok. Aşağıdaki formu doldurun veya Vercel’e ONYEDITIVI_FB_* env ekleyin.'}
+              </p>
+              {byoStatus?.setupHint && <p className="mt-2 text-xs opacity-90">{byoStatus.setupHint}</p>}
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs">
+                <li>Bugün hemen: Meta Console → Settings → Basic → Display Name = &quot;Onyeditivi Publisher&quot; veya &quot;Publisher&quot;</li>
+                <li>Kalıcı: Aşağıya kendi App ID + Secret + Page Token kaydedin (veya OAuth)</li>
+              </ol>
+            </div>
+          )}
+
+          {byoStatus?.activeMode === 'custom' && (
+            <p className="mb-3 rounded-xl border border-emerald-300/60 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
+              Özel app aktif — app_id={byoStatus.activeAppId ?? '—'} · {byoStatus.activeAppName ?? 'App'}
+            </p>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <input
@@ -1701,7 +1751,7 @@ export default function SocialPage() {
 
           <p className="mt-4 rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
             {byoStatus?.globalAppReminder ||
-              'Global Meta App Display Name’i Facebook Developer Console’da “NaHaber Social Publisher” → “Publisher” olarak değiştirin (kodla yapılamaz).'}
+              'Aynı App ID ile kod Display Name değiştiremez. Meta Console → Display Name: "Onyeditivi Publisher" veya "Publisher".'}
           </p>
         </div>
 

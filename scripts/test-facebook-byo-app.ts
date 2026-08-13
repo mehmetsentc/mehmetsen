@@ -29,6 +29,7 @@ async function main() {
   const creds = await resolveFacebookCredentials(siteId)
   console.log('[test-facebook-byo] credentials mode:', {
     mode: creds.mode,
+    source: creds.source,
     siteId: creds.siteId,
     pageId: creds.pageId ? `${creds.pageId.slice(0, 6)}…` : null,
     appId: creds.appId,
@@ -38,14 +39,17 @@ async function main() {
 
   if (creds.mode === 'global') {
     console.log(
-      '[test-facebook-byo] UYARI: global app kullanıldı. Admin → Sosyal Medya → Kendi Facebook App bağlayın.',
+      '[test-facebook-byo] UYARI: global app kullanıldı. Firestore config/socialFacebookApps yok veya eksik.',
     )
     console.log(
-      '[test-facebook-byo] Attribution doğrulama: Facebook Developer Console’da Display Name’i "Publisher" yapın.',
+      '[test-facebook-byo] Bugün: Meta Console Display Name → "Onyeditivi Publisher" / "Publisher".',
+    )
+    console.log(
+      '[test-facebook-byo] Kalıcı: Admin BYO form veya ONYEDITIVI_FB_APP_ID + ONYEDITIVI_FB_PAGE_ACCESS_TOKEN.',
     )
   } else {
     console.log(
-      `[test-facebook-byo] Custom app aktif. Post altında "${creds.appName || 'App'} paylaştı" beklenir.`,
+      `[test-facebook-byo] Custom app aktif (source=${creds.source}). Post altında "${creds.appName || 'App'} paylaştı" beklenir.`,
     )
   }
 

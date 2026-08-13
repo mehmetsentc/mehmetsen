@@ -14,6 +14,7 @@ import {
   upsertSiteFacebookApp,
 } from '@/lib/social/facebookAppStore'
 import { hasSecretEncryptionKey } from '@/lib/crypto/secretCrypto'
+import { resolveFacebookCredentials } from '@/lib/social/facebookCredentials'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,13 +30,33 @@ export async function GET(request: Request) {
   const doc = await getFacebookAppsDoc(true)
   const stored = await getSiteFacebookApp(siteId)
   const publicSite = toPublicSiteApp(siteId, stored)
+  const creds = await resolveFacebookCredentials(siteId)
+  const siteEnvConfigured = Boolean(
+    process.env[`${siteId.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_FB_APP_ID`]?.trim() &&
+      process.env[`${siteId.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_FB_PAGE_ACCESS_TOKEN`]?.trim(),
+  )
+
+  const attributionBlocked =
+    creds.mode === 'global'
+      ? 'Şu an GLOBAL Meta App kullanılıyor — postlarda "NaHaber Social Publisher paylaştı" (veya Display Name) görünür. Kendi App’inizi bağlayın VEYA Meta Console’da Display Name’i "Onyeditivi Publisher" / "Publisher" yapın.'
+      : `Özel app aktif (source=${creds.source}). Post altında "${creds.appName || 'App'} paylaştı" görünmeli.`
 
   return NextResponse.json({
     primarySiteId: doc.primarySiteId || PRIMARY_FACEBOOK_SITE_ID,
     site: publicSite,
     encryptionReady: hasSecretEncryptionKey(),
+    activeMode: creds.mode,
+    activeSource: creds.source,
+    activeAppId: creds.appId,
+    activeAppName: creds.appName,
+    siteEnvConfigured,
+    attributionBlocked,
+    setupHint:
+      creds.mode === 'global'
+        ? 'Admin formuna App ID + Secret + Page Token kaydedin, veya Vercel env: ONYEDITIVI_FB_APP_ID, ONYEDITIVI_FB_APP_SECRET, ONYEDITIVI_FB_PAGE_ACCESS_TOKEN, ONYEDITIVI_FB_PAGE_ID.'
+        : null,
     globalAppReminder:
-      'Facebook Developer Console’da global Meta App Display Name’i "NaHaber Social Publisher" → "Publisher" olarak değiştirin (kodla yapılamaz).',
+      'Aynı App ID kullanıldığı sürece kod Display Name’i değiştiremez. Meta → developers.facebook.com/apps → Settings → Basic → Display Name: "Onyeditivi Publisher" veya "Publisher".',
     docsPath: '/docs/kendi-facebook-app-nasil-olusturulur',
   })
 }

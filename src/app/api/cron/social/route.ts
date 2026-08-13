@@ -28,6 +28,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from '@/lib/social/feedCaption'
+import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 
 import {
   isOwnContent,
@@ -137,13 +138,18 @@ async function isAlreadyPublished(
 }
 
 async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
-  // Token kontrolü — Vercel'de set edilmemişse erken çık
-  const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim()
-  if (!accessToken) {
-    const msg = 'FACEBOOK_PAGE_ACCESS_TOKEN eksik — Vercel > Settings > Environment Variables kontrol edin'
+  // Token: BYO (Firestore/env) → global FACEBOOK_PAGE_ACCESS_TOKEN
+  const { resolveFacebookCredentials } = await import('@/lib/social/facebookCredentials')
+  const fbCreds = await resolveFacebookCredentials()
+  if (!fbCreds.accessToken) {
+    const msg =
+      'Facebook token eksik — Admin’de BYO app bağlayın veya FACEBOOK_PAGE_ACCESS_TOKEN / ONYEDITIVI_FB_PAGE_ACCESS_TOKEN ayarlayın'
     console.error('[cron/social]', msg)
     return { processed: 0, succeeded: 0, failed: 0, items: [], error: msg }
   }
+  console.log(
+    `[cron/social] facebook mode=${fbCreds.mode} source=${fbCreds.source} app_id=${fbCreds.appId ?? 'none'}`,
+  )
 
   const db = getAdminFirestore()
   const [categoryRules, autoShare] = await Promise.all([
@@ -308,6 +314,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       } catch (err) {
         console.warn(`[cron/social] Meta AI story rewrite skipped ${id}:`, err)
       }
+
+      headline = repairSocialHeadline(headline, title, spot)
+      storySummary = repairSocialCopyAgainstSource(storySummary, title, spot)
 
       // OG route sosyal alanları okusun diye önce kaydet
       try {
