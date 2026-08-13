@@ -735,7 +735,7 @@ export async function testFacebookPost(
   let socialContent = await generateSocialContent(title, spot, cityName)
   if (!socialContent) {
     socialContent = {
-      headline: fitCompleteHeadline(title, title, 96, 120),
+      headline: fitCompleteHeadline(title, title, 120, 160),
       storySummary: spot ? clampCompleteSentences(spot, 200, 232) : `${clampAtWordBoundary(title, 120)}.`,
       caption: spot || title,
       hashtags: ['#Çanakkale', '#SonDakika'],
@@ -743,7 +743,7 @@ export async function testFacebookPost(
     }
   }
   socialContent.headline = repairSocialHeadline(socialContent.headline, title, spot)
-  socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 96, 120)
+  socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 120, 160)
   socialContent.storySummary = repairSocialCopyAgainstSource(socialContent.storySummary, title, spot)
   socialContent.caption = repairSocialCopyAgainstSource(socialContent.caption, title, spot)
 

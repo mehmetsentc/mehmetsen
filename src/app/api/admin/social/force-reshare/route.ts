@@ -329,7 +329,7 @@ export async function POST(request: Request) {
     let socialContent = await generateSocialContent(title, aiContext, cityName)
     if (!socialContent) {
       socialContent = {
-        headline: fitCompleteHeadline(title, title, 96, 120),
+        headline: fitCompleteHeadline(title, title, 120, 160),
         storySummary: spot
           ? clampCompleteSentences(
               /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,

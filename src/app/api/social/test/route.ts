@@ -128,7 +128,7 @@ async function handleRequest(request: Request) {
   let socialContent = await generateSocialContent(title, description, cityName)
   if (!socialContent) {
     socialContent = {
-      headline: fitCompleteHeadline(title, title, 96, 120),
+      headline: fitCompleteHeadline(title, title, 120, 160),
       storySummary: `${fitCompleteHeadline(title, title, 120, 140)}.`,
       caption:  `📰 ${title}`,
       hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],

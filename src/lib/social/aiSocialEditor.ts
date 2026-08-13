@@ -12,16 +12,16 @@
  * Env: GEMINI_API_KEY, GEMINI_MODEL (default: gemini-2.5-flash)
  */
 
-import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from './feedCaption'
+import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline, isIncompleteHeadline } from './feedCaption'
 import { repairSocialCopyAgainstSource } from './socialFactualFidelity'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const DEEPSEEK_BASE = 'https://api.deepseek.com/v1/chat/completions'
 
-/** Kısa ama TAM manşet; yarım sıfat kesimi olmasın (max 96, softMax ile tam başlık) */
-const HEADLINE_MAX = 96
-const HEADLINE_SOFT_MAX = 120
+/** Kısa ama TAM manşet; yarım sıfat kesimi olmasın (max 120, softMax ile tam başlık) */
+const HEADLINE_MAX = 120
+const HEADLINE_SOFT_MAX = 160
 /** Tam özet için biraz daha alan; lacivert panel sığacak şekilde */
 const STORY_SUMMARY_MAX = 200
 /** Post caption gövdesi — cümle ortasından kesilmez; URL/hashtag publisher ekler */
@@ -203,7 +203,11 @@ function parseAISocialJSON(raw: string, title: string, description = ''): AISoci
     while (tags.length < 5) tags.push('#NaHaber')
     const fidelity = (s: string) => repairSocialCopyAgainstSource(s, title, description)
     const caption = clampCaptionBody(fidelity(str(p.caption, `📰 ${title}`)), CAPTION_MAX)
-    const headline = clampHeadline(fidelity(str(p.headline, title)), HEADLINE_MAX, title)
+    let headline = clampHeadline(fidelity(str(p.headline, title)), HEADLINE_MAX, title)
+    // AI yarım bıraktıysa kaynak başlığa düş
+    if (isIncompleteHeadline(headline) && title.trim()) {
+      headline = fitCompleteHeadline(headline, title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
+    }
     const storySummary = clampCompleteSentences(
       fidelity(stripMetaCtas(str(p.storySummary, fallbackStorySummary(title, caption)))),
       STORY_SUMMARY_MAX,

@@ -277,7 +277,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
 
       // AI içerik — headline + storySummary Firestore'a yazılsın (OG route okur)
-      let headline = fitCompleteHeadline(title, title, 96, 120)
+      let headline = fitCompleteHeadline(title, title, 120, 160)
       let storySummary = spot
         ? clampCompleteSentences(
             /[.!?…]["'»”’)\]]*$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
@@ -316,7 +316,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
 
       headline = repairSocialHeadline(headline, title, spot)
-      headline = fitCompleteHeadline(headline, title, 96, 120)
+      headline = fitCompleteHeadline(headline, title, 120, 160)
       storySummary = repairSocialCopyAgainstSource(storySummary, title, spot)
 
       // OG route sosyal alanları okusun diye önce kaydet
@@ -472,7 +472,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         ? `📰 ${spot.trim()}`
         : `📰 ${title.trim()}`
       socialContent = {
-        headline: fitCompleteHeadline(title, title, 96, 120),
+        headline: fitCompleteHeadline(title, title, 120, 160),
         storySummary: spot
           ? clampCompleteSentences(
               /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,

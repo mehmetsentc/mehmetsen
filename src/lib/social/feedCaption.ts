@@ -15,10 +15,82 @@ const DEFAULT_HASHTAGS = ['#NaHaber', '#Çanakkale', '#SonDakika']
 
 /** Manşet sonunda bırakılmaması gereken bağlaç / sıfat / yarım öbekler */
 const DANGLING_TAIL_RE =
-  /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten|ağır|hafif|kritik|ciddi|ölümcül)\s*$/iu
+  /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten|ağır|hafif|kritik|ciddi|ölümcül|ödeyerek|diyerek|alarak|gelerek|giderek|bakarak|karşı|doğru|ait|üzere)\s*$/iu
+
+/** Zarf-fiil + yönelme/ayrılma hali (örn. "ödeyerek dolara") — cümle yarım */
+const GERUND_PLUS_CASE_RE =
+  /\S+(y?arak|y?erek)\s+[\p{L}'’-]{3,}[ae]\s*$/iu
+
+/** Manşet zarf-fiille biterse anlam tamamlanmamış */
+const ENDS_WITH_GERUND_RE = /\S+(y?arak|y?erek|y?[ıiuü]p)\s*$/iu
+
+function toTrLower(s: string): string {
+  return s.toLocaleLowerCase('tr-TR')
+}
+
+function wordStemRough(w: string): string {
+  return toTrLower(w)
+    .replace(/['’]/g, '')
+    .replace(/ğ/g, 'g')
+    .replace(/(nın|nin|nun|nün|lar|ler|dan|den|tan|ten|yla|yle)$/u, '')
+    .replace(/(sı|si|su|sü|ı|i|u|ü|a|e|ya|ye)$/u, '')
+}
+
+function stemsRelated(a: string, b: string): boolean {
+  const na = wordStemRough(a)
+  const nb = wordStemRough(b)
+  if (na.length < 4 || nb.length < 4) return false
+  if (na === nb || na.startsWith(nb) || nb.startsWith(na)) return true
+  const n = Math.min(4, na.length, nb.length)
+  return na.slice(0, n) === nb.slice(0, n)
+}
+
+function hasUnbalancedQuotes(t: string): boolean {
+  // Türkçe kesme (Gürkaynak'tan) tek tırnak sayılmaz — yalnızca çift / akıllı tırnak
+  const pairs: Array<[string, string]> = [
+    ['"', '"'],
+    ['“', '”'],
+    ['«', '»'],
+  ]
+  for (const [open, close] of pairs) {
+    if (open === close) {
+      const n = (t.match(new RegExp(open.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+      if (n % 2 === 1) return true
+    } else {
+      const opens = (t.match(new RegExp(open.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+      const closes = (t.match(new RegExp(close.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+      if (opens !== closes) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Son kelime gereksiz tekrar / trailing junk:
+ * "…çocuğu ağır yaralandı çocuk" → son "çocuk" düşer.
+ */
+export function stripTrailingHeadlineJunk(s: string): string {
+  let out = s.replace(/\s+/g, ' ').trim()
+  for (let guard = 0; guard < 4; guard++) {
+    const words = out.split(' ').filter(Boolean)
+    if (words.length < 4) return out
+    const last = words[words.length - 1]
+    const prev = words[words.length - 2]
+    if (!/(dı|di|du|dü|tı|ti|tu|tü|mış|miş|muş|müş)$/iu.test(prev)) {
+      return out
+    }
+    const earlierWords = words.slice(0, -1)
+    if (earlierWords.some((w) => stemsRelated(w, last))) {
+      out = earlierWords.join(' ')
+      continue
+    }
+    return out
+  }
+  return out
+}
 
 export function stripDanglingHeadlineTail(s: string): string {
-  let out = s.replace(/\s+/g, ' ').trim()
+  let out = stripTrailingHeadlineJunk(s.replace(/\s+/g, ' ').trim())
   for (let i = 0; i < 8; i++) {
     const next = out.replace(DANGLING_TAIL_RE, '').trim()
     if (next === out) break
@@ -33,14 +105,32 @@ export function hasDanglingHeadlineTail(s: string): boolean {
   return DANGLING_TAIL_RE.test(t)
 }
 
+/** Manşet bitmeden kesilmiş / yarım öbek / trailing junk? */
+export function isIncompleteHeadline(s: string): boolean {
+  const t = s.replace(/\s+/g, ' ').trim()
+  if (!t) return true
+  if (hasDanglingHeadlineTail(t)) return true
+  if (ENDS_WITH_GERUND_RE.test(t)) return true
+  if (GERUND_PLUS_CASE_RE.test(t)) return true
+  if (hasUnbalancedQuotes(t)) return true
+  if (stripTrailingHeadlineJunk(t) !== t) return true
+  return false
+}
+
 export function clampAtWordBoundary(s: string, max: number): string {
   const t = s.replace(/\s+/g, ' ').trim()
-  if (t.length <= max) return stripDanglingHeadlineTail(t)
+  if (t.length <= max) {
+    const cleaned = stripDanglingHeadlineTail(t)
+    return isIncompleteHeadline(cleaned) ? shortenToLastCompleteClause(cleaned, max) : cleaned
+  }
   const slice = t.slice(0, max)
   const sp = slice.lastIndexOf(' ')
   let out = (sp > max * 0.45 ? slice.slice(0, sp) : slice).trim()
   // Yarım anlam bırakma: "…5 yaşındaki" / "…ağır" / "…vurulan" gibi sarkan sıfat/fiilimsi
   out = stripDanglingHeadlineTail(out)
+  if (isIncompleteHeadline(out)) {
+    out = shortenToLastCompleteClause(out, max)
+  }
   // Aşırı kısaldıysa orijinal kelime sınırına geri dön (boş manşet olmasın)
   if (out.length < Math.min(24, Math.floor(max * 0.35))) {
     out = (sp > max * 0.45 ? slice.slice(0, sp) : slice)
@@ -49,6 +139,40 @@ export function clampAtWordBoundary(s: string, max: number): string {
     out = stripDanglingHeadlineTail(out)
   }
   return out
+}
+
+/**
+ * Sığmazsa son TAM öbekte bitir (virgül / iki nokta / tire / noktalı virgül).
+ * Ortadan kelime/öbek kesme — "…ödeyerek dolara" gibi yarım bitiş yok.
+ */
+export function shortenToLastCompleteClause(s: string, maxLen: number): string {
+  const t = stripDanglingHeadlineTail(s.replace(/\s+/g, ' ').trim())
+  if (!t) return ''
+  if (t.length <= maxLen && !isIncompleteHeadline(t)) return t
+
+  const budget = Math.min(maxLen, t.length)
+  const slice = t.slice(0, budget)
+  const minEnd = Math.min(28, Math.floor(maxLen * 0.4))
+  const clauseRe = /[,;:—–-](?=\s|$)/g
+  let best = -1
+  let m: RegExpExecArray | null
+  while ((m = clauseRe.exec(slice)) !== null) {
+    const end = m.index
+    if (end >= minEnd) best = end
+  }
+  if (best >= minEnd) {
+    const clause = stripDanglingHeadlineTail(slice.slice(0, best).trim())
+    if (clause.length >= minEnd && !isIncompleteHeadline(clause)) return clause
+  }
+
+  // Clause yoksa kelime kelime geriye: ilk tamamlanmış adayı bul
+  const words = slice.split(' ').filter(Boolean)
+  while (words.length > 2) {
+    words.pop()
+    const candidate = stripDanglingHeadlineTail(words.join(' '))
+    if (candidate.length >= minEnd && !isIncompleteHeadline(candidate)) return candidate
+  }
+  return stripDanglingHeadlineTail(words.join(' '))
 }
 
 /**
@@ -62,28 +186,29 @@ export function clampAtWordBoundary(s: string, max: number): string {
 export function clampCompleteHeadline(s: string, max: number, softMax = max + 24): string {
   const t = s.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').trim()
   if (!t) return ''
-  const plain = t.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+  const plain = stripDanglingHeadlineTail(t.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
   if (!plain) return ''
 
   // softMax içinde tam metin sığıyorsa koru (yarım "yaralı" düşmesin)
-  if (plain.length <= softMax && !hasDanglingHeadlineTail(plain)) {
-    return t.includes('\n') && plain.length <= max ? t : plain
+  if (plain.length <= softMax && !isIncompleteHeadline(plain)) {
+    return t.includes('\n') && plain.length <= max ? stripDanglingHeadlineTail(t) : plain
   }
   if (plain.length <= softMax) {
-    // Sarkan kuyruk var ama softMax içinde — önce kaynak uzun metni olduğu gibi dene
-    // (çoğu zaman AI yarım bıraktı; çağıran fitCompleteHeadline ile tamamlar)
     const stripped = stripDanglingHeadlineTail(plain)
-    if (stripped.length >= Math.min(24, Math.floor(max * 0.45))) return stripped
+    if (stripped.length >= Math.min(24, Math.floor(max * 0.45)) && !isIncompleteHeadline(stripped)) {
+      return stripped
+    }
+    return shortenToLastCompleteClause(stripped, softMax)
   }
-  if (plain.length <= max && !hasDanglingHeadlineTail(plain)) {
-    return t.includes('\n') ? t : plain
+  if (plain.length <= max && !isIncompleteHeadline(plain)) {
+    return t.includes('\n') ? stripDanglingHeadlineTail(t) : plain
   }
-  return clampAtWordBoundary(plain, max)
+  return shortenToLastCompleteClause(plain, max)
 }
 
 /**
- * Manşet adayı + kaynak başlık: kesilmiş önek veya sarkan kuyruk varsa
- * daha uzun/tam başlığı tercih et (OG + AI yolları).
+ * Manşet adayı + kaynak başlık: kesilmiş / yarım / junk aday varsa
+ * kaynak başlığı tercih et (OG + AI yolları).
  */
 export function fitCompleteHeadline(
   candidate: string,
@@ -91,25 +216,58 @@ export function fitCompleteHeadline(
   max: number,
   softMax = max + 24,
 ): string {
-  const cand = (candidate || '').replace(/\s+/g, ' ').trim()
-  const source = (sourceTitle || '').replace(/\s+/g, ' ').trim()
+  const cand = stripDanglingHeadlineTail((candidate || '').replace(/\s+/g, ' ').trim())
+  const source = stripDanglingHeadlineTail((sourceTitle || '').replace(/\s+/g, ' ').trim())
   if (!cand && !source) return ''
   if (!cand) return clampCompleteHeadline(source, max, softMax)
   if (!source) return clampCompleteHeadline(cand, max, softMax)
 
-  const cl = cand.toLocaleLowerCase('tr-TR')
-  const sl = source.toLocaleLowerCase('tr-TR')
+  const cl = toTrLower(cand)
+  const sl = toTrLower(source)
   let best = cand
-  // Aday, kaynak başlığın kesilmiş önekiyse (…ağır vs …ağır yaralı) kaynağı al
+
+  // Aday, kaynak başlığın kesilmiş önekiyse kaynağı al
   if (sl.startsWith(cl) && source.length > cand.length) {
     best = source
-  } else if (hasDanglingHeadlineTail(cand) && !hasDanglingHeadlineTail(source) && source.length >= cand.length - 8) {
+  } else if (isIncompleteHeadline(cand) && !isIncompleteHeadline(source)) {
+    // AI yarım bıraktı ("…dolara") / junk ("…yaralandı çocuk") → kaynak title
+    best = source
+  } else if (isIncompleteHeadline(cand) && source.length >= cand.length - 8) {
     best = source
   } else if (hasDanglingHeadlineTail(cand) && source.length > cand.length) {
     best = source
   }
 
   return clampCompleteHeadline(best, max, softMax)
+}
+
+/**
+ * OG görsel manşeti: tam kaynak başlığı tercih et;
+ * AI socialHeadline yalnızca tamamlanmış ve kaynak kadar güvenilirse kullanılır.
+ */
+export function pickCompleteOgHeadline(
+  socialHeadline: string,
+  sourceTitle: string,
+  max: number,
+  softMax = max + 40,
+): string {
+  const ai = stripDanglingHeadlineTail((socialHeadline || '').replace(/\s+/g, ' ').trim())
+  const src = stripDanglingHeadlineTail((sourceTitle || '').replace(/\s+/g, ' ').trim())
+  if (!ai && !src) return ''
+  if (!ai) return clampCompleteHeadline(src, max, softMax)
+  if (!src) return clampCompleteHeadline(ai, max, softMax)
+
+  if (isIncompleteHeadline(ai) && !isIncompleteHeadline(src)) {
+    return clampCompleteHeadline(src, max, softMax)
+  }
+  if (isIncompleteHeadline(ai)) {
+    return fitCompleteHeadline(ai, src, max, softMax)
+  }
+  // AI manşeti tamam ama kaynak daha uzun ve AI onun kesik öneki gibi → kaynak
+  if (toTrLower(src).startsWith(toTrLower(ai)) && src.length > ai.length + 8 && !isIncompleteHeadline(src)) {
+    return clampCompleteHeadline(src, max, softMax)
+  }
+  return fitCompleteHeadline(ai, src, max, softMax)
 }
 
 /** Cümle sonu: .!?… + isteğe bağlı kapanış tırnak/parantez (örn. gelmek.') */

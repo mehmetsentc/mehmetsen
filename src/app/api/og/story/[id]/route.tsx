@@ -28,7 +28,7 @@ import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
-import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from '@/lib/social/feedCaption'
+import { clampCompleteSentences, pickCompleteOgHeadline } from '@/lib/social/feedCaption'
 import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
@@ -37,8 +37,8 @@ const PROJECT_ID = 'nahaberapp'
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/news`
 
 /** Story manşet — softMax ile tam başlık; layout satır/font ile sığdırır */
-const TITLE_MAX = 96
-const TITLE_SOFT_MAX = 120
+const TITLE_MAX = 120
+const TITLE_SOFT_MAX = 160
 /** Kısa özet — 2–3 satır; AI storySummary ile hizalı, cümle/kelime ortasından kesilmez */
 const SUMMARY_MAX = 200
 
@@ -331,26 +331,9 @@ function clampHeadline(s: string, max: number, sourceTitle = ''): string {
     .split('\n')
     .map((l) => l.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
-    .slice(0, 3)
+    .slice(0, 4)
   if (lines.length === 0) return ''
-  if (lines.length === 1) {
-    return fitCompleteHeadline(lines[0], sourceTitle || lines[0], max, TITLE_SOFT_MAX)
-  }
-  let used = 0
-  const out: string[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const remain = max - used
-    if (remain < 6) break
-    const share = Math.max(8, Math.floor(remain / (lines.length - i)))
-    const part = clampAtWordBoundary(lines[i], Math.min(share, remain))
-    if (!part) continue
-    out.push(part)
-    used += part.length
-  }
-  const joined = out.join('\n')
-  return joined
-    ? fitCompleteHeadline(joined.replace(/\n/g, ' '), sourceTitle || joined, max, TITLE_SOFT_MAX)
-    : fitCompleteHeadline(lines.join(' '), sourceTitle || lines.join(' '), max, TITLE_SOFT_MAX)
+  return pickCompleteOgHeadline(lines.join(' '), sourceTitle || lines.join(' '), max, TITLE_SOFT_MAX)
 }
 
 function extractFirstParagraph(content: string): string {
@@ -512,18 +495,23 @@ export async function GET(
   const rawTitle =
     overrideTitle ||
     (article
-      ? repairSocialHeadline(
-          article.socialHeadline || article.title,
-          article.title,
-          [
-            article.socialHeadline,
+      ? pickCompleteOgHeadline(
+          repairSocialHeadline(
+            article.socialHeadline || article.title,
             article.title,
-            article.summary,
-            article.spot,
-            extractFirstParagraph(article.content || ''),
-          ]
-            .filter(Boolean)
-            .join('\n'),
+            [
+              article.socialHeadline,
+              article.title,
+              article.summary,
+              article.spot,
+              extractFirstParagraph(article.content || ''),
+            ]
+              .filter(Boolean)
+              .join('\n'),
+          ),
+          article.title,
+          TITLE_MAX,
+          TITLE_SOFT_MAX,
         )
       : '') ||
     ''

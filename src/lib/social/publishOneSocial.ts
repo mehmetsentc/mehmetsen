@@ -436,7 +436,7 @@ export async function publishOneSocial(
     if (!socialContent) {
       const fallbackSpot = spot.replace(/\s+/g, ' ').trim()
       socialContent = {
-        headline: fitCompleteHeadline(title, title, 96, 120),
+        headline: fitCompleteHeadline(title, title, 120, 160),
         storySummary: (() => {
           const cleaned = fallbackSpot
             .replace(/\b(detaylar(?:ı|ın)?\s+(?:için\s+)?(?:haberimizde|tıklayın)|haberimizde|haberin\s+devamı|devamı\s+için|devamını\s+oku|tıklayın)\b/giu, '')
@@ -513,7 +513,7 @@ export async function publishOneSocial(
 
     // Olgu sadakati: AI'nin düşürdüğü tamlama isimlerini (hava aracı vb.) geri koy
     socialContent.headline = repairSocialHeadline(socialContent.headline, title, bodyText || spot)
-    socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 96, 120)
+    socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 120, 160)
     socialContent.storySummary = repairSocialCopyAgainstSource(
       socialContent.storySummary,
       title,
