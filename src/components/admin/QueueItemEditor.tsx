@@ -7,6 +7,7 @@ import { auth } from '@/lib/firebase/auth'
 import { getAdminCategoryGroups, isYerelCategoryTree, YEREL_HABER_CATEGORY_ID } from '@/constants/config'
 import { getDistrictsForProvince, TURKISH_PROVINCES } from '@/constants/cities'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
+import { parseApiResponse } from '@/lib/parseApiResponse'
 import { cn } from '@/lib/utils'
 
 interface PublishReadyAiResult {
@@ -118,7 +119,7 @@ export function QueueItemEditor({ queueId, onClose, onBusyChange, onSaved, onPub
         const res = await fetch(`/api/admin/newsroom/queue/${queueId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-        const data = (await res.json()) as QueueEditorData & { error?: string }
+        const data = await parseApiResponse<QueueEditorData & { error?: string }>(res)
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
         if (cancelled) return
         setTitle(data.title ?? '')
@@ -206,7 +207,7 @@ type QueuePayload = {
       },
       body: JSON.stringify(buildPayload(overrides)),
     })
-    const data = (await res.json()) as QueueEditorData & { error?: string }
+    const data = await parseApiResponse<QueueEditorData & { error?: string }>(res)
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
     if (!options?.silent) toast.success('Kuyruk kaydı güncellendi')
     onSaved?.({ ...data, id: queueId })
@@ -255,7 +256,7 @@ type QueuePayload = {
           isBreaking,
         }),
       })
-      const data = (await res.json()) as PublishReadyAiResult
+      const data = await parseApiResponse<PublishReadyAiResult>(res)
       if (!res.ok) throw new Error(data.error || 'AI editör haberi hazırlayamadı')
 
       const nextTitle = stripHtmlToNewsPlainText(data.title?.trim() || title)
@@ -371,7 +372,7 @@ type QueuePayload = {
         },
         body: JSON.stringify(buildPayload()),
       })
-      const data = (await res.json()) as { newsId?: string; slug?: string; error?: string }
+      const data = await parseApiResponse<{ newsId?: string; slug?: string; error?: string }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       toast.success('Haber yayına alındı (manuel)')
       onPublished?.({ newsId: data.newsId ?? '', slug: data.slug ?? '' })
@@ -393,7 +394,7 @@ type QueuePayload = {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'compare-duplicates', id: queueId, useAi: true }),
       })
-      const data = (await res.json()) as {
+      const data = await parseApiResponse<{
         ok?: boolean
         isDuplicate?: boolean
         message?: string
@@ -405,7 +406,7 @@ type QueuePayload = {
         keepSelf?: boolean
         decisionReason?: string
         error?: string
-      }
+      }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       if (!data.isDuplicate) {
         toast.success(data.message || 'Kuyrukta benzer haber yok')
@@ -447,7 +448,7 @@ type QueuePayload = {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = (await res.json()) as { ok?: boolean; error?: string }
+      const data = await parseApiResponse<{ ok?: boolean; error?: string }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       toast.success('Zayıf tekrar kuyruktan silindi')
       if (targetId === queueId) {

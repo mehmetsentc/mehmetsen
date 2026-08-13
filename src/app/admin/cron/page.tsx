@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { QueueItemEditor } from '@/components/admin/QueueItemEditor'
 import { cn } from '@/lib/utils'
+import { parseApiResponse } from '@/lib/parseApiResponse'
 import { formatDistanceToNow, format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -116,18 +117,22 @@ export default function CronMonitorPage() {
       const res = await fetch(`/api/admin/cron/runs${qs ? `?${qs}` : ''}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = (await res.json()) as {
+      const data = await parseApiResponse<{
         runs?: CronRun[]
         queuePending?: number
         pendingItems?: PendingQueueItem[]
+        pendingError?: string
         error?: string
-      }
+      }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setRuns(data.runs ?? [])
       setQueuePending(typeof data.queuePending === 'number' ? data.queuePending : null)
       if (data.pendingItems) {
         setPendingItems(data.pendingItems)
         setPendingLoadedAll(data.pendingItems.length < 50)
+      }
+      if (data.pendingError) {
+        toast.error(`Kuyruk listesi: ${data.pendingError}`)
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Cron kayıtları yüklenemedi')
@@ -149,12 +154,14 @@ export default function CronMonitorPage() {
       const res = await fetch(`/api/admin/cron/runs?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = (await res.json()) as {
+      const data = await parseApiResponse<{
         pendingItems?: PendingQueueItem[]
         queuePending?: number
+        pendingError?: string
         error?: string
-      }
+      }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      if (data.pendingError) throw new Error(data.pendingError)
       const newItems = data.pendingItems ?? []
       setPendingItems((prev) => [...prev, ...newItems])
       setPendingLoadedAll(newItems.length < 50)
@@ -218,7 +225,7 @@ export default function CronMonitorPage() {
       const res = await fetch('/api/admin/cron/runs?cleanupStuck=1', {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = (await res.json()) as { cleaned?: number; error?: string }
+      const data = await parseApiResponse<{ cleaned?: number; error?: string }>(res)
       if (!res.ok) throw new Error(data.error || 'Temizlik başarısız')
       toast.success(`${data.cleaned ?? 0} takılı çalışma temizlendi`)
       await load()
@@ -249,7 +256,7 @@ export default function CronMonitorPage() {
           maxRounds: 15,
         }),
       })
-      const data = (await res.json()) as { ok?: boolean; message?: string; error?: string }
+      const data = await parseApiResponse<{ ok?: boolean; message?: string; error?: string }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       toast.success(data.message || 'Bekleyenler işlendi')
       await load()
@@ -273,7 +280,12 @@ export default function CronMonitorPage() {
         },
         body: JSON.stringify({ batchSize: 80, maxRounds: 5, skipFreshness: true }),
       })
-      const data = (await res.json()) as { ok?: boolean; message?: string; error?: string; hasMore?: boolean }
+      const data = await parseApiResponse<{
+        ok?: boolean
+        message?: string
+        error?: string
+        hasMore?: boolean
+      }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       toast.success(data.message || 'Kuyruk işlendi')
       if (data.hasMore) toast('Kuyrukta hâlâ bekleyen var, tekrar çalıştırabilirsiniz', { icon: 'ℹ️' })
@@ -296,7 +308,7 @@ export default function CronMonitorPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = (await res.json()) as { ok?: boolean; deleted?: number; error?: string }
+      const data = await parseApiResponse<{ ok?: boolean; deleted?: number; error?: string }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       toast.success(`${data.deleted ?? 0} haber silindi (${hours}s+)`)
       await load(pendingOpen)
@@ -321,7 +333,7 @@ export default function CronMonitorPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = (await res.json()) as {
+      const data = await parseApiResponse<{
         ok?: boolean
         deleted?: number
         skipped?: number
@@ -329,7 +341,7 @@ export default function CronMonitorPage() {
         clusters?: number
         scanned?: number
         error?: string
-      }
+      }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       toast.success(
         `Tarama: ${data.scanned ?? 0} · küme: ${data.clusters ?? 0} · ` +
@@ -352,7 +364,7 @@ export default function CronMonitorPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = (await res.json()) as { ok?: boolean; error?: string }
+      const data = await parseApiResponse<{ ok?: boolean; error?: string }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setPendingItems((prev) => prev.filter((i) => i.id !== id))
       setQueuePending((prev) => (prev != null ? prev - 1 : prev))
@@ -374,9 +386,13 @@ export default function CronMonitorPage() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'process-one', id }),
       })
-      const data = (await res.json()) as {
-        ok?: boolean; published?: number; drafted?: number; failed?: number; error?: string
-      }
+      const data = await parseApiResponse<{
+        ok?: boolean
+        published?: number
+        drafted?: number
+        failed?: number
+        error?: string
+      }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       if (data.published) {
         toast.success('Haber yayınlandı!')
@@ -408,7 +424,11 @@ export default function CronMonitorPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = (await res.json()) as { success?: boolean; error?: string; durationMs?: number }
+      const data = await parseApiResponse<{
+        success?: boolean
+        error?: string
+        durationMs?: number
+      }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       toast.success(
         data.success

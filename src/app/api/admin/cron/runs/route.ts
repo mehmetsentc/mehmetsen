@@ -1,6 +1,7 @@
 /**
  * GET /api/admin/cron/runs — CMS cron monitor (Admin SDK; bypasses client rules).
- * POST cleanupStuck=1 → running > 10 dk kayıtlarını failed yap.
+ * ?cleanupStuck=1 → running > 10 dk kayıtlarını failed yap.
+ * ?pendingDetails=1 → kuyruk bekleyen listesi (opsiyonel; hata olsa bile runs döner).
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
@@ -8,8 +9,32 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 const STUCK_MS = 10 * 60 * 1000
+
+function toEpochMs(v: unknown): number | null {
+  if (v == null) return null
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string') {
+    const n = Date.parse(v)
+    return Number.isFinite(n) ? n : null
+  }
+  if (
+    typeof v === 'object' &&
+    v !== null &&
+    'toMillis' in v &&
+    typeof (v as { toMillis?: unknown }).toMillis === 'function'
+  ) {
+    try {
+      const n = (v as { toMillis: () => number }).toMillis()
+      return Number.isFinite(n) ? n : null
+    } catch {
+      return null
+    }
+  }
+  return null
+}
 
 export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'cron:read')
@@ -45,31 +70,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ cleaned })
     }
 
-    let query = db.collection('cronRuns').orderBy('startedAt', 'desc').limit(100)
-    if (job) {
-      query = db
-        .collection('cronRuns')
-        .where('jobName', '==', job)
-        .orderBy('startedAt', 'desc')
-        .limit(50)
-    }
-    const snap = await query.get()
-    const runs = snap.docs.map((doc) => {
-      const data = doc.data()
-      return {
-        id: doc.id,
-        jobName: data.jobName as string,
-        status: data.status as string,
-        startedAt: data.startedAt,
-        finishedAt: data.finishedAt ?? null,
-        durationMs: data.durationMs ?? null,
-        itemsProcessed: data.itemsProcessed ?? null,
-        error: data.error ?? null,
-        triggeredBy: data.triggeredBy ?? 'schedule',
-        result: typeof data.result === 'string' ? data.result.slice(0, 400) : null,
-      }
-    })
-
     const wantPendingDetails = url.searchParams.get('pendingDetails') === '1'
     const pendingOffset = parseInt(url.searchParams.get('pendingOffset') ?? '0', 10) || 0
     const pendingLimit = Math.min(
@@ -77,68 +77,103 @@ export async function GET(request: Request) {
       100
     )
 
-    // Real count via Firestore aggregation (free — no doc reads billed)
-    const countSnap = await db
-      .collection('newsQueue')
-      .where('status', '==', 'pending')
-      .count()
-      .get()
+    const runsQuery = job
+      ? db
+          .collection('cronRuns')
+          .where('jobName', '==', job)
+          .orderBy('startedAt', 'desc')
+          .limit(50)
+      : db.collection('cronRuns').orderBy('startedAt', 'desc').limit(100)
+
+    const countQuery = db.collection('newsQueue').where('status', '==', 'pending').count()
+
+    const [snap, countSnap] = await Promise.all([runsQuery.get(), countQuery.get()])
+
+    const runs = snap.docs.map((doc) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        jobName: data.jobName as string,
+        status: data.status as string,
+        startedAt: toEpochMs(data.startedAt) ?? data.startedAt ?? null,
+        finishedAt: toEpochMs(data.finishedAt),
+        durationMs:
+          typeof data.durationMs === 'number' && Number.isFinite(data.durationMs)
+            ? data.durationMs
+            : null,
+        itemsProcessed:
+          typeof data.itemsProcessed === 'number' ? data.itemsProcessed : null,
+        error: typeof data.error === 'string' ? data.error.slice(0, 500) : null,
+        triggeredBy: data.triggeredBy ?? 'schedule',
+        result: typeof data.result === 'string' ? data.result.slice(0, 400) : null,
+      }
+    })
+
     const queuePending = countSnap.data().count
 
-    let pendingItems: Array<{
-      id: string
-      title: string
-      source: string
-      workerId: string
-      category: string | null
-      createdAt: number
-      attempts: number
-      queueDuplicateSuspect?: boolean
-      queueDuplicateRole?: string | null
-      queueDuplicateOf?: string | null
-      queueDuplicateSimilarity?: number | null
-      qualityScore?: number | null
-      peerQualityScore?: number | null
-    }> | undefined
+    let pendingItems:
+      | Array<{
+          id: string
+          title: string
+          source: string
+          workerId: string
+          category: string | null
+          createdAt: number
+          attempts: number
+          queueDuplicateSuspect?: boolean
+          queueDuplicateRole?: string | null
+          queueDuplicateOf?: string | null
+          queueDuplicateSimilarity?: number | null
+          qualityScore?: number | null
+          peerQualityScore?: number | null
+        }>
+      | undefined
+    let pendingError: string | undefined
 
     if (wantPendingDetails) {
-      const pSnap = await db
-        .collection('newsQueue')
-        .where('status', '==', 'pending')
-        .orderBy('createdAt', 'desc')
-        .offset(pendingOffset)
-        .limit(pendingLimit)
-        .get()
+      try {
+        const pSnap = await db
+          .collection('newsQueue')
+          .where('status', '==', 'pending')
+          .orderBy('createdAt', 'desc')
+          .offset(pendingOffset)
+          .limit(pendingLimit)
+          .get()
 
-      pendingItems = pSnap.docs.map((d) => {
-        const data = d.data()
-        const input = (data.input ?? {}) as Record<string, unknown>
-        return {
-          id: d.id,
-          title: (input.originalTitle as string) ?? '(başlıksız)',
-          source: (input.sourceLabel as string) ?? '',
-          workerId: (data.workerId as string) ?? '',
-          category: (input.forcedCategoryId as string) ?? null,
-          createdAt: (data.createdAt as number) ?? 0,
-          attempts: (data.attempts as number) ?? 0,
-          queueDuplicateSuspect: data.queueDuplicateSuspect === true,
-          queueDuplicateRole: (data.queueDuplicateRole as string) ?? null,
-          queueDuplicateOf: (data.queueDuplicateOf as string) ?? null,
-          queueDuplicateSimilarity:
-            typeof data.queueDuplicateSimilarity === 'number'
-              ? data.queueDuplicateSimilarity
-              : null,
-          qualityScore: typeof data.qualityScore === 'number' ? data.qualityScore : null,
-          peerQualityScore:
-            typeof data.peerQualityScore === 'number' ? data.peerQualityScore : null,
-        }
-      })
+        pendingItems = pSnap.docs.map((d) => {
+          const data = d.data()
+          const input = (data.input ?? {}) as Record<string, unknown>
+          return {
+            id: d.id,
+            title: String((input.originalTitle as string) ?? '(başlıksız)').slice(0, 300),
+            source: String((input.sourceLabel as string) ?? '').slice(0, 120),
+            workerId: String((data.workerId as string) ?? ''),
+            category: (input.forcedCategoryId as string) ?? null,
+            createdAt: toEpochMs(data.createdAt) ?? 0,
+            attempts: (data.attempts as number) ?? 0,
+            queueDuplicateSuspect: data.queueDuplicateSuspect === true,
+            queueDuplicateRole: (data.queueDuplicateRole as string) ?? null,
+            queueDuplicateOf: (data.queueDuplicateOf as string) ?? null,
+            queueDuplicateSimilarity:
+              typeof data.queueDuplicateSimilarity === 'number'
+                ? data.queueDuplicateSimilarity
+                : null,
+            qualityScore: typeof data.qualityScore === 'number' ? data.qualityScore : null,
+            peerQualityScore:
+              typeof data.peerQualityScore === 'number' ? data.peerQualityScore : null,
+          }
+        })
+      } catch (pendingErr) {
+        pendingError =
+          pendingErr instanceof Error ? pendingErr.message : String(pendingErr)
+      }
     }
 
     return NextResponse.json({
       runs,
       queuePending,
       ...(pendingItems ? { pendingItems } : {}),
+      ...(pendingError ? { pendingError } : {}),
     })
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
