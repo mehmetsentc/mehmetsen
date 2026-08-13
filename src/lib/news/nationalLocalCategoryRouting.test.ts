@@ -84,6 +84,25 @@ describe('resolveCategoryForLocalVsNationalScope', () => {
       ),
     ).toBe('emlak-konut')
   })
+
+  it('never remaps gastronomi → yerel-gastronomi via city-in-title recipes', () => {
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'gastronomi',
+        "Ağrı tarhanası nasıl yapılır? İşte tarifi",
+        'Geleneksel Ağrı tarhanası malzemeleri ve yapılışı.',
+        'agri',
+      ),
+    ).toBe('gastronomi')
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'yemek',
+        "Tulumba tatlısı tarifi",
+        '',
+        'istanbul',
+      ),
+    ).toBe('gastronomi')
+  })
 })
 
 describe('resolveNationalLocalDualRouting', () => {

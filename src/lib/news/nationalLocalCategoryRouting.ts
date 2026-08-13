@@ -155,6 +155,11 @@ export function resolveCategoryForLocalVsNationalScope(
   const cat = categoryId?.trim().toLowerCase() ?? ''
   if (!cat || !citySlug?.trim()) return cat
 
+  // Gastronomi stays national — dish/city name in a recipe must not become yerel-gastronomi.
+  if (cat === 'gastronomi' || cat === 'yemek' || cat === 'tarif' || cat === 'food') {
+    return cat === 'gastronomi' ? cat : 'gastronomi'
+  }
+
   if (isYerelCategoryTree(cat) && cat !== YEREL_HABER_CATEGORY_ID) {
     return cat
   }

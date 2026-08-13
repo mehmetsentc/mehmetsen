@@ -32,6 +32,26 @@ describe('featuredScope', () => {
     expect(isNationalFeaturedEligible({ category: 'magazin' })).toBe(true)
   })
 
+  it('never allows gastronomi in homepage or city featured / manşet', () => {
+    expect(isNationalFeaturedEligible({ category: 'gastronomi' })).toBe(false)
+    expect(isNationalFeaturedEligible({ categoryId: 'gastronomi', citySlug: 'agri' })).toBe(false)
+    expect(isNationalFeaturedEligible({ category: 'yerel-gastronomi' })).toBe(false)
+    expect(
+      isCityFeaturedEligible({
+        citySlug: 'agri',
+        category: 'gastronomi',
+        forCitySlug: 'agri',
+      })
+    ).toBe(false)
+    expect(
+      isCityFeaturedEligible({
+        citySlug: 'agri',
+        category: 'yerel-gastronomi',
+        forCitySlug: 'agri',
+      })
+    ).toBe(false)
+  })
+
   it('city featured only accepts yerel tree for that city', () => {
     expect(
       isCityFeaturedEligible({

@@ -8,6 +8,10 @@ import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isNationalFeaturedEligible } from '@/lib/featuredScope'
+import {
+  isExcludedFromCityLocalPrimaryFeed,
+  isExcludedFromHomepageMainSlots,
+} from '@/lib/gastronomyRouting'
 import { getHomeFeedCategoryFamily, isYerelHomepageExcluded } from '@/constants/config'
 import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
 import {
@@ -304,6 +308,8 @@ async function getHomeNewsPool(poolSize = 40): Promise<NewsItem[]> {
 function isHomepageEligibleItem(item: NewsItem): boolean {
   const cat = item.category?.trim() ?? ''
   if (cat && isYerelHomepageExcluded(cat)) return false
+  // Gastronomi never fills güncel / latest / breaking / trending main slots
+  if (isExcludedFromHomepageMainSlots(cat)) return false
   return true
 }
 
@@ -414,7 +420,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v10'],
+  ['home-featured-v11'],
   { revalidate: 600, tags: ['home-feed'] }
 )
 
@@ -653,15 +659,17 @@ const getHomeLocalNewsCached = unstable_cache(
         .where('status', '==', 'published')
         .where('citySlug', '==', citySlug)
         .orderBy('publishedAt', 'desc')
-        .limit(limitCount)
+        .limit(Math.min(limitCount * 3, 40))
         .get()
       return mapAdminDocs(snap.docs)
+        .filter((item) => !isExcludedFromCityLocalPrimaryFeed(item.category))
+        .slice(0, limitCount)
     } catch (error) {
       console.warn('[newsService.server] getHomeLocalNews failed:', error)
       return []
     }
   },
-  ['home-local-news-v1'],
+  ['home-local-news-v2'],
   { revalidate: 600, tags: ['local-news'] }
 )
 

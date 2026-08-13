@@ -8,6 +8,7 @@ import { DesktopCategoryWatch } from '@/components/home/desktop/DesktopCategoryW
 import { GridStory, StackedStory } from '@/components/home/desktop/desktopGridStories'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { LocalCityEventsStrip } from '@/components/local/LocalCityEventsStrip'
+import { LocalGastronomyStrip } from '@/components/local/LocalGastronomyStrip'
 import { LocalListStory } from '@/components/local/LocalListStory'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { buildLocalNewsReadableLayout } from '@/components/local/localNewsLayout'
@@ -76,6 +77,7 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
             cityName={city.name}
             filter="cinema"
           />
+          <LocalGastronomyStrip />
         </>
       ) : null}
 

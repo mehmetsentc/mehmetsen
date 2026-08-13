@@ -20,6 +20,7 @@ import { getCityCategoryName } from '@/constants/cities'
 import { getHomeFeedCategoryFamily } from '@/constants/config'
 import { filterPostsByFeedSource } from '@/lib/feedSource'
 import { YEREL_HABER_CATEGORY, isYerelHaberEligible } from '@/lib/feedRanking'
+import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
 import { db, Collections, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
 import { hasVideoContent, isPubliclyVisibleStatus } from '@/lib/postUtils'
 import {
@@ -153,7 +154,7 @@ function buildNewsTimelineQueryConstraints(
   return { constraints, filterAuthorOnServer }
 }
 
-/** Şehir sorgusu için daha hafif filtre — sadece salt ulusal kategorileri blokla */
+/** Şehir sorgusu için daha hafif filtre — salt ulusal + gastronomi (şehir sahipliği yok) */
 const CITY_QUERY_BLOCKED_CATEGORIES = new Set([
   'meteoroloji', 'hava-durumu', 'hava', 'cevre', 'dunya', 'kripto', 'borsa',
 ])
@@ -164,10 +165,11 @@ function applyTimelinePostFilters(posts: Post[], options?: NewsTimelineOptions):
     return posts.filter(isYerelHaberEligible)
   }
   if (options?.citySlug) {
-    // Şehir sayfası: sadece meteoroloji/dünya gibi salt ulusal kategorileri blokla.
+    // Şehir sayfası: meteoroloji/dünya + gastronomi (tarifler şehir feed'ini ezmesin).
     // gundem/spor/ekonomi vb. o şehirden gelen haber olabilir, bloklanmamalı.
-    return posts.filter(p => {
+    return posts.filter((p) => {
       const cat = (p as Post & { categoryId?: string }).categoryId?.trim().toLowerCase() ?? ''
+      if (isExcludedFromCityLocalPrimaryFeed(cat)) return false
       return !CITY_QUERY_BLOCKED_CATEGORIES.has(cat)
     })
   }
@@ -274,8 +276,13 @@ export const postService = {
     })
 
     const pageLimit = options?.limit ?? PAGE_SIZE
+    // City feeds filter gastronomi client-side — oversample so real local news still fills a page.
+    const fetchLimit =
+      options?.citySlug && !options?.categoryId
+        ? Math.min(pageLimit * 3, 60)
+        : pageLimit
     const { constraints: baseConstraints, filterAuthorOnServer } =
-      buildNewsTimelineQueryConstraints(options, pageLimit)
+      buildNewsTimelineQueryConstraints(options, fetchLimit)
 
     try {
       const constraints = [...baseConstraints]
@@ -294,7 +301,7 @@ export const postService = {
         posts = filterPostsByFeedSource(posts, options.feedSource)
       }
 
-      posts = applyTimelinePostFilters(posts, options)
+      posts = applyTimelinePostFilters(posts, options).slice(0, pageLimit)
 
       // `hasMore` and the cursor are derived from the raw docs (before the
       // client-side feed-source filter) so pagination keeps advancing even
@@ -302,7 +309,7 @@ export const postService = {
       return {
         posts,
         lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length === pageLimit,
+        hasMore: snap.docs.length === fetchLimit,
       }
     } catch (newsError) {
       // RESOURCE_EXHAUSTED (code 8): Firestore quota doldu — fallback query da başarısız olur,

@@ -22,6 +22,7 @@ import { getThemedCategorySectionIds } from '@/constants/categorySections'
 import { getCategoryFamily, getHomeFeedCategoryFamily, getNationalCategoryForYerelSubcategory } from '@/constants/config'
 import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
 import { isCityFeaturedEligible } from '@/lib/featuredScope'
+import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
 import { slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isPostgresReadsEnabled } from '@/db'
 import { DISTRICT_DISPLAY_NAMES } from '@/constants/cities'
@@ -181,26 +182,28 @@ async function getCityNewsFromPostgres(citySlug: string, limitCount: number): Pr
       .orderBy(desc(schema.news.publishedAt))
       .limit(limitCount)
 
-    return rows.map((r) => ({
-      id: r.id,
-      slug: r.slug,
-      title: r.title,
-      description: r.description ?? undefined,
-      imageUrl: r.coverImageUrl ?? r.thumbnailUrl ?? undefined,
-      videoUrl: r.videoUrl ?? undefined,
-      category: r.categoryId ?? undefined,
-      source: r.source ?? undefined,
-      city: r.cityName ?? undefined,
-      district: r.districtName ?? undefined,
-      districtSlug: r.districtSlug ?? undefined,
-      publishedAt: r.publishedAt?.toISOString(),
-      views: r.viewsCount,
-      likesCount: r.likesCount,
-      commentsCount: r.commentsCount,
-      breaking: r.isBreaking,
-      articleFormat: r.articleFormat as NewsItem['articleFormat'],
-      seoTitle: r.seoTitle ?? undefined,
-    }))
+    return rows
+      .map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        title: r.title,
+        description: r.description ?? undefined,
+        imageUrl: r.coverImageUrl ?? r.thumbnailUrl ?? undefined,
+        videoUrl: r.videoUrl ?? undefined,
+        category: r.categoryId ?? undefined,
+        source: r.source ?? undefined,
+        city: r.cityName ?? undefined,
+        district: r.districtName ?? undefined,
+        districtSlug: r.districtSlug ?? undefined,
+        publishedAt: r.publishedAt?.toISOString(),
+        views: r.viewsCount,
+        likesCount: r.likesCount,
+        commentsCount: r.commentsCount,
+        breaking: r.isBreaking,
+        articleFormat: r.articleFormat as NewsItem['articleFormat'],
+        seoTitle: r.seoTitle ?? undefined,
+      }))
+      .filter((item) => !isExcludedFromCityLocalPrimaryFeed(item.category))
   } catch (error) {
     console.warn('[cityNewsService] Postgres read failed, falling back to Firebase:', error)
     return []
@@ -221,13 +224,14 @@ const getCityNewsCached = unstable_cache(
         .where('status', '==', 'published')
         .where('citySlug', '==', citySlug)
         .orderBy('publishedAt', 'desc')
-        .limit(limitCount)
+        .limit(Math.min(limitCount * 3, 120))
         .get()
 
       const items: NewsItem[] = []
       for (const doc of snap.docs) {
         const item = docToNewsItem(doc.id, doc.data() as NewsDocument)
-        if (item) items.push(item)
+        if (item && !isExcludedFromCityLocalPrimaryFeed(item.category)) items.push(item)
+        if (items.length >= limitCount) break
       }
       return items
     } catch (error) {
@@ -235,7 +239,7 @@ const getCityNewsCached = unstable_cache(
       return []
     }
   },
-  ['city-news-feed-v3'],
+  ['city-news-feed-v4'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -767,7 +771,7 @@ const getCityHomeFeedCached = unstable_cache(
 
     return buildCityFeedFromPool(pool, railCategoryIds, bucketCityCategoryRails, featuredPinned)
   },
-  ['city-home-feed-v5'],
+  ['city-home-feed-v6'],
   { revalidate: 120, tags: ['city-news'] }
 )
 

@@ -55,6 +55,10 @@ import {
   resolveCategoryForLocalVsNationalScope,
   resolveNationalLocalDualRouting,
 } from '@/lib/news/nationalLocalCategoryRouting'
+import {
+  shouldSkipLocalPrimaryRemapForGastronomy,
+  shouldStripCityForGastronomy,
+} from '@/lib/gastronomyRouting'
 import { findSimilarPublishedArticle } from '@/services/newsroom/dedupe/similarityEngine'
 import {
   createDuplicateNewsStub,
@@ -1018,7 +1022,7 @@ export async function processNewsroomArticle(
       location.city = city ?? location.city
       if (district) location.district = district
     }
-    const resolvedCitySlug = articleIsAbroad
+    let resolvedCitySlug = articleIsAbroad
       ? ''
       : normalizeCitySlug(location?.city ? slugifyCity(location.city) : citySlug)
     const cityCategory = resolvedCitySlug ? cityCategoryId(resolvedCitySlug) : ''
@@ -1045,7 +1049,12 @@ export async function processNewsroomArticle(
     // ── Yerel vs ulusal kapsam: yerel birincil → yerel-*; ulusal+konum → ulusal ──
     const scopeCitySlug = resolvedCitySlug || citySlug
     const scopeBody = rewritten.description ?? rewritten.summary ?? ''
-    if (!nationalFootballRouting && !articleIsAbroad && scopeCitySlug) {
+    if (
+      !nationalFootballRouting &&
+      !articleIsAbroad &&
+      scopeCitySlug &&
+      !shouldSkipLocalPrimaryRemapForGastronomy(classification.categoryId)
+    ) {
       const priorCategory = classification.categoryId
       const localPrimary = isLocalPrimaryScope(
         rewritten.title,
@@ -1238,6 +1247,7 @@ export async function processNewsroomArticle(
       !nationalFootballRouting &&
       !articleIsAbroad &&
       (resolvedCitySlug || citySlug) &&
+      !shouldSkipLocalPrimaryRemapForGastronomy(resolvedCategory) &&
       isLocalPrimaryScope(rewritten.title, scopeBody, resolvedCitySlug || citySlug)
     ) {
       const corrected = resolveCategoryForLocalVsNationalScope(
@@ -1253,6 +1263,28 @@ export async function processNewsroomArticle(
         classification.overrides.push(`yerel birincil (post-chief) → ${corrected}`)
         resolvedCategory = corrected
         classification.categoryId = corrected
+      }
+    }
+
+    // ── Gastronomi: ulusal feed — citySlug / featured / breaking yok ──────────
+    if (shouldStripCityForGastronomy(resolvedCategory)) {
+      if (resolvedCategory !== 'gastronomi') {
+        resolvedCategory = 'gastronomi'
+        classification.categoryId = 'gastronomi'
+      }
+      city = null
+      citySlug = ''
+      district = null
+      districtSlug = ''
+      resolvedCitySlug = ''
+      if (location) {
+        location.city = ''
+        if ('district' in location) location.district = ''
+      }
+      classification.overrides.push('gastronomi → city stripped (national feed)')
+      if (classification.isBreaking) {
+        classification.isBreaking = false
+        classification.overrides.push('isBreaking cleared for gastronomi')
       }
     }
 

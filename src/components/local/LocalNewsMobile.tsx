@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { MapPin, AlertCircle, ArrowUp } from 'lucide-react'
 import { LocalCityEventsStrip } from '@/components/local/LocalCityEventsStrip'
+import { LocalGastronomyStrip } from '@/components/local/LocalGastronomyStrip'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { MobileFeedCard } from '@/components/feed/MobileFeedCard'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
@@ -79,6 +80,9 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
             cityName={city.name}
             filter="cinema"
           />
+          <div className="px-3">
+            <LocalGastronomyStrip />
+          </div>
         </>
       ) : null}
 

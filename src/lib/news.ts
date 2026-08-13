@@ -11,6 +11,7 @@ import { db } from '@/lib/firebase/firestore'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { docToNewsItem, sortNewsByDate } from '@/lib/newsItemUtils'
 import { isNationalFeaturedEligible } from '@/lib/featuredScope'
+import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
 import { getHomeFeedCategoryFamily } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
 import type { NaEvent } from '@/types/event'
@@ -173,9 +174,10 @@ export async function getLocalNews(city: string, limitCount = 8): Promise<NewsIt
   try {
     const bySlug = await queryPublished(
       [where('citySlug', '==', normalized), orderBy('publishedAt', 'desc')],
-      limitCount
+      Math.min(limitCount * 3, 40)
     )
-    if (bySlug.length > 0) return bySlug
+    const filtered = bySlug.filter((item) => !isExcludedFromCityLocalPrimaryFeed(item.category))
+    if (filtered.length > 0) return filtered.slice(0, limitCount)
   } catch (error) {
     console.warn('[lib/news] getLocalNews citySlug query failed:', error)
   }
@@ -191,6 +193,7 @@ export async function getLocalNews(city: string, limitCount = 8): Promise<NewsIt
       )
     )
     const items = mapDocs(snap.docs).filter((item) => {
+      if (isExcludedFromCityLocalPrimaryFeed(item.category)) return false
       const slug = item.city?.toLowerCase() ?? item.locationCity?.toLowerCase() ?? ''
       return slug.includes(normalized) || normalized.includes(slug)
     })
