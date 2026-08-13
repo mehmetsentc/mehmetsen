@@ -75,4 +75,8 @@ export interface SocialPublishPayload {
   articleUrl?: string
   /** Post hashtag listesi; yoksa publisher varsayılan kullanır. */
   hashtags?: string[]
+  /** Şehir adı — FB caption "📍 {city}" (yoksa Çanakkale). */
+  cityName?: string
+  /** Şehir slug — cityName yoksa etiket için kullanılır. */
+  citySlug?: string
 }

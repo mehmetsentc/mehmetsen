@@ -39,6 +39,7 @@
     "seed-canakkale-events": "node scripts/seed-canakkale-events.mjs",
     "seed-troya-festival-2026": "node scripts/seed-troya-festival-2026.mjs",
     "format": "prettier --write .",
+    "test:facebook-post": "tsx scripts/test-facebook-post.ts",
     "deploy:allowed": "node scripts/allow-deploy.mjs",
     "deploy:batch": "node scripts/allow-deploy.mjs && node -e \"console.log('Slot açık. Onaylı işi tek committe [deploy] ile push edin. Acil: [force-deploy]')\"",
     "db:generate": "drizzle-kit generate",

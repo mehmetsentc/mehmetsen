@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     autoPost: settings.autoPost,
     autoStory: settings.autoStory,
     autoOnPublish: settings.autoOnPublish,
+    metaAiRewrite: settings.metaAiRewrite,
     updatedAt: settings.updatedAt ?? null,
     updatedBy: settings.updatedBy ?? null,
   })
@@ -47,12 +48,14 @@ export async function PUT(request: Request) {
     autoPost: typeof b.autoPost === 'boolean' ? b.autoPost : true,
     autoStory: typeof b.autoStory === 'boolean' ? b.autoStory : true,
     autoOnPublish: typeof b.autoOnPublish === 'boolean' ? b.autoOnPublish : true,
+    metaAiRewrite: typeof b.metaAiRewrite === 'boolean' ? b.metaAiRewrite : true,
   })
 
   const payload = {
     autoPost: settings.autoPost,
     autoStory: settings.autoStory,
     autoOnPublish: settings.autoOnPublish,
+    metaAiRewrite: settings.metaAiRewrite,
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: auth.uid,
   }

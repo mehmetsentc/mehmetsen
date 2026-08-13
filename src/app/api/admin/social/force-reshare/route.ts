@@ -362,6 +362,8 @@ export async function POST(request: Request) {
       ...(imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
       articleUrl,
       hashtags: socialContent.hashtags,
+      cityName: typeof data.cityName === 'string' ? data.cityName : 'Çanakkale',
+      citySlug: typeof data.citySlug === 'string' ? data.citySlug : undefined,
     }
     console.log(
       `[force-reshare] POST ${imagePayload.mode} — ${id}` +

@@ -526,6 +526,8 @@ export async function publishOneSocial(
         ...(imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
         articleUrl,
         hashtags: socialContent.hashtags,
+        cityName,
+        citySlug: typeof data.citySlug === 'string' ? data.citySlug : undefined,
       }
 
       console.log(

@@ -615,6 +615,7 @@ export default function SocialPage() {
         autoPost: data.autoPost !== false,
         autoStory: data.autoStory !== false,
         autoOnPublish: data.autoOnPublish !== false,
+        metaAiRewrite: data.metaAiRewrite !== false,
       })
     } catch (err) {
       console.error('[social admin] auto-share:', err)
@@ -643,6 +644,7 @@ export default function SocialPage() {
           autoPost: autoShareDraft.autoPost,
           autoStory: autoShareDraft.autoStory,
           autoOnPublish: autoShareDraft.autoOnPublish,
+          metaAiRewrite: autoShareDraft.metaAiRewrite,
         }),
       })
       const data = await res.json() as {
@@ -652,6 +654,7 @@ export default function SocialPage() {
         autoPost?: boolean
         autoStory?: boolean
         autoOnPublish?: boolean
+        metaAiRewrite?: boolean
       }
       if (!res.ok || !data.ok) {
         toast.error(data.error ?? 'Kayıt başarısız')
@@ -661,6 +664,7 @@ export default function SocialPage() {
         autoPost: data.autoPost !== false,
         autoStory: data.autoStory !== false,
         autoOnPublish: data.autoOnPublish !== false,
+        metaAiRewrite: data.metaAiRewrite !== false,
       })
       toast.success(data.message ?? 'Otomatik paylaşım ayarları kaydedildi')
     } catch (err) {
@@ -1232,6 +1236,25 @@ export default function SocialPage() {
                 </span>
               </span>
             </label>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-violet-300/60 bg-violet-50/40 p-4 dark:border-violet-500/30 dark:bg-violet-950/20 sm:col-span-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-[rgb(var(--color-border))] text-violet-600 focus:ring-violet-500"
+                checked={autoShareDraft.metaAiRewrite !== false}
+                onChange={(e) => setAutoShareDraft((p) => ({ ...p, metaAiRewrite: e.target.checked }))}
+              />
+              <span>
+                <span className="block text-sm font-bold text-[rgb(var(--color-text))]">
+                  Meta AI ile erişimi %70 artır
+                </span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-[rgb(var(--color-muted))]">
+                  Facebook foto paylaşımından önce Llama ile özgün caption üretir (başlık kopyalanmaz,
+                  link ilk yoruma gider). Timeout/hata olursa yerel fallback kullanılır; gönderi yine photos
+                  endpoint ile yayınlanır. Anahtar: <code className="rounded bg-[rgb(var(--color-surface))] px-1">LLAMA_API_KEY</code> (Vercel env).
+                </span>
+              </span>
+            </label>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/60 px-4 py-3 text-xs text-[rgb(var(--color-muted))]">
@@ -1257,6 +1280,8 @@ export default function SocialPage() {
               {autoShareDraft.autoStory ? 'Hikâye açık' : 'Hikâye kapalı'}
               {' · '}
               {autoShareDraft.autoOnPublish ? 'Anlık açık' : 'Anlık kapalı'}
+              {' · '}
+              {autoShareDraft.metaAiRewrite !== false ? 'Meta AI açık' : 'Meta AI kapalı'}
             </p>
           </div>
         </div>
@@ -1389,6 +1414,8 @@ export default function SocialPage() {
             <h3 className="mb-1 text-base font-bold text-[rgb(var(--color-text))]">Facebook / Instagram Token</h3>
             <p className="mb-4 text-sm text-[rgb(var(--color-muted))]">
               Graph API Explorer&apos;dan Page Token alın; eksik izinlerde paylaşım başarısız olur.
+              Meta AI (Llama) anahtarı Vercel / <code className="rounded bg-[rgb(var(--color-surface))] px-1 text-xs">.env.local</code> üzerinde{' '}
+              <code className="rounded bg-[rgb(var(--color-surface))] px-1 text-xs">LLAMA_API_KEY</code> olarak tutulur — git&apos;e yazılmaz.
             </p>
             <div className="space-y-3">
               <textarea

@@ -15,6 +15,11 @@ export interface SocialAutoShareSettings {
    * Kapalıysa yalnızca cron (ve manuel) paylaşır.
    */
   autoOnPublish: boolean
+  /**
+   * Facebook foto paylaşımından önce Meta Llama ile özgün caption üret.
+   * Varsayılan: açık. Timeout/fail → yerel fallback (yine photos endpoint).
+   */
+  metaAiRewrite: boolean
   updatedAt?: unknown
   updatedBy?: string
 }
@@ -23,6 +28,7 @@ export const DEFAULT_AUTO_SHARE_SETTINGS: SocialAutoShareSettings = {
   autoPost: true,
   autoStory: true,
   autoOnPublish: true,
+  metaAiRewrite: true,
 }
 
 export function normalizeAutoShareSettings(raw: unknown): SocialAutoShareSettings {
@@ -31,6 +37,7 @@ export function normalizeAutoShareSettings(raw: unknown): SocialAutoShareSetting
     autoPost: r.autoPost !== false,
     autoStory: r.autoStory !== false,
     autoOnPublish: r.autoOnPublish !== false,
+    metaAiRewrite: r.metaAiRewrite !== false,
     ...(r.updatedAt !== undefined ? { updatedAt: r.updatedAt } : {}),
     ...(typeof r.updatedBy === 'string' ? { updatedBy: r.updatedBy } : {}),
   }

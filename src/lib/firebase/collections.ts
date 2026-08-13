@@ -34,6 +34,10 @@ export const Collections = {
   DUPLICATES:     'duplicates',
   /** Social media post tracking */
   SOCIAL_POSTS:   'socialPosts',
+  /** Meta Llama rewrite audit logs */
+  AI_REWRITE_LOGS: 'ai_rewrite_logs',
+  /** Meta Llama rewrite cache (24h) */
+  AI_REWRITE_CACHE: 'aiRewriteCache',
   /** Multi-language article translations */
   TRANSLATIONS:   'translations',
   /** RSS feed source registry */
