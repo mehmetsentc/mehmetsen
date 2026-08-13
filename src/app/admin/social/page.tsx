@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase/firestore'
 import { auth } from '@/lib/firebase/auth'
 import {
   collection, query, where, orderBy, limit,
-  getDocs, startAfter, type QueryDocumentSnapshot,
+  getDocs, startAfter, type QueryConstraint, type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import {
   Share2, CheckCircle2, XCircle, RefreshCw, Loader2,
@@ -16,7 +16,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, YEREL_HABER_CATEGORY_ID } from '@/constants/config'
+import { TURKISH_PROVINCES } from '@/constants/cities'
 import {
   FALLBACK_CATEGORY_RULE,
   composerModeFromRule,
@@ -103,7 +104,7 @@ interface LastShareResult {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-const PAGE_SIZE = 24
+const PAGE_SIZE = 50
 
 const MAIN_CATEGORIES = DEFAULT_CATEGORIES.filter((c) => !c.parentId).slice(0, 16)
 
@@ -222,6 +223,7 @@ export default function SocialPage() {
   const [search, setSearch] = useState('')
   const [hideRss, setHideRss] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [cityFilter, setCityFilter] = useState('')
   const [rows, setRows] = useState<SocialNewsRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -293,87 +295,166 @@ export default function SocialPage() {
         // Read cursor from ref — lastDoc state is intentionally omitted from deps
         // to avoid refetch loops; without the ref, load-more kept reusing null.
         const cursor = reset ? null : lastDocRef.current
+        const cursorParts: QueryConstraint[] = cursor ? [startAfter(cursor)] : []
+
+        // Kategori / il — mümkünse Firestore'a; index yoksa client filtreler.
+        const listFilters: QueryConstraint[] = []
+        if (categoryFilter) listFilters.push(where('categoryId', '==', categoryFilter))
+        if (cityFilter) listFilters.push(where('citySlug', '==', cityFilter))
+
+        const tryQueries = async (
+          attempts: QueryConstraint[][],
+          label: string,
+        ) => {
+          let lastErr: unknown = null
+          for (const constraints of attempts) {
+            try {
+              return await getDocs(query(col, ...constraints))
+            } catch (err) {
+              lastErr = err
+              console.warn(`[social admin] ${label} attempt failed:`, err)
+            }
+          }
+          throw lastErr instanceof Error ? lastErr : new Error(`${label} failed`)
+        }
+
+        const runPublishedList = () =>
+          tryQueries(
+            [
+              [
+                where('status', '==', 'published'),
+                ...listFilters,
+                orderBy('publishedAt', 'desc'),
+                limit(PAGE_SIZE),
+                ...cursorParts,
+              ],
+              // status+categoryId+citySlug composite yoksa il'i düş
+              ...(categoryFilter && cityFilter
+                ? [[
+                    where('status', '==', 'published'),
+                    where('categoryId', '==', categoryFilter),
+                    orderBy('publishedAt', 'desc'),
+                    limit(PAGE_SIZE),
+                    ...cursorParts,
+                  ] as QueryConstraint[]]
+                : []),
+              [
+                where('status', '==', 'published'),
+                orderBy('publishedAt', 'desc'),
+                limit(PAGE_SIZE),
+                ...cursorParts,
+              ],
+            ],
+            'published-list',
+          )
+
+        const runSharedList = (kind: 'post' | 'story') => {
+          const flag = kind === 'post' ? 'socialPublished' : 'storyPublished'
+          const atField = kind === 'post' ? 'socialPublishedAt' : 'storyPublishedAt'
+          const attempts: QueryConstraint[][] = [
+            [
+              where(flag, '==', true),
+              ...listFilters,
+              orderBy(atField, 'desc'),
+              limit(PAGE_SIZE),
+              ...cursorParts,
+            ],
+            [
+              where(flag, '==', true),
+              orderBy(atField, 'desc'),
+              limit(PAGE_SIZE),
+              ...cursorParts,
+            ],
+          ]
+          // Tek alan eşitliği composite index istemez; startAfter ise orderBy ister
+          if (!cursor) {
+            attempts.push([
+              where(flag, '==', true),
+              limit(PAGE_SIZE),
+            ])
+          }
+          attempts.push(
+            [
+              where('status', '==', 'published'),
+              ...listFilters,
+              orderBy('publishedAt', 'desc'),
+              limit(PAGE_SIZE * 3),
+              ...cursorParts,
+            ],
+            [
+              where('status', '==', 'published'),
+              orderBy('publishedAt', 'desc'),
+              limit(PAGE_SIZE * 3),
+              ...cursorParts,
+            ],
+          )
+          return tryQueries(attempts, `shared-${kind}`)
+        }
 
         const runQuery = async () => {
           if (tab === 'post' && statusFilter === 'published') {
-            return getDocs(query(
-              col,
-              where('socialPublished', '==', true),
-              orderBy('socialPublishedAt', 'desc'),
-              limit(PAGE_SIZE),
-              ...(cursor ? [startAfter(cursor)] : []),
-            ))
+            return runSharedList('post')
           }
           if (tab === 'story' && statusFilter === 'published') {
-            try {
-              return await getDocs(query(
-                col,
-                where('storyPublished', '==', true),
-                orderBy('storyPublishedAt', 'desc'),
-                limit(PAGE_SIZE),
-                ...(cursor ? [startAfter(cursor)] : []),
-              ))
-            } catch {
-              return getDocs(query(
-                col,
-                where('status', '==', 'published'),
-                orderBy('publishedAt', 'desc'),
-                limit(PAGE_SIZE * 2),
-                ...(cursor ? [startAfter(cursor)] : []),
-              ))
-            }
+            return runSharedList('story')
           }
           if (tab === 'post' && statusFilter === 'pending') {
-            return getDocs(query(
-              col,
-              where('citySlug', '==', 'canakkale'),
-              where('status', '==', 'published'),
-              orderBy('publishedAt', 'desc'),
-              limit(PAGE_SIZE),
-              ...(cursor ? [startAfter(cursor)] : []),
-            ))
+            // Paylaşılmadı kuyruğu: Çanakkale odaklı (cron ile aynı)
+            return tryQueries(
+              [
+                [
+                  where('citySlug', '==', 'canakkale'),
+                  where('status', '==', 'published'),
+                  orderBy('publishedAt', 'desc'),
+                  limit(PAGE_SIZE),
+                  ...cursorParts,
+                ],
+                [
+                  where('status', '==', 'published'),
+                  orderBy('publishedAt', 'desc'),
+                  limit(PAGE_SIZE),
+                  ...cursorParts,
+                ],
+              ],
+              'pending-post',
+            )
           }
           if (tab === 'story' && statusFilter === 'pending') {
-            try {
-              return await getDocs(query(
-                col,
-                where('status', '==', 'published'),
-                where('categoryId', '==', 'gundem'),
-                orderBy('publishedAt', 'desc'),
-                limit(PAGE_SIZE),
-                ...(cursor ? [startAfter(cursor)] : []),
-              ))
-            } catch {
-              return getDocs(query(
-                col,
-                where('status', '==', 'published'),
-                orderBy('publishedAt', 'desc'),
-                limit(PAGE_SIZE),
-                ...(cursor ? [startAfter(cursor)] : []),
-              ))
-            }
+            return tryQueries(
+              [
+                [
+                  where('status', '==', 'published'),
+                  where('categoryId', '==', 'gundem'),
+                  orderBy('publishedAt', 'desc'),
+                  limit(PAGE_SIZE),
+                  ...cursorParts,
+                ],
+                [
+                  where('status', '==', 'published'),
+                  orderBy('publishedAt', 'desc'),
+                  limit(PAGE_SIZE),
+                  ...cursorParts,
+                ],
+              ],
+              'pending-story',
+            )
           }
-          return getDocs(query(
-            col,
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(PAGE_SIZE),
-            ...(cursor ? [startAfter(cursor)] : []),
-          ))
+          return runPublishedList()
         }
 
         const snap = await runQuery()
 
-        let newRows: SocialNewsRow[] = snap.docs.map((doc) => {
-          const d = doc.data() as Omit<SocialNewsRow, 'id'>
-          return { id: doc.id, ...d }
+        let newRows: SocialNewsRow[] = snap.docs.map((docSnap) => {
+          const d = docSnap.data() as Omit<SocialNewsRow, 'id'>
+          return { id: docSnap.id, ...d }
         })
 
         if (statusFilter === 'pending') {
           newRows = newRows.filter((r) => !isShared(r, tab) && !r.hasVideo && !r.isVideo)
         }
-        if (tab === 'story' && statusFilter === 'published') {
-          newRows = newRows.filter((r) => !!r.storyPublished)
+        if (statusFilter === 'published') {
+          // Fallback sorgular status=published döndürebilir → mutlaka paylaşılmış olanları tut
+          newRows = newRows.filter((r) => isShared(r, tab))
         }
 
         if (reset) {
@@ -391,26 +472,32 @@ export default function SocialPage() {
         setHasMore(snap.docs.length >= PAGE_SIZE)
       } catch (err) {
         console.error('[social admin] fetch error:', err)
+        if (reset) {
+          setRows([])
+          setHasMore(false)
+          lastDocRef.current = null
+        }
         toast.error('Veriler yüklenemedi')
       } finally {
         setLoading(false)
         setLoadingMore(false)
       }
     },
-    [tab, statusFilter]
+    [tab, statusFilter, categoryFilter, cityFilter]
   )
 
   useEffect(() => {
     lastDocRef.current = null
     setRows([])
     void fetchRows(true)
-  }, [tab, statusFilter, fetchRows])
+  }, [tab, statusFilter, categoryFilter, cityFilter, fetchRows])
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
     return rows.filter((r) => {
       if (hideRss && isLikelyExternalRss(r)) return false
       if (categoryFilter && r.categoryId !== categoryFilter && r.category !== categoryFilter) return false
+      if (cityFilter && (r.citySlug || '').toLowerCase() !== cityFilter.toLowerCase()) return false
       if (!q) return true
       return (
         r.title?.toLowerCase().includes(q) ||
@@ -420,7 +507,7 @@ export default function SocialPage() {
         r.categoryId?.toLowerCase().includes(q)
       )
     })
-  }, [rows, search, hideRss, categoryFilter])
+  }, [rows, search, hideRss, categoryFilter, cityFilter])
 
   // ── Open composer ──────────────────────────────────────────────────────────
   const openComposer = (row: SocialNewsRow) => {
@@ -947,7 +1034,11 @@ export default function SocialPage() {
 
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value
+                setCategoryFilter(next)
+                if (next !== YEREL_HABER_CATEGORY_ID) setCityFilter('')
+              }}
               className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] px-3 py-2 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tüm kategoriler</option>
@@ -955,6 +1046,20 @@ export default function SocialPage() {
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+
+            {categoryFilter === YEREL_HABER_CATEGORY_ID && (
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] px-3 py-2 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="İl filtresi"
+              >
+                <option value="">Tüm iller</option>
+                {TURKISH_PROVINCES.map((p) => (
+                  <option key={p.slug} value={p.slug}>{p.name}</option>
+                ))}
+              </select>
+            )}
 
             <button
               type="button"
