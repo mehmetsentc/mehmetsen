@@ -55,7 +55,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
 
         <Link
           href="/"
-          className="flex min-w-0 flex-1 items-center gap-2.5"
+          className="flex min-w-0 flex-1 items-center gap-[3px]"
           aria-label={`${cityName} NaHaber`}
         >
           {lockupSrc ? (
@@ -64,7 +64,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
               alt={`${cityName} NaHaber`}
               width={480}
               height={40}
-              className="h-10 w-auto max-w-full object-contain object-left"
+              className="h-10 w-auto max-w-full border-0 bg-transparent p-0 object-contain object-left"
               priority
             />
           ) : logoSrc ? (
@@ -74,7 +74,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
                 alt=""
                 width={40}
                 height={40}
-                className="h-10 w-10 shrink-0 rounded-md object-contain"
+                className="h-10 w-10 shrink-0 border-0 bg-transparent p-0 object-contain"
                 priority
               />
               <span className="flex h-10 min-w-0 items-center truncate text-[1.5rem] font-black leading-none tracking-tight">

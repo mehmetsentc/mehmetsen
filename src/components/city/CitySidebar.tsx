@@ -156,7 +156,7 @@ function CitySidebarInner({
           <Link
             href="/"
             onClick={closeDrawer}
-            className="flex min-w-0 items-center gap-2"
+            className="flex min-w-0 items-center gap-[3px]"
             aria-label={`${cityName} NaHaber`}
           >
             {lockupSrc ? (
@@ -165,7 +165,7 @@ function CitySidebarInner({
                 alt={`${cityName} NaHaber`}
                 width={360}
                 height={32}
-                className="h-8 w-auto max-w-full object-contain object-left"
+                className="h-8 w-auto max-w-full border-0 bg-transparent p-0 object-contain object-left"
               />
             ) : logoSrc ? (
               <>
@@ -174,7 +174,7 @@ function CitySidebarInner({
                   alt=""
                   width={32}
                   height={32}
-                  className="h-8 w-8 shrink-0 rounded-md object-contain"
+                  className="h-8 w-8 shrink-0 border-0 bg-transparent p-0 object-contain"
                 />
                 <span className="flex h-8 min-w-0 items-center truncate text-lg font-black leading-none tracking-tight text-[rgb(var(--color-text))]">
                   {cityName}

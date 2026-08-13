@@ -30,7 +30,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
       <div className="flex h-14 items-center gap-1.5 px-3">
         <Link
           href="/"
-          className="flex min-w-0 flex-1 items-center gap-2"
+          className="flex min-w-0 flex-1 items-center gap-[3px]"
           aria-label={`${cityName} NaHaber`}
         >
           {lockupSrc ? (
@@ -39,7 +39,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
               alt={`${cityName} NaHaber`}
               width={420}
               height={36}
-              className="h-9 w-auto max-w-full object-contain object-left"
+              className="h-9 w-auto max-w-full border-0 bg-transparent p-0 object-contain object-left"
               priority
             />
           ) : logoSrc ? (
@@ -49,7 +49,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
                 alt=""
                 width={36}
                 height={36}
-                className="h-9 w-9 shrink-0 rounded-md object-contain"
+                className="h-9 w-9 shrink-0 border-0 bg-transparent p-0 object-contain"
                 priority
               />
               <span className="flex h-9 min-w-0 items-center truncate text-[1.35rem] font-black leading-none tracking-tight">
