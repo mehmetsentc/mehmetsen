@@ -30,7 +30,8 @@ export const PLATFORM_CAPTION_MAX: Record<SocialAiPlatform, number> = {
   instagram: 600,
   threads: 280,
   twitter: 200,
-  story: 160,
+  /** Story OG özeti ile hizalı; softMax ile tam cümleye yer bırakılır */
+  story: 200,
 }
 
 const SYSTEM_PROMPT = `Sen NaHaber ve Onyedi Tivi için Türkçe sosyal medya AI editörüsün.
@@ -351,7 +352,9 @@ export async function rewriteForPlatform(
   const max = PLATFORM_CAPTION_MAX[platform]
   let caption = ai.caption
   if (platform === 'story') {
-    caption = clampCompleteSentences(caption, max)
+    // clampCaption kelime ortasında bırakabilir; hikâyede yalnızca tam cümle.
+    // softMax: 2. cümle biraz taşarsa tamamını koru (yarım "can" engeli).
+    caption = clampCompleteSentences(caption, max, max + 32)
   } else if (caption.length > max) {
     caption = clampCaption(caption, max)
   }

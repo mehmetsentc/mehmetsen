@@ -55,30 +55,55 @@ export function clampCompleteHeadline(s: string, max: number, softMax = max + 16
 /** Cümle sonu: .!?… + isteğe bağlı kapanış tırnak/parantez (örn. gelmek.') */
 const SENTENCE_END_RE = /[.!?…]["'»”’)\]]*(?=\s|$)/g
 const COMPLETE_SENTENCE_TAIL_RE = /[.!?…]["'»”’)\]]*$/
+/** Nokta yoksa son çare: noktalı virgül / iki nokta ile biten tam yan cümle */
+const CLAUSE_END_RE = /[;:](?=\s|$)/g
 
 /**
  * Tam cümle(ler) sınırında kısalt; mümkün değilse kelime sınırında.
  * softMax: cümle softMax içinde bitiyorsa tamamını koru (yarım "taburcu" engeli).
  * Tırnaklı bitişleri de tanır: "…gelmek.' 5 yıldır…" → ilk cümlede durur.
+ *
+ * ÖNEMLİ: max altında olsa bile yarım cümle/kelime ASLA dönmez.
+ * (Eski erken return: len<=max → incomplete Meta AI / spot metni olduğu gibi kalıyordu.)
  */
 export function clampCompleteSentences(s: string, max: number, softMax = max + 24): string {
   const t = s.replace(/\s+/g, ' ').trim()
   if (!t) return ''
-  if (t.length <= max) return t
-  if (t.length <= softMax && COMPLETE_SENTENCE_TAIL_RE.test(t)) return t
+
+  const complete = COMPLETE_SENTENCE_TAIL_RE.test(t)
+  if (complete && t.length <= max) return t
+  if (complete && t.length <= softMax) return t
+
   const slice = t.slice(0, Math.max(max, softMax))
   const minEnd = Math.min(36, Math.floor(max * 0.35))
-  let best = -1
-  SENTENCE_END_RE.lastIndex = 0
-  let m: RegExpExecArray | null
-  while ((m = SENTENCE_END_RE.exec(slice)) !== null) {
-    const end = m.index + m[0].length
-    if (end >= minEnd) best = end
+
+  const lastEnd = (re: RegExp): number => {
+    let best = -1
+    re.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(slice)) !== null) {
+      const end = m.index + m[0].length
+      if (end >= minEnd) best = end
+    }
+    return best
   }
-  if (best >= minEnd) {
-    return slice.slice(0, best).trim()
+
+  const hard = lastEnd(SENTENCE_END_RE)
+  if (hard >= minEnd) {
+    return slice.slice(0, hard).trim()
   }
-  return clampAtWordBoundary(t, max)
+
+  // Hiç .!? yok ama metin yarım → ;/: ile biten yan cümlede dur (Fethiye "…atladı; … can")
+  if (!complete) {
+    const soft = lastEnd(CLAUSE_END_RE)
+    if (soft >= minEnd) {
+      return slice.slice(0, soft).trim().replace(/[;:]+$/, '.')
+    }
+  }
+
+  // Son çare: kelime sınırı — max'tan kısa yarım metni olduğu gibi bırakma
+  const budget = Math.min(max, Math.max(minEnd, Math.floor(max * 0.9)))
+  return clampAtWordBoundary(t, t.length <= max ? budget : max)
 }
 
 export interface FeedCaptionInput {

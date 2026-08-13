@@ -442,8 +442,11 @@ export async function publishOneSocial(
             .replace(/\s{2,}/g, ' ')
             .trim()
           if (!cleaned) return `${clampAtWordBoundary(title, 120)}.`
-          if (cleaned.length <= 160) return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`
-          return clampCompleteSentences(cleaned, 130)
+          return clampCompleteSentences(
+            /[.!?…]["'»”’)\]]*$/.test(cleaned) ? cleaned : `${cleaned}.`,
+            200,
+            232,
+          )
         })(),
         caption:  spot ? `📰 ${spot.trim()}` : `📰 ${title.trim()}`,
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
@@ -506,6 +509,13 @@ export async function publishOneSocial(
     } catch (err) {
       console.warn(`[publishOneSocial] Meta AI story/caption rewrite skipped ${newsId}:`, err)
     }
+
+    // Hikâye özeti: daima tam cümle (override dahil) — OG mid-word clip önlemi
+    socialContent.storySummary = clampCompleteSentences(
+      socialContent.storySummary.replace(/\s+/g, ' ').trim(),
+      200,
+      232,
+    )
 
     // OG görseli Firestore'dan socialHeadline/socialStorySummary okur —
     // paylaşmadan önce kaydet ki taze OG doğru metni kullansın.

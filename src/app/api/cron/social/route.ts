@@ -274,8 +274,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       let headline = clampCompleteHeadline(title, 78)
       let storySummary = spot
         ? clampCompleteSentences(
-            /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
-            130
+            /[.!?…]["'»”’)\]]*$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
+            200,
+            232,
           )
         : `${clampAtWordBoundary(title, 120)}.`
       try {
@@ -302,7 +303,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           { articleUrl, newsId: id },
         )
         if (metaAi.enabled && metaAi.caption.trim()) {
-          storySummary = metaAi.caption
+          storySummary = clampCompleteSentences(metaAi.caption, 200, 232)
         }
       } catch (err) {
         console.warn(`[cron/social] Meta AI story rewrite skipped ${id}:`, err)

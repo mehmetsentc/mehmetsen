@@ -167,7 +167,7 @@ function fallbackStorySummary(title: string, caption: string): string {
       ?.trim() || ''
   )
   const base = fromCaption.length >= 40 ? fromCaption : title
-  const clamped = clampCompleteSentences(stripMetaCtas(base), STORY_SUMMARY_MAX)
+  const clamped = clampCompleteSentences(stripMetaCtas(base), STORY_SUMMARY_MAX, STORY_SUMMARY_MAX + 32)
   if (/[.!?]$/.test(clamped)) return clamped
   // Tek satır başlıktan özet üretilemediyse noktalı kısa cümle
   return clampAtWordBoundary(`${clamped.replace(/[.!?…]+$/, '')}.`, STORY_SUMMARY_MAX)
@@ -187,7 +187,8 @@ function parseAISocialJSON(raw: string, title: string): AISocialContent | null {
     const headline = clampHeadline(str(p.headline, title), HEADLINE_MAX)
     const storySummary = clampCompleteSentences(
       stripMetaCtas(str(p.storySummary, fallbackStorySummary(title, caption))),
-      STORY_SUMMARY_MAX
+      STORY_SUMMARY_MAX,
+      STORY_SUMMARY_MAX + 32,
     )
     return {
       headline,

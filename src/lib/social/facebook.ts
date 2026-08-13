@@ -701,7 +701,7 @@ export async function testFacebookPost(
   if (!socialContent) {
     socialContent = {
       headline: clampCompleteHeadline(title, 78),
-      storySummary: spot ? clampCompleteSentences(spot, 160) : `${clampAtWordBoundary(title, 120)}.`,
+      storySummary: spot ? clampCompleteSentences(spot, 200, 232) : `${clampAtWordBoundary(title, 120)}.`,
       caption: spot || title,
       hashtags: ['#Çanakkale', '#SonDakika'],
       altText: title,

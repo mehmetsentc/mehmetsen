@@ -52,9 +52,13 @@ const STORY_COMPLETE_TAIL_RE = /[.!?…]["'»”’)\]]*$/
 const STORY_DANGLING_TAIL_RE =
   /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten)\s*$/iu
 
-/** Inter 800 yaklaşık ortalama glif genişliği (Satori word-wrap simülasyonu) */
+/**
+ * Inter glif genişliği (Satori word-wrap simülasyonu).
+ * Regular için bilerek muhafazakâr (eski 0.48 → 3 satır sanılıp CSS overflow
+ * kelime ortasında kesiyordu; örn. Fethiye "...göre can").
+ */
 function avgGlyphWidth(fontSize: number, weight: 'bold' | 'regular' = 'bold'): number {
-  return fontSize * (weight === 'regular' ? 0.48 : 0.55)
+  return fontSize * (weight === 'regular' ? 0.56 : 0.55)
 }
 
 function estimateWrapLines(
@@ -129,7 +133,7 @@ function truncateToMaxLines(
   let trimmed = stripDanglingTail(result)
   if (!trimmed) trimmed = result.trim()
 
-  // Mümkünse son tam cümlede bitir (yarım ikinci cümle bırakma)
+  // Mümkünse son tam cümlede bitir (yarım ikinci cümle / kelime bırakma)
   if (!STORY_COMPLETE_TAIL_RE.test(trimmed)) {
     const minEnd = Math.min(36, Math.floor(trimmed.length * 0.35))
     let best = -1
@@ -142,7 +146,22 @@ function truncateToMaxLines(
     if (best >= minEnd) {
       return trimmed.slice(0, best).trim()
     }
-    return `${trimmed}…`
+    // Cümle sonu yoksa ellipsis — CSS overflow ile sessiz kesim yok
+    const withEllipsis = `${trimmed.replace(/[…]+$/, '')}…`
+    if (estimateWrapLines(withEllipsis, fontSize, maxWidth, weight) <= maxLines) {
+      return withEllipsis
+    }
+    // Ellipsis de sığmıyorsa bir kelime daha düş
+    const words2 = trimmed.split(' ')
+    while (words2.length > 1) {
+      words2.pop()
+      const candidate = stripDanglingTail(words2.join(' '))
+      if (!candidate) continue
+      if (STORY_COMPLETE_TAIL_RE.test(candidate)) return candidate
+      const ell = `${candidate}…`
+      if (estimateWrapLines(ell, fontSize, maxWidth, weight) <= maxLines) return ell
+    }
+    return withEllipsis
   }
   return trimmed
 }
@@ -209,9 +228,35 @@ function resolveStorySummaryLayout(summaryPlain: string, contentWidth: number): 
   }
 
   let displaySummary = summaryPlain
-  if (wrapLines > SUMMARY_MAX_LINES) {
+  // Taşma VEYA yarım cümle: satır bütçesine sığdır; daima tam cümle tercih et
+  if (wrapLines > SUMMARY_MAX_LINES || !STORY_COMPLETE_TAIL_RE.test(summaryPlain)) {
     displaySummary = truncateToMaxLines(
       summaryPlain, summarySize, contentWidth, SUMMARY_MAX_LINES, 'regular',
+    )
+    // Hâlâ yarım cümle ise (tek uzun cümle) — font küçültüp tekrar dene
+    if (!STORY_COMPLETE_TAIL_RE.test(displaySummary) && !displaySummary.endsWith('…')) {
+      while (summarySize > SUMMARY_MIN_SIZE) {
+        summarySize -= 2
+        const retry = truncateToMaxLines(
+          summaryPlain, summarySize, contentWidth, SUMMARY_MAX_LINES, 'regular',
+        )
+        if (STORY_COMPLETE_TAIL_RE.test(retry) || retry.endsWith('…')) {
+          displaySummary = retry
+          break
+        }
+        displaySummary = retry
+      }
+    }
+    wrapLines = Math.min(
+      SUMMARY_MAX_LINES,
+      Math.max(1, estimateWrapLines(displaySummary.replace(/…$/, ''), summarySize, contentWidth, 'regular')),
+    )
+  }
+
+  // Güvenlik: display asla tahmin edilen satır sayısını aşmasın (CSS clip yok)
+  if (estimateWrapLines(displaySummary, summarySize, contentWidth, 'regular') > SUMMARY_MAX_LINES) {
+    displaySummary = truncateToMaxLines(
+      displaySummary, summarySize, contentWidth, SUMMARY_MAX_LINES, 'regular',
     )
     wrapLines = Math.min(
       SUMMARY_MAX_LINES,
@@ -322,7 +367,8 @@ function resolveStorySummary(
     ''
   const plain = stripHtmlToNewsPlainText(raw).replace(/\s+/g, ' ').trim()
   if (!plain) return ''
-  return clampCompleteSentences(plain, SUMMARY_MAX)
+  // softMax: 2. tam cümle biraz taşarsa koru; yarım cümle asla
+  return clampCompleteSentences(plain, SUMMARY_MAX, SUMMARY_MAX + 32)
 }
 
 const W = 1080
@@ -604,8 +650,8 @@ export async function GET(
                 fontSize: summarySize, lineHeight: summaryLineHeight,
                 letterSpacing: 0.05, display: 'flex',
                 minHeight: summaryBlockHeight,
-                maxHeight: summaryBlockHeight,
-                overflow: 'hidden',
+                // overflow:hidden kelime ortasında kesmesin — metin önceden satıra sığdırılır
+                flexShrink: 0,
               }}>{displaySummary}</span>
             </div>
           ) : null}
