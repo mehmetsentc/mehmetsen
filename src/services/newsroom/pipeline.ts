@@ -1486,6 +1486,10 @@ export async function processNewsroomArticle(
       isPinned: breakingFlags.isPinned,
       isTrending: breakingFlags.isTrending,
       needsAdminReview: needsDraft,
+      // AI confident publish → live + CMS "İnceleme"; hold stays in Onay Bekliyor
+      ...(needsDraft
+        ? { aiAutoPublished: false, needsReview: false }
+        : { aiAutoPublished: true, needsReview: true }),
     }
 
     let targetNewsId = options.existingNewsId

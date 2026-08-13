@@ -5,8 +5,8 @@
  * DeepSeek V4 with full DEFAULT_CATEGORIES knowledge.
  *
  * Decisions:
- *   publish — high confidence, quality OK → auto-publish (when CHIEF_EDITOR_AUTO_PUBLISH)
- *   hold    — unsure category/quality → pending_review draft
+ *   publish — high confidence, quality OK → auto-publish + needsReview (CMS İnceleme)
+ *   hold    — unsure category/quality → pending_review draft (Onay Bekliyor)
  *   reject  — spam, too short, unfixable quality → skip
  *   duplicate → tekrarlayan, never publish
  */

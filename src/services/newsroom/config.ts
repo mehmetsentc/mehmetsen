@@ -1,13 +1,14 @@
 import type { EditorId, EditorMetadata } from '@/services/newsroom/types'
 
 /**
- * Master switch: when false, pipeline NEVER auto-publishes — all items go to
- * newsDrafts (pending_review) for admin approval in "Onay Bekliyor".
- * Set NEWSROOM_AUTO_PUBLISH_ENABLED=1 to re-enable automatic publishing.
+ * Master switch for AI auto-publish.
+ * Default ON: confident AI "publish" → live + İnceleme (post-publish review).
+ * AI "hold" / quality gate fail → newsDrafts pending_review ("Onay Bekliyor").
+ * Kill switch: NEWSROOM_AUTO_PUBLISH_ENABLED=0 or false → everything stays in Onay Bekliyor.
  */
 export const NEWSROOM_AUTO_PUBLISH_ENABLED =
-  process.env.NEWSROOM_AUTO_PUBLISH_ENABLED === '1' ||
-  process.env.NEWSROOM_AUTO_PUBLISH_ENABLED === 'true'
+  process.env.NEWSROOM_AUTO_PUBLISH_ENABLED !== '0' &&
+  process.env.NEWSROOM_AUTO_PUBLISH_ENABLED !== 'false'
 
 /** Auto-publish unless fact-check confidence drops below this (draft queue). */
 export const NEWSROOM_AUTO_PUBLISH_THRESHOLD = Number(

@@ -74,6 +74,7 @@ const FILTERS: { id: AdminNewsFilter; label: string; color: string }[] = [
   { id: 'published', label: 'Yayında', color: 'text-emerald-600' },
   { id: 'featured', label: 'Öne Çıkan', color: 'text-amber-600' },
   { id: 'pending', label: 'Onay Bekliyor', color: 'text-amber-600' },
+  { id: 'review', label: 'İnceleme', color: 'text-violet-600' },
   { id: 'duplicate', label: 'Tekrar Haber', color: 'text-orange-600' },
   { id: 'draft', label: 'Taslak', color: 'text-blue-600' },
   { id: 'removed', label: 'Kaldırıldı', color: 'text-red-600' },
@@ -82,6 +83,7 @@ const FILTERS: { id: AdminNewsFilter; label: string; color: string }[] = [
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   published: { label: 'Yayında', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
   pending: { label: 'Bekliyor', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+  review: { label: 'İnceleme', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' },
   draft: { label: 'Taslak', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
   archived: { label: 'Arşiv', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
   removed: { label: 'Kaldırıldı', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
@@ -582,7 +584,9 @@ function NewsRow({
   const [storyPublished, setStoryPublished] = useState(!!post.storyPublished)
   const [popoverMode, setPopoverMode] = useState<SocialShareMode | null>(null)
   const busy = actionLoading === post.id || sharingMode !== null
-  const badge = STATUS_BADGE[post.status ?? 'draft'] ?? STATUS_BADGE.draft
+  const badge = post.needsReview
+    ? STATUS_BADGE.review
+    : (STATUS_BADGE[post.status ?? 'draft'] ?? STATUS_BADGE.draft)
   const canShare = newsHasShareImage(post)
 
   useEffect(() => {
@@ -774,13 +778,14 @@ function NewsRow({
         {/* Actions */}
         <div className="flex shrink-0 flex-col gap-1 items-end">
           <div className="flex flex-wrap justify-end gap-1">
-            {(post.status === 'pending' || post.status === 'draft') && (
+            {(post.status === 'pending' || post.status === 'draft' || post.needsReview) && (
               <button onClick={() => onApprove(post)} disabled={busy}
                 className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-                {busy && !sharingMode ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}Onayla
+                {busy && !sharingMode ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                {post.needsReview ? 'İnceledim' : 'Onayla'}
               </button>
             )}
-            {post.status === 'pending' && (
+            {post.status === 'pending' && !post.needsReview && (
               <button onClick={() => onReject(post)} disabled={busy}
                 className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-50">
                 <XCircle className="h-3 w-3" />Reddet
@@ -1014,6 +1019,7 @@ function AdminNewsDesktopPage() {
   const initialFilter: AdminNewsFilter =
     filterParam === 'published' ||
     filterParam === 'pending' ||
+    filterParam === 'review' ||
     filterParam === 'duplicate' ||
     filterParam === 'draft' ||
     filterParam === 'removed' ||
@@ -1049,7 +1055,7 @@ function AdminNewsDesktopPage() {
 
   useEffect(() => {
     const fp = searchParams.get('filter') ?? ''
-    if (fp === 'published' || fp === 'pending' || fp === 'duplicate' || fp === 'draft' || fp === 'removed' || fp === 'featured') {
+    if (fp === 'published' || fp === 'pending' || fp === 'review' || fp === 'duplicate' || fp === 'draft' || fp === 'removed' || fp === 'featured') {
       setFilter(fp)
     } else if (!fp) {
       setFilter('all')
@@ -1222,7 +1228,7 @@ function AdminNewsDesktopPage() {
   const handleBulkApprove = async () => {
     // Taslak + onay bekleyen: tekil "Onayla" ile aynı approve akışı
     const eligible = posts.filter(
-      p => selected.has(p.id) && (p.status === 'pending' || p.status === 'draft')
+      p => selected.has(p.id) && (p.status === 'pending' || p.status === 'draft' || p.needsReview)
     )
     if (!eligible.length) { toast('Seçili onaylanacak haber yok'); return }
     setBulkLoading(true)
@@ -1561,7 +1567,7 @@ function AdminNewsDesktopPage() {
         </div>
 
         {/* Bulk actions */}
-        {(selected.size > 0 || filter === 'draft' || filter === 'pending') && (
+        {(selected.size > 0 || filter === 'draft' || filter === 'pending' || filter === 'review') && (
           <div className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 ${confirmBulkRemove ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30' : 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30'}`}>
             {selected.size > 0 && <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{selected.size} seçili</span>}
             {selected.size > 0 && (

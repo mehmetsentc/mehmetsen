@@ -55,6 +55,9 @@ export interface NewsroomFields {
   canonicalId?: string
   duplicateOf?: string
   needsAdminReview?: boolean
+  /** AI auto-published to live; awaiting post-publish human review (CMS İnceleme) */
+  aiAutoPublished?: boolean
+  needsReview?: boolean
 }
 
 export interface NewsDraftDocument extends NewsIngestMeta, NewsLocationFields, NewsroomFields {

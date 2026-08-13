@@ -1,6 +1,8 @@
 /**
- * Process pending newsQueue items — pipeline → newsDrafts (pending_review).
- * Auto-publish only when NEWSROOM_AUTO_PUBLISH_ENABLED=1.
+ * Process pending newsQueue items — pipeline → publish or newsDrafts.
+ * Confident AI publish → live + needsReview (CMS İnceleme).
+ * Hold / quality fail → newsDrafts pending_review (Onay Bekliyor).
+ * Kill switch: NEWSROOM_AUTO_PUBLISH_ENABLED=0 → all drafts.
  *
  * Claim order: newest-first (createdAt DESC / LIFO) — see claimPendingQueueItems.
  * Cron + CMS "Kuyruğu hızlı işle" share this path; batch/concurrency unchanged.
@@ -47,6 +49,8 @@ export async function processNewsQueue(
 
   if (!NEWSROOM_AUTO_PUBLISH_ENABLED) {
     console.log('[processNewsQueue] auto-publish OFF — processed items → newsDrafts (Onay Bekliyor)')
+  } else {
+    console.log('[processNewsQueue] auto-publish ON — confident AI publish → live + İnceleme; hold → Onay Bekliyor')
   }
 
   const stats: QueueProcessStats = {

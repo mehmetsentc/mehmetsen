@@ -98,6 +98,9 @@ export interface NewsroomDraftFields {
   isPinned?: boolean
   isTrending?: boolean
   needsAdminReview?: boolean
+  /** AI published live; awaiting post-publish CMS İnceleme */
+  aiAutoPublished?: boolean
+  needsReview?: boolean
   spot?: string
   content?: string
   bodyBlocks?: import('@/lib/articleBlocks').ArticleBlock[]
@@ -221,6 +224,10 @@ function draftToPublishedNews(
       'breakingScore' in draft ? draft.breakingScore ?? draft.priorityScore ?? 0 : 0,
     isPinned: 'isPinned' in draft ? draft.isPinned ?? false : false,
     isTrending: 'isTrending' in draft ? draft.isTrending ?? false : false,
+    ...('aiAutoPublished' in draft && draft.aiAutoPublished === true
+      ? { aiAutoPublished: true }
+      : {}),
+    ...('needsReview' in draft && draft.needsReview === true ? { needsReview: true } : {}),
     ...('spot' in draft && draft.spot ? { spot: draft.spot } : {}),
     ...('content' in draft && draft.content ? { content: draft.content } : {}),
     ...('bodyBlocks' in draft && Array.isArray(draft.bodyBlocks) && draft.bodyBlocks.length > 0
@@ -277,6 +284,8 @@ export const newsDraftService = {
       ...draftToPublishedNews(doc, slug, now),
       publishedAt: options?.publishedAt ?? now,
       coverImageUrl: doc.coverImageUrl || doc.thumbnail || '',
+      ...(doc.aiAutoPublished === true ? { aiAutoPublished: true } : {}),
+      ...(doc.needsReview === true ? { needsReview: true } : {}),
     }
 
     if (options?.newsId) {
@@ -374,6 +383,10 @@ export const newsDraftService = {
       breakingScore: doc.breakingScore ?? doc.priorityScore ?? 0,
       isPinned: doc.isPinned ?? false,
       isTrending: doc.isTrending ?? false,
+      ...(doc.aiAutoPublished === true ? { aiAutoPublished: true } : {}),
+      ...(doc.needsReview === true
+        ? { needsReview: true, needsAdminReview: true }
+        : {}),
       duplicateOf: meta?.duplicateOf ?? null,
       canonicalId: meta?.canonicalId ?? newsId,
     })
@@ -446,7 +459,7 @@ export const newsDraftService = {
     })
   },
 
-  /** Legacy: approve pending doc still in `news` collection. */
+  /** Legacy: approve pending doc still in `news` collection; also clears İnceleme flags. */
   async approveLegacyPending(newsId: string): Promise<{ newsId: string; slug: string }> {
     const db = getAdminFirestore()
     const ref = db.collection(Collections.NEWS).doc(newsId)
@@ -460,9 +473,26 @@ export const newsDraftService = {
       featured?: boolean
       isEditorPick?: boolean
       featuredAt?: number | { toMillis?: () => number } | null
+      needsReview?: boolean
+      aiAutoPublished?: boolean
     }
     const now = Date.now()
     const slug = data.slug?.trim() || (await allocateUniqueSlug(db, data.title ?? 'haber', newsId))
+
+    // Already live + AI İnceleme → human OK clears review flag (stays published)
+    if (
+      data.status === 'published' &&
+      (data.needsReview === true || data.aiAutoPublished === true)
+    ) {
+      await ref.update({
+        needsReview: false,
+        needsAdminReview: false,
+        reviewedAt: now,
+        updatedAt: now,
+        moderationNote: null,
+      })
+      return { newsId, slug }
+    }
 
     await ref.update({
       status: 'published',
@@ -470,6 +500,8 @@ export const newsDraftService = {
       publishedAt: now,
       updatedAt: now,
       moderationNote: null,
+      needsReview: false,
+      needsAdminReview: false,
       // Preserve / normalize featured pin so approve after “Öne Çıkan” still surfaces
       ...(data.featured === true || data.isEditorPick === true
         ? {

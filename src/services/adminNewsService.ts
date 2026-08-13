@@ -53,7 +53,15 @@ function sanitizeMediaItems(items: MediaItem[] | undefined): Array<{
 
 const PAGE_SIZE = 50
 
-export type AdminNewsFilter = 'all' | 'published' | 'pending' | 'duplicate' | 'draft' | 'removed' | 'featured'
+export type AdminNewsFilter =
+  | 'all'
+  | 'published'
+  | 'pending'
+  | 'review'
+  | 'duplicate'
+  | 'draft'
+  | 'removed'
+  | 'featured'
 
 export type AdminNewsSource = 'news' | 'newsDrafts' | 'newsQueue'
 
@@ -71,6 +79,8 @@ function withSocialFlags(post: Post, data: Record<string, unknown>, adminSource:
     adminSource,
     socialPublished: data.socialPublished === true,
     storyPublished: data.storyPublished === true,
+    needsReview: data.needsReview === true || post.needsReview === true,
+    aiAutoPublished: data.aiAutoPublished === true || post.aiAutoPublished === true,
   }
 }
 
@@ -266,6 +276,10 @@ export const adminNewsService = {
       return listPendingQueue(lastDoc)
     }
 
+    if (filter === 'review') {
+      return listReviewQueue(lastDoc, categoryId, limitOverride, citySlug)
+    }
+
     if (filter === 'duplicate') {
       return listDuplicateNews(lastDoc, categoryId, limitOverride, citySlug)
     }
@@ -351,6 +365,9 @@ export const adminNewsService = {
         status: 'published',
         publishedAt: now,
         updatedAt: now,
+        needsReview: false,
+        needsAdminReview: false,
+        reviewedAt: now,
         moderationNote: null,
       })
     }
@@ -598,6 +615,14 @@ export const adminNewsService = {
     } catch {
       counts.pending_review = 0
     }
+    try {
+      const reviewSnap = await getCountFromServer(
+        query(collection(db, VIDEO_FEED_COLLECTION), where('needsReview', '==', true))
+      )
+      counts.review = reviewSnap.data().count
+    } catch {
+      counts.review = 0
+    }
 
     return counts
   },
@@ -660,6 +685,52 @@ function queueDocToPost(id: string, data: Record<string, unknown>): AdminNewsIte
     updatedAt: createdAt,
     adminSource: 'newsQueue',
   }
+}
+
+/** AI auto-published items awaiting post-publish human review (CMS İnceleme). */
+async function listReviewQueue(
+  lastDoc?: QueryDocumentSnapshot,
+  categoryId?: string,
+  limitOverride?: number,
+  citySlug?: string
+): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
+  const pageSize = limitOverride ?? PAGE_SIZE
+  const filterConstraints: QueryConstraint[] = [where('needsReview', '==', true)]
+  if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
+  if (citySlug) filterConstraints.push(where('citySlug', '==', citySlug))
+
+  const queryAttempts: QueryConstraint[][] = [
+    [...filterConstraints, orderBy('createdAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
+    [...filterConstraints, orderBy('updatedAt', 'desc'), ...(lastDoc ? [startAfter(lastDoc)] : []), limit(pageSize)],
+    [...filterConstraints, orderBy('publishedAt', 'desc'), limit(pageSize)],
+    [...filterConstraints, limit(pageSize * 2)],
+    [where('needsReview', '==', true), limit(Math.max(pageSize * 3, 150))],
+  ]
+
+  let lastError: unknown = null
+  for (let i = 0; i < queryAttempts.length; i++) {
+    const constraints = queryAttempts[i]!
+    const isLast = i === queryAttempts.length - 1
+    try {
+      const snap = await fetchAdminNewsSnap(constraints)
+      const posts = mapAdminNewsDocs(snap.docs, 'published', categoryId, citySlug).filter(
+        (p) => p.needsReview === true
+      )
+      if (posts.length === 0 && !isLast) continue
+      const sliced = posts.slice(0, pageSize)
+      return {
+        posts: sliced,
+        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
+        hasMore: sliced.length >= pageSize,
+      }
+    } catch (error) {
+      lastError = error
+      console.warn('[adminNewsService] review list attempt failed:', error)
+    }
+  }
+
+  console.error('[adminNewsService] review list failed:', lastError)
+  throw lastError instanceof Error ? lastError : new Error('İnceleme listesi yüklenemedi')
 }
 
 /** Tekrar haberler: newsDrafts audit stub'ları + news.isDuplicate (editorial review). */

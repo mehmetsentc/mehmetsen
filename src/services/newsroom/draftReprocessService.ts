@@ -1,6 +1,6 @@
 /**
  * newsDrafts kuyruğunu AI ile yeniden işler.
- * NEWSROOM_AUTO_PUBLISH_ENABLED=true ise geçenler otomatik yayınlanır;
+ * NEWSROOM_AUTO_PUBLISH_ENABLED=true (default) ise geçenler otomatik yayınlanır (İnceleme);
  * false ise tüm sonuçlar pending_review'da kalır (admin onayı beklenir).
  * Kalıcı sorunlular (moderasyon / DRAFT_ONLY) atlanır.
  */

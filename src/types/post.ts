@@ -158,6 +158,9 @@ export interface Post {
   /** AI editör tekrar haber tespiti */
   isDuplicate?: boolean
   duplicateReason?: string
+  /** AI auto-published; CMS İnceleme kuyruğu */
+  aiAutoPublished?: boolean
+  needsReview?: boolean
   publishedAt: string | null
   createdAt: string
   updatedAt: string

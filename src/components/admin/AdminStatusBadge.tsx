@@ -15,6 +15,14 @@ const STATUS_MAP: Record<string, { label: string; cls: string }> = {
     label: 'Onay Bekliyor',
     cls: 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
   },
+  review: {
+    label: 'İnceleme',
+    cls: 'bg-violet-500/10 text-violet-700 dark:text-violet-300',
+  },
+  published_pending_review: {
+    label: 'İnceleme',
+    cls: 'bg-violet-500/10 text-violet-700 dark:text-violet-300',
+  },
   rejected: {
     label: 'Reddedildi',
     cls: 'bg-red-500/10 text-red-700 dark:text-red-300',

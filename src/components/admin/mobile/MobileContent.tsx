@@ -30,12 +30,14 @@ const CHIPS: { id: AdminNewsFilter; label: string }[] = [
   { id: 'all', label: 'Tümü' },
   { id: 'published', label: 'Yayında' },
   { id: 'pending', label: 'Onay' },
+  { id: 'review', label: 'İnceleme' },
   { id: 'draft', label: 'Taslak' },
 ]
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   published: { label: 'YAYINDA', cls: 'text-emerald-600' },
   pending: { label: 'ONAY', cls: 'text-amber-600' },
+  review: { label: 'İNCELEME', cls: 'text-violet-600' },
   draft: { label: 'TASLAK', cls: 'text-blue-600' },
   archived: { label: 'ARŞİV', cls: 'text-[rgb(var(--color-muted))]' },
   removed: { label: 'KALDIRILDI', cls: 'text-red-600' },
@@ -282,10 +284,13 @@ export function MobileContent() {
       ) : (
         <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
           {filtered.map((post) => {
-            const badge = STATUS[post.status ?? 'draft'] ?? STATUS.draft
+            const badge = post.needsReview
+              ? STATUS.review
+              : (STATUS[post.status ?? 'draft'] ?? STATUS.draft)
             const when = post.publishedAt ?? post.createdAt
             const busy = actionId === post.id
             const isPending = post.status === 'pending'
+            const needsReview = post.needsReview === true
             const editHref = isPending
               ? `/admin/approvals/${post.id}?source=${post.adminSource === 'newsDrafts' ? 'newsDrafts' : 'news'}`
               : `/admin/news/${post.id}/edit`
@@ -321,7 +326,7 @@ export function MobileContent() {
                 </Link>
 
                 <div className="flex min-w-0 gap-2 border-t border-[rgb(var(--color-border))]/60 px-2 py-2">
-                  {isPending ? (
+                  {isPending || needsReview ? (
                     <button
                       type="button"
                       disabled={busy}
@@ -329,7 +334,7 @@ export function MobileContent() {
                       className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white disabled:opacity-50"
                     >
                       <Check className="h-4 w-4 shrink-0" />
-                      Onayla
+                      {needsReview ? 'İnceledim' : 'Onayla'}
                     </button>
                   ) : (
                     <Link
@@ -465,6 +470,7 @@ function ContentActionsSheet({
   onRemove: () => void
 }) {
   const isPending = post.status === 'pending'
+  const needsReview = post.needsReview === true
   const isPublished = post.status === 'published'
   const reviewHref = `/admin/approvals/${post.id}?source=${post.adminSource === 'newsDrafts' ? 'newsDrafts' : 'news'}`
 
@@ -492,7 +498,7 @@ function ContentActionsSheet({
           Kategori
         </button>
 
-        {isPending ? (
+        {isPending || needsReview ? (
           <>
             <button
               type="button"
@@ -501,25 +507,29 @@ function ContentActionsSheet({
               className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-emerald-600 disabled:opacity-50"
             >
               <Check className="h-4 w-4" />
-              Onayla
+              {needsReview ? 'İnceledim' : 'Onayla'}
             </button>
-            <Link
-              href={reviewHref}
-              onClick={onClose}
-              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[rgb(var(--color-brand))]"
-            >
-              <ExternalLink className="h-4 w-4" />
-              İncele
-            </Link>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={onReject}
-              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-red-600 disabled:opacity-50"
-            >
-              <X className="h-4 w-4" />
-              Reddet
-            </button>
+            {isPending ? (
+              <>
+                <Link
+                  href={reviewHref}
+                  onClick={onClose}
+                  className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[rgb(var(--color-brand))]"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  İncele
+                </Link>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onReject}
+                  className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-red-600 disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                  Reddet
+                </button>
+              </>
+            ) : null}
           </>
         ) : null}
 
