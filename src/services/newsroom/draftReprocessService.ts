@@ -13,6 +13,7 @@ import {
 } from '@/services/newsroom/config'
 import { enableAutoPublishForActiveEditors } from '@/lib/ai/editorial/aiEditorService'
 import type { NewsroomArticleInput, EditorId, NewsroomEditorType } from '@/services/newsroom/types'
+import { NO_COVER_IMAGE_REASON } from '@/lib/newsCoverImage'
 
 const HARD_SKIP_REASONS = new Set([
   'ai_editor_requires_approval',
@@ -173,14 +174,31 @@ export async function reprocessPendingDrafts(): Promise<DraftReprocessStats> {
         stats.stillDraft += 1
       } else if (result.outcome === 'skipped') {
         stats.skipped += 1
-        await doc.ref.set(
-          {
-            autoReprocessCount: Number(data.autoReprocessCount ?? 0) + 1,
-            autoReprocessAt: Date.now(),
-            autoReprocessSkip: result.outcome,
-          },
-          { merge: true }
-        )
+        const skipReason = result.skipReason?.trim() || ''
+        if (skipReason === NO_COVER_IMAGE_REASON) {
+          // Pipeline already rejects on reprocessDraftId; reinforce audit fields.
+          await doc.ref.set(
+            {
+              draftStatus: 'rejected',
+              moderationNote: NO_COVER_IMAGE_REASON,
+              pipelineSkipped: true,
+              autoReprocessCount: Number(data.autoReprocessCount ?? 0) + 1,
+              autoReprocessAt: Date.now(),
+              autoReprocessSkip: NO_COVER_IMAGE_REASON,
+              updatedAt: Date.now(),
+            },
+            { merge: true }
+          )
+        } else {
+          await doc.ref.set(
+            {
+              autoReprocessCount: Number(data.autoReprocessCount ?? 0) + 1,
+              autoReprocessAt: Date.now(),
+              autoReprocessSkip: result.outcome,
+            },
+            { merge: true }
+          )
+        }
       } else {
         stats.failed += 1
       }

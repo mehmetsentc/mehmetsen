@@ -77,6 +77,10 @@ import { routeAiEditor, authorFieldsFromEditor, aiEditorForcesDraft } from '@/li
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
+import {
+  hasUsableCoverImage,
+  NO_COVER_IMAGE_REASON,
+} from '@/lib/newsCoverImage'
 
 /** Minimum total content length (chars) to proceed to AI rewrite. */
 const QUALITY_MIN_CHARS = 500
@@ -425,6 +429,8 @@ export interface PipelineResult {
   outcome: PipelineOutcome
   lowConfidence?: boolean
   newsId?: string
+  /** Queue lastError / draft moderationNote when outcome=skipped (e.g. görsel yok). */
+  skipReason?: string
 }
 
 async function findExistingByFingerprint(
@@ -583,6 +589,55 @@ export async function processNewsroomArticle(
       } catch {
         // non-blocking — proceed with GPT fallback below
       }
+    }
+
+    // Content was thick enough to skip full extract, but cover may still be missing —
+    // one image-only enrichment attempt before the cover gate.
+    if (
+      !needsExtraction &&
+      !hasUsableCoverImage(workingInput.imageUrl) &&
+      workingInput.sourceUrl?.startsWith('http')
+    ) {
+      try {
+        const extracted = await fetchArticleEnrichment(
+          workingInput.sourceUrl,
+          12_000,
+          { title: workingInput.originalTitle }
+        )
+        if (extracted?.imageUrl && !hasUsableCoverImage(workingInput.imageUrl)) {
+          workingInput = { ...workingInput, imageUrl: extracted.imageUrl }
+        }
+      } catch {
+        // non-blocking — cover gate below decides
+      }
+    }
+
+    // ── COVER IMAGE GATE ─────────────────────────────────────────────────────
+    // Kaynak/RSS/scraper/AI pipeline: görselsiz haber yayınlanmaz ve Onay Bekliyor'a düşmez.
+    // Admin CMS manuel oluşturma bu fonksiyonu kullanmaz.
+    if (!hasUsableCoverImage(workingInput.imageUrl)) {
+      console.warn(
+        `[newsroom/pipeline] cover gate: ${NO_COVER_IMAGE_REASON} → atlandı: ${workingInput.sourceUrl?.slice(0, 100)}`
+      )
+      if (options.reprocessDraftId) {
+        try {
+          await db.collection(Collections.NEWS_DRAFTS).doc(options.reprocessDraftId).set(
+            {
+              draftStatus: 'rejected',
+              moderationNote: NO_COVER_IMAGE_REASON,
+              pipelineSkipped: true,
+              updatedAt: Date.now(),
+            },
+            { merge: true }
+          )
+        } catch (err) {
+          console.warn(
+            `[newsroom/pipeline] cover gate: draft reject failed ${options.reprocessDraftId}:`,
+            err instanceof Error ? err.message : err
+          )
+        }
+      }
+      return { outcome: 'skipped', skipReason: NO_COVER_IMAGE_REASON }
     }
 
     // ── QUALITY GATE ────────────────────────────────────────────────────────

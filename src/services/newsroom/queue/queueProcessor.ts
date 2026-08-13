@@ -199,7 +199,11 @@ export async function processNewsQueue(
         }
         stats.drafted += 1
       } else if (result.outcome === 'skipped') {
-        await markQueueSkipped(db, job.id, 'duplicate or unchanged')
+        await markQueueSkipped(
+          db,
+          job.id,
+          result.skipReason?.trim() || 'duplicate or unchanged'
+        )
         stats.skipped += 1
       } else {
         throw new Error('Pipeline returned failed outcome')
