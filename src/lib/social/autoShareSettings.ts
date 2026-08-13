@@ -16,8 +16,8 @@ export interface SocialAutoShareSettings {
    */
   autoOnPublish: boolean
   /**
-   * Facebook foto paylaşımından önce Meta Llama ile özgün caption üret.
-   * Varsayılan: açık. Timeout/fail → yerel fallback (yine photos endpoint).
+   * Tüm sosyal paylaşımlardan önce Meta Llama ile özgün caption / hikâye özeti üret.
+   * Varsayılan: açık. Timeout/fail → yerel fallback (gönderi yine yayınlanır).
    */
   metaAiRewrite: boolean
   updatedAt?: unknown

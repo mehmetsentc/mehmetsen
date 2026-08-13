@@ -24,6 +24,7 @@ import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
 import { buildSocialImagePayload, materializeBrandedOgForPublish } from '@/lib/social/carouselImages'
 import { buildOgSocialUrl, buildOgStoryUrl } from '@/lib/social/ogCacheVersion'
+import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -470,6 +471,40 @@ export async function publishOneSocial(
           return s.startsWith('#') ? s : `#${s}`
         })
         .filter(Boolean)
+    }
+
+    // Meta AI: hikâye özeti (OG görsele yazılır) + post caption gövdesi.
+    // Platform publisher'lar da rewrite çağırır; 24h cache ile tekrar Llama yok.
+    // Fail → mevcut socialContent kalır (gönderi atlanmaz).
+    try {
+      const metaAi = await rewriteForPlatform(
+        title,
+        socialContent.caption || spot || title,
+        cityName,
+        'story',
+        { articleUrl, newsId },
+      )
+      if (metaAi.enabled) {
+        if (!overrides?.storySummary?.trim()) {
+          socialContent.storySummary = metaAi.caption
+        }
+        if (!overrides?.caption?.trim()) {
+          socialContent.caption = metaAi.caption
+        }
+        if (metaAi.hashtags.length && (!overrides?.hashtags || overrides.hashtags.length === 0)) {
+          socialContent.hashtags = [
+            ...metaAi.hashtags,
+            ...socialContent.hashtags.filter(
+              (t) =>
+                !metaAi.hashtags.some(
+                  (h) => h.toLocaleLowerCase('tr-TR') === String(t).toLocaleLowerCase('tr-TR'),
+                ),
+            ),
+          ].slice(0, 5)
+        }
+      }
+    } catch (err) {
+      console.warn(`[publishOneSocial] Meta AI story/caption rewrite skipped ${newsId}:`, err)
     }
 
     // OG görseli Firestore'dan socialHeadline/socialStorySummary okur —

@@ -5,6 +5,7 @@
 import crypto from 'crypto'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { clampAtWordBoundary } from './feedCaption'
+import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 
 // ── OAuth 1.0a yardımcıları ────────────────────────────────────────────────
 
@@ -77,23 +78,32 @@ function generateOAuthHeader(
 // ── Tweet metni oluştur ────────────────────────────────────────────────────
 
 /** Tweet metnini X karakter sınırına göre kırp (280 karakter) */
-function buildTweetText(payload: SocialPublishPayload): string {
-  const url = payload.articleUrl
+function buildTweetText(payload: SocialPublishPayload, bodyOverride?: string): string {
+  const url = payload.articleUrl ?? ''
   // URL her zaman 23 karakter sayılır (t.co shortening)
-  const urlLength = 24 // 23 + 1 boşluk
+  const urlLength = url ? 24 : 0 // 23 + 1 boşluk
   const maxText = 280 - urlLength
 
-  // Başlık + hashtag kombinasyonu
-  const hashtagLine = '#NaHaber #Çanakkale #SonDakika'
+  const tags =
+    payload.hashtags?.length
+      ? payload.hashtags
+          .map((t) => {
+            const s = String(t).trim()
+            return s.startsWith('#') ? s : `#${s}`
+          })
+          .slice(0, 3)
+          .join(' ')
+      : '#NaHaber #Çanakkale #SonDakika'
   const separator = '\n\n'
-  const available = maxText - hashtagLine.length - separator.length * 2
+  const available = Math.max(40, maxText - tags.length - separator.length * (url ? 2 : 1))
 
-  let headline = payload.title
-  if (headline.length > available) {
-    headline = clampAtWordBoundary(headline, available - 1)
+  let body = (bodyOverride ?? payload.description ?? payload.title).replace(/\s+/g, ' ').trim()
+  if (body.length > available) {
+    body = clampAtWordBoundary(body, available - 1)
   }
 
-  return `${headline}${separator}${hashtagLine}\n\n${url}`
+  if (url) return `${body}${separator}${tags}\n\n${url}`
+  return `${body}${separator}${tags}`
 }
 
 // ── Ana yayın fonksiyonu ───────────────────────────────────────────────────
@@ -116,7 +126,23 @@ export async function publishToTwitter(
     return { success: false, error: `X credentials eksik: ${missing}` }
   }
 
-  const tweetText = buildTweetText(payload)
+  // Meta AI: özgün caption (280 limit). Fail → başlık/description fallback.
+  let tweetBody: string | undefined
+  let tweetPayload = payload
+  const city = payload.cityName?.trim() || 'Çanakkale'
+  const contentForAi = (payload.description ?? '').trim() || payload.title
+  const ai = await rewriteForPlatform(payload.title, contentForAi, city, 'twitter', {
+    articleUrl: payload.articleUrl,
+    newsId: payload.newsId,
+  })
+  if (ai.enabled) {
+    tweetBody = ai.caption
+    if (ai.hashtags.length) {
+      tweetPayload = { ...payload, hashtags: ai.hashtags }
+    }
+  }
+
+  const tweetText = buildTweetText(tweetPayload, tweetBody)
   const url = 'https://api.twitter.com/2/tweets'
   const body = JSON.stringify({ text: tweetText })
 

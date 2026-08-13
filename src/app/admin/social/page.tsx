@@ -1246,12 +1246,12 @@ export default function SocialPage() {
               />
               <span>
                 <span className="block text-sm font-bold text-[rgb(var(--color-text))]">
-                  Meta AI ile erişimi %70 artır
+                  Meta AI ile özgünleştir
                 </span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-[rgb(var(--color-muted))]">
-                  Facebook foto paylaşımından önce Llama ile özgün caption üretir (başlık kopyalanmaz,
-                  link ilk yoruma gider). Timeout/hata olursa yerel fallback kullanılır; gönderi yine photos
-                  endpoint ile yayınlanır. Anahtar: <code className="rounded bg-[rgb(var(--color-surface))] px-1">LLAMA_API_KEY</code> (Vercel env).
+                  Tüm sosyal paylaşımlarda (Facebook, Instagram, Hikâye, Threads, X) Llama ile özgün
+                  caption/özet üretir. 24 saat cache; timeout/hata olursa yerel fallback — gönderi atlanmaz.
+                  Anahtar: <code className="rounded bg-[rgb(var(--color-surface))] px-1">LLAMA_API_KEY</code> (Vercel env).
                 </span>
               </span>
             </label>

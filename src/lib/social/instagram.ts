@@ -21,6 +21,7 @@ import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { getSocialTokens } from './tokenStore'
 import { buildFeedCaption } from './feedCaption'
 import { resolveCarouselUrls } from './carouselImages'
+import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
@@ -36,6 +37,42 @@ function buildInstagramCaption(payload: SocialPublishPayload): string {
     body: payload.description,
     articleUrl: payload.articleUrl,
     hashtags: payload.hashtags,
+    maxLen: IG_CAPTION_LIMIT,
+  })
+}
+
+/**
+ * Meta AI ile gövdeyi özgünleştir; fail → yerel caption.
+ * URL + hashtag buildFeedCaption tarafından eklenir.
+ */
+async function resolveInstagramCaption(payload: SocialPublishPayload): Promise<string> {
+  const city = payload.cityName?.trim() || 'Çanakkale'
+  const content = (payload.description ?? '').trim() || payload.title
+  const ai = await rewriteForPlatform(payload.title, content, city, 'instagram', {
+    articleUrl: payload.articleUrl,
+    newsId: payload.newsId,
+  })
+  if (!ai.enabled) return buildInstagramCaption(payload)
+
+  const baseTags = payload.hashtags ?? []
+  const merged =
+    ai.hashtags.length > 0
+      ? [
+          ...ai.hashtags,
+          ...baseTags.filter(
+            (t) =>
+              !ai.hashtags.some(
+                (h) => h.toLocaleLowerCase('tr-TR') === String(t).trim().toLocaleLowerCase('tr-TR'),
+              ),
+          ),
+        ].slice(0, 5)
+      : baseTags
+
+  return buildFeedCaption({
+    title: payload.title,
+    body: ai.caption,
+    articleUrl: payload.articleUrl,
+    hashtags: merged,
     maxLen: IG_CAPTION_LIMIT,
   })
 }
@@ -394,7 +431,7 @@ export async function publishToInstagram(
     }
   }
 
-  const caption = buildInstagramCaption(payload)
+  const caption = await resolveInstagramCaption(payload)
 
   try {
     if (carouselUrls && carouselUrls.length >= 2) {

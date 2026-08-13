@@ -1,16 +1,20 @@
 /**
- * Meta / Llama rewrite for Facebook photo captions.
+ * Meta / Llama rewrite — tüm sosyal paylaşımlar için AI editör.
  *
+ * Platformlar: Facebook photos, Instagram feed, Threads, X/Twitter, Stories (özet).
  * POST https://api.llama.com/v1/chat/completions
  * Model: Llama-3.3-70B-Instruct
  * Auth: Bearer LLAMA_API_KEY (env) or config/socialMedia.llamaApiKey
  *
- * Cache: Firestore aiRewriteCache/{hash} — 24h TTL
+ * Cache: Firestore aiRewriteCache/{hash} — 24h TTL (articleUrl paylaşılır → platformlar cache hit)
  * Logs:  Firestore ai_rewrite_logs
+ * Toggle: config/socialAutoShare.metaAiRewrite (varsayılan açık)
  */
 import { createHash } from 'crypto'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
+import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
+import { clampCompleteSentences } from '@/lib/social/feedCaption'
 
 const LLAMA_URL = 'https://api.llama.com/v1/chat/completions'
 const LLAMA_MODEL = 'Llama-3.3-70B-Instruct'
@@ -18,15 +22,26 @@ const TIMEOUT_MS = 6_000
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const ALLOWED_TAGS = new Set(['#çanakkale', '#sondakika'])
 
-const SYSTEM_PROMPT = `Sen NaHaber ve Onyedi Tivi için Türkçe sosyal medya editörüsün.
-Facebook Page fotoğraf gönderisi (/{page-id}/photos) caption + ilk yorum metni üretiyorsun.
+/** Platform-specific caption body max (URL/hashtag publisher ekler). */
+export type SocialAiPlatform = 'facebook' | 'instagram' | 'threads' | 'twitter' | 'story'
 
-AMAÇ: Organik erişim. Caption’da link YOK (link ilk yoruma gider). Başlık manşetini AYNEN kullanma.
+export const PLATFORM_CAPTION_MAX: Record<SocialAiPlatform, number> = {
+  facebook: 220,
+  instagram: 600,
+  threads: 280,
+  twitter: 200,
+  story: 160,
+}
+
+const SYSTEM_PROMPT = `Sen NaHaber ve Onyedi Tivi için Türkçe sosyal medya AI editörüsün.
+Facebook, Instagram, Threads, X ve Hikâye paylaşımları için özgün caption / özet üretiyorsun.
+
+AMAÇ: Organik erişim. Başlık manşetini AYNEN kullanma; aynı kelime torbasını yeniden dizme.
 
 KURALLAR:
-1) caption: Haberi 1–2 özgün cümlede özetle. Başlıktaki kelime dizilimini kopyalama; aynı kelime torbasını yeniden dizme.
+1) caption: Haberi 1–2 özgün cümlede özetle. Başlıktaki kelime dizilimini kopyalama.
 2) Ton: Ciddi yerel haber odası. Clickbait yasak ("şok", "inanılmaz", "son dakika bomba", sahte vaat).
-3) Uzunluk: caption toplam max 220 karakter; en fazla 2 cümle; emoji en fazla 1 (tercihen yok veya 📍 şehir satırında sistem ekler — caption gövdesinde emoji şart değil).
+3) Uzunluk: caption toplam max 220 karakter; en fazla 2 cümle; emoji en fazla 1 (tercihen yok — 📍 şehir satırını sistem ekler).
 4) URL / https / www / "tıkla" / "haberimizde" / "devamını oku" caption içinde YASAK.
 5) hashtags: max 2; yalnızca #Çanakkale ve/veya #SonDakika. Konuya uymuyorsa boş dizi []. Başka etiket YASAK.
 6) comment_text: Kısa yönlendirme, link YOK (sistem haber URL’sini ekler). Örn: "Haberin detayı:" veya "Ayrıntılar:"
@@ -55,6 +70,16 @@ async function resolveLlamaApiKey(): Promise<string> {
     return k || ''
   } catch {
     return ''
+  }
+}
+
+/** Global toggle — varsayılan açık. */
+export async function isMetaAiRewriteEnabled(): Promise<boolean> {
+  try {
+    const settings = await getAutoShareSettings()
+    return settings.metaAiRewrite !== false
+  } catch {
+    return true
   }
 }
 
@@ -177,7 +202,7 @@ async function writeCache(cacheKey: string, result: MetaAiRewriteResult, meta: {
   }
 }
 
-/** Audit log after (or before) FB publish. */
+/** Audit log after (or before) social publish. */
 export async function logAiRewrite(entry: {
   newsId?: string
   title: string
@@ -189,6 +214,7 @@ export async function logAiRewrite(entry: {
   source: string
   error?: string
   cacheKey?: string
+  platform?: SocialAiPlatform
 }): Promise<void> {
   try {
     await getAdminFirestore().collection('ai_rewrite_logs').add({
@@ -202,8 +228,8 @@ export async function logAiRewrite(entry: {
 }
 
 /**
- * Rewrite news for Facebook photo caption + comment opener.
- * Timeout 6s → fallback. Same hash within 24h → cache hit.
+ * Rewrite news for social caption + comment opener.
+ * Timeout 6s → fallback. Same hash within 24h → cache hit (tüm platformlar paylaşır).
  */
 export async function rewriteForSocial(
   title: string,
@@ -305,4 +331,36 @@ JSON üret.`
   } finally {
     clearTimeout(timer)
   }
+}
+
+/**
+ * Platform-aware rewrite: toggle kapalıysa null; açıkken rewrite + platform max clamp.
+ * AI fail → fallback caption (yine döner); asla throw etmez.
+ */
+export async function rewriteForPlatform(
+  title: string,
+  content: string,
+  city: string,
+  platform: SocialAiPlatform,
+  opts?: { articleUrl?: string; newsId?: string },
+): Promise<(MetaAiRewriteResult & { enabled: true }) | { enabled: false }> {
+  const enabled = await isMetaAiRewriteEnabled()
+  if (!enabled) return { enabled: false }
+
+  const ai = await rewriteForSocial(title, content, city, opts)
+  const max = PLATFORM_CAPTION_MAX[platform]
+  let caption = ai.caption
+  if (platform === 'story') {
+    caption = clampCompleteSentences(caption, max)
+  } else if (caption.length > max) {
+    caption = clampCaption(caption, max)
+  }
+
+  if (ai.source === 'fallback' || ai.error) {
+    console.error(`[metaAiRewrite] ${platform} fallback news=${opts?.newsId ?? '?'}: ${ai.error ?? 'AI timeout'}`)
+  } else {
+    console.log(`[metaAiRewrite] ${platform} ok source=${ai.source} len=${caption.length}`)
+  }
+
+  return { ...ai, caption, enabled: true }
 }

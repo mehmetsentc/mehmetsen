@@ -37,6 +37,7 @@ import {
 } from '@/lib/social/publishOneSocial'
 import { getCategoryRulesDoc } from '@/lib/social/categoryRulesStore'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
+import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 import {
   allowsAutoPost,
   allowsAutoStory,
@@ -288,6 +289,24 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           if (ai.storySummary) storySummary = ai.storySummary
         }
       } catch { /* fallback */ }
+
+      // Meta AI: hikâye özetini özgünleştir (OG'ye yazılır). Fail → mevcut özet.
+      try {
+        const cityName =
+          typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
+        const metaAi = await rewriteForPlatform(
+          title,
+          storySummary || spot || title,
+          cityName,
+          'story',
+          { articleUrl, newsId: id },
+        )
+        if (metaAi.enabled && metaAi.caption.trim()) {
+          storySummary = metaAi.caption
+        }
+      } catch (err) {
+        console.warn(`[cron/social] Meta AI story rewrite skipped ${id}:`, err)
+      }
 
       // OG route sosyal alanları okusun diye önce kaydet
       try {

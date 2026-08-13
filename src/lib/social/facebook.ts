@@ -31,8 +31,7 @@ import { buildSocialImagePayload } from './carouselImages'
 import { buildOgSocialUrl } from './ogCacheVersion'
 import { clampAtWordBoundary, clampCompleteHeadline } from './feedCaption'
 import { generateSocialContent } from './aiSocialEditor'
-import { rewriteForSocial, logAiRewrite } from '@/services/metaAiRewriteService'
-import { getAutoShareSettings } from './autoShareSettingsStore'
+import { rewriteForSocial, rewriteForPlatform, logAiRewrite } from '@/services/metaAiRewriteService'
 
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
@@ -551,19 +550,12 @@ export async function publishToFacebook(
   let aiHashtags: string[] = []
   let cacheKey: string | undefined
 
-  let useAi = true
-  try {
-    const settings = await getAutoShareSettings()
-    useAi = settings.metaAiRewrite !== false
-  } catch {
-    useAi = true
-  }
+  const ai = await rewriteForPlatform(payload.title, contentForAi, city, 'facebook', {
+    articleUrl,
+    newsId: payload.newsId,
+  })
 
-  if (useAi) {
-    const ai = await rewriteForSocial(payload.title, contentForAi, city, {
-      articleUrl,
-      newsId: payload.newsId,
-    })
+  if (ai.enabled) {
     aiSource = ai.source
     aiError = ai.error
     cacheKey = ai.cacheKey
@@ -571,9 +563,6 @@ export async function publishToFacebook(
     const tagLine = ai.hashtags.length ? `\n\n${ai.hashtags.join(' ')}` : ''
     caption = `${ai.caption}\n\n📍 ${city}${tagLine}`.trim()
     commentOpener = ai.comment_text || 'Haberin detayı:'
-    if (ai.source === 'fallback' || ai.error) {
-      console.error(`[facebook] AI rewrite fallback news=${payload.newsId}: ${ai.error ?? 'AI timeout'}`)
-    }
   } else {
     caption = buildFacebookPhotoCaption(payload)
   }

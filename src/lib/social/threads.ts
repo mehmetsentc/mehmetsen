@@ -18,6 +18,7 @@
  */
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from './feedCaption'
+import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 
 const THREADS_API_BASE = 'https://graph.threads.net/v1.0'
 /** Meta Threads API: post text max 500 characters (emojis = UTF-8 bytes). */
@@ -300,7 +301,23 @@ export async function publishToThreads(
     return { success: false, error: `Threads credentials eksik: ${missing}` }
   }
 
-  const caption  = buildThreadsCaption(payload)
+  // Meta AI: özgün gövde (500 limit buildThreadsCaption içinde korunur). Fail → yerel.
+  let captionPayload = payload
+  const city = payload.cityName?.trim() || 'Çanakkale'
+  const contentForAi = (payload.description ?? '').trim() || payload.title
+  const ai = await rewriteForPlatform(payload.title, contentForAi, city, 'threads', {
+    articleUrl: payload.articleUrl,
+    newsId: payload.newsId,
+  })
+  if (ai.enabled) {
+    const tags =
+      ai.hashtags.length > 0
+        ? ai.hashtags
+        : payload.hashtags
+    captionPayload = { ...payload, description: ai.caption, hashtags: tags }
+  }
+
+  const caption  = buildThreadsCaption(captionPayload)
   const imageUrl = payload.imageUrl?.trim() || undefined
 
   try {
