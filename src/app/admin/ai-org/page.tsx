@@ -151,10 +151,30 @@ export default function AiOrgPage() {
             <button
               type="button"
               disabled={Boolean(busy)}
-              onClick={() => void runAction('seed-core', 'Çekirdek org')}
+              onClick={() => {
+                if (
+                  !confirm(
+                    'Çekirdek org + 81 SMM + yerel editör sync + varsayılan talimatlar seed edilecek. Devam?'
+                  )
+                )
+                  return
+                void runAction('seed-all', 'Tam seed')
+              }}
               className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
             >
-              {busy === 'seed-core' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Çekirdek Org Seed'}
+              {busy === 'seed-all' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                'Tam Seed (Org + SMM + Talimat)'
+              )}
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => void runAction('seed-core', 'Çekirdek org')}
+              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/5 disabled:opacity-50"
+            >
+              {busy === 'seed-core' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Çekirdek Org'}
             </button>
             <button
               type="button"
@@ -173,7 +193,15 @@ export default function AiOrgPage() {
               }}
               className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/5 disabled:opacity-50"
             >
-              81 İl SMM Oluştur
+              81 İl SMM
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => void runAction('seed-instructions', 'Talimatlar')}
+              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/5 disabled:opacity-50"
+            >
+              Talimat Seed
             </button>
           </div>
         ) : null

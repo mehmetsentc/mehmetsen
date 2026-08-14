@@ -7,6 +7,7 @@ import {
   seedCoreOrgAgents,
   syncLocalEditorsFromAiEditors,
 } from '@/services/newsroomOs/agentService'
+import { seedDefaultInstructionSets } from '@/services/newsroomOs/instructionService'
 import { DEPARTMENT_LABELS, ROLE_TEMPLATE_LABELS } from '@/services/newsroomOs/orgSeed'
 
 export const runtime = 'nodejs'
@@ -76,6 +77,36 @@ export async function POST(request: NextRequest) {
     if (action === 'sync-local-editors') {
       const result = await syncLocalEditorsFromAiEditors()
       return NextResponse.json({ ok: true, action, ...result })
+    }
+    if (action === 'seed-instructions') {
+      const result = await seedDefaultInstructionSets(auth.uid)
+      return NextResponse.json({ ok: true, action, ...result })
+    }
+    if (action === 'seed-all') {
+      const core = await seedCoreOrgAgents()
+      const smm = await seedCitySmmAgents()
+      const locals = await syncLocalEditorsFromAiEditors()
+      const instructions = await seedDefaultInstructionSets(auth.uid)
+      return NextResponse.json({
+        ok: true,
+        action,
+        core,
+        smm,
+        locals,
+        instructions,
+        created: [
+          ...core.created,
+          ...smm.created,
+          ...locals.created,
+          ...instructions.created,
+        ],
+        updated: [
+          ...core.updated,
+          ...smm.updated,
+          ...locals.updated,
+          ...instructions.updated,
+        ],
+      })
     }
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })

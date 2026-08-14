@@ -13,6 +13,7 @@ import {
   specToAgent,
 } from '@/services/newsroomOs/orgSeed'
 import { listAiEditors } from '@/lib/ai/editorial/aiEditorService'
+import { buildEffectiveInstructions } from '@/services/newsroomOs/instructionService'
 
 const DEFAULT_ALLOWED_TASKS: Record<string, AgentTaskType[]> = {
   'editor-in-chief': ['EDITORIAL_APPROVAL', 'PUBLISH', 'LEARNING_ANALYSIS'],
@@ -103,8 +104,9 @@ export async function seedCoreOrgAgents(): Promise<{
         {
           ...agent,
           createdAt: (existing.data() as NewsroomAgent).createdAt ?? now,
-          // Preserve custom instructions / status if already tuned
-          customInstructions: (existing.data() as NewsroomAgent).customInstructions,
+          customInstructions:
+            (existing.data() as NewsroomAgent).customInstructions ||
+            agent.customInstructions,
           status: (existing.data() as NewsroomAgent).status ?? 'active',
           updatedAt: now,
         },
@@ -313,6 +315,8 @@ export async function buildAgentRuntimeContext(agentId: string): Promise<AgentRu
     'Social publish failure (3x) → social-director',
   ]
 
+  const effective = await buildEffectiveInstructions(agent)
+
   return {
     agent,
     roleLabel: ROLE_TEMPLATE_LABELS[agent.roleTemplateId],
@@ -330,7 +334,11 @@ export async function buildAgentRuntimeContext(agentId: string): Promise<AgentRu
     deniedTaskTypes,
     escalationRules,
     reportResultToAgentId: agent.managerAgentId ?? null,
-    effectiveInstructionVersionIds: [],
+    effectiveInstructionVersionIds: effective.versionIds,
+    effectiveInstructions: {
+      layers: effective.layers,
+      combinedText: effective.combinedText,
+    },
   }
 }
 

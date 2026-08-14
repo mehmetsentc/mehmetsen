@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Bell, Search, Plus, ExternalLink, RefreshCw } from 'lucide-react'
+import { Bell, Search, Plus, ExternalLink, RefreshCw, HelpCircle } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { cn } from '@/lib/utils'
 import { db } from '@/lib/firebase/firestore'
 import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer } from 'firebase/firestore'
 import type { CmsNotification } from '@/types/cms'
+import { CMS_ROLE_COLORS } from '@/types/cms'
 import { getSiteUrl } from '@/lib/seo'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -128,7 +129,7 @@ interface CMSHeaderProps {
 }
 
 export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
-  const { can } = useCmsAuth()
+  const { can, user, role, roleLabel } = useCmsAuth()
   const [notifOpen, setNotifOpen] = useState(false)
   const [cmdOpen, setCmdOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
@@ -184,26 +185,24 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
     setNotifOpen((o) => !o)
   }
 
+  const roleBadge = roleLabel || (role ? String(role) : 'Editör')
+
   return (
     <>
-      <header className="sticky top-0 z-30 hidden items-center gap-3 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))]/95 px-4 py-3 backdrop-blur-sm md:flex sm:px-6">
+      <header className="sticky top-0 z-30 hidden items-center gap-3 border-b border-white/10 bg-[rgb(var(--color-bg))]/95 px-4 py-3 backdrop-blur-md md:flex sm:px-6">
         <div className="min-w-0 shrink">
-          <h1 className="truncate text-lg font-bold tracking-tight text-[rgb(var(--color-text))] sm:text-xl">
-            {title}
-          </h1>
-          {subtitle ? (
-            <p className="truncate text-xs text-[rgb(var(--color-muted))] sm:text-sm">{subtitle}</p>
-          ) : null}
+          <h1 className="truncate text-lg font-bold tracking-tight text-white sm:text-xl">{title}</h1>
+          {subtitle ? <p className="truncate text-xs text-slate-400 sm:text-sm">{subtitle}</p> : null}
         </div>
 
         <button
           type="button"
           onClick={openCommand}
-          className="mx-auto hidden min-w-0 max-w-md flex-1 items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-left text-sm text-[rgb(var(--color-muted))] transition-colors hover:border-[rgb(var(--color-brand))]/30 hover:text-[rgb(var(--color-text))] md:flex"
+          className="mx-auto hidden min-w-0 max-w-md flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left text-sm text-slate-400 transition-colors hover:border-white/20 hover:text-slate-200 md:flex"
         >
           <Search className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate">Haber, kişi, kaynak veya komut ara…</span>
-          <kbd className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5 text-[10px] font-semibold">
+          <span className="min-w-0 flex-1 truncate">Ara…</span>
+          <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
             ⌘K
           </kbd>
         </button>
@@ -214,7 +213,7 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
           <button
             type="button"
             onClick={openCommand}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-400 md:hidden"
             aria-label="Ara"
           >
             <Search className="h-4 w-4" />
@@ -234,7 +233,7 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
             <button
               type="button"
               onClick={openNotifications}
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-400 transition-colors hover:text-white"
               aria-label="Bildirimler"
             >
               <Bell className="h-4 w-4" />
@@ -252,15 +251,44 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
             ) : null}
           </div>
 
+          <Link
+            href="/admin/system-health"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-400 transition-colors hover:text-white"
+            title="Yardım / Sistem"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Link>
+
           <a
             href={getSiteUrl()}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-400 transition-colors hover:text-white"
             title="Siteyi Önizle"
           >
             <ExternalLink className="h-4 w-4" />
           </a>
+
+          {user ? (
+            <div className="ml-1 hidden items-center gap-2.5 border-l border-white/10 pl-3 lg:flex">
+              <div className="text-right">
+                <p className="max-w-[140px] truncate text-xs font-semibold text-white">
+                  {user.displayName || user.email || 'Editör'}
+                </p>
+                <span
+                  className={cn(
+                    'mt-0.5 inline-block rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wide',
+                    role ? CMS_ROLE_COLORS[role] : 'bg-violet-500/20 text-violet-300'
+                  )}
+                >
+                  {roleBadge}
+                </span>
+              </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold text-white">
+                {(user.displayName?.[0] || user.email?.[0] || 'N').toUpperCase()}
+              </div>
+            </div>
+          ) : null}
         </div>
       </header>
 
@@ -280,7 +308,7 @@ export function CMSRefreshButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
+      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-400 transition-colors hover:text-white"
     >
       <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
       <span className="hidden sm:inline">Yenile</span>

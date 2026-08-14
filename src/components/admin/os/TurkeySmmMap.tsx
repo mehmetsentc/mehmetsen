@@ -104,8 +104,8 @@ export function TurkeySmmMap({
       <svg viewBox="0 0 100 55" className="h-auto w-full" role="img" aria-label="81 il SMM haritası">
         <path
           d="M6 18 C8 8, 18 6, 28 8 C40 6, 52 8, 64 10 C74 8, 84 12, 90 18 C94 24, 92 32, 86 36 C78 42, 68 46, 56 48 C44 50, 34 48, 24 44 C16 40, 10 34, 7 28 C5 24, 5 20, 6 18 Z"
-          fill="rgb(226 232 240 / 0.55)"
-          stroke="rgb(148 163 184)"
+          fill="rgb(16 185 129 / 0.18)"
+          stroke="rgb(52 211 153 / 0.45)"
           strokeWidth="0.6"
         />
         {CITY_DOTS.filter((d) => known.has(d.slug)).map((d) => {

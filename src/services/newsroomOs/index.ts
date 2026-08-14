@@ -22,3 +22,11 @@ export {
 export * from './memoryService'
 export * from './smmQueueService'
 export { listAuditLogs, probeSystemHealth, getAiModelRegistry } from './opsService'
+export {
+  buildEffectiveInstructions,
+  getInstructionSet,
+  listInstructionSets,
+  listInstructionVersions,
+  seedDefaultInstructionSets,
+  upsertInstructionSetVersion,
+} from './instructionService'

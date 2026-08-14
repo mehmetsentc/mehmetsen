@@ -60,6 +60,12 @@ export type AgentDepartmentId =
   | 'desk-local'
   | 'desk-sports'
   | 'desk-economy'
+  | 'desk-world'
+  | 'desk-politics'
+  | 'desk-tech'
+  | 'desk-health'
+  | 'desk-culture'
+  | 'desk-lifestyle'
   | 'writing'
   | 'digital'
   | 'social'
@@ -144,6 +150,54 @@ export interface AgentRuntimeContext {
   escalationRules: string[]
   reportResultToAgentId?: string | null
   effectiveInstructionVersionIds: string[]
+  effectiveInstructions?: {
+    layers: Array<{
+      layer: InstructionLayer
+      setId: string
+      versionId: string
+      title: string
+      content: string
+    }>
+    combinedText: string
+  }
+}
+
+// ─── Instruction sets (layered inheritance) ───────────────────────────────────
+
+export type InstructionLayer =
+  | 'global'
+  | 'department'
+  | 'role'
+  | 'location'
+  | 'agent'
+  | 'task'
+  | 'news'
+
+export type InstructionSetStatus = 'draft' | 'active' | 'archived'
+
+export interface InstructionVersion {
+  id: string
+  setId: string
+  version: number
+  content: string
+  changelog?: string | null
+  createdByHumanId?: string | null
+  createdByAgentId?: string | null
+  createdAt: number
+  previousContent?: string | null
+}
+
+export interface InstructionSet {
+  id: string
+  layer: InstructionLayer
+  title: string
+  /** departmentId / roleTemplateId / citySlug / agentId depending on layer */
+  scopeKey: string
+  status: InstructionSetStatus
+  activeVersionId?: string | null
+  activeVersion?: number | null
+  updatedAt: number
+  createdAt: number
 }
 
 // ─── Tasks ────────────────────────────────────────────────────────────────────

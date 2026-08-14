@@ -101,6 +101,7 @@ export const Collections = {
   AGENT_MEMORIES: 'agentMemories',
   SHARED_MEMORIES: 'sharedNewsroomMemories',
   INSTRUCTION_SETS: 'instructionSets',
+  INSTRUCTION_VERSIONS: 'instructionVersions',
   LEARNING_PROPOSALS: 'learningProposals',
   ALGORITHM_PROPOSALS: 'algorithmProposals',
   ALGORITHM_CONFIGS: 'algorithmConfigs',
