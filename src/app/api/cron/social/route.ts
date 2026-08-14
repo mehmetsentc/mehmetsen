@@ -157,59 +157,82 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     getAutoShareSettings(),
   ])
   console.log(
-    `[cron/social] autoShare autoPost=${autoShare.autoPost} autoStory=${autoShare.autoStory} autoOnPublish=${autoShare.autoOnPublish}`
+    `[cron/social] autoShare autoPost=${autoShare.autoPost} autoStory=${autoShare.autoStory} autoOnPublish=${autoShare.autoOnPublish} cities=${autoShare.enabledCitySlugs.join(',')}`
   )
 
-  // Post adayları yalnızca autoPost açıksa toplanır
+  // Post adayları yalnızca autoPost açıksa toplanır (enabledCitySlugs)
   let prioritized: Array<{ id: string; data: () => FirebaseFirestore.DocumentData }> = []
   if (autoShare.autoPost) {
-    // ── İki sorguyu paralel çalıştır ve birleştir ────────────────────────
-    // 1. citySlug='canakkale' olan haberler (yeni haberler)
-    // 2. city='Çanakkale' olan haberler (citySlug eksik olabilir)
-    const [snap1, snap2] = await Promise.all([
-      db.collection(Collections.NEWS)
-        .where('citySlug', '==', 'canakkale')
-        .where('status', '==', 'published')
-        .orderBy('createdAt', 'desc')
-        .limit(BATCH_LIMIT * 5)
-        .get(),
-      db.collection(Collections.NEWS)
+    const citySlugs =
+      autoShare.enabledCitySlugs.length > 0 ? autoShare.enabledCitySlugs : ['canakkale']
+    const citySet = new Set(citySlugs)
+
+    const chunks: string[][] = []
+    for (let i = 0; i < citySlugs.length; i += 10) {
+      chunks.push(citySlugs.slice(i, i + 10))
+    }
+
+    const snaps = await Promise.all(
+      chunks.map((chunk) =>
+        db
+          .collection(Collections.NEWS)
+          .where('citySlug', 'in', chunk)
+          .where('status', '==', 'published')
+          .orderBy('createdAt', 'desc')
+          .limit(BATCH_LIMIT * 5)
+          .get()
+          .catch((err) => {
+            console.warn('[cron/social] citySlug in-query failed:', err)
+            return null
+          })
+      )
+    )
+
+    let snapLegacy: FirebaseFirestore.QuerySnapshot | null = null
+    if (citySet.has('canakkale')) {
+      snapLegacy = await db
+        .collection(Collections.NEWS)
         .where('city', '==', 'Çanakkale')
         .where('status', '==', 'published')
         .orderBy('createdAt', 'desc')
         .limit(BATCH_LIMIT * 5)
-        .get(),
-    ])
+        .get()
+        .catch((err) => {
+          console.warn('[cron/social] legacy Çanakkale city query failed:', err)
+          return null
+        })
+    }
 
-    // Merge + deduplicate
     const seen = new Set<string>()
-    const merged = [...snap1.docs, ...snap2.docs].filter(doc => {
+    const merged = [
+      ...snaps.flatMap((s) => s?.docs ?? []),
+      ...(snapLegacy?.docs ?? []),
+    ].filter((doc) => {
       if (seen.has(doc.id)) return false
       seen.add(doc.id)
       return true
     })
 
-    const candidates = merged.filter(doc => {
+    const candidates = merged.filter((doc) => {
       const d = doc.data() as Record<string, unknown>
-      // Video haberlerini atla
       if (isSocialFeedComplete(d) || d.hasVideo || d.isVideo) return false
-      // Çanakkale haberi değilse atla (geniş kontrol)
-      if (!isCanakkale(d)) return false
-      // Sadece kendi haberlerimizi yayınla — harici RSS/scraper kaynakları atla
+      const slug = String(d.citySlug ?? '').toLowerCase()
+      const inEnabled = citySet.has(slug) || (citySet.has('canakkale') && isCanakkale(d))
+      if (!inEnabled) return false
       if (!isOwnContent(d)) return false
-      // Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini atla
       if (isSkippableForSocial(d)) return false
-      // Kategori kuralı: none / autoPost=false → atla
       const catId = typeof d.categoryId === 'string' ? d.categoryId : undefined
       if (!allowsAutoPost(resolveCategoryRule(categoryRules, catId))) return false
       return true
     })
 
-    // ── Görseli olan haberler zorunlu — görselsiz haberler paylaşılmaz ──────
-    // Instagram/Facebook için görsel şart; görselsiz haberler koyu/siyah görünür.
-    const withImage = candidates.filter(doc => !!extractImageUrl(doc.data() as Record<string, unknown>))
-    prioritized = withImage   // fallback yok — sadece görseli olan haberler
-    console.log(`[cron/social] candidates=${candidates.length} withImage=${withImage.length}`)
+    const withImage = candidates.filter(
+      (doc) => !!extractImageUrl(doc.data() as Record<string, unknown>)
+    )
+    prioritized = withImage
+    console.log(
+      `[cron/social] cities=${citySlugs.join(',')} candidates=${candidates.length} withImage=${withImage.length}`
+    )
   } else {
     console.log('[cron/social] autoPost kapalı — post batch atlandı')
   }

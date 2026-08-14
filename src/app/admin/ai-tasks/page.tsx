@@ -58,7 +58,7 @@ export default function AiTasksPage() {
     void load()
   }, [load])
 
-  const createSampleFactCheck = async () => {
+  const createSampleTask = async (kind: 'FACT_CHECK' | 'SOCIAL_GENERATE') => {
     if (!can('agents:delegate') && !can('agents:manage') && !can('ai:use')) {
       toast.error('Yetkiniz yok')
       return
@@ -66,22 +66,36 @@ export default function AiTasksPage() {
     setCreating(true)
     try {
       const headers = await authHeaders()
+      const payload =
+        kind === 'FACT_CHECK'
+          ? {
+              type: 'FACT_CHECK' as const,
+              assignedAgentId: 'agent-fact-check',
+              priority: 'high' as const,
+              input: {
+                note: 'Manuel test görevi — haber iddiasını doğrula',
+                claims: ['Örnek iddia: olay tarihi doğrulanacak'],
+              },
+            }
+          : {
+              type: 'SOCIAL_GENERATE' as const,
+              assignedAgentId: 'agent-smm-canakkale',
+              priority: 'normal' as const,
+              input: {
+                citySlug: 'canakkale',
+                platforms: ['instagram', 'facebook', 'x'],
+                note: 'Örnek SOCIAL_GENERATE — caption/hashtag üret (insan onayı sonrası publish)',
+                playbook: 'SOCIAL_GENERATE',
+              },
+            }
       const res = await fetch('/api/admin/agent-tasks', {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'FACT_CHECK',
-          assignedAgentId: 'agent-fact-check',
-          priority: 'high',
-          input: {
-            note: 'Manuel test görevi — haber iddiasını doğrula',
-            claims: ['Örnek iddia: olay tarihi doğrulanacak'],
-          },
-        }),
+        body: JSON.stringify(payload),
       })
       const data = (await res.json()) as { error?: string }
       if (!res.ok) throw new Error(data.error || 'Oluşturulamadı')
-      toast.success('Fact Check görevi oluşturuldu')
+      toast.success(kind === 'FACT_CHECK' ? 'Fact Check görevi oluşturuldu' : 'SMM generate görevi oluşturuldu')
       await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Hata')
@@ -110,14 +124,24 @@ export default function AiTasksPage() {
       title="AI Görevler"
       subtitle="Ajanlar arası task bus — audit log’lu"
       actions={
-        <button
-          type="button"
-          disabled={creating}
-          onClick={() => void createSampleFactCheck()}
-          className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-        >
-          {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '+ Fact Check Görevi'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={creating}
+            onClick={() => void createSampleTask('FACT_CHECK')}
+            className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '+ Fact Check'}
+          </button>
+          <button
+            type="button"
+            disabled={creating}
+            onClick={() => void createSampleTask('SOCIAL_GENERATE')}
+            className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold disabled:opacity-50"
+          >
+            + SMM Generate
+          </button>
+        </div>
       }
     >
       <AdminOsMetricGrid
@@ -139,7 +163,7 @@ export default function AiTasksPage() {
       ) : tasks.length === 0 ? (
         <AdminOsEmptyState
           title="Açık görev yok"
-          description="Pipeline aşamaları ve masa editörleri görev ürettikçe burada listelenir. Şimdilik manuel Fact Check görevi oluşturabilirsiniz."
+          description="Pipeline aşamaları görev ürettikçe burada listelenir. Fact Check veya Çanakkale SMM Generate ile örnek görev oluşturabilirsiniz."
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-white/10">

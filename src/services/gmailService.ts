@@ -7,7 +7,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { encrypt, decrypt } from '@/lib/gmail/crypto'
 import { refreshAccessToken } from '@/lib/gmail/oauth'
-import { listInboxMessages, getMessage } from '@/lib/gmail/client'
+import { listInboxMessages, getMessage, getInboxLabelStats } from '@/lib/gmail/client'
 import type { GmailIntegration, GmailMessageSummary, GmailMessageDetail } from '@/lib/gmail/types'
 
 const INTEGRATION_DOC = 'gmail_bilgi'
@@ -93,4 +93,24 @@ export async function listMessages(maxResults = 20, pageToken?: string): Promise
 export async function getMessageById(id: string): Promise<GmailMessageDetail> {
   const accessToken = await getValidAccessToken()
   return getMessage(accessToken, id)
+}
+
+/** Unread / total INBOX counts for sidebar badge. Returns zeros if not connected. */
+export async function getInboxBadgeCounts(): Promise<{
+  connected: boolean
+  messagesTotal: number
+  messagesUnread: number
+}> {
+  const integration = await getIntegration()
+  if (!integration) {
+    return { connected: false, messagesTotal: 0, messagesUnread: 0 }
+  }
+  try {
+    const accessToken = await getValidAccessToken()
+    const stats = await getInboxLabelStats(accessToken)
+    return { connected: true, ...stats }
+  } catch (err) {
+    console.warn('[gmailService] inbox badge counts failed:', err)
+    return { connected: true, messagesTotal: 0, messagesUnread: 0 }
+  }
 }

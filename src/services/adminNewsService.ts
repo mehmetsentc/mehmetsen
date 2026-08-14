@@ -691,7 +691,7 @@ export const adminNewsService = {
         )
       )
       let pendingReview = draftSnap.data().count
-      // Tekrar haber stub'ları Onay Bekliyor sayacına girmesin
+      // Tekrar haber stub'ları Onay Bekliyor sayacına girmesin (liste ile aynı kural)
       try {
         const dupPendingSnap = await getCountFromServer(
           query(
@@ -704,12 +704,39 @@ export const adminNewsService = {
       } catch {
         /* compound index yoksa listPendingQueue client filter yeterli */
       }
+      try {
+        const tekrarSnap = await getCountFromServer(
+          query(
+            collection(db, Collections.NEWS_DRAFTS),
+            where('draftStatus', '==', 'pending_review'),
+            where('categoryId', '==', 'tekrarlayan')
+          )
+        )
+        let tekrarOnly = tekrarSnap.data().count
+        // isDuplicate + tekrarlayan çift sayımını düş
+        try {
+          const bothSnap = await getCountFromServer(
+            query(
+              collection(db, Collections.NEWS_DRAFTS),
+              where('draftStatus', '==', 'pending_review'),
+              where('categoryId', '==', 'tekrarlayan'),
+              where('isDuplicate', '==', true)
+            )
+          )
+          tekrarOnly = Math.max(0, tekrarOnly - bothSnap.data().count)
+        } catch {
+          /* ignore */
+        }
+        pendingReview = Math.max(0, pendingReview - tekrarOnly)
+      } catch {
+        /* ignore */
+      }
       counts.pending_review = pendingReview
       counts.pending = (counts.pending ?? 0) + pendingReview
     } catch {
       counts.pending_review = 0
     }
-    // Legacy news: pending + isDuplicate → yalnızca Tekrar Haber
+    // Legacy news: pending + isDuplicate / tekrarlayan → yalnızca Tekrar Haber
     try {
       const dupNewsPending = await getCountFromServer(
         query(
@@ -719,6 +746,32 @@ export const adminNewsService = {
         )
       )
       counts.pending = Math.max(0, (counts.pending ?? 0) - dupNewsPending.data().count)
+    } catch {
+      /* ignore */
+    }
+    try {
+      const tekrarNewsPending = await getCountFromServer(
+        query(
+          collection(db, VIDEO_FEED_COLLECTION),
+          where('status', '==', 'pending'),
+          where('categoryId', '==', 'tekrarlayan')
+        )
+      )
+      let tekrarOnly = tekrarNewsPending.data().count
+      try {
+        const bothSnap = await getCountFromServer(
+          query(
+            collection(db, VIDEO_FEED_COLLECTION),
+            where('status', '==', 'pending'),
+            where('categoryId', '==', 'tekrarlayan'),
+            where('isDuplicate', '==', true)
+          )
+        )
+        tekrarOnly = Math.max(0, tekrarOnly - bothSnap.data().count)
+      } catch {
+        /* ignore */
+      }
+      counts.pending = Math.max(0, (counts.pending ?? 0) - tekrarOnly)
     } catch {
       /* ignore */
     }

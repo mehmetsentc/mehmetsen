@@ -11,16 +11,18 @@ import {
   Trophy, Cpu, Heart, FlaskConical, Palette, Star, Tag, Utensils,
   Car, CircleDot, Music, Film, Theater, PartyPopper, Swords, Plane,
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
-  Megaphone, Mail, Inbox, Archive, FileText, Network,
+  Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import type { CmsPermission } from '@/types/cms'
 import { db, Collections } from '@/lib/firebase/firestore'
-import { collection, getCountFromServer, query, where } from 'firebase/firestore'
+import { collection, getCountFromServer, getDocs, limit, query, where } from 'firebase/firestore'
+import { adminNewsService } from '@/services/adminNewsService'
+import { auth } from '@/lib/firebase/auth'
 
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   trend: Flame,
@@ -97,14 +99,14 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
       { href: '/admin/live-center', label: 'Canlı Haber Merkezi', icon: Activity, requiredPermissions: ['news:read'] },
-      { href: '/admin/analytics', label: 'Analitik', icon: BarChart3, requiredPermissions: ['analytics:read'] },
+      { href: '/admin/analytics', label: 'Analitik', icon: BarChart3, requiredPermissions: ['analytics:read'], exact: true },
     ],
   },
   {
     id: 'newsroom-desk',
     label: 'Yayın Odası',
     items: [
-      { href: '/admin/inbox', label: 'Gelen Haberler', icon: Mail, requiredPermissions: ['news:read'], countKey: 'inbox' },
+      { href: '/admin/inbox', label: 'Mail Kutusu', icon: Mail, requiredPermissions: ['news:read'], countKey: 'inbox' },
       { href: '/admin/news?filter=draft', label: 'Taslaklar', icon: FileText, requiredPermissions: ['news:read'], countKey: 'draft' },
       { href: '/admin/approvals', label: 'Onay Bekleyenler', icon: Clock, requiredPermissions: ['news:read'], countKey: 'pending' },
       { href: '/admin/news?filter=scheduled', label: 'Planlananlar', icon: Calendar, requiredPermissions: ['news:read'], countKey: 'scheduled' },
@@ -141,11 +143,11 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'social',
     label: 'Sosyal Medya',
     items: [
-      { href: '/admin/smm', label: '81 İl SMM', icon: Map, requiredPermissions: ['social:view'], badge: 'YENİ' },
-      { href: '/admin/social', label: 'Hesaplar', icon: Share2, requiredPermissions: ['social:view'] },
+      { href: '/admin/smm', label: '81 İl SMM', icon: Map, requiredPermissions: ['social:view'], badge: 'YENİ', exact: true },
+      { href: '/admin/social', label: 'Hesaplar', icon: Share2, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/smm/queue', label: 'Paylaşım Kuyruğu', icon: ListTodo, requiredPermissions: ['social:view'], countKey: 'smmQueue' },
-      { href: '/admin/social', label: 'Otomasyonlar', icon: Zap, requiredPermissions: ['social:manage'] },
-      { href: '/admin/analytics', label: 'Performans', icon: TrendingUp, requiredPermissions: ['analytics:read'] },
+      { href: '/admin/social?panel=automation', label: 'Otomasyonlar', icon: Zap, requiredPermissions: ['social:manage'] },
+      { href: '/admin/analytics?scope=smm', label: 'Performans', icon: TrendingUp, requiredPermissions: ['analytics:read'] },
     ],
   },
   {
@@ -155,7 +157,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/page-controls', label: 'Sayfa Kontrolleri', icon: LayoutGrid, requiredPermissions: ['pages:manage'] },
       { href: '/admin/global-layout', label: 'Global Dizilim', icon: Layers, requiredPermissions: ['pages:manage'] },
       { href: '/admin/feed-algorithm', label: 'Feed & Algoritma', icon: SlidersHorizontal, requiredPermissions: ['algorithm:view'] },
-      { href: '/admin/cron', label: 'Push Bildirimler', icon: Megaphone, requiredPermissions: ['cron:read'] },
     ],
   },
   {
@@ -164,6 +165,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/users', label: 'Adminler', icon: Users, requiredPermissions: ['users:read'] },
       { href: '/admin/roles', label: 'Roller & Yetkiler', icon: Shield, requiredPermissions: ['roles:manage'] },
+      { href: '/admin/cron', label: 'Cron İzleme', icon: Timer, requiredPermissions: ['cron:read'] },
       { href: '/admin/settings', label: 'Ayarlar', icon: Settings, requiredPermissions: ['system:settings'] },
       { href: '/admin/audit-logs', label: 'Loglar', icon: ScrollText, requiredPermissions: ['logs:view'] },
       { href: '/admin/system-health', label: 'Sistem Durumu', icon: Activity, requiredPermissions: ['system:settings'] },
@@ -173,16 +175,32 @@ const NAV_GROUPS: NavGroup[] = [
 
 function isActive(pathname: string, search: string, href: string, exact = false): boolean {
   const [path, query = ''] = href.split('?')
-  if (exact) return pathname === path && (!query || search.includes(query))
+  if (exact) {
+    if (pathname !== path) return false
+    if (!query) {
+      // Query-less exact item: inactive when another sibling owns a query on same path
+      if (path === '/admin/social' && search.includes('panel=')) return false
+      if (path === '/admin/analytics' && search.includes('scope=')) return false
+      if (path === '/admin/news' && (search.includes('filter=') || search.includes('category='))) {
+        return false
+      }
+      return true
+    }
+    return search.includes(query)
+  }
   if (path === '/admin') return pathname === path
   if (pathname !== path && !pathname.startsWith(`${path}/`)) return false
   if (!query) {
     // Prefer exact query-less match when another item owns the query
     if (path === '/admin/news' && search.includes('filter=') && href === '/admin/news') return false
     if (path === '/admin/news' && search.includes('category=') && href === '/admin/news') return false
-    return pathname === path || pathname.startsWith(`${path}/`)
+    if (path === '/admin/social' && search.includes('panel=')) return false
+    if (path === '/admin/analytics' && search.includes('scope=')) return false
+    // Nested child routes (e.g. /admin/smm/queue) must not activate the parent (/admin/smm)
+    if (pathname.startsWith(`${path}/`)) return false
+    return pathname === path
   }
-  return search.includes(query)
+  return pathname === path && search.includes(query)
 }
 
 function NavItemRow({
@@ -285,7 +303,7 @@ export function CMSSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const search = searchParams.toString()
-  const { can } = useCmsAuth()
+  const { can, loading: authLoading, user } = useCmsAuth()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [counts, setCounts] = useState<Partial<Record<NonNullable<NavItem['countKey']>, number>>>({})
 
@@ -299,20 +317,65 @@ export function CMSSidebar() {
   }, [])
 
   useEffect(() => {
+    if (authLoading) return
     let cancelled = false
     ;(async () => {
       try {
-        const [published, pending, draft] = await Promise.all([
-          getCountFromServer(query(collection(db, Collections.NEWS), where('status', '==', 'published'))).catch(() => null),
-          getCountFromServer(query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))).catch(() => null),
-          getCountFromServer(query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'draft'))).catch(() => null),
+        const [statusCounts, draftSnap, inboxUnread, pendingDraftsSnap] = await Promise.all([
+          adminNewsService.countByStatus().catch(() => null),
+          getCountFromServer(
+            query(collection(db, Collections.NEWS_DRAFTS), where('draftStatus', '==', 'draft'))
+          ).catch(() => null),
+          (async () => {
+            try {
+              if (!user) return 0
+              const token = await auth.currentUser?.getIdToken()
+              if (!token) return 0
+              const res = await fetch('/api/admin/gmail/status', {
+                headers: { Authorization: `Bearer ${token}` },
+                cache: 'no-store',
+              })
+              if (!res.ok) return 0
+              const data = (await res.json()) as { messagesUnread?: number }
+              return Number(data.messagesUnread ?? 0) || 0
+            } catch {
+              return 0
+            }
+          })(),
+          getDocs(
+            query(
+              collection(db, Collections.NEWS_DRAFTS),
+              where('draftStatus', '==', 'pending_review'),
+              limit(100)
+            )
+          ).catch(() => null),
         ])
         if (cancelled) return
+
+        // Liste ile aynı: tekrar / isDuplicate stub'ları sayma
+        const visibleDraftPending = pendingDraftsSnap
+          ? pendingDraftsSnap.docs.filter((d) => {
+              const data = d.data()
+              return data.isDuplicate !== true && data.categoryId !== 'tekrarlayan'
+            }).length
+          : null
+
+        // countByStatus.pending = legacy news pending + draft pending_review
+        const legacyPending = statusCounts
+          ? Math.max(0, (statusCounts.pending ?? 0) - (statusCounts.pending_review ?? 0))
+          : 0
+
+        const pending =
+          visibleDraftPending != null
+            ? visibleDraftPending + legacyPending
+            : (statusCounts?.pending ?? 0)
+
         setCounts({
-          published: published?.data().count ?? 0,
-          pending: pending?.data().count ?? 0,
-          draft: draft?.data().count ?? 0,
-          inbox: pending?.data().count ?? 0,
+          published: statusCounts?.published ?? 0,
+          pending,
+          draft: draftSnap?.data().count ?? 0,
+          // Mail Kutusu = Gmail okunmamış; Onay Bekleyenler ile paylaşılmaz
+          inbox: inboxUnread,
           scheduled: 0,
           smmQueue: 0,
         })
@@ -323,7 +386,7 @@ export function CMSSidebar() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [authLoading, user])
 
   const toggleGroup = (id: string) => {
     setCollapsed((prev) => {

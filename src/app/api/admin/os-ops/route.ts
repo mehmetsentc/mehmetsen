@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { listAuditLogs, probeSystemHealth, getAiModelRegistry } from '@/services/newsroomOs/opsService'
-import { createMemory, listMemories } from '@/services/newsroomOs/memoryService'
+import { createMemory, listMemories, seedDefaultMemories } from '@/services/newsroomOs/memoryService'
 import { enqueueSmmItem, listSmmQueue } from '@/services/newsroomOs/smmQueueService'
 import { listAgentTasks } from '@/services/newsroomOs/taskService'
 import { CMS_ROLE_LABELS, ROLE_PERMISSIONS, type CmsRole } from '@/types/cms'
@@ -122,9 +122,11 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as {
     resource?: string
+    action?: string
     content?: string
     scope?: 'agent' | 'shared'
     type?: string
+    ttlDays?: number | null
     newsId?: string
     citySlug?: string
     platform?: string
@@ -133,7 +135,12 @@ export async function POST(request: NextRequest) {
   if (body.resource === 'memory') {
     const gate = await verifyCmsToken(request, 'ai:configure')
     if (!gate) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (body.action === 'seed') {
+      const result = await seedDefaultMemories(auth.uid)
+      return NextResponse.json({ ok: true, ...result })
+    }
     if (!body.content?.trim()) return NextResponse.json({ error: 'content required' }, { status: 400 })
+    const ttlDays = typeof body.ttlDays === 'number' ? body.ttlDays : null
     const memory = await createMemory({
       scope: body.scope === 'agent' ? 'agent' : 'shared',
       type: (body.type as 'editorialRule') || 'editorialRule',
@@ -141,6 +148,7 @@ export async function POST(request: NextRequest) {
       verified: true,
       verifiedBy: auth.uid,
       confidence: 0.85,
+      expiresAt: ttlDays && ttlDays > 0 ? Date.now() + ttlDays * 24 * 60 * 60 * 1000 : null,
     })
     return NextResponse.json({ memory })
   }

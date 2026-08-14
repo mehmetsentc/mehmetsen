@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 const PRIMARY_EXACT = new Set(['/admin', '/admin/approvals', '/admin/news', '/admin/menu'])
 
 const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
-  { prefix: '/admin/inbox', title: 'Gelen Kutusu', backHref: '/admin/menu' },
+  { prefix: '/admin/inbox', title: 'Mail Kutusu', backHref: '/admin/menu' },
   { prefix: '/admin/submissions', title: 'Gönderiler', backHref: '/admin/menu' },
   { prefix: '/admin/job-classifieds', title: 'İş Kariyer', backHref: '/admin/menu' },
   { prefix: '/admin/archive', title: 'Arşiv', backHref: '/admin/menu' },
@@ -31,7 +31,7 @@ const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
   { prefix: '/admin/authors', title: 'Yazarlar', backHref: '/admin/menu' },
   { prefix: '/admin/users', title: 'Kullanıcılar', backHref: '/admin/menu' },
   { prefix: '/admin/settings', title: 'Ayarlar', backHref: '/admin/menu' },
-  { prefix: '/admin/cron', title: 'Cron', backHref: '/admin/menu' },
+  { prefix: '/admin/cron', title: 'Cron İzleme', backHref: '/admin/menu' },
   { prefix: '/admin/reports', title: 'Raporlar', backHref: '/admin/menu' },
 ]
 

@@ -9,6 +9,7 @@ import {
   Clock,
   HelpCircle,
   ListTodo,
+  Mail,
   Map,
   Newspaper,
   Plus,
@@ -228,7 +229,7 @@ function StatusDonut({
 
 const QUICK = [
   { href: '/admin/news/create', label: 'Yeni Haber', icon: Plus, color: 'bg-[rgb(var(--color-brand))] text-white' },
-  { href: '/admin/inbox', label: 'Gelen Haberler', icon: Newspaper, color: 'bg-sky-500 text-white' },
+  { href: '/admin/inbox', label: 'Mail Kutusu', icon: Mail, color: 'bg-sky-500 text-white' },
   { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, color: 'bg-violet-500 text-white' },
   { href: '/admin/smm', label: '81 İl SMM', icon: Map, color: 'bg-emerald-500 text-white' },
   { href: '/admin/smm/queue', label: 'Paylaşım Kuyruğu', icon: Share2, color: 'bg-amber-500 text-white' },
@@ -549,9 +550,9 @@ export function NewsroomOsDashboard({
                   },
                   {
                     id: 'cron',
-                    label: 'Bildirim / Cron',
+                    label: 'Cron İzleme',
                     status: 'UNKNOWN',
-                    detail: 'Cron sayfası',
+                    detail: 'Kuyruk ve zamanlanmış görevler',
                     href: '/admin/cron',
                   },
                 ]

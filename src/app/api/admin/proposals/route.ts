@@ -5,14 +5,31 @@ import {
   getActiveAlgorithmConfig,
   listRuleProposals,
   reviewRuleProposal,
+  seedLearningProposals,
 } from '@/services/newsroomOs/proposalService'
 import type { RuleProposal } from '@/types/newsroomOs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+async function gateView(request: NextRequest) {
+  return (
+    (await verifyCmsToken(request, 'algorithm:view')) ||
+    (await verifyCmsToken(request, 'ai:configure')) ||
+    (await verifyCmsToken(request, 'ai:instructions'))
+  )
+}
+
+async function gateManage(request: NextRequest) {
+  return (
+    (await verifyCmsToken(request, 'algorithm:manage')) ||
+    (await verifyCmsToken(request, 'ai:configure')) ||
+    (await verifyCmsToken(request, 'ai:instructions'))
+  )
+}
+
 export async function GET(request: NextRequest) {
-  const auth = await verifyCmsToken(request, 'algorithm:view')
+  const auth = await gateView(request)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const kind = (request.nextUrl.searchParams.get('kind') || 'algorithm_weight') as RuleProposal['kind']
@@ -24,15 +41,22 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await verifyCmsToken(request, 'algorithm:manage')
+  const auth = await gateManage(request)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = (await request.json()) as {
+    action?: string
     kind?: RuleProposal['kind']
     title?: string
     summary?: string
     evidence?: Record<string, unknown>
   }
+
+  if (body.action === 'seed' && (body.kind === 'editorial_rule' || !body.kind)) {
+    const result = await seedLearningProposals(null)
+    return NextResponse.json({ ok: true, ...result })
+  }
+
   if (!body.title || !body.summary || !body.kind) {
     return NextResponse.json({ error: 'kind, title, summary required' }, { status: 400 })
   }
@@ -46,7 +70,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await verifyCmsToken(request, 'algorithm:manage')
+  const auth = await gateManage(request)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = (await request.json()) as {
@@ -57,12 +81,19 @@ export async function PATCH(request: NextRequest) {
   if (!body.id || !body.kind || !body.status) {
     return NextResponse.json({ error: 'id, kind, status required' }, { status: 400 })
   }
-  const proposal = await reviewRuleProposal({
-    kind: body.kind,
-    id: body.id,
-    status: body.status,
-    reviewedByHumanId: auth.uid,
-  })
-  if (!proposal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json({ proposal })
+  try {
+    const proposal = await reviewRuleProposal({
+      kind: body.kind,
+      id: body.id,
+      status: body.status,
+      reviewedByHumanId: auth.uid,
+    })
+    if (!proposal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ proposal })
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'Review failed' },
+      { status: 500 }
+    )
+  }
 }

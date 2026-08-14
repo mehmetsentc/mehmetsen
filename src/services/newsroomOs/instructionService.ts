@@ -12,6 +12,14 @@ import type {
   NewsroomAgent,
 } from '@/types/newsroomOs'
 import { ROLE_DEFAULT_INSTRUCTIONS } from '@/services/newsroomOs/orgSeed'
+import {
+  SOCIAL_DEPARTMENT_INSTRUCTIONS,
+  SOCIAL_DIRECTOR_INSTRUCTIONS,
+  CITY_SMM_ROLE_INSTRUCTIONS,
+  TASK_SOCIAL_GENERATE_INSTRUCTIONS,
+  TASK_SOCIAL_PUBLISH_INSTRUCTIONS,
+  allProvinceLocationSeeds,
+} from '@/services/newsroomOs/smmPlaybook'
 
 function setsCol() {
   return getAdminFirestore().collection(Collections.INSTRUCTION_SETS)
@@ -124,8 +132,7 @@ const DEPARTMENT_RULES: Array<{ scopeKey: string; title: string; content: string
   {
     scopeKey: 'social',
     title: 'Sosyal Medya Kuralları',
-    content:
-      'Platforma göre metin üret. Aynı gönderiyi idempotent yayınla. Token/şifre prompta koyma. Başarısız yayında escalation yap.',
+    content: SOCIAL_DEPARTMENT_INSTRUCTIONS,
   },
   {
     scopeKey: 'desk-local',
@@ -168,6 +175,7 @@ const ROLE_RULE_SCOPES: Array<{ scopeKey: keyof typeof ROLE_DEFAULT_INSTRUCTIONS
   { scopeKey: 'fact-checker', title: 'Fact Checker Rol Kuralları' },
   { scopeKey: 'legal-risk', title: 'Legal/Risk Rol Kuralları' },
   { scopeKey: 'seo-editor', title: 'SEO Editor Rol Kuralları' },
+  { scopeKey: 'social-director', title: 'Social Media Director Rol Kuralları' },
   { scopeKey: 'city-smm', title: 'City SMM Rol Kuralları' },
   { scopeKey: 'desk-editor', title: 'Masa Editörü Rol Kuralları' },
   { scopeKey: 'local-editor', title: 'Yerel Editör Rol Kuralları' },
@@ -175,12 +183,11 @@ const ROLE_RULE_SCOPES: Array<{ scopeKey: keyof typeof ROLE_DEFAULT_INSTRUCTIONS
   { scopeKey: 'learning-analyst', title: 'Learning Agent Rol Kuralları' },
 ]
 
-const LOCATION_CANAKKALE = `Çanakkale lokasyon kuralları
-- Yerel duyuru ve belediye içeriklerinde kurum adını koru.
-- Gelibolu / Ezine / Biga gibi ilçe adlarını doğru kullan.
-- Troya / Çanakkale Boğazı bağlamını abartılı turizm diliyle çarpıtma.
-- Yerel spor ve etkinlik haberlerinde tarih/saat net olsun.`
-
+/** Role content overrides for SMM (rich playbooks). */
+const ROLE_CONTENT_OVERRIDES: Partial<Record<string, string>> = {
+  'social-director': SOCIAL_DIRECTOR_INSTRUCTIONS,
+  'city-smm': CITY_SMM_ROLE_INSTRUCTIONS,
+}
 export async function seedDefaultInstructionSets(createdByHumanId?: string | null): Promise<{
   created: string[]
   updated: string[]
@@ -214,11 +221,19 @@ export async function seedDefaultInstructionSets(createdByHumanId?: string | nul
     await write('department', d.scopeKey, d.title, d.content)
   }
   for (const r of ROLE_RULE_SCOPES) {
-    const content = ROLE_DEFAULT_INSTRUCTIONS[r.scopeKey]
+    const content = ROLE_CONTENT_OVERRIDES[r.scopeKey] ?? ROLE_DEFAULT_INSTRUCTIONS[r.scopeKey]
     if (!content) continue
     await write('role', r.scopeKey, r.title, content)
   }
-  await write('location', 'canakkale', 'Çanakkale Location Rules', LOCATION_CANAKKALE)
+
+  // 81 il location / SMM playbooks
+  for (const loc of allProvinceLocationSeeds()) {
+    await write('location', loc.scopeKey, loc.title, loc.content)
+  }
+
+  // Task playbooks for SMM pipeline
+  await write('task', 'SOCIAL_GENERATE', 'Task: SOCIAL_GENERATE', TASK_SOCIAL_GENERATE_INSTRUCTIONS)
+  await write('task', 'SOCIAL_PUBLISH', 'Task: SOCIAL_PUBLISH', TASK_SOCIAL_PUBLISH_INSTRUCTIONS)
 
   return { created, updated }
 }

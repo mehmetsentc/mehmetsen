@@ -120,8 +120,17 @@ export function CategoryExperience({
 
   const style = experienceThemeStyle(theme)
   // Kaydırmalı öne çıkan yalnızca mobilde; masaüstü ExperienceFeed ızgarası
-  const heroPosts = isMobile ? posts.slice(0, FEATURED_CAROUSEL_LIMIT) : []
-  const feedPosts = isMobile && heroPosts.length > 0 ? posts.slice(heroPosts.length) : posts
+  const heroPosts = isMobile
+    ? (() => {
+        const featured = posts.filter((p) => p.featured === true || p.isEditorPick === true)
+        const ordered =
+          featured.length > 0
+            ? [...featured, ...posts.filter((p) => !featured.some((f) => f.id === p.id))]
+            : posts
+        return ordered.slice(0, FEATURED_CAROUSEL_LIMIT)
+      })()
+    : []
+  const feedPosts = isMobile && heroPosts.length > 0 ? posts.filter((p) => !heroPosts.some((h) => h.id === p.id)) : posts
 
   return (
     <div

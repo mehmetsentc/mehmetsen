@@ -19,7 +19,7 @@ export function defaultCityOps(citySlug: string): CityOpsSettings {
     active: true,
     localEditorHumanId: null,
     localAiEditorId: null,
-    smmAgentId: `smm-${citySlug}`,
+    smmAgentId: `agent-smm-${citySlug}`,
     seoTitle: null,
     seoDescription: null,
     feedEnabled: true,

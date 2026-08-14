@@ -335,6 +335,7 @@ function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
 /**
  * CMS “Öne Çıkan” — kategori bağımsız, yalnızca `featured === true`.
  * Yerel kategori ağacı pinleri ulusal ana sayfaya girmez (şehir sayfasına gider).
+ * Kıbrıs/KKTC kategori ağacı pinleri yalnızca Kıbrıs sayfalarında görünür.
  * citySlug tek başına dışlamaz — Gündem/Son Dakika + şehir ulusal kalır.
  * Gündem filler yok; haber kendi kategori rayında ayrıca kalır.
  */
@@ -420,7 +421,7 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
 
 const getFeaturedNewsCached = unstable_cache(
   async (limit: number) => fetchFeaturedNews(limit),
-  ['home-featured-v11'],
+  ['home-featured-v12'],
   { revalidate: 600, tags: ['home-feed'] }
 )
 

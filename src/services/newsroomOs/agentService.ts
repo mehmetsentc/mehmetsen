@@ -14,6 +14,10 @@ import {
 } from '@/services/newsroomOs/orgSeed'
 import { listAiEditors } from '@/lib/ai/editorial/aiEditorService'
 import { buildEffectiveInstructions } from '@/services/newsroomOs/instructionService'
+import {
+  buildCitySmmAgentCustomInstructions,
+  citySmmAgentId,
+} from '@/services/newsroomOs/smmPlaybook'
 
 const DEFAULT_ALLOWED_TASKS: Record<string, AgentTaskType[]> = {
   'editor-in-chief': ['EDITORIAL_APPROVAL', 'PUBLISH', 'LEARNING_ANALYSIS'],
@@ -153,13 +157,13 @@ export async function seedCitySmmAgents(): Promise<{ created: string[]; updated:
   }
 
   for (const province of TURKISH_PROVINCES) {
-    const id = `agent-smm-${province.slug}`
+    const id = citySmmAgentId(province.slug)
     const ref = agentsCol().doc(id)
     const agent: NewsroomAgent = {
       id,
       name: `smm-${province.slug}`,
       displayName: `${province.name} SMM AI`,
-      description: `${province.name} ili sosyal medya ajanı`,
+      description: `${province.name} ili sosyal medya ajanı — generate/publish/analytics`,
       roleTemplateId: 'city-smm',
       departmentId: 'social',
       managerAgentId: directorId,
@@ -182,6 +186,7 @@ export async function seedCitySmmAgents(): Promise<{ created: string[]; updated:
         timeoutMs: 45_000,
       },
       tools: ['social-generate', 'social-publish', 'analytics-read'],
+      customInstructions: buildCitySmmAgentCustomInstructions(province),
       legacyAiEditorId: null,
       createdAt: now,
       updatedAt: now,
@@ -191,7 +196,16 @@ export async function seedCitySmmAgents(): Promise<{ created: string[]; updated:
       await ref.set(agent)
       created.push(id)
     } else {
-      await ref.set({ ...agent, createdAt: (snap.data() as NewsroomAgent).createdAt ?? now }, { merge: true })
+      const prev = snap.data() as NewsroomAgent
+      await ref.set(
+        {
+          ...agent,
+          createdAt: prev.createdAt ?? now,
+          // Seed refresh always reapplies playbook agent instructions
+          customInstructions: agent.customInstructions,
+        },
+        { merge: true }
+      )
       updated.push(id)
     }
   }

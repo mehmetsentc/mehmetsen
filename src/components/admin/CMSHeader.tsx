@@ -6,7 +6,7 @@ import { Bell, Search, Plus, ExternalLink, RefreshCw, HelpCircle } from 'lucide-
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { cn } from '@/lib/utils'
 import { db } from '@/lib/firebase/firestore'
-import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer } from 'firebase/firestore'
+import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer, getDocs } from 'firebase/firestore'
 import type { CmsNotification } from '@/types/cms'
 import { CMS_ROLE_COLORS } from '@/types/cms'
 import { getSiteUrl } from '@/lib/seo'
@@ -161,7 +161,35 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
               )
             : query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))
         const snap = await getCountFromServer(q)
-        if (!cancelled) setPendingCount(snap.data().count)
+        if (!cancelled) {
+          // Ham count tekrar stub'larını da sayabilir; liste ile hizala
+          let n = snap.data().count
+          if (n > 0 && n <= 50) {
+            try {
+              const docs = await getDocs(
+                seenAt > 0
+                  ? query(
+                      collection(db, 'newsDrafts'),
+                      where('draftStatus', '==', 'pending_review'),
+                      where('createdAt', '>', seenAt),
+                      limit(50)
+                    )
+                  : query(
+                      collection(db, 'newsDrafts'),
+                      where('draftStatus', '==', 'pending_review'),
+                      limit(50)
+                    )
+              )
+              n = docs.docs.filter((d) => {
+                const data = d.data()
+                return data.isDuplicate !== true && data.categoryId !== 'tekrarlayan'
+              }).length
+            } catch {
+              /* keep server count */
+            }
+          }
+          setPendingCount(n)
+        }
       } catch {
         /* ignore */
       }

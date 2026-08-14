@@ -9,7 +9,7 @@ const links = [
   { href: ROUTES.ADMIN.DASHBOARD, label: 'Panel', exact: true },
   { href: ROUTES.ADMIN.NEWS, label: 'Haberler' },
   { href: `${ROUTES.ADMIN.NEWS}?filter=pending`, label: 'Onay' },
-  { href: ROUTES.ADMIN.INBOX, label: 'Gelen' },
+  { href: ROUTES.ADMIN.INBOX, label: 'Mail' },
   { href: ROUTES.ADMIN.NEWSROOM, label: 'AI' },
   { href: ROUTES.ADMIN.USERS, label: 'Ekip' },
 ]

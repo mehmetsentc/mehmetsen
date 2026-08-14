@@ -27,6 +27,7 @@ export async function GET(request: Request) {
     autoStory: settings.autoStory,
     autoOnPublish: settings.autoOnPublish,
     metaAiRewrite: settings.metaAiRewrite,
+    enabledCitySlugs: settings.enabledCitySlugs,
     updatedAt: settings.updatedAt ?? null,
     updatedBy: settings.updatedBy ?? null,
   })
@@ -49,6 +50,7 @@ export async function PUT(request: Request) {
     autoStory: typeof b.autoStory === 'boolean' ? b.autoStory : true,
     autoOnPublish: typeof b.autoOnPublish === 'boolean' ? b.autoOnPublish : true,
     metaAiRewrite: typeof b.metaAiRewrite === 'boolean' ? b.metaAiRewrite : true,
+    enabledCitySlugs: b.enabledCitySlugs,
   })
 
   const payload = {
@@ -56,6 +58,7 @@ export async function PUT(request: Request) {
     autoStory: settings.autoStory,
     autoOnPublish: settings.autoOnPublish,
     metaAiRewrite: settings.metaAiRewrite,
+    enabledCitySlugs: settings.enabledCitySlugs,
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: auth.uid,
   }

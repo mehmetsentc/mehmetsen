@@ -71,8 +71,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, action, ...result })
     }
     if (action === 'seed-smm-81') {
-      const result = await seedCitySmmAgents()
-      return NextResponse.json({ ok: true, action, ...result })
+      const smm = await seedCitySmmAgents()
+      const instructions = await seedDefaultInstructionSets(auth.uid)
+      return NextResponse.json({ ok: true, action, smm, instructions })
     }
     if (action === 'sync-local-editors') {
       const result = await syncLocalEditorsFromAiEditors()

@@ -52,7 +52,13 @@ export function MobileCategoryLanding({
 }: MobileCategoryLandingProps) {
   const heroCarouselPosts = useMemo(() => {
     const withImage = initialPosts.filter((p) => categoryPostImage(p).length > 10)
-    return (withImage.length > 0 ? withImage : initialPosts).slice(0, FEATURED_CAROUSEL_LIMIT)
+    const pool = withImage.length > 0 ? withImage : initialPosts
+    const featured = pool.filter((p) => p.featured === true || p.isEditorPick === true)
+    const ordered =
+      featured.length > 0
+        ? [...featured, ...pool.filter((p) => !featured.some((f) => f.id === p.id))]
+        : pool
+    return ordered.slice(0, FEATURED_CAROUSEL_LIMIT)
   }, [initialPosts])
 
   const heroIds = useMemo(

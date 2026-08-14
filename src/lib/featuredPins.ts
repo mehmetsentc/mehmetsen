@@ -5,7 +5,7 @@
  */
 import { FieldValue, type Firestore } from 'firebase-admin/firestore'
 import { Collections } from '@/lib/firebase/collections'
-import { isLocalScopedNews } from '@/lib/featuredScope'
+import { isKibrisScopedNews, isLocalScopedNews } from '@/lib/featuredScope'
 import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 
 function toEpochMs(value: unknown): number {
@@ -109,12 +109,14 @@ export async function demoteExcessFeaturedPins(
     const categoryId = String(data.categoryId ?? data.category ?? '').trim()
     // citySlug alone must not pull a national-category pin into a city pool.
     const local = isLocalScopedNews({ categoryId })
+    const kibris = isKibrisScopedNews({ categoryId })
     return {
       id: doc.id,
       featuredAt: featuredPinTime(data),
       publishedAt: toEpochMs(data.publishedAt) || toEpochMs(data.createdAt),
       // Yerel without citySlug stays out of the national demotion pool.
-      scopeKey: local ? (citySlug || `__yerel__:${doc.id}`) : '',
+      // Kıbrıs pins share one KKTC pool (not national homepage).
+      scopeKey: local ? (citySlug || `__yerel__:${doc.id}`) : kibris ? 'kibris' : '',
     }
   })
 

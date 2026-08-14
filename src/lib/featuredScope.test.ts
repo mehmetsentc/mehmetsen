@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   isCityFeaturedEligible,
+  isKibrisFeaturedEligible,
+  isKibrisScopedNews,
   isLocalScopedNews,
   isNationalFeaturedEligible,
 } from '@/lib/featuredScope'
@@ -24,6 +26,23 @@ describe('featuredScope', () => {
     expect(isNationalFeaturedEligible({ citySlug: 'canakkale', category: 'yerel-haber' })).toBe(
       false
     )
+  })
+
+  it('kibris-* featured is KKTC-page only (not national /feed Öne Çıkan)', () => {
+    expect(isKibrisScopedNews({ category: 'kibris-haberleri' })).toBe(true)
+    expect(isKibrisScopedNews({ categoryId: 'kibris-teknoloji' })).toBe(true)
+    expect(isKibrisScopedNews({ categoryId: 'kibris-siyaset' })).toBe(true)
+    expect(isKibrisFeaturedEligible({ category: 'kibris-teknoloji' })).toBe(true)
+    expect(isNationalFeaturedEligible({ category: 'kibris-teknoloji' })).toBe(false)
+    expect(isNationalFeaturedEligible({ category: 'kibris-haberleri' })).toBe(false)
+    expect(isNationalFeaturedEligible({ categoryId: 'kibris-gundem' })).toBe(false)
+    expect(
+      isCityFeaturedEligible({
+        citySlug: 'canakkale',
+        category: 'kibris-teknoloji',
+        forCitySlug: 'canakkale',
+      })
+    ).toBe(false)
   })
 
   it('keeps national news without city eligible for main featured', () => {

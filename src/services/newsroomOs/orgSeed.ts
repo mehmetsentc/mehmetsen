@@ -9,6 +9,10 @@ import type {
   NewsroomAgent,
 } from '@/types/newsroomOs'
 import type { CmsPermission } from '@/types/cms'
+import {
+  CITY_SMM_ROLE_INSTRUCTIONS,
+  SOCIAL_DIRECTOR_INSTRUCTIONS,
+} from '@/services/newsroomOs/smmPlaybook'
 
 export interface OrgSeedSpec {
   id: string
@@ -468,10 +472,8 @@ export const ROLE_DEFAULT_INSTRUCTIONS: Partial<Record<AgentRoleTemplateId, stri
     'Başlık 55–65, meta 145–160 karakter hedefle. Anahtar kelimeyi doğal kullan; yanıltıcı SERP başlığı yazma.',
   'visual-editor':
     'Görsel-haber uyumunu kontrol et. Alt metin üret. Telif şüpheli görselleri işaretle.',
-  'social-director':
-    '81 SMM ağını yönet. Ulusal breaking’i merkezi dağıt. Platform format standartlarını bozma.',
-  'city-smm':
-    'Sadece kendi ilinin haberlerini önceliklendir. Platforma göre metin üret (IG caption, FB açıklayıcı, X kısa). Aynı gönderiyi tekrar paylaşma.',
+  'social-director': SOCIAL_DIRECTOR_INSTRUCTIONS,
+  'city-smm': CITY_SMM_ROLE_INSTRUCTIONS,
   'algorithm-analyst':
     'Yalnızca öneri üret. Production ağırlıklarını doğrudan değiştirme. Simülasyon + human approval zorunlu.',
   'learning-analyst':

@@ -102,6 +102,19 @@ export async function listInboxMessages(
 }
 
 /**
+ * INBOX label stats — unread badge without fetching message bodies.
+ */
+export async function getInboxLabelStats(
+  accessToken: string,
+): Promise<{ messagesTotal: number; messagesUnread: number }> {
+  const label = await gmailFetch('/labels/INBOX', accessToken)
+  return {
+    messagesTotal: Number(label.messagesTotal ?? 0) || 0,
+    messagesUnread: Number(label.messagesUnread ?? 0) || 0,
+  }
+}
+
+/**
  * Fetch a full message (subject, from, date, body text).
  */
 export async function getMessage(accessToken: string, messageId: string): Promise<GmailMessageDetail> {

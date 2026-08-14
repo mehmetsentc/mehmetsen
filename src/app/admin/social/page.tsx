@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, useDeferredValue, useRef, type ReactNode } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { db } from '@/lib/firebase/firestore'
 import { auth } from '@/lib/firebase/auth'
@@ -28,8 +29,10 @@ import {
 } from '@/lib/social/categoryRules'
 import {
   DEFAULT_AUTO_SHARE_SETTINGS,
+  normalizeAutoShareSettings,
   type SocialAutoShareSettings,
 } from '@/lib/social/autoShareSettings'
+import { SocialAutomationDesk } from '@/components/admin/SocialAutomationDesk'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -218,6 +221,7 @@ const btnSecondary =
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function SocialPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<TabKey>('post')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
@@ -230,6 +234,26 @@ export default function SocialPage() {
   const [hasMore, setHasMore] = useState(true)
   // Cursor ref so load-more always sees the latest snapshot (avoids stale closure in useCallback)
   const lastDocRef = useRef<QueryDocumentSnapshot | null>(null)
+
+  useEffect(() => {
+    const city = (searchParams.get('city') ?? '').trim().toLowerCase()
+    const status = searchParams.get('status')
+    const panel = searchParams.get('panel')
+    if (city) {
+      setCityFilter(city)
+    }
+    if (status === 'published' || status === 'pending' || status === 'all') {
+      setStatusFilter(status)
+    }
+    if (panel === 'automation') {
+      const t = window.setTimeout(() => {
+        document.getElementById('smm-automation')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 120)
+      return () => window.clearTimeout(t)
+    }
+  }, [searchParams])
+
+  const automationFocus = searchParams.get('panel') === 'automation'
 
   // Composer
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -635,13 +659,8 @@ export default function SocialPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error('Yüklenemedi')
-      const data = await res.json() as Partial<SocialAutoShareSettings>
-      setAutoShareDraft({
-        autoPost: data.autoPost !== false,
-        autoStory: data.autoStory !== false,
-        autoOnPublish: data.autoOnPublish !== false,
-        metaAiRewrite: data.metaAiRewrite !== false,
-      })
+      const data = (await res.json()) as Partial<SocialAutoShareSettings>
+      setAutoShareDraft(normalizeAutoShareSettings(data))
     } catch (err) {
       console.error('[social admin] auto-share:', err)
       toast.error('Otomatik paylaşım ayarları yüklenemedi')
@@ -670,27 +689,19 @@ export default function SocialPage() {
           autoStory: autoShareDraft.autoStory,
           autoOnPublish: autoShareDraft.autoOnPublish,
           metaAiRewrite: autoShareDraft.metaAiRewrite,
+          enabledCitySlugs: autoShareDraft.enabledCitySlugs,
         }),
       })
-      const data = await res.json() as {
+      const data = (await res.json()) as {
         ok?: boolean
         message?: string
         error?: string
-        autoPost?: boolean
-        autoStory?: boolean
-        autoOnPublish?: boolean
-        metaAiRewrite?: boolean
-      }
+      } & Partial<SocialAutoShareSettings>
       if (!res.ok || !data.ok) {
         toast.error(data.error ?? 'Kayıt başarısız')
         return
       }
-      setAutoShareDraft({
-        autoPost: data.autoPost !== false,
-        autoStory: data.autoStory !== false,
-        autoOnPublish: data.autoOnPublish !== false,
-        metaAiRewrite: data.metaAiRewrite !== false,
-      })
+      setAutoShareDraft(normalizeAutoShareSettings(data))
       toast.success(data.message ?? 'Otomatik paylaşım ayarları kaydedildi')
     } catch (err) {
       console.error(err)
@@ -1243,19 +1254,18 @@ export default function SocialPage() {
               ))}
             </select>
 
-            {categoryFilter === YEREL_HABER_CATEGORY_ID && (
-              <select
-                value={cityFilter}
-                onChange={(e) => setCityFilter(e.target.value)}
-                className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] px-3 py-2 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label="İl filtresi"
-              >
-                <option value="">Tüm iller</option>
-                {TURKISH_PROVINCES.map((p) => (
-                  <option key={p.slug} value={p.slug}>{p.name}</option>
-                ))}
-              </select>
-            )}
+            {/* Always show city filter — SMM map deep-links with ?city= */}
+            <select
+              value={cityFilter}
+              onChange={(e) => setCityFilter(e.target.value)}
+              className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] px-3 py-2 text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="İl filtresi"
+            >
+              <option value="">Tüm iller</option>
+              {TURKISH_PROVINCES.map((p) => (
+                <option key={p.slug} value={p.slug}>{p.name}</option>
+              ))}
+            </select>
 
             <button
               type="button"
@@ -1342,141 +1352,16 @@ export default function SocialPage() {
           </div>
         )}
 
-        {/* Otomatik paylaşım ayarları — her zaman görünür */}
-        <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
-                <h3 className="text-base font-bold text-[rgb(var(--color-text))]">
-                  Otomatik paylaşım ayarları
-                </h3>
-                {loadingAutoShare && <Loader2 className="h-3.5 w-3.5 animate-spin text-[rgb(var(--color-muted))]" />}
-              </div>
-              <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-                Cron ve CMS yayınındaki anlık paylaşımı buradan açıp kapatın. Composer / Haberler
-                butonlarından manuel paylaşım her zaman çalışır. Firestore{' '}
-                <code className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 text-xs">
-                  config/socialAutoShare
-                </code>
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => void loadAutoShare()}
-                disabled={loadingAutoShare}
-                className={btnSecondary}
-              >
-                {loadingAutoShare ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                Yenile
-              </button>
-              <button
-                type="button"
-                onClick={() => void saveAutoShare()}
-                disabled={savingAutoShare}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-50"
-              >
-                {savingAutoShare ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                Kaydet
-              </button>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-[rgb(var(--color-border))] text-blue-600 focus:ring-blue-500"
-                checked={autoShareDraft.autoPost}
-                onChange={(e) => setAutoShareDraft((p) => ({ ...p, autoPost: e.target.checked }))}
-              />
-              <span>
-                <span className="block text-sm font-bold text-[rgb(var(--color-text))]">Otomatik Post</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-[rgb(var(--color-muted))]">
-                  Cron feed post batch (Çanakkale haberleri, ~10/çalıştırma)
-                </span>
-              </span>
-            </label>
-
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-[rgb(var(--color-border))] text-blue-600 focus:ring-blue-500"
-                checked={autoShareDraft.autoStory}
-                onChange={(e) => setAutoShareDraft((p) => ({ ...p, autoStory: e.target.checked }))}
-              />
-              <span>
-                <span className="block text-sm font-bold text-[rgb(var(--color-text))]">Otomatik Hikâye</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-[rgb(var(--color-muted))]">
-                  Cron hikâye batch (gündem / öne çıkan, son 10 saat, max 5)
-                </span>
-              </span>
-            </label>
-
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-[rgb(var(--color-border))] text-blue-600 focus:ring-blue-500"
-                checked={autoShareDraft.autoOnPublish}
-                onChange={(e) => setAutoShareDraft((p) => ({ ...p, autoOnPublish: e.target.checked }))}
-              />
-              <span>
-                <span className="block text-sm font-bold text-[rgb(var(--color-text))]">Yayınlanınca anlık</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-[rgb(var(--color-muted))]">
-                  CMS yayın / öne çıkan olunca hemen paylaş (yine Post/Hikâye bayraklarına uyar)
-                </span>
-              </span>
-            </label>
-
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-violet-300/60 bg-violet-50/40 p-4 dark:border-violet-500/30 dark:bg-violet-950/20 sm:col-span-3">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-[rgb(var(--color-border))] text-violet-600 focus:ring-violet-500"
-                checked={autoShareDraft.metaAiRewrite !== false}
-                onChange={(e) => setAutoShareDraft((p) => ({ ...p, metaAiRewrite: e.target.checked }))}
-              />
-              <span>
-                <span className="block text-sm font-bold text-[rgb(var(--color-text))]">
-                  Meta AI ile özgünleştir
-                </span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-[rgb(var(--color-muted))]">
-                  Tüm sosyal paylaşımlarda (Facebook, Instagram, Hikâye, Threads, X) Llama ile özgün
-                  caption/özet üretir. 24 saat cache; timeout/hata olursa yerel fallback — gönderi atlanmaz.
-                  Anahtar: <code className="rounded bg-[rgb(var(--color-surface))] px-1">LLAMA_API_KEY</code> (Vercel env).
-                </span>
-              </span>
-            </label>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]/60 px-4 py-3 text-xs text-[rgb(var(--color-muted))]">
-            <p>
-              Kategori bazlı veto / opt-in için{' '}
-              <button
-                type="button"
-                className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
-                onClick={() => {
-                  setShowTools(true)
-                  setShowCategoryRules(true)
-                  void loadCategoryRules()
-                }}
-              >
-                Kategori ayarları
-              </button>
-              {' '}(config/socialCategoryRules).
-            </p>
-            <p className="font-medium text-[rgb(var(--color-text))]">
-              Durum:{' '}
-              {autoShareDraft.autoPost ? 'Post açık' : 'Post kapalı'}
-              {' · '}
-              {autoShareDraft.autoStory ? 'Hikâye açık' : 'Hikâye kapalı'}
-              {' · '}
-              {autoShareDraft.autoOnPublish ? 'Anlık açık' : 'Anlık kapalı'}
-              {' · '}
-              {autoShareDraft.metaAiRewrite !== false ? 'Meta AI açık' : 'Meta AI kapalı'}
-            </p>
-          </div>
-        </div>
+        <SocialAutomationDesk
+          draft={autoShareDraft}
+          onChange={setAutoShareDraft}
+          loading={loadingAutoShare}
+          saving={savingAutoShare}
+          onReload={() => void loadAutoShare()}
+          onSave={() => void saveAutoShare()}
+          btnSecondary={btnSecondary}
+          focusMode={automationFocus}
+        />
 
         {showCategoryRules && (
           <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 shadow-sm">
@@ -1601,8 +1486,17 @@ export default function SocialPage() {
           </div>
         )}
 
-        {/* BYO Facebook App — onyeditivi primary publisher */}
-        <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 shadow-sm">
+        {/* BYO Facebook App — collapsed by default */}
+        <details className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-bold text-[rgb(var(--color-text))] [&::-webkit-details-marker]:hidden">
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            Facebook App / BYO
+            <span className="ml-1 text-[10px] font-medium text-[rgb(var(--color-muted))]">
+              {byoStatus?.activeMode === 'custom' ? 'özel app aktif' : 'global app'}
+            </span>
+            <span className="ml-auto text-[10px] font-semibold text-[rgb(var(--color-muted))]">aç / kapa</span>
+          </summary>
+          <div className="border-t border-[rgb(var(--color-border))] p-3 sm:p-4">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -1753,7 +1647,8 @@ export default function SocialPage() {
             {byoStatus?.globalAppReminder ||
               'Aynı App ID ile kod Display Name değiştiremez. Meta Console → Display Name: "Onyeditivi Publisher" veya "Publisher".'}
           </p>
-        </div>
+          </div>
+        </details>
 
         {showTokenPanel && (
           <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 shadow-sm">

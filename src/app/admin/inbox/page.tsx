@@ -384,7 +384,7 @@ export default function AdminInboxPage() {
   return (
     <div className="flex h-screen flex-col">
       <CMSHeader
-        title="Gelen Kutusu"
+        title="Mail Kutusu"
         subtitle="bilgi@nahaber.com — Haber merkezi e-posta"
         actions={
           <>
@@ -431,7 +431,7 @@ export default function AdminInboxPage() {
               {/* Header */}
               <div className="flex items-center gap-2 border-b border-[rgb(var(--color-border))] px-4 py-3">
                 <Inbox className="h-4 w-4 text-[rgb(var(--color-muted))]" />
-                <span className="text-sm font-semibold text-[rgb(var(--color-text))]">Gelen Kutusu</span>
+                <span className="text-sm font-semibold text-[rgb(var(--color-text))]">Mail Kutusu</span>
                 <span className="ml-auto text-xs text-[rgb(var(--color-muted))]">{messages.length} mesaj</span>
               </div>
 

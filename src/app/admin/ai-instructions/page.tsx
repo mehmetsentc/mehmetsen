@@ -30,6 +30,7 @@ const LAYER_ORDER: InstructionLayer[] = [
 export default function AiInstructionsPage() {
   const [sets, setSets] = useState<InstructionSet[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [versionBody, setVersionBody] = useState<string>('')
   const [effectivePreview, setEffectivePreview] = useState<string>('')
   const [agentId, setAgentId] = useState('agent-fact-check')
   const [busy, setBusy] = useState(false)
@@ -51,6 +52,39 @@ export default function AiInstructionsPage() {
   }, [load])
 
   const selected = useMemo(() => sets.find((s) => s.id === selectedId) ?? null, [sets, selectedId])
+
+  useEffect(() => {
+    if (!selectedId) {
+      setVersionBody('')
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/instructions?setId=${encodeURIComponent(selectedId)}&versions=1`,
+          { headers: await authHeaders() }
+        )
+        const body = (await res.json()) as {
+          versions?: Array<{ content?: string; version?: number; changelog?: string | null }>
+          error?: string
+        }
+        if (!res.ok || cancelled) return
+        const latest = body.versions?.[0]
+        if (!latest?.content) {
+          setVersionBody('(aktif sürüm içeriği yok — seed veya learning deploy gerekir)')
+          return
+        }
+        const meta = `v${latest.version ?? '?'}${latest.changelog ? ` · ${latest.changelog}` : ''}\n\n`
+        setVersionBody(meta + latest.content)
+      } catch {
+        if (!cancelled) setVersionBody('(sürüm yüklenemedi)')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedId])
 
   const byLayer = useMemo(() => {
     const map = new Map<InstructionLayer, InstructionSet[]>()
@@ -188,10 +222,9 @@ export default function AiInstructionsPage() {
                   <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
                     {selected.id} · layer={selected.layer} · aktif sürüm={selected.activeVersion ?? '—'}
                   </p>
-                  <p className="mt-3 text-sm text-[rgb(var(--color-muted))]">
-                    Yeni sürüm yazmak için API <code className="text-xs">POST /api/admin/instructions</code> kullanılır.
-                    Seed butonu ilk içerikleri yükler.
-                  </p>
+                  <pre className="mt-3 max-h-[320px] overflow-auto rounded-xl bg-[rgb(var(--color-surface))] p-3 text-[11px] leading-relaxed whitespace-pre-wrap">
+                    {versionBody || 'Yükleniyor…'}
+                  </pre>
                 </>
               )}
             </div>

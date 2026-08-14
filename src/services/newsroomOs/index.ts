@@ -18,6 +18,7 @@ export {
   getActiveAlgorithmConfig,
   listRuleProposals,
   reviewRuleProposal,
+  seedLearningProposals,
 } from './proposalService'
 export * from './memoryService'
 export * from './smmQueueService'
@@ -30,3 +31,11 @@ export {
   seedDefaultInstructionSets,
   upsertInstructionSetVersion,
 } from './instructionService'
+export {
+  SOCIAL_DIRECTOR_INSTRUCTIONS,
+  CITY_SMM_ROLE_INSTRUCTIONS,
+  SOCIAL_DEPARTMENT_INSTRUCTIONS,
+  citySmmAgentId,
+  buildCityLocationInstructions,
+  allProvinceLocationSeeds,
+} from './smmPlaybook'

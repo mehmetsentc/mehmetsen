@@ -5,6 +5,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import type { AgentTask, AgentTaskStatus, AgentTaskType } from '@/types/newsroomOs'
 import { buildAgentRuntimeContext, getNewsroomAgent } from '@/services/newsroomOs/agentService'
+import { citySmmAgentId } from '@/services/newsroomOs/smmPlaybook'
 
 function tasksCol() {
   return getAdminFirestore().collection(Collections.AGENT_TASKS)
@@ -205,3 +206,87 @@ export async function recordPipelineStageTask(params: {
     return null
   }
 }
+
+/** Assign SOCIAL_GENERATE to the city SMM agent for a province. */
+export async function requestSocialGenerateTask(params: {
+  newsId: string
+  citySlug: string
+  createdByAgentId?: string | null
+  createdByHumanId?: string | null
+  tone?: 'local' | 'breaking' | 'announcement'
+  priority?: AgentTask['priority']
+}): Promise<AgentTask> {
+  const citySlug = params.citySlug.trim().toLowerCase()
+  return createAgentTask({
+    type: 'SOCIAL_GENERATE',
+    newsId: params.newsId,
+    createdByAgentId: params.createdByAgentId ?? 'agent-social-director',
+    createdByHumanId: params.createdByHumanId,
+    assignedAgentId: citySmmAgentId(citySlug),
+    priority: params.priority ?? (params.tone === 'breaking' ? 'high' : 'normal'),
+    input: {
+      citySlug,
+      tone: params.tone ?? 'local',
+      playbook: 'SOCIAL_GENERATE',
+    },
+  })
+}
+
+/** Assign SOCIAL_PUBLISH after generate / human composer approval. */
+export async function requestSocialPublishTask(params: {
+  newsId: string
+  citySlug: string
+  shareMode?: 'post' | 'story' | 'both'
+  createdByAgentId?: string | null
+  createdByHumanId?: string | null
+  parentTaskId?: string | null
+  forceReshare?: boolean
+}): Promise<AgentTask> {
+  const citySlug = params.citySlug.trim().toLowerCase()
+  return createAgentTask({
+    type: 'SOCIAL_PUBLISH',
+    newsId: params.newsId,
+    createdByAgentId: params.createdByAgentId ?? 'agent-social-director',
+    createdByHumanId: params.createdByHumanId,
+    assignedAgentId: citySmmAgentId(citySlug),
+    parentTaskId: params.parentTaskId,
+    priority: params.forceReshare ? 'high' : 'normal',
+    input: {
+      citySlug,
+      shareMode: params.shareMode ?? 'post',
+      forceReshare: params.forceReshare === true,
+      playbook: 'SOCIAL_PUBLISH',
+    },
+  })
+}
+
+/**
+ * Director fan-out: create generate tasks for many cities (national breaking).
+ * Soft-fail per city so one missing agent does not abort the batch.
+ */
+export async function fanOutSocialGenerate(params: {
+  newsId: string
+  citySlugs: string[]
+  createdByHumanId?: string | null
+  tone?: 'local' | 'breaking' | 'announcement'
+}): Promise<{ created: string[]; errors: string[] }> {
+  const created: string[] = []
+  const errors: string[] = []
+  for (const slug of params.citySlugs) {
+    try {
+      const task = await requestSocialGenerateTask({
+        newsId: params.newsId,
+        citySlug: slug,
+        createdByAgentId: 'agent-social-director',
+        createdByHumanId: params.createdByHumanId,
+        tone: params.tone ?? 'breaking',
+        priority: 'high',
+      })
+      created.push(task.id)
+    } catch (e) {
+      errors.push(`${slug}: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return { created, errors }
+}
+

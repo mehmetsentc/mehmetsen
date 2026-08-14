@@ -96,7 +96,7 @@ const COMMANDS: CommandItem[] = [
   },
   {
     id: 'inbox',
-    label: 'Haber merkezi gelen kutusu',
+    label: 'Mail kutusu',
     href: ROUTES.ADMIN.INBOX,
     icon: Mail,
     group: 'Haber Merkezi',
