@@ -1,31 +1,97 @@
 import type { MetadataRoute } from 'next'
+import { headers } from 'next/headers'
 import { getSiteUrl } from '@/lib/seo'
+import { getCitySlugFromHost } from '@/lib/cityHost'
 
-export default function robots(): MetadataRoute.Robots {
-  const siteUrl = getSiteUrl()
+/**
+ * robots.txt — host-aware.
+ * - City subdomains (canakkale.nahaber.com) → city sitemap URL'leri
+ * - National (www.nahaber.com) → ulusal sitemap seti
+ */
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const headerStore = await headers()
+  const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? ''
+  const citySlug = getCitySlugFromHost(host)
+
+  const siteUrl = citySlug
+    ? `https://${citySlug}.nahaber.com`
+    : getSiteUrl()
+
+  const commonDisallow = [
+    '/admin/',
+    '/api/',
+    '/_next/',
+    '/settings/',
+    '/settings',
+    '/messages/',
+    '/messages',
+    '/notifications',
+    '/login',
+    '/register',
+    '/onboarding',
+    '/post/create',
+    '/saved',
+    '/search',
+    '/offline',
+    '/dev/',
+  ]
+
+  const AI_BOTS = [
+    'GPTBot',
+    'ChatGPT-User',
+    'OAI-SearchBot',
+    'CCBot',
+    'anthropic-ai',
+    'ClaudeBot',
+    'Claude-Web',
+    'Google-Extended',
+    'PerplexityBot',
+    'Bytespider',
+    'Amazonbot',
+    'cohere-ai',
+    'Diffbot',
+    'ImagesiftBot',
+  ]
+
+  if (citySlug) {
+    // ── City subdomain ──────────────────────────────────────────────────────
+    return {
+      rules: [
+        {
+          userAgent: '*',
+          allow: '/',
+          disallow: commonDisallow,
+        },
+        {
+          userAgent: 'Googlebot-News',
+          allow: ['/haber/', '/kategori/', '/etkinlik', '/spor'],
+          disallow: ['/admin/', '/api/'],
+        },
+        {
+          userAgent: 'Googlebot-Image',
+          allow: ['/haber/', '/kategori/'],
+          disallow: ['/admin/', '/api/'],
+        },
+        {
+          userAgent: AI_BOTS,
+          disallow: '/',
+        },
+      ],
+      sitemap: [
+        `${siteUrl}/sitemap.xml`,
+        `${siteUrl}/news-sitemap.xml`,
+      ],
+      host: siteUrl,
+    }
+  }
+
+  // ── National site ─────────────────────────────────────────────────────────
   return {
     rules: [
       {
         userAgent: '*',
         allow: '/',
-        disallow: [
-          '/admin/',
-          '/api/',
-          '/_next/',
-          '/settings/',
-          '/settings',
-          '/messages/',
-          '/messages',
-          '/notifications',
-          '/login',
-          '/register',
-          '/onboarding',
-          '/post/create',
-          '/saved',
-          '/search',
-          '/offline',
-          '/dev/',
-        ],
+        disallow: commonDisallow,
       },
       {
         userAgent: 'Googlebot-News',
@@ -42,26 +108,8 @@ export default function robots(): MetadataRoute.Robots {
         allow: ['/haber/', '/reels', '/video-sitemap.xml'],
         disallow: ['/admin/', '/api/'],
       },
-      // Block AI training crawlers — they pull every URL, every day, and add no
-      // referral traffic. Each crawl translates directly into Firestore reads
-      // for SSR'd article pages, which is exactly what we're trying to cap.
       {
-        userAgent: [
-          'GPTBot',
-          'ChatGPT-User',
-          'OAI-SearchBot',
-          'CCBot',
-          'anthropic-ai',
-          'ClaudeBot',
-          'Claude-Web',
-          'Google-Extended',
-          'PerplexityBot',
-          'Bytespider',
-          'Amazonbot',
-          'cohere-ai',
-          'Diffbot',
-          'ImagesiftBot',
-        ],
+        userAgent: AI_BOTS,
         disallow: '/',
       },
     ],

@@ -1,11 +1,14 @@
 /**
  * Google News Sitemap — only articles published in the last 48 hours.
+ * Host-aware: city subdomains filter by citySlug and use city base URL.
  * Spec: https://developers.google.com/search/docs/crawling-indexing/sitemaps/news-sitemap
  */
 import { NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
+import { getCitySlugFromHost } from '@/lib/cityHost'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
@@ -21,22 +24,48 @@ function escapeXml(s: string): string {
 }
 
 export async function GET() {
-  const base = getSiteUrl()
-  const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const headerStore = await headers()
+  const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? ''
+  const citySlug = getCitySlugFromHost(host)
+
+  const base = citySlug ? `https://${citySlug}.nahaber.com` : getSiteUrl()
+  const siteName = citySlug
+    ? `NaHaber ${citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`
+    : (process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber')
   const cutoff = Date.now() - 48 * 60 * 60 * 1000 // 48 hours ago
 
   let items = ''
 
   try {
-    const snap = await getAdminFirestore()
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .where('publishedAt', '>=', cutoff)
-      .orderBy('publishedAt', 'desc')
-      .limit(200)
-      .get()
+    const db = getAdminFirestore()
 
-    for (const doc of snap.docs) {
+    // City subdomain: filter by citySlug first (uses existing composite index),
+    // then apply date cutoff in JS to avoid requiring a new composite index.
+    // National: date filter in Firestore is fine since that index already exists.
+    const snap = citySlug
+      ? await db
+          .collection(Collections.NEWS)
+          .where('status', '==', 'published')
+          .where('citySlug', '==', citySlug)
+          .orderBy('publishedAt', 'desc')
+          .limit(300) // fetch more, then trim in JS
+          .get()
+      : await db
+          .collection(Collections.NEWS)
+          .where('status', '==', 'published')
+          .where('publishedAt', '>=', cutoff)
+          .orderBy('publishedAt', 'desc')
+          .limit(200)
+          .get()
+
+    const docs = citySlug
+      ? snap.docs.filter((doc) => {
+          const d = doc.data() as { publishedAt?: number }
+          return (d.publishedAt ?? 0) >= cutoff
+        }).slice(0, 200)
+      : snap.docs
+
+    for (const doc of docs) {
       const d = doc.data() as {
         title?: string
         slug?: string
