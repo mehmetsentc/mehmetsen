@@ -22,6 +22,16 @@ const NOTIF_ICONS: Record<CmsNotification['type'], string> = {
   cron_error: '🚨',
   user_reported: '🚩',
   breaking_news: '🔴',
+  approval: '⏳',
+  factCheck: '🔍',
+  agentError: '🤖',
+  socialFailure: '📣',
+  tokenExpiry: '🔑',
+  systemError: '⚠️',
+  algorithmProposal: '📈',
+  learningProposal: '🧠',
+  assignment: '📌',
+  mention: '@',
 }
 
 function NotificationDropdown({ onClose }: { onClose: () => void }) {

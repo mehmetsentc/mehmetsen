@@ -37,7 +37,7 @@ export async function listNewsroomAgents(): Promise<AdapterResult<NewsroomAgent[
   return { ok: true, data: [], source: 'empty' }
 }
 
-export async function listAgentTasks(_opts?: {
+export async function listAgentTasksAdapter(_opts?: {
   status?: string
   limit?: number
 }): Promise<AdapterResult<AgentTask[]>> {
