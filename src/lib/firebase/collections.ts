@@ -117,6 +117,7 @@ export const Collections = {
   SOURCE_PROFILES: 'sourceProfiles',
   NEWS_CLAIMS: 'newsClaims',
   QUALITY_SCORES: 'qualityScores',
+  CITY_OPS_SETTINGS: 'cityOpsSettings',
   // ── Integrations ──────────────────────────────────────────────────────────
   /** OAuth integration tokens — doc id: 'gmail_bilgi' etc. */
   INTEGRATIONS: 'integrations',

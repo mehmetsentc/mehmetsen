@@ -276,3 +276,119 @@ export interface CitySmmMatrixRule {
   match: { categoryId?: string; citySlug?: string; isBreaking?: boolean }
   priority: SmmMatrixPriority
 }
+
+/** Per-city CMS ops — SEO, feed, push, ads, linked agents/accounts */
+export interface CityOpsSettings {
+  citySlug: string
+  active: boolean
+  localEditorHumanId?: string | null
+  localAiEditorId?: string | null
+  smmAgentId?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  feedEnabled: boolean
+  pushSegment?: string | null
+  adSlotIds: string[]
+  socialAccountIds: string[]
+  matrixRules: CitySmmMatrixRule[]
+  updatedAt: number
+  updatedBy?: string | null
+}
+
+export type PageLayoutStatus = 'draft' | 'preview' | 'published' | 'archived'
+
+export type PageBlockKind =
+  | 'manchet'
+  | 'breaking'
+  | 'featured'
+  | 'category_rail'
+  | 'local'
+  | 'video'
+  | 'reels'
+  | 'custom'
+
+export interface PageLayoutBlock {
+  id: string
+  kind: PageBlockKind
+  title: string
+  active: boolean
+  order: number
+  categoryId?: string | null
+  citySlug?: string | null
+  limit: number
+  source: 'algorithmic' | 'manual'
+  desktopVisible: boolean
+  mobileVisible: boolean
+}
+
+export interface PageLayout {
+  id: string
+  pageKey: string
+  label: string
+  status: PageLayoutStatus
+  version: number
+  blocks: PageLayoutBlock[]
+  updatedAt: number
+  updatedBy?: string | null
+  publishedAt?: number | null
+}
+
+export interface FeedAlgorithmWeights {
+  id: string
+  version: number
+  status: 'draft' | 'active' | 'archived'
+  weights: {
+    recency: number
+    userInterest: number
+    locationAffinity: number
+    categoryAffinity: number
+    trend: number
+    editorialPriority: number
+    sourceReliability: number
+    contentQuality: number
+    diversity: number
+    breakingPriority: number
+    spamPenalty: number
+    duplicatePenalty: number
+  }
+  updatedAt: number
+}
+
+export const DEFAULT_FEED_ALGORITHM_WEIGHTS: FeedAlgorithmWeights['weights'] = {
+  recency: 0.22,
+  userInterest: 0.14,
+  locationAffinity: 0.12,
+  categoryAffinity: 0.1,
+  trend: 0.1,
+  editorialPriority: 0.08,
+  sourceReliability: 0.06,
+  contentQuality: 0.06,
+  diversity: 0.05,
+  breakingPriority: 0.12,
+  spamPenalty: 0.15,
+  duplicatePenalty: 0.15,
+}
+
+export interface EditorialMemoryRecord {
+  id: string
+  scope: 'agent' | 'shared'
+  agentId?: string | null
+  type:
+    | 'style'
+    | 'entity'
+    | 'location'
+    | 'organization'
+    | 'editorialRule'
+    | 'correction'
+    | 'sourceReliability'
+    | 'historicalContext'
+    | 'performanceInsight'
+  content: string
+  source?: string | null
+  confidence: number
+  verified: boolean
+  verifiedBy?: string | null
+  expiresAt?: number | null
+  createdAt: number
+  lastUsedAt?: number | null
+}

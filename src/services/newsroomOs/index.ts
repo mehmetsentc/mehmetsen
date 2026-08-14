@@ -11,3 +11,11 @@ export {
 } from './agentService'
 
 export * from './taskService'
+export * from './cityOpsService'
+export * from './pageLayoutService'
+export {
+  createRuleProposal,
+  getActiveAlgorithmConfig,
+  listRuleProposals,
+  reviewRuleProposal,
+} from './proposalService'
