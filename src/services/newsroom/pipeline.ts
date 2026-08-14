@@ -29,6 +29,8 @@ import {
 } from '@/services/newsroom/chiefEditor'
 import { runMultiStageEditor, type MultiStageResult } from '@/services/newsroom/editors/multiStageEditor'
 import { moderateContent } from '@/services/moderationService'
+import { isCmsFeatureEnabled } from '@/lib/cms/featureFlags'
+import { recordPipelineStageTask } from '@/services/newsroomOs/taskService'
 import { newsDraftService } from '@/services/newsDraftService'
 import {
   computeBreakingScore,
@@ -906,6 +908,43 @@ export async function processNewsroomArticle(
       rewritten,
     })
 
+    if (isCmsFeatureEnabled('aiNewsroomEnabled')) {
+      void recordPipelineStageTask({
+        type: 'FACT_CHECK',
+        assignedAgentId: 'agent-fact-check',
+        status: 'COMPLETED',
+        priority: 'high',
+        input: {
+          sourceUrl: workingInput.sourceUrl,
+          sourceLabel: workingInput.sourceLabel,
+          title: rewritten.title,
+        },
+        output: factCheck as unknown as Record<string, unknown>,
+        confidence: factCheck.confidenceScore ?? null,
+      })
+      void recordPipelineStageTask({
+        type: 'QUALITY_CHECK',
+        assignedAgentId: 'agent-quality',
+        status: 'COMPLETED',
+        input: { sourceUrl: workingInput.sourceUrl, title: rewritten.title },
+        output: {
+          gateDecision: rewritten.gateDecision,
+          publishScore: rewritten.publishScore,
+          outputChars,
+        },
+      })
+      void recordPipelineStageTask({
+        type: 'SEO',
+        assignedAgentId: 'agent-seo',
+        status: 'COMPLETED',
+        input: { sourceUrl: workingInput.sourceUrl },
+        output: {
+          seoTitle: rewritten.seoTitle ?? rewritten.title,
+          seoDescription: rewritten.seoDescription ?? rewritten.summary,
+        },
+      })
+    }
+
     const resolvedCategoryRaw = categoryEngine.resolve(
       rewritten.categoryId,
       workingInput.editorType,
@@ -1068,6 +1107,21 @@ export async function processNewsroomArticle(
         : moderationRaw.reasons.some((r) => r.startsWith('error:'))
           ? { ...moderationRaw, decision: 'approve' as const }
           : moderationRaw
+
+    if (isCmsFeatureEnabled('aiNewsroomEnabled')) {
+      const needsHuman = moderation.decision !== 'approve'
+      void recordPipelineStageTask({
+        type: 'LEGAL_RISK',
+        assignedAgentId: 'agent-legal',
+        status: needsHuman ? 'NEEDS_HUMAN' : 'COMPLETED',
+        priority: needsHuman ? 'high' : 'normal',
+        input: { sourceUrl: workingInput.sourceUrl, title: rewritten.title },
+        output: {
+          decision: moderation.decision,
+          reasons: moderation.reasons,
+        },
+      })
+    }
 
     const now = Date.now()
     // Yurt dışı: şehir olmasa da ülke korunur (location null → country Türkiye fallback YASAK)

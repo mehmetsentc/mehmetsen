@@ -11,13 +11,17 @@ import {
   Trophy, Cpu, Heart, FlaskConical, Palette, Star, Tag, Utensils,
   Car, CircleDot, Music, Film, Theater, PartyPopper, Swords, Plane,
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
-  Megaphone, Mail, Inbox, Archive, FileText, Briefcase, type LucideIcon,
+  Megaphone, Mail, Inbox, Archive, FileText, Briefcase, Network,
+  ListTodo, BookOpen, GraduationCap, Gauge, ScrollText, Layers,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import type { CmsPermission } from '@/types/cms'
 import { CMS_ROLE_COLORS } from '@/types/cms'
+import { db, Collections } from '@/lib/firebase/firestore'
+import { collection, getCountFromServer, query, where } from 'firebase/firestore'
 
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   trend: Flame,
@@ -75,6 +79,8 @@ interface NavItem {
   label: string
   icon: React.ComponentType<{ className?: string }>
   badge?: string
+  /** Live count key from sidebar counts hook */
+  countKey?: 'inbox' | 'draft' | 'pending' | 'scheduled' | 'published' | 'smmQueue'
   requiredPermissions?: CmsPermission[]
   exact?: boolean
 }
@@ -91,8 +97,23 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Genel Bakış',
     items: [
       { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+      { href: '/admin/live-center', label: 'Canlı Haber Merkezi', icon: Activity, requiredPermissions: ['news:read'] },
       { href: '/admin/analytics', label: 'Analitik', icon: BarChart3, requiredPermissions: ['analytics:read'] },
       { href: '/admin/most-read', label: 'En Çok Okunanlar', icon: Flame, requiredPermissions: ['analytics:read'] },
+    ],
+  },
+  {
+    id: 'newsroom-desk',
+    label: 'Yayın Odası',
+    items: [
+      { href: '/admin/inbox', label: 'Gelen Haberler', icon: Mail, requiredPermissions: ['news:read'], countKey: 'inbox' },
+      { href: '/admin/news?filter=draft', label: 'Taslaklar', icon: FileText, requiredPermissions: ['news:read'], countKey: 'draft' },
+      { href: '/admin/approvals', label: 'Onay Bekleyenler', icon: Clock, requiredPermissions: ['news:read'], countKey: 'pending' },
+      { href: '/admin/ai-tasks', label: 'Fact Check Bekleyenler', icon: ShieldAlert, requiredPermissions: ['ai:use'] },
+      { href: '/admin/news?filter=scheduled', label: 'Planlananlar', icon: Calendar, requiredPermissions: ['news:read'], countKey: 'scheduled' },
+      { href: '/admin/news?filter=published', label: 'Yayında', icon: Newspaper, requiredPermissions: ['news:read'], countKey: 'published' },
+      { href: '/admin/news?filter=update', label: 'Güncellenecekler', icon: ListTodo, requiredPermissions: ['news:read'] },
+      { href: '/admin/archive', label: 'Arşiv', icon: Archive, requiredPermissions: ['news:read'] },
     ],
   },
   {
@@ -100,43 +121,52 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'İçerik',
     items: [
       { href: '/admin/news', label: 'Tüm Haberler', icon: Newspaper, requiredPermissions: ['news:read'] },
-      { href: '/admin/news/create', label: 'Yeni Haber', icon: FileText, requiredPermissions: ['news:create'] },
-      { href: '/admin/news?filter=pending', label: 'Onay Kuyruğu', icon: Clock, requiredPermissions: ['news:read'] },
-      { href: '/admin/news?filter=draft', label: 'Taslaklar', icon: FileText, requiredPermissions: ['news:read'] },
-      { href: '/admin/archive', label: 'Arşiv', icon: Archive, requiredPermissions: ['news:read'] },
-      { href: '/admin/videos', label: 'Videolar', icon: Video, requiredPermissions: ['video:read'] },
       { href: '/admin/categories', label: 'Kategoriler', icon: Tag, requiredPermissions: ['news:read'] },
-    ],
-  },
-  {
-    id: 'newsroom',
-    label: 'Haber Merkezi',
-    items: [
-      { href: '/admin/news?category=son-dakika', label: 'Son Dakika', icon: Zap, requiredPermissions: ['news:read'] },
-      { href: '/admin/inbox', label: 'Gelen Kutusu', icon: Mail, requiredPermissions: ['news:read'] },
+      { href: '/admin/locations', label: '81 İl', icon: Building2, requiredPermissions: ['locations:manage'], badge: 'YENİ' },
+      { href: '/admin/videos', label: 'Video', icon: Video, requiredPermissions: ['video:read'] },
       { href: '/admin/submissions', label: 'Gönderiler', icon: Inbox, requiredPermissions: ['news:read'] },
       { href: '/admin/job-classifieds', label: 'İş Kariyer', icon: Briefcase, requiredPermissions: ['news:publish'] },
-      { href: '/admin/reports', label: 'Raporlar', icon: ShieldAlert, requiredPermissions: ['news:read'] },
       { href: '/admin/events', label: 'Etkinlikler', icon: Calendar, requiredPermissions: ['news:read'] },
     ],
   },
   {
     id: 'ai',
-    label: 'Yapay Zeka',
+    label: 'AI Newsroom',
     items: [
-      { href: '/admin/newsroom', label: 'AI Newsroom', icon: BrainCircuit, requiredPermissions: ['ai:use'] },
+      { href: '/admin/ai-org', label: 'AI Organizasyonu', icon: Network, requiredPermissions: ['agents:manage'] },
       { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, requiredPermissions: ['ai:use'] },
+      { href: '/admin/ai-agents', label: 'AI Ajanlar', icon: BrainCircuit, requiredPermissions: ['agents:manage'] },
+      { href: '/admin/roles', label: 'Roller', icon: Shield, requiredPermissions: ['roles:manage'] },
+      { href: '/admin/ai-instructions', label: 'Talimatlar', icon: BookOpen, requiredPermissions: ['ai:instructions'] },
+      { href: '/admin/ai-tasks', label: 'Görevler', icon: ListTodo, requiredPermissions: ['ai:use'] },
+      { href: '/admin/ai-memory', label: 'AI Hafıza', icon: Layers, requiredPermissions: ['ai:configure'] },
+      { href: '/admin/ai-learning', label: 'Öğrenme Merkezi', icon: GraduationCap, requiredPermissions: ['ai:configure'] },
+      { href: '/admin/ai-models', label: 'AI Modelleri', icon: Cpu, requiredPermissions: ['ai:models'] },
+      { href: '/admin/ai-performance', label: 'AI Performans', icon: Gauge, requiredPermissions: ['analytics:read'] },
+      { href: '/admin/ai-logs', label: 'AI Logları', icon: ScrollText, requiredPermissions: ['logs:view'] },
       { href: '/admin/ai/news', label: 'AI Haber Asistanı', icon: Bot, requiredPermissions: ['ai:use'] },
-      { href: '/admin/ai/video', label: 'AI Video', icon: Film, requiredPermissions: ['ai:use'] },
     ],
   },
   {
-    id: 'distribution',
-    label: 'Dağıtım',
+    id: 'social',
+    label: 'Sosyal Medya',
     items: [
-      { href: '/admin/social', label: 'Sosyal Medya', icon: Share2, requiredPermissions: ['news:read'] },
-      { href: '/admin/social/gorsel', label: 'Görsel Üretici', icon: Film, requiredPermissions: ['news:read'] },
-      { href: '/admin/newsletter', label: 'E-posta Bülteni', icon: Mail, requiredPermissions: ['users:read'] },
+      { href: '/admin/smm', label: '81 İl SMM', icon: Map, requiredPermissions: ['social:view'], badge: 'YENİ' },
+      { href: '/admin/social', label: 'Hesaplar', icon: Share2, requiredPermissions: ['social:view'] },
+      { href: '/admin/smm/queue', label: 'Paylaşım Kuyruğu', icon: ListTodo, requiredPermissions: ['social:view'], countKey: 'smmQueue' },
+      { href: '/admin/newsletter', label: 'Otomasyonlar', icon: Zap, requiredPermissions: ['social:manage'] },
+      { href: '/admin/analytics', label: 'Performans', icon: TrendingUp, requiredPermissions: ['analytics:read'] },
+      { href: '/admin/social/gorsel', label: 'Görsel Üretici', icon: Film, requiredPermissions: ['social:view'] },
+    ],
+  },
+  {
+    id: 'app-mgmt',
+    label: 'Uygulama Yönetimi',
+    items: [
+      { href: '/admin/page-controls', label: 'Sayfa Kontrolleri', icon: LayoutGrid, requiredPermissions: ['pages:manage'] },
+      { href: '/admin/global-layout', label: 'Global Dizilim', icon: Layers, requiredPermissions: ['pages:manage'] },
+      { href: '/admin/feed-algorithm', label: 'Feed & Algoritma', icon: SlidersHorizontal, requiredPermissions: ['algorithm:view'] },
+      { href: '/admin/settings', label: 'Push Bildirimleri', icon: Megaphone, requiredPermissions: ['system:settings'] },
       { href: '/admin/seo', label: 'SEO Yönetimi', icon: Search, requiredPermissions: ['seo:read'] },
       { href: '/admin/ads', label: 'Reklam Yönetimi', icon: Megaphone, requiredPermissions: ['seo:edit'] },
     ],
@@ -145,12 +175,15 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'team',
     label: 'Yönetim',
     items: [
+      { href: '/admin/users', label: 'Adminler', icon: Users, requiredPermissions: ['users:read'] },
+      { href: '/admin/roles', label: 'Roller & İzinler', icon: Shield, requiredPermissions: ['roles:manage'] },
       { href: '/admin/editors', label: 'Editörler', icon: UserCog, requiredPermissions: ['editors:read'] },
       { href: '/admin/authors', label: 'Yazarlar', icon: UserCheck, requiredPermissions: ['authors:read'] },
-      { href: '/admin/users', label: 'Kullanıcılar', icon: Users, requiredPermissions: ['users:read'] },
+      { href: '/admin/settings', label: 'Ayarlar', icon: Settings, requiredPermissions: ['system:settings'] },
+      { href: '/admin/audit-logs', label: 'Loglar', icon: ScrollText, requiredPermissions: ['logs:view'] },
+      { href: '/admin/system-health', label: 'Sistem Durumu', icon: Activity, requiredPermissions: ['system:settings'] },
       { href: '/admin/cron', label: 'Cron İzleme', icon: Clock, requiredPermissions: ['cron:read'] },
       { href: '/admin/api-management', label: 'API Yönetimi', icon: Key, requiredPermissions: ['system:api_keys'] },
-      { href: '/admin/settings', label: 'Ayarlar', icon: Settings, requiredPermissions: ['system:settings'] },
     ],
   },
 ]
@@ -173,13 +206,16 @@ function NavItemRow({
   item,
   pathname,
   search,
+  counts,
 }: {
   item: NavItem
   pathname: string
   search: string
+  counts: Partial<Record<NonNullable<NavItem['countKey']>, number>>
 }) {
   const active = isActive(pathname, search, item.href, item.exact)
   const Icon = item.icon
+  const count = item.countKey ? counts[item.countKey] : undefined
 
   return (
     <Link
@@ -198,6 +234,11 @@ function NavItemRow({
         )}
       />
       <span className="flex-1 truncate">{item.label}</span>
+      {typeof count === 'number' && count > 0 ? (
+        <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-200">
+          {count > 999 ? '999+' : count}
+        </span>
+      ) : null}
       {item.badge ? (
         <span className="rounded-full bg-[rgb(var(--color-brand))] px-1.5 py-0.5 text-[10px] font-bold text-white">
           {item.badge}
@@ -261,6 +302,7 @@ export function CMSSidebar() {
   const search = searchParams.toString()
   const { user, role, roleLabel, can } = useCmsAuth()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [counts, setCounts] = useState<Partial<Record<NonNullable<NavItem['countKey']>, number>>>({})
 
   useEffect(() => {
     try {
@@ -268,6 +310,33 @@ export function CMSSidebar() {
       if (raw) setCollapsed(JSON.parse(raw) as Record<string, boolean>)
     } catch {
       /* ignore */
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [published, pending, draft] = await Promise.all([
+          getCountFromServer(query(collection(db, Collections.NEWS), where('status', '==', 'published'))).catch(() => null),
+          getCountFromServer(query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))).catch(() => null),
+          getCountFromServer(query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'draft'))).catch(() => null),
+        ])
+        if (cancelled) return
+        setCounts({
+          published: published?.data().count ?? 0,
+          pending: pending?.data().count ?? 0,
+          draft: draft?.data().count ?? 0,
+          inbox: pending?.data().count ?? 0,
+          scheduled: 0,
+          smmQueue: 0,
+        })
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -332,7 +401,13 @@ export function CMSSidebar() {
               {!isCollapsed ? (
                 <div className="space-y-0.5">
                   {group.items.map((item) => (
-                    <NavItemRow key={item.href + item.label} item={item} pathname={pathname} search={search} />
+                    <NavItemRow
+                      key={item.href + item.label}
+                      item={item}
+                      pathname={pathname}
+                      search={search}
+                      counts={counts}
+                    />
                   ))}
                   {group.id === 'content' && can('news:read') ? <CategoryMenu pathname={pathname} /> : null}
                 </div>

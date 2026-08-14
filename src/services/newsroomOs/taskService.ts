@@ -166,3 +166,42 @@ export async function requestFactCheckTask(params: {
     input: { claims: params.claims },
   })
 }
+
+/**
+ * Fire-and-forget overlay for the existing newsroom pipeline.
+ * Never throws to callers — task bus must not break publish.
+ */
+export async function recordPipelineStageTask(params: {
+  type: AgentTaskType
+  newsId?: string | null
+  assignedAgentId: string
+  status?: AgentTaskStatus
+  priority?: AgentTask['priority']
+  input?: Record<string, unknown>
+  output?: Record<string, unknown>
+  confidence?: number | null
+}): Promise<AgentTask | null> {
+  try {
+    const task = await createAgentTask({
+      type: params.type,
+      newsId: params.newsId,
+      assignedAgentId: params.assignedAgentId,
+      priority: params.priority ?? 'normal',
+      input: params.input,
+    })
+    const status = params.status ?? 'COMPLETED'
+    if (status !== 'PENDING') {
+      return updateAgentTaskStatus(task.id, {
+        status,
+        output: params.output,
+        confidence: params.confidence ?? null,
+        actorType: 'SYSTEM',
+        actorId: 'newsroom-pipeline',
+      })
+    }
+    return task
+  } catch (err) {
+    console.warn('[newsroomOs] recordPipelineStageTask skipped:', err)
+    return null
+  }
+}

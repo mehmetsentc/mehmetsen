@@ -17,7 +17,6 @@ export async function runCanakkaleBelDuyuruWorker(): Promise<NewsroomRunResult> 
 
   console.log(`[canakkale-bel-duyuru] starting ${sources.length} municipality sources`)
   const result = await runScraperSources(sources)
-  result.workerId = 'canakkale-bel-duyuru'
   console.log(
     `[canakkale-bel-duyuru] done fetched=${result.itemsFetched} queued=${result.itemsNew} failed=${result.itemsFailed}`
   )
