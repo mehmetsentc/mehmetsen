@@ -286,6 +286,7 @@ export default function AdminInboxPage() {
   const [statusLoading, setStatusLoading] = useState(true)
   const [messages, setMessages] = useState<GmailMessageSummary[]>([])
   const [msgLoading, setMsgLoading] = useState(false)
+  const [msgError, setMsgError] = useState('')
   const [nextPageToken, setNextPageToken] = useState<string | undefined>()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -298,7 +299,11 @@ export default function AdminInboxPage() {
     const params = new URLSearchParams(window.location.search)
     window.history.replaceState({}, '', '/admin/inbox')
     const err = params.get('error')
-    if (err) setCallbackError(`OAuth hatası: ${err}`)
+    if (err === 'missing_scope') {
+      setCallbackError('Gmail okuma izni verilmedi. Lütfen tekrar bağlanın ve "E-posta iletilerinizi görüntüleme" iznini onaylayın.')
+    } else if (err) {
+      setCallbackError(`OAuth hatası: ${err}`)
+    }
   }, [])
 
   const fetchStatus = useCallback(async () => {
@@ -317,13 +322,23 @@ export default function AdminInboxPage() {
 
   const fetchMessages = useCallback(async (pageToken?: string) => {
     setMsgLoading(true)
+    if (!pageToken) setMsgError('')
     try {
       const url = `/api/admin/gmail/messages?maxResults=25${pageToken ? `&pageToken=${pageToken}` : ''}`
       const r = await authFetch(url)
       const d = await r.json()
-      if (d.error) return
+      if (d.error) {
+        if (d.error === 'not_connected') {
+          setMsgError('Bağlantı kesilmiş — lütfen yeniden bağlanın.')
+        } else {
+          setMsgError(`Gmail API hatası: ${d.error}. Gmail bağlantısını kesip tekrar bağlayın.`)
+        }
+        return
+      }
       setMessages((prev) => pageToken ? [...prev, ...(d.messages ?? [])] : (d.messages ?? []))
       setNextPageToken(d.nextPageToken)
+    } catch {
+      setMsgError('Mesajlar yüklenemedi. Bağlantıyı kontrol edin.')
     } finally {
       setMsgLoading(false)
     }
@@ -422,7 +437,12 @@ export default function AdminInboxPage() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto">
-                {msgLoading && messages.length === 0 ? (
+                {msgError ? (
+                  <div className="px-4 py-12 text-center">
+                    <AlertCircle className="mx-auto h-8 w-8 text-amber-400" />
+                    <p className="mt-3 text-sm text-amber-400">{msgError}</p>
+                  </div>
+                ) : msgLoading && messages.length === 0 ? (
                   <div className="flex items-center justify-center py-12">
                     <RefreshCw className="h-5 w-5 animate-spin text-[rgb(var(--color-muted))]" />
                   </div>

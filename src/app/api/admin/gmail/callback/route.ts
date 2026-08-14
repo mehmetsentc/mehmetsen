@@ -65,6 +65,11 @@ export async function GET(request: Request) {
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code)
 
+    // CRITICAL: Verify gmail.readonly scope was actually granted
+    if (!tokens.scope.includes('gmail.readonly') && !tokens.scope.includes('https://www.googleapis.com/auth/gmail.readonly')) {
+      return NextResponse.redirect(`${adminUrl}?error=missing_scope`)
+    }
+
     // CRITICAL: Verify the authorized account matches GMAIL_MAILBOX
     if (!tokens.email) {
       return NextResponse.redirect(`${adminUrl}?error=no_email_in_token`)
