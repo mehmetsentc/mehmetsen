@@ -9,3 +9,5 @@ export {
   seedCoreOrgAgents,
   syncLocalEditorsFromAiEditors,
 } from './agentService'
+
+export * from './taskService'
