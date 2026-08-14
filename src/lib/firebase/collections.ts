@@ -17,6 +17,8 @@ export const Collections = {
   EVENT_REVIEWS: 'eventReviews',
   /** City job board (İŞKUR / manual) — doc id: `iskur_{sourceId}` or `manual_{id}` */
   JOB_LISTINGS: 'jobListings',
+  /** User-submitted employer / seeker classifieds (pending → approved) */
+  JOB_CLASSIFIEDS: 'jobClassifieds',
   REPORTS:         'reports',
   BLOCKS:          'blocks',
   NOTIFICATIONS:   'notifications',

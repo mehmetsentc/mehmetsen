@@ -173,6 +173,12 @@ export async function middleware(request: NextRequest) {
       return buildCityRewrite(request, `/city-site/ilceler/${districtMatch[1]}`, tenant)
     }
 
+    // Job classified forms: /is-ilanlari/eleman-ariyorum | is-ariyorum
+    const jobsFormMatch = cleanPath.match(/^\/is-ilanlari\/(eleman-ariyorum|is-ariyorum)$/)
+    if (jobsFormMatch) {
+      return buildCityRewrite(request, `/city-site/is-ilanlari/${jobsFormMatch[1]}`, tenant)
+    }
+
     // Category page: /kategori/siyaset → /city-site/kategori/siyaset (city-scoped family)
     const categoryMatch = cleanPath.match(/^\/kategori\/([a-z0-9-]+)$/)
     if (categoryMatch) {

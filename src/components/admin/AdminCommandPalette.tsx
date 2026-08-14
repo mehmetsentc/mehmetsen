@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Search, Newspaper, Plus, Clock, Bot, BarChart3, Settings,
   Users, Share2, Inbox, Zap, FileText, Archive, Video, Megaphone,
-  BrainCircuit, LayoutDashboard, Mail, Flame,
+  BrainCircuit, LayoutDashboard, Mail, Flame, Briefcase,
 } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { ROUTES } from '@/constants/routes'
@@ -110,6 +110,15 @@ const COMMANDS: CommandItem[] = [
     icon: Inbox,
     group: 'Haber Merkezi',
     requiredPermissions: ['news:read'],
+  },
+  {
+    id: 'job-classifieds',
+    label: 'İş kariyer yönetimi',
+    href: ROUTES.ADMIN.JOB_CLASSIFIEDS,
+    icon: Briefcase,
+    group: 'Haber Merkezi',
+    keywords: 'eleman iş arayan classified kariyer',
+    requiredPermissions: ['news:publish'],
   },
   {
     id: 'newsroom',

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   Newspaper, Clock, Archive, Video, BrainCircuit, Bot, Search, Share2,
   BarChart3, Users, UserCog, UserCheck, Settings, Mail, Inbox, ArrowLeft,
-  Megaphone, Tag, LogOut, Flame,
+  Megaphone, Tag, LogOut, Flame, Briefcase,
 } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useAuth } from '@/hooks/useAuth'
@@ -32,6 +32,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/admin/news', label: 'Tüm Haberler', icon: Newspaper, perm: 'news:read' },
       { href: '/admin/inbox', label: 'Gelen Kutusu', icon: Mail, perm: 'news:read' },
       { href: '/admin/submissions', label: 'Gönderiler', icon: Inbox, perm: 'news:read' },
+      { href: '/admin/job-classifieds', label: 'İş Kariyer', icon: Briefcase, perm: 'news:publish' },
       { href: '/admin/archive', label: 'Arşiv', icon: Archive, perm: 'news:read' },
       { href: '/admin/videos', label: 'Videolar', icon: Video, perm: 'video:read' },
     ],

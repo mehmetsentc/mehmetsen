@@ -13,6 +13,7 @@ const PRIMARY_EXACT = new Set(['/admin', '/admin/approvals', '/admin/news', '/ad
 const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
   { prefix: '/admin/inbox', title: 'Gelen Kutusu', backHref: '/admin/menu' },
   { prefix: '/admin/submissions', title: 'Gönderiler', backHref: '/admin/menu' },
+  { prefix: '/admin/job-classifieds', title: 'İş Kariyer', backHref: '/admin/menu' },
   { prefix: '/admin/archive', title: 'Arşiv', backHref: '/admin/menu' },
   { prefix: '/admin/videos', title: 'Videolar', backHref: '/admin/menu' },
   { prefix: '/admin/newsroom', title: 'AI Newsroom', backHref: '/admin/menu' },

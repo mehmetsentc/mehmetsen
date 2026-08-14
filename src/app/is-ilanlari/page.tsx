@@ -9,6 +9,7 @@ import {
   getCityJobListingsServer,
   getJobSyncSetupStatus,
 } from '@/services/jobListingService.server'
+import { getApprovedJobClassifiedsServer } from '@/services/jobClassifiedService.server'
 import { getCityNavPresence } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
@@ -45,11 +46,14 @@ export default async function IsIlanlariPage() {
   }
 
   const cityName = getCityCategoryName(citySlug)
-  const [initialJobs, setup, navPresence] = await Promise.all([
-    getCityJobListingsServer(citySlug),
-    Promise.resolve(getJobSyncSetupStatus()),
-    getCityNavPresence(citySlug),
-  ])
+  const [initialJobs, setup, navPresence, employerClassifieds, seekerClassifieds] =
+    await Promise.all([
+      getCityJobListingsServer(citySlug),
+      Promise.resolve(getJobSyncSetupStatus()),
+      getCityNavPresence(citySlug),
+      getApprovedJobClassifiedsServer(citySlug, 'employer'),
+      getApprovedJobClassifiedsServer(citySlug, 'seeker'),
+    ])
 
   return (
     <CityLayoutClient
@@ -63,6 +67,8 @@ export default async function IsIlanlariPage() {
         citySlug={citySlug}
         cityName={cityName}
         initialJobs={initialJobs}
+        employerClassifieds={employerClassifieds}
+        seekerClassifieds={seekerClassifieds}
         syncConfigured={setup.configured}
         missingEnv={setup.missing}
       />

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   Briefcase,
   Building2,
@@ -8,12 +9,16 @@ import {
   ChevronDown,
   ExternalLink,
   Filter,
+  Mail,
   MapPin,
+  Phone,
   Search,
   SlidersHorizontal,
+  UserRoundSearch,
   Users,
 } from 'lucide-react'
 import { getDistrictsForProvince } from '@/constants/cities'
+import { ROUTES } from '@/constants/routes'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import {
   CityJobFiltersPanel,
@@ -35,15 +40,22 @@ import {
   type CityJobSort,
 } from '@/lib/cityJobFilters'
 import { cn } from '@/lib/utils'
+import type { JobClassified } from '@/types/jobClassified'
 import type { JobListing } from '@/types/jobListing'
 
 interface CityJobsClientProps {
   citySlug: string
   cityName: string
   initialJobs: JobListing[]
+  /** Approved employer classifieds merged into open positions. */
+  employerClassifieds?: JobClassified[]
+  /** Approved seeker classifieds for “İş arayanlar” tab. */
+  seekerClassifieds?: JobClassified[]
   syncConfigured: boolean
   missingEnv: string[]
 }
+
+type BoardTab = 'openings' | 'seekers'
 
 const SORT_OPTIONS: Array<{ id: CityJobSort; label: string }> = [
   { id: 'deadline', label: 'Son başvuruya göre' },
@@ -86,35 +98,90 @@ function districtDisplayName(
   return job.locationLabel || job.district || null
 }
 
+function classifiedToListing(c: JobClassified): JobListing {
+  return {
+    id: `classified_${c.id}`,
+    citySlug: c.citySlug,
+    cityName: c.cityName,
+    title: c.title,
+    employer: c.companyName,
+    employerType: c.employerType,
+    district: c.districtLabel,
+    locationLabel: c.locationNote
+      ? `${c.districtLabel} · ${c.locationNote}`
+      : c.districtLabel,
+    workType: c.workType,
+    openPositions: c.openPositions,
+    deadlineAt: c.deadlineAt,
+    publishedAt: c.createdAt,
+    applyUrl: c.contactEmail ? `mailto:${c.contactEmail}` : null,
+    source: 'manual',
+    sourceId: c.id,
+    listingKind: 'normal',
+    isActive: true,
+    fetchedAt: c.createdAt,
+    syncedAt: c.createdAt,
+  }
+}
+
 export function CityJobsClient({
   citySlug,
   cityName,
   initialJobs,
+  employerClassifieds = [],
+  seekerClassifieds = [],
   syncConfigured,
   missingEnv,
 }: CityJobsClientProps) {
   const [filters, setFilters] = useState<CityJobFilterState>(DEFAULT_CITY_JOB_FILTERS)
   const [sort, setSort] = useState<CityJobSort>('deadline')
+  const [boardTab, setBoardTab] = useState<BoardTab>('openings')
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [tabletFiltersExpanded, setTabletFiltersExpanded] = useState(false)
 
   const provinceDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
 
+  const openingsPool = useMemo(() => {
+    const fromClassified = employerClassifieds.map(classifiedToListing)
+    return [...fromClassified, ...initialJobs]
+  }, [employerClassifieds, initialJobs])
+
   const categoryOptions = useMemo(
-    () => extractJobCategoryOptions(initialJobs),
-    [initialJobs]
+    () => extractJobCategoryOptions(openingsPool),
+    [openingsPool]
   )
   const districtOptions = useMemo(
-    () => extractJobDistrictOptions(initialJobs, provinceDistricts),
-    [initialJobs, provinceDistricts]
+    () => extractJobDistrictOptions(openingsPool, provinceDistricts),
+    [openingsPool, provinceDistricts]
   )
-  const sourceOptions = useMemo(() => extractJobSourceOptions(initialJobs), [initialJobs])
-  const workTypeOptions = useMemo(() => extractJobWorkTypeOptions(initialJobs), [initialJobs])
+  const sourceOptions = useMemo(() => extractJobSourceOptions(openingsPool), [openingsPool])
+  const workTypeOptions = useMemo(() => extractJobWorkTypeOptions(openingsPool), [openingsPool])
 
   const filtered = useMemo(() => {
-    const list = filterCityJobs(initialJobs, filters, provinceDistricts)
+    const list = filterCityJobs(openingsPool, filters, provinceDistricts)
     return sortCityJobs(list, sort)
-  }, [initialJobs, filters, provinceDistricts, sort])
+  }, [openingsPool, filters, provinceDistricts, sort])
+
+  const filteredSeekers = useMemo(() => {
+    const q = filters.query.trim().toLocaleLowerCase('tr-TR')
+    let list = seekerClassifieds
+    if (filters.category) {
+      list = list.filter((s) => s.category === filters.category)
+    }
+    if (filters.districtSlug && filters.districtSlug !== '__citywide__') {
+      list = list.filter((s) => s.districtSlug === filters.districtSlug)
+    }
+    if (q) {
+      list = list.filter((s) => {
+        const hay = [s.title, s.fullName, s.description, s.districtLabel, s.skills]
+          .filter(Boolean)
+          .join(' ')
+          .toLocaleLowerCase('tr-TR')
+        return hay.includes(q)
+      })
+    }
+    return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }, [seekerClassifieds, filters])
 
   const activeFilterCount = countActiveJobFilters(filters)
   const handleResetFilters = () => setFilters(DEFAULT_CITY_JOB_FILTERS)
@@ -180,6 +247,50 @@ export function CityJobsClient({
           </button>
         </div>
       </header>
+
+      {/* Employer / seeker CTAs */}
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <Link
+          href={ROUTES.CITY_JOBS_EMPLOYER}
+          className={cn(
+            'group flex items-start gap-3 rounded-xl border border-[rgb(var(--color-border))]',
+            'bg-[rgb(var(--color-card))] p-4 shadow-sm transition-colors',
+            'hover:border-[rgb(var(--color-brand))]/40'
+          )}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))]/10">
+            <Briefcase className="h-5 w-5 text-[rgb(var(--color-brand))]" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-[rgb(var(--color-text))] group-hover:text-[rgb(var(--color-brand))]">
+              Eleman arıyorum
+            </span>
+            <span className="mt-0.5 block text-xs text-[rgb(var(--color-text-secondary))]">
+              Şirket veya işveren olarak ücretsiz ilan bırakın
+            </span>
+          </span>
+        </Link>
+        <Link
+          href={ROUTES.CITY_JOBS_SEEKER}
+          className={cn(
+            'group flex items-start gap-3 rounded-xl border border-[rgb(var(--color-border))]',
+            'bg-[rgb(var(--color-card))] p-4 shadow-sm transition-colors',
+            'hover:border-[rgb(var(--color-brand))]/40'
+          )}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))]/10">
+            <UserRoundSearch className="h-5 w-5 text-[rgb(var(--color-brand))]" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-[rgb(var(--color-text))] group-hover:text-[rgb(var(--color-brand))]">
+              İş arıyorum
+            </span>
+            <span className="mt-0.5 block text-xs text-[rgb(var(--color-text-secondary))]">
+              Özgeçmiş özeti ile “iş arıyorum” ilanı bırakın
+            </span>
+          </span>
+        </Link>
+      </div>
 
       {/* Mobile sticky category + location chips */}
       <div
@@ -336,42 +447,164 @@ export function CityJobsClient({
 
           {/* Toolbar */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-[rgb(var(--color-text-secondary))]">
-              <span className="font-semibold text-[rgb(var(--color-text))]">
-                {filtered.length}
-              </span>{' '}
-              ilan
-              {activeFilterCount > 0 && (
-                <span className="text-[rgb(var(--color-muted))]">
-                  {' '}
-                  · {initialJobs.length} toplam
-                </span>
-              )}
-            </p>
-            <div className="flex items-center gap-2">
-              <label className="sr-only" htmlFor="city-job-sort">
-                Sıralama
-              </label>
-              <select
-                id="city-job-sort"
-                value={sort}
-                onChange={(e) => setSort(e.target.value as CityJobSort)}
-                className={cn(
-                  'rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
-                  'px-3 py-1.5 text-sm font-medium text-[rgb(var(--color-text))]',
-                  'focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20'
-                )}
+            <div className="flex flex-wrap items-center gap-2">
+              <div
+                className="inline-flex rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-0.5"
+                role="tablist"
+                aria-label="İlan türü"
               >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={boardTab === 'openings'}
+                  onClick={() => setBoardTab('openings')}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm',
+                    boardTab === 'openings'
+                      ? 'bg-[rgb(var(--color-brand))] text-white'
+                      : 'text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-text))]'
+                  )}
+                >
+                  Açık pozisyonlar
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={boardTab === 'seekers'}
+                  onClick={() => setBoardTab('seekers')}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm',
+                    boardTab === 'seekers'
+                      ? 'bg-[rgb(var(--color-brand))] text-white'
+                      : 'text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-text))]'
+                  )}
+                >
+                  İş arayanlar
+                  {seekerClassifieds.length > 0 && (
+                    <span className="ml-1 opacity-80">({seekerClassifieds.length})</span>
+                  )}
+                </button>
+              </div>
+              <p className="text-sm text-[rgb(var(--color-text-secondary))]">
+                <span className="font-semibold text-[rgb(var(--color-text))]">
+                  {boardTab === 'openings' ? filtered.length : filteredSeekers.length}
+                </span>{' '}
+                {boardTab === 'openings' ? 'ilan' : 'iş arayan'}
+                {boardTab === 'openings' && activeFilterCount > 0 && (
+                  <span className="text-[rgb(var(--color-muted))]">
+                    {' '}
+                    · {openingsPool.length} toplam
+                  </span>
+                )}
+              </p>
             </div>
+            {boardTab === 'openings' && (
+              <div className="flex items-center gap-2">
+                <label className="sr-only" htmlFor="city-job-sort">
+                  Sıralama
+                </label>
+                <select
+                  id="city-job-sort"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as CityJobSort)}
+                  className={cn(
+                    'rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
+                    'px-3 py-1.5 text-sm font-medium text-[rgb(var(--color-text))]',
+                    'focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20'
+                  )}
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          {filtered.length === 0 ? (
+          {boardTab === 'seekers' ? (
+            filteredSeekers.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/60 px-6 py-14 text-center">
+                <UserRoundSearch className="mx-auto h-8 w-8 text-[rgb(var(--color-muted))]" />
+                <h2 className="mt-3 text-base font-bold text-[rgb(var(--color-text))]">
+                  Henüz iş arayan ilanı yok
+                </h2>
+                <p className="mx-auto mt-1 max-w-md text-sm text-[rgb(var(--color-text-secondary))]">
+                  Onaylanan “iş arıyorum” ilanları burada listelenir.
+                </p>
+                <Link
+                  href={ROUTES.CITY_JOBS_SEEKER}
+                  className="mt-4 inline-flex text-sm font-semibold text-[rgb(var(--color-brand))]"
+                >
+                  İş arıyorum ilanı bırak
+                </Link>
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {filteredSeekers.map((seeker) => (
+                  <li key={seeker.id}>
+                    <article
+                      className={cn(
+                        'rounded-xl border border-[rgb(var(--color-border))]',
+                        'bg-[rgb(var(--color-card))] p-4 shadow-sm sm:p-5'
+                      )}
+                    >
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        <span className="rounded bg-[rgb(var(--color-brand))]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
+                          İş arıyorum
+                        </span>
+                        <span className="rounded bg-[rgb(var(--color-surface-elevated))] px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-text-secondary))]">
+                          {jobCategoryLabel(seeker.category)}
+                        </span>
+                      </div>
+                      <h2 className="text-base font-bold text-[rgb(var(--color-text))]">
+                        {seeker.title}
+                      </h2>
+                      <p className="mt-1 text-sm text-[rgb(var(--color-text-secondary))]">
+                        {seeker.fullName}
+                        {seeker.experience ? ` · ${seeker.experience} yıl deneyim` : ''}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[rgb(var(--color-muted))]">
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {seeker.districtLabel}
+                          {seeker.canRelocate ? ' · şehir dışı OK' : ''}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Briefcase className="h-3.5 w-3.5" />
+                          {seeker.workType}
+                        </span>
+                      </div>
+                      <p className="mt-2 line-clamp-3 text-sm text-[rgb(var(--color-text-secondary))]">
+                        {seeker.description}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                        {seeker.contactPhone && (
+                          <a
+                            href={`tel:${seeker.contactPhone.replace(/\s/g, '')}`}
+                            className="inline-flex items-center gap-1.5 font-semibold text-[rgb(var(--color-brand))]"
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            {seeker.contactPhone}
+                          </a>
+                        )}
+                        {seeker.contactEmail && (
+                          <a
+                            href={`mailto:${seeker.contactEmail}`}
+                            className="inline-flex items-center gap-1.5 font-semibold text-[rgb(var(--color-brand))]"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                            E-posta
+                          </a>
+                        )}
+                      </div>
+                    </article>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : filtered.length === 0 ? (
             <div className="rounded-xl border border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/60 px-6 py-14 text-center">
               <Briefcase className="mx-auto h-8 w-8 text-[rgb(var(--color-muted))]" />
               <h2 className="mt-3 text-base font-bold text-[rgb(var(--color-text))]">

@@ -59,6 +59,8 @@ export const ROUTES = {
   CITY_FEED: '/',
   CITY_EVENTS: '/etkinlik',
   CITY_JOBS: '/is-ilanlari',
+  CITY_JOBS_EMPLOYER: '/is-ilanlari/eleman-ariyorum',
+  CITY_JOBS_SEEKER: '/is-ilanlari/is-ariyorum',
   CITY_SPOR: '/spor',
   CITY_DISTRICTS: '/ilceler',
   ADMIN: {
@@ -85,6 +87,7 @@ export const ROUTES = {
     EVENTS: '/admin/events',
     ARCHIVE: '/admin/archive',
     SUBMISSIONS: '/admin/submissions',
+    JOB_CLASSIFIEDS: '/admin/job-classifieds',
     INBOX: '/admin/inbox',
     NEWSLETTER: '/admin/newsletter',
     APPROVALS: '/admin/approvals',

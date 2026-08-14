@@ -6,6 +6,7 @@ import {
   getCityJobListingsServer,
   getJobSyncSetupStatus,
 } from '@/services/jobListingService.server'
+import { getApprovedJobClassifiedsServer } from '@/services/jobClassifiedService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,9 +28,11 @@ export default async function CityJobsPage() {
   if (!tenant) return null
 
   const cityName = getCityCategoryName(tenant.provinceSlug)
-  const [initialJobs, setup] = await Promise.all([
+  const [initialJobs, setup, employerClassifieds, seekerClassifieds] = await Promise.all([
     getCityJobListingsServer(tenant.provinceSlug),
     Promise.resolve(getJobSyncSetupStatus()),
+    getApprovedJobClassifiedsServer(tenant.provinceSlug, 'employer'),
+    getApprovedJobClassifiedsServer(tenant.provinceSlug, 'seeker'),
   ])
 
   return (
@@ -37,6 +40,8 @@ export default async function CityJobsPage() {
       citySlug={tenant.provinceSlug}
       cityName={cityName}
       initialJobs={initialJobs}
+      employerClassifieds={employerClassifieds}
+      seekerClassifieds={seekerClassifieds}
       syncConfigured={setup.configured}
       missingEnv={setup.missing}
     />

@@ -11,7 +11,7 @@ import {
   Trophy, Cpu, Heart, FlaskConical, Palette, Star, Tag, Utensils,
   Car, CircleDot, Music, Film, Theater, PartyPopper, Swords, Plane,
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
-  Megaphone, Mail, Inbox, Archive, FileText, type LucideIcon,
+  Megaphone, Mail, Inbox, Archive, FileText, Briefcase, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -115,6 +115,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/news?category=son-dakika', label: 'Son Dakika', icon: Zap, requiredPermissions: ['news:read'] },
       { href: '/admin/inbox', label: 'Gelen Kutusu', icon: Mail, requiredPermissions: ['news:read'] },
       { href: '/admin/submissions', label: 'Gönderiler', icon: Inbox, requiredPermissions: ['news:read'] },
+      { href: '/admin/job-classifieds', label: 'İş Kariyer', icon: Briefcase, requiredPermissions: ['news:publish'] },
       { href: '/admin/reports', label: 'Raporlar', icon: ShieldAlert, requiredPermissions: ['news:read'] },
       { href: '/admin/events', label: 'Etkinlikler', icon: Calendar, requiredPermissions: ['news:read'] },
     ],
