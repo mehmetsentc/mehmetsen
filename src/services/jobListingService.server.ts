@@ -18,8 +18,9 @@ function isStillOpen(listing: JobListing, nowMs: number): boolean {
 }
 
 /**
- * City SSR prefetch for /is-ilanlari — active İŞKUR/manual listings only.
- * Prefer deadline ascending; fall back to fetchedAt when index/path fails.
+ * City SSR prefetch for /is-ilanlari.
+ * Order by fetchedAt only — Kariyer rows often have deadlineAt=null; ordering
+ * by that field can yield empty results / missing composite indexes.
  */
 export async function getCityJobListingsServer(
   citySlug: string,
@@ -35,16 +36,16 @@ export async function getCityJobListingsServer(
         .collection(Collections.JOB_LISTINGS)
         .where('citySlug', '==', citySlug)
         .where('isActive', '==', true)
-        .orderBy('deadlineAt', 'asc')
+        .orderBy('fetchedAt', 'desc')
         .limit(limit * 2)
         .get()
-    } catch {
+    } catch (err) {
+      console.warn('[getCityJobListingsServer] indexed query failed, plain filter:', err)
       snap = await db
         .collection(Collections.JOB_LISTINGS)
         .where('citySlug', '==', citySlug)
         .where('isActive', '==', true)
-        .orderBy('fetchedAt', 'desc')
-        .limit(limit * 2)
+        .limit(limit * 3)
         .get()
     }
 
