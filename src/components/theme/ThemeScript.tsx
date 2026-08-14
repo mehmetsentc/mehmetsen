@@ -10,7 +10,7 @@ export function ThemeScript() {
   const script = `
     (function() {
       try {
-        var pref = localStorage.getItem('${THEME_STORAGE_KEY}') || 'dark';
+        var pref = localStorage.getItem('${THEME_STORAGE_KEY}') || 'system';
         var resolved = pref;
         if (pref === 'system') {
           resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

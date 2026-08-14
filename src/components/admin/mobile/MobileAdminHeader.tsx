@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { ArrowLeft, Bell, Search } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
+import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle'
 import { useMobileAdmin } from './MobileAdminContext'
 import { cn } from '@/lib/utils'
 
@@ -113,6 +114,8 @@ export function MobileAdminHeader() {
         >
           <Search className="h-5 w-5" />
         </button>
+
+        <AdminThemeToggle className="shrink-0" />
 
         <button
           type="button"

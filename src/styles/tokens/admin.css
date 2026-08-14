@@ -1,16 +1,10 @@
 /* ─────────────────────────────────────────────────────────────────────────
  * NaHaber CMS — Admin design tokens
- * Dark Newsroom OS shell (matches reference dashboard).
+ * Follows global light/dark theme (html.dark). Sidebar stays charcoal.
  * Brand red only for primary actions / urgency.
  * ───────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --admin-bg: 17 25 43;
-  --admin-surface: 21 30 49;
-  --admin-surface-secondary: 25 35 56;
-  --admin-border: 38 49 71;
-  --admin-text: 248 250 252;
-  --admin-muted: 137 149 168;
   --admin-brand: var(--brand-500);
   --admin-success: 16 185 129;
   --admin-warning: 245 158 11;
@@ -19,37 +13,20 @@
   --admin-ai: 139 92 246;
   --admin-sidebar: 13 17 23;
   --admin-sidebar-text: 203 213 225;
-  --admin-card: 21 30 49;
   --admin-radius: 14px;
   --admin-radius-sm: 10px;
-}
 
-/* Force dark newsroom palette for the entire CMS chrome */
-.admin-shell {
-  /* Mirror .dark token ladder so rgb(var(--color-*)) components go dark */
-  --bg-base: 17 25 43;
-  --bg-subtle: 21 30 49;
-  --bg-muted: 25 35 56;
-  --bg-card: 21 30 49;
-  --bg-elevated: 17 25 43;
-  --border-subtle: 32 42 60;
-  --border-default: 38 49 71;
-  --border-strong: 52 65 88;
-  --text-primary: 248 250 252;
-  --text-body: 229 231 235;
-  --text-secondary: 203 213 225;
-  --text-tertiary: 168 179 197;
-  --text-muted: 137 149 168;
-  --text-link: 252 165 172;
-  --nav-hover: 25 35 56;
-
+  /* Light defaults — overridden when .dark is on html */
   --admin-bg: var(--bg-base);
   --admin-surface: var(--bg-card);
   --admin-surface-secondary: var(--bg-muted);
   --admin-border: var(--border-default);
   --admin-text: var(--text-primary);
   --admin-muted: var(--text-muted);
+  --admin-card: var(--bg-card);
+}
 
+.admin-shell {
   --color-bg: var(--bg-base);
   --color-surface: var(--bg-muted);
   --color-card: var(--bg-card);
@@ -58,8 +35,20 @@
   --color-muted: var(--text-muted);
   --color-brand: var(--brand-500);
 
+  --admin-bg: var(--bg-base);
+  --admin-surface: var(--bg-card);
+  --admin-surface-secondary: var(--bg-muted);
+  --admin-border: var(--border-default);
+  --admin-text: var(--text-primary);
+  --admin-muted: var(--text-muted);
+  --admin-card: var(--bg-card);
+
   background: rgb(var(--admin-bg));
   color: rgb(var(--admin-text));
+  color-scheme: light;
+}
+
+.dark .admin-shell {
   color-scheme: dark;
 }
 

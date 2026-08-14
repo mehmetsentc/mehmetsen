@@ -3,9 +3,9 @@
  *
  * 4 preference değeri:
  *   - 'light'   → açık tema
- *   - 'dark'    → koyu lacivert (varsayılan gece)
+ *   - 'dark'    → koyu lacivert
  *   - 'oled'    → tam siyah (AMOLED/OLED batarya dostu)
- *   - 'system'  → OS prefers-color-scheme'i takip eder
+ *   - 'system'  → OS prefers-color-scheme'i takip eder (varsayılan)
  *
  * Resolved değer: 'light' | 'dark' | 'oled'
  *   - documentElement classList: 'dark' eklenir (light hariç)
@@ -16,7 +16,7 @@ export type ThemePreference = 'light' | 'dark' | 'oled' | 'system'
 export type ResolvedTheme = 'light' | 'dark' | 'oled'
 
 export const THEME_STORAGE_KEY = 'nahaber-theme'
-export const DEFAULT_THEME: ThemePreference = 'dark'
+export const DEFAULT_THEME: ThemePreference = 'system'
 
 const VALID: ThemePreference[] = ['light', 'dark', 'oled', 'system']
 

@@ -1,136 +1,156 @@
 'use client'
 
+import { TURKEY_PROVINCE_PATHS } from '@/constants/turkeyProvincePaths'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { cn } from '@/lib/utils'
 
-/** Approximate normalized positions for a stylized Turkey outline (viewBox 0 0 100 55). */
-const CITY_DOTS: Array<{ slug: string; x: number; y: number }> = [
-  { slug: 'edirne', x: 8, y: 12 },
-  { slug: 'istanbul', x: 14, y: 14 },
-  { slug: 'tekirdag', x: 11, y: 16 },
-  { slug: 'kirklareli', x: 10, y: 10 },
-  { slug: 'canakkale', x: 9, y: 22 },
-  { slug: 'balikesir', x: 13, y: 24 },
-  { slug: 'bursa', x: 18, y: 20 },
-  { slug: 'yalova', x: 16, y: 17 },
-  { slug: 'kocaeli', x: 18, y: 15 },
-  { slug: 'sakarya', x: 21, y: 16 },
-  { slug: 'bilecik', x: 22, y: 20 },
-  { slug: 'izmir', x: 12, y: 30 },
-  { slug: 'manisa', x: 15, y: 28 },
-  { slug: 'aydin', x: 14, y: 34 },
-  { slug: 'mugla', x: 16, y: 38 },
-  { slug: 'denizli', x: 19, y: 34 },
-  { slug: 'usak', x: 20, y: 28 },
-  { slug: 'afyonkarahisar', x: 24, y: 28 },
-  { slug: 'kutahya', x: 22, y: 24 },
-  { slug: 'eskisehir', x: 26, y: 22 },
-  { slug: 'ankara', x: 32, y: 22 },
-  { slug: 'bolu', x: 26, y: 16 },
-  { slug: 'duzce', x: 24, y: 14 },
-  { slug: 'zonguldak', x: 28, y: 12 },
-  { slug: 'karabuk', x: 30, y: 14 },
-  { slug: 'bartin', x: 30, y: 10 },
-  { slug: 'kastamonu', x: 34, y: 12 },
-  { slug: 'cankiri', x: 34, y: 18 },
-  { slug: 'corum', x: 38, y: 18 },
-  { slug: 'sinop', x: 38, y: 10 },
-  { slug: 'samsun', x: 44, y: 12 },
-  { slug: 'amasya', x: 42, y: 16 },
-  { slug: 'tokat', x: 46, y: 18 },
-  { slug: 'ordu', x: 50, y: 14 },
-  { slug: 'giresun', x: 54, y: 14 },
-  { slug: 'trabzon', x: 58, y: 13 },
-  { slug: 'rize', x: 62, y: 12 },
-  { slug: 'artvin', x: 66, y: 12 },
-  { slug: 'gumushane', x: 56, y: 17 },
-  { slug: 'bayburt', x: 60, y: 18 },
-  { slug: 'erzurum', x: 66, y: 20 },
-  { slug: 'erzincan', x: 58, y: 22 },
-  { slug: 'sivas', x: 48, y: 24 },
-  { slug: 'yozgat', x: 40, y: 24 },
-  { slug: 'kirikkale', x: 36, y: 22 },
-  { slug: 'kirsehir', x: 38, y: 28 },
-  { slug: 'nevsehir', x: 40, y: 32 },
-  { slug: 'aksaray', x: 36, y: 34 },
-  { slug: 'konya', x: 32, y: 36 },
-  { slug: 'karaman', x: 34, y: 42 },
-  { slug: 'mersin', x: 38, y: 44 },
-  { slug: 'adana', x: 44, y: 42 },
-  { slug: 'hatay', x: 48, y: 48 },
-  { slug: 'osmaniye', x: 48, y: 42 },
-  { slug: 'kahramanmaras', x: 50, y: 36 },
-  { slug: 'gaziantep', x: 52, y: 40 },
-  { slug: 'kilis', x: 52, y: 44 },
-  { slug: 'sanliurfa', x: 58, y: 40 },
-  { slug: 'adiyaman', x: 54, y: 34 },
-  { slug: 'malatya', x: 54, y: 30 },
-  { slug: 'elazig', x: 58, y: 28 },
-  { slug: 'tunceli', x: 58, y: 26 },
-  { slug: 'bingol', x: 62, y: 28 },
-  { slug: 'mus', x: 68, y: 28 },
-  { slug: 'bitlis', x: 70, y: 30 },
-  { slug: 'siirt', x: 72, y: 32 },
-  { slug: 'batman', x: 68, y: 34 },
-  { slug: 'diyarbakir', x: 64, y: 34 },
-  { slug: 'mardin', x: 68, y: 38 },
-  { slug: 'sirnak', x: 74, y: 38 },
-  { slug: 'hakkari', x: 78, y: 36 },
-  { slug: 'van', x: 76, y: 30 },
-  { slug: 'agri', x: 74, y: 24 },
-  { slug: 'igdir', x: 78, y: 22 },
-  { slug: 'kars', x: 72, y: 18 },
-  { slug: 'ardahan', x: 70, y: 14 },
-  { slug: 'isparta', x: 24, y: 34 },
-  { slug: 'burdur', x: 22, y: 36 },
-  { slug: 'antalya', x: 26, y: 42 },
-  { slug: 'nigde', x: 40, y: 38 },
-  { slug: 'kayseri', x: 44, y: 32 },
-]
-
 type DotStatus = 'active' | 'warn' | 'down' | 'unknown'
+
+const STATUS_FILL: Record<DotStatus, string> = {
+  active: '#22c55e',
+  warn: '#f59e0b',
+  down: '#ef4444',
+  unknown: '#94a3b8',
+}
+
+/** Reference style: white provinces, black borders, blue sea, grey neighbors. */
+const SEA = '#9ec9ea'
+const NEIGHBOR = '#c5c9ce'
+const PROVINCE_FILL = '#ffffff'
+const PROVINCE_ACTIVE = '#dcfce7'
+const PROVINCE_STROKE = '#1e293b'
+
+function resolveStatus(slug: string, activeSlugs?: Set<string>): DotStatus {
+  if (activeSlugs?.has(slug)) return 'active'
+  return 'unknown'
+}
 
 export function TurkeySmmMap({
   activeSlugs,
   className,
+  showLegend = true,
 }: {
   activeSlugs?: Set<string>
   className?: string
+  showLegend?: boolean
 }) {
-  const known = new Set(TURKISH_PROVINCES.map((p) => p.slug))
+  const nameBySlug = new Map(TURKISH_PROVINCES.map((p) => [p.slug, p.name]))
+  const activeCount = activeSlugs?.size ?? 0
+
+  // Original paths use viewBox 0 0 1000 338 — pad for sea/neighbors
+  const vb = '0 0 1000 380'
 
   return (
-    <div className={cn('relative w-full', className)}>
-      <svg viewBox="0 0 100 55" className="h-auto w-full" role="img" aria-label="81 il SMM haritası">
-        <path
-          d="M6 18 C8 8, 18 6, 28 8 C40 6, 52 8, 64 10 C74 8, 84 12, 90 18 C94 24, 92 32, 86 36 C78 42, 68 46, 56 48 C44 50, 34 48, 24 44 C16 40, 10 34, 7 28 C5 24, 5 20, 6 18 Z"
-          fill="rgb(16 185 129 / 0.18)"
-          stroke="rgb(52 211 153 / 0.45)"
-          strokeWidth="0.6"
-        />
-        {CITY_DOTS.filter((d) => known.has(d.slug)).map((d) => {
-          const status: DotStatus = activeSlugs?.has(d.slug) ? 'active' : 'unknown'
-          const fillByStatus: Record<DotStatus, string> = {
-            active: 'rgb(16 185 129)',
-            warn: 'rgb(245 158 11)',
-            down: 'rgb(239 68 68)',
-            unknown: 'rgb(148 163 184)',
-          }
-          return (
-            <a key={d.slug} href={`/admin/smm?city=${d.slug}`}>
-              <circle
-                cx={d.x}
-                cy={d.y}
-                r={1.15}
-                fill={fillByStatus[status]}
-                className="cursor-pointer hover:opacity-80"
-              >
-                <title>{d.slug}</title>
-              </circle>
-            </a>
-          )
-        })}
+    <div
+      className={cn(
+        'relative w-full overflow-hidden rounded-xl border border-[rgb(var(--color-border))]',
+        className
+      )}
+    >
+      <svg
+        viewBox={vb}
+        className="h-auto w-full"
+        role="img"
+        aria-label="81 il Türkiye SMM canlı ağı haritası"
+      >
+        <defs>
+          <filter id="smm-dot-glow" x="-120%" y="-120%" width="340%" height="340%">
+            <feGaussianBlur stdDeviation="2.2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Seas — Black / Aegean / Mediterranean / Marmara framing */}
+        <rect x="0" y="0" width="1000" height="380" fill={SEA} />
+
+        {/* Neighbor landmasses (schematic, non-interactive) */}
+        <g aria-hidden fill={NEIGHBOR} stroke="#94a3b8" strokeWidth="0.6">
+          {/* Greece / Balkans NW */}
+          <path d="M0 40 L70 20 L95 80 L55 130 L0 150 Z" />
+          {/* Bulgaria / Thrace north strip */}
+          <path d="M70 0 L220 0 L200 35 L90 45 Z" />
+          {/* Georgia / Armenia east */}
+          <path d="M960 40 L1000 30 L1000 160 L940 150 L930 90 Z" />
+          {/* Iran / SE */}
+          <path d="M960 160 L1000 160 L1000 320 L940 280 Z" />
+          {/* Syria / Iraq south-east */}
+          <path d="M620 320 L1000 300 L1000 380 L600 380 Z" />
+          {/* Cyprus */}
+          <ellipse cx="520" cy="350" rx="28" ry="12" />
+        </g>
+
+        {/* Province layer centered vertically in padded canvas */}
+        <g transform="translate(0 18)">
+          {TURKEY_PROVINCE_PATHS.map((p) => {
+            const status = resolveStatus(p.slug, activeSlugs)
+            const isActive = status === 'active'
+            const label = nameBySlug.get(p.slug) ?? p.name
+            return (
+              <a key={p.slug} href={`/admin/smm?city=${encodeURIComponent(p.slug)}`}>
+                <path
+                  d={p.d}
+                  fill={isActive ? PROVINCE_ACTIVE : PROVINCE_FILL}
+                  stroke={PROVINCE_STROKE}
+                  strokeWidth={0.85}
+                  strokeLinejoin="round"
+                  className="cursor-pointer transition-[fill] duration-150 hover:fill-sky-100"
+                >
+                  <title>{label}</title>
+                </path>
+              </a>
+            )
+          })}
+
+          {TURKEY_PROVINCE_PATHS.map((p) => {
+            const status = resolveStatus(p.slug, activeSlugs)
+            const label = nameBySlug.get(p.slug) ?? p.name
+            return (
+              <a key={`${p.slug}-dot`} href={`/admin/smm?city=${encodeURIComponent(p.slug)}`}>
+                <g filter={status === 'active' ? 'url(#smm-dot-glow)' : undefined}>
+                  {status === 'active' ? (
+                    <circle cx={p.cx} cy={p.cy} r={4.2} fill="rgba(34,197,94,0.4)" />
+                  ) : null}
+                  <circle
+                    cx={p.cx}
+                    cy={p.cy}
+                    r={2.2}
+                    fill={STATUS_FILL[status]}
+                    stroke="#0f172a"
+                    strokeWidth={0.4}
+                    className="cursor-pointer"
+                  >
+                    <title>{label}</title>
+                  </circle>
+                </g>
+              </a>
+            )
+          })}
+        </g>
       </svg>
+
+      {showLegend ? (
+        <div className="flex flex-wrap items-center gap-3 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/80 px-3 py-2 text-[10px] text-[rgb(var(--color-muted))]">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(34,197,94,0.8)]" />
+            Aktif ({activeCount})
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            Uyarı
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+            Pasif
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-slate-400" />
+            Seed bekleniyor
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }

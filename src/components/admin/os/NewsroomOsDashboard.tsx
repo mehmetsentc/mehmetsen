@@ -118,38 +118,38 @@ function KpiCard({
   tone?: 'neutral' | 'warning' | 'success' | 'ai'
 }) {
   const tones = {
-    neutral: 'text-white',
-    warning: 'text-amber-400',
-    success: 'text-emerald-400',
-    ai: 'text-violet-300',
+    neutral: 'text-[rgb(var(--color-text))]',
+    warning: 'text-amber-600 dark:text-amber-600 dark:text-amber-400',
+    success: 'text-emerald-600 dark:text-emerald-600 dark:text-emerald-400',
+    ai: 'text-violet-600 dark:text-violet-700 dark:text-violet-300',
   }
   const iconBg = {
-    neutral: 'bg-white/5 text-slate-300',
-    warning: 'bg-amber-500/15 text-amber-400',
-    success: 'bg-emerald-500/15 text-emerald-400',
-    ai: 'bg-violet-500/15 text-violet-300',
+    neutral: 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]',
+    warning: 'bg-amber-500/15 text-amber-600 dark:text-amber-600 dark:text-amber-400',
+    success: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-600 dark:text-emerald-400',
+    ai: 'bg-violet-500/15 text-violet-600 dark:text-violet-700 dark:text-violet-300',
   }
   const inner = (
     <div
       className={cn(
-        'group relative rounded-[14px] border border-white/10 bg-[rgb(var(--color-card))] p-4 transition-colors',
+        'group relative rounded-[14px] border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 transition-colors',
         href && 'hover:border-[rgb(var(--color-brand))]/40'
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{title}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">{title}</p>
           <p className={cn('admin-kpi-value mt-1.5', tones[tone])}>
             {typeof value === 'number' ? formatCompact(value) : value}
           </p>
-          {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+          {hint ? <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">{hint}</p> : null}
         </div>
         <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', iconBg[tone])}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
       {href ? (
-        <ArrowUpRight className="absolute right-3 top-3 h-3.5 w-3.5 text-slate-500 opacity-0 transition-opacity group-hover:opacity-100" />
+        <ArrowUpRight className="absolute right-3 top-3 h-3.5 w-3.5 text-[rgb(var(--color-muted))] opacity-0 transition-opacity group-hover:opacity-100" />
       ) : null}
     </div>
   )
@@ -205,20 +205,20 @@ function StatusDonut({
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-extrabold tabular-nums text-white">
+          <span className="text-xl font-extrabold tabular-nums text-[rgb(var(--color-text))]">
             {formatCompact(parts.reduce((a, p) => a + p.value, 0))}
           </span>
-          <span className="text-[10px] uppercase tracking-wide text-slate-400">Toplam</span>
+          <span className="text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">Toplam</span>
         </div>
       </div>
       <ul className="min-w-0 flex-1 space-y-2">
         {parts.map((p) => (
           <li key={p.label} className="flex items-center justify-between gap-2 text-xs">
-            <span className="flex items-center gap-2 text-slate-400">
+            <span className="flex items-center gap-2 text-[rgb(var(--color-muted))]">
               <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
               {p.label}
             </span>
-            <span className="font-semibold tabular-nums text-white">{p.value}</span>
+            <span className="font-semibold tabular-nums text-[rgb(var(--color-text))]">{p.value}</span>
           </li>
         ))}
       </ul>
@@ -309,17 +309,17 @@ export function NewsroomOsDashboard({
           hrefLabel="Canlı Merkez →"
           className="xl:col-span-5"
         >
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-[rgb(var(--color-border))]">
             {liveEvents.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-slate-500">Şu an canlı sinyal yok.</p>
+              <p className="px-5 py-10 text-center text-sm text-[rgb(var(--color-muted))]">Şu an canlı sinyal yok.</p>
             ) : (
               liveEvents.slice(0, 6).map((ev) => (
                 <Link
                   key={ev.id}
                   href={ev.href}
-                  className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/[0.03] sm:px-5"
+                  className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))] sm:px-5"
                 >
-                  <span className="mt-0.5 w-11 shrink-0 text-[11px] font-semibold tabular-nums text-slate-500">
+                  <span className="mt-0.5 w-11 shrink-0 text-[11px] font-semibold tabular-nums text-[rgb(var(--color-muted))]">
                     {ev.createdAt ? format(new Date(ev.createdAt), 'HH:mm') : '—'}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -335,10 +335,10 @@ export function NewsroomOsDashboard({
                       />
                       <span className="admin-meta">{getCategoryLabel(ev.categoryId)}</span>
                       {ev.cityLabel ? (
-                        <span className="text-[11px] font-medium text-sky-400">{ev.cityLabel}</span>
+                        <span className="text-[11px] font-medium text-sky-600 dark:text-sky-400">{ev.cityLabel}</span>
                       ) : null}
                     </div>
-                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-white">{ev.title}</p>
+                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-[rgb(var(--color-text))]">{ev.title}</p>
                   </div>
                 </Link>
               ))
@@ -362,22 +362,22 @@ export function NewsroomOsDashboard({
           href="/admin/ai-tasks"
           className="xl:col-span-4"
         >
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-[rgb(var(--color-border))]">
             {agentActivity.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-slate-500">
+              <p className="px-5 py-10 text-center text-sm text-[rgb(var(--color-muted))]">
                 Henüz ajan aktivitesi yok. Task bus bağlandıkça burada görünür.
               </p>
             ) : (
               agentActivity.slice(0, 7).map((a) => (
                 <div key={a.id} className="flex items-start gap-3 px-5 py-3">
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-300">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-700 dark:text-violet-300">
                     <Bot className="h-3.5 w-3.5" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white">{a.actor}</p>
-                    <p className="text-xs text-slate-400">{a.message}</p>
+                    <p className="text-sm font-semibold text-[rgb(var(--color-text))]">{a.actor}</p>
+                    <p className="text-xs text-[rgb(var(--color-muted))]">{a.message}</p>
                   </div>
-                  <span className="shrink-0 text-[10px] tabular-nums text-slate-500">
+                  <span className="shrink-0 text-[10px] tabular-nums text-[rgb(var(--color-muted))]">
                     {a.at
                       ? formatDistanceToNow(new Date(a.at), { locale: tr, addSuffix: true })
                       : ''}
@@ -398,35 +398,46 @@ export function NewsroomOsDashboard({
           hrefLabel="SMM paneli →"
           className="xl:col-span-8"
         >
-          <div className="grid gap-4 p-4 lg:grid-cols-[1.5fr_1fr]">
-            <TurkeySmmMap activeSlugs={smmActiveSlugs} className="min-h-[200px]" />
+          <div className="grid gap-4 p-4 lg:grid-cols-[1.65fr_1fr]">
+            <TurkeySmmMap activeSlugs={smmActiveSlugs} className="min-h-[220px]" />
             <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {['IG', 'FB', 'X', 'TT', 'YT'].map((p) => (
+              <div className="flex flex-wrap gap-1.5">
+                {['Tümü', 'IG', 'FB', 'X', 'TT', 'YT'].map((p, i) => (
                   <span
                     key={p}
-                    className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold tracking-wide text-slate-300"
+                    className={cn(
+                      'rounded-md border px-2 py-1 text-[10px] font-bold tracking-wide',
+                      i === 0
+                        ? 'border-[rgb(var(--color-brand))]/40 bg-[rgb(var(--color-brand))]/10 text-[rgb(var(--color-brand))]'
+                        : 'border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]'
+                    )}
                   >
                     {p}
                   </span>
                 ))}
               </div>
-              <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs">
-                {[
-                  { label: 'Toplam SMM', value: String(stats.smmTotal || 81) },
-                  { label: 'Aktif SMM', value: String(stats.smmActive) },
-                  { label: 'Bağlı hesap', value: '—' },
-                  { label: 'Bugün paylaşım', value: '—' },
-                  { label: 'Kuyruk', value: String(stats.smmQueue) },
-                  { label: 'Toplam erişim', value: '—' },
-                ].map((row) => (
-                  <div key={row.label} className="flex items-center justify-between gap-2">
-                    <span className="text-slate-400">{row.label}</span>
-                    <span className="font-bold tabular-nums text-white">{row.value}</span>
-                  </div>
-                ))}
+              <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                  Genel Durum
+                </p>
+                <div className="space-y-2 text-xs">
+                  {[
+                    { label: 'Toplam SMM', value: String(stats.smmTotal || 81) },
+                    { label: 'Aktif SMM', value: String(stats.smmActive) },
+                    { label: 'Aktif Hesap', value: '—' },
+                    { label: 'Bugün Paylaşım', value: '—' },
+                    { label: 'Kuyruk', value: String(stats.smmQueue) },
+                    { label: 'Toplam Erişim', value: '—' },
+                    { label: 'Başarısız Yayın', value: '—' },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between gap-2">
+                      <span className="text-[rgb(var(--color-muted))]">{row.label}</span>
+                      <span className="font-bold tabular-nums text-[rgb(var(--color-text))]">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <p className="text-[10px] leading-relaxed text-slate-500">
+              <p className="text-[10px] leading-relaxed text-[rgb(var(--color-muted))]">
                 Erişim / etkileşim platform API bağlanınca dolar. Sahte metrik üretilmez.
               </p>
             </div>
@@ -435,8 +446,8 @@ export function NewsroomOsDashboard({
 
         <Widget title="En İyi Performans Gösteren İller" href="/admin/analytics" className="xl:col-span-4">
           <div className="px-5 py-8 text-center">
-            <HelpCircle className="mx-auto mb-3 h-8 w-8 text-slate-600" />
-            <p className="text-sm text-slate-400">
+            <HelpCircle className="mx-auto mb-3 h-8 w-8 text-[rgb(var(--color-muted))]" />
+            <p className="text-sm text-[rgb(var(--color-muted))]">
               İl bazlı erişim / etkileşim metrikleri hesap API’leri bağlanınca burada listelenir.
             </p>
             <Link
@@ -454,17 +465,17 @@ export function NewsroomOsDashboard({
         <Widget title="AI Organizasyon Şeması" href="/admin/ai-org" hrefLabel="Tam şema →">
           <div className="space-y-3 p-4">
             <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 px-4 py-3 text-center">
-              <p className="text-sm font-bold text-violet-200">{orgSummary.eic}</p>
+              <p className="text-sm font-bold text-violet-700 dark:text-violet-200">{orgSummary.eic}</p>
               <p className="text-[10px] uppercase tracking-wide text-violet-400">Genel Yayın Yönetmeni AI</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {orgSummary.desks.map((d) => (
                 <div
                   key={d.label}
-                  className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-center"
+                  className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 text-center"
                 >
-                  <p className="text-xs font-semibold text-white">{d.label}</p>
-                  <p className="mt-0.5 text-[11px] tabular-nums text-slate-400">{d.count} ajan</p>
+                  <p className="text-xs font-semibold text-[rgb(var(--color-text))]">{d.label}</p>
+                  <p className="mt-0.5 text-[11px] tabular-nums text-[rgb(var(--color-muted))]">{d.count} ajan</p>
                 </div>
               ))}
             </div>
@@ -472,7 +483,7 @@ export function NewsroomOsDashboard({
         </Widget>
 
         <Widget title="Görev & Onay Merkezi" icon={ListTodo} href="/admin/ai-tasks">
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-[rgb(var(--color-border))]">
             {[
               { label: 'Onay bekleyen haber', value: stats.pendingReview, href: '/admin/approvals', tone: 'amber' },
               { label: 'AI görev kuyruğu', value: stats.aiTaskOpen, href: '/admin/ai-tasks', tone: 'violet' },
@@ -483,17 +494,17 @@ export function NewsroomOsDashboard({
               <Link
                 key={row.label}
                 href={row.href}
-                className="flex items-center justify-between px-5 py-3 text-sm hover:bg-white/[0.03]"
+                className="flex items-center justify-between px-5 py-3 text-sm hover:bg-[rgb(var(--color-surface))]"
               >
-                <span className="font-medium text-slate-200">{row.label}</span>
+                <span className="font-medium text-[rgb(var(--color-text))]">{row.label}</span>
                 <span
                   className={cn(
                     'rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums',
-                    row.tone === 'amber' && 'bg-amber-500/20 text-amber-300',
-                    row.tone === 'violet' && 'bg-violet-500/20 text-violet-300',
-                    row.tone === 'sky' && 'bg-sky-500/20 text-sky-300',
-                    row.tone === 'emerald' && 'bg-emerald-500/20 text-emerald-300',
-                    row.tone === 'brand' && 'bg-[rgb(var(--color-brand))]/20 text-red-300'
+                    row.tone === 'amber' && 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+                    row.tone === 'violet' && 'bg-violet-500/20 text-violet-700 dark:text-violet-300',
+                    row.tone === 'sky' && 'bg-sky-500/20 text-sky-700 dark:text-sky-300',
+                    row.tone === 'emerald' && 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
+                    row.tone === 'brand' && 'bg-[rgb(var(--color-brand))]/20 text-red-700 dark:text-red-300'
                   )}
                 >
                   {row.value}
@@ -504,7 +515,7 @@ export function NewsroomOsDashboard({
         </Widget>
 
         <Widget title="Sistem Durumu" icon={Shield} href="/admin/system-health">
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-y divide-[rgb(var(--color-border))]">
             {(healthChecks && healthChecks.length > 0
               ? healthChecks
               : [
@@ -554,11 +565,11 @@ export function NewsroomOsDashboard({
                       ok ? 'bg-emerald-500' : row.status === 'DOWN' ? 'bg-red-500' : 'bg-amber-500'
                     )}
                   />
-                  <span className="flex-1 text-sm font-medium text-slate-200">{row.label}</span>
+                  <span className="flex-1 text-sm font-medium text-[rgb(var(--color-text))]">{row.label}</span>
                   <span
                     className={cn(
                       'text-xs font-semibold',
-                      ok ? 'text-emerald-400' : row.status === 'DOWN' ? 'text-red-400' : 'text-amber-400'
+                      ok ? 'text-emerald-600 dark:text-emerald-400' : row.status === 'DOWN' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
                     )}
                   >
                     {ok ? 'Çalışıyor' : row.status}
@@ -567,7 +578,7 @@ export function NewsroomOsDashboard({
               )
               return row.href ? (
                 <li key={row.id}>
-                  <Link href={row.href} className="block hover:bg-white/[0.03]">
+                  <Link href={row.href} className="block hover:bg-[rgb(var(--color-surface))]">
                     {body}
                   </Link>
                 </li>
@@ -586,12 +597,12 @@ export function NewsroomOsDashboard({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-2 py-4 text-center transition-colors hover:border-[rgb(var(--color-brand))]/40 hover:bg-white/[0.05]"
+                  className="flex flex-col items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-2 py-4 text-center transition-colors hover:border-[rgb(var(--color-brand))]/40 hover:bg-[rgb(var(--color-surface))]"
                 >
                   <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', item.color)}>
                     <Icon className="h-5 w-5" />
                   </span>
-                  <span className="text-[11px] font-semibold leading-tight text-slate-200">{item.label}</span>
+                  <span className="text-[11px] font-semibold leading-tight text-[rgb(var(--color-text))]">{item.label}</span>
                 </Link>
               )
             })}
