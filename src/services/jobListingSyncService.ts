@@ -36,7 +36,9 @@ const APIFY_SYNC_URL = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-d
 const WRITE_BATCH_SIZE = 400
 const META_DOC_PATH = 'meta/jobListingSync'
 const DEFAULT_CITIES = ['canakkale']
-const DEFAULT_ILAN_TARIHI = '3' // last 1 week — keeps daily cost bounded
+/** Actor enum: "2"|"3"|"4" — "4" = broadest date window (more listings). */
+const DEFAULT_ILAN_TARIHI = '4'
+
 
 function pickString(obj: Record<string, unknown>, keys: string[]): string | null {
   for (const key of keys) {
@@ -150,6 +152,7 @@ function buildActorInput(citySlug: string): Record<string, unknown> {
     il: toIskurIlName(citySlug),
     ilanTarihi: process.env.ISKUR_ILAN_TARIHI?.trim() || DEFAULT_ILAN_TARIHI,
     ilanTuru: process.env.ISKUR_ILAN_TURU?.trim() || 'hepsi',
+    // Actor default excludes "KADİRLİ"; empty = no extra geo filter
     excludedKeywords: [],
   }
 }
@@ -291,13 +294,36 @@ async function fetchApifyJobsForCity(citySlug: string): Promise<unknown[]> {
   }
 
   const data = (await res.json()) as unknown
-  if (Array.isArray(data)) return data
-  if (data && typeof data === 'object') {
+  return flattenApifyDataset(data)
+}
+
+/**
+ * Actor returns category wrappers:
+ * `{ ilanTuru, toplamIlanSayisi, ilanlar: [...] }` — not flat job rows.
+ * Flatten `ilanlar` so normalizeApifyJobItem sees real listings.
+ */
+export function flattenApifyDataset(data: unknown): unknown[] {
+  const roots: unknown[] = []
+  if (Array.isArray(data)) roots.push(...data)
+  else if (data && typeof data === 'object') {
     const obj = data as Record<string, unknown>
-    if (Array.isArray(obj.items)) return obj.items
-    if (Array.isArray(obj.data)) return obj.data
+    if (Array.isArray(obj.items)) roots.push(...obj.items)
+    else if (Array.isArray(obj.data)) roots.push(...obj.data)
+    else roots.push(data)
   }
-  return []
+
+  const out: unknown[] = []
+  for (const row of roots) {
+    if (!row || typeof row !== 'object') continue
+    const r = row as Record<string, unknown>
+    if (Array.isArray(r.ilanlar)) {
+      for (const job of r.ilanlar) out.push(job)
+      continue
+    }
+    // Already a flat job row (or empty status object without title → skipped later)
+    if (r.meslek || r.ilanNo || r.title || r.pozisyon) out.push(row)
+  }
+  return out
 }
 
 async function upsertListings(

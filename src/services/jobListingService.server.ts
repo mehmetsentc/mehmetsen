@@ -66,20 +66,12 @@ export async function getCityJobListingsServer(
   }
 }
 
-/** Whether Apify + İŞKUR credentials look present (for empty-state admin blurb). */
+/** Whether job sync can run. Kariyer needs only APIFY_TOKEN. */
 export function getJobSyncSetupStatus(): {
   configured: boolean
   missing: string[]
 } {
-  const required = [
-    'APIFY_TOKEN',
-    'ISKUR_TC_KIMLIK_NO',
-    'ISKUR_SIFRE',
-    'ISKUR_EMAIL_RECIPIENT',
-    'ISKUR_EMAIL_SENDER',
-    'ISKUR_EMAIL_PASSWORD',
-  ] as const
-
-  const missing = required.filter((k) => !process.env[k]?.trim())
-  return { configured: missing.length === 0, missing: [...missing] }
+  const missing: string[] = []
+  if (!process.env.APIFY_TOKEN?.trim()) missing.push('APIFY_TOKEN')
+  return { configured: missing.length === 0, missing }
 }

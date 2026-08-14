@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeApifyJobItem, resolveIskurSyncCities } from '@/services/jobListingSyncService'
+import {
+  flattenApifyDataset,
+  normalizeApifyJobItem,
+  resolveIskurSyncCities,
+} from '@/services/jobListingSyncService'
+
+describe('flattenApifyDataset', () => {
+  it('unwraps ilanlar arrays from category wrappers', () => {
+    const flat = flattenApifyDataset([
+      {
+        ilanTuru: 'Normal İş İlanları',
+        toplamIlanSayisi: 1,
+        ilanlar: [{ ilanNo: '1', meslek: 'Garson' }],
+      },
+      { ilanTuru: 'IUP', toplamIlanSayisi: 0, ilanlar: [] },
+    ])
+    expect(flat).toHaveLength(1)
+    expect((flat[0] as { meslek: string }).meslek).toBe('Garson')
+  })
+})
+
 
 describe('normalizeApifyJobItem', () => {
   it('maps common Turkish fields and builds detail URL', () => {

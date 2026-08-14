@@ -1,13 +1,24 @@
-# İŞKUR iş ilanları (şehir siteleri)
+# İş ilanları (şehir siteleri)
 
-Şehir tenant’larında `/is-ilanlari` sayfası İŞKUR açık iş ilanlarını listeler.
+Şehir tenant’larında `/is-ilanlari` sayfası Kariyer.net + İŞKUR açık iş ilanlarını listeler.
 
-## Kaynak
+## Kaynaklar
+
+### Kariyer.net (birincil doldurma)
+
+- Apify actor: `fatihtahta/kariyer-net-scraper`
+- Şehir URL: `https://www.kariyer.net/is-ilanlari/{citySlug}` (TR geneli değil)
+- Env: `APIFY_TOKEN`, opsiyonel `KARIYER_SYNC_CITIES`, `KARIYER_LIMIT` (varsayılan 200)
+- Attribution: **Kaynak: Kariyer.net**
+
+### İŞKUR
 
 - Apify actor: `sevimliai/iskur-ilan-scraper-email`
 - Endpoint: `POST /v2/acts/sevimliai~iskur-ilan-scraper-email/run-sync-get-dataset-items`
 - Ürün UX: Firestore `jobListings` (e-posta actor zorunluluğu; board e-postaya bağlı değil)
 - Attribution: **Kaynak: İŞKUR** — sahte ilan üretilmez
+
+Cron `/api/cron/iskur-jobs` her iki kaynağı da çalıştırır (`syncAllJobListings`).
 
 ## Operatör uyarısı
 

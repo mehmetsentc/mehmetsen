@@ -34,8 +34,14 @@ function formatDeadline(iso: string | null): string {
 function kindLabel(kind: JobListing['listingKind']): string | null {
   if (kind === 'iup') return 'IUP'
   if (kind === 'typ') return 'TYP'
-  if (kind === 'normal') return 'İş İlanı'
+  if (kind === 'normal') return null
   return null
+}
+
+function sourceLabel(source: JobListing['source']): string {
+  if (source === 'kariyer') return 'Kariyer.net'
+  if (source === 'iskur') return 'İŞKUR'
+  return 'NaHaber'
 }
 
 export function CityJobsClient({
@@ -82,13 +88,22 @@ export function CityJobsClient({
                   {cityName} İş İlanları
                 </h1>
                 <p className="mt-0.5 text-sm text-[rgb(var(--color-text-secondary))]">
-                  İŞKUR açık iş ilanları — başvuru İŞKUR üzerinden yapılır
+                  Kariyer.net ve İŞKUR ilanları — başvuru kaynak sitede yapılır
                 </p>
               </div>
             </div>
           </div>
           <p className="text-xs text-[rgb(var(--color-muted))]">
             Kaynak:{' '}
+            <a
+              href="https://www.kariyer.net/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[rgb(var(--color-brand))] underline-offset-2 hover:underline"
+            >
+              Kariyer.net
+            </a>
+            {' · '}
             <a
               href="https://www.iskur.gov.tr/"
               target="_blank"
@@ -140,11 +155,10 @@ export function CityJobsClient({
 
       {!syncConfigured && initialJobs.length === 0 && (
         <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-[rgb(var(--color-text))]">
-          <p className="font-semibold">İŞKUR senkronizasyonu henüz yapılandırılmadı</p>
+          <p className="font-semibold">İş ilanı senkronizasyonu henüz yapılandırılmadı</p>
           <p className="mt-1 text-[rgb(var(--color-text-secondary))]">
-            Operatör: Vercel / .env.local içinde aşağıdaki değişkenleri tanımlayın. Actor gerçek
-            İŞKUR hesabı (TC + şifre) ister; ToS riski operatöre aittir. E-posta alanları actor
-            zorunluluğudur — ürün arayüzü Firestore ilanlarını kullanır.
+            Operatör: Vercel / .env.local içinde <code className="text-xs">APIFY_TOKEN</code>{' '}
+            tanımlayın. Kariyer.net şehir URL’sinden çekilir.
           </p>
           <ul className="mt-2 list-inside list-disc font-mono text-xs text-[rgb(var(--color-muted))]">
             {missingEnv.map((k) => (
@@ -162,7 +176,7 @@ export function CityJobsClient({
           </h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-[rgb(var(--color-text-secondary))]">
             {initialJobs.length === 0
-              ? `${cityName} için İŞKUR ilanları günlük olarak çekilir. Kaynak hazır olduğunda burada görünür.`
+              ? `${cityName} için ilanlar günlük senkronize edilir. Kaynak hazır olduğunda burada görünür.`
               : 'Arama veya ilçe filtresine uyan ilan bulunamadı.'}
           </p>
         </div>
@@ -170,6 +184,7 @@ export function CityJobsClient({
         <ul className="flex flex-col gap-3">
           {filtered.map((job) => {
             const kind = kindLabel(job.listingKind)
+            const src = sourceLabel(job.source)
             return (
               <li key={job.id}>
                 <article
@@ -180,8 +195,11 @@ export function CityJobsClient({
                 >
                   <div className="min-w-0 flex-1">
                     <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded bg-[rgb(var(--color-brand))]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
+                        {src}
+                      </span>
                       {kind && (
-                        <span className="rounded bg-[rgb(var(--color-brand))]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
+                        <span className="rounded bg-[rgb(var(--color-surface-elevated))] px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-muted))]">
                           {kind}
                         </span>
                       )}
@@ -207,10 +225,12 @@ export function CityJobsClient({
                           {job.locationLabel || job.district}
                         </span>
                       )}
-                      <span className="inline-flex items-center gap-1">
-                        <CalendarClock className="h-3 w-3 shrink-0" />
-                        {formatDeadline(job.deadlineAt)}
-                      </span>
+                      {job.deadlineAt && (
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarClock className="h-3 w-3 shrink-0" />
+                          {formatDeadline(job.deadlineAt)}
+                        </span>
+                      )}
                       {job.workType && <span>{job.workType}</span>}
                       {job.openPositions != null && job.openPositions > 0 && (
                         <span>{job.openPositions} açık pozisyon</span>
@@ -229,7 +249,7 @@ export function CityJobsClient({
                         'transition-opacity hover:opacity-90 sm:self-center'
                       )}
                     >
-                      Başvur
+                      İlana git
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   ) : (
@@ -245,8 +265,8 @@ export function CityJobsClient({
       )}
 
       <p className="mt-6 text-center text-[11px] leading-relaxed text-[rgb(var(--color-muted))]">
-        İlanlar İŞKUR sisteminden üçüncü taraf scraper ile derlenir; doğruluk ve güncellik için
-        her zaman İŞKUR resmi sayfasını kontrol edin. NaHaber başvuru almaz.
+        İlanlar Kariyer.net ve İŞKUR sistemlerinden derlenir; doğruluk için her zaman kaynak
+        sayfayı kontrol edin. NaHaber başvuru almaz.
       </p>
     </div>
   )

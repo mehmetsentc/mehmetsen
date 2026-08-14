@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: `${cityName} İş İlanları`,
-    description: `${cityName} İŞKUR açık iş ilanları. ${siteName}'de güncel kariyer fırsatlarını inceleyin.`,
+    description: `${cityName} iş ilanları (Kariyer.net, İŞKUR). ${siteName}'de güncel kariyer fırsatlarını inceleyin.`,
   }
 }
 

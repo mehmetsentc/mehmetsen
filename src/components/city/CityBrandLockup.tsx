@@ -9,13 +9,17 @@ type LockupTone = 'onBrand' | 'default'
 type LockupSize = 'sm' | 'md'
 
 const SIZE = {
-  /** Header bars — equal height logo + wordmark (~36px), wider gap */
+  /**
+   * Header bars — logo + wordmark.
+   * Mobile: slightly smaller type + tighter gap so "… NaHaber" fits beside
+   * menu/search/bell/profile without CSS truncate clipping the brand.
+   */
   sm: {
-    logo: 'h-9 w-9',
-    textH: 'h-9',
+    logo: 'h-8 w-8 sm:h-9 sm:w-9',
+    textH: 'h-8 sm:h-9',
     px: 36,
-    text: 'text-[1.35rem]',
-    gap: 'gap-4',
+    text: 'text-[clamp(1.05rem,4.2vw,1.35rem)]',
+    gap: 'gap-2 sm:gap-3.5',
   },
   /** Sidebar */
   md: {
@@ -85,16 +89,24 @@ export function CityBrandLockup({
       />
       <span
         className={cn(
-          // Height only (not logo w-*) — previous s.box (w-9) clipped wordmark to "Ça"
-          'inline-flex min-w-0 max-w-full items-center truncate font-black leading-none tracking-tight',
+          // Never truncate the whole lockup — that clipped "NaHaber" → "NaHab".
+          // City may ellipsize; brand wordmark stays intact (shrink-0).
+          'inline-flex min-w-0 max-w-full items-center font-black leading-none tracking-tight',
           s.textH,
           s.text
         )}
       >
-        <span className={onBrand ? 'text-white' : 'text-[rgb(var(--color-text))]'}>
+        <span
+          className={cn(
+            'min-w-0 truncate',
+            onBrand ? 'text-white' : 'text-[rgb(var(--color-text))]'
+          )}
+        >
           {cityName}
         </span>
-        <span className="ml-1.5 text-[#E50914]">NaHaber</span>
+        <span className="ml-1 shrink-0 whitespace-nowrap text-[#E50914] sm:ml-1.5">
+          NaHaber
+        </span>
       </span>
     </span>
   )

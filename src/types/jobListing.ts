@@ -1,10 +1,9 @@
 /**
- * City job listings — primarily İŞKUR via Apify scraper.
- * Legal/ops: third-party scrape of İŞKUR public listings; always attribute
- * “Kaynak: İŞKUR”. Never invent fake jobs when sync is empty.
+ * City job listings — İŞKUR + Kariyer.net via Apify scrapers.
+ * Always attribute the real source. Never invent fake jobs when sync is empty.
  */
 
-export type JobListingSource = 'iskur' | 'manual'
+export type JobListingSource = 'iskur' | 'kariyer' | 'manual'
 
 export type JobListingKind = 'normal' | 'iup' | 'typ' | 'other'
 

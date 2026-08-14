@@ -39,19 +39,19 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
       )}
       style={{ height: 'calc(72px + env(safe-area-inset-top, 0px))' }}
     >
-      <div className="newspaper-layout-inner flex h-[72px] items-center gap-1">
+      <div className="newspaper-layout-inner flex h-[72px] items-center gap-0.5 px-1 sm:gap-1 sm:px-0">
         <button
           type="button"
           onClick={onMenuClick}
-          className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center text-white sm:h-11 sm:w-11"
           aria-label="Menü"
         >
-          <Menu className="h-6 w-6" strokeWidth={2} />
+          <Menu className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
         </button>
 
         <Link
           href="/"
-          className="flex min-w-0 flex-1 items-center"
+          className="flex min-w-0 flex-1 items-center overflow-hidden pr-1"
           aria-label={`${cityName} NaHaber`}
         >
           <CityBrandLockup
@@ -67,18 +67,22 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
           <button
             type="button"
             onClick={() => router.push('/search')}
-            className="flex h-11 w-11 items-center justify-center text-white"
+            className="flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
             aria-label="Ara"
           >
-            <Search className="h-[22px] w-[22px]" strokeWidth={2} />
+            <Search className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />
           </button>
-          <NotificationBell variant="onBrand" />
+          <NotificationBell
+            variant="onBrand"
+            iconClassName="h-5 w-5 sm:h-[22px] sm:w-[22px]"
+            buttonClassName="relative flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
+          />
           <Link
             href={profileHref}
-            className="flex h-11 w-11 items-center justify-center text-white"
+            className="flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
             aria-label="Profil"
           >
-            <User className="h-[22px] w-[22px]" strokeWidth={2} />
+            <User className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />
           </Link>
         </div>
       </div>
