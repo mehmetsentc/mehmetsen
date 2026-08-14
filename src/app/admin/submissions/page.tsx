@@ -7,20 +7,14 @@ import {
   User, MapPin, Clock, RefreshCw, ExternalLink,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import {
-  collection, query, where, orderBy, getDocs, doc,
-  updateDoc, addDoc, deleteDoc, serverTimestamp, limit, startAfter,
-  type QueryDocumentSnapshot,
-} from 'firebase/firestore'
-import { db, Collections } from '@/lib/firebase/firestore'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
+import { auth } from '@/lib/firebase/auth'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 
-// ── Tipler ───────────────────────────────────────────────────────────────────
 type FilterStatus = 'pending_review' | 'approved' | 'rejected'
 
 interface UGCSubmission {
@@ -40,267 +34,99 @@ interface UGCSubmission {
   createdAt: number
 }
 
-const PAGE_SIZE = 20
-
 const FILTER_TABS: { id: FilterStatus; label: string }[] = [
   { id: 'pending_review', label: 'Bekleyenler' },
-  { id: 'approved',       label: 'Onaylananlar' },
-  { id: 'rejected',       label: 'Reddedilenler' },
+  { id: 'approved', label: 'Onaylananlar' },
+  { id: 'rejected', label: 'Reddedilenler' },
 ]
 
-function toMillis(v: unknown): number {
-  if (!v) return 0
-  if (typeof v === 'object' && v !== null && 'toMillis' in v) return (v as { toMillis(): number }).toMillis()
-  if (typeof v === 'number') return v
-  return 0
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = (await auth.currentUser?.getIdToken()) ?? ''
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-// ── Kart ──────────────────────────────────────────────────────────────────────
-function SubmissionCard({
-  item,
-  onApprove,
-  onReject,
-  loading,
-}: {
-  item: UGCSubmission
-  onApprove: (id: string) => void
-  onReject:  (id: string) => void
-  loading: string | null
-}) {
-  const isPending  = item.draftStatus === 'pending_review'
-  const isApproved = item.draftStatus === 'approved'
-  const isBusy     = loading === item.id
-
-  const catLabel = DEFAULT_CATEGORIES.find(c => c.id === item.categoryId)?.name ?? item.categoryId ?? '—'
-
-  return (
-    <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] overflow-hidden">
-      {/* Medya */}
-      {item.coverImageUrl && (
-        <div className="relative h-48 w-full bg-[rgb(var(--color-border))]">
-          <Image
-            src={item.coverImageUrl}
-            alt={item.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
-          />
-        </div>
-      )}
-
-      <div className="p-4 space-y-3">
-        {/* Başlık + durum */}
-        <div className="flex items-start gap-2">
-          <div className="flex-1">
-            <h3 className="font-bold text-[rgb(var(--color-text))] leading-snug line-clamp-2">
-              {item.title}
-            </h3>
-            <p className="mt-1 text-xs text-[rgb(var(--color-muted))] line-clamp-3">
-              {item.description}
-            </p>
-          </div>
-          {!isPending && (
-            <span className={cn(
-              'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-              isApproved
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-            )}>
-              {isApproved ? 'Onaylandı' : 'Reddedildi'}
-            </span>
-          )}
-        </div>
-
-        {/* Meta */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[rgb(var(--color-muted))]">
-          <span className="flex items-center gap-1">
-            <User className="h-3 w-3" />
-            {item.authorDisplayName || item.authorUsername}
-          </span>
-          {item.city && (
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {item.city}
-            </span>
-          )}
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: tr })}
-          </span>
-          <span className="rounded-full bg-[rgb(var(--color-border))] px-2 py-0.5">
-            {catLabel}
-          </span>
-        </div>
-
-        {/* Video linki varsa */}
-        {item.videoUrl && (
-          <a
-            href={item.videoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-brand-500 hover:underline"
-          >
-            <ExternalLink className="h-3 w-3" />
-            Video görüntüle
-          </a>
-        )}
-
-        {/* Butonlar — sadece bekleyenlerde */}
-        {isPending && (
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => onApprove(item.id)}
-              disabled={isBusy}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-            >
-              {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              Onayla
-            </button>
-            <button
-              onClick={() => onReject(item.id)}
-              disabled={isBusy}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
-            >
-              {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-              Reddet
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+function categoryLabel(id?: string) {
+  return DEFAULT_CATEGORIES.find((c) => c.id === id)?.name ?? id ?? 'Gündem'
 }
 
-// ── Sayfa ─────────────────────────────────────────────────────────────────────
-export default function SubmissionsPage() {
-  useCmsAuth()
-
+export default function AdminSubmissionsPage() {
+  const { can } = useCmsAuth()
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('pending_review')
-  const [items, setItems]   = useState<UGCSubmission[]>([])
+  const [items, setItems] = useState<UGCSubmission[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
 
-  const fetchItems = useCallback(async (status: FilterStatus, after?: QueryDocumentSnapshot) => {
+  const fetchItems = useCallback(async (status: FilterStatus) => {
     setLoading(true)
+    setLoadError(null)
     try {
-      const constraints = [
-        where('source', '==', 'ugc'),
-        where('draftStatus', '==', status),
-        orderBy('createdAt', 'desc'),
-        limit(PAGE_SIZE),
-        ...(after ? [startAfter(after)] : []),
-      ]
-      const snap = await getDocs(query(collection(db, Collections.NEWS_DRAFTS), ...constraints))
-      const fetched: UGCSubmission[] = snap.docs.map(d => {
-        const data = d.data()
-        return {
-          id: d.id,
-          title:             data.title ?? '',
-          description:       data.description ?? data.summary ?? '',
-          summary:           data.summary ?? '',
-          city:              data.city ?? null,
-          coverImageUrl:     data.coverImageUrl ?? data.thumbnail ?? null,
-          videoUrl:          data.videoUrl ?? null,
-          authorId:          data.authorId ?? '',
-          author:            data.author ?? '',
-          authorUsername:    data.authorUsername ?? '',
-          authorDisplayName: data.authorDisplayName ?? data.author ?? '',
-          draftStatus:       data.draftStatus ?? status,
-          categoryId:        data.categoryId ?? 'gundem',
-          createdAt:         toMillis(data.createdAt),
-        }
+      const res = await fetch(`/api/admin/submissions?status=${encodeURIComponent(status)}`, {
+        headers: await authHeaders(),
       })
-      if (after) {
-        setItems(prev => [...prev, ...fetched])
-      } else {
-        setItems(fetched)
-      }
-      const lastSnap = snap.docs[snap.docs.length - 1] ?? null
-      setLastDoc(lastSnap)
-      setHasMore(snap.docs.length === PAGE_SIZE)
+      const body = (await res.json()) as { items?: UGCSubmission[]; error?: string }
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`)
+      setItems(body.items ?? [])
     } catch (err) {
       console.error('[submissions] fetch error', err)
-      toast.error('Gönderiler yüklenemedi')
+      setItems([])
+      const msg = err instanceof Error ? err.message : 'Gönderiler yüklenemedi'
+      setLoadError(msg)
+      toast.error(msg.includes('index') || msg.includes('INDEX')
+        ? 'Firestore index eksik — fallback deneniyor / admin yenileyin'
+        : 'Gönderiler yüklenemedi')
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    setLastDoc(null)
-    fetchItems(activeFilter)
+    void fetchItems(activeFilter)
   }, [activeFilter, fetchItems])
 
-  // ── Onayla: newsDrafts → news (published) ─────────────────────────────────
   const handleApprove = async (id: string) => {
+    if (!can('news:publish') && !can('news:edit')) {
+      toast.error('Yetkiniz yok')
+      return
+    }
     setActionLoading(id)
     try {
-      const item = items.find(i => i.id === id)
-      if (!item) return
-
-      // news koleksiyonuna ekle
-      const slug = item.title
-        .toLowerCase()
-        .replace(/[^a-z0-9ğüşıöçğüşöç\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .slice(0, 80)
-        + '-' + Date.now()
-
-      await addDoc(collection(db, Collections.NEWS), {
-        title:             item.title,
-        description:       item.description,
-        summary:           item.summary ?? item.description.slice(0, 280),
-        slug,
-        status:            'published',
-        categoryId:        item.categoryId ?? 'gundem',
-        coverImageUrl:     item.coverImageUrl ?? null,
-        videoUrl:          item.videoUrl ?? null,
-        thumbnail:         item.coverImageUrl ?? null,
-        authorId:          item.authorId,
-        author:            item.author,
-        authorUsername:    item.authorUsername,
-        authorDisplayName: item.authorDisplayName,
-        source:            'ugc',
-        type:              'ugc',
-        city:              item.city ?? null,
-        publishedAt:       serverTimestamp(),
-        createdAt:         serverTimestamp(),
-        updatedAt:         serverTimestamp(),
-        aiGenerated:       false,
+      const res = await fetch('/api/admin/submissions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({ id, action: 'approve' }),
       })
-
-      // newsDrafts durumunu güncelle
-      await updateDoc(doc(db, Collections.NEWS_DRAFTS, id), {
-        draftStatus: 'approved',
-        updatedAt:   serverTimestamp(),
-      })
-
-      toast.success('Haber onaylandı ve yayınlandı ✓')
-      setItems(prev => prev.filter(i => i.id !== id))
+      const body = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(body.error || 'Onaylama başarısız')
+      toast.success('Haber onaylandı ve yayınlandı')
+      setItems((prev) => prev.filter((i) => i.id !== id))
     } catch (err) {
       console.error('[submissions] approve error', err)
-      toast.error('Onaylama başarısız')
+      toast.error(err instanceof Error ? err.message : 'Onaylama başarısız')
     } finally {
       setActionLoading(null)
     }
   }
 
-  // ── Reddet ────────────────────────────────────────────────────────────────
   const handleReject = async (id: string) => {
+    if (!can('news:publish') && !can('news:edit')) {
+      toast.error('Yetkiniz yok')
+      return
+    }
     setActionLoading(id)
     try {
-      await updateDoc(doc(db, Collections.NEWS_DRAFTS, id), {
-        draftStatus: 'rejected',
-        updatedAt:   serverTimestamp(),
+      const res = await fetch('/api/admin/submissions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({ id, action: 'reject' }),
       })
+      const body = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(body.error || 'Reddetme başarısız')
       toast.success('Haber reddedildi')
-      setItems(prev => prev.filter(i => i.id !== id))
+      setItems((prev) => prev.filter((i) => i.id !== id))
     } catch (err) {
       console.error('[submissions] reject error', err)
-      toast.error('Reddetme başarısız')
+      toast.error(err instanceof Error ? err.message : 'Reddetme başarısız')
     } finally {
       setActionLoading(null)
     }
@@ -310,12 +136,12 @@ export default function SubmissionsPage() {
     <div className="flex min-h-screen flex-col bg-[rgb(var(--color-surface))]">
       <CMSHeader title="Okuyucu Haberleri" />
 
-      <div className="flex-1 px-6 py-6 max-w-5xl mx-auto w-full">
-        {/* Filtre sekmeleri */}
-        <div className="mb-6 flex items-center gap-2">
-          {FILTER_TABS.map(tab => (
+      <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-6">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          {FILTER_TABS.map((tab) => (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveFilter(tab.id)}
               className={cn(
                 'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
@@ -328,18 +154,31 @@ export default function SubmissionsPage() {
             </button>
           ))}
           <button
-            onClick={() => fetchItems(activeFilter)}
-            className="ml-auto flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] transition-colors"
+            type="button"
+            onClick={() => void fetchItems(activeFilter)}
+            className="ml-auto flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             Yenile
           </button>
         </div>
 
-        {/* Liste */}
         {loading && items.length === 0 ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="h-8 w-8 animate-spin text-[rgb(var(--color-muted))]" />
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+            <Inbox className="h-12 w-12 text-red-500/70" />
+            <p className="font-semibold text-[rgb(var(--color-text))]">Gönderiler yüklenemedi</p>
+            <p className="max-w-md text-sm text-[rgb(var(--color-muted))]">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => void fetchItems(activeFilter)}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Tekrar dene
+            </button>
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
@@ -347,29 +186,97 @@ export default function SubmissionsPage() {
             <p className="font-semibold text-[rgb(var(--color-text))]">
               {activeFilter === 'pending_review' ? 'Bekleyen haber yok' : 'Kayıt bulunamadı'}
             </p>
+            <p className="max-w-sm text-sm text-[rgb(var(--color-muted))]">
+              Okuyucuların gönderdiği haber önerileri burada listelenir.
+            </p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map(item => (
-              <SubmissionCard
+          <div className="space-y-4">
+            {items.map((item) => (
+              <article
                 key={item.id}
-                item={item}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                loading={actionLoading}
-              />
+                className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
+              >
+                <div className="flex flex-col gap-4 p-4 sm:flex-row">
+                  {item.coverImageUrl ? (
+                    <div className="relative h-36 w-full shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-40">
+                      <Image
+                        src={item.coverImageUrl}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="160px"
+                        unoptimized
+                      />
+                    </div>
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                      <span>{categoryLabel(item.categoryId)}</span>
+                      {item.city ? (
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {item.city}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h2 className="text-base font-bold text-[rgb(var(--color-text))]">{item.title}</h2>
+                    <p className="mt-1 line-clamp-3 text-sm text-[rgb(var(--color-muted))]">
+                      {item.description || item.summary}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[rgb(var(--color-muted))]">
+                      <span className="inline-flex items-center gap-1">
+                        <User className="h-3.5 w-3.5" />
+                        {item.authorDisplayName || item.author || item.authorUsername || '—'}
+                      </span>
+                      {item.createdAt ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {formatDistanceToNow(item.createdAt, { addSuffix: true, locale: tr })}
+                        </span>
+                      ) : null}
+                      {item.videoUrl ? (
+                        <a
+                          href={item.videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[rgb(var(--color-brand))]"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Video
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+                {activeFilter === 'pending_review' ? (
+                  <div className="flex gap-2 border-t border-[rgb(var(--color-border))] px-4 py-3">
+                    <button
+                      type="button"
+                      disabled={actionLoading === item.id}
+                      onClick={() => void handleApprove(item.id)}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {actionLoading === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      Onayla
+                    </button>
+                    <button
+                      type="button"
+                      disabled={actionLoading === item.id}
+                      onClick={() => void handleReject(item.id)}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Reddet
+                    </button>
+                  </div>
+                ) : null}
+              </article>
             ))}
-          </div>
-        )}
-
-        {hasMore && !loading && (
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={() => fetchItems(activeFilter, lastDoc ?? undefined)}
-              className="rounded-full border border-[rgb(var(--color-border))] px-6 py-2 text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] transition-colors"
-            >
-              Daha Fazla Yükle
-            </button>
           </div>
         )}
       </div>

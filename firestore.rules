@@ -154,10 +154,27 @@ service cloud.firestore {
         || (isSignedIn() && resource.data.get('authorId', '') == request.auth.uid);
     }
 
-    // AI-ingested drafts: CMS staff read; publishers write
+    // Drafts: CMS staff + own UGC reader submissions
     match /newsDrafts/{draftId} {
-      allow read: if isCmsStaff();
-      allow create, update, delete: if isCmsPublisher();
+      allow read: if isCmsStaff()
+        || (isSignedIn() && resource.data.get('authorId', '') == request.auth.uid);
+
+      allow create: if isCmsPublisher()
+        || (isSignedIn()
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.get('source', '') == 'ugc'
+          && request.resource.data.get('draftStatus', '') == 'pending_review');
+
+      allow update: if isCmsPublisher()
+        || (isSignedIn()
+          && resource.data.get('authorId', '') == request.auth.uid
+          && resource.data.get('source', '') == 'ugc'
+          && resource.data.get('draftStatus', '') == 'pending_review'
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.get('draftStatus', '') == 'pending_review'
+          && request.resource.data.get('source', '') == 'ugc');
+
+      allow delete: if isCmsPublisher();
     }
 
     // Historical RSS archive — public read for search; NOT the live product path

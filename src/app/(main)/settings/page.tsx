@@ -158,22 +158,24 @@ export default function SettingsPage() {
   }, [filtered])
 
   return (
-    <>
-      <SettingsHeader title="Ayarlar ve hareketler" backHref={ROUTES.FEED} />
+    <div className="settings-hub-grid">
+      <div className="settings-hub-span">
+        <SettingsHeader title="Ayarlar ve hareketler" backHref={ROUTES.FEED} />
 
-      <label className="settings-search">
-        <Search className="h-4 w-4 shrink-0" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Ara"
-          className="settings-search-input"
-        />
-      </label>
+        <label className="settings-search">
+          <Search className="h-4 w-4 shrink-0" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Ara"
+            className="settings-search-input"
+          />
+        </label>
+      </div>
 
       {user && (
-        <SettingsSection title="Hesabın">
+        <SettingsSection title="Hesabın" className="settings-hub-span">
           <Link href={ROUTES.PROFILE(user.username)} className="settings-account-card">
             <Avatar name={user.displayName} src={user.photoURL} size="md" />
             <span className="min-w-0 flex-1">
@@ -193,7 +195,7 @@ export default function SettingsPage() {
       )}
 
       {!user && (
-        <SettingsSection title="Hesabın">
+        <SettingsSection title="Hesabın" className="settings-hub-span">
           <SettingsItem
             icon={User}
             label="Giriş yap"
@@ -204,7 +206,7 @@ export default function SettingsPage() {
       )}
 
       {sections.length === 0 ? (
-        <p className="px-1 py-8 text-center text-sm text-[rgb(var(--color-muted))]">
+        <p className="settings-hub-span px-1 py-8 text-center text-sm text-[rgb(var(--color-muted))]">
           &quot;{query}&quot; için sonuç bulunamadı.
         </p>
       ) : (
@@ -227,7 +229,7 @@ export default function SettingsPage() {
       )}
 
       {user && (
-        <SettingsSection title="Oturum">
+        <SettingsSection title="Oturum" className="settings-hub-span">
           <SettingsItem
             label="Çıkış yap"
             onClick={handleLogout}
@@ -243,9 +245,9 @@ export default function SettingsPage() {
         </SettingsSection>
       )}
 
-      <p className="px-1 pb-4 text-center text-xs text-[rgb(var(--color-muted))]">
+      <p className="settings-hub-span px-1 pb-4 text-center text-xs text-[rgb(var(--color-muted))]">
         {APP_CONFIG.NAME} · Sosyal haber platformu
       </p>
-    </>
+    </div>
   )
 }

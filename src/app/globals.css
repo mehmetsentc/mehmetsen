@@ -2676,31 +2676,70 @@
     @apply flex w-full items-center gap-3 px-4 py-3.5 text-left text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))];
   }
 
+  /** Settings — same content width as profile / newspaper pages */
   .settings-hub {
-    @apply mx-auto w-full max-w-xl;
+    width: 100%;
+    max-width: var(--layout-content-newspaper, min(1280px, 100%));
+    margin-inline: auto;
+    padding-inline: max(var(--layout-gutter), env(safe-area-inset-left, 0px))
+      max(var(--layout-gutter), env(safe-area-inset-right, 0px));
+    padding-bottom: 1.5rem;
   }
 
-  .settings-hub:has(.legal-hub) {
-    @apply w-full max-w-none;
-    max-width: min(720px, calc(100vw - var(--layout-gutter) * 2));
+  @media (min-width: 768px) {
+    .settings-hub {
+      padding-inline: var(--layout-gutter);
+    }
   }
 
-  @media (max-width: 1023px) {
-    .settings-hub:has(.legal-hub) {
-      max-width: min(720px, calc(100vw - var(--layout-gutter) * 2));
+  @media (min-width: 1024px) {
+    .settings-hub {
+      padding-inline: 0;
+    }
+  }
+
+  .settings-hub-grid {
+    @apply flex flex-col gap-0;
+  }
+
+  @media (min-width: 1024px) {
+    .settings-hub-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      column-gap: 1.5rem;
+      row-gap: 0;
+      align-items: start;
+    }
+
+    .settings-hub-span {
+      grid-column: 1 / -1;
+    }
+
+    .settings-hub-grid > .settings-section {
+      @apply mb-4;
     }
   }
 
   .settings-header {
-    @apply relative mb-4 flex items-center justify-between py-2;
+    @apply relative mb-4 flex items-center gap-3 py-2;
   }
 
   .settings-header-back {
-    @apply flex h-10 w-10 items-center justify-center rounded-full text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))];
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))];
   }
 
   .settings-header-title {
     @apply absolute left-1/2 max-w-[60%] -translate-x-1/2 truncate text-base font-bold text-[rgb(var(--color-text))];
+  }
+
+  @media (min-width: 768px) {
+    .settings-header-title {
+      @apply static max-w-none translate-x-0 text-left text-xl;
+    }
+
+    .settings-header-spacer {
+      @apply hidden;
+    }
   }
 
   .settings-header-spacer {
@@ -2708,7 +2747,7 @@
   }
 
   .settings-search {
-    @apply mb-4 flex items-center gap-2 rounded-xl bg-[rgb(var(--color-surface))] px-4 py-2.5 text-[rgb(var(--color-muted))];
+    @apply mb-4 flex items-center gap-2 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-3 text-[rgb(var(--color-muted))];
   }
 
   .settings-search-input {
@@ -2773,6 +2812,8 @@
 
   .legal-hub {
     @apply w-full;
+    max-width: min(720px, 100%);
+    margin-inline: auto;
   }
 
   .legal-document {

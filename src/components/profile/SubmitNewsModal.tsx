@@ -7,8 +7,6 @@ import {
   Camera, FileText, Eye, Clock,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { db, Collections } from '@/lib/firebase/firestore'
 import { storageService } from '@/services/storageService'
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/auth'
@@ -93,25 +91,24 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
           ? await storageService.uploadPostImage(mediaFile, user.uid, draftId, setUploadProgress)
           : await storageService.uploadPostVideo(mediaFile, user.uid, draftId, setUploadProgress)
       }
-      await addDoc(collection(db, Collections.NEWS_DRAFTS), {
-        title: title.trim(),
-        description: content.trim(),
-        summary: content.trim().slice(0, 280),
-        city: location.trim() || null,
-        coverImageUrl: mediaType === 'image' ? mediaUrl : null,
-        videoUrl: mediaType === 'video' ? mediaUrl : null,
-        thumbnail: mediaType === 'image' ? mediaUrl : null,
-        authorId: user.uid,
-        author: user.username,
-        authorUsername: user.username,
-        authorDisplayName: user.displayName,
-        source: 'ugc',
-        type: 'ugc',
-        draftStatus: 'pending_review',
-        aiGenerated: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      const token = await auth.currentUser?.getIdToken()
+      if (!token) throw new Error('Oturum gerekli')
+      const res = await fetch('/api/ugc/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: content.trim(),
+          city: location.trim() || null,
+          coverImageUrl: mediaType === 'image' ? mediaUrl : null,
+          videoUrl: mediaType === 'video' ? mediaUrl : null,
+        }),
       })
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(data.error || 'Gönderilemedi')
       setSubmitted(true)
     } catch (err) {
       console.error(err)
