@@ -285,6 +285,8 @@ export default async function CategoryPage({ params }: Props) {
         homeFeedData={homeFeedData}
         cityName={cityName}
         sectionTitle={`${cityName} ${resolved.label} Haberleri`}
+        streamSectionLabel={resolved.label}
+        streamSectionHref={ROUTES.CATEGORY(resolved.categoryId)}
       />
     )
   }

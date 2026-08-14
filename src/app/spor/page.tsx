@@ -53,6 +53,8 @@ export default async function SporPage() {
         homeFeedData={homeFeedData}
         cityName={cityName}
         sectionTitle={sectionTitle}
+        streamSectionLabel="Spor"
+        streamSectionHref={ROUTES.CITY_SPOR}
       />
     </CityLayoutClient>
   )

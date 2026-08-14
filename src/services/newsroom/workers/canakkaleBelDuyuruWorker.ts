@@ -1,7 +1,6 @@
 /**
  * Çanakkale belediye duyuru scraper — günde 2 kez.
- * Son 12 saatteki duyuruları yerel-duyuru olarak kuyruğa alır;
- * sosyal cron, .bel.tr + yerel-duyuru için otomatik paylaşır.
+ * Son 12 saatteki duyuruları yerel-duyuru olarak kuyruğa alır.
  */
 import { getEnabledCanakkaleBelDuyuruSources } from '@/services/newsroom/sources/canakkaleBelDuyuruSources'
 import { runScraperSources } from '@/services/newsroom/workers/scraperWorker'
@@ -18,8 +17,9 @@ export async function runCanakkaleBelDuyuruWorker(): Promise<NewsroomRunResult> 
 
   console.log(`[canakkale-bel-duyuru] starting ${sources.length} municipality sources`)
   const result = await runScraperSources(sources)
+  result.workerId = 'canakkale-bel-duyuru'
   console.log(
-    `[canakkale-bel-duyuru] done fetched=${result.itemsFetched} queued=${result.itemsNew} skipped=${result.itemsSkipped} failed=${result.itemsFailed}`
+    `[canakkale-bel-duyuru] done fetched=${result.itemsFetched} queued=${result.itemsNew} failed=${result.itemsFailed}`
   )
   return result
 }

@@ -208,52 +208,6 @@ const COMMANDS: CommandItem[] = [
     group: 'Yönetim',
     requiredPermissions: ['system:settings'],
   },
-  {
-    id: 'live-center',
-    label: 'Canlı Haber Merkezi',
-    href: '/admin/live-center',
-    icon: Zap,
-    group: 'Genel',
-    keywords: 'canlı live operasyon',
-    requiredPermissions: ['news:read'],
-  },
-  {
-    id: 'ai-org',
-    label: 'AI Organizasyonu',
-    href: '/admin/ai-org',
-    icon: BrainCircuit,
-    group: 'AI',
-    keywords: 'org hiyerarşi ajan',
-    requiredPermissions: ['agents:manage'],
-  },
-  {
-    id: 'smm',
-    label: '81 İl SMM Ağı',
-    href: '/admin/smm',
-    icon: Share2,
-    group: 'Sosyal',
-    keywords: 'smm şehir sosyal',
-    requiredPermissions: ['social:view'],
-  },
-  {
-    id: 'locations',
-    label: '81 İl Lokasyon',
-    href: '/admin/locations',
-    icon: Newspaper,
-    group: 'İçerik',
-    keywords: 'il şehir location',
-    requiredPermissions: ['locations:manage'],
-  },
-  {
-    id: 'feed-algo',
-    label: 'Feed & Algoritma',
-    href: '/admin/feed-algorithm',
-    icon: BarChart3,
-    group: 'Uygulama',
-    keywords: 'algoritma feed',
-    requiredPermissions: ['algorithm:view'],
-  },
-
 ]
 
 interface AdminCommandPaletteProps {

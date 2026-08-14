@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
+import { ROUTES } from '@/constants/routes'
 import { getCitySporFeedInitialData } from '@/services/cityNewsService.server'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 
@@ -32,6 +33,8 @@ export default async function CitySporPage() {
       homeFeedData={homeFeedData}
       cityName={cityName}
       sectionTitle={sectionTitle}
+      streamSectionLabel="Spor"
+      streamSectionHref={ROUTES.CITY_SPOR}
     />
   )
 }

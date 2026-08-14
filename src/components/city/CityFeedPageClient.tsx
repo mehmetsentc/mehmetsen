@@ -44,6 +44,10 @@ interface CityFeedPageClientProps {
   districtName?: string
   /** Section page title (e.g. "Çanakkale Spor Haberleri"). */
   sectionTitle?: string
+  /** Mid-stream desktop section label (e.g. "Gündem", "Spor"). */
+  streamSectionLabel?: string
+  /** Mid-stream desktop section link. */
+  streamSectionHref?: string
 }
 
 function CityFeedScrollHeaderConfig({ homeFeedData }: { homeFeedData: HomeFeedInitialData }) {
@@ -108,6 +112,8 @@ function CityFeedPageBody({
   cinemaEvents = [],
   districtName,
   sectionTitle,
+  streamSectionLabel,
+  streamSectionHref,
 }: CityFeedPageClientProps) {
   const desktopReady = useDesktopFeedReady()
   const categoryRailIds = Object.keys(homeFeedData.categoryRails) as HomeCategorySlug[]
@@ -148,6 +154,8 @@ function CityFeedPageBody({
               cinemaEvents={cinemaEvents}
               districtName={districtName}
               sectionTitle={sectionTitle}
+              streamSectionLabel={streamSectionLabel}
+              streamSectionHref={streamSectionHref}
             />
           </DesktopNewspaperShell>
         ) : (

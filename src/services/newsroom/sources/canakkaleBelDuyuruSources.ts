@@ -1,6 +1,6 @@
 /**
  * Çanakkale ili + ilçe / belde belediye duyuru & haber listeleri.
- * Cron: 2×/gün (06:00 & 18:00 TR) → yerel-duyuru; sosyal cron paylaşır.
+ * Cron: 2×/gün → yerel-duyuru (city chip: Duyuru).
  */
 import type { ScraperSource } from '@/services/newsroom/sources/scraperSources'
 
@@ -23,8 +23,7 @@ export const CANAKKALE_BEL_DUYURU_SOURCES: ScraperSource[] = [
     id: 'bel-canakkale-merkez-duyuru',
     label: 'Çanakkale Belediyesi Duyurular',
     listUrls: ['https://www.canakkale.bel.tr/tr/sayfa/1213-genel-duyurular'],
-    // Detail: /tr/sayfa/1213-genel-duyurular/11387-slug
-    linkPattern: '/tr/sayfa/1213-genel-duyurular/\\d+-',
+    linkPattern: '/(duyuru|haber|sayfa|icerik|detay)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Merkez' },
   },
   {
@@ -35,9 +34,7 @@ export const CANAKKALE_BEL_DUYURU_SOURCES: ScraperSource[] = [
       'https://www.kepez.bel.tr/guncel/duyurular/',
       'https://www.kepez.bel.tr/guncel/anonslar/',
     ],
-    // WP posts: /13-08-2026-tarihli-... or /anons-tarihi-13-08-2026-...
-    linkPattern: '/(?:\\d{1,2}-\\d{1,2}-20\\d{2}-|anons-tarihi-)[a-z0-9-]+/?$',
-    linkExcludePattern: BASE.linkExcludePattern + '|/(guncel|kurumsal|hizmetler|mudurluk)/',
+    linkPattern: '/(duyuru|anons|guncel|haber|icerik)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Kepez' },
   },
   {
@@ -45,8 +42,7 @@ export const CANAKKALE_BEL_DUYURU_SOURCES: ScraperSource[] = [
     id: 'bel-canakkale-ayvacik-duyuru',
     label: 'Ayvacık Belediyesi Duyurular',
     listUrls: ['https://www.canakkaleayvacik.bel.tr/Gundem/Duyurular'],
-    linkPattern: '/Gundem/(Duyuru|Haber|duyuru|haber)[^/]*/|/Detay/|/\\d{4,}',
-    linkExcludePattern: BASE.linkExcludePattern + '|/Gundem/Duyurular/?$|/Gundem/Haberler/\\d*/?$',
+    linkPattern: '/(Duyuru|duyuru|Gundem|haber|Detay|detay)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Ayvacık' },
   },
   {
@@ -54,8 +50,7 @@ export const CANAKKALE_BEL_DUYURU_SOURCES: ScraperSource[] = [
     id: 'bel-canakkale-ezine-duyuru',
     label: 'Ezine Belediyesi Duyurular',
     listUrls: ['https://www.ezine.bel.tr/duyurular', 'https://www.ezine.bel.tr/haberler'],
-    linkPattern: '/(?:duyurular|haberler)/[a-z0-9-]{8,}/?$',
-    linkExcludePattern: BASE.linkExcludePattern + '|/(?:duyurular|haberler)/?$',
+    linkPattern: '/(duyuru|haber|icerik|detay)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Ezine' },
   },
   {
@@ -63,8 +58,8 @@ export const CANAKKALE_BEL_DUYURU_SOURCES: ScraperSource[] = [
     id: 'bel-canakkale-geyikli-duyuru',
     label: 'Geyikli Belediyesi Duyurular',
     listUrls: ['https://www.canakkalegeyikli.bel.tr/duyurular/arsiv/1/duyuru-arsivi'],
-    linkPattern: '/duyurular?/[^/]+|/haber[^/]*/|/icerik/|/\\d{4,}',
-    linkExcludePattern: BASE.linkExcludePattern + '|/arsiv/',
+    linkPattern: '/(duyuru|haber|arsiv|icerik|detay)|/\\d{3,}',
+    // Belde under Ezine
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Ezine' },
   },
   {
@@ -75,17 +70,15 @@ export const CANAKKALE_BEL_DUYURU_SOURCES: ScraperSource[] = [
       'https://www.eceabat.bel.tr/kategori/duyurular',
       'https://www.eceabat.bel.tr/kategori/haberler',
     ],
-    linkPattern: '/(?:haber|duyuru)/[a-z0-9-]{5,}/?$',
-    linkExcludePattern: BASE.linkExcludePattern + '|/kategori/',
+    linkPattern: '/(duyuru|haber|kategori|icerik|detay)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Eceabat' },
   },
   {
     ...BASE,
     id: 'bel-canakkale-can-duyuru',
     label: 'Çan Belediyesi Duyurular',
-    listUrls: ['https://www.can.bel.tr/duyurular', 'https://www.can.bel.tr/'],
-    linkPattern: '/(?:duyuru|haber|ilan)[a-z0-9/-]*[a-z0-9-]{6,}',
-    linkExcludePattern: BASE.linkExcludePattern + '|/duyurular/?$',
+    listUrls: ['https://www.can.bel.tr/'],
+    linkPattern: '/(duyuru|haber|icerik|detay|guncel)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Çan' },
   },
   {
@@ -93,29 +86,23 @@ export const CANAKKALE_BEL_DUYURU_SOURCES: ScraperSource[] = [
     id: 'bel-canakkale-biga-duyuru',
     label: 'Biga Belediyesi Duyurular',
     listUrls: ['https://www.biga.bel.tr/duyurular'],
-    linkPattern: '/duyurular/[a-z0-9-]{8,}/?$',
-    linkExcludePattern: BASE.linkExcludePattern + '|/duyurular/?$|\\.pdf',
+    linkPattern: '/(duyuru|haber|icerik|detay)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Biga' },
   },
   {
     ...BASE,
     id: 'bel-canakkale-lapseki-duyuru',
     label: 'Lapseki Belediyesi Duyurular',
-    listUrls: ['https://www.lapseki.bel.tr/duyurular', 'https://www.lapseki.bel.tr/haberler'],
-    linkPattern: '/(?:duyuru|haber|icerik)/[a-z0-9-]{5,}',
-    linkExcludePattern: BASE.linkExcludePattern + '|/(?:duyurular|haberler)/?$',
+    listUrls: ['https://www.lapseki.bel.tr/duyurular'],
+    linkPattern: '/(duyuru|haber|icerik|detay)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Lapseki' },
   },
   {
     ...BASE,
     id: 'bel-canakkale-bozcaada-duyuru',
     label: 'Bozcaada Belediyesi Duyurular',
-    listUrls: [
-      'https://www.bozcaada.bel.tr/yazilar/duyurular/',
-      'https://www.bozcaada.bel.tr/yazilar/haberler/',
-    ],
-    linkPattern: '/(?:duyuru|haber)-[a-z0-9-]+/?$',
-    linkExcludePattern: BASE.linkExcludePattern + '|/yazilar/',
+    listUrls: ['https://www.bozcaada.bel.tr/yazilar/duyurular/'],
+    linkPattern: '/(duyuru|yazi|haber|icerik)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Bozcaada' },
   },
   {
@@ -123,10 +110,7 @@ export const CANAKKALE_BEL_DUYURU_SOURCES: ScraperSource[] = [
     id: 'bel-canakkale-gokceada-duyuru',
     label: 'Gökçeada Belediyesi Duyuru ve Haberler',
     listUrls: ['https://www.gokceada.bel.tr/duyuru-ve-haberler/'],
-    // Many items are direct PDF/PNG uploads under wp-content
-    linkPattern: '/wp-content/uploads/20\\d{2}/.+\\.(?:pdf|png|jpe?g)(?:$|\\?)|/(?:duyuru|haber)[a-z0-9-]{6,}/?$',
-    linkExcludePattern: BASE.linkExcludePattern + '|/duyuru-ve-haberler/?$',
-    maxItems: 3,
+    linkPattern: '/(duyuru|haber|icerik|detay)|/\\d{3,}',
     localMeta: { citySlug: 'canakkale', cityName: 'Çanakkale', district: 'Gökçeada' },
   },
 ]

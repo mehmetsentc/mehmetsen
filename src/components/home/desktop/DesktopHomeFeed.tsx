@@ -68,6 +68,12 @@ interface DesktopHomeFeedProps {
   cinemaEvents?: NaEvent[]
   districtName?: string
   sectionTitle?: string
+  /**
+   * Mid-stream section chrome (e.g. "Gündem", "Spor").
+   * Do NOT infer Spor from sectionTitle — category pages also set sectionTitle.
+   */
+  streamSectionLabel?: string
+  streamSectionHref?: string
 }
 
 export function DesktopHomeFeed({
@@ -77,6 +83,8 @@ export function DesktopHomeFeed({
   cinemaEvents = [],
   districtName,
   sectionTitle,
+  streamSectionLabel,
+  streamSectionHref,
 }: DesktopHomeFeedProps) {
   const lazyRailIds = cityMode
     ? (Object.keys(data.categoryRails) as HomeCategorySlug[])
@@ -176,8 +184,8 @@ export function DesktopHomeFeed({
   )
   const hasHero = layout.heroLead
   const hasHeroAside = layout.heroRight.length > 0
-  const sectionHref = sectionTitle ? ROUTES.CITY_SPOR : ROUTES.CATEGORY('gundem')
-  const streamSectionTitle = sectionTitle ? 'Spor' : 'Gündem'
+  const sectionHref = streamSectionHref ?? ROUTES.CATEGORY('gundem')
+  const streamSectionTitle = streamSectionLabel ?? 'Gündem'
 
   return (
     <div className="desktop-home-feed">

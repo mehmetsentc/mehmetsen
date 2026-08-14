@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -29,7 +29,7 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-function SmmNetworkPageInner() {
+export default function SmmNetworkPage() {
   const { can } = useCmsAuth()
   const searchParams = useSearchParams()
   const focusCity = searchParams.get('city')
@@ -237,14 +237,5 @@ function SmmNetworkPageInner() {
         </div>
       )}
     </AdminOsPageShell>
-  )
-}
-
-
-export default function SmmNetworkPage() {
-  return (
-    <Suspense fallback={<div className="p-6 text-sm text-slate-400">SMM ağı yükleniyor…</div>}>
-      <SmmNetworkPageInner />
-    </Suspense>
   )
 }
