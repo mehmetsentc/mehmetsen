@@ -94,6 +94,21 @@ export type CmsPermission =
   // AI
   | 'ai:use'
   | 'ai:configure'
+  | 'ai:instructions'
+  | 'ai:models'
+  | 'agents:manage'
+  | 'agents:delegate'
+  // Social / SMM
+  | 'social:view'
+  | 'social:publish'
+  | 'social:manage'
+  // Locations / pages / algorithm
+  | 'locations:manage'
+  | 'pages:manage'
+  | 'algorithm:view'
+  | 'algorithm:manage'
+  | 'logs:view'
+  | 'roles:manage'
 
 export const ROLE_PERMISSIONS: Record<CmsRole, CmsPermission[]> = {
   super_admin: [
@@ -106,7 +121,9 @@ export const ROLE_PERMISSIONS: Record<CmsRole, CmsPermission[]> = {
     'analytics:read','analytics:export',
     'cron:read','cron:trigger',
     'system:settings','system:api_keys',
-    'ai:use','ai:configure',
+    'ai:use','ai:configure','ai:instructions','ai:models','agents:manage','agents:delegate',
+    'social:view','social:publish','social:manage',
+    'locations:manage','pages:manage','algorithm:view','algorithm:manage','logs:view','roles:manage',
   ],
   managing_editor: [
     'news:read','news:create','news:edit','news:edit_own','news:delete','news:publish','news:bulk_action',
@@ -119,7 +136,9 @@ export const ROLE_PERMISSIONS: Record<CmsRole, CmsPermission[]> = {
     'cron:read','cron:trigger',
     // Data-maintenance tools (publishedAt backfill, timestamp migrate) — not API keys.
     'system:settings',
-    'ai:use',
+    'ai:use','ai:instructions','ai:models','agents:manage','agents:delegate',
+    'social:view','social:publish',
+    'locations:manage','pages:manage','algorithm:view','logs:view',
   ],
   editor: [
     'news:read','news:create','news:edit','news:edit_own','news:publish','news:bulk_action',
@@ -130,6 +149,8 @@ export const ROLE_PERMISSIONS: Record<CmsRole, CmsPermission[]> = {
     'analytics:read',
     'cron:read',
     'ai:use',
+    'social:view',
+    'algorithm:view',
   ],
   author: [
     'news:read','news:create','news:edit_own',
@@ -254,7 +275,7 @@ export interface ApiKey {
 
 export interface CmsNotification {
   id: string
-  type: 'article_submitted' | 'article_approved' | 'article_rejected' | 'cron_error' | 'user_reported' | 'breaking_news'
+  type: 'article_submitted' | 'article_approved' | 'article_rejected' | 'cron_error' | 'user_reported' | 'breaking_news' | 'approval' | 'factCheck' | 'agentError' | 'socialFailure' | 'tokenExpiry' | 'systemError' | 'algorithmProposal' | 'learningProposal' | 'assignment' | 'mention'
   title: string
   message: string
   href?: string

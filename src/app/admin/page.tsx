@@ -414,7 +414,7 @@ export default function AdminIndexPage() {
         </section>
 
         {/* KPI strip — no fake trends */}
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           <KpiCard
             title="Yayındaki Haberler"
             value={loading ? '–' : stats.totalPublished}
@@ -440,6 +440,21 @@ export default function AdminIndexPage() {
             value={loading ? '–' : stats.totalUsers}
             icon={Users}
             href={can('users:read') ? '/admin/users' : undefined}
+          />
+          <KpiCard
+            title="81 İl SMM"
+            value="0/81"
+            icon={Bot}
+            href={can('social:view') ? '/admin/smm' : undefined}
+            description="Henüz seed edilmedi"
+            tone="neutral"
+          />
+          <KpiCard
+            title="Canlı Merkez"
+            value={loading ? '–' : liveEvents.length}
+            icon={Activity}
+            href="/admin/live-center"
+            description="Anlık sinyal"
           />
         </section>
 
@@ -624,9 +639,12 @@ export default function AdminIndexPage() {
               <div className="space-y-1 p-2">
                 {(
                   [
+                    { href: '/admin/ai-org', label: 'AI Organizasyonu', perm: 'agents:manage' as const },
+                    { href: '/admin/ai-editors', label: 'AI Editörler', perm: 'ai:use' as const },
+                    { href: '/admin/ai-tasks', label: 'AI Görevler', perm: 'ai:use' as const },
+                    { href: '/admin/smm', label: '81 İl SMM', perm: 'social:view' as const },
                     { href: '/admin/newsroom', label: 'AI Newsroom', perm: 'ai:use' as const },
                     { href: '/admin/ai/news', label: 'Haber Oluştur / Yeniden Yaz', perm: 'ai:use' as const },
-                    { href: '/admin/ai-editors', label: 'AI Editörler', perm: 'ai:use' as const },
                     { href: '/admin/seo', label: 'SEO Kontrolü', perm: 'seo:read' as const },
                     { href: '/admin/inbox', label: 'Gelen Kutusu (Gmail)', perm: 'news:read' as const },
                   ] as const
@@ -646,6 +664,63 @@ export default function AdminIndexPage() {
             </div>
 
             <PopularNewsTable items={overview?.topNews ?? []} loading={!overview} />
+          </div>
+        </section>
+
+        {/* Newsroom OS — görev & hızlı işlemler */}
+        <section className="grid gap-5 lg:grid-cols-2">
+          <div className="overflow-hidden rounded-[14px] border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+            <div className="border-b border-[rgb(var(--color-border))] px-5 py-3">
+              <h2 className="admin-section-title">Görev & Onay Merkezi</h2>
+            </div>
+            <div className="divide-y divide-[rgb(var(--color-border))]">
+              {[
+                { label: 'Onay bekleyen haber', value: stats.pendingReview, href: '/admin/approvals' },
+                { label: 'AI görev kuyruğu', value: 0, href: '/admin/ai-tasks' },
+                { label: 'SMM paylaşım kuyruğu', value: 0, href: '/admin/smm/queue' },
+                { label: 'Öğrenme önerileri', value: 0, href: '/admin/ai-learning' },
+                { label: 'Algoritma önerileri', value: 0, href: '/admin/feed-algorithm' },
+              ].map((row) => (
+                <Link
+                  key={row.href}
+                  href={row.href}
+                  className="flex items-center justify-between px-5 py-3 text-sm hover:bg-[rgb(var(--color-surface))]"
+                >
+                  <span className="font-medium text-[rgb(var(--color-text))]">{row.label}</span>
+                  <span className="rounded-full bg-[rgb(var(--color-brand))]/15 px-2 py-0.5 text-xs font-bold tabular-nums text-[rgb(var(--color-brand))]">
+                    {row.value}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-[14px] border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+            <div className="border-b border-[rgb(var(--color-border))] px-5 py-3">
+              <h2 className="admin-section-title">Hızlı İşlemler</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
+              {[
+                { href: '/admin/news/create', label: 'Yeni Haber', show: can('news:create') },
+                { href: '/admin/inbox', label: 'Gelen Haberler', show: can('news:read') },
+                { href: '/admin/ai-editors', label: 'AI Editörler', show: can('ai:use') },
+                { href: '/admin/smm', label: '81 İl SMM', show: can('social:view') },
+                { href: '/admin/smm/queue', label: 'Paylaşım Kuyruğu', show: can('social:view') },
+                { href: '/admin/locations', label: '81 İl', show: can('locations:manage') },
+                { href: '/admin/feed-algorithm', label: 'Algoritma', show: can('algorithm:view') },
+                { href: '/admin/system-health', label: 'Sistem', show: can('system:settings') },
+                { href: '/admin/settings', label: 'Ayarlar', show: can('system:settings') },
+              ]
+                .filter((x) => x.show)
+                .map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-4 text-center text-xs font-semibold text-[rgb(var(--color-text))] hover:border-[rgb(var(--color-brand))]/40"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+            </div>
           </div>
         </section>
 

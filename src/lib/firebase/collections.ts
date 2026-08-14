@@ -92,6 +92,31 @@ export const Collections = {
   SPORTS_SEASONS: 'sportsSeasons',
   SPORTS_SYNC_STATE: 'sportsSyncState',
 
+
+  // ── CMS AI Newsroom OS ────────────────────────────────────────────────────
+  /** Hierarchical AI agents (extends aiEditors conceptually) */
+  NEWSROOM_AGENTS: 'newsroomAgents',
+  AGENT_TASKS: 'agentTasks',
+  AGENT_EXECUTIONS: 'agentExecutions',
+  AGENT_MEMORIES: 'agentMemories',
+  SHARED_MEMORIES: 'sharedNewsroomMemories',
+  INSTRUCTION_SETS: 'instructionSets',
+  LEARNING_PROPOSALS: 'learningProposals',
+  ALGORITHM_PROPOSALS: 'algorithmProposals',
+  ALGORITHM_CONFIGS: 'algorithmConfigs',
+  SOCIAL_ACCOUNTS: 'socialAccounts',
+  SMM_QUEUE: 'smmQueue',
+  SMM_MATRIX: 'smmContentMatrix',
+  AUTOMATION_RULES: 'automationRules',
+  PAGE_LAYOUTS: 'pageLayouts',
+  PAGE_LAYOUT_VERSIONS: 'pageLayoutVersions',
+  CMS_AUDIT_LOGS: 'cmsAuditLogs',
+  CMS_FEATURE_FLAGS: 'cmsFeatureFlags',
+  CMS_NOTIFICATIONS: 'cmsNotifications',
+  STORY_CLUSTERS: 'storyClusters',
+  SOURCE_PROFILES: 'sourceProfiles',
+  NEWS_CLAIMS: 'newsClaims',
+  QUALITY_SCORES: 'qualityScores',
   // ── Integrations ──────────────────────────────────────────────────────────
   /** OAuth integration tokens — doc id: 'gmail_bilgi' etc. */
   INTEGRATIONS: 'integrations',
