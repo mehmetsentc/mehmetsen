@@ -6,9 +6,7 @@ import {
   ArrowUpRight,
   BarChart3,
   Bot,
-  CheckCircle2,
   Clock,
-  Database,
   ListTodo,
   Map,
   Newspaper,
@@ -209,6 +207,7 @@ export function NewsroomOsDashboard({
   agentActivity,
   smmActiveSlugs,
   orgSummary,
+  healthChecks,
 }: {
   stats: OsDashStats
   loading: boolean
@@ -219,6 +218,7 @@ export function NewsroomOsDashboard({
     eic: string
     desks: Array<{ label: string; count: number }>
   }
+  healthChecks?: Array<{ id: string; label: string; status: string; detail: string; href?: string }>
 }) {
   const dash = (v: number | string) => (loading ? '–' : v)
 
@@ -462,37 +462,49 @@ export function NewsroomOsDashboard({
             <h2 className="admin-section-title">Sistem Durumu</h2>
           </div>
           <ul className="divide-y divide-[rgb(var(--color-border))]">
-            {[
-              { label: 'Haber Servisleri', ok: true, icon: Newspaper },
-              { label: 'AI Servisleri', ok: true, icon: Bot },
-              { label: 'Social Services', ok: true, icon: Share2 },
-              { label: 'Database', ok: true, icon: Database },
-              { label: 'Queue / Cron', ok: true, icon: Zap, href: '/admin/cron' },
-            ].map((row) => {
-              const RowIcon = row.icon
+            {(healthChecks && healthChecks.length > 0
+              ? healthChecks
+              : [
+                  { id: 'news', label: 'Haber Servisleri', status: 'UNKNOWN', detail: 'Probe bekleniyor', href: '/admin/system-health' },
+                  { id: 'ai', label: 'AI Servisleri', status: 'UNKNOWN', detail: 'Probe bekleniyor', href: '/admin/ai-models' },
+                  { id: 'social', label: 'Social Services', status: 'UNKNOWN', detail: 'Probe bekleniyor', href: '/admin/social' },
+                  { id: 'db', label: 'Database', status: 'UNKNOWN', detail: 'Probe bekleniyor', href: '/admin/system-health' },
+                  { id: 'cron', label: 'Queue / Cron', status: 'UNKNOWN', detail: 'Cron sayfası', href: '/admin/cron' },
+                ]
+            ).map((row) => {
+              const ok = row.status === 'HEALTHY'
               const body = (
                 <div className="flex items-center gap-3 px-5 py-3">
-                  <RowIcon className="h-4 w-4 text-[rgb(var(--color-muted))]" />
+                  <span
+                    className={cn(
+                      'h-2 w-2 rounded-full',
+                      ok ? 'bg-emerald-500' : row.status === 'DOWN' ? 'bg-red-500' : 'bg-amber-500'
+                    )}
+                  />
                   <span className="flex-1 text-sm font-medium text-[rgb(var(--color-text))]">{row.label}</span>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Çalışıyor
+                  <span
+                    className={cn(
+                      'text-xs font-semibold',
+                      ok ? 'text-emerald-600' : row.status === 'DOWN' ? 'text-red-600' : 'text-amber-600'
+                    )}
+                  >
+                    {ok ? 'Çalışıyor' : row.status}
                   </span>
                 </div>
               )
               return row.href ? (
-                <li key={row.label}>
+                <li key={row.id}>
                   <Link href={row.href} className="block hover:bg-[rgb(var(--color-surface))]">
                     {body}
                   </Link>
                 </li>
               ) : (
-                <li key={row.label}>{body}</li>
+                <li key={row.id}>{body}</li>
               )
             })}
           </ul>
           <p className="border-t border-[rgb(var(--color-border))] px-5 py-2 text-[10px] text-[rgb(var(--color-muted))]">
-            Detaylı probe: Sistem Sağlığı sayfası (Phase 9). Burada operasyonel özet gösterilir.
+            Detay: Sistem Durumu sayfası. Secret değerleri gösterilmez.
           </p>
         </div>
 

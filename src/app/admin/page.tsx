@@ -61,6 +61,9 @@ export default function AdminIndexPage() {
       { label: 'SMM ağı', count: 0 },
     ],
   })
+  const [healthChecks, setHealthChecks] = useState<
+    Array<{ id: string; label: string; status: string; detail: string; href?: string }>
+  >([])
 
   const loadStats = useCallback(async () => {
     if (isMobile !== false) return
@@ -222,9 +225,13 @@ export default function AdminIndexPage() {
         const token = await auth.currentUser?.getIdToken()
         if (!token) return
         const headers = { Authorization: `Bearer ${token}` }
-        const [agentsRes, tasksRes] = await Promise.all([
+        const [agentsRes, tasksRes, queueRes, healthRes] = await Promise.all([
           fetch('/api/admin/newsroom-agents', { headers }).catch(() => null),
           fetch('/api/admin/agent-tasks?limit=12', { headers }).catch(() => null),
+          fetch('/api/admin/os-ops?resource=smm-queue', { headers }).catch(() => null),
+          can('system:settings')
+            ? fetch('/api/admin/os-ops?resource=health', { headers }).catch(() => null)
+            : Promise.resolve(null),
         ])
 
         if (agentsRes?.ok) {
@@ -322,6 +329,20 @@ export default function AdminIndexPage() {
             }))
           )
         }
+
+        if (queueRes?.ok) {
+          const body = (await queueRes.json()) as { counts?: { queued?: number } }
+          if (!cancelled) {
+            setStats((prev) => ({ ...prev, smmQueue: body.counts?.queued ?? 0 }))
+          }
+        }
+
+        if (healthRes?.ok) {
+          const body = (await healthRes.json()) as {
+            checks?: Array<{ id: string; label: string; status: string; detail: string; href?: string }>
+          }
+          if (!cancelled) setHealthChecks(body.checks ?? [])
+        }
       } catch (e) {
         console.error('[os dashboard agents]', e)
       }
@@ -363,6 +384,7 @@ export default function AdminIndexPage() {
         agentActivity={agentActivity}
         smmActiveSlugs={smmActiveSlugs}
         orgSummary={orgSummary}
+        healthChecks={healthChecks}
       />
     </div>
   )

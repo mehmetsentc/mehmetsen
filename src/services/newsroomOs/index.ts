@@ -19,3 +19,6 @@ export {
   listRuleProposals,
   reviewRuleProposal,
 } from './proposalService'
+export * from './memoryService'
+export * from './smmQueueService'
+export { listAuditLogs, probeSystemHealth, getAiModelRegistry } from './opsService'

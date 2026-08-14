@@ -39,12 +39,12 @@ export function AdminOsEmptyState({
   hrefLabel?: string
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[rgb(var(--admin-card))] px-6 py-16 text-center">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 text-slate-400">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-6 py-16 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))]">
         <Icon className="h-6 w-6" />
       </div>
-      <h2 className="text-base font-semibold text-white">{title}</h2>
-      <p className="mt-2 max-w-md text-sm text-slate-400">{description}</p>
+      <h2 className="text-base font-semibold text-[rgb(var(--color-text))]">{title}</h2>
+      <p className="mt-2 max-w-md text-sm text-[rgb(var(--color-muted))]">{description}</p>
       {href && hrefLabel ? (
         <Link
           href={href}
@@ -94,20 +94,20 @@ export function AdminOsMetricGrid({
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-2xl border border-white/10 bg-[rgb(var(--admin-card))] px-4 py-3"
+          className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-3"
         >
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{item.label}</p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-[rgb(var(--color-muted))]">{item.label}</p>
           <p
             className={cn(
-              'mt-1 text-xl font-bold tabular-nums text-white',
-              item.tone === 'ok' && 'text-emerald-400',
-              item.tone === 'warn' && 'text-amber-400',
-              item.tone === 'ai' && 'text-violet-300'
+              'mt-1 text-xl font-bold tabular-nums text-[rgb(var(--color-text))]',
+              item.tone === 'ok' && 'text-emerald-600',
+              item.tone === 'warn' && 'text-amber-600',
+              item.tone === 'ai' && 'text-violet-600'
             )}
           >
             {item.value}
           </p>
-          {item.hint ? <p className="mt-1 text-[11px] text-slate-500">{item.hint}</p> : null}
+          {item.hint ? <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">{item.hint}</p> : null}
         </div>
       ))}
     </div>
