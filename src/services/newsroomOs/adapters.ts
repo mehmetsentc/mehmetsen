@@ -48,7 +48,7 @@ export async function listSocialAccounts(_citySlug?: string): Promise<AdapterRes
   return { ok: true, data: [], source: 'empty' }
 }
 
-export async function listRuleProposals(): Promise<AdapterResult<RuleProposal[]>> {
+export async function listRuleProposalsAdapter(): Promise<AdapterResult<RuleProposal[]>> {
   return { ok: true, data: [], source: 'empty' }
 }
 
