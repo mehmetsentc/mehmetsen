@@ -8,7 +8,7 @@ import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X,
-  ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star,
+  ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star, Zap,
   Facebook, Instagram, ChevronDown, ArrowDownWideNarrow,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
@@ -576,6 +576,66 @@ function InlineCityChanger({
   )
 }
 
+function InlineFlagToggle({
+  active,
+  label,
+  title,
+  icon: Icon,
+  activeClass,
+  onToggle,
+  disabled,
+  variant = 'metadata',
+}: {
+  active: boolean
+  label: string
+  title: string
+  icon: typeof Star
+  activeClass: string
+  onToggle: () => Promise<void>
+  disabled?: boolean
+  variant?: 'metadata' | 'action'
+}) {
+  const [saving, setSaving] = useState(false)
+
+  const handleClick = async () => {
+    if (disabled || saving) return
+    setSaving(true)
+    try {
+      await onToggle()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const isAction = variant === 'action'
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleClick()}
+      disabled={disabled || saving}
+      title={title}
+      aria-pressed={active}
+      className={cn(
+        'inline-flex items-center gap-1 font-bold transition-colors disabled:opacity-50',
+        isAction
+          ? 'rounded-lg border px-2.5 py-1.5 text-[11px]'
+          : 'rounded-md border px-1.5 py-0.5 text-[10px]',
+        active
+          ? activeClass
+          : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))]'
+      )}
+    >
+      {saving ? (
+        <Loader2 className={cn('animate-spin', isAction ? 'h-3 w-3' : 'h-2.5 w-2.5')} />
+      ) : (
+        <Icon className={cn(isAction ? 'h-3 w-3' : 'h-2.5 w-2.5', active && 'fill-current')} />
+      )}
+      {label}
+    </button>
+  )
+}
+
 // ── News Row ───────────────────────────────────────────────────────────────
 function newsHasShareImage(post: AdminNewsItem): boolean {
   if (post.coverImageUrl?.trim()) return true
@@ -702,6 +762,8 @@ function NewsRow({
   onEdit,
   onCategoryChange,
   onCityChange,
+  onFeaturedChange,
+  onBreakingChange,
   actionLoading,
 }: {
   post: AdminNewsItem
@@ -713,6 +775,8 @@ function NewsRow({
   onEdit: (p: AdminNewsItem) => void
   onCategoryChange: (postId: string, categoryId: string) => Promise<void>
   onCityChange: (postId: string, citySlug: string, cityName: string) => Promise<void>
+  onFeaturedChange: (postId: string, featured: boolean) => Promise<void>
+  onBreakingChange: (postId: string, isBreaking: boolean) => Promise<void>
   actionLoading: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -887,6 +951,11 @@ function NewsRow({
                 <Star className="h-2.5 w-2.5 fill-current" />Öne Çıkan
               </span>
             )}
+            {post.isBreaking && (
+              <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                <Zap className="h-2.5 w-2.5 fill-current" />Son Dakika
+              </span>
+            )}
             {post.isDuplicate && (
               <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
                 🔁 TEKRAR
@@ -905,6 +974,24 @@ function NewsRow({
               postId={post.id}
               citySlug={post.citySlug ?? post.city}
               onCityChange={onCityChange}
+              disabled={busy}
+            />
+            <InlineFlagToggle
+              active={!!post.featured}
+              label="Öne Çıkan"
+              title={post.featured ? 'Öne çıkanı kaldır' : 'Öne çıkan yap (otomatik Yayında)'}
+              icon={Star}
+              activeClass="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+              onToggle={() => onFeaturedChange(post.id, !post.featured)}
+              disabled={busy}
+            />
+            <InlineFlagToggle
+              active={!!post.isBreaking}
+              label="Son Dakika"
+              title={post.isBreaking ? 'Son dakikayı kaldır' : 'Son dakika yap (ana sayfa + /kategori/son-dakika)'}
+              icon={Zap}
+              activeClass="border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200"
+              onToggle={() => onBreakingChange(post.id, !post.isBreaking)}
               disabled={busy}
             />
             {post.readingTimeMinutes && <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{post.readingTimeMinutes} dk okuma</span>}
@@ -1025,6 +1112,26 @@ function NewsRow({
               postId={post.id}
               citySlug={post.citySlug ?? post.city}
               onCityChange={onCityChange}
+              disabled={busy}
+              variant="action"
+            />
+            <InlineFlagToggle
+              active={!!post.featured}
+              label="Öne Çıkan"
+              title={post.featured ? 'Öne çıkanı kaldır' : 'Öne çıkan yap (otomatik Yayında)'}
+              icon={Star}
+              activeClass="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+              onToggle={() => onFeaturedChange(post.id, !post.featured)}
+              disabled={busy}
+              variant="action"
+            />
+            <InlineFlagToggle
+              active={!!post.isBreaking}
+              label="Son Dakika"
+              title={post.isBreaking ? 'Son dakikayı kaldır' : 'Son dakika yap (ana sayfa + /kategori/son-dakika)'}
+              icon={Zap}
+              activeClass="border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200"
+              onToggle={() => onBreakingChange(post.id, !post.isBreaking)}
               disabled={busy}
               variant="action"
             />
@@ -1674,6 +1781,93 @@ function AdminNewsDesktopPage() {
     }
   }, [posts])
 
+  const handleFeaturedChange = useCallback(async (postId: string, featured: boolean) => {
+    const prevPost = posts.find((p) => p.id === postId)
+    if (!prevPost) return
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              featured,
+              isEditorPick: featured,
+              ...(featured && p.status !== 'archived' && p.status !== 'banned'
+                ? { status: 'published' as const }
+                : {}),
+            }
+          : p
+      )
+    )
+
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/news/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ featured }),
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(err.error ?? 'Öne çıkan güncellenemedi')
+      }
+      toast.success(
+        featured
+          ? prevPost.status !== 'published'
+            ? 'Öne çıkan yapıldı · durum Yayında'
+            : 'Öne çıkan yapıldı'
+          : 'Öne çıkan kaldırıldı'
+      )
+    } catch (e) {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? prevPost : p)))
+      toast.error(e instanceof Error ? e.message : 'Öne çıkan güncellenemedi')
+      throw e
+    }
+  }, [posts])
+
+  const handleBreakingChange = useCallback(async (postId: string, isBreaking: boolean) => {
+    const prevPost = posts.find((p) => p.id === postId)
+    if (!prevPost) return
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, isBreaking }
+          : p
+      )
+    )
+
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/news/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isBreaking }),
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(err.error ?? 'Son dakika güncellenemedi')
+      }
+      toast.success(
+        isBreaking
+          ? prevPost.status === 'published'
+            ? 'Son dakika yapıldı · ana sayfa + son dakika sayfası'
+            : 'Son dakika işaretlendi · Yayında olunca görünür'
+          : 'Son dakika kaldırıldı'
+      )
+    } catch (e) {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? prevPost : p)))
+      toast.error(e instanceof Error ? e.message : 'Son dakika güncellenemedi')
+      throw e
+    }
+  }, [posts])
+
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const next = new Set(prev)
@@ -2035,6 +2229,8 @@ function AdminNewsDesktopPage() {
                 onEdit={handleEdit}
                 onCategoryChange={handleCategoryChange}
                 onCityChange={handleCityChange}
+                onFeaturedChange={handleFeaturedChange}
+                onBreakingChange={handleBreakingChange}
                 actionLoading={actionLoading}
               />
             ))
