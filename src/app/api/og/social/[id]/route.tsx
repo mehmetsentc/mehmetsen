@@ -152,7 +152,15 @@ function truncateToMaxLines(
       if (estimateWrapLines(candidate, fontSize, maxWidth) <= maxLines) return candidate
     }
     const safe = shortenToLastCompleteClause(plain, Math.max(40, Math.floor(plain.length * 0.7)))
-    return safe || stripDanglingHeadlineTail(words2.join(' '))
+    if (safe && !isIncompleteHeadline(safe)) return safe
+    // Son çare: kelime kelime geriye — asla ulaç/yarım öbek bırakma
+    const words3 = plain.split(' ').filter(Boolean)
+    while (words3.length > 2) {
+      words3.pop()
+      const candidate = stripDanglingHeadlineTail(words3.join(' '))
+      if (candidate && !isIncompleteHeadline(candidate)) return candidate
+    }
+    return stripDanglingHeadlineTail(words2.join(' ')) || safe || trimmed
   }
   return trimmed
 }

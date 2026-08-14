@@ -28,7 +28,7 @@ import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
-import { clampCompleteSentences, pickCompleteOgHeadline } from '@/lib/social/feedCaption'
+import { clampCompleteSentences, isIncompleteHeadline, pickCompleteOgHeadline } from '@/lib/social/feedCaption'
 import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
@@ -110,7 +110,9 @@ function truncateToMaxLines(
 ): string {
   const plain = text.replace(/\s+/g, ' ').trim()
   if (!plain) return ''
-  if (estimateWrapLines(plain, fontSize, maxWidth, weight) <= maxLines) return plain
+  if (estimateWrapLines(plain, fontSize, maxWidth, weight) <= maxLines && !isIncompleteHeadline(plain)) {
+    return plain
+  }
 
   const words = plain.split(' ')
   const charW = avgGlyphWidth(fontSize, weight)

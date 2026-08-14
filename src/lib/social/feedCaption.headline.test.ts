@@ -18,6 +18,32 @@ describe('complete OG headlines', () => {
     expect(isIncompleteHeadline(bad)).toBe(true)
   })
 
+  it('flags -dikten/-ınca/-meden ulaç kesimleri (…denize girdikten)', () => {
+    const cut =
+      "Bozcaada'da kayıp Uğur Savaş için arama çalışmaları 3. gününde Bozcaada'da denize girdikten"
+    expect(isIncompleteHeadline(cut)).toBe(true)
+    expect(isIncompleteHeadline("Arama çalışmaları başladıktan")).toBe(true)
+    expect(isIncompleteHeadline('Kayıp denizci bulununca')).toBe(true)
+    expect(isIncompleteHeadline('Ekipler sahile inmeden')).toBe(true)
+    expect(isIncompleteHeadline('Fırtına çıkarken')).toBe(true)
+    // Tamamlanmış manşetler false positive olmasın
+    expect(isIncompleteHeadline("Çanakkale'de yerel seçim sonuçları açıklandı")).toBe(false)
+    expect(
+      isIncompleteHeadline("Bozcaada'da kayıp Uğur Savaş için arama çalışmaları 3. gününde"),
+    ).toBe(false)
+  })
+
+  it('prefers source title over …girdikten AI manşet', () => {
+    const ai =
+      "Bozcaada'da kayıp Uğur Savaş için arama çalışmaları 3. gününde Bozcaada'da denize girdikten"
+    const source =
+      "Bozcaada'da kayıp Uğur Savaş için arama çalışmaları 3. gününde devam ediyor"
+    const out = pickCompleteOgHeadline(ai, source, 120, 160)
+    expect(out.toLocaleLowerCase('tr-TR')).not.toMatch(/girdikten\s*$/)
+    expect(isIncompleteHeadline(out)).toBe(false)
+    expect(out).toContain('devam ediyor')
+  })
+
   it('strips trailing junk after finite verb (…yaralandı çocuk)', () => {
     const bad =
       "Geyikli'de Feci Kaza: Baba Hayatını Kaybetti, 8 Yaşındaki çocuğu ağır yaralandı çocuk"

@@ -21,8 +21,25 @@ const DANGLING_TAIL_RE =
 const GERUND_PLUS_CASE_RE =
   /\S+(y?arak|y?erek)\s+[\p{L}'’-]{3,}[ae]\s*$/iu
 
-/** Manşet zarf-fiille biterse anlam tamamlanmamış */
-const ENDS_WITH_GERUND_RE = /\S+(y?arak|y?erek|y?[ıiuü]p)\s*$/iu
+/**
+ * Manşet zarf-fiil / ulaç / sıfat-fiil ayrılma hali ile biterse anlam tamamlanmamış.
+ * Önceki boşluk: yalnızca -arak/-erek/-ip; "girdikten" / "olunca" / "gitmeden" kaçıyordu
+ * → OG overlay "…denize girdikten" gibi yarım manşet basıyordu.
+ */
+const ENDS_WITH_SUBORDINATOR_RE =
+  /(?:y?arak|y?erek|y?[ıiuü]p|[dt][ıiuü]ktan|[dt][iü]kten|[ıiuü]nca|[iü]nce|madan|meden)$/iu
+
+/** "-ken" ulaç; "erken" / "iken" false positive değil */
+const ENDS_WITH_KEN_RE = /ken$/iu
+const KEN_FALSE_POSITIVE = /^(erken|iken)$/iu
+
+function endsWithIncompleteSubordinator(t: string): boolean {
+  const last = (t.split(/\s+/).pop() || '').replace(/["'»”’)\]]+$/u, '')
+  if (!last) return false
+  if (ENDS_WITH_SUBORDINATOR_RE.test(last)) return true
+  if (ENDS_WITH_KEN_RE.test(last) && !KEN_FALSE_POSITIVE.test(last)) return true
+  return false
+}
 
 function toTrLower(s: string): string {
   return s.toLocaleLowerCase('tr-TR')
@@ -110,7 +127,7 @@ export function isIncompleteHeadline(s: string): boolean {
   const t = s.replace(/\s+/g, ' ').trim()
   if (!t) return true
   if (hasDanglingHeadlineTail(t)) return true
-  if (ENDS_WITH_GERUND_RE.test(t)) return true
+  if (endsWithIncompleteSubordinator(t)) return true
   if (GERUND_PLUS_CASE_RE.test(t)) return true
   if (hasUnbalancedQuotes(t)) return true
   if (stripTrailingHeadlineJunk(t) !== t) return true
@@ -321,7 +338,7 @@ export function isIncompleteCaption(s: string): boolean {
   if (!t) return true
   if (CAPTION_DANGLING_TAIL_RE.test(t)) return true
   if (hasDanglingHeadlineTail(t)) return true
-  if (ENDS_WITH_GERUND_RE.test(t)) return true
+  if (endsWithIncompleteSubordinator(t)) return true
   if (GERUND_PLUS_CASE_RE.test(t)) return true
   if (hasUnbalancedQuotes(t)) return true
   // Uzun metin noktasız / kısaltma noktasıyla bitiyorsa kesilmiş say
