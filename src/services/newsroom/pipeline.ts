@@ -927,12 +927,27 @@ export async function processNewsroomArticle(
       )
     }
 
+    if (
+      workingInput.lockForcedCategory === true &&
+      workingInput.forcedCategoryId &&
+      classification.categoryId !== workingInput.forcedCategoryId
+    ) {
+      console.log(
+        `[newsroom/category] locked-category:${classification.categoryId}→${workingInput.forcedCategoryId}`
+      )
+      classification.categoryId = workingInput.forcedCategoryId
+    }
+
     // ── AI Final Editor: category sanity check ──────────────────────────────
     // Worker forcedCategoryId is a prior/hint, not a hard lock (except trend/influencer).
     // Local feeds also go through AI so foreign/national stories aren't stuck as yerel-haber.
+    const categoryLocked =
+      workingInput.lockForcedCategory === true && Boolean(workingInput.forcedCategoryId)
+
     const skipAiCategoryCheck =
       workingInput.editorType === 'trend' ||
-      workingInput.editorType === 'influencer'
+      workingInput.editorType === 'influencer' ||
+      categoryLocked
 
     if (!skipAiCategoryCheck) {
       try {

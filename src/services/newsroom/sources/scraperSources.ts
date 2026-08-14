@@ -21,6 +21,12 @@ export interface ScraperSource {
   /** Regex pattern — URL must NOT match to be excluded. */
   linkExcludePattern?: string
   maxItems: number
+  /** Override default yerel-haber category (e.g. yerel-duyuru). */
+  forcedCategoryId?: string
+  /** Keep forcedCategoryId through AI category checks. */
+  lockForcedCategory?: boolean
+  /** Skip list items older than this (ms) when a date can be parsed. */
+  maxAgeMs?: number
   localMeta: {
     citySlug: string
     cityName: string

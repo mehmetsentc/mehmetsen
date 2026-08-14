@@ -64,6 +64,17 @@ export function isOwnContent(data: Record<string, unknown>): boolean {
   if (!sourceUrl || !sourceUrl.startsWith('http')) return true
   // sourceUrl kendi sitemizi gösteriyorsa → kendi içeriğimiz ✓
   if (sourceUrl.includes('nahaber.com') || sourceUrl.includes('onyeditivi.com')) return true
+
+  // Resmi belediye duyuruları (Çanakkale .bel.tr) — otomatik paylaşım serbest
+  const ingestion = String(data.ingestionSourceId ?? data.sourceId ?? '').toLowerCase()
+  const categoryId = String(data.categoryId ?? '').toLowerCase()
+  if (
+    sourceUrl.includes('.bel.tr') &&
+    (ingestion.startsWith('bel-canakkale-') || categoryId === 'yerel-duyuru')
+  ) {
+    return true
+  }
+
   // Harici URL → başka kaynaktan (cron engeller; manuel paylaşım serbest)
   return false
 }

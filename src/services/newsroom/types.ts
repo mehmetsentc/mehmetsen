@@ -81,6 +81,11 @@ export interface NewsroomArticleInput {
   sourcePublishedAt?: number | null
   /** Editor-specific overrides applied after AI rewrite. */
   forcedCategoryId?: string
+  /**
+   * When true with forcedCategoryId, skip AI category reclassification
+   * and keep the forced category (e.g. belediye duyuru → yerel-duyuru).
+   */
+  lockForcedCategory?: boolean
   /** Skip geo inference — pin to province slug from local worker. */
   forcedCity?: string
   forcedCitySlug?: string
