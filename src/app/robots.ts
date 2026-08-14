@@ -17,6 +17,11 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     ? `https://${citySlug}.nahaber.com`
     : getSiteUrl()
 
+  // Host directive: domain only (no https:// prefix) — Yandex extension, Google ignores it
+  const hostDomain = citySlug
+    ? `${citySlug}.nahaber.com`
+    : siteUrl.replace(/^https?:\/\//, '')
+
   const commonDisallow = [
     '/admin/',
     '/api/',
@@ -81,7 +86,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         `${siteUrl}/sitemap.xml`,
         `${siteUrl}/news-sitemap.xml`,
       ],
-      host: siteUrl,
+      host: hostDomain,
     }
   }
 
