@@ -71,9 +71,9 @@ export async function GET(request: Request) {
     }
 
     const wantPendingDetails = url.searchParams.get('pendingDetails') === '1'
-    const pendingOffset = parseInt(url.searchParams.get('pendingOffset') ?? '0', 10) || 0
+    const pendingOffset = Math.max(0, parseInt(url.searchParams.get('pendingOffset') ?? '0', 10) || 0)
     const pendingLimit = Math.min(
-      parseInt(url.searchParams.get('pendingLimit') ?? '50', 10) || 50,
+      parseInt(url.searchParams.get('pendingLimit') ?? '100', 10) || 100,
       100
     )
 

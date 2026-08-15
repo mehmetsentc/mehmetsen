@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import {
   Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Activity, Timer, RefreshCw,
-  List, ChevronDown, Trash2, Zap, Pencil, Copy,
+  List, ChevronLeft, ChevronRight, Trash2, Zap, Pencil, Copy,
 } from 'lucide-react'
 import { QueueItemEditor } from '@/components/admin/QueueItemEditor'
 import { cn } from '@/lib/utils'
@@ -41,6 +41,9 @@ interface PendingQueueItem {
   qualityScore?: number | null
   peerQualityScore?: number | null
 }
+
+const PAGE_SIZE = 100
+type CronTab = 'queue' | 'jobs'
 
 const JOBS = [
   { id: 'news-fetch', label: 'Haber Çekme', desc: 'Breaking + gündem RSS → kuyruk işle', schedule: 'Manuel / 15 dk', icon: '📰' },
@@ -89,9 +92,9 @@ export default function CronMonitorPage() {
   const [runs, setRuns] = useState<CronRun[]>([])
   const [queuePending, setQueuePending] = useState<number | null>(null)
   const [pendingItems, setPendingItems] = useState<PendingQueueItem[]>([])
-  const [pendingOpen, setPendingOpen] = useState(false)
+  const [tab, setTab] = useState<CronTab>('queue')
+  const [pendingPage, setPendingPage] = useState(0)
   const [pendingLoading, setPendingLoading] = useState(false)
-  const [pendingLoadedAll, setPendingLoadedAll] = useState(false)
   const [loading, setLoading] = useState(true)
   const [triggering, setTriggering] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
@@ -108,17 +111,19 @@ export default function CronMonitorPage() {
   const [editorBusy, setEditorBusy] = useState(false)
   const pauseAutoRefresh = editingItemId !== null || editorBusy
 
-  const load = useCallback(async (withPendingDetails = false) => {
+  const load = useCallback(async (withPendingDetails = tab === 'queue') => {
     try {
       const token = (await auth.currentUser?.getIdToken()) ?? ''
       if (!token) {
         setLoading(false)
         return
       }
+      if (withPendingDetails) setPendingLoading(true)
       const params = new URLSearchParams()
       if (withPendingDetails) {
         params.set('pendingDetails', '1')
-        params.set('pendingLimit', '50')
+        params.set('pendingLimit', String(PAGE_SIZE))
+        params.set('pendingOffset', String(pendingPage * PAGE_SIZE))
       }
       const qs = params.toString()
       const res = await fetch(`/api/admin/cron/runs${qs ? `?${qs}` : ''}`, {
@@ -136,7 +141,6 @@ export default function CronMonitorPage() {
       setQueuePending(typeof data.queuePending === 'number' ? data.queuePending : null)
       if (data.pendingItems) {
         setPendingItems(data.pendingItems)
-        setPendingLoadedAll(data.pendingItems.length < 50)
       }
       if (data.pendingError) {
         toast.error(`Kuyruk listesi: ${data.pendingError}`)
@@ -145,47 +149,22 @@ export default function CronMonitorPage() {
       toast.error(e instanceof Error ? e.message : 'Cron kayıtları yüklenemedi')
     } finally {
       setLoading(false)
-    }
-  }, [])
-
-  const loadMorePending = useCallback(async () => {
-    if (pendingLoading || pendingLoadedAll) return
-    setPendingLoading(true)
-    try {
-      const token = (await auth.currentUser?.getIdToken()) ?? ''
-      const params = new URLSearchParams({
-        pendingDetails: '1',
-        pendingOffset: String(pendingItems.length),
-        pendingLimit: '50',
-      })
-      const res = await fetch(`/api/admin/cron/runs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await parseApiResponse<{
-        pendingItems?: PendingQueueItem[]
-        queuePending?: number
-        pendingError?: string
-        error?: string
-      }>(res)
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      if (data.pendingError) throw new Error(data.pendingError)
-      const newItems = data.pendingItems ?? []
-      setPendingItems((prev) => [...prev, ...newItems])
-      setPendingLoadedAll(newItems.length < 50)
-      if (typeof data.queuePending === 'number') setQueuePending(data.queuePending)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Daha fazla yüklenemedi')
-    } finally {
       setPendingLoading(false)
     }
-  }, [pendingItems.length, pendingLoading, pendingLoadedAll])
+  }, [tab, pendingPage])
 
   useEffect(() => {
     if (pauseAutoRefresh) return
-    void load(pendingOpen)
-    const t = setInterval(() => void load(pendingOpen), 20_000)
+    void load(tab === 'queue')
+    const t = setInterval(() => void load(tab === 'queue'), 20_000)
     return () => clearInterval(t)
-  }, [load, pendingOpen, pauseAutoRefresh])
+  }, [load, tab, pauseAutoRefresh])
+
+  useEffect(() => {
+    if (queuePending == null) return
+    const maxPage = Math.max(0, Math.ceil(queuePending / PAGE_SIZE) - 1)
+    if (pendingPage > maxPage) setPendingPage(maxPage)
+  }, [queuePending, pendingPage])
 
   const closeQueueEditor = useCallback(() => {
     setEditingItemId(null)
@@ -214,17 +193,14 @@ export default function CronMonitorPage() {
     setQueuePending((prev) => (prev != null ? prev - 1 : prev))
     setEditingItemId(null)
     setEditorBusy(false)
-    void load(pendingOpen)
-  }, [editingItemId, load, pendingOpen])
+    void load(tab === 'queue')
+  }, [editingItemId, load, tab])
 
-  const togglePendingPanel = useCallback(() => {
-    const next = !pendingOpen
-    setPendingOpen(next)
-    if (next && pendingItems.length === 0) {
-      setPendingLoading(true)
-      void load(true).finally(() => setPendingLoading(false))
-    }
-  }, [pendingOpen, pendingItems.length, load])
+  const goToPendingPage = useCallback((page: number) => {
+    setPendingPage(Math.max(0, page))
+    setPendingLoading(true)
+    setSelectedQueueSource(null)
+  }, [])
 
   const cleanupStuck = async () => {
     try {
@@ -318,7 +294,7 @@ export default function CronMonitorPage() {
       const data = await parseApiResponse<{ ok?: boolean; deleted?: number; error?: string }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       toast.success(`${data.deleted ?? 0} haber silindi (${hours}s+)`)
-      await load(pendingOpen)
+      await load(tab === 'queue')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Silme hatası')
     } finally {
@@ -421,7 +397,7 @@ export default function CronMonitorPage() {
     } finally {
       if (!opts?.silent) {
         setPublishingItemId(null)
-        await load(pendingOpen)
+        await load(tab === 'queue')
       }
     }
   }
@@ -530,6 +506,14 @@ export default function CronMonitorPage() {
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'tr'))
   }, [pendingItems, dupFilterOnly])
 
+  const runningRuns = useMemo(
+    () => runs.filter((r) => r.status === 'running'),
+    [runs],
+  )
+  const totalPages = Math.max(1, Math.ceil((queuePending ?? 0) / PAGE_SIZE))
+  const pageStart = queuePending ? pendingPage * PAGE_SIZE + 1 : 0
+  const pageEnd = pendingPage * PAGE_SIZE + pendingItems.length
+
   return (
     <div className="flex min-w-0 flex-col overflow-x-hidden">
       <CMSHeader title="Cron İzleme" subtitle="Zamanlanmış görev monitörü" />
@@ -569,24 +553,101 @@ export default function CronMonitorPage() {
             Tek tuş: Tüm bekleyenleri yayınla
           </button>
           {queuePending != null && (
-            <button
-              type="button"
-              onClick={togglePendingPanel}
-              className={cn(
-                'inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold transition-colors sm:w-auto',
-                pendingOpen
-                  ? 'bg-amber-200 text-amber-900 ring-1 ring-amber-400 dark:bg-amber-800/60 dark:text-amber-100 dark:ring-amber-600'
-                  : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200'
-              )}
-            >
+            <span className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-amber-100 px-3 py-2 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 sm:w-auto">
               <List className="h-3 w-3" />
               Kuyruk bekleyen: {queuePending >= 1000 ? '1000+' : queuePending}
-              <ChevronDown className={cn('h-3 w-3 transition-transform', pendingOpen && 'rotate-180')} />
-            </button>
+            </span>
           )}
         </div>
 
-        {pendingOpen && (
+        <div className="flex gap-1.5">
+          {([
+            { id: 'queue' as const, label: 'Kuyruk' },
+            { id: 'jobs' as const, label: 'Görevler' },
+          ]).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                'rounded-full px-4 py-2 text-xs font-bold transition-colors',
+                tab === t.id
+                  ? 'bg-[rgb(var(--color-brand))] text-white'
+                  : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'
+              )}
+            >
+              {t.label}
+              {t.id === 'queue' && queuePending != null ? (
+                <span className="ml-1.5 opacity-80">{queuePending >= 1000 ? '1000+' : queuePending}</span>
+              ) : null}
+              {t.id === 'jobs' && stats.running > 0 ? (
+                <span className="ml-1.5 rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] text-white">
+                  {stats.running}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'queue' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { label: 'Toplam Çalışma', value: stats.total, color: 'text-[rgb(var(--color-text))]' },
+                { label: 'Başarılı', value: stats.success, color: 'text-emerald-600' },
+                { label: 'Hatalı', value: stats.failed, color: 'text-red-600' },
+                { label: 'Şu An Çalışan', value: stats.running, color: 'text-blue-600' },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5"
+                >
+                  <p className="text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                    {s.label}
+                  </p>
+                  <p className={cn('mt-1 text-2xl font-black tabular-nums', s.color)}>
+                    {loading ? '–' : s.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-blue-300 bg-[rgb(var(--color-card))] dark:border-blue-800">
+              <div className="flex items-center gap-2 border-b border-blue-200 bg-blue-50 px-5 py-3 dark:border-blue-900 dark:bg-blue-950/40">
+                <Loader2 className={cn('h-4 w-4 text-blue-600', stats.running > 0 && 'animate-spin')} />
+                <h2 className="text-sm font-bold text-blue-900 dark:text-blue-100">Şu an çalışan</h2>
+                <span className="rounded-full bg-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                  {stats.running}
+                </span>
+              </div>
+              {runningRuns.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-[rgb(var(--color-muted))]">
+                  Şu anda çalışan cron yok.
+                </p>
+              ) : (
+                <div className="divide-y divide-[rgb(var(--color-border))]">
+                  {runningRuns.map((run) => {
+                    const jobLabel = JOBS.find((j) => j.id === run.jobName)?.label ?? run.jobName
+                    const started = toMs(run.startedAt)
+                    return (
+                      <div key={run.id} className="flex items-start gap-3 px-5 py-3">
+                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-blue-600" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-[rgb(var(--color-text))]">{jobLabel}</p>
+                          <p className="text-[10px] text-[rgb(var(--color-muted))]">
+                            {started
+                              ? formatDistanceToNow(new Date(started), { locale: tr, addSuffix: true })
+                              : 'başladı'}
+                            {run.triggeredBy === 'manual' ? ' · manuel' : ''}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
           <div className="overflow-hidden rounded-2xl border border-amber-300 bg-[rgb(var(--color-card))] dark:border-amber-700">
             <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 dark:border-amber-800 dark:bg-amber-900/20">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -600,14 +661,13 @@ export default function CronMonitorPage() {
                       {queuePending} adet
                     </span>
                   )}
+                  {queuePending != null && queuePending > 0 ? (
+                    <span className="text-[10px] font-semibold text-amber-800 dark:text-amber-200">
+                      Sayfa {pendingPage + 1}/{totalPages}
+                      {pendingItems.length > 0 ? ` · ${pageStart}–${pageEnd}` : ''}
+                    </span>
+                  ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={togglePendingPanel}
-                  className="text-xs text-amber-700 hover:underline dark:text-amber-300"
-                >
-                  Kapat
-                </button>
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {[6, 12, 24].map((h) => (
@@ -715,7 +775,7 @@ export default function CronMonitorPage() {
                 </div>
               ) : null}
             </div>
-            <div className="max-h-[400px] divide-y divide-[rgb(var(--color-border))] overflow-y-auto">
+            <div className="divide-y divide-[rgb(var(--color-border))]">
               {pendingLoading && pendingItems.length === 0 ? (
                 <div className="space-y-2 p-4">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -838,20 +898,28 @@ export default function CronMonitorPage() {
                       </div>
                     </div>
                   ))}
-                  {!pendingLoadedAll && (
-                    <div className="px-5 py-3 text-center">
+                  {totalPages > 1 && (
+                    <div className="flex flex-wrap items-center justify-center gap-2 px-5 py-4">
                       <button
                         type="button"
-                        disabled={pendingLoading}
-                        onClick={() => void loadMorePending()}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-4 py-2 text-xs font-semibold hover:bg-[rgb(var(--color-surface))] disabled:opacity-50"
+                        disabled={pendingPage <= 0 || pendingLoading}
+                        onClick={() => goToPendingPage(pendingPage - 1)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold hover:bg-[rgb(var(--color-surface))] disabled:opacity-40"
                       >
-                        {pendingLoading ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <ChevronDown className="h-3 w-3" />
-                        )}
-                        Daha fazla yükle
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        Önceki
+                      </button>
+                      <span className="text-xs font-bold tabular-nums text-[rgb(var(--color-text))]">
+                        {pendingPage + 1} / {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={pendingPage + 1 >= totalPages || pendingLoading}
+                        onClick={() => goToPendingPage(pendingPage + 1)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold hover:bg-[rgb(var(--color-surface))] disabled:opacity-40"
+                      >
+                        Sonraki
+                        <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   )}
@@ -859,28 +927,8 @@ export default function CronMonitorPage() {
               )}
             </div>
           </div>
+          </div>
         )}
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: 'Toplam Çalışma', value: stats.total, color: 'text-[rgb(var(--color-text))]' },
-            { label: 'Başarılı', value: stats.success, color: 'text-emerald-600' },
-            { label: 'Hatalı', value: stats.failed, color: 'text-red-600' },
-            { label: 'Şu An Çalışan', value: stats.running, color: 'text-blue-600' },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5"
-            >
-              <p className="text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                {s.label}
-              </p>
-              <p className={cn('mt-1 text-2xl font-black tabular-nums', s.color)}>
-                {loading ? '–' : s.value}
-              </p>
-            </div>
-          ))}
-        </div>
 
         {editingItemId && (
           <QueueItemEditor
@@ -892,6 +940,7 @@ export default function CronMonitorPage() {
           />
         )}
 
+        {tab === 'jobs' && (
         <div className="grid gap-6 xl:grid-cols-3">
           <div className="space-y-3 xl:col-span-1">
             <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">Görevler</h2>
@@ -1037,6 +1086,7 @@ export default function CronMonitorPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   )
