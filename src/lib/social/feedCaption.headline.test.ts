@@ -6,6 +6,7 @@ import {
   isIncompleteCaption,
   isIncompleteHeadline,
   isThinSocialCaption,
+  overlayHeadlineFromTitle,
   pickCompleteOgHeadline,
   shortenToLastCompleteClause,
   stripTrailingHeadlineJunk,
@@ -98,6 +99,20 @@ describe('complete OG headlines', () => {
     const ai = 'Şok gelişme: herkes bunu konuşuyor'
     const source = "Çanakkale'de feribot seferleri fırtına nedeniyle iptal edildi"
     expect(pickCompleteOgHeadline(ai, source, 120, 160)).toBe(source)
+  })
+
+  it('prefers source title over mashed Bozcaada overlay', () => {
+    const ai =
+      "Bozcaada'da Denizde Hareketsiz Bulunan 73 Yaşındaki tatilci kişinin yeniden hayata Tatilci Hayatını Kaybetti kişinin"
+    const source =
+      "Bozcaada'da Denizde Hareketsiz Bulunan 73 Yaşındaki Tatilci Hayatını Kaybetti"
+    expect(pickCompleteOgHeadline(ai, source, 120, 160)).toBe(source)
+  })
+
+  it('overlayHeadlineFromTitle uses the news title', () => {
+    const source =
+      "Bozcaada'da Denizde Hareketsiz Bulunan 73 Yaşındaki Tatilci Hayatını Kaybetti"
+    expect(overlayHeadlineFromTitle(source)).toBe(source)
   })
 })
 

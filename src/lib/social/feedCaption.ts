@@ -282,7 +282,7 @@ export function pickCompleteOgHeadline(
   if (isIncompleteHeadline(ai)) {
     return fitCompleteHeadline(ai, src, max, softMax)
   }
-  // Uydurma / alakasız AI manşet → kaynak başlık
+  // Uydurma / salata / başlığa gövde yapıştırma → kaynak başlık
   if (!isFaithfulSocialHeadline(ai, src)) {
     return clampCompleteHeadline(src, max, softMax)
   }
@@ -291,6 +291,11 @@ export function pickCompleteOgHeadline(
     return clampCompleteHeadline(src, max, softMax)
   }
   return fitCompleteHeadline(ai, src, max, softMax)
+}
+
+/** Görsel overlay: her zaman haber başlığı (AI manşet basılmaz). */
+export function overlayHeadlineFromTitle(sourceTitle: string, max = 120, softMax = 160): string {
+  return clampCompleteHeadline(sourceTitle, max, softMax)
 }
 
 /** Cümle sonu: .!?… + isteğe bağlı kapanış tırnak/parantez (örn. gelmek.') */

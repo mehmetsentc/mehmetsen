@@ -23,7 +23,7 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload } from '@/lib/social/types'
-import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from '@/lib/social/feedCaption'
+import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from '@/lib/social/feedCaption'
 import {
   publishOneSocial,
   type PublishSocialMode,
@@ -329,7 +329,7 @@ export async function POST(request: Request) {
     let socialContent = await generateSocialContent(title, aiContext, cityName)
     if (!socialContent) {
       socialContent = {
-        headline: fitCompleteHeadline(title, title, 120, 160),
+        headline: overlayHeadlineFromTitle(title),
         storySummary: spot
           ? clampCompleteSentences(
               /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
@@ -342,12 +342,7 @@ export async function POST(request: Request) {
       }
     }
 
-    socialContent.headline = fitCompleteHeadline(
-      socialContent.headline || title,
-      title,
-      120,
-      160,
-    )
+    socialContent.headline = overlayHeadlineFromTitle(title)
 
     try {
       await db.collection(Collections.NEWS).doc(id).update({

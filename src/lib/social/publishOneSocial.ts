@@ -18,8 +18,8 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload, SocialPublishResult } from '@/lib/social/types'
-import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from '@/lib/social/feedCaption'
-import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
+import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from '@/lib/social/feedCaption'
+import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from '@/lib/social/socialFactualFidelity'
 import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
@@ -446,7 +446,7 @@ export async function publishOneSocial(
     if (!socialContent) {
       const fallbackSpot = spot.replace(/\s+/g, ' ').trim()
       socialContent = {
-        headline: fitCompleteHeadline(title, title, 120, 160),
+        headline: overlayHeadlineFromTitle(title),
         storySummary: (() => {
           const cleaned = fallbackSpot
             .replace(/\b(detaylar(?:ı|ın)?\s+(?:için\s+)?(?:haberimizde|tıklayın)|haberimizde|haberin\s+devamı|devamı\s+için|devamını\s+oku|tıklayın)\b/giu, '')
@@ -487,21 +487,29 @@ export async function publishOneSocial(
         .filter(Boolean)
     }
 
-    // Overlay özeti DeepSeek / spot. Meta Llama görsele yazılmaz.
-
-    // Olgu sadakati: AI'nin düşürdüğü tamlama isimlerini (hava aracı vb.) geri koy
-    socialContent.headline = repairSocialHeadline(socialContent.headline, title, bodyText || spot)
-    socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 120, 160)
+    // Overlay: haber başlığı. Caption: DeepSeek; salata ise başlık+spot.
+    if (!overrides?.headline?.trim()) {
+      socialContent.headline = overlayHeadlineFromTitle(title)
+    }
     socialContent.storySummary = repairSocialCopyAgainstSource(
       socialContent.storySummary,
       title,
       bodyText || spot,
     )
+    if (isGarbledSocialCopy(socialContent.storySummary)) {
+      const cleaned = (spot || '').replace(/\s+/g, ' ').trim()
+      socialContent.storySummary = cleaned
+        ? clampCompleteSentences(/[.!?…]["'»”’)\]]*$/.test(cleaned) ? cleaned : `${cleaned}.`, 200, 232)
+        : `${clampAtWordBoundary(title, 120)}.`
+    }
     socialContent.caption = repairSocialCopyAgainstSource(
       socialContent.caption,
       title,
       bodyText || spot,
     )
+    if (!overrides?.caption?.trim() && isGarbledSocialCopy(socialContent.caption)) {
+      socialContent.caption = spot ? `📰 ${title}\n\n${spot.trim()}` : `📰 ${title}`
+    }
 
     // Hikâye özeti: daima tam cümle (override dahil) — OG mid-word clip önlemi
     socialContent.storySummary = clampCompleteSentences(

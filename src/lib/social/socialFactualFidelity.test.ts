@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   extractFactualPhrases,
+  isFaithfulSocialHeadline,
+  isGarbledSocialCopy,
   repairSocialCopyAgainstSource,
   repairSocialHeadline,
 } from './socialFactualFidelity'
@@ -42,5 +44,28 @@ describe('socialFactualFidelity', () => {
     const fixed = repairSocialHeadline(bad, sourceTitle, sourceBody)
     expect(fixed).toContain('\n')
     expect(fixed).toContain(`15 hava ${ARACI} m\u00fcdahale`)
+  })
+})
+
+describe('garbled overlay / caption copy', () => {
+  const source =
+    "Bozcaada'da Denizde Hareketsiz Bulunan 73 Yaşındaki Tatilci Hayatını Kaybetti"
+
+  it('rejects mashed overlay that inserts body fragments into the title', () => {
+    const ai =
+      "Bozcaada'da Denizde Hareketsiz Bulunan 73 Yaşındaki tatilci kişinin yeniden hayata Tatilci Hayatını Kaybetti kişinin"
+    expect(isFaithfulSocialHeadline(ai, source)).toBe(false)
+  })
+
+  it('flags repeated caption salad', () => {
+    const caption =
+      "Bozcaada'da tatil kabusa döndü: 73 yaşındaki kişinin yeniden hayata kişi kurtarılamadı bir kişi Tatilci Hayatını Kaybetti kişinin yeniden hayata kişi kurtarılamadı bir kişi tatilci denizde hareketsiz bulundu."
+    expect(isGarbledSocialCopy(caption)).toBe(true)
+  })
+
+  it('keeps a shortened title that stays on the same facts', () => {
+    const short = "Bozcaada'da 73 yaşındaki tatilci hayatını kaybetti"
+    expect(isFaithfulSocialHeadline(short, source)).toBe(true)
+    expect(isGarbledSocialCopy(short)).toBe(false)
   })
 })

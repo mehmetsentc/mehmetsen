@@ -12,8 +12,8 @@
  * Env: GEMINI_API_KEY, GEMINI_MODEL (default: gemini-2.5-flash)
  */
 
-import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline, isIncompleteHeadline } from './feedCaption'
-import { isFaithfulSocialHeadline, repairSocialCopyAgainstSource } from './socialFactualFidelity'
+import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
+import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from './socialFactualFidelity'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -113,42 +113,6 @@ function stripMetaCtas(s: string): string {
     .trim()
 }
 
-/** Manşet: isteğe bağlı \\n ile 1–3 tematik satır; karakter limiti satırlar toplamında. */
-function clampHeadline(s: string, max: number, sourceTitle = ''): string {
-  const lines = s
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((l) => l.replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-    .slice(0, 3)
-  if (lines.length === 0) return ''
-  if (lines.length === 1) {
-    return fitCompleteHeadline(lines[0], sourceTitle || lines[0], max, HEADLINE_SOFT_MAX)
-  }
-  // Çok satır: toplam max'ı satırlara orantılı dağıt; aşarsa son satırdan kısalt
-  let joined = lines.join('\n')
-  if (joined.replace(/\n/g, '').length <= max && joined.length <= max + lines.length - 1) {
-    return fitCompleteHeadline(joined.replace(/\n/g, ' '), sourceTitle || joined, max, HEADLINE_SOFT_MAX)
-  }
-  const budget = max
-  const out: string[] = []
-  let used = 0
-  for (let i = 0; i < lines.length; i++) {
-    const remainingLines = lines.length - i
-    const remain = budget - used
-    const share = Math.max(8, Math.floor(remain / remainingLines))
-    const part = clampAtWordBoundary(lines[i], share)
-    if (!part) continue
-    out.push(part)
-    used += part.length
-    if (used >= budget) break
-  }
-  const multi = out.join('\n')
-  return multi
-    ? fitCompleteHeadline(multi.replace(/\n/g, ' '), sourceTitle || multi, max, HEADLINE_SOFT_MAX)
-    : fitCompleteHeadline(lines.join(' '), sourceTitle || lines.join(' '), max, HEADLINE_SOFT_MAX)
-}
-
 /** Caption gövdesi: paragraf yapısını koru; aşırı uzunsa cümle sınırında kısalt. */
 function clampCaptionBody(s: string, max: number): string {
   const normalized = s
@@ -192,6 +156,19 @@ function fallbackStorySummary(title: string, caption: string): string {
   return clampAtWordBoundary(`${clamped.replace(/[.!?…]+$/, '')}.`, STORY_SUMMARY_MAX)
 }
 
+function fallbackCaption(title: string, description: string): string {
+  const cleaned = stripMetaCtas(description.replace(/\s+/g, ' ').trim())
+  const body = cleaned ? clampCompleteSentences(cleaned, 280, 360) : ''
+  if (body && toTrLowerSafe(body) !== toTrLowerSafe(title)) {
+    return `📰 ${title}\n\n${body}`
+  }
+  return `📰 ${title}`
+}
+
+function toTrLowerSafe(s: string): string {
+  return s.toLocaleLowerCase('tr-TR')
+}
+
 function parseAISocialJSON(raw: string, title: string, description = ''): AISocialContent | null {
   try {
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
@@ -203,20 +180,19 @@ function parseAISocialJSON(raw: string, title: string, description = ''): AISoci
       : ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye']
     while (tags.length < 5) tags.push('#NaHaber')
     const fidelity = (s: string) => repairSocialCopyAgainstSource(s, title, description)
-    const caption = clampCaptionBody(fidelity(str(p.caption, `📰 ${title}`)), CAPTION_MAX)
-    let headline = clampHeadline(fidelity(str(p.headline, title)), HEADLINE_MAX, title)
-    // AI yarım bıraktıysa veya başlıktan saptiysa kaynak başlığa düş
-    if (
-      (isIncompleteHeadline(headline) && title.trim()) ||
-      !isFaithfulSocialHeadline(headline, title)
-    ) {
-      headline = fitCompleteHeadline(title, title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
+    let caption = clampCaptionBody(fidelity(str(p.caption, `📰 ${title}`)), CAPTION_MAX)
+    if (isGarbledSocialCopy(caption)) {
+      caption = fallbackCaption(title, description)
     }
-    const storySummary = clampCompleteSentences(
+    const headline = overlayHeadlineFromTitle(title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
+    let storySummary = clampCompleteSentences(
       fidelity(stripMetaCtas(str(p.storySummary, fallbackStorySummary(title, caption)))),
       STORY_SUMMARY_MAX,
       STORY_SUMMARY_MAX + 32,
     )
+    if (isGarbledSocialCopy(storySummary)) {
+      storySummary = fallbackStorySummary(title, caption)
+    }
     return {
       headline,
       storySummary,
@@ -313,8 +289,12 @@ export async function generateSocialContent(
 ): Promise<AISocialContent | null> {
   const result = await generateWithDeepSeek(title, description, cityName)
   if (result) {
-    if (!isFaithfulSocialHeadline(result.headline, title)) {
-      result.headline = fitCompleteHeadline(title, title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
+    result.headline = overlayHeadlineFromTitle(title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
+    if (isGarbledSocialCopy(result.caption)) {
+      result.caption = fallbackCaption(title, description)
+    }
+    if (isGarbledSocialCopy(result.storySummary)) {
+      result.storySummary = fallbackStorySummary(title, result.caption)
     }
     console.log('[aiSocialEditor] DeepSeek ile içerik üretildi')
     return result

@@ -27,8 +27,8 @@ import { publishToThreads } from '@/lib/social/threads'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
-import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline } from '@/lib/social/feedCaption'
-import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
+import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from '@/lib/social/feedCaption'
+import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from '@/lib/social/socialFactualFidelity'
 
 import {
   isOwnContent,
@@ -299,7 +299,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
 
       // AI içerik — headline + storySummary Firestore'a yazılsın (OG route okur)
-      let headline = fitCompleteHeadline(title, title, 120, 160)
+      let headline = overlayHeadlineFromTitle(title)
       let storySummary = spot
         ? clampCompleteSentences(
             /[.!?…]["'»”’)\]]*$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
@@ -321,9 +321,18 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
 
       // Overlay özeti: DeepSeek / spot. Meta Llama görsele yazılmaz.
 
-      headline = repairSocialHeadline(headline, title, spot)
-      headline = fitCompleteHeadline(headline, title, 120, 160)
+      // Overlay: haber başlığı. AI manşet görsele yazılmaz.
+      headline = overlayHeadlineFromTitle(title)
       storySummary = repairSocialCopyAgainstSource(storySummary, title, spot)
+      if (isGarbledSocialCopy(storySummary)) {
+        storySummary = spot
+          ? clampCompleteSentences(
+              /[.!?…]["'»”’)\]]*$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
+              200,
+              232,
+            )
+          : `${clampAtWordBoundary(title, 120)}.`
+      }
 
       // OG route sosyal alanları okusun diye önce kaydet
       try {
@@ -478,7 +487,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         ? `📰 ${spot.trim()}`
         : `📰 ${title.trim()}`
       socialContent = {
-        headline: fitCompleteHeadline(title, title, 120, 160),
+        headline: overlayHeadlineFromTitle(title),
         storySummary: spot
           ? clampCompleteSentences(
               /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
@@ -491,24 +500,30 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       }
     }
 
-    // Olgu sadakati + tamamlanmış manşet (OG overlay DeepSeek headline kullanır)
-    socialContent.headline = repairSocialHeadline(
-      socialContent.headline,
-      title,
-      bodyText || spot,
-    )
-    socialContent.headline = fitCompleteHeadline(socialContent.headline, title, 120, 160)
+    // Overlay: haber başlığı. Caption salatası → başlık + spot.
+    socialContent.headline = overlayHeadlineFromTitle(title)
     socialContent.caption = repairSocialCopyAgainstSource(
       socialContent.caption,
       title,
       bodyText || spot,
     )
+    if (isGarbledSocialCopy(socialContent.caption)) {
+      socialContent.caption = spot ? `📰 ${title}\n\n${spot.trim()}` : `📰 ${title}`
+    }
     if (socialContent.storySummary) {
       socialContent.storySummary = repairSocialCopyAgainstSource(
         socialContent.storySummary,
         title,
         bodyText || spot,
       )
+      if (isGarbledSocialCopy(socialContent.storySummary)) {
+        socialContent.storySummary = spot
+          ? clampCompleteSentences(
+              /[.!?]$/.test(spot.trim()) ? spot.trim() : `${spot.trim()}.`,
+              170,
+            )
+          : `${clampAtWordBoundary(title, 120)}.`
+      }
     }
 
     // OG route Firestore socialHeadline okusun — paylaşmadan önce kaydet

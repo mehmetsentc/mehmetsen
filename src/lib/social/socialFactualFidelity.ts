@@ -183,15 +183,56 @@ function headlineTokens(s: string): string[] {
     .filter((w) => w.length > 2 && !HEADLINE_STOP.has(w))
 }
 
+function copyWords(s: string): string[] {
+  return toTrLower(s)
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 1)
+}
+
+/**
+ * DeepSeek/Llama “kelime salatası”: aynı 3–4’lü öbek tekrarı
+ * (örn. “yeniden hayata kişi kurtarılamadı … yeniden hayata kişi kurtarılamadı”).
+ */
+export function isGarbledSocialCopy(text: string): boolean {
+  const words = copyWords(text)
+  if (words.length < 8) return false
+
+  const grams4 = new Set<string>()
+  for (let i = 0; i <= words.length - 4; i++) {
+    const g = words.slice(i, i + 4).join(' ')
+    if (grams4.has(g)) return true
+    grams4.add(g)
+  }
+
+  if (words.length >= 12) {
+    const grams3 = new Set<string>()
+    for (let i = 0; i <= words.length - 3; i++) {
+      const g = words.slice(i, i + 3).join(' ')
+      if (grams3.has(g)) return true
+      grams3.add(g)
+    }
+  }
+
+  return false
+}
+
 /**
  * Overlay manşeti kaynak habere bağlı mı?
- * Uydurma / alakasız “dikkat çekici” AI satırlarını elemek için.
+ * Uydurma slogan, başlığa ekstra gövde parçası yapıştırma, tekrarlayan salata → hayır.
  */
 export function isFaithfulSocialHeadline(candidate: string, sourceTitle: string): boolean {
+  if (isGarbledSocialCopy(candidate)) return false
   const cand = headlineTokens(candidate)
-  const src = new Set(headlineTokens(sourceTitle))
+  const srcList = headlineTokens(sourceTitle)
+  const src = new Set(srcList)
   if (cand.length === 0 || src.size === 0) return false
+
+  const extra = cand.filter((t) => !src.has(t)).length
+  if (extra >= 2) return false
+
   const overlap = cand.filter((t) => src.has(t)).length
-  if (overlap >= 3) return true
-  return overlap / cand.length >= 0.45
+  if (overlap >= 3 && extra === 0) return true
+  if (overlap >= 3 && extra <= 1 && cand.length <= srcList.length + 1) return true
+  return extra === 0 && overlap / cand.length >= 0.45
 }

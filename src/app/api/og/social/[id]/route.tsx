@@ -28,11 +28,11 @@ import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from 
 import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
 import {
   isIncompleteHeadline,
+  overlayHeadlineFromTitle,
   pickCompleteOgHeadline,
   shortenToLastCompleteClause,
   stripDanglingHeadlineTail,
 } from '@/lib/social/feedCaption'
-import { repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 
 const PROJECT_ID = 'nahaberapp'
@@ -417,24 +417,8 @@ export async function GET(
   }
 
   const sourceTitle = article?.title || overrideTitle || ''
-  // OG manşet: önce kaynak title; AI socialHeadline yalnızca tamamlanmışsa
-  const rawTitle =
-    overrideTitle ||
-    (article
-      ? pickCompleteOgHeadline(
-          repairSocialHeadline(
-            article.socialHeadline || article.title,
-            article.title,
-            [article.socialHeadline, article.title, article.summary, article.spot]
-              .filter(Boolean)
-              .join('\n'),
-          ),
-          article.title,
-          TITLE_MAX,
-          TITLE_SOFT_MAX,
-        )
-      : '') ||
-    ''
+  // Overlay = haber başlığı. AI socialHeadline görsele yazılmaz.
+  const rawTitle = overlayHeadlineFromTitle(overrideTitle || article?.title || '', TITLE_MAX, TITLE_SOFT_MAX)
   if (!rawTitle) {
     if (id === 'sample' || id === 'preview') {
       return new Response('sample için ?title= (ve isteğe ?image= ?category=) gerekli', { status: 400 })

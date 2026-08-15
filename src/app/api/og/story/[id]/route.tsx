@@ -28,8 +28,13 @@ import { ImageResponse } from 'next/og'
 import { type NextRequest } from 'next/server'
 import { embedCoverTopImage, isUsableImageUrl, normalizeAbsoluteImageUrl } from '@/lib/social/ogImageEmbed'
 import { OG_IMAGE_CACHE_CONTROL } from '@/lib/social/ogCacheVersion'
-import { clampCompleteSentences, isIncompleteHeadline, pickCompleteOgHeadline } from '@/lib/social/feedCaption'
-import { repairSocialCopyAgainstSource, repairSocialHeadline } from '@/lib/social/socialFactualFidelity'
+import {
+  clampCompleteSentences,
+  isIncompleteHeadline,
+  overlayHeadlineFromTitle,
+  pickCompleteOgHeadline,
+} from '@/lib/social/feedCaption'
+import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from '@/lib/social/socialFactualFidelity'
 import { getSocialPostCategoryLabel } from '@/lib/social/socialPostCategory'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 
@@ -348,10 +353,14 @@ function resolveStorySummary(
   overrideSummary: string,
   overrideSpot: string,
 ): string {
+  const aiSummary =
+    article?.socialStorySummary && !isGarbledSocialCopy(article.socialStorySummary)
+      ? article.socialStorySummary
+      : ''
   const raw =
     overrideSummary ||
     overrideSpot ||
-    article?.socialStorySummary ||
+    aiSummary ||
     article?.summary ||
     article?.spot ||
     article?.seoDescription ||
@@ -494,29 +503,7 @@ export async function GET(
   }
 
   const sourceTitle = article?.title || overrideTitle || ''
-  const rawTitle =
-    overrideTitle ||
-    (article
-      ? pickCompleteOgHeadline(
-          repairSocialHeadline(
-            article.socialHeadline || article.title,
-            article.title,
-            [
-              article.socialHeadline,
-              article.title,
-              article.summary,
-              article.spot,
-              extractFirstParagraph(article.content || ''),
-            ]
-              .filter(Boolean)
-              .join('\n'),
-          ),
-          article.title,
-          TITLE_MAX,
-          TITLE_SOFT_MAX,
-        )
-      : '') ||
-    ''
+  const rawTitle = overlayHeadlineFromTitle(overrideTitle || article?.title || '', TITLE_MAX, TITLE_SOFT_MAX)
   if (!rawTitle) {
     if (id === 'sample' || id === 'preview') {
       return new Response('sample için ?title= (ve isteğe ?image= ?category=) gerekli', { status: 400 })
