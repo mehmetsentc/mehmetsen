@@ -9,10 +9,22 @@ import { decrypt } from '@/lib/gmail/crypto'
 import { saveTokens } from '@/services/gmailService'
 import { getAdminFirestore, getAdminAuth } from '@/lib/firebase/admin'
 import { isSuperAdminEmailServer, getBootstrapAdminUids } from '@/lib/cmsSecrets.server'
+import { CANONICAL_PRODUCTION_URL } from '@/lib/seo'
 
 export const runtime = 'nodejs'
 
 const EXPECTED_MAILBOX = process.env.GMAIL_MAILBOX ?? ''
+
+/** Resolve admin inbox URL — always use canonical origin in production. */
+function adminInboxUrl(requestUrl: string): string {
+  try {
+    const origin = new URL(requestUrl).origin
+    const base = process.env.VERCEL_ENV === 'production' ? CANONICAL_PRODUCTION_URL : origin
+    return `${base}/admin/inbox`
+  } catch {
+    return `${CANONICAL_PRODUCTION_URL}/admin/inbox`
+  }
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -20,13 +32,11 @@ export async function GET(request: Request) {
   const stateB64 = searchParams.get('state')
   const error = searchParams.get('error')
 
-  const adminUrl = `${new URL(request.url).origin}/admin/inbox`
+  const adminUrl = adminInboxUrl(request.url)
 
-  // User denied access
   if (error) {
     return NextResponse.redirect(`${adminUrl}?error=${encodeURIComponent(error)}`)
   }
-
   if (!code || !stateB64) {
     return NextResponse.redirect(`${adminUrl}?error=missing_params`)
   }
@@ -38,18 +48,15 @@ export async function GET(request: Request) {
     const [uid, tsStr] = decrypted.split(':')
     const ts = Number(tsStr)
 
-    // State must be < 10 minutes old
     if (!uid || !ts || Date.now() - ts > 10 * 60 * 1000) {
       return NextResponse.redirect(`${adminUrl}?error=invalid_state`)
     }
 
-    // Verify the uid is a valid CMS user with system:settings permission.
-    // Mirror the same precedence as verifyCmsToken in cmsAuthServer.ts.
+    // Verify the uid is a valid CMS user with system:settings permission
     const authUser = await getAdminAuth().getUser(uid)
     const email = authUser.email ?? ''
 
     if (!isSuperAdminEmailServer(email) && !getBootstrapAdminUids().includes(uid)) {
-      // Fall back to Firestore role document (field is 'role', not 'cmsRole')
       const db = getAdminFirestore()
       const userDoc = await db.collection('users').doc(uid).get()
       if (!userDoc.exists) {
@@ -62,25 +69,30 @@ export async function GET(request: Request) {
       }
     }
 
-    // Exchange code for tokens
+    // Exchange code for tokens (throws INSUFFICIENT_SCOPE if gmail.readonly missing)
     const tokens = await exchangeCodeForTokens(code)
 
-    // CRITICAL: Verify gmail.readonly scope was actually granted
-    if (!tokens.scope.includes('gmail.readonly') && !tokens.scope.includes('https://www.googleapis.com/auth/gmail.readonly')) {
+    // Defense-in-depth scope check
+    if (!tokens.scope.includes('gmail.readonly')) {
       return NextResponse.redirect(`${adminUrl}?error=missing_scope`)
     }
 
-    // CRITICAL: Verify the authorized account matches GMAIL_MAILBOX
+    // Must have a refresh token — absent means prior grant exists without prompt=consent
+    if (!tokens.refreshToken) {
+      return NextResponse.redirect(`${adminUrl}?error=no_refresh_token`)
+    }
+
+    // Verify the authorized account matches GMAIL_MAILBOX
     if (!tokens.email) {
       return NextResponse.redirect(`${adminUrl}?error=no_email_in_token`)
     }
     if (tokens.email.toLowerCase() !== EXPECTED_MAILBOX.toLowerCase()) {
       return NextResponse.redirect(
-        `${adminUrl}?error=wrong_account&expected=${encodeURIComponent(EXPECTED_MAILBOX)}&got=${encodeURIComponent(tokens.email)}`,
+        `${adminUrl}?error=wrong_account&got=${encodeURIComponent(tokens.email)}`,
       )
     }
 
-    // Save encrypted tokens to Firestore
+    // Save both tokens encrypted to Firestore
     await saveTokens({
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -92,7 +104,8 @@ export async function GET(request: Request) {
 
     return NextResponse.redirect(`${adminUrl}?connected=1`)
   } catch (err) {
-    console.error('[gmail/callback]', err)
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[gmail/callback] error:', msg.slice(0, 200))
     return NextResponse.redirect(`${adminUrl}?error=callback_error`)
   }
 }

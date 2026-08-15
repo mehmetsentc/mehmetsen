@@ -1,89 +1,76 @@
 /**
- * Gmail API client — server-only.
- * Uses raw fetch against Gmail REST API with an OAuth2 access token.
+ * Gmail API client — server-only REST calls with an OAuth2 access token.
  */
 import 'server-only'
 import type { GmailMessageSummary, GmailMessageDetail } from './types'
+import { GmailError, gmailErrorFromGoogleHttp } from './errors'
+import {
+  extractAttachmentMeta,
+  extractMessageBodies,
+  getHeader,
+  type GmailPayloadPart,
+} from './mime'
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me'
 
-async function gmailFetch(path: string, accessToken: string, options?: RequestInit) {
+export async function gmailFetch(path: string, accessToken: string, options?: RequestInit) {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
       ...(options?.headers ?? {}),
     },
     cache: 'no-store',
   })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
-    throw new Error(`[gmail/client] ${res.status} ${res.statusText}: ${body}`)
+    throw gmailErrorFromGoogleHttp(res.status, body)
   }
   return res.json()
 }
 
-/** Decode base64url-encoded Gmail message part */
-function decodeBase64Url(data: string): string {
-  const base64 = data.replace(/-/g, '+').replace(/_/g, '/')
-  return Buffer.from(base64, 'base64').toString('utf-8')
-}
-
-/** Extract header value from Gmail message headers array */
-function getHeader(headers: Array<{ name: string; value: string }>, name: string): string {
-  return headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? ''
-}
-
-/** Recursively find a part with the given mimeType */
-function findPart(payload: GmailPayload, mimeType: string): GmailPayload | null {
-  if (payload.mimeType === mimeType && payload.body?.data) return payload
-  for (const part of payload.parts ?? []) {
-    const found = findPart(part, mimeType)
-    if (found) return found
-  }
-  return null
-}
-
-interface GmailPayload {
-  mimeType?: string
-  headers?: Array<{ name: string; value: string }>
-  body?: { data?: string; size?: number }
-  parts?: GmailPayload[]
-  filename?: string
-}
-
-/**
- * List inbox messages. Returns lightweight summaries.
- * maxResults: 1-50
- */
 export async function listInboxMessages(
   accessToken: string,
   maxResults = 20,
   pageToken?: string,
 ): Promise<{ messages: GmailMessageSummary[]; nextPageToken?: string }> {
+  const limit = Math.min(Math.max(maxResults, 1), 50)
   const params = new URLSearchParams({
     labelIds: 'INBOX',
-    maxResults: String(Math.min(maxResults, 50)),
+    maxResults: String(limit),
   })
   if (pageToken) params.set('pageToken', pageToken)
 
   const list = await gmailFetch(`/messages?${params}`, accessToken)
   if (!list.messages?.length) return { messages: [] }
 
-  // Fetch metadata for each message (parallel, capped at 20)
-  const ids: string[] = list.messages.slice(0, 20).map((m: { id: string }) => m.id)
+  const ids: string[] = list.messages.slice(0, limit).map((m: { id: string }) => m.id)
   const metaResults = await Promise.allSettled(
     ids.map((id) =>
-      gmailFetch(`/messages/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`, accessToken),
+      gmailFetch(
+        `/messages/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+        accessToken,
+      ),
     ),
   )
 
   const messages: GmailMessageSummary[] = []
   for (const result of metaResults) {
-    if (result.status !== 'fulfilled') continue
-    const msg = result.value
-    const headers: Array<{ name: string; value: string }> = msg.payload?.headers ?? []
+    if (result.status !== 'fulfilled') {
+      if (result.reason instanceof GmailError && result.reason.code === 'RECONNECT_REQUIRED') {
+        throw result.reason
+      }
+      continue
+    }
+    const msg = result.value as {
+      id: string
+      threadId: string
+      snippet?: string
+      labelIds?: string[]
+      payload?: GmailPayloadPart
+    }
+    const headers = msg.payload?.headers ?? []
+    const labelIds = msg.labelIds ?? []
     messages.push({
       id: msg.id,
       threadId: msg.threadId,
@@ -91,19 +78,15 @@ export async function listInboxMessages(
       from: getHeader(headers, 'From'),
       date: getHeader(headers, 'Date'),
       snippet: msg.snippet ?? '',
-      hasAttachments: (msg.payload?.parts ?? []).some(
-        (p: GmailPayload) => p.filename && p.filename.length > 0,
-      ),
-      labelIds: msg.labelIds ?? [],
+      hasAttachments: extractAttachmentMeta(msg.payload).length > 0,
+      labelIds,
+      unread: labelIds.includes('UNREAD'),
     })
   }
 
   return { messages, nextPageToken: list.nextPageToken }
 }
 
-/**
- * INBOX label stats — unread badge without fetching message bodies.
- */
 export async function getInboxLabelStats(
   accessToken: string,
 ): Promise<{ messagesTotal: number; messagesUnread: number }> {
@@ -114,28 +97,16 @@ export async function getInboxLabelStats(
   }
 }
 
-/**
- * Fetch a full message (subject, from, date, body text).
- */
 export async function getMessage(accessToken: string, messageId: string): Promise<GmailMessageDetail> {
-  const msg = await gmailFetch(`/messages/${messageId}?format=full`, accessToken)
-  const headers: Array<{ name: string; value: string }> = msg.payload?.headers ?? []
-
-  // Extract body: prefer text/plain, fall back to text/html
-  let body = ''
-  const plainPart = findPart(msg.payload, 'text/plain')
-  const htmlPart = findPart(msg.payload, 'text/html')
-  const part = plainPart ?? htmlPart
-  if (part?.body?.data) {
-    body = decodeBase64Url(part.body.data)
-    // Strip HTML tags if using HTML fallback
-    if (!plainPart) {
-      body = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-    }
+  if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) {
+    throw new GmailError('GOOGLE_API_ERROR', { detail: 'bad_message_id', httpStatus: 400 })
   }
-
+  const msg = await gmailFetch(`/messages/${encodeURIComponent(messageId)}?format=full`, accessToken)
+  const headers = msg.payload?.headers ?? []
+  const { text, html } = extractMessageBodies(msg.payload)
+  const attachments = extractAttachmentMeta(msg.payload)
   const toHeader = getHeader(headers, 'To')
-  const toRecipients = toHeader ? [toHeader] : []
+  const labelIds: string[] = msg.labelIds ?? []
 
   return {
     id: msg.id,
@@ -144,11 +115,12 @@ export async function getMessage(accessToken: string, messageId: string): Promis
     from: getHeader(headers, 'From'),
     date: getHeader(headers, 'Date'),
     snippet: msg.snippet ?? '',
-    hasAttachments: (msg.payload?.parts ?? []).some(
-      (p: GmailPayload) => p.filename && p.filename.length > 0,
-    ),
-    labelIds: msg.labelIds ?? [],
-    body,
-    toRecipients,
+    hasAttachments: attachments.length > 0,
+    labelIds,
+    unread: labelIds.includes('UNREAD'),
+    body: text,
+    htmlBody: html || undefined,
+    toRecipients: toHeader ? [toHeader] : [],
+    attachments,
   }
 }

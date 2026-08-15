@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { listMessages } from '@/services/gmailService'
+import { gmailJsonError } from '@/lib/gmail/http'
 
 export const runtime = 'nodejs'
 
@@ -21,12 +22,6 @@ export async function GET(request: Request) {
     const result = await listMessages(maxResults, pageToken)
     return NextResponse.json(result)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    // Surface "not connected" cleanly
-    if (msg.includes('not connected')) {
-      return NextResponse.json({ error: 'not_connected' }, { status: 400 })
-    }
-    console.error('[gmail/messages]', err)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    return gmailJsonError(err)
   }
 }

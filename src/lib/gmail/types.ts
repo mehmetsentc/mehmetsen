@@ -2,6 +2,9 @@
  * Gmail OAuth Integration — Type Definitions
  * bilgi@nahaber.com newsroom inbox
  */
+import type { GmailAttachmentMeta } from './mime'
+
+export type { GmailAttachmentMeta }
 
 export interface GmailTokens {
   accessToken: string
@@ -12,11 +15,12 @@ export interface GmailTokens {
 }
 
 export interface GmailIntegration {
-  connectedAt: number          // unix ms
-  connectedBy: string          // CMS user uid
-  accountEmail: string         // must equal GMAIL_MAILBOX
+  connectedAt: number           // unix ms
+  connectedBy: string           // CMS user uid
+  accountEmail: string          // must equal GMAIL_MAILBOX
   encryptedRefreshToken: string
-  accessToken: string
+  encryptedAccessToken?: string // new: AES-GCM encrypted
+  accessToken?: string          // legacy: plaintext — used on first load until reconnect
   expiresAt: number
   scope: string
 }
@@ -26,13 +30,16 @@ export interface GmailMessageSummary {
   threadId: string
   subject: string
   from: string
-  date: string         // ISO string
+  date: string         // RFC 2822 header value
   snippet: string
   hasAttachments: boolean
   labelIds: string[]
+  unread: boolean
 }
 
 export interface GmailMessageDetail extends GmailMessageSummary {
-  body: string         // decoded plain-text or HTML body
+  body: string                       // plain-text body (sanitized)
+  htmlBody?: string                  // sanitized HTML body when available
   toRecipients: string[]
+  attachments: GmailAttachmentMeta[] // metadata only — binary never fetched here
 }

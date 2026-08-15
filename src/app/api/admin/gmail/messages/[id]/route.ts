@@ -1,11 +1,12 @@
 /**
  * GET /api/admin/gmail/messages/[id]
- * Returns full message detail (body, headers).
+ * Returns full message detail (body, headers, attachment metadata).
  * Requires: news:read permission
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getMessageById } from '@/services/gmailService'
+import { gmailJsonError } from '@/lib/gmail/http'
 
 export const runtime = 'nodejs'
 
@@ -22,7 +23,6 @@ export async function GET(
     const message = await getMessageById(id)
     return NextResponse.json(message)
   } catch (err) {
-    console.error('[gmail/messages/:id]', err)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    return gmailJsonError(err)
   }
 }
