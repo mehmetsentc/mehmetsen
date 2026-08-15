@@ -10,7 +10,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { encrypt, decrypt } from '@/lib/gmail/crypto'
 import { refreshAccessToken } from '@/lib/gmail/oauth'
-import { listInboxMessages, getMessage, getInboxLabelStats } from '@/lib/gmail/client'
+import { listInboxMessages, getMessage, getInboxLabelStats, markMessageRead, sendEmail, getMessageHeaders, type SendEmailParams } from '@/lib/gmail/client'
 import { GmailError, normalizeGmailError } from '@/lib/gmail/errors'
 import type { GmailIntegration, GmailMessageSummary, GmailMessageDetail } from '@/lib/gmail/types'
 
@@ -164,4 +164,26 @@ export async function getInboxBadgeCounts(): Promise<{
     console.warn('[gmailService] inbox badge counts failed:', normalizeGmailError(err).code)
     return { connected: true, messagesTotal: 0, messagesUnread: 0 }
   }
+}
+
+// ── Send / Mark-read (new) ────────────────────────────────────────────────────
+
+export async function markAsRead(messageId: string): Promise<void> {
+  await withRetryOn401((token) => markMessageRead(token, messageId))
+}
+
+export async function sendGmailMessage(params: {
+  to: string
+  from: string
+  subject: string
+  body: string
+  threadId?: string
+  inReplyTo?: string
+  references?: string
+}): Promise<{ id: string; threadId: string }> {
+  return withRetryOn401((token) => sendEmail(token, params))
+}
+
+export async function getMessageHeadersById(messageId: string) {
+  return withRetryOn401((token) => getMessageHeaders(token, messageId))
 }

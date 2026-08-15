@@ -124,3 +124,84 @@ export async function getMessage(accessToken: string, messageId: string): Promis
     attachments,
   }
 }
+
+// ── Mark as read ──────────────────────────────────────────────────────────────
+
+export async function markMessageRead(accessToken: string, messageId: string): Promise<void> {
+  if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) return
+  await gmailFetch(`/messages/${encodeURIComponent(messageId)}/modify`, accessToken, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
+  })
+}
+
+// ── Send / Reply ──────────────────────────────────────────────────────────────
+
+export interface SendEmailParams {
+  to: string
+  from: string            // e.g. "bilgi@nahaber.com"
+  subject: string
+  body: string            // plain text
+  threadId?: string       // set for replies
+  inReplyTo?: string      // Message-ID header value of original message
+  references?: string     // References header chain
+}
+
+function buildRawEmail(p: SendEmailParams): string {
+  const encodeSubject = (s: string) =>
+    /[^\x20-\x7E]/.test(s)
+      ? `=?UTF-8?B?${Buffer.from(s, 'utf8').toString('base64')}?=`
+      : s
+
+  const lines: string[] = [
+    `From: ${p.from}`,
+    `To: ${p.to}`,
+    `Subject: ${encodeSubject(p.subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: quoted-printable',
+  ]
+  if (p.inReplyTo) lines.push(`In-Reply-To: ${p.inReplyTo}`)
+  if (p.references) lines.push(`References: ${p.references}`)
+  lines.push('', p.body)
+  return Buffer.from(lines.join('\r\n'), 'utf8').toString('base64url')
+}
+
+export async function sendEmail(
+  accessToken: string,
+  params: SendEmailParams,
+): Promise<{ id: string; threadId: string }> {
+  const raw = buildRawEmail(params)
+  const requestBody: Record<string, string> = { raw }
+  if (params.threadId) requestBody.threadId = params.threadId
+
+  return gmailFetch('/messages/send', accessToken, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody),
+  }) as Promise<{ id: string; threadId: string }>
+}
+
+// ── Get message headers for reply (Message-ID, References) ───────────────────
+
+export async function getMessageHeaders(
+  accessToken: string,
+  messageId: string,
+): Promise<{ messageId?: string; references?: string; subject?: string; from?: string; threadId?: string }> {
+  if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) {
+    throw new GmailError('GOOGLE_API_ERROR', { detail: 'bad_message_id', httpStatus: 400 })
+  }
+  const msg = await gmailFetch(
+    `/messages/${encodeURIComponent(messageId)}?format=metadata&metadataHeaders=Message-ID&metadataHeaders=References&metadataHeaders=Subject&metadataHeaders=From`,
+    accessToken,
+  )
+  const headers = msg.payload?.headers ?? []
+  return {
+    messageId: getHeader(headers, 'Message-ID'),
+    references: getHeader(headers, 'References'),
+    subject: getHeader(headers, 'Subject'),
+    from: getHeader(headers, 'From'),
+    threadId: msg.threadId,
+  }
+}
