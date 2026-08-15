@@ -38,7 +38,6 @@ import {
 } from '@/lib/social/publishOneSocial'
 import { getCategoryRulesDoc } from '@/lib/social/categoryRulesStore'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
-import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 import {
   allowsAutoPost,
   allowsAutoStory,
@@ -320,23 +319,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         }
       } catch { /* fallback */ }
 
-      // Meta AI: hikâye özetini özgünleştir (OG'ye yazılır). Fail → mevcut özet.
-      try {
-        const cityName =
-          typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
-        const metaAi = await rewriteForPlatform(
-          title,
-          storySummary || spot || title,
-          cityName,
-          'story',
-          { articleUrl, newsId: id },
-        )
-        if (metaAi.enabled && metaAi.caption.trim()) {
-          storySummary = clampCompleteSentences(metaAi.caption, 200, 232)
-        }
-      } catch (err) {
-        console.warn(`[cron/social] Meta AI story rewrite skipped ${id}:`, err)
-      }
+      // Overlay özeti: DeepSeek / spot. Meta Llama görsele yazılmaz.
 
       headline = repairSocialHeadline(headline, title, spot)
       headline = fitCompleteHeadline(headline, title, 120, 160)

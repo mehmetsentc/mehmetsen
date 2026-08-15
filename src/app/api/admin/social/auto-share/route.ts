@@ -49,7 +49,7 @@ export async function PUT(request: Request) {
     autoPost: typeof b.autoPost === 'boolean' ? b.autoPost : true,
     autoStory: typeof b.autoStory === 'boolean' ? b.autoStory : true,
     autoOnPublish: typeof b.autoOnPublish === 'boolean' ? b.autoOnPublish : true,
-    metaAiRewrite: typeof b.metaAiRewrite === 'boolean' ? b.metaAiRewrite : true,
+    metaAiRewrite: typeof b.metaAiRewrite === 'boolean' ? b.metaAiRewrite : false,
     enabledCitySlugs: b.enabledCitySlugs,
   })
 

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Hash } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { formatTagLabel } from '@/lib/tags'
@@ -104,71 +103,61 @@ export default async function TagPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="mx-auto w-full max-w-3xl px-4 py-8">
-        <header className="mb-8 border-b border-[rgb(var(--color-border))] pb-6">
-          <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[rgb(var(--color-brand))]">
-            <Hash className="h-4 w-4" />
-            Konu Dosyası
-          </p>
-          <h1 className="text-3xl font-black tracking-tight text-[rgb(var(--color-text))]">
-            {label} Haberleri
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+      <div
+        className="desktop-newspaper-shell bbc-category-page w-full pb-10"
+        style={{ ['--cat-accent' as string]: 'var(--brand-500)' }}
+      >
+        <header className="bbc-category-header bbc-category-header--accent mb-8">
+          <p className="bbc-category-kicker">Konu Dosyası</p>
+          <h1 className="bbc-category-title">#{label} Haberleri</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[rgb(var(--color-muted))] sm:text-base">
             {label} konusunda yayımlanan son gelişmeler, arşiv ve ilgili haberler.
             Bu sayfada {posts.length} haber listeleniyor.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
-            <Link
-              href={ROUTES.MOST_READ}
-              className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1.5 text-[rgb(var(--color-text))] hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))]"
-            >
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link href={ROUTES.MOST_READ} className="bbc-category-chip">
               En çok okunanlar
             </Link>
-            <Link
-              href={ROUTES.FEED}
-              className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1.5 text-[rgb(var(--color-text))] hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))]"
-            >
+            <Link href={ROUTES.FEED} className="bbc-category-chip">
               Ana sayfa
             </Link>
           </div>
         </header>
 
-        <div className="divide-y divide-[rgb(var(--color-border))]">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-2 xl:grid-cols-3">
           {posts.map((post) => (
-            <article key={post.id} className="flex gap-4 py-4">
+            <article key={post.id} className="group min-w-0">
               <Link
                 href={ROUTES.NEWS_DETAIL(post.slug)}
-                className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-surface))]"
+                className="relative mb-3 block aspect-[16/10] overflow-hidden rounded-xl bg-[rgb(var(--color-surface))]"
               >
                 {post.coverImageUrl ? (
                   <SafeNewsImage
                     src={post.coverImageUrl}
                     alt={post.title}
                     fill
-                    className="object-cover"
-                    sizes="112px"
+                    className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    sizes="(min-width: 1280px) 360px, (min-width: 640px) 45vw, 100vw"
                   />
                 ) : null}
               </Link>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[rgb(var(--color-brand))]">
-                  {getCategoryLabel(post.categoryId)}
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[rgb(var(--color-brand))]">
+                {getCategoryLabel(post.categoryId)}
+              </p>
+              <h2 className="bbc-story-title bbc-story-title--md mt-1">
+                <Link href={ROUTES.NEWS_DETAIL(post.slug)} className="hover:underline">
+                  {post.title}
+                </Link>
+              </h2>
+              {post.summary ? (
+                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
+                  {post.summary}
                 </p>
-                <h2 className="mt-1 text-base font-bold leading-snug text-[rgb(var(--color-text))]">
-                  <Link href={ROUTES.NEWS_DETAIL(post.slug)} className="hover:underline">
-                    {post.title}
-                  </Link>
-                </h2>
-                {post.summary ? (
-                  <p className="mt-1 line-clamp-2 text-sm text-[rgb(var(--color-muted))]">
-                    {post.summary}
-                  </p>
-                ) : null}
-              </div>
+              ) : null}
             </article>
           ))}
         </div>
-      </main>
+      </div>
     </>
   )
 }

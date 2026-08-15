@@ -164,3 +164,34 @@ export function repairSocialHeadline(
 ): string {
   return repairSocialCopyAgainstSource(headline, sourceTitle, sourceBody)
 }
+
+const HEADLINE_STOP = new Set([
+  ...STOP,
+  'icin',
+  'için',
+  'sonra',
+  'once',
+  'önce',
+  'karsi',
+  'karşı',
+])
+
+function headlineTokens(s: string): string[] {
+  return toTrLower(s)
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !HEADLINE_STOP.has(w))
+}
+
+/**
+ * Overlay manşeti kaynak habere bağlı mı?
+ * Uydurma / alakasız “dikkat çekici” AI satırlarını elemek için.
+ */
+export function isFaithfulSocialHeadline(candidate: string, sourceTitle: string): boolean {
+  const cand = headlineTokens(candidate)
+  const src = new Set(headlineTokens(sourceTitle))
+  if (cand.length === 0 || src.size === 0) return false
+  const overlap = cand.filter((t) => src.has(t)).length
+  if (overlap >= 3) return true
+  return overlap / cand.length >= 0.45
+}

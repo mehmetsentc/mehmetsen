@@ -11,13 +11,12 @@
  * Logs:  Firestore ai_rewrite_logs
  * Toggle: config/socialAutoShare.metaAiRewrite (varsayılan açık)
  *
- * Manşet/OG overlay Meta AI üretmez — DeepSeek/Gemini socialHeadline + /api/og/social.
- * Meta AI yalnızca caption / story özeti üretir.
+ * Manşet/OG overlay Meta AI üretmez — DeepSeek socialHeadline + kaynak title.
+ * Meta Llama rewrite kapalı; caption da DeepSeek generateSocialContent.
  */
 import { createHash } from 'crypto'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
-import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
 import {
   clampCompleteSentences,
   isIncompleteCaption,
@@ -108,14 +107,9 @@ async function resolveLlamaApiKey(): Promise<string> {
   }
 }
 
-/** Global toggle — varsayılan açık. */
+/** Overlay + caption: DeepSeek. Meta Llama kapalı (görsel manşeti bozuyordu). */
 export async function isMetaAiRewriteEnabled(): Promise<boolean> {
-  try {
-    const settings = await getAutoShareSettings()
-    return settings.metaAiRewrite !== false
-  } catch {
-    return true
-  }
+  return false
 }
 
 /** Platform-scoped hash — story/FB cache IG caption’ını ezmesin. */

@@ -202,12 +202,12 @@ export function SocialAutomationDesk({
           label="Yayında anlık"
           hint="CMS publish → paylaş"
         />
-        <Toggle
-          checked={draft.metaAiRewrite !== false}
-          onToggle={(v) => onChange({ ...draft, metaAiRewrite: v })}
-          label="Meta AI"
-          hint="Llama caption"
-        />
+        <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2">
+          <p className="text-xs font-bold text-[rgb(var(--color-text))]">Görsel manşet</p>
+          <p className="mt-0.5 text-[10px] text-[rgb(var(--color-muted))]">
+            DeepSeek + haber başlığı · Meta Llama kapalı
+          </p>
+        </div>
       </div>
 
       <div className="border-t border-[rgb(var(--color-border))] px-3 py-2.5">

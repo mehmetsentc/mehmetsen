@@ -25,7 +25,6 @@ import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
 import { buildSocialImagePayload, materializeBrandedOgForPublish } from '@/lib/social/carouselImages'
 import { buildOgSocialUrl, buildOgStoryUrl } from '@/lib/social/ogCacheVersion'
-import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -488,25 +487,7 @@ export async function publishOneSocial(
         .filter(Boolean)
     }
 
-    // Meta AI: yalnızca hikâye özeti (story OG). Post caption DeepSeek'de kalır —
-    // IG/FB publisher'lar platform-scoped rewrite yapar. Story-length Meta AI
-    // caption'ı post gövdesine yazmak Instagram'ı "…avukat Dr." ince metne düşürüyordu.
-    try {
-      const metaAi = await rewriteForPlatform(
-        title,
-        socialContent.storySummary || spot || title,
-        cityName,
-        'story',
-        { articleUrl, newsId },
-      )
-      if (metaAi.enabled) {
-        if (!overrides?.storySummary?.trim() && metaAi.caption.trim()) {
-          socialContent.storySummary = metaAi.caption
-        }
-      }
-    } catch (err) {
-      console.warn(`[publishOneSocial] Meta AI story rewrite skipped ${newsId}:`, err)
-    }
+    // Overlay özeti DeepSeek / spot. Meta Llama görsele yazılmaz.
 
     // Olgu sadakati: AI'nin düşürdüğü tamlama isimlerini (hava aracı vb.) geri koy
     socialContent.headline = repairSocialHeadline(socialContent.headline, title, bodyText || spot)

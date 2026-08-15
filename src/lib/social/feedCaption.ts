@@ -11,6 +11,8 @@
  * Meta bunu hesap tarafında açar, API'ye özel link alanı gerekmez.
  */
 
+import { isFaithfulSocialHeadline } from './socialFactualFidelity'
+
 const DEFAULT_HASHTAGS = ['#NaHaber', '#Çanakkale', '#SonDakika']
 
 /** Manşet sonunda bırakılmaması gereken bağlaç / sıfat / yarım öbekler */
@@ -279,6 +281,10 @@ export function pickCompleteOgHeadline(
   }
   if (isIncompleteHeadline(ai)) {
     return fitCompleteHeadline(ai, src, max, softMax)
+  }
+  // Uydurma / alakasız AI manşet → kaynak başlık
+  if (!isFaithfulSocialHeadline(ai, src)) {
+    return clampCompleteHeadline(src, max, softMax)
   }
   // AI manşeti tamam ama kaynak daha uzun ve AI onun kesik öneki gibi → kaynak
   if (toTrLower(src).startsWith(toTrLower(ai)) && src.length > ai.length + 8 && !isIncompleteHeadline(src)) {

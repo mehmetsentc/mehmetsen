@@ -94,9 +94,10 @@ describe('complete OG headlines', () => {
     expect(isIncompleteHeadline(out)).toBe(false)
   })
 
-  it('keeps Turkish apostrophe headlines that are complete', () => {
-    const ok = "Çanakkale'de yerel seçim sonuçları açıklandı"
-    expect(isIncompleteHeadline(ok)).toBe(false)
+  it('prefers source title over invented AI overlay headline', () => {
+    const ai = 'Şok gelişme: herkes bunu konuşuyor'
+    const source = "Çanakkale'de feribot seferleri fırtına nedeniyle iptal edildi"
+    expect(pickCompleteOgHeadline(ai, source, 120, 160)).toBe(source)
   })
 })
 

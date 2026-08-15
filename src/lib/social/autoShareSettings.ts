@@ -16,8 +16,8 @@ export interface SocialAutoShareSettings {
    */
   autoOnPublish: boolean
   /**
-   * Tüm sosyal paylaşımlardan önce Meta Llama ile özgün caption / hikâye özeti üret.
-   * Varsayılan: açık. Timeout/fail → yerel fallback (gönderi yine yayınlanır).
+   * Eski Meta Llama caption rewrite. Overlay/caption artık DeepSeek.
+   * Kod yolu kapalı (isMetaAiRewriteEnabled = false).
    */
   metaAiRewrite: boolean
   /**
@@ -35,7 +35,7 @@ export const DEFAULT_AUTO_SHARE_SETTINGS: SocialAutoShareSettings = {
   autoPost: true,
   autoStory: true,
   autoOnPublish: true,
-  metaAiRewrite: true,
+  metaAiRewrite: false,
   enabledCitySlugs: [...DEFAULT_AUTO_SHARE_CITY_SLUGS],
 }
 

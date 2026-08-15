@@ -13,7 +13,7 @@
  */
 
 import { clampAtWordBoundary, clampCompleteSentences, fitCompleteHeadline, isIncompleteHeadline } from './feedCaption'
-import { repairSocialCopyAgainstSource } from './socialFactualFidelity'
+import { isFaithfulSocialHeadline, repairSocialCopyAgainstSource } from './socialFactualFidelity'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -62,11 +62,12 @@ OLGU SADAKATİ — KESİN:
 - Ucuz clickbait / sahte vaat / abartılı şok dili YASAK — NaHaber güvenilir haber tonu korunur.
 
 KURALLAR:
-- headline: Gazete ciddiyetiyle DİKKAT ÇEKİCİ + BİLGİLENDİRİCİ TÜRKÇE manşet (max ${HEADLINE_MAX} karakter). Merak + doğru olgu birlikte.
-  * UZUNLUK / SATIR: Ya TEK SATIRDA sığacak kadar kısa ve vurucu OL, YA DA 2–3 tematik satır için satır sonlarını \\n ile belirt (ör. "Çanakkale enflasyonunda\\nsürpriz düşüş"). Her satır kısa vurucu öbek olsun. Uzun sarkan tek cümle YASAK — 4+ satıra rastgele sarılmasın. Max 3 satır.
-  * Curiosity gap OK (beklenmedik açı, gerilim, çarpıcı rakam); ucuz clickbait / sahte vaat YASAK.
-  * TAM kelimeler; yarım cümle / kesik kelime YASAK. "5 yaşındaki" / "vurulan" gibi sıfat veya fiilimsede BITIRME — isim veya fiille bitir (ör. "…Karan taburcu oldu"). Nokta ile bitirme (gazete manşeti gibi).
-  * Karakter sınırı için kelime atmak zorundaysan önce sıfat/bağlaç at; sayı + isim tamlamasını (hava aracı vb.) ASLA atma — gerekirse manşeti yeniden kur.
+- headline: Görsel üzerine basılacak manşet = haber BAŞLIĞININ kısaltılmış gazete biçimi (max ${HEADLINE_MAX} karakter).
+  * Yeni haber / yeni iddia / alakasız slogan UYDURMA. Kişi, yer, sayı, olay BAŞLIKTAKİ ile aynı kalsın.
+  * Sadece kısalt: bağlaç/sıfat at; olguyu değiştirme. "Dikkat çekeyim diye" başka cümle yazmak YASAK.
+  * UZUNLUK / SATIR: Ya TEK SATIRDA sığacak kadar kısa OL, YA DA 2–3 tematik satır için satır sonlarını \\n ile belirt. Max 3 satır.
+  * TAM kelimeler; yarım cümle / kesik kelime YASAK. Nokta ile bitirme (gazete manşeti gibi).
+  * Karakter sınırı için kelime atmak zorundaysan önce sıfat/bağlaç at; sayı + isim tamlamasını ASLA atma.
 - storySummary: Manşetin ALTINDA görünecek TAM FAYDALI ÖZET. 1 veya 2 TAM cümle; toplam max ${STORY_SUMMARY_MAX} karakter. Her cümle nokta, ünlem veya soru işareti ile bitsin. Asla cümleyi veya kelimeyi ortadan kesme.
   * 1. görev — ANLAŞILIRLIK: Ne olduğu net olsun (kim/ne/nerede + ana olay). Okuyucu özetten haberi anlamalı; teaser / "ipuucu verip sakla" YASAK.
   * 2. görev — MERAK + DERİNLİK İŞTAHI: Özetin kendisi de ilgi çekici olsun; monoton "X açıklandı, Y yapıldı" kalıplarına düşme. Etki, sonuç veya sürpriz detayı öne çıkar — "git oku" demeden.
@@ -95,7 +96,7 @@ GÖRSEL FORMAT: Post 4:5 (1080×1350) — tam sayfa haber fotoğrafı; manşet+�
 
 JSON şeması:
 {
-  "headline": "string (max ${HEADLINE_MAX} karakter: tek satır VEYA 2-3 satır \\n ile; sarkan uzun cümle yok; nokta yok; merak + doğru olgu; tamlama ismi düşürme)",
+  "headline": "string (max ${HEADLINE_MAX}: BAŞLIĞIN kısaltılmış hali; uydurma manşet yok; nokta yok)",
   "storySummary": "string (1-2 tam cümle, max ${STORY_SUMMARY_MAX} karakter: ne oldu + etki/sonuç net; olgu sadık; meta CTA YASAK — haberimizde/tıkla/devamı yok; noktalama ile bitsin; merak uyandırıcı)",
   "caption": "string (2-3 paragraf: tam manşet anlamı + tam kısa özet; 400-800 karakter; emoji ile başlar; \\n\\n; URL yok; yarım cümle yok; ilk cümle yakalayıcı + doğru)",
   "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5"],
@@ -204,9 +205,12 @@ function parseAISocialJSON(raw: string, title: string, description = ''): AISoci
     const fidelity = (s: string) => repairSocialCopyAgainstSource(s, title, description)
     const caption = clampCaptionBody(fidelity(str(p.caption, `📰 ${title}`)), CAPTION_MAX)
     let headline = clampHeadline(fidelity(str(p.headline, title)), HEADLINE_MAX, title)
-    // AI yarım bıraktıysa kaynak başlığa düş
-    if (isIncompleteHeadline(headline) && title.trim()) {
-      headline = fitCompleteHeadline(headline, title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
+    // AI yarım bıraktıysa veya başlıktan saptiysa kaynak başlığa düş
+    if (
+      (isIncompleteHeadline(headline) && title.trim()) ||
+      !isFaithfulSocialHeadline(headline, title)
+    ) {
+      headline = fitCompleteHeadline(title, title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
     }
     const storySummary = clampCompleteSentences(
       fidelity(stripMetaCtas(str(p.storySummary, fallbackStorySummary(title, caption)))),
@@ -307,9 +311,11 @@ export async function generateSocialContent(
   description: string,
   cityName = 'Çanakkale'
 ): Promise<AISocialContent | null> {
-  // Sadece DeepSeek kullan
   const result = await generateWithDeepSeek(title, description, cityName)
   if (result) {
+    if (!isFaithfulSocialHeadline(result.headline, title)) {
+      result.headline = fitCompleteHeadline(title, title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
+    }
     console.log('[aiSocialEditor] DeepSeek ile içerik üretildi')
     return result
   }
