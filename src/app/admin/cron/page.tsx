@@ -1,7 +1,7 @@
 'use client'
 
 import { auth } from '@/lib/firebase/auth'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import {
   Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Activity, Timer, RefreshCw,
@@ -80,6 +80,11 @@ function toMs(v: number | string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+function queueSourceLabel(item: PendingQueueItem): string {
+  const label = item.source?.trim()
+  return label || 'Kaynaksız'
+}
+
 export default function CronMonitorPage() {
   const [runs, setRuns] = useState<CronRun[]>([])
   const [queuePending, setQueuePending] = useState<number | null>(null)
@@ -95,7 +100,9 @@ export default function CronMonitorPage() {
   const [purgingHours, setPurgingHours] = useState<number | null>(null)
   const [purgingDuplicates, setPurgingDuplicates] = useState(false)
   const [dupFilterOnly, setDupFilterOnly] = useState(false)
+  const [selectedQueueSource, setSelectedQueueSource] = useState<string | null>(null)
   const [publishingItemId, setPublishingItemId] = useState<string | null>(null)
+  const [publishingSource, setPublishingSource] = useState(false)
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [editorBusy, setEditorBusy] = useState(false)
@@ -376,9 +383,9 @@ export default function CronMonitorPage() {
     }
   }
 
-  const publishQueueItem = async (id: string) => {
-    if (publishingItemId) return
-    setPublishingItemId(id)
+  const publishQueueItem = async (id: string, opts?: { silent?: boolean }) => {
+    if (publishingItemId && !opts?.silent) return false
+    if (!opts?.silent) setPublishingItemId(id)
     try {
       const token = (await auth.currentUser?.getIdToken()) ?? ''
       const res = await fetch('/api/admin/queue', {
@@ -394,24 +401,63 @@ export default function CronMonitorPage() {
         error?: string
       }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      if (data.published) {
-        toast.success('Haber yayınlandı!')
+      if (data.published || data.drafted) {
+        if (!opts?.silent) {
+          toast.success(data.published ? 'Haber yayınlandı!' : 'Haber taslak olarak oluşturuldu — onay kuyruğunda')
+        }
         setPendingItems((prev) => prev.filter((i) => i.id !== id))
         setQueuePending((prev) => (prev != null ? prev - 1 : prev))
-      } else if (data.drafted) {
-        toast('Haber taslak olarak oluşturuldu — onay kuyruğunda', { icon: '✍️' })
-        setPendingItems((prev) => prev.filter((i) => i.id !== id))
-        setQueuePending((prev) => (prev != null ? prev - 1 : prev))
-      } else if (data.failed) {
-        toast.error('İşlem başarısız — haber kuyruğa geri döndü')
-      } else {
-        toast('İşlendi ama sonuç belirsiz', { icon: 'ℹ️' })
+        return data.published ? 'published' : 'drafted'
       }
-      await load(pendingOpen)
+      if (data.failed) {
+        if (!opts?.silent) toast.error('İşlem başarısız — haber kuyruğa geri döndü')
+        return 'failed'
+      }
+      if (!opts?.silent) toast('İşlendi ama sonuç belirsiz', { icon: 'ℹ️' })
+      return 'unknown'
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Yayınlama hatası')
+      if (!opts?.silent) toast.error(e instanceof Error ? e.message : 'Yayınlama hatası')
+      return 'error'
+    } finally {
+      if (!opts?.silent) {
+        setPublishingItemId(null)
+        await load(pendingOpen)
+      }
+    }
+  }
+
+  const publishSelectedSource = async () => {
+    if (!selectedQueueSource || publishingSource || publishingItemId) return
+    const ids = pendingItems
+      .filter((i) => !dupFilterOnly || i.queueDuplicateSuspect)
+      .filter((i) => queueSourceLabel(i) === selectedQueueSource)
+      .map((i) => i.id)
+    if (ids.length === 0) return
+    const ok = window.confirm(
+      `"${selectedQueueSource}" kaynağındaki ${ids.length} haber sırayla yayınlanacak.\n\nDevam?`
+    )
+    if (!ok) return
+    setPublishingSource(true)
+    let published = 0
+    let drafted = 0
+    let failed = 0
+    try {
+      for (const id of ids) {
+        setPublishingItemId(id)
+        const result = await publishQueueItem(id, { silent: true })
+        if (result === 'published') published += 1
+        else if (result === 'drafted') drafted += 1
+        else failed += 1
+      }
+      toast.success(
+        `${selectedQueueSource}: ${published} yayınlandı` +
+          (drafted ? `, ${drafted} taslak` : '') +
+          (failed ? `, ${failed} başarısız` : '')
+      )
+      await load(true)
     } finally {
       setPublishingItemId(null)
+      setPublishingSource(false)
     }
   }
 
@@ -462,10 +508,27 @@ export default function CronMonitorPage() {
     running: runs.filter((r) => r.status === 'running').length,
   }
 
-  const visiblePendingItems = dupFilterOnly
-    ? pendingItems.filter((i) => i.queueDuplicateSuspect)
-    : pendingItems
+  const visiblePendingItems = useMemo(() => {
+    const base = dupFilterOnly
+      ? pendingItems.filter((i) => i.queueDuplicateSuspect)
+      : pendingItems
+    if (!selectedQueueSource) return base
+    return base.filter((i) => queueSourceLabel(i) === selectedQueueSource)
+  }, [pendingItems, dupFilterOnly, selectedQueueSource])
   const dupCount = pendingItems.filter((i) => i.queueDuplicateSuspect).length
+  const sourceChips = useMemo(() => {
+    const base = dupFilterOnly
+      ? pendingItems.filter((i) => i.queueDuplicateSuspect)
+      : pendingItems
+    const counts = new Map<string, number>()
+    for (const item of base) {
+      const key = queueSourceLabel(item)
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'tr'))
+  }, [pendingItems, dupFilterOnly])
 
   return (
     <div className="flex min-w-0 flex-col overflow-x-hidden">
@@ -589,7 +652,68 @@ export default function CronMonitorPage() {
                   <AlertTriangle className="h-2.5 w-2.5" />
                   Tekrarlar{dupCount > 0 ? ` (${dupCount})` : ''}
                 </button>
+                {selectedQueueSource ? (
+                  <button
+                    type="button"
+                    disabled={
+                      publishingSource ||
+                      publishingItemId !== null ||
+                      visiblePendingItems.length === 0
+                    }
+                    onClick={() => void publishSelectedSource()}
+                    className="inline-flex items-center gap-1 rounded-md border border-emerald-400 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"
+                  >
+                    {publishingSource ? (
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-2.5 w-2.5" />
+                    )}
+                    Bu kaynağı onayla ({visiblePendingItems.length})
+                  </button>
+                ) : null}
               </div>
+              {sourceChips.length > 0 ? (
+                <div className="mt-3 -mx-1 overflow-x-auto pb-1 [scrollbar-width:thin]">
+                  <div className="flex w-max gap-1.5 px-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedQueueSource(null)}
+                      className={cn(
+                        'shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition-colors',
+                        selectedQueueSource == null
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] hover:bg-amber-100 dark:hover:bg-amber-900/40'
+                      )}
+                    >
+                      Tümü
+                      <span className="ml-1 opacity-80">
+                        {dupFilterOnly ? dupCount : pendingItems.length}
+                      </span>
+                    </button>
+                    {sourceChips.map((chip) => (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        onClick={() =>
+                          setSelectedQueueSource((prev) =>
+                            prev === chip.label ? null : chip.label
+                          )
+                        }
+                        className={cn(
+                          'max-w-[220px] shrink-0 truncate rounded-full px-3 py-1 text-[11px] font-bold transition-colors',
+                          selectedQueueSource === chip.label
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] hover:bg-amber-100 dark:hover:bg-amber-900/40'
+                        )}
+                        title={chip.label}
+                      >
+                        {chip.label}
+                        <span className="ml-1 opacity-80">{chip.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div className="max-h-[400px] divide-y divide-[rgb(var(--color-border))] overflow-y-auto">
               {pendingLoading && pendingItems.length === 0 ? (
@@ -600,7 +724,11 @@ export default function CronMonitorPage() {
                 </div>
               ) : visiblePendingItems.length === 0 ? (
                 <div className="py-10 text-center text-sm text-[rgb(var(--color-muted))]">
-                  {dupFilterOnly ? 'İşaretli tekrar yok — önce tarama çalıştırın' : 'Kuyrukta bekleyen haber yok'}
+                  {dupFilterOnly
+                    ? 'İşaretli tekrar yok — önce tarama çalıştırın'
+                    : selectedQueueSource
+                      ? `"${selectedQueueSource}" kaynağında bekleyen haber yok`
+                      : 'Kuyrukta bekleyen haber yok'}
                 </div>
               ) : (
                 <>
@@ -618,7 +746,9 @@ export default function CronMonitorPage() {
                             {item.title}
                           </p>
                           <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[rgb(var(--color-muted))]">
-                            {item.source && <span>{item.source}</span>}
+                            {selectedQueueSource == null && item.source ? (
+                              <span>{item.source}</span>
+                            ) : null}
                             {item.category && (
                               <span className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 font-medium">
                                 {item.category}
@@ -676,7 +806,8 @@ export default function CronMonitorPage() {
                           disabled={
                             publishingItemId === item.id ||
                             deletingItemId === item.id ||
-                            editingItemId === item.id
+                            editingItemId === item.id ||
+                            publishingSource
                           }
                           onClick={() => void publishQueueItem(item.id)}
                           className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 sm:h-6 sm:w-6"
