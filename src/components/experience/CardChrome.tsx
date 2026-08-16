@@ -10,7 +10,7 @@ import {
 } from '@/lib/districtLabel'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { hasVideoContent } from '@/lib/postUtils'
-import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import {
   categoryPostHref,
   categoryPostImage,
@@ -34,7 +34,7 @@ export function useCardMeta(post: TimelinePost) {
     districtSlug: post.districtSlug,
   })
   const label = withDistrictCategoryLabel(getCategoryLabel(post.categoryId), districtLabel)
-  const time = formatNewsRelative(postIso(post))
+  const time = formatNewsDateBbc(postIso(post))
   const isVideo = hasVideoContent(post)
   const reading = post.readingTimeMinutes
   return { href, image, summary, label, time, isVideo, reading }

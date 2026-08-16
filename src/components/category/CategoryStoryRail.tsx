@@ -7,7 +7,7 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { hasVideoContent } from '@/lib/postUtils'
-import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import {
   categoryPostHref,
   categoryPostImage,
@@ -24,7 +24,7 @@ function RailCard({ post, priority = false }: { post: TimelinePost; priority?: b
   const image = categoryPostImage(post) || FEED_FALLBACK_LOGO
   const isVideo = hasVideoContent(post)
   const label = getCategoryLabel(post.categoryId)
-  const time = formatNewsRelative(postIso(post))
+  const time = formatNewsDateBbc(postIso(post))
 
   return (
     <Link href={categoryPostHref(post)} className="category-rail-card group">

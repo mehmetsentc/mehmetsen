@@ -6,7 +6,7 @@ import { TrendingUp } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import {
   categoryPostHref,
   categoryPostImage,
@@ -51,7 +51,7 @@ function MostReadCard({ post }: { post: TimelinePost }) {
   const href = categoryPostHref(post)
   const image = categoryPostImage(post) || FEED_FALLBACK_LOGO
   const label = getCategoryLabel(post.categoryId)
-  const time = formatNewsRelative(
+  const time = formatNewsDateBbc(
     typeof post.publishedAt === 'number'
       ? new Date(post.publishedAt).toISOString()
       : String(post.publishedAt ?? post.createdAt)

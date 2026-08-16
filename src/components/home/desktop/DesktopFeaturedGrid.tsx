@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
-import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import { HOME_FEATURED_LIMIT, type NewsItem } from '@/types/newsItem'
 
 /**
@@ -99,7 +99,7 @@ function LeadCard({ item }: { item: NewsItem }) {
 }
 
 function FeaturedSideCard({ item }: { item: NewsItem }) {
-  const time = formatNewsRelative(item.publishedAt ?? item.createdAt)
+  const time = formatNewsDateBbc(item.publishedAt ?? item.createdAt)
   return (
     <Link
       href={newsItemDetailHref(item)}
@@ -132,7 +132,7 @@ function FeaturedSideCard({ item }: { item: NewsItem }) {
 
 /** Alt satır — dikey kart; satırdaki hücreleri eşit doldurur. */
 function FeaturedTileCard({ item }: { item: NewsItem }) {
-  const time = formatNewsRelative(item.publishedAt ?? item.createdAt)
+  const time = formatNewsDateBbc(item.publishedAt ?? item.createdAt)
   return (
     <Link
       href={newsItemDetailHref(item)}

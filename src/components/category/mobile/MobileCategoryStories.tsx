@@ -7,7 +7,7 @@ import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { hasVideoContent } from '@/lib/postUtils'
 import { shouldShowBreakingBadge } from '@/lib/newsBreaking'
-import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import {
   categoryPostHref,
   categoryPostImage,
@@ -176,7 +176,7 @@ export function MobileCategoryVideo({ post }: { post: TimelinePost }) {
 
 export function MobileCategoryText({ post }: { post: TimelinePost }) {
   const summary = categoryPostSummary(post)
-  const time = formatNewsRelative(postIso(post))
+  const time = formatNewsDateBbc(postIso(post))
 
   return (
     <article className="mc-text">

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
-import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import { cn } from '@/lib/utils'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -73,7 +73,7 @@ function estimateReadingMinutes(item: NewsItem): number | null {
 }
 
 function StoryMeta({ item, className }: { item: NewsItem; className?: string }) {
-  const time = formatNewsRelative(item.publishedAt ?? item.createdAt)
+  const time = formatNewsDateBbc(item.publishedAt ?? item.createdAt)
   const mins = estimateReadingMinutes(item)
 
   if (!time && !mins) return null

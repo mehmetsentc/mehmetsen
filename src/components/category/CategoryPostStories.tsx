@@ -6,7 +6,7 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { hasVideoContent } from '@/lib/postUtils'
-import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import {
   categoryPostHref,
   categoryPostImage,
@@ -27,7 +27,7 @@ function CategoryBadge({ post }: { post: TimelinePost }) {
 }
 
 function StoryMeta({ post, className }: { post: TimelinePost; className?: string }) {
-  const time = formatNewsRelative(postIso(post))
+  const time = formatNewsDateBbc(postIso(post))
   if (!time) return null
   return <p className={cn('bbc-story-meta', className)}>{time}</p>
 }

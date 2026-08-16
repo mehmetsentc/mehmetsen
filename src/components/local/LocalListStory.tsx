@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
-import { formatNewsRelative } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import {
   categoryPostHref,
   categoryPostImage,
@@ -21,7 +21,7 @@ export function LocalListStory({ post }: { post: TimelinePost }) {
   const href = categoryPostHref(post)
   const image = categoryPostImage(post) || FEED_FALLBACK_LOGO
   const summary = categoryPostSummary(post)
-  const time = formatNewsRelative(postIso(post))
+  const time = formatNewsDateBbc(postIso(post))
 
   return (
     <Link href={href} className="local-list__row group">
