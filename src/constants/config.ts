@@ -829,32 +829,32 @@ export const TOP_NAV_CATEGORY_IDS = [
 ] as const
 
 /**
- * Concept B desktop — kırmızı üst bardaki birincil kategoriler.
- * Yalnızca mevcut route'lar (CATEGORY / LOCAL).
+ * Desktop header kısa etiketleri — global sıra getSiteNavItems'tan gelir.
  */
-export const HEADER_PRIMARY_NAV_IDS = [
-  'son-dakika',
-  'gundem',
-  'spor',
-  'ekonomi',
-  'dunya',
-  'teknoloji',
-  'yerel',
-] as const
+const HEADER_LABELS: Record<string, string> = {
+  feed: 'Ana Sayfa',
+  yerel: 'Yerel',
+  'kibris-haberleri': 'Kıbrıs',
+  siyaset: 'Politika',
+  'finans-piyasa': 'Finans',
+  kultur: 'Kültür Sanat',
+  asayis: '3. Sayfa',
+  video: 'Video',
+}
 
 /**
- * Concept B desktop — lacivert alt bardaki ikincil kategoriler.
+ * Concept B desktop — kırmızı üst bardaki birincil kategoriler.
+ * Sıra getHeaderAllNavItems (global dizilim) ile aynıdır.
  */
-export const HEADER_SECONDARY_NAV_IDS = [
-  'siyaset',
-  'finans-piyasa',
-  'saglik',
-  'kultur',
-  'magazin',
-  'yasam',
-  'egitim',
-  'video',
-  'turizm',
+export const HEADER_PRIMARY_NAV_IDS = [
+  'feed',
+  'son-dakika',
+  'gundem',
+  'yerel',
+  'asayis',
+  'spor',
+  'dunya',
+  'kibris-haberleri',
 ] as const
 
 export interface SiteNavItem {
@@ -934,6 +934,9 @@ function resolveHeaderNavItem(
   id: string,
   labelOverride?: string
 ): SiteNavItem | null {
+  if (id === 'feed') {
+    return { id: 'feed', label: labelOverride ?? 'Ana Sayfa', href: ROUTES.FEED }
+  }
   if (id === 'yerel') {
     return { id: 'yerel', label: labelOverride ?? 'Yerel', href: ROUTES.LOCAL }
   }
@@ -949,32 +952,39 @@ function resolveHeaderNavItem(
   }
 }
 
-const HEADER_SECONDARY_LABELS: Record<string, string> = {
-  siyaset: 'Politika',
-  'finans-piyasa': 'Finans',
-  kultur: 'Kültür Sanat',
-  video: 'Video',
+const HEADER_PRIMARY_ID_SET = new Set<string>(HEADER_PRIMARY_NAV_IDS)
+
+/**
+ * Desktop header — global kategori sırası (getSiteNavItems).
+ * Ana Sayfa'dan sonra Son Dakika; Ekonomi'den sonra Finans; sonda Video.
+ * Girintili alt kategoriler (sinema, tiyatro, astroloji, teve) üst barda yok.
+ */
+export function getHeaderAllNavItems(): SiteNavItem[] {
+  const sonDakika = resolveHeaderNavItem('son-dakika')
+  const finans = resolveHeaderNavItem('finans-piyasa', HEADER_LABELS['finans-piyasa'])
+  const video = resolveHeaderNavItem('video', HEADER_LABELS.video)
+
+  const items: SiteNavItem[] = []
+  for (const item of getSiteNavItems()) {
+    if (item.indent) continue
+    items.push({ ...item, label: HEADER_LABELS[item.id] ?? item.label })
+    if (item.id === 'feed' && sonDakika) items.push(sonDakika)
+    if (item.id === 'ekonomi' && finans) items.push(finans)
+  }
+  if (video && !items.some((existing) => existing.id === 'video')) {
+    items.push(video)
+  }
+  return items
 }
 
 /** Concept B — kırmızı bardaki birincil kategori linkleri. */
 export function getHeaderPrimaryNavItems(): SiteNavItem[] {
-  return HEADER_PRIMARY_NAV_IDS.map((id) => resolveHeaderNavItem(id))
-    .filter((item): item is SiteNavItem => item !== null)
+  return getHeaderAllNavItems().filter((item) => HEADER_PRIMARY_ID_SET.has(item.id))
 }
 
 /** Concept B — lacivert bardaki ikincil kategori linkleri. */
 export function getHeaderSecondaryNavItems(): SiteNavItem[] {
-  return HEADER_SECONDARY_NAV_IDS.map((id) =>
-    resolveHeaderNavItem(id, HEADER_SECONDARY_LABELS[id])
-  ).filter((item): item is SiteNavItem => item !== null)
-}
-
-/** Tüm kategoriler birleşik — birincil + ikincil sırasıyla, alt bar'da tek satır. */
-export function getHeaderAllNavItems(): SiteNavItem[] {
-  return [
-    ...getHeaderPrimaryNavItems(),
-    ...getHeaderSecondaryNavItems(),
-  ]
+  return getHeaderAllNavItems().filter((item) => !HEADER_PRIMARY_ID_SET.has(item.id))
 }
 
 export interface SwipeDestination {
