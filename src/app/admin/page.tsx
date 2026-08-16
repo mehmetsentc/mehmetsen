@@ -15,6 +15,7 @@ import { auth } from '@/lib/firebase/auth'
 import { Collections, db } from '@/lib/firebase/firestore'
 import { collection, getCountFromServer, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import { adminService } from '@/services/adminService'
+import { countVisiblePendingApprovals, isDuplicateNewsData } from '@/services/adminNewsService'
 
 let _pageStatsCache: { data: OsDashStats; t: number } | null = null
 const PAGE_STATS_TTL = 5 * 60 * 1000
@@ -75,11 +76,9 @@ export default function AdminIndexPage() {
     try {
       const startOfDay = new Date()
       startOfDay.setHours(0, 0, 0, 0)
-      const [publishedSnap, pendingSnap, todaySnap, usersSnap, draftSnap] = await Promise.all([
+      const [publishedSnap, pendingReview, todaySnap, usersSnap, draftSnap] = await Promise.all([
         getCountFromServer(query(collection(db, Collections.NEWS), where('status', '==', 'published'))).catch(() => null),
-        getCountFromServer(query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))).catch(
-          () => null
-        ),
+        countVisiblePendingApprovals().catch(() => 0),
         getCountFromServer(
           query(
             collection(db, Collections.NEWS),
@@ -88,7 +87,7 @@ export default function AdminIndexPage() {
           )
         ).catch(() => null),
         getCountFromServer(collection(db, 'users')).catch(() => null),
-        getCountFromServer(query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'draft'))).catch(() => null),
+        getCountFromServer(query(collection(db, Collections.NEWS), where('status', '==', 'draft'))).catch(() => null),
       ])
 
       let totalReads: number | null = null
@@ -103,7 +102,7 @@ export default function AdminIndexPage() {
       const next: OsDashStats = {
         ...EMPTY_STATS,
         totalPublished: publishedSnap?.data().count ?? 0,
-        pendingReview: pendingSnap?.data().count ?? 0,
+        pendingReview: pendingReview,
         publishedToday: todaySnap?.data().count ?? 0,
         totalUsers: usersSnap?.data().count ?? 0,
         draftCount: draftSnap?.data().count ?? 0,
@@ -172,7 +171,9 @@ export default function AdminIndexPage() {
     const u2 = onSnapshot(
       qPending,
       (snap) => {
-        pending = snap.docs.map((d) => {
+        pending = snap.docs
+          .filter((d) => !isDuplicateNewsData(d.data()))
+          .map((d) => {
           const data = d.data()
           return {
             id: `p-${d.id}`,

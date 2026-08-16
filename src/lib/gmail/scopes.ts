@@ -20,6 +20,12 @@ export function hasGmailReadonlyScope(scope: string | undefined | null): boolean
   )
 }
 
+/** Required to remove UNREAD (mark as read) and move/delete labels */
+export function hasGmailModifyScope(scope: string | undefined | null): boolean {
+  if (!scope) return false
+  return scope.includes(GMAIL_MODIFY_SCOPE) || scope.includes('https://mail.google.com/')
+}
+
 export function hasGmailSendScope(scope: string | undefined | null): boolean {
   if (!scope) return false
   return (

@@ -6,7 +6,7 @@ import { Bell, Search, Plus, ExternalLink, RefreshCw, HelpCircle } from 'lucide-
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { cn } from '@/lib/utils'
 import { db } from '@/lib/firebase/firestore'
-import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer, getDocs } from 'firebase/firestore'
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import type { CmsNotification } from '@/types/cms'
 import { CMS_ROLE_COLORS } from '@/types/cms'
 import { getSiteUrl } from '@/lib/seo'
@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { AdminCommandPalette, useAdminCommandHotkey } from '@/components/admin/AdminCommandPalette'
 import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle'
+import { countVisiblePendingApprovals, isDuplicateNewsData } from '@/services/adminNewsService'
 
 const SEEN_KEY = 'cms_notif_seen_at'
 
@@ -52,7 +53,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
         const items: CmsNotification[] = snap.docs
           .filter((doc) => {
             const d = doc.data()
-            return d.isDuplicate !== true && d.categoryId !== 'tekrarlayan'
+            return !isDuplicateNewsData(d)
           })
           .map((doc) => {
           const d = doc.data()
@@ -152,44 +153,8 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
     let cancelled = false
     const fetchCount = async () => {
       try {
-        const q =
-          seenAt > 0
-            ? query(
-                collection(db, 'newsDrafts'),
-                where('draftStatus', '==', 'pending_review'),
-                where('createdAt', '>', seenAt)
-              )
-            : query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))
-        const snap = await getCountFromServer(q)
-        if (!cancelled) {
-          // Ham count tekrar stub'larını da sayabilir; liste ile hizala
-          let n = snap.data().count
-          if (n > 0 && n <= 50) {
-            try {
-              const docs = await getDocs(
-                seenAt > 0
-                  ? query(
-                      collection(db, 'newsDrafts'),
-                      where('draftStatus', '==', 'pending_review'),
-                      where('createdAt', '>', seenAt),
-                      limit(50)
-                    )
-                  : query(
-                      collection(db, 'newsDrafts'),
-                      where('draftStatus', '==', 'pending_review'),
-                      limit(50)
-                    )
-              )
-              n = docs.docs.filter((d) => {
-                const data = d.data()
-                return data.isDuplicate !== true && data.categoryId !== 'tekrarlayan'
-              }).length
-            } catch {
-              /* keep server count */
-            }
-          }
-          setPendingCount(n)
-        }
+        const n = await countVisiblePendingApprovals()
+        if (!cancelled) setPendingCount(n)
       } catch {
         /* ignore */
       }
@@ -200,7 +165,7 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
       cancelled = true
       clearInterval(interval)
     }
-  }, [seenAt])
+  }, [])
 
   function openNotifications() {
     const now = Date.now()

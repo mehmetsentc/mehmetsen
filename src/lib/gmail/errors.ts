@@ -21,7 +21,7 @@ export const GMAIL_USER_MESSAGES: Record<GmailErrorCode, string> = {
   RECONNECT_REQUIRED: 'Google erişimi sona ermiş. Gmail hesabını yeniden bağlayın.',
   INVALID_GRANT: 'Google erişimi sona ermiş. Gmail hesabını yeniden bağlayın.',
   INVALID_CLIENT: 'Gmail bağlantı yapılandırmasında hatalı istemci ayarı var.',
-  INSUFFICIENT_SCOPE: 'Gmail okuma izni eksik. Hesabı yeniden yetkilendirin.',
+  INSUFFICIENT_SCOPE: 'Gmail yazma izni eksik. Okundu işaretlemek için hesabı yeniden bağlayın.',
   GMAIL_API_DISABLED: 'Gmail API bu Google Cloud projesinde etkin değil.',
   PERMISSION_DENIED: 'Bu Gmail hesabına erişim izniniz yok.',
   RATE_LIMITED: 'Google geçici olarak istekleri sınırladı. Bir süre sonra tekrar deneyin.',

@@ -16,6 +16,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { cn } from '@/lib/utils'
+import { countVisiblePendingApprovals, isDuplicateNewsData } from '@/services/adminNewsService'
 
 function tsToMs(val: unknown): number {
   if (typeof val === 'number') return val
@@ -45,15 +46,14 @@ export function MobileHome() {
 
   const refreshCounts = useCallback(async () => {
     try {
-      const [pendingSnap, breakingSnap] = await Promise.all([
-        getCountFromServer(query(collection(db, 'newsDrafts'), where('draftStatus', '==', 'pending_review'))).catch(() => null),
+      const [pending, breakingSnap] = await Promise.all([
+        countVisiblePendingApprovals().catch(() => 0),
         getCountFromServer(
           query(collection(db, Collections.NEWS), where('isBreaking', '==', true), where('status', '==', 'published'))
         ).catch(() => null),
       ])
-      const p = pendingSnap?.data().count ?? 0
-      setPendingCount(p)
-      setPendingBadge(p)
+      setPendingCount(pending)
+      setPendingBadge(pending)
       setBreakingCount(breakingSnap?.data().count ?? 0)
     } catch {
       /* ignore */
@@ -77,7 +77,9 @@ export function MobileHome() {
       q,
       (snap) => {
         setIncoming(
-          snap.docs.map((d) => {
+          snap.docs
+            .filter((d) => !isDuplicateNewsData(d.data()))
+            .map((d) => {
             const data = d.data()
             return {
               id: d.id,
@@ -91,8 +93,6 @@ export function MobileHome() {
             }
           })
         )
-        setPendingCount(snap.size >= 5 ? Math.max(pendingCount, 5) : snap.size)
-        if (snap.size < 5) setPendingBadge(snap.size)
       },
       () => setIncoming([])
     )

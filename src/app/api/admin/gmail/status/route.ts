@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getInboxBadgeCounts, getIntegration } from '@/services/gmailService'
+import { hasGmailModifyScope } from '@/lib/gmail/scopes'
 import { isGmailOAuthConfigured, isGmailEncryptionConfigured } from '@/lib/gmail/oauth'
 import { gmailJsonError } from '@/lib/gmail/http'
 
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
       connectedBy: integration.connectedBy,
       messagesUnread: badge.messagesUnread,
       messagesTotal: badge.messagesTotal,
+      canModify: hasGmailModifyScope(integration.scope),
     })
   } catch (err) {
     return gmailJsonError(err)

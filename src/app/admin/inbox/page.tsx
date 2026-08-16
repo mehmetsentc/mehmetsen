@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Mail, Shield, RefreshCw, Inbox, FileText, AlertCircle,
   WifiOff, LogOut, ChevronRight, Send, Reply, X, PenSquare,
@@ -10,6 +10,13 @@ import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { cn } from '@/lib/utils'
 import type { GmailMessageSummary, GmailMessageDetail } from '@/lib/gmail/types'
 import { auth } from '@/lib/firebase/auth'
+import toast from 'react-hot-toast'
+
+const GMAIL_UNREAD_EVENT = 'nahaber:gmail-unread'
+
+function emitGmailUnreadDelta(delta: number) {
+  window.dispatchEvent(new CustomEvent(GMAIL_UNREAD_EVENT, { detail: { delta } }))
+}
 
 async function getToken(): Promise<string> {
   return (await auth.currentUser?.getIdToken()) ?? ''
@@ -32,6 +39,7 @@ interface StatusData {
   misconfigured?: boolean
   messagesUnread?: number
   messagesTotal?: number
+  canModify?: boolean
 }
 
 interface ComposeData {
@@ -305,17 +313,12 @@ function MessageDetail({
     setMsg(null)
     setDraftId(null)
     setError('')
-    authFetch(`/api/admin/gmail/messages/${messageId}`)
+    authFetch(`/api/admin/gmail/messages/${encodeURIComponent(messageId)}`)
       .then(r => r.json())
       .then((d: GmailMessageDetail & { error?: string }) => {
         if (d.error) throw new Error(d.error)
         setMsg(d)
-        // Auto-mark as read (fire-and-forget)
-        if (d.unread) {
-          void authFetch(`/api/admin/gmail/messages/${messageId}/mark-read`, { method: 'POST' })
-            .then(() => onMarkRead(messageId))
-            .catch(() => { /* non-fatal */ })
-        }
+        if (d.unread) onMarkRead(messageId)
       })
       .catch(e => setError(e instanceof Error ? e.message : 'Yüklenemedi'))
       .finally(() => setLoading(false))
@@ -325,7 +328,7 @@ function MessageDetail({
     if (!canCreate || converting) return
     setConverting(true)
     try {
-      const r = await authFetch(`/api/admin/gmail/messages/${messageId}/to-draft`, { method: 'POST' })
+      const r = await authFetch(`/api/admin/gmail/messages/${encodeURIComponent(messageId)}/to-draft`, { method: 'POST' })
       const d = await r.json() as { draftId?: string; error?: string }
       if (d.error) throw new Error(d.error)
       setDraftId(d.draftId ?? 'ok')
@@ -445,12 +448,14 @@ export default function AdminInboxPage() {
   const [envMissing, setEnvMissing] = useState(false)
   const [callbackError, setCallbackError] = useState('')
   const [compose, setCompose] = useState<ComposeData | null>(null)
+  const locallyReadIds = useRef(new Set<string>())
+  const [reconnecting, setReconnecting] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     window.history.replaceState({}, '', '/admin/inbox')
     const ERRORS: Record<string, string> = {
-      missing_scope: 'Gmail okuma/gönderme izni verilmedi. Lütfen tekrar bağlanın.',
+      missing_scope: 'Gmail okuma/yazma izni verilmedi. Okundu işaretlemek için tekrar bağlayın.',
       no_refresh_token: 'Google yenileme token\'ı döndürmedi. Tekrar deneyin.',
       wrong_account: 'Yanlış Google hesabı seçildi.',
       invalid_state: 'Bağlantı isteği süresi doldu.',
@@ -486,7 +491,14 @@ export default function AdminInboxPage() {
         setMsgError(d.message ?? `Gmail hatası: ${d.error}`)
         return
       }
-      setMessages(prev => pageToken ? [...prev, ...(d.messages ?? [])] : (d.messages ?? []))
+      setMessages((prev) => {
+        const incoming = pageToken ? [...prev, ...(d.messages ?? [])] : (d.messages ?? [])
+        return incoming.map((m) =>
+          locallyReadIds.current.has(m.id)
+            ? { ...m, unread: false, labelIds: m.labelIds.filter((l) => l !== 'UNREAD') }
+            : m
+        )
+      })
       setNextPageToken(d.nextPageToken)
     } catch {
       setMsgError('Mesajlar yüklenemedi.')
@@ -513,10 +525,69 @@ export default function AdminInboxPage() {
     }
   }
 
-  // When a message is opened and marked read, update local state
-  const handleMarkRead = useCallback((id: string) => {
-    setMessages(prev => prev.map(m => m.id === id ? { ...m, unread: false, labelIds: m.labelIds.filter(l => l !== 'UNREAD') } : m))
-  }, [])
+  const markRead = useCallback(async (id: string) => {
+    if (locallyReadIds.current.has(id)) return
+    if (status?.canModify === false) return
+    locallyReadIds.current.add(id)
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? { ...m, unread: false, labelIds: m.labelIds.filter((l) => l !== 'UNREAD') }
+          : m
+      )
+    )
+    setStatus((prev) =>
+      prev
+        ? { ...prev, messagesUnread: Math.max(0, (prev.messagesUnread ?? 1) - 1) }
+        : prev
+    )
+    emitGmailUnreadDelta(-1)
+    try {
+      const r = await authFetch(
+        `/api/admin/gmail/messages/${encodeURIComponent(id)}/mark-read`,
+        { method: 'POST' },
+      )
+      const d = (await r.json().catch(() => ({}))) as { error?: string; message?: string }
+      if (!r.ok) throw new Error(d.message || d.error || `HTTP ${r.status}`)
+    } catch (e) {
+      locallyReadIds.current.delete(id)
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                unread: true,
+                labelIds: m.labelIds.includes('UNREAD') ? m.labelIds : [...m.labelIds, 'UNREAD'],
+              }
+            : m
+        )
+      )
+      setStatus((prev) =>
+        prev ? { ...prev, messagesUnread: (prev.messagesUnread ?? 0) + 1 } : prev
+      )
+      emitGmailUnreadDelta(1)
+      toast.error(e instanceof Error ? e.message : 'Okundu olarak işaretlenemedi')
+    }
+  }, [status?.canModify])
+
+  async function reconnectGmail() {
+    if (reconnecting) return
+    setReconnecting(true)
+    try {
+      const r = await authFetch('/api/admin/gmail/connect')
+      const d = (await r.json()) as { error?: string; message?: string; authUrl?: string }
+      if (!r.ok || d.error) throw new Error(d.message || d.error || 'Bağlantı başlatılamadı')
+      window.location.href = d.authUrl!
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gmail yeniden bağlanamadı')
+      setReconnecting(false)
+    }
+  }
+
+  function openMessage(msg: GmailMessageSummary) {
+    setSelectedId(msg.id)
+    if (msg.unread) void markRead(msg.id)
+  }
 
   function openCompose() {
     setCompose({ to: '', subject: '', body: '' })
@@ -602,7 +673,26 @@ export default function AdminInboxPage() {
             <NotConnectedState canManage={canManage} />
           </>
         ) : (
-          <>
+          <div className="flex min-h-0 flex-1 flex-col">
+            {status.canModify === false ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2.5">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                <p className="flex-1 text-xs font-medium text-amber-900 dark:text-amber-200">
+                  Gmail yalnızca okuma izniyle bağlı. Mesajlar okunsa bile okunmamış kalır. Okundu işaretlemek için hesabı yeniden bağlayın.
+                </p>
+                {canManage ? (
+                  <button
+                    type="button"
+                    onClick={() => void reconnectGmail()}
+                    disabled={reconnecting}
+                    className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    {reconnecting ? 'Yönlendiriliyor…' : 'Yeniden bağla'}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex min-h-0 flex-1 overflow-hidden">
             {/* Message list */}
             <div className={cn(
               'flex flex-col border-r border-[rgb(var(--color-border))]',
@@ -642,7 +732,7 @@ export default function AdminInboxPage() {
                         key={msg.id}
                         msg={msg}
                         selected={msg.id === selectedId}
-                        onClick={() => setSelectedId(msg.id)}
+                        onClick={() => openMessage(msg)}
                       />
                     ))}
                     {nextPageToken && (
@@ -672,7 +762,7 @@ export default function AdminInboxPage() {
                   canCreate={canCreate}
                   fromEmail={status.accountEmail ?? 'bilgi@nahaber.com'}
                   onClose={() => setSelectedId(null)}
-                  onMarkRead={handleMarkRead}
+                  onMarkRead={markRead}
                   onReply={setCompose}
                 />
               ) : (
@@ -690,7 +780,8 @@ export default function AdminInboxPage() {
                 </div>
               )}
             </div>
-          </>
+            </div>
+          </div>
         )}
       </div>
 

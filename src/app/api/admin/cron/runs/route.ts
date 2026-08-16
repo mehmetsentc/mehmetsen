@@ -4,6 +4,7 @@
  * ?pendingDetails=1 → kuyruk bekleyen listesi (opsiyonel; hata olsa bile runs döner).
  */
 import { NextResponse } from 'next/server'
+import { FieldPath } from 'firebase-admin/firestore'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 
@@ -76,6 +77,8 @@ export async function GET(request: Request) {
       parseInt(url.searchParams.get('pendingLimit') ?? '100', 10) || 100,
       100
     )
+    const pendingSource = url.searchParams.get('pendingSource')?.trim() || ''
+    const pendingDupOnly = url.searchParams.get('pendingDupOnly') === '1'
 
     const runsQuery = job
       ? db
@@ -129,40 +132,105 @@ export async function GET(request: Request) {
         }>
       | undefined
     let pendingError: string | undefined
+    let sourceCounts: Array<{ label: string; count: number }> | undefined
+    let pendingFilteredCount: number | undefined
+    let dupCount: number | undefined
 
     if (wantPendingDetails) {
       try {
-        const pSnap = await db
-          .collection('newsQueue')
-          .where('status', '==', 'pending')
-          .orderBy('createdAt', 'desc')
-          .offset(pendingOffset)
-          .limit(pendingLimit)
-          .get()
+        const pendingCol = db.collection('newsQueue').where('status', '==', 'pending')
+        let indexSnap
+        try {
+          indexSnap = await pendingCol
+            .select(
+              new FieldPath('input', 'sourceLabel'),
+              'sourceId',
+              'createdAt',
+              'queueDuplicateSuspect',
+            )
+            .get()
+        } catch {
+          indexSnap = await pendingCol
+            .select('sourceId', 'createdAt', 'queueDuplicateSuspect')
+            .get()
+        }
 
-        pendingItems = pSnap.docs.map((d) => {
-          const data = d.data()
-          const input = (data.input ?? {}) as Record<string, unknown>
+        const index = indexSnap.docs.map((d) => {
+          const data = d.data() as {
+            input?: { sourceLabel?: unknown }
+            sourceId?: unknown
+            createdAt?: unknown
+            queueDuplicateSuspect?: unknown
+          }
+          const label =
+            String(data.input?.sourceLabel ?? '').trim() ||
+            String(data.sourceId ?? '').trim() ||
+            'Kaynaksız'
           return {
             id: d.id,
-            title: String((input.originalTitle as string) ?? '(başlıksız)').slice(0, 300),
-            source: String((input.sourceLabel as string) ?? '').slice(0, 120),
-            workerId: String((data.workerId as string) ?? ''),
-            category: (input.forcedCategoryId as string) ?? null,
+            source: label,
+            dup: data.queueDuplicateSuspect === true,
             createdAt: toEpochMs(data.createdAt) ?? 0,
-            attempts: (data.attempts as number) ?? 0,
-            queueDuplicateSuspect: data.queueDuplicateSuspect === true,
-            queueDuplicateRole: (data.queueDuplicateRole as string) ?? null,
-            queueDuplicateOf: (data.queueDuplicateOf as string) ?? null,
-            queueDuplicateSimilarity:
-              typeof data.queueDuplicateSimilarity === 'number'
-                ? data.queueDuplicateSimilarity
-                : null,
-            qualityScore: typeof data.qualityScore === 'number' ? data.qualityScore : null,
-            peerQualityScore:
-              typeof data.peerQualityScore === 'number' ? data.peerQualityScore : null,
           }
         })
+
+        dupCount = index.filter((row) => row.dup).length
+        const countBase = pendingDupOnly ? index.filter((row) => row.dup) : index
+        const counts = new Map<string, number>()
+        for (const row of countBase) {
+          counts.set(row.source, (counts.get(row.source) ?? 0) + 1)
+        }
+        sourceCounts = Array.from(counts.entries())
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'tr'))
+
+        let filtered = pendingDupOnly ? index.filter((row) => row.dup) : index
+        if (pendingSource) {
+          filtered = filtered.filter((row) => row.source === pendingSource)
+        }
+        filtered.sort((a, b) => b.createdAt - a.createdAt)
+        pendingFilteredCount = filtered.length
+        const pageIds = filtered.slice(pendingOffset, pendingOffset + pendingLimit).map((row) => row.id)
+
+        if (pageIds.length > 0) {
+          const docs = []
+          for (let i = 0; i < pageIds.length; i += 80) {
+            const chunk = pageIds.slice(i, i + 80)
+            const refs = chunk.map((id) => db.collection('newsQueue').doc(id))
+            docs.push(...(await db.getAll(...refs)))
+          }
+          const byId = new Map(docs.filter((doc) => doc.exists).map((doc) => [doc.id, doc]))
+          pendingItems = pageIds.flatMap((id) => {
+            const d = byId.get(id)
+            if (!d) return []
+            const data = d.data() ?? {}
+            const input = (data.input ?? {}) as Record<string, unknown>
+            return [{
+              id: d.id,
+              title: String((input.originalTitle as string) ?? '(başlıksız)').slice(0, 300),
+              source: (
+                String((input.sourceLabel as string) ?? '').trim() ||
+                String((data.sourceId as string) ?? '').trim()
+              ).slice(0, 120),
+              workerId: String((data.workerId as string) ?? ''),
+              category: (input.forcedCategoryId as string) ?? null,
+              createdAt: toEpochMs(data.createdAt) ?? 0,
+              attempts: (data.attempts as number) ?? 0,
+              queueDuplicateSuspect: data.queueDuplicateSuspect === true,
+              queueDuplicateRole: (data.queueDuplicateRole as string) ?? null,
+              queueDuplicateOf: (data.queueDuplicateOf as string) ?? null,
+              queueDuplicateSimilarity:
+                typeof data.queueDuplicateSimilarity === 'number'
+                  ? data.queueDuplicateSimilarity
+                  : null,
+              qualityScore: typeof data.qualityScore === 'number' ? data.qualityScore : null,
+              peerQualityScore:
+                typeof data.peerQualityScore === 'number' ? data.peerQualityScore : null,
+            }]
+          })
+        } else {
+          pendingItems = []
+        }
       } catch (pendingErr) {
         pendingError =
           pendingErr instanceof Error ? pendingErr.message : String(pendingErr)
@@ -174,6 +242,9 @@ export async function GET(request: Request) {
       queuePending,
       ...(pendingItems ? { pendingItems } : {}),
       ...(pendingError ? { pendingError } : {}),
+      ...(sourceCounts ? { sourceCounts } : {}),
+      ...(pendingFilteredCount != null ? { pendingFilteredCount } : {}),
+      ...(dupCount != null ? { dupCount } : {}),
     })
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)

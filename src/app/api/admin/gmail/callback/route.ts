@@ -5,6 +5,7 @@
  */
 import { NextResponse } from 'next/server'
 import { exchangeCodeForTokens } from '@/lib/gmail/oauth'
+import { hasGmailModifyScope } from '@/lib/gmail/scopes'
 import { decrypt } from '@/lib/gmail/crypto'
 import { saveTokens } from '@/services/gmailService'
 import { getAdminFirestore, getAdminAuth } from '@/lib/firebase/admin'
@@ -69,11 +70,11 @@ export async function GET(request: Request) {
       }
     }
 
-    // Exchange code for tokens (throws INSUFFICIENT_SCOPE if gmail.readonly missing)
+    // Exchange code for tokens (throws INSUFFICIENT_SCOPE if read access missing)
     const tokens = await exchangeCodeForTokens(code)
 
-    // Defense-in-depth scope check
-    if (!tokens.scope.includes('gmail.readonly')) {
+    // gmail.modify is required to mark messages read (gmail.readonly cannot)
+    if (!hasGmailModifyScope(tokens.scope)) {
       return NextResponse.redirect(`${adminUrl}?error=missing_scope`)
     }
 

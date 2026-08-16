@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import {
   Clock, Play, CheckCircle2, XCircle, Loader2, AlertTriangle, Activity, Timer, RefreshCw,
-  List, ChevronLeft, ChevronRight, Trash2, Zap, Pencil, Copy,
+  Search, List, ChevronLeft, ChevronRight, Trash2, Zap, Pencil, Copy,
 } from 'lucide-react'
 import { QueueItemEditor } from '@/components/admin/QueueItemEditor'
 import { cn } from '@/lib/utils'
@@ -104,6 +104,10 @@ export default function CronMonitorPage() {
   const [purgingDuplicates, setPurgingDuplicates] = useState(false)
   const [dupFilterOnly, setDupFilterOnly] = useState(false)
   const [selectedQueueSource, setSelectedQueueSource] = useState<string | null>(null)
+  const [sourceSearch, setSourceSearch] = useState('')
+  const [sourceCounts, setSourceCounts] = useState<Array<{ label: string; count: number }>>([])
+  const [pendingFilteredCount, setPendingFilteredCount] = useState<number | null>(null)
+  const [dupCount, setDupCount] = useState(0)
   const [publishingItemId, setPublishingItemId] = useState<string | null>(null)
   const [publishingSource, setPublishingSource] = useState(false)
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
@@ -124,6 +128,8 @@ export default function CronMonitorPage() {
         params.set('pendingDetails', '1')
         params.set('pendingLimit', String(PAGE_SIZE))
         params.set('pendingOffset', String(pendingPage * PAGE_SIZE))
+        if (selectedQueueSource) params.set('pendingSource', selectedQueueSource)
+        if (dupFilterOnly) params.set('pendingDupOnly', '1')
       }
       const qs = params.toString()
       const res = await fetch(`/api/admin/cron/runs${qs ? `?${qs}` : ''}`, {
@@ -134,6 +140,9 @@ export default function CronMonitorPage() {
         queuePending?: number
         pendingItems?: PendingQueueItem[]
         pendingError?: string
+        sourceCounts?: Array<{ label: string; count: number }>
+        pendingFilteredCount?: number
+        dupCount?: number
         error?: string
       }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
@@ -142,6 +151,11 @@ export default function CronMonitorPage() {
       if (data.pendingItems) {
         setPendingItems(data.pendingItems)
       }
+      if (data.sourceCounts) setSourceCounts(data.sourceCounts)
+      if (typeof data.pendingFilteredCount === 'number') {
+        setPendingFilteredCount(data.pendingFilteredCount)
+      }
+      if (typeof data.dupCount === 'number') setDupCount(data.dupCount)
       if (data.pendingError) {
         toast.error(`Kuyruk listesi: ${data.pendingError}`)
       }
@@ -151,7 +165,7 @@ export default function CronMonitorPage() {
       setLoading(false)
       setPendingLoading(false)
     }
-  }, [tab, pendingPage])
+  }, [tab, pendingPage, selectedQueueSource, dupFilterOnly])
 
   useEffect(() => {
     if (pauseAutoRefresh) return
@@ -161,10 +175,10 @@ export default function CronMonitorPage() {
   }, [load, tab, pauseAutoRefresh])
 
   useEffect(() => {
-    if (queuePending == null) return
-    const maxPage = Math.max(0, Math.ceil(queuePending / PAGE_SIZE) - 1)
+    if (pendingFilteredCount == null) return
+    const maxPage = Math.max(0, Math.ceil(pendingFilteredCount / PAGE_SIZE) - 1)
     if (pendingPage > maxPage) setPendingPage(maxPage)
-  }, [queuePending, pendingPage])
+  }, [pendingFilteredCount, pendingPage])
 
   const closeQueueEditor = useCallback(() => {
     setEditingItemId(null)
@@ -189,17 +203,32 @@ export default function CronMonitorPage() {
   const handleEditorPublished = useCallback(() => {
     const id = editingItemId
     if (!id) return
+    const publishedItem = pendingItems.find((i) => i.id === id)
+    const publishedSource = publishedItem ? queueSourceLabel(publishedItem) : null
     setPendingItems((prev) => prev.filter((i) => i.id !== id))
     setQueuePending((prev) => (prev != null ? prev - 1 : prev))
+    setPendingFilteredCount((prev) => (prev != null ? Math.max(0, prev - 1) : prev))
+    if (publishedSource) {
+      setSourceCounts((prev) =>
+        prev
+          .map((chip) => (chip.label === publishedSource ? { ...chip, count: chip.count - 1 } : chip))
+          .filter((chip) => chip.count > 0)
+      )
+    }
     setEditingItemId(null)
     setEditorBusy(false)
     void load(tab === 'queue')
-  }, [editingItemId, load, tab])
+  }, [editingItemId, load, pendingItems, tab])
 
   const goToPendingPage = useCallback((page: number) => {
     setPendingPage(Math.max(0, page))
     setPendingLoading(true)
-    setSelectedQueueSource(null)
+  }, [])
+
+  const selectQueueSource = useCallback((label: string | null) => {
+    setSelectedQueueSource(label)
+    setPendingPage(0)
+    setPendingLoading(true)
   }, [])
 
   const cleanupStuck = async () => {
@@ -340,6 +369,8 @@ export default function CronMonitorPage() {
 
   const deleteQueueItem = async (id: string) => {
     if (deletingItemId) return
+    const removed = pendingItems.find((i) => i.id === id)
+    const sourceLabel = removed ? queueSourceLabel(removed) : null
     setDeletingItemId(id)
     try {
       const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -351,6 +382,14 @@ export default function CronMonitorPage() {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setPendingItems((prev) => prev.filter((i) => i.id !== id))
       setQueuePending((prev) => (prev != null ? prev - 1 : prev))
+      setPendingFilteredCount((prev) => (prev != null ? Math.max(0, prev - 1) : prev))
+      if (sourceLabel) {
+        setSourceCounts((prev) =>
+          prev
+            .map((chip) => (chip.label === sourceLabel ? { ...chip, count: chip.count - 1 } : chip))
+            .filter((chip) => chip.count > 0)
+        )
+      }
       toast.success('Haber kuyruktan silindi')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Silme hatası')
@@ -383,6 +422,16 @@ export default function CronMonitorPage() {
         }
         setPendingItems((prev) => prev.filter((i) => i.id !== id))
         setQueuePending((prev) => (prev != null ? prev - 1 : prev))
+        setPendingFilteredCount((prev) => (prev != null ? Math.max(0, prev - 1) : prev))
+        const publishedItem = pendingItems.find((i) => i.id === id)
+        const publishedSource = publishedItem ? queueSourceLabel(publishedItem) : null
+        if (publishedSource) {
+          setSourceCounts((prev) =>
+            prev
+              .map((chip) => (chip.label === publishedSource ? { ...chip, count: chip.count - 1 } : chip))
+              .filter((chip) => chip.count > 0)
+          )
+        }
         return data.published ? 'published' : 'drafted'
       }
       if (data.failed) {
@@ -404,13 +453,10 @@ export default function CronMonitorPage() {
 
   const publishSelectedSource = async () => {
     if (!selectedQueueSource || publishingSource || publishingItemId) return
-    const ids = pendingItems
-      .filter((i) => !dupFilterOnly || i.queueDuplicateSuspect)
-      .filter((i) => queueSourceLabel(i) === selectedQueueSource)
-      .map((i) => i.id)
+    const ids = pendingItems.map((i) => i.id)
     if (ids.length === 0) return
     const ok = window.confirm(
-      `"${selectedQueueSource}" kaynağındaki ${ids.length} haber sırayla yayınlanacak.\n\nDevam?`
+      `"${selectedQueueSource}" kaynağındaki bu sayfadaki ${ids.length} haber sırayla yayınlanacak.\n\nDevam?`
     )
     if (!ok) return
     setPublishingSource(true)
@@ -484,35 +530,23 @@ export default function CronMonitorPage() {
     running: runs.filter((r) => r.status === 'running').length,
   }
 
-  const visiblePendingItems = useMemo(() => {
-    const base = dupFilterOnly
-      ? pendingItems.filter((i) => i.queueDuplicateSuspect)
-      : pendingItems
-    if (!selectedQueueSource) return base
-    return base.filter((i) => queueSourceLabel(i) === selectedQueueSource)
-  }, [pendingItems, dupFilterOnly, selectedQueueSource])
-  const dupCount = pendingItems.filter((i) => i.queueDuplicateSuspect).length
+  const visiblePendingItems = pendingItems
   const sourceChips = useMemo(() => {
-    const base = dupFilterOnly
-      ? pendingItems.filter((i) => i.queueDuplicateSuspect)
-      : pendingItems
-    const counts = new Map<string, number>()
-    for (const item of base) {
-      const key = queueSourceLabel(item)
-      counts.set(key, (counts.get(key) ?? 0) + 1)
-    }
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'tr'))
-  }, [pendingItems, dupFilterOnly])
+    const q = sourceSearch.trim().toLocaleLowerCase('tr')
+    const chips = q
+      ? sourceCounts.filter((chip) => chip.label.toLocaleLowerCase('tr').includes(q))
+      : sourceCounts
+    return chips
+  }, [sourceCounts, sourceSearch])
 
+  const listCount = pendingFilteredCount ?? pendingItems.length
+  const totalPages = Math.max(1, Math.ceil(listCount / PAGE_SIZE))
+  const pageStart = listCount ? pendingPage * PAGE_SIZE + 1 : 0
+  const pageEnd = pendingPage * PAGE_SIZE + pendingItems.length
   const runningRuns = useMemo(
     () => runs.filter((r) => r.status === 'running'),
     [runs],
   )
-  const totalPages = Math.max(1, Math.ceil((queuePending ?? 0) / PAGE_SIZE))
-  const pageStart = queuePending ? pendingPage * PAGE_SIZE + 1 : 0
-  const pageEnd = pendingPage * PAGE_SIZE + pendingItems.length
 
   return (
     <div className="flex min-w-0 flex-col overflow-x-hidden">
@@ -555,7 +589,7 @@ export default function CronMonitorPage() {
           {queuePending != null && (
             <span className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-amber-100 px-3 py-2 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 sm:w-auto">
               <List className="h-3 w-3" />
-              Kuyruk bekleyen: {queuePending >= 1000 ? '1000+' : queuePending}
+              Kuyruk bekleyen: {queuePending}
             </span>
           )}
         </div>
@@ -578,7 +612,7 @@ export default function CronMonitorPage() {
             >
               {t.label}
               {t.id === 'queue' && queuePending != null ? (
-                <span className="ml-1.5 opacity-80">{queuePending >= 1000 ? '1000+' : queuePending}</span>
+                <span className="ml-1.5 opacity-80">{queuePending}</span>
               ) : null}
               {t.id === 'jobs' && stats.running > 0 ? (
                 <span className="ml-1.5 rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] text-white">
@@ -661,9 +695,10 @@ export default function CronMonitorPage() {
                       {queuePending} adet
                     </span>
                   )}
-                  {queuePending != null && queuePending > 0 ? (
+                  {listCount > 0 ? (
                     <span className="text-[10px] font-semibold text-amber-800 dark:text-amber-200">
-                      Sayfa {pendingPage + 1}/{totalPages}
+                      {selectedQueueSource ? `${selectedQueueSource} · ` : ''}
+                      {listCount} kayıt · Sayfa {pendingPage + 1}/{totalPages}
                       {pendingItems.length > 0 ? ` · ${pageStart}–${pageEnd}` : ''}
                     </span>
                   ) : null}
@@ -701,7 +736,11 @@ export default function CronMonitorPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDupFilterOnly((v) => !v)}
+                  onClick={() => {
+                    setDupFilterOnly((v) => !v)
+                    setPendingPage(0)
+                    setPendingLoading(true)
+                  }}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-bold',
                     dupFilterOnly
@@ -728,54 +767,65 @@ export default function CronMonitorPage() {
                     ) : (
                       <CheckCircle2 className="h-2.5 w-2.5" />
                     )}
-                    Bu kaynağı onayla ({visiblePendingItems.length})
+                    Bu sayfadakileri onayla ({visiblePendingItems.length})
                   </button>
                 ) : null}
               </div>
-              {sourceChips.length > 0 ? (
-                <div className="mt-3 -mx-1 overflow-x-auto pb-1 [scrollbar-width:thin]">
-                  <div className="flex w-max gap-1.5 px-1">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedQueueSource(null)}
-                      className={cn(
-                        'shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition-colors',
-                        selectedQueueSource == null
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] hover:bg-amber-100 dark:hover:bg-amber-900/40'
-                      )}
-                    >
-                      Tümü
-                      <span className="ml-1 opacity-80">
-                        {dupFilterOnly ? dupCount : pendingItems.length}
-                      </span>
-                    </button>
-                    {sourceChips.map((chip) => (
+              {sourceCounts.length > 0 ? (
+                <div className="mt-3 space-y-2">
+                  <div className="relative max-w-sm">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--color-muted))]" />
+                    <input
+                      type="search"
+                      value={sourceSearch}
+                      onChange={(e) => setSourceSearch(e.target.value)}
+                      placeholder="Kaynak ara…"
+                      className="h-8 w-full rounded-lg border border-amber-200 bg-white pl-8 pr-3 text-[11px] font-medium text-[rgb(var(--color-text))] outline-none placeholder:text-[rgb(var(--color-muted))] focus:border-amber-400 dark:border-amber-800 dark:bg-[rgb(var(--color-card))]"
+                    />
+                  </div>
+                  <p className="text-[10px] font-medium text-amber-800/80 dark:text-amber-200/80">
+                    Sayılar tüm kuyruk içindir (yalnızca bu sayfa değil)
+                  </p>
+                  <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
                       <button
-                        key={chip.label}
                         type="button"
-                        onClick={() =>
-                          setSelectedQueueSource((prev) =>
-                            prev === chip.label ? null : chip.label
-                          )
-                        }
+                        onClick={() => selectQueueSource(null)}
                         className={cn(
-                          'max-w-[220px] shrink-0 truncate rounded-full px-3 py-1 text-[11px] font-bold transition-colors',
-                          selectedQueueSource === chip.label
+                          'shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition-colors',
+                          selectedQueueSource == null
                             ? 'bg-amber-600 text-white'
                             : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] hover:bg-amber-100 dark:hover:bg-amber-900/40'
                         )}
-                        title={chip.label}
                       >
-                        {chip.label}
-                        <span className="ml-1 opacity-80">{chip.count}</span>
+                        Tümü
+                        <span className="ml-1 opacity-80">
+                          {dupFilterOnly ? dupCount : (queuePending ?? sourceCounts.reduce((n, c) => n + c.count, 0))}
+                        </span>
                       </button>
-                    ))}
+                      {sourceChips.map((chip) => (
+                        <button
+                          key={chip.label}
+                          type="button"
+                          onClick={() =>
+                            selectQueueSource(selectedQueueSource === chip.label ? null : chip.label)
+                          }
+                          className={cn(
+                            'max-w-[220px] shrink-0 truncate rounded-full px-3 py-1 text-[11px] font-bold transition-colors',
+                            selectedQueueSource === chip.label
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] hover:bg-amber-100 dark:hover:bg-amber-900/40'
+                          )}
+                          title={`${chip.label} — kuyrukta ${chip.count} haber`}
+                        >
+                          {chip.label}
+                          <span className="ml-1 opacity-80">{chip.count}</span>
+                        </button>
+                      ))}
                   </div>
                 </div>
               ) : null}
             </div>
-            <div className="divide-y divide-[rgb(var(--color-border))]">
+            <div className={cn('divide-y divide-[rgb(var(--color-border))]', pendingLoading && pendingItems.length > 0 && 'opacity-60')}>
               {pendingLoading && pendingItems.length === 0 ? (
                 <div className="space-y-2 p-4">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -792,22 +842,26 @@ export default function CronMonitorPage() {
                 </div>
               ) : (
                 <>
+                  <div className="hidden items-center gap-3 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))] sm:flex sm:px-5">
+                    <div className="min-w-0 flex-1">Haber</div>
+                    <div className="w-[7.75rem] shrink-0 text-right">İşlem</div>
+                  </div>
                   {visiblePendingItems.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))] sm:flex-row sm:items-start sm:gap-3 sm:px-5"
+                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))] sm:px-5"
                     >
-                      <div className="flex min-w-0 items-start gap-3">
-                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
-                          <Clock className="h-3 w-3 text-amber-600" />
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                          <Clock className="h-3.5 w-3.5 text-amber-600" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-xs font-bold text-[rgb(var(--color-text))] sm:truncate">
+                          <p className="truncate text-[13px] font-semibold leading-snug text-[rgb(var(--color-text))]">
                             {item.title}
                           </p>
-                          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[rgb(var(--color-muted))]">
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[rgb(var(--color-muted))]">
                             {selectedQueueSource == null && item.source ? (
-                              <span>{item.source}</span>
+                              <span className="font-medium">{item.source}</span>
                             ) : null}
                             {item.category && (
                               <span className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 font-medium">
@@ -836,8 +890,8 @@ export default function CronMonitorPage() {
                               </span>
                             )}
                             {item.createdAt > 0 && (
-                              <span>
-                                {formatDistanceToNow(new Date(item.createdAt), { locale: tr, addSuffix: true })}
+                              <span className="tabular-nums">
+                                {format(new Date(item.createdAt), 'd MMM yyyy HH:mm', { locale: tr })}
                               </span>
                             )}
                             {item.attempts > 0 && (
@@ -846,7 +900,7 @@ export default function CronMonitorPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-1">
+                      <div className="flex w-[7.75rem] shrink-0 items-center justify-end gap-1.5">
                         <button
                           type="button"
                           title="Düzenle"
@@ -856,9 +910,9 @@ export default function CronMonitorPage() {
                             deletingItemId === item.id
                           }
                           onClick={() => setEditingItemId(item.id)}
-                          className="flex h-11 w-11 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 sm:h-6 sm:w-6"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                         >
-                          <Pencil className="h-4 w-4 sm:h-3 sm:w-3" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
@@ -870,12 +924,12 @@ export default function CronMonitorPage() {
                             publishingSource
                           }
                           onClick={() => void publishQueueItem(item.id)}
-                          className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 sm:h-6 sm:w-6"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
                           {publishingItemId === item.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin sm:h-3 sm:w-3" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
-                            <Zap className="h-4 w-4 sm:h-3 sm:w-3" />
+                            <Zap className="h-3.5 w-3.5" />
                           )}
                         </button>
                         <button
@@ -887,12 +941,12 @@ export default function CronMonitorPage() {
                             editingItemId === item.id
                           }
                           onClick={() => void deleteQueueItem(item.id)}
-                          className="flex h-11 w-11 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 sm:h-6 sm:w-6"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                         >
                           {deletingItemId === item.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin sm:h-3 sm:w-3" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
-                            <Trash2 className="h-4 w-4 sm:h-3 sm:w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           )}
                         </button>
                       </div>

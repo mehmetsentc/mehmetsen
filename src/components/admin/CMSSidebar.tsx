@@ -19,8 +19,6 @@ import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import type { CmsPermission } from '@/types/cms'
-import { db, Collections } from '@/lib/firebase/firestore'
-import { collection, getCountFromServer, getDocs, limit, query, where } from 'firebase/firestore'
 import { adminNewsService } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
 
@@ -321,11 +319,8 @@ export function CMSSidebar() {
     let cancelled = false
     ;(async () => {
       try {
-        const [statusCounts, draftSnap, inboxUnread, pendingDraftsSnap] = await Promise.all([
-          adminNewsService.countByStatus().catch(() => null),
-          getCountFromServer(
-            query(collection(db, Collections.NEWS_DRAFTS), where('draftStatus', '==', 'draft'))
-          ).catch(() => null),
+        const [navBadges, inboxUnread] = await Promise.all([
+          adminNewsService.countNavBadges().catch(() => null),
           (async () => {
             try {
               if (!user) return 0
@@ -342,42 +337,16 @@ export function CMSSidebar() {
               return 0
             }
           })(),
-          getDocs(
-            query(
-              collection(db, Collections.NEWS_DRAFTS),
-              where('draftStatus', '==', 'pending_review'),
-              limit(100)
-            )
-          ).catch(() => null),
         ])
         if (cancelled) return
 
-        // Liste ile aynı: tekrar / isDuplicate stub'ları sayma
-        const visibleDraftPending = pendingDraftsSnap
-          ? pendingDraftsSnap.docs.filter((d) => {
-              const data = d.data()
-              return data.isDuplicate !== true && data.categoryId !== 'tekrarlayan'
-            }).length
-          : null
-
-        // countByStatus.pending = legacy news pending + draft pending_review
-        const legacyPending = statusCounts
-          ? Math.max(0, (statusCounts.pending ?? 0) - (statusCounts.pending_review ?? 0))
-          : 0
-
-        const pending =
-          visibleDraftPending != null
-            ? visibleDraftPending + legacyPending
-            : (statusCounts?.pending ?? 0)
-
         setCounts({
-          published: statusCounts?.published ?? 0,
-          pending,
-          draft: draftSnap?.data().count ?? 0,
-          // Mail Kutusu = Gmail okunmamış; Onay Bekleyenler ile paylaşılmaz
+          published: navBadges?.published ?? 0,
+          pending: navBadges?.pending ?? 0,
+          draft: navBadges?.draft ?? 0,
           inbox: inboxUnread,
-          scheduled: 0,
-          smmQueue: 0,
+          scheduled: navBadges?.scheduled ?? 0,
+          smmQueue: navBadges?.smmQueue ?? 0,
         })
       } catch {
         /* ignore */
@@ -386,7 +355,23 @@ export function CMSSidebar() {
     return () => {
       cancelled = true
     }
-  }, [authLoading, user])
+  }, [authLoading, user, pathname])
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ delta?: number; count?: number }>).detail
+      setCounts((prev) => {
+        if (typeof detail?.count === 'number') {
+          return { ...prev, inbox: Math.max(0, detail.count) }
+        }
+        const delta = Number(detail?.delta ?? 0)
+        if (!delta) return prev
+        return { ...prev, inbox: Math.max(0, (prev.inbox ?? 0) + delta) }
+      })
+    }
+    window.addEventListener('nahaber:gmail-unread', handler)
+    return () => window.removeEventListener('nahaber:gmail-unread', handler)
+  }, [])
 
   const toggleGroup = (id: string) => {
     setCollapsed((prev) => {

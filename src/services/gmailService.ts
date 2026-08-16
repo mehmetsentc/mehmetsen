@@ -11,6 +11,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { encrypt, decrypt } from '@/lib/gmail/crypto'
 import { refreshAccessToken } from '@/lib/gmail/oauth'
 import { listInboxMessages, getMessage, getInboxLabelStats, markMessageRead, sendEmail, getMessageHeaders, type SendEmailParams } from '@/lib/gmail/client'
+import { hasGmailModifyScope } from '@/lib/gmail/scopes'
 import { GmailError, normalizeGmailError } from '@/lib/gmail/errors'
 import type { GmailIntegration, GmailMessageSummary, GmailMessageDetail } from '@/lib/gmail/types'
 
@@ -60,12 +61,13 @@ async function decryptAccessToken(integration: GmailIntegration): Promise<string
  */
 async function forceTokenRefresh(integration: GmailIntegration): Promise<string> {
   const refreshToken = await decrypt(integration.encryptedRefreshToken)
-  const { accessToken, expiresAt } = await refreshAccessToken(refreshToken)
+  const { accessToken, expiresAt, scope } = await refreshAccessToken(refreshToken)
   const encryptedAccessToken = await encrypt(accessToken)
   const db = getAdminFirestore()
   await db.collection(Collections.INTEGRATIONS).doc(INTEGRATION_DOC).update({
     encryptedAccessToken,
     expiresAt,
+    ...(scope ? { scope } : {}),
   })
   return accessToken
 }
@@ -169,6 +171,10 @@ export async function getInboxBadgeCounts(): Promise<{
 // ── Send / Mark-read (new) ────────────────────────────────────────────────────
 
 export async function markAsRead(messageId: string): Promise<void> {
+  const integration = await getIntegration()
+  if (integration && !hasGmailModifyScope(integration.scope)) {
+    throw new GmailError('INSUFFICIENT_SCOPE', { detail: 'missing_gmail_modify' })
+  }
   await withRetryOn401((token) => markMessageRead(token, messageId))
 }
 
