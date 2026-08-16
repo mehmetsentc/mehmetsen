@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles,
+  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles, MapPin,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
@@ -288,6 +288,7 @@ export function AdminNewsEditor({
   const [featured, setFeatured] = useState<boolean>(
     post?.featured === true || post?.isEditorPick === true
   )
+  const [localFeatured, setLocalFeatured] = useState<boolean>(post?.localFeatured === true)
   const [isLiveBlog, setIsLiveBlog] = useState<boolean>(post?.isLiveBlog ?? false)
   const [liveUpdateDraft, setLiveUpdateDraft] = useState('')
   const [liveUpdates, setLiveUpdates] = useState(
@@ -455,6 +456,7 @@ export function AdminNewsEditor({
     aiResearchSources,
     isBreaking,
     featured,
+    localFeatured,
     isLiveBlog,
     liveUpdates: isLiveBlog ? liveUpdates : [],
     ...(countrySlug
@@ -721,6 +723,10 @@ export function AdminNewsEditor({
       toast.error('Medya yüklemesi devam ediyor')
       return
     }
+    if (localFeatured && !citySlug.trim()) {
+      toast.error('Yerelde öne çıkan için önce il seçin')
+      return
+    }
     setSaving(true)
     try {
       const currentUser = auth.currentUser
@@ -781,6 +787,7 @@ export function AdminNewsEditor({
         seoKeywords,
         isBreaking,
         featured,
+        localFeatured,
         citySlug: citySlug || undefined,
         districtSlug: districtSlug || undefined,
       }
@@ -1311,9 +1318,9 @@ export function AdminNewsEditor({
       <div className="flex items-center gap-2">
         <Star className={`h-4 w-4 ${featured ? 'text-amber-500' : 'text-[rgb(var(--color-muted))]'}`} />
         <div>
-          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Öne Çıkan</p>
+          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Genelde öne çıkan</p>
           <p className="text-[11px] text-[rgb(var(--color-muted))]">
-            Yerel kategori ağacında ilgili şehir ana sayfasında; diğer kategorilerde (şehir seçili olsa bile) nahaber.com öne çıkan slider&apos;ında görünür. Açınca haber otomatik Yayında olur.
+            nahaber.com ana sayfa öne çıkan slider&apos;ında görünür. Yerel kategori ağacı buraya girmez. Açınca haber otomatik Yayında olur.
           </p>
         </div>
       </div>
@@ -1333,11 +1340,51 @@ export function AdminNewsEditor({
           featured ? 'bg-amber-500' : 'bg-[rgb(var(--color-border))]'
         }`}
         aria-pressed={featured}
-        aria-label="Öne çıkan"
+        aria-label="Genelde öne çıkan"
       >
         <span
           className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
             featured ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+
+    <div className="flex items-center justify-between rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3">
+      <div className="flex items-center gap-2">
+        <MapPin className={`h-4 w-4 ${localFeatured ? 'text-sky-500' : 'text-[rgb(var(--color-muted))]'}`} />
+        <div>
+          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Yerelde öne çıkan</p>
+          <p className="text-[11px] text-[rgb(var(--color-muted))]">
+            Yalnızca seçili ilin yerel sayfasındaki öne çıkan carousel&apos;de görünür. İl zorunlu. Açınca haber otomatik Yayında olur.
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          setLocalFeatured((v) => {
+            const next = !v
+            if (next && !citySlug.trim()) {
+              toast.error('Yerelde öne çıkan için önce il seçin')
+              return v
+            }
+            if (next && status !== 'published') {
+              setStatus('published')
+              toast.success('Öne çıkan için durum Yayında olarak ayarlandı')
+            }
+            return next
+          })
+        }}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          localFeatured ? 'bg-sky-500' : 'bg-[rgb(var(--color-border))]'
+        }`}
+        aria-pressed={localFeatured}
+        aria-label="Yerelde öne çıkan"
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+            localFeatured ? 'translate-x-6' : 'translate-x-1'
           }`}
         />
       </button>

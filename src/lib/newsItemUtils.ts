@@ -156,6 +156,8 @@ export function docToNewsItem(
           : undefined,
     featured: raw.featured === true || raw.isEditorPick === true,
     featuredAt: parseFirestoreTimestamp(raw.featuredAt as TimestampLike),
+    localFeatured: raw.localFeatured === true,
+    localFeaturedAt: parseFirestoreTimestamp(raw.localFeaturedAt as TimestampLike),
     breaking: isBreaking,
     articleFormat,
     seoTitle: seoTitleRaw && seoTitleRaw !== title ? seoTitleRaw : undefined,
@@ -191,6 +193,8 @@ export function slimNewsItemForFeed(item: NewsItem): NewsItem {
   if (typeof item.views === 'number' && item.views > 0) slim.views = item.views
   if (item.featured === true) slim.featured = true
   if (item.featuredAt) slim.featuredAt = item.featuredAt
+  if (item.localFeatured === true) slim.localFeatured = true
+  if (item.localFeaturedAt) slim.localFeaturedAt = item.localFeaturedAt
   if (item.breaking === true) slim.breaking = true
   if (item.seoTitle) slim.seoTitle = item.seoTitle
 

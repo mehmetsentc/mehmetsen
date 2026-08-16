@@ -8,7 +8,7 @@ import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X,
-  ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star, Zap,
+  ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star, Zap, MapPin,
   Facebook, Instagram, ChevronDown, ArrowDownWideNarrow,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
@@ -48,6 +48,7 @@ import {
   KIBRIS_HABERLERI_CATEGORY_ID,
 } from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
+import { isAdminLocalFeatured, isNationalFeaturedEligible } from '@/lib/featuredScope'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -85,7 +86,8 @@ function mergeTags(existing: string[], incoming: string[]): string[] {
 const FILTERS: { id: AdminNewsFilter; label: string; color: string }[] = [
   { id: 'all', label: 'Tümü', color: '' },
   { id: 'published', label: 'Yayında', color: 'text-emerald-600' },
-  { id: 'featured', label: 'Öne Çıkan', color: 'text-amber-600' },
+  { id: 'featured', label: 'Genelde öne çıkan', color: 'text-amber-600' },
+  { id: 'local-featured', label: 'Yerelde öne çıkan', color: 'text-sky-600' },
   { id: 'pending', label: 'Onay Bekliyor', color: 'text-amber-600' },
   { id: 'review', label: 'İnceleme', color: 'text-violet-600' },
   { id: 'duplicate', label: 'Tekrar Haber', color: 'text-orange-600' },
@@ -770,6 +772,7 @@ function NewsRow({
   onCategoryChange,
   onCityChange,
   onFeaturedChange,
+  onLocalFeaturedChange,
   onBreakingChange,
   actionLoading,
 }: {
@@ -783,6 +786,7 @@ function NewsRow({
   onCategoryChange: (postId: string, categoryId: string) => Promise<void>
   onCityChange: (postId: string, citySlug: string, cityName: string) => Promise<void>
   onFeaturedChange: (postId: string, featured: boolean) => Promise<void>
+  onLocalFeaturedChange: (postId: string, localFeatured: boolean) => Promise<void>
   onBreakingChange: (postId: string, isBreaking: boolean) => Promise<void>
   actionLoading: string | null
 }) {
@@ -801,6 +805,15 @@ function NewsRow({
       ? STATUS_BADGE.review
       : (STATUS_BADGE[post.status ?? 'draft'] ?? STATUS_BADGE.draft)
   const canShare = newsHasShareImage(post)
+  const nationalFeaturedOn =
+    post.featured === true &&
+    isNationalFeaturedEligible({ categoryId: post.categoryId, citySlug: post.citySlug })
+  const localFeaturedOn = isAdminLocalFeatured({
+    categoryId: post.categoryId,
+    citySlug: post.citySlug,
+    featured: post.featured,
+    localFeatured: post.localFeatured,
+  })
 
   useEffect(() => {
     setSocialPublished(!!post.socialPublished)
@@ -953,9 +966,14 @@ function NewsRow({
             {badge && (
               <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', badge.cls)}>{badge.label}</span>
             )}
-            {post.featured && (
+            {nationalFeaturedOn && (
               <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                <Star className="h-2.5 w-2.5 fill-current" />Öne Çıkan
+                <Star className="h-2.5 w-2.5 fill-current" />Genelde öne çıkan
+              </span>
+            )}
+            {localFeaturedOn && (
+              <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                <MapPin className="h-2.5 w-2.5 fill-current" />Yerelde öne çıkan
               </span>
             )}
             {post.isBreaking && (
@@ -984,12 +1002,21 @@ function NewsRow({
               disabled={busy}
             />
             <InlineFlagToggle
-              active={!!post.featured}
-              label="Öne Çıkan"
-              title={post.featured ? 'Öne çıkanı kaldır' : 'Öne çıkan yap (otomatik Yayında)'}
+              active={nationalFeaturedOn}
+              label="Genelde"
+              title={nationalFeaturedOn ? 'Ana sayfa öne çıkanından kaldır' : 'Ana sayfada öne çıkan yap (otomatik Yayında)'}
               icon={Star}
               activeClass="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-              onToggle={() => onFeaturedChange(post.id, !post.featured)}
+              onToggle={() => onFeaturedChange(post.id, !nationalFeaturedOn)}
+              disabled={busy}
+            />
+            <InlineFlagToggle
+              active={localFeaturedOn}
+              label="Yerelde"
+              title={localFeaturedOn ? 'Yerel sayfa öne çıkanından kaldır' : 'Bu ilin yerel sayfasında öne çıkan yap (il gerekli)'}
+              icon={MapPin}
+              activeClass="border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-900/40 dark:text-sky-200"
+              onToggle={() => onLocalFeaturedChange(post.id, !localFeaturedOn)}
               disabled={busy}
             />
             <InlineFlagToggle
@@ -1123,12 +1150,22 @@ function NewsRow({
               variant="action"
             />
             <InlineFlagToggle
-              active={!!post.featured}
-              label="Öne Çıkan"
-              title={post.featured ? 'Öne çıkanı kaldır' : 'Öne çıkan yap (otomatik Yayında)'}
+              active={nationalFeaturedOn}
+              label="Genelde"
+              title={nationalFeaturedOn ? 'Ana sayfa öne çıkanından kaldır' : 'Ana sayfada öne çıkan yap (otomatik Yayında)'}
               icon={Star}
               activeClass="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-              onToggle={() => onFeaturedChange(post.id, !post.featured)}
+              onToggle={() => onFeaturedChange(post.id, !nationalFeaturedOn)}
+              disabled={busy}
+              variant="action"
+            />
+            <InlineFlagToggle
+              active={localFeaturedOn}
+              label="Yerelde"
+              title={localFeaturedOn ? 'Yerel sayfa öne çıkanından kaldır' : 'Bu ilin yerel sayfasında öne çıkan yap (il gerekli)'}
+              icon={MapPin}
+              activeClass="border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-900/40 dark:text-sky-200"
+              onToggle={() => onLocalFeaturedChange(post.id, !localFeaturedOn)}
               disabled={busy}
               variant="action"
             />
@@ -1313,7 +1350,8 @@ function AdminNewsDesktopPage() {
     filterParam === 'duplicate' ||
     filterParam === 'draft' ||
     filterParam === 'removed' ||
-    filterParam === 'featured'
+    filterParam === 'featured' ||
+    filterParam === 'local-featured'
       ? filterParam
       : 'all'
   const [filter, setFilter] = useState<AdminNewsFilter>(initialFilter)
@@ -1361,7 +1399,7 @@ function AdminNewsDesktopPage() {
 
   useEffect(() => {
     const fp = searchParams.get('filter') ?? ''
-    if (fp === 'published' || fp === 'pending' || fp === 'review' || fp === 'duplicate' || fp === 'draft' || fp === 'removed' || fp === 'featured') {
+    if (fp === 'published' || fp === 'pending' || fp === 'review' || fp === 'duplicate' || fp === 'draft' || fp === 'removed' || fp === 'featured' || fp === 'local-featured') {
       setFilter(fp)
     } else if (!fp) {
       setFilter('all')
@@ -1829,6 +1867,14 @@ function AdminNewsDesktopPage() {
     const prevPost = posts.find((p) => p.id === postId)
     if (!prevPost) return
 
+    if (
+      featured &&
+      !isNationalFeaturedEligible({ categoryId: prevPost.categoryId, citySlug: prevPost.citySlug })
+    ) {
+      toast.error('Bu kategori ana sayfa öne çıkanına girmez. Yerelde öne çıkan kullanın.')
+      return
+    }
+
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
@@ -1861,13 +1907,82 @@ function AdminNewsDesktopPage() {
       toast.success(
         featured
           ? prevPost.status !== 'published'
-            ? 'Öne çıkan yapıldı · durum Yayında'
-            : 'Öne çıkan yapıldı'
-          : 'Öne çıkan kaldırıldı'
+            ? 'Ana sayfada öne çıkan yapıldı · durum Yayında'
+            : 'Ana sayfada öne çıkan yapıldı'
+          : 'Ana sayfa öne çıkanı kaldırıldı'
       )
     } catch (e) {
       setPosts((prev) => prev.map((p) => (p.id === postId ? prevPost : p)))
       toast.error(e instanceof Error ? e.message : 'Öne çıkan güncellenemedi')
+      throw e
+    }
+  }, [posts])
+
+  const handleLocalFeaturedChange = useCallback(async (postId: string, localFeatured: boolean) => {
+    const prevPost = posts.find((p) => p.id === postId)
+    if (!prevPost) return
+
+    if (localFeatured && !String(prevPost.citySlug ?? '').trim()) {
+      toast.error('Yerelde öne çıkan için önce il seçin')
+      return
+    }
+
+    const clearLegacyCityPin =
+      !localFeatured &&
+      prevPost.featured === true &&
+      isAdminLocalFeatured({
+        categoryId: prevPost.categoryId,
+        citySlug: prevPost.citySlug,
+        featured: true,
+        localFeatured: false,
+      }) &&
+      !isNationalFeaturedEligible({
+        categoryId: prevPost.categoryId,
+        citySlug: prevPost.citySlug,
+      })
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              localFeatured,
+              ...(clearLegacyCityPin ? { featured: false, isEditorPick: false } : {}),
+              ...(localFeatured && p.status !== 'archived' && p.status !== 'banned'
+                ? { status: 'published' as const }
+                : {}),
+            }
+          : p
+      )
+    )
+
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/news/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          localFeatured,
+          ...(clearLegacyCityPin ? { featured: false } : {}),
+        }),
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(err.error ?? 'Yerelde öne çıkan güncellenemedi')
+      }
+      toast.success(
+        localFeatured
+          ? prevPost.status !== 'published'
+            ? 'Yerelde öne çıkan yapıldı · durum Yayında'
+            : 'Yerelde öne çıkan yapıldı'
+          : 'Yerelde öne çıkan kaldırıldı'
+      )
+    } catch (e) {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? prevPost : p)))
+      toast.error(e instanceof Error ? e.message : 'Yerelde öne çıkan güncellenemedi')
       throw e
     }
   }, [posts])
@@ -2402,6 +2517,7 @@ function AdminNewsDesktopPage() {
                 onCategoryChange={handleCategoryChange}
                 onCityChange={handleCityChange}
                 onFeaturedChange={handleFeaturedChange}
+                onLocalFeaturedChange={handleLocalFeaturedChange}
                 onBreakingChange={handleBreakingChange}
                 actionLoading={actionLoading}
               />

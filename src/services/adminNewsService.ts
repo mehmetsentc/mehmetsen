@@ -19,6 +19,7 @@ import { auth } from '@/lib/firebase/auth'
 import { Collections, db, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
 import { buildFeedTeaser } from '@/lib/newsContentCleanup'
 import { mapNewsSnapshot, type NewsDocument } from '@/lib/newsMapper'
+import { isAdminLocalFeatured, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { postService } from '@/services/postService'
 import type { MediaItem, Post, PostStatus } from '@/types/post'
 
@@ -75,6 +76,7 @@ export type AdminNewsFilter =
   | 'draft'
   | 'removed'
   | 'featured'
+  | 'local-featured'
 
 /** Admin list sort — date = newest first; views = viewsCount desc. */
 export type AdminNewsSort = 'date' | 'views'
@@ -217,6 +219,7 @@ function adminNewsDocToPost(id: string, data: NewsDocument): Post {
     viewsCount: data.viewsCount ?? 0,
     isEditorPick: data.featured === true || data.isEditorPick === true,
     featured: data.featured === true || data.isEditorPick === true,
+    localFeatured: data.localFeatured === true,
     isTrending: false,
     publishedAt: null,
     createdAt,
@@ -299,7 +302,20 @@ function mapAdminNewsDocs(
   if (filter === 'removed') {
     posts = posts.filter((p) => p.status === 'archived' || p.status === 'banned')
   } else if (filter === 'featured') {
-    posts = posts.filter((p) => p.featured === true)
+    posts = posts.filter(
+      (p) =>
+        p.featured === true &&
+        isNationalFeaturedEligible({ categoryId: p.categoryId, citySlug: p.citySlug })
+    )
+  } else if (filter === 'local-featured') {
+    posts = posts.filter((p) =>
+      isAdminLocalFeatured({
+        categoryId: p.categoryId,
+        citySlug: p.citySlug,
+        featured: p.featured,
+        localFeatured: p.localFeatured,
+      })
+    )
   } else if (filter === 'published') {
     posts = posts.filter((p) => p.status === 'published')
   } else if (filter === 'draft') {
@@ -347,6 +363,7 @@ export const adminNewsService = {
     const status = statusConstraint(filter)
     const filterConstraints: QueryConstraint[] = []
     if (filter === 'featured') filterConstraints.push(where('featured', '==', true))
+    if (filter === 'local-featured') filterConstraints.push(where('localFeatured', '==', true))
     if (filter === 'removed') filterConstraints.push(where('status', 'in', ['archived', 'banned']))
     else if (status) filterConstraints.push(where('status', '==', status))
     if (categoryId) filterConstraints.push(where('categoryId', '==', categoryId))
@@ -404,13 +421,42 @@ export const adminNewsService = {
       const isViewsOrderedAttempt = sort === 'views' && i <= 1
       try {
         const snap = await fetchAdminNewsSnap(constraints)
-        const allFiltered = mapAdminNewsDocs(snap.docs, filter, categoryId, citySlug, sort)
+        let allFiltered = mapAdminNewsDocs(snap.docs, filter, categoryId, citySlug, sort)
+        if (filter === 'local-featured' && !lastDoc) {
+          try {
+            const featSnap = await fetchAdminNewsSnap([
+              where('featured', '==', true),
+              orderBy('createdAt', 'desc'),
+              limit(Math.max(pageSize * 2, 100)),
+            ])
+            const extra = mapAdminNewsDocs(
+              featSnap.docs,
+              'local-featured',
+              categoryId,
+              citySlug,
+              sort
+            )
+            const byId = new Map(allFiltered.map((p) => [p.id, p]))
+            for (const p of extra) byId.set(p.id, p)
+            allFiltered = [...byId.values()]
+            if (sort === 'views') {
+              allFiltered.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+            } else {
+              allFiltered.sort(
+                (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)
+              )
+            }
+          } catch {
+            /* featured merge is best-effort for legacy yerel pins */
+          }
+        }
         const posts = allFiltered.slice(0, pageSize)
         // Empty ordered query ≠ "no drafts" — try next attempt while filter is set.
         const hasServerFilter = !!(
           status ||
           filter === 'removed' ||
           filter === 'featured' ||
+          filter === 'local-featured' ||
           citySlug ||
           categoryId
         )
@@ -888,6 +934,7 @@ function queueDocToPost(id: string, data: Record<string, unknown>): AdminNewsIte
     viewsCount: 0,
     isEditorPick: false,
     featured: false,
+    localFeatured: false,
     isTrending: false,
     publishedAt: null,
     createdAt,

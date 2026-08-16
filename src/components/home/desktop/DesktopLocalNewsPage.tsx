@@ -8,7 +8,7 @@ import { DesktopCategoryWatch } from '@/components/home/desktop/DesktopCategoryW
 import { GridStory, StackedStory } from '@/components/home/desktop/desktopGridStories'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { LocalCityEventsStrip } from '@/components/local/LocalCityEventsStrip'
-import { LocalGastronomyStrip } from '@/components/local/LocalGastronomyStrip'
+import { LocalFeaturedCarousel } from '@/components/local/LocalFeaturedCarousel'
 import { LocalListStory } from '@/components/local/LocalListStory'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { buildLocalNewsReadableLayout } from '@/components/local/localNewsLayout'
@@ -77,7 +77,14 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
             cityName={city.name}
             filter="cinema"
           />
-          <LocalGastronomyStrip />
+          {!showingGeneralFallback ? (
+            <LocalFeaturedCarousel
+              posts={rankedPosts}
+              citySlug={city.slug}
+              priority
+              className="mb-8"
+            />
+          ) : null}
         </>
       ) : null}
 
@@ -107,7 +114,7 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
       ) : (
         <>
           {lead ? (
-            <section className="local-lead" aria-label="Öne çıkan haberler">
+            <section className="local-lead" aria-label="Günün manşeti">
               <div className="min-w-0">
                 <GridStory post={lead} size="xl" />
               </div>

@@ -264,6 +264,19 @@ function draftToPublishedNews(
       }
       return {}
     })(),
+    ...(() => {
+      const d = draft as NewsDraftDocument & {
+        localFeatured?: boolean
+        localFeaturedAt?: number
+      }
+      if (d.localFeatured === true) {
+        return {
+          localFeatured: true,
+          localFeaturedAt: typeof d.localFeaturedAt === 'number' ? d.localFeaturedAt : now,
+        }
+      }
+      return {}
+    })(),
   })
 }
 
@@ -473,6 +486,8 @@ export const newsDraftService = {
       featured?: boolean
       isEditorPick?: boolean
       featuredAt?: number | { toMillis?: () => number } | null
+      localFeatured?: boolean
+      localFeaturedAt?: number
       needsReview?: boolean
       aiAutoPublished?: boolean
     }
@@ -511,6 +526,13 @@ export const newsDraftService = {
               typeof data.featuredAt === 'number'
                 ? data.featuredAt
                 : now,
+          }
+        : {}),
+      ...(data.localFeatured === true
+        ? {
+            localFeatured: true,
+            localFeaturedAt:
+              typeof data.localFeaturedAt === 'number' ? data.localFeaturedAt : now,
           }
         : {}),
     })

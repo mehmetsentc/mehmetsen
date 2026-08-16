@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   isCityFeaturedEligible,
+  isCityFeaturedPin,
   isKibrisFeaturedEligible,
   isKibrisScopedNews,
   isLocalScopedNews,
   isNationalFeaturedEligible,
+  pickCityFeaturedCarouselItems,
 } from '@/lib/featuredScope'
 
 describe('featuredScope', () => {
@@ -115,5 +117,68 @@ describe('featuredScope', () => {
         forCitySlug: 'canakkale',
       })
     ).toBe(false)
+  })
+
+  it('localFeatured pins a city page even for national categories', () => {
+    expect(
+      isCityFeaturedPin({
+        citySlug: 'antalya',
+        category: 'gundem',
+        localFeatured: true,
+        forCitySlug: 'antalya',
+      })
+    ).toBe(true)
+    expect(
+      isCityFeaturedPin({
+        citySlug: 'antalya',
+        category: 'gundem',
+        localFeatured: true,
+        forCitySlug: 'izmir',
+      })
+    ).toBe(false)
+    expect(
+      isNationalFeaturedEligible({ citySlug: 'antalya', category: 'gundem' })
+    ).toBe(true)
+  })
+
+  it('legacy featured + yerel still counts as city pin without localFeatured', () => {
+    expect(
+      isCityFeaturedPin({
+        citySlug: 'antalya',
+        category: 'yerel-haber',
+        featured: true,
+        forCitySlug: 'antalya',
+      })
+    ).toBe(true)
+    expect(
+      isCityFeaturedPin({
+        citySlug: 'antalya',
+        category: 'gundem',
+        featured: true,
+        forCitySlug: 'antalya',
+      })
+    ).toBe(false)
+  })
+
+  it('carousel uses pins when present, otherwise latest 10 excluding gastronomi', () => {
+    const items = [
+      { id: '1', category: 'yerel-haber', citySlug: 'antalya', featured: true },
+      { id: '2', category: 'yerel-spor', citySlug: 'antalya' },
+      { id: '3', category: 'gastronomi', citySlug: 'antalya' },
+      { id: '4', category: 'gundem', citySlug: 'antalya', localFeatured: true },
+    ]
+    const pinned = pickCityFeaturedCarouselItems(items, 'antalya', 10)
+    expect(pinned.map((p) => p.id)).toEqual(['1', '4'])
+
+    const fallback = pickCityFeaturedCarouselItems(
+      [
+        { id: 'a', category: 'yerel-haber', citySlug: 'antalya' },
+        { id: 'b', category: 'gastronomi', citySlug: 'antalya' },
+        { id: 'c', category: 'gundem', citySlug: 'antalya' },
+      ],
+      'antalya',
+      10
+    )
+    expect(fallback.map((p) => p.id)).toEqual(['a', 'c'])
   })
 })

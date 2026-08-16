@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { MapPin, AlertCircle, ArrowUp } from 'lucide-react'
 import { LocalCityEventsStrip } from '@/components/local/LocalCityEventsStrip'
-import { LocalGastronomyStrip } from '@/components/local/LocalGastronomyStrip'
+import { LocalFeaturedCarousel } from '@/components/local/LocalFeaturedCarousel'
 import { LocalNewsTopPanel } from '@/components/local/LocalNewsTopPanel'
 import { MobileFeedCard } from '@/components/feed/MobileFeedCard'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
@@ -81,7 +81,9 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
             filter="cinema"
           />
           <div className="px-3">
-            <LocalGastronomyStrip />
+            {!showingGeneralFallback ? (
+              <LocalFeaturedCarousel posts={posts} citySlug={city.slug} priority />
+            ) : null}
           </div>
         </>
       ) : null}

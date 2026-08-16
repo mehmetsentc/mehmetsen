@@ -2,7 +2,7 @@
  * Gastronomi routing policy:
  * - Never homepage hero / öne çıkan / güncel (latest/breaking/trending) main slots
  * - Never geo-own a city's primary yerel feed via citySlug
- * - National `/kategori/gastronomi` (and optional local strip) is the shared feed
+ * - National `/kategori/gastronomi` is the shared feed (not a yerel-page strip)
  */
 
 export const GASTRONOMI_CATEGORY_ID = 'gastronomi'

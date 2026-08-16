@@ -83,10 +83,16 @@ export interface Post {
   /** Breaking news pin — sorted by priorityScore in feed. */
   isBreaking?: boolean
   /**
-   * Editorial “Öne Çıkan” — any category can appear in the homepage featured slider
+   * Editorial “Genelde öne çıkan” — national homepage featured slider
    * (FeaturedSlider), independent of gundem / son-dakika.
    */
   featured?: boolean
+  /**
+   * Editorial “Yerelde öne çıkan” — only that city's yerel page carousel.
+   * Requires citySlug. Independent of `featured`.
+   */
+  localFeatured?: boolean
+  localFeaturedAt?: string
   priorityScore?: number
   editorType?: string
   confidenceScore?: number

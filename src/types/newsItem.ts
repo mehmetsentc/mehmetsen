@@ -31,6 +31,10 @@ export type NewsItem = {
   featured?: boolean
   /** ISO — set when editor toggles Öne Çıkan; drives featured sort priority. */
   featuredAt?: string
+  /** City-page Öne Çıkan — only that city's yerel carousel, not nahaber.com. */
+  localFeatured?: boolean
+  /** ISO — set when editor toggles Yerelde öne çıkan. */
+  localFeaturedAt?: string
   breaking?: boolean
   /** column/analysis excluded from breaking stripe */
   articleFormat?: 'standard' | 'column' | 'analysis'

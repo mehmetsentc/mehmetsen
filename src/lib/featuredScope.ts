@@ -1,9 +1,13 @@
 /**
  * Featured ("Öne Çıkan") scope helpers.
  *
+ * Two independent pins:
+ * - `featured` — national homepage (nahaber.com) Öne Çıkan
+ * - `localFeatured` — that city's yerel page carousel only
+ *
  * Location (citySlug) alone does NOT make a story local-only — every article
- * may carry a city. Only the Yerel Haber category tree scopes pins to city
- * tenant homepages; national categories stay on nahaber.com even with a city.
+ * may carry a city. Legacy `featured` + Yerel Haber category tree still scopes
+ * to city pages (not nahaber.com) until editors set `localFeatured` explicitly.
  *
  * Kıbrıs / KKTC category tree pins belong on `/kategori/kibris-*` pages only —
  * never on the national homepage /feed Öne Çıkan rail.
@@ -17,6 +21,11 @@ export type FeaturedScopeInput = {
   citySlug?: string | null
   categoryId?: string | null
   category?: string | null
+}
+
+export type FeaturedPinFlags = {
+  featured?: boolean | null
+  localFeatured?: boolean | null
 }
 
 function resolveCategoryId(input: FeaturedScopeInput): string {
@@ -62,6 +71,48 @@ export function isCityFeaturedEligible(
   const itemCity = String(input.citySlug ?? '').trim().toLowerCase()
   if (!forCity || itemCity !== forCity) return false
   return isLocalScopedNews(input)
+}
+
+function citySlugMatches(input: FeaturedScopeInput, forCitySlug: string): boolean {
+  const forCity = String(forCitySlug ?? '').trim().toLowerCase()
+  const itemCity = String(input.citySlug ?? '').trim().toLowerCase()
+  return Boolean(forCity) && itemCity === forCity
+}
+
+/**
+ * Explicit or legacy city pin for a given city page.
+ * `localFeatured` can pin any non-gastronomy / non-Kıbrıs story with that citySlug.
+ * Legacy: `featured` + yerel category tree (same as isCityFeaturedEligible).
+ */
+export function isCityFeaturedPin(
+  input: FeaturedScopeInput & FeaturedPinFlags & { forCitySlug: string }
+): boolean {
+  if (isExcludedFromHomepageMainSlots(resolveCategoryId(input))) return false
+  if (isKibrisScopedNews(input)) return false
+  if (!citySlugMatches(input, input.forCitySlug)) return false
+  if (input.localFeatured === true) return true
+  return input.featured === true && isLocalScopedNews(input)
+}
+
+/** CMS “Yerelde öne çıkan” tab — explicit flag or legacy yerel + featured. */
+export function isAdminLocalFeatured(input: FeaturedScopeInput & FeaturedPinFlags): boolean {
+  if (isExcludedFromHomepageMainSlots(resolveCategoryId(input))) return false
+  if (input.localFeatured === true) return true
+  return input.featured === true && isLocalScopedNews(input)
+}
+
+/**
+ * Local page carousel: pinned local-featured items, or the latest `limit` stories
+ * when that city has no pins. Does not mix leftover pin slots with filler.
+ */
+export function pickCityFeaturedCarouselItems<
+  T extends FeaturedScopeInput & FeaturedPinFlags & { id: string },
+>(items: T[], citySlug: string, limit: number): T[] {
+  const pins = items.filter((item) => isCityFeaturedPin({ ...item, forCitySlug: citySlug }))
+  if (pins.length > 0) return pins.slice(0, limit)
+  return items
+    .filter((item) => !isExcludedFromHomepageMainSlots(resolveCategoryId(item)))
+    .slice(0, limit)
 }
 
 /** Kıbrıs category page Öne Çıkan: any kibris-* category pin. */

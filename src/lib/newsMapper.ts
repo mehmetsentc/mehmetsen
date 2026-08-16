@@ -104,6 +104,8 @@ export interface NewsDocument {
   isBreaking?: boolean
   featured?: boolean
   isEditorPick?: boolean
+  localFeatured?: boolean
+  localFeaturedAt?: number | string | { toDate?: () => Date }
   priorityScore?: number
   createdAt?: number | string | { toDate?: () => Date }
   isLiveBlog?: boolean
@@ -442,6 +444,13 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     viewsCount: data.viewsCount ?? 0,
     isEditorPick: data.featured === true || data.isEditorPick === true,
     featured: data.featured === true || data.isEditorPick === true,
+    localFeatured: data.localFeatured === true,
+    localFeaturedAt:
+      typeof data.localFeaturedAt === 'number' && data.localFeaturedAt > 0
+        ? new Date(data.localFeaturedAt).toISOString()
+        : typeof data.localFeaturedAt === 'string'
+          ? data.localFeaturedAt
+          : undefined,
     isTrending: data.editorType === 'trend' || (data.tags ?? []).includes('trending'),
     isBreaking: shouldShowBreakingBadge({
       isBreaking: data.isBreaking ?? data.categoryId === 'son-dakika',

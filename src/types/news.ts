@@ -78,10 +78,13 @@ export interface NewsDraftDocument extends NewsIngestMeta, NewsLocationFields, N
   source: string
   draftStatus: NewsDraftStatus
   moderationReasons?: string[]
-  /** CMS Öne Çıkan — preserved on approve → published news */
+  /** CMS Genelde öne çıkan — preserved on approve → published news */
   featured?: boolean
   isEditorPick?: boolean
   featuredAt?: number
+  /** CMS Yerelde öne çıkan — city page carousel only */
+  localFeatured?: boolean
+  localFeaturedAt?: number
   createdAt: number
   updatedAt: number
 }

@@ -37,6 +37,7 @@ interface CreatePayload {
   status?: string
   isBreaking?: boolean
   featured?: boolean
+  localFeatured?: boolean
   tags?: string[]
   citySlug?: string
   city?: string
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
   if (!body.title?.trim()) {
     return NextResponse.json({ error: 'Başlık gerekli' }, { status: 400 })
   }
-  const willForcePublishViaFeatured = body.featured === true
+  const willForcePublishViaFeatured = body.featured === true || body.localFeatured === true
   if (
     body.status?.trim() === 'published' &&
     !hasPermission(auth.role, 'news:publish') &&
@@ -94,12 +95,19 @@ export async function POST(request: Request) {
     const now = Date.now()
     const requestedStatus = body.status?.trim() || 'pending'
     const featured = body.featured === true
+    const localFeatured = body.localFeatured === true
+    if (localFeatured && !body.citySlug?.trim()) {
+      return NextResponse.json(
+        { error: 'Yerelde öne çıkan için önce il seçin' },
+        { status: 400 }
+      )
+    }
     // Öne Çıkan homepage query only returns published — force publish when featured.
     const status =
-      featured && requestedStatus !== 'archived' && requestedStatus !== 'banned'
+      (featured || localFeatured) && requestedStatus !== 'archived' && requestedStatus !== 'banned'
         ? 'published'
         : requestedStatus
-    if (status === 'published' && !hasPermission(auth.role, 'news:publish') && !featured) {
+    if (status === 'published' && !hasPermission(auth.role, 'news:publish') && !featured && !localFeatured) {
       return NextResponse.json(
         { error: 'Bu hesabın doğrudan yayınlama yetkisi yok; haber incelemeye gönderilmeli' },
         { status: 403 }
@@ -182,6 +190,8 @@ export async function POST(request: Request) {
       featured,
       isEditorPick: featured,
       ...(featured ? { featuredAt: now } : {}),
+      localFeatured,
+      ...(localFeatured ? { localFeaturedAt: now } : {}),
       manuallyEdited: true,
       manualEditedBy: auth.uid,
       createdAt: now,

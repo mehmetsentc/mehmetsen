@@ -21,7 +21,7 @@ import {
 import { getThemedCategorySectionIds } from '@/constants/categorySections'
 import { getCategoryFamily, getHomeFeedCategoryFamily, getNationalCategoryForYerelSubcategory } from '@/constants/config'
 import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
-import { isCityFeaturedEligible } from '@/lib/featuredScope'
+import { isCityFeaturedPin, pickCityFeaturedCarouselItems } from '@/lib/featuredScope'
 import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
 import { slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isPostgresReadsEnabled } from '@/db'
@@ -50,6 +50,8 @@ interface NewsDocument {
   isBreaking?: boolean
   featured?: boolean
   featuredAt?: number | { _seconds?: number }
+  localFeatured?: boolean
+  localFeaturedAt?: number | { _seconds?: number }
   source?: string
   articleFormat?: string
   seoTitle?: string
@@ -137,6 +139,13 @@ function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
         ? new Date(data.featuredAt).toISOString()
         : data.featuredAt && typeof (data.featuredAt as { _seconds?: number })._seconds === 'number'
           ? new Date((data.featuredAt as { _seconds: number })._seconds * 1000).toISOString()
+          : undefined,
+    localFeatured: data.localFeatured === true,
+    localFeaturedAt:
+      typeof data.localFeaturedAt === 'number' && data.localFeaturedAt > 0
+        ? new Date(data.localFeaturedAt).toISOString()
+        : data.localFeaturedAt && typeof (data.localFeaturedAt as { _seconds?: number })._seconds === 'number'
+          ? new Date((data.localFeaturedAt as { _seconds: number })._seconds * 1000).toISOString()
           : undefined,
     articleFormat: data.articleFormat as NewsItem['articleFormat'],
     seoTitle: data.seoTitle?.trim(),
@@ -549,38 +558,30 @@ function isCityBreakingItem(item: NewsItem): boolean {
 function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
   const aPub = Date.parse(a.publishedAt ?? a.createdAt ?? '') || 0
   const bPub = Date.parse(b.publishedAt ?? b.createdAt ?? '') || 0
-  const aPin = Date.parse(a.featuredAt ?? '') || aPub
-  const bPin = Date.parse(b.featuredAt ?? '') || bPub
+  const aPin = Date.parse(a.localFeaturedAt ?? a.featuredAt ?? '') || aPub
+  const bPin = Date.parse(b.localFeaturedAt ?? b.featuredAt ?? '') || bPub
   if (aPin !== bPin) return bPin - aPin
   return bPub - aPub
 }
 
 function bucketCityFeatured(
   pool: NewsItem[],
+  citySlug: string,
   limit: number,
   pinned: NewsItem[] = []
 ): NewsItem[] {
-  // City Öne Çıkan pins: yerel category only (pinned already filtered; pool may mix).
-  const isCityPin = (p: NewsItem) =>
-    p.featured === true && isCityFeaturedEligible({
-      citySlug: p.citySlug,
-      category: p.category,
-      forCitySlug: p.citySlug || '',
-    })
-  const featuredPinned = pinned.filter(isCityPin)
-  const featuredPool = pool.filter(isCityPin)
-  const candidates = [...featuredPinned, ...featuredPool].sort(compareFeaturedPriority)
   const seen = new Set<string>()
-  const featured: NewsItem[] = []
-  for (const item of candidates) {
+  const merged: NewsItem[] = []
+  for (const item of [...pinned, ...pool]) {
     if (seen.has(item.id)) continue
     seen.add(item.id)
-    featured.push(item)
-    if (featured.length >= limit) return featured
+    merged.push(item)
   }
-  // Fill remaining slots with recent image stories (city carousel fallback).
-  const withImages = pool.filter((p) => p.imageUrl && !seen.has(p.id))
-  return [...featured, ...withImages].slice(0, limit)
+  const pins = merged
+    .filter((item) => isCityFeaturedPin({ ...item, forCitySlug: citySlug }))
+    .sort(compareFeaturedPriority)
+  if (pins.length > 0) return pins.slice(0, limit)
+  return pickCityFeaturedCarouselItems(pool, citySlug, limit)
 }
 
 function bucketCityCategoryRails(
@@ -625,8 +626,8 @@ function deriveSporRailSectionIds(pool: NewsItem[]): string[] {
 }
 
 /**
- * CMS “Öne Çıkan” for a city tenant — yerel category tree + matching citySlug.
- * National categories with a city stay on nahaber.com, not city featured.
+ * CMS “Yerelde öne çıkan” for a city tenant — explicit localFeatured, or legacy
+ * featured + yerel category tree + matching citySlug.
  */
 async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<NewsItem[]> {
   const db = getAdminFirestore()
@@ -635,14 +636,7 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
   const normalized = citySlug.trim().toLowerCase()
 
   const accept = (item: NewsItem | null): item is NewsItem =>
-    Boolean(
-      item?.featured &&
-        isCityFeaturedEligible({
-          citySlug: item.citySlug,
-          category: item.category,
-          forCitySlug: normalized,
-        })
-    )
+    Boolean(item && isCityFeaturedPin({ ...item, category: item.category, forCitySlug: normalized }))
 
   const mergeDocs = (docs: Array<{ id: string; data: () => NewsDocument }>) => {
     for (const doc of docs) {
@@ -650,6 +644,32 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
       if (!accept(item)) continue
       byId.set(item.id, item)
     }
+  }
+
+  try {
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('localFeatured', '==', true)
+      .orderBy('localFeaturedAt', 'desc')
+      .limit(scan)
+      .get()
+    mergeDocs(snap.docs)
+  } catch (error) {
+    console.warn('[cityNewsService] city localFeaturedAt order failed:', error)
+  }
+
+  try {
+    const snap = await db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('localFeatured', '==', true)
+      .orderBy('publishedAt', 'desc')
+      .limit(scan)
+      .get()
+    mergeDocs(snap.docs)
+  } catch (error) {
+    console.warn('[cityNewsService] city localFeatured query failed:', error)
   }
 
   try {
@@ -720,6 +740,7 @@ function deriveRailCategoriesFromPool(pool: NewsItem[]): HomeCategorySlug[] {
 
 function buildCityFeedFromPool(
   pool: NewsItem[],
+  citySlug: string,
   railCategoryIds: readonly string[],
   bucketRails: (
     pool: NewsItem[],
@@ -747,7 +768,7 @@ function buildCityFeedFromPool(
   return {
     breaking: slimNewsItemsForFeed(pool.filter(isCityBreakingItem).slice(0, 8)),
     featured: slimNewsItemsForFeed(
-      bucketCityFeatured(pool, HOME_FEATURED_LIMIT, featuredPinned)
+      bucketCityFeatured(pool, citySlug, HOME_FEATURED_LIMIT, featuredPinned)
     ),
     latest: slimNewsItemsForFeed(rankFeedHotAware(nonBreaking, now).slice(0, 16)),
     trending: slimNewsItemsForFeed(trending),
@@ -769,18 +790,18 @@ const getCityHomeFeedCached = unstable_cache(
     // All non-empty city categories (incl. yerel-only chips like yerel-duyuru).
     const railCategoryIds = cityCategories.map((c) => c.id)
 
-    return buildCityFeedFromPool(pool, railCategoryIds, bucketCityCategoryRails, featuredPinned)
+    return buildCityFeedFromPool(pool, citySlug, railCategoryIds, bucketCityCategoryRails, featuredPinned)
   },
-  ['city-home-feed-v6'],
+  ['city-home-feed-v7'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
 const getCityDistrictFeedCached = unstable_cache(
   async (citySlug: string, districtSlug: string): Promise<HomeFeedInitialData> => {
     const pool = await getCityNewsByDistrict(citySlug, districtSlug, 60)
-    return buildCityFeedFromPool(pool, deriveRailCategoriesFromPool(pool))
+    return buildCityFeedFromPool(pool, citySlug, deriveRailCategoriesFromPool(pool))
   },
-  ['city-district-feed-v3'],
+  ['city-district-feed-v4'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -804,9 +825,9 @@ const getCitySporFeedCached = unstable_cache(
   async (citySlug: string): Promise<HomeFeedInitialData> => {
     const pool = await getCityNewsByCategory(citySlug, 'spor', 60)
     const railSectionIds = deriveSporRailSectionIds(pool)
-    return buildCityFeedFromPool(pool, railSectionIds, bucketCitySectionRails)
+    return buildCityFeedFromPool(pool, citySlug, railSectionIds, bucketCitySectionRails)
   },
-  ['city-spor-feed-v2'],
+  ['city-spor-feed-v3'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -818,9 +839,9 @@ export async function getCitySporFeedInitialData(citySlug: string): Promise<Home
 const getCityCategoryFeedCached = unstable_cache(
   async (citySlug: string, categoryId: string): Promise<HomeFeedInitialData> => {
     const pool = await getCityNewsByCategory(citySlug, categoryId, 60)
-    return buildCityFeedFromPool(pool, [categoryId])
+    return buildCityFeedFromPool(pool, citySlug, [categoryId])
   },
-  ['city-category-feed-v1'],
+  ['city-category-feed-v2'],
   { revalidate: 120, tags: ['city-news'] }
 )
 

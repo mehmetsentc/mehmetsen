@@ -39,8 +39,10 @@ interface UpdatePayload {
   categoryId?: string
   status?: string
   isBreaking?: boolean
-  /** Homepage featured slider — any category */
+  /** Homepage featured slider — national “Genelde öne çıkan” */
   featured?: boolean
+  /** City-page carousel only — “Yerelde öne çıkan” */
+  localFeatured?: boolean
   tags?: string[]
   citySlug?: string
   city?: string
@@ -148,11 +150,22 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
       update.featuredAt = FieldValue.delete()
     }
   }
+  if (typeof body.localFeatured === 'boolean') {
+    update.localFeatured = body.localFeatured
+    if (body.localFeatured) {
+      update.localFeaturedAt = Date.now()
+      if (body.status?.trim() !== 'archived' && body.status?.trim() !== 'banned') {
+        update.status = 'published'
+      }
+    } else {
+      update.localFeaturedAt = FieldValue.delete()
+    }
+  }
   if (body.status?.trim()) {
     // Featured force-publish wins over an explicit pending/draft status in the same save.
     if (
       !(
-        body.featured === true &&
+        (body.featured === true || body.localFeatured === true) &&
         (body.status.trim() === 'pending' || body.status.trim() === 'draft')
       )
     ) {
@@ -300,7 +313,7 @@ export async function PUT(request: Request, context: RouteContext) {
   }
   if (body.status?.trim() === 'published' && !hasPermission(auth.role, 'news:publish')) {
     // Allow editors to publish when pinning Öne Çıkan (otherwise pin is invisible live).
-    if (!(body.featured === true)) {
+    if (!(body.featured === true || body.localFeatured === true)) {
       return NextResponse.json(
         { error: 'Bu hesabın doğrudan yayınlama yetkisi yok; haber incelemeye gönderilmeli' },
         { status: 403 }
@@ -350,7 +363,8 @@ export async function PUT(request: Request, context: RouteContext) {
       const willBePublished =
         update.status === 'published' ||
         (body.status?.trim() || prevData?.status) === 'published' ||
-        body.featured === true
+        body.featured === true ||
+        body.localFeatured === true
       const existingPublishedAt = prevData?.publishedAt
       const hasValidPublishedAt =
         typeof existingPublishedAt === 'number' ||
@@ -362,6 +376,18 @@ export async function PUT(request: Request, context: RouteContext) {
       // Featured pin must have numeric featuredAt for homepage orderBy.
       if (body.featured === true && update.featuredAt == null) {
         update.featuredAt = Date.now()
+      }
+      if (body.localFeatured === true && update.localFeaturedAt == null) {
+        update.localFeaturedAt = Date.now()
+      }
+      if (body.localFeatured === true) {
+        const city = String(update.citySlug ?? prevData?.citySlug ?? '').trim()
+        if (!city) {
+          return NextResponse.json(
+            { error: 'Yerelde öne çıkan için önce il seçin' },
+            { status: 400 }
+          )
+        }
       }
 
       await newsRef.update(update)
@@ -377,7 +403,7 @@ export async function PUT(request: Request, context: RouteContext) {
         }
       }
 
-      if (prevData?.status === 'published' || body.status === 'published' || body.featured === true) {
+      if (prevData?.status === 'published' || body.status === 'published' || body.featured === true || body.localFeatured === true) {
         await syncPostsMirror(id, update)
       }
 
@@ -416,13 +442,24 @@ export async function PUT(request: Request, context: RouteContext) {
 
       // Öne Çıkan → otomatik yayına al (UI status=published gönderir; featured da yeterli)
       const shouldPublish =
-        body.status === 'published' || body.featured === true
+        body.status === 'published' || body.featured === true || body.localFeatured === true
 
       if (shouldPublish) {
         if (body.featured === true) {
           draftUpdate.featured = true
           draftUpdate.isEditorPick = true
           if (draftUpdate.featuredAt == null) draftUpdate.featuredAt = Date.now()
+        }
+        if (body.localFeatured === true) {
+          const city = String(draftUpdate.citySlug ?? draftSnap.data()?.citySlug ?? '').trim()
+          if (!city) {
+            return NextResponse.json(
+              { error: 'Yerelde öne çıkan için önce il seçin' },
+              { status: 400 }
+            )
+          }
+          draftUpdate.localFeatured = true
+          if (draftUpdate.localFeaturedAt == null) draftUpdate.localFeaturedAt = Date.now()
         }
         if (Object.keys(draftUpdate).length > 0) {
           await draftRef.update(draftUpdate)
