@@ -15,6 +15,7 @@ export function revalidateHomeFeedCaches(): void {
     revalidateTag('city-news')
     revalidateTag('category-presence')
     revalidateTag('category-feed')
+    revalidateTag('site-settings')
   } catch {
     /* best-effort */
   }

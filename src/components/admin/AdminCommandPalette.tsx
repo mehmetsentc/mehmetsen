@@ -202,7 +202,7 @@ const COMMANDS: CommandItem[] = [
   },
   {
     id: 'settings',
-    label: 'Ayarlar',
+    label: 'Global Ayarlar',
     href: ROUTES.ADMIN.SETTINGS,
     icon: Settings,
     group: 'Yönetim',

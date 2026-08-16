@@ -164,7 +164,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/users', label: 'Adminler', icon: Users, requiredPermissions: ['users:read'] },
       { href: '/admin/roles', label: 'Roller & Yetkiler', icon: Shield, requiredPermissions: ['roles:manage'] },
       { href: '/admin/cron', label: 'Cron İzleme', icon: Timer, requiredPermissions: ['cron:read'] },
-      { href: '/admin/settings', label: 'Ayarlar', icon: Settings, requiredPermissions: ['system:settings'] },
+      { href: '/admin/settings', label: 'Global Ayarlar', icon: Settings, requiredPermissions: ['system:settings'] },
       { href: '/admin/audit-logs', label: 'Loglar', icon: ScrollText, requiredPermissions: ['logs:view'] },
       { href: '/admin/system-health', label: 'Sistem Durumu', icon: Activity, requiredPermissions: ['system:settings'] },
     ],

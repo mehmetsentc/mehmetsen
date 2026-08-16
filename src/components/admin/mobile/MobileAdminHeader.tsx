@@ -30,7 +30,7 @@ const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
   { prefix: '/admin/editors', title: 'Editörler', backHref: '/admin/menu' },
   { prefix: '/admin/authors', title: 'Yazarlar', backHref: '/admin/menu' },
   { prefix: '/admin/users', title: 'Kullanıcılar', backHref: '/admin/menu' },
-  { prefix: '/admin/settings', title: 'Ayarlar', backHref: '/admin/menu' },
+  { prefix: '/admin/settings', title: 'Global Ayarlar', backHref: '/admin/menu' },
   { prefix: '/admin/cron', title: 'Cron İzleme', backHref: '/admin/menu' },
   { prefix: '/admin/reports', title: 'Raporlar', backHref: '/admin/menu' },
 ]

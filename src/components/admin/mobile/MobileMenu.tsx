@@ -64,7 +64,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/admin/authors', label: 'Yazarlar', icon: UserCheck, perm: 'authors:read' },
       { href: '/admin/users', label: 'Kullanıcılar', icon: Users, perm: 'users:read' },
       { href: '/admin/cron', label: 'Cron İzleme', icon: Timer, perm: 'cron:read' },
-      { href: '/admin/settings', label: 'Ayarlar', icon: Settings, perm: 'system:settings' },
+      { href: '/admin/settings', label: 'Global Ayarlar', icon: Settings, perm: 'system:settings' },
     ],
   },
 ]

@@ -1,6 +1,6 @@
 /**
  * CMS feature flags — server/client safe defaults.
- * Production overrides via NEXT_PUBLIC_CMS_FLAGS JSON or Firestore doc (later).
+ * Production overrides via NEXT_PUBLIC_CMS_FLAGS JSON or Global Ayarlar (Firestore).
  */
 import {
   DEFAULT_CMS_FEATURE_FLAGS,

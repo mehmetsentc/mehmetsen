@@ -113,6 +113,8 @@ export const Collections = {
   PAGE_LAYOUT_VERSIONS: 'pageLayoutVersions',
   CMS_AUDIT_LOGS: 'cmsAuditLogs',
   CMS_FEATURE_FLAGS: 'cmsFeatureFlags',
+  /** Global site identity / public feature toggles — doc id: `global` */
+  SITE_SETTINGS: 'siteSettings',
   CMS_NOTIFICATIONS: 'cmsNotifications',
   STORY_CLUSTERS: 'storyClusters',
   SOURCE_PROFILES: 'sourceProfiles',

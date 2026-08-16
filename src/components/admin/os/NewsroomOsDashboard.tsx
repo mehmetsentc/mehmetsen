@@ -233,7 +233,7 @@ const QUICK = [
   { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, color: 'bg-violet-500 text-white' },
   { href: '/admin/smm', label: '81 İl SMM', icon: Map, color: 'bg-emerald-500 text-white' },
   { href: '/admin/smm/queue', label: 'Paylaşım Kuyruğu', icon: Share2, color: 'bg-amber-500 text-white' },
-  { href: '/admin/settings', label: 'Ayarlar', icon: Settings, color: 'bg-slate-600 text-white' },
+  { href: '/admin/settings', label: 'Global Ayarlar', icon: Settings, color: 'bg-slate-600 text-white' },
 ] as const
 
 export function NewsroomOsDashboard({

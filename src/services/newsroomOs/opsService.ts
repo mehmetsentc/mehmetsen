@@ -5,6 +5,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import type { AuditLogEntry } from '@/types/newsroomOs'
 import { getCmsFeatureFlags } from '@/lib/cms/featureFlags'
+import { getSiteSettings } from '@/services/siteSettings.server'
 
 export async function listAuditLogs(limit = 80): Promise<AuditLogEntry[]> {
   const snap = await getAdminFirestore()
@@ -104,7 +105,8 @@ export async function probeSystemHealth(): Promise<{
     detail: 'CMS verifyCmsToken + cms_session aktif',
   })
 
-  return { checks, flags: getCmsFeatureFlags(), at: Date.now() }
+  const settings = await getSiteSettings()
+  return { checks, flags: getCmsFeatureFlags(settings.cmsFlags), at: Date.now() }
 }
 
 export function getAiModelRegistry() {
