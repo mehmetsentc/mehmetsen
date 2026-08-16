@@ -10,7 +10,7 @@ import {
 import { db } from '@/lib/firebase/firestore'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { docToNewsItem, sortNewsByDate } from '@/lib/newsItemUtils'
-import { isNationalFeaturedEligible } from '@/lib/featuredScope'
+import { isNationalBreakingEligible, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
 import { getHomeFeedCategoryFamily } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
@@ -72,18 +72,24 @@ export async function getLatestNews(limitCount = 20): Promise<NewsItem[]> {
   }
 }
 
+function isNationalBreakingItem(item: NewsItem): boolean {
+  return (
+    isBreakingItem(item) &&
+    isNationalBreakingEligible({
+      category: item.category,
+      originalCategoryId: item.originalCategoryId,
+    })
+  )
+}
+
 /** Breaking news — isBreaking / breaking flag or son-dakika category. */
 export async function getBreakingNews(limitCount = 12): Promise<NewsItem[]> {
-  const scanLimit = Math.max(limitCount * 3, 24)
+  const scanLimit = Math.max(limitCount * 4, 32)
 
   const fromBreaking = await queryPublished(
     [where('isBreaking', '==', true), orderBy('publishedAt', 'desc')],
     scanLimit
   )
-  if (fromBreaking.length >= limitCount) {
-    return fromBreaking.slice(0, limitCount)
-  }
-
   const fromCategory = await queryPublished(
     [where('categoryId', '==', 'son-dakika'), orderBy('publishedAt', 'desc')],
     scanLimit
@@ -93,7 +99,7 @@ export async function getBreakingNews(limitCount = 12): Promise<NewsItem[]> {
     [...fromBreaking, ...fromCategory].filter(
       (item, index, arr) => arr.findIndex((x) => x.id === item.id) === index
     )
-  )
+  ).filter(isNationalBreakingItem)
 
   if (merged.length > 0) return merged.slice(0, limitCount)
 
@@ -106,7 +112,7 @@ export async function getBreakingNews(limitCount = 12): Promise<NewsItem[]> {
         limit(scanLimit)
       )
     )
-    return mapDocs(snap.docs).filter(isBreakingItem).slice(0, limitCount)
+    return mapDocs(snap.docs).filter(isNationalBreakingItem).slice(0, limitCount)
   } catch (error) {
     console.warn('[lib/news] getBreakingNews scan failed:', error)
     return []

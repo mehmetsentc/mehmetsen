@@ -82,6 +82,8 @@ export interface Post {
   isTrending: boolean
   /** Breaking news pin — sorted by priorityScore in feed. */
   isBreaking?: boolean
+  /** Category before CMS parked the story in son-dakika. */
+  originalCategoryId?: string
   /**
    * Editorial “Genelde öne çıkan” — national homepage featured slider
    * (FeaturedSlider), independent of gundem / son-dakika.

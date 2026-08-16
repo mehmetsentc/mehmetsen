@@ -106,6 +106,7 @@ export interface NewsDocument {
   isEditorPick?: boolean
   localFeatured?: boolean
   localFeaturedAt?: number | string | { toDate?: () => Date }
+  originalCategoryId?: string
   priorityScore?: number
   createdAt?: number | string | { toDate?: () => Date }
   isLiveBlog?: boolean
@@ -423,6 +424,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     authorDisplayName,
     authorPhotoURL: (data as { authorPhotoURL?: string | null }).authorPhotoURL?.trim() || null,
     categoryId: data.categoryId?.trim() || data.category?.trim() || '',
+    originalCategoryId: data.originalCategoryId?.trim() || undefined,
     city: data.city?.trim() || null,
     citySlug: data.citySlug?.trim() || null,
     district: data.district?.trim() || data.location?.district?.trim() || null,

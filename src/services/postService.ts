@@ -21,6 +21,7 @@ import { getHomeFeedCategoryFamily } from '@/constants/config'
 import { filterPostsByFeedSource } from '@/lib/feedSource'
 import { YEREL_HABER_CATEGORY, isYerelHaberEligible } from '@/lib/feedRanking'
 import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
+import { isNationalBreakingEligible } from '@/lib/featuredScope'
 import { db, Collections, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
 import { hasVideoContent, isPubliclyVisibleStatus } from '@/lib/postUtils'
 import {
@@ -160,6 +161,15 @@ const CITY_QUERY_BLOCKED_CATEGORIES = new Set([
 ])
 
 function applyTimelinePostFilters(posts: Post[], options?: NewsTimelineOptions): Post[] {
+  if (options?.categoryId === 'son-dakika') {
+    return posts.filter((p) =>
+      isNationalBreakingEligible({
+        categoryId: p.categoryId,
+        originalCategoryId: p.originalCategoryId,
+        citySlug: p.citySlug,
+      })
+    )
+  }
   if (options?.categoryId === YEREL_HABER_CATEGORY) {
     // Yerel haber sayfası: tam filtre — citySlug olmayan veya ulusal kategori olan her şeyi at
     return posts.filter(isYerelHaberEligible)
@@ -280,7 +290,9 @@ export const postService = {
     const fetchLimit =
       options?.citySlug && !options?.categoryId
         ? Math.min(pageLimit * 3, 60)
-        : pageLimit
+        : options?.categoryId === 'son-dakika'
+          ? Math.min(pageLimit * 3, 60)
+          : pageLimit
     const { constraints: baseConstraints, filterAuthorOnServer } =
       buildNewsTimelineQueryConstraints(options, fetchLimit)
 

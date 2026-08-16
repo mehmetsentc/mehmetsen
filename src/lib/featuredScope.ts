@@ -21,6 +21,8 @@ export type FeaturedScopeInput = {
   citySlug?: string | null
   categoryId?: string | null
   category?: string | null
+  /** Category before CMS moved the story to `son-dakika`. */
+  originalCategoryId?: string | null
 }
 
 export type FeaturedPinFlags = {
@@ -33,11 +35,22 @@ function resolveCategoryId(input: FeaturedScopeInput): string {
 }
 
 /**
+ * Editorial scope for yerel / kıbrıs vs national.
+ * When a story is parked in `son-dakika`, the pre-breaking category decides the page.
+ */
+export function resolveEditorialScopeCategory(input: FeaturedScopeInput): string {
+  const current = resolveCategoryId(input)
+  const original = String(input.originalCategoryId ?? '').trim()
+  if (current === 'son-dakika' && original) return original
+  return current
+}
+
+/**
  * True when a story is Yerel-category-scoped (featured → city page only).
  * citySlug is ignored for this decision — it only identifies which city page.
  */
 export function isLocalScopedNews(input: FeaturedScopeInput): boolean {
-  const cat = resolveCategoryId(input)
+  const cat = resolveEditorialScopeCategory(input)
   return Boolean(cat) && isYerelCategoryTree(cat)
 }
 
@@ -46,15 +59,23 @@ export function isLocalScopedNews(input: FeaturedScopeInput): boolean {
  * (featured → Kıbrıs haber sayfası only, not national Öne Çıkan).
  */
 export function isKibrisScopedNews(input: FeaturedScopeInput): boolean {
-  const cat = resolveCategoryId(input)
+  const cat = resolveEditorialScopeCategory(input)
   return Boolean(cat) && isKibrisCategoryTree(cat)
 }
 
 /** National homepage /feed featured carousel candidates. */
 export function isNationalFeaturedEligible(input: FeaturedScopeInput): boolean {
-  if (isExcludedFromHomepageMainSlots(resolveCategoryId(input))) return false
+  if (isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(input))) return false
   if (isKibrisScopedNews(input)) return false
   return !isLocalScopedNews(input)
+}
+
+/**
+ * National `/kategori/son-dakika` + homepage breaking stripe.
+ * Yerel / Kıbrıs (current or original category) stay on their own pages.
+ */
+export function isNationalBreakingEligible(input: FeaturedScopeInput): boolean {
+  return isNationalFeaturedEligible(input)
 }
 
 /**
@@ -65,7 +86,7 @@ export function isNationalFeaturedEligible(input: FeaturedScopeInput): boolean {
 export function isCityFeaturedEligible(
   input: FeaturedScopeInput & { forCitySlug: string }
 ): boolean {
-  if (isExcludedFromHomepageMainSlots(resolveCategoryId(input))) return false
+  if (isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(input))) return false
   if (isKibrisScopedNews(input)) return false
   const forCity = String(input.forCitySlug ?? '').trim().toLowerCase()
   const itemCity = String(input.citySlug ?? '').trim().toLowerCase()
@@ -87,7 +108,7 @@ function citySlugMatches(input: FeaturedScopeInput, forCitySlug: string): boolea
 export function isCityFeaturedPin(
   input: FeaturedScopeInput & FeaturedPinFlags & { forCitySlug: string }
 ): boolean {
-  if (isExcludedFromHomepageMainSlots(resolveCategoryId(input))) return false
+  if (isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(input))) return false
   if (isKibrisScopedNews(input)) return false
   if (!citySlugMatches(input, input.forCitySlug)) return false
   if (input.localFeatured === true) return true
@@ -96,7 +117,7 @@ export function isCityFeaturedPin(
 
 /** CMS “Yerelde öne çıkan” tab — explicit flag or legacy yerel + featured. */
 export function isAdminLocalFeatured(input: FeaturedScopeInput & FeaturedPinFlags): boolean {
-  if (isExcludedFromHomepageMainSlots(resolveCategoryId(input))) return false
+  if (isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(input))) return false
   if (input.localFeatured === true) return true
   return input.featured === true && isLocalScopedNews(input)
 }
@@ -111,12 +132,12 @@ export function pickCityFeaturedCarouselItems<
   const pins = items.filter((item) => isCityFeaturedPin({ ...item, forCitySlug: citySlug }))
   if (pins.length > 0) return pins.slice(0, limit)
   return items
-    .filter((item) => !isExcludedFromHomepageMainSlots(resolveCategoryId(item)))
+    .filter((item) => !isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(item)))
     .slice(0, limit)
 }
 
 /** Kıbrıs category page Öne Çıkan: any kibris-* category pin. */
 export function isKibrisFeaturedEligible(input: FeaturedScopeInput): boolean {
-  if (isExcludedFromHomepageMainSlots(resolveCategoryId(input))) return false
+  if (isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(input))) return false
   return isKibrisScopedNews(input)
 }

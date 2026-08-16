@@ -5,6 +5,7 @@ import {
   isKibrisFeaturedEligible,
   isKibrisScopedNews,
   isLocalScopedNews,
+  isNationalBreakingEligible,
   isNationalFeaturedEligible,
   pickCityFeaturedCarouselItems,
 } from '@/lib/featuredScope'
@@ -110,6 +111,7 @@ describe('featuredScope', () => {
     expect(isNationalFeaturedEligible({ citySlug: 'canakkale', category: 'son-dakika' })).toBe(
       true
     )
+    expect(isNationalBreakingEligible({ citySlug: 'istanbul', category: 'son-dakika' })).toBe(true)
     expect(
       isCityFeaturedEligible({
         citySlug: 'canakkale',
@@ -117,6 +119,35 @@ describe('featuredScope', () => {
         forCitySlug: 'canakkale',
       })
     ).toBe(false)
+  })
+
+  it('yerel or kıbrıs son dakika is not national breaking', () => {
+    expect(
+      isNationalBreakingEligible({ category: 'yerel-haber', citySlug: 'antalya' })
+    ).toBe(false)
+    expect(isNationalBreakingEligible({ category: 'yerel-asayis' })).toBe(false)
+    expect(isNationalBreakingEligible({ category: 'kibris-haberleri' })).toBe(false)
+    expect(
+      isNationalBreakingEligible({
+        category: 'son-dakika',
+        originalCategoryId: 'yerel-haber',
+      })
+    ).toBe(false)
+    expect(
+      isNationalBreakingEligible({
+        category: 'son-dakika',
+        originalCategoryId: 'kibris-saglik',
+      })
+    ).toBe(false)
+    expect(isLocalScopedNews({ category: 'son-dakika', originalCategoryId: 'yerel-gundem' })).toBe(
+      true
+    )
+    expect(isKibrisScopedNews({ category: 'son-dakika', originalCategoryId: 'kibris-haberleri' })).toBe(
+      true
+    )
+    expect(
+      isNationalBreakingEligible({ category: 'son-dakika', originalCategoryId: 'gundem' })
+    ).toBe(true)
   })
 
   it('localFeatured pins a city page even for national categories', () => {

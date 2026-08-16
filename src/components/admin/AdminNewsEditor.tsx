@@ -1296,7 +1296,9 @@ export function AdminNewsEditor({
         <Zap className={`h-4 w-4 ${isBreaking ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`} />
         <div>
           <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Son Dakika</p>
-          <p className="text-[11px] text-[rgb(var(--color-muted))]">Ana sayfada ve son dakika şeridinde öne çıkar</p>
+          <p className="text-[11px] text-[rgb(var(--color-muted))]">
+            Ulusal haberlerde ana sayfa ve /kategori/son-dakika. Yerel veya Kıbrıs haberlerinde yalnızca o sayfada görünür.
+          </p>
         </div>
       </div>
       <button

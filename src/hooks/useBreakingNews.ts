@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
 import { db, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
 import { mapNewsSnapshot } from '@/lib/newsMapper'
+import { isNationalBreakingEligible } from '@/lib/featuredScope'
 import type { Post } from '@/types/post'
 
 const BREAKING_LIMIT = 5
@@ -67,7 +68,12 @@ async function fetchBreakingPosts(): Promise<Post[]> {
           if (!Number.isFinite(publishedAt)) return false
           const fresh = now - publishedAt <= BREAKING_FRESH_WINDOW_MS
           const isBreaking = post.isBreaking || post.categoryId === 'son-dakika'
-          return fresh && isBreaking
+          const national = isNationalBreakingEligible({
+            categoryId: post.categoryId,
+            originalCategoryId: post.originalCategoryId,
+            citySlug: post.citySlug,
+          })
+          return fresh && isBreaking && national
         })
         .slice(0, BREAKING_LIMIT)
 

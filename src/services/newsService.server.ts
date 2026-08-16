@@ -7,7 +7,7 @@ import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
-import { isNationalFeaturedEligible } from '@/lib/featuredScope'
+import { isNationalBreakingEligible, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import {
   isExcludedFromCityLocalPrimaryFeed,
   isExcludedFromHomepageMainSlots,
@@ -103,7 +103,19 @@ async function fetchBreakingSliderRaw(scanLimit: number): Promise<FeedSliderItem
       .limit(scanLimit)
       .get()
     const items = snap.docs
-      .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
+      .map((doc) => {
+        const data = doc.data() as NewsDocument
+        if (
+          !isNationalBreakingEligible({
+            categoryId: data.categoryId,
+            category: data.category,
+            originalCategoryId: data.originalCategoryId,
+          })
+        ) {
+          return null
+        }
+        return mapSliderItem(doc.id, data)
+      })
       .filter((item): item is FeedSliderItem => item !== null)
     if (items.length > 0) return items
   } catch (error) {
@@ -118,7 +130,19 @@ async function fetchBreakingSliderRaw(scanLimit: number): Promise<FeedSliderItem
       .limit(scanLimit)
       .get()
     return snap.docs
-      .map((doc) => mapSliderItem(doc.id, doc.data() as NewsDocument))
+      .map((doc) => {
+        const data = doc.data() as NewsDocument
+        if (
+          !isNationalBreakingEligible({
+            categoryId: data.categoryId,
+            category: data.category,
+            originalCategoryId: data.originalCategoryId,
+          })
+        ) {
+          return null
+        }
+        return mapSliderItem(doc.id, data)
+      })
       .filter((item): item is FeedSliderItem => item !== null)
   } catch (error) {
     console.warn('[newsService.server] son-dakika slider query failed:', error)
@@ -128,7 +152,7 @@ async function fetchBreakingSliderRaw(scanLimit: number): Promise<FeedSliderItem
 
 const getBreakingSliderCached = unstable_cache(
   (scanLimit: number) => fetchBreakingSliderRaw(scanLimit),
-  ['breaking-slider-v1'],
+  ['breaking-slider-v2'],
   { revalidate: 120, tags: ['breaking-news'] }
 )
 
@@ -319,7 +343,17 @@ function isBreakingPoolItem(item: NewsItem): boolean {
 }
 
 function bucketBreaking(pool: NewsItem[], limit: number): NewsItem[] {
-  return pool.filter((item) => isHomepageEligibleItem(item) && isBreakingPoolItem(item)).slice(0, limit)
+  return pool
+    .filter(
+      (item) =>
+        isHomepageEligibleItem(item) &&
+        isBreakingPoolItem(item) &&
+        isNationalBreakingEligible({
+          category: item.category,
+          originalCategoryId: item.originalCategoryId,
+        })
+    )
+    .slice(0, limit)
 }
 
 /** CMS pin time first; missing featuredAt falls back to publish time (legacy RSS pins). */
@@ -740,6 +774,26 @@ async function fetchPublishedInDay(
     .orderBy('publishedAt', 'desc')
     .limit(DAY_FEED_MAX_ITEMS)
 
+  if (categoryId === 'son-dakika') {
+    q = db
+      .collection(NEWS_COLLECTION)
+      .where('status', '==', 'published')
+      .where('isBreaking', '==', true)
+      .where('publishedAt', '>=', startMs)
+      .where('publishedAt', '<', endMs)
+      .orderBy('publishedAt', 'desc')
+      .limit(DAY_FEED_MAX_ITEMS)
+    const snap = await q.get()
+    return mapAdminDocs(snap.docs)
+      .filter((item) =>
+        isNationalBreakingEligible({
+          category: item.category,
+          originalCategoryId: item.originalCategoryId,
+        })
+      )
+      .map(slimNewsItemForFeed)
+  }
+
   if (categoryId) {
     const family = getHomeFeedCategoryFamily(categoryId)
     q = db
@@ -1124,7 +1178,7 @@ async function fetchCategoryFeedByDay(
 
 export const getCategoryFeedPage = unstable_cache(
   (categoryId: string, beforeDay: string) => fetchCategoryFeedByDay(categoryId, beforeDay),
-  ['category-feed-day-v1'],
+  ['category-feed-day-v2'],
   { revalidate: 300, tags: ['category-feed'] }
 )
 

@@ -35,6 +35,8 @@ export type NewsItem = {
   localFeatured?: boolean
   /** ISO — set when editor toggles Yerelde öne çıkan. */
   localFeaturedAt?: string
+  /** Category before CMS parked the story in son-dakika. */
+  originalCategoryId?: string
   breaking?: boolean
   /** column/analysis excluded from breaking stripe */
   articleFormat?: 'standard' | 'column' | 'analysis'

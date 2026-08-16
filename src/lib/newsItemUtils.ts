@@ -120,6 +120,7 @@ export function docToNewsItem(
     imageUrl: imageUrl && imageUrl.length > 5 ? imageUrl : undefined,
     videoUrl: String(raw.videoUrl ?? '').trim() || undefined,
     category: categoryId || undefined,
+    originalCategoryId: String(raw.originalCategoryId ?? '').trim() || undefined,
     source:
       formatPublicSourceLabel(String(raw.sourceLabel ?? '')) ||
       formatPublicSourceLabel(String(raw.source ?? '')) ||
@@ -184,6 +185,7 @@ export function slimNewsItemForFeed(item: NewsItem): NewsItem {
   if (item.imageUrl) slim.imageUrl = item.imageUrl
   if (item.videoUrl) slim.videoUrl = item.videoUrl
   if (item.category) slim.category = item.category
+  if (item.originalCategoryId) slim.originalCategoryId = item.originalCategoryId
   if (item.district) slim.district = item.district
   if (item.districtSlug) slim.districtSlug = item.districtSlug
 

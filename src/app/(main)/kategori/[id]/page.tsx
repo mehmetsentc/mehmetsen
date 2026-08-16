@@ -14,6 +14,7 @@ import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { isKibrisCategoryTree } from '@/constants/config'
+import { isKibrisScopedNews, isNationalBreakingEligible } from '@/lib/featuredScope'
 import { featuredPinTime } from '@/lib/featuredPins'
 import { getCityCategoryFeedInitialData } from '@/services/cityNewsService.server'
 import type { TimelinePost } from '@/types/post'
@@ -65,6 +66,8 @@ function mapNewsDocToTimelinePost(doc: {
     content: (d.content as string | undefined) ?? '',
     summary: (d.summary as string | undefined) ?? (d.spot as string | undefined) ?? '',
     categoryId: (d.categoryId as string | undefined) ?? '',
+    originalCategoryId: (d.originalCategoryId as string | undefined) ?? '',
+    isBreaking: d.isBreaking === true || (d.categoryId as string | undefined) === 'son-dakika',
     citySlug: (d.citySlug as string | undefined) ?? '',
     city: d.city ?? null,
     cityName: (d.cityName as string | undefined) ?? '',
@@ -80,7 +83,6 @@ function mapNewsDocToTimelinePost(doc: {
     postType: (d.postType as string | undefined) ?? (videoUrl ? 'video' : 'news'),
     source: (d.source as string | undefined) ?? '',
     author: d.author ?? null,
-    isBreaking: d.isBreaking === true,
     hasVideo: d.hasVideo === true,
     isVideo: d.isVideo === true,
     featured: d.featured === true,
@@ -107,7 +109,7 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
         ? await baseQ
             .where('isBreaking', '==', true)
             .orderBy('publishedAt', 'desc')
-            .limit(20)
+            .limit(40)
             .get()
         : await (() => {
             const family = getHomeFeedCategoryFamily(categoryId)
@@ -123,9 +125,27 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
 
     let posts = snap.docs.map((doc) => mapNewsDocToTimelinePost(doc))
 
-    // Kıbrıs/KKTC: Öne Çıkan pinleri kategori manşetine çek (ulusal /feed'e gitmez).
+    if (categoryId === 'son-dakika') {
+      posts = posts
+        .filter((post) =>
+          isNationalBreakingEligible({
+            categoryId: post.categoryId,
+            originalCategoryId: post.originalCategoryId,
+            citySlug: post.citySlug,
+          })
+        )
+        .slice(0, 20)
+    }
+
+    // Kıbrıs/KKTC: Öne Çıkan pinleri + yerel/kıbrıs son dakika manşetine çek.
     if (isKibrisCategoryTree(categoryId)) {
       const family = new Set(getHomeFeedCategoryFamily(categoryId))
+      const belongsOnKibrisPage = (post: TimelinePost) =>
+        family.has(String(post.categoryId ?? '').trim()) ||
+        isKibrisScopedNews({
+          categoryId: post.categoryId,
+          originalCategoryId: post.originalCategoryId,
+        })
       try {
         const featSnap = await baseQ
           .where('featured', '==', true)
@@ -140,7 +160,7 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
               pinAt: featuredPinTime(data),
             }
           })
-          .filter(({ post }) => family.has(String(post.categoryId ?? '').trim()))
+          .filter(({ post }) => belongsOnKibrisPage(post))
           .sort((a, b) => b.pinAt - a.pinAt)
           .map(({ post }) => post)
 
@@ -156,6 +176,23 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
         posts = [...posts].sort(
           (a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured))
         )
+      }
+
+      try {
+        const breakingSnap = await baseQ
+          .where('isBreaking', '==', true)
+          .orderBy('publishedAt', 'desc')
+          .limit(30)
+          .get()
+        const kibrisBreaking = breakingSnap.docs
+          .map((doc) => mapNewsDocToTimelinePost(doc))
+          .filter((post) => belongsOnKibrisPage(post))
+        if (kibrisBreaking.length > 0) {
+          const seen = new Set(posts.map((p) => p.id))
+          posts = [...kibrisBreaking.filter((p) => !seen.has(p.id)), ...posts].slice(0, 24)
+        }
+      } catch {
+        /* breaking merge is best-effort */
       }
     }
 

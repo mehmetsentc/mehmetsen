@@ -1022,7 +1022,7 @@ function NewsRow({
             <InlineFlagToggle
               active={!!post.isBreaking}
               label="Son Dakika"
-              title={post.isBreaking ? 'Son dakikayı kaldır' : 'Son dakika yap (ana sayfa + /kategori/son-dakika)'}
+              title={post.isBreaking ? 'Son dakikayı kaldır' : 'Son dakika yap (ulusal: ana sayfa + /kategori/son-dakika; yerel/kıbrıs kendi sayfasında kalır)'}
               icon={Zap}
               activeClass="border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200"
               onToggle={() => onBreakingChange(post.id, !post.isBreaking)}
@@ -1172,7 +1172,7 @@ function NewsRow({
             <InlineFlagToggle
               active={!!post.isBreaking}
               label="Son Dakika"
-              title={post.isBreaking ? 'Son dakikayı kaldır' : 'Son dakika yap (ana sayfa + /kategori/son-dakika)'}
+              title={post.isBreaking ? 'Son dakikayı kaldır' : 'Son dakika yap (ulusal: ana sayfa + /kategori/son-dakika; yerel/kıbrıs kendi sayfasında kalır)'}
               icon={Zap}
               activeClass="border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200"
               onToggle={() => onBreakingChange(post.id, !post.isBreaking)}

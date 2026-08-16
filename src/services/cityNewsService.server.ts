@@ -21,7 +21,7 @@ import {
 import { getThemedCategorySectionIds } from '@/constants/categorySections'
 import { getCategoryFamily, getHomeFeedCategoryFamily, getNationalCategoryForYerelSubcategory } from '@/constants/config'
 import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
-import { isCityFeaturedPin, pickCityFeaturedCarouselItems } from '@/lib/featuredScope'
+import { isCityFeaturedPin, isLocalScopedNews, pickCityFeaturedCarouselItems } from '@/lib/featuredScope'
 import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
 import { slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import { isPostgresReadsEnabled } from '@/db'
@@ -35,6 +35,7 @@ interface NewsDocument {
   thumbnail?: string
   categoryId?: string
   category?: string
+  originalCategoryId?: string
   status?: string
   publishedAt?: number | { _seconds?: number }
   citySlug?: string
@@ -123,6 +124,7 @@ function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
     imageUrl: data.coverImageUrl?.trim() || data.thumbnail?.trim() || undefined,
     videoUrl: data.videoUrl?.trim() || undefined,
     category: data.categoryId?.trim() || data.category?.trim() || undefined,
+    originalCategoryId: data.originalCategoryId?.trim() || undefined,
     source: data.source?.trim() || undefined,
     city: data.city?.trim() || undefined,
     citySlug: data.citySlug?.trim().toLowerCase() || undefined,
@@ -552,7 +554,12 @@ export async function getCityCategories(citySlug: string): Promise<CityCategory[
 
 function isCityBreakingItem(item: NewsItem): boolean {
   if (item.articleFormat === 'column' || item.articleFormat === 'analysis') return false
-  return item.breaking === true || item.category === 'son-dakika'
+  if (!(item.breaking === true || item.category === 'son-dakika')) return false
+  return isLocalScopedNews({
+    category: item.category,
+    originalCategoryId: item.originalCategoryId,
+    citySlug: item.citySlug,
+  })
 }
 
 function compareFeaturedPriority(a: NewsItem, b: NewsItem): number {
@@ -792,7 +799,7 @@ const getCityHomeFeedCached = unstable_cache(
 
     return buildCityFeedFromPool(pool, citySlug, railCategoryIds, bucketCityCategoryRails, featuredPinned)
   },
-  ['city-home-feed-v7'],
+  ['city-home-feed-v8'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
