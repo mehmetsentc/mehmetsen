@@ -1,4 +1,4 @@
-export function formatNewsDate(value?: string): string | null {
+export function formatNewsDate(value?: string | number | null): string | null {
   return formatNewsDateBbc(value)
 }
 
@@ -12,7 +12,7 @@ export function formatNewsDateLong(): string {
 }
 
 /** Haber kartı tarihi — yalnızca gün (saat / “x önce” yok). */
-export function formatNewsDateBbc(value?: string | number): string | null {
+export function formatNewsDateBbc(value?: string | number | null): string | null {
   if (value == null) return null
   const iso = typeof value === 'number' ? new Date(value).toISOString() : value
   const parsed = Date.parse(iso)
@@ -25,11 +25,11 @@ export function formatNewsDateBbc(value?: string | number): string | null {
 }
 
 /** @deprecated Kartlarda göreli süre yok; tarih döner. */
-export function formatNewsRelative(value?: string | number): string | null {
+export function formatNewsRelative(value?: string | number | null): string | null {
   return formatNewsDateBbc(value)
 }
 
 /** Mobil kart saati — paylaşım saati yerine yalnızca tarih. */
-export function formatNewsClock(value?: string | number): string | null {
+export function formatNewsClock(value?: string | number | null): string | null {
   return formatNewsDateBbc(value)
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
-import { Heart, MessageCircle, Bookmark, Share2, MapPin } from 'lucide-react'
+import { Heart, MessageCircle, Bookmark, Share2, MapPin, Clock } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { Avatar } from '@/components/ui/Avatar'
