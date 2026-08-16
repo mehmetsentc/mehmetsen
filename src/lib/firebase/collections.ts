@@ -19,6 +19,8 @@ export const Collections = {
   JOB_LISTINGS: 'jobListings',
   /** User-submitted employer / seeker classifieds (pending → approved) */
   JOB_CLASSIFIEDS: 'jobClassifieds',
+  /** On-duty pharmacies — doc id: city slug (`canakkale`) or `canakkale__YYYY-MM-DD` */
+  DUTY_PHARMACIES: 'dutyPharmacies',
   REPORTS:         'reports',
   BLOCKS:          'blocks',
   NOTIFICATIONS:   'notifications',

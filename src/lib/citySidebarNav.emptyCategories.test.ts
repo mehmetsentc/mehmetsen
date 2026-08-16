@@ -26,6 +26,12 @@ describe('city header empty-category filter', () => {
   it('always keeps Ana Sayfa, Etkinlik, İş İlanları, İlçeler', () => {
     const sections = buildCitySectionNavItems({ hasSpor: false })
     expect(sections.map((s) => s.id)).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'ilceler'])
+    expect(
+      buildCitySectionNavItems({ hasSpor: false, citySlug: 'canakkale' }).map((s) => s.id)
+    ).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
+    expect(
+      buildCitySectionNavItems({ hasSpor: false, citySlug: 'bursa' }).map((s) => s.id)
+    ).not.toContain('nobetci-eczaneler')
     for (const id of CITY_ALWAYS_VISIBLE_SECTION_IDS) {
       expect(sections.some((s) => s.id === id)).toBe(true)
     }

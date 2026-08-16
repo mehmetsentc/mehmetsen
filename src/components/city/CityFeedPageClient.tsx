@@ -6,6 +6,8 @@ import { HomeFeed } from '@/components/home/HomeFeed'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import type { HomeFeedInitialData, HomeCategorySlug } from '@/types/newsItem'
 import type { NaEvent } from '@/types/event'
+import type { DutyPharmacyGroup } from '@/types/dutyPharmacy'
+import { CityDutyPharmacyStrip } from '@/components/city/CityDutyPharmacyStrip'
 
 const DesktopHomeFeed = dynamic(
   () => import('@/components/home/desktop/DesktopHomeFeed').then((m) => m.DesktopHomeFeed),
@@ -48,6 +50,9 @@ interface CityFeedPageClientProps {
   streamSectionLabel?: string
   /** Mid-stream desktop section link. */
   streamSectionHref?: string
+  /** On-duty pharmacies scoped to this district page. */
+  dutyPharmacyGroups?: DutyPharmacyGroup[]
+  districtSlug?: string
 }
 
 function CityFeedScrollHeaderConfig({ homeFeedData }: { homeFeedData: HomeFeedInitialData }) {
@@ -114,6 +119,8 @@ function CityFeedPageBody({
   sectionTitle,
   streamSectionLabel,
   streamSectionHref,
+  dutyPharmacyGroups = [],
+  districtSlug,
 }: CityFeedPageClientProps) {
   const desktopReady = useDesktopFeedReady()
   const categoryRailIds = Object.keys(homeFeedData.categoryRails) as HomeCategorySlug[]
@@ -135,6 +142,13 @@ function CityFeedPageBody({
             ) : null}
           </div>
         ) : null}
+        {districtName && districtSlug ? (
+          <CityDutyPharmacyStrip
+            districtName={districtName}
+            districtSlug={districtSlug}
+            groups={dutyPharmacyGroups}
+          />
+        ) : null}
         <HomeFeed
           data={homeFeedData}
           cityMode
@@ -146,7 +160,17 @@ function CityFeedPageBody({
 
       <div className="hidden lg:block">
         {desktopReady ? (
-          <DesktopNewspaperShell>
+          <DesktopNewspaperShell
+            top={
+              districtName && districtSlug ? (
+                <CityDutyPharmacyStrip
+                  districtName={districtName}
+                  districtSlug={districtSlug}
+                  groups={dutyPharmacyGroups}
+                />
+              ) : undefined
+            }
+          >
             <DesktopHomeFeed
               data={homeFeedData}
               cityMode

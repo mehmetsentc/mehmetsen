@@ -21,6 +21,12 @@ const CITY_STATIC = [
   { path: '/editoryal-ilkeler',   priority: 0.3, freq: 'monthly' },
 ]
 
+const CITY_DUTY_PHARMACY_STATIC = {
+  path: '/nobetci-eczaneler',
+  priority: 0.7,
+  freq: 'daily',
+} as const
+
 const CITY_CATEGORIES = [
   'gundem', 'siyaset', 'ekonomi', 'yasam',
   'egitim', 'kultur',  'turizm',  'asayis',
@@ -34,7 +40,9 @@ function xmlUrl(loc: string, freq: string, priority: number, lastmod?: string): 
 async function buildCitySitemapXml(citySlug: string): Promise<string> {
   const base = `https://${citySlug}.nahaber.com`
 
-  const staticRows = CITY_STATIC.map(({ path, priority, freq }) =>
+  const staticPaths =
+    citySlug === 'canakkale' ? [...CITY_STATIC, CITY_DUTY_PHARMACY_STATIC] : CITY_STATIC
+  const staticRows = staticPaths.map(({ path, priority, freq }) =>
     xmlUrl(`${base}${path}`, freq, priority)
   )
 

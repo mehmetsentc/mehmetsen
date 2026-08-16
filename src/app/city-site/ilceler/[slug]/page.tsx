@@ -7,6 +7,9 @@ import {
   DISTRICT_DISPLAY_NAMES,
 } from '@/constants/cities'
 import { getCityDistrictFeedInitialData } from '@/services/cityNewsService.server'
+import { getDutyPharmaciesServer } from '@/services/dutyPharmacyService.server'
+import { DUTY_PHARMACY_CITY_SLUG } from '@/lib/dutyPharmacies/constants'
+import { filterDutyPharmacyGroups } from '@/lib/dutyPharmacies/officialDistrict'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 
 export const dynamic = 'force-dynamic'
@@ -42,13 +45,23 @@ export default async function CityDistrictPage({ params }: PageProps) {
   if (!district) notFound()
 
   const cityName = getCityCategoryName(tenant.provinceSlug)
-  const homeFeedData = await getCityDistrictFeedInitialData(tenant.provinceSlug, slug)
+  const [homeFeedData, dutySnapshot] = await Promise.all([
+    getCityDistrictFeedInitialData(tenant.provinceSlug, slug),
+    tenant.provinceSlug === DUTY_PHARMACY_CITY_SLUG
+      ? getDutyPharmaciesServer(tenant.provinceSlug)
+      : Promise.resolve(null),
+  ])
+  const dutyPharmacyGroups = dutySnapshot
+    ? filterDutyPharmacyGroups(dutySnapshot.groups, slug)
+    : []
 
   return (
     <CityFeedPageClient
       homeFeedData={homeFeedData}
       cityName={cityName}
       districtName={district.name}
+      districtSlug={slug}
+      dutyPharmacyGroups={dutyPharmacyGroups}
     />
   )
 }

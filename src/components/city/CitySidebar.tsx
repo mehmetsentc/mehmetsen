@@ -82,7 +82,7 @@ function CitySidebarInner({
   const [searchQuery, setSearchQuery] = useState('')
   const [submitOpen, setSubmitOpen] = useState(false)
 
-  const sectionItems = buildCitySectionNavItems({ hasSpor })
+  const sectionItems = buildCitySectionNavItems({ hasSpor, citySlug: provinceSlug })
   const categoryItems = buildCityCategoryNavItems(categories)
 
   useEffect(() => {

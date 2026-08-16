@@ -5,6 +5,8 @@ import { Mail } from 'lucide-react'
 import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { CONTACT_EMAIL, FOOTER_BOTTOM_LINKS } from '@/constants/siteLegalLinks'
+import { ROUTES } from '@/constants/routes'
+import { DUTY_PHARMACY_CITY_SLUG } from '@/lib/dutyPharmacies/constants'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
 import type { CityCategory } from '@/services/cityNewsService.server'
 
@@ -145,10 +147,18 @@ interface CityFooterProps {
   provinceSlug: string
 }
 
-export function CityFooter({ cityName }: CityFooterProps) {
+export function CityFooter({ cityName, provinceSlug }: CityFooterProps) {
   const { categories } = useCityCategoryFilter()
   const { news, life, culture } = groupCategories(categories)
   const year = new Date().getFullYear()
+  const newsStatic =
+    provinceSlug === DUTY_PHARMACY_CITY_SLUG
+      ? [
+          ...NEWS_STATIC.slice(0, 3),
+          { label: 'Nöbetçi Eczaneler', href: ROUTES.CITY_DUTY_PHARMACIES },
+          ...NEWS_STATIC.slice(3),
+        ]
+      : NEWS_STATIC
 
   // Dinamik kategori linkleri (şehir kategori sayfası)
   const newsLinks: SimpleLink[] = news.map((c) => ({
@@ -252,9 +262,9 @@ export function CityFooter({ cityName }: CityFooterProps) {
             <nav aria-label="Haberler">
               <ColHeader title="Haberler" />
               <CategoryLinks cats={news} />
-              {NEWS_STATIC.length > 0 && (
+              {newsStatic.length > 0 && (
                 <ul className="m-0 mt-2.5 flex list-none flex-col gap-2.5 p-0 border-t border-[rgb(var(--color-border))] pt-2.5">
-                  {NEWS_STATIC.map((l) => (
+                  {newsStatic.map((l) => (
                     <li key={l.href}>
                       <Link href={l.href}
                         className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"

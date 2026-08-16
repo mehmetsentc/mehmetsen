@@ -22,6 +22,7 @@ const JOB_ROUTES: Record<string, string[]> = {
   gundem: ['/api/cron/newsroom/gundem'],
   local: ['/api/cron/newsroom/local'],
   'canakkale-bel-duyuru': ['/api/cron/newsroom/canakkale-bel-duyuru'],
+  'canakkale-nobetci-eczane': ['/api/cron/canakkale-nobetci-eczane'],
   national: ['/api/cron/newsroom/national'],
   'process-queue': ['/api/cron/newsroom/process-queue'],
   'process-now': ['/api/admin/newsroom/process-now'],

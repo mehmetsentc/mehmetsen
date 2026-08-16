@@ -31,6 +31,7 @@ const CITY_PATH_REWRITES: Record<string, string> = {
   '/is-ilanlari': '/city-site/is-ilanlari',
   '/spor': '/city-site/spor',
   '/ilceler': '/city-site/ilceler',
+  '/nobetci-eczaneler': '/city-site/nobetci-eczaneler',
 }
 
 /**
@@ -171,6 +172,16 @@ export async function middleware(request: NextRequest) {
     const districtMatch = cleanPath.match(/^\/ilceler\/([a-z0-9-]+)$/)
     if (districtMatch) {
       return buildCityRewrite(request, `/city-site/ilceler/${districtMatch[1]}`, tenant)
+    }
+
+    // Duty pharmacies by district: /nobetci-eczaneler/biga
+    const pharmacyDistrictMatch = cleanPath.match(/^\/nobetci-eczaneler\/([a-z0-9-]+)$/)
+    if (pharmacyDistrictMatch) {
+      return buildCityRewrite(
+        request,
+        `/city-site/nobetci-eczaneler/${pharmacyDistrictMatch[1]}`,
+        tenant
+      )
     }
 
     // Job classified forms: /is-ilanlari/eleman-ariyorum | is-ariyorum

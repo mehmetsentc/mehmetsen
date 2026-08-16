@@ -8,6 +8,7 @@
  */
 
 import { ScrollHeaderProvider } from '@/context/ScrollHeaderContext'
+import { CityTenantProvider } from '@/store/cityTenantContext'
 import { CityCategoryProvider } from '@/store/cityCategoryContext'
 import type { CityCategory } from '@/services/cityNewsService.server'
 import { CityNavbar } from './CityNavbar'
@@ -31,7 +32,10 @@ export function CityStaticLayout({
 }: CityStaticLayoutProps) {
   return (
     <ScrollHeaderProvider>
-      <CityCategoryProvider categories={categories} hasSpor={hasSpor}>
+      <CityTenantProvider
+        tenant={{ slug: provinceSlug, displayName: cityName, provinceSlug }}
+      >
+        <CityCategoryProvider categories={categories} hasSpor={hasSpor}>
         <div className="min-h-screen bg-[rgb(var(--color-surface))]">
           <CityNavbar cityName={cityName} provinceSlug={provinceSlug} />
           <CitySectionNav />
@@ -51,6 +55,7 @@ export function CityStaticLayout({
           </div>
         </div>
       </CityCategoryProvider>
+      </CityTenantProvider>
     </ScrollHeaderProvider>
   )
 }

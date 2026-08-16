@@ -15,6 +15,9 @@
     "src/app/api/cron/paribu-canakkale/route.ts": {
       "memory": 512
     },
+    "src/app/api/cron/canakkale-nobetci-eczane/route.ts": {
+      "memory": 512
+    },
     "src/app/api/cron/boxoffice-weekly/route.ts": {
       "memory": 512
     },
@@ -225,6 +228,10 @@
     {
       "path": "/api/cron/paribu-canakkale",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/canakkale-nobetci-eczane",
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/boxoffice-weekly",

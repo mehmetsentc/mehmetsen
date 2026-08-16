@@ -5,8 +5,10 @@ import {
   MapPin,
   Briefcase,
   LayoutGrid,
+  Pill,
   type LucideIcon,
 } from 'lucide-react'
+import { DUTY_PHARMACY_CITY_SLUG } from '@/lib/dutyPharmacies/constants'
 import {
   CITY_ALWAYS_VISIBLE_SECTION_IDS,
   CITY_BOTTOM_NAV,
@@ -23,6 +25,8 @@ import type { CityCategory } from '@/services/cityNewsService.server'
 export interface CitySidebarNavItem {
   id: string
   label: string
+  /** Compact label for the mobile bottom bar. */
+  shortLabel?: string
   href: string
   icon: LucideIcon
   accent: SidebarAccent
@@ -39,14 +43,27 @@ const SECTION_ICONS: Record<(typeof CITY_BOTTOM_NAV)[number]['iconName'], Lucide
 export interface CitySectionNavOptions {
   /** When false, hide the Spor section pill (no city spor-family news). */
   hasSpor?: boolean
+  /** Province slug — used to insert city-only utility pages (nöbetçi eczane). */
+  citySlug?: string | null
 }
 
-/** City section tabs — Ana Feed, Etkinlik, İş, Spor?, İlçeler. */
+function dutyPharmacyNavItem(): CitySidebarNavItem {
+  return {
+    id: 'nobetci-eczaneler',
+    label: 'Nöbetçi Eczane',
+    shortLabel: 'Eczane',
+    href: ROUTES.CITY_DUTY_PHARMACIES,
+    icon: Pill,
+    accent: 'yerel',
+  }
+}
+
+/** City section tabs — Ana Feed, Etkinlik, İş, Nöbetçi Eczane?, Spor?, İlçeler. */
 export function buildCitySectionNavItems(
   options: CitySectionNavOptions = {}
 ): CitySidebarNavItem[] {
-  const { hasSpor = true } = options
-  return CITY_BOTTOM_NAV.filter((item) => {
+  const { hasSpor = true, citySlug } = options
+  const items: CitySidebarNavItem[] = CITY_BOTTOM_NAV.filter((item) => {
     if (CITY_ALWAYS_VISIBLE_SECTION_IDS.has(item.id)) return true
     if (item.id === CITY_NEWS_BACKED_SECTION_ID) return hasSpor
     return false
@@ -62,6 +79,13 @@ export function buildCitySectionNavItems(
           ? 'yerel'
           : 'brand',
   }))
+
+  if (citySlug === DUTY_PHARMACY_CITY_SLUG) {
+    const jobsIdx = items.findIndex((item) => item.id === 'is-ilanlari')
+    items.splice(jobsIdx >= 0 ? jobsIdx + 1 : items.length, 0, dutyPharmacyNavItem())
+  }
+
+  return items
 }
 
 /** Dynamic city categories — only those with published city news. */

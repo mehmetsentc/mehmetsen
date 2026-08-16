@@ -5,12 +5,17 @@ import { usePathname } from 'next/navigation'
 import { buildCityHeaderNavItems } from '@/lib/citySidebarNav'
 import { isCitySectionActive } from '@/lib/cityPaths'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
+import { useCityTenant } from '@/store/cityTenantContext'
 import { cn } from '@/lib/utils'
 
 export function CitySectionNav() {
   const pathname = usePathname()
   const { categories, hasSpor } = useCityCategoryFilter()
-  const items = buildCityHeaderNavItems(categories, { hasSpor })
+  const tenant = useCityTenant()
+  const items = buildCityHeaderNavItems(categories, {
+    hasSpor,
+    citySlug: tenant?.provinceSlug,
+  })
 
   return (
     <nav

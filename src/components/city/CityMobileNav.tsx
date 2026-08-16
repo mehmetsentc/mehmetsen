@@ -6,12 +6,17 @@ import { usePathname } from 'next/navigation'
 import { buildCitySectionNavItems } from '@/lib/citySidebarNav'
 import { isCitySectionActive } from '@/lib/cityPaths'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
+import { useCityTenant } from '@/store/cityTenantContext'
 import { cn } from '@/lib/utils'
 
 function CityMobileNavInner() {
   const pathname = usePathname()
   const { hasSpor } = useCityCategoryFilter()
-  const items = buildCitySectionNavItems({ hasSpor })
+  const tenant = useCityTenant()
+  const items = buildCitySectionNavItems({
+    hasSpor,
+    citySlug: tenant?.provinceSlug,
+  })
 
   return (
     <nav
@@ -48,7 +53,7 @@ function CityMobileNavInner() {
                   active ? 'font-bold' : 'font-semibold'
                 )}
               >
-                {item.label}
+                {item.shortLabel ?? item.label}
               </span>
             </Link>
           )

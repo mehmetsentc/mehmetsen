@@ -63,6 +63,9 @@ export const ROUTES = {
   CITY_JOBS_SEEKER: '/is-ilanlari/is-ariyorum',
   CITY_SPOR: '/spor',
   CITY_DISTRICTS: '/ilceler',
+  CITY_DUTY_PHARMACIES: '/nobetci-eczaneler',
+  CITY_DUTY_PHARMACIES_DISTRICT: (districtSlug: string) =>
+    `/nobetci-eczaneler/${districtSlug}`,
   ADMIN: {
     ROOT: '/admin',
     DASHBOARD: '/admin',
@@ -170,5 +173,6 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname === ROUTES.CITY_JOBS || pathname.startsWith('/is-ilanlari')) return true
   if (pathname === ROUTES.CITY_SPOR) return true
   if (pathname === ROUTES.CITY_DISTRICTS || pathname.startsWith('/ilceler')) return true
+  if (pathname === ROUTES.CITY_DUTY_PHARMACIES || pathname.startsWith('/nobetci-eczaneler')) return true
   return false
 }
