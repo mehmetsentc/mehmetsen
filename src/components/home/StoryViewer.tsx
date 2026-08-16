@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { likeService } from '@/services/likeService'
@@ -469,16 +470,5 @@ function CircleAction({
 }
 
 function RelativeTime({ iso }: { iso: string }) {
-  const label = useMemo(() => relativeTimeShort(iso), [iso])
-  return <span>{label}</span>
-}
-
-function relativeTimeShort(iso: string): string {
-  const t = new Date(iso).getTime()
-  if (!Number.isFinite(t)) return ''
-  const diff = (Date.now() - t) / 1000
-  if (diff < 60) return 'şimdi'
-  if (diff < 3600) return `${Math.floor(diff / 60)} dk önce`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} sa önce`
-  return `${Math.floor(diff / 86400)} gün önce`
+  return <span>{formatNewsDateBbc(iso) ?? ''}</span>
 }

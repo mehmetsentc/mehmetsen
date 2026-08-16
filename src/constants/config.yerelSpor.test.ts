@@ -6,7 +6,11 @@ import {
   getCategoryFamily,
   getHomeFeedCategoryFamily,
   getNationalCategoryForYerelSubcategory,
+  getSporSubcategories,
+  getYerelSporSubcategories,
   getYerelSubcategories,
+  isNationalSporCategory,
+  isYerelSporCategory,
   mapNationalCategoryToYerelSubcategory,
 } from '@/constants/config'
 
@@ -18,6 +22,7 @@ const YEREL_SPOR_BRANCH_IDS = [
   'yerel-atletizm',
   'yerel-gures',
   'yerel-tenis',
+  'yerel-karate',
   'yerel-yuzme',
   'yerel-motor-sporlari',
 ] as const
@@ -47,8 +52,11 @@ describe('yerel spor alt kategorileri', () => {
     expect(mapNationalCategoryToYerelSubcategory('hentbol')).toBe('yerel-hentbol')
     expect(mapNationalCategoryToYerelSubcategory('atletizm')).toBe('yerel-atletizm')
     expect(mapNationalCategoryToYerelSubcategory('gures')).toBe('yerel-gures')
+    expect(mapNationalCategoryToYerelSubcategory('tenis')).toBe('yerel-tenis')
+    expect(mapNationalCategoryToYerelSubcategory('karate')).toBe('yerel-karate')
     expect(getNationalCategoryForYerelSubcategory('yerel-futbol')).toBe('futbol')
-    expect(getNationalCategoryForYerelSubcategory('yerel-tenis')).toBe('spor')
+    expect(getNationalCategoryForYerelSubcategory('yerel-tenis')).toBe('tenis')
+    expect(getNationalCategoryForYerelSubcategory('yerel-karate')).toBe('karate')
     expect(getNationalCategoryForYerelSubcategory('yerel-yuzme')).toBe('spor')
     expect(getNationalCategoryForYerelSubcategory('yerel-motor-sporlari')).toBe('spor')
   })
@@ -69,5 +77,26 @@ describe('yerel spor alt kategorileri', () => {
     for (const id of YEREL_SPOR_BRANCH_IDS) {
       expect(family).toContain(id)
     }
+  })
+
+  it('orders national and yerel sport chips for admin filters', () => {
+    const nationalIds = getSporSubcategories().map((c) => c.id)
+    expect(nationalIds.slice(0, 7)).toEqual([
+      'futbol',
+      'basketbol',
+      'voleybol',
+      'hentbol',
+      'gures',
+      'tenis',
+      'karate',
+    ])
+    expect(isNationalSporCategory('futbol')).toBe(true)
+    expect(isNationalSporCategory('gundem')).toBe(false)
+    const yerelIds = getYerelSporSubcategories().map((c) => c.id)
+    expect(yerelIds[0]).toBe('yerel-spor')
+    expect(yerelIds).toContain('yerel-futbol')
+    expect(yerelIds).toContain('yerel-karate')
+    expect(isYerelSporCategory('yerel-futbol')).toBe(true)
+    expect(isYerelSporCategory('yerel-asayis')).toBe(false)
   })
 })

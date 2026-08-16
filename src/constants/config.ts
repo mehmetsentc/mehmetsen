@@ -49,6 +49,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'yerel-atletizm', name: 'Yerel Atletizm', slug: 'yerel-atletizm', iconName: 'zap',          color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-gures',    name: 'Yerel Güreş',    slug: 'yerel-gures',    iconName: 'swords',       color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-tenis',    name: 'Yerel Tenis',    slug: 'yerel-tenis',    iconName: 'circle',       color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-karate',   name: 'Yerel Karate',   slug: 'yerel-karate',   iconName: 'swords',       color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-yuzme',    name: 'Yerel Yüzme',    slug: 'yerel-yuzme',    iconName: 'waves',        color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-motor-sporlari', name: 'Yerel Motor Sporları', slug: 'yerel-motor-sporlari', iconName: 'gauge', color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-etkinlik', name: 'Yerel Etkinlik', slug: 'yerel-etkinlik', iconName: 'calendar',     color: '#059669', parentId: 'yerel-haber' },
@@ -92,6 +93,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'kibris-atletizm', name: 'Kıbrıs Atletizm', slug: 'kibris-atletizm', iconName: 'zap',          color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-gures',    name: 'Kıbrıs Güreş',    slug: 'kibris-gures',    iconName: 'swords',       color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-tenis',    name: 'Kıbrıs Tenis',    slug: 'kibris-tenis',    iconName: 'circle',       color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-karate',   name: 'Kıbrıs Karate',   slug: 'kibris-karate',   iconName: 'swords',       color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-yuzme',    name: 'Kıbrıs Yüzme',    slug: 'kibris-yuzme',    iconName: 'waves',        color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-motor-sporlari', name: 'Kıbrıs Motor Sporları', slug: 'kibris-motor-sporlari', iconName: 'gauge', color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-etkinlik', name: 'Kıbrıs Etkinlik', slug: 'kibris-etkinlik', iconName: 'calendar',     color: '#0E7490', parentId: 'kibris-haberleri' },
@@ -145,6 +147,8 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'hentbol',           name: 'Hentbol',          slug: 'hentbol',           iconName: 'circle',       color: '#10B981', parentId: 'spor' },
   { id: 'atletizm',          name: 'Atletizm',         slug: 'atletizm',          iconName: 'zap',          color: '#10B981', parentId: 'spor' },
   { id: 'gures',             name: 'Güreş',            slug: 'gures',             iconName: 'swords',       color: '#10B981', parentId: 'spor' },
+  { id: 'tenis',             name: 'Tenis',            slug: 'tenis',             iconName: 'circle',       color: '#10B981', parentId: 'spor' },
+  { id: 'karate',            name: 'Karate',           slug: 'karate',            iconName: 'swords',       color: '#10B981', parentId: 'spor' },
   { id: 'dunya-kupasi-2026', name: '2026 Dünya Kupası (Arşiv)', slug: 'dunya-kupasi-2026', iconName: 'trophy',      color: '#F59E0B', parentId: 'spor', standalone: true },
 
   // ── Kültür + alt kategoriler ────────────────────────────────────────────────
@@ -234,6 +238,47 @@ export function getParentCategory(categoryId: string): CategoryDef | undefined {
   return DEFAULT_CATEGORIES.find((c) => c.id === cat.parentId)
 }
 
+export const SPOR_CATEGORY_ID = 'spor'
+
+/** Admin Haberler spor alt chip sırası (ulusal branşlar). */
+export const SPOR_ADMIN_SUBCATEGORY_ORDER = [
+  'futbol',
+  'basketbol',
+  'voleybol',
+  'hentbol',
+  'gures',
+  'tenis',
+  'karate',
+  'atletizm',
+  'dunya-kupasi-2026',
+] as const
+
+/** National sport branches for CMS filters (Futbol, Basketbol, …). */
+export function getSporSubcategories(): CategoryDef[] {
+  const subs = getSubcategories(SPOR_CATEGORY_ID)
+  const byId = new Map(subs.map((c) => [c.id, c]))
+  const ordered: CategoryDef[] = []
+  for (const id of SPOR_ADMIN_SUBCATEGORY_ORDER) {
+    const cat = byId.get(id)
+    if (cat) ordered.push(cat)
+  }
+  for (const cat of subs) {
+    if (!ordered.some((c) => c.id === cat.id)) ordered.push(cat)
+  }
+  return ordered
+}
+
+export function isNationalSporCategory(categoryId: string): boolean {
+  const id = categoryId?.trim().toLowerCase() ?? ''
+  if (id === SPOR_CATEGORY_ID) return true
+  return getParentCategory(id)?.id === SPOR_CATEGORY_ID
+}
+
+/** spor + ulusal branş id'leri (yerel aynalar hariç). */
+export function getNationalSporFamilyIds(): string[] {
+  return [SPOR_CATEGORY_ID, ...getSubcategories(SPOR_CATEGORY_ID).map((c) => c.id)]
+}
+
 export const YEREL_HABER_CATEGORY_ID = 'yerel-haber'
 
 /**
@@ -252,6 +297,7 @@ export const YEREL_SUBCATEGORY_IDS = [
   'yerel-atletizm',
   'yerel-gures',
   'yerel-tenis',
+  'yerel-karate',
   'yerel-yuzme',
   'yerel-motor-sporlari',
   'yerel-ekonomi',
@@ -302,6 +348,7 @@ export const KIBRIS_SUBCATEGORY_IDS = [
   'kibris-atletizm',
   'kibris-gures',
   'kibris-tenis',
+  'kibris-karate',
   'kibris-yuzme',
   'kibris-motor-sporlari',
   'kibris-ekonomi',
@@ -421,7 +468,8 @@ export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
   'yerel-hentbol': 'hentbol',
   'yerel-atletizm': 'atletizm',
   'yerel-gures': 'gures',
-  'yerel-tenis': 'spor',
+  'yerel-tenis': 'tenis',
+  'yerel-karate': 'karate',
   'yerel-yuzme': 'spor',
   'yerel-motor-sporlari': 'spor',
   'yerel-ekonomi': 'ekonomi',
@@ -462,6 +510,8 @@ const NATIONAL_BRANCH_TO_YEREL: Record<string, string> = {
   hentbol: 'yerel-hentbol',
   atletizm: 'yerel-atletizm',
   gures: 'yerel-gures',
+  tenis: 'yerel-tenis',
+  karate: 'yerel-karate',
   'dunya-kupasi-2026': 'yerel-spor',
   borsa: 'yerel-finans',
   kripto: 'yerel-finans',
@@ -538,6 +588,37 @@ export function getYerelSubcategories(): CategoryDef[] {
       { sensitivity: 'base' },
     ),
   )
+}
+
+/** Yerel spor / branş alt kategorisi mi? (yerel-futbol, yerel-tenis, …) */
+export function isYerelSporCategory(categoryId: string): boolean {
+  const id = categoryId?.trim().toLowerCase() ?? ''
+  if (id === 'yerel-spor') return true
+  const national = YEREL_TO_NATIONAL_CATEGORY_MAP[id]
+  if (!national) return false
+  return isNationalSporCategory(national)
+}
+
+/**
+ * Yerel altındaki spor chip'leri — ulusal Spor sırasıyla (Futbol, Basketbol, …).
+ * Yüzme / motor gibi yalnızca yerel olan branşlar sonda eklenir.
+ */
+export function getYerelSporSubcategories(): CategoryDef[] {
+  const byId = new Map(getYerelSubcategories().map((c) => [c.id, c]))
+  const ordered: CategoryDef[] = []
+  const push = (id: string | null | undefined) => {
+    if (!id) return
+    const cat = byId.get(id)
+    if (cat && !ordered.some((c) => c.id === cat.id)) ordered.push(cat)
+  }
+  push('yerel-spor')
+  for (const id of SPOR_ADMIN_SUBCATEGORY_ORDER) {
+    push(mapNationalCategoryToYerelSubcategory(id))
+  }
+  for (const cat of byId.values()) {
+    if (isYerelSporCategory(cat.id)) push(cat.id)
+  }
+  return ordered
 }
 
 /** True when a news item belongs to the Yerel category tree (admin inline changer scope). */

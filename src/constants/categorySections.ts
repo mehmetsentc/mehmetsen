@@ -12,6 +12,8 @@ const CUSTOM_SECTION_ORDER: Partial<Record<string, readonly string[]>> = {
     'voleybol',
     'gures',
     'hentbol',
+    'tenis',
+    'karate',
     'atletizm',
     'spor',
     'dunya-kupasi-2026',

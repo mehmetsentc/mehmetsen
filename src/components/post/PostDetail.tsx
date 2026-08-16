@@ -10,7 +10,6 @@ import { ROUTES } from '@/constants/routes'
 import { getPrimaryVideo, hasVideoContent, isReelsVideoPost, isYouTubeUrl } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
-  formatTimelineRelative,
   getPostTypeLabel,
   getPostTypeStyle,
 } from '@/lib/timelineUtils'
@@ -143,9 +142,8 @@ export function PostDetail({ post, suggested }: PostDetailProps) {
   const videoUrl = videoMedia?.url ?? null
 
   const publishedLabel = post.publishedAt
-    ? format(new Date(post.publishedAt), 'd MMMM yyyy, HH:mm', { locale: tr })
+    ? format(new Date(post.publishedAt), 'd MMMM yyyy', { locale: tr })
     : ''
-  const relative = formatTimelineRelative(post.publishedAt)
 
   const { liked, count: likesCount, toggle: toggleLike, loading: likeLoading } = useLike({
     postId: post.id,
@@ -214,12 +212,6 @@ export function PostDetail({ post, suggested }: PostDetailProps) {
               <>
                 <span className="text-gray-300 dark:text-gray-600">·</span>
                 <time dateTime={post.publishedAt ?? post.createdAt}>{publishedLabel}</time>
-              </>
-            )}
-            {relative && (
-              <>
-                <span className="text-gray-300 dark:text-gray-600">·</span>
-                <span>{relative}</span>
               </>
             )}
             <span className="flex items-center gap-1 text-gray-400">

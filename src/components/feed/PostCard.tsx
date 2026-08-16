@@ -1,19 +1,16 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, MessageCircle, Bookmark, Clock } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { tr } from 'date-fns/locale'
+import { Heart, MessageCircle, Bookmark } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 
 interface PostCardProps {
   post: Post
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const timeAgo = post.publishedAt
-    ? formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true, locale: tr })
-    : ''
+  const dateLabel = formatNewsDateBbc(post.publishedAt)
 
   return (
     <article className="news-card p-5">
@@ -28,11 +25,10 @@ export function PostCard({ post }: PostCardProps) {
           </p>
           <div className="flex items-center gap-1.5 text-xs text-[rgb(var(--color-muted))]">
             <span>@{post.authorUsername}</span>
-            {timeAgo && (
+            {dateLabel && (
               <>
                 <span>·</span>
-                <Clock className="h-3 w-3" />
-                <span>{timeAgo}</span>
+                <span>{dateLabel}</span>
               </>
             )}
           </div>

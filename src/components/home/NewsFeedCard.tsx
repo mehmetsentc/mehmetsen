@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import type { NewsItem } from '@/types/newsItem'
 
 interface NewsFeedCardProps {
@@ -9,21 +10,9 @@ interface NewsFeedCardProps {
   priority?: boolean
 }
 
-function formatDate(value?: string): string | null {
-  if (!value) return null
-  const parsed = Date.parse(value)
-  if (!Number.isFinite(parsed)) return null
-  return new Intl.DateTimeFormat('tr-TR', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(parsed)
-}
-
 export function NewsFeedCard({ item, priority = false }: NewsFeedCardProps) {
   const image = item.imageUrl || FEED_FALLBACK_LOGO
-  const dateLabel = formatDate(item.publishedAt ?? item.createdAt)
+  const dateLabel = formatNewsDateBbc(item.publishedAt ?? item.createdAt)
 
   return (
     <article className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">

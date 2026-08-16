@@ -1,11 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { formatDistanceToNow } from 'date-fns'
-import { tr } from 'date-fns/locale'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { cn } from '@/lib/utils'
 import { newsItemCategoryLabel } from '@/lib/newsItemUtils'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import type { NewsItem } from '@/types/newsItem'
 
 interface CityNewsItemProps {
@@ -14,12 +13,7 @@ interface CityNewsItemProps {
 }
 
 export function CityNewsItem({ item, priority = false }: CityNewsItemProps) {
-  const timeAgo = item.publishedAt
-    ? formatDistanceToNow(new Date(item.publishedAt), {
-        addSuffix: true,
-        locale: tr,
-      })
-    : ''
+  const dateLabel = formatNewsDateBbc(item.publishedAt)
 
   const href = `/haber/${item.slug}`
   const categoryLabel = newsItemCategoryLabel(item)
@@ -56,8 +50,8 @@ export function CityNewsItem({ item, priority = false }: CityNewsItemProps) {
                 {categoryLabel}
               </span>
             ) : null}
-            {categoryLabel && timeAgo ? <span>·</span> : null}
-            {timeAgo && <time>{timeAgo}</time>}
+            {categoryLabel && dateLabel ? <span>·</span> : null}
+            {dateLabel && <time>{dateLabel}</time>}
           </div>
         </div>
       </article>

@@ -3,6 +3,7 @@ import { Flame } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import type { NewsItem } from '@/types/newsItem'
 
 interface TrendFeedProps {
@@ -12,15 +13,7 @@ interface TrendFeedProps {
 }
 
 function formatDate(value?: string): string | null {
-  if (!value) return null
-  const parsed = Date.parse(value)
-  if (!Number.isFinite(parsed)) return null
-  return new Intl.DateTimeFormat('tr-TR', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(parsed)
+  return formatNewsDateBbc(value)
 }
 
 export function TrendFeed({ items, hideHeader = false }: TrendFeedProps) {

@@ -29,10 +29,17 @@ import {
   getAdminCategoryGroups,
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
+  getYerelSporSubcategories,
   isYerelCategoryTree,
+  isYerelSporCategory,
+  isNationalSporCategory,
+  getSporSubcategories,
+  getNationalSporFamilyIds,
+  mapNationalCategoryToYerelSubcategory,
   resolveYerelCategoryParts,
   composeYerelCategoryId,
   YEREL_HABER_CATEGORY_ID,
+  SPOR_CATEGORY_ID,
   getKibrisSubcategories,
   getKibrisSubcategoryShortLabel,
   isKibrisCategoryTree,
@@ -1264,12 +1271,32 @@ const CATEGORY_CHIPS: { id: string; label: string }[] = [
 
 const YEREL_CATEGORY_ID = 'yerel-haber'
 
+function hydrateAdminNewsCategory(param: string): { parent: string; sub: string } {
+  if (!param) return { parent: '', sub: '' }
+  if (param.startsWith('yerel-') && param !== YEREL_CATEGORY_ID) {
+    return { parent: YEREL_CATEGORY_ID, sub: param }
+  }
+  if (isNationalSporCategory(param) && param !== SPOR_CATEGORY_ID) {
+    return { parent: SPOR_CATEGORY_ID, sub: param }
+  }
+  return { parent: param, sub: '' }
+}
+
 /** Resolve a post's city/citySlug to a canonical province slug (ilçe → il). */
 function postProvinceSlug(post: AdminNewsItem): string | null {
   const raw = post.citySlug?.trim() || post.city?.trim() || ''
   if (!raw) return null
   const slug = normalizeCitySlug(raw)
   return slug || null
+}
+
+/** Yerel spor chip id — ulusal branş + il haberleri ilgili yerel branşa düşer. */
+function postYerelSportChipId(post: AdminNewsItem): string | null {
+  const id = post.categoryId?.trim().toLowerCase() ?? ''
+  if (isYerelSporCategory(id)) return id
+  if (!postProvinceSlug(post) || !isNationalSporCategory(id)) return null
+  if (id === SPOR_CATEGORY_ID) return 'yerel-spor'
+  return mapNationalCategoryToYerelSubcategory(id) ?? 'yerel-spor'
 }
 
 function AdminNewsDesktopPage() {
@@ -1293,18 +1320,15 @@ function AdminNewsDesktopPage() {
   // Local category state — Link soft-nav was freezing pills after the first click.
   // Drive the UI like status filters; keep the URL in sync via replace.
   const [categoryFilter, setCategoryFilter] = useState(
-    categoryParam.startsWith('yerel-') && categoryParam !== YEREL_CATEGORY_ID
-      ? YEREL_CATEGORY_ID
-      : categoryParam,
+    hydrateAdminNewsCategory(categoryParam).parent,
   )
   const [subcategoryFilter, setSubcategoryFilter] = useState(
-    categoryParam.startsWith('yerel-') && categoryParam !== YEREL_CATEGORY_ID
-      ? categoryParam
-      : '',
+    hydrateAdminNewsCategory(categoryParam).sub,
   )
   const [cityFilter, setCityFilter] = useState('')
   const pendingCategoryRef = useRef<string | null>(null)
   const cachedCitiesRef = useRef<{ slug: string; name: string; count: number }[]>([])
+  const cachedSubCountsRef = useRef<{ parent: string; counts: Map<string, number> } | null>(null)
 
   useEffect(() => {
     // Ignore out-of-order URL updates while a user-driven category change is in flight.
@@ -1314,21 +1338,24 @@ function AdminNewsDesktopPage() {
       }
       return
     }
-    if (categoryParam.startsWith('yerel-') && categoryParam !== YEREL_CATEGORY_ID) {
-      setCategoryFilter(YEREL_CATEGORY_ID)
-      setSubcategoryFilter(categoryParam)
-    } else {
-      setCategoryFilter(categoryParam)
-      if (!categoryParam.startsWith('yerel-')) setSubcategoryFilter('')
-    }
+    const hydrated = hydrateAdminNewsCategory(categoryParam)
+    setCategoryFilter(hydrated.parent)
+    setSubcategoryFilter(hydrated.sub)
   }, [categoryParam])
 
-  // İl filtresi yalnızca Yerel kategorisinde anlamlı; çıkınca temizle
+  // İl filtresi yalnızca Yerel kategorisinde anlamlı; çıkınca temizle.
+  // Spor alt branş filtresi (futbol, basketbol, …) korunur.
   useEffect(() => {
     if (categoryFilter !== YEREL_CATEGORY_ID) {
       if (cityFilter) setCityFilter('')
       cachedCitiesRef.current = []
-      if (subcategoryFilter) setSubcategoryFilter('')
+    }
+    if (
+      categoryFilter !== YEREL_CATEGORY_ID &&
+      categoryFilter !== SPOR_CATEGORY_ID &&
+      subcategoryFilter
+    ) {
+      setSubcategoryFilter('')
     }
   }, [categoryFilter, cityFilter, subcategoryFilter])
 
@@ -1403,11 +1430,12 @@ function AdminNewsDesktopPage() {
     syncCategoryToUrl(nextCategory)
   }, [syncCategoryToUrl])
 
-  const selectYerelSubcategory = useCallback((subId: string) => {
+  const selectSubcategory = useCallback((subId: string) => {
+    const parent = categoryFilterRef.current || YEREL_CATEGORY_ID
     const next = subId === subcategoryFilterRef.current ? '' : subId
     setSubcategoryFilter(next)
-    pendingCategoryRef.current = next || YEREL_CATEGORY_ID
-    syncCategoryToUrl(next || YEREL_CATEGORY_ID)
+    pendingCategoryRef.current = next || parent
+    syncCategoryToUrl(next || parent)
   }, [syncCategoryToUrl])
 
   const load = useCallback(async (page: number, searchOverride?: string) => {
@@ -1422,19 +1450,27 @@ function AdminNewsDesktopPage() {
       const citySlugFilter = searchTerm.trim() ? undefined : cityFilterRef.current || undefined
       const subFilter = subcategoryFilterRef.current || undefined
       const rawCat = categoryFilterRef.current || undefined
-      // Yerel parent → geniş ağaç (yerel-*); alt kategori seçiliyse exact id.
-      const expandYerelTree = rawCat === YEREL_CATEGORY_ID && !subFilter && !citySlugFilter
+      const yerelSportSub = Boolean(subFilter && isYerelSporCategory(subFilter))
+      // Yerel parent → geniş ağaç (yerel-*); spor branşı seçiliyse dual-feed (il + ulusal) dahil.
+      const expandYerelTree =
+        rawCat === YEREL_CATEGORY_ID && !citySlugFilter && (!subFilter || yerelSportSub)
+      const expandSporTree = rawCat === SPOR_CATEGORY_ID && !subFilter
       const catFilter =
         searchTerm.trim() || citySlugFilter
           ? undefined
-          : subFilter || (expandYerelTree ? undefined : rawCat)
+          : subFilter && !yerelSportSub
+            ? subFilter
+            : expandYerelTree || expandSporTree
+              ? undefined
+              : rawCat
       const sort = sortByRef.current
       const bulkLimit =
         filter === 'duplicate' ||
         searchTerm.trim() ||
         citySlugFilter ||
         sort === 'views' ||
-        expandYerelTree
+        expandYerelTree ||
+        expandSporTree
           ? 500
           : undefined
       const tagTerm =
@@ -1465,6 +1501,13 @@ function AdminNewsDesktopPage() {
           (p) => isYerelCategoryTree(p.categoryId) || Boolean(p.citySlug?.trim() || p.city?.trim()),
         )
       }
+      if (expandSporTree) {
+        const family = new Set(getNationalSporFamilyIds())
+        filtered = filtered.filter((p) => family.has(p.categoryId))
+      }
+      if (yerelSportSub && subFilter) {
+        filtered = filtered.filter((p) => postYerelSportChipId(p) === subFilter)
+      }
       if (sort === 'views') {
         filtered = [...filtered].sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
       }
@@ -1475,6 +1518,7 @@ function AdminNewsDesktopPage() {
         !searchTerm.trim() &&
         !citySlugFilter &&
         !expandYerelTree &&
+        !expandSporTree &&
         sort !== 'views' &&
         result.hasMore &&
         filtered.length > 0
@@ -1921,7 +1965,68 @@ function AdminNewsDesktopPage() {
     (p) => p.status === 'pending' && !p.isDuplicate && p.categoryId !== 'tekrarlayan'
   ).length
   const isYerel = categoryFilter === YEREL_CATEGORY_ID
-  const yerelSubcategoryChips = useMemo(() => getYerelSubcategories(), [])
+  const isSpor = categoryFilter === SPOR_CATEGORY_ID
+  const sporSubcategoryChips = useMemo(() => getSporSubcategories(), [])
+  const yerelSportChips = useMemo(() => getYerelSporSubcategories(), [])
+  const yerelOtherChips = useMemo(() => {
+    const sportIds = new Set(yerelSportChips.map((c) => c.id))
+    return getYerelSubcategories().filter((c) => !sportIds.has(c.id))
+  }, [yerelSportChips])
+
+  const subcategoryCounts = useMemo(() => {
+    const parent = isYerel ? YEREL_CATEGORY_ID : isSpor ? SPOR_CATEGORY_ID : ''
+    if (!parent) return new Map<string, number>()
+    if (!cityFilter && subcategoryFilter && cachedSubCountsRef.current?.parent === parent) {
+      return cachedSubCountsRef.current.counts
+    }
+    const counts = new Map<string, number>()
+    for (const p of posts) {
+      if (isSpor) {
+        const id = p.categoryId?.trim().toLowerCase() ?? ''
+        if (id && id !== SPOR_CATEGORY_ID && isNationalSporCategory(id)) {
+          counts.set(id, (counts.get(id) ?? 0) + 1)
+        }
+        continue
+      }
+      const sportId = postYerelSportChipId(p)
+      if (sportId) counts.set(sportId, (counts.get(sportId) ?? 0) + 1)
+      const catId = p.categoryId?.trim().toLowerCase() ?? ''
+      if (
+        catId &&
+        isYerelCategoryTree(catId) &&
+        catId !== YEREL_CATEGORY_ID &&
+        catId !== sportId
+      ) {
+        counts.set(catId, (counts.get(catId) ?? 0) + 1)
+      }
+    }
+    if (!cityFilter && !subcategoryFilter) {
+      cachedSubCountsRef.current = { parent, counts }
+    }
+    return counts
+  }, [posts, cityFilter, subcategoryFilter, isYerel, isSpor])
+
+  const visibleSporChips = useMemo(
+    () =>
+      sporSubcategoryChips.filter(
+        (sub) => (subcategoryCounts.get(sub.id) ?? 0) > 0 || subcategoryFilter === sub.id,
+      ),
+    [sporSubcategoryChips, subcategoryCounts, subcategoryFilter],
+  )
+  const visibleYerelSportChips = useMemo(
+    () =>
+      yerelSportChips.filter(
+        (sub) => (subcategoryCounts.get(sub.id) ?? 0) > 0 || subcategoryFilter === sub.id,
+      ),
+    [yerelSportChips, subcategoryCounts, subcategoryFilter],
+  )
+  const visibleYerelOtherChips = useMemo(
+    () =>
+      yerelOtherChips.filter(
+        (sub) => (subcategoryCounts.get(sub.id) ?? 0) > 0 || subcategoryFilter === sub.id,
+      ),
+    [yerelOtherChips, subcategoryCounts, subcategoryFilter],
+  )
 
   return (
     <div className="flex flex-col">
@@ -1929,16 +2034,22 @@ function AdminNewsDesktopPage() {
         title={
           cityFilter
             ? `Haberler — ${getCityCategoryName(cityFilter)}`
-            : categoryFilter
-              ? `Haberler — ${categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1).replace('-', ' ')}`
-              : 'Haberler'
+            : subcategoryFilter
+              ? `Haberler — ${getCategoryLabel(subcategoryFilter) || subcategoryFilter}`
+              : categoryFilter
+                ? `Haberler — ${getCategoryLabel(categoryFilter) || categoryFilter}`
+                : 'Haberler'
         }
         subtitle={
           cityFilter
             ? `${getCityCategoryName(cityFilter)} il filtresi (tüm kategoriler, citySlug)`
-            : categoryFilter
-              ? `${categoryFilter} kategorisi filtresi aktif`
-              : 'İçerik editörü ve onay merkezi'
+            : subcategoryFilter
+              ? `${getCategoryLabel(subcategoryFilter) || subcategoryFilter} alt kategori filtresi aktif`
+              : categoryFilter === SPOR_CATEGORY_ID
+                ? 'spor kategorisi filtresi aktif — branşlar aşağıda'
+                : categoryFilter
+                  ? `${categoryFilter} kategorisi filtresi aktif`
+                  : 'İçerik editörü ve onay merkezi'
         }
       />
       <div className="p-6 space-y-4">
@@ -1973,12 +2084,56 @@ function AdminNewsDesktopPage() {
           ))}
         </div>
 
-        {/* Yerel → alt kategori chips (yerel-* exact filter; parent = tüm yerel ağaç) */}
+        {/* Spor → ulusal branşlar + Yerel kısayolu (haberi olmayan branş gizlenir) */}
+        {isSpor && (
+          <div className="relative z-10 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              type="button"
+              onClick={() => selectSubcategory('')}
+              className={cn(
+                'flex-shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-all',
+                !subcategoryFilter
+                  ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
+                  : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))]',
+              )}
+            >
+              Tüm spor
+            </button>
+            {visibleSporChips.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => selectSubcategory(sub.id)}
+                className={cn(
+                  'flex-shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-all',
+                  subcategoryFilter === sub.id
+                    ? 'bg-[rgb(var(--color-primary))] text-white shadow-sm'
+                    : 'border border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]',
+                )}
+                title={`${subcategoryCounts.get(sub.id) ?? 0} haber`}
+              >
+                {sub.name}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => selectCategory(YEREL_CATEGORY_ID)}
+              className={cn(
+                'flex-shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-all',
+                'border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600/10',
+              )}
+            >
+              Yerel
+            </button>
+          </div>
+        )}
+
+        {/* Yerel → aynı spor branşları (haberi yoksa gizlenir) */}
         {isYerel && (
           <div className="relative z-10 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
             <button
               type="button"
-              onClick={() => selectYerelSubcategory('')}
+              onClick={() => selectSubcategory('')}
               className={cn(
                 'flex-shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-all',
                 !subcategoryFilter
@@ -1986,19 +2141,36 @@ function AdminNewsDesktopPage() {
                   : 'border border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
               )}
             >
-              Tüm yerel alt
+              Tüm yerel
             </button>
-            {yerelSubcategoryChips.map((sub) => (
+            {visibleYerelSportChips.map((sub) => (
               <button
                 key={sub.id}
                 type="button"
-                onClick={() => selectYerelSubcategory(sub.id)}
+                onClick={() => selectSubcategory(sub.id)}
                 className={cn(
                   'flex-shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-all',
                   subcategoryFilter === sub.id
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'border border-emerald-500/30 text-emerald-700/80 hover:text-emerald-800 dark:text-emerald-300/80',
                 )}
+                title={`${subcategoryCounts.get(sub.id) ?? 0} haber`}
+              >
+                {getYerelSubcategoryShortLabel(sub)}
+              </button>
+            ))}
+            {visibleYerelOtherChips.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => selectSubcategory(sub.id)}
+                className={cn(
+                  'flex-shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-all',
+                  subcategoryFilter === sub.id
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'border border-emerald-500/30 text-emerald-700/80 hover:text-emerald-800 dark:text-emerald-300/80',
+                )}
+                title={`${subcategoryCounts.get(sub.id) ?? 0} haber`}
               >
                 {getYerelSubcategoryShortLabel(sub)}
               </button>

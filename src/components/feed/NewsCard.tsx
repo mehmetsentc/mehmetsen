@@ -3,9 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
-import { Heart, MessageCircle, Bookmark, Share2, Clock, MapPin } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { tr } from 'date-fns/locale'
+import { Heart, MessageCircle, Bookmark, Share2, MapPin } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { Avatar } from '@/components/ui/Avatar'
@@ -18,6 +16,7 @@ import { getPrimaryVideo } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { shouldShowBreakingBadge } from '@/lib/newsBreaking'
 import { buildFeedTeaser } from '@/lib/newsContentCleanup'
+import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 
 interface NewsCardProps {
   post: Post
@@ -26,9 +25,7 @@ interface NewsCardProps {
 export function NewsCard({ post }: NewsCardProps) {
   const [imgErrored, setImgErrored] = useState(false)
 
-  const timeAgo = post.publishedAt
-    ? formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true, locale: tr })
-    : ''
+  const dateLabel = formatNewsDateBbc(post.publishedAt)
 
   const cover =
     !imgErrored && (post.coverImageUrl || getPrimaryVideo(post)?.thumbnailUrl || null)
@@ -60,11 +57,10 @@ export function NewsCard({ post }: NewsCardProps) {
             </span>
             <div className="flex items-center gap-1.5 text-xs text-[rgb(var(--color-muted))]">
               <span>@nahaber</span>
-              {timeAgo && (
+              {dateLabel && (
                 <>
                   <span>·</span>
-                  <Clock className="h-3 w-3" />
-                  <span>{timeAgo}</span>
+                  <span>{dateLabel}</span>
                 </>
               )}
             </div>
