@@ -29,6 +29,7 @@ interface DesktopCategoryPageProps {
   showFeed?: boolean
   pageTitle?: string
   showTabs?: boolean
+  visibleSectionIds?: string[]
 }
 
 /**
@@ -45,6 +46,7 @@ export function DesktopCategoryPage({
   showFeed = true,
   pageTitle: pageTitleProp,
   showTabs = false,
+  visibleSectionIds,
 }: DesktopCategoryPageProps) {
   useScrollHeaderConfig({ subcategories: subTabs, tabParent })
 
@@ -72,6 +74,7 @@ export function DesktopCategoryPage({
           <CategoryExperience
             categoryId={cat.id}
             initialPosts={initialPosts}
+            visibleSectionIds={visibleSectionIds}
             breakpoint="desktop"
             className="nl-category-experience"
           />

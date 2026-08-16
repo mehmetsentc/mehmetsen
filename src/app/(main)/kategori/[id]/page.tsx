@@ -14,9 +14,16 @@ import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { isKibrisCategoryTree } from '@/constants/config'
+import { getThemedCategorySectionIds } from '@/constants/categorySections'
 import { isKibrisScopedNews, isNationalBreakingEligible } from '@/lib/featuredScope'
+import {
+  filterItemsWithPresence,
+  filterThemedSectionIds,
+  shouldHideEmptyScopedCategories,
+} from '@/lib/scopedCategoryPresence'
 import { featuredPinTime } from '@/lib/featuredPins'
 import { getCityCategoryFeedInitialData } from '@/services/cityNewsService.server'
+import { getActiveScopedCategoryIds } from '@/services/scopedCategoryPresence.server'
 import type { TimelinePost } from '@/types/post'
 import { getWorldCup2026Data } from '@/services/sportsApi/worldCup2026'
 import { getLcpPreload } from '@/lib/lcpImage'
@@ -391,10 +398,18 @@ export default async function CategoryPage({ params }: Props) {
 
   const tabParent = parentCat ?? cat
   const subcategories = getSubcategories(tabParent.id)
-  const showTabs = subcategories.length > 0
   const headerCat = parentCat ?? cat
+  const hideEmptyScoped = shouldHideEmptyScopedCategories(tabParent.id)
+  const activeScopedIds = hideEmptyScoped
+    ? await getActiveScopedCategoryIds(tabParent.id)
+    : subcategories.map((sub) => sub.id)
 
-  const subTabs = subcategories.map((sub) => ({
+  const visibleSubs = hideEmptyScoped
+    ? filterItemsWithPresence(subcategories, activeScopedIds, [cat.id])
+    : subcategories
+  const showTabs = visibleSubs.length > 0
+
+  const subTabs = visibleSubs.map((sub) => ({
     id: sub.id,
     slug: sub.slug,
     name: sub.name,
@@ -402,6 +417,14 @@ export default async function CategoryPage({ params }: Props) {
     href: `/kategori/${sub.slug}`,
     active: sub.id === cat.id,
   }))
+
+  const visibleSectionIds = hideEmptyScoped
+    ? filterThemedSectionIds(
+        getThemedCategorySectionIds(cat.id),
+        activeScopedIds,
+        { currentCategoryId: cat.id }
+      )
+    : undefined
 
   const initialPosts = await prefetchCategoryPosts(cat.id)
   const worldCupData = cat.id === 'dunya-kupasi-2026' ? await getWorldCup2026Data() : null
@@ -440,6 +463,7 @@ export default async function CategoryPage({ params }: Props) {
           subTabs={subTabs}
           tabParent={tabParent}
           showTabs={showTabs}
+          visibleSectionIds={visibleSectionIds}
           initialPosts={initialPosts}
           worldCupData={worldCupData}
         />

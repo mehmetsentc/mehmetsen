@@ -13,6 +13,7 @@ import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { newsItemToTimelinePost } from '@/lib/newsItemToTimelinePost'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
 import { cn } from '@/lib/utils'
+import { shouldHideEmptyScopedCategories } from '@/lib/scopedCategoryPresence'
 import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
 import type { TimelinePost } from '@/types/post'
 import type { CategoryFeedPage } from '@/services/newsService.server'
@@ -23,6 +24,7 @@ import type { ExperienceBreakpoint } from './types'
 interface CategoryExperienceProps {
   categoryId: string
   initialPosts?: TimelinePost[]
+  visibleSectionIds?: string[]
   breakpoint?: ExperienceBreakpoint
   className?: string
 }
@@ -42,10 +44,19 @@ function sectionTitle(sectionId: string): string {
 export function CategoryExperience({
   categoryId,
   initialPosts = [],
+  visibleSectionIds,
   breakpoint = 'mobile',
   className,
 }: CategoryExperienceProps) {
-  const sectionIds = getThemedCategorySectionIds(categoryId)
+  const hideEmptySections = shouldHideEmptyScopedCategories(categoryId)
+  const sectionIds = useMemo(() => {
+    const all = getThemedCategorySectionIds(categoryId)
+    if (!visibleSectionIds) return all
+    const allow = new Set(visibleSectionIds)
+    const filtered = all.filter((id) => allow.has(id))
+    if (filtered.length > 0) return filtered
+    return all.length === 1 ? all : filtered
+  }, [categoryId, visibleSectionIds])
   const primaryId = sectionIds[0] ?? categoryId
   const theme = useMemo(() => getExperienceTheme(categoryId), [categoryId])
   const isMobile = breakpoint === 'mobile'
@@ -116,7 +127,11 @@ export function CategoryExperience({
     }
   }, [multi, sectionIds, loadSibling])
 
-  if (sectionIds.length === 0) return null
+  if (sectionIds.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-[rgb(var(--color-muted))]">Henüz haber yok</p>
+    )
+  }
 
   const style = experienceThemeStyle(theme)
   // Kaydırmalı öne çıkan yalnızca mobilde; masaüstü ExperienceFeed ızgarası
@@ -175,6 +190,7 @@ export function CategoryExperience({
         ? sectionIds.slice(1).map((sectionId) => {
             const ready = Object.prototype.hasOwnProperty.call(siblingPosts, sectionId)
             const sibling = siblingPosts[sectionId] ?? []
+            if (hideEmptySections && ready && sibling.length === 0) return null
             return (
               <section key={sectionId} className="exp-section mb-10" aria-label={sectionTitle(sectionId)}>
                 <div className="exp-section__head mb-4 flex items-end justify-between gap-3">

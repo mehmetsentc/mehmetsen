@@ -34,6 +34,7 @@ interface CategoryPageClientProps {
   subTabs: SubTab[]
   tabParent: CategoryDef | null
   showTabs: boolean
+  visibleSectionIds?: string[]
   initialPosts: TimelinePost[]
   worldCupData?: WorldCup2026Data | null
 }
@@ -74,6 +75,7 @@ export function CategoryPageClient({
   subTabs,
   tabParent,
   showTabs,
+  visibleSectionIds,
   initialPosts,
   worldCupData,
 }: CategoryPageClientProps) {
@@ -138,7 +140,11 @@ export function CategoryPageClient({
 
         {showNewsFeed ? (
           <Suspense fallback={feedFallback}>
-            <CategoryFeed categoryId={cat.id} initialPosts={initialPosts} />
+            <CategoryFeed
+              categoryId={cat.id}
+              initialPosts={initialPosts}
+              visibleSectionIds={visibleSectionIds}
+            />
           </Suspense>
         ) : null}
       </div>
@@ -158,6 +164,7 @@ export function CategoryPageClient({
             showFeed={showNewsFeed}
             pageTitle={pageTitle}
             showTabs={showTabs}
+            visibleSectionIds={visibleSectionIds}
           />
         </AdSlotProvider>
       </div>
