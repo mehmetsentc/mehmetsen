@@ -24,17 +24,25 @@ function formatDutyHours(pharmacy: DutyPharmacy): string {
   return pharmacy.dutyLabel.replace(/\s+arasında nöbetçidir\.?$/i, '')
 }
 
-export function DutyPharmacyGroupList({ groups }: { groups: DutyPharmacyGroup[] }) {
+export function DutyPharmacyGroupList({
+  groups,
+  hideGroupHeadings = false,
+}: {
+  groups: DutyPharmacyGroup[]
+  hideGroupHeadings?: boolean
+}) {
   return (
     <div className="space-y-8">
       {groups.map((group) => (
         <section key={group.districtSlug}>
-          <h2 className="mb-3 text-sm font-black uppercase tracking-wide text-[rgb(var(--color-text))]">
-            {group.district}
-            <span className="ml-2 font-semibold normal-case tracking-normal text-[rgb(var(--color-muted))]">
-              {group.pharmacies.length} eczane
-            </span>
-          </h2>
+          {hideGroupHeadings ? null : (
+            <h2 className="mb-3 text-sm font-black uppercase tracking-wide text-[rgb(var(--color-text))]">
+              {group.district}
+              <span className="ml-2 font-semibold normal-case tracking-normal text-[rgb(var(--color-muted))]">
+                {group.pharmacies.length} eczane
+              </span>
+            </h2>
+          )}
           <ul className="grid gap-3 md:grid-cols-2">
             {group.pharmacies.map((pharmacy) => (
               <li
