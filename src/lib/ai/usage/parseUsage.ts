@@ -85,3 +85,19 @@ export function classifyGroqErrorCode(errorMessage: string): string {
   if (/schema/i.test(errorMessage)) return 'schema_validation'
   return 'error'
 }
+
+export function parseGeminiUsage(raw: unknown): NormalizedAiUsage | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const row = raw as Record<string, unknown>
+  const inputTokens = asNonNegInt(row.promptTokenCount)
+  const outputTokens = asNonNegInt(row.candidatesTokenCount)
+  const totalTokens = asNonNegInt(row.totalTokenCount)
+  if (inputTokens === undefined && outputTokens === undefined && totalTokens === undefined) {
+    return undefined
+  }
+  return {
+    ...(inputTokens !== undefined ? { inputTokens } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(totalTokens !== undefined ? { totalTokens } : {}),
+  }
+}

@@ -62,6 +62,9 @@ describe('aggregateAiUsageEvents', () => {
     )
     expect(agg.providers.find((p) => p.provider === 'deepseek')?.total).toBe(1100)
     expect(agg.providers.find((p) => p.provider === 'groq')?.total).toBe(90)
+    expect(agg.savings.cheapSuccessRequests).toBe(1)
+    expect(agg.savings.estimatedDeepSeekCallsAvoided).toBe(1)
+    expect(agg.savings.deepseekRequests).toBe(1)
   })
 
   it('treats missing cache tokens as absent, not zero-hit rate from empty fields', () => {

@@ -15,6 +15,8 @@
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from './socialFactualFidelity'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
+import { runAI } from '@/lib/ai/router/aiRouter'
+import { shouldUseMultiProviderChain } from '@/lib/ai/router/flags'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -308,6 +310,40 @@ export async function generateSocialContent(
   description: string,
   cityName = 'Çanakkale'
 ): Promise<AISocialContent | null> {
+  if (shouldUseMultiProviderChain('social', title)) {
+    try {
+      const routed = await runAI({
+        agent: 'social_editor',
+        operation: 'generate_social',
+        promptVersion: 'social-editor:v1',
+        taskType: 'social',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: buildPrompt(title, description, cityName) },
+        ],
+        temperature: 0.4,
+        maxTokens: 1024,
+        jsonMode: true,
+        validate: (raw) => parseAISocialJSON(raw, title, description),
+        cohortKey: title,
+      })
+      const result = routed.value
+      if (result && typeof result === 'object') {
+        result.headline = overlayHeadlineFromTitle(title, HEADLINE_MAX, HEADLINE_SOFT_MAX)
+        if (isGarbledSocialCopy(result.caption)) {
+          result.caption = fallbackCaption(title, description)
+        }
+        if (isGarbledSocialCopy(result.storySummary)) {
+          result.storySummary = fallbackStorySummary(title, result.caption)
+        }
+        return result
+      }
+    } catch (err) {
+      console.error('[aiSocialEditor] multi-provider failed:', err instanceof Error ? err.message : err)
+    }
+    return null
+  }
+
   const result = await generateWithDeepSeek(title, description, cityName)
   if (result) {
     result.headline = overlayHeadlineFromTitle(title, HEADLINE_MAX, HEADLINE_SOFT_MAX)

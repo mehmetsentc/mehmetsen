@@ -77,6 +77,12 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
     published: input.published,
     createdAt: now,
     timestamp: now,
+    routeId: input.routeId,
+    taskType: input.taskType,
+    fallbackFrom: input.fallbackFrom,
+    fallbackReason: input.fallbackReason,
+    providerRank: input.providerRank,
+    canaryBucket: input.canaryBucket,
   }
 
   return compact(doc as unknown as Record<string, unknown>)

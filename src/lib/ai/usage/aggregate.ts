@@ -1,4 +1,5 @@
 import { turkeyDayBounds, turkeyYmd, turkeyYmdNow, addTurkeyDays } from '@/lib/turkeyCalendar'
+import { estimateUsageCost, getDeepSeekPricing } from '@/lib/ai/usage/pricing'
 
 export type AiUsageRange = 'today' | '7d' | '30d'
 
@@ -189,6 +190,15 @@ export type AiUsageAggregate = {
     total: number
     error: number
   }>
+  savings: {
+    cheapSuccessRequests: number
+    deepseekRequests: number
+    deepseekFallbackRequests: number
+    cheapSuccessRate: number | null
+    fallbackRate: number | null
+    estimatedDeepSeekCallsAvoided: number
+    estimatedSavingsUsd: number | null
+  }
 }
 
 export function aggregateAiUsageEvents(
@@ -218,6 +228,13 @@ export function aggregateAiUsageEvents(
   let tokenTelemetryBeganAt: number | null = null
   const newsIds = new Set<string>()
   let eventsWithNewsId = 0
+  let cheapRequests = 0
+  let cheapSuccess = 0
+  let cheapSuccessInput = 0
+  let cheapSuccessOutput = 0
+  let deepseekRequests = 0
+  let deepseekFallbackRequests = 0
+  const CHEAP = new Set(['groq', 'gemini', 'openrouter'])
 
   const agents = new Map<string, Bucket>()
   const models = new Map<string, Bucket>()
@@ -262,6 +279,25 @@ export function aggregateAiUsageEvents(
     const provider = asString(event.provider) ?? 'unknown'
     const model = asString(event.model) ?? 'unknown'
     const modelKey = `${provider}::${model}`
+    if (CHEAP.has(provider)) {
+      cheapRequests += 1
+      if (event.success === true) {
+        cheapSuccess += 1
+        cheapSuccessInput += asFiniteNumber(event.inputTokens) ?? 0
+        cheapSuccessOutput += asFiniteNumber(event.outputTokens) ?? 0
+      }
+    }
+    if (provider === 'deepseek') {
+      deepseekRequests += 1
+      const attemptN = asFiniteNumber(event.attempt)
+      if (
+        (attemptN != null && attemptN > 1) ||
+        asString(event.fallbackFrom) ||
+        asString(event.fallbackReason)
+      ) {
+        deepseekFallbackRequests += 1
+      }
+    }
 
     addToBucket(agents.get(agent) ?? agents.set(agent, emptyBucket(agent)).get(agent)!, event)
     addToBucket(models.get(modelKey) ?? models.set(modelKey, emptyBucket(modelKey)).get(modelKey)!, event)
@@ -418,6 +454,21 @@ export function aggregateAiUsageEvents(
         error: b.errors,
       }))
       .sort((a, b) => b.total - a.total || b.requests - a.requests),
+    savings: {
+      cheapSuccessRequests: cheapSuccess,
+      deepseekRequests,
+      deepseekFallbackRequests,
+      cheapSuccessRate: cheapRequests > 0 ? cheapSuccess / cheapRequests : null,
+      fallbackRate: requests > 0 ? deepseekFallbackRequests / requests : null,
+      estimatedDeepSeekCallsAvoided: cheapSuccess,
+      estimatedSavingsUsd: (() => {
+        const priced = estimateUsageCost(
+          { inputTokens: cheapSuccessInput, outputTokens: cheapSuccessOutput },
+          getDeepSeekPricing('deepseek-v4-flash')
+        )
+        return priced.estimatedTotalCostUsd ?? null
+      })(),
+    },
   }
 }
 
@@ -446,4 +497,10 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'queueId',
   'sourceItemId',
   'traceId',
+  'routeId',
+  'taskType',
+  'fallbackFrom',
+  'fallbackReason',
+  'providerRank',
+  'canaryBucket',
 ] as const

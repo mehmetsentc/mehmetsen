@@ -130,6 +130,8 @@ export default function AiUsagePage() {
             tone: warningExceeded ? 'warn' : 'ok',
           },
           { label: 'Groq Token', value: loading ? '…' : fmtInt(groqRow?.total), hint: 'Classifier canary' },
+          { label: 'Gemini Token', value: loading ? '…' : fmtInt(data?.providers?.find((p) => p.provider === 'gemini')?.total) },
+          { label: 'OpenRouter Token', value: loading ? '…' : fmtInt(data?.providers?.find((p) => p.provider === 'openrouter')?.total) },
         ]}
       />
 
@@ -169,6 +171,38 @@ export default function AiUsagePage() {
           Bu aralıkta token alanlı event yok. Eski aiUsageEvents kayıtları uydurulmaz.
         </p>
       )}
+
+      <Section title="Provider Tasarruf Özeti">
+        <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+          Tahmini — provider faturası ile birebir aynı olduğu iddia edilmez
+        </p>
+        <ul className="space-y-2 text-sm">
+          <li className="flex justify-between">
+            <span>Cheap-provider başarılı istek</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.savings?.cheapSuccessRequests)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Tahmini DeepSeek çağrısı kaçınıldı</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.savings?.estimatedDeepSeekCallsAvoided)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>DeepSeek fallback çağrıları</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.savings?.deepseekFallbackRequests)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Cheap-provider başarı oranı</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.savings?.cheapSuccessRate)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Fallback oranı</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.savings?.fallbackRate)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Tahmini tasarruf (DeepSeek fiyat env varsa)</span>
+            <span className="tabular-nums">{loading ? '…' : fmtUsd(data?.savings?.estimatedSavingsUsd)}</span>
+          </li>
+        </ul>
+      </Section>
 
       <Section title="En Fazla Token Kullanan Ajanlar">
         {(data?.topTokenAgents.length ?? 0) === 0 ? (

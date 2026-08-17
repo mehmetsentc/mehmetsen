@@ -40,6 +40,8 @@ import {
 } from '@/services/newsroom/breakingPriority'
 import { categoryEngine } from '@/services/newsroom/categoryEngine'
 import { classifyArticleCategory, classifyYerelSubcategory, classifyKibrisSubcategory } from '@/services/newsroom/aiCategoryClassifier'
+import { isSkipRedundantClassifierEnabled } from '@/lib/ai/router/flags'
+import { shouldSkipRedundantCategoryClassifier } from '@/lib/ai/router/stage3Skip'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import {
   isYerelCategoryTree,
@@ -1039,7 +1041,16 @@ export async function processNewsroomArticle(
       workingInput.editorType === 'influencer' ||
       categoryLocked
 
-    if (!skipAiCategoryCheck) {
+    const skipRedundantClassifier =
+      isSkipRedundantClassifierEnabled() &&
+      shouldSkipRedundantCategoryClassifier({
+        categoryId: classification.categoryId,
+        confidence: classification.categoryConfidence,
+        country: rewritten.country,
+        tags: rewritten.tags,
+      })
+
+    if (!skipAiCategoryCheck && !skipRedundantClassifier) {
       try {
         const aiCheck = await classifyArticleCategory(
           rewritten.title,

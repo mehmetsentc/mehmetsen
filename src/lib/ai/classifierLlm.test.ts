@@ -262,4 +262,34 @@ describe('completeClassifierJson', () => {
     expect(fetchMock.mock.calls.filter((c) => String(c[0]).includes('groq.com'))).toHaveLength(1)
     expect(fetchMock.mock.calls.filter((c) => String(c[0]).includes('deepseek.com'))).toHaveLength(1)
   })
+
+  it('Groq 429 then Gemini success does not call DeepSeek when multi-provider is on', async () => {
+    enableGroq()
+    vi.stubEnv('AI_MULTI_PROVIDER_ENABLED', 'true')
+    vi.stubEnv('AI_MULTI_PROVIDER_PERCENT', '100')
+    vi.stubEnv('AI_MULTI_PROVIDER_CLASSIFICATION_ENABLED', 'true')
+    vi.stubEnv('GEMINI_API_KEY', 'gemini-test-key')
+    vi.stubEnv('GEMINI_FAST_MODEL', 'gemini-flash-lite')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('groq.com')) return new Response('rate', { status: 429 })
+      if (url.includes('generativelanguage.googleapis.com')) {
+        return new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: VALID }] } }],
+            usageMetadata: { promptTokenCount: 40, candidatesTokenCount: 8, totalTokenCount: 48 },
+          }),
+          { status: 200 }
+        )
+      }
+      throw new Error(`unexpected fetch ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const value = await completeClassifierJson(meta, parseCategory)
+    expect(value).toEqual({ categoryId: 'gundem' })
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('deepseek.com'))).toBe(false)
+    const dumped = JSON.stringify(recordAiRequestUsage.mock.calls)
+    expect(dumped).not.toContain('gemini-test-key')
+    expect(dumped).toContain('"provider":"gemini"')
+  })
 })

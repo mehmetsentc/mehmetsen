@@ -60,6 +60,12 @@ export type RecordAiRequestUsageInput = {
   task?: string
   published?: boolean
   durationMs?: number
+  routeId?: string
+  taskType?: string
+  fallbackFrom?: string
+  fallbackReason?: string
+  providerRank?: number
+  canaryBucket?: number
 }
 
 export type AiUsageEventDoc = {
@@ -95,4 +101,10 @@ export type AiUsageEventDoc = {
   published?: boolean
   createdAt: number
   timestamp: number
+  routeId?: string
+  taskType?: string
+  fallbackFrom?: string
+  fallbackReason?: string
+  providerRank?: number
+  canaryBucket?: number
 }

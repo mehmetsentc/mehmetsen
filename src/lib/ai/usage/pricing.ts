@@ -38,7 +38,13 @@ export function getDeepSeekPricing(model: string): ModelPricing {
 
 export function getModelPricing(provider: string, model: string): ModelPricing {
   if (provider === 'deepseek') return getDeepSeekPricing(model)
-  return { provider, model }
+  const prefix = provider.toUpperCase()
+  return {
+    provider,
+    model,
+    inputPerMillionUsd: parseRate(`${prefix}_INPUT_COST_PER_1M`),
+    outputPerMillionUsd: parseRate(`${prefix}_OUTPUT_COST_PER_1M`),
+  }
 }
 
 function usdFromTokens(tokens: number | undefined, perMillion: number | undefined): number | undefined {
