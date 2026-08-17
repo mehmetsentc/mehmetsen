@@ -14,7 +14,7 @@
  */
 
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
-import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
+import { completeClassifierJson } from '@/lib/ai/classifierLlm'
 import {
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
@@ -132,8 +132,6 @@ export async function classifyArticleCategory(
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!deepseekKey) return null
 
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
-
   const categoryList = CATEGORIES.map(
     c => `  - ${c}: ${CATEGORY_DESCRIPTIONS[c]}`
   ).join('\n')
@@ -176,82 +174,35 @@ TEMEL KURALLAR (hepsini uygula):
 JSON formatında yanıt ver:
 {"categoryId": "kategori-adı", "confidence": 85, "reason": "kısa açıklama"}`
 
-  try {
-    const startedAt = Date.now()
-    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${deepseekKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-        thinking: { type: 'disabled' },
-        max_tokens: 200,
-        messages: [
-          { role: 'system', content: 'Sen bir Türk haber kategorileme uzmanısın. Yalnızca JSON döndür.' },
-          { role: 'user', content: prompt },
-        ],
-      }),
-      signal: AbortSignal.timeout(10_000),
-    })
-
-    if (!res.ok) {
-      recordDirectDeepSeekObservation({
-        agentName: 'category_classifier',
-        operation: 'classify_category',
-        promptVersion: 'news-classifier:v1',
-        model,
-        startedAt,
-        success: false,
-        statusCode: res.status,
-      })
-      return null
-    }
-
-    const json = await res.json() as {
-      choices?: Array<{ message?: { content?: string } }>
-      usage?: unknown
-    }
-    const raw = json.choices?.[0]?.message?.content?.trim()
-    recordDirectDeepSeekObservation({
+  return completeClassifierJson(
+    {
       agentName: 'category_classifier',
       operation: 'classify_category',
       promptVersion: 'news-classifier:v1',
-      model,
-      startedAt,
-      success: Boolean(raw),
-      statusCode: 200,
-      body: json,
-      errorMessage: raw ? undefined : 'empty_content',
-    })
-    if (!raw) return null
-
-    const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
-    const categoryId = parsed.categoryId?.trim() as NewsCategory
-    const confidence = Number(parsed.confidence ?? 0)
-
-    if (!CATEGORIES.includes(categoryId) || confidence < 75) return null
-
-    const resolvedId = applyAstrologyCategoryOverride(
-      categoryId,
-      title,
-      content
-    ) as NewsCategory
-
-    return {
-      categoryId: resolvedId,
-      confidence,
-      reason:
-        resolvedId !== categoryId
-          ? `${parsed.reason ?? ''} [override→astroloji]`.trim()
-          : parsed.reason ?? '',
+      system: 'Sen bir Türk haber kategorileme uzmanısın. Yalnızca JSON döndür.',
+      user: prompt,
+      cohortKey: title,
+    },
+    (raw) => {
+      try {
+        const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
+        const categoryId = parsed.categoryId?.trim() as NewsCategory
+        const confidence = Number(parsed.confidence ?? 0)
+        if (!CATEGORIES.includes(categoryId) || confidence < 75) return null
+        const resolvedId = applyAstrologyCategoryOverride(categoryId, title, content) as NewsCategory
+        return {
+          categoryId: resolvedId,
+          confidence,
+          reason:
+            resolvedId !== categoryId
+              ? `${parsed.reason ?? ''} [override→astroloji]`.trim()
+              : parsed.reason ?? '',
+        }
+      } catch {
+        return null
+      }
     }
-  } catch {
-    return null
-  }
+  )
 }
 
 export interface YerelClassifierResult {
@@ -271,7 +222,6 @@ export async function classifyYerelSubcategory(
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!deepseekKey) return null
 
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
   const yerelCats = getYerelSubcategories()
   const categoryList = yerelCats
     .map((c) => `  - ${c.id}: ${getYerelSubcategoryShortLabel(c)}`)
@@ -299,73 +249,31 @@ KURALLAR:
 JSON formatında yanıt ver:
 {"categoryId": "yerel-xxx", "confidence": 85, "reason": "kısa açıklama"}`
 
-  try {
-    const startedAt = Date.now()
-    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${deepseekKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-        thinking: { type: 'disabled' },
-        max_tokens: 200,
-        messages: [
-          { role: 'system', content: 'Sen bir Türk yerel haber kategorileme uzmanısın. Yalnızca JSON döndür.' },
-          { role: 'user', content: prompt },
-        ],
-      }),
-      signal: AbortSignal.timeout(10_000),
-    })
-
-    if (!res.ok) {
-      recordDirectDeepSeekObservation({
-        agentName: 'yerel_classifier',
-        operation: 'classify_yerel',
-        promptVersion: 'yerel-classifier:v1',
-        model,
-        startedAt,
-        success: false,
-        statusCode: res.status,
-      })
-      return null
-    }
-
-    const json = await res.json() as {
-      choices?: Array<{ message?: { content?: string } }>
-      usage?: unknown
-    }
-    const raw = json.choices?.[0]?.message?.content?.trim()
-    recordDirectDeepSeekObservation({
+  return completeClassifierJson(
+    {
       agentName: 'yerel_classifier',
       operation: 'classify_yerel',
       promptVersion: 'yerel-classifier:v1',
-      model,
-      startedAt,
-      success: Boolean(raw),
-      statusCode: 200,
-      body: json,
-      errorMessage: raw ? undefined : 'empty_content',
-    })
-    if (!raw) return null
-
-    const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
-    const categoryId = parsed.categoryId?.trim() ?? ''
-    const confidence = Number(parsed.confidence ?? 0)
-
-    if (!YEREL_SUBCATEGORIES.includes(categoryId) || confidence < 70) return null
-
-    return {
-      categoryId: categoryId as YerelSubcategory,
-      confidence,
-      reason: parsed.reason ?? '',
+      system: 'Sen bir Türk yerel haber kategorileme uzmanısın. Yalnızca JSON döndür.',
+      user: prompt,
+      cohortKey: title,
+    },
+    (raw) => {
+      try {
+        const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
+        const categoryId = parsed.categoryId?.trim() ?? ''
+        const confidence = Number(parsed.confidence ?? 0)
+        if (!YEREL_SUBCATEGORIES.includes(categoryId) || confidence < 70) return null
+        return {
+          categoryId: categoryId as YerelSubcategory,
+          confidence,
+          reason: parsed.reason ?? '',
+        }
+      } catch {
+        return null
+      }
     }
-  } catch {
-    return null
-  }
+  )
 }
 
 const KIBRIS_SUBCATEGORIES = getKibrisSubcategories().map((c) => c.id) as readonly string[]
@@ -389,7 +297,6 @@ export async function classifyKibrisSubcategory(
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!deepseekKey) return null
 
-  const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
   const kibrisCats = getKibrisSubcategories()
   const categoryList = kibrisCats
     .map((c) => `  - ${c.id}: ${getKibrisSubcategoryShortLabel(c)}`)
@@ -414,71 +321,29 @@ KURALLAR:
 JSON formatında yanıt ver:
 {"categoryId": "kibris-xxx", "confidence": 85, "reason": "kısa açıklama"}`
 
-  try {
-    const startedAt = Date.now()
-    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${deepseekKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-        thinking: { type: 'disabled' },
-        max_tokens: 200,
-        messages: [
-          { role: 'system', content: 'Sen bir Kıbrıs haber kategorileme uzmanısın. Yalnızca JSON döndür.' },
-          { role: 'user', content: prompt },
-        ],
-      }),
-      signal: AbortSignal.timeout(10_000),
-    })
-
-    if (!res.ok) {
-      recordDirectDeepSeekObservation({
-        agentName: 'kibris_classifier',
-        operation: 'classify_kibris',
-        promptVersion: 'kibris-classifier:v1',
-        model,
-        startedAt,
-        success: false,
-        statusCode: res.status,
-      })
-      return null
-    }
-
-    const json = await res.json() as {
-      choices?: Array<{ message?: { content?: string } }>
-      usage?: unknown
-    }
-    const raw = json.choices?.[0]?.message?.content?.trim()
-    recordDirectDeepSeekObservation({
+  return completeClassifierJson(
+    {
       agentName: 'kibris_classifier',
       operation: 'classify_kibris',
       promptVersion: 'kibris-classifier:v1',
-      model,
-      startedAt,
-      success: Boolean(raw),
-      statusCode: 200,
-      body: json,
-      errorMessage: raw ? undefined : 'empty_content',
-    })
-    if (!raw) return null
-
-    const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
-    const categoryId = parsed.categoryId?.trim() ?? ''
-    const confidence = Number(parsed.confidence ?? 0)
-
-    if (!KIBRIS_SUBCATEGORIES.includes(categoryId) || confidence < 70) return null
-
-    return {
-      categoryId: categoryId as KibrisSubcategory,
-      confidence,
-      reason: parsed.reason ?? '',
+      system: 'Sen bir Kıbrıs haber kategorileme uzmanısın. Yalnızca JSON döndür.',
+      user: prompt,
+      cohortKey: title,
+    },
+    (raw) => {
+      try {
+        const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
+        const categoryId = parsed.categoryId?.trim() ?? ''
+        const confidence = Number(parsed.confidence ?? 0)
+        if (!KIBRIS_SUBCATEGORIES.includes(categoryId) || confidence < 70) return null
+        return {
+          categoryId: categoryId as KibrisSubcategory,
+          confidence,
+          reason: parsed.reason ?? '',
+        }
+      } catch {
+        return null
+      }
     }
-  } catch {
-    return null
-  }
+  )
 }

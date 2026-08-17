@@ -307,6 +307,7 @@ export function recordDirectDeepSeekObservation(opts: {
   body?: unknown
   errorMessage?: string
   attempt?: number
+  retryCount?: number
   inputHash?: string
 }): void {
   const model = getDeepSeekModel(opts.model)
@@ -327,6 +328,7 @@ export function recordDirectDeepSeekObservation(opts: {
       usage,
       latencyMs: Date.now() - opts.startedAt,
       attempt: opts.attempt ?? 1,
+      retryCount: opts.retryCount,
       success: opts.success,
       statusCode: opts.statusCode ?? parseDeepSeekHttpStatus(opts.errorMessage || ''),
       errorCode,

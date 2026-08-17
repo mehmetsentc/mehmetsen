@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseDeepSeekUsage } from '@/lib/ai/usage/parseUsage'
+import { parseDeepSeekUsage, parseGroqUsage, classifyGroqErrorCode } from '@/lib/ai/usage/parseUsage'
 
 describe('parseDeepSeekUsage', () => {
   it('normalizes prompt/completion/total tokens', () => {
@@ -52,5 +52,30 @@ describe('parseDeepSeekUsage', () => {
 
   it('does not coerce NaN or negative values to 0', () => {
     expect(parseDeepSeekUsage({ prompt_tokens: Number.NaN, completion_tokens: -1 })).toBeUndefined()
+  })
+})
+
+describe('parseGroqUsage', () => {
+  it('reads OpenAI-compatible usage plus cached_tokens', () => {
+    expect(
+      parseGroqUsage({
+        prompt_tokens: 80,
+        completion_tokens: 12,
+        total_tokens: 92,
+        prompt_tokens_details: { cached_tokens: 20 },
+      })
+    ).toEqual({
+      inputTokens: 80,
+      outputTokens: 12,
+      totalTokens: 92,
+      cacheHitTokens: 20,
+    })
+  })
+
+  it('classifies timeout and HTTP errors', () => {
+    expect(classifyGroqErrorCode('The operation was aborted due to timeout')).toBe('timeout')
+    expect(classifyGroqErrorCode('Groq HTTP 429: rate')).toBe('http_429')
+    expect(classifyGroqErrorCode('Groq HTTP 500: oops')).toBe('http_500')
+    expect(classifyGroqErrorCode('invalid_json')).toBe('invalid_json')
   })
 })

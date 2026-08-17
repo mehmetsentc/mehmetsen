@@ -10,6 +10,7 @@ import {
   type LooseAiUsageEvent,
 } from '@/lib/ai/usage/aggregate'
 import { isAiUsageTelemetryEnabled } from '@/lib/ai/usage/telemetry'
+import { getDailyDeepSeekTokenWarning } from '@/lib/ai/usage/budget'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -105,6 +106,7 @@ export async function GET(request: NextRequest) {
           process.env.DEEPSEEK_OUTPUT_COST_PER_1M?.trim()
       ),
       telemetryEnabled: isAiUsageTelemetryEnabled(),
+      deepseekTokenWarningThreshold: getDailyDeepSeekTokenWarning(),
     })
   } catch (error) {
     console.warn('[ai-usage] aggregate failed:', error instanceof Error ? error.message : error)

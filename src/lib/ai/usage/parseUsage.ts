@@ -55,3 +55,33 @@ export function classifyDeepSeekErrorCode(errorMessage: string): string {
   if (/DEEPSEEK_API_KEY/i.test(errorMessage)) return 'missing_api_key'
   return 'error'
 }
+
+/** Groq Chat Completions usage — OpenAI-compatible, plus optional cached_tokens. */
+export function parseGroqUsage(raw: unknown): NormalizedAiUsage | undefined {
+  const base = parseDeepSeekUsage(raw)
+  if (!raw || typeof raw !== 'object') return base
+  const details = (raw as { prompt_tokens_details?: { cached_tokens?: unknown } }).prompt_tokens_details
+  const cached = details ? asNonNegInt(details.cached_tokens) : undefined
+  if (cached === undefined) return base
+  return { ...(base ?? {}), cacheHitTokens: cached }
+}
+
+export function parseGroqHttpStatus(errorMessage: string): number | undefined {
+  const match = errorMessage.match(/Groq HTTP (\d{3})/)
+  if (!match?.[1]) return undefined
+  const status = Number(match[1])
+  return Number.isFinite(status) ? status : undefined
+}
+
+export function classifyGroqErrorCode(errorMessage: string): string {
+  if (/timeout|aborted|AbortError/i.test(errorMessage)) return 'timeout'
+  if (/empty|boş yanıt|0 karakter|invalid_json|JSON/i.test(errorMessage)) {
+    if (/invalid_json|JSON/i.test(errorMessage)) return 'invalid_json'
+    return 'empty_content'
+  }
+  const status = parseGroqHttpStatus(errorMessage)
+  if (status) return `http_${status}`
+  if (/GROQ_API_KEY/i.test(errorMessage)) return 'missing_api_key'
+  if (/schema/i.test(errorMessage)) return 'schema_validation'
+  return 'error'
+}

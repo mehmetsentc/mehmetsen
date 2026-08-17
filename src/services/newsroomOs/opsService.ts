@@ -127,6 +127,12 @@ export function getAiModelRegistry() {
       ),
     },
     {
+      id: 'groq',
+      label: 'Groq',
+      role: 'classifier canary (gpt-oss-20b)',
+      status: mask(Boolean(process.env.GROQ_API_KEY)),
+    },
+    {
       id: 'openai',
       label: 'OpenAI',
       role: 'optional fallback',

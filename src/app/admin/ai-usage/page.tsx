@@ -37,6 +37,7 @@ function fmtPct(n: number | null | undefined): string {
 type UsageResponse = AiUsageAggregate & {
   pricingConfigured?: boolean
   telemetryEnabled?: boolean
+  deepseekTokenWarningThreshold?: number | null
   error?: string
 }
 
@@ -69,6 +70,13 @@ export default function AiUsagePage() {
   const costHint = data?.pricingConfigured
     ? 'DeepSeek faturası ile birebir aynı olmayabilir'
     : 'Fiyat env tanımlı değil — token ölçümü çalışır'
+
+  const deepseekRow = data?.providers?.find((p) => p.provider === 'deepseek')
+  const groqRow = data?.providers?.find((p) => p.provider === 'groq')
+  const warningThreshold = data?.deepseekTokenWarningThreshold ?? null
+  const deepseekTokens = deepseekRow?.total ?? 0
+  const warningExceeded =
+    warningThreshold != null && deepseekTokens >= warningThreshold
 
   return (
     <AdminOsPageShell
@@ -110,6 +118,18 @@ export default function AiUsagePage() {
           { label: 'Hatalar', value: loading ? '…' : fmtInt(data?.failures), tone: (data?.failures ?? 0) > 0 ? 'warn' : 'ok' },
           { label: 'Retry', value: loading ? '…' : fmtInt(data?.retries) },
           { label: 'Usage Coverage', value: loading ? '…' : fmtPct(data?.usageCoverage), hint: 'Token alanlı event / tüm event' },
+          {
+            label: 'DeepSeek Token',
+            value: loading ? '…' : fmtInt(deepseekRow?.total),
+            hint:
+              warningThreshold == null
+                ? 'Bugünkü DeepSeek kullanımı (soft uyarı eşiği tanımlı değil)'
+                : warningExceeded
+                  ? `Uyarı eşiği aşıldı (${fmtInt(warningThreshold)}) — üretim durmaz`
+                  : `Eşik: ${fmtInt(warningThreshold)} (üretim durmaz)`,
+            tone: warningExceeded ? 'warn' : 'ok',
+          },
+          { label: 'Groq Token', value: loading ? '…' : fmtInt(groqRow?.total), hint: 'Classifier canary' },
         ]}
       />
 
@@ -196,6 +216,19 @@ export default function AiUsagePage() {
           fmtInt(r.retry),
           fmtInt(r.error),
           fmtUsd(r.estimatedCostUsd),
+        ])}
+      />
+
+      <Table
+        title="Sağlayıcılar"
+        headers={['Provider', 'Requests', 'Input', 'Output', 'Total', 'Error']}
+        rows={(data?.providers ?? []).map((r) => [
+          r.provider,
+          fmtInt(r.requests),
+          fmtInt(r.input),
+          fmtInt(r.output),
+          fmtInt(r.total),
+          fmtInt(r.error),
         ])}
       />
 

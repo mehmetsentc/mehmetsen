@@ -181,6 +181,14 @@ export type AiUsageAggregate = {
   topTokenAgents: Array<{ agent: string; totalTokens: number; requests: number }>
   topCostOperations: Array<{ operation: string; estimatedCostUsd: number | null; totalTokens: number; requests: number }>
   repeatedInputs: Array<{ inputHash: string; operation: string; calls: number }>
+  providers: Array<{
+    provider: string
+    requests: number
+    input: number
+    output: number
+    total: number
+    error: number
+  }>
 }
 
 export function aggregateAiUsageEvents(
@@ -214,6 +222,7 @@ export function aggregateAiUsageEvents(
   const agents = new Map<string, Bucket>()
   const models = new Map<string, Bucket>()
   const operations = new Map<string, Bucket>()
+  const providers = new Map<string, Bucket>()
   const retryAgents = new Map<string, { firstAttempts: number; retries: number }>()
   const daily = new Map<string, Bucket>()
   const repeated = new Map<string, { inputHash: string; operation: string; calls: number }>()
@@ -256,6 +265,7 @@ export function aggregateAiUsageEvents(
 
     addToBucket(agents.get(agent) ?? agents.set(agent, emptyBucket(agent)).get(agent)!, event)
     addToBucket(models.get(modelKey) ?? models.set(modelKey, emptyBucket(modelKey)).get(modelKey)!, event)
+    addToBucket(providers.get(provider) ?? providers.set(provider, emptyBucket(provider)).get(provider)!, event)
     addToBucket(
       operations.get(operation) ?? operations.set(operation, emptyBucket(operation)).get(operation)!,
       event
@@ -398,6 +408,16 @@ export function aggregateAiUsageEvents(
       .filter((row) => row.calls >= 2)
       .sort((a, b) => b.calls - a.calls)
       .slice(0, 20),
+    providers: [...providers.values()]
+      .map((b) => ({
+        provider: b.key,
+        requests: b.requests,
+        input: b.inputTokens,
+        output: b.outputTokens,
+        total: b.totalTokens,
+        error: b.errors,
+      }))
+      .sort((a, b) => b.total - a.total || b.requests - a.requests),
   }
 }
 

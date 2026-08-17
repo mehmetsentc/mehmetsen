@@ -36,6 +36,34 @@ describe('aggregateAiUsageEvents', () => {
     expect(agg.agents.find((a) => a.agent === 'stage1_writer')?.requests).toBe(2)
   })
 
+  it('splits DeepSeek vs Groq provider totals', () => {
+    const agg = aggregateAiUsageEvents(
+      [
+        {
+          createdAt: 1,
+          provider: 'deepseek',
+          model: 'deepseek-v4-flash',
+          inputTokens: 1000,
+          outputTokens: 100,
+          totalTokens: 1100,
+          success: true,
+        },
+        {
+          createdAt: 2,
+          provider: 'groq',
+          model: 'openai/gpt-oss-20b',
+          inputTokens: 80,
+          outputTokens: 10,
+          totalTokens: 90,
+          success: true,
+        },
+      ],
+      { range: 'today', startMs: 0, endMs: 10, truncated: false }
+    )
+    expect(agg.providers.find((p) => p.provider === 'deepseek')?.total).toBe(1100)
+    expect(agg.providers.find((p) => p.provider === 'groq')?.total).toBe(90)
+  })
+
   it('treats missing cache tokens as absent, not zero-hit rate from empty fields', () => {
     const agg = aggregateAiUsageEvents(
       [{ createdAt: 1, inputTokens: 10, outputTokens: 2, totalTokens: 12, success: true }],

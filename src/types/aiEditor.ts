@@ -47,7 +47,7 @@ export type AiPromptType =
   | 'source'
   | 'breaking'
 
-export type AiProviderId = 'deepseek' | 'gemini' | 'openai'
+export type AiProviderId = 'deepseek' | 'gemini' | 'openai' | 'groq'
 
 export type ArticleFormat = 'standard' | 'column' | 'analysis'
 
