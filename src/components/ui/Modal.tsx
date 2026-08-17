@@ -91,7 +91,7 @@ export function Modal({
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-3 sm:p-6">
+        <div className="fixed inset-0 z-modal isolate flex items-center justify-center p-3 sm:p-6">
           {/* Backdrop */}
           <motion.div
             aria-hidden

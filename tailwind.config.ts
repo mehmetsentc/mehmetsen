@@ -136,6 +136,17 @@ const config: Config = {
         brand:  'var(--shadow-brand)',
         glow:   'var(--shadow-glow)',
       },
+      zIndex: {
+        dropdown: '10',
+        sticky: '20',
+        banner: '30',
+        overlay: '40',
+        modal: '300',
+        sheet: '310',
+        popover: '320',
+        toast: '400',
+        tooltip: '500',
+      },
       transitionDuration: {
         instant:  '0ms',
         fast:     '120ms',

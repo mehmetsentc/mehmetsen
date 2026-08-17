@@ -1020,6 +1020,9 @@
 
   /* ══ Featured news carousel (home + category) — red/gray dots below image ══ */
   .featured-news-carousel {
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
     width: 100%;
   }
 
