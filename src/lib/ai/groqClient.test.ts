@@ -83,4 +83,87 @@ describe('groqChatCompletion', () => {
     ).rejects.toThrow(/GROQ_API_KEY/)
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('sends json_schema, include_reasoning=false, and reasoning_effort=low for gpt-oss', async () => {
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"ok":true}' } }],
+            usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+          }),
+          { status: 200 }
+        )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const { groqChatCompletionDetailed } = await import('@/lib/ai/groqClient')
+    await groqChatCompletionDetailed({
+      messages: [{ role: 'user', content: 'secret-prompt' }],
+      jsonSchema: {
+        name: 'classifier_result',
+        strict: true,
+        schema: {
+          type: 'object',
+          properties: { ok: { type: 'boolean' } },
+          required: ['ok'],
+          additionalProperties: false,
+        },
+      },
+    })
+    const init = fetchMock.mock.calls[0]?.[1]
+    const body = JSON.parse(String(init?.body || '{}')) as Record<string, unknown>
+    expect(body.include_reasoning).toBe(false)
+    expect(body.reasoning_effort).toBe('low')
+    expect(body.response_format).toMatchObject({
+      type: 'json_schema',
+      json_schema: { name: 'classifier_result', strict: true },
+    })
+    const dumped = JSON.stringify(recordAiRequestUsage.mock.calls[0]?.[0])
+    expect(dumped).not.toContain('secret-prompt')
+    expect(dumped).not.toContain('gsk-test-key')
+  })
+
+  it('extracts JSON from markdown fences and reasoning fields', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: 'note\n```json\n{"ok":true}\n```',
+                    reasoning: 'ignored because content has JSON',
+                  },
+                },
+              ],
+            }),
+            { status: 200 }
+          )
+      )
+    )
+    const { groqChatCompletion } = await import('@/lib/ai/groqClient')
+    await expect(
+      groqChatCompletion({ messages: [{ role: 'user', content: 'hi' }], jsonMode: false })
+    ).resolves.toBe('{"ok":true}')
+  })
+
+  it('records HTTP 400 as http_400 without a retry', async () => {
+    const fetchMock = vi.fn(async () => new Response('failed JSON', { status: 400 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { groqChatCompletion } = await import('@/lib/ai/groqClient')
+    await expect(
+      groqChatCompletion({ messages: [{ role: 'user', content: 'hi' }] })
+    ).rejects.toThrow(/Groq HTTP 400/)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(recordAiRequestUsage.mock.calls[0]?.[0]).toMatchObject({
+      provider: 'groq',
+      success: false,
+      statusCode: 400,
+      errorCode: 'http_400',
+    })
+    const dumped = JSON.stringify(recordAiRequestUsage.mock.calls[0]?.[0])
+    expect(dumped).not.toContain('failed JSON')
+  })
 })

@@ -13,10 +13,17 @@ import {
 import { recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
 import type { AiUsageTelemetryMeta, NormalizedAiUsage } from '@/lib/ai/usage/types'
 import { getGroqApiKey, getGroqFastModel } from '@/lib/ai/groqRouting'
+import { extractJsonObject } from '@/lib/ai/router/validation'
 
 export const GROQ_API_BASE = 'https://api.groq.com/openai/v1'
 
 type ChatMessage = { role: string; content: string }
+
+export type GroqJsonSchema = {
+  name: string
+  strict?: boolean
+  schema: Record<string, unknown>
+}
 
 export interface GroqChatOptions {
   messages: ChatMessage[]
@@ -25,9 +32,12 @@ export interface GroqChatOptions {
   maxTokens?: number
   timeoutMs?: number
   jsonMode?: boolean
+  jsonSchema?: GroqJsonSchema
   telemetry?: AiUsageTelemetryMeta
   /** HTTP success is recorded by the caller after JSON/schema validation. */
   skipSuccessTelemetry?: boolean
+  /** Skip all Groq-client telemetry (caller records its own event). */
+  skipTelemetry?: boolean
 }
 
 export type GroqChatResult = {
@@ -36,6 +46,10 @@ export type GroqChatResult = {
   latencyMs: number
   statusCode: number
   model: string
+}
+
+function isGptOss(model: string): boolean {
+  return /gpt-oss/i.test(model)
 }
 
 function extractMessageText(data: {
@@ -49,15 +63,12 @@ function extractMessageText(data: {
 }): string {
   const message = data.choices?.[0]?.message
   const content = message?.content?.trim() ?? ''
-  if (content) return content
   const reasoning = (message?.reasoning_content || message?.reasoning || '').trim()
-  if (reasoning) {
-    const fence = reasoning.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (fence?.[1]?.trim()) return fence[1].trim()
-    const obj = reasoning.match(/\{[\s\S]*\}/)
-    if (obj?.[0]) return obj[0]
-  }
-  return ''
+  const fromContent = content ? extractJsonObject(content) : null
+  if (fromContent) return fromContent
+  const fromReasoning = reasoning ? extractJsonObject(reasoning) : null
+  if (fromReasoning) return fromReasoning
+  return content || reasoning
 }
 
 function inputHashFromMessages(messages: ChatMessage[]): string | undefined {
@@ -126,14 +137,35 @@ export async function groqChatCompletionDetailed(opts: GroqChatOptions): Promise
   const attempt = opts.telemetry?.attempt ?? 1
   const inputHash = opts.telemetry?.inputHash ?? inputHashFromMessages(opts.messages)
   const startedAt = Date.now()
+  const gptOss = isGptOss(model)
+  const maxTokens = gptOss && jsonMode ? Math.max(opts.maxTokens ?? 200, 512) : (opts.maxTokens ?? 200)
+  const record = (row: Parameters<typeof noteAttempt>[0]) => {
+    if (opts.skipTelemetry) return
+    noteAttempt(row)
+  }
 
   const body: Record<string, unknown> = {
     model,
     messages: opts.messages,
     temperature: opts.temperature ?? 0.1,
-    max_tokens: opts.maxTokens ?? 200,
+    max_tokens: maxTokens,
+    max_completion_tokens: maxTokens,
   }
-  if (jsonMode) {
+  if (gptOss) {
+    // json_object + default reasoning on gpt-oss returns HTTP 400 ("JSON") in production.
+    body.include_reasoning = false
+    body.reasoning_effort = 'low'
+  }
+  if (jsonMode && opts.jsonSchema) {
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: {
+        name: opts.jsonSchema.name,
+        strict: opts.jsonSchema.strict !== false,
+        schema: opts.jsonSchema.schema,
+      },
+    }
+  } else if (jsonMode) {
     body.response_format = { type: 'json_object' }
   }
 
@@ -150,7 +182,7 @@ export async function groqChatCompletionDetailed(opts: GroqChatOptions): Promise
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    noteAttempt({
+    record({
       telemetry: opts.telemetry,
       model,
       latencyMs: Date.now() - startedAt,
@@ -163,9 +195,8 @@ export async function groqChatCompletionDetailed(opts: GroqChatOptions): Promise
   }
 
   if (!res.ok) {
-    const err = await res.text().catch(() => '')
-    const message = `Groq HTTP ${res.status}: ${err.slice(0, 240)}`
-    noteAttempt({
+    const message = `Groq HTTP ${res.status}`
+    record({
       telemetry: opts.telemetry,
       model,
       latencyMs: Date.now() - startedAt,
@@ -188,7 +219,7 @@ export async function groqChatCompletionDetailed(opts: GroqChatOptions): Promise
 
   if (data.error?.message) {
     const message = `Groq error: ${data.error.message}`
-    noteAttempt({
+    record({
       telemetry: opts.telemetry,
       model,
       usage,
@@ -205,7 +236,7 @@ export async function groqChatCompletionDetailed(opts: GroqChatOptions): Promise
   const text = extractMessageText(data)
   if (!text) {
     const message = 'Groq boş yanıt döndürdü (0 karakter)'
-    noteAttempt({
+    record({
       telemetry: opts.telemetry,
       model,
       usage,
@@ -219,8 +250,8 @@ export async function groqChatCompletionDetailed(opts: GroqChatOptions): Promise
     throw new Error(message)
   }
 
-  if (!opts.skipSuccessTelemetry) {
-    noteAttempt({
+  if (!opts.skipTelemetry && !opts.skipSuccessTelemetry) {
+    record({
       telemetry: opts.telemetry,
       model,
       usage,

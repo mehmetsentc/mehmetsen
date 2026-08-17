@@ -1,4 +1,4 @@
-import { groqChatCompletionDetailed } from '@/lib/ai/groqClient'
+import { groqChatCompletionDetailed, type GroqJsonSchema } from '@/lib/ai/groqClient'
 import { getGroqFastModel } from '@/lib/ai/groqRouting'
 import { groqCohortBucket, classifierCohortKey } from '@/lib/ai/groqRouting'
 import { geminiFastChat } from '@/lib/ai/providers/geminiChat'
@@ -16,7 +16,8 @@ import {
   temperatureForTask,
   timeoutForTask,
 } from '@/lib/ai/router/policy'
-import { looksLikeJsonObject } from '@/lib/ai/router/validation'
+import { CLASSIFIER_JSON_SCHEMA } from '@/lib/ai/router/classifierSchema'
+import { classifyJsonFailure, extractJsonObject } from '@/lib/ai/router/validation'
 import { recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
 import type {
   ProviderAttemptResult,
@@ -48,6 +49,10 @@ async function callProvider(
       maxTokens,
       timeoutMs,
       jsonMode,
+      jsonSchema:
+        opts.taskType === 'classification'
+          ? (CLASSIFIER_JSON_SCHEMA as GroqJsonSchema)
+          : undefined,
       skipSuccessTelemetry: true,
       telemetry,
     })
@@ -191,21 +196,23 @@ export async function runAI<T>(input: RunAiInput<T>): Promise<RunAiResult<T>> {
     }
 
     if (input.validate) {
-      if (!looksLikeJsonObject(result.text)) {
+      const jsonText = extractJsonObject(result.text)
+      if (!jsonText) {
+        const errorCode = classifyJsonFailure(result.text)
         noteCheapSchemaFail({
           input,
           provider,
           model: result.model,
           result,
           attempt,
-          errorCode: 'invalid_json',
+          errorCode,
           canaryBucket,
         })
         fallbackFrom = fallbackFrom ?? provider
-        fallbackReason = 'invalid_json'
+        fallbackReason = errorCode
         continue
       }
-      const parsed = input.validate(result.text)
+      const parsed = input.validate(jsonText)
       if (!parsed) {
         noteCheapSchemaFail({
           input,
@@ -230,7 +237,7 @@ export async function runAI<T>(input: RunAiInput<T>): Promise<RunAiResult<T>> {
         fallbackReason,
         canaryBucket,
       })
-      writeClassifierCache(cacheKey, result.text)
+      writeClassifierCache(cacheKey, jsonText)
       return {
         value: parsed,
         provider,

@@ -202,6 +202,61 @@ describe('completeClassifierJson', () => {
     expect(events.some((e) => e.provider === 'deepseek' && e.attempt === 2)).toBe(true)
   })
 
+  it('accepts Groq markdown-fenced JSON without calling DeepSeek', async () => {
+    enableGroq()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('groq.com')) {
+        return groqResponse('```json\n' + VALID + '\n```')
+      }
+      throw new Error(`unexpected fetch ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const value = await completeClassifierJson(meta, parseCategory)
+    expect(value).toEqual({ categoryId: 'gundem' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const init = fetchMock.mock.calls[0]?.[1]
+    const body = JSON.parse(String(init?.body || '{}')) as {
+      response_format?: { type?: string }
+      include_reasoning?: boolean
+    }
+    expect(body.response_format?.type).toBe('json_schema')
+    expect(body.include_reasoning).toBe(false)
+  })
+
+  it('accepts Groq JSON wrapped in reasoning prose without calling DeepSeek', async () => {
+    enableGroq()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('groq.com')) return groqResponse('Short note.\n' + VALID)
+      throw new Error(`unexpected fetch ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const value = await completeClassifierJson(meta, parseCategory)
+    expect(value).toEqual({ categoryId: 'gundem' })
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('deepseek.com'))).toBe(false)
+  })
+
+  it('falls back to DeepSeek on Groq HTTP 400 without a retry storm', async () => {
+    enableGroq()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('groq.com')) return new Response('failed JSON', { status: 400 })
+      return deepseekResponse(VALID)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const value = await completeClassifierJson(meta, parseCategory)
+    expect(value).toEqual({ categoryId: 'gundem' })
+    expect(fetchMock.mock.calls.filter((c) => String(c[0]).includes('groq.com'))).toHaveLength(1)
+    const events = recordAiRequestUsage.mock.calls.map((c) => c[0] as Record<string, unknown>)
+    expect(events.some((e) => e.provider === 'groq' && e.errorCode === 'http_400' && e.statusCode === 400)).toBe(
+      true
+    )
+    const dumped = JSON.stringify(events)
+    expect(dumped).not.toContain('failed JSON')
+    expect(dumped).not.toContain('user-prompt-secret')
+  })
+
   it('uses DeepSeek when GROQ_API_KEY is missing', async () => {
     vi.stubEnv('AI_GROQ_CLASSIFIERS_ENABLED', 'true')
     vi.stubEnv('AI_GROQ_PERCENT', '100')

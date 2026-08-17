@@ -75,12 +75,10 @@ export function parseGroqHttpStatus(errorMessage: string): number | undefined {
 
 export function classifyGroqErrorCode(errorMessage: string): string {
   if (/timeout|aborted|AbortError/i.test(errorMessage)) return 'timeout'
-  if (/empty|boş yanıt|0 karakter|invalid_json|JSON/i.test(errorMessage)) {
-    if (/invalid_json|JSON/i.test(errorMessage)) return 'invalid_json'
-    return 'empty_content'
-  }
   const status = parseGroqHttpStatus(errorMessage)
   if (status) return `http_${status}`
+  if (/empty|boş yanıt|0 karakter/i.test(errorMessage)) return 'empty_content'
+  if (/invalid_json|JSON/i.test(errorMessage)) return 'invalid_json'
   if (/GROQ_API_KEY/i.test(errorMessage)) return 'missing_api_key'
   if (/schema/i.test(errorMessage)) return 'schema_validation'
   return 'error'

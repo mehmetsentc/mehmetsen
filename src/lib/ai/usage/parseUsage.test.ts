@@ -76,6 +76,8 @@ describe('parseGroqUsage', () => {
     expect(classifyGroqErrorCode('The operation was aborted due to timeout')).toBe('timeout')
     expect(classifyGroqErrorCode('Groq HTTP 429: rate')).toBe('http_429')
     expect(classifyGroqErrorCode('Groq HTTP 500: oops')).toBe('http_500')
+    expect(classifyGroqErrorCode('Groq HTTP 400: failed to produce JSON')).toBe('http_400')
+    expect(classifyGroqErrorCode('Groq HTTP 400')).toBe('http_400')
     expect(classifyGroqErrorCode('invalid_json')).toBe('invalid_json')
   })
 })
