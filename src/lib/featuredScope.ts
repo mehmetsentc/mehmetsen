@@ -136,6 +136,20 @@ export function pickCityFeaturedCarouselItems<
     .slice(0, limit)
 }
 
+/**
+ * Homepage Öne Çıkan list already comes from the server.
+ * National: keep only CMS `featured` pins (drop any filler).
+ * City tenant: keep the full list — pins may be `localFeatured` without `featured`.
+ */
+export function pickHomeFeedFeaturedPins<T extends FeaturedPinFlags>(
+  featured: T[],
+  cityMode: boolean,
+  limit: number
+): T[] {
+  const pins = cityMode ? featured : featured.filter((item) => item.featured === true)
+  return pins.slice(0, limit)
+}
+
 /** Kıbrıs category page Öne Çıkan: any kibris-* category pin. */
 export function isKibrisFeaturedEligible(input: FeaturedScopeInput): boolean {
   if (isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(input))) return false

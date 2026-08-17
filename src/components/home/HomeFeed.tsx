@@ -14,9 +14,14 @@ import { LazySection } from '@/components/home/LazySection'
 import { LazyCategoryRails } from '@/components/home/LazyCategoryRails'
 import { CityCinemaEventsStrip } from '@/components/city/CityCinemaEventsStrip'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
-import type { HomeFeedInitialData, HomeCategorySlug } from '@/types/newsItem'
+import { pickHomeFeedFeaturedPins } from '@/lib/featuredScope'
 import type { NaEvent } from '@/types/event'
-import { FEATURED_CAROUSEL_LIMIT, HOME_FEATURED_LIMIT } from '@/types/newsItem'
+import {
+  FEATURED_CAROUSEL_LIMIT,
+  HOME_FEATURED_LIMIT,
+  type HomeCategorySlug,
+  type HomeFeedInitialData,
+} from '@/types/newsItem'
 
 interface HomeFeedProps {
   data: HomeFeedInitialData
@@ -40,11 +45,11 @@ export function HomeFeed({
   const trendingIds = useMemo(() => new Set(trending.map((t) => t.id)), [trending])
 
   // Mobile hero slider: prefer CMS-pinned featured posts; fall back to latest
-  // news with images so the carousel is never blank. Desktop "Öne Çıkan" grid
-  // (DesktopFeaturedGrid) stays featured-only — this fallback is slider-only.
+  // news with images so the carousel is never blank. City tenants include
+  // `localFeatured` pins (same list as desktop); national keeps `featured` only.
   const featuredPins = useMemo(
-    () => featured.filter((item) => item.featured === true).slice(0, HOME_FEATURED_LIMIT),
-    [featured]
+    () => pickHomeFeedFeaturedPins(featured, cityMode, HOME_FEATURED_LIMIT),
+    [featured, cityMode]
   )
   const hasFeaturedPins = featuredPins.length > 0
   const sliderItems = useMemo(

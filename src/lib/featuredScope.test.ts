@@ -8,6 +8,7 @@ import {
   isNationalBreakingEligible,
   isNationalFeaturedEligible,
   pickCityFeaturedCarouselItems,
+  pickHomeFeedFeaturedPins,
 } from '@/lib/featuredScope'
 
 describe('featuredScope', () => {
@@ -211,5 +212,19 @@ describe('featuredScope', () => {
       10
     )
     expect(fallback.map((p) => p.id)).toEqual(['a', 'c'])
+  })
+
+  it('city homepage carousel keeps localFeatured pins that are not nationally featured', () => {
+    const featured = [
+      { id: 'old-national-pin', featured: true },
+      { id: 'new-city-pin', localFeatured: true },
+    ]
+    expect(pickHomeFeedFeaturedPins(featured, true, 11).map((p) => p.id)).toEqual([
+      'old-national-pin',
+      'new-city-pin',
+    ])
+    expect(pickHomeFeedFeaturedPins(featured, false, 11).map((p) => p.id)).toEqual([
+      'old-national-pin',
+    ])
   })
 })

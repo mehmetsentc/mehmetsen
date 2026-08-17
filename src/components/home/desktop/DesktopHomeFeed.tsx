@@ -29,6 +29,7 @@ import {
 import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import { useMergedCategoryRails } from '@/hooks/useMergedCategoryRails'
+import { pickHomeFeedFeaturedPins } from '@/lib/featuredScope'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
   HOME_CATEGORY_DESKTOP_CARDS,
@@ -145,10 +146,11 @@ export function DesktopHomeFeed({
     const trending = data.trending.slice(0, 8)
     const moreList = take(8)
 
-    const featuredSlider = (cityMode
-      ? data.featured
-      : data.featured.filter((p) => p.featured === true)
-    ).slice(0, HOME_FEATURED_LIMIT)
+    const featuredSlider = pickHomeFeedFeaturedPins(
+      data.featured,
+      cityMode,
+      HOME_FEATURED_LIMIT
+    )
 
     const opinionItems =
       featuredSlider.length >= 3
