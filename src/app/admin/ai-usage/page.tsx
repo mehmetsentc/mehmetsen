@@ -275,6 +275,142 @@ export default function AiUsagePage() {
         </ul>
       </Section>
 
+      <Section title="Stage3 Compact Canary">
+        <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+          Control = mevcut Stage3 prompt. Compact = kısaltılmış input. Classifier referans olarak kalır; skip açılmaz.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              Control
+            </p>
+            <ul className="space-y-1 text-sm">
+              <li className="flex justify-between">
+                <span>İstek</span>
+                <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage3CompactCanary?.control.requests)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Ort. input token</span>
+                <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage3CompactCanary?.control.avgInputTokens, 0)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Ort. output token</span>
+                <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage3CompactCanary?.control.avgOutputTokens, 0)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Ort. latency</span>
+                <span className="tabular-nums">
+                  {loading
+                    ? '…'
+                    : data?.stage3CompactCanary?.control.avgLatencyMs == null
+                      ? '—'
+                      : `${fmtNum(data.stage3CompactCanary.control.avgLatencyMs, 0)} ms`}
+                </span>
+              </li>
+              <li className="flex justify-between">
+                <span>Error rate</span>
+                <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage3CompactCanary?.control.errorRate)}</span>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              Compact
+            </p>
+            <ul className="space-y-1 text-sm">
+              <li className="flex justify-between">
+                <span>İstek</span>
+                <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage3CompactCanary?.compact.requests)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Ort. input token</span>
+                <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage3CompactCanary?.compact.avgInputTokens, 0)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Ort. output token</span>
+                <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage3CompactCanary?.compact.avgOutputTokens, 0)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Ort. latency</span>
+                <span className="tabular-nums">
+                  {loading
+                    ? '…'
+                    : data?.stage3CompactCanary?.compact.avgLatencyMs == null
+                      ? '—'
+                      : `${fmtNum(data.stage3CompactCanary.compact.avgLatencyMs, 0)} ms`}
+                </span>
+              </li>
+              <li className="flex justify-between">
+                <span>Error rate</span>
+                <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage3CompactCanary?.compact.errorRate)}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          Token saving
+        </p>
+        <ul className="space-y-1 text-sm">
+          <li className="flex justify-between">
+            <span>Control avg input</span>
+            <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage3CompactCanary?.tokenSaving.controlAvgInput, 0)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Compact avg input</span>
+            <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage3CompactCanary?.tokenSaving.compactAvgInput, 0)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Fark</span>
+            <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage3CompactCanary?.tokenSaving.difference, 0)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Azalma</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage3CompactCanary?.tokenSaving.reductionPct)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Control fallback istek</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage3CompactCanary?.controlFallback.requests)}</span>
+          </li>
+        </ul>
+        <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          Category quality
+        </p>
+        <ul className="space-y-1 text-sm">
+          <li className="flex justify-between">
+            <span>Compact comparable pairs</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage3CompactCanary?.compactQuality.comparablePairs)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Compact Stage3 = classifier</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage3CompactCanary?.compactQuality.agree)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Compact Stage3 ≠ classifier</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage3CompactCanary?.compactQuality.disagree)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Compact agreement rate</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage3CompactCanary?.compactQuality.agreementRate)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Control comparable pairs</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage3CompactCanary?.controlQuality.comparablePairs)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Control agreement rate</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage3CompactCanary?.controlQuality.agreementRate)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Generic category rate (control)</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage3CompactCanary?.controlQuality.genericRate)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Generic category rate (compact)</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage3CompactCanary?.compactQuality.genericRate)}</span>
+          </li>
+        </ul>
+      </Section>
+
       <Section title="En Fazla Token Kullanan Ajanlar">
         {(data?.topTokenAgents.length ?? 0) === 0 ? (
           <Empty />

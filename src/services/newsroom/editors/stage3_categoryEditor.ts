@@ -16,9 +16,12 @@ import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import { inputCharLimit, optionalOutputTokenLimit } from '@/lib/ai/usage/tokenBudget'
 import {
+  STAGE3_COMPACT_ARTICLE_CHARS,
   STAGE3_COMPACT_SYSTEM,
   buildCompactStage3UserPrompt,
-  isStage3CompactPromptEnabled,
+  shouldUseStage3CompactPrompt,
+  stage3CanaryBucket,
+  type Stage3PromptVariant,
 } from './stage3_compactPrompt'
 
 export interface CategoryResult {
@@ -37,6 +40,10 @@ interface CategoryInput {
   content: string
   sourceLabel: string
   forcedCategoryId?: string
+  spot?: string
+  city?: string | null
+  country?: string | null
+  tags?: string[]
 }
 
 const SYSTEM_PROMPT = `Sen NaHaber'in kategori editörüsün. Verilen haber başlığı ve içeriğini analiz ederek kategori, son-dakika durumu ve konum bilgisi belirliyorsun.
@@ -167,16 +174,9 @@ KESİN YASAKLAR (son-dakika olamaz):
 
 ÇIKTI: Yalnızca geçerli JSON:`
 
-function buildPrompt(input: CategoryInput): string {
-  if (isStage3CompactPromptEnabled()) {
-    return buildCompactStage3UserPrompt({
-      title: input.title,
-      content: input.content,
-      sourceLabel: input.sourceLabel,
-      currentCategory: input.forcedCategoryId,
-      maxArticleChars: inputCharLimit('AI_STAGE3_MAX_INPUT_CHARS', 1200),
-    })
-  }
+export const STAGE3_CONTROL_SYSTEM = SYSTEM_PROMPT
+
+export function buildControlStage3UserPrompt(input: CategoryInput): string {
   return `Kaynak: ${input.sourceLabel}
 Başlık: ${input.title}
 İçerik (tamamını oku — kategori kararını YALNIZCA içeriğe göre ver, kaynak adına veya başlıktaki tek bir kelimeye değil):
@@ -250,24 +250,195 @@ const VALID_CATEGORIES = new Set([
   'kibris-duyuru',
 ])
 
-function normalizeCategoryId(raw: string): string {
-  const slug = (raw || 'gundem')
+export function stage3ValidCategoryIds(): string[] {
+  return [...VALID_CATEGORIES].sort()
+}
+
+function slugifyCategoryId(raw: string): string {
+  return (raw || '')
     .trim().toLowerCase()
     .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
     .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
     .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+}
+
+function normalizeCategoryId(raw: string): string {
+  const slug = slugifyCategoryId(raw || 'gundem')
   return VALID_CATEGORIES.has(slug) ? slug : 'gundem'
 }
 
-async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null> {
+function buildCompactUserPrompt(input: CategoryInput): string {
+  return buildCompactStage3UserPrompt({
+    title: input.title,
+    spot: input.spot,
+    content: input.content,
+    sourceLabel: input.sourceLabel,
+    currentCategory: input.forcedCategoryId,
+    city: input.city,
+    country: input.country,
+    tags: input.tags,
+    categoryIds: stage3ValidCategoryIds(),
+    maxArticleChars: STAGE3_COMPACT_ARTICLE_CHARS,
+  })
+}
+
+function classifyStage3TransportError(err: unknown): string {
+  const name = err instanceof Error ? err.name : ''
+  const message = err instanceof Error ? err.message : String(err)
+  if (name === 'TimeoutError' || name === 'AbortError' || /timeout|aborted/i.test(message)) {
+    return 'timeout'
+  }
+  return 'provider_failure'
+}
+
+type Stage3ParseOutcome =
+  | { ok: true; value: CategoryResult }
+  | { ok: false; errorCode: string }
+
+export function parseStage3Output(
+  raw: string,
+  opts: { strict: boolean; forcedCategoryId?: string }
+): Stage3ParseOutcome {
+  let p: {
+    categoryId?: string
+    isBreaking?: boolean
+    confidence?: number
+    city?: string
+    district?: string
+    country?: string
+    tags?: string[]
+    reason?: string
+  }
+  try {
+    p = JSON.parse(raw) as typeof p
+  } catch {
+    return { ok: false, errorCode: 'invalid_json' }
+  }
+  if (!p || typeof p !== 'object') return { ok: false, errorCode: 'schema_validation' }
+
+  const rawId = typeof p.categoryId === 'string' ? p.categoryId.trim() : ''
+  if (opts.strict) {
+    if (!rawId) return { ok: false, errorCode: 'missing_category' }
+    const slug = slugifyCategoryId(rawId)
+    if (!VALID_CATEGORIES.has(slug)) return { ok: false, errorCode: 'invalid_category' }
+  }
+
+  const parsed = parseResultFromObject(p, raw, opts.forcedCategoryId)
+  if (!parsed) return { ok: false, errorCode: 'schema_validation' }
+  return { ok: true, value: parsed }
+}
+
+function parseResultFromObject(
+  p: {
+    categoryId?: string
+    isBreaking?: boolean
+    confidence?: number
+    city?: string
+    district?: string
+    country?: string
+    tags?: string[]
+    reason?: string
+  },
+  raw: string,
+  forcedCategoryId?: string
+): CategoryResult | null {
+  let categoryId = normalizeCategoryId(p.categoryId || forcedCategoryId || 'gundem')
+  let isBreaking = p.isBreaking === true
+
+  if (categoryId === 'son-dakika') isBreaking = true
+  if (categoryId !== 'son-dakika') isBreaking = false
+
+  if (categoryId === 'spor' || categoryId === 'futbol' || categoryId === 'atletizm') {
+    const rawLower = raw.toLocaleLowerCase('tr-TR')
+    const INTERNATIONAL_SIGNALS = [
+      'nükleer', 'silahlanma', 'silah yarış', 'ortadoğu', 'israil', 'iran',
+      'nato', 'bm ', 'uluslararası', 'abd ', 'rusya', 'ukrayna', 'çin ', 'gazze',
+    ]
+    if (INTERNATIONAL_SIGNALS.some((s) => rawLower.includes(s))) {
+      categoryId = 'dunya'
+    }
+  }
+
+  const titleAndContent = raw.toLocaleLowerCase('tr-TR')
+  const CELEBRATION_TERMS = [
+    'kutlama', 'kutlandı', 'kutluyor', 'babalar günü', 'anneler günü',
+    'mezuniyet töreni', 'anma töreni', 'açılış töreni', 'şenlik', 'festival düzenlendi',
+  ]
+  if (CELEBRATION_TERMS.some((t) => titleAndContent.includes(t)) && categoryId === 'son-dakika') {
+    categoryId = 'gundem'
+    isBreaking = false
+  }
+
+  const cityRaw = p.city?.trim()
+  const city = cityRaw && cityRaw.toLowerCase() !== 'null' ? cityRaw : null
+  const districtRaw = p.district?.trim()
+  const district = districtRaw && districtRaw.toLowerCase() !== 'null' ? districtRaw : null
+  const country = p.country?.trim() || 'Türkiye'
+
+  return {
+    categoryId,
+    isBreaking,
+    confidence: Math.min(100, Math.max(0, typeof p.confidence === 'number' ? p.confidence : 70)),
+    city,
+    district,
+    country,
+    tags: Array.isArray(p.tags) ? p.tags.map((t) => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 6) : [],
+    reason: p.reason?.trim() || '',
+  }
+}
+
+function promptVersionFor(variant: Stage3PromptVariant): string {
+  return variant === 'compact' ? 'stage3-category:compact-v1' : 'stage3-category:v1'
+}
+
+async function callDeepSeekOnce(opts: {
+  input: CategoryInput
+  variant: Stage3PromptVariant
+  bucket: number
+  attempt: number
+  fallbackReason?: string
+}): Promise<{ result: CategoryResult | null; errorCode?: string }> {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
-  if (!apiKey) return null
+  if (!apiKey) return { result: null, errorCode: 'missing_api_key' }
   const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
   const maxTokens = optionalOutputTokenLimit('AI_STAGE3_MAX_OUTPUT_TOKENS')
-  const systemContent = isStage3CompactPromptEnabled() ? STAGE3_COMPACT_SYSTEM : SYSTEM_PROMPT
+  const compact = opts.variant === 'compact'
+  const systemContent = compact ? STAGE3_COMPACT_SYSTEM : SYSTEM_PROMPT
+  const userContent = compact ? buildCompactUserPrompt(opts.input) : buildControlStage3UserPrompt(opts.input)
+  const startedAt = Date.now()
+
+  const note = (row: {
+    success: boolean
+    statusCode?: number
+    errorCode?: string
+    errorMessage?: string
+    body?: unknown
+    resultCategoryId?: string
+    schemaValid?: boolean
+  }) => {
+    recordDirectDeepSeekObservation({
+      agentName: 'stage3_category',
+      operation: 'classify_category',
+      promptVersion: promptVersionFor(opts.variant),
+      model,
+      startedAt,
+      success: row.success,
+      statusCode: row.statusCode,
+      body: row.body,
+      errorMessage: row.errorMessage,
+      errorCode: row.errorCode,
+      attempt: opts.attempt,
+      retryCount: Math.max(0, opts.attempt - 1),
+      resultCategoryId: row.resultCategoryId,
+      schemaValid: row.schemaValid,
+      promptVariant: opts.variant,
+      stage3CanaryBucket: opts.bucket,
+      canaryBucket: opts.bucket,
+      fallbackReason: opts.fallbackReason ?? (row.success ? undefined : row.errorCode),
+    })
+  }
 
   try {
-    const startedAt = Date.now()
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -279,106 +450,70 @@ async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null
         ...(maxTokens ? { max_tokens: maxTokens } : {}),
         messages: [
           { role: 'system', content: systemContent },
-          { role: 'user', content: buildPrompt(input) },
+          { role: 'user', content: userContent },
         ],
       }),
       signal: AbortSignal.timeout(20_000),
     })
     if (!res.ok) {
-      recordDirectDeepSeekObservation({
-        agentName: 'stage3_category',
-        operation: 'classify_category',
-        promptVersion: 'stage3-category:v1',
-        model,
-        startedAt,
-        success: false,
-        statusCode: res.status,
-      })
-      return null
+      const errorCode = `http_${res.status}`
+      note({ success: false, statusCode: res.status, errorCode, errorMessage: `DeepSeek HTTP ${res.status}` })
+      return { result: null, errorCode }
     }
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
     const raw = json.choices?.[0]?.message?.content?.trim()
-    recordDirectDeepSeekObservation({
-      agentName: 'stage3_category',
-      operation: 'classify_category',
-      promptVersion: isStage3CompactPromptEnabled() ? 'stage3-category:compact-v1' : 'stage3-category:v1',
-      model,
-      startedAt,
-      success: Boolean(raw),
+    if (!raw) {
+      note({
+        success: false,
+        statusCode: 200,
+        body: json,
+        errorCode: 'empty_content',
+        errorMessage: 'empty_content',
+        schemaValid: false,
+      })
+      return { result: null, errorCode: 'empty_content' }
+    }
+    const parsed = parseStage3Output(raw, { strict: compact, forcedCategoryId: opts.input.forcedCategoryId })
+    if (!parsed.ok) {
+      note({
+        success: false,
+        statusCode: 200,
+        body: json,
+        errorCode: parsed.errorCode,
+        errorMessage: parsed.errorCode,
+        schemaValid: false,
+      })
+      return { result: null, errorCode: parsed.errorCode }
+    }
+    note({
+      success: true,
       statusCode: 200,
       body: json,
-      errorMessage: raw ? undefined : 'empty_content',
-      resultCategoryId: raw ? parseResult(raw, input.forcedCategoryId)?.categoryId : undefined,
+      resultCategoryId: parsed.value.categoryId,
+      schemaValid: true,
     })
-    if (!raw) return null
-    return parseResult(raw, input.forcedCategoryId)
-  } catch {
-    return null
+    return { result: parsed.value }
+  } catch (err) {
+    const errorCode = classifyStage3TransportError(err)
+    note({ success: false, errorCode, errorMessage: errorCode })
+    return { result: null, errorCode }
   }
 }
 
-function parseResult(raw: string, forcedCategoryId?: string): CategoryResult | null {
-  try {
-    const p = JSON.parse(raw) as {
-      categoryId?: string; isBreaking?: boolean; confidence?: number
-      city?: string; district?: string; country?: string; tags?: string[]; reason?: string
-    }
-
-    let categoryId = normalizeCategoryId(p.categoryId || forcedCategoryId || 'gundem')
-    let isBreaking = p.isBreaking === true
-
-    // Güvenlik override: son-dakika ise isBreaking ZORUNLU true
-    if (categoryId === 'son-dakika') isBreaking = true
-    // son-dakika değilse isBreaking kesinlikle false
-    if (categoryId !== 'son-dakika') isBreaking = false
-
-    // Hard override: spor kategorisine düştüyse ama içerik uluslararası/nükleer ise düzelt
-    // "nükleer yarış", "silah yarışı" gibi ifadelerde "yarış" AI'yı yanıltıyor
-    if (categoryId === 'spor' || categoryId === 'futbol' || categoryId === 'atletizm') {
-      const titleCheck = (p as Record<string, unknown>)['reason']
-        ? '' // reason varsa AI kendinden emin, dokunma
-        : ''
-      const rawLower = raw.toLocaleLowerCase('tr-TR')
-      const INTERNATIONAL_SIGNALS = [
-        'nükleer', 'silahlanma', 'silah yarış', 'ortadoğu', 'israil', 'iran',
-        'nato', 'bm ', 'uluslararası', 'abd ', 'rusya', 'ukrayna', 'çin ', 'gazze',
-      ]
-      const isInternational = INTERNATIONAL_SIGNALS.some((s) => rawLower.includes(s))
-      if (isInternational) {
-        categoryId = 'dunya'
+function finishStage3Result(input: CategoryInput, deepseekResult: CategoryResult): CategoryResult {
+  const categoryId = applyAstrologyCategoryOverride(
+    deepseekResult.categoryId,
+    input.title,
+    input.content,
+    deepseekResult.tags
+  )
+  return categoryId === deepseekResult.categoryId
+    ? deepseekResult
+    : {
+        ...deepseekResult,
+        categoryId,
+        reason: `${deepseekResult.reason} [override→astroloji]`.trim(),
       }
-    }
-
-    // Kutlama/tören kelimesi varsa son-dakika olamaz
-    const titleAndContent = raw.toLocaleLowerCase('tr-TR')
-    const CELEBRATION_TERMS = [
-      'kutlama', 'kutlandı', 'kutluyor', 'babalar günü', 'anneler günü',
-      'mezuniyet töreni', 'anma töreni', 'açılış töreni', 'şenlik', 'festival düzenlendi',
-    ]
-    if (CELEBRATION_TERMS.some((t) => titleAndContent.includes(t)) && categoryId === 'son-dakika') {
-      categoryId = 'gundem'
-      isBreaking = false
-    }
-
-    const cityRaw = p.city?.trim()
-    const city = cityRaw && cityRaw.toLowerCase() !== 'null' ? cityRaw : null
-    const districtRaw = p.district?.trim()
-    const district = districtRaw && districtRaw.toLowerCase() !== 'null' ? districtRaw : null
-    const country = p.country?.trim() || 'Türkiye'
-
-    return {
-      categoryId,
-      isBreaking,
-      confidence: Math.min(100, Math.max(0, typeof p.confidence === 'number' ? p.confidence : 70)),
-      city,
-      district,
-      country,
-      tags: Array.isArray(p.tags) ? p.tags.map((t) => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 6) : [],
-      reason: p.reason?.trim() || '',
-    }
-  } catch {
-    return null
-  }
 }
 
 /**
@@ -427,7 +562,8 @@ function heuristicCategory(input: CategoryInput): CategoryResult {
 
 /**
  * Stage 3 ana fonksiyon.
- * DeepSeek → Gemini → heuristik
+ * Compact canary: one compact call, optional single control fallback. No double-call on success.
+ * DeepSeek → heuristik (Gemini Stage3 path is not used).
  */
 export async function classifyArticle(
   written: WrittenArticle,
@@ -437,30 +573,52 @@ export async function classifyArticle(
   const input: CategoryInput = {
     title: written.title,
     content: written.content,
+    spot: written.spot || written.summary,
     sourceLabel,
     forcedCategoryId,
   }
 
   console.log(`[stage3/categoryEditor] başlıyor: "${written.title.slice(0, 60)}"`)
 
-  const deepseekResult = await callDeepSeek(input)
-  if (deepseekResult) {
-    const categoryId = applyAstrologyCategoryOverride(
-      deepseekResult.categoryId,
-      input.title,
-      input.content,
-      deepseekResult.tags
-    )
-    const result =
-      categoryId === deepseekResult.categoryId
-        ? deepseekResult
-        : {
-            ...deepseekResult,
-            categoryId,
-            reason: `${deepseekResult.reason} [override→astroloji]`.trim(),
-          }
-    console.log(`[stage3] DeepSeek → ${result.categoryId} (güven: ${result.confidence}) — ${result.reason.slice(0, 80)}`)
-    return result
+  const bucket = stage3CanaryBucket()
+  const useCompact = shouldUseStage3CompactPrompt()
+
+  if (useCompact) {
+    const compact = await callDeepSeekOnce({
+      input,
+      variant: 'compact',
+      bucket,
+      attempt: 1,
+    })
+    if (compact.result) {
+      const result = finishStage3Result(input, compact.result)
+      console.log(`[stage3] DeepSeek compact → ${result.categoryId} (güven: ${result.confidence}) — ${result.reason.slice(0, 80)}`)
+      return result
+    }
+    const control = await callDeepSeekOnce({
+      input,
+      variant: 'control_fallback',
+      bucket,
+      attempt: 2,
+      fallbackReason: compact.errorCode || 'provider_failure',
+    })
+    if (control.result) {
+      const result = finishStage3Result(input, control.result)
+      console.log(`[stage3] DeepSeek control_fallback → ${result.categoryId} (güven: ${result.confidence})`)
+      return result
+    }
+  } else {
+    const control = await callDeepSeekOnce({
+      input,
+      variant: 'control',
+      bucket,
+      attempt: 1,
+    })
+    if (control.result) {
+      const result = finishStage3Result(input, control.result)
+      console.log(`[stage3] DeepSeek → ${result.categoryId} (güven: ${result.confidence}) — ${result.reason.slice(0, 80)}`)
+      return result
+    }
   }
 
   const fallback = heuristicCategory(input)

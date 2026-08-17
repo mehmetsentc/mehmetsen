@@ -88,6 +88,8 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
     schemaValid: input.schemaValid,
     outputChars: input.outputChars,
     requiredFieldsPresent: input.requiredFieldsPresent,
+    promptVariant: input.promptVariant,
+    stage3CanaryBucket: input.stage3CanaryBucket,
   }
 
   return compact(doc as unknown as Record<string, unknown>)

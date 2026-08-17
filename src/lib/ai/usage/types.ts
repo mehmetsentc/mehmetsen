@@ -28,6 +28,8 @@ export type AiUsageTelemetryMeta = {
   schemaValid?: boolean
   outputChars?: number
   requiredFieldsPresent?: boolean
+  promptVariant?: string
+  stage3CanaryBucket?: number
 }
 
 export type AiUsageContext = {
@@ -76,6 +78,8 @@ export type RecordAiRequestUsageInput = {
   schemaValid?: boolean
   outputChars?: number
   requiredFieldsPresent?: boolean
+  promptVariant?: string
+  stage3CanaryBucket?: number
 }
 
 export type AiUsageEventDoc = {
@@ -122,4 +126,6 @@ export type AiUsageEventDoc = {
   schemaValid?: boolean
   outputChars?: number
   requiredFieldsPresent?: boolean
+  promptVariant?: string
+  stage3CanaryBucket?: number
 }

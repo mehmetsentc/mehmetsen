@@ -3,6 +3,7 @@ import { estimateUsageCost, getDeepSeekPricing } from '@/lib/ai/usage/pricing'
 import {
   countDuplicateStage1Calls,
   measureStage3ClassifierOverlap,
+  measureStage3CompactCanary,
   providerFailureRate,
 } from '@/lib/ai/usage/pipelineCostSignals'
 
@@ -234,6 +235,7 @@ export type AiUsageAggregate = {
   groqFailureRate: number | null
   geminiErrors: Record<string, number>
   groqErrors: Record<string, number>
+  stage3CompactCanary: ReturnType<typeof measureStage3CompactCanary>
 }
 
 export function aggregateAiUsageEvents(
@@ -546,6 +548,7 @@ export function aggregateAiUsageEvents(
     groqFailureRate: providerFailureRate(events, 'groq').rate,
     geminiErrors: providerFailureRate(events, 'gemini').byCode,
     groqErrors: providerFailureRate(events, 'groq').byCode,
+    stage3CompactCanary: measureStage3CompactCanary(events),
   }
 }
 
@@ -585,4 +588,6 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'schemaValid',
   'outputChars',
   'requiredFieldsPresent',
+  'promptVariant',
+  'stage3CanaryBucket',
 ] as const

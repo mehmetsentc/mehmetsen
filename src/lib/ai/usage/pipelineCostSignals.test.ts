@@ -3,6 +3,7 @@ import { classifySecondStage1Call } from '@/lib/ai/usage/generationReason'
 import {
   countDuplicateStage1Calls,
   measureStage3ClassifierOverlap,
+  measureStage3CompactCanary,
 } from '@/lib/ai/usage/pipelineCostSignals'
 
 describe('Stage1 retry reason attribution', () => {
@@ -45,5 +46,50 @@ describe('Stage3/classifier overlap', () => {
     expect(result.stage3Only).toBe(1)
     expect(result.classifierOnly).toBe(1)
     expect(result.agreementRate).toBe(1)
+  })
+})
+
+describe('Stage3 compact canary aggregates', () => {
+  it('compares control vs compact tokens and classifier agreement', () => {
+    const result = measureStage3CompactCanary([
+      {
+        agentName: 'stage3_category',
+        promptVariant: 'control',
+        newsId: 'n1',
+        resultCategoryId: 'siyaset',
+        inputTokens: 4500,
+        outputTokens: 80,
+        latencyMs: 900,
+        success: true,
+      },
+      {
+        agentName: 'category_classifier',
+        newsId: 'n1',
+        resultCategoryId: 'siyaset',
+        success: true,
+      },
+      {
+        agentName: 'stage3_category',
+        promptVariant: 'compact',
+        newsId: 'n2',
+        resultCategoryId: 'gundem',
+        inputTokens: 1200,
+        outputTokens: 70,
+        latencyMs: 400,
+        success: true,
+      },
+      {
+        agentName: 'category_classifier',
+        newsId: 'n2',
+        resultCategoryId: 'siyaset',
+        success: true,
+      },
+    ])
+    expect(result.control.requests).toBe(1)
+    expect(result.compact.requests).toBe(1)
+    expect(result.tokenSaving.reductionPct).toBeCloseTo((4500 - 1200) / 4500)
+    expect(result.controlQuality.agreementRate).toBe(1)
+    expect(result.compactQuality.disagree).toBe(1)
+    expect(result.compactQuality.genericRate).toBe(1)
   })
 })

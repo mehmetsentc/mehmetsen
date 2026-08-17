@@ -30,6 +30,7 @@ describe('AI usage telemetry kill switch', () => {
         agentName: 'stage1_writer',
         operation: 'generate_article',
         generationReason: 'initial',
+        promptVariant: 'compact',
       })
     ).not.toThrow()
   })

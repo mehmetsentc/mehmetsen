@@ -313,6 +313,12 @@ export function recordDirectDeepSeekObservation(opts: {
   inputHash?: string
   generationReason?: string
   resultCategoryId?: string
+  schemaValid?: boolean
+  promptVariant?: string
+  stage3CanaryBucket?: number
+  canaryBucket?: number
+  fallbackReason?: string
+  errorCode?: string
 }): void {
   const model = getDeepSeekModel(opts.model)
   const usage =
@@ -321,7 +327,7 @@ export function recordDirectDeepSeekObservation(opts: {
       : undefined
   const errorCode = opts.success
     ? undefined
-    : classifyDeepSeekErrorCode(opts.errorMessage || `DeepSeek HTTP ${opts.statusCode ?? 0}`)
+    : opts.errorCode || classifyDeepSeekErrorCode(opts.errorMessage || `DeepSeek HTTP ${opts.statusCode ?? 0}`)
   try {
     recordAiRequestUsage({
       agentName: opts.agentName,
@@ -339,6 +345,11 @@ export function recordDirectDeepSeekObservation(opts: {
       inputHash: opts.inputHash,
       generationReason: opts.generationReason,
       resultCategoryId: opts.resultCategoryId,
+      schemaValid: opts.schemaValid,
+      promptVariant: opts.promptVariant,
+      stage3CanaryBucket: opts.stage3CanaryBucket,
+      canaryBucket: opts.canaryBucket,
+      fallbackReason: opts.fallbackReason,
     })
   } catch (error) {
     console.warn(
