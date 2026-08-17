@@ -64,12 +64,35 @@ export async function recordAiUsage(event: {
   published?: boolean
 }): Promise<void> {
   try {
+    const { isAiUsageTelemetryEnabled, recordAiRequestUsage } = await import(
+      '@/lib/ai/usage/telemetry'
+    )
+    // When the new per-attempt client telemetry is on, skip this summary
+    // event so dashboards do not double-count the same DeepSeek call.
+    if (isAiUsageTelemetryEnabled()) {
+      if (event.inputTokens != null || event.outputTokens != null) {
+        recordAiRequestUsage({
+          editorId: event.editorId,
+          task: event.task,
+          agentName: 'editor_usage',
+          operation: event.task,
+          provider: event.provider,
+          model: event.model,
+          usage: { inputTokens: event.inputTokens, outputTokens: event.outputTokens },
+          latencyMs: event.durationMs,
+          success: true,
+          published: event.published ?? false,
+        })
+      }
+      return
+    }
     await getAdminFirestore()
       .collection(Collections.AI_USAGE_EVENTS)
       .add({
         ...event,
         published: event.published ?? false,
         timestamp: Date.now(),
+        createdAt: Date.now(),
       })
   } catch {
     // non-critical

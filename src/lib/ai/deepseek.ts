@@ -72,7 +72,12 @@ export function isDeepSeekConfigured(): boolean {
 // ── Core API call ─────────────────────────────────────────────────────────────
 async function callDeepSeekOnce(
   messages: Array<{ role: string; content: string }>,
-  opts: { temperature?: number; max_tokens?: number; timeoutMs?: number }
+  opts: {
+    temperature?: number
+    max_tokens?: number
+    timeoutMs?: number
+    telemetry?: import('./usage/types').AiUsageTelemetryMeta
+  }
 ): Promise<string> {
   const cfg = getConfig()
   if (!cfg) throw new Error('DEEPSEEK_API_KEY eksik')
@@ -86,6 +91,7 @@ async function callDeepSeekOnce(
     timeoutMs: opts.timeoutMs ?? 90_000,
     disableThinking: true,
     jsonMode: true,
+    telemetry: opts.telemetry,
   })
 }
 
@@ -95,10 +101,18 @@ async function callDeepSeekOnce(
  */
 async function callDeepSeek(
   messages: Array<{ role: string; content: string }>,
-  opts: { temperature?: number; max_tokens?: number } = {}
+  opts: {
+    temperature?: number
+    max_tokens?: number
+    telemetry?: import('./usage/types').AiUsageTelemetryMeta
+  } = {}
 ): Promise<string> {
   try {
-    return await callDeepSeekOnce(messages, { ...opts, timeoutMs: 90_000 })
+    return await callDeepSeekOnce(messages, {
+      ...opts,
+      timeoutMs: 90_000,
+      telemetry: { ...opts.telemetry, attempt: opts.telemetry?.attempt ?? 1 },
+    })
   } catch (err) {
     const isTimeout = err instanceof Error &&
       (err.name === 'TimeoutError' || err.message.includes('timeout') || err.message.includes('aborted'))
@@ -107,7 +121,12 @@ async function callDeepSeek(
     // Timeout: tek seferlik retry ile azaltılmış token sayısı
     const retryTokens = Math.max(1024, Math.round((opts.max_tokens ?? 2048) / 2))
     console.warn(`[deepseek] Timeout — retry with max_tokens=${retryTokens}`)
-    return await callDeepSeekOnce(messages, { ...opts, max_tokens: retryTokens, timeoutMs: 90_000 })
+    return await callDeepSeekOnce(messages, {
+      ...opts,
+      max_tokens: retryTokens,
+      timeoutMs: 90_000,
+      telemetry: { ...opts.telemetry, attempt: 2, retryCount: 1 },
+    })
   }
 }
 
@@ -170,7 +189,7 @@ JSON formatında döndür:
   const raw = await callDeepSeek([
     { role: 'system', content: COLLECT_SYSTEM_PROMPT },
     { role: 'user', content: userMessage },
-  ])
+  ], { telemetry: { agentName: 'legacy_collect', operation: 'collect_analyze', promptVersion: 'legacy-collect:v1' } })
 
   const p = JSON.parse(raw) as Partial<DeepSeekCollectResult> & Record<string, unknown>
 
@@ -377,7 +396,11 @@ export async function deepseekEditArticle(input: GeminiEditInput): Promise<Gemin
       { role: 'system', content: EDITOR_SYSTEM_PROMPT },
       { role: 'user', content: prompt },
     ],
-    { temperature: 0.3, max_tokens: 6000 }
+    {
+      temperature: 0.3,
+      max_tokens: 6000,
+      telemetry: { agentName: 'legacy_edit', operation: 'edit_article', promptVersion: 'legacy-edit:v1' },
+    }
   )
   return parseEditorJson(raw, DEEPSEEK_MODEL)
 }
@@ -531,7 +554,11 @@ KONUM: ${article.location || 'belirtilmemiş'}
         { role: 'system', content: QA_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
-      { temperature: 0.15, max_tokens: 1500 }
+      {
+        temperature: 0.15,
+        max_tokens: 1500,
+        telemetry: { agentName: 'legacy_qa', operation: 'qa_check', promptVersion: 'legacy-qa:v1' },
+      }
     )
 
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
@@ -620,6 +647,11 @@ export async function checkDeepSeekHealth(): Promise<{
       timeoutMs: 8_000,
       disableThinking: true,
       jsonMode: false,
+      telemetry: {
+        agentName: 'health_check',
+        operation: 'health_ping',
+        promptVersion: 'health-check:v1',
+      },
     })
     return {
       ok: true,

@@ -189,6 +189,11 @@ Sadece JSON: {"keep":"a"|"b","reason":"kısa Türkçe"}`
       ],
       maxTokens: 120,
       temperature: 0.1,
+      telemetry: {
+        agentName: 'queue_quality',
+        operation: 'pick_better_queue_item',
+        promptVersion: 'queue-quality:v1',
+      },
     })
 
     const match = text.match(/\{[\s\S]*\}/)

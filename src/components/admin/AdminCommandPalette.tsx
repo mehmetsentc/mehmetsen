@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Search, Newspaper, Plus, Clock, Bot, BarChart3, Settings,
   Users, Share2, Inbox, Zap, FileText, Archive, Video, Megaphone,
-  BrainCircuit, LayoutDashboard, Mail, Flame, Briefcase,
+  BrainCircuit, LayoutDashboard, Mail, Flame, Briefcase, Coins,
 } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { ROUTES } from '@/constants/routes'
@@ -142,6 +142,15 @@ const COMMANDS: CommandItem[] = [
     href: ROUTES.ADMIN.AI_EDITORS,
     icon: Bot,
     group: 'Yapay Zeka',
+    requiredPermissions: ['ai:use'],
+  },
+  {
+    id: 'ai-usage',
+    label: 'AI Maliyet',
+    href: ROUTES.ADMIN.AI_USAGE,
+    icon: Coins,
+    group: 'Yapay Zeka',
+    keywords: 'maliyet token usage deepseek',
     requiredPermissions: ['ai:use'],
   },
   {

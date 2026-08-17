@@ -1,10 +1,12 @@
 /** Sandbox-only DeepSeek JSON call — never publishes. */
 import { deepseekChatCompletion, getDeepSeekApiKey, getDeepSeekModel } from '@/lib/ai/deepseekClient'
+import type { AiUsageTelemetryMeta } from '@/lib/ai/usage/types'
 
 export async function callDeepSeek(params: {
   system: string
   user: string
   model?: string
+  telemetry?: AiUsageTelemetryMeta
 }): Promise<Record<string, unknown> | null> {
   if (!getDeepSeekApiKey()) return { error: 'DEEPSEEK_API_KEY missing' }
 
@@ -20,6 +22,11 @@ export async function callDeepSeek(params: {
         { role: 'system', content: params.system },
         { role: 'user', content: params.user },
       ],
+      telemetry: params.telemetry ?? {
+        agentName: 'sandbox_call',
+        operation: 'sandbox_json',
+        promptVersion: 'sandbox-call:v1',
+      },
     })
     return JSON.parse(raw) as Record<string, unknown>
   } catch (error) {

@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { validateCategoryClassification } from '@/services/newsroom/categoryEngine'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -24,6 +25,7 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY ?? ''
 
 async function classifyWithGpt(title: string, content: string): Promise<string | null> {
   if (!DEEPSEEK_API_KEY) return null
+  const startedAt = Date.now()
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -61,12 +63,39 @@ SADECE JSON döndür: {"category":"<slug>"}`,
         ],
       }),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'recategorize',
+        operation: 'recategorize_article',
+        promptVersion: 'recategorize:v1',
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
     const json = await res.json()
     const text = json.choices?.[0]?.message?.content ?? '{}'
+    recordDirectDeepSeekObservation({
+      agentName: 'recategorize',
+      operation: 'recategorize_article',
+      promptVersion: 'recategorize:v1',
+      startedAt,
+      success: Boolean(text && text !== '{}'),
+      statusCode: 200,
+      body: json,
+    })
     const parsed = JSON.parse(text)
     return typeof parsed.category === 'string' ? parsed.category : null
-  } catch {
+  } catch (err) {
+    recordDirectDeepSeekObservation({
+      agentName: 'recategorize',
+      operation: 'recategorize_article',
+      promptVersion: 'recategorize:v1',
+      startedAt,
+      success: false,
+      errorMessage: err instanceof Error ? err.message : 'recategorize_failed',
+    })
     return null
   }
 }

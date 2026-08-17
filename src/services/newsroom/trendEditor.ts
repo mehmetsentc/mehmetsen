@@ -8,6 +8,7 @@ import { getTrendTopics, MAX_AI_CALLS_PER_EDITOR } from '@/services/newsroom/con
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { researchLiveNews, type GroundingSource } from '@/lib/ai/liveResearch'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 const GOOGLE_TRENDS_RSS =
   process.env.NEWSROOM_TRENDS_RSS_URL?.trim() ||
@@ -120,6 +121,7 @@ Yalnızca yukarıdaki kaynaklı araştırmayı kullanarak bu konunun NEDEN bugü
   const deepseekModel = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
 
   if (deepseekKey) {
+    const startedAt = Date.now()
     try {
       const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
@@ -139,8 +141,19 @@ Yalnızca yukarıdaki kaynaklı araştırmayı kullanarak bu konunun NEDEN bugü
       })
 
       if (res.ok) {
-        const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+        const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
         const raw = json.choices?.[0]?.message?.content?.trim()
+        recordDirectDeepSeekObservation({
+          agentName: 'trend_editor',
+          operation: 'generate_trend_article',
+          promptVersion: 'trend-editor:v1',
+          model: deepseekModel,
+          startedAt,
+          success: Boolean(raw),
+          statusCode: 200,
+          body: json,
+          errorMessage: raw ? undefined : 'empty_content',
+        })
         if (raw) {
           const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
           const parsed = JSON.parse(cleaned) as { title?: string; summary?: string; content?: string; category?: string }
@@ -158,9 +171,27 @@ Yalnızca yukarıdaki kaynaklı araştırmayı kullanarak bu konunun NEDEN bugü
           return null
         }
       } else {
+        recordDirectDeepSeekObservation({
+          agentName: 'trend_editor',
+          operation: 'generate_trend_article',
+          promptVersion: 'trend-editor:v1',
+          model: deepseekModel,
+          startedAt,
+          success: false,
+          statusCode: res.status,
+        })
         console.warn(`[trendEditor] DeepSeek ${res.status} for topic: ${topic}`)
       }
     } catch (err) {
+      recordDirectDeepSeekObservation({
+        agentName: 'trend_editor',
+        operation: 'generate_trend_article',
+        promptVersion: 'trend-editor:v1',
+        model: deepseekModel,
+        startedAt,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : 'trend_failed',
+      })
       console.warn('[trendEditor] DeepSeek başarısız:', err)
     }
   }

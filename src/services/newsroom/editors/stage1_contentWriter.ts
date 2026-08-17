@@ -142,6 +142,12 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         timeoutMs,
         disableThinking: true,
         jsonMode: true,
+        telemetry: {
+          agentName: 'stage1_writer',
+          operation: 'generate_article',
+          promptVersion: 'stage1-writer:v1',
+          attempt: 1,
+        },
       })
     } catch (firstErr) {
       const msg = firstErr instanceof Error ? firstErr.message : String(firstErr)
@@ -159,6 +165,13 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         timeoutMs,
         disableThinking: true,
         jsonMode: true,
+        telemetry: {
+          agentName: 'stage1_writer',
+          operation: 'generate_article',
+          promptVersion: 'stage1-writer:v1',
+          attempt: 2,
+          retryCount: 1,
+        },
       })
     }
 

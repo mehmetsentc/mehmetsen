@@ -121,6 +121,11 @@ Sadece JSON döndür, başka hiçbir şey yazma:
       timeoutMs: 20_000,
       disableThinking: true,
       jsonMode: true,
+      telemetry: {
+        agentName: 'editorial_review',
+        operation: 'duplicate_review',
+        promptVersion: 'editorial-review:v1',
+      },
     })
     // Robust JSON extraction — handles markdown code fences from models that ignore response_format
     let jsonStr = raw.trim()

@@ -13,6 +13,7 @@
 
 import type { WrittenArticle } from './stage1_contentWriter'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 export interface CategoryResult {
   categoryId: string
@@ -249,6 +250,7 @@ async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null
   const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
 
   try {
+    const startedAt = Date.now()
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -264,9 +266,31 @@ async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null
       }),
       signal: AbortSignal.timeout(20_000),
     })
-    if (!res.ok) return null
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'stage3_category',
+        operation: 'classify_category',
+        promptVersion: 'stage3-category:v1',
+        model,
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
     const raw = json.choices?.[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'stage3_category',
+      operation: 'classify_category',
+      promptVersion: 'stage3-category:v1',
+      model,
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     if (!raw) return null
     return parseResult(raw, input.forcedCategoryId)
   } catch {

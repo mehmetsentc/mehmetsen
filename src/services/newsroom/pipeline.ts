@@ -72,6 +72,8 @@ import { factChecker } from '@/services/newsroom/factChecker'
 import { geoEngine } from '@/services/newsroom/geoEngine'
 import { resolveCountryFromText } from '@/constants/countries'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
+import { runWithAiUsageContext, getAiUsageContext } from '@/lib/ai/usage/context'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
@@ -317,6 +319,7 @@ async function translateToTurkish(fields: {
 
   const contentSnippet = (fields.originalContent ?? '').slice(0, 3000)
   const summarySnippet = fields.originalSummary ?? ''
+  const startedAt = Date.now()
 
   try {
     const res = await fetch(baseUrl, {
@@ -340,9 +343,31 @@ async function translateToTurkish(fields: {
       }),
       signal: AbortSignal.timeout(25_000),
     })
-    if (!res.ok) return null
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'translator',
+        operation: 'translate_tr',
+        promptVersion: 'translate-tr:v1',
+        model,
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
     const raw = json.choices?.[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'translator',
+      operation: 'translate_tr',
+      promptVersion: 'translate-tr:v1',
+      model,
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     if (!raw) return null
     const parsed = JSON.parse(raw) as { title?: string; summary?: string; content?: string }
     const title = parsed.title?.trim() || fields.originalTitle
@@ -352,6 +377,15 @@ async function translateToTurkish(fields: {
     console.log(`[newsroom/pipeline] translated to Turkish via DeepSeek: ${title.slice(0, 60)}`)
     return { originalTitle: title, originalSummary: summary, originalContent: content }
   } catch (err) {
+    recordDirectDeepSeekObservation({
+      agentName: 'translator',
+      operation: 'translate_tr',
+      promptVersion: 'translate-tr:v1',
+      model,
+      startedAt,
+      success: false,
+      errorMessage: err instanceof Error ? err.message : 'translate_failed',
+    })
     console.warn('[newsroom/pipeline] translation failed:', err)
     return null
   }
@@ -499,6 +533,18 @@ export async function processNewsroomArticle(
 ): Promise<PipelineResult> {
   const fingerprint =
     input.rssFingerprint ?? `${input.editorId}:${input.sourceUrl}`.slice(0, 128)
+
+  if (!getAiUsageContext()?.traceId) {
+    return runWithAiUsageContext(
+      {
+        traceId: crypto.randomUUID(),
+        queueId: options.queueJobId,
+        newsId: options.existingNewsId ?? options.targetNewsId ?? options.reprocessDraftId,
+        sourceItemId: fingerprint,
+      },
+      () => processNewsroomArticle(db, input, options)
+    )
+  }
 
   if (options.changeType !== 'updated') {
     const existing = await findExistingByFingerprint(db, fingerprint)

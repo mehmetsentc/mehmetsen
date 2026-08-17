@@ -1,5 +1,6 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 interface SeoBackfillResult {
   scanned: number
@@ -39,6 +40,7 @@ async function generateSeo(input: {
     input.content.slice(0, 2000),
   ].join('\n')
 
+  const startedAt = Date.now()
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -56,9 +58,31 @@ async function generateSeo(input: {
       }),
       signal: AbortSignal.timeout(25_000),
     })
-    if (!res.ok) return null
-    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'seo_backfill',
+        operation: 'generate_seo',
+        promptVersion: 'seo-backfill:v1',
+        model,
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
+    const json = await res.json() as { choices: Array<{ message: { content: string } }>; usage?: unknown }
     const raw = json.choices[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'seo_backfill',
+      operation: 'generate_seo',
+      promptVersion: 'seo-backfill:v1',
+      model,
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     if (!raw) return null
     const parsed = JSON.parse(raw) as GeneratedSeo
     return {
@@ -69,7 +93,16 @@ async function generateSeo(input: {
         ? parsed.seoKeywords.map((k) => String(k).trim().toLowerCase()).filter(Boolean).slice(0, 15)
         : undefined,
     }
-  } catch {
+  } catch (err) {
+    recordDirectDeepSeekObservation({
+      agentName: 'seo_backfill',
+      operation: 'generate_seo',
+      promptVersion: 'seo-backfill:v1',
+      model,
+      startedAt,
+      success: false,
+      errorMessage: err instanceof Error ? err.message : 'seo_failed',
+    })
     return null
   }
 }

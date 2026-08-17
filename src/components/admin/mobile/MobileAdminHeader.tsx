@@ -19,6 +19,7 @@ const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
   { prefix: '/admin/videos', title: 'Videolar', backHref: '/admin/menu' },
   { prefix: '/admin/newsroom', title: 'AI Newsroom', backHref: '/admin/menu' },
   { prefix: '/admin/ai-editors', title: 'AI Editörler', backHref: '/admin/menu' },
+  { prefix: '/admin/ai-usage', title: 'AI Maliyet', backHref: '/admin/menu' },
   { prefix: '/admin/ai', title: 'AI Asistan', backHref: '/admin/menu' },
   { prefix: '/admin/seo', title: 'SEO', backHref: '/admin/menu' },
   { prefix: '/admin/social', title: 'Sosyal Medya', backHref: '/admin/menu' },

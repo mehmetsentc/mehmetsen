@@ -82,6 +82,11 @@ export async function runDailyColumnGeneration(limit = 3): Promise<{
       system: built.system,
       user: built.user,
       model: resolved.model,
+      telemetry: {
+        agentName: 'column_generator',
+        operation: 'generate_column',
+        promptVersion: 'column-generator:v1',
+      },
     })
     void recordAiUsage({
       editorId: editor.id,

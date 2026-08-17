@@ -7,6 +7,7 @@ import {
   MAX_FEED_TEASER_LENGTH,
 } from '@/lib/newsContentCleanup'
 import { slugifyCity } from '@/lib/location'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 /** AI-assigned news categories (slug → display name). DEFAULT_CATEGORIES tek kaynak. */
 export const AI_NEWS_CATEGORIES: Record<string, string> = {
@@ -678,19 +679,62 @@ async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiAr
         json = await callGeminiProvider(provider, input)
       } else {
         // OpenAI-uyumlu sağlayıcılar (DeepSeek, OpenAI)
+        let attempt = 1
+        let startedAt = Date.now()
         let res = await callSingleProvider(provider, input)
         if (res.status === 429) {
+          if (provider.provider === 'deepseek') {
+            recordDirectDeepSeekObservation({
+              agentName: 'archive_editor',
+              operation: mode === 'archive' ? 'archive_rewrite' : 'rewrite_article',
+              promptVersion: 'archive-editor:v1',
+              model: provider.model,
+              startedAt,
+              success: false,
+              statusCode: 429,
+              attempt: 1,
+            })
+          }
           console.warn(`[aiNewsEditor] ${provider.provider} 429, 3s sonra tekrar deneniyor`)
           await new Promise((r) => setTimeout(r, 3000))
+          attempt = 2
+          startedAt = Date.now()
           res = await callSingleProvider(provider, input)
         }
         if (!res.ok) {
+          if (provider.provider === 'deepseek') {
+            recordDirectDeepSeekObservation({
+              agentName: 'archive_editor',
+              operation: mode === 'archive' ? 'archive_rewrite' : 'rewrite_article',
+              promptVersion: 'archive-editor:v1',
+              model: provider.model,
+              startedAt,
+              success: false,
+              statusCode: res.status,
+              attempt,
+            })
+          }
           const errText = await res.text().catch(() => '')
           lastError = new Error(`${provider.provider} API error ${res.status}: ${errText.slice(0, 200)}`)
           console.warn(`[aiNewsEditor] ${provider.provider} başarısız (${res.status}), sıradaki deneniyor`)
           continue
         }
-        json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+        json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
+        if (provider.provider === 'deepseek') {
+          const raw = json.choices?.[0]?.message?.content
+          recordDirectDeepSeekObservation({
+            agentName: 'archive_editor',
+            operation: mode === 'archive' ? 'archive_rewrite' : 'rewrite_article',
+            promptVersion: 'archive-editor:v1',
+            model: provider.model,
+            startedAt,
+            success: Boolean(raw),
+            statusCode: 200,
+            body: json,
+            attempt,
+            errorMessage: raw ? undefined : 'empty_content',
+          })
+        }
       }
 
       if (!json) {

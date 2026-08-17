@@ -107,6 +107,7 @@ export const ROUTES = {
     AI_MEMORY: '/admin/ai-memory',
     AI_LEARNING: '/admin/ai-learning',
     AI_MODELS: '/admin/ai-models',
+    AI_USAGE: '/admin/ai-usage',
     AI_PERFORMANCE: '/admin/ai-performance',
     AI_LOGS: '/admin/ai-logs',
     AI_INSTRUCTIONS: '/admin/ai-instructions',

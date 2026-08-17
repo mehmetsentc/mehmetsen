@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 type ScriptType = 'news_report' | 'breaking' | 'analysis' | 'interview' | 'social_short'
 type Tone = 'formal' | 'conversational' | 'urgent'
@@ -37,6 +38,7 @@ Ton: ${TONE_DESC[tone]}
 Süre hedefi: ~${duration} saniye.
 JSON: {"title":"...","duration":saniye,"intro":"...","segments":[{"label":"...","content":"...","notes":"...","duration":saniye}],"outro":"...","notes":"...","hashtags":["#..."]}`
 
+  const startedAt = Date.now()
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -50,9 +52,30 @@ JSON: {"title":"...","duration":saniye,"intro":"...","segments":[{"label":"...",
         max_tokens: 2000,
       }),
     })
-    if (!res.ok) throw new Error(`OpenAI ${res.status}`)
-    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-    const parsed = JSON.parse(json.choices[0]?.message?.content ?? '{}') as Record<string, unknown>
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'video_script',
+        operation: 'admin_video_script',
+        promptVersion: 'admin-video-script:v1',
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      throw new Error(`OpenAI ${res.status}`)
+    }
+    const json = await res.json() as { choices: Array<{ message: { content: string } }>; usage?: unknown }
+    const raw = json.choices[0]?.message?.content
+    recordDirectDeepSeekObservation({
+      agentName: 'video_script',
+      operation: 'admin_video_script',
+      promptVersion: 'admin-video-script:v1',
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
+    const parsed = JSON.parse(raw ?? '{}') as Record<string, unknown>
     return NextResponse.json({ success: true, scriptType, tone, ...parsed })
   } catch (error) {
     console.error('[ai-video-script]', error)

@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { getAdminFirestore } from '@/lib/firebase/admin'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import {
   fetchWeather,
   TURKISH_WEATHER_CITIES,
@@ -38,6 +39,7 @@ ${city} için hava durumu haberi yaz.
 Sıcaklık: ${temp}°C | Durum: ${condition} | Nem: %${humidity} | Rüzgar: ${windKph} km/s${alertType ? ` | UYARI: ${alertType}` : ''}
 JSON: {"title":"...max 70 karakter...","summary":"...1 cümle...","content":"...2-3 paragraf..."}`
 
+  const startedAt = Date.now()
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -51,12 +53,40 @@ JSON: {"title":"...max 70 karakter...","summary":"...1 cümle...","content":"...
       }),
       signal: AbortSignal.timeout(15_000),
     })
-    if (!res.ok) return null
-    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'weather',
+        operation: 'generate_weather_article',
+        promptVersion: 'weather-newsroom:v1',
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
+    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
     const raw = json.choices?.[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'weather',
+      operation: 'generate_weather_article',
+      promptVersion: 'weather-newsroom:v1',
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     if (!raw) return null
     return JSON.parse(raw) as { title: string; summary: string; content: string }
-  } catch {
+  } catch (err) {
+    recordDirectDeepSeekObservation({
+      agentName: 'weather',
+      operation: 'generate_weather_article',
+      promptVersion: 'weather-newsroom:v1',
+      startedAt,
+      success: false,
+      errorMessage: err instanceof Error ? err.message : 'weather_failed',
+    })
     return null
   }
 }

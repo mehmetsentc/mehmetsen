@@ -3,6 +3,7 @@
  * Scores confidence 0–100; flags low-confidence drafts for admin review.
  */
 import type { AiRewriteResult } from '@/services/aiNewsEditor'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 export interface FactCheckInput {
   sourceLabel: string
@@ -97,6 +98,7 @@ async function deepSeekFactCheck(input: FactCheckInput): Promise<FactCheckResult
     ? (input.originalContent || input.originalSummary || '').slice(0, 8000)
     : input.originalSummary.slice(0, 800)
 
+  const startedAt = Date.now()
   const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -135,14 +137,35 @@ Yeniden yazılmış metin: ${input.rewritten.description.slice(0, 2500)}`,
   })
 
   if (!res.ok) {
+    recordDirectDeepSeekObservation({
+      agentName: 'fact_checker',
+      operation: 'fact_check',
+      promptVersion: 'fact-checker:v1',
+      model: config.model,
+      startedAt,
+      success: false,
+      statusCode: res.status,
+    })
     console.warn('[factChecker] DeepSeek error, using heuristic')
     return heuristicFactCheck(input)
   }
 
   const json = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>
+    usage?: unknown
   }
   const content = json.choices?.[0]?.message?.content?.trim()
+  recordDirectDeepSeekObservation({
+    agentName: 'fact_checker',
+    operation: 'fact_check',
+    promptVersion: 'fact-checker:v1',
+    model: config.model,
+    startedAt,
+    success: Boolean(content),
+    statusCode: 200,
+    body: json,
+    errorMessage: content ? undefined : 'empty_content',
+  })
   if (!content) return heuristicFactCheck(input)
 
   try {

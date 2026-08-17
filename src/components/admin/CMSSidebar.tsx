@@ -13,7 +13,7 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -135,6 +135,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/ai-tasks', label: 'Görevler', icon: ListTodo, requiredPermissions: ['ai:use'] },
       { href: '/admin/ai-memory', label: 'Hafıza', icon: Layers, requiredPermissions: ['ai:configure'] },
       { href: '/admin/ai-learning', label: 'Öğrenme Merkezi', icon: GraduationCap, requiredPermissions: ['ai:configure'] },
+      { href: '/admin/ai-usage', label: 'AI Maliyet', icon: Coins, requiredPermissions: ['ai:use'] },
     ],
   },
   {

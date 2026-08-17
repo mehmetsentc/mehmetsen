@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { fetchWeather, TURKISH_WEATHER_CITIES, getAlertType, isExtremeTemperature, getWindAlert } from '@/lib/weatherApi'
 import type { WeatherData } from '@/types/weather'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 /**
  * POST/GET /api/cron/weather-news
@@ -68,6 +69,7 @@ ${alertType ? `Uyarı: ${alertType}` : ''}
 
 Sadece JSON döndür, açıklama ekleme.`
 
+  const startedAt = Date.now()
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -86,12 +88,31 @@ Sadece JSON döndür, açıklama ekleme.`
     })
 
     if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'weather',
+        operation: 'generate_weather_news',
+        promptVersion: 'weather-news:v1',
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
       console.error('[weather-news] OpenAI error', res.status, await res.text())
       return null
     }
 
     const json = await res.json()
-    const parsed = JSON.parse(json.choices?.[0]?.message?.content ?? '{}')
+    const raw = json.choices?.[0]?.message?.content
+    recordDirectDeepSeekObservation({
+      agentName: 'weather',
+      operation: 'generate_weather_news',
+      promptVersion: 'weather-news:v1',
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
+    const parsed = JSON.parse(raw ?? '{}')
 
     return {
       title: parsed.title ?? `${cityTr}'de bugün hava ${condition}`,
@@ -104,6 +125,14 @@ Sadece JSON döndür, açıklama ekleme.`
       alertType,
     }
   } catch (err) {
+    recordDirectDeepSeekObservation({
+      agentName: 'weather',
+      operation: 'generate_weather_news',
+      promptVersion: 'weather-news:v1',
+      startedAt,
+      success: false,
+      errorMessage: err instanceof Error ? err.message : 'weather_parse_error',
+    })
     console.error('[weather-news] OpenAI parse error', err)
     return null
   }

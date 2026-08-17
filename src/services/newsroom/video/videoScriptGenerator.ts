@@ -4,6 +4,27 @@
  * Uses GPT-4o-mini for speed and cost efficiency at high volume.
  */
 
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
+
+function observeVideoCall(
+  operation: string,
+  startedAt: number,
+  res: Response,
+  json?: unknown,
+  raw?: string | null
+) {
+  recordDirectDeepSeekObservation({
+    agentName: 'video_script',
+    operation,
+    promptVersion: 'video-script:v1',
+    startedAt,
+    success: Boolean(raw),
+    statusCode: res.status,
+    body: json,
+    errorMessage: res.ok ? (raw ? undefined : 'empty_content') : `http_${res.status}`,
+  })
+}
+
 export interface VideoScript {
   videoTitle: string
   videoDescription: string
@@ -61,6 +82,7 @@ export async function generateVideoScript(input: VideoScriptInput): Promise<Vide
     input.content ? `İçerik: ${input.content.slice(0, 800)}` : '',
   ].filter(Boolean).join('\n\n')
 
+  const startedAt = Date.now()
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -83,15 +105,20 @@ export async function generateVideoScript(input: VideoScriptInput): Promise<Vide
 
     if (!res.ok) {
       console.error('[videoScript] DeepSeek error:', res.status)
+      observeVideoCall('generate_video_script', startedAt, res)
       return null
     }
 
-    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+    const json = await res.json() as { choices: Array<{ message: { content: string } }>; usage?: unknown }
+    const raw = json.choices[0]?.message?.content
+    observeVideoCall('generate_video_script', startedAt, res, json, raw)
+    if (!raw) return null
     const content = json.choices[0]?.message?.content
     if (!content) return null
 
     return JSON.parse(content) as VideoScript
   } catch (err) {
+    observeVideoCall('generate_video_script', startedAt, { status: 0, ok: false } as Response)
     console.error('[videoScript] generation failed:', err)
     return null
   }
@@ -133,6 +160,7 @@ export async function generateMultiLengthScripts(
   ].filter(Boolean).join('\n\n')
 
   try {
+    const startedAt = Date.now()
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -148,9 +176,13 @@ export async function generateMultiLengthScripts(
         max_tokens: 800,
       }),
     })
-    if (!res.ok) return null
-    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+    if (!res.ok) {
+      observeVideoCall('generate_multi_length_scripts', startedAt, res)
+      return null
+    }
+    const json = await res.json() as { choices: Array<{ message: { content: string } }>; usage?: unknown }
     const raw = json.choices[0]?.message?.content
+    observeVideoCall('generate_multi_length_scripts', startedAt, res, json, raw)
     if (!raw) return null
     return JSON.parse(raw) as MultiLengthScripts
   } catch {
@@ -189,6 +221,7 @@ export async function generateSocialCaptions(
   const articleText = `Başlık: ${input.title}\n${input.spot ?? input.summary ?? ''}`
 
   try {
+    const startedAt = Date.now()
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -204,9 +237,13 @@ export async function generateSocialCaptions(
         max_tokens: 400,
       }),
     })
-    if (!res.ok) return null
-    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+    if (!res.ok) {
+      observeVideoCall('generate_social_captions', startedAt, res)
+      return null
+    }
+    const json = await res.json() as { choices: Array<{ message: { content: string } }>; usage?: unknown }
     const raw = json.choices[0]?.message?.content
+    observeVideoCall('generate_social_captions', startedAt, res, json, raw)
     if (!raw) return null
     return JSON.parse(raw) as SocialCaptions
   } catch {

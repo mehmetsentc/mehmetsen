@@ -42,6 +42,11 @@ async function callDeepSeekImprove(
       timeoutMs: 20_000,
       disableThinking: true,
       jsonMode: true,
+      telemetry: {
+        agentName: 'improve_text',
+        operation: 'improve_user_text',
+        promptVersion: 'improve-text:v1',
+      },
     })
     const parsed = JSON.parse(raw) as { title?: string; content?: string; summary?: string }
     if (!parsed.title || !parsed.content) return null

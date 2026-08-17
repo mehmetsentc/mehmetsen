@@ -14,6 +14,7 @@
 
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from './socialFactualFidelity'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -252,6 +253,7 @@ async function generateWithDeepSeek(
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
   try {
+    const startedAt = Date.now()
     const res = await fetch(DEEPSEEK_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
@@ -269,11 +271,30 @@ async function generateWithDeepSeek(
     })
     if (!res.ok) {
       const err = await res.text().catch(() => '')
+      recordDirectDeepSeekObservation({
+        agentName: 'social_editor',
+        operation: 'generate_social',
+        promptVersion: 'social-editor:v1',
+        startedAt,
+        success: false,
+        statusCode: res.status,
+        errorMessage: err.slice(0, 200),
+      })
       console.error(`[aiSocialEditor] DeepSeek HTTP ${res.status}: ${err.slice(0, 200)}`)
       return null
     }
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown }
     const raw = data.choices?.[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'social_editor',
+      operation: 'generate_social',
+      promptVersion: 'social-editor:v1',
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: data,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     if (!raw) return null
     return parseAISocialJSON(raw, title, description)
   } catch (err) {

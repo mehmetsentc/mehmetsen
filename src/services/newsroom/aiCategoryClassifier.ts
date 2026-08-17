@@ -14,6 +14,7 @@
  */
 
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import {
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
@@ -176,6 +177,7 @@ JSON formatında yanıt ver:
 {"categoryId": "kategori-adı", "confidence": 85, "reason": "kısa açıklama"}`
 
   try {
+    const startedAt = Date.now()
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -196,12 +198,35 @@ JSON formatında yanıt ver:
       signal: AbortSignal.timeout(10_000),
     })
 
-    if (!res.ok) return null
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'category_classifier',
+        operation: 'classify_category',
+        promptVersion: 'news-classifier:v1',
+        model,
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
 
     const json = await res.json() as {
       choices?: Array<{ message?: { content?: string } }>
+      usage?: unknown
     }
     const raw = json.choices?.[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'category_classifier',
+      operation: 'classify_category',
+      promptVersion: 'news-classifier:v1',
+      model,
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
@@ -275,6 +300,7 @@ JSON formatında yanıt ver:
 {"categoryId": "yerel-xxx", "confidence": 85, "reason": "kısa açıklama"}`
 
   try {
+    const startedAt = Date.now()
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -295,12 +321,35 @@ JSON formatında yanıt ver:
       signal: AbortSignal.timeout(10_000),
     })
 
-    if (!res.ok) return null
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'yerel_classifier',
+        operation: 'classify_yerel',
+        promptVersion: 'yerel-classifier:v1',
+        model,
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
 
     const json = await res.json() as {
       choices?: Array<{ message?: { content?: string } }>
+      usage?: unknown
     }
     const raw = json.choices?.[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'yerel_classifier',
+      operation: 'classify_yerel',
+      promptVersion: 'yerel-classifier:v1',
+      model,
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }
@@ -366,6 +415,7 @@ JSON formatında yanıt ver:
 {"categoryId": "kibris-xxx", "confidence": 85, "reason": "kısa açıklama"}`
 
   try {
+    const startedAt = Date.now()
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -386,12 +436,35 @@ JSON formatında yanıt ver:
       signal: AbortSignal.timeout(10_000),
     })
 
-    if (!res.ok) return null
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'kibris_classifier',
+        operation: 'classify_kibris',
+        promptVersion: 'kibris-classifier:v1',
+        model,
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
 
     const json = await res.json() as {
       choices?: Array<{ message?: { content?: string } }>
+      usage?: unknown
     }
     const raw = json.choices?.[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'kibris_classifier',
+      operation: 'classify_kibris',
+      promptVersion: 'kibris-classifier:v1',
+      model,
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as { categoryId?: string; confidence?: number; reason?: string }

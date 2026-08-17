@@ -175,7 +175,7 @@ function parseAiJson(raw: string): Record<string, unknown> {
 async function callDeepSeekOnce(
   systemPrompt: string,
   userMessage: string,
-  opts: { timeoutMs: number; maxTokens: number }
+  opts: { timeoutMs: number; maxTokens: number; attempt?: number }
 ): Promise<Record<string, unknown>> {
   const { deepseekChatCompletion } = await import('@/lib/ai/deepseekClient')
   const raw = await deepseekChatCompletion({
@@ -188,6 +188,12 @@ async function callDeepSeekOnce(
     timeoutMs: opts.timeoutMs,
     disableThinking: true,
     jsonMode: true,
+    telemetry: {
+      agentName: 'ai_assist',
+      operation: 'cms_assist',
+      promptVersion: 'ai-assist:v1',
+      attempt: opts.attempt ?? 1,
+    },
   })
   try {
     return parseAiJson(raw)
@@ -246,6 +252,7 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
       return await callDeepSeekOnce(systemPrompt, userMessage, {
         timeoutMs: 85_000,
         maxTokens: 6000,
+        attempt: 1,
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -259,6 +266,7 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
           return await callDeepSeekOnce(systemPrompt, userMessage, {
             timeoutMs: 70_000,
             maxTokens: 4000,
+            attempt: 2,
           })
         } catch (e2) {
           errors.push(`DeepSeek retry: ${e2 instanceof Error ? e2.message : String(e2)}`)

@@ -94,6 +94,11 @@ export async function PATCH(request: Request, ctx: Ctx) {
       system: built.system,
       user: built.user,
       model: resolved.model,
+      telemetry: {
+        agentName: 'sandbox_call',
+        operation: 'editor_sandbox',
+        promptVersion: 'sandbox-call:v1',
+      },
     })
     return NextResponse.json({
       success: true,

@@ -1,4 +1,5 @@
 import { isKnownNewsImageHost } from '@/constants/imageHosts'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 const SYSTEM_PROMPT = `Sen NaHaber'in görsel editörüsün. Haber görsellerini analiz edip Türkçe yayın metadatası hazırlıyorsun.
 
@@ -199,6 +200,7 @@ async function generateWithDeepSeek(input: ImageSeoInput): Promise<ImageAnalysis
   if (!apiKey) return null
 
   const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
+  const startedAt = Date.now()
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -216,11 +218,42 @@ async function generateWithDeepSeek(input: ImageSeoInput): Promise<ImageAnalysis
       }),
       signal: AbortSignal.timeout(20_000),
     })
-    if (!res.ok) return null
-    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'image_seo',
+        operation: 'generate_image_seo',
+        promptVersion: 'image-seo:v1',
+        model,
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      return null
+    }
+    const json = await res.json() as { choices: Array<{ message: { content: string } }>; usage?: unknown }
     const raw = json.choices[0]?.message?.content?.trim()
+    recordDirectDeepSeekObservation({
+      agentName: 'image_seo',
+      operation: 'generate_image_seo',
+      promptVersion: 'image-seo:v1',
+      model,
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
     return raw ? parseAnalysis(raw) : null
-  } catch {
+  } catch (err) {
+    recordDirectDeepSeekObservation({
+      agentName: 'image_seo',
+      operation: 'generate_image_seo',
+      promptVersion: 'image-seo:v1',
+      model,
+      startedAt,
+      success: false,
+      errorMessage: err instanceof Error ? err.message : 'image_seo_failed',
+    })
     return null
   }
 }

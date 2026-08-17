@@ -6,6 +6,7 @@ import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import { getInfluencerList, MAX_AI_CALLS_PER_EDITOR } from '@/services/newsroom/config'
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 async function researchInfluencer(name: string): Promise<{
   title: string
@@ -23,6 +24,7 @@ async function researchInfluencer(name: string): Promise<{
     }
   }
 
+  const startedAt = Date.now()
   const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -47,6 +49,15 @@ JSON: {"title":"...","summary":"...","content":"..."}`,
   })
 
   if (!res.ok) {
+    recordDirectDeepSeekObservation({
+      agentName: 'influencer_editor',
+      operation: 'research_influencer',
+      promptVersion: 'influencer-editor:v1',
+      model,
+      startedAt,
+      success: false,
+      statusCode: res.status,
+    })
     return {
       title: `${name} gündemde`,
       summary: `${name} hakkında haberler.`,
@@ -56,8 +67,20 @@ JSON: {"title":"...","summary":"...","content":"..."}`,
 
   const json = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>
+    usage?: unknown
   }
   const content = json.choices?.[0]?.message?.content?.trim()
+  recordDirectDeepSeekObservation({
+    agentName: 'influencer_editor',
+    operation: 'research_influencer',
+    promptVersion: 'influencer-editor:v1',
+    model,
+    startedAt,
+    success: Boolean(content),
+    statusCode: 200,
+    body: json,
+    errorMessage: content ? undefined : 'empty_content',
+  })
   if (!content) {
     return { title: `${name} gündemde`, summary: name, content: name }
   }

@@ -368,6 +368,11 @@ ORİJİNAL BAŞLIK: ${input.originalTitle ?? '—'}${recentBlock}
       timeoutMs: 90_000,
       disableThinking: true,
       jsonMode: true,
+      telemetry: {
+        agentName: 'chief_editor',
+        operation: 'chief_review',
+        promptVersion: 'chief-editor:v1',
+      },
     })
 
     if (!raw?.trim()) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,6 +46,7 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<AiResp
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (deepseekKey) {
     const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
+    const startedAt = Date.now()
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${deepseekKey}` },
@@ -61,9 +63,32 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<AiResp
       }),
       signal: AbortSignal.timeout(20_000),
     })
-    if (!res.ok) throw new Error(`DeepSeek error ${res.status}`)
-    const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-    return JSON.parse(json.choices[0]?.message?.content ?? '{}') as AiResponse
+    if (!res.ok) {
+      recordDirectDeepSeekObservation({
+        agentName: 'image_placement',
+        operation: 'place_images',
+        promptVersion: 'image-placement:v1',
+        model,
+        startedAt,
+        success: false,
+        statusCode: res.status,
+      })
+      throw new Error(`DeepSeek error ${res.status}`)
+    }
+    const json = await res.json() as { choices: Array<{ message: { content: string } }>; usage?: unknown }
+    const raw = json.choices[0]?.message?.content
+    recordDirectDeepSeekObservation({
+      agentName: 'image_placement',
+      operation: 'place_images',
+      promptVersion: 'image-placement:v1',
+      model,
+      startedAt,
+      success: Boolean(raw),
+      statusCode: 200,
+      body: json,
+      errorMessage: raw ? undefined : 'empty_content',
+    })
+    return JSON.parse(raw ?? '{}') as AiResponse
   }
 
   throw new Error('No AI key configured (DEEPSEEK_API_KEY required)')
