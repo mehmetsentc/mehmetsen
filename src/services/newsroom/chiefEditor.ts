@@ -18,6 +18,7 @@ import {
 } from '@/constants/config'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { deepseekChatCompletion, getDeepSeekApiKey, getDeepSeekModel } from '@/lib/ai/deepseekClient'
+import { inputCharLimit, outputTokenLimit } from '@/lib/ai/usage/tokenBudget'
 import {
   CHIEF_EDITOR_AUTO_PUBLISH,
   CHIEF_EDITOR_CONFIDENCE_THRESHOLD,
@@ -345,8 +346,8 @@ KAYNAK: ${input.sourceLabel ?? '—'}
 BAŞLIK: ${input.title}
 SPOT: ${input.spot ?? '—'}
 ÖZET: ${input.summary}
-İÇERİK (ilk 3500 karakter):
-${(input.description || '').slice(0, 3500)}
+İÇERİK (ilk ${inputCharLimit('AI_CHIEF_MAX_INPUT_CHARS', 3500)} karakter):
+${(input.description || '').slice(0, inputCharLimit('AI_CHIEF_MAX_INPUT_CHARS', 3500))}
 
 ETİKETLER: ${input.tags.join(', ') || '—'}
 KONUM: ${[input.city, input.district, input.country].filter(Boolean).join(', ') || 'belirtilmemiş'}
@@ -364,7 +365,7 @@ ORİJİNAL BAŞLIK: ${input.originalTitle ?? '—'}${recentBlock}
         { role: 'user', content: userMessage },
       ],
       temperature: 0.12,
-      maxTokens: 1800,
+      maxTokens: outputTokenLimit('AI_CHIEF_MAX_OUTPUT_TOKENS', 1800),
       timeoutMs: 90_000,
       disableThinking: true,
       jsonMode: true,

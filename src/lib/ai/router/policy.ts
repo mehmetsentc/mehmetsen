@@ -1,5 +1,6 @@
 import { getGroqApiKey, shouldUseGroqClassifier } from '@/lib/ai/groqRouting'
 import { shouldUseMultiProviderChain } from '@/lib/ai/router/flags'
+import { isGeminiCircuitOpen } from '@/lib/ai/providers/geminiCircuit'
 import type { AiTaskType, RouterProviderId } from '@/lib/ai/router/types'
 
 export function getGeminiFastModel(): string | null {
@@ -24,8 +25,18 @@ export function isGeminiFastAvailable(): boolean {
   return Boolean(getGeminiApiKey() && getGeminiFastModel())
 }
 
+export function getOpenRouterReadiness(): {
+  apiKeyDefined: boolean
+  fastModelDefined: boolean
+  available: boolean
+} {
+  const apiKeyDefined = Boolean(getOpenRouterApiKey())
+  const fastModelDefined = Boolean(getOpenRouterFastModel())
+  return { apiKeyDefined, fastModelDefined, available: apiKeyDefined && fastModelDefined }
+}
+
 export function isOpenRouterAvailable(): boolean {
-  return Boolean(getOpenRouterApiKey() && getOpenRouterFastModel())
+  return getOpenRouterReadiness().available
 }
 
 function unique(ids: RouterProviderId[]): RouterProviderId[] {
@@ -53,18 +64,18 @@ export function resolveProviderChain(
   if (task === 'classification') {
     if (shouldUseGroqClassifier(cohortKey)) chain.push('groq')
     if (multi) {
-      if (isGeminiFastAvailable()) chain.push('gemini')
+      if (isGeminiFastAvailable() && !isGeminiCircuitOpen()) chain.push('gemini')
       if (isOpenRouterAvailable()) chain.push('openrouter')
     }
   } else if (task === 'extraction') {
     if (multi) {
-      if (isGeminiFastAvailable()) chain.push('gemini')
+      if (isGeminiFastAvailable() && !isGeminiCircuitOpen()) chain.push('gemini')
       if (getGroqApiKey()) chain.push('groq')
       if (isOpenRouterAvailable()) chain.push('openrouter')
     }
   } else if (task === 'social') {
     if (multi) {
-      if (isGeminiFastAvailable()) chain.push('gemini')
+      if (isGeminiFastAvailable() && !isGeminiCircuitOpen()) chain.push('gemini')
       if (getGroqApiKey()) chain.push('groq')
       if (isOpenRouterAvailable()) chain.push('openrouter')
     }
@@ -72,7 +83,7 @@ export function resolveProviderChain(
     // longform / quality_critical: DeepSeek only unless a future Stage1 flag is on
     if (multi && task === 'longform') {
       if (getGroqApiKey()) chain.push('groq')
-      if (isGeminiFastAvailable()) chain.push('gemini')
+      if (isGeminiFastAvailable() && !isGeminiCircuitOpen()) chain.push('gemini')
       if (isOpenRouterAvailable()) chain.push('openrouter')
     }
   }

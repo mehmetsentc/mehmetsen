@@ -204,6 +204,77 @@ export default function AiUsagePage() {
         </ul>
       </Section>
 
+      <Section title="DeepSeek Maliyet Sürücüleri">
+        {(data?.deepseekDrivers.length ?? 0) === 0 ? (
+          <Empty />
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {data!.deepseekDrivers.map((row) => (
+              <li key={row.agent} className="flex justify-between gap-3">
+                <span className="font-medium">{row.agent}</span>
+                <span className="tabular-nums admin-meta text-right">
+                  {fmtInt(row.requests)} istek · {fmtInt(row.input)} in · {fmtInt(row.output)} out ·{' '}
+                  {fmtInt(row.total)} · {fmtPct(row.pctOfDeepSeek)} · ort {fmtInt(row.avgTokens)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title="Potansiyel Tasarruf">
+        <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+          Token azaltma senaryoları — fiyat env yoksa yalnızca token
+        </p>
+        {(data?.potentialSavings.length ?? 0) === 0 ? (
+          <Empty />
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {data!.potentialSavings.map((row) => (
+              <li key={row.agent}>
+                <div className="flex justify-between">
+                  <span className="font-medium">{row.agent}</span>
+                  <span className="tabular-nums">{fmtInt(row.currentTotal)}</span>
+                </div>
+                <p className="admin-meta tabular-nums">
+                  −10% {fmtInt(row.p10)} · −25% {fmtInt(row.p25)} · −50% {fmtInt(row.p50)} · −75%{' '}
+                  {fmtInt(row.p75)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title="Tekrar ve Sağlık">
+        <ul className="space-y-2 text-sm">
+          <li className="flex justify-between">
+            <span>Duplicate Stage1 Calls</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.duplicateStage1Calls.groups)} grup / +${fmtInt(data?.duplicateStage1Calls.extraCalls)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Stage3 + Classifier overlap</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `both ${fmtInt(data?.stage3ClassifierOverlap.both)} · s3 ${fmtInt(data?.stage3ClassifierOverlap.stage3Only)} · clf ${fmtInt(data?.stage3ClassifierOverlap.classifierOnly)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Gemini failure rate</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.geminiFailureRate)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Groq failure rate</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.groqFailureRate)}</span>
+          </li>
+        </ul>
+      </Section>
+
       <Section title="En Fazla Token Kullanan Ajanlar">
         {(data?.topTokenAgents.length ?? 0) === 0 ? (
           <Empty />

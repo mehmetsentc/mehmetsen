@@ -88,6 +88,7 @@ async function callProvider(
     promptVersion: opts.promptVersion,
     attempt: opts.attempt,
     retryCount: Math.max(0, opts.attempt - 1),
+    skipSuccessTelemetry: true,
   })
 }
 
@@ -100,8 +101,15 @@ function noteCheapSuccess(opts: {
   fallbackFrom?: RouterProviderId
   fallbackReason?: string
   canaryBucket: number
+  value?: unknown
 }) {
-  if (opts.provider === 'deepseek') return
+  const categoryId =
+    opts.value &&
+    typeof opts.value === 'object' &&
+    'categoryId' in opts.value &&
+    typeof (opts.value as { categoryId?: unknown }).categoryId === 'string'
+      ? (opts.value as { categoryId: string }).categoryId
+      : undefined
   try {
     recordAiRequestUsage({
       agentName: opts.input.agent,
@@ -121,6 +129,7 @@ function noteCheapSuccess(opts: {
       fallbackReason: opts.fallbackReason,
       providerRank: opts.attempt,
       canaryBucket: opts.canaryBucket,
+      resultCategoryId: categoryId,
     })
   } catch (error) {
     console.warn('[AI_USAGE] router success note failed:', error instanceof Error ? error.message : error)
@@ -136,7 +145,6 @@ function noteCheapSchemaFail(opts: {
   errorCode: string
   canaryBucket: number
 }) {
-  if (opts.provider === 'deepseek') return
   try {
     recordAiRequestUsage({
       agentName: opts.input.agent,
@@ -236,6 +244,7 @@ export async function runAI<T>(input: RunAiInput<T>): Promise<RunAiResult<T>> {
         fallbackFrom,
         fallbackReason,
         canaryBucket,
+        value: parsed,
       })
       writeClassifierCache(cacheKey, jsonText)
       return {

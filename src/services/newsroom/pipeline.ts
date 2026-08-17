@@ -899,6 +899,7 @@ export async function processNewsroomArticle(
 
         const retryRaw = await runMultiStageEditor({
           ...stageInputBase,
+          generationReason: 'quality_retry',
           revisionHints: hints,
           previousDraft: {
             title: rewrittenRaw.title,

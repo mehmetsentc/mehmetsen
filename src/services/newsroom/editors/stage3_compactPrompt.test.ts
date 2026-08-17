@@ -1,0 +1,32 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  STAGE3_COMPACT_SYSTEM,
+  buildCompactStage3UserPrompt,
+  isStage3CompactPromptEnabled,
+} from '@/services/newsroom/editors/stage3_compactPrompt'
+
+describe('Stage3 compact prompt candidate', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('is disabled by default', () => {
+    vi.stubEnv('AI_STAGE3_COMPACT_PROMPT', '')
+    expect(isStage3CompactPromptEnabled()).toBe(false)
+  })
+  it('is much smaller than a 6000-char article dump', () => {
+    const article = 'x'.repeat(6000)
+    const compact = buildCompactStage3UserPrompt({
+      title: 'Başlık',
+      spot: 'Spot metin',
+      content: article,
+      sourceLabel: 'AA',
+      currentCategory: 'gundem',
+      maxArticleChars: 1200,
+    })
+    expect(compact.length).toBeLessThan(2500)
+    expect(compact).toContain('Başlık')
+    expect(compact).not.toContain('x'.repeat(1201))
+    expect(STAGE3_COMPACT_SYSTEM.length).toBeLessThan(800)
+  })
+})

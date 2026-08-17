@@ -1,5 +1,10 @@
 import { turkeyDayBounds, turkeyYmd, turkeyYmdNow, addTurkeyDays } from '@/lib/turkeyCalendar'
 import { estimateUsageCost, getDeepSeekPricing } from '@/lib/ai/usage/pricing'
+import {
+  countDuplicateStage1Calls,
+  measureStage3ClassifierOverlap,
+  providerFailureRate,
+} from '@/lib/ai/usage/pipelineCostSignals'
 
 export type AiUsageRange = 'today' | '7d' | '30d'
 
@@ -199,6 +204,36 @@ export type AiUsageAggregate = {
     estimatedDeepSeekCallsAvoided: number
     estimatedSavingsUsd: number | null
   }
+  deepseekDrivers: Array<{
+    agent: string
+    requests: number
+    input: number
+    output: number
+    total: number
+    pctOfDeepSeek: number | null
+    avgTokens: number | null
+  }>
+  potentialSavings: Array<{
+    agent: string
+    currentTotal: number
+    p10: number
+    p25: number
+    p50: number
+    p75: number
+  }>
+  duplicateStage1Calls: { groups: number; extraCalls: number }
+  stage3ClassifierOverlap: {
+    both: number
+    stage3Only: number
+    classifierOnly: number
+    compared: number
+    exactAgreement: number
+    agreementRate: number | null
+  }
+  geminiFailureRate: number | null
+  groqFailureRate: number | null
+  geminiErrors: Record<string, number>
+  groqErrors: Record<string, number>
 }
 
 export function aggregateAiUsageEvents(
@@ -240,6 +275,7 @@ export function aggregateAiUsageEvents(
   const models = new Map<string, Bucket>()
   const operations = new Map<string, Bucket>()
   const providers = new Map<string, Bucket>()
+  const deepseekByAgent = new Map<string, Bucket>()
   const retryAgents = new Map<string, { firstAttempts: number; retries: number }>()
   const daily = new Map<string, Bucket>()
   const repeated = new Map<string, { inputHash: string; operation: string; calls: number }>()
@@ -289,6 +325,10 @@ export function aggregateAiUsageEvents(
     }
     if (provider === 'deepseek') {
       deepseekRequests += 1
+      addToBucket(
+        deepseekByAgent.get(agent) ?? deepseekByAgent.set(agent, emptyBucket(agent)).get(agent)!,
+        event
+      )
       const attemptN = asFiniteNumber(event.attempt)
       if (
         (attemptN != null && attemptN > 1) ||
@@ -469,6 +509,43 @@ export function aggregateAiUsageEvents(
         return priced.estimatedTotalCostUsd ?? null
       })(),
     },
+    deepseekDrivers: (() => {
+      const dsTotal = [...deepseekByAgent.values()].reduce((s, b) => s + b.totalTokens, 0)
+      return [...deepseekByAgent.values()]
+        .map((b) => ({
+          agent: b.key,
+          requests: b.requests,
+          input: b.inputTokens,
+          output: b.outputTokens,
+          total: b.totalTokens,
+          pctOfDeepSeek: dsTotal > 0 ? b.totalTokens / dsTotal : null,
+          avgTokens: b.requests > 0 ? b.totalTokens / b.requests : null,
+        }))
+        .sort((a, b) => b.total - a.total)
+    })(),
+    potentialSavings: (() => {
+      const majors = ['stage1_writer', 'stage3_category', 'chief_editor', 'category_classifier']
+      return majors
+        .map((agent) => {
+          const b = deepseekByAgent.get(agent)
+          const currentTotal = b?.totalTokens ?? 0
+          return {
+            agent,
+            currentTotal,
+            p10: Math.round(currentTotal * 0.1),
+            p25: Math.round(currentTotal * 0.25),
+            p50: Math.round(currentTotal * 0.5),
+            p75: Math.round(currentTotal * 0.75),
+          }
+        })
+        .filter((row) => row.currentTotal > 0)
+    })(),
+    duplicateStage1Calls: countDuplicateStage1Calls(events),
+    stage3ClassifierOverlap: measureStage3ClassifierOverlap(events),
+    geminiFailureRate: providerFailureRate(events, 'gemini').rate,
+    groqFailureRate: providerFailureRate(events, 'groq').rate,
+    geminiErrors: providerFailureRate(events, 'gemini').byCode,
+    groqErrors: providerFailureRate(events, 'groq').byCode,
   }
 }
 
@@ -503,4 +580,9 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'fallbackReason',
   'providerRank',
   'canaryBucket',
+  'generationReason',
+  'resultCategoryId',
+  'schemaValid',
+  'outputChars',
+  'requiredFieldsPresent',
 ] as const

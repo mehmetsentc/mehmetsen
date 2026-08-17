@@ -42,6 +42,7 @@ describe('aggregateAiUsageEvents', () => {
         {
           createdAt: 1,
           provider: 'deepseek',
+          agentName: 'stage1_writer',
           model: 'deepseek-v4-flash',
           inputTokens: 1000,
           outputTokens: 100,
@@ -65,6 +66,8 @@ describe('aggregateAiUsageEvents', () => {
     expect(agg.savings.cheapSuccessRequests).toBe(1)
     expect(agg.savings.estimatedDeepSeekCallsAvoided).toBe(1)
     expect(agg.savings.deepseekRequests).toBe(1)
+    expect(agg.deepseekDrivers[0]?.agent).toBe('stage1_writer')
+    expect(agg.groqFailureRate).toBe(0)
   })
 
   it('treats missing cache tokens as absent, not zero-hit rate from empty fields', () => {

@@ -23,6 +23,11 @@ export type AiUsageTelemetryMeta = {
   traceId?: string
   requestId?: string
   inputHash?: string
+  generationReason?: string
+  resultCategoryId?: string
+  schemaValid?: boolean
+  outputChars?: number
+  requiredFieldsPresent?: boolean
 }
 
 export type AiUsageContext = {
@@ -66,6 +71,11 @@ export type RecordAiRequestUsageInput = {
   fallbackReason?: string
   providerRank?: number
   canaryBucket?: number
+  generationReason?: string
+  resultCategoryId?: string
+  schemaValid?: boolean
+  outputChars?: number
+  requiredFieldsPresent?: boolean
 }
 
 export type AiUsageEventDoc = {
@@ -107,4 +117,9 @@ export type AiUsageEventDoc = {
   fallbackReason?: string
   providerRank?: number
   canaryBucket?: number
+  generationReason?: string
+  resultCategoryId?: string
+  schemaValid?: boolean
+  outputChars?: number
+  requiredFieldsPresent?: boolean
 }

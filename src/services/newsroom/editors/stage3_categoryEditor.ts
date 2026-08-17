@@ -14,6 +14,12 @@
 import type { WrittenArticle } from './stage1_contentWriter'
 import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
+import { inputCharLimit, optionalOutputTokenLimit } from '@/lib/ai/usage/tokenBudget'
+import {
+  STAGE3_COMPACT_SYSTEM,
+  buildCompactStage3UserPrompt,
+  isStage3CompactPromptEnabled,
+} from './stage3_compactPrompt'
 
 export interface CategoryResult {
   categoryId: string
@@ -162,10 +168,19 @@ KESİN YASAKLAR (son-dakika olamaz):
 ÇIKTI: Yalnızca geçerli JSON:`
 
 function buildPrompt(input: CategoryInput): string {
+  if (isStage3CompactPromptEnabled()) {
+    return buildCompactStage3UserPrompt({
+      title: input.title,
+      content: input.content,
+      sourceLabel: input.sourceLabel,
+      currentCategory: input.forcedCategoryId,
+      maxArticleChars: inputCharLimit('AI_STAGE3_MAX_INPUT_CHARS', 1200),
+    })
+  }
   return `Kaynak: ${input.sourceLabel}
 Başlık: ${input.title}
 İçerik (tamamını oku — kategori kararını YALNIZCA içeriğe göre ver, kaynak adına veya başlıktaki tek bir kelimeye değil):
-${input.content.slice(0, 6000)}
+${input.content.slice(0, inputCharLimit('AI_STAGE3_MAX_INPUT_CHARS', 6000))}
 ${input.forcedCategoryId ? `\nÖnerilen kategori: ${input.forcedCategoryId} (içerik farklı bir kategoriyi işaret ediyorsa mutlaka düzelt — bu yalnızca öneri)` : ''}
 
 JSON formatında kategori bilgisi döndür:
@@ -248,6 +263,8 @@ async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
   const model = process.env.DEEPSEEK_NEWS_MODEL?.trim() || 'deepseek-v4-flash'
+  const maxTokens = optionalOutputTokenLimit('AI_STAGE3_MAX_OUTPUT_TOKENS')
+  const systemContent = isStage3CompactPromptEnabled() ? STAGE3_COMPACT_SYSTEM : SYSTEM_PROMPT
 
   try {
     const startedAt = Date.now()
@@ -259,8 +276,9 @@ async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null
         temperature: 0.2,
         response_format: { type: 'json_object' },
         thinking: { type: 'disabled' },
+        ...(maxTokens ? { max_tokens: maxTokens } : {}),
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemContent },
           { role: 'user', content: buildPrompt(input) },
         ],
       }),
@@ -283,13 +301,14 @@ async function callDeepSeek(input: CategoryInput): Promise<CategoryResult | null
     recordDirectDeepSeekObservation({
       agentName: 'stage3_category',
       operation: 'classify_category',
-      promptVersion: 'stage3-category:v1',
+      promptVersion: isStage3CompactPromptEnabled() ? 'stage3-category:compact-v1' : 'stage3-category:v1',
       model,
       startedAt,
       success: Boolean(raw),
       statusCode: 200,
       body: json,
       errorMessage: raw ? undefined : 'empty_content',
+      resultCategoryId: raw ? parseResult(raw, input.forcedCategoryId)?.categoryId : undefined,
     })
     if (!raw) return null
     return parseResult(raw, input.forcedCategoryId)

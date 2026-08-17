@@ -15,6 +15,7 @@ export async function deepseekOneShotChat(opts: {
   promptVersion: string
   attempt: number
   retryCount?: number
+  skipSuccessTelemetry?: boolean
 }): Promise<ProviderAttemptResult> {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) throw new Error('DEEPSEEK_API_KEY eksik')
@@ -55,20 +56,36 @@ export async function deepseekOneShotChat(opts: {
     usage?: unknown
   }
   const text = json.choices?.[0]?.message?.content?.trim() ?? ''
-  recordDirectDeepSeekObservation({
-    agentName: opts.agentName,
-    operation: opts.operation,
-    promptVersion: opts.promptVersion,
-    model,
-    startedAt,
-    success: Boolean(text),
-    statusCode: 200,
-    body: json,
-    attempt: opts.attempt,
-    retryCount: opts.retryCount,
-    errorMessage: text ? undefined : 'empty_content',
-  })
-  if (!text) throw new Error('DeepSeek boş yanıt döndürdü (0 karakter)')
+  if (!text) {
+    recordDirectDeepSeekObservation({
+      agentName: opts.agentName,
+      operation: opts.operation,
+      promptVersion: opts.promptVersion,
+      model,
+      startedAt,
+      success: false,
+      statusCode: 200,
+      body: json,
+      attempt: opts.attempt,
+      retryCount: opts.retryCount,
+      errorMessage: 'empty_content',
+    })
+    throw new Error('DeepSeek boş yanıt döndürdü (0 karakter)')
+  }
+  if (!opts.skipSuccessTelemetry) {
+    recordDirectDeepSeekObservation({
+      agentName: opts.agentName,
+      operation: opts.operation,
+      promptVersion: opts.promptVersion,
+      model,
+      startedAt,
+      success: true,
+      statusCode: 200,
+      body: json,
+      attempt: opts.attempt,
+      retryCount: opts.retryCount,
+    })
+  }
   return {
     text,
     usage: parseDeepSeekUsage(json.usage),

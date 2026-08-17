@@ -83,6 +83,11 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
     fallbackReason: input.fallbackReason,
     providerRank: input.providerRank,
     canaryBucket: input.canaryBucket,
+    generationReason: input.generationReason,
+    resultCategoryId: input.resultCategoryId,
+    schemaValid: input.schemaValid,
+    outputChars: input.outputChars,
+    requiredFieldsPresent: input.requiredFieldsPresent,
   }
 
   return compact(doc as unknown as Record<string, unknown>)

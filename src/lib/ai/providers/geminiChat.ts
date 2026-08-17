@@ -4,7 +4,8 @@
  */
 
 import { getGeminiApiKey, getGeminiFastModel } from '@/lib/ai/router/policy'
-import { classifyProviderFailure } from '@/lib/ai/router/validation'
+import { classifyGeminiError } from '@/lib/ai/router/validation'
+import { isGeminiCircuitOpen, openGeminiCircuit } from '@/lib/ai/providers/geminiCircuit'
 import { parseGeminiUsage } from '@/lib/ai/usage/parseUsage'
 import { recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
 import type { ChatMessage, ProviderAttemptResult } from '@/lib/ai/router/types'
@@ -35,6 +36,7 @@ export async function geminiFastChat(opts: {
   const apiKey = getGeminiApiKey()
   const model = getGeminiFastModel()
   if (!apiKey || !model) throw new Error('GEMINI_FAST_MODEL or GEMINI_API_KEY eksik')
+  if (isGeminiCircuitOpen()) throw new Error('Gemini circuit open')
 
   const system = opts.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n')
   const user = opts.messages.filter((m) => m.role !== 'system').map((m) => m.content).join('\n')
@@ -67,7 +69,7 @@ export async function geminiFastChat(opts: {
       provider: 'gemini',
       model,
       success: false,
-      errorCode: classifyProviderFailure(message),
+      errorCode: classifyGeminiError(undefined, message),
       attempt,
       latencyMs: Date.now() - startedAt,
     })
@@ -76,15 +78,16 @@ export async function geminiFastChat(opts: {
 
   const latencyMs = Date.now() - startedAt
   if (!res.ok) {
-    const err = await res.text().catch(() => '')
-    const message = `Gemini HTTP ${res.status}: ${err.slice(0, 240)}`
+    const message = `Gemini HTTP ${res.status}`
+    const errorCode = classifyGeminiError(res.status, message)
+    if (errorCode === 'quota_429') openGeminiCircuit()
     recordAiRequestUsage({
       ...opts.telemetry,
       provider: 'gemini',
       model,
       success: false,
       statusCode: res.status,
-      errorCode: classifyProviderFailure(message),
+      errorCode,
       attempt,
       latencyMs,
     })
@@ -98,7 +101,8 @@ export async function geminiFastChat(opts: {
   }
   const usage = parseGeminiUsage(data.usageMetadata)
   if (data.error?.status === 'RESOURCE_EXHAUSTED' || /quota|RESOURCE_EXHAUSTED/i.test(data.error?.message || '')) {
-    const message = data.error?.message || 'RESOURCE_EXHAUSTED'
+    const message = 'RESOURCE_EXHAUSTED'
+    openGeminiCircuit()
     recordAiRequestUsage({
       ...opts.telemetry,
       provider: 'gemini',
@@ -106,7 +110,7 @@ export async function geminiFastChat(opts: {
       usage,
       success: false,
       statusCode: 429,
-      errorCode: classifyProviderFailure(message),
+      errorCode: classifyGeminiError(429, message),
       attempt,
       latencyMs,
     })

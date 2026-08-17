@@ -131,6 +131,8 @@ function noteAttempt(opts: {
       statusCode: opts.statusCode,
       errorCode: opts.errorCode,
       inputHash: opts.telemetry?.inputHash ?? opts.inputHash,
+      generationReason: opts.telemetry?.generationReason,
+      resultCategoryId: opts.telemetry?.resultCategoryId,
     })
   } catch (error) {
     console.warn(
@@ -309,6 +311,8 @@ export function recordDirectDeepSeekObservation(opts: {
   attempt?: number
   retryCount?: number
   inputHash?: string
+  generationReason?: string
+  resultCategoryId?: string
 }): void {
   const model = getDeepSeekModel(opts.model)
   const usage =
@@ -333,6 +337,8 @@ export function recordDirectDeepSeekObservation(opts: {
       statusCode: opts.statusCode ?? parseDeepSeekHttpStatus(opts.errorMessage || ''),
       errorCode,
       inputHash: opts.inputHash,
+      generationReason: opts.generationReason,
+      resultCategoryId: opts.resultCategoryId,
     })
   } catch (error) {
     console.warn(

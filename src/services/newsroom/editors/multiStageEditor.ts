@@ -15,6 +15,7 @@ import { quickFactCheck } from './stage2_factChecker'
 import { classifyArticle } from './stage3_categoryEditor'
 import { gateKeep } from './stage4_gateKeeper'
 import type { AiRewriteResult } from '@/services/aiNewsEditor'
+import type { GenerationReason } from '@/lib/ai/usage/generationReason'
 
 export interface MultiStageInput {
   sourceLabel: string
@@ -31,6 +32,7 @@ export interface MultiStageInput {
   /** Yeniden yazım: gate nedenleri */
   revisionHints?: string[]
   previousDraft?: { title: string; spot: string; content: string }
+  generationReason?: GenerationReason
 }
 
 export interface MultiStageResult extends AiRewriteResult {
@@ -63,6 +65,7 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     model: input.writerModel,
     revisionHints: input.revisionHints,
     previousDraft: input.previousDraft,
+    generationReason: input.generationReason,
   })
 
   // ── Stage 2: Fact Checker ────────────────────────────────────────────────────

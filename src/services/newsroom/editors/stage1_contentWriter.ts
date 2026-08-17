@@ -8,6 +8,9 @@
 
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { countPlainWords, isNewsBodyTooShort, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
+import { inputCharLimit, outputTokenLimit } from '@/lib/ai/usage/tokenBudget'
+import type { GenerationReason } from '@/lib/ai/usage/generationReason'
+import { runStage1Shadow } from '@/lib/ai/stage1Shadow'
 
 export interface WrittenArticle {
   title: string
@@ -31,6 +34,7 @@ interface WriterInput {
   /** Gate / QC notları — yeniden yazımda düzeltilecek noktalar */
   revisionHints?: string[]
   previousDraft?: { title: string; spot: string; content: string }
+  generationReason?: GenerationReason
 }
 
 /** Ortak güvenlik — persona ile birleşir, makale şişirme YOK */
@@ -92,7 +96,7 @@ ${prev ? `Önceki başlık: ${prev.title}\nÖnceki spot: ${prev.spot.slice(0, 40
 Başlık: ${input.originalTitle}
 Özet: ${input.originalSummary || ''}
 İçerik:
-${content.slice(0, 6000)}
+${content.slice(0, inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000))}
 ${revisionBlock}
 GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
 content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
@@ -130,6 +134,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
 
   // 50s timeout: stage1 × 2 (incomplete retry) + stage3 = ~130s per article, well under 200s budget
   const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 50_000)
+  const maxTokens = outputTokenLimit('AI_STAGE1_MAX_OUTPUT_TOKENS', 3500)
+  const generationReason: GenerationReason = input.generationReason ?? 'initial'
 
   try {
     let raw: string
@@ -138,7 +144,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         model,
         messages,
         temperature: 0.4,
-        maxTokens: 3500,
+        maxTokens,
         timeoutMs,
         disableThinking: true,
         jsonMode: true,
@@ -147,6 +153,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
           operation: 'generate_article',
           promptVersion: 'stage1-writer:v1',
           attempt: 1,
+          generationReason,
         },
       })
     } catch (firstErr) {
@@ -161,7 +168,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         model,
         messages,
         temperature: 0.4,
-        maxTokens: 3500,
+        maxTokens,
         timeoutMs,
         disableThinking: true,
         jsonMode: true,
@@ -171,6 +178,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
           promptVersion: 'stage1-writer:v1',
           attempt: 2,
           retryCount: 1,
+          generationReason: 'provider_retry',
         },
       })
     }
@@ -228,6 +236,7 @@ export async function writeArticle(input: WriterInput): Promise<WrittenArticle> 
     console.warn('[stage1] yarım/kısa çıktı — tamamlamak için yeniden yazılıyor')
     const repaired = await callDeepSeek({
       ...input,
+      generationReason: 'continuation',
       revisionHints: [
         ...(input.revisionHints ?? []),
         'Önceki çıktı YARIM KESİLMİŞ — tüm alanları (title, spot, summary, content) eksiksiz tamamla',
@@ -249,6 +258,18 @@ export async function writeArticle(input: WriterInput): Promise<WrittenArticle> 
 
   if (written) {
     console.log(`[stage1] DeepSeek başarılı: "${written.title.slice(0, 60)}"`)
+    void runStage1Shadow({
+      messages: [
+        {
+          role: 'system',
+          content: input.systemPromptOverride?.trim()
+            ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
+            : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`,
+        },
+        { role: 'user', content: buildPrompt(input) },
+      ],
+      cohortKey: input.originalTitle,
+    }).catch(() => undefined)
     return written
   }
 

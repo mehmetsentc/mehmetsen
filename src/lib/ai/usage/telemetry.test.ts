@@ -22,4 +22,15 @@ describe('AI usage telemetry kill switch', () => {
       })
     ).not.toThrow()
   })
+
+  it('never throws when recording usage', () => {
+    expect(() =>
+      recordAiRequestUsage({
+        success: true,
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        generationReason: 'initial',
+      })
+    ).not.toThrow()
+  })
 })
