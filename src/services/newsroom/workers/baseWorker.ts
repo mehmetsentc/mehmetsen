@@ -14,6 +14,7 @@ import {
   upsertSourceFingerprint,
 } from '@/services/newsroom/detection/sourceFingerprint'
 import { enqueueNewsItem } from '@/services/newsroom/queue/newsQueueService'
+import { isEnqueueSkipId } from '@/services/newsroom/queue/queueQualityCompare'
 import { DEFAULT_RSS_MAX_AGE_MS } from '@/services/newsroom/queue/freshness'
 import type { EditorId, NewsroomArticleInput, NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
@@ -178,7 +179,7 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
       // ────────────────────────────────────────────────────────────────────
 
       try {
-        await enqueueNewsItem(db, {
+        const queuedId = await enqueueNewsItem(db, {
           workerId: options.workerId,
           changeType: change.type,
           input,
@@ -187,7 +188,11 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
           existingNewsId: change.existingNewsId,
         })
         await upsertSourceFingerprint(db, source.id, change.fingerprint)
-        result.itemsNew += 1
+        if (isEnqueueSkipId(queuedId)) {
+          result.itemsSkipped += 1
+        } else {
+          result.itemsNew += 1
+        }
       } catch (fsErr) {
         const code = (fsErr as { code?: number }).code
         const msg = `[${options.workerId}:${source.id}] enqueue failed${code === 8 ? ' (RESOURCE_EXHAUSTED)' : ''}: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`

@@ -1,6 +1,7 @@
 /**
  * Newsroom pipeline: source → extract → AI rewrite → fact-check → dedupe → category/geo → AUTO publish.
- * newsDrafts when confidence below threshold, moderation review, DRAFT_ONLY persona, or hard failures.
+ * newsDrafts when confidence below threshold, moderation review, or DRAFT_ONLY persona.
+ * Thin / incomplete / badly fact-checked copy is skipped (deleted), not drafted.
  *
  * EXTRACTION STAGE (new):
  *   When baseWorker queues items with thin RSS content (<500 chars),
@@ -75,6 +76,10 @@ import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { isNewsBodyTooShort, countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
+import {
+  qualityDiscardReason,
+  qualityDiscardSkipReason,
+} from '@/services/newsroom/pipelineQualityDiscard'
 import { routeAiEditor, authorFieldsFromEditor, aiEditorForcesDraft } from '@/lib/ai/editorial/editorRouter'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
@@ -1491,7 +1496,7 @@ export async function processNewsroomArticle(
     const bodyTooShort = isNewsBodyTooShort(rewritten.description || '')
     if (bodyTooShort) {
       console.warn(
-        `[pipeline] short body (${countPlainWords(rewritten.description)} < ${MIN_NEWS_BODY_WORDS}) — forcing draft: ${workingInput.sourceUrl?.slice(0, 80)}`
+        `[pipeline] short body (${countPlainWords(rewritten.description)} < ${MIN_NEWS_BODY_WORDS}): ${workingInput.sourceUrl?.slice(0, 80)}`
       )
     }
 
@@ -1537,6 +1542,20 @@ export async function processNewsroomArticle(
       )
     }
 
+    // Worthless copy → skip (delete from queue). Do not park in Onay Bekliyor.
+    const discardReason = qualityDiscardReason({
+      bodyTooShort,
+      incompleteText,
+      factCheckFailedBadly,
+    })
+    if (discardReason) {
+      const skipReason = qualityDiscardSkipReason(discardReason)
+      console.warn(
+        `[pipeline] quality discard (${skipReason}): ${workingInput.sourceUrl?.slice(0, 80)}`
+      )
+      return { outcome: 'skipped', skipReason }
+    }
+
     // AUTO_PUBLISH / REQUIRES_APPROVAL: kalite kapısını geçerse yayın.
     // Yalnızca DRAFT_ONLY persona veya düşük güven / gate / moderasyon / chief editor → taslak.
     // NEWSROOM_AUTO_PUBLISH_ENABLED=false ise hiçbir şey otomatik yayınlanmaz.
@@ -1546,18 +1565,9 @@ export async function processNewsroomArticle(
       gateDraft ||
       isFallbackContent ||
       factCheck.confidenceScore < confidenceThreshold ||
-      factCheckFailedBadly ||
       moderation.decision === 'review' ||
       moderation.decision !== 'approve' ||
-      incompleteText ||
-      bodyTooShort ||
       personaRequiresApproval
-
-    if (incompleteText) {
-      console.warn(
-        `[pipeline] incomplete text detected — forcing draft: ${workingInput.sourceUrl?.slice(0, 80)}`
-      )
-    }
 
     // Estimate reading time from AI-written content
     const readingWords = (rewritten.description || '').trim().split(/\s+/).filter(Boolean).length
@@ -1706,9 +1716,7 @@ export async function processNewsroomArticle(
             isEditorPick: false,
             featuredAt: null,
             needsAdminReview: true,
-            moderationNote: bodyTooShort
-              ? `İnce içerik (${countPlainWords(rewritten.description)} kelime) — pipeline taslak`
-              : 'Kalite kapısı — pipeline taslak',
+            moderationNote: 'Kalite kapısı — pipeline taslak',
             contentBackfillStatus: 'drafted_by_pipeline',
             updatedAt: now,
           },

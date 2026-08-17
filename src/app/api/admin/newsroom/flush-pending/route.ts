@@ -1,20 +1,40 @@
 /**
  * POST /api/admin/newsroom/flush-pending
  *
- * Tek tuş: newsQueue'yu AI ile boşalt + pending_review draft'ları onayla.
- * Body (opsiyonel):
- *   { approveDrafts?: boolean, minConfidence?: number, maxRounds?: number }
+ * Tek tuş: önce taze RSS çek (breaking + gündem + ANKA), sonra yalnızca
+ * bu koşuda / son dakikalarda oluşan kuyruk kalemlerini AI ile yazıp yayınla.
+ * Eski 800+ backlog boşaltılmaz.
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore, Collections } from '@/lib/firebase/admin'
 import { processNewsQueue } from '@/services/newsroom/queue/queueProcessor'
-import { reprocessPendingDrafts } from '@/services/newsroom/draftReprocessService'
 import { newsDraftService } from '@/services/newsDraftService'
+import { runBreakingWorker } from '@/services/newsroom/workers/breakingWorker'
+import { runGundemWorker } from '@/services/newsroom/workers/gundemWorker'
+import { runAnkaBreakingWorker } from '@/services/newsroom/workers/ankaBreakingWorker'
+import type { NewsroomRunResult } from '@/services/newsroom/types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
+
+const RECENT_QUEUE_BUFFER_MS = 20 * 60 * 1000
+const PROCESS_DEADLINE_MS = 270_000
+
+function ingestSummary(
+  label: string,
+  result: PromiseSettledResult<NewsroomRunResult>
+): { label: string; ok: boolean; itemsNew?: number; error?: string } {
+  if (result.status === 'fulfilled') {
+    return { label, ok: true, itemsNew: result.value.itemsNew }
+  }
+  return {
+    label,
+    ok: false,
+    error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+  }
+}
 
 export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'news:publish')
@@ -24,15 +44,25 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as {
     approveDrafts?: boolean
-    reprocessDrafts?: boolean
-    minConfidence?: number
     maxRounds?: number
   }
 
   const approveDrafts = body.approveDrafts !== false
-  const reprocessDrafts = body.reprocessDrafts !== false
-  const minConfidence = typeof body.minConfidence === 'number' ? body.minConfidence : 0
-  const maxRounds = Math.max(1, Math.min(25, body.maxRounds ?? 15))
+  const maxRounds = Math.max(1, Math.min(12, body.maxRounds ?? 8))
+  const runStartedAt = Date.now()
+  const minCreatedAt = runStartedAt - RECENT_QUEUE_BUFFER_MS
+
+  const ingestSettled = await Promise.allSettled([
+    runBreakingWorker(),
+    runGundemWorker(),
+    runAnkaBreakingWorker(),
+  ])
+  const ingest = [
+    ingestSummary('breaking', ingestSettled[0]!),
+    ingestSummary('gundem', ingestSettled[1]!),
+    ingestSummary('anka-breaking', ingestSettled[2]!),
+  ]
+  const ingestNew = ingest.reduce((sum, row) => sum + (row.itemsNew ?? 0), 0)
 
   const db = getAdminFirestore()
   const queueStats = {
@@ -41,18 +71,16 @@ export async function POST(request: Request) {
     drafted: 0,
     skipped: 0,
     failed: 0,
-    remaining: 0,
+    remainingRecent: 0,
   }
 
   for (let i = 0; i < maxRounds; i++) {
-    const pendingSnap = await db
-      .collection(Collections.NEWS_QUEUE)
-      .where('status', '==', 'pending')
-      .limit(1)
-      .get()
-    if (pendingSnap.empty) break
+    if (Date.now() - runStartedAt > PROCESS_DEADLINE_MS) break
 
-    const result = await processNewsQueue(db, 40, { skipFreshnessCheck: true })
+    const result = await processNewsQueue(db, 40, {
+      skipFreshnessCheck: false,
+      minCreatedAt,
+    })
     queueStats.rounds += 1
     queueStats.published += result.published
     queueStats.drafted += result.drafted
@@ -65,14 +93,11 @@ export async function POST(request: Request) {
   const remainingSnap = await db
     .collection(Collections.NEWS_QUEUE)
     .where('status', '==', 'pending')
-    .limit(500)
+    .where('createdAt', '>=', minCreatedAt)
+    .limit(50)
     .get()
-  queueStats.remaining = remainingSnap.size
-
-  let reprocess: Awaited<ReturnType<typeof reprocessPendingDrafts>> | null = null
-  if (reprocessDrafts) {
-    reprocess = await reprocessPendingDrafts()
-  }
+    .catch(() => null)
+  queueStats.remainingRecent = remainingSnap?.size ?? 0
 
   const draftApprove = { approved: 0, skipped: 0, errors: [] as string[], total: 0 }
   if (approveDrafts) {
@@ -80,19 +105,19 @@ export async function POST(request: Request) {
       .collection(Collections.NEWS_DRAFTS)
       .where('draftStatus', '==', 'pending_review')
       .orderBy('createdAt', 'desc')
-      .limit(500)
+      .limit(80)
       .get()
       .catch(async () =>
         db
           .collection(Collections.NEWS_DRAFTS)
           .where('draftStatus', '==', 'pending_review')
-          .limit(500)
+          .limit(80)
           .get()
       )
 
     const docs = snap.docs.filter((d) => {
-      const conf = (d.data() as { confidenceScore?: number }).confidenceScore ?? 100
-      return conf >= minConfidence
+      const createdAt = (d.data() as { createdAt?: number }).createdAt ?? 0
+      return createdAt >= minCreatedAt
     })
     draftApprove.total = docs.length
 
@@ -122,17 +147,14 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
+    ingest,
+    ingestNew,
     queue: queueStats,
-    reprocess,
     drafts: draftApprove,
     message: [
-      `Kuyruk: ${queueStats.published} yayın, ${queueStats.drafted} taslak, kalan ${queueStats.remaining}`,
-      reprocess
-        ? `AI yeniden: ${reprocess.published} yayın, ${reprocess.stillDraft} hâlâ taslak`
-        : null,
-      approveDrafts
-        ? `Toplu onay: ${draftApprove.approved}/${draftApprove.total}`
-        : null,
+      `Kaynak: ${ingestNew} yeni haber`,
+      `Kuyruk: ${queueStats.published} yayın, ${queueStats.drafted} taslak`,
+      approveDrafts ? `Onay: ${draftApprove.approved}/${draftApprove.total}` : null,
     ]
       .filter(Boolean)
       .join(' · '),

@@ -6,7 +6,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { createDuplicateNewsStub, findStoryLibraryMatchQuick } from '@/services/newsroom/dedupe/storyLibraryService'
 import type { QueueDuplicateHit } from '@/services/newsroom/queue/queueDuplicateCheck'
 import { findQueuePeerDuplicate } from '@/services/newsroom/queue/queueDuplicateSweep'
-import { scoreFromArticleInput } from '@/services/newsroom/queue/queueQualityCompare'
+import { scoreFromArticleInput, shouldSkipThinEnqueue } from '@/services/newsroom/queue/queueQualityCompare'
 import type { NewsQueueDocument, QueueEnqueueInput } from '@/services/newsroom/queue/types'
 import { staleQueueReason } from '@/services/newsroom/queue/freshness'
 
@@ -53,6 +53,12 @@ export async function enqueueNewsItem(
   }
 
   const qualityScore = scoreFromArticleInput(item.input)
+  if (shouldSkipThinEnqueue(item.input)) {
+    console.log(
+      `[enqueueNewsItem] thin skip q=${qualityScore} — ${(item.input.originalTitle ?? '').slice(0, 80)}`
+    )
+    return `thin-skip-${item.fingerprintHash}`
+  }
 
   // Near-duplicate already in queue (different fingerprint / cross-source)
   let peerFlags: Partial<NewsQueueDocument> = {}
@@ -106,24 +112,12 @@ export async function enqueueNewsItem(
           peerQualityScore: peer.peerQualityScore,
         }
       } else if (peer.needsReview) {
-        peerFlags = {
-          queueDuplicateSuspect: true,
-          queueDuplicateOf: peer.peerQueueId,
-          queueDuplicateRole: 'review',
-          queueDuplicateSimilarity: peer.similarity,
-          qualityScore,
-          peerQualityScore: peer.peerQualityScore,
-        }
-        try {
-          await queueCollection(db).doc(peer.peerQueueId).update({
-            queueDuplicateSuspect: true,
-            queueDuplicateRole: 'review',
-            queueDuplicateSimilarity: peer.similarity,
-            updatedAt: now,
-          })
-        } catch {
-          /* non-critical */
-        }
+        // Keep queue clean: on uncertain duplicate, drop the incoming item.
+        console.log(
+          `[enqueueNewsItem] queuePeer review skip → ${peer.peerQueueId}` +
+            ` (q=${qualityScore}~${peer.peerQualityScore})`
+        )
+        return `peer-skip-${item.fingerprintHash}`
       }
     }
   } catch (err) {
@@ -222,9 +216,11 @@ export async function releaseQueueClaim(
  */
 export async function claimPendingQueueItems(
   db: Firestore,
-  limit: number
+  limit: number,
+  options: { minCreatedAt?: number } = {}
 ): Promise<Array<{ id: string; data: NewsQueueDocument }>> {
   const now = Date.now()
+  const minCreatedAt = options.minCreatedAt
   const claimed: Array<{ id: string; data: NewsQueueDocument }> = []
   const owner = leaseOwnerId()
   const leaseExpiresAt = now + DEFAULT_LEASE_MS
@@ -352,9 +348,14 @@ export async function claimPendingQueueItems(
       // Next page: older than the oldest doc in this newest-first page
       cursor = docs[docs.length - 1]!
 
+      let hitAgeFloor = false
       for (const doc of docs) {
         if (claimed.length >= limit) break
         const data = doc.data() as NewsQueueDocument
+        if (minCreatedAt && (data.createdAt ?? 0) < minCreatedAt) {
+          hitAgeFloor = true
+          break
+        }
         if ((data.scheduledAt ?? 0) > now || data.attempts >= data.maxAttempts) continue
 
         const stale = staleQueueReason(data)
@@ -370,7 +371,7 @@ export async function claimPendingQueueItems(
         await tryClaimDoc(status, doc, data)
       }
 
-      if (exhausted) break
+      if (hitAgeFloor || exhausted) break
     }
   }
 

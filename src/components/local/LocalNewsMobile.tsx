@@ -71,15 +71,10 @@ export function LocalNewsMobile({ state }: LocalNewsMobileProps) {
         </p>
       </header>
 
-      {/* Şehre özel etkinlik / sinema şeritleri — event yoksa strip null döner */}
+      {/* Şehre özel etkinlik şeridi — event yoksa strip null döner. Sinema yalnızca city tenant. */}
       {city ? (
         <>
           <LocalCityEventsStrip citySlug={city.slug} cityName={city.name} />
-          <LocalCityEventsStrip
-            citySlug={city.slug}
-            cityName={city.name}
-            filter="cinema"
-          />
           <div className="px-3">
             {!showingGeneralFallback ? (
               <LocalFeaturedCarousel posts={posts} citySlug={city.slug} priority />

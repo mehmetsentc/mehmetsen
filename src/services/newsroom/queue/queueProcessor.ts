@@ -1,18 +1,19 @@
 /**
- * Process pending newsQueue items — pipeline → publish or newsDrafts.
+ * Process pending newsQueue items — pipeline → publish, skip junk, or newsDrafts.
  * Confident AI publish → live + needsReview (CMS İnceleme).
- * Hold / quality fail → newsDrafts pending_review (Onay Bekliyor).
- * Kill switch: NEWSROOM_AUTO_PUBLISH_ENABLED=0 → all drafts.
+ * Thin / duplicate / incomplete → skipped (queue stays empty).
+ * Hold / moderation / DRAFT_ONLY persona → newsDrafts pending_review.
+ * Kill switch: NEWSROOM_AUTO_PUBLISH_ENABLED=0 → remaining items → drafts.
  *
  * Claim order: newest-first (createdAt DESC / LIFO) — see claimPendingQueueItems.
  * Cron + CMS "Kuyruğu hızlı işle" share this path; batch/concurrency unchanged.
  *
  * Throughput tuning (env vars — override for emergency speed-up):
- *   NEWSROOM_QUEUE_BATCH_SIZE — items claimed per run (default 20)
- *   NEWSROOM_QUEUE_CONCURRENCY — parallel pipeline jobs (default 2)
+ *   NEWSROOM_QUEUE_BATCH_SIZE — items claimed per run (default 30)
+ *   NEWSROOM_QUEUE_CONCURRENCY — parallel pipeline jobs (default 6)
  *   NEWSROOM_QUEUE_BUDGET_MS  — wall-clock budget in ms (default 250000)
  *
- * Cron schedule: every 15 min in vercel.json (~96 runs/day vs every 5 min at 288).
+ * Cron schedule: every 2 min in vercel.json; ingest crons also drain via `after()`.
  */
 import type { Firestore } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -32,12 +33,14 @@ import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import { NEWSROOM_AUTO_PUBLISH_ENABLED } from '@/services/newsroom/config'
 
-const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 20)
-const CONCURRENCY = Math.max(1, Math.min(12, Number(process.env.NEWSROOM_QUEUE_CONCURRENCY ?? 2)))
+const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 30)
+const CONCURRENCY = Math.max(1, Math.min(12, Number(process.env.NEWSROOM_QUEUE_CONCURRENCY ?? 6)))
 const WALL_CLOCK_BUDGET_MS = Number(process.env.NEWSROOM_QUEUE_BUDGET_MS ?? 250_000)
 
 export interface ProcessQueueOptions {
   skipFreshnessCheck?: boolean
+  /** Only claim queue rows created at/after this timestamp (newest-first still). */
+  minCreatedAt?: number
 }
 
 export async function processNewsQueue(
@@ -67,7 +70,9 @@ export async function processNewsQueue(
 
   let batch: Awaited<ReturnType<typeof claimPendingQueueItems>>
   try {
-    batch = await claimPendingQueueItems(db, batchSize)
+    batch = await claimPendingQueueItems(db, batchSize, {
+      minCreatedAt: options.minCreatedAt,
+    })
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('[processNewsQueue] claimPendingQueueItems failed:', msg)
@@ -127,32 +132,20 @@ export async function processNewsQueue(
         } else if (duplicateHit.peerQueueId && duplicateHit.needsReview && !duplicateHit.dropSelf) {
           const mine = duplicateHit.qualityScore ?? 0
           const theirs = duplicateHit.peerQualityScore ?? 0
-          try {
-            const { flagQueueDuplicateSuspect } = await import(
-              '@/services/newsroom/queue/queueDuplicateCheck'
-            )
-            await flagQueueDuplicateSuspect(db, job.id, {
-              ...duplicateHit,
-              dropSelf: mine < theirs,
-              dropPeer: mine > theirs,
-              needsReview: true,
-            })
-            await flagQueueDuplicateSuspect(db, duplicateHit.peerQueueId, {
-              ...duplicateHit,
-              dropSelf: mine > theirs,
-              dropPeer: mine < theirs,
-              needsReview: true,
-            })
-          } catch {
-            /* non-critical */
-          }
-          // Borderline: only auto-skip when clearly weaker — protect unique good news
-          if (mine + 2 < theirs) {
-            await markQueueSkipped(db, job.id, `${duplicateHit.reason}:review_weaker`)
+          if (mine <= theirs) {
+            await markQueueSkipped(db, job.id, `${duplicateHit.reason}:duplicate_weaker`)
             stats.skipped += 1
             return
           }
-          // Stronger or near-tie → continue to AI / editor path
+          try {
+            await markQueueSkipped(
+              db,
+              duplicateHit.peerQueueId,
+              `queuePeerDuplicate:weaker:${(duplicateHit.similarity ?? 0).toFixed(2)}`
+            )
+          } catch {
+            /* non-critical */
+          }
         } else if (duplicateHit.peerQueueId && duplicateHit.dropSelf) {
           await markQueueSkipped(db, job.id, duplicateHit.reason)
           stats.skipped += 1

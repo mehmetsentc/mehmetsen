@@ -166,9 +166,13 @@ const getCityCinemaEventsCached = unstable_cache(
   { revalidate: 120, tags: ['city-events'] }
 )
 
-/** Today + near-term cinema rows for city Ana Feed (Paribu / Sinema tag). */
+/** Today + near-term cinema rows for city Ana Feed (Paribu / Sinema tag).
+ *  Cinema strip is Çanakkale-tenant only — national /yerel pages do not show it.
+ */
 export async function getCityCinemaEventsServer(citySlug: string): Promise<NaEvent[]> {
-  return getCityCinemaEventsCached(citySlug.trim().toLowerCase())
+  const slug = citySlug.trim().toLowerCase()
+  if (slug !== 'canakkale') return []
+  return getCityCinemaEventsCached(slug)
 }
 
 export async function getUpcomingEventsServer(limitCount = 12): Promise<NaEvent[]> {

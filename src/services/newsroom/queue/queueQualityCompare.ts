@@ -28,6 +28,33 @@ const BORDERLINE_GAP = 8
 /** Auto-drop only when quality gap is clear */
 export const AUTO_DROP_QUALITY_GAP = 12
 
+/** Below this, already-extracted copy is never enqueued (thin / worthless). */
+export const MIN_ENQUEUE_QUALITY = Number(process.env.NEWSROOM_MIN_ENQUEUE_QUALITY ?? 35)
+
+/** Pipeline fetches the source page when RSS/scraper body is shorter than this. */
+export const EXTRACTABLE_BODY_MAX = 500
+
+export function isTooThinToEnqueue(score: number): boolean {
+  return score < MIN_ENQUEUE_QUALITY
+}
+
+/**
+ * Drop junk at ingest only when extraction cannot save it:
+ * URL-only / short RSS still goes to the pipeline (full-page fetch).
+ */
+export function shouldSkipThinEnqueue(input: NewsroomArticleInput): boolean {
+  const score = scoreFromArticleInput(input)
+  if (!isTooThinToEnqueue(score)) return false
+  const bodyLen = [input.originalSummary, input.originalContent].filter(Boolean).join(' ').trim().length
+  const hasUrl = Boolean(input.sourceUrl?.trim())
+  if (hasUrl && bodyLen < EXTRACTABLE_BODY_MAX) return false
+  return true
+}
+
+export function isEnqueueSkipId(id: string): boolean {
+  return /^(thin-skip-|peer-skip-|library-skip-)/.test(id)
+}
+
 function bodyText(input: QueueQualityInput): string {
   return [input.summary, input.content].filter(Boolean).join(' ').trim()
 }

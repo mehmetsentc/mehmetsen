@@ -47,7 +47,7 @@ type CronTab = 'queue' | 'jobs'
 
 const JOBS = [
   { id: 'news-fetch', label: 'Haber Çekme', desc: 'Breaking + gündem RSS → kuyruk işle', schedule: 'Manuel / 15 dk', icon: '📰' },
-  { id: 'process-queue', label: 'Kuyruk İşle', desc: 'Bekleyen haberleri AI ile yazıp yayınla', schedule: 'Her 15 dk', icon: '⚙️' },
+  { id: 'process-queue', label: 'Kuyruk İşle', desc: 'Bekleyen haberleri AI ile yazıp yayınla', schedule: 'Her 2 dk + ingest sonrası', icon: '⚙️' },
   { id: 'draft-reprocess', label: 'Taslak AI Yeniden', desc: 'Onay kuyruğundaki taslakları yeniden yaz/yayınla', schedule: 'Her 10 dk', icon: '✍️' },
   { id: 'breaking', label: 'Son Dakika RSS', desc: 'Breaking kaynaklarını çeker', schedule: 'Her 15 dk', icon: '⚡' },
   { id: 'gundem', label: 'Gündem RSS', desc: 'Ulusal gündem kaynakları', schedule: 'Her 20 dk', icon: '🗞️' },
@@ -250,7 +250,7 @@ export default function CronMonitorPage() {
   const flushAllPending = async () => {
     if (flushing) return
     const ok = window.confirm(
-      'Tüm bekleyen kuyruk işlenecek, taslaklar AI ile yeniden denenecek ve kalan onay kuyruğu yayınlanacak.\n\nDevam?'
+      'En yeni haberler şimdi kaynaklardan çekilecek, AI ile yazılıp yayına alınacak.\n\nEski kuyruk (bekleyen yüzlerce haber) boşaltılmaz — yalnızca taze haberler yayınlanır.\n\nDevam?'
     )
     if (!ok) return
     setFlushing(true)
@@ -264,14 +264,12 @@ export default function CronMonitorPage() {
         },
         body: JSON.stringify({
           approveDrafts: true,
-          reprocessDrafts: true,
-          minConfidence: 0,
-          maxRounds: 15,
+          maxRounds: 8,
         }),
       })
       const data = await parseApiResponse<{ ok?: boolean; message?: string; error?: string }>(res)
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      toast.success(data.message || 'Bekleyenler işlendi')
+      toast.success(data.message || 'En yeni haberler yayınlandı')
       await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Toplu işlem başarısız')
@@ -585,7 +583,7 @@ export default function CronMonitorPage() {
             className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60 sm:w-auto"
           >
             {flushing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-            Tek tuş: Tüm bekleyenleri yayınla
+            Tek tuş: En yeni haberleri yayınla
           </button>
           {queuePending != null && (
             <span className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-amber-100 px-3 py-2 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 sm:w-auto">
@@ -839,7 +837,7 @@ export default function CronMonitorPage() {
                     ? 'İşaretli tekrar yok — önce tarama çalıştırın'
                     : selectedQueueSource
                       ? `"${selectedQueueSource}" kaynağında bekleyen haber yok`
-                      : 'Kuyrukta bekleyen haber yok'}
+                      : 'Kuyruk temiz — yeni haber gelince AI hemen işler'}
                 </div>
               ) : (
                 <>

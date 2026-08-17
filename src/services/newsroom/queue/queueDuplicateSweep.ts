@@ -200,14 +200,24 @@ export function decidePeerQuality(
     }
   }
 
-  // Borderline / tie → admin AI review, do not auto-delete unique-looking items
+  // Borderline / tie — still drop one copy so the queue never holds duplicates.
+  if (cmp.scoreA > cmp.scoreB) {
+    return {
+      dropSelf: false,
+      dropPeer: true,
+      needsReview: false,
+      qualityScore: cmp.scoreA,
+      peerQualityScore: cmp.scoreB,
+      decisionReason: `${cmp.reason}:keep_better`,
+    }
+  }
   return {
-    dropSelf: false,
+    dropSelf: true,
     dropPeer: false,
-    needsReview: true,
+    needsReview: false,
     qualityScore: cmp.scoreA,
     peerQualityScore: cmp.scoreB,
-    decisionReason: cmp.reason,
+    decisionReason: `${cmp.reason}:drop_incoming`,
   }
 }
 
