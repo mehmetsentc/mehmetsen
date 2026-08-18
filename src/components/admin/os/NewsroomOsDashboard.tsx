@@ -20,6 +20,9 @@ import {
 } from 'lucide-react'
 import { AdminStatusBadge } from '@/components/admin/AdminStatusBadge'
 import { TurkeySmmMap } from '@/components/admin/os/TurkeySmmMap'
+import { WeatherMini } from '@/components/widgets/WeatherMini'
+import { FootballWidget } from '@/components/football/FootballWidget'
+import { MarketTicker } from '@/components/home/MarketTicker'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { cn } from '@/lib/utils'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -461,7 +464,14 @@ export function NewsroomOsDashboard({
         </Widget>
       </section>
 
-      {/* Row 4 — Org | Tasks | Health | Quick */}
+      {/* Row 4 — Süper Lig */}
+      <section className="grid gap-4 xl:grid-cols-12">
+        <div className="xl:col-span-6">
+          <FootballWidget />
+        </div>
+      </section>
+
+      {/* Row 5 — Org | Tasks | Health | Quick */}
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <Widget title="AI Organizasyon Şeması" href="/admin/ai-org" hrefLabel="Tam şema →">
           <div className="space-y-3 p-4">
@@ -588,6 +598,16 @@ export function NewsroomOsDashboard({
               )
             })}
           </ul>
+        </Widget>
+
+        <Widget title="Piyasalar" href="/admin/analytics">
+          <MarketTicker />
+        </Widget>
+
+        <Widget title="Hava Durumu">
+          <div className="min-h-[120px] p-3">
+            <WeatherMini />
+          </div>
         </Widget>
 
         <Widget title="Hızlı İşlemler">

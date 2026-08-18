@@ -6,6 +6,7 @@ import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
 import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
 import { WeatherMini } from '@/components/widgets/WeatherMini'
+import { FootballWidget } from '@/components/football/FootballWidget'
 import type { NewsItem } from '@/types/newsItem'
 
 interface DesktopRightRailProps {
@@ -53,6 +54,8 @@ export function DesktopRightRail({ mostRead, className }: DesktopRightRailProps)
         <div className="min-h-[100px]">
           <WeatherMini />
         </div>
+
+        <FootballWidget />
       </div>
     </aside>
   )
