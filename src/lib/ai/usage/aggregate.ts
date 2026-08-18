@@ -635,6 +635,7 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'retryTriggers',
   'retrySuppressedReason',
   'stage3ReuseReason',
+  'stage1PromptPacking',
   'outputWordCount',
   'gateDecision',
   'publishScore',

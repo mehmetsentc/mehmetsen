@@ -32,6 +32,8 @@ export type AiUsageCostAuditFields = {
   retrySuppressedReason?: string
   /** Closed enum — why Stage3 classification was reused instead of a DeepSeek call. */
   stage3ReuseReason?: string
+  /** Closed enum — Stage1 user prompt packing. Never prompt or article text. */
+  stage1PromptPacking?: string
   outputWordCount?: number
   gateDecision?: string
   publishScore?: number

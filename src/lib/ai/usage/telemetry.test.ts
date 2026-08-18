@@ -47,6 +47,20 @@ describe('AI usage telemetry kill switch', () => {
     expect(JSON.stringify(doc)).not.toMatch(/Belediye açıkladı/)
   })
 
+  it('persists closed stage1PromptPacking without article text', () => {
+    const doc = buildAiUsageEventForTest({
+      success: true,
+      agentName: 'stage1_writer',
+      operation: 'generate_article',
+      promptVersion: 'stage1-writer:source_once_v1',
+      stage1PromptPacking: 'source_once',
+      generationReason: 'initial',
+    })
+    expect(doc.stage1PromptPacking).toBe('source_once')
+    expect(JSON.stringify(doc)).not.toMatch(/KAYNAK VERİSİ/)
+    expect(JSON.stringify(doc)).not.toMatch(/İçerik:/)
+  })
+
   it('persists gate metrics without article text', () => {
     const doc = buildAiUsageEventForTest({
       success: true,

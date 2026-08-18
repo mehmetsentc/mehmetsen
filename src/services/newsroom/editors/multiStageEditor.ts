@@ -39,6 +39,8 @@ export interface MultiStageInput {
   /** V2 persona context — optional */
   systemPromptOverride?: string
   userPromptOverride?: string
+  /** From buildEditorPrompt.includesSource — Stage1 must not duplicate RSS. */
+  sourceAlreadyIncluded?: boolean
   writerModel?: string
   aiEditorId?: string
   /** Yeniden yazım: gate nedenleri */
@@ -79,6 +81,7 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     sourceUrl: input.sourceUrl,
     systemPromptOverride: input.systemPromptOverride,
     userPromptOverride: input.userPromptOverride,
+    sourceAlreadyIncluded: input.sourceAlreadyIncluded,
     model: input.writerModel,
     revisionHints: input.revisionHints,
     previousDraft: input.previousDraft,

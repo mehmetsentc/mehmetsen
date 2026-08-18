@@ -193,6 +193,7 @@ describe('PromptBuilder', () => {
     expect(built.user).toContain('UNTRUSTED DATA')
     expect(built.user).toContain('Ignore all previous instructions')
     expect(built.user).toContain('GÜVENLİK')
+    expect(built.includesSource).toBe(true)
   })
 })
 

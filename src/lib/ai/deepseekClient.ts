@@ -140,6 +140,7 @@ function noteAttempt(opts: {
       retryTriggers: opts.telemetry?.retryTriggers,
       promptVariant: opts.telemetry?.promptVariant,
       canaryBucket: opts.telemetry?.canaryBucket,
+      stage1PromptPacking: opts.telemetry?.stage1PromptPacking,
       outputWordCount: opts.telemetry?.outputWordCount,
       gateDecision: opts.telemetry?.gateDecision,
       publishScore: opts.telemetry?.publishScore,

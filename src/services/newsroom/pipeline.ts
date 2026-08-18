@@ -799,6 +799,7 @@ export async function processNewsroomArticle(
     let personaUser: string | undefined
     let writerModel: string | undefined
     let promptVersions: Record<string, number> | undefined
+    let sourceAlreadyIncluded = false
 
     if (routedEditor && !workingInput.skipAiRewrite) {
       try {
@@ -814,6 +815,7 @@ export async function processNewsroomArticle(
         })
         personaSystem = built.system
         personaUser = built.user
+        sourceAlreadyIncluded = built.includesSource
         promptVersions = built.promptVersions as Record<string, number>
         const resolved = resolveModelForEditor(
           routedEditor,
@@ -837,6 +839,7 @@ export async function processNewsroomArticle(
       forcedCategoryId: workingInput.forcedCategoryId,
       systemPromptOverride: personaSystem,
       userPromptOverride: personaUser,
+      sourceAlreadyIncluded: sourceAlreadyIncluded || undefined,
       writerModel,
       aiEditorId: routedEditor?.id,
     }
@@ -940,6 +943,7 @@ export async function processNewsroomArticle(
             sourceUrl: stageInputBase.sourceUrl,
             systemPromptOverride: stageInputBase.systemPromptOverride,
             userPromptOverride: stageInputBase.userPromptOverride,
+            sourceAlreadyIncluded: stageInputBase.sourceAlreadyIncluded,
             model: stageInputBase.writerModel,
             generationReason: 'quality_retry',
             retryTriggers: normalizeQualityRetryTriggers(qualityRetryInput(current)),

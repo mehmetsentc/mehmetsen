@@ -41,6 +41,12 @@ export interface WriterInput {
   sourceUrl: string
   systemPromptOverride?: string
   userPromptOverride?: string
+  /**
+   * Explicit source ownership from the persona builder (pipeline).
+   * When true, userPromptOverride already carries the RSS payload — do not
+   * append a second title/URL/summary/body block. Never inferred from wording.
+   */
+  sourceAlreadyIncluded?: boolean
   model?: string
   /** Gate / QC notları — yeniden yazımda düzeltilecek noktalar */
   revisionHints?: string[]
@@ -83,35 +89,20 @@ ALANLAR:
 - seoTitle: 55-65 karakter
 - seoDescription: 145-160 karakter`
 
-function buildPrompt(input: WriterInput): string {
-  const content = input.originalContent || input.originalSummary || ''
-  const sourceNote = input.sourceUrl
-    ? `Kaynak URL: ${input.sourceUrl}`
-    : `Kaynak: ${input.sourceLabel}`
+export const STAGE1_PROMPT_PACKINGS = ['source_inline', 'source_once'] as const
+export type Stage1PromptPacking = (typeof STAGE1_PROMPT_PACKINGS)[number]
 
-  let revisionBlock = ''
-  if (input.revisionHints?.length || input.previousDraft) {
-    const hints = (input.revisionHints ?? []).map((h) => `- ${h}`).join('\n')
-    const prev = input.previousDraft
-    revisionBlock = `
+export const STAGE1_WRITER_PROMPT_VERSION = 'stage1-writer:v1'
+export const STAGE1_WRITER_PACKED_PROMPT_VERSION = 'stage1-writer:source_once_v1'
 
-YENİDEN DÜZENLEME GÖREVİ:
-Önceki taslak kalite kapısından geçmedi. Aynı olay için DAHA İYİ bir gazete haberi yaz.
-${hints ? `Düzeltilecek noktalar:\n${hints}` : ''}
-${prev ? `Önceki başlık: ${prev.title}\nÖnceki spot: ${prev.spot.slice(0, 400)}\nÖnceki gövde (özet):\n${prev.content.slice(0, 2500)}` : ''}
-- Gövdeyi en az 220 kelime yap (hedef 280-450); yarım cümle bırakma
-- Kaynakta olmayan bilgi uydurma
-- Önceki taslağın hatalarını tekrarlama
-`
+export function normalizeStage1PromptPacking(raw: unknown): Stage1PromptPacking | undefined {
+  if (typeof raw === 'string' && (STAGE1_PROMPT_PACKINGS as readonly string[]).includes(raw)) {
+    return raw as Stage1PromptPacking
   }
+  return undefined
+}
 
-  return `${sourceNote}
-Başlık: ${input.originalTitle}
-Özet: ${input.originalSummary || ''}
-İçerik:
-${content.slice(0, inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000))}
-${revisionBlock}
-GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
+const JSON_OUTPUT_CONTRACT = `GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
 content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
 JSON:
 {
@@ -122,23 +113,69 @@ JSON:
   "seoTitle": "string",
   "seoDescription": "string"
 }`
+
+function buildRevisionBlock(input: WriterInput): string {
+  if (!input.revisionHints?.length && !input.previousDraft) return ''
+  const hints = (input.revisionHints ?? []).map((h) => `- ${h}`).join('\n')
+  const prev = input.previousDraft
+  return `
+YENİDEN DÜZENLEME GÖREVİ:
+Önceki taslak kalite kapısından geçmedi. Aynı olay için DAHA İYİ bir gazete haberi yaz.
+${hints ? `Düzeltilecek noktalar:\n${hints}` : ''}
+${prev ? `Önceki başlık: ${prev.title}\nÖnceki spot: ${prev.spot.slice(0, 400)}\nÖnceki gövde (özet):\n${prev.content.slice(0, 2500)}` : ''}
+- Gövdeyi en az 220 kelime yap (hedef 280-450); yarım cümle bırakma
+- Kaynakta olmayan bilgi uydurma
+- Önceki taslağın hatalarını tekrarlama
+`
+}
+
+function buildSourceBlock(input: WriterInput): string {
+  const content = input.originalContent || input.originalSummary || ''
+  const sourceNote = input.sourceUrl
+    ? `Kaynak URL: ${input.sourceUrl}`
+    : `Kaynak: ${input.sourceLabel}`
+  return `${sourceNote}
+Başlık: ${input.originalTitle}
+Özet: ${input.originalSummary || ''}
+İçerik:
+${content.slice(0, inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000))}`
+}
+
+function buildPrompt(input: WriterInput, includeSourceBlock: boolean): string {
+  const revisionBlock = buildRevisionBlock(input)
+  if (!includeSourceBlock) {
+    return `${revisionBlock}\n${JSON_OUTPUT_CONTRACT}`.replace(/^\n+/, '')
+  }
+  return `${buildSourceBlock(input)}
+${revisionBlock}
+${JSON_OUTPUT_CONTRACT}`
 }
 
 export type Stage1WriterPromptBundle = {
   systemContent: string
   userContent: string
   sourceArticle: string
+  promptPacking: Stage1PromptPacking
+  promptVersion: string
   messages: Array<{ role: 'system' | 'user'; content: string }>
 }
 
 /** Same messages callDeepSeek sends. Hash only — never persist the strings. */
-export function buildStage1WriterPrompt(input: WriterInput): Stage1WriterPromptBundle {
+export function buildStage1WriterPrompt(
+  input: WriterInput,
+  opts?: { packSource?: boolean }
+): Stage1WriterPromptBundle {
+  const packSource = opts?.packSource !== false
+  const override = input.userPromptOverride?.trim()
+  const pack =
+    packSource && Boolean(override) && input.sourceAlreadyIncluded === true
+  const promptPacking: Stage1PromptPacking = pack ? 'source_once' : 'source_inline'
+  const promptVersion = pack ? STAGE1_WRITER_PACKED_PROMPT_VERSION : STAGE1_WRITER_PROMPT_VERSION
   const systemContent = input.systemPromptOverride?.trim()
     ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
     : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`
-  const userContent = input.userPromptOverride?.trim()
-    ? `${input.userPromptOverride.trim()}\n\n${buildPrompt(input)}`
-    : buildPrompt(input)
+  const writerTail = buildPrompt(input, !pack)
+  const userContent = override ? `${override}\n\n${writerTail}` : writerTail
   const sourceArticle = (input.originalContent || input.originalSummary || '').slice(
     0,
     inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000)
@@ -147,6 +184,8 @@ export function buildStage1WriterPrompt(input: WriterInput): Stage1WriterPromptB
     systemContent,
     userContent,
     sourceArticle,
+    promptPacking,
+    promptVersion,
     messages: [
       { role: 'system', content: systemContent },
       { role: 'user', content: userContent },
@@ -161,6 +200,7 @@ export function hashStage1WriterInput(input: WriterInput): {
   promptInstructionTokens: number
   promptOtherTokens: number
   promptTotalTokens: number
+  promptPacking: Stage1PromptPacking
 } {
   const bundle = buildStage1WriterPrompt(input)
   const promptParts = measureStage1PromptParts({
@@ -175,6 +215,7 @@ export function hashStage1WriterInput(input: WriterInput): {
     promptInstructionTokens: promptParts.instructionTokens,
     promptOtherTokens: promptParts.otherTokens,
     promptTotalTokens: promptParts.totalTokens,
+    promptPacking: bundle.promptPacking,
   }
 }
 
@@ -185,7 +226,14 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   const { deepseekChatCompletion, getDeepSeekModel } = await import('@/lib/ai/deepseekClient')
   const model = getDeepSeekModel(input.model)
 
-  const { systemContent, userContent, sourceArticle, messages } = buildStage1WriterPrompt(input)
+  const {
+    systemContent,
+    userContent,
+    sourceArticle,
+    messages,
+    promptVersion,
+    promptPacking,
+  } = buildStage1WriterPrompt(input)
 
   // 50s timeout: stage1 × 2 (incomplete retry) + stage3 = ~130s per article, well under 200s budget
   const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 50_000)
@@ -207,6 +255,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     promptSourceTokens: promptParts.sourceTokens,
     promptInstructionTokens: promptParts.instructionTokens,
     promptOtherTokens: promptParts.otherTokens,
+    promptVersion,
+    stage1PromptPacking: promptPacking,
   }
 
   try {
@@ -223,7 +273,6 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         telemetry: {
           agentName: 'stage1_writer',
           operation: 'generate_article',
-          promptVersion: 'stage1-writer:v1',
           attempt: 1,
           generationReason,
           ...promptTelemetry,
@@ -251,7 +300,6 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
         telemetry: {
           agentName: 'stage1_writer',
           operation: 'generate_article',
-          promptVersion: 'stage1-writer:v1',
           attempt: 2,
           retryCount: 1,
           generationReason: 'provider_retry',
@@ -337,26 +385,14 @@ export async function writeArticle(input: WriterInput): Promise<WrittenArticle> 
   if (written) {
     console.log(`[stage1] DeepSeek başarılı: "${written.title.slice(0, 60)}"`)
     if (generationReason === 'initial') {
-      const systemContent = input.systemPromptOverride?.trim()
-        ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
-        : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`
-      const userContent = input.userPromptOverride?.trim()
-        ? `${input.userPromptOverride.trim()}\n\n${buildPrompt(input)}`
-        : buildPrompt(input)
-      const sourceArticle = (input.originalContent || input.originalSummary || '').slice(
-        0,
-        inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000)
-      )
+      const bundle = buildStage1WriterPrompt(input)
       const promptParts = measureStage1PromptParts({
-        systemContent,
-        userContent,
-        sourceArticle,
+        systemContent: bundle.systemContent,
+        userContent: bundle.userContent,
+        sourceArticle: bundle.sourceArticle,
       })
       void runStage1Shadow({
-        messages: [
-          { role: 'system', content: systemContent },
-          { role: 'user', content: userContent },
-        ],
+        messages: bundle.messages,
         cohortKey: classifierCohortKey(),
         generationReason,
         productionInputTokens: promptParts.totalTokens,

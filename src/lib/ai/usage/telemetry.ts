@@ -116,6 +116,10 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
       const raw = input.stage3ReuseReason
       return raw === 'quality_retry' ? raw : undefined
     })(),
+    stage1PromptPacking: (() => {
+      const raw = input.stage1PromptPacking
+      return raw === 'source_once' || raw === 'source_inline' ? raw : undefined
+    })(),
     outputWordCount:
       typeof input.outputWordCount === 'number' && Number.isFinite(input.outputWordCount)
         ? Math.max(0, Math.round(input.outputWordCount))

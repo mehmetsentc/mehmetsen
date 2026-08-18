@@ -112,6 +112,21 @@ describe('Stage1 input hash for quality retry', () => {
     expect(a.inputHash).toBe(b.inputHash)
     expect(c.inputHash).not.toBe(a.inputHash)
   })
+
+  it('source-once packed quality_retry hashes stay equal for unchanged messages', () => {
+    const packed = {
+      ...source,
+      userPromptOverride: '--- KAYNAK VERİSİ ---\nkaynak gövde\n',
+      sourceAlreadyIncluded: true,
+      generationReason: 'quality_retry' as const,
+      revisionHints: ['Gövde çok kısa'],
+      previousDraft: draftA,
+    }
+    const a = hashStage1WriterInput(packed)
+    const b = hashStage1WriterInput(packed)
+    expect(a.promptPacking).toBe('source_once')
+    expect(a.inputHash).toBe(b.inputHash)
+  })
 })
 
 describe('quality rewrite loop suppression', () => {

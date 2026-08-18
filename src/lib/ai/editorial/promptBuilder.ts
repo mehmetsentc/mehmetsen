@@ -32,6 +32,11 @@ export interface BuiltPrompt {
   editorId: string
   editorVersion: number
   pastNewsCount?: number
+  /**
+   * Structural ownership: this user prompt already embeds the RSS/source block.
+   * Stage1 must not append a second copy when this is true.
+   */
+  includesSource: boolean
 }
 
 const INJECTION_GUARD = `
@@ -132,5 +137,6 @@ export async function buildEditorPrompt(input: PromptBuildInput): Promise<BuiltP
     editorId: input.editor.id,
     editorVersion: input.editor.version,
     pastNewsCount,
+    includesSource: true,
   }
 }
