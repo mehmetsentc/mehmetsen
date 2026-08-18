@@ -125,7 +125,7 @@ export async function getMessage(accessToken: string, messageId: string): Promis
   }
 }
 
-// ── Mark as read ──────────────────────────────────────────────────────────────
+// ── Label operations ──────────────────────────────────────────────────────────
 
 export async function markMessageRead(accessToken: string, messageId: string): Promise<void> {
   if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) return
@@ -133,6 +133,44 @@ export async function markMessageRead(accessToken: string, messageId: string): P
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
+  })
+}
+
+export async function markMessageUnread(accessToken: string, messageId: string): Promise<void> {
+  if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) return
+  await gmailFetch(`/messages/${encodeURIComponent(messageId)}/modify`, accessToken, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ addLabelIds: ['UNREAD'] }),
+  })
+}
+
+export async function trashMessage(accessToken: string, messageId: string): Promise<void> {
+  if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) return
+  await gmailFetch(`/messages/${encodeURIComponent(messageId)}/trash`, accessToken, {
+    method: 'POST',
+  })
+}
+
+export async function archiveMessage(accessToken: string, messageId: string): Promise<void> {
+  if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) return
+  await gmailFetch(`/messages/${encodeURIComponent(messageId)}/modify`, accessToken, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ removeLabelIds: ['INBOX'] }),
+  })
+}
+
+export async function setStarred(accessToken: string, messageId: string, starred: boolean): Promise<void> {
+  if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) return
+  await gmailFetch(`/messages/${encodeURIComponent(messageId)}/modify`, accessToken, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(
+      starred
+        ? { addLabelIds: ['STARRED'] }
+        : { removeLabelIds: ['STARRED'] }
+    ),
   })
 }
 

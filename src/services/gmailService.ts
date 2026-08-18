@@ -10,7 +10,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { encrypt, decrypt } from '@/lib/gmail/crypto'
 import { refreshAccessToken } from '@/lib/gmail/oauth'
-import { listInboxMessages, getMessage, getInboxLabelStats, markMessageRead, sendEmail, getMessageHeaders, type SendEmailParams } from '@/lib/gmail/client'
+import { listInboxMessages, getMessage, getInboxLabelStats, markMessageRead, markMessageUnread, trashMessage as clientTrash, archiveMessage as clientArchive, setStarred as clientSetStarred, sendEmail, getMessageHeaders, type SendEmailParams } from '@/lib/gmail/client'
 import { hasGmailModifyScope } from '@/lib/gmail/scopes'
 import { GmailError, normalizeGmailError } from '@/lib/gmail/errors'
 import type { GmailIntegration, GmailMessageSummary, GmailMessageDetail } from '@/lib/gmail/types'
@@ -192,4 +192,36 @@ export async function sendGmailMessage(params: {
 
 export async function getMessageHeadersById(messageId: string) {
   return withRetryOn401((token) => getMessageHeaders(token, messageId))
+}
+
+export async function markAsUnread(messageId: string): Promise<void> {
+  const integration = await getIntegration()
+  if (integration && !hasGmailModifyScope(integration.scope)) {
+    throw new GmailError('INSUFFICIENT_SCOPE', { detail: 'missing_gmail_modify' })
+  }
+  await withRetryOn401((token) => markMessageUnread(token, messageId))
+}
+
+export async function trashGmailMessage(messageId: string): Promise<void> {
+  const integration = await getIntegration()
+  if (integration && !hasGmailModifyScope(integration.scope)) {
+    throw new GmailError('INSUFFICIENT_SCOPE', { detail: 'missing_gmail_modify' })
+  }
+  await withRetryOn401((token) => clientTrash(token, messageId))
+}
+
+export async function archiveGmailMessage(messageId: string): Promise<void> {
+  const integration = await getIntegration()
+  if (integration && !hasGmailModifyScope(integration.scope)) {
+    throw new GmailError('INSUFFICIENT_SCOPE', { detail: 'missing_gmail_modify' })
+  }
+  await withRetryOn401((token) => clientArchive(token, messageId))
+}
+
+export async function setGmailStarred(messageId: string, starred: boolean): Promise<void> {
+  const integration = await getIntegration()
+  if (integration && !hasGmailModifyScope(integration.scope)) {
+    throw new GmailError('INSUFFICIENT_SCOPE', { detail: 'missing_gmail_modify' })
+  }
+  await withRetryOn401((token) => clientSetStarred(token, messageId, starred))
 }

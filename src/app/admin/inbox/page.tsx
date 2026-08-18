@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Mail, Shield, RefreshCw, Inbox, FileText, AlertCircle,
   WifiOff, LogOut, ChevronRight, Send, Reply, X, PenSquare,
+  Trash2, Archive, MailOpen, Star,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
@@ -293,13 +294,17 @@ function MessageRow({ msg, selected, onClick }: {
 // ── Message Detail ───────────────────────────────────────────────────────────
 
 function MessageDetail({
-  messageId, canCreate, fromEmail, onClose, onMarkRead, onReply,
+  messageId, canCreate, fromEmail, onClose, onMarkRead, onMarkUnread, onTrash, onArchive, onToggleStar, onReply,
 }: {
   messageId: string
   canCreate: boolean
   fromEmail: string
   onClose: () => void
   onMarkRead: (id: string) => void
+  onMarkUnread: (id: string) => void
+  onTrash: (id: string) => Promise<void>
+  onArchive: (id: string) => Promise<void>
+  onToggleStar: (id: string, starred: boolean) => Promise<void>
   onReply: (data: ComposeData) => void
 }) {
   const [msg, setMsg] = useState<GmailMessageDetail | null>(null)
@@ -307,6 +312,8 @@ function MessageDetail({
   const [converting, setConverting] = useState(false)
   const [draftId, setDraftId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [starred, setStarred] = useState(false)
+  const [actioning, setActioning] = useState<'trash' | 'archive' | 'star' | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -318,6 +325,7 @@ function MessageDetail({
       .then((d: GmailMessageDetail & { error?: string }) => {
         if (d.error) throw new Error(d.error)
         setMsg(d)
+        setStarred((d.labelIds ?? []).includes('STARRED'))
         if (d.unread) onMarkRead(messageId)
       })
       .catch(e => setError(e instanceof Error ? e.message : 'Yüklenemedi'))
@@ -348,6 +356,44 @@ function MessageDetail({
       replyToMessageId: messageId,
       isReply: true,
     })
+  }
+
+  async function handleTrash() {
+    setActioning('trash')
+    try {
+      await onTrash(messageId)
+      onClose()
+    } finally {
+      setActioning(null)
+    }
+  }
+
+  async function handleArchive() {
+    setActioning('archive')
+    try {
+      await onArchive(messageId)
+      onClose()
+    } finally {
+      setActioning(null)
+    }
+  }
+
+  async function handleToggleStar() {
+    setActioning('star')
+    const next = !starred
+    setStarred(next)
+    try {
+      await onToggleStar(messageId, next)
+    } catch {
+      setStarred(!next) // revert on failure
+    } finally {
+      setActioning(null)
+    }
+  }
+
+  function handleMarkUnread() {
+    onMarkUnread(messageId)
+    onClose()
   }
 
   if (loading) return (
@@ -401,6 +447,58 @@ function MessageDetail({
           >
             <Reply className="h-4 w-4" />
             Yanıtla
+          </button>
+
+          {/* Mark unread */}
+          <button
+            type="button"
+            onClick={handleMarkUnread}
+            title="Okunmadı olarak işaretle"
+            className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]"
+          >
+            <MailOpen className="h-4 w-4" />
+            Okunmadı
+          </button>
+
+          {/* Star */}
+          <button
+            type="button"
+            onClick={handleToggleStar}
+            disabled={actioning === 'star'}
+            title={starred ? 'Yıldızı kaldır' : 'Yıldızla'}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:opacity-50',
+              starred
+                ? 'border-amber-400/50 bg-amber-400/10 text-amber-500 hover:bg-amber-400/20'
+                : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]',
+            )}
+          >
+            <Star className={cn('h-4 w-4', starred && 'fill-amber-400')} />
+            {starred ? 'Yıldızlı' : 'Yıldızla'}
+          </button>
+
+          {/* Archive */}
+          <button
+            type="button"
+            onClick={handleArchive}
+            disabled={actioning === 'archive'}
+            title="Arşivle"
+            className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))] disabled:opacity-50"
+          >
+            {actioning === 'archive' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+            Arşivle
+          </button>
+
+          {/* Trash */}
+          <button
+            type="button"
+            onClick={handleTrash}
+            disabled={actioning === 'trash'}
+            title="Çöpe taşı"
+            className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+          >
+            {actioning === 'trash' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Sil
           </button>
 
           {/* Convert to draft */}
@@ -569,6 +667,76 @@ export default function AdminInboxPage() {
       toast.error(e instanceof Error ? e.message : 'Okundu olarak işaretlenemedi')
     }
   }, [status?.canModify])
+
+  const markUnread = useCallback(async (id: string) => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? { ...m, unread: true, labelIds: m.labelIds.includes('UNREAD') ? m.labelIds : [...m.labelIds, 'UNREAD'] }
+          : m
+      )
+    )
+    setStatus((prev) => prev ? { ...prev, messagesUnread: (prev.messagesUnread ?? 0) + 1 } : prev)
+    emitGmailUnreadDelta(1)
+    try {
+      const r = await authFetch(`/api/admin/gmail/messages/${encodeURIComponent(id)}/mark-unread`, { method: 'POST' })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Okunmadı işaretlenemedi')
+    }
+  }, [])
+
+  const trashMessage = useCallback(async (id: string) => {
+    try {
+      const r = await authFetch(`/api/admin/gmail/messages/${encodeURIComponent(id)}/trash`, { method: 'POST' })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      setMessages((prev) => prev.filter((m) => m.id !== id))
+      setSelectedId(null)
+      toast.success('Mesaj çöpe taşındı')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Silinemedi')
+      throw e
+    }
+  }, [])
+
+  const archiveMessage = useCallback(async (id: string) => {
+    try {
+      const r = await authFetch(`/api/admin/gmail/messages/${encodeURIComponent(id)}/archive`, { method: 'POST' })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      setMessages((prev) => prev.filter((m) => m.id !== id))
+      setSelectedId(null)
+      toast.success('Mesaj arşivlendi')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Arşivlenemedi')
+      throw e
+    }
+  }, [])
+
+  const toggleStar = useCallback(async (id: string, starred: boolean) => {
+    try {
+      const r = await authFetch(`/api/admin/gmail/messages/${encodeURIComponent(id)}/star`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ starred }),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                labelIds: starred
+                  ? (m.labelIds.includes('STARRED') ? m.labelIds : [...m.labelIds, 'STARRED'])
+                  : m.labelIds.filter((l) => l !== 'STARRED'),
+              }
+            : m
+        )
+      )
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Yıldız değiştirilemedi')
+      throw e
+    }
+  }, [])
 
   async function reconnectGmail() {
     if (reconnecting) return
@@ -763,6 +931,10 @@ export default function AdminInboxPage() {
                   fromEmail={status.accountEmail ?? 'bilgi@nahaber.com'}
                   onClose={() => setSelectedId(null)}
                   onMarkRead={markRead}
+                  onMarkUnread={markUnread}
+                  onTrash={trashMessage}
+                  onArchive={archiveMessage}
+                  onToggleStar={toggleStar}
                   onReply={setCompose}
                 />
               ) : (
