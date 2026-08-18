@@ -28,6 +28,8 @@ export type AiUsageCostAuditFields = {
   stage1CallsPerNews?: number
   /** Closed enum list only — never prompt or article text. */
   retryTriggers?: string[]
+  /** Closed enum — why a quality retry was skipped before the provider call. */
+  retrySuppressedReason?: string
   outputWordCount?: number
   gateDecision?: string
   publishScore?: number

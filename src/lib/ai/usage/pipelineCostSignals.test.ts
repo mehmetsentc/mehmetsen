@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { classifySecondStage1Call } from '@/lib/ai/usage/generationReason'
 import {
+  classifyRepeatedStage1Inputs,
   countDuplicateStage1Calls,
   measureStage1CostAnalysis,
   measureStage1RetryOptimizationCanary,
@@ -33,6 +34,31 @@ describe('same inputHash detection', () => {
       { agentName: 'stage1_writer', operation: 'generate_article', inputHash: 'bbb' },
     ])
     expect(result).toEqual({ groups: 1, extraCalls: 1 })
+  })
+
+  it('classifies quality-retry repeats separately from cross-queue duplicates', () => {
+    const classified = classifyRepeatedStage1Inputs([
+      {
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        inputHash: 'aaa',
+        generationReason: 'quality_retry',
+        traceId: 't1',
+        queueId: 'q1',
+        createdAt: 1,
+      },
+      {
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        inputHash: 'aaa',
+        generationReason: 'quality_retry',
+        traceId: 't1',
+        queueId: 'q1',
+        createdAt: 2,
+      },
+    ])
+    expect(classified.byClass.unchanged_quality_retry.groups).toBe(1)
+    expect(classified.byClass.cross_queue_duplicate.groups).toBe(0)
   })
 })
 

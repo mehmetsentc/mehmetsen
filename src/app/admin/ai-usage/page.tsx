@@ -246,14 +246,65 @@ export default function AiUsagePage() {
         )}
       </Section>
 
-      <Section title="Tekrar ve Sağlık">
+      <Section title="Tekrarlanan Stage1 girdileri">
+        <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+          Aynı inputHash = aynı DeepSeek mesajları. Her tekrar kazaî çift işlem değildir.
+        </p>
         <ul className="space-y-2 text-sm">
           <li className="flex justify-between">
-            <span>Duplicate Stage1 Calls</span>
+            <span>Repeated Stage1 Inputs</span>
             <span className="tabular-nums">
               {loading
                 ? '…'
-                : `${fmtInt(data?.duplicateStage1Calls.groups)} grup / +${fmtInt(data?.duplicateStage1Calls.extraCalls)}`}
+                : `${fmtInt(data?.repeatedStage1Inputs?.groups)} grup / +${fmtInt(data?.repeatedStage1Inputs?.extraCalls)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>unchanged quality retry</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.repeatedStage1Inputs?.byClass?.unchanged_quality_retry?.groups)} grup / +${fmtInt(data?.repeatedStage1Inputs?.byClass?.unchanged_quality_retry?.extraCalls)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>continuation repeat</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.repeatedStage1Inputs?.byClass?.continuation_repeat?.groups)} grup / +${fmtInt(data?.repeatedStage1Inputs?.byClass?.continuation_repeat?.extraCalls)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>provider retry</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.repeatedStage1Inputs?.byClass?.provider_retry?.groups)} grup / +${fmtInt(data?.repeatedStage1Inputs?.byClass?.provider_retry?.extraCalls)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>cross-queue duplicate</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.repeatedStage1Inputs?.byClass?.cross_queue_duplicate?.groups)} grup / +${fmtInt(data?.repeatedStage1Inputs?.byClass?.cross_queue_duplicate?.extraCalls)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>lease/reprocess</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.repeatedStage1Inputs?.byClass?.lease_reprocess?.groups)} grup / +${fmtInt(data?.repeatedStage1Inputs?.byClass?.lease_reprocess?.extraCalls)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>independent/manual regeneration</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.repeatedStage1Inputs?.byClass?.independent_manual?.groups)} grup / +${fmtInt(data?.repeatedStage1Inputs?.byClass?.independent_manual?.extraCalls)}`}
             </span>
           </li>
           <li className="flex justify-between">
@@ -271,6 +322,34 @@ export default function AiUsagePage() {
           <li className="flex justify-between">
             <span>Groq failure rate</span>
             <span className="tabular-nums">{loading ? '…' : fmtPct(data?.groqFailureRate)}</span>
+          </li>
+        </ul>
+      </Section>
+
+      <Section title="Unchanged quality retry suppression">
+        <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+          Aynı previousDraft + hints ile ikinci quality-retry DeepSeek çağrısı yapılmadı. Tahmini token — fatura değil.
+        </p>
+        <ul className="space-y-2 text-sm">
+          <li className="flex justify-between">
+            <span>Unchanged quality retries suppressed</span>
+            <span className="tabular-nums">
+              {loading ? '…' : fmtInt(data?.unchangedQualityRetrySuppression?.events)}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Estimated Stage1 calls avoided</span>
+            <span className="tabular-nums">
+              {loading ? '…' : fmtInt(data?.unchangedQualityRetrySuppression?.estimatedCallsAvoided)}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Estimated tokens avoided</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.unchangedQualityRetrySuppression?.estimatedTokensAvoided)} (${fmtInt(data?.unchangedQualityRetrySuppression?.estimatedInputTokensAvoided)} in / ${fmtInt(data?.unchangedQualityRetrySuppression?.estimatedOutputTokensAvoided)} out)`}
+            </span>
           </li>
         </ul>
       </Section>
@@ -523,7 +602,7 @@ export default function AiUsagePage() {
         </p>
         <ul className="space-y-1 text-sm">
           <li className="flex justify-between">
-            <span>Aynı inputHash extra çağrı</span>
+            <span>Aynı inputHash extra çağrı (ham gruplama)</span>
             <span className="tabular-nums">
               {loading
                 ? '…'

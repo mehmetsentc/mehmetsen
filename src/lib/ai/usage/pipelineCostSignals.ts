@@ -17,6 +17,153 @@ function articleKey(event: LooseEvent): string | null {
   return asString(event.newsId) || asString(event.queueId) || asString(event.traceId) || null
 }
 
+export const REPEATED_STAGE1_INPUT_CLASSES = [
+  'unchanged_quality_retry',
+  'continuation_repeat',
+  'provider_retry',
+  'cross_queue_duplicate',
+  'lease_reprocess',
+  'independent_manual',
+  'other',
+] as const
+
+export type RepeatedStage1InputClass = (typeof REPEATED_STAGE1_INPUT_CLASSES)[number]
+
+export type RepeatedStage1InputBucket = {
+  groups: number
+  extraCalls: number
+  extraTokens: number
+}
+
+export type RepeatedStage1Inputs = {
+  groups: number
+  extraCalls: number
+  extraTokens: number
+  byClass: Record<RepeatedStage1InputClass, RepeatedStage1InputBucket>
+}
+
+function emptyRepeatedBucket(): RepeatedStage1InputBucket {
+  return { groups: 0, extraCalls: 0, extraTokens: 0 }
+}
+
+function eventTokens(event: LooseEvent): number {
+  const inTok = typeof event.inputTokens === 'number' && Number.isFinite(event.inputTokens) ? event.inputTokens : 0
+  const outTok = typeof event.outputTokens === 'number' && Number.isFinite(event.outputTokens) ? event.outputTokens : 0
+  return inTok + outTok
+}
+
+function classifyRepeatedStage1Group(list: LooseEvent[]): RepeatedStage1InputClass {
+  const reasons = list.map((e) => asString(e.generationReason) || 'unset')
+  const uniq = new Set(reasons)
+  const queues = new Set(list.map((e) => asString(e.queueId)).filter(Boolean) as string[])
+  const traces = new Set(list.map((e) => asString(e.traceId)).filter(Boolean) as string[])
+  const times = list
+    .map((e) => (typeof e.createdAt === 'number' ? e.createdAt : typeof e.timestamp === 'number' ? e.timestamp : 0))
+    .filter((n) => n > 0)
+  const span = times.length ? Math.max(...times) - Math.min(...times) : 0
+  if (uniq.has('provider_retry')) return 'provider_retry'
+  if (queues.size >= 2) return 'cross_queue_duplicate'
+  if (traces.size >= 2 && span > 30 * 60 * 1000) return 'independent_manual'
+  if (traces.size >= 2 && queues.size === 1 && span >= 200 * 1000) return 'lease_reprocess'
+  if ([...uniq].every((r) => r === 'quality_retry')) return 'unchanged_quality_retry'
+  if ([...uniq].every((r) => r === 'continuation')) return 'continuation_repeat'
+  return 'other'
+}
+
+export function classifyRepeatedStage1Inputs(events: LooseEvent[]): RepeatedStage1Inputs {
+  const byHash = new Map<string, LooseEvent[]>()
+  for (const event of events) {
+    if (asString(event.agentName) !== 'stage1_writer') continue
+    if (asString(event.operation) !== 'generate_article') continue
+    const hash = asString(event.inputHash)
+    if (!hash) continue
+    const list = byHash.get(hash) ?? []
+    list.push(event)
+    byHash.set(hash, list)
+  }
+  const byClass = Object.fromEntries(
+    REPEATED_STAGE1_INPUT_CLASSES.map((k) => [k, emptyRepeatedBucket()])
+  ) as Record<RepeatedStage1InputClass, RepeatedStage1InputBucket>
+  let groups = 0
+  let extraCalls = 0
+  let extraTokens = 0
+  for (const list of byHash.values()) {
+    if (list.length < 2) continue
+    list.sort((a, b) => {
+      const ta = typeof a.createdAt === 'number' ? a.createdAt : 0
+      const tb = typeof b.createdAt === 'number' ? b.createdAt : 0
+      return ta - tb
+    })
+    const cls = classifyRepeatedStage1Group(list)
+    const extra = list.slice(1)
+    const extraTok = extra.reduce((s, e) => s + eventTokens(e), 0)
+    groups += 1
+    extraCalls += extra.length
+    extraTokens += extraTok
+    byClass[cls].groups += 1
+    byClass[cls].extraCalls += extra.length
+    byClass[cls].extraTokens += extraTok
+  }
+  return { groups, extraCalls, extraTokens, byClass }
+}
+
+export type UnchangedQualityRetrySuppressionStats = {
+  events: number
+  estimatedCallsAvoided: number
+  estimatedInputTokensAvoided: number
+  estimatedOutputTokensAvoided: number
+  estimatedTokensAvoided: number
+}
+
+export function measureUnchangedQualityRetrySuppression(
+  events: LooseEvent[]
+): UnchangedQualityRetrySuppressionStats {
+  const suppressed = events.filter(
+    (e) =>
+      asString(e.agentName) === 'stage1_writer' &&
+      asString(e.operation) === 'quality_retry_suppressed' &&
+      asString(e.retrySuppressedReason) === 'unchanged_quality_retry'
+  )
+  const qualityRetry = events.filter(
+    (e) =>
+      asString(e.agentName) === 'stage1_writer' &&
+      asString(e.operation) === 'generate_article' &&
+      asString(e.generationReason) === 'quality_retry'
+  )
+  let avgQrOutput = 0
+  let qrOutN = 0
+  for (const event of qualityRetry) {
+    const out =
+      typeof event.outputTokens === 'number' && Number.isFinite(event.outputTokens) ? event.outputTokens : null
+    if (out != null) {
+      avgQrOutput += out
+      qrOutN += 1
+    }
+  }
+  const meanQrOutput = qrOutN > 0 ? avgQrOutput / qrOutN : 0
+  let estimatedInputTokensAvoided = 0
+  for (const event of suppressed) {
+    const parts =
+      (typeof event.promptSystemTokens === 'number' ? event.promptSystemTokens : 0) +
+      (typeof event.promptSourceTokens === 'number' ? event.promptSourceTokens : 0) +
+      (typeof event.promptInstructionTokens === 'number' ? event.promptInstructionTokens : 0) +
+      (typeof event.promptOtherTokens === 'number' ? event.promptOtherTokens : 0)
+    const production =
+      typeof event.productionInputTokens === 'number' && Number.isFinite(event.productionInputTokens)
+        ? event.productionInputTokens
+        : 0
+    estimatedInputTokensAvoided += parts > 0 ? parts : production
+  }
+  const estimatedOutputTokensAvoided = Math.round(suppressed.length * meanQrOutput)
+  return {
+    events: suppressed.length,
+    estimatedCallsAvoided: suppressed.length,
+    estimatedInputTokensAvoided,
+    estimatedOutputTokensAvoided,
+    estimatedTokensAvoided: estimatedInputTokensAvoided + estimatedOutputTokensAvoided,
+  }
+}
+
 export function countDuplicateStage1Calls(events: LooseEvent[]): {
   groups: number
   extraCalls: number

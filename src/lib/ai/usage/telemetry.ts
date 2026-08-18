@@ -108,6 +108,10 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
       const cleaned = sanitizeRetryTriggers(input.retryTriggers)
       return cleaned.length > 0 ? cleaned : undefined
     })(),
+    retrySuppressedReason: (() => {
+      const raw = input.retrySuppressedReason
+      return raw === 'unchanged_quality_retry' ? raw : undefined
+    })(),
     outputWordCount:
       typeof input.outputWordCount === 'number' && Number.isFinite(input.outputWordCount)
         ? Math.max(0, Math.round(input.outputWordCount))

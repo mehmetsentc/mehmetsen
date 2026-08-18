@@ -1,7 +1,9 @@
 import { turkeyDayBounds, turkeyYmd, turkeyYmdNow, addTurkeyDays } from '@/lib/turkeyCalendar'
 import { estimateUsageCost, getDeepSeekPricing } from '@/lib/ai/usage/pricing'
 import {
+  classifyRepeatedStage1Inputs,
   countDuplicateStage1Calls,
+  measureUnchangedQualityRetrySuppression,
   measureStage1CostAnalysis,
   measureStage1RetryOptimizationCanary,
   measureStage3ClassifierOverlap,
@@ -225,6 +227,8 @@ export type AiUsageAggregate = {
     p75: number
   }>
   duplicateStage1Calls: { groups: number; extraCalls: number }
+  repeatedStage1Inputs: ReturnType<typeof classifyRepeatedStage1Inputs>
+  unchangedQualityRetrySuppression: ReturnType<typeof measureUnchangedQualityRetrySuppression>
   stage3ClassifierOverlap: {
     both: number
     stage3Only: number
@@ -547,6 +551,8 @@ export function aggregateAiUsageEvents(
         .filter((row) => row.currentTotal > 0)
     })(),
     duplicateStage1Calls: countDuplicateStage1Calls(events),
+    repeatedStage1Inputs: classifyRepeatedStage1Inputs(events),
+    unchangedQualityRetrySuppression: measureUnchangedQualityRetrySuppression(events),
     stage3ClassifierOverlap: measureStage3ClassifierOverlap(events),
     geminiFailureRate: providerFailureRate(events, 'gemini').rate,
     groqFailureRate: providerFailureRate(events, 'groq').rate,
@@ -624,6 +630,7 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'productionOutputTokens',
   'stage1CallsPerNews',
   'retryTriggers',
+  'retrySuppressedReason',
   'outputWordCount',
   'gateDecision',
   'publishScore',

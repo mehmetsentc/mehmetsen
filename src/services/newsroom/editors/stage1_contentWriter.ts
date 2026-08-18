@@ -21,6 +21,7 @@ import {
   tryConsumeStage1LogicalCall,
 } from '@/lib/ai/stage1RetryOptimization'
 import { getAiUsageContext } from '@/lib/ai/usage/context'
+import { hashAiInput } from '@/lib/ai/usage/hash'
 
 export interface WrittenArticle {
   title: string
@@ -32,7 +33,7 @@ export interface WrittenArticle {
   aiWritten: boolean
 }
 
-interface WriterInput {
+export interface WriterInput {
   sourceLabel: string
   originalTitle: string
   originalSummary: string
@@ -123,6 +124,60 @@ JSON:
 }`
 }
 
+export type Stage1WriterPromptBundle = {
+  systemContent: string
+  userContent: string
+  sourceArticle: string
+  messages: Array<{ role: 'system' | 'user'; content: string }>
+}
+
+/** Same messages callDeepSeek sends. Hash only — never persist the strings. */
+export function buildStage1WriterPrompt(input: WriterInput): Stage1WriterPromptBundle {
+  const systemContent = input.systemPromptOverride?.trim()
+    ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
+    : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`
+  const userContent = input.userPromptOverride?.trim()
+    ? `${input.userPromptOverride.trim()}\n\n${buildPrompt(input)}`
+    : buildPrompt(input)
+  const sourceArticle = (input.originalContent || input.originalSummary || '').slice(
+    0,
+    inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000)
+  )
+  return {
+    systemContent,
+    userContent,
+    sourceArticle,
+    messages: [
+      { role: 'system', content: systemContent },
+      { role: 'user', content: userContent },
+    ],
+  }
+}
+
+export function hashStage1WriterInput(input: WriterInput): {
+  inputHash?: string
+  promptSystemTokens: number
+  promptSourceTokens: number
+  promptInstructionTokens: number
+  promptOtherTokens: number
+  promptTotalTokens: number
+} {
+  const bundle = buildStage1WriterPrompt(input)
+  const promptParts = measureStage1PromptParts({
+    systemContent: bundle.systemContent,
+    userContent: bundle.userContent,
+    sourceArticle: bundle.sourceArticle,
+  })
+  return {
+    inputHash: hashAiInput(bundle.messages.map((m) => `${m.role}:${m.content}`).join('\n')),
+    promptSystemTokens: promptParts.systemTokens,
+    promptSourceTokens: promptParts.sourceTokens,
+    promptInstructionTokens: promptParts.instructionTokens,
+    promptOtherTokens: promptParts.otherTokens,
+    promptTotalTokens: promptParts.totalTokens,
+  }
+}
+
 async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
@@ -130,19 +185,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   const { deepseekChatCompletion, getDeepSeekModel } = await import('@/lib/ai/deepseekClient')
   const model = getDeepSeekModel(input.model)
 
-  // Persona (Admin'de bir kez girilen core+news) esas; eski 500 kelime/essay kuralları yok
-  const systemContent = input.systemPromptOverride?.trim()
-    ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
-    : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`
-
-  const userContent = input.userPromptOverride?.trim()
-    ? `${input.userPromptOverride.trim()}\n\n${buildPrompt(input)}`
-    : buildPrompt(input)
-
-  const messages = [
-    { role: 'system' as const, content: systemContent },
-    { role: 'user' as const, content: userContent },
-  ]
+  const { systemContent, userContent, sourceArticle, messages } = buildStage1WriterPrompt(input)
 
   // 50s timeout: stage1 × 2 (incomplete retry) + stage3 = ~130s per article, well under 200s budget
   const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 50_000)
@@ -154,10 +197,6 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
     console.warn('[stage1] logical call cap reached — skipping DeepSeek')
     return null
   }
-  const sourceArticle = (input.originalContent || input.originalSummary || '').slice(
-    0,
-    inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000)
-  )
   const promptParts = measureStage1PromptParts({
     systemContent,
     userContent,

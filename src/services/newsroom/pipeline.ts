@@ -88,6 +88,11 @@ import {
   normalizeQualityRetryTriggers,
 } from '@/lib/ai/stage1RetryOptimization'
 import {
+  runQualityRewriteLoop,
+  shouldApplyUnchangedQualityRetrySuppression,
+} from '@/lib/ai/unchangedQualityRetry'
+import { hashStage1WriterInput } from '@/services/newsroom/editors/stage1_contentWriter'
+import {
   qualityDiscardReason,
   qualityDiscardSkipReason,
 } from '@/services/newsroom/pipelineQualityDiscard'
@@ -894,59 +899,94 @@ export async function processNewsroomArticle(
       NEWSROOM_REWRITE_MAX_RETRIES > 0 &&
       rewrittenRaw.gateDecision !== 'skip'
     ) {
-      let attempt = 0
-      while (
-        attempt < NEWSROOM_REWRITE_MAX_RETRIES &&
-        remainingStage1LogicalCalls(getAiUsageContext()?.stage1CallBudget) > 0 &&
-        shouldRunQualityRetry(qualityRetryInput(rewrittenRaw), optimizedRetry)
-      ) {
-        attempt += 1
-        const hints = [
-          ...(rewrittenRaw.gateReasons ?? []),
-          isNewsBodyTooShort(rewrittenRaw.description || '')
+      const qualityRetryHints = (current: typeof rewrittenRaw) =>
+        [
+          ...(current.gateReasons ?? []),
+          isNewsBodyTooShort(current.description || '')
             ? `Gövde çok kısa (<${MIN_NEWS_BODY_WORDS} kelime) — olgu ve bağlam ekle`
             : '',
-          rewrittenRaw.categoryConfidence === 0
+          current.categoryConfidence === 0
             ? 'Önceki çıktı AI fallback — kaynak metinden profesyonel haber yaz'
             : '',
-          articleIncomplete(rewrittenRaw)
+          articleIncomplete(current)
             ? 'Önceki metin YARIM KESİLMİŞ (spot/summary/content). Tüm alanları noktalı, eksiksiz cümlelerle yeniden yaz.'
             : '',
         ].filter(Boolean)
 
-        console.warn(
-          `[pipeline] rewrite retry #${attempt} (${hints.slice(0, 3).join('; ')}): ${workingInput.sourceUrl?.slice(0, 80)}`
-        )
+      const qualityRetryDraft = (current: typeof rewrittenRaw) => ({
+        title: current.title,
+        spot: current.spot || current.summary || '',
+        content: current.description || '',
+      })
 
-        const retryRaw = await runMultiStageEditor({
-          ...stageInputBase,
-          generationReason: 'quality_retry',
-          retryTriggers: normalizeQualityRetryTriggers(qualityRetryInput(rewrittenRaw)),
-          revisionHints: hints,
-          previousDraft: {
-            title: rewrittenRaw.title,
-            spot: rewrittenRaw.spot || rewrittenRaw.summary || '',
-            content: rewrittenRaw.description || '',
-          },
-        })
-        rewriteAttempt = attempt
-
-        const prevIncomplete = articleIncomplete(rewrittenRaw)
-        const nextIncomplete = articleIncomplete(retryRaw)
-        const better =
-          (!nextIncomplete && prevIncomplete) ||
-          retryRaw.gateDecision === 'publish' ||
-          (retryRaw.publishScore ?? 0) > (rewrittenRaw.publishScore ?? 0) ||
-          (countPlainWords(retryRaw.description) > countPlainWords(rewrittenRaw.description) &&
-            retryRaw.categoryConfidence > 0) ||
-          (retryRaw.categoryConfidence > 0 && rewrittenRaw.categoryConfidence === 0)
-
-        if (better) rewrittenRaw = retryRaw
-        else if (!nextIncomplete && retryRaw.categoryConfidence > 0) rewrittenRaw = retryRaw
-
-        if (!articleIncomplete(rewrittenRaw) && rewrittenRaw.gateDecision === 'publish') break
-        if (optimizedRetry && !shouldRunQualityRetry(qualityRetryInput(rewrittenRaw), true)) break
-      }
+      const loop = await runQualityRewriteLoop({
+        initial: rewrittenRaw,
+        maxAttempts: NEWSROOM_REWRITE_MAX_RETRIES,
+        remainingLogicalCalls: () => remainingStage1LogicalCalls(getAiUsageContext()?.stage1CallBudget),
+        shouldRetry: (current) => shouldRunQualityRetry(qualityRetryInput(current), optimizedRetry),
+        suppressionEnabled: shouldApplyUnchangedQualityRetrySuppression(),
+        hashAttempt: (current, attempt) => {
+          const hints = qualityRetryHints(current)
+          const hashed = hashStage1WriterInput({
+            sourceLabel: stageInputBase.sourceLabel,
+            originalTitle: stageInputBase.originalTitle,
+            originalSummary: stageInputBase.originalSummary,
+            originalContent: stageInputBase.originalContent,
+            sourceUrl: stageInputBase.sourceUrl,
+            systemPromptOverride: stageInputBase.systemPromptOverride,
+            userPromptOverride: stageInputBase.userPromptOverride,
+            model: stageInputBase.writerModel,
+            generationReason: 'quality_retry',
+            retryTriggers: normalizeQualityRetryTriggers(qualityRetryInput(current)),
+            revisionHints: hints,
+            previousDraft: qualityRetryDraft(current),
+          })
+          return {
+            attempt,
+            inputHash: hashed.inputHash,
+            promptSystemTokens: hashed.promptSystemTokens,
+            promptSourceTokens: hashed.promptSourceTokens,
+            promptInstructionTokens: hashed.promptInstructionTokens,
+            promptOtherTokens: hashed.promptOtherTokens,
+            promptTotalTokens: hashed.promptTotalTokens,
+            retryTriggers: normalizeQualityRetryTriggers(qualityRetryInput(current)),
+          }
+        },
+        runAttempt: async (current, attempt) => {
+          const hints = qualityRetryHints(current)
+          console.warn(
+            `[pipeline] rewrite retry #${attempt} (${hints.slice(0, 3).join('; ')}): ${workingInput.sourceUrl?.slice(0, 80)}`
+          )
+          return runMultiStageEditor({
+            ...stageInputBase,
+            generationReason: 'quality_retry',
+            retryTriggers: normalizeQualityRetryTriggers(qualityRetryInput(current)),
+            revisionHints: hints,
+            previousDraft: qualityRetryDraft(current),
+          })
+        },
+        selectWinner: (previous, retryRaw) => {
+          const prevIncomplete = articleIncomplete(previous)
+          const nextIncomplete = articleIncomplete(retryRaw)
+          const better =
+            (!nextIncomplete && prevIncomplete) ||
+            retryRaw.gateDecision === 'publish' ||
+            (retryRaw.publishScore ?? 0) > (previous.publishScore ?? 0) ||
+            (countPlainWords(retryRaw.description) > countPlainWords(previous.description) &&
+              retryRaw.categoryConfidence > 0) ||
+            (retryRaw.categoryConfidence > 0 && previous.categoryConfidence === 0)
+          if (better) return retryRaw
+          if (!nextIncomplete && retryRaw.categoryConfidence > 0) return retryRaw
+          return previous
+        },
+        shouldStop: (current) => {
+          if (!articleIncomplete(current) && current.gateDecision === 'publish') return true
+          if (optimizedRetry && !shouldRunQualityRetry(qualityRetryInput(current), true)) return true
+          return false
+        },
+      })
+      rewrittenRaw = loop.result
+      rewriteAttempt = loop.attempts
     }
 
     if (routedEditor && !workingInput.skipAiRewrite) {
