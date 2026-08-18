@@ -24,6 +24,8 @@ import {
   type Stage3PromptVariant,
 } from './stage3_compactPrompt'
 
+export type Stage3Source = 'deepseek' | 'heuristic'
+
 export interface CategoryResult {
   categoryId: string
   isBreaking: boolean
@@ -33,6 +35,8 @@ export interface CategoryResult {
   country: string
   tags: string[]
   reason: string         // kategorinin neden seçildiği (log için)
+  /** Present on classifyArticle results. Heuristic fallback is never reused on quality_retry. */
+  source?: Stage3Source
 }
 
 interface CategoryInput {
@@ -507,10 +511,11 @@ function finishStage3Result(input: CategoryInput, deepseekResult: CategoryResult
     input.content,
     deepseekResult.tags
   )
+  const stamped: CategoryResult = { ...deepseekResult, source: 'deepseek' }
   return categoryId === deepseekResult.categoryId
-    ? deepseekResult
+    ? stamped
     : {
-        ...deepseekResult,
+        ...stamped,
         categoryId,
         reason: `${deepseekResult.reason} [override→astroloji]`.trim(),
       }
@@ -557,6 +562,7 @@ function heuristicCategory(input: CategoryInput): CategoryResult {
     country: 'Türkiye',
     tags: [],
     reason: 'heuristik fallback (AI başarısız)',
+    source: 'heuristic',
   }
 }
 

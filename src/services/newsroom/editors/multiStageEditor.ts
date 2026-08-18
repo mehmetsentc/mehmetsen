@@ -12,7 +12,7 @@
 
 import { writeArticle } from './stage1_contentWriter'
 import { quickFactCheck } from './stage2_factChecker'
-import { classifyArticle } from './stage3_categoryEditor'
+import { classifyArticle, type CategoryResult } from './stage3_categoryEditor'
 import { gateKeep } from './stage4_gateKeeper'
 import type { AiRewriteResult } from '@/services/aiNewsEditor'
 import type { GenerationReason } from '@/lib/ai/usage/generationReason'
@@ -23,6 +23,11 @@ import {
   normalizeQualityRetryTriggers,
 } from '@/lib/ai/stage1RetryOptimization'
 import { getAiUsageContext } from '@/lib/ai/usage/context'
+import {
+  cloneStage3Classification,
+  recordStage3Reuse,
+  shouldReuseStage3OnQualityRetry,
+} from '@/lib/ai/stage3QualityRetryReuse'
 
 export interface MultiStageInput {
   sourceLabel: string
@@ -41,6 +46,8 @@ export interface MultiStageInput {
   previousDraft?: { title: string; spot: string; content: string }
   generationReason?: GenerationReason
   retryTriggers?: string[]
+  /** First successful DeepSeek Stage3 — reused only on quality_retry. */
+  previousStage3?: CategoryResult
 }
 
 export interface MultiStageResult extends AiRewriteResult {
@@ -55,6 +62,8 @@ export interface MultiStageResult extends AiRewriteResult {
   publishScore: number
   aiEditorId?: string
   promptVersions?: Record<string, number>
+  /** Pre-gateKeep Stage3 result. Heuristic fallback is not reused. */
+  stage3Classification?: CategoryResult
 }
 
 export async function runMultiStageEditor(input: MultiStageInput): Promise<MultiStageResult> {
@@ -88,7 +97,28 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
   })
 
   // ── Stage 3: Category Editor ─────────────────────────────────────────────────
-  const category = await classifyArticle(written, input.sourceLabel, input.forcedCategoryId)
+  // quality_retry reuses the first successful DeepSeek classification.
+  // Clone before gateKeep — gateKeep may mutate categoryId / isBreaking.
+  let category: CategoryResult
+  let stage3Classification: CategoryResult
+  const previous = input.previousStage3
+  if (
+    shouldReuseStage3OnQualityRetry({
+      generationReason: input.generationReason,
+      previousStage3: previous,
+    }) &&
+    previous
+  ) {
+    stage3Classification = cloneStage3Classification(previous)
+    category = cloneStage3Classification(stage3Classification)
+    recordStage3Reuse({ category: stage3Classification, generationReason: input.generationReason })
+    console.log(
+      `[multiStage] Stage3 reuse (quality_retry): ${stage3Classification.categoryId}`
+    )
+  } else {
+    category = await classifyArticle(written, input.sourceLabel, input.forcedCategoryId)
+    stage3Classification = cloneStage3Classification(category)
+  }
 
   // ── Stage 4: Gate Keeper ─────────────────────────────────────────────────────
   const gate = gateKeep({ written, factCheck, category })
@@ -162,5 +192,6 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     gateReasons: gate.reasons,
     publishScore: gate.publishScore,
     aiEditorId: input.aiEditorId,
+    stage3Classification,
   }
 }

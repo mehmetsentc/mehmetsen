@@ -354,6 +354,39 @@ export default function AiUsagePage() {
         </ul>
       </Section>
 
+      <Section title="Stage3 reuse on quality retry">
+        <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+          Quality-retry sonrası ilk başarılı Stage3 classification yeniden kullanıldı. DeepSeek isteği değil;
+          tahmini token — fatura değil.
+        </p>
+        <ul className="space-y-2 text-sm">
+          <li className="flex justify-between">
+            <span>Stage3 reused</span>
+            <span className="tabular-nums">
+              {loading ? '…' : fmtInt(data?.stage3QualityRetryReuse?.reused)}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Avoided Stage3 calls</span>
+            <span className="tabular-nums">
+              {loading ? '…' : fmtInt(data?.stage3QualityRetryReuse?.avoidedStage3Calls)}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Estimated avoided Stage3 tokens</span>
+            <span className="tabular-nums">
+              {loading ? '…' : fmtInt(data?.stage3QualityRetryReuse?.estimatedAvoidedStage3Tokens)}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Stage3 calls/news</span>
+            <span className="tabular-nums">
+              {loading ? '…' : fmtNum(data?.stage3QualityRetryReuse?.stage3CallsPerNews, 2)}
+            </span>
+          </li>
+        </ul>
+      </Section>
+
       <Section title="Stage3 Compact Canary">
         <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
           Control = mevcut Stage3 prompt. Compact = kısaltılmış input. Classifier referans olarak kalır; skip açılmaz.

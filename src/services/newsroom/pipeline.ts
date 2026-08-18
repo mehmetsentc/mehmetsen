@@ -91,6 +91,7 @@ import {
   runQualityRewriteLoop,
   shouldApplyUnchangedQualityRetrySuppression,
 } from '@/lib/ai/unchangedQualityRetry'
+import { rememberReusableStage3 } from '@/lib/ai/stage3QualityRetryReuse'
 import { hashStage1WriterInput } from '@/services/newsroom/editors/stage1_contentWriter'
 import {
   qualityDiscardReason,
@@ -865,6 +866,10 @@ export async function processNewsroomArticle(
         }
       : await runMultiStageEditor(stageInputBase)
 
+    let reusableStage3 = rememberReusableStage3(
+      'stage3Classification' in rewrittenRaw ? rewrittenRaw.stage3Classification : undefined
+    )
+
     let rewriteAttempt = 0
 
     const articleIncomplete = (r: {
@@ -957,13 +962,16 @@ export async function processNewsroomArticle(
           console.warn(
             `[pipeline] rewrite retry #${attempt} (${hints.slice(0, 3).join('; ')}): ${workingInput.sourceUrl?.slice(0, 80)}`
           )
-          return runMultiStageEditor({
+          const retryRaw = await runMultiStageEditor({
             ...stageInputBase,
             generationReason: 'quality_retry',
             retryTriggers: normalizeQualityRetryTriggers(qualityRetryInput(current)),
             revisionHints: hints,
             previousDraft: qualityRetryDraft(current),
+            previousStage3: reusableStage3,
           })
+          reusableStage3 = rememberReusableStage3(retryRaw.stage3Classification, reusableStage3)
+          return retryRaw
         },
         selectWinner: (previous, retryRaw) => {
           const prevIncomplete = articleIncomplete(previous)

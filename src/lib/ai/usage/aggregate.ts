@@ -8,6 +8,7 @@ import {
   measureStage1RetryOptimizationCanary,
   measureStage3ClassifierOverlap,
   measureStage3CompactCanary,
+  measureStage3QualityRetryReuse,
   providerFailureRate,
 } from '@/lib/ai/usage/pipelineCostSignals'
 
@@ -229,6 +230,7 @@ export type AiUsageAggregate = {
   duplicateStage1Calls: { groups: number; extraCalls: number }
   repeatedStage1Inputs: ReturnType<typeof classifyRepeatedStage1Inputs>
   unchangedQualityRetrySuppression: ReturnType<typeof measureUnchangedQualityRetrySuppression>
+  stage3QualityRetryReuse: ReturnType<typeof measureStage3QualityRetryReuse>
   stage3ClassifierOverlap: {
     both: number
     stage3Only: number
@@ -553,6 +555,7 @@ export function aggregateAiUsageEvents(
     duplicateStage1Calls: countDuplicateStage1Calls(events),
     repeatedStage1Inputs: classifyRepeatedStage1Inputs(events),
     unchangedQualityRetrySuppression: measureUnchangedQualityRetrySuppression(events),
+    stage3QualityRetryReuse: measureStage3QualityRetryReuse(events),
     stage3ClassifierOverlap: measureStage3ClassifierOverlap(events),
     geminiFailureRate: providerFailureRate(events, 'gemini').rate,
     groqFailureRate: providerFailureRate(events, 'groq').rate,
@@ -631,6 +634,7 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'stage1CallsPerNews',
   'retryTriggers',
   'retrySuppressedReason',
+  'stage3ReuseReason',
   'outputWordCount',
   'gateDecision',
   'publishScore',

@@ -89,6 +89,7 @@ describe('Stage3 compact canary', () => {
     vi.stubGlobal('fetch', fetchMock)
     const result = await classifyArticle(written, 'AA', 'gundem')
     expect(result.categoryId).toBe('yerel-haber')
+    expect(result.source).toBe('deepseek')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(recorded[0]?.promptVariant).toBe('control')
   })
@@ -241,6 +242,17 @@ describe('Stage3 compact canary', () => {
     vi.stubGlobal('fetch', fetchMock)
     await classifyArticle(written, 'AA')
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('total DeepSeek failure stamps source=heuristic and keeps fallback', async () => {
+    vi.stubEnv('AI_STAGE3_COMPACT_PROMPT_ENABLED', 'true')
+    vi.stubEnv('AI_STAGE3_COMPACT_PROMPT_PERCENT', '100')
+    const fetchMock = vi.fn(async () => jsonResponse('nope'))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await classifyArticle(written, 'AA')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(result.source).toBe('heuristic')
+    expect(result.reason).toContain('heuristik')
   })
 
   it('does not skip the redundant classifier by default', () => {

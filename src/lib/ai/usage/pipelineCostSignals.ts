@@ -4,6 +4,10 @@ import {
   sanitizeRetryTriggers,
   type RetryTrigger,
 } from '@/lib/ai/usage/retryTriggers'
+import {
+  isBilledStage3CategoryEvent,
+  STAGE3_REUSED_OPERATION,
+} from '@/lib/ai/stage3QualityRetryReuse'
 
 type LooseEvent = Record<string, unknown>
 
@@ -164,6 +168,57 @@ export function measureUnchangedQualityRetrySuppression(
   }
 }
 
+export type Stage3QualityRetryReuseStats = {
+  reused: number
+  avoidedStage3Calls: number
+  estimatedAvoidedStage3Tokens: number
+  billedStage3Calls: number
+  newsCount: number
+  stage3CallsPerNews: number | null
+}
+
+export function measureStage3QualityRetryReuse(events: LooseEvent[]): Stage3QualityRetryReuseStats {
+  const reusedEvents = events.filter(
+    (e) =>
+      asString(e.agentName) === 'stage3_category' &&
+      asString(e.operation) === STAGE3_REUSED_OPERATION &&
+      asString(e.stage3ReuseReason) === 'quality_retry'
+  )
+  const billed = events.filter((e) =>
+    isBilledStage3CategoryEvent({
+      agentName: asString(e.agentName),
+      operation: asString(e.operation),
+    })
+  )
+  let tokenSum = 0
+  let tokenN = 0
+  for (const event of billed) {
+    const total =
+      typeof event.totalTokens === 'number' && Number.isFinite(event.totalTokens)
+        ? event.totalTokens
+        : eventTokens(event)
+    if (total > 0) {
+      tokenSum += total
+      tokenN += 1
+    }
+  }
+  const meanTokens = tokenN > 0 ? tokenSum / tokenN : 0
+  const news = new Set<string>()
+  for (const event of billed) {
+    const key = articleKey(event)
+    if (key) news.add(key)
+  }
+  const newsCount = news.size
+  return {
+    reused: reusedEvents.length,
+    avoidedStage3Calls: reusedEvents.length,
+    estimatedAvoidedStage3Tokens: Math.round(reusedEvents.length * meanTokens),
+    billedStage3Calls: billed.length,
+    newsCount,
+    stage3CallsPerNews: newsCount > 0 ? billed.length / newsCount : null,
+  }
+}
+
 export function countDuplicateStage1Calls(events: LooseEvent[]): {
   groups: number
   extraCalls: number
@@ -203,6 +258,7 @@ export function measureStage3ClassifierOverlap(events: LooseEvent[]): {
     const agent = asString(event.agentName)
     const key = articleKey(event)
     if (agent === 'stage3_category') {
+      if (asString(event.operation) === STAGE3_REUSED_OPERATION) continue
       if (!key) {
         stage3Loose += 1
         continue
@@ -376,6 +432,7 @@ function agreementFor(
       continue
     }
     if (agent !== 'stage3_category') continue
+    if (asString(event.operation) === STAGE3_REUSED_OPERATION) continue
     if (asString(event.promptVariant) !== stage3Variant) continue
     if (event.success === false) continue
     const id = asString(event.resultCategoryId)
@@ -405,7 +462,12 @@ function agreementFor(
 }
 
 export function measureStage3CompactCanary(events: LooseEvent[]): Stage3CompactCanary {
-  const stage3 = events.filter((event) => asString(event.agentName) === 'stage3_category')
+  const stage3 = events.filter((event) =>
+    isBilledStage3CategoryEvent({
+      agentName: asString(event.agentName),
+      operation: asString(event.operation),
+    })
+  )
   const control = variantStats(stage3.filter((e) => asString(e.promptVariant) === 'control'))
   const compact = variantStats(stage3.filter((e) => asString(e.promptVariant) === 'compact'))
   const controlFallback = variantStats(stage3.filter((e) => asString(e.promptVariant) === 'control_fallback'))
@@ -524,6 +586,7 @@ function emptyRetryTriggerCounts(): Record<RetryTrigger, number> {
 
 function bumpAgentCount(map: Map<string, number>, event: LooseEvent, agent: string) {
   if (asString(event.agentName) !== agent) return
+  if (agent === 'stage3_category' && asString(event.operation) === STAGE3_REUSED_OPERATION) return
   const key = articleKey(event)
   if (!key) return
   map.set(key, (map.get(key) ?? 0) + 1)
@@ -899,7 +962,10 @@ export function measureStage1RetryOptimizationCanary(events: LooseEvent[]): Stag
         if (trigger === 'actual_truncation') acc.truncationNews.add(key)
       }
     }
-    if (asString(event.agentName) === 'stage3_category') acc.stage3 += 1
+    if (asString(event.agentName) === 'stage3_category') {
+      if (asString(event.operation) === STAGE3_REUSED_OPERATION) continue
+      acc.stage3 += 1
+    }
     if (asString(event.agentName) === 'stage4_gate') lastGate.set(key, event)
   }
 

@@ -71,6 +71,42 @@ describe('aggregateAiUsageEvents', () => {
     expect(agg.stage1CostAnalysis.stage1Requests).toBe(1)
   })
 
+  it('does not count stage3_reused as a DeepSeek request', () => {
+    const agg = aggregateAiUsageEvents(
+      [
+        {
+          createdAt: 1,
+          provider: 'deepseek',
+          agentName: 'stage3_category',
+          operation: 'classify_category',
+          model: 'deepseek-v4-flash',
+          newsId: 'n1',
+          inputTokens: 4000,
+          outputTokens: 80,
+          totalTokens: 4080,
+          success: true,
+        },
+        {
+          createdAt: 2,
+          provider: 'heuristic',
+          agentName: 'stage3_category',
+          operation: 'stage3_reused',
+          stage3ReuseReason: 'quality_retry',
+          newsId: 'n1',
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          success: true,
+        },
+      ],
+      { range: 'today', startMs: 0, endMs: 10, truncated: false }
+    )
+    expect(agg.savings.deepseekRequests).toBe(1)
+    expect(agg.stage3QualityRetryReuse.reused).toBe(1)
+    expect(agg.stage3QualityRetryReuse.stage3CallsPerNews).toBe(1)
+    expect(agg.providers.find((p) => p.provider === 'heuristic')?.total).toBe(0)
+  })
+
   it('treats missing cache tokens as absent, not zero-hit rate from empty fields', () => {
     const agg = aggregateAiUsageEvents(
       [{ createdAt: 1, inputTokens: 10, outputTokens: 2, totalTokens: 12, success: true }],
