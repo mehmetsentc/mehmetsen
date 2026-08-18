@@ -32,6 +32,7 @@ export async function geminiFastChat(opts: {
   timeoutMs: number
   jsonMode: boolean
   telemetry?: AiUsageTelemetryMeta
+  skipTelemetry?: boolean
 }): Promise<ProviderAttemptResult> {
   const apiKey = getGeminiApiKey()
   const model = getGeminiFastModel()
@@ -42,6 +43,10 @@ export async function geminiFastChat(opts: {
   const user = opts.messages.filter((m) => m.role !== 'system').map((m) => m.content).join('\n')
   const startedAt = Date.now()
   const attempt = opts.telemetry?.attempt ?? 1
+  const record = (row: Parameters<typeof recordAiRequestUsage>[0]) => {
+    if (opts.skipTelemetry) return
+    recordAiRequestUsage(row)
+  }
 
   let res: Response
   try {
@@ -64,7 +69,7 @@ export async function geminiFastChat(opts: {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    recordAiRequestUsage({
+    record({
       ...opts.telemetry,
       provider: 'gemini',
       model,
@@ -81,7 +86,7 @@ export async function geminiFastChat(opts: {
     const message = `Gemini HTTP ${res.status}`
     const errorCode = classifyGeminiError(res.status, message)
     if (errorCode === 'quota_429') openGeminiCircuit()
-    recordAiRequestUsage({
+    record({
       ...opts.telemetry,
       provider: 'gemini',
       model,
@@ -103,7 +108,7 @@ export async function geminiFastChat(opts: {
   if (data.error?.status === 'RESOURCE_EXHAUSTED' || /quota|RESOURCE_EXHAUSTED/i.test(data.error?.message || '')) {
     const message = 'RESOURCE_EXHAUSTED'
     openGeminiCircuit()
-    recordAiRequestUsage({
+    record({
       ...opts.telemetry,
       provider: 'gemini',
       model,
@@ -119,7 +124,7 @@ export async function geminiFastChat(opts: {
 
   const text = extractText(data)
   if (!text) {
-    recordAiRequestUsage({
+    record({
       ...opts.telemetry,
       provider: 'gemini',
       model,

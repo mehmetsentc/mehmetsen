@@ -68,6 +68,7 @@ describe('aggregateAiUsageEvents', () => {
     expect(agg.savings.deepseekRequests).toBe(1)
     expect(agg.deepseekDrivers[0]?.agent).toBe('stage1_writer')
     expect(agg.groqFailureRate).toBe(0)
+    expect(agg.stage1CostAnalysis.stage1Requests).toBe(1)
   })
 
   it('treats missing cache tokens as absent, not zero-hit rate from empty fields', () => {

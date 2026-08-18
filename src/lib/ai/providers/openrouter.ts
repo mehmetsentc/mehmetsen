@@ -19,6 +19,7 @@ export async function openRouterFastChat(opts: {
   timeoutMs: number
   jsonMode: boolean
   telemetry?: AiUsageTelemetryMeta
+  skipTelemetry?: boolean
 }): Promise<ProviderAttemptResult> {
   const apiKey = getOpenRouterApiKey()
   const model = getOpenRouterFastModel()
@@ -26,6 +27,10 @@ export async function openRouterFastChat(opts: {
 
   const startedAt = Date.now()
   const attempt = opts.telemetry?.attempt ?? 1
+  const record = (row: Parameters<typeof recordAiRequestUsage>[0]) => {
+    if (opts.skipTelemetry) return
+    recordAiRequestUsage(row)
+  }
   const body: Record<string, unknown> = {
     model,
     messages: opts.messages,
@@ -47,7 +52,7 @@ export async function openRouterFastChat(opts: {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    recordAiRequestUsage({
+    record({
       ...opts.telemetry,
       provider: 'openrouter',
       model,
@@ -63,7 +68,7 @@ export async function openRouterFastChat(opts: {
   if (!res.ok) {
     const err = await res.text().catch(() => '')
     const message = `OpenRouter HTTP ${res.status}: ${err.slice(0, 240)}`
-    recordAiRequestUsage({
+    record({
       ...opts.telemetry,
       provider: 'openrouter',
       model,
@@ -83,7 +88,7 @@ export async function openRouterFastChat(opts: {
   }
   const usage = parseDeepSeekUsage(data.usage)
   if (data.error?.message) {
-    recordAiRequestUsage({
+    record({
       ...opts.telemetry,
       provider: 'openrouter',
       model,
@@ -97,7 +102,7 @@ export async function openRouterFastChat(opts: {
   }
   const text = data.choices?.[0]?.message?.content?.trim() ?? ''
   if (!text) {
-    recordAiRequestUsage({
+    record({
       ...opts.telemetry,
       provider: 'openrouter',
       model,

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { isAiUsageTelemetryEnabled, recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
+import { buildAiUsageEventForTest, isAiUsageTelemetryEnabled, recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
 
 describe('AI usage telemetry kill switch', () => {
   afterEach(() => {
@@ -33,5 +33,44 @@ describe('AI usage telemetry kill switch', () => {
         promptVariant: 'compact',
       })
     ).not.toThrow()
+  })
+
+  it('persists closed retryTriggers and drops article text', () => {
+    const doc = buildAiUsageEventForTest({
+      success: true,
+      agentName: 'stage1_writer',
+      operation: 'generate_article',
+      generationReason: 'continuation',
+      retryTriggers: ['body_too_short', 'İçerik: Belediye açıkladı', 'draft'],
+    })
+    expect(doc.retryTriggers).toEqual(['body_too_short', 'draft'])
+    expect(JSON.stringify(doc)).not.toMatch(/Belediye açıkladı/)
+  })
+
+  it('persists shadow comparison fields without prompt text', () => {
+    const doc = buildAiUsageEventForTest({
+      success: true,
+      agentName: 'stage1_writer_shadow',
+      operation: 'generate_article_shadow',
+      shadowProvider: 'groq',
+      shadowModel: 'openai/gpt-oss-20b',
+      shadowSuccess: true,
+      shadowInputTokens: 12,
+      shadowOutputTokens: 8,
+      shadowLatencyMs: 40,
+      productionInputTokens: 90,
+      productionOutputTokens: 30,
+      generationReason: 'initial',
+      promptSystemTokens: 20,
+      promptSourceTokens: 50,
+      promptInstructionTokens: 10,
+      promptOtherTokens: 5,
+    })
+    const serialized = JSON.stringify(doc)
+    expect(doc.shadowProvider).toBe('groq')
+    expect(doc.shadowSuccess).toBe(true)
+    expect(doc.productionInputTokens).toBe(90)
+    expect(serialized).not.toMatch(/Sen NaHaber/)
+    expect(serialized).not.toMatch(/İçerik:/)
   })
 })

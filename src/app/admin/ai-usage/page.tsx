@@ -411,6 +411,210 @@ export default function AiUsagePage() {
         </ul>
       </Section>
 
+      <Section title="Stage1 Cost Analysis">
+        <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+          DeepSeek production writer. Shadow ucuz provider karşılaştırması — haber içeriğine bağlanmaz. Flag varsayılan kapalı.
+        </p>
+        <ul className="space-y-1 text-sm">
+          <li className="flex justify-between">
+            <span>Haber başına Stage1 çağrısı</span>
+            <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage1CostAnalysis?.callsPerNews, 2)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Haber başına Stage1 token</span>
+            <span className="tabular-nums">{loading ? '…' : fmtNum(data?.stage1CostAnalysis?.tokensPerNews, 0)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Haber başına input / output token</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtNum(data?.stage1CostAnalysis?.inputTokensPerNews, 0)} / ${fmtNum(data?.stage1CostAnalysis?.outputTokensPerNews, 0)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Aynı haber için max Stage1</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage1CostAnalysis?.maxCallsPerNews)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Stage1 istek / haber</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.stage1Requests)} / ${fmtInt(data?.stage1CostAnalysis?.newsCount)}`}
+            </span>
+          </li>
+        </ul>
+        <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          Generation reason
+        </p>
+        <ul className="space-y-1 text-sm">
+          <li className="flex justify-between">
+            <span>initial</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.reasonCounts.initial)} · ${fmtPct(data?.stage1CostAnalysis?.reasonRates.initial)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>continuation</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.reasonCounts.continuation)} · ${fmtPct(data?.stage1CostAnalysis?.reasonRates.continuation)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>quality_retry</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.reasonCounts.quality_retry)} · ${fmtPct(data?.stage1CostAnalysis?.reasonRates.quality_retry)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>provider_retry</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.reasonCounts.provider_retry)} · ${fmtPct(data?.stage1CostAnalysis?.reasonRates.provider_retry)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>pipeline_retry</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.reasonCounts.pipeline_retry)} · ${fmtPct(data?.stage1CostAnalysis?.reasonRates.pipeline_retry)}`}
+            </span>
+          </li>
+        </ul>
+        <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          Continuation trigger
+        </p>
+        <ul className="space-y-1 text-sm">
+          {(['body_too_short', 'incomplete_segment', 'title_incomplete', 'actual_truncation'] as const).map((key) => (
+            <li key={key} className="flex justify-between">
+              <span>{key}</span>
+              <span className="tabular-nums">
+                {loading ? '…' : fmtInt(data?.stage1CostAnalysis?.retryTriggers?.[key])}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          Quality retry trigger
+        </p>
+        <ul className="space-y-1 text-sm">
+          {(['draft', 'publish_score_low', 'category_confidence_zero', 'body_short', 'incomplete_content'] as const).map(
+            (key) => (
+              <li key={key} className="flex justify-between">
+                <span>{key}</span>
+                <span className="tabular-nums">
+                  {loading ? '…' : fmtInt(data?.stage1CostAnalysis?.retryTriggers?.[key])}
+                </span>
+              </li>
+            )
+          )}
+        </ul>
+        <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          Duplicate / retry token
+        </p>
+        <ul className="space-y-1 text-sm">
+          <li className="flex justify-between">
+            <span>Aynı inputHash extra çağrı</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.duplicate.groups)} grup / +${fmtInt(data?.stage1CostAnalysis?.duplicate.extraCalls)} · ${fmtInt(data?.stage1CostAnalysis?.duplicate.extraTokens)} token`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Continuation extra token</span>
+            <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage1CostAnalysis?.extraContinuationTokens)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Quality retry extra Stage1 token</span>
+            <span className="tabular-nums">
+              {loading ? '…' : fmtInt(data?.stage1CostAnalysis?.extraQualityRetryStage1Tokens)}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Retry kaynaklı token payı</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage1CostAnalysis?.retryTokenShare)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Quality retry extra Stage3 / Fact / Chief</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.qualityRetryDownstream.extraStage3Calls)} / ${fmtInt(data?.stage1CostAnalysis?.qualityRetryDownstream.extraFactCheckerCalls)} / ${fmtInt(data?.stage1CostAnalysis?.qualityRetryDownstream.extraChiefEditorCalls)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Prompt source share</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage1CostAnalysis?.promptParts.sourceShare)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Prompt instruction share</span>
+            <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage1CostAnalysis?.promptParts.instructionShare)}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>Ort. system / source / instruction token</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtNum(data?.stage1CostAnalysis?.promptParts.avgSystemTokens, 0)} / ${fmtNum(data?.stage1CostAnalysis?.promptParts.avgSourceTokens, 0)} / ${fmtNum(data?.stage1CostAnalysis?.promptParts.avgInstructionTokens, 0)}`}
+            </span>
+          </li>
+        </ul>
+        <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          DeepSeek vs shadow
+        </p>
+        <ul className="space-y-1 text-sm">
+          <li className="flex justify-between">
+            <span>Shadow istek / success</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtInt(data?.stage1CostAnalysis?.shadow.requests)} · ${fmtPct(data?.stage1CostAnalysis?.shadow.successRate)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Prod vs shadow avg input</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtNum(data?.stage1CostAnalysis?.productionVsShadow.productionAvgInput, 0)} / ${fmtNum(data?.stage1CostAnalysis?.productionVsShadow.shadowAvgInput, 0)}`}
+            </span>
+          </li>
+          <li className="flex justify-between">
+            <span>Prod vs shadow avg latency</span>
+            <span className="tabular-nums">
+              {loading
+                ? '…'
+                : `${fmtNum(data?.stage1CostAnalysis?.productionVsShadow.productionAvgLatencyMs, 0)} / ${fmtNum(data?.stage1CostAnalysis?.productionVsShadow.shadowAvgLatencyMs, 0)} ms`}
+            </span>
+          </li>
+        </ul>
+        <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          Projected savings (retry + cheaper input)
+        </p>
+        <ul className="space-y-1 text-sm">
+          {(['p10', 'p25', 'p50', 'p100'] as const).map((key) => (
+            <li key={key} className="flex justify-between">
+              <span>{key === 'p100' ? '100%' : key.slice(1) + '%'}</span>
+              <span className="tabular-nums">
+                {loading
+                  ? '…'
+                  : `${fmtInt(data?.stage1CostAnalysis?.projectedSavings[key].tokens)} token · ${fmtUsd(data?.stage1CostAnalysis?.projectedSavings[key].usd)}`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Section>
+
       <Section title="En Fazla Token Kullanan Ajanlar">
         {(data?.topTokenAgents.length ?? 0) === 0 ? (
           <Empty />

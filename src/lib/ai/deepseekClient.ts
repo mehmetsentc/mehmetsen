@@ -133,6 +133,11 @@ function noteAttempt(opts: {
       inputHash: opts.telemetry?.inputHash ?? opts.inputHash,
       generationReason: opts.telemetry?.generationReason,
       resultCategoryId: opts.telemetry?.resultCategoryId,
+      promptSystemTokens: opts.telemetry?.promptSystemTokens,
+      promptSourceTokens: opts.telemetry?.promptSourceTokens,
+      promptInstructionTokens: opts.telemetry?.promptInstructionTokens,
+      promptOtherTokens: opts.telemetry?.promptOtherTokens,
+      retryTriggers: opts.telemetry?.retryTriggers,
     })
   } catch (error) {
     console.warn(

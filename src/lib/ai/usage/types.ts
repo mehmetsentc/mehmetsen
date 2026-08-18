@@ -11,6 +11,25 @@ export type NormalizedAiUsage = {
   cacheMissTokens?: number
 }
 
+/** Numeric prompt-size / shadow fields. Never store prompt or article text. */
+export type AiUsageCostAuditFields = {
+  promptSystemTokens?: number
+  promptSourceTokens?: number
+  promptInstructionTokens?: number
+  promptOtherTokens?: number
+  shadowProvider?: string
+  shadowModel?: string
+  shadowSuccess?: boolean
+  shadowInputTokens?: number
+  shadowOutputTokens?: number
+  shadowLatencyMs?: number
+  productionInputTokens?: number
+  productionOutputTokens?: number
+  stage1CallsPerNews?: number
+  /** Closed enum list only — never prompt or article text. */
+  retryTriggers?: string[]
+}
+
 export type AiUsageTelemetryMeta = {
   agentName?: string
   operation?: string
@@ -30,7 +49,7 @@ export type AiUsageTelemetryMeta = {
   requiredFieldsPresent?: boolean
   promptVariant?: string
   stage3CanaryBucket?: number
-}
+} & AiUsageCostAuditFields
 
 export type AiUsageContext = {
   traceId?: string
@@ -80,7 +99,7 @@ export type RecordAiRequestUsageInput = {
   requiredFieldsPresent?: boolean
   promptVariant?: string
   stage3CanaryBucket?: number
-}
+} & AiUsageCostAuditFields
 
 export type AiUsageEventDoc = {
   requestId?: string
@@ -128,4 +147,4 @@ export type AiUsageEventDoc = {
   requiredFieldsPresent?: boolean
   promptVariant?: string
   stage3CanaryBucket?: number
-}
+} & AiUsageCostAuditFields

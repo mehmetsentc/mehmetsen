@@ -2,6 +2,7 @@ import { turkeyDayBounds, turkeyYmd, turkeyYmdNow, addTurkeyDays } from '@/lib/t
 import { estimateUsageCost, getDeepSeekPricing } from '@/lib/ai/usage/pricing'
 import {
   countDuplicateStage1Calls,
+  measureStage1CostAnalysis,
   measureStage3ClassifierOverlap,
   measureStage3CompactCanary,
   providerFailureRate,
@@ -236,6 +237,7 @@ export type AiUsageAggregate = {
   geminiErrors: Record<string, number>
   groqErrors: Record<string, number>
   stage3CompactCanary: ReturnType<typeof measureStage3CompactCanary>
+  stage1CostAnalysis: ReturnType<typeof measureStage1CostAnalysis>
 }
 
 export function aggregateAiUsageEvents(
@@ -549,6 +551,21 @@ export function aggregateAiUsageEvents(
     geminiErrors: providerFailureRate(events, 'gemini').byCode,
     groqErrors: providerFailureRate(events, 'groq').byCode,
     stage3CompactCanary: measureStage3CompactCanary(events),
+    stage1CostAnalysis: (() => {
+      const analysis = measureStage1CostAnalysis(events)
+      const price = (tokens: number) => {
+        const priced = estimateUsageCost(
+          { inputTokens: tokens, outputTokens: 0, totalTokens: tokens },
+          getDeepSeekPricing('deepseek-v4-flash')
+        )
+        return priced.estimatedTotalCostUsd ?? null
+      }
+      analysis.projectedSavings.p10.usd = price(analysis.projectedSavings.p10.tokens)
+      analysis.projectedSavings.p25.usd = price(analysis.projectedSavings.p25.tokens)
+      analysis.projectedSavings.p50.usd = price(analysis.projectedSavings.p50.tokens)
+      analysis.projectedSavings.p100.usd = price(analysis.projectedSavings.p100.tokens)
+      return analysis
+    })(),
   }
 }
 
@@ -590,4 +607,18 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'requiredFieldsPresent',
   'promptVariant',
   'stage3CanaryBucket',
+  'promptSystemTokens',
+  'promptSourceTokens',
+  'promptInstructionTokens',
+  'promptOtherTokens',
+  'shadowProvider',
+  'shadowModel',
+  'shadowSuccess',
+  'shadowInputTokens',
+  'shadowOutputTokens',
+  'shadowLatencyMs',
+  'productionInputTokens',
+  'productionOutputTokens',
+  'stage1CallsPerNews',
+  'retryTriggers',
 ] as const

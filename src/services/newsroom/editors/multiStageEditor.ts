@@ -33,6 +33,7 @@ export interface MultiStageInput {
   revisionHints?: string[]
   previousDraft?: { title: string; spot: string; content: string }
   generationReason?: GenerationReason
+  retryTriggers?: string[]
 }
 
 export interface MultiStageResult extends AiRewriteResult {
@@ -66,6 +67,7 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     revisionHints: input.revisionHints,
     previousDraft: input.previousDraft,
     generationReason: input.generationReason,
+    retryTriggers: input.retryTriggers,
   })
 
   // ── Stage 2: Fact Checker ────────────────────────────────────────────────────

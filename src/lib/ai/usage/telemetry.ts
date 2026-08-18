@@ -1,6 +1,7 @@
 import { Collections } from '@/lib/firebase/collections'
 import { getAiUsageContext } from '@/lib/ai/usage/context'
 import { estimateUsageCost, getModelPricing } from '@/lib/ai/usage/pricing'
+import { sanitizeRetryTriggers } from '@/lib/ai/usage/retryTriggers'
 import type { AiUsageEventDoc, RecordAiRequestUsageInput } from '@/lib/ai/usage/types'
 
 const SCHEMA_VERSION = 1
@@ -90,6 +91,23 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
     requiredFieldsPresent: input.requiredFieldsPresent,
     promptVariant: input.promptVariant,
     stage3CanaryBucket: input.stage3CanaryBucket,
+    promptSystemTokens: input.promptSystemTokens,
+    promptSourceTokens: input.promptSourceTokens,
+    promptInstructionTokens: input.promptInstructionTokens,
+    promptOtherTokens: input.promptOtherTokens,
+    shadowProvider: input.shadowProvider,
+    shadowModel: input.shadowModel,
+    shadowSuccess: input.shadowSuccess,
+    shadowInputTokens: input.shadowInputTokens,
+    shadowOutputTokens: input.shadowOutputTokens,
+    shadowLatencyMs: input.shadowLatencyMs,
+    productionInputTokens: input.productionInputTokens,
+    productionOutputTokens: input.productionOutputTokens,
+    stage1CallsPerNews: input.stage1CallsPerNews,
+    retryTriggers: (() => {
+      const cleaned = sanitizeRetryTriggers(input.retryTriggers)
+      return cleaned.length > 0 ? cleaned : undefined
+    })(),
   }
 
   return compact(doc as unknown as Record<string, unknown>)

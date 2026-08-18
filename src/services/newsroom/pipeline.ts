@@ -80,6 +80,7 @@ import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { isNewsBodyTooShort, countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
+import { classifyQualityRetryTriggers } from '@/lib/ai/usage/retryTriggers'
 import {
   qualityDiscardReason,
   qualityDiscardSkipReason,
@@ -900,6 +901,15 @@ export async function processNewsroomArticle(
         const retryRaw = await runMultiStageEditor({
           ...stageInputBase,
           generationReason: 'quality_retry',
+          retryTriggers: classifyQualityRetryTriggers({
+            gateDecision: rewrittenRaw.gateDecision,
+            publishScore: rewrittenRaw.publishScore,
+            categoryConfidence: rewrittenRaw.categoryConfidence,
+            title: rewrittenRaw.title,
+            spot: rewrittenRaw.spot,
+            summary: rewrittenRaw.summary,
+            description: rewrittenRaw.description,
+          }),
           revisionHints: hints,
           previousDraft: {
             title: rewrittenRaw.title,

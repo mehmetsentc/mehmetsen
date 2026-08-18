@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { classifySecondStage1Call } from '@/lib/ai/usage/generationReason'
 import {
   countDuplicateStage1Calls,
+  measureStage1CostAnalysis,
   measureStage3ClassifierOverlap,
   measureStage3CompactCanary,
 } from '@/lib/ai/usage/pipelineCostSignals'
@@ -91,5 +92,81 @@ describe('Stage3 compact canary aggregates', () => {
     expect(result.controlQuality.agreementRate).toBe(1)
     expect(result.compactQuality.disagree).toBe(1)
     expect(result.compactQuality.genericRate).toBe(1)
+  })
+})
+
+describe('Stage1 cost analysis', () => {
+  it('computes calls per news and reason rates including 9/19 continuation', () => {
+    const events = [
+      ...Array.from({ length: 4 }, (_, i) => ({
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        generationReason: 'initial',
+        newsId: `n${i}`,
+        inputTokens: 4000,
+        outputTokens: 800,
+        latencyMs: 2000,
+        promptSystemTokens: 400,
+        promptSourceTokens: 3000,
+        promptInstructionTokens: 400,
+        promptOtherTokens: 200,
+        success: true,
+      })),
+      ...Array.from({ length: 9 }, (_, i) => ({
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        generationReason: 'continuation',
+        newsId: `n${i % 4}`,
+        inputTokens: 4500,
+        outputTokens: 900,
+        success: true,
+      })),
+      ...Array.from({ length: 6 }, (_, i) => ({
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        generationReason: 'quality_retry',
+        newsId: `n${i % 4}`,
+        inputTokens: 4800,
+        outputTokens: 850,
+        retryTriggers: ['draft', 'publish_score_low'],
+        success: true,
+      })),
+      { agentName: 'stage3_category', newsId: 'n0', inputTokens: 1200, success: true },
+      { agentName: 'stage3_category', newsId: 'n0', inputTokens: 1100, success: true },
+      { agentName: 'fact_checker', newsId: 'n0', success: true },
+      { agentName: 'chief_editor', newsId: 'n0', success: true },
+      {
+        agentName: 'stage1_writer_shadow',
+        operation: 'generate_article_shadow',
+        shadowProvider: 'groq',
+        provider: 'groq',
+        shadowSuccess: true,
+        success: true,
+        shadowInputTokens: 1400,
+        inputTokens: 1400,
+        shadowOutputTokens: 700,
+        shadowLatencyMs: 400,
+      },
+    ]
+    const result = measureStage1CostAnalysis(events)
+    expect(result.stage1Requests).toBe(19)
+    expect(result.reasonCounts.continuation).toBe(9)
+    expect(result.reasonCounts.quality_retry).toBe(6)
+    expect(result.reasonRates.continuation).toBeCloseTo(9 / 19)
+    expect(result.reasonRates.quality_retry).toBeCloseTo(6 / 19)
+    expect(result.reasonRates.pipeline_retry).toBe(0)
+    expect(result.callsPerNews).toBeCloseTo(19 / 4)
+    expect(result.maxCallsPerNews).toBeGreaterThanOrEqual(4)
+    expect(result.retryTriggers.draft).toBe(6)
+    expect(result.retryTriggers.publish_score_low).toBe(6)
+    expect(result.extraContinuationTokens).toBe(9 * (4500 + 900))
+    expect(result.extraQualityRetryStage1Tokens).toBe(6 * (4800 + 850))
+    expect(result.qualityRetryDownstream.extraStage3Calls).toBe(1)
+    expect(result.qualityRetryDownstream.extraFactCheckerCalls).toBe(0)
+    expect(result.qualityRetryDownstream.extraChiefEditorCalls).toBe(0)
+    expect(result.shadow.requests).toBe(1)
+    expect(result.shadow.successRate).toBe(1)
+    expect(result.promptParts.sourceShare).toBeGreaterThan(0.5)
+    expect(result.projectedSavings.p10.tokens).toBeGreaterThan(0)
   })
 })

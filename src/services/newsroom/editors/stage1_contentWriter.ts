@@ -11,6 +11,9 @@ import { countPlainWords, isNewsBodyTooShort, MIN_NEWS_BODY_WORDS } from '@/lib/
 import { inputCharLimit, outputTokenLimit } from '@/lib/ai/usage/tokenBudget'
 import type { GenerationReason } from '@/lib/ai/usage/generationReason'
 import { runStage1Shadow } from '@/lib/ai/stage1Shadow'
+import { classifierCohortKey } from '@/lib/ai/groqRouting'
+import { measureStage1PromptParts } from '@/lib/ai/usage/promptSize'
+import { classifyContinuationTriggers, sanitizeRetryTriggers } from '@/lib/ai/usage/retryTriggers'
 
 export interface WrittenArticle {
   title: string
@@ -35,6 +38,8 @@ interface WriterInput {
   revisionHints?: string[]
   previousDraft?: { title: string; spot: string; content: string }
   generationReason?: GenerationReason
+  /** Closed enum list — continuation / quality_retry audit only. */
+  retryTriggers?: string[]
 }
 
 /** Ortak güvenlik — persona ile birleşir, makale şişirme YOK */
@@ -136,6 +141,21 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 50_000)
   const maxTokens = outputTokenLimit('AI_STAGE1_MAX_OUTPUT_TOKENS', 3500)
   const generationReason: GenerationReason = input.generationReason ?? 'initial'
+  const sourceArticle = (input.originalContent || input.originalSummary || '').slice(
+    0,
+    inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000)
+  )
+  const promptParts = measureStage1PromptParts({
+    systemContent,
+    userContent,
+    sourceArticle,
+  })
+  const promptTelemetry = {
+    promptSystemTokens: promptParts.systemTokens,
+    promptSourceTokens: promptParts.sourceTokens,
+    promptInstructionTokens: promptParts.instructionTokens,
+    promptOtherTokens: promptParts.otherTokens,
+  }
 
   try {
     let raw: string
@@ -154,6 +174,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
           promptVersion: 'stage1-writer:v1',
           attempt: 1,
           generationReason,
+          ...promptTelemetry,
+          retryTriggers: sanitizeRetryTriggers(input.retryTriggers),
         },
       })
     } catch (firstErr) {
@@ -179,6 +201,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
           attempt: 2,
           retryCount: 1,
           generationReason: 'provider_retry',
+          ...promptTelemetry,
+          retryTriggers: sanitizeRetryTriggers(input.retryTriggers),
         },
       })
     }
@@ -229,6 +253,7 @@ function writtenLooksIncomplete(w: WrittenArticle): boolean {
 
 export async function writeArticle(input: WriterInput): Promise<WrittenArticle> {
   console.log(`[stage1/contentWriter] başlıyor: "${input.originalTitle.slice(0, 60)}"`)
+  const generationReason: GenerationReason = input.generationReason ?? 'initial'
   let written = await callDeepSeek(input)
 
   // Yarım / kısa çıktı → bir kez daha yaz (onay kuyruğuna yarım metin basmamak için)
@@ -237,6 +262,7 @@ export async function writeArticle(input: WriterInput): Promise<WrittenArticle> 
     const repaired = await callDeepSeek({
       ...input,
       generationReason: 'continuation',
+      retryTriggers: classifyContinuationTriggers(written),
       revisionHints: [
         ...(input.revisionHints ?? []),
         'Önceki çıktı YARIM KESİLMİŞ — tüm alanları (title, spot, summary, content) eksiksiz tamamla',
@@ -258,18 +284,36 @@ export async function writeArticle(input: WriterInput): Promise<WrittenArticle> 
 
   if (written) {
     console.log(`[stage1] DeepSeek başarılı: "${written.title.slice(0, 60)}"`)
-    void runStage1Shadow({
-      messages: [
-        {
-          role: 'system',
-          content: input.systemPromptOverride?.trim()
-            ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
-            : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`,
-        },
-        { role: 'user', content: buildPrompt(input) },
-      ],
-      cohortKey: input.originalTitle,
-    }).catch(() => undefined)
+    if (generationReason === 'initial') {
+      const systemContent = input.systemPromptOverride?.trim()
+        ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
+        : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`
+      const userContent = input.userPromptOverride?.trim()
+        ? `${input.userPromptOverride.trim()}\n\n${buildPrompt(input)}`
+        : buildPrompt(input)
+      const sourceArticle = (input.originalContent || input.originalSummary || '').slice(
+        0,
+        inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000)
+      )
+      const promptParts = measureStage1PromptParts({
+        systemContent,
+        userContent,
+        sourceArticle,
+      })
+      void runStage1Shadow({
+        messages: [
+          { role: 'system', content: systemContent },
+          { role: 'user', content: userContent },
+        ],
+        cohortKey: classifierCohortKey(),
+        generationReason,
+        productionInputTokens: promptParts.totalTokens,
+        promptSystemTokens: promptParts.systemTokens,
+        promptSourceTokens: promptParts.sourceTokens,
+        promptInstructionTokens: promptParts.instructionTokens,
+        promptOtherTokens: promptParts.otherTokens,
+      }).catch(() => undefined)
+    }
     return written
   }
 
