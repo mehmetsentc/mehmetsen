@@ -126,10 +126,72 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'trt',
     label: 'TRT Haber',
-    feedUrl:
+    feedUrl: 'https://www.trthaber.com/gundem_articles.rss',
+    alternateFeedUrls: [
+      'https://www.trthaber.com/manset_articles.rss',
+      'https://www.trthaber.com/turkiye_articles.rss',
       'https://www.trthaber.com/xml_mobile.php?tur=xml_genel&kategori=gundem&adet=20',
-    feedFormat: 'trt-xml',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true,
+  },
+  {
+    id: 'trt-manset',
+    label: 'TRT Haber Manşet',
+    feedUrl: 'https://www.trthaber.com/manset_articles.rss',
+    alternateFeedUrls: [
+      'https://www.trthaber.com/guncel_articles.rss',
+    ],
     maxItemsPerRun: 6,
+    enabled: true,
+  },
+  {
+    id: 'trt-ekonomi',
+    label: 'TRT Haber Ekonomi',
+    feedUrl: 'https://www.trthaber.com/ekonomi_articles.rss',
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'trt-dunya',
+    label: 'TRT Haber Dünya',
+    feedUrl: 'https://www.trthaber.com/dunya_articles.rss',
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'trt-saglik',
+    label: 'TRT Haber Sağlık',
+    feedUrl: 'https://www.trthaber.com/saglik_articles.rss',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'trt-yasam',
+    label: 'TRT Haber Yaşam',
+    feedUrl: 'https://www.trthaber.com/yasam_articles.rss',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'trt-bilim',
+    label: 'TRT Haber Bilim Teknoloji',
+    feedUrl: 'https://www.trthaber.com/bilim_teknoloji_articles.rss',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'trt-kultur',
+    label: 'TRT Haber Kültür Sanat',
+    feedUrl: 'https://www.trthaber.com/kultur_sanat_articles.rss',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'trt-egitim',
+    label: 'TRT Haber Eğitim',
+    feedUrl: 'https://www.trthaber.com/egitim_articles.rss',
+    maxItemsPerRun: 3,
     enabled: true,
   },
   {
@@ -878,9 +940,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'trt-spor',
     label: 'TRT Spor',
-    feedUrl: 'https://www.trthaber.com/xml_mobile.php?tur=xml_genel&kategori=spor&adet=20',
-    feedFormat: 'trt-xml',
+    feedUrl: 'https://www.trthaber.com/spor_articles.rss',
     alternateFeedUrls: [
+      'https://www.trthaber.com/xml_mobile.php?tur=xml_genel&kategori=spor&adet=20',
       'https://news.google.com/rss/search?q=site:trtspor.com.tr&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
@@ -1073,9 +1135,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'trt-politika',
     label: 'TRT Haber Siyaset',
-    feedUrl: 'https://www.trthaber.com/xml_mobile.php?tur=xml_genel&kategori=siyaset&adet=20',
-    feedFormat: 'trt-xml',
+    feedUrl: 'https://www.trthaber.com/gundem_articles.rss',
     alternateFeedUrls: [
+      'https://www.trthaber.com/xml_mobile.php?tur=xml_genel&kategori=siyaset&adet=20',
       'https://news.google.com/rss/search?q=site:trthaber.com+siyaset&hl=tr&gl=TR&ceid=TR:tr',
     ],
     maxItemsPerRun: 4,
@@ -1561,9 +1623,12 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'trt-sondakika',
     label: 'TRT Haber Son Dakika',
-    feedUrl: 'https://www.trthaber.com/sondakika.rss',
-    maxItemsPerRun: 6,
-    enabled: false, // Feed bayatladı — son güncelleme 20 Nisan 2026; trt (xml_mobile) çalışıyor
+    feedUrl: 'https://www.trthaber.com/sondakika_articles.rss',
+    alternateFeedUrls: [
+      'https://www.trthaber.com/xml_mobile.php?tur=xml_genel&kategori=sondakika&adet=20',
+    ],
+    maxItemsPerRun: 8,
+    enabled: true, // Yeni RSS URL ile yeniden aktif
   },
 
   // ── Uluslararası Türkçe Kaynaklar ───────────────────────────────────────

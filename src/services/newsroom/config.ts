@@ -84,7 +84,7 @@ export const LOCAL_NEWS_DEFAULT_MAX_PROVINCES = Number(
  */
 export const NATIONAL_NEWS_SOURCE_IDS = [
   'aa', 'dha', 'anka-haber',
-  'trt', 'ntv', 'cnn', 'haberturk', 'sozcu',
+  'trt', 'trt-manset', 'ntv', 'cnn', 'haberturk', 'sozcu',
   'ensonhaber', 'yeniasir', 'dw-turkish',
   'cumhuriyet', 't24',
 ] as const
@@ -95,7 +95,7 @@ export const NATIONAL_NEWS_SOURCE_IDS = [
  */
 export const BREAKING_NEWS_SOURCE_IDS = [
   'aa', 'dha', 'anka-haber',
-  'ntv', 'cnn', 'haberturk', 'trt', 'sabah',
+  'ntv', 'cnn', 'haberturk', 'trt', 'trt-sondakika', 'sabah',
   'sabah-sondakika', 'milliyet-sondakika',
   'reuters-world', 'ap-news',
 ] as const
@@ -106,7 +106,7 @@ export const BREAKING_NEWS_SOURCE_IDS = [
  */
 export const WORLD_NEWS_SOURCE_IDS = [
   'reuters-world', 'ap-news', 'aljazeera', 'bbc-world', 'euronews-tr',
-  'dw-turkish', 'milliyet-dunya', 'sabah-dunya',
+  'dw-turkish', 'milliyet-dunya', 'sabah-dunya', 'trt-dunya',
 ] as const
 
 /**
@@ -116,6 +116,7 @@ export const WORLD_NEWS_SOURCE_IDS = [
 export const TECH_NEWS_SOURCE_IDS = [
   'techcrunch', 'theverge', 'shiftdelete', 'webtekno',
   'ntv-teknoloji', 'cnnturk-bilim', 'milliyet-teknoloji', 'sabah-teknoloji',
+  'trt-bilim',
 ] as const
 
 /**
@@ -134,6 +135,7 @@ export const SPORTS_NEWS_SOURCE_IDS = [
 export const HEALTH_NEWS_SOURCE_IDS = [
   'who-news', 'saglik-tr',
   'ntv-saglik', 'cnnturk-saglik', 'milliyet-saglik', 'sabah-saglik', 'hurriyet-saglik',
+  'trt-saglik',
 ] as const
 
 /**
@@ -152,6 +154,7 @@ export const MAGAZINE_NEWS_SOURCE_IDS = [
   'milliyet-magazin', 'sabah-magazin',
   'takvim-magazin', 'cnnturk-kultur', 'cnnturk-yasam',
   'ntv-yasam', 'sabah-kultur-sanat', 'ntv-kultur',
+  'trt-yasam', 'trt-kultur', 'trt-egitim',
   'gecce',
   'eventnews-kultur', 'eventnews-konser', 'eventnews-festival',
   'eventnews-etkinlik', 'eventnews-mekan',
@@ -165,6 +168,7 @@ export const MAGAZINE_NEWS_SOURCE_IDS = [
 export const FINANS_SOURCE_IDS = [
   'bloomberght', 'dunya-ekonomi', 'ntv-ekonomi',
   'milliyet-ekonomi', 'cnnturk-ekonomi', 'sabah-ekonomi',
+  'trt-ekonomi',
 ] as const
 
 /**
