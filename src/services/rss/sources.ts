@@ -511,9 +511,11 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'coindesk',
     label: 'CoinDesk',
-    feedUrl: 'https://www.coindesk.com/arc/outboundfeeds/rss/',
+    // Direct RSS returns titles only (no description) — paywall design.
+    // Google News fallback has proper descriptions, use as primary.
+    feedUrl: 'https://news.google.com/rss/search?q=site:coindesk.com&hl=tr&gl=TR&ceid=TR:tr',
     alternateFeedUrls: [
-      'https://news.google.com/rss/search?q=site:coindesk.com&hl=tr&gl=TR&ceid=TR:tr',
+      'https://www.coindesk.com/arc/outboundfeeds/rss/',
     ],
     maxItemsPerRun: 4,
     enabled: true,
@@ -1521,7 +1523,9 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   {
     id: 'milliyet-saglik',
     label: 'Milliyet Sağlık',
-    feedUrl: 'https://www.milliyet.com.tr/rss/rssNew/saglikRss.xml',
+    // milliyet.com.tr/rss/rssNew/saglikRss.xml → S3 NoSuchKey 404 (Aug 2026)
+    feedUrl: 'https://news.google.com/rss/search?q=site:milliyet.com.tr+saglik&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: ['https://www.milliyet.com.tr/rss/rssNew/saglikRss.xml'],
     maxItemsPerRun: 3,
     enabled: true,
   },
