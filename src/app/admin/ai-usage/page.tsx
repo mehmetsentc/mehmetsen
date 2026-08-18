@@ -615,6 +615,98 @@ export default function AiUsagePage() {
         </ul>
       </Section>
 
+      <Section title="Stage1 Retry Optimization Canary">
+        <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+          Deterministik %10 cohort. Flag varsayılan kapalı. Optimized: kısa gövde tek başına continuation/quality retry değil; logical Stage1 cap=2. Prompt/metin kaydedilmez.
+        </p>
+        {!data?.stage1RetryOptimizationCanary?.enabled && !loading ? (
+          <p className="text-sm text-[rgb(var(--color-muted))]">Canary kapalı veya bu aralıkta cohort verisi yok.</p>
+        ) : (
+          <>
+            <ul className="mb-4 space-y-1 text-sm">
+              <li className="flex justify-between">
+                <span>Çağrı / haber düşüş</span>
+                <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage1RetryOptimizationCanary?.callDropPct)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Token / haber düşüş</span>
+                <span className="tabular-nums">{loading ? '…' : fmtPct(data?.stage1RetryOptimizationCanary?.tokenDropPct)}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Tahmini token tasarrufu</span>
+                <span className="tabular-nums">{loading ? '…' : fmtInt(data?.stage1RetryOptimizationCanary?.estimatedTokensSaved)}</span>
+              </li>
+            </ul>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {(['control', 'optimized'] as const).map((cohort) => {
+                const row = data?.stage1RetryOptimizationCanary?.[cohort]
+                return (
+                  <div key={cohort}>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                      {cohort === 'control' ? 'Control' : 'Optimized'}
+                    </p>
+                    <ul className="space-y-1 text-sm">
+                      <li className="flex justify-between">
+                        <span>Haber</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtInt(row?.newsCount)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Stage1 çağrı / haber</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtNum(row?.callsPerNews, 2)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Stage1 token / haber</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtNum(row?.tokensPerNews, 0)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Ort. kelime</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtNum(row?.avgWordCount, 0)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Continuation rate</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtPct(row?.continuationRate)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Quality retry rate</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtPct(row?.qualityRetryRate)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Max Stage1 / haber</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtInt(row?.maxCallsPerNews)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Draft / publish</span>
+                        <span className="tabular-nums">
+                          {loading ? '…' : `${fmtPct(row?.draftRate)} / ${fmtPct(row?.publishRate)}`}
+                        </span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>publishScore</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtNum(row?.avgPublishScore, 1)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Kategori güveni</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtNum(row?.avgCategoryConfidence, 1)}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Incomplete / truncation</span>
+                        <span className="tabular-nums">
+                          {loading ? '…' : `${fmtPct(row?.incompleteContentRate)} / ${fmtPct(row?.actualTruncationRate)}`}
+                        </span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Stage3 çağrı / haber</span>
+                        <span className="tabular-nums">{loading ? '…' : fmtNum(row?.stage3CallsPerNews, 2)}</span>
+                      </li>
+                    </ul>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </Section>
+
       <Section title="En Fazla Token Kullanan Ajanlar">
         {(data?.topTokenAgents.length ?? 0) === 0 ? (
           <Empty />

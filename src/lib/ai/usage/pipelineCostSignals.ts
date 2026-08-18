@@ -624,3 +624,207 @@ export function measureStage1CostAnalysis(events: LooseEvent[]): Stage1CostAnaly
     },
   }
 }
+
+export type RetryOptCohortStats = {
+  newsCount: number
+  stage1Calls: number
+  callsPerNews: number | null
+  tokensPerNews: number | null
+  avgWordCount: number | null
+  continuationRate: number | null
+  qualityRetryRate: number | null
+  maxCallsPerNews: number
+  draftRate: number | null
+  publishRate: number | null
+  avgPublishScore: number | null
+  avgCategoryConfidence: number | null
+  incompleteContentRate: number | null
+  actualTruncationRate: number | null
+  stage3CallsPerNews: number | null
+}
+
+export type Stage1RetryOptimizationCanary = {
+  enabled: boolean
+  control: RetryOptCohortStats
+  optimized: RetryOptCohortStats
+  estimatedTokensSaved: number | null
+  callDropPct: number | null
+  tokenDropPct: number | null
+}
+
+function emptyRetryOptStats(): RetryOptCohortStats {
+  return {
+    newsCount: 0,
+    stage1Calls: 0,
+    callsPerNews: null,
+    tokensPerNews: null,
+    avgWordCount: null,
+    continuationRate: null,
+    qualityRetryRate: null,
+    maxCallsPerNews: 0,
+    draftRate: null,
+    publishRate: null,
+    avgPublishScore: null,
+    avgCategoryConfidence: null,
+    incompleteContentRate: null,
+    actualTruncationRate: null,
+    stage3CallsPerNews: null,
+  }
+}
+
+function cohortFromVariant(value: unknown): 'control' | 'optimized' | null {
+  const v = asString(value)
+  if (v === 'optimized') return 'optimized'
+  if (v === 'control') return 'control'
+  return null
+}
+
+export function measureStage1RetryOptimizationCanary(events: LooseEvent[]): Stage1RetryOptimizationCanary {
+  const newsCohort = new Map<string, 'control' | 'optimized'>()
+  for (const event of events) {
+    const key = articleKey(event)
+    if (!key) continue
+    const cohort = cohortFromVariant(event.promptVariant)
+    if (!cohort) continue
+    if (asString(event.agentName) !== 'stage1_writer' && asString(event.agentName) !== 'stage4_gate') continue
+    if (cohort === 'optimized' || !newsCohort.has(key)) newsCohort.set(key, cohort)
+  }
+
+  type Acc = {
+    stage1: number
+    tokens: number
+    continuation: number
+    qualityRetry: number
+    callsByNews: Map<string, number>
+    words: number[]
+    draft: number
+    publish: number
+    scored: number
+    scoreSum: number
+    conf: number[]
+    incompleteNews: Set<string>
+    truncationNews: Set<string>
+    stage3: number
+    news: Set<string>
+    gated: Set<string>
+  }
+  const makeAcc = (): Acc => ({
+    stage1: 0,
+    tokens: 0,
+    continuation: 0,
+    qualityRetry: 0,
+    callsByNews: new Map(),
+    words: [],
+    draft: 0,
+    publish: 0,
+    scored: 0,
+    scoreSum: 0,
+    conf: [],
+    incompleteNews: new Set(),
+    truncationNews: new Set(),
+    stage3: 0,
+    news: new Set(),
+    gated: new Set(),
+  })
+  const accs = { control: makeAcc(), optimized: makeAcc() }
+
+  const lastGate = new Map<string, LooseEvent>()
+  for (const event of events) {
+    const key = articleKey(event)
+    if (!key) continue
+    const cohort = newsCohort.get(key)
+    if (!cohort) continue
+    const acc = accs[cohort]
+    acc.news.add(key)
+
+    if (asString(event.agentName) === 'stage1_writer') {
+      const reason = asString(event.generationReason) || 'unknown'
+      if (reason === 'provider_retry') continue
+      acc.stage1 += 1
+      acc.callsByNews.set(key, (acc.callsByNews.get(key) ?? 0) + 1)
+      const inTok = typeof event.inputTokens === 'number' ? event.inputTokens : 0
+      const outTok = typeof event.outputTokens === 'number' ? event.outputTokens : 0
+      acc.tokens += inTok + outTok
+      if (reason === 'continuation') acc.continuation += 1
+      if (reason === 'quality_retry') acc.qualityRetry += 1
+      for (const trigger of sanitizeRetryTriggers(event.retryTriggers)) {
+        if (trigger === 'incomplete_segment' || trigger === 'incomplete_content') acc.incompleteNews.add(key)
+        if (trigger === 'actual_truncation') acc.truncationNews.add(key)
+      }
+    }
+    if (asString(event.agentName) === 'stage3_category') acc.stage3 += 1
+    if (asString(event.agentName) === 'stage4_gate') lastGate.set(key, event)
+  }
+
+  for (const [key, event] of lastGate) {
+    const cohort = newsCohort.get(key)
+    if (!cohort) continue
+    const acc = accs[cohort]
+    acc.gated.add(key)
+    const decision = asString(event.gateDecision)
+    if (decision === 'draft') acc.draft += 1
+    if (decision === 'publish') acc.publish += 1
+    if (typeof event.publishScore === 'number' && Number.isFinite(event.publishScore)) {
+      acc.scored += 1
+      acc.scoreSum += event.publishScore
+    }
+    if (typeof event.categoryConfidence === 'number' && Number.isFinite(event.categoryConfidence)) {
+      acc.conf.push(event.categoryConfidence)
+    }
+    if (typeof event.outputWordCount === 'number' && Number.isFinite(event.outputWordCount)) {
+      acc.words.push(event.outputWordCount)
+    }
+    for (const trigger of sanitizeRetryTriggers(event.retryTriggers)) {
+      if (trigger === 'incomplete_segment' || trigger === 'incomplete_content') acc.incompleteNews.add(key)
+      if (trigger === 'actual_truncation') acc.truncationNews.add(key)
+    }
+  }
+
+  const toStats = (acc: Acc): RetryOptCohortStats => {
+    const newsCount = acc.news.size
+    let maxCalls = 0
+    for (const n of acc.callsByNews.values()) if (n > maxCalls) maxCalls = n
+    const gated = acc.gated.size
+    return {
+      newsCount,
+      stage1Calls: acc.stage1,
+      callsPerNews: newsCount > 0 ? acc.stage1 / newsCount : null,
+      tokensPerNews: newsCount > 0 ? acc.tokens / newsCount : null,
+      avgWordCount: avg(acc.words),
+      continuationRate: acc.stage1 > 0 ? acc.continuation / acc.stage1 : null,
+      qualityRetryRate: acc.stage1 > 0 ? acc.qualityRetry / acc.stage1 : null,
+      maxCallsPerNews: maxCalls,
+      draftRate: gated > 0 ? acc.draft / gated : null,
+      publishRate: gated > 0 ? acc.publish / gated : null,
+      avgPublishScore: acc.scored > 0 ? acc.scoreSum / acc.scored : null,
+      avgCategoryConfidence: avg(acc.conf),
+      incompleteContentRate: newsCount > 0 ? acc.incompleteNews.size / newsCount : null,
+      actualTruncationRate: newsCount > 0 ? acc.truncationNews.size / newsCount : null,
+      stage3CallsPerNews: newsCount > 0 ? acc.stage3 / newsCount : null,
+    }
+  }
+
+  const control = newsCohort.size === 0 ? emptyRetryOptStats() : toStats(accs.control)
+  const optimized = newsCohort.size === 0 ? emptyRetryOptStats() : toStats(accs.optimized)
+  const callDropPct =
+    control.callsPerNews != null && optimized.callsPerNews != null && control.callsPerNews > 0
+      ? 1 - optimized.callsPerNews / control.callsPerNews
+      : null
+  const tokenDropPct =
+    control.tokensPerNews != null && optimized.tokensPerNews != null && control.tokensPerNews > 0
+      ? 1 - optimized.tokensPerNews / control.tokensPerNews
+      : null
+  const estimatedTokensSaved =
+    control.tokensPerNews != null && optimized.tokensPerNews != null
+      ? Math.max(0, Math.round((control.tokensPerNews - optimized.tokensPerNews) * optimized.newsCount))
+      : null
+
+  return {
+    enabled: newsCohort.size > 0,
+    control,
+    optimized,
+    estimatedTokensSaved,
+    callDropPct,
+    tokenDropPct,
+  }
+}

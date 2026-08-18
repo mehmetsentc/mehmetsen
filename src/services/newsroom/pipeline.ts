@@ -80,7 +80,13 @@ import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
 import { isNewsBodyTooShort, countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
-import { classifyQualityRetryTriggers } from '@/lib/ai/usage/retryTriggers'
+import {
+  attachStage1RetryOptimizationContext,
+  isOptimizedStage1RetryCohort,
+  remainingStage1LogicalCalls,
+  shouldRunQualityRetry,
+  normalizeQualityRetryTriggers,
+} from '@/lib/ai/stage1RetryOptimization'
 import {
   qualityDiscardReason,
   qualityDiscardSkipReason,
@@ -549,6 +555,8 @@ export async function processNewsroomArticle(
     )
   }
 
+  attachStage1RetryOptimizationContext()
+
   if (options.changeType !== 'updated') {
     const existing = await findExistingByFingerprint(db, fingerprint)
     if (existing?.collection === 'news' && !options.existingNewsId) {
@@ -866,6 +874,20 @@ export async function processNewsroomArticle(
       contentHasIncompleteSegments(r.description || '') ||
       isNewsBodyTooShort(r.description || '')
 
+    const qualityRetryInput = (r: typeof rewrittenRaw) => ({
+      gateDecision: r.gateDecision,
+      gateReasons: r.gateReasons,
+      publishScore: r.publishScore,
+      categoryConfidence: r.categoryConfidence,
+      title: r.title,
+      spot: r.spot,
+      summary: r.summary,
+      description: r.description,
+      aiWritten: r.categoryConfidence !== 0,
+    })
+
+    const optimizedRetry = isOptimizedStage1RetryCohort()
+
     // Düşük gate / kısa / yarım gövde → yeniden yazım (onay kuyruğuna yarım haber basmamak için)
     if (
       !workingInput.skipAiRewrite &&
@@ -875,10 +897,8 @@ export async function processNewsroomArticle(
       let attempt = 0
       while (
         attempt < NEWSROOM_REWRITE_MAX_RETRIES &&
-        (rewrittenRaw.gateDecision === 'draft' ||
-          (rewrittenRaw.publishScore ?? 0) < 60 ||
-          rewrittenRaw.categoryConfidence === 0 ||
-          articleIncomplete(rewrittenRaw))
+        remainingStage1LogicalCalls(getAiUsageContext()?.stage1CallBudget) > 0 &&
+        shouldRunQualityRetry(qualityRetryInput(rewrittenRaw), optimizedRetry)
       ) {
         attempt += 1
         const hints = [
@@ -901,15 +921,7 @@ export async function processNewsroomArticle(
         const retryRaw = await runMultiStageEditor({
           ...stageInputBase,
           generationReason: 'quality_retry',
-          retryTriggers: classifyQualityRetryTriggers({
-            gateDecision: rewrittenRaw.gateDecision,
-            publishScore: rewrittenRaw.publishScore,
-            categoryConfidence: rewrittenRaw.categoryConfidence,
-            title: rewrittenRaw.title,
-            spot: rewrittenRaw.spot,
-            summary: rewrittenRaw.summary,
-            description: rewrittenRaw.description,
-          }),
+          retryTriggers: normalizeQualityRetryTriggers(qualityRetryInput(rewrittenRaw)),
           revisionHints: hints,
           previousDraft: {
             title: rewrittenRaw.title,
@@ -933,6 +945,7 @@ export async function processNewsroomArticle(
         else if (!nextIncomplete && retryRaw.categoryConfidence > 0) rewrittenRaw = retryRaw
 
         if (!articleIncomplete(rewrittenRaw) && rewrittenRaw.gateDecision === 'publish') break
+        if (optimizedRetry && !shouldRunQualityRetry(qualityRetryInput(rewrittenRaw), true)) break
       }
     }
 

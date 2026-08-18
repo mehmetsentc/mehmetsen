@@ -28,6 +28,10 @@ export type AiUsageCostAuditFields = {
   stage1CallsPerNews?: number
   /** Closed enum list only — never prompt or article text. */
   retryTriggers?: string[]
+  outputWordCount?: number
+  gateDecision?: string
+  publishScore?: number
+  categoryConfidence?: number
 }
 
 export type AiUsageTelemetryMeta = {
@@ -49,6 +53,7 @@ export type AiUsageTelemetryMeta = {
   requiredFieldsPresent?: boolean
   promptVariant?: string
   stage3CanaryBucket?: number
+  canaryBucket?: number
 } & AiUsageCostAuditFields
 
 export type AiUsageContext = {
@@ -60,6 +65,9 @@ export type AiUsageContext = {
   operation?: string
   promptVersion?: string
   attempt?: number
+  retryOptCohort?: 'off' | 'control' | 'optimized'
+  retryOptBucket?: number
+  stage1CallBudget?: { used: number; cap: number | null }
 }
 
 export type RecordAiRequestUsageInput = {

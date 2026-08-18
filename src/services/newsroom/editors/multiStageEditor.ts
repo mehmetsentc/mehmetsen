@@ -16,6 +16,13 @@ import { classifyArticle } from './stage3_categoryEditor'
 import { gateKeep } from './stage4_gateKeeper'
 import type { AiRewriteResult } from '@/services/aiNewsEditor'
 import type { GenerationReason } from '@/lib/ai/usage/generationReason'
+import { recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
+import { countPlainWords } from '@/lib/contentQuality'
+import {
+  attachStage1RetryOptimizationContext,
+  normalizeQualityRetryTriggers,
+} from '@/lib/ai/stage1RetryOptimization'
+import { getAiUsageContext } from '@/lib/ai/usage/context'
 
 export interface MultiStageInput {
   sourceLabel: string
@@ -96,6 +103,36 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
   if (gate.reasons.length > 0) {
     console.log(`[multiStage] gate notları: ${gate.reasons.join('; ')}`)
   }
+
+  const cohort = attachStage1RetryOptimizationContext()
+  const ctx = getAiUsageContext()
+  recordAiRequestUsage({
+    success: true,
+    agentName: 'stage4_gate',
+    operation: 'gate_keep',
+    provider: 'heuristic',
+    promptVariant: cohort === 'off' ? undefined : cohort,
+    canaryBucket: ctx?.retryOptBucket,
+    outputChars: written.content.length,
+    outputWordCount: countPlainWords(written.content),
+    gateDecision: gate.decision,
+    publishScore: gate.publishScore,
+    categoryConfidence: written.aiWritten ? category.confidence : 0,
+    requiredFieldsPresent: Boolean(written.title && written.spot && written.summary && written.content),
+    schemaValid: written.aiWritten,
+    retryTriggers: normalizeQualityRetryTriggers({
+      gateDecision: gate.decision,
+      gateReasons: gate.reasons,
+      publishScore: gate.publishScore,
+      categoryConfidence: written.aiWritten ? category.confidence : 0,
+      title: written.title,
+      spot: written.spot,
+      summary: written.summary,
+      description: written.content,
+      aiWritten: written.aiWritten,
+      shortContent: factCheck.shortContent,
+    }),
+  })
 
   // ── AiRewriteResult'a dönüştür ───────────────────────────────────────────────
   const tags = [...category.tags]

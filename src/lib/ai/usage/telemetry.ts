@@ -108,6 +108,22 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
       const cleaned = sanitizeRetryTriggers(input.retryTriggers)
       return cleaned.length > 0 ? cleaned : undefined
     })(),
+    outputWordCount:
+      typeof input.outputWordCount === 'number' && Number.isFinite(input.outputWordCount)
+        ? Math.max(0, Math.round(input.outputWordCount))
+        : undefined,
+    gateDecision: (() => {
+      const d = input.gateDecision
+      return d === 'publish' || d === 'draft' || d === 'skip' ? d : undefined
+    })(),
+    publishScore:
+      typeof input.publishScore === 'number' && Number.isFinite(input.publishScore)
+        ? input.publishScore
+        : undefined,
+    categoryConfidence:
+      typeof input.categoryConfidence === 'number' && Number.isFinite(input.categoryConfidence)
+        ? input.categoryConfidence
+        : undefined,
   }
 
   return compact(doc as unknown as Record<string, unknown>)

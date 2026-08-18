@@ -6,6 +6,7 @@ export const CONTINUATION_TRIGGERS = [
   'incomplete_segment',
   'title_incomplete',
   'actual_truncation',
+  'schema_failure',
 ] as const
 
 export const QUALITY_RETRY_TRIGGERS = [
@@ -14,6 +15,7 @@ export const QUALITY_RETRY_TRIGGERS = [
   'category_confidence_zero',
   'body_short',
   'incomplete_content',
+  'short_body_quality',
 ] as const
 
 export type ContinuationTrigger = (typeof CONTINUATION_TRIGGERS)[number]
@@ -38,7 +40,21 @@ export function sanitizeRetryTriggers(raw: unknown): RetryTrigger[] {
   return out
 }
 
-function looksLikeActualTruncation(content: string): boolean {
+export function hasCriticalNewsFields(input: {
+  title?: string | null
+  spot?: string | null
+  summary?: string | null
+  content?: string | null
+}): boolean {
+  return Boolean(
+    (input.title || '').trim() &&
+      (input.spot || '').trim() &&
+      (input.summary || '').trim() &&
+      (input.content || '').trim()
+  )
+}
+
+export function looksLikeActualTruncation(content: string): boolean {
   const t = content.replace(/\s+/g, ' ').trim()
   if (!t) return false
   const words = countPlainWords(t)
@@ -68,6 +84,7 @@ export function classifyContinuationTriggers(input: {
     out.push('incomplete_segment')
   }
   if (looksLikeActualTruncation(input.content || '')) out.push('actual_truncation')
+  if (!hasCriticalNewsFields(input)) out.push('schema_failure')
   return out
 }
 

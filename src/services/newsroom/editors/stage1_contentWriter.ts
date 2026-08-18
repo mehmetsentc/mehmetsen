@@ -6,14 +6,21 @@
  * burada yalnızca sabit güvenlik + haber biçimi kuralları eklenir.
  */
 
-import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
-import { countPlainWords, isNewsBodyTooShort, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
+import { countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
 import { inputCharLimit, outputTokenLimit } from '@/lib/ai/usage/tokenBudget'
 import type { GenerationReason } from '@/lib/ai/usage/generationReason'
 import { runStage1Shadow } from '@/lib/ai/stage1Shadow'
 import { classifierCohortKey } from '@/lib/ai/groqRouting'
 import { measureStage1PromptParts } from '@/lib/ai/usage/promptSize'
 import { classifyContinuationTriggers, sanitizeRetryTriggers } from '@/lib/ai/usage/retryTriggers'
+import {
+  attachStage1RetryOptimizationContext,
+  isOptimizedStage1RetryCohort,
+  remainingStage1LogicalCalls,
+  shouldRunStage1Continuation,
+  tryConsumeStage1LogicalCall,
+} from '@/lib/ai/stage1RetryOptimization'
+import { getAiUsageContext } from '@/lib/ai/usage/context'
 
 export interface WrittenArticle {
   title: string
@@ -141,6 +148,12 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 50_000)
   const maxTokens = outputTokenLimit('AI_STAGE1_MAX_OUTPUT_TOKENS', 3500)
   const generationReason: GenerationReason = input.generationReason ?? 'initial'
+  attachStage1RetryOptimizationContext()
+  const ctx = getAiUsageContext()
+  if (!tryConsumeStage1LogicalCall(ctx?.stage1CallBudget)) {
+    console.warn('[stage1] logical call cap reached — skipping DeepSeek')
+    return null
+  }
   const sourceArticle = (input.originalContent || input.originalSummary || '').slice(
     0,
     inputCharLimit('AI_STAGE1_MAX_INPUT_CHARS', 6000)
@@ -176,6 +189,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
           generationReason,
           ...promptTelemetry,
           retryTriggers: sanitizeRetryTriggers(input.retryTriggers),
+          promptVariant: ctx?.retryOptCohort === 'off' ? undefined : ctx?.retryOptCohort,
+          canaryBucket: ctx?.retryOptBucket,
         },
       })
     } catch (firstErr) {
@@ -203,6 +218,8 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
           generationReason: 'provider_retry',
           ...promptTelemetry,
           retryTriggers: sanitizeRetryTriggers(input.retryTriggers),
+          promptVariant: ctx?.retryOptCohort === 'off' ? undefined : ctx?.retryOptCohort,
+          canaryBucket: ctx?.retryOptBucket,
         },
       })
     }
@@ -241,23 +258,19 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
   }
 }
 
-function writtenLooksIncomplete(w: WrittenArticle): boolean {
-  return (
-    titleLooksIncomplete(w.title) ||
-    contentHasIncompleteSegments(w.spot || '') ||
-    contentHasIncompleteSegments(w.summary || '') ||
-    contentHasIncompleteSegments(w.content || '') ||
-    isNewsBodyTooShort(w.content)
-  )
-}
-
 export async function writeArticle(input: WriterInput): Promise<WrittenArticle> {
   console.log(`[stage1/contentWriter] başlıyor: "${input.originalTitle.slice(0, 60)}"`)
+  attachStage1RetryOptimizationContext()
   const generationReason: GenerationReason = input.generationReason ?? 'initial'
+  const optimized = isOptimizedStage1RetryCohort()
   let written = await callDeepSeek(input)
 
-  // Yarım / kısa çıktı → bir kez daha yaz (onay kuyruğuna yarım metin basmamak için)
-  if (written && writtenLooksIncomplete(written)) {
+  // Yarım / kısa çıktı → bir kez daha yaz. Canary: <220 kelime tek başına continuation değil.
+  if (
+    written &&
+    shouldRunStage1Continuation(written, optimized) &&
+    remainingStage1LogicalCalls(getAiUsageContext()?.stage1CallBudget) > 0
+  ) {
     console.warn('[stage1] yarım/kısa çıktı — tamamlamak için yeniden yazılıyor')
     const repaired = await callDeepSeek({
       ...input,
@@ -275,7 +288,7 @@ export async function writeArticle(input: WriterInput): Promise<WrittenArticle> 
         content: written.content,
       },
     })
-    if (repaired && !writtenLooksIncomplete(repaired)) {
+    if (repaired && !shouldRunStage1Continuation(repaired, optimized)) {
       written = repaired
     } else if (repaired && countPlainWords(repaired.content) > countPlainWords(written.content)) {
       written = repaired

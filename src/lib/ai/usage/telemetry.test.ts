@@ -47,6 +47,25 @@ describe('AI usage telemetry kill switch', () => {
     expect(JSON.stringify(doc)).not.toMatch(/Belediye açıkladı/)
   })
 
+  it('persists gate metrics without article text', () => {
+    const doc = buildAiUsageEventForTest({
+      success: true,
+      agentName: 'stage4_gate',
+      operation: 'gate_keep',
+      provider: 'heuristic',
+      promptVariant: 'optimized',
+      gateDecision: 'draft',
+      publishScore: 40,
+      categoryConfidence: 72,
+      outputWordCount: 140,
+      retryTriggers: ['short_body_quality', 'İçerik: Belediye'],
+    })
+    expect(doc.gateDecision).toBe('draft')
+    expect(doc.outputWordCount).toBe(140)
+    expect(doc.retryTriggers).toEqual(['short_body_quality'])
+    expect(JSON.stringify(doc)).not.toMatch(/Belediye/)
+  })
+
   it('persists shadow comparison fields without prompt text', () => {
     const doc = buildAiUsageEventForTest({
       success: true,

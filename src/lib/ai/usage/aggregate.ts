@@ -3,6 +3,7 @@ import { estimateUsageCost, getDeepSeekPricing } from '@/lib/ai/usage/pricing'
 import {
   countDuplicateStage1Calls,
   measureStage1CostAnalysis,
+  measureStage1RetryOptimizationCanary,
   measureStage3ClassifierOverlap,
   measureStage3CompactCanary,
   providerFailureRate,
@@ -238,6 +239,7 @@ export type AiUsageAggregate = {
   groqErrors: Record<string, number>
   stage3CompactCanary: ReturnType<typeof measureStage3CompactCanary>
   stage1CostAnalysis: ReturnType<typeof measureStage1CostAnalysis>
+  stage1RetryOptimizationCanary: ReturnType<typeof measureStage1RetryOptimizationCanary>
 }
 
 export function aggregateAiUsageEvents(
@@ -566,6 +568,7 @@ export function aggregateAiUsageEvents(
       analysis.projectedSavings.p100.usd = price(analysis.projectedSavings.p100.tokens)
       return analysis
     })(),
+    stage1RetryOptimizationCanary: measureStage1RetryOptimizationCanary(events),
   }
 }
 
@@ -621,4 +624,8 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'productionOutputTokens',
   'stage1CallsPerNews',
   'retryTriggers',
+  'outputWordCount',
+  'gateDecision',
+  'publishScore',
+  'categoryConfidence',
 ] as const

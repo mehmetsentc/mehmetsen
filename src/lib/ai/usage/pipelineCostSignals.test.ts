@@ -3,6 +3,7 @@ import { classifySecondStage1Call } from '@/lib/ai/usage/generationReason'
 import {
   countDuplicateStage1Calls,
   measureStage1CostAnalysis,
+  measureStage1RetryOptimizationCanary,
   measureStage3ClassifierOverlap,
   measureStage3CompactCanary,
 } from '@/lib/ai/usage/pipelineCostSignals'
@@ -170,3 +171,82 @@ describe('Stage1 cost analysis', () => {
     expect(result.projectedSavings.p10.tokens).toBeGreaterThan(0)
   })
 })
+
+describe('Stage1 retry optimization canary aggregates', () => {
+  it('compares control vs optimized without storing article text', () => {
+    const events = [
+      {
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        promptVariant: 'control',
+        generationReason: 'initial',
+        newsId: 'c1',
+        inputTokens: 4000,
+        outputTokens: 800,
+      },
+      {
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        promptVariant: 'control',
+        generationReason: 'continuation',
+        newsId: 'c1',
+        inputTokens: 4100,
+        outputTokens: 900,
+        retryTriggers: ['body_too_short'],
+      },
+      {
+        agentName: 'stage4_gate',
+        promptVariant: 'control',
+        newsId: 'c1',
+        gateDecision: 'publish',
+        publishScore: 80,
+        categoryConfidence: 70,
+        outputWordCount: 260,
+      },
+      {
+        agentName: 'stage3_category',
+        promptVariant: 'control',
+        newsId: 'c1',
+      },
+      {
+        agentName: 'stage3_category',
+        promptVariant: 'control',
+        newsId: 'c1',
+      },
+      {
+        agentName: 'stage1_writer',
+        operation: 'generate_article',
+        promptVariant: 'optimized',
+        generationReason: 'initial',
+        newsId: 'o1',
+        inputTokens: 4000,
+        outputTokens: 800,
+      },
+      {
+        agentName: 'stage4_gate',
+        promptVariant: 'optimized',
+        newsId: 'o1',
+        gateDecision: 'draft',
+        publishScore: 40,
+        categoryConfidence: 70,
+        outputWordCount: 140,
+        retryTriggers: ['short_body_quality'],
+      },
+      {
+        agentName: 'stage3_category',
+        promptVariant: 'compact',
+        newsId: 'o1',
+      },
+    ]
+    const result = measureStage1RetryOptimizationCanary(events)
+    expect(result.enabled).toBe(true)
+    expect(result.control.callsPerNews).toBe(2)
+    expect(result.optimized.callsPerNews).toBe(1)
+    expect(result.callDropPct).toBeCloseTo(0.5)
+    expect(result.optimized.maxCallsPerNews).toBe(1)
+    expect(result.control.publishRate).toBe(1)
+    expect(result.optimized.draftRate).toBe(1)
+    expect(JSON.stringify(result)).not.toMatch(/Belediye/)
+  })
+})
+

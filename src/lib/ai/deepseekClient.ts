@@ -138,6 +138,12 @@ function noteAttempt(opts: {
       promptInstructionTokens: opts.telemetry?.promptInstructionTokens,
       promptOtherTokens: opts.telemetry?.promptOtherTokens,
       retryTriggers: opts.telemetry?.retryTriggers,
+      promptVariant: opts.telemetry?.promptVariant,
+      canaryBucket: opts.telemetry?.canaryBucket,
+      outputWordCount: opts.telemetry?.outputWordCount,
+      gateDecision: opts.telemetry?.gateDecision,
+      publishScore: opts.telemetry?.publishScore,
+      categoryConfidence: opts.telemetry?.categoryConfidence,
     })
   } catch (error) {
     console.warn(

@@ -21,9 +21,10 @@ describe('sanitizeRetryTriggers', () => {
         12,
         null,
         'publish_score_low',
+        'short_body_quality',
         'body_too_short',
       ])
-    ).toEqual(['body_too_short', 'draft', 'publish_score_low'])
+    ).toEqual(['body_too_short', 'draft', 'publish_score_low', 'short_body_quality'])
   })
 
   it('rejects non-arrays', () => {
