@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -26,12 +27,23 @@ export function ProfilePageClient({
   initialProfile = null,
   initialPosts = [],
 }: ProfilePageClientProps) {
-  const { user: authUser } = useAuth()
-  const { profile, loading, error, isFollowing, setIsFollowing, refreshCounts } = useProfile(
+  const { user: authUser, loading: authLoading } = useAuth()
+  const { profile, loading, error, isFollowing, setIsFollowing, refreshCounts, refresh } = useProfile(
     username,
     authUser?.uid,
     { initialProfile, fromServer: true }
   )
+
+  // Race condition recovery: Apple Sign-In writes the Firestore doc asynchronously.
+  // If the user taps the profile icon before the write completes, the server renders
+  // "not found". Once auth settles and we confirm the URL matches the logged-in
+  // user's username, retry the client-side fetch.
+  useEffect(() => {
+    if (profile || loading || authLoading || !authUser) return
+    if (authUser.username !== username) return // not the user's own profile
+    const timer = setTimeout(() => void refresh(), 1500)
+    return () => clearTimeout(timer)
+  }, [profile, loading, authLoading, authUser, username, refresh])
 
   if (loading) {
     return (

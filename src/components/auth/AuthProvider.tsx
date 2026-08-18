@@ -45,8 +45,14 @@ function shouldDeferAuthBootstrap(pathname: string): boolean {
 
 function buildFallbackUser(firebaseUser: FirebaseUser): User {
   const email = firebaseUser.email ?? ''
-  const base = email.split('@')[0] || firebaseUser.uid.slice(0, 8)
-  const username = base.replace(/[^a-z0-9_]/gi, '_').toLowerCase()
+  // Format must match buildGoogleUsername in authService.ts: `${emailBase}_${uid6}`
+  // so that the Navbar profile link is correct even before the Firestore doc is written
+  // (race condition fix for Sign in with Apple — new users).
+  const emailBase = (email.split('@')[0] || 'user')
+    .replace(/[^a-z0-9_]/gi, '_')
+    .toLowerCase()
+    .slice(0, 24)
+  const username = `${emailBase}_${firebaseUser.uid.slice(0, 6)}`
 
   const baseUser: User = {
     uid: firebaseUser.uid,

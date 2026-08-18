@@ -176,7 +176,7 @@ export default function SettingsPage() {
 
       {user && (
         <SettingsSection title="Hesabın" className="settings-hub-span">
-          <Link href={ROUTES.PROFILE(user.username)} className="settings-account-card">
+          <Link href={ROUTES.PROFILE(user.username || user.uid)} className="settings-account-card">
             <Avatar name={user.displayName} src={user.photoURL} size="md" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold text-[rgb(var(--color-text))]">
