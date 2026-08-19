@@ -50,5 +50,8 @@ describe('testCrawlerSource', () => {
     expect(result.extraction?.wordCount).toBeGreaterThan(20)
     expect(result.dispatch.dispatched).toBe(false)
     expect(result.dispatch.aiRequests).toBe(0)
+    expect(result.persisted).toBe(false)
+    expect(result.sourceId).toBeNull()
+    expect(await store.listSources()).toHaveLength(0)
   })
 })

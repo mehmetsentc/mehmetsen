@@ -1,3 +1,22 @@
+export type GeographicScope = 'GLOBAL' | 'NATIONAL' | 'REGIONAL' | 'CITY' | 'DISTRICT'
+
+export type CrawlerSourceCategory =
+  | 'GENERAL'
+  | 'LOCAL'
+  | 'ECONOMY'
+  | 'SPORTS'
+  | 'TECHNOLOGY'
+  | 'MAGAZINE'
+  | 'POLITICS'
+  | 'PUBLIC'
+  | 'AGENCY'
+
+export type CrawlPriorityBand = 'BREAKING' | 'HIGH' | 'NORMAL' | 'LOW'
+
+export type CrawlerQualityTier = 'TIER_A' | 'TIER_B' | 'TIER_C' | 'BLOCKED' | 'UNTESTED'
+
+export type CrawlerQualityStatus = 'EXTRACTED' | 'LOW_CONFIDENCE' | 'FAILED'
+
 export type CrawlerSourceType =
   | 'NATIONAL'
   | 'LOCAL'
@@ -35,6 +54,7 @@ export type CrawlerUrlStatus =
   | 'FAILED'
   | 'FAILED_404'
   | 'FAILED_SSRF'
+  | 'LOW_CONFIDENCE'
 
 export type CrawlerLogicalQueue =
   | 'DISCOVERY_QUEUE'
@@ -82,6 +102,14 @@ export interface NewsSourceRecord {
   articlesDiscovered: number
   articlesFetched: number
   extractionSuccessRate: number | null
+  geographicScope: GeographicScope
+  sourceCategory: CrawlerSourceCategory
+  crawlPriority: CrawlPriorityBand
+  qualityTier: CrawlerQualityTier
+  healthScore: number
+  freshnessHours: number
+  lastPauseReason: string | null
+  registryKey: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -144,6 +172,9 @@ export interface RawArticleRecord {
   clusterStatus: CrawlerClusterStatus
   isExactDuplicate: boolean
   duplicateOfId: string | null
+  qualityStatus: CrawlerQualityStatus
+  boilerplateRatio: number | null
+  linkDensity: number | null
 }
 
 export interface NewsClusterRecord {
@@ -200,6 +231,8 @@ export type CrawlerMetricName =
   | 'fetch_duration_ms_sum'
   | 'fetch_duration_count'
   | 'failed_sources'
+  | 'low_confidence'
+  | 'stale_skipped'
 
 export interface CrawlerLogFields {
   sourceId?: string

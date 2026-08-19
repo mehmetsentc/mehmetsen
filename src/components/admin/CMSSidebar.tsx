@@ -13,7 +13,7 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -143,6 +143,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Crawler',
     items: [
       { href: '/admin/crawler', label: 'Dashboard', icon: Radar, requiredPermissions: ['news:read'], exact: true },
+      { href: '/admin/crawler/discover', label: 'Source Discovery', icon: Search, requiredPermissions: ['news:read'] },
       { href: '/admin/crawler/sources', label: 'Sources', icon: Globe, requiredPermissions: ['news:read'] },
       { href: '/admin/crawler/raw-articles', label: 'Raw Articles', icon: FileText, requiredPermissions: ['news:read'] },
       { href: '/admin/crawler/clusters', label: 'Clusters', icon: Layers, requiredPermissions: ['news:read'] },

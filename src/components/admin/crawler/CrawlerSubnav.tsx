@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 
 const TABS = [
   { href: '/admin/crawler', label: 'Dashboard', exact: true },
+  { href: '/admin/crawler/discover', label: 'Source Discovery' },
   { href: '/admin/crawler/sources', label: 'Sources' },
   { href: '/admin/crawler/raw-articles', label: 'Articles' },
   { href: '/admin/crawler/clusters', label: 'Clusters' },

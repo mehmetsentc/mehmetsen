@@ -4,7 +4,8 @@ import { hasDatabaseUrl } from '@/db'
 import { isNewsCrawlerEnabled } from '@/services/crawler/enabled'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { PHASE0_SEED_SOURCES } from '@/services/crawler/seedSources'
-import type { CrawlerSourceStatus } from '@/services/crawler/types'
+import { TURKEY_SOURCE_REGISTRY, turkeyRegistryToInsert } from '@/services/crawler/turkeyRegistry'
+import type { CrawlerSourceStatus, CrawlerQualityTier } from '@/services/crawler/types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,6 +38,44 @@ export async function POST(request: Request) {
 
   const store = new DrizzleCrawlerStore()
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+  if (body?.seedTurkey === true) {
+    const existing = await store.listSources()
+    const have = new Set(existing.map((s) => s.registryKey).filter(Boolean) as string[])
+    const domains = new Set(existing.map((s) => s.domain.toLowerCase()))
+    const created = []
+    for (const entry of TURKEY_SOURCE_REGISTRY) {
+      if (have.has(entry.key) || domains.has(entry.domain.toLowerCase())) continue
+      created.push(await store.insertSource(turkeyRegistryToInsert(entry)))
+      domains.add(entry.domain.toLowerCase())
+    }
+    return NextResponse.json({ seeded: created.length, totalRegistry: TURKEY_SOURCE_REGISTRY.length })
+  }
+
+  if (body?.approve === true) {
+    const name = typeof body?.name === 'string' ? body.name.trim() : ''
+    const domain = typeof body?.domain === 'string' ? body.domain.trim() : ''
+    const baseUrl = typeof body?.baseUrl === 'string' ? body.baseUrl.trim() : ''
+    if (!name || !domain || !baseUrl) {
+      return NextResponse.json({ error: 'name, domain, baseUrl required' }, { status: 400 })
+    }
+    const source = await store.insertSource({
+      name,
+      domain,
+      baseUrl,
+      countryCode: typeof body.countryCode === 'string' ? body.countryCode : 'TR',
+      language: typeof body.language === 'string' ? body.language : 'tr',
+      discoveryMethod: (body.discoveryMethod as never) || 'RSS',
+      rssUrls: Array.isArray(body.rssUrls) ? body.rssUrls.map(String) : [],
+      sitemapUrls: Array.isArray(body.sitemapUrls) ? body.sitemapUrls.map(String) : [],
+      crawlIntervalSeconds: typeof body.crawlIntervalSeconds === 'number' ? body.crawlIntervalSeconds : 360,
+      articleFetchMode: (body.articleFetchMode as never) || 'HTTP',
+      requiresJavascript: Boolean(body.requiresJavascript),
+      qualityTier: (body.qualityTier as CrawlerQualityTier) || 'UNTESTED',
+      status: 'PAUSED',
+    })
+    return NextResponse.json({ source, approved: true })
+  }
+
   if (body?.seed === true) {
     const existing = await store.listSources()
     if (existing.length) {

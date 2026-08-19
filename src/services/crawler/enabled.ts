@@ -43,13 +43,32 @@ export function defaultCrawlIntervalSeconds(
 
 export function crawlerTickLimits() {
   return {
-    maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 3), 1, 20),
-    maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 8), 1, 50),
-    maxDiscoverUrlsPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_DISCOVER_URLS', 50), 5, 200),
+    maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 8), 1, 40),
+    maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 12), 1, 50),
+    maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 2), 1, 20),
+    maxDiscoverUrlsPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_DISCOVER_URLS', 40), 5, 200),
+    maxTickRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', 50_000), 5_000, 55_000),
+    defaultFreshnessHours: clamp(intEnv('NEWS_CRAWLER_FRESHNESS_HOURS', 48), 1, 168),
     requestTimeoutMs: clamp(intEnv('NEWS_CRAWLER_TIMEOUT_MS', 12_000), 3_000, 30_000),
     maxBodyBytes: clamp(intEnv('NEWS_CRAWLER_MAX_BODY_BYTES', 1_500_000), 50_000, 4_000_000),
     minRequestIntervalMs: clamp(intEnv('NEWS_CRAWLER_MIN_INTERVAL_MS', 1_500), 0, 30_000),
     domainConcurrency: 1,
     maxChildSitemaps: 3,
+    degradeAfterFailures: 3,
+    pauseAfterFailures: 6,
   }
+}
+
+export function crawlIntervalForPriority(band: 'BREAKING' | 'HIGH' | 'NORMAL' | 'LOW'): number {
+  if (band === 'BREAKING') return 90
+  if (band === 'HIGH') return 180
+  if (band === 'LOW') return 1200
+  return 360
+}
+
+export function numericPriorityForBand(band: 'BREAKING' | 'HIGH' | 'NORMAL' | 'LOW'): number {
+  if (band === 'BREAKING') return 90
+  if (band === 'HIGH') return 70
+  if (band === 'LOW') return 30
+  return 50
 }

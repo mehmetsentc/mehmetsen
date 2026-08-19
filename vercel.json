@@ -326,7 +326,7 @@
     },
     {
       "path": "/api/cron/crawler/tick",
-      "schedule": "*/15 * * * *"
+      "schedule": "* * * * *"
     }
   ]
 }

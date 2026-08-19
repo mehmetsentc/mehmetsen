@@ -109,6 +109,7 @@ export const ROUTES = {
     AI_MODELS: '/admin/ai-models',
     AI_USAGE: '/admin/ai-usage',
     CRAWLER: '/admin/crawler',
+    CRAWLER_DISCOVER: '/admin/crawler/discover',
     CRAWLER_SOURCES: '/admin/crawler/sources',
     CRAWLER_ARTICLES: '/admin/crawler/raw-articles',
     AI_PERFORMANCE: '/admin/ai-performance',

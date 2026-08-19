@@ -64,6 +64,14 @@ function mapSource(row: typeof newsSources.$inferSelect): NewsSourceRecord {
     articlesDiscovered: row.articlesDiscovered,
     articlesFetched: row.articlesFetched,
     extractionSuccessRate: row.extractionSuccessRate,
+    geographicScope: (row.geographicScope as NewsSourceRecord['geographicScope']) || 'NATIONAL',
+    sourceCategory: (row.sourceCategory as NewsSourceRecord['sourceCategory']) || 'GENERAL',
+    crawlPriority: (row.crawlPriority as NewsSourceRecord['crawlPriority']) || 'NORMAL',
+    qualityTier: (row.qualityTier as NewsSourceRecord['qualityTier']) || 'UNTESTED',
+    healthScore: row.healthScore ?? 50,
+    freshnessHours: row.freshnessHours ?? 48,
+    lastPauseReason: row.lastPauseReason,
+    registryKey: row.registryKey,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -130,6 +138,9 @@ function mapRaw(row: typeof rawArticles.$inferSelect): RawArticleRecord {
     clusterStatus: row.clusterStatus,
     isExactDuplicate: row.isExactDuplicate === 1,
     duplicateOfId: row.duplicateOfId,
+    qualityStatus: (row.qualityStatus as RawArticleRecord['qualityStatus']) || 'EXTRACTED',
+    boilerplateRatio: row.boilerplateRatio,
+    linkDensity: row.linkDensity,
   }
 }
 
@@ -198,6 +209,13 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       requiresJavascript: input.requiresJavascript ? 1 : 0,
       robotsPolicy: input.robotsPolicy ?? 'FOLLOW',
       nextDiscoveryAt: now,
+      geographicScope: input.geographicScope ?? 'NATIONAL',
+      sourceCategory: input.sourceCategory ?? 'GENERAL',
+      crawlPriority: input.crawlPriority ?? 'NORMAL',
+      qualityTier: input.qualityTier ?? 'UNTESTED',
+      healthScore: input.healthScore ?? 50,
+      freshnessHours: input.freshnessHours ?? 48,
+      registryKey: input.registryKey ?? null,
       createdAt: now,
       updatedAt: now,
     })
@@ -222,6 +240,11 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     assign('articlesDiscovered', 'articlesDiscovered')
     assign('articlesFetched', 'articlesFetched')
     assign('extractionSuccessRate', 'extractionSuccessRate')
+    assign('healthScore', 'healthScore')
+    assign('qualityTier', 'qualityTier')
+    assign('lastPauseReason', 'lastPauseReason')
+    assign('freshnessHours', 'freshnessHours')
+    assign('crawlPriority', 'crawlPriority')
     await this.db().update(newsSources).set(values).where(eq(newsSources.id, id))
   }
 
@@ -231,7 +254,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .from(newsSources)
       .where(
         and(
-          eq(newsSources.status, 'ACTIVE'),
+          or(eq(newsSources.status, 'ACTIVE'), eq(newsSources.status, 'DEGRADED')),
           or(sql`${newsSources.nextDiscoveryAt} is null`, lte(newsSources.nextDiscoveryAt, now))
         )
       )
@@ -246,7 +269,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .from(newsSources)
       .where(
         and(
-          eq(newsSources.status, 'ACTIVE'),
+          or(eq(newsSources.status, 'ACTIVE'), eq(newsSources.status, 'DEGRADED')),
           or(sql`${newsSources.nextDiscoveryAt} is null`, lte(newsSources.nextDiscoveryAt, now))
         )
       )
@@ -363,6 +386,9 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       clusterStatus: input.clusterStatus ?? 'PENDING',
       isExactDuplicate: input.isExactDuplicate ? 1 : 0,
       duplicateOfId: input.duplicateOfId ?? null,
+      qualityStatus: input.qualityStatus ?? 'EXTRACTED',
+      boilerplateRatio: input.boilerplateRatio ?? null,
+      linkDensity: input.linkDensity ?? null,
     })
     const rows = await this.db().select().from(rawArticles).where(eq(rawArticles.id, id)).limit(1)
     return mapRaw(rows[0])
@@ -473,6 +499,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (patch.clusterStatus !== undefined) values.clusterStatus = patch.clusterStatus
     if (patch.isExactDuplicate !== undefined) values.isExactDuplicate = patch.isExactDuplicate ? 1 : 0
     if (patch.duplicateOfId !== undefined) values.duplicateOfId = patch.duplicateOfId
+    if (patch.qualityStatus !== undefined) values.qualityStatus = patch.qualityStatus
     await this.db().update(rawArticles).set(values).where(eq(rawArticles.id, id))
   }
 

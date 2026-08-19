@@ -37,6 +37,13 @@ export interface InsertSourceInput {
   articleFetchMode?: NewsSourceRecord['articleFetchMode']
   requiresJavascript?: boolean
   robotsPolicy?: NewsSourceRecord['robotsPolicy']
+  geographicScope?: NewsSourceRecord['geographicScope']
+  sourceCategory?: NewsSourceRecord['sourceCategory']
+  crawlPriority?: NewsSourceRecord['crawlPriority']
+  qualityTier?: NewsSourceRecord['qualityTier']
+  healthScore?: number
+  freshnessHours?: number
+  registryKey?: string | null
 }
 
 export interface InsertDiscoveredUrlInput {
@@ -49,7 +56,16 @@ export interface InsertDiscoveredUrlInput {
 
 export interface InsertRawArticleInput extends Omit<
   RawArticleRecord,
-  'id' | 'clusterId' | 'aiEligibility' | 'aiSkipReason' | 'clusterStatus' | 'isExactDuplicate' | 'duplicateOfId'
+  | 'id'
+  | 'clusterId'
+  | 'aiEligibility'
+  | 'aiSkipReason'
+  | 'clusterStatus'
+  | 'isExactDuplicate'
+  | 'duplicateOfId'
+  | 'qualityStatus'
+  | 'boilerplateRatio'
+  | 'linkDensity'
 > {
   clusterId?: string | null
   aiEligibility?: RawArticleRecord['aiEligibility']
@@ -57,6 +73,9 @@ export interface InsertRawArticleInput extends Omit<
   clusterStatus?: RawArticleRecord['clusterStatus']
   isExactDuplicate?: boolean
   duplicateOfId?: string | null
+  qualityStatus?: RawArticleRecord['qualityStatus']
+  boilerplateRatio?: number | null
+  linkDensity?: number | null
 }
 
 export interface CrawlerStore {
@@ -79,6 +98,14 @@ export interface CrawlerStore {
         | 'articlesDiscovered'
         | 'articlesFetched'
         | 'extractionSuccessRate'
+        | 'geographicScope'
+        | 'sourceCategory'
+        | 'crawlPriority'
+        | 'qualityTier'
+        | 'healthScore'
+        | 'freshnessHours'
+        | 'lastPauseReason'
+        | 'registryKey'
       >
     >
   ): Promise<void>
@@ -135,6 +162,7 @@ export interface CrawlerStore {
         | 'clusterStatus'
         | 'isExactDuplicate'
         | 'duplicateOfId'
+        | 'qualityStatus'
       >
     >
   ): Promise<void>

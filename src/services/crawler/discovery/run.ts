@@ -5,6 +5,7 @@ import { fetchDocument, type FetchImpl } from '../http/fetchDocument'
 import { crawlerTickLimits } from '../enabled'
 import { logCrawler } from '../log'
 import { normalizeArticleUrl, urlHashFor } from '../url/normalize'
+import { shouldSkipStaleDiscovery } from '../freshness'
 import type { HostLookup } from '../url/ssrf'
 import type { CrawlerStore } from '../store/types'
 import type { DiscoveredFeedItem, NewsSourceRecord } from '../types'
@@ -84,7 +85,19 @@ export async function discoverSource(opts: {
     if (!unique.has(normalized)) unique.set(normalized, { ...item, url: normalized })
   }
 
-  const sliced = [...unique.values()].slice(0, limits.maxDiscoverUrlsPerSource)
+  const freshnessHours = source.freshnessHours || limits.defaultFreshnessHours
+  const fresh = [...unique.values()].filter(
+    (item) =>
+      !shouldSkipStaleDiscovery({
+        publishedAt: item.publishedAt,
+        freshnessHours,
+        discoveryMethod: source.discoveryMethod,
+      })
+  )
+  const staleSkipped = unique.size - fresh.length
+  if (staleSkipped > 0) await store.incrementMetric('stale_skipped', staleSkipped)
+
+  const sliced = fresh.slice(0, limits.maxDiscoverUrlsPerSource)
   let inserted = 0
   for (const item of sliced) {
     const hash = urlHashFor(item.url)

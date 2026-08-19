@@ -76,6 +76,14 @@ export class MemoryCrawlerStore implements CrawlerStore {
       articlesDiscovered: 0,
       articlesFetched: 0,
       extractionSuccessRate: null,
+      geographicScope: input.geographicScope ?? 'NATIONAL',
+      sourceCategory: input.sourceCategory ?? 'GENERAL',
+      crawlPriority: input.crawlPriority ?? 'NORMAL',
+      qualityTier: input.qualityTier ?? 'UNTESTED',
+      healthScore: input.healthScore ?? 50,
+      freshnessHours: input.freshnessHours ?? 48,
+      lastPauseReason: null,
+      registryKey: input.registryKey ?? null,
       createdAt: now,
       updatedAt: now,
     }
@@ -93,7 +101,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
     return [...this.sources.values()]
       .filter(
         (s) =>
-          s.status === 'ACTIVE' &&
+          (s.status === 'ACTIVE' || s.status === 'DEGRADED') &&
           (!s.nextDiscoveryAt || s.nextDiscoveryAt.getTime() <= now.getTime())
       )
       .sort((a, b) => (b.priority || 0) - (a.priority || 0))
@@ -165,6 +173,9 @@ export class MemoryCrawlerStore implements CrawlerStore {
       clusterStatus: input.clusterStatus ?? 'PENDING',
       isExactDuplicate: Boolean(input.isExactDuplicate),
       duplicateOfId: input.duplicateOfId ?? null,
+      qualityStatus: input.qualityStatus ?? 'EXTRACTED',
+      boilerplateRatio: input.boilerplateRatio ?? null,
+      linkDensity: input.linkDensity ?? null,
     }
     this.articles.set(row.id, row)
     return row

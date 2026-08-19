@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
-import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { testCrawlerSource } from '@/services/crawler/testSource'
 import type { InsertSourceInput } from '@/services/crawler/store/types'
 
@@ -39,7 +38,6 @@ export async function POST(request: Request) {
     articleFetchMode: (body?.articleFetchMode as InsertSourceInput['articleFetchMode']) || 'HTTP',
     status: 'PAUSED',
   }
-  const store = new DrizzleCrawlerStore()
-  const result = await testCrawlerSource({ store, input })
+  const result = await testCrawlerSource({ input, persist: false, maxFetch: 3 })
   return NextResponse.json({ ...result, aiCalls: 0 })
 }

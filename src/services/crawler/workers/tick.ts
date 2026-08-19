@@ -5,6 +5,10 @@ import { fetchRenderedHtml } from '../extract/browser'
 import { fetchDocument, type FetchImpl } from '../http/fetchDocument'
 import { canFetchUrl } from '../http/robots'
 import { computeNextDiscoveryAt, shouldRetryStatus } from '../http/politeness'
+import { computeSourceHealthScore, nextStatusForFailures } from '../health'
+import { pickFairPending } from '../scheduler'
+import { boilerplateRatio } from '../extract/confidence'
+import type { NewsSourceRecord } from '../types'
 import { evaluateExactDuplicate, hashesForArticle } from '../duplicate/engine'
 import { simhashOf } from '../duplicate/hash'
 import { evaluateAiCandidate } from '../gate/aiCandidate'
@@ -55,6 +59,7 @@ export async function runCrawlerTick(opts?: {
   const fetchImpl = opts?.fetchImpl
   const lookup = opts?.lookup
   const limits = crawlerTickLimits()
+  const tickStarted = Date.now()
   const sources = await store.listDueSources(now, limits.maxSourcesPerTick)
   let urlsInserted = 0
   let articlesFetched = 0
@@ -82,6 +87,23 @@ export async function runCrawlerTick(opts?: {
         now
       )
       const duration = Date.now() - started
+      const health = computeSourceHealthScore({
+        discoverySuccessRate: result.errorCode && !result.discovered ? 0 : 1,
+        fetchSuccessRate: source.extractionSuccessRate ?? 0.5,
+        extractionSuccessRate: source.extractionSuccessRate ?? 0.5,
+        averageConfidence: 0.7,
+        httpErrorRate: failures > 0 ? 1 : 0,
+        duplicateRate: 0,
+        freshArticleRate: result.inserted > 0 ? 1 : 0.4,
+        requiresJavascript: source.requiresJavascript,
+      })
+      const auto = nextStatusForFailures(failures)
+      const nextStatus =
+        failures === 0
+          ? source.status === 'PAUSED'
+            ? 'PAUSED'
+            : 'ACTIVE'
+          : auto.status
       await store.updateSource(source.id, {
         lastDiscoveryAt: now,
         nextDiscoveryAt: next,
@@ -89,9 +111,11 @@ export async function runCrawlerTick(opts?: {
         consecutiveFailures: failures,
         averageResponseMs: blend(source.averageResponseMs, duration),
         articlesDiscovered: source.articlesDiscovered + result.inserted,
-        status: failures >= 5 ? 'DEGRADED' : source.status,
+        status: nextStatus,
+        lastPauseReason: auto.reason,
+        healthScore: health,
       })
-      if (failures >= 5) await store.incrementMetric('failed_sources', 1, now)
+      if (failures >= limits.degradeAfterFailures) await store.incrementMetric('failed_sources', 1, now)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'discovery_failed'
       logCrawler({ sourceId: source.id, stage: 'discovery', errorCode: message })
@@ -103,11 +127,27 @@ export async function runCrawlerTick(opts?: {
     }
   }
 
-  const pending = await store.listPendingFetch(limits.maxFetchPerTick)
+  const pendingPool = await store.listPendingFetch(Math.max(limits.maxFetchPerTick * 4, 24))
+  const sourceMap = new Map<string, NewsSourceRecord>()
+  for (const item of pendingPool) {
+    if (!sourceMap.has(item.sourceId)) {
+      const src = await store.getSource(item.sourceId)
+      if (src) sourceMap.set(item.sourceId, src)
+    }
+  }
+  const pending = pickFairPending({
+    pending: pendingPool,
+    sources: sourceMap,
+    limit: limits.maxFetchPerTick,
+    maxPerSource: limits.maxFetchPerSource,
+  })
   for (const item of pending) {
-    const source = await store.getSource(item.sourceId)
-    if (!source || source.status === 'DISABLED') {
-      await store.updateDiscoveredUrl(item.id, { status: 'FAILED', logicalQueue: 'FAILED_QUEUE', failureReason: 'source_disabled' })
+    if (Date.now() - tickStarted > limits.maxTickRuntimeMs) break
+    const source = sourceMap.get(item.sourceId) || (await store.getSource(item.sourceId))
+    if (!source || source.status === 'DISABLED' || source.status === 'PAUSED') {
+      if (!source || source.status === 'DISABLED') {
+        await store.updateDiscoveredUrl(item.id, { status: 'FAILED', logicalQueue: 'FAILED_QUEUE', failureReason: 'source_disabled' })
+      }
       continue
     }
 
@@ -160,6 +200,17 @@ export async function runCrawlerTick(opts?: {
         failureReason: `http_${fetched.status}`,
       })
       continue
+    }
+
+    if (fetched.status === 429) {
+      const failures = source.consecutiveFailures + 1
+      const auto = nextStatusForFailures(failures)
+      await store.updateSource(source.id, {
+        consecutiveFailures: failures,
+        status: auto.status,
+        lastPauseReason: auto.reason || 'http_429',
+        nextDiscoveryAt: computeNextDiscoveryAt(source.crawlIntervalSeconds, failures, 0, now),
+      })
     }
 
     if (!fetched.ok && !fetched.notModified) {
@@ -217,9 +268,13 @@ export async function runCrawlerTick(opts?: {
     })
 
     const success = Boolean(extracted.title) && extracted.articleBodyText.length >= 80
-    if (success) {
+    const lowConfidence =
+      success && (extracted.extractionConfidence < 0.5 || extracted.wordCount < 120)
+    if (success && !lowConfidence) {
       extractionSuccess += 1
       await store.incrementMetric('extraction_success', 1, now)
+    } else if (lowConfidence) {
+      await store.incrementMetric('low_confidence', 1, now)
     } else {
       await store.incrementMetric('extraction_fail', 1, now)
     }
@@ -259,6 +314,9 @@ export async function runCrawlerTick(opts?: {
       fetchedAt: now,
       isExactDuplicate: Boolean(dup),
       duplicateOfId: dup?.existingId ?? null,
+      qualityStatus: !success ? 'FAILED' : lowConfidence ? 'LOW_CONFIDENCE' : 'EXTRACTED',
+      boilerplateRatio: boilerplateRatio(extracted.articleBodyText, extracted.title || ''),
+      linkDensity: 0,
     })
 
     if (dup) {
@@ -274,7 +332,7 @@ export async function runCrawlerTick(opts?: {
       })
     } else {
       await store.updateDiscoveredUrl(item.id, {
-        status: 'EXTRACTED',
+        status: lowConfidence ? 'LOW_CONFIDENCE' : 'EXTRACTED',
         canonicalUrl: canonical,
         logicalQueue: 'CLUSTER_QUEUE',
         failureReason: success ? null : 'thin_extraction',

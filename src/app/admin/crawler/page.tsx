@@ -29,8 +29,14 @@ interface DashboardResponse {
   extractionFailed?: number
   duplicatesRemoved?: number
   aiRequests?: number
+  aiRequestsAvoided?: number
   httpRequests?: number
   browserRequests?: number
+  lowConfidence?: number
+  degradedSources?: number
+  pausedSources?: number
+  windows?: Record<string, { articlesFetched: number; successfulExtraction: number; lowConfidence: number; duplicates: number }>
+  sources?: Array<{ name: string; status: string; healthScore: number; qualityTier: string }>
 }
 
 export default function CrawlerDashboardPage() {
@@ -56,7 +62,7 @@ export default function CrawlerDashboardPage() {
   return (
     <AdminOsPageShell
       title="Crawler"
-      subtitle="Global haber keşfi — Phase 1. AI dispatch kapalı. Varsayılan crawl kapalı."
+      subtitle="Türkiye ağı — Phase 2. AI dispatch kapalı. Kaynaklar adil kuyrukla çekilir."
     >
       <CrawlerSubnav />
       {error ? (
@@ -81,9 +87,64 @@ export default function CrawlerDashboardPage() {
               { label: 'HTTP Fetches', value: fmt(data?.httpRequests) },
               { label: 'Browser Fetches', value: fmt(data?.browserRequests) },
               { label: 'Duplicates', value: fmt(data?.duplicatesRemoved) },
-              { label: 'AI Requests', value: fmt(data?.aiRequests ?? 0), tone: 'ok' },
+              { label: 'AI Requests Avoided', value: fmt(data?.aiRequestsAvoided) },
+              { label: 'Articles Without AI', value: fmt(data?.extractionSuccess) },
+              { label: 'AI Cost', value: '$0', tone: 'ok' },
+              { label: 'Low Confidence', value: fmt(data?.lowConfidence) },
+              { label: 'Degraded', value: fmt(data?.degradedSources) },
+              { label: 'Paused', value: fmt(data?.pausedSources) },
             ]}
           />
+          {data?.windows ? (
+            <div className="overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))]">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-[rgb(var(--color-surface))] text-[11px] uppercase text-[rgb(var(--color-muted))]">
+                  <tr>
+                    <th className="px-3 py-2">Pencere</th>
+                    <th className="px-3 py-2">Fetched</th>
+                    <th className="px-3 py-2">OK</th>
+                    <th className="px-3 py-2">Low conf</th>
+                    <th className="px-3 py-2">Dup</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(data.windows).map(([k, v]) => (
+                    <tr key={k} className="border-t border-[rgb(var(--color-border))]">
+                      <td className="px-3 py-2">{k}</td>
+                      <td className="px-3 py-2">{fmt(v.articlesFetched)}</td>
+                      <td className="px-3 py-2">{fmt(v.successfulExtraction)}</td>
+                      <td className="px-3 py-2">{fmt(v.lowConfidence)}</td>
+                      <td className="px-3 py-2">{fmt(v.duplicates)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+          {data?.sources?.length ? (
+            <div className="overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))]">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-[rgb(var(--color-surface))] text-[11px] uppercase text-[rgb(var(--color-muted))]">
+                  <tr>
+                    <th className="px-3 py-2">Source</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Tier</th>
+                    <th className="px-3 py-2">Health</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.sources.map((s) => (
+                    <tr key={s.name} className="border-t border-[rgb(var(--color-border))]">
+                      <td className="px-3 py-2">{s.name}</td>
+                      <td className="px-3 py-2">{s.status}</td>
+                      <td className="px-3 py-2">{s.qualityTier}</td>
+                      <td className="px-3 py-2">{fmt(s.healthScore)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </>
       )}
     </AdminOsPageShell>

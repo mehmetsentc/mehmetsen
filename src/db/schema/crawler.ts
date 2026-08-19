@@ -66,6 +66,7 @@ export const crawlerUrlStatusEnum = pgEnum('crawler_url_status', [
   'FAILED',
   'FAILED_404',
   'FAILED_SSRF',
+  'LOW_CONFIDENCE',
 ])
 
 export const crawlerAiEligibilityEnum = pgEnum('crawler_ai_eligibility', [
@@ -133,6 +134,14 @@ export const newsSources = pgTable(
     articlesDiscovered: integer('articles_discovered').default(0).notNull(),
     articlesFetched: integer('articles_fetched').default(0).notNull(),
     extractionSuccessRate: real('extraction_success_rate'),
+    geographicScope: varchar('geographic_scope', { length: 16 }).default('NATIONAL').notNull(),
+    sourceCategory: varchar('source_category', { length: 32 }).default('GENERAL').notNull(),
+    crawlPriority: varchar('crawl_priority', { length: 16 }).default('NORMAL').notNull(),
+    qualityTier: varchar('quality_tier', { length: 16 }).default('UNTESTED').notNull(),
+    healthScore: integer('health_score').default(50).notNull(),
+    freshnessHours: integer('freshness_hours').default(48).notNull(),
+    lastPauseReason: text('last_pause_reason'),
+    registryKey: varchar('registry_key', { length: 80 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -140,6 +149,7 @@ export const newsSources = pgTable(
     index('news_sources_status_next_idx').on(t.status, t.nextDiscoveryAt),
     index('news_sources_domain_idx').on(t.domain),
     index('news_sources_country_idx').on(t.countryCode),
+    uniqueIndex('news_sources_registry_key_uidx').on(t.registryKey),
   ]
 )
 
@@ -258,6 +268,9 @@ export const rawArticles = pgTable(
     clusterStatus: crawlerClusterStatusEnum('cluster_status').default('PENDING').notNull(),
     isExactDuplicate: smallint('is_exact_duplicate').default(0).notNull(),
     duplicateOfId: varchar('duplicate_of_id', { length: 64 }),
+    qualityStatus: varchar('quality_status', { length: 24 }).default('EXTRACTED').notNull(),
+    boilerplateRatio: real('boilerplate_ratio'),
+    linkDensity: real('link_density'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
