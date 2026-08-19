@@ -1,8 +1,9 @@
-import { and, eq, lte, sql, desc, gte, or } from 'drizzle-orm'
+import { and, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
   aiProcessingCache,
   clusterMemberships,
+  crawlerArticleMedia,
   crawlerMetricsDaily,
   discoveredArticleUrls,
   newsClusters,
@@ -10,6 +11,7 @@ import {
   rawArticles,
 } from '@/db/schema/crawler'
 import type {
+  ArticleMediaRecord,
   CrawlerLogicalQueue,
   CrawlerMetricName,
   CrawlerUrlStatus,
@@ -18,12 +20,17 @@ import type {
   NewsSourceRecord,
   RawArticleRecord,
 } from '../types'
+import { clampPage, clampPageSize } from '../editorial/query'
 import type {
   CrawlerStore,
   InsertClusterInput,
   InsertDiscoveredUrlInput,
   InsertRawArticleInput,
   InsertSourceInput,
+  RawArticleListQuery,
+  RawArticleListResult,
+  RawArticleListRow,
+  RawArticleSourceFacet,
 } from './types'
 import { newCrawlerId } from './types'
 import { clusterDefaults } from '../cluster/defaults'
@@ -145,6 +152,35 @@ function mapRaw(row: typeof rawArticles.$inferSelect): RawArticleRecord {
     qualityStatus: (row.qualityStatus as RawArticleRecord['qualityStatus']) || 'EXTRACTED',
     boilerplateRatio: row.boilerplateRatio,
     linkDensity: row.linkDensity,
+    mediaStatus: (row.mediaStatus as RawArticleRecord['mediaStatus']) || 'PENDING',
+    mediaExtractedAt: row.mediaExtractedAt,
+    primaryImageMethod: row.primaryImageMethod,
+    imageCandidateCount: row.imageCandidateCount,
+    imageRejectedCount: row.imageRejectedCount,
+    editorialStatus: (row.editorialStatus as RawArticleRecord['editorialStatus']) || 'NEW',
+    editorialNewsId: row.editorialNewsId,
+  }
+}
+
+function mapMedia(row: typeof crawlerArticleMedia.$inferSelect): ArticleMediaRecord {
+  return {
+    id: row.id,
+    articleId: row.articleId,
+    mediaType: row.mediaType,
+    sourceUrl: row.sourceUrl,
+    normalizedUrl: row.normalizedUrl,
+    width: row.width,
+    height: row.height,
+    altText: row.altText,
+    caption: row.caption,
+    credit: row.credit,
+    mimeType: row.mimeType,
+    discoveryMethod: row.discoveryMethod,
+    score: row.score,
+    isPrimary: row.isPrimary === 1,
+    status: row.status === 'REJECTED' ? 'REJECTED' : 'ACCEPTED',
+    rejectionReason: row.rejectionReason,
+    createdAt: row.createdAt,
   }
 }
 
@@ -434,6 +470,13 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       qualityStatus: input.qualityStatus ?? 'EXTRACTED',
       boilerplateRatio: input.boilerplateRatio ?? null,
       linkDensity: input.linkDensity ?? null,
+      mediaStatus: input.mediaStatus ?? 'PENDING',
+      mediaExtractedAt: input.mediaExtractedAt ?? null,
+      primaryImageMethod: input.primaryImageMethod ?? null,
+      imageCandidateCount: input.imageCandidateCount ?? null,
+      imageRejectedCount: input.imageRejectedCount ?? null,
+      editorialStatus: input.editorialStatus ?? 'NEW',
+      editorialNewsId: input.editorialNewsId ?? null,
     })
     const rows = await this.db().select().from(rawArticles).where(eq(rawArticles.id, id)).limit(1)
     return mapRaw(rows[0])
@@ -681,7 +724,207 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (patch.isExactDuplicate !== undefined) values.isExactDuplicate = patch.isExactDuplicate ? 1 : 0
     if (patch.duplicateOfId !== undefined) values.duplicateOfId = patch.duplicateOfId
     if (patch.qualityStatus !== undefined) values.qualityStatus = patch.qualityStatus
+    if (patch.mainImageUrl !== undefined) values.mainImageUrl = patch.mainImageUrl
+    if (patch.imageUrls !== undefined) values.imageUrls = patch.imageUrls
+    if (patch.mediaStatus !== undefined) values.mediaStatus = patch.mediaStatus
+    if (patch.mediaExtractedAt !== undefined) values.mediaExtractedAt = patch.mediaExtractedAt
+    if (patch.primaryImageMethod !== undefined) values.primaryImageMethod = patch.primaryImageMethod
+    if (patch.imageCandidateCount !== undefined) values.imageCandidateCount = patch.imageCandidateCount
+    if (patch.imageRejectedCount !== undefined) values.imageRejectedCount = patch.imageRejectedCount
+    if (patch.editorialStatus !== undefined) values.editorialStatus = patch.editorialStatus
+    if (patch.editorialNewsId !== undefined) values.editorialNewsId = patch.editorialNewsId
     await this.db().update(rawArticles).set(values).where(eq(rawArticles.id, id))
+  }
+
+  async upsertArticleMedia(input: Omit<ArticleMediaRecord, 'id' | 'createdAt'> & { id?: string }): Promise<void> {
+    const id = input.id || newCrawlerId('med')
+    await this.db()
+      .insert(crawlerArticleMedia)
+      .values({
+        id,
+        articleId: input.articleId,
+        mediaType: input.mediaType,
+        sourceUrl: input.sourceUrl,
+        normalizedUrl: input.normalizedUrl,
+        width: input.width,
+        height: input.height,
+        altText: input.altText,
+        caption: input.caption,
+        credit: input.credit,
+        mimeType: input.mimeType,
+        discoveryMethod: input.discoveryMethod,
+        score: input.score,
+        isPrimary: input.isPrimary ? 1 : 0,
+        status: input.status,
+        rejectionReason: input.rejectionReason,
+      })
+      .onConflictDoUpdate({
+        target: [crawlerArticleMedia.articleId, crawlerArticleMedia.normalizedUrl],
+        set: {
+          sourceUrl: input.sourceUrl,
+          width: input.width,
+          height: input.height,
+          altText: input.altText,
+          caption: input.caption,
+          credit: input.credit,
+          mimeType: input.mimeType,
+          discoveryMethod: input.discoveryMethod,
+          score: input.score,
+          isPrimary: input.isPrimary ? 1 : 0,
+          status: input.status,
+          rejectionReason: input.rejectionReason,
+        },
+      })
+  }
+
+  async listArticleMedia(articleId: string): Promise<ArticleMediaRecord[]> {
+    const rows = await this.db()
+      .select()
+      .from(crawlerArticleMedia)
+      .where(eq(crawlerArticleMedia.articleId, articleId))
+    return rows.map(mapMedia).sort((a, b) => b.score - a.score)
+  }
+
+  async listPendingMediaArticles(limit: number): Promise<RawArticleRecord[]> {
+    const rows = await this.db()
+      .select()
+      .from(rawArticles)
+      .where(eq(rawArticles.mediaStatus, 'PENDING'))
+      .orderBy(desc(rawArticles.fetchedAt))
+      .limit(limit)
+    return rows.map(mapRaw)
+  }
+
+  async listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult> {
+    const pageSize = clampPageSize(query.pageSize)
+    const filters = this.rawArticleFilters(query)
+    const order =
+      query.sort === 'oldest'
+        ? sql`${rawArticles.fetchedAt} asc nulls last`
+        : query.sort === 'published'
+          ? sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) desc nulls last`
+          : sql`${rawArticles.fetchedAt} desc nulls last`
+
+    const countRows = await this.db()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(rawArticles)
+      .where(filters)
+    const total = countRows[0]?.n ?? 0
+
+    const summaryRows = await this.db()
+      .select({
+        sources: sql<number>`count(distinct ${rawArticles.sourceId})::int`,
+        lastHour: sql<number>`count(*) filter (where ${rawArticles.fetchedAt} >= now() - interval '1 hour')::int`,
+        withImage: sql<number>`count(*) filter (where coalesce(${rawArticles.mainImageUrl}, '') <> '')::int`,
+        duplicates: sql<number>`count(*) filter (where ${rawArticles.isExactDuplicate} = 1)::int`,
+      })
+      .from(rawArticles)
+      .where(filters)
+    const summaryAgg = summaryRows[0]
+
+    const sourceRows = await this.db()
+      .select({
+        sourceId: rawArticles.sourceId,
+        sourceName: newsSources.name,
+        countryCode: newsSources.countryCode,
+        city: newsSources.city,
+        articleCount: sql<number>`count(*)::int`,
+        latestFetchedAt: sql<Date | null>`max(${rawArticles.fetchedAt})`,
+        withImage: sql<number>`count(*) filter (where coalesce(${rawArticles.mainImageUrl}, '') <> '')::int`,
+        duplicates: sql<number>`count(*) filter (where ${rawArticles.isExactDuplicate} = 1)::int`,
+      })
+      .from(rawArticles)
+      .innerJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
+      .where(this.rawArticleFilters({ ...query, sourceId: null }))
+      .groupBy(rawArticles.sourceId, newsSources.name, newsSources.countryCode, newsSources.city)
+      .orderBy(sql`max(${rawArticles.fetchedAt}) desc nulls last`)
+
+    const sources: RawArticleSourceFacet[] = sourceRows.map((row) => ({
+      sourceId: row.sourceId,
+      sourceName: row.sourceName,
+      countryCode: row.countryCode,
+      city: row.city,
+      articleCount: row.articleCount,
+      latestFetchedAt: row.latestFetchedAt,
+      withImage: row.withImage,
+      duplicates: row.duplicates,
+    }))
+
+    const summary = {
+      total,
+      sourceCount: summaryAgg?.sources ?? sources.length,
+      lastHour: summaryAgg?.lastHour ?? 0,
+      withImage: summaryAgg?.withImage ?? 0,
+      withoutImage: total - (summaryAgg?.withImage ?? 0),
+      duplicates: summaryAgg?.duplicates ?? 0,
+    }
+
+    if (query.view === 'bySource') {
+      const totalPages = Math.max(1, Math.ceil(sources.length / pageSize) || 1)
+      const page = clampPage(query.page, totalPages)
+      const pageFacets = sources.slice((page - 1) * pageSize, page * pageSize)
+      const groups = []
+      for (const facet of pageFacets) {
+        const rows = await this.db()
+          .select({ article: rawArticles, sourceName: newsSources.name })
+          .from(rawArticles)
+          .innerJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
+          .where(and(filters, eq(rawArticles.sourceId, facet.sourceId)))
+          .orderBy(order)
+          .limit(8)
+        groups.push({
+          ...facet,
+          articles: rows.map((r) => ({ ...mapRaw(r.article), sourceName: r.sourceName })),
+        })
+      }
+      return {
+        articles: groups.flatMap((g) => g.articles),
+        total,
+        page,
+        pageSize,
+        totalPages,
+        summary,
+        sources,
+        groups,
+      }
+    }
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1)
+    const page = clampPage(query.page, totalPages)
+    const rows = await this.db()
+      .select({ article: rawArticles, sourceName: newsSources.name })
+      .from(rawArticles)
+      .innerJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
+      .where(filters)
+      .orderBy(order)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+    const articles: RawArticleListRow[] = rows.map((r) => ({ ...mapRaw(r.article), sourceName: r.sourceName }))
+    return { articles, total, page, pageSize, totalPages, summary, sources }
+  }
+
+  private rawArticleFilters(query: RawArticleListQuery) {
+    const parts = []
+    if (query.sourceId) parts.push(eq(rawArticles.sourceId, query.sourceId))
+    if (query.country) parts.push(eq(rawArticles.countryCode, query.country.toUpperCase()))
+    if (query.city) parts.push(ilike(rawArticles.city, query.city))
+    if (query.qualityStatus) parts.push(eq(rawArticles.qualityStatus, query.qualityStatus))
+    if (query.editorialStatus) parts.push(eq(rawArticles.editorialStatus, query.editorialStatus))
+    if (query.hasImage === true) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') <> ''`)
+    if (query.hasImage === false) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') = ''`)
+    if (query.status === 'duplicate') parts.push(eq(rawArticles.isExactDuplicate, 1))
+    if (query.status === 'extracted') {
+      parts.push(eq(rawArticles.isExactDuplicate, 0))
+      parts.push(sql`${rawArticles.qualityStatus} <> 'FAILED'`)
+    }
+    if (query.status === 'failed') parts.push(eq(rawArticles.qualityStatus, 'FAILED'))
+    if (query.dateFrom) parts.push(sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) >= ${query.dateFrom}`)
+    if (query.dateTo) parts.push(sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) <= ${query.dateTo}`)
+    if (query.search?.trim()) {
+      const term = `%${query.search.trim().replace(/[%_]/g, '\\$&')}%`
+      parts.push(ilike(rawArticles.title, term))
+    }
+    return parts.length ? and(...parts) : sql`true`
   }
 
   async clusterHasEligible(clusterId: string): Promise<boolean> {

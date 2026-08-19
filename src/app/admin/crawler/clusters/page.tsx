@@ -53,7 +53,7 @@ export default function CrawlerClustersPage() {
   }, [load])
 
   return (
-    <AdminOsPageShell title="Clusters" subtitle="Deterministic event clusters. AI yok.">
+    <AdminOsPageShell title="Olay Kümeleri" subtitle="Belirleyici kümeler. AI yok.">
       <CrawlerSubnav />
       <div className="mb-3 flex flex-wrap gap-2 text-sm">
         <select value={hours} onChange={(e) => setHours(e.target.value)} className="rounded border px-2 py-1">
@@ -61,8 +61,8 @@ export default function CrawlerClustersPage() {
           <option value="24">24s</option>
           <option value="72">72s</option>
         </select>
-        <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="country" className="rounded border px-2 py-1 w-20" />
-        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="city" className="rounded border px-2 py-1 w-28" />
+        <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="ülke" className="rounded border px-2 py-1 w-20" />
+        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="şehir" className="rounded border px-2 py-1 w-28" />
         <select value={eligibility} onChange={(e) => setEligibility(e.target.value)} className="rounded border px-2 py-1">
           <option value="">eligibility</option>
           <option value="WATCHING">WATCHING</option>
@@ -77,14 +77,14 @@ export default function CrawlerClustersPage() {
         <table className="min-w-full text-left text-sm">
           <thead className="bg-[rgb(var(--color-surface))] text-[11px] uppercase text-[rgb(var(--color-muted))]">
             <tr>
-              <th className="px-3 py-2">Title</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Geo</th>
-              <th className="px-3 py-2">Arts</th>
-              <th className="px-3 py-2">Src</th>
-              <th className="px-3 py-2">Imp</th>
-              <th className="px-3 py-2">Conf</th>
-              <th className="px-3 py-2">AI gate</th>
+              <th className="px-3 py-2">Başlık</th>
+              <th className="px-3 py-2">Durum</th>
+              <th className="px-3 py-2">Coğrafya</th>
+              <th className="px-3 py-2">Haber</th>
+              <th className="px-3 py-2">Kaynak</th>
+              <th className="px-3 py-2">Önem</th>
+              <th className="px-3 py-2">Güven</th>
+              <th className="px-3 py-2">AI kapısı</th>
             </tr>
           </thead>
           <tbody>

@@ -56,6 +56,13 @@ interface CreatePayload {
   /** AI persona override — null/'' clears and uses CMS user as author */
   aiEditorId?: string | null
   aiResearchSources?: GroundingSource[]
+  sourceUrl?: string
+  rssGuid?: string
+  ingestionSourceId?: string
+  sourceLabel?: string
+  originalTitle?: string
+  sourcePublishedAt?: number | null
+  aiGenerated?: boolean
 }
 
 async function slugTaken(db: Firestore, slug: string): Promise<boolean> {
@@ -164,7 +171,18 @@ export async function POST(request: Request) {
       category: categoryId,
       status,
       type: 'news',
-      source: 'NaHaber',
+      source: body.sourceLabel?.trim() || 'NaHaber',
+      ...(body.sourceUrl?.trim()
+        ? {
+            sourceUrl: body.sourceUrl.trim(),
+            rssGuid: body.rssGuid?.trim() || '',
+            ingestionSourceId: body.ingestionSourceId?.trim() || '',
+            sourceLabel: body.sourceLabel?.trim() || '',
+            originalTitle: body.originalTitle?.trim() || '',
+            sourcePublishedAt: body.sourcePublishedAt ?? null,
+            aiGenerated: body.aiGenerated === true,
+          }
+        : {}),
       ...(personaAuthors
         ? {
             author: personaAuthors.author,
@@ -256,6 +274,16 @@ export async function POST(request: Request) {
     }
 
     await newsRef.set(payload)
+
+    const rssGuid = String(payload.rssGuid || '').trim()
+    if (rssGuid.startsWith('raw_')) {
+      const { syncCrawlerEditorial } = await import('@/services/crawler/editorial/newsLink')
+      await syncCrawlerEditorial({
+        rawArticleId: rssGuid,
+        newsId: newsRef.id,
+        status: status,
+      }).catch(() => {})
+    }
 
     if (featured) {
       try {

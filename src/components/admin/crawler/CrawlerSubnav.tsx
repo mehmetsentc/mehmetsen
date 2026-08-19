@@ -5,14 +5,14 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 const TABS = [
-  { href: '/admin/crawler', label: 'Dashboard', exact: true },
-  { href: '/admin/crawler/discover', label: 'Source Discovery' },
-  { href: '/admin/crawler/sources', label: 'Sources' },
-  { href: '/admin/crawler/raw-articles', label: 'Articles' },
-  { href: '/admin/crawler/clusters', label: 'Clusters' },
-  { href: '/admin/crawler/queue', label: 'Queue' },
-  { href: '/admin/crawler/failures', label: 'Failures' },
-  { href: '/admin/crawler/health', label: 'Crawler Health' },
+  { href: '/admin/crawler', label: 'Özet', exact: true },
+  { href: '/admin/crawler/discover', label: 'Kaynak Keşfi' },
+  { href: '/admin/crawler/sources', label: 'Kaynaklar' },
+  { href: '/admin/crawler/raw-articles', label: 'Ham Haberler' },
+  { href: '/admin/crawler/clusters', label: 'Olay Kümeleri' },
+  { href: '/admin/crawler/queue', label: 'Ön-AI Kuyruk' },
+  { href: '/admin/crawler/failures', label: 'Hatalar' },
+  { href: '/admin/crawler/health', label: 'Crawler Sağlığı' },
 ]
 
 export function CrawlerSubnav() {

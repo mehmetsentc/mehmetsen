@@ -3,6 +3,7 @@ import { detectLanguage } from '../language'
 import { hostnameOf } from '../url/normalize'
 import { extractJsonLdArticle } from './jsonld'
 import { extractOpenGraph } from './opengraph'
+import { extractEditorialImages } from './images'
 import { extractSemanticArticle, extractWithDomainRule, htmlToPlainText } from './semantic'
 import { articleTextStats, boilerplateRatio, computeExtractionConfidence } from './confidence'
 import { extractWithArticleExtractor } from './generic'
@@ -97,6 +98,8 @@ export function extractArticle(html: string, pageUrl: string, sourceLanguage?: s
     baseConfidence = Math.min(baseConfidence, 0.25)
   }
 
+  const images = extractEditorialImages(html, pageUrl)
+
   return withStats({
     title,
     description,
@@ -107,8 +110,12 @@ export function extractArticle(html: string, pageUrl: string, sourceLanguage?: s
     modifiedAt: jsonld?.modifiedAt || og.modifiedAt,
     language,
     canonicalUrl: jsonld?.canonicalUrl || og.canonicalUrl,
-    mainImageUrl: jsonld?.imageUrls[0] || og.image,
-    imageUrls: uniqueUrls([...(jsonld?.imageUrls || []), og.image]),
+    mainImageUrl: images.primary?.sourceUrl || jsonld?.imageUrls[0] || og.image,
+    imageUrls: uniqueUrls([
+      ...images.accepted.map((c) => c.sourceUrl),
+      ...(jsonld?.imageUrls || []),
+      og.image,
+    ]),
     videoUrls: [],
     extractionMethod: method,
     extractionConfidence: baseConfidence,

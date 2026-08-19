@@ -1,3 +1,5 @@
+import { decodeHtmlEntities } from '../extract/htmlEntities'
+
 const TR_STOP = new Set([
   've', 'ile', 'için', 'icin', 'bir', 'bu', 'da', 'de', 'mi', 'mı', 'mu', 'mü',
   'ne', 'ya', 'ki', 'ama', 'fakat', 'ancak', 'veya', 'gibi', 'daha', 'en', 'çok',
@@ -30,12 +32,61 @@ export function stripHtml(input: string): string {
   return input.replace(/<[^>]+>/g, ' ')
 }
 
+export function foldTurkishLetters(token: string): string {
+  return token
+    .replace(/ı/g, 'i')
+    .replace(/i̇/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+}
+
+export function levenshteinAtMost(a: string, b: string, max = 1): boolean {
+  if (a === b) return true
+  const da = Math.abs(a.length - b.length)
+  if (da > max) return false
+  if (a.length > b.length) return levenshteinAtMost(b, a, max)
+  let prev = Array.from({ length: a.length + 1 }, (_, i) => i)
+  for (let j = 1; j <= b.length; j++) {
+    const cur = [j]
+    let rowMin = j
+    for (let i = 1; i <= a.length; i++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      const v = Math.min(prev[i]! + 1, cur[i - 1]! + 1, prev[i - 1]! + cost)
+      cur.push(v)
+      if (v < rowMin) rowMin = v
+    }
+    if (rowMin > max) return false
+    prev = cur
+  }
+  return (prev[a.length] ?? 99) <= max
+}
+
+/** Conservative proper-name variant match. Not event-specific. */
+export function namedTokensMatch(a: string, b: string): boolean {
+  if (a === b) return true
+  const fa = foldTurkishLetters(a)
+  const fb = foldTurkishLetters(b)
+  if (fa === fb) return true
+  if (
+    Math.min(fa.length, fb.length) >= 8 &&
+    fa.slice(0, 3) === fb.slice(0, 3) &&
+    levenshteinAtMost(fa, fb, 1)
+  ) {
+    return true
+  }
+  return false
+}
+
 export function normalizeNewsText(input: string, language?: string | null): string {
-  return localeLower(stripHtml(input), language)
+  const decoded = decodeHtmlEntities(input).normalize('NFC')
+  return localeLower(stripHtml(decoded), language)
     .replace(/https?:\/\/\s*\S+/g, ' ')
     .replace(/www\.\S+/g, ' ')
     .replace(/utm_[a-z0-9]+=\S+/g, ' ')
-    .replace(/['’`]/g, ' ')
+    .replace(/['’`´]/g, ' ')
     .replace(/[^\p{L}\p{N}\s.-]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()

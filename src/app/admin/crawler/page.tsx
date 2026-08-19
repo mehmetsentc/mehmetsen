@@ -50,6 +50,11 @@ interface DashboardResponse {
     avoidedDuplicateEventJobs: number
     aiCostUsd: number
   }
+  articlesWithPrimaryImage?: number
+  articlesWithoutImage?: number
+  imageCandidatesFound?: number
+  imageCandidatesRejected?: number
+  imageExtractionFailed?: number
   legacyRssIngest?: string
 }
 
@@ -75,8 +80,8 @@ export default function CrawlerDashboardPage() {
 
   return (
     <AdminOsPageShell
-      title="Crawler"
-      subtitle="Türkiye ağı — Phase 2. AI dispatch kapalı. Kaynaklar adil kuyrukla çekilir."
+      title="Crawler Özeti"
+      subtitle="Türkiye ağı. AI dispatch kapalı. Kaynaklar adil kuyrukla çekilir."
     >
       <CrawlerSubnav />
       {error ? (
@@ -91,27 +96,29 @@ export default function CrawlerDashboardPage() {
           </p>
           <AdminOsMetricGrid
             items={[
-              { label: 'Active Sources', value: fmt(data?.activeSources) },
-              { label: 'Sources Due', value: fmt(data?.sourcesDue) },
-              { label: 'URLs Discovered', value: fmt(data?.urlsDiscovered) },
-              { label: 'New URLs', value: fmt(data?.newUrls) },
-              { label: 'Articles Fetched', value: fmt(data?.articlesFetched) },
-              { label: 'Extraction Success', value: fmt(data?.extractionSuccess) },
-              { label: 'Extraction Failed', value: fmt(data?.extractionFailed) },
-              { label: 'HTTP Fetches', value: fmt(data?.httpRequests) },
-              { label: 'Browser Fetches', value: fmt(data?.browserRequests) },
-              { label: 'Duplicates', value: fmt(data?.duplicatesRemoved) },
-              { label: 'AI Requests Avoided', value: fmt(data?.aiRequestsAvoided) },
-              { label: 'Articles Without AI', value: fmt(data?.extractionSuccess) },
-              { label: 'AI Cost', value: '$0', tone: 'ok' },
-              { label: 'Low Confidence', value: fmt(data?.lowConfidence) },
-              { label: 'Degraded', value: fmt(data?.degradedSources) },
-              { label: 'Paused', value: fmt(data?.pausedSources) },
-              { label: 'Raw → Events', value: `${fmt(data?.funnel?.rawArticles)} → ${fmt(data?.funnel?.uniqueEvents)}` },
-              { label: 'AI-eligible events', value: fmt(data?.funnel?.aiEligibleEvents) },
-              { label: 'Avoided event jobs', value: fmt(data?.funnel?.avoidedDuplicateEventJobs) },
-              { label: 'WATCHING', value: fmt(data?.funnel?.watching) },
-              { label: 'HIGH_PRIORITY', value: fmt(data?.funnel?.highPriority) },
+              { label: 'Aktif kaynak', value: fmt(data?.activeSources) },
+              { label: 'Sıradaki kaynak', value: fmt(data?.sourcesDue) },
+              { label: 'Keşfedilen URL', value: fmt(data?.urlsDiscovered) },
+              { label: 'Yeni URL', value: fmt(data?.newUrls) },
+              { label: 'Çekilen haber', value: fmt(data?.articlesFetched) },
+              { label: 'Başarılı çıkarım', value: fmt(data?.extractionSuccess) },
+              { label: 'Başarısız çıkarım', value: fmt(data?.extractionFailed) },
+              { label: 'HTTP istekleri', value: fmt(data?.httpRequests) },
+              { label: 'Tarayıcı istekleri', value: fmt(data?.browserRequests) },
+              { label: 'Mükerrer', value: fmt(data?.duplicatesRemoved) },
+              { label: 'Kaçınılan AI', value: fmt(data?.aiRequestsAvoided) },
+              { label: 'AI’sız haber', value: fmt(data?.extractionSuccess) },
+              { label: 'AI maliyeti', value: '$0', tone: 'ok' },
+              { label: 'Düşük güven', value: fmt(data?.lowConfidence) },
+              { label: 'Zayıf kaynak', value: fmt(data?.degradedSources) },
+              { label: 'Duraklatılan', value: fmt(data?.pausedSources) },
+              { label: 'Ham → olay', value: `${fmt(data?.funnel?.rawArticles)} → ${fmt(data?.funnel?.uniqueEvents)}` },
+              { label: 'AI uygun olay', value: fmt(data?.funnel?.aiEligibleEvents) },
+              { label: 'Kaçınılan olay işi', value: fmt(data?.funnel?.avoidedDuplicateEventJobs) },
+              { label: 'İzlenen', value: fmt(data?.funnel?.watching) },
+              { label: 'Yüksek öncelik', value: fmt(data?.funnel?.highPriority) },
+              { label: 'Görselli haber', value: fmt(data?.articlesWithPrimaryImage) },
+              { label: 'Görselsiz haber', value: fmt(data?.articlesWithoutImage) },
             ]}
           />
           <p className="text-xs text-[rgb(var(--color-muted))]">

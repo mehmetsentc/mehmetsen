@@ -1,5 +1,15 @@
 import { createHash } from 'node:crypto'
-import { jaccard, lightStem, localeLower, normalizeNewsText, shingles, tokenizeNormalized, WEAK_EVENT_TOKENS } from './normalize'
+import { decodeHtmlEntities } from '../extract/htmlEntities'
+import {
+  jaccard,
+  lightStem,
+  localeLower,
+  namedTokensMatch,
+  normalizeNewsText,
+  shingles,
+  tokenizeNormalized,
+  WEAK_EVENT_TOKENS,
+} from './normalize'
 
 export interface EventFingerprint {
   language: string
@@ -24,8 +34,26 @@ export function extractNumbers(text: string): string[] {
   return (text.match(/\d+(?:[.,]\d+)?/g) || []).map((n) => n.replace(',', '.'))
 }
 
+export function namedTokenOverlapScore(a: string[], b: string[]): number {
+  if (!a.length && !b.length) return 1
+  if (!a.length || !b.length) return 0
+  const used = new Set<number>()
+  let inter = 0
+  for (const token of a) {
+    const idx = b.findIndex((other, i) => !used.has(i) && namedTokensMatch(token, other))
+    if (idx >= 0) {
+      used.add(idx)
+      inter += 1
+    }
+  }
+  return inter / (a.length + b.length - inter)
+}
+
 export function namedTokensFrom(title: string, language?: string | null): string[] {
-  const original = title.replace(/<[^>]+>/g, ' ').replace(/['’`]/g, ' ')
+  const original = decodeHtmlEntities(title)
+    .normalize('NFC')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/['’`´]/g, ' ')
   const named = original
     .split(/\s+/)
     .map((w) => w.replace(/[^\p{L}\p{N}.-]+/gu, ''))
@@ -97,7 +125,8 @@ export function tokenOverlapScore(a: string[], b: string[]): number {
     for (const t of tokens) if (t.length >= 5) set.add(t.slice(0, 5))
     return set
   }
-  return jaccard(expand(a), expand(b))
+  const ja = jaccard(expand(a), expand(b))
+  return Math.max(ja, namedTokenOverlapScore(a, b))
 }
 
 export function normalizeNewsPreview(title: string, language?: string | null): string {

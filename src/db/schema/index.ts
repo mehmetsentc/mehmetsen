@@ -23,6 +23,7 @@ export {
   rawArticles,
   newsClusters,
   clusterMemberships,
+  crawlerArticleMedia,
   aiProcessingCache,
   crawlerMetricsDaily,
   crawlerSourceTypeEnum,

@@ -43,6 +43,14 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
     browserHttpRatio: http > 0 ? browser / http : 0,
     averageFetchTimeMs: durationCount > 0 ? Math.round(durationSum / durationCount) : 0,
     failedSources: await store.countFailedSources(),
+    articlesWithPrimaryImage: metrics.articles_with_primary_image || 0,
+    articlesWithoutImage: metrics.articles_without_image || 0,
+    imageCandidatesFound: metrics.image_candidates_found || 0,
+    imageCandidatesRejected: metrics.image_candidates_rejected || 0,
+    imageExtractionFailed: metrics.image_extraction_failed || 0,
+    primaryImageJsonld: metrics.primary_image_jsonld || 0,
+    primaryImageOg: metrics.primary_image_og || 0,
+    primaryImageDom: metrics.primary_image_dom || 0,
     windows,
     sources: sources
       .map((s) => ({

@@ -82,8 +82,8 @@ export default function CrawlerDiscoverPage() {
 
   return (
     <AdminOsPageShell
-      title="Source Discovery"
-      subtitle="AI yok. Domain gir, RSS/sitemap keşfet, test et, onayla. Test kalıcı source yazmaz."
+      title="Kaynak Keşfi"
+      subtitle="AI yok. Domain gir, RSS/sitemap keşfet, test et, onayla. Test kalıcı kaynak yazmaz."
     >
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
@@ -104,7 +104,7 @@ export default function CrawlerDiscoverPage() {
           Keşfet ve test et
         </button>
         <button type="button" disabled={busy || !result} onClick={() => void approve()} className="rounded-lg border px-4 py-2 text-sm font-semibold">
-          Approve Source
+          Kaynağı onayla
         </button>
       </form>
       <p className="text-xs text-[rgb(var(--color-muted))]">

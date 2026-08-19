@@ -391,6 +391,13 @@ export async function PUT(request: Request, context: RouteContext) {
       }
 
       await newsRef.update(update)
+      const rssGuid = String(prevData?.rssGuid || '').trim()
+      if (rssGuid.startsWith('raw_')) {
+        const nextStatus = String(update.status || body.status || prevData?.status || 'draft')
+        void import('@/services/crawler/editorial/newsLink').then(({ syncCrawlerEditorial }) =>
+          syncCrawlerEditorial({ rawArticleId: rssGuid, newsId: id, status: nextStatus }).catch(() => {})
+        )
+      }
 
       if (body.featured === true) {
         try {

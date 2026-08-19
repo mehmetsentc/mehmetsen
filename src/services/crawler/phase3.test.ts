@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { localeLower, normalizeNewsText } from './cluster/normalize'
+import { localeLower, namedTokensMatch, normalizeNewsText } from './cluster/normalize'
 import { buildEventFingerprint, namedTokensFrom } from './cluster/fingerprint'
 import { MATCH_WEIGHTS, scoreClusterMatch } from './cluster/score'
 import { evaluateClusterEligibility } from './cluster/eligibility'
@@ -80,6 +80,8 @@ describe('crawler phase 3 clustering', () => {
     expect(namedTokensFrom('Şırnak merkezli operasyon', 'tr').some((t) => t.includes('şırnak'))).toBe(true)
     expect(namedTokensFrom('Iğdır sınır hattı', 'tr').some((t) => t.includes('ığdır'))).toBe(true)
     expect(normalizeNewsText('The House voted', 'en')).toContain('the house voted')
+    expect(namedTokensMatch('alparslan', 'alpaslan')).toBe(true)
+    expect(normalizeNewsText('Alparslan&#039;ın açıklaması', 'tr')).toContain('alparslan')
   })
 
   it('merges same event with similar Turkish titles', () => {

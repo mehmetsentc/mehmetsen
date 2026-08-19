@@ -113,6 +113,10 @@ export interface Post {
   readingTimeMinutes?: number
   /** Original source article URL */
   sourceUrl?: string
+  rssGuid?: string
+  sourceLabel?: string
+  originalTitle?: string
+  ingestionSourceId?: string
   /**
    * Journalistic lead paragraph — answers Who/What/Where/When/Why/How.
    * 2-4 sentences, 60-120 words. Displayed prominently on article page.

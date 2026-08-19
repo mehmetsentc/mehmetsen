@@ -1,6 +1,7 @@
 import { crawlerTickLimits } from '../enabled'
 import { clusterTopicFromTitle } from './cheap'
 import { buildEventFingerprint } from './fingerprint'
+import { namedTokensMatch } from './normalize'
 import { MATCH_HORIZON_MS, scoreClusterMatch } from './score'
 import { detectMaterialUpdate, selectCanonicalArticle } from './canonical'
 import { evaluateClusterEligibility, looksLikeNewsText } from './eligibility'
@@ -86,7 +87,10 @@ export async function runClusterTick(opts: {
         if (cluster.language && fp.language && cluster.language !== fp.language) return false
         const tokens = cluster.signatureTokens || []
         if (tokens.length && fp.namedTokens.length) {
-          return tokens.some((t) => fp.namedTokens.includes(t)) || cluster.eventKey === fp.eventKey
+          return (
+            tokens.some((t) => fp.namedTokens.some((n) => namedTokensMatch(t, n))) ||
+            cluster.eventKey === fp.eventKey
+          )
         }
         return true
       })

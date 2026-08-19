@@ -1,6 +1,6 @@
 import { hammingHex64 } from '../duplicate/hash'
-import { jaccard, localeLower, WEAK_EVENT_TOKENS } from './normalize'
-import { strongNamedTokens, tokenOverlapScore, type EventFingerprint } from './fingerprint'
+import { jaccard, localeLower, namedTokensMatch, WEAK_EVENT_TOKENS } from './normalize'
+import { namedTokenOverlapScore, strongNamedTokens, tokenOverlapScore, type EventFingerprint } from './fingerprint'
 
 export interface ClusterMatchBreakdown {
   titleSimilarity: number
@@ -85,7 +85,7 @@ export function scoreClusterMatch(
     [...article.titleTokens, ...article.leadTokens.slice(0, 20)],
     [...cluster.fingerprint.titleTokens, ...cluster.fingerprint.leadTokens.slice(0, 20)]
   )
-  const entityOverlap = tokenOverlapScore(article.namedTokens, cluster.fingerprint.namedTokens)
+  const entityOverlap = namedTokenOverlapScore(article.namedTokens, cluster.fingerprint.namedTokens)
   const time = timeScore(article.publishedAt, cluster.lastSeenAt, now)
   const geo = geoScore(article, cluster.fingerprint)
   const numeric = numericScore(article.numbers, cluster.fingerprint.numbers)
@@ -106,8 +106,9 @@ export function scoreClusterMatch(
   )
 
   const strongOverlap = strongNamedTokens(article.namedTokens).filter((t) =>
-    cluster.fingerprint.namedTokens.includes(t) ||
-    cluster.fingerprint.namedTokens.some((o) => t.length >= 5 && o.startsWith(t.slice(0, 5)))
+    cluster.fingerprint.namedTokens.some(
+      (o) => namedTokensMatch(t, o) || (t.length >= 5 && o.startsWith(t.slice(0, 5)))
+    )
   )
   const weakShared = [...WEAK_EVENT_TOKENS].some((w) => {
     const poolA = [...article.namedTokens, ...article.titleTokens]

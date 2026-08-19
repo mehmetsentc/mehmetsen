@@ -24,14 +24,16 @@ export default function CrawlerFailuresPage() {
   }, [])
 
   return (
-    <AdminOsPageShell title="Failures" subtitle="Discovery / HTTP / extraction. AI failures not included.">
+    <AdminOsPageShell title="Hatalar" subtitle="Keşif / HTTP / çıkarım. AI hataları yok.">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       {(['discoveryFailures', 'httpFailures', 'extractionFailures'] as const).map((key) => {
         const rows = (data?.[key] as Array<Record<string, unknown>>) || []
         return (
           <section key={key} className="mb-6">
-            <h2 className="mb-2 text-sm font-semibold">{key}</h2>
+            <h2 className="mb-2 text-sm font-semibold">
+              {key === 'discoveryFailures' ? 'Keşif hataları' : key === 'httpFailures' ? 'HTTP hataları' : 'Çıkarım hataları'}
+            </h2>
             <pre className="overflow-x-auto rounded-xl bg-[rgb(var(--color-surface))] p-3 text-xs">
               {JSON.stringify(rows.slice(0, 40), null, 2)}
             </pre>

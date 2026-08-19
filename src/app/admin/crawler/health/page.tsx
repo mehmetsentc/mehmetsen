@@ -39,21 +39,21 @@ export default function CrawlerHealthPage() {
   }, [])
 
   return (
-    <AdminOsPageShell title="Crawler Health" subtitle="Source health, 429s, extraction rates">
+    <AdminOsPageShell title="Crawler Sağlığı" subtitle="Kaynak sağlığı, 429, çıkarım oranları">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
-      <p className="mb-3 text-sm">HTTP 429 count (today): {http429}</p>
+      <p className="mb-3 text-sm">Bugünkü HTTP 429: {http429}</p>
       <table className="min-w-full text-left text-sm">
         <thead>
           <tr>
-            <th className="px-2 py-1">Source</th>
-            <th className="px-2 py-1">Status</th>
-            <th className="px-2 py-1">Health</th>
-            <th className="px-2 py-1">Last discovery</th>
-            <th className="px-2 py-1">Last extract</th>
-            <th className="px-2 py-1">Fail</th>
-            <th className="px-2 py-1">Extract rate</th>
-            <th className="px-2 py-1">Avg conf</th>
+            <th className="px-2 py-1">Kaynak</th>
+            <th className="px-2 py-1">Durum</th>
+            <th className="px-2 py-1">Sağlık</th>
+            <th className="px-2 py-1">Son keşif</th>
+            <th className="px-2 py-1">Son çıkarım</th>
+            <th className="px-2 py-1">Hata</th>
+            <th className="px-2 py-1">Çıkarım oranı</th>
+            <th className="px-2 py-1">Ort. güven</th>
           </tr>
         </thead>
         <tbody>

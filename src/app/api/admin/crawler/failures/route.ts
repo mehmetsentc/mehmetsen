@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
+import { classifyCrawlerFailure, FAILURE_CLASS_LABELS } from '@/services/crawler/failures/classify'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
       status: s.status,
       consecutiveFailures: s.consecutiveFailures,
       lastPauseReason: s.lastPauseReason,
+      reasonLabel: FAILURE_CLASS_LABELS[classifyCrawlerFailure({ failureReason: s.lastPauseReason, status: s.status })],
       lastDiscoveryAt: s.lastDiscoveryAt,
       nextDiscoveryAt: s.nextDiscoveryAt,
     }))
@@ -31,6 +33,7 @@ export async function GET(request: Request) {
       source: sourceById.get(a.sourceId)?.name || a.sourceId,
       url: a.canonicalUrl || a.originalUrl,
       qualityStatus: a.qualityStatus,
+      reasonLabel: FAILURE_CLASS_LABELS[classifyCrawlerFailure({ qualityStatus: a.qualityStatus, httpStatus: a.httpStatus })],
       httpStatus: a.httpStatus,
       confidence: a.extractionConfidence,
     }))
@@ -40,6 +43,7 @@ export async function GET(request: Request) {
       source: sourceById.get(u.sourceId)?.name || u.sourceId,
       url: u.normalizedUrl,
       error: u.failureReason,
+      reasonLabel: FAILURE_CLASS_LABELS[classifyCrawlerFailure({ failureReason: u.failureReason, status: u.status })],
       status: u.status,
       attempts: u.fetchAttempts,
       lastAttempt: u.lastFetchAttempt,

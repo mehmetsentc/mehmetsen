@@ -1,4 +1,5 @@
 import type {
+  ArticleMediaRecord,
   ClusterMembershipRecord,
   ClusterScoreBreakdown,
   CrawlerLogicalQueue,
@@ -15,9 +16,12 @@ import type {
   InsertDiscoveredUrlInput,
   InsertRawArticleInput,
   InsertSourceInput,
+  RawArticleListQuery,
+  RawArticleListResult,
 } from './types'
 import { newCrawlerId } from './types'
 import { clusterDefaults } from '../cluster/defaults'
+import { matchesRawArticleQuery, paginateRawArticles, sortRawArticles } from '../editorial/query'
 
 function dayKey(now: Date): string {
   return now.toISOString().slice(0, 10)
@@ -32,6 +36,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
   urls = new Map<string, DiscoveredUrlRecord>()
   urlsByHash = new Map<string, string>()
   articles = new Map<string, RawArticleRecord>()
+  media = new Map<string, ArticleMediaRecord>()
   clusters = new Map<string, NewsClusterRecord>()
   memberships = new Map<string, ClusterMembershipRecord>()
   metrics = new Map<string, number>()
@@ -181,6 +186,13 @@ export class MemoryCrawlerStore implements CrawlerStore {
       qualityStatus: input.qualityStatus ?? 'EXTRACTED',
       boilerplateRatio: input.boilerplateRatio ?? null,
       linkDensity: input.linkDensity ?? null,
+      mediaStatus: input.mediaStatus ?? 'PENDING',
+      mediaExtractedAt: input.mediaExtractedAt ?? null,
+      primaryImageMethod: input.primaryImageMethod ?? null,
+      imageCandidateCount: input.imageCandidateCount ?? null,
+      imageRejectedCount: input.imageRejectedCount ?? null,
+      editorialStatus: input.editorialStatus ?? 'NEW',
+      editorialNewsId: input.editorialNewsId ?? null,
     }
     this.articles.set(row.id, row)
     return row
@@ -374,5 +386,40 @@ export class MemoryCrawlerStore implements CrawlerStore {
 
   async countFailedSources(): Promise<number> {
     return [...this.sources.values()].filter((s) => s.status === 'DEGRADED' || s.consecutiveFailures >= 3).length
+  }
+
+  async upsertArticleMedia(input: Omit<ArticleMediaRecord, 'id' | 'createdAt'> & { id?: string }): Promise<void> {
+    const existing = [...this.media.values()].find(
+      (m) => m.articleId === input.articleId && m.normalizedUrl === input.normalizedUrl
+    )
+    const row: ArticleMediaRecord = {
+      ...input,
+      id: input.id || existing?.id || newCrawlerId('med'),
+      createdAt: existing?.createdAt || new Date(),
+    }
+    this.media.set(row.id, row)
+  }
+
+  async listArticleMedia(articleId: string): Promise<ArticleMediaRecord[]> {
+    return [...this.media.values()].filter((m) => m.articleId === articleId).sort((a, b) => b.score - a.score)
+  }
+
+  async listPendingMediaArticles(limit: number): Promise<RawArticleRecord[]> {
+    return [...this.articles.values()]
+      .filter((a) => a.mediaStatus === 'PENDING')
+      .sort((a, b) => (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0))
+      .slice(0, limit)
+  }
+
+  async listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult> {
+    const matched = sortRawArticles(
+      [...this.articles.values()].filter((a) => matchesRawArticleQuery(a, query)),
+      query.sort
+    )
+    const rows = matched.map((article) => ({
+      ...article,
+      sourceName: this.sources.get(article.sourceId)?.name || article.sourceId,
+    }))
+    return paginateRawArticles(rows, query)
   }
 }

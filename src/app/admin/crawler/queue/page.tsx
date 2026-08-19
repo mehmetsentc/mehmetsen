@@ -41,7 +41,7 @@ export default function PreAiQueuePage() {
   }, [load])
 
   return (
-    <AdminOsPageShell title="Pre-AI Event Queue" subtitle="WATCHING / ELIGIBLE / HIGH_PRIORITY / REJECTED. Dispatch yok.">
+    <AdminOsPageShell title="Ön-AI Olay Kuyruğu" subtitle="İzlenen / Uygun / Yüksek öncelik / Red. Dispatch yok.">
       <CrawlerSubnav />
       <div className="mb-3 flex gap-2 text-sm">
         {['', 'WATCHING', 'ELIGIBLE', 'HIGH_PRIORITY', 'REJECTED'].map((v) => (
@@ -51,7 +51,7 @@ export default function PreAiQueuePage() {
             onClick={() => setFilter(v)}
             className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1"
           >
-            {v || 'all'}
+            {v === 'WATCHING' ? 'İzlenen' : v === 'ELIGIBLE' ? 'Uygun' : v === 'HIGH_PRIORITY' ? 'Yüksek öncelik' : v === 'REJECTED' ? 'Reddedildi' : 'Tümü'}
           </button>
         ))}
       </div>
@@ -59,13 +59,13 @@ export default function PreAiQueuePage() {
       <table className="min-w-full text-left text-sm">
         <thead>
           <tr>
-            <th className="px-2 py-1">Event</th>
-            <th className="px-2 py-1">Gate</th>
-            <th className="px-2 py-1">Src</th>
-            <th className="px-2 py-1">Arts</th>
-            <th className="px-2 py-1">Imp</th>
-            <th className="px-2 py-1">Age</th>
-            <th className="px-2 py-1">Reason</th>
+            <th className="px-2 py-1">Olay</th>
+            <th className="px-2 py-1">Kapı</th>
+            <th className="px-2 py-1">Kaynak</th>
+            <th className="px-2 py-1">Haber</th>
+            <th className="px-2 py-1">Önem</th>
+            <th className="px-2 py-1">Yaş</th>
+            <th className="px-2 py-1">Gerekçe</th>
           </tr>
         </thead>
         <tbody>

@@ -30,7 +30,7 @@ export default function ClusterDetailPage() {
   const members = (data?.members as Array<Record<string, unknown>>) || []
 
   return (
-    <AdminOsPageShell title="Cluster" subtitle="Event detail — bodies collapsed by default">
+    <AdminOsPageShell title="Olay Kümesi" subtitle="Olay detayı — gövdeler varsayılan kapalı">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       {cluster ? (
@@ -49,11 +49,11 @@ export default function ClusterDetailPage() {
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr>
-                <th className="px-2 py-1">Source</th>
-                <th className="px-2 py-1">Title</th>
-                <th className="px-2 py-1">Words</th>
-                <th className="px-2 py-1">Conf</th>
-                <th className="px-2 py-1">Sim</th>
+                <th className="px-2 py-1">Kaynak</th>
+                <th className="px-2 py-1">Başlık</th>
+                <th className="px-2 py-1">Kelime</th>
+                <th className="px-2 py-1">Güven</th>
+                <th className="px-2 py-1">Benzerlik</th>
               </tr>
             </thead>
             <tbody>

@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import type {
+  ArticleMediaRecord,
   ClusterMatchBand,
   ClusterMembershipRecord,
   ClusterScoreBreakdown,
+  CrawlerEditorialStatus,
   CrawlerLogicalQueue,
   CrawlerMetricName,
+  CrawlerQualityStatus,
   CrawlerSourceStatus,
   CrawlerUrlStatus,
   DiscoveredUrlRecord,
@@ -83,6 +86,13 @@ export interface InsertRawArticleInput extends Omit<
   | 'qualityStatus'
   | 'boilerplateRatio'
   | 'linkDensity'
+  | 'mediaStatus'
+  | 'mediaExtractedAt'
+  | 'primaryImageMethod'
+  | 'imageCandidateCount'
+  | 'imageRejectedCount'
+  | 'editorialStatus'
+  | 'editorialNewsId'
 > {
   clusterId?: string | null
   aiEligibility?: RawArticleRecord['aiEligibility']
@@ -93,6 +103,72 @@ export interface InsertRawArticleInput extends Omit<
   qualityStatus?: RawArticleRecord['qualityStatus']
   boilerplateRatio?: number | null
   linkDensity?: number | null
+  mediaStatus?: RawArticleRecord['mediaStatus']
+  mediaExtractedAt?: Date | null
+  primaryImageMethod?: string | null
+  imageCandidateCount?: number | null
+  imageRejectedCount?: number | null
+  editorialStatus?: CrawlerEditorialStatus
+  editorialNewsId?: string | null
+}
+
+export type RawArticleSort = 'newest' | 'oldest' | 'published'
+
+/**
+ * Offset pagination is used for admin numbered pages (Önceki / 1 2 3 / Sonraki).
+ * At ~1M+ rows, deep OFFSET becomes expensive; switch to keyset on (fetched_at, id)
+ * for infinite-scroll or “load more”. Numbered last-pages would still need COUNT.
+ */
+export interface RawArticleListQuery {
+  page?: number
+  pageSize?: number
+  sort?: RawArticleSort
+  sourceId?: string | null
+  country?: string | null
+  city?: string | null
+  status?: string | null
+  qualityStatus?: CrawlerQualityStatus | null
+  dateFrom?: Date | null
+  dateTo?: Date | null
+  search?: string | null
+  hasImage?: boolean | null
+  editorialStatus?: CrawlerEditorialStatus | null
+  view?: 'all' | 'bySource'
+}
+
+export interface RawArticleListRow extends RawArticleRecord {
+  sourceName: string
+}
+
+export interface RawArticleSourceFacet {
+  sourceId: string
+  sourceName: string
+  countryCode: string | null
+  city: string | null
+  articleCount: number
+  latestFetchedAt: Date | null
+  withImage: number
+  duplicates: number
+}
+
+export interface RawArticleInboxSummary {
+  total: number
+  sourceCount: number
+  lastHour: number
+  withImage: number
+  withoutImage: number
+  duplicates: number
+}
+
+export interface RawArticleListResult {
+  articles: RawArticleListRow[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  summary: RawArticleInboxSummary
+  sources: RawArticleSourceFacet[]
+  groups?: Array<RawArticleSourceFacet & { articles: RawArticleListRow[] }>
 }
 
 export interface CrawlerStore {
@@ -198,9 +274,19 @@ export interface CrawlerStore {
         | 'isExactDuplicate'
         | 'duplicateOfId'
         | 'qualityStatus'
+        | 'mainImageUrl'
+        | 'imageUrls'
+        | 'mediaStatus'
+        | 'mediaExtractedAt'
+        | 'primaryImageMethod'
+        | 'imageCandidateCount'
+        | 'imageRejectedCount'
+        | 'editorialStatus'
+        | 'editorialNewsId'
       >
     >
   ): Promise<void>
+  listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult>
   clusterHasEligible(clusterId: string): Promise<boolean>
   hasAiCache(contentHash: string, promptVersion: string, model: string): Promise<boolean>
 
@@ -208,4 +294,7 @@ export interface CrawlerStore {
   getTodayMetrics(now?: Date): Promise<Record<string, number>>
   countActiveSources(): Promise<number>
   countFailedSources(): Promise<number>
+  upsertArticleMedia(input: Omit<ArticleMediaRecord, 'id' | 'createdAt'> & { id?: string }): Promise<void>
+  listArticleMedia(articleId: string): Promise<ArticleMediaRecord[]>
+  listPendingMediaArticles(limit: number): Promise<RawArticleRecord[]>
 }

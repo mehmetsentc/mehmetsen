@@ -163,7 +163,7 @@ export default function CrawlerSourcesPage() {
   }
 
   return (
-    <AdminOsPageShell title="Crawler Sources" subtitle="Kaynak kaydı. Yeni kaynaklar PAUSED başlar.">
+    <AdminOsPageShell title="Crawler Kaynakları" subtitle="Kaynak kaydı. Yeni kaynaklar duraklatılmış başlar.">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
 

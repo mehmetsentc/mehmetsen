@@ -14,6 +14,9 @@ import { simhashOf } from '../duplicate/hash'
 import { evaluateAiCandidate } from '../gate/aiCandidate'
 import { dispatchCrawlerArticleToNewsroom } from '../dispatch'
 import { runClusterTick } from '../cluster/worker'
+import { runMediaTick } from '../extract/mediaWorker'
+import { extractEditorialImages } from '../extract/images'
+import { persistArticleImages, recordImageMetrics } from '../extract/persistMedia'
 import { logCrawler } from '../log'
 import { hostnameOf, normalizeArticleUrl, urlHashFor } from '../url/normalize'
 import type { HostLookup } from '../url/ssrf'
@@ -35,6 +38,7 @@ export interface CrawlerTickResult {
   aiRequests: number
   articlesClustered?: number
   clustersCreated?: number
+  mediaChecked?: number
 }
 
 export async function runCrawlerTick(opts?: {
@@ -322,6 +326,15 @@ export async function runCrawlerTick(opts?: {
       linkDensity: 0,
     })
 
+    try {
+      const images = extractEditorialImages(html, fetched.finalUrl)
+      await persistArticleImages(store, raw.id, images, now)
+      await recordImageMetrics(store, images, now)
+    } catch {
+      await store.updateRawArticle(raw.id, { mediaStatus: 'FAILED', mediaExtractedAt: now })
+      await store.incrementMetric('image_extraction_failed', 1, now)
+    }
+
     if (dup) {
       duplicates += 1
       await store.incrementMetric('duplicates_removed', 1, now)
@@ -390,6 +403,7 @@ export async function runCrawlerTick(opts?: {
   }
 
   const clustered = await runClusterTick({ store, now, startedAt: tickStarted })
+  const media = await runMediaTick({ store, now, startedAt: tickStarted, fetchImpl, lookup })
 
   return {
     enabled: true,
@@ -403,6 +417,7 @@ export async function runCrawlerTick(opts?: {
     aiRequests: 0,
     articlesClustered: clustered.articlesClustered,
     clustersCreated: clustered.clustersCreated,
+    mediaChecked: media.articlesChecked,
   }
 }
 

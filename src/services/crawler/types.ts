@@ -17,6 +17,30 @@ export type CrawlerQualityTier = 'TIER_A' | 'TIER_B' | 'TIER_C' | 'BLOCKED' | 'U
 
 export type CrawlerQualityStatus = 'EXTRACTED' | 'LOW_CONFIDENCE' | 'FAILED'
 
+export type CrawlerMediaStatus = 'PENDING' | 'EXTRACTED' | 'NONE' | 'FAILED'
+
+export type CrawlerEditorialStatus = 'NEW' | 'DRAFT' | 'EDITING' | 'PUBLISHED' | 'SKIPPED'
+
+export interface ArticleMediaRecord {
+  id: string
+  articleId: string
+  mediaType: string
+  sourceUrl: string
+  normalizedUrl: string
+  width: number | null
+  height: number | null
+  altText: string | null
+  caption: string | null
+  credit: string | null
+  mimeType: string | null
+  discoveryMethod: string
+  score: number
+  isPrimary: boolean
+  status: 'ACCEPTED' | 'REJECTED'
+  rejectionReason: string | null
+  createdAt: Date
+}
+
 export type CrawlerSourceType =
   | 'NATIONAL'
   | 'LOCAL'
@@ -156,6 +180,11 @@ export interface RawArticleRecord {
   mainImageUrl: string | null
   imageUrls: string[]
   videoUrls: string[]
+  mediaStatus: CrawlerMediaStatus
+  mediaExtractedAt: Date | null
+  primaryImageMethod: string | null
+  imageCandidateCount: number | null
+  imageRejectedCount: number | null
   wordCount: number | null
   charCount: number | null
   paragraphCount: number | null
@@ -175,6 +204,8 @@ export interface RawArticleRecord {
   qualityStatus: CrawlerQualityStatus
   boilerplateRatio: number | null
   linkDensity: number | null
+  editorialStatus: CrawlerEditorialStatus
+  editorialNewsId: string | null
 }
 
 export type ClusterEventStatus = 'OPEN' | 'BORDERLINE' | 'CLOSED'
@@ -295,6 +326,15 @@ export type CrawlerMetricName =
   | 'single_source_clusters'
   | 'multi_source_clusters'
   | 'http_429'
+  | 'articles_with_primary_image'
+  | 'articles_without_image'
+  | 'image_candidates_found'
+  | 'image_candidates_rejected'
+  | 'image_extraction_failed'
+  | 'primary_image_jsonld'
+  | 'primary_image_og'
+  | 'primary_image_dom'
+  | 'image_coverage_rate'
 
 export interface CrawlerLogFields {
   sourceId?: string

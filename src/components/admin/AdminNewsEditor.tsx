@@ -459,6 +459,11 @@ export function AdminNewsEditor({
     localFeatured,
     isLiveBlog,
     liveUpdates: isLiveBlog ? liveUpdates : [],
+    sourceUrl: post?.sourceUrl,
+    rssGuid: post?.rssGuid,
+    sourceLabel: post?.sourceLabel,
+    originalTitle: post?.originalTitle,
+    ingestionSourceId: post?.ingestionSourceId,
     ...(countrySlug
       ? {
           countrySlug,
@@ -828,6 +833,30 @@ export function AdminNewsEditor({
 
   const formFields = (
   <div className="flex-1 overflow-y-auto space-y-4 p-4 pb-28 md:p-5 md:pb-5">
+    {post?.sourceUrl || post?.rssGuid ? (
+      <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 text-sm">
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+          Kaynak haber
+        </div>
+        <div className="font-medium">{post.originalTitle || post.sourceLabel || post.source}</div>
+        <div className="mt-1 text-[rgb(var(--color-muted))]">
+          {post.sourceLabel || post.source}
+          {post.ingestionSourceId ? ` · ${post.ingestionSourceId}` : ''}
+        </div>
+        {post.sourceUrl ? (
+          <a href={post.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs underline">
+            Orijinal haberi aç
+          </a>
+        ) : null}
+        {post.rssGuid ? (
+          <div className="mt-1 font-mono text-[10px] text-[rgb(var(--color-muted))]">{post.rssGuid}</div>
+        ) : null}
+        <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
+          Ham crawler kaydı değiştirilmez. AI yalnızca mevcut AI butonuna basınca çalışır.
+        </p>
+      </div>
+    ) : null}
+
     <div>
       <div className="mb-1.5 flex items-center justify-between">
         <label className="block text-xs font-semibold text-[rgb(var(--color-muted))]">Başlık</label>

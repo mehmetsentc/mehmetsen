@@ -279,6 +279,11 @@ export const rawArticles = pgTable(
       .$type<string[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
+    mediaStatus: varchar('media_status', { length: 16 }).default('PENDING').notNull(),
+    mediaExtractedAt: timestamp('media_extracted_at', { withTimezone: true }),
+    primaryImageMethod: varchar('primary_image_method', { length: 40 }),
+    imageCandidateCount: integer('image_candidate_count'),
+    imageRejectedCount: integer('image_rejected_count'),
     wordCount: integer('word_count'),
     charCount: integer('char_count'),
     paragraphCount: integer('paragraph_count'),
@@ -298,6 +303,8 @@ export const rawArticles = pgTable(
     qualityStatus: varchar('quality_status', { length: 24 }).default('EXTRACTED').notNull(),
     boilerplateRatio: real('boilerplate_ratio'),
     linkDensity: real('link_density'),
+    editorialStatus: varchar('editorial_status', { length: 16 }).default('NEW').notNull(),
+    editorialNewsId: varchar('editorial_news_id', { length: 64 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -309,6 +316,40 @@ export const rawArticles = pgTable(
     index('raw_articles_ai_idx').on(t.aiEligibility),
     index('raw_articles_cluster_status_idx').on(t.clusterStatus),
     index('raw_articles_cluster_idx').on(t.clusterId),
+    index('raw_articles_media_status_idx').on(t.mediaStatus),
+    index('raw_articles_fetched_at_idx').on(t.fetchedAt),
+    index('raw_articles_source_fetched_idx').on(t.sourceId, t.fetchedAt),
+    index('raw_articles_editorial_idx').on(t.editorialStatus),
+  ]
+)
+
+export const crawlerArticleMedia = pgTable(
+  'crawler_article_media',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    articleId: varchar('article_id', { length: 64 })
+      .notNull()
+      .references(() => rawArticles.id, { onDelete: 'cascade' }),
+    mediaType: varchar('media_type', { length: 16 }).default('image').notNull(),
+    sourceUrl: text('source_url').notNull(),
+    normalizedUrl: text('normalized_url').notNull(),
+    width: integer('width'),
+    height: integer('height'),
+    altText: text('alt_text'),
+    caption: text('caption'),
+    credit: text('credit'),
+    mimeType: varchar('mime_type', { length: 80 }),
+    discoveryMethod: varchar('discovery_method', { length: 40 }).notNull(),
+    score: real('score').default(0).notNull(),
+    isPrimary: smallint('is_primary').default(0).notNull(),
+    status: varchar('status', { length: 16 }).default('ACCEPTED').notNull(),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('crawler_article_media_article_url_uidx').on(t.articleId, t.normalizedUrl),
+    index('crawler_article_media_article_idx').on(t.articleId),
+    index('crawler_article_media_primary_idx').on(t.articleId, t.isPrimary),
   ]
 )
 
