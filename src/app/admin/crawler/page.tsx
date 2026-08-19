@@ -88,7 +88,6 @@ interface DashboardResponse {
     breaking?: number
     staleApproved?: number
     olderThan24h?: number
-    staleApproved?: number
     rawArticles?: number
     uniqueEvents?: number
     automaticAiRequests?: number
