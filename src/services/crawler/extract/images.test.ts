@@ -139,6 +139,43 @@ describe('editorial images', () => {
     expect(result.rejected.some((c) => c.rejectionReason === 'over_max_editorial')).toBe(true)
   })
 
+  it('rejects Habertürk-style 200x200 related thumbs and Hürriyet UI badges', () => {
+    const html = `<html><head>
+      <script type="application/ld+json">${JSON.stringify({
+        '@type': 'NewsArticle',
+        image: { '@type': 'ImageObject', url: 'https://im.haberturk.com/l/2026/08/19/ver1/3906744/jpg/1920x1080' },
+      })}</script>
+    </head><body><article>
+      <img src="https://im.haberturk.com/l/2026/08/19/ver1/3906744/jpg/1920x1080" alt="HSK" />
+      <figure><img src="https://im.haberturk.com/l/2026/08/20/ver2/3906809/jpg/200x200" width="400" height="400" class="swiper-lazy" alt="Diğer haber" /></figure>
+      <figure><img src="https://im.haberturk.com/l/2026/08/19/ver3/3906781/jpg/200x200" width="400" height="400" class="swiper-lazy" /></figure>
+      <img src="https://static.hurriyet.com.tr/static/images/hurriyet/google-preferred-source-badge.png" />
+      <img src="https://static.hurriyet.com.tr/static/images/hurriyet/google-g.png" />
+      <img src="https://sozcu01.sozcucdn.com/sozcu/production/uploads/images/2026/6/haberarasi-1png-nvs6.png" />
+    </article></body></html>`
+    const result = extractEditorialImages(html, 'https://www.haberturk.com/gundem/hsk-3906744')
+    expect(result.primary?.sourceUrl).toContain('3906744')
+    expect(result.accepted.some((c) => /200x200/.test(c.sourceUrl))).toBe(false)
+    expect(result.accepted.some((c) => /preferred-source|google-g\.png|haberarasi/.test(c.sourceUrl))).toBe(false)
+    expect(result.rejected.some((c) => c.rejectionReason === 'tiny_thumbnail')).toBe(true)
+    expect(result.rejected.some((c) => c.rejectionReason === 'logo_or_favicon')).toBe(true)
+  })
+
+  it('rejects manşet/other-headline photos that sit inside main', () => {
+    const html = `<html><body><main>
+      <div class="evrensel-manset"><div class="manset-main"><div class="manset-tip1">
+        <div class="manset-article"><figure class="manset-foto"><img src="https://news.test/photos/other-1.jpg" width="1280" height="720" /></figure></div>
+        <div class="manset-article"><figure class="manset-foto"><img src="https://news.test/photos/other-2.jpg" width="1280" height="720" /></figure></div>
+      </div></div></div>
+      <article class="haber-icerik">
+        <img src="https://news.test/photos/fire-hero.jpg" width="1200" height="800" alt="Yangın" />
+      </article>
+    </main></body></html>`
+    const result = extractEditorialImages(html, 'https://www.evrensel.net/haber/yangin')
+    expect(result.accepted.some((c) => /other-1|other-2/.test(c.sourceUrl))).toBe(false)
+    expect(result.primary?.sourceUrl).toContain('fire-hero.jpg')
+  })
+
   it('rejects unrelated related-news / sidebar / ads and keeps the hero', () => {
     const related = extractEditorialImages(fixtureRelatedNews(), 'https://news.test/cinema')
     expect(related.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.RELATED)).toBe(false)

@@ -72,7 +72,7 @@ const ACCEPT_ANCESTOR =
   'article, main, [itemprop="articleBody"], .content-body, .article-body, .entry-content, .post-content, .news-content, .story-body, .haber-icerik, .article-container, [itemprop="article"]'
 
 const REJECT_ANCESTOR =
-  'header, footer, nav, aside, [role="banner"], [role="navigation"], [role="complementary"], [role="ads"], .ad, .ads, .advert, .advertisement, .ad-slot, .ad-container, .banner, .promo, .promotion, .sponsor, .sponsored, .related, .related-news, .related-stories, .recommended, .popular, .most-read, .mostread, .sidebar, .widget, .newsletter, .paywall, .popup, .modal, .author, .byline, .avatar, .logo, [class*="reklam"], [id*="reklam"], [class*="kampanya"], [id*="kampanya"], [class*="tanitim"], [class*="abonelik"], [class*="bulten"], [class*="newsletter"], [class*="sidebar"], [class*="related"], [class*="recommend"], [class*="popular"], [class*="most-read"], [class*="mostread"], [class*="son-dakika"], [class*="diger-haber"], [class*="carousel"]:not(article *), [class*="swiper"]:not(article *), [class*="slider"]:not(article *)'
+  'header, footer, nav, aside, [role="banner"], [role="navigation"], [role="complementary"], [role="ads"], .ad, .ads, .advert, .advertisement, .ad-slot, .ad-container, .banner, .promo, .promotion, .sponsor, .sponsored, .related, .related-news, .related-stories, .recommended, .popular, .most-read, .mostread, .sidebar, .widget, .newsletter, .paywall, .popup, .modal, .author, .byline, .avatar, .logo, .evrensel-manset, .manset-main, .manset-tip1, [class*="reklam"], [id*="reklam"], [class*="kampanya"], [id*="kampanya"], [class*="tanitim"], [class*="abonelik"], [class*="bulten"], [class*="newsletter"], [class*="sidebar"], [class*="related"], [class*="recommend"], [class*="popular"], [class*="most-read"], [class*="mostread"], [class*="son-dakika"], [class*="diger-haber"], [class*="evrensel-manset"], [class*="manset-main"], [class*="carousel"]:not(article *), [class*="swiper"]:not(article *), [class*="slider"]:not(article *)'
 
 const AD_NETWORK =
   /doubleclick|googlesyndication|googleadservices|pagead|adservice|adnxs|adform|taboola|outbrain|criteo|mgid|revcontent|adsystem|adsrvr|advertising\.com|promo-banner|kampanya-banner/i
@@ -80,6 +80,9 @@ const AD_NETWORK =
 const STRONG_AD_PATH = /\/(?:ads?|advert|reklam|kampanya|promo|sponsor|affiliates?)\b/i
 
 const LOGO_PATH = /(?:^|[/_-])logo(?:[._-]|$)|favicon|apple-touch|mstile/i
+
+const UI_CHROME_ASSET =
+  /preferred-source|haberarasi|(?:^|[/_-])badge(?:[._/-]|$)|google-g\.png|google-preferred-source/i
 
 const AVATAR_PATH = /(?:avatar|profile.?photo|author.?img)(?:[._/-]|$)/i
 
@@ -105,6 +108,23 @@ function intAttr(value: string | undefined): number | null {
   if (!value) return null
   const n = Number.parseInt(value.replace(/px$/i, ''), 10)
   return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** Habertürk-style related thumbs encode size in the path (`/200x200`) with no width attr. */
+export function dimensionsFromImageUrl(url: string): { width: number | null; height: number | null } {
+  try {
+    const parsed = new URL(url)
+    const pathMatch = parsed.pathname.match(/(?:^|\/)(\d{2,4})x(\d{2,4})(?:\/|$)/i)
+    if (pathMatch) {
+      return { width: Number(pathMatch[1]), height: Number(pathMatch[2]) }
+    }
+    return {
+      width: intAttr(parsed.searchParams.get('width') || parsed.searchParams.get('w') || undefined),
+      height: intAttr(parsed.searchParams.get('height') || parsed.searchParams.get('h') || undefined),
+    }
+  } catch {
+    return { width: null, height: null }
+  }
 }
 
 export function pickBestSrcsetUrl(
@@ -153,6 +173,7 @@ export function classifyImageRejection(input: {
 
   if (url.startsWith('data:')) return 'data_uri'
   if (url.startsWith('blob:')) return 'blob_uri'
+  if (UI_CHROME_ASSET.test(url) || UI_CHROME_ASSET.test(text)) return 'logo_or_favicon'
   if (input.width === 1 && input.height === 1) return 'tracking_pixel'
   if (input.width != null && input.height != null && input.width <= 2 && input.height <= 2) {
     return 'tracking_pixel'
@@ -652,8 +673,15 @@ export function extractEditorialImages(
     if (!rawSrc) return
     const url = normalizeImageUrl(rawSrc, pageUrl)
     if (!url) return
-    const width = intAttr(node.attr('width')) || picked?.width || null
-    const height = intAttr(node.attr('height'))
+    const urlDims = dimensionsFromImageUrl(url)
+    const attrWidth = intAttr(node.attr('width')) || picked?.width || null
+    const attrHeight = intAttr(node.attr('height'))
+    const pathThumb =
+      urlDims.width != null &&
+      urlDims.height != null &&
+      (urlDims.width < MIN_GALLERY_WIDTH || urlDims.height < MIN_GALLERY_HEIGHT)
+    const width = pathThumb ? urlDims.width : attrWidth || urlDims.width
+    const height = pathThumb ? urlDims.height : attrHeight || urlDims.height
     const alt = node.attr('alt')?.trim() || null
     const title = node.attr('title')?.trim() || null
     const figure = node.closest('figure')
@@ -720,14 +748,15 @@ export function extractEditorialImages(
         adapter?.extraRejectSelector,
         adapter?.extraAcceptSelector
       )
+      const urlDims = dimensionsFromImageUrl(picked.url)
       pushCandidate(
         collected,
         seenVariants,
         stats,
         {
           sourceUrl: picked.url,
-          width: picked.width,
-          height: null,
+          width: picked.width || urlDims.width,
+          height: urlDims.height,
           alt: null,
           caption: null,
           credit: null,
@@ -738,8 +767,8 @@ export function extractEditorialImages(
         },
         classifyImageRejection({
           url: picked.url,
-          width: picked.width,
-          height: null,
+          width: picked.width || urlDims.width,
+          height: urlDims.height,
           alt: null,
           classOrId: '',
           inRejectChrome,
