@@ -8,6 +8,11 @@ export function isCrawlerAiDispatchEnabled(): boolean {
   return raw === 'true' || raw === '1' || raw === 'on'
 }
 
+export function isCrawlerAiDispatchDryRun(): boolean {
+  const raw = process.env.CRAWLER_AI_DISPATCH_DRY_RUN?.trim().toLowerCase()
+  return raw === 'true' || raw === '1' || raw === 'on'
+}
+
 export type CrawlerDispatchResult = {
   dispatched: false
   aiRequests: 0
@@ -28,6 +33,6 @@ export function dispatchCrawlerArticleToNewsroom(_input?: {
   return {
     dispatched: false,
     aiRequests: 0,
-    reason: 'phase1_dispatch_not_wired',
+    reason: 'phase4a_provider_not_wired',
   }
 }

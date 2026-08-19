@@ -20,5 +20,6 @@ describe('crawler AI dispatch hard-block', () => {
     const result = dispatchCrawlerArticleToNewsroom({ articleId: 'raw_1' })
     expect(result.dispatched).toBe(false)
     expect(result.aiRequests).toBe(0)
+    expect(result.reason).toContain('phase4a_provider_not_wired')
   })
 })

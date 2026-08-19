@@ -43,6 +43,13 @@
       "when": 1787152000000,
       "tag": "0005_crawler_media_quality",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787160000000,
+      "tag": "0006_crawler_phase4a_ai_dispatch",
+      "breakpoints": true
     }
   ]
 }

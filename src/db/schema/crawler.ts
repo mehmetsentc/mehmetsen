@@ -411,3 +411,137 @@ export const crawlerMetricsDaily = pgTable(
   },
   (t) => [uniqueIndex('crawler_metrics_daily_pk').on(t.day, t.metric)]
 )
+
+/** Phase 4A — AI dispatch jobs. Event-based, not per raw_article. */
+export const crawlerAiJobs = pgTable(
+  'crawler_ai_jobs',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    clusterId: varchar('cluster_id', { length: 64 })
+      .notNull()
+      .references(() => newsClusters.id, { onDelete: 'cascade' }),
+    eventKey: varchar('event_key', { length: 80 }),
+    status: varchar('status', { length: 24 }).default('PENDING').notNull(),
+    dispatchType: varchar('dispatch_type', { length: 24 }).default('INITIAL').notNull(),
+    priority: integer('priority').default(0).notNull(),
+    eligibilityStatus: varchar('eligibility_status', { length: 24 }),
+    estimatedInputTokens: integer('estimated_input_tokens'),
+    estimatedOutputTokens: integer('estimated_output_tokens'),
+    estimatedTotalTokens: integer('estimated_total_tokens'),
+    estimatedCostUsd: real('estimated_cost_usd'),
+    actualInputTokens: integer('actual_input_tokens'),
+    actualOutputTokens: integer('actual_output_tokens'),
+    actualCostUsd: real('actual_cost_usd'),
+    model: varchar('model', { length: 80 }),
+    provider: varchar('provider', { length: 40 }),
+    attemptCount: integer('attempt_count').default(0).notNull(),
+    maxAttempts: integer('max_attempts').default(2).notNull(),
+    reservedAt: timestamp('reserved_at', { withTimezone: true }),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    blockedReason: varchar('blocked_reason', { length: 64 }),
+    failureReason: text('failure_reason'),
+    editorialNewsId: varchar('editorial_news_id', { length: 64 }),
+    outputTarget: varchar('output_target', { length: 32 }).default('EDITORIAL_DRAFT').notNull(),
+    selectedSourceCount: integer('selected_source_count').default(0).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('crawler_ai_jobs_status_idx').on(t.status),
+    index('crawler_ai_jobs_cluster_idx').on(t.clusterId),
+    index('crawler_ai_jobs_created_idx').on(t.createdAt),
+    index('crawler_ai_jobs_priority_idx').on(t.priority),
+    uniqueIndex('crawler_ai_jobs_cluster_initial_uidx').on(t.clusterId).where(sql`${t.dispatchType} = 'INITIAL'`),
+  ]
+)
+
+export const crawlerAiCostLedger = pgTable(
+  'crawler_ai_cost_ledger',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
+    provider: varchar('provider', { length: 40 }).notNull(),
+    model: varchar('model', { length: 80 }),
+    lane: varchar('lane', { length: 32 }).notNull(),
+    jobId: varchar('job_id', { length: 64 }),
+    clusterId: varchar('cluster_id', { length: 64 }),
+    requestType: varchar('request_type', { length: 40 }),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    estimatedCostUsd: real('estimated_cost_usd'),
+    actualCostUsd: real('actual_cost_usd'),
+    status: varchar('status', { length: 24 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('crawler_ai_cost_ledger_lane_ts_idx').on(t.lane, t.timestamp),
+    index('crawler_ai_cost_ledger_job_idx').on(t.jobId),
+    index('crawler_ai_cost_ledger_cluster_idx').on(t.clusterId),
+  ]
+)
+
+export const crawlerAiBudgetWindows = pgTable(
+  'crawler_ai_budget_windows',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    lane: varchar('lane', { length: 32 }).notNull(),
+    periodType: varchar('period_type', { length: 16 }).notNull(),
+    periodKey: varchar('period_key', { length: 32 }).notNull(),
+    reservedUsd: real('reserved_usd').default(0).notNull(),
+    spentUsd: real('spent_usd').default(0).notNull(),
+    requestCount: integer('request_count').default(0).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('crawler_ai_budget_windows_uidx').on(t.lane, t.periodType, t.periodKey),
+    index('crawler_ai_budget_windows_period_idx').on(t.periodType, t.periodKey),
+  ]
+)
+
+export const crawlerAiCircuit = pgTable(
+  'crawler_ai_circuit',
+  {
+    provider: varchar('provider', { length: 40 }).primaryKey(),
+    state: varchar('state', { length: 16 }).default('CLOSED').notNull(),
+    openedAt: timestamp('opened_at', { withTimezone: true }),
+    reason: varchar('reason', { length: 80 }),
+    consecutive429: integer('consecutive_429').default(0).notNull(),
+    consecutive5xx: integer('consecutive_5xx').default(0).notNull(),
+    lastStatus: integer('last_status'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  }
+)
+
+export const crawlerAiDispatchShadow = pgTable(
+  'crawler_ai_dispatch_shadow',
+  {
+    clusterId: varchar('cluster_id', { length: 64 }).primaryKey(),
+    eventKey: varchar('event_key', { length: 80 }),
+    canonicalTitle: text('canonical_title'),
+    eligibility: varchar('eligibility', { length: 24 }),
+    wouldDispatch: smallint('would_dispatch').default(0).notNull(),
+    blockedReason: varchar('blocked_reason', { length: 64 }),
+    dispatchType: varchar('dispatch_type', { length: 24 }).default('INITIAL').notNull(),
+    estimatedInputTokens: integer('estimated_input_tokens'),
+    estimatedOutputTokens: integer('estimated_output_tokens'),
+    estimatedTotalTokens: integer('estimated_total_tokens'),
+    estimatedCostUsd: real('estimated_cost_usd'),
+    estimatedPipelineTokens: integer('estimated_pipeline_tokens'),
+    estimatedPipelineCostUsd: real('estimated_pipeline_cost_usd'),
+    selectedSourceCount: integer('selected_source_count').default(0).notNull(),
+    selectedSourceNames: jsonb('selected_source_names').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    importanceScore: integer('importance_score').default(0).notNull(),
+    localImportance: integer('local_importance').default(0).notNull(),
+    nationalImportance: integer('national_importance').default(0).notNull(),
+    globalImportance: integer('global_importance').default(0).notNull(),
+    geographicScope: varchar('geographic_scope', { length: 16 }),
+    isLocalProtected: smallint('is_local_protected').default(0).notNull(),
+    evaluatedAt: timestamp('evaluated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('crawler_ai_dispatch_shadow_would_idx').on(t.wouldDispatch),
+    index('crawler_ai_dispatch_shadow_eval_idx').on(t.evaluatedAt),
+    index('crawler_ai_dispatch_shadow_reason_idx').on(t.blockedReason),
+  ]
+)

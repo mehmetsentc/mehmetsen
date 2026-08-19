@@ -148,6 +148,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/crawler/raw-articles', label: 'Ham Haberler', icon: FileText, requiredPermissions: ['news:read'] },
       { href: '/admin/crawler/clusters', label: 'Olay Kümeleri', icon: Layers, requiredPermissions: ['news:read'] },
       { href: '/admin/crawler/queue', label: 'Ön-AI Kuyruk', icon: ListTodo, requiredPermissions: ['news:read'] },
+      { href: '/admin/crawler/ai-dispatch', label: 'AI Dispatch', icon: Bot, requiredPermissions: ['news:read'] },
       { href: '/admin/crawler/failures', label: 'Hatalar', icon: ShieldAlert, requiredPermissions: ['news:read'] },
       { href: '/admin/crawler/health', label: 'Crawler Sağlığı', icon: Activity, requiredPermissions: ['system:settings'] },
     ],

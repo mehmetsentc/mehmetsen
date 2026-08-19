@@ -405,6 +405,25 @@ export async function runCrawlerTick(opts?: {
   const clustered = await runClusterTick({ store, now, startedAt: tickStarted })
   const media = await runMediaTick({ store, now, startedAt: tickStarted, fetchImpl, lookup })
 
+  let providerCalls = 0
+  try {
+    const { runAiDispatchSafetyTick } = await import('../aiDispatch/tick')
+    const { DrizzleAiDispatchStore, canUseDrizzleAiDispatchStore } = await import(
+      '../aiDispatch/drizzleStore'
+    )
+    const dispatchTick = await runAiDispatchSafetyTick({
+      crawlerStore: store,
+      dispatchStore: canUseDrizzleAiDispatchStore() ? new DrizzleAiDispatchStore() : undefined,
+      now,
+    })
+    providerCalls = dispatchTick.providerCalls
+  } catch (err) {
+    logCrawler(
+      { stage: 'ai_dispatch_tick', errorCode: 'ai_dispatch_tick_uncaught' },
+      { message: err instanceof Error ? err.message : 'unknown' }
+    )
+  }
+
   return {
     enabled: true,
     sourcesChecked: sources.length,
@@ -414,7 +433,7 @@ export async function runCrawlerTick(opts?: {
     duplicates,
     aiCandidates,
     aiAvoided,
-    aiRequests: 0,
+    aiRequests: providerCalls,
     articlesClustered: clustered.articlesClustered,
     clustersCreated: clustered.clustersCreated,
     mediaChecked: media.articlesChecked,

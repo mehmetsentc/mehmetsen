@@ -1,6 +1,6 @@
 import type { CrawlerStore } from './store/types'
 import { isGlobalCrawlerEnabled, isNewsCrawlerBrowserEnabled } from './enabled'
-import { isCrawlerAiDispatchEnabled } from './dispatch'
+import { isCrawlerAiDispatchDryRun, isCrawlerAiDispatchEnabled } from './dispatch'
 import {
   isLegacyDirectAiEnabled,
   isLegacyRssDiscoveryEnabled,
@@ -73,6 +73,7 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
             : 'Aktif',
       legacyDirectAi: isLegacyDirectAiEnabled() ? 'Açık' : 'Kapalı',
       crawlerAiDispatch: isCrawlerAiDispatchEnabled() ? 'Açık' : 'Kapalı',
+      crawlerAiDispatchDryRun: isCrawlerAiDispatchDryRun() ? 'Açık' : 'Kapalı',
       manualEditor: 'Kullanılabilir',
       last24h: {
         crawlerUrls: metrics.urls_discovered || 0,
