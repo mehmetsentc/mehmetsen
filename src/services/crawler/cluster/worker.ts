@@ -54,7 +54,8 @@ export async function runClusterTick(opts: {
   startedAt?: number
 }): Promise<ClusterTickResult> {
   const now = opts.now ?? new Date()
-  const startedAt = opts.startedAt ?? Date.now()
+  const tickStarted = opts.startedAt ?? Date.now()
+  const clusterStarted = Date.now()
   const limits = crawlerTickLimits()
   const result: ClusterTickResult = {
     articlesProcessed: 0,
@@ -68,8 +69,8 @@ export async function runClusterTick(opts: {
 
   const pending = await opts.store.listPendingClusterArticles(limits.maxClusterArticlesPerTick)
   for (const article of pending) {
-    if (Date.now() - startedAt > limits.maxTickRuntimeMs) break
-    if (Date.now() - startedAt > limits.maxClusterRuntimeMs && result.articlesProcessed > 0) break
+    if (Date.now() - tickStarted > limits.maxTickRuntimeMs) break
+    if (Date.now() - clusterStarted > limits.maxClusterRuntimeMs) break
     result.articlesProcessed += 1
     const existing = await opts.store.getMembershipByArticle(article.id)
     if (existing) {
