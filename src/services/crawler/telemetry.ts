@@ -127,15 +127,13 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
 }
 
 async function clusterFunnel(store: CrawlerStore, metrics: Record<string, number>) {
-  const clusters = await store.listClusters({ limit: 400 })
-  const eligible = clusters.filter((c) => c.aiEligibility === 'ELIGIBLE').length
-  const watching = clusters.filter((c) => c.aiEligibility === 'WATCHING').length
-  const rejected = clusters.filter((c) => c.aiEligibility === 'REJECTED').length
-  const high = clusters.filter((c) => c.aiEligibility === 'HIGH_PRIORITY').length
-  const multi = clusters.filter((c) => c.uniqueSourceCount >= 2).length
-  const single = clusters.filter((c) => c.uniqueSourceCount <= 1).length
-  const raw = metrics.articles_fetched || 0
-  const uniqueEvents = clusters.length
+  const funnel = await store.countClusterFunnel()
+  const eligible = funnel.eligible
+  const watching = funnel.watching
+  const rejected = funnel.rejected
+  const high = funnel.highPriority
+  const uniqueEvents = funnel.total
+  const raw = await store.countRawArticles({ excludeDeleted: true })
   const potentialArticleJobs = raw
   const avoidedDuplicateEventJobs = Math.max(0, raw - uniqueEvents)
   return {
@@ -145,8 +143,8 @@ async function clusterFunnel(store: CrawlerStore, metrics: Record<string, number
     watching,
     rejected,
     highPriority: high,
-    singleSourceClusters: single,
-    multiSourceClusters: multi,
+    singleSourceClusters: funnel.singleSource,
+    multiSourceClusters: funnel.multiSource,
     clustersCreated: metrics.clusters_created || uniqueEvents,
     articlesClustered: metrics.articles_clustered || 0,
     borderlineMatches: metrics.borderline_matches || 0,
@@ -156,28 +154,42 @@ async function clusterFunnel(store: CrawlerStore, metrics: Record<string, number
     avoidedDuplicateEventJobs,
     mergeRate: raw > 0 ? Number((1 - uniqueEvents / Math.max(raw, 1)).toFixed(4)) : 0,
     aiCostUsd: 0,
+    actualAiCostUsd: 0,
+    estimatedCostLabel: 'COST_UNKNOWN' as const,
   }
 }
 
 async function editorialOps(store: CrawlerStore) {
   const articleCounts = await store.countEditorialStatuses()
-  const clusterCounts = await store.countClusterEditorialDecisions()
-  const clusters = await store.listClusters({ limit: 400 })
+  const funnel = await store.countClusterFunnel()
   const urlsDiscovered = (await store.getTodayMetrics()).urls_discovered || 0
+  const rawTotal = await store.countRawArticles({ excludeDeleted: true })
+  const inReview = articleCounts.IN_REVIEW || 0
   return {
-    approvedForAi: clusterCounts.APPROVED_FOR_AI || 0,
-    editorRejected: (articleCounts.REJECTED || 0) + (clusterCounts.REJECTED || 0),
-    archived: (articleCounts.ARCHIVED || 0) + (clusterCounts.ARCHIVED || 0),
-    inReview: articleCounts.IN_REVIEW || 0,
+    approvedForAi: funnel.approvedForAi,
+    editorRejected: (articleCounts.REJECTED || 0) + funnel.rejected,
+    archived: (articleCounts.ARCHIVED || 0) + funnel.archived,
+    inReview,
+    watching: funnel.watching,
+    eligible: funnel.eligible,
+    aiWaiting: funnel.approvedForAi,
+    highPriority: funnel.highPriority + funnel.editorialHigh,
+    breaking: funnel.breaking,
+    staleApproved: funnel.staleApproved,
+    olderThan24h: funnel.olderThan24h,
+    rawArticles: rawTotal,
+    uniqueEvents: funnel.total,
+    automaticAiRequests: 0,
+    automaticAiCostUsd: 0,
+    actualAiCostUsd: 0,
+    estimatedCostLabel: 'COST_UNKNOWN' as const,
     dispatchEnabled: isCrawlerAiDispatchEnabled(),
     pipeline: {
       discovered: urlsDiscovered,
-      rawArticles: articleCounts.NEW || 0,
-      clusters: clusters.length,
-      preAi: clusters.filter((c) =>
-        ['WATCHING', 'ELIGIBLE', 'HIGH_PRIORITY'].includes(c.aiEligibility)
-      ).length,
-      editorApproved: clusterCounts.APPROVED_FOR_AI || 0,
+      rawArticles: rawTotal,
+      clusters: funnel.total,
+      preAi: funnel.watching + funnel.eligible + funnel.highPriority,
+      editorApproved: funnel.approvedForAi,
       aiDispatch: 0,
     },
   }

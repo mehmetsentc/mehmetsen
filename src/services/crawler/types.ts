@@ -38,6 +38,9 @@ export type ClusterEditorialDecision =
   | 'REJECTED'
   | 'ARCHIVED'
 
+export type EditorialPriority = 'NORMAL' | 'HIGH' | 'BREAKING'
+export type EditorialApprovalSource = 'cms_single' | 'cms_bulk'
+
 export type CrawlerRejectionReason =
   | 'NO_NEWS_VALUE'
   | 'DUPLICATE'
@@ -63,6 +66,10 @@ export interface CrawlerEditorialAuditRecord {
   failedCount: number
   reason: string | null
   note: string | null
+  previousState: string | null
+  newState: string | null
+  editorialPriority: EditorialPriority | null
+  selectionMode: string | null
   createdAt: Date
 }
 
@@ -321,6 +328,8 @@ export interface NewsClusterRecord {
   editorialDecisionNote: string | null
   editorialDecidedAt: Date | null
   editorialDecidedBy: string | null
+  editorialPriority: EditorialPriority
+  approvalSource: EditorialApprovalSource | null
   importanceBreakdown: Record<string, number> | null
   signatureTokens: string[]
   hasMaterialUpdate: boolean

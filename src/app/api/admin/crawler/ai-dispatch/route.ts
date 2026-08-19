@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
-import { isCrawlerAiDispatchDryRun, isCrawlerAiDispatchEnabled } from '@/services/crawler/dispatch'
+import { isCrawlerAiDispatchDryRun, isCrawlerAiDispatchEnabled, crawlerAiDispatchDryRunStatus } from '@/services/crawler/dispatch'
 import { crawlerAiDispatchConfig } from '@/services/crawler/aiDispatch/flags'
 import { periodKeys } from '@/services/crawler/aiDispatch/budget'
 import { emptyCircuit } from '@/services/crawler/aiDispatch/circuit'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
+import { estimateDispatchCost } from '@/services/crawler/aiDispatch/cost'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,12 +19,26 @@ export async function GET(request: Request) {
   const now = new Date()
   const keys = periodKeys(now)
   const dispatchEnabled = isCrawlerAiDispatchEnabled()
+  const dryRunStatus = crawlerAiDispatchDryRunStatus()
   const dryRun = isCrawlerAiDispatchDryRun()
+  const pricingProbe = estimateDispatchCost({
+    estimatedInputTokens: 800,
+    estimatedOutputTokens: 200,
+    estimatedTotalTokens: 1000,
+  })
   const payload = {
-    automaticAi: dispatchEnabled ? 'ON' : 'OFF',
-    dryRun: dryRun ? 'ON' : 'OFF',
+    automaticAi: dispatchEnabled ? 'AÇIK' : 'KAPALI',
+    dispatchStatus: dispatchEnabled ? 'AÇIK' : 'KAPALI',
+    dryRun: dryRunStatus,
     observationMode: !dispatchEnabled || dryRun ? 'SHADOW' : 'REAL',
     actualAiRequests: 0,
+    actualAiCostUsd: 0,
+    estimatedCostLabel: pricingProbe.known ? 'KNOWN' : 'COST_UNKNOWN',
+    pricingState: pricingProbe.known ? 'TANIMLI' : 'FİYATLANDIRMA TANIMSIZ',
+    pricingReason: pricingProbe.known ? null : 'COST_UNKNOWN',
+    runningJobs: 0,
+    approvedBacklog: 0,
+    aiWaiting: 0,
     circuit: emptyCircuit(cfg.provider),
     config: {
       dailyBudgetUsd: cfg.dailyBudgetUsd,
@@ -77,7 +92,7 @@ export async function GET(request: Request) {
     const circuit = await store.getCircuit(cfg.provider)
     const dayW = await store.getBudgetWindow('crawler_automatic', 'day', keys.day)
     const hourW = await store.getBudgetWindow('crawler_automatic', 'hour', keys.hour)
-    const clusters = await crawler.listClusters({ since: new Date(Date.now() - 24 * 3600 * 1000), limit: 120 })
+    const funnel = await crawler.countClusterFunnel()
 
     const mapShadow = (row: (typeof shadow)[number]) => ({
       clusterId: row.clusterId,
@@ -88,7 +103,8 @@ export async function GET(request: Request) {
       localImportance: row.localImportance,
       eligibility: row.eligibility,
       estimatedTokens: row.estimatedInputTokens,
-      estimatedCostUsd: row.estimatedPipelineCostUsd ?? row.estimatedCostUsd,
+      estimatedCostUsd: row.estimatedCostUsd,
+      estimatedCostKnown: row.estimatedCostUsd != null,
       blockedReason: row.blockedReason,
       dispatchType: row.dispatchType,
       wouldDispatch: row.wouldDispatch,
@@ -105,22 +121,7 @@ export async function GET(request: Request) {
     payload.hour.requests = hourW.requestCount
     payload.ready = shadow.filter((s) => s.wouldDispatch).map(mapShadow)
     payload.blocked = shadow.filter((s) => !s.wouldDispatch && s.blockedReason && s.blockedReason !== 'WATCHING').map(mapShadow)
-    payload.watching = clusters
-      .filter((c) => c.aiEligibility === 'WATCHING')
-      .map((c) => ({
-        clusterId: c.id,
-        title: c.canonicalTitle || c.normalizedTopic,
-        sources: [] as string[],
-        sourceCount: c.uniqueSourceCount,
-        importance: c.importanceScore,
-        localImportance: c.localImportance,
-        eligibility: c.aiEligibility,
-        estimatedTokens: null,
-        estimatedCostUsd: null,
-        blockedReason: 'WATCHING',
-        dispatchType: 'INITIAL',
-        wouldDispatch: false,
-      }))
+    payload.watching = []
     payload.completed = jobs
       .filter((j) => j.status === 'COMPLETED')
       .map((j) => ({
@@ -154,13 +155,17 @@ export async function GET(request: Request) {
         wouldDispatch: false,
       }))
     payload.counts = {
-      eligible: clusters.filter((c) => c.aiEligibility === 'ELIGIBLE' || c.aiEligibility === 'HIGH_PRIORITY').length,
+      eligible: funnel.eligible + funnel.highPriority,
       ready: payload.ready.length,
       blocked: payload.blocked.length,
-      watching: payload.watching.length,
+      watching: funnel.watching,
       processed: payload.completed.length,
     }
-    payload.actualAiRequests = jobs.filter((j) => j.actualInputTokens != null).length
+    payload.actualAiRequests = 0
+    payload.actualAiCostUsd = 0
+    payload.runningJobs = jobs.filter((j) => j.status === 'PROCESSING' || j.status === 'RESERVED').length
+    payload.approvedBacklog = funnel.approvedForAi
+    payload.aiWaiting = funnel.approvedForAi
     if (circuit.state === 'OPEN' && circuit.reason === 'insufficient_balance') {
       payload.alert = 'DeepSeek bakiyesi yetersiz (HTTP 402). Otomatik AI durdu; crawler devam ediyor.'
     } else if (circuit.state === 'OPEN') {

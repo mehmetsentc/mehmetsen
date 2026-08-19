@@ -258,6 +258,23 @@ export interface CrawlerStore {
     minSources?: number
     limit?: number
   }): Promise<NewsClusterRecord[]>
+  listClustersMatching(query: import('../editorial/query').ClusterListQuery): Promise<NewsClusterRecord[]>
+  listClustersPage(query: import('../editorial/query').ClusterListQuery): Promise<{
+    clusters: NewsClusterRecord[]
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }>
+  listClusterIdsMatching(
+    query: import('../editorial/query').ClusterListQuery,
+    cap: number
+  ): Promise<{ ids: string[]; total: number }>
+  countClusterFunnel(now?: Date): Promise<import('../editorial/controlPlane').ClusterFunnelCounts>
+  countClusterTabs(
+    query: import('../editorial/query').ClusterListQuery
+  ): Promise<import('../editorial/controlPlane').ClusterTabCounts>
+  countRawArticles(opts?: { excludeDeleted?: boolean }): Promise<number>
   listPendingClusterArticles(limit: number): Promise<RawArticleRecord[]>
   getMembershipByArticle(articleId: string): Promise<ClusterMembershipRecord | null>
   listMemberships(clusterId: string): Promise<ClusterMembershipRecord[]>

@@ -2,6 +2,7 @@
 
 export function BulkToolbar({
   count,
+  noun = 'kayıt',
   pageHint,
   matchingHint,
   onSelectMatching,
@@ -9,6 +10,7 @@ export function BulkToolbar({
   children,
 }: {
   count: number
+  noun?: string
   pageHint?: string | null
   matchingHint?: string | null
   onSelectMatching?: () => void
@@ -18,7 +20,7 @@ export function BulkToolbar({
   if (count <= 0) return null
   return (
     <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3 text-sm shadow-sm">
-      <strong>{count} kayıt seçildi</strong>
+      <strong>{count} {noun} seçildi</strong>
       {pageHint ? <span className="text-[rgb(var(--color-muted))]">{pageHint}</span> : null}
       {matchingHint && onSelectMatching ? (
         <button type="button" className="underline" onClick={onSelectMatching}>

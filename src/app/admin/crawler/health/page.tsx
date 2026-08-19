@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
+import { CrawlerPager } from '@/components/admin/crawler/CrawlerPager'
 import { auth } from '@/lib/firebase/auth'
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -25,18 +26,24 @@ export default function CrawlerHealthPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [http429, setHttp429] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch('/api/admin/crawler/health', { headers: await authHeaders() })
+      const res = await fetch(`/api/admin/crawler/health?page=${page}&pageSize=${pageSize}`, { headers: await authHeaders() })
       const body = await res.json()
       if (!res.ok) setError(body.error || 'Yüklenemedi')
       else {
         setRows((body.sources || []) as Row[])
         setHttp429(Number(body.http429 || 0))
+        setTotal(Number(body.total || (body.sources || []).length))
+        setTotalPages(Number(body.totalPages || 1))
       }
     })()
-  }, [])
+  }, [page, pageSize])
 
   return (
     <AdminOsPageShell title="Crawler Sağlığı" subtitle="Kaynak sağlığı, 429, çıkarım oranları">
@@ -71,6 +78,17 @@ export default function CrawlerHealthPage() {
           ))}
         </tbody>
       </table>
+      <CrawlerPager
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPage={setPage}
+        onPageSize={(n) => {
+          setPageSize(n)
+          setPage(1)
+        }}
+      />
     </AdminOsPageShell>
   )
 }

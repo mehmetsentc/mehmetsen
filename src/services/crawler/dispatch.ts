@@ -8,9 +8,17 @@ export function isCrawlerAiDispatchEnabled(): boolean {
   return raw === 'true' || raw === '1' || raw === 'on'
 }
 
+export function crawlerAiDispatchDryRunStatus(): 'ON' | 'OFF' | 'TANIMSIZ' {
+  const raw = process.env.CRAWLER_AI_DISPATCH_DRY_RUN
+  if (raw == null || raw.trim() === '') return 'TANIMSIZ'
+  const v = raw.trim().toLowerCase()
+  if (v === 'true' || v === '1' || v === 'on') return 'ON'
+  if (v === 'false' || v === '0' || v === 'off') return 'OFF'
+  return 'TANIMSIZ'
+}
+
 export function isCrawlerAiDispatchDryRun(): boolean {
-  const raw = process.env.CRAWLER_AI_DISPATCH_DRY_RUN?.trim().toLowerCase()
-  return raw === 'true' || raw === '1' || raw === 'on'
+  return crawlerAiDispatchDryRunStatus() === 'ON'
 }
 
 export type CrawlerDispatchResult = {

@@ -1,4 +1,5 @@
 import type { CrawlerEditorialStatus, RawArticleRecord } from '../types'
+import { isWatchingQueueCluster } from './controlPlane'
 import type {
   RawArticleInboxSummary,
   RawArticleListQuery,
@@ -191,4 +192,156 @@ export function numberedPages(page: number, totalPages: number): Array<number | 
     prev = n
   }
   return out
+}
+
+export interface ClusterListQuery {
+  page?: number
+  pageSize?: number
+  country?: string | null
+  city?: string | null
+  district?: string | null
+  sourceId?: string | null
+  eligibility?: string | null
+  editorialDecision?: string | null
+  editorialPriority?: string | null
+  minSources?: number | null
+  minArticles?: number | null
+  minImportance?: number | null
+  minConfidence?: number | null
+  maxAgeHours?: number | null
+  dateFrom?: Date | null
+  dateTo?: Date | null
+  since?: Date | null
+  tab?: 'all' | 'watching' | 'eligible' | 'high' | 'approved' | 'rejected' | 'archived' | ''
+}
+
+export function matchesClusterQuery(
+  cluster: import('../types').NewsClusterRecord,
+  query: ClusterListQuery,
+  now = new Date()
+): boolean {
+  if (query.country && (cluster.countryCode || '').toUpperCase() !== query.country.toUpperCase()) return false
+  if (query.city && (cluster.city || '').toLocaleLowerCase('tr-TR') !== query.city.toLocaleLowerCase('tr-TR')) {
+    return false
+  }
+  if (query.district && (cluster.district || '').toLocaleLowerCase('tr-TR') !== query.district.toLocaleLowerCase('tr-TR')) {
+    return false
+  }
+  if (query.eligibility && cluster.aiEligibility !== query.eligibility) return false
+  if (query.editorialDecision && cluster.editorialDecision !== query.editorialDecision) return false
+  if (query.editorialPriority && cluster.editorialPriority !== query.editorialPriority) return false
+  if (query.minSources && cluster.uniqueSourceCount < query.minSources) return false
+  if (query.minArticles && cluster.articleCount < query.minArticles) return false
+  if (query.minImportance != null && cluster.importanceScore < query.minImportance) return false
+  if (query.minConfidence != null && cluster.clusterConfidence < query.minConfidence) return false
+  if (query.since && cluster.lastSeenAt < query.since) return false
+  const ageHours = (now.getTime() - cluster.firstSeenAt.getTime()) / 3600000
+  if (query.maxAgeHours != null && ageHours > query.maxAgeHours) return false
+  if (query.dateFrom && cluster.firstSeenAt < query.dateFrom) return false
+  if (query.dateTo && cluster.firstSeenAt > query.dateTo) return false
+  switch (query.tab) {
+    case 'watching':
+      return isWatchingQueueCluster(cluster)
+    case 'eligible':
+      return cluster.aiEligibility === 'ELIGIBLE'
+    case 'high':
+      return cluster.aiEligibility === 'HIGH_PRIORITY'
+    case 'approved':
+      return cluster.editorialDecision === 'APPROVED_FOR_AI'
+    case 'rejected':
+      return cluster.editorialDecision === 'REJECTED' || cluster.aiEligibility === 'REJECTED'
+    case 'archived':
+      return cluster.editorialDecision === 'ARCHIVED'
+    default:
+      return true
+  }
+}
+
+export function parseClusterListQuery(url: URL): ClusterListQuery {
+  const num = (key: string) => {
+    const raw = url.searchParams.get(key)
+    if (!raw) return null
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : null
+  }
+  const date = (key: string) => {
+    const raw = url.searchParams.get(key)
+    if (!raw) return null
+    const d = new Date(raw)
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  const tab = (url.searchParams.get('tab') || '') as ClusterListQuery['tab']
+  return {
+    page: Number(url.searchParams.get('page') || '1') || 1,
+    pageSize: clampPageSize(Number(url.searchParams.get('pageSize') || '25')),
+    country: url.searchParams.get('country') || null,
+    city: url.searchParams.get('city') || null,
+    district: url.searchParams.get('district') || null,
+    sourceId: url.searchParams.get('sourceId') || url.searchParams.get('source') || null,
+    eligibility: url.searchParams.get('eligibility') || null,
+    editorialDecision: url.searchParams.get('editorialDecision') || null,
+    editorialPriority: url.searchParams.get('editorialPriority') || null,
+    minSources: num('minSources'),
+    minArticles: num('minArticles'),
+    minImportance: num('minImportance'),
+    minConfidence: num('minConfidence'),
+    maxAgeHours: num('maxAgeHours') ?? num('age'),
+    dateFrom: date('dateFrom'),
+    dateTo: date('dateTo'),
+    tab: tab || '',
+  }
+}
+
+export interface SourceListQuery {
+  page?: number
+  pageSize?: number
+  search?: string | null
+  status?: string | null
+  country?: string | null
+  scope?: string | null
+  tier?: string | null
+}
+
+export function matchesSourceQuery(
+  source: {
+    name: string
+    domain: string
+    status: string
+    countryCode: string
+    geographicScope?: string | null
+    qualityTier?: string | null
+  },
+  query: SourceListQuery
+): boolean {
+  if (query.status && source.status !== query.status) return false
+  if (query.country && source.countryCode.toUpperCase() !== query.country.toUpperCase()) return false
+  if (query.scope && (source.geographicScope || '') !== query.scope) return false
+  if (query.tier && (source.qualityTier || '') !== query.tier) return false
+  if (query.search?.trim()) {
+    const q = query.search.trim().toLocaleLowerCase('tr-TR')
+    const hay = `${source.name} ${source.domain}`.toLocaleLowerCase('tr-TR')
+    if (!hay.includes(q)) return false
+  }
+  return true
+}
+
+export function parseSourceListQuery(url: URL): SourceListQuery {
+  return {
+    page: Number(url.searchParams.get('page') || '1') || 1,
+    pageSize: clampPageSize(Number(url.searchParams.get('pageSize') || '25')),
+    search: url.searchParams.get('search') || url.searchParams.get('q') || null,
+    status: url.searchParams.get('status') || null,
+    country: url.searchParams.get('country') || null,
+    scope: url.searchParams.get('scope') || null,
+    tier: url.searchParams.get('tier') || null,
+  }
+}
+
+export function paginateSlice<T>(items: T[], page?: number, pageSize?: number) {
+  const size = clampPageSize(pageSize)
+  const total = items.length
+  const totalPages = Math.max(1, Math.ceil(total / size) || 1)
+  const p = clampPage(page, totalPages)
+  const start = (p - 1) * size
+  return { items: items.slice(start, start + size), page: p, pageSize: size, total, totalPages }
 }

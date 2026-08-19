@@ -229,6 +229,8 @@ export const newsClusters = pgTable(
     editorialDecisionNote: text('editorial_decision_note'),
     editorialDecidedAt: timestamp('editorial_decided_at', { withTimezone: true }),
     editorialDecidedBy: varchar('editorial_decided_by', { length: 128 }),
+    editorialPriority: varchar('editorial_priority', { length: 16 }).default('NORMAL').notNull(),
+    approvalSource: varchar('approval_source', { length: 16 }),
     importanceBreakdown: jsonb('importance_breakdown').$type<Record<string, number>>(),
     signatureTokens: jsonb('signature_tokens').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     hasMaterialUpdate: smallint('has_material_update').default(0).notNull(),
@@ -242,6 +244,7 @@ export const newsClusters = pgTable(
     index('news_clusters_event_key_idx').on(t.eventKey),
     index('news_clusters_eligibility_idx').on(t.aiEligibility),
     index('news_clusters_editorial_decision_idx').on(t.editorialDecision),
+    index('news_clusters_editorial_priority_idx').on(t.editorialPriority),
     index('news_clusters_language_idx').on(t.language),
   ]
 )
@@ -572,6 +575,10 @@ export const crawlerEditorialAudit = pgTable(
     failedCount: integer('failed_count').default(0).notNull(),
     reason: varchar('reason', { length: 80 }),
     note: text('note'),
+    previousState: varchar('previous_state', { length: 40 }),
+    newState: varchar('new_state', { length: 40 }),
+    editorialPriority: varchar('editorial_priority', { length: 16 }),
+    selectionMode: varchar('selection_mode', { length: 24 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

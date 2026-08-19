@@ -49,6 +49,7 @@ interface DashboardResponse {
     aiEligibleEventJobs: number
     avoidedDuplicateEventJobs: number
     aiCostUsd: number
+    estimatedCostLabel?: string
   }
   articlesWithPrimaryImage?: number
   articlesWithoutImage?: number
@@ -80,6 +81,20 @@ interface DashboardResponse {
     editorRejected?: number
     archived?: number
     inReview?: number
+    watching?: number
+    eligible?: number
+    aiWaiting?: number
+    highPriority?: number
+    breaking?: number
+    staleApproved?: number
+    olderThan24h?: number
+    staleApproved?: number
+    rawArticles?: number
+    uniqueEvents?: number
+    automaticAiRequests?: number
+    automaticAiCostUsd?: number
+    actualAiCostUsd?: number
+    estimatedCostLabel?: string
     dispatchEnabled?: boolean
     pipeline?: {
       discovered?: number
@@ -142,21 +157,29 @@ export default function CrawlerDashboardPage() {
               { label: 'Mükerrer', value: fmt(data?.duplicatesRemoved) },
               { label: 'Kaçınılan AI', value: fmt(data?.aiRequestsAvoided) },
               { label: 'AI’sız haber', value: fmt(data?.extractionSuccess) },
-              { label: 'AI maliyeti', value: '$0', tone: 'ok' },
               { label: 'Düşük güven', value: fmt(data?.lowConfidence) },
               { label: 'Zayıf kaynak', value: fmt(data?.degradedSources) },
               { label: 'Duraklatılan', value: fmt(data?.pausedSources) },
-              { label: 'Ham → olay', value: `${fmt(data?.funnel?.rawArticles)} → ${fmt(data?.funnel?.uniqueEvents)}` },
-              { label: 'AI uygun olay', value: fmt(data?.funnel?.aiEligibleEvents) },
-              { label: 'Kaçınılan olay işi', value: fmt(data?.funnel?.avoidedDuplicateEventJobs) },
-              { label: 'İzlenen', value: fmt(data?.funnel?.watching) },
-              { label: 'Yüksek öncelik', value: fmt(data?.funnel?.highPriority) },
+              { label: 'Ham Haberler', value: fmt(data?.editorial?.rawArticles ?? data?.funnel?.rawArticles) },
+              { label: 'Olay Kümeleri', value: fmt(data?.editorial?.uniqueEvents ?? data?.funnel?.uniqueEvents) },
+              { label: 'İzlenen', value: fmt(data?.editorial?.watching ?? data?.funnel?.watching) },
+              { label: 'Uygun', value: fmt(data?.editorial?.eligible ?? data?.funnel?.aiEligibleEvents) },
+              { label: 'AI İçin Onaylanan', value: fmt(data?.editorial?.approvedForAi) },
+              { label: 'AI Bekleyen', value: fmt(data?.editorial?.aiWaiting ?? data?.editorial?.approvedForAi) },
+              { label: 'Reddedilen', value: fmt(data?.editorial?.editorRejected ?? data?.funnel?.rejected) },
+              { label: 'Arşivlenen', value: fmt(data?.editorial?.archived) },
+              { label: 'İncelemede', value: fmt(data?.editorial?.inReview) },
+              { label: 'Yüksek Öncelik', value: fmt(data?.editorial?.highPriority ?? data?.funnel?.highPriority) },
+              { label: 'Son Dakika', value: fmt(data?.editorial?.breaking) },
+              { label: '24 Saatten Eski', value: fmt(data?.editorial?.olderThan24h) },
+              { label: '24 Saatten Eski Onaylı', value: fmt(data?.editorial?.staleApproved) },
+              { label: 'Gerçek AI maliyeti', value: '$0', tone: 'ok' },
+              { label: 'Tahmini AI maliyeti', value: data?.editorial?.estimatedCostLabel || data?.funnel?.estimatedCostLabel || 'COST_UNKNOWN' },
+              { label: 'Otomatik AI istek', value: fmt(data?.editorial?.automaticAiRequests ?? 0), tone: 'ok' },
               { label: 'Görselli haber', value: fmt(data?.articlesWithPrimaryImage) },
               { label: 'Görselsiz haber', value: fmt(data?.articlesWithoutImage) },
-              { label: 'AI için editör onaylı', value: fmt(data?.editorial?.approvedForAi) },
               { label: 'Editör reddetti', value: fmt(data?.editorial?.editorRejected) },
               { label: 'Arşivlenen', value: fmt(data?.editorial?.archived) },
-              { label: 'İnceleme bekleyen', value: fmt(data?.editorial?.inReview) },
               { label: 'AI dispatch', value: data?.editorial?.dispatchEnabled ? 'AÇIK' : 'KAPALI', tone: 'ok' },
             ]}
           />
@@ -183,9 +206,7 @@ export default function CrawlerDashboardPage() {
             </section>
           ) : null}
           <p className="text-xs text-[rgb(var(--color-muted))]">
-            Legacy RSS: {data?.legacyRssIngest || 'ADAPTER'} · otomatik AI cost crawler $
-            {data?.ingestionLanes?.automaticAiCostUsd?.crawler ?? 0} / legacy $
-            {data?.ingestionLanes?.automaticAiCostUsd?.legacy ?? 0}
+            Legacy RSS: {data?.legacyRssIngest || 'ADAPTER'} · gerçek otomatik AI $0 · tahmini COST_UNKNOWN
           </p>
           {data?.ingestionLanes ? (
             <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4">

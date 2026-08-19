@@ -209,6 +209,7 @@ export type EvaluationInputCluster = {
   freshnessScore: number
   hasMaterialUpdate: boolean
   geographicScopeHint?: string | null
+  editorialDecision?: string | null
 }
 
 export type MemberEvidence = {

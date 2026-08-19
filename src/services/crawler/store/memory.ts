@@ -22,7 +22,8 @@ import type {
 } from './types'
 import { newCrawlerId } from './types'
 import { clusterDefaults } from '../cluster/defaults'
-import { matchesRawArticleQuery, paginateRawArticles, sortRawArticles } from '../editorial/query'
+import { matchesClusterQuery, matchesRawArticleQuery, paginateRawArticles, sortRawArticles, type ClusterListQuery } from '../editorial/query'
+import { funnelFromClusters, tabCountsFromClusters } from '../editorial/controlPlane'
 
 function dayKey(now: Date): string {
   return now.toISOString().slice(0, 10)
@@ -289,7 +290,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
     minSources?: number
     limit?: number
   }): Promise<NewsClusterRecord[]> {
-    return [...this.clusters.values()]
+    const filtered = [...this.clusters.values()]
       .filter((c) => {
         if (opts?.since && c.lastSeenAt < opts.since) return false
         if (opts?.countryCode && c.countryCode !== opts.countryCode) return false
@@ -300,7 +301,55 @@ export class MemoryCrawlerStore implements CrawlerStore {
         return true
       })
       .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
-      .slice(0, opts?.limit ?? 80)
+    return typeof opts?.limit === 'number' ? filtered.slice(0, opts.limit) : filtered
+  }
+
+  async listClustersMatching(query: ClusterListQuery): Promise<NewsClusterRecord[]> {
+    const sourceIds = query.sourceId
+      ? new Set(
+          [...this.memberships.values()].filter((m) => m.sourceId === query.sourceId).map((m) => m.clusterId)
+        )
+      : null
+    return [...this.clusters.values()]
+      .filter((c) => matchesClusterQuery(c, query))
+      .filter((c) => (sourceIds ? sourceIds.has(c.id) : true))
+      .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+  }
+
+  async listClustersPage(query: ClusterListQuery) {
+    const matched = await this.listClustersMatching(query)
+    const pageSize = query.pageSize === 50 || query.pageSize === 100 ? query.pageSize : 25
+    const total = matched.length
+    const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1)
+    const page = Math.min(Math.max(query.page || 1, 1), totalPages)
+    const start = (page - 1) * pageSize
+    return {
+      clusters: matched.slice(start, start + pageSize),
+      total,
+      page,
+      pageSize,
+      totalPages,
+    }
+  }
+
+  async listClusterIdsMatching(query: ClusterListQuery, cap: number): Promise<{ ids: string[]; total: number }> {
+    const matched = await this.listClustersMatching(query)
+    if (matched.length > cap) return { ids: [], total: matched.length }
+    return { total: matched.length, ids: matched.slice(0, cap).map((c) => c.id) }
+  }
+
+  async countClusterFunnel(now = new Date()) {
+    return funnelFromClusters([...this.clusters.values()], now)
+  }
+
+  async countClusterTabs(query: ClusterListQuery) {
+    const base = await this.listClustersMatching({ ...query, tab: '' })
+    return tabCountsFromClusters(base)
+  }
+
+  async countRawArticles(opts?: { excludeDeleted?: boolean }): Promise<number> {
+    return [...this.articles.values()].filter((a) => (opts?.excludeDeleted === false ? true : a.editorialStatus !== 'DELETED'))
+      .length
   }
 
   async listPendingClusterArticles(limit: number): Promise<RawArticleRecord[]> {

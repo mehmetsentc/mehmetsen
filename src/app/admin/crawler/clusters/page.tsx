@@ -8,6 +8,7 @@ import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
 import { BulkToolbar } from '@/components/admin/crawler/BulkToolbar'
 import { RejectReasonModal } from '@/components/admin/crawler/RejectReasonModal'
 import { RowOverflowMenu } from '@/components/admin/crawler/RowOverflowMenu'
+import { CrawlerPager } from '@/components/admin/crawler/CrawlerPager'
 import { notifyCrawlerBulk } from '@/components/admin/crawler/notifyBulk'
 import { auth } from '@/lib/firebase/auth'
 import { CRAWLER_STATUS_LABELS, EDITORIAL_DECISION_LABELS } from '@/services/crawler/editorial/labels'
@@ -55,6 +56,10 @@ export default function CrawlerClustersPage() {
   const [decision, setDecision] = useState('')
   const [minSources, setMinSources] = useState('')
   const [busy, setBusy] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [selection, setSelection] = useState<BulkSelectionState>(clearSelection(''))
 
@@ -69,7 +74,7 @@ export default function CrawlerClustersPage() {
 
   const load = useCallback(async () => {
     setError(null)
-    const q = new URLSearchParams({ hours })
+    const q = new URLSearchParams({ hours, page: String(page), pageSize: String(pageSize) })
     if (country) q.set('country', country)
     if (city) q.set('city', city)
     if (eligibility) q.set('eligibility', eligibility)
@@ -79,7 +84,9 @@ export default function CrawlerClustersPage() {
     const body = await res.json()
     if (!res.ok) throw new Error(body.error || 'Yüklenemedi')
     setRows((body.clusters || []) as ClusterRow[])
-  }, [hours, country, city, eligibility, decision, minSources])
+    setTotal(Number(body.total || 0))
+    setTotalPages(Number(body.totalPages || 1))
+  }, [hours, country, city, eligibility, decision, minSources, page, pageSize])
 
   useEffect(() => {
     void load().catch((err) => setError(err instanceof Error ? err.message : 'Yüklenemedi'))
@@ -248,6 +255,17 @@ export default function CrawlerClustersPage() {
           </tbody>
         </table>
       </div>
+      <CrawlerPager
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPage={setPage}
+        onPageSize={(n) => {
+          setPageSize(n)
+          setPage(1)
+        }}
+      />
       <RejectReasonModal
         open={rejectOpen}
         count={count || 1}

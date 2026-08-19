@@ -3,6 +3,8 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { dispatchCrawlerArticleToNewsroom, isCrawlerAiDispatchEnabled } from '@/services/crawler/dispatch'
+import { parseClusterListQuery } from '@/services/crawler/editorial/query'
+import { approvedAiStatus, eventAgeHours, sourceDiversityLabel } from '@/services/crawler/editorial/controlPlane'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,46 +14,51 @@ export async function GET(request: Request) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing', clusters: [] }, { status: 503 })
   const url = new URL(request.url)
-  const eligibility = url.searchParams.get('eligibility')
-  const editorialDecision = url.searchParams.get('editorialDecision')
+  const query = parseClusterListQuery(url)
   const store = new DrizzleCrawlerStore()
-  const clusters = await store.listClusters({
-    since: new Date(Date.now() - 24 * 3600 * 1000),
-    eligibility,
-    editorialDecision,
-    limit: 400,
-  })
-  const decisions = await store.countClusterEditorialDecisions()
-  const approvedForAi = decisions.APPROVED_FOR_AI || 0
+  const page = await store.listClustersPage(query)
+  const tabs = await store.countClusterTabs(query)
+  const funnel = await store.countClusterFunnel()
   const dispatchEnabled = isCrawlerAiDispatchEnabled()
-  const queue = clusters
-    .filter((c) => {
-      if (editorialDecision) return c.editorialDecision === editorialDecision
-      if (eligibility) return c.aiEligibility === eligibility
-      return ['WATCHING', 'ELIGIBLE', 'HIGH_PRIORITY', 'REJECTED'].includes(c.aiEligibility) ||
-        c.editorialDecision === 'APPROVED_FOR_AI' ||
-        c.editorialDecision === 'ARCHIVED'
-    })
-    .sort((a, b) => b.importanceScore - a.importanceScore)
-    .slice(0, 120)
+  const approvedForAi = funnel.approvedForAi
   return NextResponse.json({
     aiCalls: dispatchCrawlerArticleToNewsroom().aiRequests,
     dispatchEnabled,
     approvedForAi,
-    editorRejected: decisions.REJECTED || 0,
-    archived: decisions.ARCHIVED || 0,
-    clusters: queue.map((c) => ({
+    editorRejected: funnel.rejected,
+    archived: funnel.archived,
+    tabs,
+    total: page.total,
+    page: page.page,
+    pageSize: page.pageSize,
+    totalPages: page.totalPages,
+    clusters: page.clusters.map((c) => ({
       id: c.id,
       canonicalTitle: c.canonicalTitle || c.normalizedTopic,
+      countryCode: c.countryCode,
+      city: c.city,
+      region: c.region,
       aiEligibility: c.aiEligibility,
       aiEligibilityReason: c.aiEligibilityReason,
       editorialDecision: c.editorialDecision,
+      editorialPriority: c.editorialPriority,
+      approvalSource: c.approvalSource,
+      approvedBy: c.editorialDecision === 'APPROVED_FOR_AI' ? c.editorialDecidedBy : null,
+      approvedAt: c.editorialDecision === 'APPROVED_FOR_AI' ? c.editorialDecidedAt : null,
       uniqueSourceCount: c.uniqueSourceCount,
       articleCount: c.articleCount,
+      sourceDiversity: sourceDiversityLabel(c.articleCount, c.uniqueSourceCount),
       importanceScore: c.importanceScore,
+      clusterConfidence: c.clusterConfidence,
       freshnessScore: c.freshnessScore,
       lastSeenAt: c.lastSeenAt,
-      ageMinutes: Math.round((Date.now() - c.firstSeenAt.getTime()) / 60000),
+      firstSeenAt: c.firstSeenAt,
+      ageHours: Number(eventAgeHours(c).toFixed(1)),
+      ageMinutes: Math.round(eventAgeHours(c) * 60),
+      aiStatus:
+        c.editorialDecision === 'APPROVED_FOR_AI'
+          ? approvedAiStatus({ dispatchEnabled })
+          : null,
     })),
   })
 }

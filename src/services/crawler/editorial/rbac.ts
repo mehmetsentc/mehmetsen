@@ -10,6 +10,7 @@ export type CrawlerBulkAction =
   | 'hard_delete'
   | 'approve_for_ai'
   | 'watch'
+  | 'restore'
 
 export function canMutateCrawlerEditorial(role: CmsRole): boolean {
   return hasPermission(role, 'news:edit') || hasPermission(role, 'news:bulk_action')

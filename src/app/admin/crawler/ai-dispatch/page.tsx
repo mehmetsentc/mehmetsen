@@ -27,9 +27,17 @@ interface Row {
 
 interface Payload {
   automaticAi?: string
+  dispatchStatus?: string
   dryRun?: string
   observationMode?: string
   actualAiRequests?: number
+  actualAiCostUsd?: number
+  estimatedCostLabel?: string
+  pricingState?: string
+  pricingReason?: string | null
+  runningJobs?: number
+  approvedBacklog?: number
+  aiWaiting?: number
   circuit?: { state: string; reason: string | null }
   today?: { budget: number; reserved: number; spent: number; remaining: number; requests: number; requestLimit: number }
   hour?: { budget: number; reserved: number; spent: number; remaining: number; requests: number; requestLimit: number }
@@ -80,7 +88,9 @@ function Table({ rows }: { rows: Row[] }) {
             <td className="px-2 py-1">{r.localImportance}</td>
             <td className="px-2 py-1">{r.eligibility || '—'}</td>
             <td className="px-2 py-1">{r.estimatedTokens ?? '—'}</td>
-            <td className="px-2 py-1">{money(r.estimatedCostUsd)}</td>
+            <td className="px-2 py-1">
+              {r.estimatedCostUsd == null ? 'COST_UNKNOWN' : money(r.estimatedCostUsd)}
+            </td>
             <td className="px-2 py-1">{r.dispatchType}</td>
             <td className="px-2 py-1">{r.blockedReason || '—'}</td>
           </tr>
@@ -107,34 +117,47 @@ export default function AiDispatchPage() {
 
   return (
     <AdminOsPageShell
-      title="AI Dispatch Güvenlik Katmanı"
+      title="CRAWLER AI DISPATCH"
       subtitle="Otomatik DeepSeek kapalı. Gölge kuyruk: ne gönderilirdi. Gövde metni listelenmez."
     >
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      <div className="mb-4 rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-center">
+        <div className="text-xs uppercase tracking-wide text-amber-800">CRAWLER AI DISPATCH</div>
+        <div className="text-3xl font-black text-amber-900">{data?.dispatchStatus || data?.automaticAi || 'KAPALI'}</div>
+      </div>
       {data?.alert ? (
         <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{data.alert}</p>
       ) : null}
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Gözlem: <strong>{data?.observationMode ?? 'SHADOW'}</strong>
-          <div className="mt-1 text-xs text-[rgb(var(--color-muted))]">SHADOW = tahmin; REAL = ücretli istek</div>
+          Onaylanan backlog: <strong>{data?.approvedBacklog ?? 0}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Otomatik AI: <strong>{data?.automaticAi ?? '—'}</strong>
+          AI bekleyen: <strong>{data?.aiWaiting ?? 0}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Dry-run: <strong>{data?.dryRun ?? '—'}</strong>
+          Çalışan job: <strong>{data?.runningJobs ?? 0}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Gerçek AI istek: <strong>{data?.actualAiRequests ?? 0}</strong>
-          <div className="mt-1 text-xs text-[rgb(var(--color-muted))]">Tahminler bu sayıya eklenmez</div>
+          Bugünkü crawler AI isteği: <strong>{data?.actualAiRequests ?? 0}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Sağlayıcı devresi: <strong>{data?.circuit?.state ?? '—'}</strong>
+          Gerçekleşen maliyet: <strong>${(data?.actualAiCostUsd ?? 0).toFixed(4)}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Hazır / Engelli: {data?.counts?.ready ?? 0} / {data?.counts?.blocked ?? 0}
+          Tahmini maliyet:{' '}
+          <strong>
+            {data?.estimatedCostLabel === 'COST_UNKNOWN' || data?.pricingReason === 'COST_UNKNOWN'
+              ? 'HESAPLANAMIYOR — fiyatlandırma tanımsız'
+              : data?.pricingState}
+          </strong>
+        </div>
+        <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
+          DRY RUN: <strong>{data?.dryRun ?? 'TANIMSIZ'}</strong>
+        </div>
+        <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
+          Circuit breaker: <strong>{data?.circuit?.state ?? '—'}</strong>
         </div>
       </div>
       <div className="mb-6 grid gap-3 sm:grid-cols-2 text-sm">

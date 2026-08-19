@@ -41,6 +41,12 @@ export const REJECTION_REASON_LABELS: Record<CrawlerRejectionReason, string> = {
 
 export const REJECTION_REASON_CODES = Object.keys(REJECTION_REASON_LABELS) as CrawlerRejectionReason[]
 
+export const EDITORIAL_PRIORITY_LABELS: Record<string, string> = {
+  NORMAL: 'Normal',
+  HIGH: 'Yüksek',
+  BREAKING: 'Son Dakika',
+}
+
 export const QUALITY_STATUS_LABELS: Record<string, string> = {
   EXTRACTED: 'Çıkarıldı',
   LOW_CONFIDENCE: 'Düşük güven',

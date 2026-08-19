@@ -27,6 +27,8 @@ export function clusterDefaults(now = new Date()): Pick<
   | 'editorialDecisionNote'
   | 'editorialDecidedAt'
   | 'editorialDecidedBy'
+  | 'editorialPriority'
+  | 'approvalSource'
   | 'importanceBreakdown'
   | 'signatureTokens'
   | 'hasMaterialUpdate'
@@ -60,6 +62,8 @@ export function clusterDefaults(now = new Date()): Pick<
     editorialDecisionNote: null,
     editorialDecidedAt: null,
     editorialDecidedBy: null,
+    editorialPriority: 'NORMAL',
+    approvalSource: null,
     importanceBreakdown: null,
     signatureTokens: [],
     hasMaterialUpdate: false,

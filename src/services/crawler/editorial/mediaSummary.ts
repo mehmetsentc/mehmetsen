@@ -7,9 +7,13 @@ export interface ArticleMediaSummary {
   rejectedCount: number
 }
 
+export function editorialDisplayImages(media: ArticleMediaRecord[]): ArticleMediaRecord[] {
+  return media.filter((m) => m.status !== 'REJECTED' && m.mediaType !== 'logo')
+}
+
 export function summarizeArticleMedia(media: ArticleMediaRecord[]): ArticleMediaSummary {
   const rejectedCount = media.filter((m) => m.status === 'REJECTED').length
-  const accepted = media.filter((m) => m.status !== 'REJECTED')
+  const accepted = editorialDisplayImages(media)
   const hashes = new Map<string, number>()
   for (const item of accepted) {
     const key = item.contentHash || item.perceptualHash || item.normalizedUrl
@@ -19,7 +23,7 @@ export function summarizeArticleMedia(media: ArticleMediaRecord[]): ArticleMedia
   for (const n of hashes.values()) {
     if (n > 1) duplicateCount += n - 1
   }
-  const primary = media.find((m) => m.isPrimary && m.status !== 'REJECTED') || accepted[0]
+  const primary = accepted.find((m) => m.isPrimary) || accepted[0]
   return {
     mediaCount: media.length,
     primaryUrl: primary?.sourceUrl ?? null,

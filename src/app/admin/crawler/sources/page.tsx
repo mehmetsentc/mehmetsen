@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
+import { CrawlerPager } from '@/components/admin/crawler/CrawlerPager'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 
@@ -43,6 +44,10 @@ export default function CrawlerSourcesPage() {
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
   const [form, setForm] = useState({
     name: '',
     domain: '',
@@ -59,14 +64,16 @@ export default function CrawlerSourcesPage() {
   const load = useCallback(async () => {
     setError(null)
     try {
-      const res = await fetch('/api/admin/crawler/sources', { headers: await authHeaders() })
-      const body = (await res.json()) as { sources?: SourceRow[]; error?: string }
+      const res = await fetch(`/api/admin/crawler/sources?page=${page}&pageSize=${pageSize}`, { headers: await authHeaders() })
+      const body = (await res.json()) as { sources?: SourceRow[]; error?: string; total?: number; totalPages?: number }
       if (!res.ok) throw new Error(body.error || 'Yüklenemedi')
       setSources(body.sources || [])
+      setTotal(Number(body.total || (body.sources || []).length))
+      setTotalPages(Number(body.totalPages || 1))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Yüklenemedi')
     }
-  }, [])
+  }, [page, pageSize])
 
   useEffect(() => {
     void load()
@@ -258,6 +265,17 @@ export default function CrawlerSourcesPage() {
           </tbody>
         </table>
       </div>
+      <CrawlerPager
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+        onPage={setPage}
+        onPageSize={(n) => {
+          setPageSize(n)
+          setPage(1)
+        }}
+      />
     </AdminOsPageShell>
   )
 }

@@ -31,6 +31,7 @@ function clusterToEval(cluster: NewsClusterRecord) {
     freshnessScore: cluster.freshnessScore,
     hasMaterialUpdate: cluster.hasMaterialUpdate,
     geographicScopeHint: cluster.city || cluster.district ? 'CITY' : cluster.countryCode ? 'NATIONAL' : 'GLOBAL',
+    editorialDecision: cluster.editorialDecision,
   }
 }
 

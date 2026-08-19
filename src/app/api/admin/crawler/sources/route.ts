@@ -3,6 +3,7 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { isNewsCrawlerEnabled } from '@/services/crawler/enabled'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
+import { paginateSlice, parseSourceListQuery, matchesSourceQuery } from '@/services/crawler/editorial/query'
 import { PHASE0_SEED_SOURCES } from '@/services/crawler/seedSources'
 import { TURKEY_SOURCE_REGISTRY, turkeyRegistryToInsert } from '@/services/crawler/turkeyRegistry'
 import type { CrawlerSourceStatus, CrawlerQualityTier } from '@/services/crawler/types'
@@ -27,7 +28,19 @@ export async function GET(request: Request) {
   if (missing) return missing
   const store = new DrizzleCrawlerStore()
   const sources = await store.listSources()
-  return NextResponse.json({ enabled: isNewsCrawlerEnabled(), postgres: true, sources })
+  const url = new URL(request.url)
+  const query = parseSourceListQuery(url)
+  const filtered = sources.filter((s) => matchesSourceQuery(s, query))
+  const page = paginateSlice(filtered, query.page, query.pageSize)
+  return NextResponse.json({
+    enabled: isNewsCrawlerEnabled(),
+    postgres: true,
+    total: page.total,
+    page: page.page,
+    pageSize: page.pageSize,
+    totalPages: page.totalPages,
+    sources: page.items,
+  })
 }
 
 export async function POST(request: Request) {

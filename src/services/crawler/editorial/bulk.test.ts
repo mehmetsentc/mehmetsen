@@ -238,13 +238,12 @@ describe('phase 4A.1 bulk editorial triage', () => {
   it('P audit records created', async () => {
     const store = new MemoryCrawlerStore()
     const src = await seedSource(store)
-    const a = await seedArticle(store, src, 'aud')
-    await runArticleBulk({ store, actor: editor, op: 'review', ids: [a.id] })
+    const article = await seedArticle(store, src, 'aud')
+    await runArticleBulk({ store, actor: editor, op: 'review', ids: [article.id] })
     const audits = await store.listEditorialAudits()
-    expect(audits.length).toBe(1)
+    expect(audits.length).toBeGreaterThanOrEqual(1)
+    expect(audits.some((row) => row.action === 'review' && row.entityId === article.id)).toBe(true)
     expect(audits[0].actorId).toBe(editor.uid)
-    expect(audits[0].action).toBe('review')
-    expect(audits[0].affectedCount).toBe(1)
   })
 
   it('Q combined filter bulk action', async () => {

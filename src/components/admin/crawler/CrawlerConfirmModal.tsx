@@ -6,6 +6,7 @@ export function CrawlerConfirmModal({
   open,
   title,
   body,
+  children,
   confirmLabel = 'Onayla',
   danger = false,
   busy = false,
@@ -14,7 +15,8 @@ export function CrawlerConfirmModal({
 }: {
   open: boolean
   title: string
-  body: string
+  body?: string
+  children?: React.ReactNode
   confirmLabel?: string
   danger?: boolean
   busy?: boolean
@@ -43,7 +45,7 @@ export function CrawlerConfirmModal({
         </>
       }
     >
-      <p className="whitespace-pre-wrap text-sm">{body}</p>
+      {children || <p className="whitespace-pre-wrap text-sm">{body}</p>}
     </Modal>
   )
 }

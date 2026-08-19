@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, ilike, lte, or, sql, type SQL } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
   aiProcessingCache,
@@ -22,7 +22,8 @@ import type {
   NewsSourceRecord,
   RawArticleRecord,
 } from '../types'
-import { clampPage, clampPageSize } from '../editorial/query'
+import { clampPage, clampPageSize, type ClusterListQuery } from '../editorial/query'
+import { crawlerEditorialStaleHours, emptyClusterFunnel } from '../editorial/controlPlane'
 import type {
   CrawlerStore,
   InsertClusterInput,
@@ -230,6 +231,8 @@ function mapCluster(row: typeof newsClusters.$inferSelect): NewsClusterRecord {
     editorialDecisionNote: row.editorialDecisionNote ?? null,
     editorialDecidedAt: row.editorialDecidedAt ?? null,
     editorialDecidedBy: row.editorialDecidedBy ?? null,
+    editorialPriority: (row.editorialPriority as NewsClusterRecord['editorialPriority']) || 'NORMAL',
+    approvalSource: (row.approvalSource as NewsClusterRecord['approvalSource']) || null,
     importanceBreakdown: (row.importanceBreakdown as Record<string, number> | null) ?? null,
     signatureTokens: Array.isArray(row.signatureTokens) ? row.signatureTokens : [],
     hasMaterialUpdate: row.hasMaterialUpdate === 1,
@@ -624,6 +627,8 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     assign('editorialDecisionNote', 'editorialDecisionNote')
     assign('editorialDecidedAt', 'editorialDecidedAt')
     assign('editorialDecidedBy', 'editorialDecidedBy')
+    assign('editorialPriority', 'editorialPriority')
+    assign('approvalSource', 'approvalSource')
     assign('importanceBreakdown', 'importanceBreakdown')
     assign('signatureTokens', 'signatureTokens')
     assign('hasMaterialUpdate', 'hasMaterialUpdate', (v) => (v ? 1 : 0))
@@ -645,18 +650,165 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     minSources?: number
     limit?: number
   }): Promise<NewsClusterRecord[]> {
-    const rows = await this.db().select().from(newsClusters).orderBy(desc(newsClusters.lastSeenAt)).limit(opts?.limit ?? 80)
-    return rows
-      .map(mapCluster)
-      .filter((c) => {
-        if (opts?.since && c.lastSeenAt < opts.since) return false
-        if (opts?.countryCode && c.countryCode !== opts.countryCode) return false
-        if (opts?.city && (c.city || '').toLowerCase() !== opts.city.toLowerCase()) return false
-        if (opts?.eligibility && c.aiEligibility !== opts.eligibility) return false
-        if (opts?.editorialDecision && c.editorialDecision !== opts.editorialDecision) return false
-        if (opts?.minSources && c.uniqueSourceCount < opts.minSources) return false
-        return true
+    const conds: SQL[] = []
+    if (opts?.since) conds.push(gte(newsClusters.lastSeenAt, opts.since))
+    if (opts?.countryCode) conds.push(eq(newsClusters.countryCode, opts.countryCode))
+    if (opts?.city) conds.push(sql`lower(${newsClusters.city}) = lower(${opts.city})`)
+    if (opts?.eligibility) conds.push(eq(newsClusters.aiEligibility, opts.eligibility))
+    if (opts?.editorialDecision) conds.push(eq(newsClusters.editorialDecision, opts.editorialDecision))
+    if (opts?.minSources) conds.push(gte(newsClusters.uniqueSourceCount, opts.minSources))
+    const rows = await this.db()
+      .select()
+      .from(newsClusters)
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(newsClusters.lastSeenAt))
+      .limit(opts?.limit ?? 500)
+    return rows.map(mapCluster)
+  }
+
+  private clusterWhere(query: ClusterListQuery, now = new Date()): SQL | undefined {
+    const conds: SQL[] = []
+    if (query.country) conds.push(sql`upper(${newsClusters.countryCode}) = ${query.country.toUpperCase()}`)
+    if (query.city) conds.push(sql`lower(${newsClusters.city}) = lower(${query.city})`)
+    if (query.district) conds.push(sql`lower(${newsClusters.district}) = lower(${query.district})`)
+    if (query.eligibility) conds.push(eq(newsClusters.aiEligibility, query.eligibility))
+    if (query.editorialDecision) conds.push(eq(newsClusters.editorialDecision, query.editorialDecision))
+    if (query.editorialPriority) conds.push(eq(newsClusters.editorialPriority, query.editorialPriority))
+    if (query.minSources) conds.push(gte(newsClusters.uniqueSourceCount, query.minSources))
+    if (query.minArticles) conds.push(gte(newsClusters.articleCount, query.minArticles))
+    if (query.minImportance != null) conds.push(gte(newsClusters.importanceScore, query.minImportance))
+    if (query.minConfidence != null) conds.push(gte(newsClusters.clusterConfidence, query.minConfidence))
+    if (query.since) conds.push(gte(newsClusters.lastSeenAt, query.since))
+    if (query.maxAgeHours != null) {
+      conds.push(gte(newsClusters.firstSeenAt, new Date(now.getTime() - query.maxAgeHours * 3600000)))
+    }
+    if (query.dateFrom) conds.push(gte(newsClusters.firstSeenAt, query.dateFrom))
+    if (query.dateTo) conds.push(lte(newsClusters.firstSeenAt, query.dateTo))
+    if (query.sourceId) {
+      conds.push(
+        sql`exists (select 1 from ${clusterMemberships} cm where cm.cluster_id = ${newsClusters.id} and cm.source_id = ${query.sourceId})`
+      )
+    }
+    switch (query.tab) {
+      case 'watching':
+        conds.push(
+          sql`(${newsClusters.editorialDecision} = 'WATCHING' or (${newsClusters.aiEligibility} = 'WATCHING' and ${newsClusters.editorialDecision} not in ('ARCHIVED','REJECTED')))`
+        )
+        break
+      case 'eligible':
+        conds.push(eq(newsClusters.aiEligibility, 'ELIGIBLE'))
+        break
+      case 'high':
+        conds.push(eq(newsClusters.aiEligibility, 'HIGH_PRIORITY'))
+        break
+      case 'approved':
+        conds.push(eq(newsClusters.editorialDecision, 'APPROVED_FOR_AI'))
+        break
+      case 'rejected':
+        conds.push(
+          sql`(${newsClusters.editorialDecision} = 'REJECTED' or ${newsClusters.aiEligibility} = 'REJECTED')`
+        )
+        break
+      case 'archived':
+        conds.push(eq(newsClusters.editorialDecision, 'ARCHIVED'))
+        break
+      default:
+        break
+    }
+    return conds.length ? and(...conds) : undefined
+  }
+
+  async listClustersMatching(query: ClusterListQuery): Promise<NewsClusterRecord[]> {
+    const rows = await this.db()
+      .select()
+      .from(newsClusters)
+      .where(this.clusterWhere(query))
+      .orderBy(desc(newsClusters.lastSeenAt))
+    return rows.map(mapCluster)
+  }
+
+  async listClustersPage(query: ClusterListQuery) {
+    const pageSize = clampPageSize(query.pageSize)
+    const where = this.clusterWhere(query)
+    const countRows = await this.db()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(newsClusters)
+      .where(where)
+    const total = countRows[0]?.n ?? 0
+    const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1)
+    const page = clampPage(query.page, totalPages)
+    const rows = await this.db()
+      .select()
+      .from(newsClusters)
+      .where(where)
+      .orderBy(desc(newsClusters.lastSeenAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+    return { clusters: rows.map(mapCluster), total, page, pageSize, totalPages }
+  }
+
+  async listClusterIdsMatching(query: ClusterListQuery, cap: number): Promise<{ ids: string[]; total: number }> {
+    const where = this.clusterWhere(query)
+    const countRows = await this.db()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(newsClusters)
+      .where(where)
+    const total = countRows[0]?.n ?? 0
+    if (total > cap) return { ids: [], total }
+    const rows = await this.db()
+      .select({ id: newsClusters.id })
+      .from(newsClusters)
+      .where(where)
+      .orderBy(desc(newsClusters.lastSeenAt))
+      .limit(Math.max(0, cap))
+    return { ids: rows.map((r) => r.id), total }
+  }
+
+  async countClusterFunnel(now = new Date()) {
+    const staleHours = crawlerEditorialStaleHours()
+    const staleCutoff = new Date(now.getTime() - staleHours * 3600000)
+    const dayCutoff = new Date(now.getTime() - 24 * 3600000)
+    const rows = await this.db()
+      .select({
+        total: sql<number>`count(*)::int`,
+        watching: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'WATCHING' or (${newsClusters.aiEligibility} = 'WATCHING' and ${newsClusters.editorialDecision} not in ('ARCHIVED','REJECTED')))::int`,
+        eligible: sql<number>`count(*) filter (where ${newsClusters.aiEligibility} = 'ELIGIBLE')::int`,
+        highPriority: sql<number>`count(*) filter (where ${newsClusters.aiEligibility} = 'HIGH_PRIORITY')::int`,
+        approvedForAi: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'APPROVED_FOR_AI')::int`,
+        rejected: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'REJECTED' or ${newsClusters.aiEligibility} = 'REJECTED')::int`,
+        archived: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'ARCHIVED')::int`,
+        singleSource: sql<number>`count(*) filter (where ${newsClusters.uniqueSourceCount} <= 1)::int`,
+        multiSource: sql<number>`count(*) filter (where ${newsClusters.uniqueSourceCount} >= 2)::int`,
+        staleApproved: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'APPROVED_FOR_AI' and ${newsClusters.firstSeenAt} < ${staleCutoff})::int`,
+        olderThan24h: sql<number>`count(*) filter (where ${newsClusters.firstSeenAt} < ${dayCutoff})::int`,
+        breaking: sql<number>`count(*) filter (where ${newsClusters.editorialPriority} = 'BREAKING')::int`,
+        editorialHigh: sql<number>`count(*) filter (where ${newsClusters.editorialPriority} = 'HIGH')::int`,
       })
+      .from(newsClusters)
+    return { ...emptyClusterFunnel(), ...(rows[0] || {}) }
+  }
+
+  async countClusterTabs(query: ClusterListQuery) {
+    const where = this.clusterWhere({ ...query, tab: '' })
+    const rows = await this.db()
+      .select({
+        all: sql<number>`count(*)::int`,
+        watching: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'WATCHING' or (${newsClusters.aiEligibility} = 'WATCHING' and ${newsClusters.editorialDecision} not in ('ARCHIVED','REJECTED')))::int`,
+        eligible: sql<number>`count(*) filter (where ${newsClusters.aiEligibility} = 'ELIGIBLE')::int`,
+        high: sql<number>`count(*) filter (where ${newsClusters.aiEligibility} = 'HIGH_PRIORITY')::int`,
+        approved: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'APPROVED_FOR_AI')::int`,
+        rejected: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'REJECTED' or ${newsClusters.aiEligibility} = 'REJECTED')::int`,
+        archived: sql<number>`count(*) filter (where ${newsClusters.editorialDecision} = 'ARCHIVED')::int`,
+      })
+      .from(newsClusters)
+      .where(where)
+    return rows[0] || { all: 0, watching: 0, eligible: 0, high: 0, approved: 0, rejected: 0, archived: 0 }
+  }
+
+  async countRawArticles(opts?: { excludeDeleted?: boolean }): Promise<number> {
+    const where = opts?.excludeDeleted === false ? undefined : sql`${rawArticles.editorialStatus} <> 'DELETED'`
+    const rows = await this.db().select({ n: sql<number>`count(*)::int` }).from(rawArticles).where(where)
+    return rows[0]?.n ?? 0
   }
 
   async listPendingClusterArticles(limit: number): Promise<RawArticleRecord[]> {
@@ -1002,6 +1154,10 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       failedCount: row.failedCount,
       reason: row.reason,
       note: row.note,
+      previousState: row.previousState,
+      newState: row.newState,
+      editorialPriority: row.editorialPriority,
+      selectionMode: row.selectionMode,
       createdAt: row.createdAt,
     })
   }
@@ -1025,6 +1181,10 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       failedCount: row.failedCount,
       reason: row.reason ?? null,
       note: row.note ?? null,
+      previousState: row.previousState ?? null,
+      newState: row.newState ?? null,
+      editorialPriority: (row.editorialPriority as CrawlerEditorialAuditRecord['editorialPriority']) ?? null,
+      selectionMode: row.selectionMode ?? null,
       createdAt: row.createdAt,
     }))
   }

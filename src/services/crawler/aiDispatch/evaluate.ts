@@ -38,6 +38,10 @@ function extraEligibility(ctx: EvaluateContext): AiBlockReason | null {
   const { cluster, members, existingInitialJob } = ctx
   if (cluster.aiEligibility === 'WATCHING') return 'WATCHING'
   if (cluster.aiEligibility === 'REJECTED') return 'REJECTED'
+  if (cluster.editorialDecision === 'WATCHING') return 'WATCHING'
+  if (cluster.editorialDecision === 'REJECTED' || cluster.editorialDecision === 'ARCHIVED') {
+    return 'EDITORIALLY_REJECTED'
+  }
   if (cluster.aiEligibility !== 'ELIGIBLE' && cluster.aiEligibility !== 'HIGH_PRIORITY') {
     return 'WATCHING'
   }
