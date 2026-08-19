@@ -1,4 +1,6 @@
 import type {
+  ClusterMembershipRecord,
+  ClusterScoreBreakdown,
   CrawlerLogicalQueue,
   CrawlerMetricName,
   CrawlerUrlStatus,
@@ -9,11 +11,13 @@ import type {
 } from '../types'
 import type {
   CrawlerStore,
+  InsertClusterInput,
   InsertDiscoveredUrlInput,
   InsertRawArticleInput,
   InsertSourceInput,
 } from './types'
 import { newCrawlerId } from './types'
+import { clusterDefaults } from '../cluster/defaults'
 
 function dayKey(now: Date): string {
   return now.toISOString().slice(0, 10)
@@ -29,6 +33,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
   urlsByHash = new Map<string, string>()
   articles = new Map<string, RawArticleRecord>()
   clusters = new Map<string, NewsClusterRecord>()
+  memberships = new Map<string, ClusterMembershipRecord>()
   metrics = new Map<string, number>()
   aiCache = new Set<string>()
 
@@ -222,12 +227,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
       })
   }
 
-  async insertCluster(input: {
-    representativeArticleId: string
-    normalizedTopic: string
-    countryCode: string | null
-    city: string | null
-  }): Promise<NewsClusterRecord> {
+  async insertCluster(input: InsertClusterInput): Promise<NewsClusterRecord> {
     const now = new Date()
     const row: NewsClusterRecord = {
       id: newCrawlerId('cl'),
@@ -239,9 +239,95 @@ export class MemoryCrawlerStore implements CrawlerStore {
       articleCount: 1,
       firstSeenAt: now,
       lastSeenAt: now,
+      ...clusterDefaults(now),
+      eventKey: input.eventKey ?? null,
+      canonicalTitle: input.canonicalTitle ?? null,
+      language: input.language ?? null,
+      region: input.region ?? null,
+      district: input.district ?? null,
+      categoryHint: input.categoryHint ?? null,
+      signatureTokens: input.signatureTokens ?? [],
     }
     this.clusters.set(row.id, row)
     return row
+  }
+
+  async updateCluster(id: string, patch: Partial<NewsClusterRecord>): Promise<void> {
+    const row = this.clusters.get(id)
+    if (!row) return
+    Object.assign(row, patch, { updatedAt: new Date() })
+  }
+
+  async getCluster(id: string): Promise<NewsClusterRecord | null> {
+    return this.clusters.get(id) ?? null
+  }
+
+  async listClusters(opts?: {
+    since?: Date
+    countryCode?: string | null
+    city?: string | null
+    eligibility?: string | null
+    minSources?: number
+    limit?: number
+  }): Promise<NewsClusterRecord[]> {
+    return [...this.clusters.values()]
+      .filter((c) => {
+        if (opts?.since && c.lastSeenAt < opts.since) return false
+        if (opts?.countryCode && c.countryCode !== opts.countryCode) return false
+        if (opts?.city && (c.city || '').toLowerCase() !== opts.city.toLowerCase()) return false
+        if (opts?.eligibility && c.aiEligibility !== opts.eligibility) return false
+        if (opts?.minSources && c.uniqueSourceCount < opts.minSources) return false
+        return true
+      })
+      .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+      .slice(0, opts?.limit ?? 80)
+  }
+
+  async listPendingClusterArticles(limit: number): Promise<RawArticleRecord[]> {
+    const taken = new Set([...this.memberships.values()].map((m) => m.articleId))
+    return [...this.articles.values()]
+      .filter((a) => !taken.has(a.id) && !a.isExactDuplicate && a.qualityStatus !== 'FAILED')
+      .sort((a, b) => (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0))
+      .slice(0, limit)
+  }
+
+  async getMembershipByArticle(articleId: string): Promise<ClusterMembershipRecord | null> {
+    return [...this.memberships.values()].find((m) => m.articleId === articleId) ?? null
+  }
+
+  async listMemberships(clusterId: string): Promise<ClusterMembershipRecord[]> {
+    return [...this.memberships.values()].filter((m) => m.clusterId === clusterId)
+  }
+
+  async insertMembership(input: {
+    clusterId: string
+    articleId: string
+    sourceId: string
+    similarityScore: number
+    matchBand: ClusterMembershipRecord['matchBand']
+    matchExplanation?: ClusterScoreBreakdown | null
+    isCanonical?: boolean
+  }): Promise<'inserted' | 'duplicate'> {
+    if ([...this.memberships.values()].some((m) => m.articleId === input.articleId)) return 'duplicate'
+    const row: ClusterMembershipRecord = {
+      id: newCrawlerId('cm'),
+      clusterId: input.clusterId,
+      articleId: input.articleId,
+      sourceId: input.sourceId,
+      similarityScore: input.similarityScore,
+      matchBand: input.matchBand,
+      matchExplanation: input.matchExplanation ?? null,
+      isCanonical: Boolean(input.isCanonical),
+      createdAt: new Date(),
+    }
+    this.memberships.set(row.id, row)
+    return 'inserted'
+  }
+
+  async listFailedUrls(limit = 80): Promise<DiscoveredUrlRecord[]> {
+    return [...this.urls.values()]
+      .filter((u) => u.logicalQueue === 'FAILED_QUEUE')
+      .slice(0, limit)
   }
 
   async touchCluster(id: string, representativeArticleId?: string): Promise<void> {

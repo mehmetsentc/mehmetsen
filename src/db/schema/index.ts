@@ -22,6 +22,7 @@ export {
   discoveredArticleUrls,
   rawArticles,
   newsClusters,
+  clusterMemberships,
   aiProcessingCache,
   crawlerMetricsDaily,
   crawlerSourceTypeEnum,

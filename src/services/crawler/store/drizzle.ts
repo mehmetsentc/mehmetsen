@@ -2,6 +2,7 @@ import { and, eq, lte, sql, desc, gte, or } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
   aiProcessingCache,
+  clusterMemberships,
   crawlerMetricsDaily,
   discoveredArticleUrls,
   newsClusters,
@@ -19,11 +20,14 @@ import type {
 } from '../types'
 import type {
   CrawlerStore,
+  InsertClusterInput,
   InsertDiscoveredUrlInput,
   InsertRawArticleInput,
   InsertSourceInput,
 } from './types'
 import { newCrawlerId } from './types'
+import { clusterDefaults } from '../cluster/defaults'
+import type { ClusterMembershipRecord, ClusterScoreBreakdown } from '../types'
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((x): x is string => typeof x === 'string') : []
@@ -145,6 +149,7 @@ function mapRaw(row: typeof rawArticles.$inferSelect): RawArticleRecord {
 }
 
 function mapCluster(row: typeof newsClusters.$inferSelect): NewsClusterRecord {
+  const fallback = clusterDefaults(row.updatedAt)
   return {
     id: row.id,
     representativeArticleId: row.representativeArticleId,
@@ -155,6 +160,46 @@ function mapCluster(row: typeof newsClusters.$inferSelect): NewsClusterRecord {
     articleCount: row.articleCount,
     firstSeenAt: row.firstSeenAt,
     lastSeenAt: row.lastSeenAt,
+    eventKey: row.eventKey ?? null,
+    canonicalTitle: row.canonicalTitle ?? null,
+    language: row.language ?? null,
+    region: row.region ?? null,
+    district: row.district ?? null,
+    categoryHint: row.categoryHint ?? null,
+    eventStatus: (row.eventStatus as NewsClusterRecord['eventStatus']) || 'OPEN',
+    latestArticleAt: row.latestArticleAt ?? row.lastSeenAt,
+    sourceCount: row.sourceCount ?? 1,
+    uniqueSourceCount: row.uniqueSourceCount ?? 1,
+    highQualitySourceCount: row.highQualitySourceCount ?? 0,
+    sourceDiversityScore: row.sourceDiversityScore ?? 0,
+    importanceScore: row.importanceScore ?? 0,
+    globalImportance: row.globalImportance ?? 0,
+    nationalImportance: row.nationalImportance ?? 0,
+    localImportance: row.localImportance ?? 0,
+    freshnessScore: row.freshnessScore ?? 0,
+    clusterConfidence: row.clusterConfidence ?? 0,
+    aiEligibility: (row.aiEligibility as NewsClusterRecord['aiEligibility']) || 'WATCHING',
+    aiEligibilityReason: row.aiEligibilityReason ?? null,
+    importanceBreakdown: (row.importanceBreakdown as Record<string, number> | null) ?? null,
+    signatureTokens: Array.isArray(row.signatureTokens) ? row.signatureTokens : [],
+    hasMaterialUpdate: row.hasMaterialUpdate === 1,
+    materialUpdateReason: row.materialUpdateReason ?? null,
+    createdAt: row.createdAt ?? fallback.createdAt,
+    updatedAt: row.updatedAt ?? fallback.updatedAt,
+  }
+}
+
+function mapMembership(row: typeof clusterMemberships.$inferSelect): ClusterMembershipRecord {
+  return {
+    id: row.id,
+    clusterId: row.clusterId,
+    articleId: row.articleId,
+    sourceId: row.sourceId,
+    similarityScore: row.similarityScore,
+    matchBand: (row.matchBand as ClusterMembershipRecord['matchBand']) || 'LOW',
+    matchExplanation: (row.matchExplanation as ClusterScoreBreakdown | null) ?? null,
+    isCanonical: row.isCanonical === 1,
+    createdAt: row.createdAt,
   }
 }
 
@@ -458,14 +503,10 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     return out
   }
 
-  async insertCluster(input: {
-    representativeArticleId: string
-    normalizedTopic: string
-    countryCode: string | null
-    city: string | null
-  }): Promise<NewsClusterRecord> {
+  async insertCluster(input: InsertClusterInput): Promise<NewsClusterRecord> {
     const id = newCrawlerId('cl')
     const now = new Date()
+    const extras = clusterDefaults(now)
     await this.db().insert(newsClusters).values({
       id,
       representativeArticleId: input.representativeArticleId,
@@ -474,9 +515,149 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       city: input.city,
       firstSeenAt: now,
       lastSeenAt: now,
+      eventKey: input.eventKey ?? extras.eventKey,
+      canonicalTitle: input.canonicalTitle ?? extras.canonicalTitle,
+      language: input.language ?? extras.language,
+      region: input.region ?? extras.region,
+      district: input.district ?? extras.district,
+      categoryHint: input.categoryHint ?? extras.categoryHint,
+      eventStatus: extras.eventStatus,
+      latestArticleAt: now,
+      signatureTokens: input.signatureTokens ?? [],
+      createdAt: now,
+      updatedAt: now,
     })
     const rows = await this.db().select().from(newsClusters).where(eq(newsClusters.id, id)).limit(1)
     return mapCluster(rows[0])
+  }
+
+  async updateCluster(id: string, patch: Partial<NewsClusterRecord>): Promise<void> {
+    const values: Record<string, unknown> = { updatedAt: new Date() }
+    const assign = (key: keyof NewsClusterRecord, column: string, transform?: (v: unknown) => unknown) => {
+      if (patch[key] !== undefined) values[column] = transform ? transform(patch[key]) : patch[key]
+    }
+    assign('representativeArticleId', 'representativeArticleId')
+    assign('normalizedTopic', 'normalizedTopic')
+    assign('canonicalTitle', 'canonicalTitle')
+    assign('eventKey', 'eventKey')
+    assign('language', 'language')
+    assign('countryCode', 'countryCode')
+    assign('region', 'region')
+    assign('city', 'city')
+    assign('district', 'district')
+    assign('categoryHint', 'categoryHint')
+    assign('eventStatus', 'eventStatus')
+    assign('latestArticleAt', 'latestArticleAt')
+    assign('lastSeenAt', 'lastSeenAt')
+    assign('articleCount', 'articleCount')
+    assign('sourceCount', 'sourceCount')
+    assign('uniqueSourceCount', 'uniqueSourceCount')
+    assign('highQualitySourceCount', 'highQualitySourceCount')
+    assign('sourceDiversityScore', 'sourceDiversityScore')
+    assign('importanceScore', 'importanceScore')
+    assign('globalImportance', 'globalImportance')
+    assign('nationalImportance', 'nationalImportance')
+    assign('localImportance', 'localImportance')
+    assign('freshnessScore', 'freshnessScore')
+    assign('clusterConfidence', 'clusterConfidence')
+    assign('aiEligibility', 'aiEligibility')
+    assign('aiEligibilityReason', 'aiEligibilityReason')
+    assign('importanceBreakdown', 'importanceBreakdown')
+    assign('signatureTokens', 'signatureTokens')
+    assign('hasMaterialUpdate', 'hasMaterialUpdate', (v) => (v ? 1 : 0))
+    assign('materialUpdateReason', 'materialUpdateReason')
+    await this.db().update(newsClusters).set(values).where(eq(newsClusters.id, id))
+  }
+
+  async getCluster(id: string): Promise<NewsClusterRecord | null> {
+    const rows = await this.db().select().from(newsClusters).where(eq(newsClusters.id, id)).limit(1)
+    return rows[0] ? mapCluster(rows[0]) : null
+  }
+
+  async listClusters(opts?: {
+    since?: Date
+    countryCode?: string | null
+    city?: string | null
+    eligibility?: string | null
+    minSources?: number
+    limit?: number
+  }): Promise<NewsClusterRecord[]> {
+    const rows = await this.db().select().from(newsClusters).orderBy(desc(newsClusters.lastSeenAt)).limit(opts?.limit ?? 80)
+    return rows
+      .map(mapCluster)
+      .filter((c) => {
+        if (opts?.since && c.lastSeenAt < opts.since) return false
+        if (opts?.countryCode && c.countryCode !== opts.countryCode) return false
+        if (opts?.city && (c.city || '').toLowerCase() !== opts.city.toLowerCase()) return false
+        if (opts?.eligibility && c.aiEligibility !== opts.eligibility) return false
+        if (opts?.minSources && c.uniqueSourceCount < opts.minSources) return false
+        return true
+      })
+  }
+
+  async listPendingClusterArticles(limit: number): Promise<RawArticleRecord[]> {
+    const members = await this.db().select({ articleId: clusterMemberships.articleId }).from(clusterMemberships)
+    const taken = new Set(members.map((m) => m.articleId))
+    const rows = await this.db()
+      .select()
+      .from(rawArticles)
+      .orderBy(desc(rawArticles.fetchedAt))
+      .limit(Math.max(limit * 4, 80))
+    return rows
+      .map(mapRaw)
+      .filter((a) => !taken.has(a.id) && !a.isExactDuplicate && a.qualityStatus !== 'FAILED')
+      .slice(0, limit)
+  }
+
+  async getMembershipByArticle(articleId: string): Promise<ClusterMembershipRecord | null> {
+    const rows = await this.db()
+      .select()
+      .from(clusterMemberships)
+      .where(eq(clusterMemberships.articleId, articleId))
+      .limit(1)
+    return rows[0] ? mapMembership(rows[0]) : null
+  }
+
+  async listMemberships(clusterId: string): Promise<ClusterMembershipRecord[]> {
+    const rows = await this.db()
+      .select()
+      .from(clusterMemberships)
+      .where(eq(clusterMemberships.clusterId, clusterId))
+    return rows.map(mapMembership)
+  }
+
+  async insertMembership(input: {
+    clusterId: string
+    articleId: string
+    sourceId: string
+    similarityScore: number
+    matchBand: ClusterMembershipRecord['matchBand']
+    matchExplanation?: ClusterScoreBreakdown | null
+    isCanonical?: boolean
+  }): Promise<'inserted' | 'duplicate'> {
+    const existing = await this.getMembershipByArticle(input.articleId)
+    if (existing) return 'duplicate'
+    await this.db().insert(clusterMemberships).values({
+      id: newCrawlerId('cm'),
+      clusterId: input.clusterId,
+      articleId: input.articleId,
+      sourceId: input.sourceId,
+      similarityScore: input.similarityScore,
+      matchBand: input.matchBand,
+      matchExplanation: (input.matchExplanation as Record<string, number> | null) ?? null,
+      isCanonical: input.isCanonical ? 1 : 0,
+    })
+    return 'inserted'
+  }
+
+  async listFailedUrls(limit = 80): Promise<DiscoveredUrlRecord[]> {
+    const rows = await this.db()
+      .select()
+      .from(discoveredArticleUrls)
+      .where(eq(discoveredArticleUrls.logicalQueue, 'FAILED_QUEUE'))
+      .orderBy(desc(discoveredArticleUrls.updatedAt))
+      .limit(limit)
+    return rows.map(mapUrl)
   }
 
   async touchCluster(id: string, representativeArticleId?: string): Promise<void> {

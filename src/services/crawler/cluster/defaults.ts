@@ -1,0 +1,60 @@
+import type { NewsClusterRecord } from '../types'
+
+export function clusterDefaults(now = new Date()): Pick<
+  NewsClusterRecord,
+  | 'eventKey'
+  | 'canonicalTitle'
+  | 'language'
+  | 'region'
+  | 'district'
+  | 'categoryHint'
+  | 'eventStatus'
+  | 'latestArticleAt'
+  | 'sourceCount'
+  | 'uniqueSourceCount'
+  | 'highQualitySourceCount'
+  | 'sourceDiversityScore'
+  | 'importanceScore'
+  | 'globalImportance'
+  | 'nationalImportance'
+  | 'localImportance'
+  | 'freshnessScore'
+  | 'clusterConfidence'
+  | 'aiEligibility'
+  | 'aiEligibilityReason'
+  | 'importanceBreakdown'
+  | 'signatureTokens'
+  | 'hasMaterialUpdate'
+  | 'materialUpdateReason'
+  | 'createdAt'
+  | 'updatedAt'
+> {
+  return {
+    eventKey: null,
+    canonicalTitle: null,
+    language: null,
+    region: null,
+    district: null,
+    categoryHint: null,
+    eventStatus: 'OPEN',
+    latestArticleAt: now,
+    sourceCount: 1,
+    uniqueSourceCount: 1,
+    highQualitySourceCount: 0,
+    sourceDiversityScore: 0,
+    importanceScore: 0,
+    globalImportance: 0,
+    nationalImportance: 0,
+    localImportance: 0,
+    freshnessScore: 0,
+    clusterConfidence: 0,
+    aiEligibility: 'WATCHING',
+    aiEligibilityReason: null,
+    importanceBreakdown: null,
+    signatureTokens: [],
+    hasMaterialUpdate: false,
+    materialUpdateReason: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+}

@@ -204,12 +204,39 @@ export const newsClusters = pgTable(
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
+    eventKey: varchar('event_key', { length: 80 }),
+    canonicalTitle: text('canonical_title'),
+    language: varchar('language', { length: 16 }),
+    region: varchar('region', { length: 100 }),
+    district: varchar('district', { length: 100 }),
+    categoryHint: varchar('category_hint', { length: 80 }),
+    eventStatus: varchar('event_status', { length: 16 }).default('OPEN').notNull(),
+    latestArticleAt: timestamp('latest_article_at', { withTimezone: true }),
+    sourceCount: integer('source_count').default(1).notNull(),
+    uniqueSourceCount: integer('unique_source_count').default(1).notNull(),
+    highQualitySourceCount: integer('high_quality_source_count').default(0).notNull(),
+    sourceDiversityScore: real('source_diversity_score').default(0).notNull(),
+    importanceScore: integer('importance_score').default(0).notNull(),
+    globalImportance: integer('global_importance').default(0).notNull(),
+    nationalImportance: integer('national_importance').default(0).notNull(),
+    localImportance: integer('local_importance').default(0).notNull(),
+    freshnessScore: real('freshness_score').default(0).notNull(),
+    clusterConfidence: real('cluster_confidence').default(0).notNull(),
+    aiEligibility: varchar('ai_eligibility', { length: 24 }).default('WATCHING').notNull(),
+    aiEligibilityReason: text('ai_eligibility_reason'),
+    importanceBreakdown: jsonb('importance_breakdown').$type<Record<string, number>>(),
+    signatureTokens: jsonb('signature_tokens').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    hasMaterialUpdate: smallint('has_material_update').default(0).notNull(),
+    materialUpdateReason: text('material_update_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     index('news_clusters_country_idx').on(t.countryCode),
     index('news_clusters_last_seen_idx').on(t.lastSeenAt),
+    index('news_clusters_event_key_idx').on(t.eventKey),
+    index('news_clusters_eligibility_idx').on(t.aiEligibility),
+    index('news_clusters_language_idx').on(t.language),
   ]
 )
 
@@ -282,6 +309,31 @@ export const rawArticles = pgTable(
     index('raw_articles_ai_idx').on(t.aiEligibility),
     index('raw_articles_cluster_status_idx').on(t.clusterStatus),
     index('raw_articles_cluster_idx').on(t.clusterId),
+  ]
+)
+
+export const clusterMemberships = pgTable(
+  'cluster_memberships',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    clusterId: varchar('cluster_id', { length: 64 })
+      .notNull()
+      .references(() => newsClusters.id, { onDelete: 'cascade' }),
+    articleId: varchar('article_id', { length: 64 })
+      .notNull()
+      .references(() => rawArticles.id, { onDelete: 'cascade' }),
+    sourceId: varchar('source_id', { length: 64 })
+      .notNull()
+      .references(() => newsSources.id, { onDelete: 'cascade' }),
+    similarityScore: real('similarity_score').default(1).notNull(),
+    matchBand: varchar('match_band', { length: 16 }).default('LOW').notNull(),
+    matchExplanation: jsonb('match_explanation').$type<Record<string, number>>(),
+    isCanonical: smallint('is_canonical').default(0).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('cluster_memberships_article_uidx').on(t.articleId),
+    index('cluster_memberships_cluster_idx').on(t.clusterId),
   ]
 )
 

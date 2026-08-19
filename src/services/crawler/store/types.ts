@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type {
+  ClusterMatchBand,
+  ClusterMembershipRecord,
+  ClusterScoreBreakdown,
   CrawlerLogicalQueue,
   CrawlerMetricName,
   CrawlerSourceStatus,
@@ -44,6 +47,20 @@ export interface InsertSourceInput {
   healthScore?: number
   freshnessHours?: number
   registryKey?: string | null
+}
+
+export interface InsertClusterInput {
+  representativeArticleId: string
+  normalizedTopic: string
+  countryCode: string | null
+  city: string | null
+  eventKey?: string | null
+  canonicalTitle?: string | null
+  language?: string | null
+  region?: string | null
+  district?: string | null
+  categoryHint?: string | null
+  signatureTokens?: string[]
 }
 
 export interface InsertDiscoveredUrlInput {
@@ -144,12 +161,30 @@ export interface CrawlerStore {
   recentClusters(countryCode: string | null, since: Date): Promise<
     Array<NewsClusterRecord & { representativeTitle?: string | null; representativeSimhash?: string | null }>
   >
-  insertCluster(input: {
-    representativeArticleId: string
-    normalizedTopic: string
-    countryCode: string | null
-    city: string | null
-  }): Promise<NewsClusterRecord>
+  insertCluster(input: InsertClusterInput): Promise<NewsClusterRecord>
+  updateCluster(id: string, patch: Partial<NewsClusterRecord>): Promise<void>
+  getCluster(id: string): Promise<NewsClusterRecord | null>
+  listClusters(opts?: {
+    since?: Date
+    countryCode?: string | null
+    city?: string | null
+    eligibility?: string | null
+    minSources?: number
+    limit?: number
+  }): Promise<NewsClusterRecord[]>
+  listPendingClusterArticles(limit: number): Promise<RawArticleRecord[]>
+  getMembershipByArticle(articleId: string): Promise<ClusterMembershipRecord | null>
+  listMemberships(clusterId: string): Promise<ClusterMembershipRecord[]>
+  insertMembership(input: {
+    clusterId: string
+    articleId: string
+    sourceId: string
+    similarityScore: number
+    matchBand: ClusterMatchBand
+    matchExplanation?: ClusterScoreBreakdown | null
+    isCanonical?: boolean
+  }): Promise<'inserted' | 'duplicate'>
+  listFailedUrls(limit?: number): Promise<DiscoveredUrlRecord[]>
   touchCluster(id: string, representativeArticleId?: string): Promise<void>
   updateRawArticle(
     id: string,

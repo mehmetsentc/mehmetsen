@@ -13,7 +13,7 @@ import { evaluateExactDuplicate, hashesForArticle } from '../duplicate/engine'
 import { simhashOf } from '../duplicate/hash'
 import { evaluateAiCandidate } from '../gate/aiCandidate'
 import { dispatchCrawlerArticleToNewsroom } from '../dispatch'
-import { clusterTopicFromTitle, findCheapClusterMatch } from '../cluster/cheap'
+import { runClusterTick } from '../cluster/worker'
 import { logCrawler } from '../log'
 import { hostnameOf, normalizeArticleUrl, urlHashFor } from '../url/normalize'
 import type { HostLookup } from '../url/ssrf'
@@ -33,6 +33,8 @@ export interface CrawlerTickResult {
   aiCandidates: number
   aiAvoided: number
   aiRequests: number
+  articlesClustered?: number
+  clustersCreated?: number
 }
 
 export async function runCrawlerTick(opts?: {
@@ -203,6 +205,7 @@ export async function runCrawlerTick(opts?: {
     }
 
     if (fetched.status === 429) {
+      await store.incrementMetric('http_429', 1, now)
       const failures = source.consecutiveFailures + 1
       const auto = nextStatusForFailures(failures)
       await store.updateSource(source.id, {
@@ -346,24 +349,8 @@ export async function runCrawlerTick(opts?: {
       await store.incrementMetric('ai_requests', 1, now)
     }
 
-    const since = new Date(now.getTime() - 6 * 60 * 60 * 1000)
-    const clusters = await store.recentClusters(source.countryCode, since)
-    const match = findCheapClusterMatch(raw, clusters, now)
-    let clusterId = match?.id ?? null
     if (!dup && success) {
-      if (match) {
-        await store.touchCluster(match.id, raw.id)
-        clusterId = match.id
-      } else {
-        const created = await store.insertCluster({
-          representativeArticleId: raw.id,
-          normalizedTopic: clusterTopicFromTitle(raw.title),
-          countryCode: source.countryCode,
-          city: source.city,
-        })
-        clusterId = created.id
-      }
-      await store.updateRawArticle(raw.id, { clusterId, clusterStatus: 'CLUSTERED' })
+      await store.updateRawArticle(raw.id, { clusterStatus: 'PENDING' })
     } else {
       await store.updateRawArticle(raw.id, { clusterStatus: 'SKIPPED' })
     }
@@ -371,11 +358,10 @@ export async function runCrawlerTick(opts?: {
     const cacheHit = hashes.contentHash
       ? await store.hasAiCache(hashes.contentHash, 'phase1-placeholder', 'none')
       : false
-    const clusterHasBetter = clusterId ? await store.clusterHasEligible(clusterId) : false
     const gate = evaluateAiCandidate({
       source,
       article: { ...raw, isExactDuplicate: Boolean(dup) },
-      clusterHasBetterEligible: clusterHasBetter,
+      clusterHasBetterEligible: false,
       cacheHit,
       now,
     })
@@ -403,6 +389,8 @@ export async function runCrawlerTick(opts?: {
     })
   }
 
+  const clustered = await runClusterTick({ store, now, startedAt: tickStarted })
+
   return {
     enabled: true,
     sourcesChecked: sources.length,
@@ -413,6 +401,8 @@ export async function runCrawlerTick(opts?: {
     aiCandidates,
     aiAvoided,
     aiRequests: 0,
+    articlesClustered: clustered.articlesClustered,
+    clustersCreated: clustered.clustersCreated,
   }
 }
 

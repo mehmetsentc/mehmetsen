@@ -177,6 +177,32 @@ export interface RawArticleRecord {
   linkDensity: number | null
 }
 
+export type ClusterEventStatus = 'OPEN' | 'BORDERLINE' | 'CLOSED'
+export type ClusterAiEligibility = 'REJECTED' | 'WATCHING' | 'ELIGIBLE' | 'HIGH_PRIORITY'
+export type ClusterMatchBand = 'HIGH' | 'BORDERLINE' | 'LOW'
+
+export interface ClusterScoreBreakdown {
+  titleSimilarity: number
+  tokenOverlap: number
+  entityOverlap: number
+  timeScore: number
+  geoScore: number
+  numericOverlap: number
+  final: number
+}
+
+export interface ClusterMembershipRecord {
+  id: string
+  clusterId: string
+  articleId: string
+  sourceId: string
+  similarityScore: number
+  matchBand: ClusterMatchBand
+  matchExplanation: ClusterScoreBreakdown | null
+  isCanonical: boolean
+  createdAt: Date
+}
+
 export interface NewsClusterRecord {
   id: string
   representativeArticleId: string | null
@@ -187,6 +213,32 @@ export interface NewsClusterRecord {
   articleCount: number
   firstSeenAt: Date
   lastSeenAt: Date
+  eventKey: string | null
+  canonicalTitle: string | null
+  language: string | null
+  region: string | null
+  district: string | null
+  categoryHint: string | null
+  eventStatus: ClusterEventStatus
+  latestArticleAt: Date | null
+  sourceCount: number
+  uniqueSourceCount: number
+  highQualitySourceCount: number
+  sourceDiversityScore: number
+  importanceScore: number
+  globalImportance: number
+  nationalImportance: number
+  localImportance: number
+  freshnessScore: number
+  clusterConfidence: number
+  aiEligibility: ClusterAiEligibility
+  aiEligibilityReason: string | null
+  importanceBreakdown: Record<string, number> | null
+  signatureTokens: string[]
+  hasMaterialUpdate: boolean
+  materialUpdateReason: string | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface DiscoveredFeedItem {
@@ -233,6 +285,16 @@ export type CrawlerMetricName =
   | 'failed_sources'
   | 'low_confidence'
   | 'stale_skipped'
+  | 'clusters_created'
+  | 'articles_clustered'
+  | 'borderline_matches'
+  | 'eligible_clusters'
+  | 'watching_clusters'
+  | 'rejected_clusters'
+  | 'high_priority_clusters'
+  | 'single_source_clusters'
+  | 'multi_source_clusters'
+  | 'http_429'
 
 export interface CrawlerLogFields {
   sourceId?: string

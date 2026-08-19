@@ -64,6 +64,41 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
       aiCandidate: await store.countQueue('AI_CANDIDATE_QUEUE'),
       failed: await store.countQueue('FAILED_QUEUE'),
     },
+    funnel: await clusterFunnel(store, metrics),
+    legacyRssIngest: 'ON',
+  }
+}
+
+async function clusterFunnel(store: CrawlerStore, metrics: Record<string, number>) {
+  const clusters = await store.listClusters({ limit: 400 })
+  const eligible = clusters.filter((c) => c.aiEligibility === 'ELIGIBLE').length
+  const watching = clusters.filter((c) => c.aiEligibility === 'WATCHING').length
+  const rejected = clusters.filter((c) => c.aiEligibility === 'REJECTED').length
+  const high = clusters.filter((c) => c.aiEligibility === 'HIGH_PRIORITY').length
+  const multi = clusters.filter((c) => c.uniqueSourceCount >= 2).length
+  const single = clusters.filter((c) => c.uniqueSourceCount <= 1).length
+  const raw = metrics.articles_fetched || 0
+  const uniqueEvents = clusters.length
+  const potentialArticleJobs = raw
+  const avoidedDuplicateEventJobs = Math.max(0, raw - uniqueEvents)
+  return {
+    rawArticles: raw,
+    uniqueEvents,
+    aiEligibleEvents: eligible + high,
+    watching,
+    rejected,
+    highPriority: high,
+    singleSourceClusters: single,
+    multiSourceClusters: multi,
+    clustersCreated: metrics.clusters_created || uniqueEvents,
+    articlesClustered: metrics.articles_clustered || 0,
+    borderlineMatches: metrics.borderline_matches || 0,
+    potentialArticleLevelAiJobs: potentialArticleJobs,
+    uniqueEventCandidates: uniqueEvents,
+    aiEligibleEventJobs: eligible + high,
+    avoidedDuplicateEventJobs,
+    mergeRate: raw > 0 ? Number((1 - uniqueEvents / Math.max(raw, 1)).toFixed(4)) : 0,
+    aiCostUsd: 0,
   }
 }
 

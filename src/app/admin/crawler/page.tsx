@@ -37,6 +37,20 @@ interface DashboardResponse {
   pausedSources?: number
   windows?: Record<string, { articlesFetched: number; successfulExtraction: number; lowConfidence: number; duplicates: number }>
   sources?: Array<{ name: string; status: string; healthScore: number; qualityTier: string }>
+  funnel?: {
+    rawArticles: number
+    uniqueEvents: number
+    aiEligibleEvents: number
+    watching: number
+    rejected: number
+    highPriority: number
+    potentialArticleLevelAiJobs: number
+    uniqueEventCandidates: number
+    aiEligibleEventJobs: number
+    avoidedDuplicateEventJobs: number
+    aiCostUsd: number
+  }
+  legacyRssIngest?: string
 }
 
 export default function CrawlerDashboardPage() {
@@ -93,8 +107,16 @@ export default function CrawlerDashboardPage() {
               { label: 'Low Confidence', value: fmt(data?.lowConfidence) },
               { label: 'Degraded', value: fmt(data?.degradedSources) },
               { label: 'Paused', value: fmt(data?.pausedSources) },
+              { label: 'Raw → Events', value: `${fmt(data?.funnel?.rawArticles)} → ${fmt(data?.funnel?.uniqueEvents)}` },
+              { label: 'AI-eligible events', value: fmt(data?.funnel?.aiEligibleEvents) },
+              { label: 'Avoided event jobs', value: fmt(data?.funnel?.avoidedDuplicateEventJobs) },
+              { label: 'WATCHING', value: fmt(data?.funnel?.watching) },
+              { label: 'HIGH_PRIORITY', value: fmt(data?.funnel?.highPriority) },
             ]}
           />
+          <p className="text-xs text-[rgb(var(--color-muted))]">
+            Legacy RSS ingest: {data?.legacyRssIngest || 'ON'} · AI cost $0 (dispatch kapalı)
+          </p>
           {data?.windows ? (
             <div className="overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))]">
               <table className="min-w-full text-left text-sm">
