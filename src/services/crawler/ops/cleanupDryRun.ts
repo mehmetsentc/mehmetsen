@@ -1,5 +1,6 @@
-import type { CrawlerEditorialStatus } from '../types'
 import type { CrawlerStore } from '../store/types'
+import { previewProtectedCleanup } from './cleanupExecute'
+import type { CleanupPlan } from './protectedSet'
 
 export interface CleanupDryRunReport {
   dryRun: true
@@ -12,52 +13,23 @@ export interface CleanupDryRunReport {
   auditPreserved: number
   skippedStatuses: Record<string, number>
   notes: string[]
+  plan?: CleanupPlan
 }
 
-const PRESERVE: CrawlerEditorialStatus[] = ['PUBLISHED']
-
 export async function previewBacklogCleanup(store: CrawlerStore): Promise<CleanupDryRunReport> {
-  const articles = await store.listRawArticlesPage({ page: 1, pageSize: 25, queue: 'all' })
-  const statuses = await store.countEditorialStatuses()
-  const publishedPreserved = statuses.PUBLISHED || 0
-  let cmsNewsPreserved = 0
-  const all = await store.listRawArticleIds({ queue: 'all' }, 10_000)
-  const skippedStatuses: Record<string, number> = { PUBLISHED: publishedPreserved }
-  let rawToDelete = 0
-  const clusterIds = new Set<string>()
-  let mediaRelations = 0
-
-  for (const id of all.ids) {
-    const article = await store.getRawArticle(id)
-    if (!article) continue
-    if (PRESERVE.includes(article.editorialStatus) || article.editorialNewsId) {
-      if (article.editorialNewsId) cmsNewsPreserved += 1
-      continue
-    }
-    rawToDelete += 1
-    if (article.clusterId) clusterIds.add(article.clusterId)
-    mediaRelations += (await store.listArticleMedia(article.id)).length
-  }
-
-  const audits = await store.listEditorialAudits(500)
-
+  const plan = await previewProtectedCleanup(store)
   return {
     dryRun: true,
     executed: false,
-    rawToDelete,
-    clustersAffected: clusterIds.size,
-    mediaRelations,
-    publishedPreserved,
-    cmsNewsPreserved,
-    auditPreserved: audits.length,
-    skippedStatuses,
-    notes: [
-      'PUBLISHED raw articles are never included.',
-      'CMS news rows linked via editorialNewsId are never deleted.',
-      'Editorial audit rows are preserved.',
-      'This report does not delete anything.',
-      `Inbox sample total=${articles.total}`,
-    ],
+    rawToDelete: plan.rawEligible,
+    clustersAffected: plan.clusterEligible,
+    mediaRelations: plan.mediaEligible,
+    publishedPreserved: plan.protectedPublishedRaw,
+    cmsNewsPreserved: plan.protectedEditorialLinkedRaw,
+    auditPreserved: plan.auditRows,
+    skippedStatuses: { PUBLISHED: plan.protectedPublishedRaw },
+    notes: plan.notes,
+    plan,
   }
 }
 
@@ -66,7 +38,7 @@ export interface RescrapePlan {
   sources: 'ACTIVE'
   aiRequests: 0
   publish: 0
-  executed: false
+  executed: boolean
   notes: string[]
 }
 
@@ -78,10 +50,9 @@ export function describeRescrapePlan(): RescrapePlan {
     publish: 0,
     executed: false,
     notes: [
-      'After image extraction is production-verified, rescrape last 24h from ACTIVE sources only.',
+      'Rebuild last 24h from ACTIVE sources only after protected cleanup.',
       'AI dispatch remains closed (0 provider calls).',
       'Auto-publish remains closed.',
-      'This task does not execute rescrape.',
     ],
   }
 }

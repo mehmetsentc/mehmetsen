@@ -635,3 +635,23 @@ export const crawlerJobRuns = pgTable(
     index('crawler_job_runs_job_idx').on(t.jobName, t.startedAt),
   ]
 )
+
+/** Phase 4A.5 — reversible crawler maintenance lock + 24h rebuild progress. */
+export const crawlerOpsState = pgTable('crawler_ops_state', {
+  id: varchar('id', { length: 32 }).primaryKey(),
+  maintenanceMode: varchar('maintenance_mode', { length: 24 }).default('IDLE').notNull(),
+  rebuildStatus: varchar('rebuild_status', { length: 32 }).default('IDLE').notNull(),
+  rebuildWindowHours: integer('rebuild_window_hours').default(24).notNull(),
+  cutoffAt: timestamp('cutoff_at', { withTimezone: true }),
+  rebuildStartedAt: timestamp('rebuild_started_at', { withTimezone: true }),
+  rebuildFinishedAt: timestamp('rebuild_finished_at', { withTimezone: true }),
+  planHash: varchar('plan_hash', { length: 64 }),
+  lastError: text('last_error'),
+  discovered: integer('discovered').default(0).notNull(),
+  pending: integer('pending').default(0).notNull(),
+  extracted: integer('extracted').default(0).notNull(),
+  failed: integer('failed').default(0).notNull(),
+  events: integer('events').default(0).notNull(),
+  multiSource: integer('multi_source').default(0).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})

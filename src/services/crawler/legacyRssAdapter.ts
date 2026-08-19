@@ -13,6 +13,8 @@ import type { RssFeedItem } from '@/services/rss/rssFetcher'
 import type { RssSourceDefinition } from '@/services/rss/sources'
 import type { EditorId, NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
+import { readCrawlerOpsState } from './ops/opsPersist'
+import { shouldSkipOutsideRebuildWindow } from './ops/rebuildWindow'
 
 export interface LegacyRssForwardStats {
   mode: LegacyIngestionMode
@@ -70,6 +72,17 @@ export async function forwardLegacyRssItemToCrawler(opts: {
   if (!mapping.mapped) {
     await bump(opts.store, 'unmapped_legacy_source')
     return 'unmapped'
+  }
+
+  const ops = await readCrawlerOpsState(opts.store)
+  if (
+    shouldSkipOutsideRebuildWindow({
+      publishedAt: opts.item.publishedAt ? new Date(opts.item.publishedAt) : null,
+      ops,
+      now: new Date(),
+    })
+  ) {
+    return 'invalid'
   }
 
   const ingested = await ingestDiscoveredArticle(opts.store, {

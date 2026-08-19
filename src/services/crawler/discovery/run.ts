@@ -6,7 +6,9 @@ import { fetchDocument, type FetchImpl } from '../http/fetchDocument'
 import { crawlerTickLimits } from '../enabled'
 import { logCrawler } from '../log'
 import { normalizeArticleUrl } from '../url/normalize'
-import { shouldSkipStaleDiscovery } from '../freshness'
+import { shouldSkipStaleOrRebuild } from '../ops/rebuildWindow'
+import { effectiveFreshnessHours } from '../ops/opsState'
+import { readCrawlerOpsState } from '../ops/opsPersist'
 import type { HostLookup } from '../url/ssrf'
 import type { CrawlerStore } from '../store/types'
 import type { DiscoveredFeedItem, NewsSourceRecord } from '../types'
@@ -86,13 +88,15 @@ export async function discoverSource(opts: {
     if (!unique.has(normalized)) unique.set(normalized, { ...item, url: normalized })
   }
 
-  const freshnessHours = source.freshnessHours || limits.defaultFreshnessHours
+  const ops = await readCrawlerOpsState(store)
+  const freshnessHours = effectiveFreshnessHours(source.freshnessHours || limits.defaultFreshnessHours, ops)
   const fresh = [...unique.values()].filter(
     (item) =>
-      !shouldSkipStaleDiscovery({
+      !shouldSkipStaleOrRebuild({
         publishedAt: item.publishedAt,
         freshnessHours,
         discoveryMethod: source.discoveryMethod,
+        ops,
       })
   )
   const staleSkipped = unique.size - fresh.length

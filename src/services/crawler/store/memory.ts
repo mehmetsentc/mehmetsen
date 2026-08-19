@@ -25,6 +25,8 @@ import { newCrawlerId } from './types'
 import { clusterDefaults } from '../cluster/defaults'
 import { matchesClusterQuery, matchesRawArticleQuery, paginateRawArticles, queueCountsFromStatuses, sortRawArticleRows, type ClusterListQuery } from '../editorial/query'
 import { funnelFromClusters, tabCountsFromClusters } from '../editorial/controlPlane'
+import { defaultOpsState, type CrawlerOpsState } from '../ops/opsState'
+import type { CmsNewsRef } from '../ops/protectedSet'
 
 function dayKey(now: Date): string {
   return now.toISOString().slice(0, 10)
@@ -45,6 +47,10 @@ export class MemoryCrawlerStore implements CrawlerStore {
   metrics = new Map<string, number>()
   aiCache = new Set<string>()
   audits: CrawlerEditorialAuditRecord[] = []
+  cmsNews: CmsNewsRef[] = []
+  aiJobCount = 0
+  ledgerRowCount = 0
+  opsState: CrawlerOpsState = defaultOpsState()
 
   async listSources(): Promise<NewsSourceRecord[]> {
     return [...this.sources.values()].sort((a, b) => a.name.localeCompare(b.name))

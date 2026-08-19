@@ -109,6 +109,20 @@ interface DashboardResponse {
       aiDispatch?: number
     }
   }
+  rebuild24h?: {
+    status?: string
+    statusTr?: string
+    maintenanceMode?: string
+    cutoffAt?: string | Date | null
+    rebuildStartedAt?: string | Date | null
+    discovered?: number
+    pending?: number
+    extracted?: number
+    failed?: number
+    events?: number
+    multiSource?: number
+    windowHours?: number
+  }
 }
 
 export default function CrawlerDashboardPage() {
@@ -147,6 +161,25 @@ export default function CrawlerDashboardPage() {
             {data?.aiDispatchEnabled ? ' · AI dispatch AÇIK' : ' · AI dispatch kapalı'}
             {data?.postgres === false ? ' · Postgres tanımlı değil' : null}
           </p>
+          {data?.rebuild24h ? (
+            <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4 text-sm">
+              <h2 className="mb-2 text-sm font-semibold">24 Saatlik Yeniden Tarama</h2>
+              <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+                Durum: <strong>{data.rebuild24h.statusTr || data.rebuild24h.status || 'Beklemede'}</strong>
+                {data.rebuild24h.maintenanceMode === 'MAINTENANCE' ? ' · bakım kilidi' : null}
+              </p>
+              <AdminOsMetricGrid
+                items={[
+                  { label: 'Keşfedilen', value: fmt(data.rebuild24h.discovered) },
+                  { label: 'Bekleyen', value: fmt(data.rebuild24h.pending) },
+                  { label: 'Çıkarılan', value: fmt(data.rebuild24h.extracted) },
+                  { label: 'Hatalı', value: fmt(data.rebuild24h.failed) },
+                  { label: 'Olay', value: fmt(data.rebuild24h.events) },
+                  { label: 'Çok kaynaklı', value: fmt(data.rebuild24h.multiSource) },
+                ]}
+              />
+            </section>
+          ) : null}
           <AdminOsMetricGrid
             items={[
               { label: 'Aktif kaynak', value: fmt(data?.activeSources) },

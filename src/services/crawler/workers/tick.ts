@@ -24,6 +24,8 @@ import type { HostLookup } from '../url/ssrf'
 import { DrizzleCrawlerStore, canUseDrizzleCrawlerStore } from '../store/drizzle'
 import type { CrawlerStore } from '../store/types'
 import type { CrawlerLogicalQueue } from '../types'
+import { isMaintenanceLock } from '../ops/opsState'
+import { readCrawlerOpsState, refreshRebuildProgress } from '../ops/opsPersist'
 
 export interface CrawlerTickResult {
   enabled: boolean
@@ -60,6 +62,11 @@ export async function runCrawlerTick(opts?: {
       return emptyTick({ enabled: true, skipped: true, reason: 'DATABASE_URL missing' })
     }
     store = new DrizzleCrawlerStore()
+  }
+
+  const ops = await readCrawlerOpsState(store)
+  if (isMaintenanceLock(ops)) {
+    return emptyTick({ enabled: true, skipped: true, reason: 'CRAWLER_MAINTENANCE' })
   }
 
   const now = opts?.now ?? new Date()
@@ -448,7 +455,7 @@ export async function runCrawlerTick(opts?: {
     )
   }
 
-  return {
+  const result = {
     enabled: true,
     sourcesChecked: sources.length,
     urlsInserted,
@@ -462,6 +469,12 @@ export async function runCrawlerTick(opts?: {
     clustersCreated: clustered.clustersCreated,
     mediaChecked: media.articlesChecked,
   }
+
+  if (ops.rebuildStatus === 'REDISCOVERING' || ops.rebuildStatus === 'PROCESSING' || ops.rebuildStatus === 'CLEANING') {
+    await refreshRebuildProgress(store)
+  }
+
+  return result
 }
 
 function emptyTick(extra: Partial<CrawlerTickResult> & { enabled: boolean }): CrawlerTickResult {
