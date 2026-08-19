@@ -35,7 +35,15 @@ export async function runMediaTick(opts: {
     refetched: 0,
   }
   const pending = await opts.store.listPendingMediaArticles(limits.maxMediaArticlesPerTick)
-  for (const article of pending) {
+  const extractedCleanup = await opts.store.listRecentExtractedMediaArticles(
+    Math.min(8, limits.maxMediaArticlesPerTick)
+  )
+  const queue = [...pending]
+  const pendingIds = new Set(pending.map((a) => a.id))
+  for (const article of extractedCleanup) {
+    if (!pendingIds.has(article.id)) queue.push(article)
+  }
+  for (const article of queue) {
     if (Date.now() - tickStarted > limits.maxTickRuntimeMs) break
     if (Date.now() - mediaStarted > limits.maxMediaRuntimeMs) break
     result.articlesChecked += 1

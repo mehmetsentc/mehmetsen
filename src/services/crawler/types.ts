@@ -38,6 +38,9 @@ export interface ArticleMediaRecord {
   isPrimary: boolean
   status: 'ACCEPTED' | 'REJECTED'
   rejectionReason: string | null
+  qualityScore: number | null
+  contentHash: string | null
+  perceptualHash: string | null
   createdAt: Date
 }
 
@@ -335,6 +338,11 @@ export type CrawlerMetricName =
   | 'primary_image_og'
   | 'primary_image_dom'
   | 'image_coverage_rate'
+  | 'image_duplicates_removed'
+  | 'image_ads_rejected'
+  | 'image_logos_rejected'
+  | 'image_tiny_rejected'
+  | 'image_accepted'
 
 export interface CrawlerLogFields {
   sourceId?: string

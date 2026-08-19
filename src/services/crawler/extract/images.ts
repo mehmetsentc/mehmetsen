@@ -1,8 +1,17 @@
 import * as cheerio from 'cheerio'
 import type { Element } from 'domhandler'
-import { normalizeArticleUrl } from '../url/normalize'
 import { extractJsonLdArticle } from './jsonld'
 import { extractOpenGraph } from './opengraph'
+import {
+  MAX_BANNER_ASPECT,
+  MAX_EDITORIAL_IMAGES_PER_ARTICLE,
+  MIN_GALLERY_HEIGHT,
+  MIN_GALLERY_WIDTH,
+  cdnQualityRank,
+  imageVariantKey,
+  normalizeImageUrl,
+  urlContentHash,
+} from './imageNormalize'
 
 export type ImageDiscoveryMethod =
   | 'jsonld'
@@ -27,6 +36,9 @@ export interface ImageCandidate {
   inArticle: boolean
   inFigure: boolean
   score: number
+  qualityScore: number
+  contentHash: string | null
+  perceptualHash: string | null
   status: 'ACCEPTED' | 'REJECTED'
   rejectionReason: string | null
 }
@@ -37,12 +49,34 @@ export interface EditorialImageResult {
   rejected: ImageCandidate[]
   candidates: ImageCandidate[]
   imageCount: number
+  duplicateCount: number
+  adRejected: number
+  logoRejected: number
+  tinyRejected: number
 }
 
-const REJECT_URL =
-  /logo|favicon|sprite|pixel|tracking|1x1|spacer|advert|\/ads?\/|banner|avatar|profile.?photo|author.?img|placeholder|dummy|blank\.gif|share[-_]?icon|social[-_]?icon|apple-touch|mstile/i
+const ACCEPT_ANCESTOR =
+  'article, main, figure, picture, [itemprop="articleBody"], .content-body, .article-body, .entry-content, .post-content, .news-content, .story-body, .haber-icerik'
 
-const REJECT_ATTR = /\b(logo|avatar|author|byline|share|social|sprite|icon|ad-?banner|advert)\b/i
+const REJECT_ANCESTOR =
+  'header, footer, nav, aside, [role="banner"], [role="navigation"], [role="complementary"], [role="ads"], .ad, .ads, .advert, .advertisement, .ad-slot, .ad-container, .banner, .promo, .promotion, .sponsor, .sponsored, .related, .related-news, .newsletter, .widget, .paywall, .popup, .modal, [class*="reklam"], [id*="reklam"], [class*="kampanya"], [id*="kampanya"], [class*="tanitim"], [class*="abonelik"], [class*="bulten"], [class*="newsletter"]'
+
+const AD_NETWORK =
+  /doubleclick|googlesyndication|googleadservices|pagead|adservice|adnxs|adform|taboola|outbrain|criteo|mgid|revcontent|adsystem|adsrvr|advertising\.com|promo-banner|kampanya-banner/i
+
+const STRONG_AD_PATH = /\/(?:ads?|advert|reklam|kampanya|promo|sponsor|affiliates?)\b/i
+
+const LOGO_PATH = /(?:^|[/_-])logo(?:[._-]|$)|favicon|apple-touch|mstile/i
+
+const AVATAR_PATH = /(?:avatar|profile.?photo|author.?img)(?:[._/-]|$)/i
+
+const PIXEL_PATH = /(?:pixel|1x1|spacer|tracking)(?:[._/-]|$)|blank\.gif/i
+
+const TR_PROMO =
+  /\b(reklam|kampanya|tanitim|tanıtım|abonelik|abone|bulten|bülten|uyelik|üyelik)\b/i
+
+const PRODUCT_AD =
+  /\b(shop-now|buy-now|add-to-cart|product-ad|sponsored-product|amazon-ads|affiliate)\b/i
 
 function mimeFromUrl(url: string): string | null {
   const path = url.split('?')[0]?.toLowerCase() || ''
@@ -69,7 +103,7 @@ export function pickBestSrcsetUrl(
     const bits = part.trim().split(/\s+/)
     const raw = bits[0]
     if (!raw) continue
-    const url = normalizeArticleUrl(raw, pageUrl)
+    const url = normalizeImageUrl(raw, pageUrl)
     if (!url) continue
     let width = 0
     let density = 1
@@ -84,42 +118,86 @@ export function pickBestSrcsetUrl(
   return { url: best.url, width: best.width > 0 ? best.width : null }
 }
 
-function rejectReason(input: {
+function aspectRatio(width: number | null, height: number | null): number | null {
+  if (!width || !height || height <= 0) return null
+  return width / height
+}
+
+export function classifyImageRejection(input: {
   url: string
   width: number | null
   height: number | null
   alt: string | null
+  title?: string | null
   classOrId: string
-  inNavChrome: boolean
+  inRejectChrome: boolean
+  inAcceptBody: boolean
   method: ImageDiscoveryMethod
 }): string | null {
   const url = input.url.toLowerCase()
+  const text = `${input.alt || ''} ${input.title || ''} ${input.classOrId}`
+  const signals: string[] = []
+
   if (url.startsWith('data:')) return 'data_uri'
   if (url.startsWith('blob:')) return 'blob_uri'
-  if (REJECT_URL.test(url)) {
-    if (/logo|favicon/.test(url)) return 'logo_or_favicon'
-    if (/avatar|profile/.test(url)) return 'avatar'
-    if (/advert|\/ads?\/|banner/.test(url)) return 'ad_or_banner'
-    if (/sprite|icon|share|social/.test(url)) return 'social_or_sprite'
-    if (/pixel|1x1|tracking|spacer/.test(url)) return 'tracking_pixel'
-    if (/placeholder|dummy|blank/.test(url)) return 'placeholder'
-    return 'non_editorial_url'
-  }
   if (input.width === 1 && input.height === 1) return 'tracking_pixel'
   if (input.width != null && input.height != null && input.width <= 2 && input.height <= 2) {
     return 'tracking_pixel'
   }
-  if (REJECT_ATTR.test(input.classOrId) || REJECT_ATTR.test(input.alt || '')) {
-    if (/logo/.test(input.classOrId) || /logo/.test(input.alt || '')) return 'logo_or_favicon'
-    if (/avatar|author|byline/.test(input.classOrId)) return 'avatar'
-    if (/advert|banner/.test(input.classOrId)) return 'ad_or_banner'
-    return 'non_editorial_attr'
+  if (PIXEL_PATH.test(url)) return 'tracking_pixel'
+
+  if (AD_NETWORK.test(url) || STRONG_AD_PATH.test(url)) signals.push('ad_url')
+  if (PRODUCT_AD.test(url) || PRODUCT_AD.test(text)) signals.push('product_ad')
+  if (/\b(ad-?banner|advert|adsense|sponsor|sponsored|promo-banner)\b/i.test(text)) signals.push('ad_attr')
+  if (TR_PROMO.test(text) || TR_PROMO.test(url)) signals.push('tr_promo')
+  if (input.inRejectChrome && !input.inAcceptBody) signals.push('chrome')
+  if (input.inRejectChrome && input.inAcceptBody) signals.push('nested_chrome')
+
+  const aspect = aspectRatio(input.width, input.height)
+  if (aspect != null && aspect > MAX_BANNER_ASPECT) signals.push('wide_banner')
+  if (aspect != null && aspect > 6) return 'ad_or_banner'
+
+  if (
+    input.width != null &&
+    input.height != null &&
+    (input.width < MIN_GALLERY_WIDTH || input.height < MIN_GALLERY_HEIGHT)
+  ) {
+    signals.push('tiny')
   }
-  if (input.inNavChrome && input.method !== 'jsonld' && input.method !== 'jsonld_object' && input.method !== 'og') {
+
+  const logoFile = LOGO_PATH.test(url) || /\blogo\b/i.test(text)
+  const logoSmall =
+    input.width != null &&
+    input.height != null &&
+    input.width <= 180 &&
+    input.height <= 180
+  if (logoFile && (logoSmall || input.inRejectChrome || /\blogo\b/i.test(input.classOrId))) {
+    return 'logo_or_favicon'
+  }
+  if (AVATAR_PATH.test(url) || /\b(avatar|author|byline)\b/i.test(input.classOrId)) return 'avatar'
+  if (mimeFromUrl(input.url) === 'image/svg+xml' && logoFile) return 'logo_or_favicon'
+
+  const adScore = signals.filter((s) => s === 'ad_url' || s === 'ad_attr' || s === 'product_ad' || s === 'tr_promo').length
+  const bannerScore = signals.filter((s) => s === 'wide_banner' || s === 'chrome' || s === 'nested_chrome').length
+  if (adScore >= 2 || (adScore >= 1 && bannerScore >= 1) || signals.includes('ad_url')) {
+    if (signals.includes('product_ad')) return 'product_ad'
+    return 'ad_or_banner'
+  }
+  if (signals.includes('wide_banner') && (signals.includes('tiny') || signals.includes('chrome'))) {
+    return 'ad_or_banner'
+  }
+  if (
+    signals.includes('tiny') &&
+    input.method !== 'jsonld' &&
+    input.method !== 'jsonld_object' &&
+    input.method !== 'og' &&
+    input.method !== 'twitter'
+  ) {
+    return 'tiny_thumbnail'
+  }
+  if (input.inRejectChrome && !input.inAcceptBody && input.method !== 'jsonld' && input.method !== 'og') {
     return 'navigation_chrome'
   }
-  const mime = mimeFromUrl(input.url)
-  if (mime === 'image/svg+xml' && /logo|icon/.test(url)) return 'logo_or_favicon'
   return null
 }
 
@@ -128,8 +206,8 @@ function scoreCandidate(c: ImageCandidate, articleUrl: string, largestWidth: num
   if (c.discoveryMethod === 'jsonld' || c.discoveryMethod === 'jsonld_object') score += 100
   else if (c.discoveryMethod === 'og') score += 80
   else if (c.discoveryMethod === 'twitter') score += 70
+  else if (c.inFigure) score += 62
   else if (c.discoveryMethod === 'article_dom') score += 60
-  else if (c.discoveryMethod === 'figure') score += 55
   else if (c.discoveryMethod === 'srcset') score += 50
   else score += 30
   if (c.inArticle) score += 12
@@ -154,24 +232,51 @@ function scoreCandidate(c: ImageCandidate, articleUrl: string, largestWidth: num
 
 function pushCandidate(
   list: ImageCandidate[],
-  seen: Set<string>,
-  partial: Omit<ImageCandidate, 'score' | 'status' | 'rejectionReason' | 'normalizedUrl'> & {
-    normalizedUrl?: string | null
-  },
+  seenVariants: Map<string, ImageCandidate>,
+  stats: { duplicates: number },
+  partial: Omit<
+    ImageCandidate,
+    'score' | 'status' | 'rejectionReason' | 'normalizedUrl' | 'qualityScore' | 'contentHash' | 'perceptualHash'
+  > & { normalizedUrl?: string | null },
   reject: string | null
 ): void {
-  const normalized = partial.normalizedUrl || normalizeArticleUrl(partial.sourceUrl)
-  if (!normalized) return
-  if (seen.has(normalized)) return
-  seen.add(normalized)
-  list.push({
+  const exact = normalizeImageUrl(partial.sourceUrl) || partial.normalizedUrl
+  if (!exact) return
+  const variantKey = imageVariantKey(exact)
+  const existing = seenVariants.get(variantKey)
+  if (existing) {
+    stats.duplicates += 1
+    const newRank = cdnQualityRank(partial.sourceUrl, partial.width, partial.height)
+    const oldRank = cdnQualityRank(existing.sourceUrl, existing.width, existing.height)
+    if (newRank > oldRank) {
+      existing.sourceUrl = partial.sourceUrl
+      existing.width = partial.width ?? existing.width
+      existing.height = partial.height ?? existing.height
+      existing.alt = existing.alt || partial.alt
+      existing.caption = existing.caption || partial.caption
+      existing.credit = existing.credit || partial.credit
+      existing.inArticle = existing.inArticle || partial.inArticle
+      existing.inFigure = existing.inFigure || partial.inFigure
+    }
+    if (!existing.rejectionReason && reject) {
+      existing.status = 'REJECTED'
+      existing.rejectionReason = reject
+    }
+    return
+  }
+  const row: ImageCandidate = {
     ...partial,
     sourceUrl: partial.sourceUrl,
-    normalizedUrl: normalized,
+    normalizedUrl: variantKey,
     score: 0,
+    qualityScore: 0,
+    contentHash: urlContentHash(variantKey),
+    perceptualHash: null,
     status: reject ? 'REJECTED' : 'ACCEPTED',
     rejectionReason: reject,
-  })
+  }
+  seenVariants.set(variantKey, row)
+  list.push(row)
 }
 
 function collectJsonLdImages(html: string, pageUrl: string): Array<{
@@ -238,7 +343,7 @@ function walkImages(
   )
   const isImage = typeNames.includes('ImageObject')
   if (isImage) {
-    const url = normalizeArticleUrl(String(rec.contentUrl || rec.url || rec['@id'] || ''), pageUrl)
+    const url = normalizeImageUrl(String(rec.contentUrl || rec.url || rec['@id'] || ''), pageUrl)
     if (url) {
       acc.push({
         url,
@@ -254,13 +359,13 @@ function walkImages(
     const images = Array.isArray(rec.image) ? rec.image : [rec.image]
     for (const img of images) {
       if (typeof img === 'string') {
-        const url = normalizeArticleUrl(img, pageUrl)
+        const url = normalizeImageUrl(img, pageUrl)
         if (url) acc.push({ url, method: 'jsonld', width: null, height: null, caption: null, credit: null })
       } else {
         walkImages(img, pageUrl, acc)
         if (img && typeof img === 'object') {
           const recImg = img as Record<string, unknown>
-          const url = normalizeArticleUrl(String(recImg.contentUrl || recImg.url || ''), pageUrl)
+          const url = normalizeImageUrl(String(recImg.contentUrl || recImg.url || ''), pageUrl)
           if (url && !acc.some((x) => x.url === url)) {
             acc.push({
               url,
@@ -278,184 +383,20 @@ function walkImages(
   if (rec['@graph']) walkImages(rec['@graph'], pageUrl, acc)
 }
 
-function chromeContext($: cheerio.CheerioAPI, el: Element): boolean {
-  return $(el).parents('header, nav, footer, aside, [role="banner"], [role="navigation"]').length > 0
+function ancestryFlags($: cheerio.CheerioAPI, el: Element): { inRejectChrome: boolean; inAcceptBody: boolean } {
+  const node = $(el)
+  const rejectHit = node.closest(REJECT_ANCESTOR)
+  const acceptHit = node.closest(ACCEPT_ANCESTOR)
+  const inAcceptBody = acceptHit.length > 0
+  if (!rejectHit.length) return { inRejectChrome: false, inAcceptBody }
+  if (!inAcceptBody) return { inRejectChrome: true, inAcceptBody: false }
+  const rejectParents = rejectHit.toArray()
+  const acceptEl = acceptHit.get(0)
+  const rejectCloser = rejectParents.some((r) => acceptEl && $.contains(acceptEl, r))
+  return { inRejectChrome: rejectCloser, inAcceptBody }
 }
 
-export function extractEditorialImages(html: string, pageUrl: string): EditorialImageResult {
-  const $ = cheerio.load(html)
-  const seen = new Set<string>()
-  const collected: ImageCandidate[] = []
-  const og = extractOpenGraph(html, pageUrl)
-
-  for (const img of collectJsonLdImages(html, pageUrl)) {
-    const reject = rejectReason({
-      url: img.url,
-      width: img.width,
-      height: img.height,
-      alt: img.caption,
-      classOrId: '',
-      inNavChrome: false,
-      method: img.method,
-    })
-    pushCandidate(
-      collected,
-      seen,
-      {
-        sourceUrl: img.url,
-        width: img.width,
-        height: img.height,
-        alt: img.caption,
-        caption: img.caption,
-        credit: img.credit,
-        mimeType: mimeFromUrl(img.url),
-        discoveryMethod: img.method,
-        inArticle: true,
-        inFigure: false,
-      },
-      reject
-    )
-  }
-
-  const ogUrl = og.image ? normalizeArticleUrl(og.image, pageUrl) : null
-  if (ogUrl) {
-    const ogWidth = intAttr($('meta[property="og:image:width"]').attr('content'))
-    const ogHeight = intAttr($('meta[property="og:image:height"]').attr('content'))
-    pushCandidate(
-      collected,
-      seen,
-      {
-        sourceUrl: ogUrl,
-        width: ogWidth,
-        height: ogHeight,
-        alt: $('meta[property="og:image:alt"]').attr('content')?.trim() || null,
-        caption: null,
-        credit: null,
-        mimeType: mimeFromUrl(ogUrl),
-        discoveryMethod: 'og',
-        inArticle: false,
-        inFigure: false,
-      },
-      rejectReason({
-        url: ogUrl,
-        width: ogWidth,
-        height: ogHeight,
-        alt: null,
-        classOrId: '',
-        inNavChrome: false,
-        method: 'og',
-      })
-    )
-  }
-
-  const tw =
-    $('meta[name="twitter:image"]').attr('content')?.trim() ||
-    $('meta[property="twitter:image"]').attr('content')?.trim() ||
-    null
-  const twUrl = tw ? normalizeArticleUrl(tw, pageUrl) : null
-  if (twUrl) {
-    pushCandidate(
-      collected,
-      seen,
-      {
-        sourceUrl: twUrl,
-        width: null,
-        height: null,
-        alt: $('meta[name="twitter:image:alt"]').attr('content')?.trim() || null,
-        caption: null,
-        credit: null,
-        mimeType: mimeFromUrl(twUrl),
-        discoveryMethod: 'twitter',
-        inArticle: false,
-        inFigure: false,
-      },
-      rejectReason({
-        url: twUrl,
-        width: null,
-        height: null,
-        alt: null,
-        classOrId: '',
-        inNavChrome: false,
-        method: 'twitter',
-      })
-    )
-  }
-
-  const visitImg = (el: Element, method: ImageDiscoveryMethod) => {
-    const node = $(el)
-    const srcset = node.attr('srcset') || node.parent('picture').find('source').attr('srcset')
-    const picked = srcset ? pickBestSrcsetUrl(srcset, pageUrl) : null
-    const rawSrc = node.attr('src') || node.attr('data-src') || node.attr('data-original') || picked?.url
-    if (!rawSrc) return
-    const url = normalizeArticleUrl(rawSrc, pageUrl)
-    if (!url) return
-    const width = intAttr(node.attr('width')) || picked?.width || null
-    const height = intAttr(node.attr('height'))
-    const alt = node.attr('alt')?.trim() || null
-    const figure = node.closest('figure')
-    const caption = figure.find('figcaption').first().text().trim() || null
-    const credit =
-      figure.find('[class*="credit"], [class*="copyright"], small').first().text().trim() || null
-    const classOrId = `${node.attr('class') || ''} ${node.attr('id') || ''} ${figure.attr('class') || ''}`
-    const inArticle = node.closest('article, [itemprop="articleBody"], main').length > 0
-    const inFigure = figure.length > 0
-    const inNavChrome = chromeContext($, el)
-    const actualMethod = picked && picked.url === url ? 'srcset' : method
-    pushCandidate(
-      collected,
-      seen,
-      {
-        sourceUrl: url,
-        width,
-        height,
-        alt,
-        caption: caption || null,
-        credit: credit || null,
-        mimeType: mimeFromUrl(url),
-        discoveryMethod: actualMethod,
-        inArticle,
-        inFigure,
-      },
-      rejectReason({ url, width, height, alt, classOrId, inNavChrome, method: actualMethod })
-    )
-  }
-
-  $('article img, main img, [itemprop="articleBody"] img').each((_i, el) => visitImg(el, 'article_dom'))
-  $('figure img').each((_i, el) => visitImg(el, 'figure'))
-  $('picture source[srcset]').each((_i, el) => {
-    const picked = pickBestSrcsetUrl($(el).attr('srcset') || '', pageUrl)
-    if (!picked) return
-    const img = $(el).parent().find('img')[0]
-    if (img) visitImg(img, 'srcset')
-    else {
-      pushCandidate(
-        collected,
-        seen,
-        {
-          sourceUrl: picked.url,
-          width: picked.width,
-          height: null,
-          alt: null,
-          caption: null,
-          credit: null,
-          mimeType: mimeFromUrl(picked.url),
-          discoveryMethod: 'srcset',
-          inArticle: $(el).closest('article, main').length > 0,
-          inFigure: $(el).closest('figure').length > 0,
-        },
-        rejectReason({
-          url: picked.url,
-          width: picked.width,
-          height: null,
-          alt: null,
-          classOrId: '',
-          inNavChrome: chromeContext($, el),
-          method: 'srcset',
-        })
-      )
-    }
-  })
-
+function finalize(collected: ImageCandidate[], pageUrl: string, duplicateCount: number): EditorialImageResult {
   const largestWidth = collected.reduce<number | null>((max, c) => {
     if (c.width == null) return max
     return max == null || c.width > max ? c.width : max
@@ -476,62 +417,282 @@ export function extractEditorialImages(html: string, pageUrl: string): Editorial
       c.rejectionReason = 'tiny_thumbnail'
     }
     c.score = scoreCandidate(c, pageUrl, largestWidth)
+    c.qualityScore = Math.max(0, c.score)
   }
 
-  const accepted = collected
+  const acceptedAll = collected
     .filter((c) => c.status === 'ACCEPTED')
     .sort((a, b) => b.score - a.score)
+  const overflow = acceptedAll.slice(MAX_EDITORIAL_IMAGES_PER_ARTICLE)
+  for (const extra of overflow) {
+    extra.status = 'REJECTED'
+    extra.rejectionReason = extra.rejectionReason || 'over_max_editorial'
+    extra.score = scoreCandidate(extra, pageUrl, largestWidth)
+    extra.qualityScore = Math.max(0, extra.score)
+  }
+  const accepted = acceptedAll.slice(0, MAX_EDITORIAL_IMAGES_PER_ARTICLE)
   const rejected = collected.filter((c) => c.status === 'REJECTED')
-  const primary = accepted[0] || null
+  const primary = accepted.find((c) => c.status === 'ACCEPTED') || null
   return {
     primary,
     accepted,
     rejected,
     candidates: collected,
     imageCount: accepted.length,
+    duplicateCount,
+    adRejected: rejected.filter((c) => c.rejectionReason === 'ad_or_banner' || c.rejectionReason === 'product_ad').length,
+    logoRejected: rejected.filter((c) => c.rejectionReason === 'logo_or_favicon').length,
+    tinyRejected: rejected.filter((c) => c.rejectionReason === 'tiny_thumbnail' || c.rejectionReason === 'tracking_pixel').length,
   }
 }
 
+export function extractEditorialImages(html: string, pageUrl: string): EditorialImageResult {
+  const $ = cheerio.load(html)
+  const seenVariants = new Map<string, ImageCandidate>()
+  const collected: ImageCandidate[] = []
+  const stats = { duplicates: 0 }
+  const og = extractOpenGraph(html, pageUrl)
+
+  for (const img of collectJsonLdImages(html, pageUrl)) {
+    const reject = classifyImageRejection({
+      url: img.url,
+      width: img.width,
+      height: img.height,
+      alt: img.caption,
+      classOrId: '',
+      inRejectChrome: false,
+      inAcceptBody: true,
+      method: img.method,
+    })
+    pushCandidate(
+      collected,
+      seenVariants,
+      stats,
+      {
+        sourceUrl: img.url,
+        width: img.width,
+        height: img.height,
+        alt: img.caption,
+        caption: img.caption,
+        credit: img.credit,
+        mimeType: mimeFromUrl(img.url),
+        discoveryMethod: img.method,
+        inArticle: true,
+        inFigure: false,
+      },
+      reject
+    )
+  }
+
+  const ogUrl = og.image ? normalizeImageUrl(og.image, pageUrl) : null
+  if (ogUrl) {
+    const ogWidth = intAttr($('meta[property="og:image:width"]').attr('content'))
+    const ogHeight = intAttr($('meta[property="og:image:height"]').attr('content'))
+    pushCandidate(
+      collected,
+      seenVariants,
+      stats,
+      {
+        sourceUrl: ogUrl,
+        width: ogWidth,
+        height: ogHeight,
+        alt: $('meta[property="og:image:alt"]').attr('content')?.trim() || null,
+        caption: null,
+        credit: null,
+        mimeType: mimeFromUrl(ogUrl),
+        discoveryMethod: 'og',
+        inArticle: false,
+        inFigure: false,
+      },
+      classifyImageRejection({
+        url: ogUrl,
+        width: ogWidth,
+        height: ogHeight,
+        alt: null,
+        classOrId: '',
+        inRejectChrome: false,
+        inAcceptBody: true,
+        method: 'og',
+      })
+    )
+  }
+
+  const tw =
+    $('meta[name="twitter:image"]').attr('content')?.trim() ||
+    $('meta[property="twitter:image"]').attr('content')?.trim() ||
+    null
+  const twUrl = tw ? normalizeImageUrl(tw, pageUrl) : null
+  if (twUrl) {
+    pushCandidate(
+      collected,
+      seenVariants,
+      stats,
+      {
+        sourceUrl: twUrl,
+        width: null,
+        height: null,
+        alt: $('meta[name="twitter:image:alt"]').attr('content')?.trim() || null,
+        caption: null,
+        credit: null,
+        mimeType: mimeFromUrl(twUrl),
+        discoveryMethod: 'twitter',
+        inArticle: false,
+        inFigure: false,
+      },
+      classifyImageRejection({
+        url: twUrl,
+        width: null,
+        height: null,
+        alt: null,
+        classOrId: '',
+        inRejectChrome: false,
+        inAcceptBody: true,
+        method: 'twitter',
+      })
+    )
+  }
+
+  const visitImg = (el: Element, method: ImageDiscoveryMethod) => {
+    const node = $(el)
+    const srcset = node.attr('srcset') || node.parent('picture').find('source').attr('srcset')
+    const picked = srcset ? pickBestSrcsetUrl(srcset, pageUrl) : null
+    const rawSrc = node.attr('src') || node.attr('data-src') || node.attr('data-original') || picked?.url
+    if (!rawSrc) return
+    const url = normalizeImageUrl(rawSrc, pageUrl)
+    if (!url) return
+    const width = intAttr(node.attr('width')) || picked?.width || null
+    const height = intAttr(node.attr('height'))
+    const alt = node.attr('alt')?.trim() || null
+    const title = node.attr('title')?.trim() || null
+    const figure = node.closest('figure')
+    const caption = figure.find('figcaption').first().text().trim() || null
+    const credit =
+      figure.find('[class*="credit"], [class*="copyright"], small').first().text().trim() || null
+    const classOrId = `${node.attr('class') || ''} ${node.attr('id') || ''} ${figure.attr('class') || ''} ${node.parents().slice(0, 6).map((_, p) => `${$(p).attr('class') || ''} ${$(p).attr('id') || ''}`).get().join(' ')}`
+    const { inRejectChrome, inAcceptBody } = ancestryFlags($, el)
+    const inArticle = inAcceptBody
+    const inFigure = figure.length > 0
+    const actualMethod = picked && picked.url === url ? 'srcset' : inFigure ? 'figure' : method
+    pushCandidate(
+      collected,
+      seenVariants,
+      stats,
+      {
+        sourceUrl: url,
+        width,
+        height,
+        alt,
+        caption: caption || null,
+        credit: credit || null,
+        mimeType: mimeFromUrl(url),
+        discoveryMethod: actualMethod,
+        inArticle,
+        inFigure,
+      },
+      classifyImageRejection({
+        url,
+        width,
+        height,
+        alt,
+        title,
+        classOrId,
+        inRejectChrome,
+        inAcceptBody,
+        method: actualMethod,
+      })
+    )
+  }
+
+  $('img').each((_i, el) => visitImg(el, 'article_dom'))
+  $('picture source[srcset]').each((_i, el) => {
+    const picked = pickBestSrcsetUrl($(el).attr('srcset') || '', pageUrl)
+    if (!picked) return
+    const img = $(el).parent().find('img')[0]
+    if (img) visitImg(img, 'srcset')
+    else {
+      const { inRejectChrome, inAcceptBody } = ancestryFlags($, el)
+      pushCandidate(
+        collected,
+        seenVariants,
+        stats,
+        {
+          sourceUrl: picked.url,
+          width: picked.width,
+          height: null,
+          alt: null,
+          caption: null,
+          credit: null,
+          mimeType: mimeFromUrl(picked.url),
+          discoveryMethod: 'srcset',
+          inArticle: inAcceptBody,
+          inFigure: $(el).closest('figure').length > 0,
+        },
+        classifyImageRejection({
+          url: picked.url,
+          width: picked.width,
+          height: null,
+          alt: null,
+          classOrId: '',
+          inRejectChrome,
+          inAcceptBody,
+          method: 'srcset',
+        })
+      )
+    }
+  })
+
+  return finalize(collected, pageUrl, stats.duplicates)
+}
+
 export function mediaFromStoredUrls(mainImageUrl: string | null, imageUrls: string[]): EditorialImageResult {
-  const seen = new Set<string>()
+  const seenVariants = new Map<string, ImageCandidate>()
   const candidates: ImageCandidate[] = []
+  const stats = { duplicates: 0 }
   const urls = [mainImageUrl, ...imageUrls].filter((u): u is string => Boolean(u))
   for (const url of urls) {
-    const normalized = normalizeArticleUrl(url) || url
-    if (seen.has(normalized)) continue
-    seen.add(normalized)
-    const reject = rejectReason({
+    const normalized = normalizeImageUrl(url) || url
+    const reject = classifyImageRejection({
       url,
       width: null,
       height: null,
       alt: null,
       classOrId: '',
-      inNavChrome: false,
+      inRejectChrome: false,
+      inAcceptBody: true,
       method: 'extractor',
     })
-    candidates.push({
-      sourceUrl: url,
-      normalizedUrl: normalized,
-      width: null,
-      height: null,
-      alt: null,
-      caption: null,
-      credit: null,
-      mimeType: mimeFromUrl(url),
-      discoveryMethod: 'extractor',
-      inArticle: false,
-      inFigure: false,
-      score: reject ? -200 : 40,
-      status: reject ? 'REJECTED' : 'ACCEPTED',
-      rejectionReason: reject,
-    })
+    pushCandidate(
+      candidates,
+      seenVariants,
+      stats,
+      {
+        sourceUrl: url,
+        width: null,
+        height: null,
+        alt: null,
+        caption: null,
+        credit: null,
+        mimeType: mimeFromUrl(url),
+        discoveryMethod: 'extractor',
+        inArticle: false,
+        inFigure: false,
+      },
+      reject
+    )
+    void normalized
   }
-  const accepted = candidates.filter((c) => c.status === 'ACCEPTED')
-  return {
-    primary: accepted[0] || null,
-    accepted,
-    rejected: candidates.filter((c) => c.status === 'REJECTED'),
-    candidates,
-    imageCount: accepted.length,
-  }
+  return finalize(candidates, urls[0] || 'https://nahaber.com/', stats.duplicates)
+}
+
+export function selectEditorialHandoff(result: EditorialImageResult): {
+  primaryUrl: string | null
+  extraUrls: string[]
+} {
+  const accepted = result.accepted.filter((c) => c.status === 'ACCEPTED')
+  const primary = result.primary && result.primary.status === 'ACCEPTED' ? result.primary : accepted[0] || null
+  const extras = accepted
+    .filter((c) => !primary || c.normalizedUrl !== primary.normalizedUrl)
+    .slice(0, MAX_EDITORIAL_IMAGES_PER_ARTICLE - (primary ? 1 : 0))
+    .map((c) => c.sourceUrl)
+  return { primaryUrl: primary?.sourceUrl ?? null, extraUrls: extras }
 }

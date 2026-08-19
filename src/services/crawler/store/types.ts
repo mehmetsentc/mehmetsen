@@ -297,4 +297,5 @@ export interface CrawlerStore {
   upsertArticleMedia(input: Omit<ArticleMediaRecord, 'id' | 'createdAt'> & { id?: string }): Promise<void>
   listArticleMedia(articleId: string): Promise<ArticleMediaRecord[]>
   listPendingMediaArticles(limit: number): Promise<RawArticleRecord[]>
+  listRecentExtractedMediaArticles(limit: number): Promise<RawArticleRecord[]>
 }

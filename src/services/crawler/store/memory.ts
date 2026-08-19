@@ -411,6 +411,13 @@ export class MemoryCrawlerStore implements CrawlerStore {
       .slice(0, limit)
   }
 
+  async listRecentExtractedMediaArticles(limit: number): Promise<RawArticleRecord[]> {
+    return [...this.articles.values()]
+      .filter((a) => a.mediaStatus === 'EXTRACTED')
+      .sort((a, b) => (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0))
+      .slice(0, limit)
+  }
+
   async listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult> {
     const matched = sortRawArticles(
       [...this.articles.values()].filter((a) => matchesRawArticleQuery(a, query)),

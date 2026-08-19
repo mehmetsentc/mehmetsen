@@ -57,6 +57,24 @@ function VideoPlayer({ src }: { src: string }) {
   )
 }
 
+function SafePreviewImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    setFailed(false)
+  }, [src])
+  if (failed) {
+    return (
+      <div className="flex max-h-48 min-h-24 items-center justify-center bg-black/5 px-3 py-6 text-center text-xs text-[rgb(var(--color-muted))]">
+        Kaynak görsel yüklenemedi (kırık URL). Editör açık kalır.
+      </div>
+    )
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />
+  )
+}
+
 export interface AdditionalImageItem {
   url: string
   caption?: string
@@ -377,8 +395,7 @@ export function EditMediaSection({
         {thumbnail ? (
           <>
             <div className="relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <SafePreviewImage
                 src={thumbnail}
                 alt="Kapak görseli"
                 className="max-h-48 w-full rounded-xl object-cover"
@@ -498,8 +515,7 @@ export function EditMediaSection({
                 className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]"
               >
                 <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <SafePreviewImage
                     src={img.url}
                     alt={`Ek görsel ${index + 1}`}
                     className="max-h-40 w-full object-cover"

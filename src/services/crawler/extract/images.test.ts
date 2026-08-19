@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { decodeForDisplay, decodeHtmlEntities } from './htmlEntities'
-import { extractEditorialImages, pickBestSrcsetUrl } from './images'
+import { extractEditorialImages, pickBestSrcsetUrl, selectEditorialHandoff } from './images'
+import { imageVariantKey, normalizeImageUrl } from './imageNormalize'
 import { numberedPages, paginateRawArticles } from '../editorial/query'
 import { crawlerStatusLabel, EDITORIAL_STATUS_LABELS } from '../editorial/labels'
 import { namedTokensMatch, normalizeNewsText } from '../cluster/normalize'
@@ -50,6 +51,102 @@ describe('editorial images', () => {
       'https://news.test/story'
     )
     expect(picked?.url).toContain('b.jpg')
+  })
+
+  it('collapses Swiss-flag CDN/size variants to one accepted image', () => {
+    const html = `<html><body><article>
+      <img src="http://www.cdn.news.test/swiss-flag.jpg?w=300" width="300" height="200" alt="İsviçre" />
+      <img src="https://cdn.news.test/swiss-flag.jpg?w=600&amp;utm_source=rss" width="600" height="400" />
+      <img src="https://cdn.news.test/swiss-flag.jpg?w=1200#frag" width="1200" height="800" />
+      <img src="https://cdn.news.test/swiss-flag-1200x800.jpg" width="1200" height="800" />
+    </article></body></html>`
+    const result = extractEditorialImages(html, 'https://news.test/story')
+    const swiss = result.accepted.filter((c) => /swiss-flag/.test(c.sourceUrl) || /swiss-flag/.test(c.normalizedUrl))
+    expect(swiss).toHaveLength(1)
+    expect(result.duplicateCount).toBeGreaterThanOrEqual(3)
+  })
+
+  it('rejects Sözcü promo, ad banners and product ads; accepts real photos', () => {
+    const html = `<html><body>
+      <aside class="reklam-alani">
+        <img src="https://www.sozcu.com.tr/wp-content/uploads/reklam/sozcu-abone-banner.jpg" class="promo-banner" alt="Sözcü abone kampanya" width="728" height="90" />
+      </aside>
+      <header>
+        <img src="https://ads.doubleclick.net/ad/kampanya-banner.jpg" class="ad-banner" alt="Reklam" width="970" height="90" />
+      </header>
+      <div class="widget sponsored-product">
+        <img src="https://shop.test/affiliate/buy-now-watch.jpg" class="product-ad" alt="Satın al" width="400" height="400" />
+      </div>
+      <article>
+        <figure>
+          <img src="https://news.test/photos/fire-1.jpg" width="1200" height="800" alt="Yangın" />
+        </figure>
+        <img src="https://news.test/photos/fire-2.jpg" width="900" height="600" alt="Ekipler" />
+        <img src="https://news.test/photos/unknown-dims.jpg" alt="Sahne" />
+        <img src="https://news.test/photos/press.jpg" width="800" height="500" alt="Belediye reklam panosunu kaldırdı" />
+      </article>
+    </body></html>`
+    const result = extractEditorialImages(html, 'https://news.test/story')
+    expect(result.rejected.some((c) => /sozcu-abone/.test(c.sourceUrl) && c.rejectionReason === 'ad_or_banner')).toBe(true)
+    expect(result.rejected.some((c) => /doubleclick|kampanya-banner/.test(c.sourceUrl))).toBe(true)
+    expect(result.rejected.some((c) => /buy-now/.test(c.sourceUrl))).toBe(true)
+    expect(result.accepted.some((c) => c.sourceUrl.includes('fire-1.jpg'))).toBe(true)
+    expect(result.accepted.some((c) => c.sourceUrl.includes('fire-2.jpg'))).toBe(true)
+    expect(result.accepted.some((c) => c.sourceUrl.includes('unknown-dims.jpg'))).toBe(true)
+    expect(result.accepted.some((c) => c.sourceUrl.includes('press.jpg'))).toBe(true)
+    expect(result.primary?.status).toBe('ACCEPTED')
+    expect(result.primary?.rejectionReason).toBeNull()
+  })
+
+  it('does not make a rejected JSON-LD image primary', () => {
+    const html = `<html><head>
+      <script type="application/ld+json">${JSON.stringify({
+        '@type': 'NewsArticle',
+        image: 'https://news.test/reklam/promo-banner.jpg',
+      })}</script>
+    </head><body><article>
+      <img src="https://news.test/photos/real.jpg" width="1000" height="700" alt="Haber" />
+    </article></body></html>`
+    const result = extractEditorialImages(html, 'https://news.test/a')
+    expect(result.primary?.sourceUrl).toContain('real.jpg')
+    expect(result.rejected.some((c) => c.sourceUrl.includes('promo-banner'))).toBe(true)
+  })
+
+  it('keeps the best 12 images, not the first 12 DOM nodes', () => {
+    const early = Array.from(
+      { length: 12 },
+      (_, i) => `<img src="https://news.test/photos/early${i}.jpg" width="400" height="300" alt="erken ${i}" />`
+    ).join('')
+    const heroes = Array.from(
+      { length: 5 },
+      (_, i) => `<img src="https://news.test/photos/hero${i}.jpg" width="1600" height="900" alt="Manşet ${i}" />`
+    ).join('')
+    const html = `<html><body><article>${early}${heroes}</article></body></html>`
+    const result = extractEditorialImages(html, 'https://news.test/story')
+    expect(result.accepted).toHaveLength(12)
+    expect(result.accepted.filter((c) => /hero/.test(c.sourceUrl)).length).toBe(5)
+    expect(result.rejected.some((c) => c.rejectionReason === 'over_max_editorial')).toBe(true)
+  })
+
+  it('hands off only ACCEPTED unique images with a single primary', () => {
+    const html = `<html><body><article>
+      <img src="https://news.test/a.jpg?w=300" width="300" height="200" />
+      <img src="https://news.test/a.jpg?w=900" width="900" height="600" />
+      <img src="https://news.test/b.jpg" width="800" height="500" />
+    </article></body></html>`
+    const handoff = selectEditorialHandoff(extractEditorialImages(html, 'https://news.test/s'))
+    expect(handoff.primaryUrl).toBeTruthy()
+    expect(new Set([handoff.primaryUrl, ...handoff.extraUrls]).size).toBe((handoff.primaryUrl ? 1 : 0) + handoff.extraUrls.length)
+  })
+})
+
+describe('image url normalize', () => {
+  it('strips tracking, fragment, www and http; CDN sizes share a variant key', () => {
+    const a = normalizeImageUrl('HTTP://WWW.CDN.test/img.jpg?w=300&utm_source=x#h')
+    const b = normalizeImageUrl('https://cdn.test/img.jpg?w=1200')
+    expect(a).toBeTruthy()
+    expect(b).toBeTruthy()
+    expect(imageVariantKey(a!)).toBe(imageVariantKey(b!))
   })
 })
 

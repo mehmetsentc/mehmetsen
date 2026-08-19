@@ -1,6 +1,6 @@
 import { decodeForDisplay } from '../extract/htmlEntities'
+import { mediaFromStoredUrls, selectEditorialHandoff } from '../extract/images'
 import { matchCitySlug } from './geoPrefill'
-import type { CrawlerStore } from '../store/types'
 import type { NewsSourceRecord, RawArticleRecord } from '../types'
 
 export function rawArticleDisplay(article: RawArticleRecord) {
@@ -14,12 +14,12 @@ export function rawArticleDisplay(article: RawArticleRecord) {
 
 export function draftPrefillFromRaw(article: RawArticleRecord, source: NewsSourceRecord | null) {
   const display = rawArticleDisplay(article)
-  const extraImages = article.imageUrls.filter((u) => u && u !== article.mainImageUrl)
+  const handoff = selectEditorialHandoff(mediaFromStoredUrls(article.mainImageUrl, article.imageUrls))
   return {
     title: display.title,
     content: display.articleBodyText,
-    thumbnail: article.mainImageUrl || '',
-    additionalImages: extraImages.map((url) => ({ url })),
+    thumbnail: handoff.primaryUrl || '',
+    additionalImages: handoff.extraUrls.map((url) => ({ url, origin: 'source' as const })),
     source: source?.name || '',
     sourceUrl: article.canonicalUrl || article.originalUrl,
     rssGuid: article.id,

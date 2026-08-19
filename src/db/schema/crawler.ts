@@ -344,6 +344,9 @@ export const crawlerArticleMedia = pgTable(
     isPrimary: smallint('is_primary').default(0).notNull(),
     status: varchar('status', { length: 16 }).default('ACCEPTED').notNull(),
     rejectionReason: text('rejection_reason'),
+    qualityScore: real('quality_score'),
+    contentHash: varchar('content_hash', { length: 64 }),
+    perceptualHash: varchar('perceptual_hash', { length: 32 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

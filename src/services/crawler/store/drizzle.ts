@@ -180,6 +180,9 @@ function mapMedia(row: typeof crawlerArticleMedia.$inferSelect): ArticleMediaRec
     isPrimary: row.isPrimary === 1,
     status: row.status === 'REJECTED' ? 'REJECTED' : 'ACCEPTED',
     rejectionReason: row.rejectionReason,
+    qualityScore: row.qualityScore ?? row.score,
+    contentHash: row.contentHash ?? null,
+    perceptualHash: row.perceptualHash ?? null,
     createdAt: row.createdAt,
   }
 }
@@ -757,6 +760,9 @@ export class DrizzleCrawlerStore implements CrawlerStore {
         isPrimary: input.isPrimary ? 1 : 0,
         status: input.status,
         rejectionReason: input.rejectionReason,
+        qualityScore: input.qualityScore,
+        contentHash: input.contentHash,
+        perceptualHash: input.perceptualHash,
       })
       .onConflictDoUpdate({
         target: [crawlerArticleMedia.articleId, crawlerArticleMedia.normalizedUrl],
@@ -773,6 +779,9 @@ export class DrizzleCrawlerStore implements CrawlerStore {
           isPrimary: input.isPrimary ? 1 : 0,
           status: input.status,
           rejectionReason: input.rejectionReason,
+          qualityScore: input.qualityScore,
+          contentHash: input.contentHash,
+          perceptualHash: input.perceptualHash,
         },
       })
   }
@@ -790,6 +799,16 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .select()
       .from(rawArticles)
       .where(eq(rawArticles.mediaStatus, 'PENDING'))
+      .orderBy(desc(rawArticles.fetchedAt))
+      .limit(limit)
+    return rows.map(mapRaw)
+  }
+
+  async listRecentExtractedMediaArticles(limit: number): Promise<RawArticleRecord[]> {
+    const rows = await this.db()
+      .select()
+      .from(rawArticles)
+      .where(eq(rawArticles.mediaStatus, 'EXTRACTED'))
       .orderBy(desc(rawArticles.fetchedAt))
       .limit(limit)
     return rows.map(mapRaw)
