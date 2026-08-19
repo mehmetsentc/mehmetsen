@@ -31,6 +31,8 @@ async function generateWeatherArticle(
   windKph: number,
   alertType: string | null
 ): Promise<{ title: string; summary: string; content: string } | null> {
+  const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+  if (!isLegacyDirectAiEnabled()) return null
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 

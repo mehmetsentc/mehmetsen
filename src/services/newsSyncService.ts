@@ -9,6 +9,7 @@ import {
 import { fetchRssItems, type RssFeedItem } from '@/services/rss/rssFetcher'
 import { getRssSources } from '@/services/rss/sources'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 import type { NewsSyncResult } from '@/types/news'
 
 const MAX_AI_CALLS_PER_RUN = Number(process.env.NEWS_INGEST_MAX_AI_CALLS ?? 12)
@@ -148,6 +149,9 @@ async function processItem(
 
 export const newsSyncService = {
   async ingestNewsBatch(options: BatchIngestOptions = {}): Promise<NewsSyncResult> {
+    if (!isLegacyDirectAiEnabled()) {
+      return { ...emptySyncResult(), errors: ['LEGACY_DIRECT_AI_ENABLED=false'] }
+    }
     const started = Date.now()
     const result = emptySyncResult()
     const now = Date.now()
@@ -240,6 +244,9 @@ export const newsSyncService = {
   },
 
   async ingestNews(): Promise<NewsSyncResult> {
+    if (!isLegacyDirectAiEnabled()) {
+      return { ...emptySyncResult(), errors: ['LEGACY_DIRECT_AI_ENABLED=false'] }
+    }
     const started = Date.now()
     const result = emptySyncResult()
 

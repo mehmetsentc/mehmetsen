@@ -34,6 +34,8 @@ async function generateWeatherNews(weather: WeatherData): Promise<{
   isBreaking: boolean
   alertType: string | null
 } | null> {
+  const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+  if (!isLegacyDirectAiEnabled()) return null
   const openaiKey = process.env.DEEPSEEK_API_KEY
   if (!openaiKey) {
     console.warn('[weather-news] DEEPSEEK_API_KEY not set, skipping AI generation')

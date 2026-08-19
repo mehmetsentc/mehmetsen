@@ -11,6 +11,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
+    const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+    if (!isLegacyDirectAiEnabled()) {
+      return NextResponse.json({
+        success: true,
+        mode: 'legacy_disabled',
+        aiRequests: 0,
+        generated: 0,
+        reason: 'LEGACY_DIRECT_AI_ENABLED=false',
+      })
+    }
     const result = await runDailyColumnGeneration(5)
     return NextResponse.json({ success: true, ...result })
   } catch (error) {

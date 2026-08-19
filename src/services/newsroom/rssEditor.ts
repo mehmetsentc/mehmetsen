@@ -10,6 +10,17 @@ import { MAX_AI_CALLS_PER_EDITOR } from '@/services/newsroom/config'
 import type { EditorId, NewsroomArticleInput, NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { fetchArticleEnrichment, isThinContent } from '@/services/rss/articleFetcher'
+import {
+  isLegacyDirectAiEnabled,
+  isLegacyRssDiscoveryEnabled,
+  resolveLegacyIngestionMode,
+} from '@/services/crawler/legacyFlags'
+import {
+  forwardLegacyRssItemToCrawler,
+  recordLegacyDirectAiBlocked,
+  resolveLegacyCrawlerStore,
+  shouldSkipOwnedLegacySource,
+} from '@/services/crawler/legacyRssAdapter'
 
 /** Strip Turkish RSS "read more" truncation artifacts */
 function sanitizeRss(text: string): string {
@@ -40,6 +51,72 @@ export interface RssEditorOptions {
 export async function runRssEditor(options: RssEditorOptions): Promise<NewsroomRunResult> {
   const started = Date.now()
   const result = emptyNewsroomResult(options.editorId)
+  const mode = resolveLegacyIngestionMode()
+  result.mode = mode
+  result.aiRequests = 0
+  result.discovered = 0
+  result.inserted = 0
+
+  if (!isLegacyDirectAiEnabled()) {
+    if (!isLegacyRssDiscoveryEnabled()) {
+      result.durationMs = Date.now() - started
+      await recordLegacyDirectAiBlocked()
+      return result
+    }
+    const crawlerStore = await resolveLegacyCrawlerStore()
+    const crawlerSources = crawlerStore ? await crawlerStore.listSources() : []
+    const unmapped = new Set<string>()
+    for (const sourceId of options.sourceIds) {
+      const source = getRssSourceById(sourceId)
+      if (!source) {
+        result.itemsSkipped += 1
+        continue
+      }
+      result.sourcesChecked += 1
+      if (crawlerStore && (await shouldSkipOwnedLegacySource({ store: crawlerStore, sources: crawlerSources, legacySource: source }))) {
+        result.itemsSkipped += 1
+        continue
+      }
+      let items: RssFeedItem[]
+      try {
+        items = await fetchRssItems(source, {
+          maxItems: options.maxItemsPerSource ?? source.maxItemsPerRun,
+        })
+      } catch (error) {
+        const msg = `[${options.editorId}:${sourceId}] RSS fetch failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+        console.warn(msg)
+        result.errors.push(msg)
+        continue
+      }
+      result.itemsFetched += items.length
+      if (!crawlerStore) {
+        result.itemsSkipped += items.length
+        continue
+      }
+      for (const item of items) {
+        result.discovered = (result.discovered ?? 0) + 1
+        const status = await forwardLegacyRssItemToCrawler({
+          store: crawlerStore,
+          sources: crawlerSources,
+          legacySource: source,
+          item,
+        })
+        if (status === 'inserted') {
+          result.itemsNew += 1
+          result.inserted = (result.inserted ?? 0) + 1
+        } else {
+          result.itemsSkipped += 1
+          if (status === 'unmapped') unmapped.add(source.id)
+        }
+      }
+    }
+    result.unmappedSources = [...unmapped]
+    result.durationMs = Date.now() - started
+    return result
+  }
+
   const db = getAdminFirestore()
   const maxAiCalls = options.maxAiCalls ?? MAX_AI_CALLS_PER_EDITOR
   let aiCalls = 0

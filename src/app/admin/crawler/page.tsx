@@ -56,6 +56,25 @@ interface DashboardResponse {
   imageCandidatesRejected?: number
   imageExtractionFailed?: number
   legacyRssIngest?: string
+  ingestionLanes?: {
+    crawler?: string
+    legacyRssDiscovery?: string
+    legacyDirectAi?: string
+    crawlerAiDispatch?: string
+    manualEditor?: string
+    last24h?: {
+      crawlerUrls?: number
+      legacyRssUrls?: number
+      duplicates?: number
+      rawArticles?: number
+      clusters?: number
+      automaticAiRequests?: number
+      unmappedLegacySources?: number
+      forwardedToCrawler?: number
+      legacyDirectAiBlocked?: number
+    }
+    automaticAiCostUsd?: { crawler?: number; legacy?: number; manualEditor?: number | null }
+  }
 }
 
 export default function CrawlerDashboardPage() {
@@ -122,8 +141,31 @@ export default function CrawlerDashboardPage() {
             ]}
           />
           <p className="text-xs text-[rgb(var(--color-muted))]">
-            Legacy RSS ingest: {data?.legacyRssIngest || 'ON'} · AI cost $0 (dispatch kapalı)
+            Legacy RSS: {data?.legacyRssIngest || 'ADAPTER'} · otomatik AI cost crawler $
+            {data?.ingestionLanes?.automaticAiCostUsd?.crawler ?? 0} / legacy $
+            {data?.ingestionLanes?.automaticAiCostUsd?.legacy ?? 0}
           </p>
+          {data?.ingestionLanes ? (
+            <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4">
+              <h2 className="mb-3 text-sm font-semibold">Haber Giriş Hatları</h2>
+              <AdminOsMetricGrid
+                items={[
+                  { label: 'Global Crawler', value: data.ingestionLanes.crawler || '—' },
+                  { label: 'Legacy RSS Keşfi', value: data.ingestionLanes.legacyRssDiscovery || '—' },
+                  { label: 'Legacy Doğrudan AI', value: data.ingestionLanes.legacyDirectAi || 'Kapalı', tone: data.ingestionLanes.legacyDirectAi === 'Kapalı' ? 'ok' : 'warn' },
+                  { label: 'Crawler AI Dispatch', value: data.ingestionLanes.crawlerAiDispatch || 'Kapalı', tone: 'ok' },
+                  { label: 'Manuel AI Editörü', value: data.ingestionLanes.manualEditor || 'Kullanılabilir', tone: 'ok' },
+                  { label: 'Crawler URL (bugün)', value: fmt(data.ingestionLanes.last24h?.crawlerUrls) },
+                  { label: 'Legacy RSS URL', value: fmt(data.ingestionLanes.last24h?.legacyRssUrls) },
+                  { label: 'Ortak/duplicate URL', value: fmt(data.ingestionLanes.last24h?.duplicates) },
+                  { label: 'Ham Haber', value: fmt(data.ingestionLanes.last24h?.rawArticles) },
+                  { label: 'Olay Kümesi', value: fmt(data.ingestionLanes.last24h?.clusters) },
+                  { label: 'AI’ya otomatik', value: fmt(data.ingestionLanes.last24h?.automaticAiRequests), tone: 'ok' },
+                  { label: 'Eşleşmeyen kaynak', value: fmt(data.ingestionLanes.last24h?.unmappedLegacySources) },
+                ]}
+              />
+            </section>
+          ) : null}
           {data?.windows ? (
             <div className="overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))]">
               <table className="min-w-full text-left text-sm">

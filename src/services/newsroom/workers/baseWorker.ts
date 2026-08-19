@@ -18,6 +18,17 @@ import { isEnqueueSkipId } from '@/services/newsroom/queue/queueQualityCompare'
 import { DEFAULT_RSS_MAX_AGE_MS } from '@/services/newsroom/queue/freshness'
 import type { EditorId, NewsroomArticleInput, NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
+import {
+  isLegacyDirectAiEnabled,
+  isLegacyRssDiscoveryEnabled,
+  resolveLegacyIngestionMode,
+} from '@/services/crawler/legacyFlags'
+import {
+  forwardLegacyRssItemToCrawler,
+  recordLegacyDirectAiBlocked,
+  resolveLegacyCrawlerStore,
+  shouldSkipOwnedLegacySource,
+} from '@/services/crawler/legacyRssAdapter'
 
 // ─── Canlı yayın + tanıtım içerik filtreleri ───────────────────────────────
 // Eşleşen RSS haberleri hiç enqueue edilmez; fingerprint yine yazılır.
@@ -76,8 +87,23 @@ function resolveSources(options: RssWorkerOptions): RssSourceDefinition[] {
 export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomRunResult> {
   const started = Date.now()
   const result = emptyNewsroomResult(options.workerId)
+  const mode = resolveLegacyIngestionMode()
+  result.mode = mode
+  result.aiRequests = 0
+  result.discovered = 0
+  result.inserted = 0
+  const unmapped = new Set<string>()
+
+  if (mode === 'legacy_disabled' || !isLegacyRssDiscoveryEnabled()) {
+    result.durationMs = Date.now() - started
+    await recordLegacyDirectAiBlocked()
+    return result
+  }
+
   const db = getAdminFirestore()
   const sources = resolveSources(options)
+  const crawlerStore = !isLegacyDirectAiEnabled() ? await resolveLegacyCrawlerStore() : null
+  const crawlerSources = crawlerStore ? await crawlerStore.listSources() : []
 
   if (sources.length === 0 && options.sourceIds?.length) {
     result.errors.push(
@@ -87,6 +113,11 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
 
   for (const source of sources) {
     result.sourcesChecked += 1
+
+    if (crawlerStore && (await shouldSkipOwnedLegacySource({ store: crawlerStore, sources: crawlerSources, legacySource: source }))) {
+      result.itemsSkipped += 1
+      continue
+    }
 
     const maxAgeMs = options.maxAgeMs ?? DEFAULT_RSS_MAX_AGE_MS
     const minPublishedAt = Date.now() - maxAgeMs
@@ -179,6 +210,29 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
       // ────────────────────────────────────────────────────────────────────
 
       try {
+        if (!isLegacyDirectAiEnabled()) {
+          result.discovered = (result.discovered ?? 0) + 1
+          if (!crawlerStore) {
+            result.itemsSkipped += 1
+            continue
+          }
+          const status = await forwardLegacyRssItemToCrawler({
+            store: crawlerStore,
+            sources: crawlerSources,
+            legacySource: source,
+            item: change.item,
+          })
+          await upsertSourceFingerprint(db, source.id, change.fingerprint)
+          if (status === 'inserted') {
+            result.itemsNew += 1
+            result.inserted = (result.inserted ?? 0) + 1
+          } else {
+            result.itemsSkipped += 1
+            if (status === 'unmapped') unmapped.add(source.id)
+          }
+          continue
+        }
+
         const queuedId = await enqueueNewsItem(db, {
           workerId: options.workerId,
           changeType: change.type,
@@ -206,6 +260,7 @@ export async function runRssWorker(options: RssWorkerOptions): Promise<NewsroomR
   }
 
   result.durationMs = Date.now() - started
+  result.unmappedSources = [...unmapped]
   return result
 }
 

@@ -80,6 +80,8 @@ export type AiUsageContext = {
   retryOptCohort?: 'off' | 'control' | 'optimized'
   retryOptBucket?: number
   stage1CallBudget?: { used: number; cap: number | null }
+  /** Phase 3.7: automatic vs explicit CMS editor. */
+  ingestionLane?: 'legacy' | 'crawler' | 'manual_editor'
 }
 
 export type RecordAiRequestUsageInput = {
@@ -113,6 +115,7 @@ export type RecordAiRequestUsageInput = {
   providerRank?: number
   canaryBucket?: number
   generationReason?: string
+  ingestionLane?: 'legacy' | 'crawler' | 'manual_editor'
   resultCategoryId?: string
   schemaValid?: boolean
   outputChars?: number
@@ -161,6 +164,7 @@ export type AiUsageEventDoc = {
   providerRank?: number
   canaryBucket?: number
   generationReason?: string
+  ingestionLane?: 'legacy' | 'crawler' | 'manual_editor'
   resultCategoryId?: string
   schemaValid?: boolean
   outputChars?: number

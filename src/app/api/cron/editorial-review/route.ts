@@ -45,6 +45,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ processed: 0, message: 'İncelenecek yeni haber yok' })
   }
 
+  const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+  if (!isLegacyDirectAiEnabled()) {
+    return NextResponse.json({
+      mode: 'legacy_disabled',
+      aiRequests: 0,
+      processed: 0,
+      reason: 'LEGACY_DIRECT_AI_ENABLED=false',
+    })
+  }
+
   let published = 0
   let duplicate = 0
   let errors = 0

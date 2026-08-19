@@ -85,6 +85,7 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
     providerRank: input.providerRank,
     canaryBucket: input.canaryBucket,
     generationReason: input.generationReason,
+    ingestionLane: input.ingestionLane ?? ctx?.ingestionLane,
     resultCategoryId: input.resultCategoryId,
     schemaValid: input.schemaValid,
     outputChars: input.outputChars,

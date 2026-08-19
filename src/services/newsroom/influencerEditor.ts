@@ -7,6 +7,7 @@ import { getInfluencerList, MAX_AI_CALLS_PER_EDITOR } from '@/services/newsroom/
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 
 async function researchInfluencer(name: string): Promise<{
   title: string
@@ -101,6 +102,12 @@ export const influencerEditor = {
   async run(maxAiCalls = Math.min(MAX_AI_CALLS_PER_EDITOR, 4)): Promise<NewsroomRunResult> {
     const started = Date.now()
     const result = emptyNewsroomResult('influencer')
+    result.mode = isLegacyDirectAiEnabled() ? 'legacy_ai' : 'legacy_disabled'
+    result.aiRequests = 0
+    if (!isLegacyDirectAiEnabled()) {
+      result.durationMs = Date.now() - started
+      return result
+    }
     const db = getAdminFirestore()
     const influencers = getInfluencerList()
 

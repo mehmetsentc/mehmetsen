@@ -62,6 +62,13 @@ async function handleIngest(request: Request) {
 
   try {
     const batchOptions = parseBatchOptions(request)
+    const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+    if (!isLegacyDirectAiEnabled()) {
+      return NextResponse.json(
+        { mode: 'legacy_disabled', aiRequests: 0, reason: 'LEGACY_DIRECT_AI_ENABLED=false' },
+        { headers: { 'Cache-Control': 'no-store' } }
+      )
+    }
     if (!ingestInFlight) {
       ingestInFlight = (batchOptions
         ? newsSyncService.ingestNewsBatch(batchOptions)

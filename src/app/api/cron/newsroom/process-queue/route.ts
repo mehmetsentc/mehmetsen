@@ -10,6 +10,20 @@ export const maxDuration = 300
 
 const handler = createNewsroomCronHandler('process-queue', async () => {
   const db = getAdminFirestore()
+  const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+  if (!isLegacyDirectAiEnabled()) {
+    return {
+      mode: 'legacy_disabled' as const,
+      aiRequests: 0 as const,
+      rounds: 0,
+      picked: 0,
+      published: 0,
+      drafted: 0,
+      skipped: 0,
+      failed: 0,
+      elapsedMs: 0,
+    }
+  }
   const started = Date.now()
   const totals = {
     rounds: 0,

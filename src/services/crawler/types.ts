@@ -343,6 +343,14 @@ export type CrawlerMetricName =
   | 'image_logos_rejected'
   | 'image_tiny_rejected'
   | 'image_accepted'
+  | 'legacy_rss_urls_discovered'
+  | 'legacy_rss_urls_new'
+  | 'legacy_rss_urls_duplicate'
+  | 'legacy_rss_forwarded_to_crawler'
+  | 'legacy_direct_ai_blocked'
+  | 'legacy_cron_noop'
+  | 'unmapped_legacy_source'
+  | 'cross_pipeline_duplicate'
 
 export interface CrawlerLogFields {
   sourceId?: string

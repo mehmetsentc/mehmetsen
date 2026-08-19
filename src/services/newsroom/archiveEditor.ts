@@ -20,6 +20,7 @@ import {
   MAX_AI_CALLS_PER_EDITOR,
   NEWSROOM_LOW_CONFIDENCE_THRESHOLD,
 } from '@/services/newsroom/config'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 import { categoryEngine } from '@/services/newsroom/categoryEngine'
 import { factChecker } from '@/services/newsroom/factChecker'
 import { geoEngine } from '@/services/newsroom/geoEngine'
@@ -189,6 +190,11 @@ export async function runArchiveEditor(
   const minPublishedAt = Date.now() - days * 86_400_000
 
   const result = emptyArchiveResult(days)
+  if (!isLegacyDirectAiEnabled()) {
+    result.errors.push('LEGACY_DIRECT_AI_ENABLED=false')
+    result.durationMs = Date.now() - started
+    return result
+  }
   const db = getAdminFirestore()
   const sources = getArchiveRssSources()
   let aiCalls = 0

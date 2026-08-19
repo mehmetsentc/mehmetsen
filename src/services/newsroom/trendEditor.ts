@@ -9,6 +9,7 @@ import type { NewsroomRunResult } from '@/services/newsroom/types'
 import { emptyNewsroomResult } from '@/services/newsroom/types'
 import { researchLiveNews, type GroundingSource } from '@/lib/ai/liveResearch'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 
 const GOOGLE_TRENDS_RSS =
   process.env.NEWSROOM_TRENDS_RSS_URL?.trim() ||
@@ -205,6 +206,12 @@ export const trendEditor = {
   async run(maxAiCalls = Math.min(MAX_AI_CALLS_PER_EDITOR, 5)): Promise<NewsroomRunResult> {
     const started = Date.now()
     const result = emptyNewsroomResult('trend')
+    result.mode = isLegacyDirectAiEnabled() ? 'legacy_ai' : 'legacy_disabled'
+    result.aiRequests = 0
+    if (!isLegacyDirectAiEnabled()) {
+      result.durationMs = Date.now() - started
+      return result
+    }
     const db = getAdminFirestore()
 
     const topics = await fetchTrendTopics()

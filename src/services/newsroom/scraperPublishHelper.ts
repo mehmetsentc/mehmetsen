@@ -82,6 +82,36 @@ export async function publishScraperViaPipeline(
   article: ScraperArticlePayload,
   config: ScraperPublishConfig
 ): Promise<ScraperPublishStatus> {
+  const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+  if (!isLegacyDirectAiEnabled()) {
+    const { resolveLegacyCrawlerStore, forwardLegacyRssItemToCrawler } = await import(
+      '@/services/crawler/legacyRssAdapter'
+    )
+    const store = await resolveLegacyCrawlerStore()
+    if (store) {
+      const sources = await store.listSources()
+      await forwardLegacyRssItemToCrawler({
+        store,
+        sources,
+        legacySource: {
+          id: config.editorId,
+          label: config.sourceLabel,
+          feedUrl: article.url,
+          maxItemsPerRun: 1,
+          enabled: true,
+        },
+        item: {
+          link: article.url,
+          title: article.title,
+          summary: article.spot,
+          content: article.content,
+          publishedAt: article.publishedAt ?? null,
+        },
+      })
+    }
+    return 'queued'
+  }
+
   const existing = await db.collection(Collections.NEWS).doc(config.docId).get()
   if (existing.exists) return 'skipped'
 

@@ -9,6 +9,8 @@ import { findQueuePeerDuplicate } from '@/services/newsroom/queue/queueDuplicate
 import { scoreFromArticleInput, shouldSkipThinEnqueue } from '@/services/newsroom/queue/queueQualityCompare'
 import type { NewsQueueDocument, QueueEnqueueInput } from '@/services/newsroom/queue/types'
 import { staleQueueReason } from '@/services/newsroom/queue/freshness'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
+import { recordLegacyDirectAiBlocked } from '@/services/crawler/legacyRssAdapter'
 
 const DEFAULT_MAX_ATTEMPTS = 3
 const DEFAULT_LEASE_MS = Number(process.env.NEWSROOM_QUEUE_LEASE_MS ?? 240_000)
@@ -26,6 +28,11 @@ export async function enqueueNewsItem(
   db: Firestore,
   item: QueueEnqueueInput
 ): Promise<string> {
+  if (!isLegacyDirectAiEnabled()) {
+    await recordLegacyDirectAiBlocked()
+    return `legacy-ai-blocked-${item.fingerprintHash}`
+  }
+
   const now = Date.now()
 
   const libraryQuick = await findStoryLibraryMatchQuick(db, {

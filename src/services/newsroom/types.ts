@@ -144,6 +144,12 @@ export interface NewsroomRunResult {
   lowConfidence: number
   errors: string[]
   durationMs: number
+  /** Phase 3.7 observable cron routing. */
+  mode?: 'crawler_ingestion' | 'legacy_disabled' | 'legacy_ai'
+  discovered?: number
+  inserted?: number
+  aiRequests?: number
+  unmappedSources?: string[]
 }
 
 export function emptyNewsroomResult(editorId: EditorId): NewsroomRunResult {

@@ -32,6 +32,8 @@ import { staleQueueReason } from '@/services/newsroom/queue/freshness'
 import type { QueueProcessStats } from '@/services/newsroom/queue/types'
 import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import { NEWSROOM_AUTO_PUBLISH_ENABLED } from '@/services/newsroom/config'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
+import { recordLegacyDirectAiBlocked } from '@/services/crawler/legacyRssAdapter'
 
 const DEFAULT_BATCH_SIZE = Number(process.env.NEWSROOM_QUEUE_BATCH_SIZE ?? 30)
 const CONCURRENCY = Math.max(1, Math.min(12, Number(process.env.NEWSROOM_QUEUE_CONCURRENCY ?? 6)))
@@ -49,6 +51,22 @@ export async function processNewsQueue(
   options: ProcessQueueOptions = {}
 ): Promise<QueueProcessStats> {
   const startTime = Date.now()
+
+  if (!isLegacyDirectAiEnabled()) {
+    await recordLegacyDirectAiBlocked()
+    console.log('[processNewsQueue] LEGACY_DIRECT_AI_ENABLED=false — queue drain skipped (AI blocked)')
+    return {
+      picked: 0,
+      published: 0,
+      updated: 0,
+      drafted: 0,
+      failed: 0,
+      deadLetter: 0,
+      skipped: 0,
+      duplicateLibraryHits: 0,
+      errors: [],
+    }
+  }
 
   if (!NEWSROOM_AUTO_PUBLISH_ENABLED) {
     console.log('[processNewsQueue] auto-publish OFF — processed items → newsDrafts (Onay Bekliyor)')

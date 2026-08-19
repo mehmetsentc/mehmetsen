@@ -14,6 +14,7 @@ import {
 import { enableAutoPublishForActiveEditors } from '@/lib/ai/editorial/aiEditorService'
 import type { NewsroomArticleInput, EditorId, NewsroomEditorType } from '@/services/newsroom/types'
 import { NO_COVER_IMAGE_REASON } from '@/lib/newsCoverImage'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 
 const HARD_SKIP_REASONS = new Set([
   'ai_editor_requires_approval',
@@ -61,6 +62,10 @@ export async function reprocessPendingDrafts(): Promise<DraftReprocessStats> {
     skipped: 0,
     failed: 0,
     editorsEnsured: 0,
+  }
+
+  if (!isLegacyDirectAiEnabled()) {
+    return stats
   }
 
   // Skip auto-publish enablement when global auto-publish is off

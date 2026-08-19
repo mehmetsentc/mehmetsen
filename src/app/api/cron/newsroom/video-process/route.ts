@@ -18,6 +18,13 @@ async function handleRun(request: Request) {
   }
 
   try {
+    const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+    if (!isLegacyDirectAiEnabled()) {
+      return NextResponse.json(
+        { mode: 'legacy_disabled', aiRequests: 0, ok: true, processed: 0 },
+        { headers: { 'Cache-Control': 'no-store' } }
+      )
+    }
     const result = await processVideoQueue()
     return NextResponse.json(
       { ok: true, ...result },

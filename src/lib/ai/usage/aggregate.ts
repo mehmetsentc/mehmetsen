@@ -246,6 +246,14 @@ export type AiUsageAggregate = {
   stage3CompactCanary: ReturnType<typeof measureStage3CompactCanary>
   stage1CostAnalysis: ReturnType<typeof measureStage1CostAnalysis>
   stage1RetryOptimizationCanary: ReturnType<typeof measureStage1RetryOptimizationCanary>
+  automaticAiCost: {
+    crawlerUsd: number
+    legacyUsd: number
+    manualEditorUsd: number
+    crawlerRequests: number
+    legacyRequests: number
+    manualEditorRequests: number
+  }
 }
 
 export function aggregateAiUsageEvents(
@@ -291,6 +299,12 @@ export function aggregateAiUsageEvents(
   const retryAgents = new Map<string, { firstAttempts: number; retries: number }>()
   const daily = new Map<string, Bucket>()
   const repeated = new Map<string, { inputHash: string; operation: string; calls: number }>()
+  let crawlerUsd = 0
+  let legacyUsd = 0
+  let manualEditorUsd = 0
+  let crawlerRequests = 0
+  let legacyRequests = 0
+  let manualEditorRequests = 0
 
   for (const event of events) {
     requests += 1
@@ -315,6 +329,17 @@ export function aggregateAiUsageEvents(
     if (cost != null) {
       costSum += cost
       costCount += 1
+    }
+    const lane = asString(event.ingestionLane)
+    if (lane === 'crawler') {
+      crawlerRequests += 1
+      crawlerUsd += cost ?? 0
+    } else if (lane === 'legacy') {
+      legacyRequests += 1
+      legacyUsd += cost ?? 0
+    } else if (lane === 'manual_editor') {
+      manualEditorRequests += 1
+      manualEditorUsd += cost ?? 0
     }
     const newsId = asString(event.newsId)
     if (newsId) {
@@ -578,6 +603,14 @@ export function aggregateAiUsageEvents(
       return analysis
     })(),
     stage1RetryOptimizationCanary: measureStage1RetryOptimizationCanary(events),
+    automaticAiCost: {
+      crawlerUsd,
+      legacyUsd,
+      manualEditorUsd,
+      crawlerRequests,
+      legacyRequests,
+      manualEditorRequests,
+    },
   }
 }
 
@@ -613,6 +646,7 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'providerRank',
   'canaryBucket',
   'generationReason',
+  'ingestionLane',
   'resultCategoryId',
   'schemaValid',
   'outputChars',

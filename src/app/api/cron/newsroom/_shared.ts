@@ -1,5 +1,6 @@
 import { NextResponse, after } from 'next/server'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 
 export const newsroomCronConfig = {
   runtime: 'nodejs' as const,
@@ -22,6 +23,7 @@ function ingestEnqueuedItems(result: unknown): number {
 
 function scheduleQueueDrain(label: string, result: unknown) {
   if (NO_DRAIN_LABELS.has(label)) return
+  if (!isLegacyDirectAiEnabled()) return
   const enqueued = ingestEnqueuedItems(result)
   if (enqueued <= 0) return
 
@@ -67,7 +69,14 @@ export function createNewsroomCronHandler<T>(
 
       scheduleQueueDrain(label, result)
       console.log(`[cron:done] ${label} durationMs=${Date.now() - startedAt}`)
-      return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
+      const payload =
+        result && typeof result === 'object'
+          ? {
+              aiRequests: 0,
+              ...(result as Record<string, unknown>),
+            }
+          : result
+      return NextResponse.json(payload, { headers: { 'Cache-Control': 'no-store' } })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.error(`CRON_FAIL[${label}]: ${message}`)

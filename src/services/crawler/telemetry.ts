@@ -1,6 +1,11 @@
 import type { CrawlerStore } from './store/types'
 import { isGlobalCrawlerEnabled, isNewsCrawlerBrowserEnabled } from './enabled'
 import { isCrawlerAiDispatchEnabled } from './dispatch'
+import {
+  isLegacyDirectAiEnabled,
+  isLegacyRssDiscoveryEnabled,
+  resolveLegacyIngestionMode,
+} from './legacyFlags'
 
 export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Date()) {
   const metrics = await store.getTodayMetrics(now)
@@ -57,6 +62,37 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
     primaryImageOg: metrics.primary_image_og || 0,
     primaryImageDom: metrics.primary_image_dom || 0,
     windows,
+    ingestionLanes: {
+      crawler: isGlobalCrawlerEnabled() ? 'Aktif' : 'Kapalı',
+      legacyRssDiscovery: !isLegacyRssDiscoveryEnabled()
+        ? 'Kapalı'
+        : resolveLegacyIngestionMode() === 'crawler_ingestion'
+          ? 'Aktif'
+          : isLegacyDirectAiEnabled()
+            ? 'Kısmi'
+            : 'Aktif',
+      legacyDirectAi: isLegacyDirectAiEnabled() ? 'Açık' : 'Kapalı',
+      crawlerAiDispatch: isCrawlerAiDispatchEnabled() ? 'Açık' : 'Kapalı',
+      manualEditor: 'Kullanılabilir',
+      last24h: {
+        crawlerUrls: metrics.urls_discovered || 0,
+        legacyRssUrls: metrics.legacy_rss_urls_discovered || 0,
+        duplicates: (metrics.legacy_rss_urls_duplicate || 0) + (metrics.cross_pipeline_duplicate || 0),
+        rawArticles: metrics.articles_fetched || 0,
+        clusters: metrics.clusters_created || 0,
+        automaticAi: (metrics.ai_requests || 0) + (metrics.legacy_direct_ai_blocked ? 0 : 0),
+        automaticAiRequests: metrics.ai_requests || 0,
+        manualAiRequests: 0,
+        unmappedLegacySources: metrics.unmapped_legacy_source || 0,
+        forwardedToCrawler: metrics.legacy_rss_forwarded_to_crawler || 0,
+        legacyDirectAiBlocked: metrics.legacy_direct_ai_blocked || 0,
+      },
+      automaticAiCostUsd: {
+        crawler: 0,
+        legacy: 0,
+        manualEditor: null as number | null,
+      },
+    },
     sources: sources
       .map((s) => ({
         id: s.id,
@@ -78,7 +114,13 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
       failed: await store.countQueue('FAILED_QUEUE'),
     },
     funnel: await clusterFunnel(store, metrics),
-    legacyRssIngest: 'ON',
+    legacyRssIngest: isLegacyRssDiscoveryEnabled()
+      ? resolveLegacyIngestionMode() === 'crawler_ingestion'
+        ? 'ADAPTER'
+        : isLegacyDirectAiEnabled()
+          ? 'ON'
+          : 'OFF'
+      : 'OFF',
   }
 }
 

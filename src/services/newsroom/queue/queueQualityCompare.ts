@@ -52,7 +52,7 @@ export function shouldSkipThinEnqueue(input: NewsroomArticleInput): boolean {
 }
 
 export function isEnqueueSkipId(id: string): boolean {
-  return /^(thin-skip-|peer-skip-|library-skip-)/.test(id)
+  return /^(thin-skip-|peer-skip-|library-skip-|legacy-ai-blocked-|crawler-skip-)/.test(id)
 }
 
 function bodyText(input: QueueQualityInput): string {

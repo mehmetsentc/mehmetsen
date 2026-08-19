@@ -16,6 +16,7 @@ import { processNewsroomArticle } from '@/services/newsroom/pipeline'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
 import type { DocumentReference } from 'firebase-admin/firestore'
 import { isLiveBroadcastTitle } from '@/lib/liveBroadcastDetect'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 
 export function newsBodyPlainText(data: Record<string, unknown>): string {
   return String(data.description ?? data.content ?? data.body ?? '').trim()
@@ -79,6 +80,12 @@ export async function runThinContentBackfillWorker(): Promise<ThinContentBackfil
     drafted: 0,
     errors: [],
     durationMs: 0,
+  }
+
+  if (!isLegacyDirectAiEnabled()) {
+    result.durationMs = Date.now() - started
+    result.errors.push('LEGACY_DIRECT_AI_ENABLED=false')
+    return result
   }
 
   const db = getAdminFirestore()

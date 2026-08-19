@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { runWithAiUsageContext } from '@/lib/ai/usage/context'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
@@ -178,7 +179,8 @@ async function callDeepSeekOnce(
   opts: { timeoutMs: number; maxTokens: number; attempt?: number }
 ): Promise<Record<string, unknown>> {
   const { deepseekChatCompletion } = await import('@/lib/ai/deepseekClient')
-  const raw = await deepseekChatCompletion({
+  const raw = await runWithAiUsageContext({ ingestionLane: 'manual_editor' }, () =>
+    deepseekChatCompletion({
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
@@ -195,6 +197,7 @@ async function callDeepSeekOnce(
       attempt: opts.attempt ?? 1,
     },
   })
+  )
   try {
     return parseAiJson(raw)
   } catch {
