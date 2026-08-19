@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Search, Newspaper, Plus, Clock, Bot, BarChart3, Settings,
   Users, Share2, Inbox, Zap, FileText, Archive, Video, Megaphone,
-  BrainCircuit, LayoutDashboard, Mail, Flame, Briefcase, Coins,
+  BrainCircuit, LayoutDashboard, Mail, Flame, Briefcase, Coins, Radar,
 } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { ROUTES } from '@/constants/routes'
@@ -152,6 +152,15 @@ const COMMANDS: CommandItem[] = [
     group: 'Yapay Zeka',
     keywords: 'maliyet token usage deepseek',
     requiredPermissions: ['ai:use'],
+  },
+  {
+    id: 'crawler',
+    label: 'Crawler',
+    href: ROUTES.ADMIN.CRAWLER,
+    icon: Radar,
+    group: 'Haber',
+    keywords: 'crawler rss kaynak discovery',
+    requiredPermissions: ['news:read'],
   },
   {
     id: 'seo',

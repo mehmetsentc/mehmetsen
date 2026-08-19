@@ -17,3 +17,19 @@ export {
   storageProviderEnum,
   mediaTypeEnum,
 } from './media'
+export {
+  newsSources,
+  discoveredArticleUrls,
+  rawArticles,
+  newsClusters,
+  aiProcessingCache,
+  crawlerMetricsDaily,
+  crawlerSourceTypeEnum,
+  crawlerSourceStatusEnum,
+  crawlerDiscoveryMethodEnum,
+  crawlerArticleFetchModeEnum,
+  crawlerRobotsPolicyEnum,
+  crawlerUrlStatusEnum,
+  crawlerAiEligibilityEnum,
+  crawlerClusterStatusEnum,
+} from './crawler'

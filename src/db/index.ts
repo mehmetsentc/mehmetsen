@@ -46,4 +46,8 @@ export function isPostgresReadsEnabled(): boolean {
   return process.env.POSTGRES_READS_ENABLED === 'true'
 }
 
+export function hasDatabaseUrl(): boolean {
+  return Boolean(process.env.DATABASE_URL?.trim())
+}
+
 export { schema }

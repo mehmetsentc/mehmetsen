@@ -1,0 +1,73 @@
+import type { InsertSourceInput } from './store/types'
+
+/**
+ * Controlled Phase 0 sample set. Never auto-inserted. Admin seed only.
+ * Mix of regions/languages/discovery methods — still paused until activated.
+ */
+export const PHASE0_SEED_SOURCES: InsertSourceInput[] = [
+  {
+    name: 'BBC World RSS',
+    domain: 'bbc.com',
+    baseUrl: 'https://www.bbc.com',
+    countryCode: 'GB',
+    countryName: 'United Kingdom',
+    language: 'en',
+    sourceType: 'INTERNATIONAL',
+    discoveryMethod: 'RSS',
+    rssUrls: ['https://feeds.bbci.co.uk/news/world/rss.xml'],
+    crawlIntervalSeconds: 180,
+    status: 'PAUSED',
+  },
+  {
+    name: 'Deutsche Welle RSS',
+    domain: 'dw.com',
+    baseUrl: 'https://www.dw.com',
+    countryCode: 'DE',
+    countryName: 'Germany',
+    language: 'de',
+    sourceType: 'INTERNATIONAL',
+    discoveryMethod: 'RSS',
+    rssUrls: ['https://rss.dw.com/rdf/rss-de-all'],
+    crawlIntervalSeconds: 300,
+    status: 'PAUSED',
+  },
+  {
+    name: 'Le Monde RSS',
+    domain: 'lemonde.fr',
+    baseUrl: 'https://www.lemonde.fr',
+    countryCode: 'FR',
+    countryName: 'France',
+    language: 'fr',
+    sourceType: 'NATIONAL',
+    discoveryMethod: 'RSS',
+    rssUrls: ['https://www.lemonde.fr/rss/une.xml'],
+    crawlIntervalSeconds: 300,
+    status: 'PAUSED',
+  },
+  {
+    name: 'TRT Haber RSS',
+    domain: 'trthaber.com',
+    baseUrl: 'https://www.trthaber.com',
+    countryCode: 'TR',
+    countryName: 'Türkiye',
+    language: 'tr',
+    sourceType: 'NATIONAL',
+    discoveryMethod: 'RSS',
+    rssUrls: ['https://www.trthaber.com/sondakika.rss'],
+    crawlIntervalSeconds: 120,
+    status: 'PAUSED',
+  },
+  {
+    name: 'The Guardian World RSS',
+    domain: 'theguardian.com',
+    baseUrl: 'https://www.theguardian.com',
+    countryCode: 'GB',
+    countryName: 'United Kingdom',
+    language: 'en',
+    sourceType: 'INTERNATIONAL',
+    discoveryMethod: 'RSS',
+    rssUrls: ['https://www.theguardian.com/world/rss'],
+    crawlIntervalSeconds: 300,
+    status: 'PAUSED',
+  },
+]

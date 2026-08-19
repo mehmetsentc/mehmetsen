@@ -13,7 +13,7 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -136,6 +136,19 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/ai-memory', label: 'Hafıza', icon: Layers, requiredPermissions: ['ai:configure'] },
       { href: '/admin/ai-learning', label: 'Öğrenme Merkezi', icon: GraduationCap, requiredPermissions: ['ai:configure'] },
       { href: '/admin/ai-usage', label: 'AI Maliyet', icon: Coins, requiredPermissions: ['ai:use'] },
+    ],
+  },
+  {
+    id: 'crawler',
+    label: 'Crawler',
+    items: [
+      { href: '/admin/crawler', label: 'Dashboard', icon: Radar, requiredPermissions: ['news:read'], exact: true },
+      { href: '/admin/crawler/sources', label: 'Sources', icon: Globe, requiredPermissions: ['news:read'] },
+      { href: '/admin/crawler/raw-articles', label: 'Raw Articles', icon: FileText, requiredPermissions: ['news:read'] },
+      { href: '/admin/crawler/clusters', label: 'Clusters', icon: Layers, requiredPermissions: ['news:read'] },
+      { href: '/admin/crawler/queue', label: 'Queue', icon: ListTodo, requiredPermissions: ['news:read'] },
+      { href: '/admin/crawler/failures', label: 'Failures', icon: ShieldAlert, requiredPermissions: ['news:read'] },
+      { href: '/admin/crawler/health', label: 'Crawler Health', icon: Activity, requiredPermissions: ['system:settings'] },
     ],
   },
   {

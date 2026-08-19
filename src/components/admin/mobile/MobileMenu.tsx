@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   Newspaper, Clock, Archive, Video, BrainCircuit, Bot, Search, Share2,
   BarChart3, Users, UserCog, UserCheck, Settings, Mail, Inbox, ArrowLeft,
-  Megaphone, Tag, LogOut, Flame, Briefcase, Timer, Coins,
+  Megaphone, Tag, LogOut, Flame, Briefcase, Timer, Coins, Radar,
 } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useAuth } from '@/hooks/useAuth'
@@ -44,6 +44,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, perm: 'ai:use' },
       { href: '/admin/ai-usage', label: 'AI Maliyet', icon: Coins, perm: 'ai:use' },
       { href: '/admin/ai/news', label: 'AI Asistan', icon: Bot, perm: 'ai:use' },
+      { href: '/admin/crawler', label: 'Crawler', icon: Radar, perm: 'news:read' },
     ],
   },
   {

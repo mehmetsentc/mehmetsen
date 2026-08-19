@@ -74,6 +74,9 @@
     },
     "src/app/api/cron/newsroom/canakkale-bel-duyuru/route.ts": {
       "memory": 1024
+    },
+    "src/app/api/cron/crawler/tick/route.ts": {
+      "memory": 512
     }
   },
   "crons": [
@@ -320,6 +323,10 @@
     {
       "path": "/api/cron/editorial-review",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/crawler/tick",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

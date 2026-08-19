@@ -1,0 +1,281 @@
+import type {
+  CrawlerLogicalQueue,
+  CrawlerMetricName,
+  CrawlerUrlStatus,
+  DiscoveredUrlRecord,
+  NewsClusterRecord,
+  NewsSourceRecord,
+  RawArticleRecord,
+} from '../types'
+import type {
+  CrawlerStore,
+  InsertDiscoveredUrlInput,
+  InsertRawArticleInput,
+  InsertSourceInput,
+} from './types'
+import { newCrawlerId } from './types'
+
+function dayKey(now: Date): string {
+  return now.toISOString().slice(0, 10)
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((x): x is string => typeof x === 'string') : []
+}
+
+export class MemoryCrawlerStore implements CrawlerStore {
+  sources = new Map<string, NewsSourceRecord>()
+  urls = new Map<string, DiscoveredUrlRecord>()
+  urlsByHash = new Map<string, string>()
+  articles = new Map<string, RawArticleRecord>()
+  clusters = new Map<string, NewsClusterRecord>()
+  metrics = new Map<string, number>()
+  aiCache = new Set<string>()
+
+  async listSources(): Promise<NewsSourceRecord[]> {
+    return [...this.sources.values()].sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  async getSource(id: string): Promise<NewsSourceRecord | null> {
+    return this.sources.get(id) ?? null
+  }
+
+  async insertSource(input: InsertSourceInput): Promise<NewsSourceRecord> {
+    const now = new Date()
+    const row: NewsSourceRecord = {
+      id: newCrawlerId('src'),
+      name: input.name,
+      domain: input.domain.toLowerCase(),
+      baseUrl: input.baseUrl,
+      countryCode: input.countryCode.toUpperCase(),
+      countryName: input.countryName ?? null,
+      region: input.region ?? null,
+      city: input.city ?? null,
+      district: input.district ?? null,
+      language: input.language,
+      timezone: input.timezone ?? null,
+      sourceType: input.sourceType ?? 'OTHER',
+      status: input.status ?? 'PAUSED',
+      priority: input.priority ?? 50,
+      trustTier: input.trustTier ?? 3,
+      discoveryMethod: input.discoveryMethod ?? 'RSS',
+      rssUrls: asStringArray(input.rssUrls),
+      sitemapUrls: asStringArray(input.sitemapUrls),
+      listingUrls: asStringArray(input.listingUrls),
+      crawlIntervalSeconds: input.crawlIntervalSeconds ?? 300,
+      articleFetchMode: input.articleFetchMode ?? 'AUTO',
+      requiresJavascript: Boolean(input.requiresJavascript),
+      robotsPolicy: input.robotsPolicy ?? 'FOLLOW',
+      lastDiscoveryAt: null,
+      nextDiscoveryAt: now,
+      lastSuccessfulDiscoveryAt: null,
+      lastFeedEtag: null,
+      lastFeedModified: null,
+      consecutiveFailures: 0,
+      averageResponseMs: null,
+      articlesDiscovered: 0,
+      articlesFetched: 0,
+      extractionSuccessRate: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+    this.sources.set(row.id, row)
+    return row
+  }
+
+  async updateSource(id: string, patch: Partial<NewsSourceRecord>): Promise<void> {
+    const row = this.sources.get(id)
+    if (!row) return
+    Object.assign(row, patch, { updatedAt: new Date() })
+  }
+
+  async listDueSources(now: Date, limit: number): Promise<NewsSourceRecord[]> {
+    return [...this.sources.values()]
+      .filter(
+        (s) =>
+          s.status === 'ACTIVE' &&
+          (!s.nextDiscoveryAt || s.nextDiscoveryAt.getTime() <= now.getTime())
+      )
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      .slice(0, limit)
+  }
+
+  async countDueSources(now: Date): Promise<number> {
+    return (await this.listDueSources(now, 10_000)).length
+  }
+
+  async insertDiscoveredUrl(input: InsertDiscoveredUrlInput): Promise<'inserted' | 'duplicate'> {
+    if (this.urlsByHash.has(input.urlHash)) return 'duplicate'
+    const now = new Date()
+    const row: DiscoveredUrlRecord = {
+      id: newCrawlerId('url'),
+      sourceId: input.sourceId,
+      url: input.url,
+      normalizedUrl: input.normalizedUrl,
+      canonicalUrl: null,
+      urlHash: input.urlHash,
+      discoveredAt: now,
+      publishedAtHint: input.publishedAtHint ?? null,
+      status: 'PENDING_FETCH',
+      fetchAttempts: 0,
+      lastFetchAttempt: null,
+      failureReason: null,
+      etag: null,
+      lastModified: null,
+      logicalQueue: 'ARTICLE_FETCH_QUEUE',
+    }
+    this.urls.set(row.id, row)
+    this.urlsByHash.set(input.urlHash, row.id)
+    return 'inserted'
+  }
+
+  async getDiscoveredByHash(urlHash: string): Promise<DiscoveredUrlRecord | null> {
+    const id = this.urlsByHash.get(urlHash)
+    return id ? this.urls.get(id) ?? null : null
+  }
+
+  async listPendingFetch(limit: number): Promise<DiscoveredUrlRecord[]> {
+    return [...this.urls.values()]
+      .filter((u) => u.status === 'PENDING_FETCH')
+      .sort((a, b) => a.discoveredAt.getTime() - b.discoveredAt.getTime())
+      .slice(0, limit)
+  }
+
+  async updateDiscoveredUrl(id: string, patch: Partial<DiscoveredUrlRecord>): Promise<void> {
+    const row = this.urls.get(id)
+    if (!row) return
+    Object.assign(row, patch)
+  }
+
+  async countByStatus(status: CrawlerUrlStatus): Promise<number> {
+    return [...this.urls.values()].filter((u) => u.status === status).length
+  }
+
+  async countQueue(queue: CrawlerLogicalQueue): Promise<number> {
+    return [...this.urls.values()].filter((u) => u.logicalQueue === queue).length
+  }
+
+  async insertRawArticle(input: InsertRawArticleInput): Promise<RawArticleRecord> {
+    const row: RawArticleRecord = {
+      ...input,
+      id: newCrawlerId('raw'),
+      clusterId: input.clusterId ?? null,
+      aiEligibility: input.aiEligibility ?? 'PENDING',
+      aiSkipReason: input.aiSkipReason ?? null,
+      clusterStatus: input.clusterStatus ?? 'PENDING',
+      isExactDuplicate: Boolean(input.isExactDuplicate),
+      duplicateOfId: input.duplicateOfId ?? null,
+    }
+    this.articles.set(row.id, row)
+    return row
+  }
+
+  async getRawArticle(id: string): Promise<RawArticleRecord | null> {
+    return this.articles.get(id) ?? null
+  }
+
+  async listRecentArticles(limit = 50): Promise<RawArticleRecord[]> {
+    return [...this.articles.values()]
+      .sort((a, b) => (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0))
+      .slice(0, limit)
+  }
+
+  async findRawByContentHash(hash: string): Promise<RawArticleRecord | null> {
+    return [...this.articles.values()].find((a) => a.contentHash === hash) ?? null
+  }
+
+  async findRawByTitleHash(hash: string): Promise<RawArticleRecord | null> {
+    return [...this.articles.values()].find((a) => a.titleHash === hash) ?? null
+  }
+
+  async findRawByCanonicalUrl(url: string): Promise<RawArticleRecord | null> {
+    return [...this.articles.values()].find((a) => a.canonicalUrl === url) ?? null
+  }
+
+  async recentRawForNearDup(_sourceCountry: string | null, limit = 40): Promise<RawArticleRecord[]> {
+    return [...this.articles.values()]
+      .sort((a, b) => (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0))
+      .slice(0, limit)
+  }
+
+  async recentClusters(countryCode: string | null, since: Date) {
+    return [...this.clusters.values()]
+      .filter((c) => c.lastSeenAt >= since && (!countryCode || c.countryCode === countryCode))
+      .map((c) => {
+        const rep = c.representativeArticleId ? this.articles.get(c.representativeArticleId) : null
+        return {
+          ...c,
+          representativeTitle: rep?.title ?? null,
+          representativeSimhash: rep?.simhash ?? null,
+        }
+      })
+  }
+
+  async insertCluster(input: {
+    representativeArticleId: string
+    normalizedTopic: string
+    countryCode: string | null
+    city: string | null
+  }): Promise<NewsClusterRecord> {
+    const now = new Date()
+    const row: NewsClusterRecord = {
+      id: newCrawlerId('cl'),
+      representativeArticleId: input.representativeArticleId,
+      normalizedTopic: input.normalizedTopic,
+      countryCode: input.countryCode,
+      city: input.city,
+      category: null,
+      articleCount: 1,
+      firstSeenAt: now,
+      lastSeenAt: now,
+    }
+    this.clusters.set(row.id, row)
+    return row
+  }
+
+  async touchCluster(id: string, representativeArticleId?: string): Promise<void> {
+    const row = this.clusters.get(id)
+    if (!row) return
+    row.articleCount += 1
+    row.lastSeenAt = new Date()
+    if (representativeArticleId) row.representativeArticleId = representativeArticleId
+  }
+
+  async updateRawArticle(id: string, patch: Partial<RawArticleRecord>): Promise<void> {
+    const row = this.articles.get(id)
+    if (!row) return
+    Object.assign(row, patch)
+  }
+
+  async clusterHasEligible(clusterId: string): Promise<boolean> {
+    return [...this.articles.values()].some(
+      (a) => a.clusterId === clusterId && a.aiEligibility === 'ELIGIBLE'
+    )
+  }
+
+  async hasAiCache(contentHash: string, promptVersion: string, model: string): Promise<boolean> {
+    return this.aiCache.has(`${contentHash}:${promptVersion}:${model}`)
+  }
+
+  async incrementMetric(metric: CrawlerMetricName, amount = 1, now = new Date()): Promise<void> {
+    const key = `${dayKey(now)}:${metric}`
+    this.metrics.set(key, (this.metrics.get(key) || 0) + amount)
+  }
+
+  async getTodayMetrics(now = new Date()): Promise<Record<string, number>> {
+    const prefix = `${dayKey(now)}:`
+    const out: Record<string, number> = {}
+    for (const [key, value] of this.metrics) {
+      if (key.startsWith(prefix)) out[key.slice(prefix.length)] = value
+    }
+    return out
+  }
+
+  async countActiveSources(): Promise<number> {
+    return [...this.sources.values()].filter((s) => s.status === 'ACTIVE').length
+  }
+
+  async countFailedSources(): Promise<number> {
+    return [...this.sources.values()].filter((s) => s.status === 'DEGRADED' || s.consecutiveFailures >= 3).length
+  }
+}

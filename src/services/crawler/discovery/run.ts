@@ -1,0 +1,129 @@
+import { parseRssOrAtom } from './rss'
+import { parseSitemapXml } from './sitemap'
+import { parseListingPage } from './listing'
+import { fetchDocument, type FetchImpl } from '../http/fetchDocument'
+import { crawlerTickLimits } from '../enabled'
+import { logCrawler } from '../log'
+import { normalizeArticleUrl, urlHashFor } from '../url/normalize'
+import type { HostLookup } from '../url/ssrf'
+import type { CrawlerStore } from '../store/types'
+import type { DiscoveredFeedItem, NewsSourceRecord } from '../types'
+
+export async function discoverSource(opts: {
+  source: NewsSourceRecord
+  store: CrawlerStore
+  fetchImpl?: FetchImpl
+  lookup?: HostLookup
+}): Promise<{ discovered: number; inserted: number; notModified: boolean; errorCode?: string }> {
+  const limits = crawlerTickLimits()
+  const { source, store } = opts
+  const methods = methodsFor(source)
+  let items: DiscoveredFeedItem[] = []
+  let notModified = false
+  let errorCode: string | undefined
+  let lastEtag = source.lastFeedEtag
+  let lastModified = source.lastFeedModified
+
+  for (const method of methods) {
+    const urls =
+      method === 'RSS' || method === 'ATOM'
+        ? source.rssUrls
+        : method === 'NEWS_SITEMAP' || method === 'SITEMAP'
+          ? source.sitemapUrls
+          : source.listingUrls
+    if (!urls.length) continue
+
+    for (const feedUrl of urls.slice(0, 3)) {
+      const res = await fetchDocument({
+        url: feedUrl,
+        fetchImpl: opts.fetchImpl,
+        lookup: opts.lookup,
+        sourceId: source.id,
+        conditional: { etag: source.lastFeedEtag, lastModified: source.lastFeedModified },
+      })
+      await store.incrementMetric('http_requests')
+      if (res.notModified) {
+        notModified = true
+        continue
+      }
+      if (!res.ok) {
+        errorCode = res.errorCode || `HTTP_${res.status}`
+        continue
+      }
+      lastEtag = res.etag
+      lastModified = res.lastModified
+      if (method === 'LISTING') {
+        items = items.concat(parseListingPage(res.body, res.finalUrl))
+      } else if (method === 'SITEMAP' || method === 'NEWS_SITEMAP') {
+        const sitemap = parseSitemapXml(res.body, res.finalUrl)
+        items = items.concat(sitemap.items)
+        if (sitemap.kind === 'index') {
+          for (const child of sitemap.childSitemaps.slice(0, limits.maxChildSitemaps)) {
+            const childRes = await fetchDocument({
+              url: child,
+              fetchImpl: opts.fetchImpl,
+              lookup: opts.lookup,
+              sourceId: source.id,
+            })
+            await store.incrementMetric('http_requests')
+            if (!childRes.ok) continue
+            items = items.concat(parseSitemapXml(childRes.body, childRes.finalUrl).items)
+          }
+        }
+      } else {
+        items = items.concat(parseRssOrAtom(res.body, res.finalUrl))
+      }
+    }
+    if (items.length) break
+  }
+
+  const unique = new Map<string, DiscoveredFeedItem>()
+  for (const item of items) {
+    const normalized = normalizeArticleUrl(item.url, source.baseUrl)
+    if (!normalized) continue
+    if (!unique.has(normalized)) unique.set(normalized, { ...item, url: normalized })
+  }
+
+  const sliced = [...unique.values()].slice(0, limits.maxDiscoverUrlsPerSource)
+  let inserted = 0
+  for (const item of sliced) {
+    const hash = urlHashFor(item.url)
+    const result = await store.insertDiscoveredUrl({
+      sourceId: source.id,
+      url: item.url,
+      normalizedUrl: item.url,
+      urlHash: hash,
+      publishedAtHint: item.publishedAt ?? null,
+    })
+    await store.incrementMetric('urls_discovered')
+    if (result === 'inserted') {
+      inserted += 1
+      await store.incrementMetric('urls_new')
+    }
+  }
+
+  logCrawler(
+    {
+      sourceId: source.id,
+      stage: 'discovery',
+      errorCode,
+    },
+    { discovered: sliced.length, inserted, method: source.discoveryMethod }
+  )
+
+  await store.updateSource(source.id, {
+    lastFeedEtag: lastEtag,
+    lastFeedModified: lastModified,
+  })
+
+  return { discovered: sliced.length, inserted, notModified, errorCode }
+}
+
+function methodsFor(source: NewsSourceRecord): Array<'RSS' | 'ATOM' | 'NEWS_SITEMAP' | 'SITEMAP' | 'LISTING'> {
+  if (source.discoveryMethod === 'HYBRID') return ['RSS', 'ATOM', 'NEWS_SITEMAP', 'SITEMAP', 'LISTING']
+  if (source.discoveryMethod === 'RSS') return ['RSS']
+  if (source.discoveryMethod === 'ATOM') return ['ATOM']
+  if (source.discoveryMethod === 'NEWS_SITEMAP') return ['NEWS_SITEMAP']
+  if (source.discoveryMethod === 'SITEMAP') return ['SITEMAP']
+  return ['LISTING']
+}
