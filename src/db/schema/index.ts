@@ -4,6 +4,7 @@ export { districts } from './districts'
 export { citySites } from './citySites'
 export { categories } from './categories'
 export { users, userRoleEnum } from './users'
+export { analyticsEventBuffer, analyticsHourly, analyticsDaily } from './analytics'
 export {
   news,
   newsStatusEnum,
@@ -32,6 +33,7 @@ export {
   crawlerAiCircuit,
   crawlerAiDispatchShadow,
   crawlerEditorialAudit,
+  crawlerJobRuns,
   crawlerSourceTypeEnum,
   crawlerSourceStatusEnum,
   crawlerDiscoveryMethodEnum,

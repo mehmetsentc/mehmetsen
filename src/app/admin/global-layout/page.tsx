@@ -7,6 +7,7 @@ import {
   AdminOsPageShell,
 } from '@/components/admin/os/AdminOsPageShell'
 import { auth } from '@/lib/firebase/auth'
+import { PAGE_LAYOUT_STATUS_LABELS } from '@/services/newsroomOs/pageBlockLabels'
 import type { PageLayout } from '@/types/newsroomOs'
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -39,7 +40,7 @@ export default function GlobalLayoutPage() {
         items={[
           { label: 'Sayfa layout', value: String(layouts.length || '—') },
           { label: 'Yayında', value: String(layouts.filter((l) => l.status === 'published').length) },
-          { label: 'Taslak', value: String(layouts.filter((l) => l.status === 'draft').length) },
+          { label: 'Taslak', value: String(layouts.filter((l) => l.status === 'draft' || l.status === 'preview').length) },
           { label: 'Rollback', value: 'Sürümler API' },
         ]}
       />
@@ -58,7 +59,7 @@ export default function GlobalLayoutPage() {
             {layouts.map((l) => (
               <tr key={l.pageKey}>
                 <td className="px-4 py-3 font-semibold">{l.label}</td>
-                <td className="px-4 py-3 admin-meta">{l.status}</td>
+                <td className="px-4 py-3 admin-meta">{PAGE_LAYOUT_STATUS_LABELS[l.status] || l.status}</td>
                 <td className="px-4 py-3 tabular-nums">{l.version}</td>
                 <td className="px-4 py-3 tabular-nums">{l.blocks?.length ?? 0}</td>
                 <td className="px-4 py-3 text-right">
@@ -66,7 +67,7 @@ export default function GlobalLayoutPage() {
                     href="/admin/page-controls"
                     className="text-xs font-semibold text-[rgb(var(--color-brand))] hover:underline"
                   >
-                    Düzenle →
+                    Taslak / Önizleme / Yayınla →
                   </Link>
                 </td>
               </tr>

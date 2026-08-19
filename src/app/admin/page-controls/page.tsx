@@ -8,6 +8,7 @@ import {
 } from '@/components/admin/os/AdminOsPageShell'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
+import { pageBlockKindLabel, pageBlockSourceLabel, PAGE_LAYOUT_STATUS_LABELS } from '@/services/newsroomOs/pageBlockLabels'
 import type { PageLayout, PageLayoutBlock } from '@/types/newsroomOs'
 import toast from 'react-hot-toast'
 
@@ -67,7 +68,7 @@ export default function PageControlsPage() {
     })
   }
 
-  const save = async (action: 'save' | 'publish') => {
+  const save = async (action: 'save' | 'publish' | 'preview' | 'rollback') => {
     if (!layout) return
     try {
       const res = await fetch('/api/admin/page-layouts', {
@@ -83,7 +84,15 @@ export default function PageControlsPage() {
       if (!res.ok) throw new Error('save failed')
       const body = (await res.json()) as { layout: PageLayout }
       setLayout(body.layout)
-      toast.success(action === 'publish' ? 'Yayınlandı' : 'Taslak kaydedildi')
+      toast.success(
+        action === 'publish'
+          ? 'Yayınlandı (public homepage taslaktan ayrı)'
+          : action === 'preview'
+            ? 'Önizleme kaydedildi'
+            : action === 'rollback'
+              ? 'Önceki sürüme dönüldü'
+              : 'Taslak kaydedildi'
+      )
       void load()
     } catch {
       toast.error('İşlem başarısız')
@@ -98,7 +107,7 @@ export default function PageControlsPage() {
         items={[
           { label: 'Sayfa', value: String(layouts.length || '—') },
           { label: 'Blok', value: String(sorted.length) },
-          { label: 'Durum', value: layout?.status ?? '—' },
+          { label: 'Durum', value: layout ? PAGE_LAYOUT_STATUS_LABELS[layout.status] : '—' },
           { label: 'Sürüm', value: layout ? String(layout.version) : '—' },
         ]}
       />
@@ -133,7 +142,14 @@ export default function PageControlsPage() {
               onClick={() => void save('save')}
               className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold"
             >
-              Taslak kaydet
+              Taslak
+            </button>
+            <button
+              type="button"
+              onClick={() => void save('preview')}
+              className="rounded-lg border px-3 py-2 text-xs font-semibold"
+            >
+              Önizleme
             </button>
             <button
               type="button"
@@ -142,6 +158,13 @@ export default function PageControlsPage() {
             >
               Yayınla
             </button>
+            <button
+              type="button"
+              onClick={() => void save('rollback')}
+              className="rounded-lg border px-3 py-2 text-xs font-semibold"
+            >
+              Önceki Sürüme Dön
+            </button>
           </div>
           <div className="divide-y divide-[rgb(var(--color-border))] overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
             {sorted.map((b) => (
@@ -149,8 +172,8 @@ export default function PageControlsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[rgb(var(--color-text))]">{b.title}</p>
                   <p className="admin-meta">
-                    {b.kind} · limit {b.limit} · {b.source}
-                    {b.categoryId ? ` · ${b.categoryId}` : ''}
+                    {pageBlockKindLabel(b.kind)} · limit {b.limit} · {pageBlockSourceLabel(b.source)}
+                    {b.categoryId ? ` · ${b.categoryId}` : ''} · sıra {b.order}
                   </p>
                 </div>
                 <button type="button" className="text-xs font-semibold" onClick={() => moveBlock(b.id, -1)}>
@@ -167,7 +190,8 @@ export default function PageControlsPage() {
             ))}
           </div>
           <p className="text-[11px] text-[rgb(var(--color-muted))]">
-            Yayınlama public homepage’i otomatik değiştirmez — layout kaydı versionlanır; render bağlama sonraki adım.
+            Taslak ve yayındaki sürüm ayrıdır. Taslak kaydetmek public ana sayfayı değiştirmez.
+            Yayındaki blok sayısı: {layout.publishedBlocks?.length ?? 0}. Durum: {PAGE_LAYOUT_STATUS_LABELS[layout.status]}.
           </p>
         </div>
       )}

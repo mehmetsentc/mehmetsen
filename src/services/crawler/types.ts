@@ -93,6 +93,8 @@ export interface ArticleMediaRecord {
   qualityScore: number | null
   contentHash: string | null
   perceptualHash: string | null
+  imageSource?: string | null
+  imageConfidence?: number | null
   createdAt: Date
 }
 

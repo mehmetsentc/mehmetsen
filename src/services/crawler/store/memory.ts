@@ -22,7 +22,7 @@ import type {
 } from './types'
 import { newCrawlerId } from './types'
 import { clusterDefaults } from '../cluster/defaults'
-import { matchesClusterQuery, matchesRawArticleQuery, paginateRawArticles, sortRawArticles, type ClusterListQuery } from '../editorial/query'
+import { matchesClusterQuery, matchesRawArticleQuery, paginateRawArticles, queueCountsFromStatuses, sortRawArticleRows, type ClusterListQuery } from '../editorial/query'
 import { funnelFromClusters, tabCountsFromClusters } from '../editorial/controlPlane'
 
 function dayKey(now: Date): string {
@@ -416,12 +416,12 @@ export class MemoryCrawlerStore implements CrawlerStore {
   async listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult> {
     const sources = new Map<string, string>()
     for (const s of this.sources.values()) sources.set(s.id, s.name)
-    const filtered = sortRawArticles(
-      [...this.articles.values()].filter((a) => matchesRawArticleQuery(a, query)),
-      query.sort || 'newest'
-    )
+    const filtered = [...this.articles.values()].filter((a) => matchesRawArticleQuery(a, query))
     const rows = filtered.map((a) => ({ ...a, sourceName: sources.get(a.sourceId) || a.sourceId }))
-    return paginateRawArticles(rows, query)
+    const sorted = sortRawArticleRows(rows, query)
+    const page = paginateRawArticles(sorted, query)
+    page.queueCounts = queueCountsFromStatuses(await this.countEditorialStatuses())
+    return page
   }
 
   async listRawArticleIds(query: RawArticleListQuery, cap: number): Promise<{ ids: string[]; total: number }> {

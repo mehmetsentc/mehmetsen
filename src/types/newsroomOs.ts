@@ -382,6 +382,7 @@ export interface PageLayout {
   status: PageLayoutStatus
   version: number
   blocks: PageLayoutBlock[]
+  publishedBlocks?: PageLayoutBlock[]
   updatedAt: number
   updatedBy?: string | null
   publishedAt?: number | null

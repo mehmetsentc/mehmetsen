@@ -123,15 +123,24 @@ export interface InsertRawArticleInput extends Omit<
 
 export type RawArticleSort = 'newest' | 'oldest' | 'published'
 
-/**
- * Offset pagination is used for admin numbered pages (Önceki / 1 2 3 / Sonraki).
- * At ~1M+ rows, deep OFFSET becomes expensive; switch to keyset on (fetched_at, id)
- * for infinite-scroll or “load more”. Numbered last-pages would still need COUNT.
- */
+export type RawArticleQueueTab = 'active' | 'published' | 'rejected' | 'archived' | 'all'
+export type RawArticleSortColumn =
+  | 'fetchedAt'
+  | 'publishedAt'
+  | 'wordCount'
+  | 'extractionConfidence'
+  | 'source'
+  | 'status'
+  | 'editorial'
+export type SortOrder = 'asc' | 'desc'
+
 export interface RawArticleListQuery {
   page?: number
   pageSize?: number
   sort?: RawArticleSort
+  sortBy?: RawArticleSortColumn | null
+  order?: SortOrder | null
+  queue?: RawArticleQueueTab | null
   sourceId?: string | null
   country?: string | null
   city?: string | null
@@ -169,6 +178,13 @@ export interface RawArticleInboxSummary {
   duplicates: number
 }
 
+export interface RawArticleQueueCounts {
+  active: number
+  published: number
+  rejected: number
+  archived: number
+}
+
 export interface RawArticleListResult {
   articles: RawArticleListRow[]
   total: number
@@ -176,6 +192,7 @@ export interface RawArticleListResult {
   pageSize: number
   totalPages: number
   summary: RawArticleInboxSummary
+  queueCounts?: RawArticleQueueCounts
   sources: RawArticleSourceFacet[]
   groups?: Array<RawArticleSourceFacet & { articles: RawArticleListRow[] }>
 }

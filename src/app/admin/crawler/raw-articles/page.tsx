@@ -12,7 +12,8 @@ import { RowOverflowMenu } from '@/components/admin/crawler/RowOverflowMenu'
 import { notifyCrawlerBulk } from '@/components/admin/crawler/notifyBulk'
 import { auth } from '@/lib/firebase/auth'
 import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
-import { numberedPages, RAW_ARTICLE_PAGE_SIZES } from '@/services/crawler/editorial/query'
+import { numberedPages, nextSortState, RAW_ARTICLE_PAGE_SIZES } from '@/services/crawler/editorial/query'
+import { RawArticleDrawer } from '@/components/admin/crawler/RawArticleDrawer'
 import {
   clearSelection,
   pageSelectionHint,
@@ -83,6 +84,7 @@ interface ListResponse {
     duplicates: number
   }
   sources?: Array<{ sourceId: string; sourceName: string; articleCount: number }>
+  queueCounts?: { active: number; published: number; rejected: number; archived: number }
   error?: string
 }
 
@@ -150,6 +152,17 @@ function CrawlerArticlesInner() {
   const searchParams = useSearchParams()
   const [data, setData] = useState<ListResponse | null>(null)
   const [detail, setDetail] = useState<ArticleRow | null>(null)
+  const [detailMedia, setDetailMedia] = useState<
+    Array<{
+      sourceUrl: string
+      status: string
+      isPrimary?: boolean
+      discoveryMethod?: string
+      imageSource?: string | null
+      imageConfidence?: number | null
+      altText?: string | null
+    }>
+  >([])
   const [mediaSummary, setMediaSummary] = useState<{
     mediaCount: number
     primaryUrl: string | null
@@ -214,6 +227,9 @@ function CrawlerArticlesInner() {
         dateFrom: searchParams.get('dateFrom'),
         dateTo: searchParams.get('dateTo'),
         view: searchParams.get('view'),
+        queue: searchParams.get('queue'),
+        sort: searchParams.get('sort'),
+        order: searchParams.get('order'),
       }),
     [searchParams]
   )
@@ -232,7 +248,9 @@ function CrawlerArticlesInner() {
         headers: await authHeaders(),
       })
       const body = await res.json()
+      if (body.article) setDetail({ ...detail, ...body.article })
       if (body.mediaSummary) setMediaSummary(body.mediaSummary)
+      if (Array.isArray(body.media)) setDetailMedia(body.media)
     })()
   }, [detail])
 
@@ -249,6 +267,8 @@ function CrawlerArticlesInner() {
       dateFrom: searchParams.get('dateFrom'),
       dateTo: searchParams.get('dateTo'),
       sort: searchParams.get('sort') || 'newest',
+      order: searchParams.get('order'),
+      queue: searchParams.get('queue') || 'active',
     }
   }
 
@@ -323,6 +343,19 @@ function CrawlerArticlesInner() {
   const visibleIds = view === 'bySource' ? (data?.groups || []).flatMap((g) => g.articles.map((a) => a.id)) : rows.map((r) => r.id)
   const count = selectedCount(selection, pageSize)
   const hint = pageSelectionHint(selection, pageSize)
+  const queue = searchParams.get('queue') || 'active'
+  const sortCol = searchParams.get('sort')
+  const sortOrder = searchParams.get('order')
+
+  function cycleSort(column: 'publishedAt' | 'wordCount' | 'extractionConfidence' | 'source' | 'status' | 'editorial') {
+    const next = nextSortState(sortCol, sortOrder, column)
+    setParam({ sort: next.sort, order: next.order, page: '1' })
+  }
+
+  function sortMark(column: string) {
+    if (sortCol !== column) return ''
+    return sortOrder === 'asc' ? ' ↑' : ' ↓'
+  }
 
   const filterBar = (
     <form
@@ -488,13 +521,37 @@ function CrawlerArticlesInner() {
               </th>
               <th className="px-3 py-2">Görsel</th>
               <th className="px-3 py-2">Başlık</th>
-              <th className="px-3 py-2">Kaynak</th>
+              <th className="px-3 py-2">
+                <button type="button" onClick={() => cycleSort('source')}>
+                  Kaynak{sortMark('source')}
+                </button>
+              </th>
               <th className="px-3 py-2">Ülke</th>
-              <th className="px-3 py-2">Tarih</th>
-              <th className="px-3 py-2">Kelime</th>
-              <th className="px-3 py-2">Güven</th>
-              <th className="px-3 py-2">Durum</th>
-              <th className="px-3 py-2">Editoryal</th>
+              <th className="px-3 py-2">
+                <button type="button" onClick={() => cycleSort('publishedAt')}>
+                  Tarih{sortMark('publishedAt')}
+                </button>
+              </th>
+              <th className="px-3 py-2">
+                <button type="button" onClick={() => cycleSort('wordCount')}>
+                  Kelime{sortMark('wordCount')}
+                </button>
+              </th>
+              <th className="px-3 py-2">
+                <button type="button" onClick={() => cycleSort('extractionConfidence')}>
+                  Güven{sortMark('extractionConfidence')}
+                </button>
+              </th>
+              <th className="px-3 py-2">
+                <button type="button" onClick={() => cycleSort('status')}>
+                  Durum{sortMark('status')}
+                </button>
+              </th>
+              <th className="px-3 py-2">
+                <button type="button" onClick={() => cycleSort('editorial')}>
+                  Editoryal{sortMark('editorial')}
+                </button>
+              </th>
               <th className="px-3 py-2">İşlemler</th>
             </tr>
           </thead>
@@ -569,6 +626,25 @@ function CrawlerArticlesInner() {
           { label: 'Mükerrer', value: fmt(data?.summary?.duplicates) },
         ]}
       />
+      <div className="mb-3 flex flex-wrap gap-2 text-sm">
+        {(
+          [
+            ['active', 'Aktif kuyruk', data?.queueCounts?.active],
+            ['published', 'Yayınlananlar', data?.queueCounts?.published],
+            ['rejected', 'Reddedilenler', data?.queueCounts?.rejected],
+            ['archived', 'Arşivlenenler', data?.queueCounts?.archived],
+          ] as const
+        ).map(([id, label, n]) => (
+          <button
+            key={id}
+            type="button"
+            className={queue === id ? 'font-semibold underline' : ''}
+            onClick={() => setParam({ queue: id === 'active' ? null : id }, true)}
+          >
+            {label} ({fmt(n)})
+          </button>
+        ))}
+      </div>
       <div className="mb-3 flex gap-2 text-sm">
         <button type="button" className={view === 'all' ? 'font-semibold underline' : ''} onClick={() => setParam({ view: null }, true)}>
           Tüm Haberler
@@ -642,32 +718,16 @@ function CrawlerArticlesInner() {
         <Pager page={page} totalPages={totalPages} onPage={(p) => setParam({ page: String(p) })} />
       </div>
       {detail ? (
-        <div className="rounded-2xl border border-[rgb(var(--color-border))] p-4 text-sm">
-          {detail.mainImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={detail.mainImageUrl} alt="" className="mb-3 max-h-56 rounded object-cover" />
-          ) : null}
-          <div className="mb-2 font-semibold">{detail.title}</div>
-          <div className="text-[rgb(var(--color-muted))]">
-            {detail.sourceName} · {fmt(detail.wordCount ?? undefined)} kelime
-          </div>
-          {mediaSummary ? (
-            <div className="mt-2 text-xs">
-              Medya: {mediaSummary.mediaCount} · Birincil: {mediaSummary.primaryUrl ? 'var' : 'yok'} · Mükerrer:{' '}
-              {mediaSummary.duplicateCount} · Reddedilen: {mediaSummary.rejectedCount}
-              {detail.isExactDuplicate ? ' · Haber mükerrer' : ''}
-            </div>
-          ) : null}
-          <p className="mt-2">{detail.description}</p>
-          <p className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-[rgb(var(--color-muted))]">
-            {(detail.articleBodyText || '').slice(0, 2000)}
-            {(detail.articleBodyText || '').length > 2000 ? '…' : ''}
-          </p>
-          <div className="mt-3">{renderActions(detail)}</div>
-          <button type="button" className="mt-2 text-xs underline" onClick={() => setDetail(null)}>
-            Kapat
-          </button>
-        </div>
+        <RawArticleDrawer
+          article={detail}
+          media={detailMedia}
+          busy={busyId === detail.id}
+          onClose={() => {
+            setDetail(null)
+            setDetailMedia([])
+          }}
+          onManual={() => void openManual(detail.id)}
+        />
       ) : null}
       <RejectReasonModal
         open={rejectOpen}

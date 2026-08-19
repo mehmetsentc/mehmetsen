@@ -6,6 +6,9 @@ import {
   clampPageSize,
   parseEditorialStatus,
   parseHasImage,
+  parseQueueTab,
+  parseSortColumn,
+  parseSortOrder,
 } from '@/services/crawler/editorial/query'
 import { rawArticleDisplay } from '@/services/crawler/editorial/prefill'
 import { summarizeArticleMedia } from '@/services/crawler/editorial/mediaSummary'
@@ -25,10 +28,15 @@ function listQueryFromUrl(url: URL): RawArticleListQuery {
   const pageSize = clampPageSize(Number(url.searchParams.get('pageSize') || '25'))
   const sort = url.searchParams.get('sort') as RawArticleSort | null
   const quality = url.searchParams.get('qualityStatus') as CrawlerQualityStatus | null
+  const sortBy = parseSortColumn(url.searchParams.get('sort'))
+  const legacySort = sort === 'oldest' || sort === 'published' ? sort : 'newest'
   return {
     page: Number(url.searchParams.get('page') || '1') || 1,
     pageSize,
-    sort: sort === 'oldest' || sort === 'published' ? sort : 'newest',
+    sort: sortBy ? 'newest' : legacySort,
+    sortBy,
+    order: parseSortOrder(url.searchParams.get('order')),
+    queue: parseQueueTab(url.searchParams.get('queue')),
     sourceId: url.searchParams.get('source') || url.searchParams.get('sourceId'),
     country: url.searchParams.get('country'),
     city: url.searchParams.get('city'),

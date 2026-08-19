@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { decodeForDisplay, decodeHtmlEntities } from './htmlEntities'
 import { extractEditorialImages, pickBestSrcsetUrl, selectEditorialHandoff } from './images'
+import {
+  fixtureAds,
+  fixtureGallery,
+  fixtureJsonLdArray,
+  fixtureLazyLoad,
+  fixtureOgOnly,
+  fixtureRelatedNews,
+  fixtureSidebar,
+  fixtureSrcsetPicture,
+  IMAGE_FIXTURE_URLS,
+} from './imageFixtures'
 import { imageVariantKey, normalizeImageUrl } from './imageNormalize'
 import { numberedPages, paginateRawArticles } from '../editorial/query'
 import { crawlerStatusLabel, EDITORIAL_STATUS_LABELS } from '../editorial/labels'
@@ -87,9 +98,9 @@ describe('editorial images', () => {
       </article>
     </body></html>`
     const result = extractEditorialImages(html, 'https://news.test/story')
-    expect(result.rejected.some((c) => /sozcu-abone/.test(c.sourceUrl) && c.rejectionReason === 'ad_or_banner')).toBe(true)
-    expect(result.rejected.some((c) => /doubleclick|kampanya-banner/.test(c.sourceUrl))).toBe(true)
-    expect(result.rejected.some((c) => /buy-now/.test(c.sourceUrl))).toBe(true)
+    expect(result.accepted.some((c) => /sozcu-abone/.test(c.sourceUrl))).toBe(false)
+    expect(result.accepted.some((c) => /doubleclick|kampanya-banner/.test(c.sourceUrl))).toBe(false)
+    expect(result.accepted.some((c) => /buy-now/.test(c.sourceUrl))).toBe(false)
     expect(result.accepted.some((c) => c.sourceUrl.includes('fire-1.jpg'))).toBe(true)
     expect(result.accepted.some((c) => c.sourceUrl.includes('fire-2.jpg'))).toBe(true)
     expect(result.accepted.some((c) => c.sourceUrl.includes('unknown-dims.jpg'))).toBe(true)
@@ -112,7 +123,7 @@ describe('editorial images', () => {
     expect(result.rejected.some((c) => c.sourceUrl.includes('promo-banner'))).toBe(true)
   })
 
-  it('keeps the best 12 images, not the first 12 DOM nodes', () => {
+  it('keeps the best 9 images by default (1 primary + 8 extras), not the first DOM nodes', () => {
     const early = Array.from(
       { length: 12 },
       (_, i) => `<img src="https://news.test/photos/early${i}.jpg" width="400" height="300" alt="erken ${i}" />`
@@ -123,9 +134,59 @@ describe('editorial images', () => {
     ).join('')
     const html = `<html><body><article>${early}${heroes}</article></body></html>`
     const result = extractEditorialImages(html, 'https://news.test/story')
-    expect(result.accepted).toHaveLength(12)
+    expect(result.accepted.length).toBeLessThanOrEqual(9)
     expect(result.accepted.filter((c) => /hero/.test(c.sourceUrl)).length).toBe(5)
     expect(result.rejected.some((c) => c.rejectionReason === 'over_max_editorial')).toBe(true)
+  })
+
+  it('rejects unrelated related-news / sidebar / ads and keeps the hero', () => {
+    const related = extractEditorialImages(fixtureRelatedNews(), 'https://news.test/cinema')
+    expect(related.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.RELATED)).toBe(false)
+    expect(related.primary?.sourceUrl).toBe(IMAGE_FIXTURE_URLS.HERO)
+
+    const sidebar = extractEditorialImages(fixtureSidebar(), 'https://news.test/cinema')
+    expect(sidebar.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.SIDEBAR)).toBe(false)
+    expect(sidebar.primary?.sourceUrl).toBe(IMAGE_FIXTURE_URLS.HERO)
+
+    const ads = extractEditorialImages(fixtureAds(), 'https://news.test/cinema')
+    expect(ads.accepted.some((c) => c.sourceUrl.includes('banner') || c.sourceUrl.includes('kampanya'))).toBe(false)
+    expect(ads.primary?.sourceUrl).toBe(IMAGE_FIXTURE_URLS.HERO)
+  })
+
+  it('keeps gallery figures and still rejects related thumbs', () => {
+    const result = extractEditorialImages(fixtureGallery(), 'https://news.test/gallery')
+    expect(result.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.GALLERY_1)).toBe(true)
+    expect(result.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.GALLERY_2)).toBe(true)
+    expect(result.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.RELATED)).toBe(false)
+    expect(result.primary?.imageSource === 'jsonld' || result.primary?.imageSource === 'article_body').toBe(true)
+  })
+
+  it('uses og:image when the page has no article body images', () => {
+    const result = extractEditorialImages(fixtureOgOnly(), 'https://news.test/og')
+    expect(result.primary?.sourceUrl).toBe(IMAGE_FIXTURE_URLS.OG)
+    expect(result.primary?.imageSource).toBe('og')
+    expect(result.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.RELATED)).toBe(false)
+  })
+
+  it('accepts JSON-LD image arrays with jsonld provenance', () => {
+    const result = extractEditorialImages(fixtureJsonLdArray(), 'https://news.test/ld')
+    expect(result.accepted.map((c) => c.sourceUrl)).toEqual(
+      expect.arrayContaining([IMAGE_FIXTURE_URLS.LD_A, IMAGE_FIXTURE_URLS.LD_B])
+    )
+    expect(result.primary?.imageSource).toBe('jsonld')
+    expect(result.primary?.imageConfidence).toBeGreaterThan(0.8)
+  })
+
+  it('reads lazy-loaded article images and ignores lazy related thumbs', () => {
+    const result = extractEditorialImages(fixtureLazyLoad(), 'https://news.test/lazy')
+    expect(result.primary?.sourceUrl).toBe(IMAGE_FIXTURE_URLS.LAZY)
+    expect(result.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.RELATED)).toBe(false)
+  })
+
+  it('picks srcset/picture hero and rejects carousel-outside-body', () => {
+    const result = extractEditorialImages(fixtureSrcsetPicture(), 'https://news.test/srcset')
+    expect(result.primary?.sourceUrl).toBe(IMAGE_FIXTURE_URLS.SRCSET)
+    expect(result.accepted.some((c) => c.sourceUrl === IMAGE_FIXTURE_URLS.RELATED)).toBe(false)
   })
 
   it('hands off only ACCEPTED unique images with a single primary', () => {

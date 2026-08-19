@@ -5,6 +5,7 @@ import {
   getActiveAlgorithmConfig,
   listRuleProposals,
   reviewRuleProposal,
+  rollbackAlgorithmConfig,
   seedLearningProposals,
 } from '@/services/newsroomOs/proposalService'
 import type { RuleProposal } from '@/types/newsroomOs'
@@ -50,6 +51,15 @@ export async function POST(request: NextRequest) {
     title?: string
     summary?: string
     evidence?: Record<string, unknown>
+  }
+
+  if (body.action === 'rollback') {
+    try {
+      const config = await rollbackAlgorithmConfig(auth.uid)
+      return NextResponse.json({ config })
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : 'Rollback failed' }, { status: 400 })
+    }
   }
 
   if (body.action === 'seed' && (body.kind === 'editorial_rule' || !body.kind)) {

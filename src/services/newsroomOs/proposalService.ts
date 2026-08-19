@@ -151,6 +151,26 @@ export async function reviewRuleProposal(params: {
   return next
 }
 
+export async function rollbackAlgorithmConfig(reviewedByHumanId: string): Promise<FeedAlgorithmWeights> {
+  const active = await getActiveAlgorithmConfig()
+  const snap = await algoConfigs().where('status', '==', 'archived').limit(20).get()
+  const previous = snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<FeedAlgorithmWeights, 'id'>) }))
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0]
+  if (!previous) {
+    throw new Error('Geri alınacak sürüm yok')
+  }
+  if (active.id !== 'default') {
+    await algoConfigs().doc(active.id).set({ status: 'archived' }, { merge: true })
+  }
+  await algoConfigs().doc(previous.id).set({
+    status: 'active',
+    updatedAt: Date.now(),
+    rolledBackBy: reviewedByHumanId,
+  }, { merge: true })
+  return { ...previous, status: 'active' }
+}
+
 /** Seed sample learning proposals so Öğrenme Merkezi is usable end-to-end. */
 export async function seedLearningProposals(proposedByAgentId?: string | null): Promise<{
   created: string[]

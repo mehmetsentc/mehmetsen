@@ -5,6 +5,7 @@ import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
 import { CrawlerPager } from '@/components/admin/crawler/CrawlerPager'
 import { auth } from '@/lib/firebase/auth'
+import { CRAWLER_STATUS_LABELS } from '@/services/crawler/editorial/labels'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -67,7 +68,7 @@ export default function CrawlerHealthPage() {
           {rows.map((r) => (
             <tr key={r.name} className="border-t border-[rgb(var(--color-border))]">
               <td className="px-2 py-1">{r.name}</td>
-              <td className="px-2 py-1">{r.status}</td>
+              <td className="px-2 py-1">{CRAWLER_STATUS_LABELS[r.status] || r.status}</td>
               <td className="px-2 py-1">{r.healthScore}</td>
               <td className="px-2 py-1">{r.lastSuccessfulDiscoveryAt ? new Date(r.lastSuccessfulDiscoveryAt).toLocaleString('tr-TR') : '—'}</td>
               <td className="px-2 py-1">{r.lastSuccessfulExtractionAt ? new Date(r.lastSuccessfulExtractionAt).toLocaleString('tr-TR') : '—'}</td>

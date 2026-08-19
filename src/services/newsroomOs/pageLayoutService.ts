@@ -34,6 +34,7 @@ export function defaultPageLayout(pageKey: string, label: string): PageLayout {
     status: 'draft',
     version: 1,
     blocks: pageKey === 'home' ? HOME_DEFAULT_BLOCKS : [],
+    publishedBlocks: [],
     updatedAt: Date.now(),
     updatedBy: null,
     publishedAt: null,
@@ -71,6 +72,7 @@ export async function savePageLayoutDraft(
     ...current,
     label: patch.label ?? current.label,
     blocks: patch.blocks ?? current.blocks,
+    publishedBlocks: current.publishedBlocks ?? [],
     status: 'draft',
     version: current.version + 1,
     updatedAt: Date.now(),
@@ -85,6 +87,19 @@ export async function savePageLayoutDraft(
   return next
 }
 
+export async function previewPageLayout(pageKey: string, updatedBy?: string | null): Promise<PageLayout> {
+  const current = await getPageLayout(pageKey)
+  const next: PageLayout = {
+    ...current,
+    status: 'preview',
+    updatedAt: Date.now(),
+    updatedBy: updatedBy ?? current.updatedBy ?? null,
+  }
+  await layoutsCol().doc(pageKey).set(next, { merge: true })
+  await versionsCol().add({ ...next, layoutId: pageKey, snapshotAt: Date.now(), event: 'preview' })
+  return next
+}
+
 export async function publishPageLayout(
   pageKey: string,
   updatedBy?: string | null
@@ -93,6 +108,7 @@ export async function publishPageLayout(
   const next: PageLayout = {
     ...current,
     status: 'published' satisfies PageLayoutStatus,
+    publishedBlocks: current.blocks,
     publishedAt: Date.now(),
     updatedAt: Date.now(),
     updatedBy: updatedBy ?? current.updatedBy ?? null,
@@ -104,6 +120,24 @@ export async function publishPageLayout(
     snapshotAt: Date.now(),
     event: 'publish',
   })
+  return next
+}
+
+export async function rollbackPageLayout(pageKey: string, updatedBy?: string | null): Promise<PageLayout> {
+  const versions = await listPageLayoutVersions(pageKey, 20)
+  const previous = versions.find((v) => (v as { event?: string }).event === 'publish') || versions[1]
+  const current = await getPageLayout(pageKey)
+  const blocks = ((previous as { blocks?: PageLayoutBlock[] } | undefined)?.blocks ?? current.publishedBlocks ?? current.blocks) as PageLayoutBlock[]
+  const next: PageLayout = {
+    ...current,
+    blocks,
+    status: 'draft',
+    version: current.version + 1,
+    updatedAt: Date.now(),
+    updatedBy: updatedBy ?? current.updatedBy ?? null,
+  }
+  await layoutsCol().doc(pageKey).set(next, { merge: true })
+  await versionsCol().add({ ...next, layoutId: pageKey, snapshotAt: Date.now(), event: 'rollback' })
   return next
 }
 

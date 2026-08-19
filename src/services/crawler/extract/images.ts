@@ -3,8 +3,11 @@ import type { Element } from 'domhandler'
 import { extractJsonLdArticle } from './jsonld'
 import { extractOpenGraph } from './opengraph'
 import {
+  GALLERY_FIGURE_THRESHOLD,
   MAX_BANNER_ASPECT,
+  MAX_DEFAULT_EXTRAS,
   MAX_EDITORIAL_IMAGES_PER_ARTICLE,
+  MAX_GALLERY_EXTRAS,
   MIN_GALLERY_HEIGHT,
   MIN_GALLERY_WIDTH,
   cdnQualityRank,
@@ -12,6 +15,14 @@ import {
   normalizeImageUrl,
   urlContentHash,
 } from './imageNormalize'
+import {
+  adapterForHost,
+  extraImageAllowed,
+  imageConfidenceFor,
+  imageSourceFromMethod,
+  type ImageSource,
+  type SourceImageAdapter,
+} from './imageProvenance'
 
 export type ImageDiscoveryMethod =
   | 'jsonld'
@@ -33,6 +44,8 @@ export interface ImageCandidate {
   credit: string | null
   mimeType: string | null
   discoveryMethod: ImageDiscoveryMethod
+  imageSource: ImageSource
+  imageConfidence: number
   inArticle: boolean
   inFigure: boolean
   score: number
@@ -56,10 +69,10 @@ export interface EditorialImageResult {
 }
 
 const ACCEPT_ANCESTOR =
-  'article, main, figure, picture, [itemprop="articleBody"], .content-body, .article-body, .entry-content, .post-content, .news-content, .story-body, .haber-icerik'
+  'article, main, [itemprop="articleBody"], .content-body, .article-body, .entry-content, .post-content, .news-content, .story-body, .haber-icerik, .article-container, [itemprop="article"]'
 
 const REJECT_ANCESTOR =
-  'header, footer, nav, aside, [role="banner"], [role="navigation"], [role="complementary"], [role="ads"], .ad, .ads, .advert, .advertisement, .ad-slot, .ad-container, .banner, .promo, .promotion, .sponsor, .sponsored, .related, .related-news, .newsletter, .widget, .paywall, .popup, .modal, [class*="reklam"], [id*="reklam"], [class*="kampanya"], [id*="kampanya"], [class*="tanitim"], [class*="abonelik"], [class*="bulten"], [class*="newsletter"]'
+  'header, footer, nav, aside, [role="banner"], [role="navigation"], [role="complementary"], [role="ads"], .ad, .ads, .advert, .advertisement, .ad-slot, .ad-container, .banner, .promo, .promotion, .sponsor, .sponsored, .related, .related-news, .related-stories, .recommended, .popular, .most-read, .mostread, .sidebar, .widget, .newsletter, .paywall, .popup, .modal, .author, .byline, .avatar, .logo, [class*="reklam"], [id*="reklam"], [class*="kampanya"], [id*="kampanya"], [class*="tanitim"], [class*="abonelik"], [class*="bulten"], [class*="newsletter"], [class*="sidebar"], [class*="related"], [class*="recommend"], [class*="popular"], [class*="most-read"], [class*="mostread"], [class*="son-dakika"], [class*="diger-haber"], [class*="carousel"]:not(article *), [class*="swiper"]:not(article *), [class*="slider"]:not(article *)'
 
 const AD_NETWORK =
   /doubleclick|googlesyndication|googleadservices|pagead|adservice|adnxs|adform|taboola|outbrain|criteo|mgid|revcontent|adsystem|adsrvr|advertising\.com|promo-banner|kampanya-banner/i
@@ -175,7 +188,9 @@ export function classifyImageRejection(input: {
     return 'logo_or_favicon'
   }
   if (AVATAR_PATH.test(url) || /\b(avatar|author|byline)\b/i.test(input.classOrId)) return 'avatar'
-  if (mimeFromUrl(input.url) === 'image/svg+xml' && logoFile) return 'logo_or_favicon'
+  if (mimeFromUrl(input.url) === 'image/svg+xml' && (logoFile || /\b(logo|icon|sprite)\b/i.test(text) || logoSmall)) {
+    return 'logo_or_favicon'
+  }
 
   const adScore = signals.filter((s) => s === 'ad_url' || s === 'ad_attr' || s === 'product_ad' || s === 'tr_promo').length
   const bannerScore = signals.filter((s) => s === 'wide_banner' || s === 'chrome' || s === 'nested_chrome').length
@@ -195,8 +210,13 @@ export function classifyImageRejection(input: {
   ) {
     return 'tiny_thumbnail'
   }
-  if (input.inRejectChrome && !input.inAcceptBody && input.method !== 'jsonld' && input.method !== 'og') {
-    return 'navigation_chrome'
+  const metaMethod =
+    input.method === 'jsonld' ||
+    input.method === 'jsonld_object' ||
+    input.method === 'og' ||
+    input.method === 'twitter'
+  if (input.inRejectChrome && !metaMethod) {
+    return 'unrelated_chrome'
   }
   return null
 }
@@ -236,14 +256,23 @@ function pushCandidate(
   stats: { duplicates: number },
   partial: Omit<
     ImageCandidate,
-    'score' | 'status' | 'rejectionReason' | 'normalizedUrl' | 'qualityScore' | 'contentHash' | 'perceptualHash'
-  > & { normalizedUrl?: string | null },
+    | 'score'
+    | 'status'
+    | 'rejectionReason'
+    | 'normalizedUrl'
+    | 'qualityScore'
+    | 'contentHash'
+    | 'perceptualHash'
+    | 'imageSource'
+    | 'imageConfidence'
+  > & { normalizedUrl?: string | null; imageSource?: ImageSource; imageConfidence?: number },
   reject: string | null
 ): void {
   const exact = normalizeImageUrl(partial.sourceUrl) || partial.normalizedUrl
   if (!exact) return
   const variantKey = imageVariantKey(exact)
   const existing = seenVariants.get(variantKey)
+  const imageSource = partial.imageSource || imageSourceFromMethod(partial.discoveryMethod)
   if (existing) {
     stats.duplicates += 1
     const newRank = cdnQualityRank(partial.sourceUrl, partial.width, partial.height)
@@ -257,10 +286,12 @@ function pushCandidate(
       existing.credit = existing.credit || partial.credit
       existing.inArticle = existing.inArticle || partial.inArticle
       existing.inFigure = existing.inFigure || partial.inFigure
+      existing.imageSource = existing.imageSource || imageSource
     }
     if (!existing.rejectionReason && reject) {
       existing.status = 'REJECTED'
       existing.rejectionReason = reject
+      existing.imageConfidence = 0
     }
     return
   }
@@ -268,6 +299,8 @@ function pushCandidate(
     ...partial,
     sourceUrl: partial.sourceUrl,
     normalizedUrl: variantKey,
+    imageSource,
+    imageConfidence: 0,
     score: 0,
     qualityScore: 0,
     contentHash: urlContentHash(variantKey),
@@ -275,6 +308,14 @@ function pushCandidate(
     status: reject ? 'REJECTED' : 'ACCEPTED',
     rejectionReason: reject,
   }
+  row.imageConfidence = imageConfidenceFor({
+    source: row.imageSource,
+    inArticle: row.inArticle,
+    inFigure: row.inFigure,
+    rejected: row.status === 'REJECTED',
+    width: row.width,
+    height: row.height,
+  })
   seenVariants.set(variantKey, row)
   list.push(row)
 }
@@ -383,10 +424,17 @@ function walkImages(
   if (rec['@graph']) walkImages(rec['@graph'], pageUrl, acc)
 }
 
-function ancestryFlags($: cheerio.CheerioAPI, el: Element): { inRejectChrome: boolean; inAcceptBody: boolean } {
+function ancestryFlags(
+  $: cheerio.CheerioAPI,
+  el: Element,
+  extraReject?: string | null,
+  extraAccept?: string | null
+): { inRejectChrome: boolean; inAcceptBody: boolean } {
   const node = $(el)
-  const rejectHit = node.closest(REJECT_ANCESTOR)
-  const acceptHit = node.closest(ACCEPT_ANCESTOR)
+  const rejectSel = extraReject ? `${REJECT_ANCESTOR}, ${extraReject}` : REJECT_ANCESTOR
+  const acceptSel = extraAccept ? `${ACCEPT_ANCESTOR}, ${extraAccept}` : ACCEPT_ANCESTOR
+  const rejectHit = node.closest(rejectSel)
+  const acceptHit = node.closest(acceptSel)
   const inAcceptBody = acceptHit.length > 0
   if (!rejectHit.length) return { inRejectChrome: false, inAcceptBody }
   if (!inAcceptBody) return { inRejectChrome: true, inAcceptBody: false }
@@ -418,19 +466,47 @@ function finalize(collected: ImageCandidate[], pageUrl: string, duplicateCount: 
     }
     c.score = scoreCandidate(c, pageUrl, largestWidth)
     c.qualityScore = Math.max(0, c.score)
+    c.imageSource = c.imageSource || imageSourceFromMethod(c.discoveryMethod)
+    c.imageConfidence = imageConfidenceFor({
+      source: c.imageSource,
+      inArticle: c.inArticle,
+      inFigure: c.inFigure,
+      rejected: c.status === 'REJECTED',
+      width: c.width,
+      height: c.height,
+    })
   }
 
   const acceptedAll = collected
     .filter((c) => c.status === 'ACCEPTED')
     .sort((a, b) => b.score - a.score)
-  const overflow = acceptedAll.slice(MAX_EDITORIAL_IMAGES_PER_ARTICLE)
-  for (const extra of overflow) {
-    extra.status = 'REJECTED'
-    extra.rejectionReason = extra.rejectionReason || 'over_max_editorial'
-    extra.score = scoreCandidate(extra, pageUrl, largestWidth)
-    extra.qualityScore = Math.max(0, extra.score)
+  const figureCount = acceptedAll.filter((c) => c.inFigure && extraImageAllowed(c.imageSource, c.inArticle)).length
+  const extrasCap = figureCount >= GALLERY_FIGURE_THRESHOLD ? MAX_GALLERY_EXTRAS : MAX_DEFAULT_EXTRAS
+  const maxTotal = Math.max(MAX_EDITORIAL_IMAGES_PER_ARTICLE, 1 + extrasCap)
+  const keep: ImageCandidate[] = []
+  for (const c of acceptedAll) {
+    if (!keep.length) {
+      keep.push(c)
+      continue
+    }
+    if (!extraImageAllowed(c.imageSource, c.inArticle)) {
+      c.status = 'REJECTED'
+      c.rejectionReason = c.rejectionReason || 'not_article_body'
+      c.score = scoreCandidate(c, pageUrl, largestWidth)
+      c.qualityScore = Math.max(0, c.score)
+      c.imageConfidence = 0
+      continue
+    }
+    if (keep.length >= maxTotal) {
+      c.status = 'REJECTED'
+      c.rejectionReason = c.rejectionReason || 'over_max_editorial'
+      c.score = scoreCandidate(c, pageUrl, largestWidth)
+      c.qualityScore = Math.max(0, c.score)
+      continue
+    }
+    keep.push(c)
   }
-  const accepted = acceptedAll.slice(0, MAX_EDITORIAL_IMAGES_PER_ARTICLE)
+  const accepted = keep
   const rejected = collected.filter((c) => c.status === 'REJECTED')
   const primary = accepted.find((c) => c.status === 'ACCEPTED') || null
   return {
@@ -446,12 +522,17 @@ function finalize(collected: ImageCandidate[], pageUrl: string, duplicateCount: 
   }
 }
 
-export function extractEditorialImages(html: string, pageUrl: string): EditorialImageResult {
+export function extractEditorialImages(
+  html: string,
+  pageUrl: string,
+  opts?: { adapter?: SourceImageAdapter | null }
+): EditorialImageResult {
   const $ = cheerio.load(html)
   const seenVariants = new Map<string, ImageCandidate>()
   const collected: ImageCandidate[] = []
   const stats = { duplicates: 0 }
   const og = extractOpenGraph(html, pageUrl)
+  const adapter = opts?.adapter === undefined ? adapterForHost(pageUrl) : opts.adapter
 
   for (const img of collectJsonLdImages(html, pageUrl)) {
     const reject = classifyImageRejection({
@@ -554,9 +635,20 @@ export function extractEditorialImages(html: string, pageUrl: string): Editorial
 
   const visitImg = (el: Element, method: ImageDiscoveryMethod) => {
     const node = $(el)
-    const srcset = node.attr('srcset') || node.parent('picture').find('source').attr('srcset')
+    const srcset =
+      node.attr('srcset') ||
+      node.attr('data-srcset') ||
+      node.parent('picture').find('source').attr('srcset') ||
+      node.parent('picture').find('source').attr('data-srcset')
     const picked = srcset ? pickBestSrcsetUrl(srcset, pageUrl) : null
-    const rawSrc = node.attr('src') || node.attr('data-src') || node.attr('data-original') || picked?.url
+    const rawSrc =
+      picked?.url ||
+      node.attr('src') ||
+      node.attr('data-src') ||
+      node.attr('data-original') ||
+      node.attr('data-lazy-src') ||
+      node.attr('data-lazy') ||
+      node.attr('data-bg')
     if (!rawSrc) return
     const url = normalizeImageUrl(rawSrc, pageUrl)
     if (!url) return
@@ -569,7 +661,12 @@ export function extractEditorialImages(html: string, pageUrl: string): Editorial
     const credit =
       figure.find('[class*="credit"], [class*="copyright"], small').first().text().trim() || null
     const classOrId = `${node.attr('class') || ''} ${node.attr('id') || ''} ${figure.attr('class') || ''} ${node.parents().slice(0, 6).map((_, p) => `${$(p).attr('class') || ''} ${$(p).attr('id') || ''}`).get().join(' ')}`
-    const { inRejectChrome, inAcceptBody } = ancestryFlags($, el)
+    const { inRejectChrome, inAcceptBody } = ancestryFlags(
+      $,
+      el,
+      adapter?.extraRejectSelector,
+      adapter?.extraAcceptSelector
+    )
     const inArticle = inAcceptBody
     const inFigure = figure.length > 0
     const actualMethod = picked && picked.url === url ? 'srcset' : inFigure ? 'figure' : method
@@ -603,14 +700,26 @@ export function extractEditorialImages(html: string, pageUrl: string): Editorial
     )
   }
 
-  $('img').each((_i, el) => visitImg(el, 'article_dom'))
-  $('picture source[srcset]').each((_i, el) => {
-    const picked = pickBestSrcsetUrl($(el).attr('srcset') || '', pageUrl)
+  const bodyScope = adapter?.extraAcceptSelector
+    ? `${ACCEPT_ANCESTOR}, ${adapter.extraAcceptSelector}`
+    : ACCEPT_ANCESTOR
+  $(bodyScope)
+    .find('img')
+    .each((_i, el) => visitImg(el, 'article_dom'))
+  $(bodyScope)
+    .find('picture source[srcset], picture source[data-srcset]')
+    .each((_i, el) => {
+    const picked = pickBestSrcsetUrl($(el).attr('srcset') || $(el).attr('data-srcset') || '', pageUrl)
     if (!picked) return
     const img = $(el).parent().find('img')[0]
     if (img) visitImg(img, 'srcset')
     else {
-      const { inRejectChrome, inAcceptBody } = ancestryFlags($, el)
+      const { inRejectChrome, inAcceptBody } = ancestryFlags(
+        $,
+        el,
+        adapter?.extraRejectSelector,
+        adapter?.extraAcceptSelector
+      )
       pushCandidate(
         collected,
         seenVariants,
@@ -690,9 +799,12 @@ export function selectEditorialHandoff(result: EditorialImageResult): {
 } {
   const accepted = result.accepted.filter((c) => c.status === 'ACCEPTED')
   const primary = result.primary && result.primary.status === 'ACCEPTED' ? result.primary : accepted[0] || null
+  const figureCount = accepted.filter((c) => c.inFigure && extraImageAllowed(c.imageSource, c.inArticle)).length
+  const extrasCap = figureCount >= GALLERY_FIGURE_THRESHOLD ? MAX_GALLERY_EXTRAS : MAX_DEFAULT_EXTRAS
   const extras = accepted
     .filter((c) => !primary || c.normalizedUrl !== primary.normalizedUrl)
-    .slice(0, MAX_EDITORIAL_IMAGES_PER_ARTICLE - (primary ? 1 : 0))
+    .filter((c) => extraImageAllowed(c.imageSource, c.inArticle))
+    .slice(0, extrasCap)
     .map((c) => c.sourceUrl)
   return { primaryUrl: primary?.sourceUrl ?? null, extraUrls: extras }
 }

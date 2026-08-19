@@ -29,6 +29,8 @@ export async function persistArticleImages(
       isPrimary: Boolean(result.primary && result.primary.normalizedUrl === candidate.normalizedUrl && candidate.status === 'ACCEPTED'),
       status: candidate.status,
       rejectionReason: candidate.rejectionReason,
+      imageSource: candidate.imageSource,
+      imageConfidence: candidate.imageConfidence,
     })
   }
   const existing = await store.listArticleMedia(articleId)

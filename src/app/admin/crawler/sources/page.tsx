@@ -6,6 +6,7 @@ import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
 import { CrawlerPager } from '@/components/admin/crawler/CrawlerPager'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
+import { CRAWLER_STATUS_LABELS } from '@/services/crawler/editorial/labels'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -196,10 +197,10 @@ export default function CrawlerSourcesPage() {
         <input className="rounded border px-2 py-1" placeholder="Ara" value={search} onChange={(e) => setSearch(e.target.value)} />
         <select className="rounded border px-2 py-1" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Durum</option>
-          <option value="ACTIVE">ACTIVE</option>
-          <option value="PAUSED">PAUSED</option>
-          <option value="DEGRADED">DEGRADED</option>
-          <option value="DISABLED">DISABLED</option>
+          <option value="ACTIVE">Aktif</option>
+          <option value="PAUSED">Duraklatıldı</option>
+          <option value="DEGRADED">Zayıf</option>
+          <option value="DISABLED">Kapalı</option>
         </select>
         <input className="rounded border px-2 py-1" placeholder="Ülke" value={country} onChange={(e) => setCountry(e.target.value)} />
         <input className="rounded border px-2 py-1" placeholder="Kapsam" value={scope} onChange={(e) => setScope(e.target.value)} />
@@ -285,7 +286,7 @@ export default function CrawlerSourcesPage() {
                       source.status === 'ACTIVE' ? 'bg-emerald-600 text-white' : 'bg-slate-500 text-white'
                     )}
                   >
-                    {source.status === 'ACTIVE' ? 'Aktif' : source.status}
+                    {CRAWLER_STATUS_LABELS[source.status] || source.status}
                   </button>
                 </td>
               </tr>

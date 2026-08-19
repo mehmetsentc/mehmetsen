@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
-import { clampPageSize, parseEditorialStatus, parseHasImage } from '@/services/crawler/editorial/query'
+import { clampPageSize, parseEditorialStatus, parseHasImage, parseQueueTab, parseSortColumn, parseSortOrder } from '@/services/crawler/editorial/query'
 import { isBulkError, runArticleBulk, type ArticleBulkOp } from '@/services/crawler/editorial/bulk'
 import type { CrawlerQualityStatus } from '@/services/crawler/types'
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
@@ -21,10 +21,14 @@ function parseDate(value: unknown): Date | null {
 function filterFrom(body: Record<string, unknown>): RawArticleListQuery {
   const quality = body.qualityStatus as CrawlerQualityStatus | null
   const sort = body.sort as RawArticleSort | null
+  const sortBy = parseSortColumn(typeof body.sort === 'string' ? body.sort : null)
   return {
     page: 1,
     pageSize: clampPageSize(Number(body.pageSize || '25')),
-    sort: sort === 'oldest' || sort === 'published' ? sort : 'newest',
+    sort: sortBy ? 'newest' : sort === 'oldest' || sort === 'published' ? sort : 'newest',
+    sortBy,
+    order: parseSortOrder(typeof body.order === 'string' ? body.order : null),
+    queue: parseQueueTab(typeof body.queue === 'string' ? body.queue : null),
     sourceId: typeof body.source === 'string' ? body.source : typeof body.sourceId === 'string' ? body.sourceId : null,
     country: typeof body.country === 'string' ? body.country : null,
     city: typeof body.city === 'string' ? body.city : null,

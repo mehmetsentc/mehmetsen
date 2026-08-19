@@ -255,9 +255,11 @@ export default function AnalyticsPage() {
 
         {!loading && data && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            Canlı analitik toplama (sayfa yolu, cihaz, IP/geo, günlük özetler) maliyet nedeniyle
-            duraklatıldı (<code className="text-[11px]">/api/analytics/track</code> → cost-pause).
-            Bu yüzden Bugün / son günler boş görünebilir. Haber başına{' '}
+            Canlı analitik toplama Firebase per-pageview yazımı olarak duraklatıldı
+            (<code className="text-[11px]">/api/analytics/track</code> → cost-pause).
+            Yeni mimari Neon buffer → saatlik/günlük aggregate; CMS yalnız aggregate okur.
+            Production ingest kapalı (<code className="text-[11px]">ANALYTICS_NEON_INGEST_ENABLED=false</code>).
+            Haber başına{' '}
             <code className="text-[11px]">viewsCount</code> ise hafif sayaç ile güncellenir
             (<code className="text-[11px]">/api/news/view</code>, oturum başına en fazla 1 yazma) —
             Admin → Haberler listesinde görünür; canlı trafik paneli değildir.

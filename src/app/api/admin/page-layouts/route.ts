@@ -4,7 +4,9 @@ import {
   getPageLayout,
   listPageLayoutVersions,
   listPageLayouts,
+  previewPageLayout,
   publishPageLayout,
+  rollbackPageLayout,
   savePageLayoutDraft,
 } from '@/services/newsroomOs/pageLayoutService'
 import type { PageLayoutBlock } from '@/types/newsroomOs'
@@ -33,7 +35,7 @@ export async function PUT(request: NextRequest) {
 
   const body = (await request.json()) as {
     pageKey?: string
-    action?: 'save' | 'publish'
+    action?: 'save' | 'publish' | 'preview' | 'rollback'
     label?: string
     blocks?: PageLayoutBlock[]
   }
@@ -41,6 +43,14 @@ export async function PUT(request: NextRequest) {
 
   if (body.action === 'publish') {
     const layout = await publishPageLayout(body.pageKey, auth.uid)
+    return NextResponse.json({ layout })
+  }
+  if (body.action === 'preview') {
+    const layout = await previewPageLayout(body.pageKey, auth.uid)
+    return NextResponse.json({ layout })
+  }
+  if (body.action === 'rollback') {
+    const layout = await rollbackPageLayout(body.pageKey, auth.uid)
     return NextResponse.json({ layout })
   }
 

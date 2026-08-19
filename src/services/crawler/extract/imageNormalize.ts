@@ -7,7 +7,12 @@ export const MIN_GALLERY_WIDTH = 250
 export const MIN_GALLERY_HEIGHT = 150
 /** Strong banner signal when combined with another cue, or when height is also tiny. */
 export const MAX_BANNER_ASPECT = 4
-export const MAX_EDITORIAL_IMAGES_PER_ARTICLE = 12
+/** Default extras besides the primary. Galleries may exceed this cap. */
+export const MAX_DEFAULT_EXTRAS = 8
+export const MAX_GALLERY_EXTRAS = 16
+export const GALLERY_FIGURE_THRESHOLD = 4
+/** @deprecated use MAX_DEFAULT_EXTRAS + 1; kept as the non-gallery accepted cap. */
+export const MAX_EDITORIAL_IMAGES_PER_ARTICLE = MAX_DEFAULT_EXTRAS + 1
 
 const CDN_SIZE_PARAMS = new Set([
   'w',

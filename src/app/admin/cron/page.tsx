@@ -8,6 +8,7 @@ import {
   Search, List, ChevronLeft, ChevronRight, Trash2, Zap, Pencil, Copy,
 } from 'lucide-react'
 import { QueueItemEditor } from '@/components/admin/QueueItemEditor'
+import { CrawlerCronPanel } from '@/components/admin/crawler/CrawlerCronPanel'
 import { cn } from '@/lib/utils'
 import { parseApiResponse } from '@/lib/parseApiResponse'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -621,6 +622,8 @@ export default function CronMonitorPage() {
             </button>
           ))}
         </div>
+
+        <CrawlerCronPanel />
 
         {tab === 'queue' && (
           <div className="space-y-4">

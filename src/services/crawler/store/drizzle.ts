@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, lte, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
   aiProcessingCache,
@@ -22,7 +22,7 @@ import type {
   NewsSourceRecord,
   RawArticleRecord,
 } from '../types'
-import { clampPage, clampPageSize, type ClusterListQuery } from '../editorial/query'
+import { ACTIVE_EDITORIAL_STATUSES, clampPage, clampPageSize, queueCountsFromStatuses, type ClusterListQuery } from '../editorial/query'
 import { crawlerEditorialStaleHours, emptyClusterFunnel } from '../editorial/controlPlane'
 import type {
   CrawlerStore,
@@ -190,6 +190,8 @@ function mapMedia(row: typeof crawlerArticleMedia.$inferSelect): ArticleMediaRec
     qualityScore: row.qualityScore ?? row.score,
     contentHash: row.contentHash ?? null,
     perceptualHash: row.perceptualHash ?? null,
+    imageSource: row.imageSource ?? null,
+    imageConfidence: row.imageConfidence ?? null,
     createdAt: row.createdAt,
   }
 }
@@ -937,6 +939,8 @@ export class DrizzleCrawlerStore implements CrawlerStore {
         qualityScore: input.qualityScore,
         contentHash: input.contentHash,
         perceptualHash: input.perceptualHash,
+        imageSource: input.imageSource ?? null,
+        imageConfidence: input.imageConfidence ?? null,
       })
       .onConflictDoUpdate({
         target: [crawlerArticleMedia.articleId, crawlerArticleMedia.normalizedUrl],
@@ -956,6 +960,8 @@ export class DrizzleCrawlerStore implements CrawlerStore {
           qualityScore: input.qualityScore,
           contentHash: input.contentHash,
           perceptualHash: input.perceptualHash,
+          imageSource: input.imageSource ?? null,
+          imageConfidence: input.imageConfidence ?? null,
         },
       })
   }
@@ -991,12 +997,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
   async listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult> {
     const pageSize = clampPageSize(query.pageSize)
     const filters = this.rawArticleFilters(query)
-    const order =
-      query.sort === 'oldest'
-        ? sql`${rawArticles.fetchedAt} asc nulls last`
-        : query.sort === 'published'
-          ? sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) desc nulls last`
-          : sql`${rawArticles.fetchedAt} desc nulls last`
+    const order = this.rawArticleOrder(query)
 
     const countRows = await this.db()
       .select({ n: sql<number>`count(*)::int` })
@@ -1079,6 +1080,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
         summary,
         sources,
         groups,
+        queueCounts: queueCountsFromStatuses(await this.countEditorialStatuses()),
       }
     }
 
@@ -1093,7 +1095,42 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .limit(pageSize)
       .offset((page - 1) * pageSize)
     const articles: RawArticleListRow[] = rows.map((r) => ({ ...mapRaw(r.article), sourceName: r.sourceName }))
-    return { articles, total, page, pageSize, totalPages, summary, sources }
+    const queueCounts = queueCountsFromStatuses(await this.countEditorialStatuses())
+    return { articles, total, page, pageSize, totalPages, summary, sources, queueCounts }
+  }
+
+  private rawArticleOrder(query: RawArticleListQuery) {
+    const asc = query.order === 'asc'
+    const column = query.sortBy
+    if (column === 'wordCount') {
+      return asc ? sql`${rawArticles.wordCount} asc nulls last` : sql`${rawArticles.wordCount} desc nulls last`
+    }
+    if (column === 'extractionConfidence') {
+      return asc
+        ? sql`${rawArticles.extractionConfidence} asc nulls last`
+        : sql`${rawArticles.extractionConfidence} desc nulls last`
+    }
+    if (column === 'source') {
+      return asc ? sql`${newsSources.name} asc nulls last` : sql`${newsSources.name} desc nulls last`
+    }
+    if (column === 'editorial') {
+      return asc
+        ? sql`${rawArticles.editorialStatus} asc nulls last`
+        : sql`${rawArticles.editorialStatus} desc nulls last`
+    }
+    if (column === 'status') {
+      const rank = sql`(case when ${rawArticles.isExactDuplicate} = 1 then 2 when ${rawArticles.qualityStatus} = 'FAILED' then 3 when ${rawArticles.qualityStatus} = 'LOW_CONFIDENCE' then 1 else 0 end)`
+      return asc ? sql`${rank} asc, ${rawArticles.fetchedAt} desc` : sql`${rank} desc, ${rawArticles.fetchedAt} desc`
+    }
+    if (column === 'publishedAt' || query.sort === 'published') {
+      return asc
+        ? sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) asc nulls last`
+        : sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) desc nulls last`
+    }
+    if (query.sort === 'oldest' || (column === 'fetchedAt' && asc)) {
+      return sql`${rawArticles.fetchedAt} asc nulls last`
+    }
+    return sql`${rawArticles.fetchedAt} desc nulls last`
   }
 
   private rawArticleFilters(query: RawArticleListQuery) {
@@ -1103,7 +1140,14 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (query.city) parts.push(ilike(rawArticles.city, query.city))
     if (query.qualityStatus) parts.push(eq(rawArticles.qualityStatus, query.qualityStatus))
     if (query.editorialStatus) parts.push(eq(rawArticles.editorialStatus, query.editorialStatus))
-    else parts.push(sql`${rawArticles.editorialStatus} <> 'DELETED'`)
+    else {
+      const queue = query.queue || 'active'
+      if (queue === 'published') parts.push(eq(rawArticles.editorialStatus, 'PUBLISHED'))
+      else if (queue === 'rejected') parts.push(eq(rawArticles.editorialStatus, 'REJECTED'))
+      else if (queue === 'archived') parts.push(eq(rawArticles.editorialStatus, 'ARCHIVED'))
+      else if (queue === 'all') parts.push(sql`${rawArticles.editorialStatus} <> 'DELETED'`)
+      else parts.push(inArray(rawArticles.editorialStatus, ACTIVE_EDITORIAL_STATUSES))
+    }
     if (query.hasImage === true) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') <> ''`)
     if (query.hasImage === false) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') = ''`)
     if (query.status === 'duplicate') parts.push(eq(rawArticles.isExactDuplicate, 1))

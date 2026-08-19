@@ -361,6 +361,8 @@ export const crawlerArticleMedia = pgTable(
     qualityScore: real('quality_score'),
     contentHash: varchar('content_hash', { length: 64 }),
     perceptualHash: varchar('perceptual_hash', { length: 32 }),
+    imageSource: varchar('image_source', { length: 24 }),
+    imageConfidence: real('image_confidence'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
@@ -586,5 +588,28 @@ export const crawlerEditorialAudit = pgTable(
     index('crawler_editorial_audit_created_idx').on(t.createdAt),
     index('crawler_editorial_audit_actor_idx').on(t.actorId),
     index('crawler_editorial_audit_entity_idx').on(t.entityType, t.entityId),
+  ]
+)
+
+/** Phase 4A.3 — cheap crawler job run summary (not high-frequency polling). */
+export const crawlerJobRuns = pgTable(
+  'crawler_job_runs',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    jobName: varchar('job_name', { length: 80 }).notNull(),
+    status: varchar('status', { length: 24 }).notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    durationMs: integer('duration_ms'),
+    processed: integer('processed').default(0).notNull(),
+    success: integer('success').default(0).notNull(),
+    skipped: integer('skipped').default(0).notNull(),
+    failed: integer('failed').default(0).notNull(),
+    trigger: varchar('trigger', { length: 24 }).default('schedule').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('crawler_job_runs_started_idx').on(t.startedAt),
+    index('crawler_job_runs_job_idx').on(t.jobName, t.startedAt),
   ]
 )

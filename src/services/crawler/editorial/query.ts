@@ -5,10 +5,77 @@ import type {
   RawArticleListQuery,
   RawArticleListResult,
   RawArticleListRow,
+  RawArticleQueueCounts,
   RawArticleSourceFacet,
 } from '../store/types'
 
 export const RAW_ARTICLE_PAGE_SIZES = [25, 50, 100] as const
+
+export const ACTIVE_EDITORIAL_STATUSES: CrawlerEditorialStatus[] = [
+  'NEW',
+  'IN_REVIEW',
+  'AI_CANDIDATE',
+  'DRAFT',
+  'EDITING',
+  'SKIPPED',
+]
+
+export type RawArticleQueueTab = 'active' | 'published' | 'rejected' | 'archived' | 'all'
+
+export type RawArticleSortColumn =
+  | 'fetchedAt'
+  | 'publishedAt'
+  | 'wordCount'
+  | 'extractionConfidence'
+  | 'source'
+  | 'status'
+  | 'editorial'
+
+export type SortOrder = 'asc' | 'desc'
+
+export function parseQueueTab(value: string | null): RawArticleQueueTab {
+  if (value === 'published' || value === 'rejected' || value === 'archived' || value === 'all') return value
+  return 'active'
+}
+
+export function parseSortColumn(value: string | null): RawArticleSortColumn | null {
+  if (
+    value === 'fetchedAt' ||
+    value === 'publishedAt' ||
+    value === 'wordCount' ||
+    value === 'extractionConfidence' ||
+    value === 'source' ||
+    value === 'status' ||
+    value === 'editorial'
+  ) {
+    return value
+  }
+  return null
+}
+
+export function parseSortOrder(value: string | null): SortOrder {
+  return value === 'asc' ? 'asc' : 'desc'
+}
+
+export function queueCountsFromStatuses(counts: Record<string, number>): RawArticleQueueCounts {
+  const active = ACTIVE_EDITORIAL_STATUSES.reduce((sum, key) => sum + (counts[key] || 0), 0)
+  return {
+    active,
+    published: counts.PUBLISHED || 0,
+    rejected: counts.REJECTED || 0,
+    archived: counts.ARCHIVED || 0,
+  }
+}
+
+export function nextSortState(
+  currentColumn: string | null,
+  currentOrder: string | null,
+  clicked: RawArticleSortColumn
+): { sort: string | null; order: string | null } {
+  if (currentColumn !== clicked) return { sort: clicked, order: 'desc' }
+  if ((currentOrder || 'desc') === 'desc') return { sort: clicked, order: 'asc' }
+  return { sort: null, order: null }
+}
 
 export function clampPageSize(raw: number | undefined): number {
   if (raw === 50 || raw === 100) return raw
@@ -58,7 +125,15 @@ export function matchesRawArticleQuery(article: RawArticleRecord, query: RawArti
   }
   if (query.qualityStatus && article.qualityStatus !== query.qualityStatus) return false
   if (query.editorialStatus && article.editorialStatus !== query.editorialStatus) return false
-  if (!query.editorialStatus && article.editorialStatus === 'DELETED') return false
+  if (!query.editorialStatus) {
+    const queue = query.queue || 'active'
+    if (queue === 'published' && article.editorialStatus !== 'PUBLISHED') return false
+    else if (queue === 'rejected' && article.editorialStatus !== 'REJECTED') return false
+    else if (queue === 'archived' && article.editorialStatus !== 'ARCHIVED') return false
+    else if (queue === 'all' && article.editorialStatus === 'DELETED') return false
+    else if (queue === 'active' && !ACTIVE_EDITORIAL_STATUSES.includes(article.editorialStatus)) return false
+  }
+  if (article.editorialStatus === 'DELETED' && query.queue !== 'all') return false
   if (query.hasImage === true && !articleHasImage(article)) return false
   if (query.hasImage === false && articleHasImage(article)) return false
   if (query.status === 'duplicate' && !article.isExactDuplicate) return false
@@ -73,6 +148,39 @@ export function matchesRawArticleQuery(article: RawArticleRecord, query: RawArti
     if (!title.includes(q)) return false
   }
   return true
+}
+
+function timestamp(value: Date | null | undefined): number {
+  return value?.getTime() || 0
+}
+
+function statusRank(article: { isExactDuplicate: boolean; qualityStatus: string }): number {
+  if (article.isExactDuplicate) return 2
+  if (article.qualityStatus === 'FAILED') return 3
+  if (article.qualityStatus === 'LOW_CONFIDENCE') return 1
+  return 0
+}
+
+export function sortRawArticleRows<T extends RawArticleListRow>(rows: T[], query: RawArticleListQuery): T[] {
+  const copy = [...rows]
+  const column = query.sortBy
+  const dir = query.order === 'asc' ? 1 : -1
+  if (!column) {
+    return sortRawArticles(copy, query.sort) as T[]
+  }
+  copy.sort((a, b) => {
+    let cmp = 0
+    if (column === 'wordCount') cmp = (a.wordCount || 0) - (b.wordCount || 0)
+    else if (column === 'extractionConfidence') cmp = (a.extractionConfidence || 0) - (b.extractionConfidence || 0)
+    else if (column === 'source') cmp = a.sourceName.localeCompare(b.sourceName, 'tr')
+    else if (column === 'editorial') cmp = a.editorialStatus.localeCompare(b.editorialStatus)
+    else if (column === 'status') cmp = statusRank(a) - statusRank(b)
+    else if (column === 'publishedAt') cmp = timestamp(a.publishedAt || a.fetchedAt) - timestamp(b.publishedAt || b.fetchedAt)
+    else cmp = timestamp(a.fetchedAt) - timestamp(b.fetchedAt)
+    if (cmp === 0) cmp = timestamp(a.fetchedAt) - timestamp(b.fetchedAt)
+    return cmp * dir
+  })
+  return copy
 }
 
 export function sortRawArticles(articles: RawArticleRecord[], sort: RawArticleListQuery['sort']): RawArticleRecord[] {
