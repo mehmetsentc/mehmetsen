@@ -115,6 +115,7 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
       failed: await store.countQueue('FAILED_QUEUE'),
     },
     funnel: await clusterFunnel(store, metrics),
+    editorial: await editorialOps(store),
     legacyRssIngest: isLegacyRssDiscoveryEnabled()
       ? resolveLegacyIngestionMode() === 'crawler_ingestion'
         ? 'ADAPTER'
@@ -155,6 +156,30 @@ async function clusterFunnel(store: CrawlerStore, metrics: Record<string, number
     avoidedDuplicateEventJobs,
     mergeRate: raw > 0 ? Number((1 - uniqueEvents / Math.max(raw, 1)).toFixed(4)) : 0,
     aiCostUsd: 0,
+  }
+}
+
+async function editorialOps(store: CrawlerStore) {
+  const articleCounts = await store.countEditorialStatuses()
+  const clusterCounts = await store.countClusterEditorialDecisions()
+  const clusters = await store.listClusters({ limit: 400 })
+  const urlsDiscovered = (await store.getTodayMetrics()).urls_discovered || 0
+  return {
+    approvedForAi: clusterCounts.APPROVED_FOR_AI || 0,
+    editorRejected: (articleCounts.REJECTED || 0) + (clusterCounts.REJECTED || 0),
+    archived: (articleCounts.ARCHIVED || 0) + (clusterCounts.ARCHIVED || 0),
+    inReview: articleCounts.IN_REVIEW || 0,
+    dispatchEnabled: isCrawlerAiDispatchEnabled(),
+    pipeline: {
+      discovered: urlsDiscovered,
+      rawArticles: articleCounts.NEW || 0,
+      clusters: clusters.length,
+      preAi: clusters.filter((c) =>
+        ['WATCHING', 'ELIGIBLE', 'HIGH_PRIORITY'].includes(c.aiEligibility)
+      ).length,
+      editorApproved: clusterCounts.APPROVED_FOR_AI || 0,
+      aiDispatch: 0,
+    },
   }
 }
 

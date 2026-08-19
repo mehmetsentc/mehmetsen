@@ -4,6 +4,7 @@ import {
   aiProcessingCache,
   clusterMemberships,
   crawlerArticleMedia,
+  crawlerEditorialAudit,
   crawlerMetricsDaily,
   discoveredArticleUrls,
   newsClusters,
@@ -15,6 +16,7 @@ import type {
   CrawlerLogicalQueue,
   CrawlerMetricName,
   CrawlerUrlStatus,
+  CrawlerEditorialAuditRecord,
   DiscoveredUrlRecord,
   NewsClusterRecord,
   NewsSourceRecord,
@@ -159,6 +161,10 @@ function mapRaw(row: typeof rawArticles.$inferSelect): RawArticleRecord {
     imageRejectedCount: row.imageRejectedCount,
     editorialStatus: (row.editorialStatus as RawArticleRecord['editorialStatus']) || 'NEW',
     editorialNewsId: row.editorialNewsId,
+    rejectionReason: (row.rejectionReason as RawArticleRecord['rejectionReason']) || null,
+    rejectionNote: row.rejectionNote ?? null,
+    rejectedAt: row.rejectedAt ?? null,
+    rejectedBy: row.rejectedBy ?? null,
   }
 }
 
@@ -219,6 +225,11 @@ function mapCluster(row: typeof newsClusters.$inferSelect): NewsClusterRecord {
     clusterConfidence: row.clusterConfidence ?? 0,
     aiEligibility: (row.aiEligibility as NewsClusterRecord['aiEligibility']) || 'WATCHING',
     aiEligibilityReason: row.aiEligibilityReason ?? null,
+    editorialDecision: (row.editorialDecision as NewsClusterRecord['editorialDecision']) || 'NONE',
+    editorialDecisionReason: row.editorialDecisionReason ?? null,
+    editorialDecisionNote: row.editorialDecisionNote ?? null,
+    editorialDecidedAt: row.editorialDecidedAt ?? null,
+    editorialDecidedBy: row.editorialDecidedBy ?? null,
     importanceBreakdown: (row.importanceBreakdown as Record<string, number> | null) ?? null,
     signatureTokens: Array.isArray(row.signatureTokens) ? row.signatureTokens : [],
     hasMaterialUpdate: row.hasMaterialUpdate === 1,
@@ -608,6 +619,11 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     assign('clusterConfidence', 'clusterConfidence')
     assign('aiEligibility', 'aiEligibility')
     assign('aiEligibilityReason', 'aiEligibilityReason')
+    assign('editorialDecision', 'editorialDecision')
+    assign('editorialDecisionReason', 'editorialDecisionReason')
+    assign('editorialDecisionNote', 'editorialDecisionNote')
+    assign('editorialDecidedAt', 'editorialDecidedAt')
+    assign('editorialDecidedBy', 'editorialDecidedBy')
     assign('importanceBreakdown', 'importanceBreakdown')
     assign('signatureTokens', 'signatureTokens')
     assign('hasMaterialUpdate', 'hasMaterialUpdate', (v) => (v ? 1 : 0))
@@ -625,6 +641,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     countryCode?: string | null
     city?: string | null
     eligibility?: string | null
+    editorialDecision?: string | null
     minSources?: number
     limit?: number
   }): Promise<NewsClusterRecord[]> {
@@ -636,6 +653,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
         if (opts?.countryCode && c.countryCode !== opts.countryCode) return false
         if (opts?.city && (c.city || '').toLowerCase() !== opts.city.toLowerCase()) return false
         if (opts?.eligibility && c.aiEligibility !== opts.eligibility) return false
+        if (opts?.editorialDecision && c.editorialDecision !== opts.editorialDecision) return false
         if (opts?.minSources && c.uniqueSourceCount < opts.minSources) return false
         return true
       })
@@ -736,6 +754,10 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (patch.imageRejectedCount !== undefined) values.imageRejectedCount = patch.imageRejectedCount
     if (patch.editorialStatus !== undefined) values.editorialStatus = patch.editorialStatus
     if (patch.editorialNewsId !== undefined) values.editorialNewsId = patch.editorialNewsId
+    if (patch.rejectionReason !== undefined) values.rejectionReason = patch.rejectionReason
+    if (patch.rejectionNote !== undefined) values.rejectionNote = patch.rejectionNote
+    if (patch.rejectedAt !== undefined) values.rejectedAt = patch.rejectedAt
+    if (patch.rejectedBy !== undefined) values.rejectedBy = patch.rejectedBy
     await this.db().update(rawArticles).set(values).where(eq(rawArticles.id, id))
   }
 
@@ -929,6 +951,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (query.city) parts.push(ilike(rawArticles.city, query.city))
     if (query.qualityStatus) parts.push(eq(rawArticles.qualityStatus, query.qualityStatus))
     if (query.editorialStatus) parts.push(eq(rawArticles.editorialStatus, query.editorialStatus))
+    else parts.push(sql`${rawArticles.editorialStatus} <> 'DELETED'`)
     if (query.hasImage === true) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') <> ''`)
     if (query.hasImage === false) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') = ''`)
     if (query.status === 'duplicate') parts.push(eq(rawArticles.isExactDuplicate, 1))
@@ -944,6 +967,92 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       parts.push(ilike(rawArticles.title, term))
     }
     return parts.length ? and(...parts) : sql`true`
+  }
+
+  async listRawArticleIds(query: RawArticleListQuery, cap: number): Promise<{ ids: string[]; total: number }> {
+    const filters = this.rawArticleFilters(query)
+    const countRows = await this.db()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(rawArticles)
+      .where(filters)
+    const rows = await this.db()
+      .select({ id: rawArticles.id })
+      .from(rawArticles)
+      .where(filters)
+      .orderBy(desc(rawArticles.fetchedAt))
+      .limit(Math.max(0, cap))
+    return { total: countRows[0]?.n ?? 0, ids: rows.map((r) => r.id) }
+  }
+
+  async deleteRawArticle(id: string): Promise<void> {
+    await this.db().delete(rawArticles).where(eq(rawArticles.id, id))
+  }
+
+  async insertEditorialAudit(row: CrawlerEditorialAuditRecord): Promise<void> {
+    await this.db().insert(crawlerEditorialAudit).values({
+      id: row.id,
+      actorId: row.actorId,
+      actorEmail: row.actorEmail,
+      actorRole: row.actorRole,
+      action: row.action,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      affectedCount: row.affectedCount,
+      skippedCount: row.skippedCount,
+      failedCount: row.failedCount,
+      reason: row.reason,
+      note: row.note,
+      createdAt: row.createdAt,
+    })
+  }
+
+  async listEditorialAudits(limit = 50): Promise<CrawlerEditorialAuditRecord[]> {
+    const rows = await this.db()
+      .select()
+      .from(crawlerEditorialAudit)
+      .orderBy(desc(crawlerEditorialAudit.createdAt))
+      .limit(limit)
+    return rows.map((row) => ({
+      id: row.id,
+      actorId: row.actorId,
+      actorEmail: row.actorEmail ?? null,
+      actorRole: row.actorRole,
+      action: row.action,
+      entityType: row.entityType as CrawlerEditorialAuditRecord['entityType'],
+      entityId: row.entityId ?? null,
+      affectedCount: row.affectedCount,
+      skippedCount: row.skippedCount,
+      failedCount: row.failedCount,
+      reason: row.reason ?? null,
+      note: row.note ?? null,
+      createdAt: row.createdAt,
+    }))
+  }
+
+  async countEditorialStatuses(): Promise<Record<string, number>> {
+    const rows = await this.db()
+      .select({
+        status: rawArticles.editorialStatus,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(rawArticles)
+      .groupBy(rawArticles.editorialStatus)
+    const out: Record<string, number> = {}
+    for (const row of rows) out[row.status] = row.n
+    return out
+  }
+
+  async countClusterEditorialDecisions(): Promise<Record<string, number>> {
+    const rows = await this.db()
+      .select({
+        decision: newsClusters.editorialDecision,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(newsClusters)
+      .groupBy(newsClusters.editorialDecision)
+    const out: Record<string, number> = {}
+    for (const row of rows) out[row.decision] = row.n
+    return out
   }
 
   async clusterHasEligible(clusterId: string): Promise<boolean> {

@@ -1,13 +1,45 @@
-import type { CrawlerEditorialStatus } from '../types'
+import type {
+  ClusterEditorialDecision,
+  CrawlerEditorialStatus,
+  CrawlerRejectionReason,
+} from '../types'
 import { classifyCrawlerFailure, type CrawlerFailureClass } from '../failures/classify'
 
 export const EDITORIAL_STATUS_LABELS: Record<CrawlerEditorialStatus, string> = {
   NEW: 'Yeni',
+  IN_REVIEW: 'İncelemede',
+  AI_CANDIDATE: 'AI Adayı',
+  REJECTED: 'Reddedildi',
+  ARCHIVED: 'Arşiv',
+  DELETED: 'Silindi',
   DRAFT: 'Taslak Oluşturuldu',
   EDITING: 'Düzenleniyor',
   PUBLISHED: 'Yayınlandı',
   SKIPPED: 'Atlandı',
 }
+
+export const EDITORIAL_DECISION_LABELS: Record<ClusterEditorialDecision, string> = {
+  NONE: 'Karar yok',
+  APPROVED_FOR_AI: 'AI için onaylandı',
+  WATCHING: 'İzlemeye alındı',
+  REJECTED: 'Reddedildi',
+  ARCHIVED: 'Arşiv',
+}
+
+export const REJECTION_REASON_LABELS: Record<CrawlerRejectionReason, string> = {
+  NO_NEWS_VALUE: 'Haber değeri yok',
+  DUPLICATE: 'Tekrar / mükerrer',
+  AD_SPONSOR: 'Reklam / sponsor içerik',
+  LOW_VALUE_MAGAZINE: 'Magazin / düşük değer',
+  STALE: 'Eski haber',
+  INCOMPLETE: 'Eksik içerik',
+  WRONG_SOURCE: 'Yanlış kaynak',
+  IMAGE_PROBLEM: 'Görsel problemi',
+  OUT_OF_LOCAL_SCOPE: 'Yerel kapsam dışı',
+  OTHER: 'Diğer',
+}
+
+export const REJECTION_REASON_CODES = Object.keys(REJECTION_REASON_LABELS) as CrawlerRejectionReason[]
 
 export const QUALITY_STATUS_LABELS: Record<string, string> = {
   EXTRACTED: 'Çıkarıldı',

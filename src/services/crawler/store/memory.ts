@@ -5,6 +5,7 @@ import type {
   CrawlerLogicalQueue,
   CrawlerMetricName,
   CrawlerUrlStatus,
+  CrawlerEditorialAuditRecord,
   DiscoveredUrlRecord,
   NewsClusterRecord,
   NewsSourceRecord,
@@ -41,6 +42,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
   memberships = new Map<string, ClusterMembershipRecord>()
   metrics = new Map<string, number>()
   aiCache = new Set<string>()
+  audits: CrawlerEditorialAuditRecord[] = []
 
   async listSources(): Promise<NewsSourceRecord[]> {
     return [...this.sources.values()].sort((a, b) => a.name.localeCompare(b.name))
@@ -193,6 +195,10 @@ export class MemoryCrawlerStore implements CrawlerStore {
       imageRejectedCount: input.imageRejectedCount ?? null,
       editorialStatus: input.editorialStatus ?? 'NEW',
       editorialNewsId: input.editorialNewsId ?? null,
+      rejectionReason: input.rejectionReason ?? null,
+      rejectionNote: input.rejectionNote ?? null,
+      rejectedAt: input.rejectedAt ?? null,
+      rejectedBy: input.rejectedBy ?? null,
     }
     this.articles.set(row.id, row)
     return row
@@ -279,6 +285,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
     countryCode?: string | null
     city?: string | null
     eligibility?: string | null
+    editorialDecision?: string | null
     minSources?: number
     limit?: number
   }): Promise<NewsClusterRecord[]> {
@@ -288,6 +295,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
         if (opts?.countryCode && c.countryCode !== opts.countryCode) return false
         if (opts?.city && (c.city || '').toLowerCase() !== opts.city.toLowerCase()) return false
         if (opts?.eligibility && c.aiEligibility !== opts.eligibility) return false
+        if (opts?.editorialDecision && c.editorialDecision !== opts.editorialDecision) return false
         if (opts?.minSources && c.uniqueSourceCount < opts.minSources) return false
         return true
       })
@@ -356,6 +364,50 @@ export class MemoryCrawlerStore implements CrawlerStore {
     Object.assign(row, patch)
   }
 
+  async listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult> {
+    const sources = new Map<string, string>()
+    for (const s of this.sources.values()) sources.set(s.id, s.name)
+    const filtered = sortRawArticles(
+      [...this.articles.values()].filter((a) => matchesRawArticleQuery(a, query)),
+      query.sort || 'newest'
+    )
+    const rows = filtered.map((a) => ({ ...a, sourceName: sources.get(a.sourceId) || a.sourceId }))
+    return paginateRawArticles(rows, query)
+  }
+
+  async listRawArticleIds(query: RawArticleListQuery, cap: number): Promise<{ ids: string[]; total: number }> {
+    const filtered = [...this.articles.values()].filter((a) => matchesRawArticleQuery(a, query))
+    return { total: filtered.length, ids: filtered.slice(0, cap).map((a) => a.id) }
+  }
+
+  async deleteRawArticle(id: string): Promise<void> {
+    this.articles.delete(id)
+  }
+
+  async insertEditorialAudit(row: CrawlerEditorialAuditRecord): Promise<void> {
+    this.audits.push(row)
+  }
+
+  async listEditorialAudits(limit = 50): Promise<CrawlerEditorialAuditRecord[]> {
+    return [...this.audits].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit)
+  }
+
+  async countEditorialStatuses(): Promise<Record<string, number>> {
+    const out: Record<string, number> = {}
+    for (const a of this.articles.values()) {
+      out[a.editorialStatus] = (out[a.editorialStatus] || 0) + 1
+    }
+    return out
+  }
+
+  async countClusterEditorialDecisions(): Promise<Record<string, number>> {
+    const out: Record<string, number> = {}
+    for (const c of this.clusters.values()) {
+      out[c.editorialDecision] = (out[c.editorialDecision] || 0) + 1
+    }
+    return out
+  }
+
   async clusterHasEligible(clusterId: string): Promise<boolean> {
     return [...this.articles.values()].some(
       (a) => a.clusterId === clusterId && a.aiEligibility === 'ELIGIBLE'
@@ -416,17 +468,5 @@ export class MemoryCrawlerStore implements CrawlerStore {
       .filter((a) => a.mediaStatus === 'EXTRACTED')
       .sort((a, b) => (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0))
       .slice(0, limit)
-  }
-
-  async listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult> {
-    const matched = sortRawArticles(
-      [...this.articles.values()].filter((a) => matchesRawArticleQuery(a, query)),
-      query.sort
-    )
-    const rows = matched.map((article) => ({
-      ...article,
-      sourceName: this.sources.get(article.sourceId)?.name || article.sourceId,
-    }))
-    return paginateRawArticles(rows, query)
   }
 }

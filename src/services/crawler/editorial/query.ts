@@ -25,9 +25,22 @@ export function parseHasImage(value: string | null): boolean | null {
   return null
 }
 
+const EDITORIAL_STATUSES: CrawlerEditorialStatus[] = [
+  'NEW',
+  'IN_REVIEW',
+  'AI_CANDIDATE',
+  'REJECTED',
+  'ARCHIVED',
+  'DELETED',
+  'DRAFT',
+  'EDITING',
+  'PUBLISHED',
+  'SKIPPED',
+]
+
 export function parseEditorialStatus(value: string | null): CrawlerEditorialStatus | null {
-  if (value === 'NEW' || value === 'DRAFT' || value === 'EDITING' || value === 'PUBLISHED' || value === 'SKIPPED') {
-    return value
+  if (value && EDITORIAL_STATUSES.includes(value as CrawlerEditorialStatus)) {
+    return value as CrawlerEditorialStatus
   }
   return null
 }
@@ -44,6 +57,7 @@ export function matchesRawArticleQuery(article: RawArticleRecord, query: RawArti
   }
   if (query.qualityStatus && article.qualityStatus !== query.qualityStatus) return false
   if (query.editorialStatus && article.editorialStatus !== query.editorialStatus) return false
+  if (!query.editorialStatus && article.editorialStatus === 'DELETED') return false
   if (query.hasImage === true && !articleHasImage(article)) return false
   if (query.hasImage === false && articleHasImage(article)) return false
   if (query.status === 'duplicate' && !article.isExactDuplicate) return false

@@ -50,6 +50,13 @@
       "when": 1787160000000,
       "tag": "0006_crawler_phase4a_ai_dispatch",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787165000000,
+      "tag": "0007_crawler_phase4a1_editorial_bulk",
+      "breakpoints": true
     }
   ]
 }

@@ -19,7 +19,52 @@ export type CrawlerQualityStatus = 'EXTRACTED' | 'LOW_CONFIDENCE' | 'FAILED'
 
 export type CrawlerMediaStatus = 'PENDING' | 'EXTRACTED' | 'NONE' | 'FAILED'
 
-export type CrawlerEditorialStatus = 'NEW' | 'DRAFT' | 'EDITING' | 'PUBLISHED' | 'SKIPPED'
+export type CrawlerEditorialStatus =
+  | 'NEW'
+  | 'IN_REVIEW'
+  | 'AI_CANDIDATE'
+  | 'REJECTED'
+  | 'ARCHIVED'
+  | 'DELETED'
+  | 'DRAFT'
+  | 'EDITING'
+  | 'PUBLISHED'
+  | 'SKIPPED'
+
+export type ClusterEditorialDecision =
+  | 'NONE'
+  | 'APPROVED_FOR_AI'
+  | 'WATCHING'
+  | 'REJECTED'
+  | 'ARCHIVED'
+
+export type CrawlerRejectionReason =
+  | 'NO_NEWS_VALUE'
+  | 'DUPLICATE'
+  | 'AD_SPONSOR'
+  | 'LOW_VALUE_MAGAZINE'
+  | 'STALE'
+  | 'INCOMPLETE'
+  | 'WRONG_SOURCE'
+  | 'IMAGE_PROBLEM'
+  | 'OUT_OF_LOCAL_SCOPE'
+  | 'OTHER'
+
+export interface CrawlerEditorialAuditRecord {
+  id: string
+  actorId: string
+  actorEmail: string | null
+  actorRole: string
+  action: string
+  entityType: 'raw_article' | 'cluster'
+  entityId: string | null
+  affectedCount: number
+  skippedCount: number
+  failedCount: number
+  reason: string | null
+  note: string | null
+  createdAt: Date
+}
 
 export interface ArticleMediaRecord {
   id: string
@@ -209,6 +254,10 @@ export interface RawArticleRecord {
   linkDensity: number | null
   editorialStatus: CrawlerEditorialStatus
   editorialNewsId: string | null
+  rejectionReason: CrawlerRejectionReason | null
+  rejectionNote: string | null
+  rejectedAt: Date | null
+  rejectedBy: string | null
 }
 
 export type ClusterEventStatus = 'OPEN' | 'BORDERLINE' | 'CLOSED'
@@ -267,6 +316,11 @@ export interface NewsClusterRecord {
   clusterConfidence: number
   aiEligibility: ClusterAiEligibility
   aiEligibilityReason: string | null
+  editorialDecision: ClusterEditorialDecision
+  editorialDecisionReason: string | null
+  editorialDecisionNote: string | null
+  editorialDecidedAt: Date | null
+  editorialDecidedBy: string | null
   importanceBreakdown: Record<string, number> | null
   signatureTokens: string[]
   hasMaterialUpdate: boolean

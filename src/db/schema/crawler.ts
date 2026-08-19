@@ -224,6 +224,11 @@ export const newsClusters = pgTable(
     clusterConfidence: real('cluster_confidence').default(0).notNull(),
     aiEligibility: varchar('ai_eligibility', { length: 24 }).default('WATCHING').notNull(),
     aiEligibilityReason: text('ai_eligibility_reason'),
+    editorialDecision: varchar('editorial_decision', { length: 24 }).default('NONE').notNull(),
+    editorialDecisionReason: text('editorial_decision_reason'),
+    editorialDecisionNote: text('editorial_decision_note'),
+    editorialDecidedAt: timestamp('editorial_decided_at', { withTimezone: true }),
+    editorialDecidedBy: varchar('editorial_decided_by', { length: 128 }),
     importanceBreakdown: jsonb('importance_breakdown').$type<Record<string, number>>(),
     signatureTokens: jsonb('signature_tokens').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     hasMaterialUpdate: smallint('has_material_update').default(0).notNull(),
@@ -236,6 +241,7 @@ export const newsClusters = pgTable(
     index('news_clusters_last_seen_idx').on(t.lastSeenAt),
     index('news_clusters_event_key_idx').on(t.eventKey),
     index('news_clusters_eligibility_idx').on(t.aiEligibility),
+    index('news_clusters_editorial_decision_idx').on(t.editorialDecision),
     index('news_clusters_language_idx').on(t.language),
   ]
 )
@@ -303,8 +309,12 @@ export const rawArticles = pgTable(
     qualityStatus: varchar('quality_status', { length: 24 }).default('EXTRACTED').notNull(),
     boilerplateRatio: real('boilerplate_ratio'),
     linkDensity: real('link_density'),
-    editorialStatus: varchar('editorial_status', { length: 16 }).default('NEW').notNull(),
+    editorialStatus: varchar('editorial_status', { length: 24 }).default('NEW').notNull(),
     editorialNewsId: varchar('editorial_news_id', { length: 64 }),
+    rejectionReason: varchar('rejection_reason', { length: 40 }),
+    rejectionNote: text('rejection_note'),
+    rejectedAt: timestamp('rejected_at', { withTimezone: true }),
+    rejectedBy: varchar('rejected_by', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -543,5 +553,30 @@ export const crawlerAiDispatchShadow = pgTable(
     index('crawler_ai_dispatch_shadow_would_idx').on(t.wouldDispatch),
     index('crawler_ai_dispatch_shadow_eval_idx').on(t.evaluatedAt),
     index('crawler_ai_dispatch_shadow_reason_idx').on(t.blockedReason),
+  ]
+)
+
+/** Phase 4A.1 — human editorial bulk/triage audit (additive). */
+export const crawlerEditorialAudit = pgTable(
+  'crawler_editorial_audit',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    actorId: varchar('actor_id', { length: 128 }).notNull(),
+    actorEmail: varchar('actor_email', { length: 255 }),
+    actorRole: varchar('actor_role', { length: 32 }).notNull(),
+    action: varchar('action', { length: 40 }).notNull(),
+    entityType: varchar('entity_type', { length: 24 }).notNull(),
+    entityId: varchar('entity_id', { length: 64 }),
+    affectedCount: integer('affected_count').default(0).notNull(),
+    skippedCount: integer('skipped_count').default(0).notNull(),
+    failedCount: integer('failed_count').default(0).notNull(),
+    reason: varchar('reason', { length: 80 }),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index('crawler_editorial_audit_created_idx').on(t.createdAt),
+    index('crawler_editorial_audit_actor_idx').on(t.actorId),
+    index('crawler_editorial_audit_entity_idx').on(t.entityType, t.entityId),
   ]
 )

@@ -8,6 +8,7 @@ import {
   parseHasImage,
 } from '@/services/crawler/editorial/query'
 import { rawArticleDisplay } from '@/services/crawler/editorial/prefill'
+import { summarizeArticleMedia } from '@/services/crawler/editorial/mediaSummary'
 import type { CrawlerQualityStatus, RawArticleRecord } from '@/services/crawler/types'
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
 
@@ -73,6 +74,7 @@ export async function GET(request: Request) {
         source,
       },
       media,
+      mediaSummary: summarizeArticleMedia(media),
     })
   }
   const result = await store.listRawArticlesPage(listQueryFromUrl(url))

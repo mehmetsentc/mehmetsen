@@ -4,6 +4,7 @@ import type {
   ClusterMatchBand,
   ClusterMembershipRecord,
   ClusterScoreBreakdown,
+  CrawlerEditorialAuditRecord,
   CrawlerEditorialStatus,
   CrawlerLogicalQueue,
   CrawlerMetricName,
@@ -93,6 +94,10 @@ export interface InsertRawArticleInput extends Omit<
   | 'imageRejectedCount'
   | 'editorialStatus'
   | 'editorialNewsId'
+  | 'rejectionReason'
+  | 'rejectionNote'
+  | 'rejectedAt'
+  | 'rejectedBy'
 > {
   clusterId?: string | null
   aiEligibility?: RawArticleRecord['aiEligibility']
@@ -110,6 +115,10 @@ export interface InsertRawArticleInput extends Omit<
   imageRejectedCount?: number | null
   editorialStatus?: CrawlerEditorialStatus
   editorialNewsId?: string | null
+  rejectionReason?: RawArticleRecord['rejectionReason']
+  rejectionNote?: string | null
+  rejectedAt?: Date | null
+  rejectedBy?: string | null
 }
 
 export type RawArticleSort = 'newest' | 'oldest' | 'published'
@@ -245,6 +254,7 @@ export interface CrawlerStore {
     countryCode?: string | null
     city?: string | null
     eligibility?: string | null
+    editorialDecision?: string | null
     minSources?: number
     limit?: number
   }): Promise<NewsClusterRecord[]>
@@ -283,10 +293,20 @@ export interface CrawlerStore {
         | 'imageRejectedCount'
         | 'editorialStatus'
         | 'editorialNewsId'
+        | 'rejectionReason'
+        | 'rejectionNote'
+        | 'rejectedAt'
+        | 'rejectedBy'
       >
     >
   ): Promise<void>
   listRawArticlesPage(query: RawArticleListQuery): Promise<RawArticleListResult>
+  listRawArticleIds(query: RawArticleListQuery, cap: number): Promise<{ ids: string[]; total: number }>
+  deleteRawArticle(id: string): Promise<void>
+  insertEditorialAudit(row: CrawlerEditorialAuditRecord): Promise<void>
+  listEditorialAudits(limit?: number): Promise<CrawlerEditorialAuditRecord[]>
+  countEditorialStatuses(): Promise<Record<string, number>>
+  countClusterEditorialDecisions(): Promise<Record<string, number>>
   clusterHasEligible(clusterId: string): Promise<boolean>
   hasAiCache(contentHash: string, promptVersion: string, model: string): Promise<boolean>
 

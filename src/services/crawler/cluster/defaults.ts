@@ -22,6 +22,11 @@ export function clusterDefaults(now = new Date()): Pick<
   | 'clusterConfidence'
   | 'aiEligibility'
   | 'aiEligibilityReason'
+  | 'editorialDecision'
+  | 'editorialDecisionReason'
+  | 'editorialDecisionNote'
+  | 'editorialDecidedAt'
+  | 'editorialDecidedBy'
   | 'importanceBreakdown'
   | 'signatureTokens'
   | 'hasMaterialUpdate'
@@ -50,6 +55,11 @@ export function clusterDefaults(now = new Date()): Pick<
     clusterConfidence: 0,
     aiEligibility: 'WATCHING',
     aiEligibilityReason: null,
+    editorialDecision: 'NONE',
+    editorialDecisionReason: null,
+    editorialDecisionNote: null,
+    editorialDecidedAt: null,
+    editorialDecidedBy: null,
     importanceBreakdown: null,
     signatureTokens: [],
     hasMaterialUpdate: false,

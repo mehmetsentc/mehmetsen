@@ -75,6 +75,21 @@ interface DashboardResponse {
     }
     automaticAiCostUsd?: { crawler?: number; legacy?: number; manualEditor?: number | null }
   }
+  editorial?: {
+    approvedForAi?: number
+    editorRejected?: number
+    archived?: number
+    inReview?: number
+    dispatchEnabled?: boolean
+    pipeline?: {
+      discovered?: number
+      rawArticles?: number
+      clusters?: number
+      preAi?: number
+      editorApproved?: number
+      aiDispatch?: number
+    }
+  }
 }
 
 export default function CrawlerDashboardPage() {
@@ -138,8 +153,35 @@ export default function CrawlerDashboardPage() {
               { label: 'Yüksek öncelik', value: fmt(data?.funnel?.highPriority) },
               { label: 'Görselli haber', value: fmt(data?.articlesWithPrimaryImage) },
               { label: 'Görselsiz haber', value: fmt(data?.articlesWithoutImage) },
+              { label: 'AI için editör onaylı', value: fmt(data?.editorial?.approvedForAi) },
+              { label: 'Editör reddetti', value: fmt(data?.editorial?.editorRejected) },
+              { label: 'Arşivlenen', value: fmt(data?.editorial?.archived) },
+              { label: 'İnceleme bekleyen', value: fmt(data?.editorial?.inReview) },
+              { label: 'AI dispatch', value: data?.editorial?.dispatchEnabled ? 'AÇIK' : 'KAPALI', tone: 'ok' },
             ]}
           />
+          {data?.editorial?.pipeline ? (
+            <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4 text-sm">
+              <h2 className="mb-3 text-sm font-semibold">Haber hattı</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  ['KEŞFEDİLEN', data.editorial.pipeline.discovered],
+                  ['HAM HABER', data.editorial.pipeline.rawArticles],
+                  ['OLAY KÜMESİ', data.editorial.pipeline.clusters],
+                  ['ÖN-AI', data.editorial.pipeline.preAi],
+                  ['EDİTÖR ONAYI', data.editorial.pipeline.editorApproved],
+                  ['AI DISPATCH [KAPALI]', data.editorial.pipeline.aiDispatch],
+                ].map(([label, value], i) => (
+                  <span key={String(label)} className="flex items-center gap-2">
+                    {i ? <span className="text-[rgb(var(--color-muted))]">↓</span> : null}
+                    <span className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-2">
+                      <strong>{label}</strong> {fmt(Number(value))}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </section>
+          ) : null}
           <p className="text-xs text-[rgb(var(--color-muted))]">
             Legacy RSS: {data?.legacyRssIngest || 'ADAPTER'} · otomatik AI cost crawler $
             {data?.ingestionLanes?.automaticAiCostUsd?.crawler ?? 0} / legacy $

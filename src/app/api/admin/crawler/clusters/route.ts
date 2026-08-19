@@ -23,6 +23,7 @@ export async function GET(request: Request) {
     city: url.searchParams.get('city') || null,
     eligibility: url.searchParams.get('eligibility') || null,
     minSources: url.searchParams.get('minSources') ? Number(url.searchParams.get('minSources')) : undefined,
+    editorialDecision: url.searchParams.get('editorialDecision') || null,
     limit: 120,
   })
   return NextResponse.json({
@@ -41,6 +42,8 @@ export async function GET(request: Request) {
       importanceScore: c.importanceScore,
       aiEligibility: c.aiEligibility,
       aiEligibilityReason: c.aiEligibilityReason,
+      editorialDecision: c.editorialDecision,
+      editorialDecisionReason: c.editorialDecisionReason,
       hasMaterialUpdate: c.hasMaterialUpdate,
     })),
   })

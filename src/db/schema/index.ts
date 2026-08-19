@@ -31,6 +31,7 @@ export {
   crawlerAiBudgetWindows,
   crawlerAiCircuit,
   crawlerAiDispatchShadow,
+  crawlerEditorialAudit,
   crawlerSourceTypeEnum,
   crawlerSourceStatusEnum,
   crawlerDiscoveryMethodEnum,

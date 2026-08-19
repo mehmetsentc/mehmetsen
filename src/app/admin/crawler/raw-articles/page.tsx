@@ -2,12 +2,30 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { AdminOsMetricGrid, AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
+import { BulkToolbar } from '@/components/admin/crawler/BulkToolbar'
+import { CrawlerConfirmModal } from '@/components/admin/crawler/CrawlerConfirmModal'
+import { RejectReasonModal } from '@/components/admin/crawler/RejectReasonModal'
+import { RowOverflowMenu } from '@/components/admin/crawler/RowOverflowMenu'
+import { notifyCrawlerBulk } from '@/components/admin/crawler/notifyBulk'
 import { auth } from '@/lib/firebase/auth'
 import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
 import { numberedPages, RAW_ARTICLE_PAGE_SIZES } from '@/services/crawler/editorial/query'
-import type { CrawlerEditorialStatus } from '@/services/crawler/types'
+import {
+  clearSelection,
+  pageSelectionHint,
+  reconcileSelection,
+  selectAllMatching,
+  selectCurrentPage,
+  selectedCount,
+  selectionFilterKey,
+  toggleRow,
+  type BulkSelectionState,
+} from '@/services/crawler/editorial/selection'
+import type { BulkResult } from '@/services/crawler/editorial/bulk'
+import type { CrawlerEditorialStatus, CrawlerRejectionReason } from '@/services/crawler/types'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -40,6 +58,8 @@ interface ArticleRow {
   clusterId: string | null
   articleBodyText?: string | null
   description?: string | null
+  imageCandidateCount?: number | null
+  imageRejectedCount?: number | null
 }
 
 interface ListResponse {
@@ -130,8 +150,19 @@ function CrawlerArticlesInner() {
   const searchParams = useSearchParams()
   const [data, setData] = useState<ListResponse | null>(null)
   const [detail, setDetail] = useState<ArticleRow | null>(null)
+  const [mediaSummary, setMediaSummary] = useState<{
+    mediaCount: number
+    primaryUrl: string | null
+    duplicateCount: number
+    rejectedCount: number
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [busyBulk, setBusyBulk] = useState(false)
+  const [selection, setSelection] = useState<BulkSelectionState>(clearSelection(''))
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [confirmMatch, setConfirmMatch] = useState(false)
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams(searchParams.toString())
@@ -169,6 +200,99 @@ function CrawlerArticlesInner() {
     void load()
   }, [load])
 
+  const filterKey = useMemo(
+    () =>
+      selectionFilterKey({
+        search: searchParams.get('search'),
+        source: searchParams.get('source'),
+        country: searchParams.get('country'),
+        city: searchParams.get('city'),
+        status: searchParams.get('status'),
+        qualityStatus: searchParams.get('qualityStatus'),
+        hasImage: searchParams.get('hasImage'),
+        editorialStatus: searchParams.get('editorialStatus'),
+        dateFrom: searchParams.get('dateFrom'),
+        dateTo: searchParams.get('dateTo'),
+        view: searchParams.get('view'),
+      }),
+    [searchParams]
+  )
+
+  useEffect(() => {
+    setSelection((prev) => reconcileSelection(prev, filterKey))
+  }, [filterKey])
+
+  useEffect(() => {
+    if (!detail) {
+      setMediaSummary(null)
+      return
+    }
+    void (async () => {
+      const res = await fetch(`/api/admin/crawler/articles?id=${encodeURIComponent(detail.id)}`, {
+        headers: await authHeaders(),
+      })
+      const body = await res.json()
+      if (body.mediaSummary) setMediaSummary(body.mediaSummary)
+    })()
+  }, [detail])
+
+  function activeFilter() {
+    return {
+      search: searchParams.get('search'),
+      source: searchParams.get('source'),
+      country: searchParams.get('country'),
+      city: searchParams.get('city'),
+      status: searchParams.get('status'),
+      qualityStatus: searchParams.get('qualityStatus'),
+      hasImage: searchParams.get('hasImage'),
+      editorialStatus: searchParams.get('editorialStatus'),
+      dateFrom: searchParams.get('dateFrom'),
+      dateTo: searchParams.get('dateTo'),
+      sort: searchParams.get('sort') || 'newest',
+    }
+  }
+
+  async function runBulk(
+    op: string,
+    extra?: { reason?: CrawlerRejectionReason; note?: string; ids?: string[] }
+  ) {
+    if (busyBulk) return
+    setBusyBulk(true)
+    try {
+      const explicit = extra?.ids
+      const res = await fetch('/api/admin/crawler/articles/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({
+          op,
+          matchFilter: !explicit && selection.mode === 'matching',
+          ids: explicit || (selection.mode === 'matching' ? [] : selection.ids),
+          filter: activeFilter(),
+          reason: extra?.reason,
+          note: extra?.note,
+        }),
+      })
+      const body = (await res.json()) as BulkResult & { error?: string }
+      if (!res.ok) throw new Error(body.error || 'İşlem başarısız')
+      const labels: Record<string, string> = {
+        review: `${body.affected} haber incelemeye alındı.`,
+        ai_candidate: `${body.affected} haber AI adayı olarak işaretlendi.`,
+        reject: `${body.affected} haber reddedildi.`,
+        archive: `${body.affected} haber arşivlendi.`,
+        delete: `${body.affected} haber silindi (${body.tombstoned} tombstone, ${body.hardDeleted} kalıcı).`,
+      }
+      notifyCrawlerBulk(body, labels[op] || 'İşlem tamam')
+      setSelection(clearSelection(filterKey))
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'İşlem başarısız')
+    } finally {
+      setBusyBulk(false)
+      setConfirmDelete(false)
+      setRejectOpen(false)
+    }
+  }
+
   async function openManual(id: string) {
     if (busyId) return
     setBusyId(id)
@@ -196,6 +320,9 @@ function CrawlerArticlesInner() {
   const end = Math.min(page * pageSize, total)
   const view = searchParams.get('view') === 'bySource' ? 'bySource' : 'all'
   const rows = data?.articles || []
+  const visibleIds = view === 'bySource' ? (data?.groups || []).flatMap((g) => g.articles.map((a) => a.id)) : rows.map((r) => r.id)
+  const count = selectedCount(selection, pageSize)
+  const hint = pageSelectionHint(selection, pageSize)
 
   const filterBar = (
     <form
@@ -321,6 +448,20 @@ function CrawlerArticlesInner() {
             Olay Kümesini Gör
           </a>
         ) : null}
+        <RowOverflowMenu
+          items={[
+            { label: 'İncelemeye Al', onClick: () => void runBulk('review', { ids: [row.id] }) },
+            { label: 'AI Adayı', onClick: () => void runBulk('ai_candidate', { ids: [row.id] }) },
+            {
+              label: 'Reddet',
+              onClick: () => {
+                setSelection({ ids: [row.id], mode: 'none', matchingTotal: total, filterKey })
+                setRejectOpen(true)
+              },
+            },
+            { label: 'Arşivle', onClick: () => void runBulk('archive', { ids: [row.id] }) },
+          ]}
+        />
       </div>
     )
   }
@@ -331,6 +472,20 @@ function CrawlerArticlesInner() {
         <table className="min-w-full text-left text-sm">
           <thead className="bg-[rgb(var(--color-surface))] text-[11px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
             <tr>
+              <th className="px-3 py-2">
+                <input
+                  type="checkbox"
+                  aria-label="Sayfadaki tümünü seç"
+                  checked={visibleIds.length > 0 && visibleIds.every((id) => selection.ids.includes(id) || selection.mode === 'matching')}
+                  onChange={() =>
+                    setSelection(
+                      visibleIds.length && visibleIds.every((id) => selection.ids.includes(id))
+                        ? clearSelection(filterKey)
+                        : selectCurrentPage(visibleIds, filterKey, total)
+                    )
+                  }
+                />
+              </th>
               <th className="px-3 py-2">Görsel</th>
               <th className="px-3 py-2">Başlık</th>
               <th className="px-3 py-2">Kaynak</th>
@@ -346,6 +501,14 @@ function CrawlerArticlesInner() {
           <tbody>
             {list.map((row) => (
               <tr key={row.id} className="border-t border-[rgb(var(--color-border))]">
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    aria-label="Seç"
+                    checked={selection.mode === 'matching' || selection.ids.includes(row.id)}
+                    onChange={() => setSelection((prev) => toggleRow(prev, row.id, visibleIds))}
+                  />
+                </td>
                 <td className="px-3 py-2">
                   {row.mainImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -381,7 +544,7 @@ function CrawlerArticlesInner() {
             ))}
             {!list.length ? (
               <tr>
-                <td className="px-3 py-6 text-[rgb(var(--color-muted))]" colSpan={10}>
+                <td className="px-3 py-6 text-[rgb(var(--color-muted))]" colSpan={11}>
                   Kayıt yok.
                 </td>
               </tr>
@@ -431,6 +594,31 @@ function CrawlerArticlesInner() {
         ))}
       </div>
       {filterBar}
+      <BulkToolbar
+        count={count}
+        pageHint={hint}
+        matchingHint={
+          selection.mode === 'page' && total > visibleIds.length ? `Tüm ${total.toLocaleString('tr-TR')} sonucu seç` : null
+        }
+        onSelectMatching={() => setConfirmMatch(true)}
+        onClear={() => setSelection(clearSelection(filterKey))}
+      >
+        <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => void runBulk('review')}>
+          İncelemeye Al
+        </button>
+        <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => void runBulk('ai_candidate')}>
+          AI Adayı
+        </button>
+        <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => setRejectOpen(true)}>
+          Reddet
+        </button>
+        <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => void runBulk('archive')}>
+          Arşivle
+        </button>
+        <button type="button" className="rounded-lg bg-red-600 px-3 py-1 text-white" onClick={() => setConfirmDelete(true)}>
+          Sil
+        </button>
+      </BulkToolbar>
       <div className="my-3 flex flex-wrap items-center justify-between gap-2 text-sm">
         <div>
           {total ? `${start}–${end} / ${total.toLocaleString('tr-TR')} haber` : '0 haber'}
@@ -463,6 +651,13 @@ function CrawlerArticlesInner() {
           <div className="text-[rgb(var(--color-muted))]">
             {detail.sourceName} · {fmt(detail.wordCount ?? undefined)} kelime
           </div>
+          {mediaSummary ? (
+            <div className="mt-2 text-xs">
+              Medya: {mediaSummary.mediaCount} · Birincil: {mediaSummary.primaryUrl ? 'var' : 'yok'} · Mükerrer:{' '}
+              {mediaSummary.duplicateCount} · Reddedilen: {mediaSummary.rejectedCount}
+              {detail.isExactDuplicate ? ' · Haber mükerrer' : ''}
+            </div>
+          ) : null}
           <p className="mt-2">{detail.description}</p>
           <p className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-[rgb(var(--color-muted))]">
             {(detail.articleBodyText || '').slice(0, 2000)}
@@ -474,6 +669,35 @@ function CrawlerArticlesInner() {
           </button>
         </div>
       ) : null}
+      <RejectReasonModal
+        open={rejectOpen}
+        count={count || 1}
+        busy={busyBulk}
+        onClose={() => setRejectOpen(false)}
+        onConfirm={(reason, note) => void runBulk('reject', { reason, note })}
+      />
+      <CrawlerConfirmModal
+        open={confirmDelete}
+        title="Ham haberleri sil"
+        body={`${count} ham haber silinecek.\nBu işlem crawler kayıtlarını temizleyebilir ve geri alınamayabilir.\nKüme/medya ilişkisi varsa kayıt tombstone olur.\nDevam etmek istiyor musunuz?`}
+        confirmLabel="Sil"
+        danger
+        busy={busyBulk}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => void runBulk('delete')}
+      />
+      <CrawlerConfirmModal
+        open={confirmMatch}
+        title="Tüm eşleşen sonuçlar"
+        body={`Tüm ${total.toLocaleString('tr-TR')} sonuç sunucu tarafında seçilecek. Toplu işlem bu filtreyi kullanır.`}
+        confirmLabel="Tümünü seç"
+        busy={false}
+        onClose={() => setConfirmMatch(false)}
+        onConfirm={() => {
+          setSelection(selectAllMatching(filterKey, total))
+          setConfirmMatch(false)
+        }}
+      />
     </AdminOsPageShell>
   )
 }
