@@ -1,19 +1,23 @@
 import { normalizeArticleUrl, urlHashFor } from './url/normalize'
+import { laneFromDiscoveryType, mergeDiscoveryLanes, type DiscoveryLane } from './discovery/lanes'
 import type { CrawlerStore } from './store/types'
 
 export type DiscoveryType = 'RSS' | 'ATOM' | 'SITEMAP' | 'LISTING' | 'MANUAL'
 
 export interface IngestDiscoveredArticleInput {
   discoveryType: DiscoveryType
+  discoveryLane?: DiscoveryLane
   sourceId: string
   originalUrl: string
   titleHint?: string | null
   publishedAtHint?: Date | number | string | null
+  guid?: string | null
+  discoveryPrimaryImageCandidate?: string | null
   feedMetadata?: Record<string, unknown> | null
   discoveredAt?: Date
   /**
    * RSS description/body is discovery metadata only. Callers must not treat it
-   * as a full article; this field is accepted and discarded.
+   * as a full article; this field is stored as provenance and never used as body.
    */
   rssDescription?: string | null
 }
@@ -23,8 +27,11 @@ export type IngestDiscoveredArticleResult = {
   normalizedUrl?: string
   urlHash?: string
   discoveryType: DiscoveryType
+  discoveryLane: DiscoveryLane
+  discoveryLanes?: DiscoveryLane[]
   titleHintUsedAsArticle: false
   rssDescriptionUsedAsArticle: false
+  refetchScheduled: false
 }
 
 function parsePublishedAt(value: IngestDiscoveredArticleInput['publishedAtHint']): Date | null {
@@ -48,39 +55,68 @@ export async function ingestDiscoveredArticle(
   input: IngestDiscoveredArticleInput,
   opts?: { baseUrl?: string }
 ): Promise<IngestDiscoveredArticleResult> {
-  void input.rssDescription
-  void input.feedMetadata
-  void input.titleHint
-  void input.discoveredAt
+  const discoveryLane = laneFromDiscoveryType(input.discoveryType, input.discoveryLane)
+  const base = {
+    discoveryType: input.discoveryType,
+    discoveryLane,
+    titleHintUsedAsArticle: false as const,
+    rssDescriptionUsedAsArticle: false as const,
+    refetchScheduled: false as const,
+  }
 
   const normalized = normalizeArticleUrl(input.originalUrl, opts?.baseUrl)
   if (!normalized) {
-    return {
-      status: 'invalid',
-      discoveryType: input.discoveryType,
-      titleHintUsedAsArticle: false,
-      rssDescriptionUsedAsArticle: false,
-    }
+    return { status: 'invalid', ...base }
   }
 
   const urlHash = urlHashFor(normalized)
   const existing = await store.getDiscoveredByHash(urlHash)
+  const publishedAtHint = parsePublishedAt(input.publishedAtHint)
+  const imageCandidate = input.discoveryPrimaryImageCandidate?.trim() || null
+
+  if (existing) {
+    const lanes = mergeDiscoveryLanes(existing.discoveryLanes, discoveryLane)
+    await store.updateDiscoveredUrl(existing.id, {
+      discoveryLanes: lanes,
+      titleHint: existing.titleHint || input.titleHint || null,
+      guid: existing.guid || input.guid || null,
+      discoveryPrimaryImageCandidate: existing.discoveryPrimaryImageCandidate || imageCandidate,
+      rssDescription: existing.rssDescription || input.rssDescription || null,
+      feedMetadata: existing.feedMetadata || input.feedMetadata || null,
+      publishedAtHint: existing.publishedAtHint || publishedAtHint,
+    })
+    return {
+      status: 'duplicate',
+      normalizedUrl: normalized,
+      urlHash,
+      discoveryLanes: lanes,
+      ...base,
+    }
+  }
+
   const result = await store.insertDiscoveredUrl({
     sourceId: input.sourceId,
     url: normalized,
     normalizedUrl: normalized,
     urlHash,
-    publishedAtHint: parsePublishedAt(input.publishedAtHint),
+    publishedAtHint,
+    discoveryLane,
+    discoveryLanes: [discoveryLane],
+    titleHint: input.titleHint ?? null,
+    guid: input.guid ?? null,
+    discoveryPrimaryImageCandidate: imageCandidate,
+    rssDescription: input.rssDescription ?? null,
+    feedMetadata: input.feedMetadata ?? null,
   })
 
-  if (existing || result === 'duplicate') {
+  if (result === 'duplicate') {
+    const raced = await store.getDiscoveredByHash(urlHash)
     return {
       status: 'duplicate',
       normalizedUrl: normalized,
       urlHash,
-      discoveryType: input.discoveryType,
-      titleHintUsedAsArticle: false,
-      rssDescriptionUsedAsArticle: false,
+      discoveryLanes: raced?.discoveryLanes,
+      ...base,
     }
   }
 
@@ -88,8 +124,7 @@ export async function ingestDiscoveredArticle(
     status: 'inserted',
     normalizedUrl: normalized,
     urlHash,
-    discoveryType: input.discoveryType,
-    titleHintUsedAsArticle: false,
-    rssDescriptionUsedAsArticle: false,
+    discoveryLanes: [discoveryLane],
+    ...base,
   }
 }

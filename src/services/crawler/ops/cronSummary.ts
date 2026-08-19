@@ -4,9 +4,12 @@ export type CronLane = 'crawler' | 'legacy'
 
 export type CronJobStatusTr = 'Çalışıyor' | 'Başarılı' | 'Başarısız' | 'Bekliyor' | 'Devre Dışı'
 
+export type CronFlowLane = 'RSS DISCOVERY' | 'CRAWLER DISCOVERY' | 'FULL EXTRACTION' | 'CLUSTERING'
+
 export interface CronJobSummary {
   name: string
   lane: CronLane
+  flowLane?: CronFlowLane
   lastRunAt: string | null
   lastSuccessAt: string | null
   status: CronJobStatusTr
@@ -17,10 +20,18 @@ export interface CronJobSummary {
   failed: number
   nextRunHint: string
   trigger: string
+  urlsDiscovered?: number
+  urlsNew?: number
+  urlsDuplicate?: number
+  forwardedToCrawler?: number
+  unmapped?: number
+  fetchPending?: number
+  extracted?: number
+  extractionFailed?: number
 }
 
 export const CRAWLER_CRON_CATALOG: Array<
-  Pick<CronJobSummary, 'name' | 'lane' | 'nextRunHint' | 'trigger'> & { metricKeys?: string[] }
+  Pick<CronJobSummary, 'name' | 'lane' | 'flowLane' | 'nextRunHint' | 'trigger'> & { metricKeys?: string[] }
 > = [
   {
     name: 'Crawler tick',
@@ -30,22 +41,33 @@ export const CRAWLER_CRON_CATALOG: Array<
     metricKeys: ['sources_checked', 'articles_fetched', 'extraction_success', 'extraction_fail'],
   },
   {
-    name: 'Kaynak keşif',
+    name: 'RSS DISCOVERY',
     lane: 'crawler',
+    flowLane: 'RSS DISCOVERY',
+    nextRunHint: 'Legacy cron + adapter',
+    trigger: 'schedule',
+    metricKeys: ['legacy_rss_urls_discovered', 'legacy_rss_urls_new', 'legacy_rss_urls_duplicate', 'legacy_rss_forwarded_to_crawler', 'unmapped_legacy_source'],
+  },
+  {
+    name: 'CRAWLER DISCOVERY',
+    lane: 'crawler',
+    flowLane: 'CRAWLER DISCOVERY',
     nextRunHint: 'Tick içinde',
     trigger: 'schedule',
     metricKeys: ['urls_discovered', 'urls_new'],
   },
   {
-    name: 'Makale çıkarımı',
+    name: 'FULL EXTRACTION',
     lane: 'crawler',
+    flowLane: 'FULL EXTRACTION',
     nextRunHint: 'Tick içinde',
     trigger: 'schedule',
-    metricKeys: ['extraction_success', 'extraction_fail', 'low_confidence'],
+    metricKeys: ['articles_fetched', 'extraction_success', 'extraction_fail', 'low_confidence'],
   },
   {
-    name: 'Olay kümeleme',
+    name: 'CLUSTERING',
     lane: 'crawler',
+    flowLane: 'CLUSTERING',
     nextRunHint: 'Tick içinde',
     trigger: 'schedule',
     metricKeys: ['clusters_created', 'articles_clustered'],
@@ -73,21 +95,39 @@ export function buildCrawlerCronSummaries(input: {
   metrics: Record<string, number>
   lastDiscoveryAt: Date | string | null
   lastExtractionAt: Date | string | null
+  fetchPending?: number
 }): CronJobSummary[] {
   const lastDisc = input.lastDiscoveryAt ? new Date(input.lastDiscoveryAt).toISOString() : null
   const lastExt = input.lastExtractionAt ? new Date(input.lastExtractionAt).toISOString() : null
   return CRAWLER_CRON_CATALOG.map((job) => {
     const processed = (job.metricKeys || []).reduce((sum, key) => sum + (input.metrics[key] || 0), 0)
-    const failed = input.metrics.extraction_fail || input.metrics.image_extraction_failed || 0
-    const success = input.metrics.extraction_success || input.metrics.articles_fetched || 0
-    const skipped = input.metrics.ai_requests_avoided || 0
-    const last = job.name.includes('çıkarım') || job.name.includes('küme') ? lastExt : lastDisc
+    const failed = job.flowLane === 'FULL EXTRACTION' ? input.metrics.extraction_fail || 0 : 0
+    const success =
+      job.flowLane === 'FULL EXTRACTION'
+        ? input.metrics.extraction_success || 0
+        : job.flowLane === 'CLUSTERING'
+          ? input.metrics.articles_clustered || 0
+          : input.metrics.urls_new || input.metrics.legacy_rss_urls_new || 0
+    const skipped = input.metrics.legacy_rss_urls_duplicate || input.metrics.cross_pipeline_duplicate || 0
+    const last = job.flowLane === 'FULL EXTRACTION' || job.flowLane === 'CLUSTERING' ? lastExt : lastDisc
+    const hasActivity = processed > 0
+    const status = cronStatusTr(
+      !input.enabled && job.lane === 'crawler'
+        ? 'disabled'
+        : hasActivity
+          ? failed > success && processed > 0
+            ? 'failed'
+            : 'success'
+          : 'pending',
+      input.enabled || job.flowLane === 'RSS DISCOVERY'
+    )
     return {
       name: job.name,
-      lane: 'crawler',
+      lane: job.lane,
+      flowLane: job.flowLane,
       lastRunAt: last,
       lastSuccessAt: success > 0 ? last : null,
-      status: cronStatusTr(input.enabled ? (failed > success && processed > 0 ? 'failed' : 'success') : 'disabled', input.enabled),
+      status,
       durationMs: input.metrics.averageFetchTimeMs || input.metrics.fetch_duration_ms_sum || null,
       processed,
       success,
@@ -95,6 +135,14 @@ export function buildCrawlerCronSummaries(input: {
       failed,
       nextRunHint: job.nextRunHint,
       trigger: job.trigger === 'schedule' ? 'Zamanlanmış' : 'Manuel',
+      urlsDiscovered: input.metrics.urls_discovered || input.metrics.legacy_rss_urls_discovered || 0,
+      urlsNew: input.metrics.urls_new || input.metrics.legacy_rss_urls_new || 0,
+      urlsDuplicate: input.metrics.legacy_rss_urls_duplicate || input.metrics.cross_pipeline_duplicate || 0,
+      forwardedToCrawler: input.metrics.legacy_rss_forwarded_to_crawler || 0,
+      unmapped: input.metrics.unmapped_legacy_source || 0,
+      fetchPending: input.fetchPending || 0,
+      extracted: input.metrics.extraction_success || 0,
+      extractionFailed: input.metrics.extraction_fail || 0,
     }
   })
 }

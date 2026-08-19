@@ -53,6 +53,7 @@ export function CrawlerCronPanel() {
         <table className="min-w-full text-left text-xs">
           <thead>
             <tr className="text-[10px] uppercase text-[rgb(var(--color-muted))]">
+              <th className="px-3 py-2">Hat</th>
               <th className="px-3 py-2">Görev</th>
               <th className="px-3 py-2">Son çalışma</th>
               <th className="px-3 py-2">Son başarılı</th>
@@ -69,6 +70,7 @@ export function CrawlerCronPanel() {
           <tbody>
             {jobs.map((job) => (
               <tr key={job.name} className="border-t border-[rgb(var(--color-border))]">
+                <td className="px-3 py-2">{job.flowLane || job.lane}</td>
                 <td className="px-3 py-2 font-semibold">{job.name}</td>
                 <td className="px-3 py-2">{fmtDate(job.lastRunAt)}</td>
                 <td className="px-3 py-2">{fmtDate(job.lastSuccessAt)}</td>

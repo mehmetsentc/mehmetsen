@@ -15,7 +15,15 @@ export type CrawlPriorityBand = 'BREAKING' | 'HIGH' | 'NORMAL' | 'LOW'
 
 export type CrawlerQualityTier = 'TIER_A' | 'TIER_B' | 'TIER_C' | 'BLOCKED' | 'UNTESTED'
 
-export type CrawlerQualityStatus = 'EXTRACTED' | 'LOW_CONFIDENCE' | 'FAILED'
+export type CrawlerQualityStatus =
+  | 'EXTRACTED'
+  | 'GOOD'
+  | 'LOW_CONFIDENCE'
+  | 'TOO_SHORT'
+  | 'PARTIAL'
+  | 'EXTRACTION_FAILED'
+  | 'FAILED'
+  | 'STALE'
 
 export type CrawlerMediaStatus = 'PENDING' | 'EXTRACTED' | 'NONE' | 'FAILED'
 
@@ -195,6 +203,11 @@ export interface NewsSourceRecord {
   updatedAt: Date
 }
 
+export type ClusterMembershipRole = 'PRIMARY' | 'SUPPORTING' | 'DUPLICATE' | 'LOW_QUALITY' | 'MATERIAL_UPDATE'
+export type DiscoveryLane = 'RSS' | 'CRAWLER' | 'LEGACY_ADAPTER' | 'MANUAL'
+export type ClusterFutureAiUnit = 'PREPARED' | 'PUBLISHED_LOCKED' | 'BLOCKED'
+export type ClusterUpdateReviewStatus = 'NONE' | 'PENDING_UPDATE_REVIEW'
+
 export interface DiscoveredUrlRecord {
   id: string
   sourceId: string
@@ -211,6 +224,13 @@ export interface DiscoveredUrlRecord {
   etag: string | null
   lastModified: string | null
   logicalQueue: CrawlerLogicalQueue
+  discoveryLane: DiscoveryLane
+  discoveryLanes: DiscoveryLane[]
+  titleHint: string | null
+  guid: string | null
+  discoveryPrimaryImageCandidate: string | null
+  rssDescription: string | null
+  feedMetadata: Record<string, unknown> | null
 }
 
 export interface RawArticleRecord {
@@ -267,6 +287,11 @@ export interface RawArticleRecord {
   rejectionNote: string | null
   rejectedAt: Date | null
   rejectedBy: string | null
+  qualityGateReasons: string[] | null
+  rssSnippetUsedAsBody: boolean
+  clusterRole: ClusterMembershipRole | null
+  discoveryPrimaryImageCandidate: string | null
+  primaryImageConfidence: number | null
 }
 
 export type ClusterEventStatus = 'OPEN' | 'BORDERLINE' | 'CLOSED'
@@ -292,6 +317,8 @@ export interface ClusterMembershipRecord {
   matchBand: ClusterMatchBand
   matchExplanation: ClusterScoreBreakdown | null
   isCanonical: boolean
+  membershipRole: ClusterMembershipRole
+  isIndependentSource: boolean
   createdAt: Date
 }
 
@@ -336,6 +363,14 @@ export interface NewsClusterRecord {
   signatureTokens: string[]
   hasMaterialUpdate: boolean
   materialUpdateReason: string | null
+  primarySelectionScore: number | null
+  primarySelectionReasons: string[] | null
+  publishedNewsId: string | null
+  futureAiUnit: ClusterFutureAiUnit
+  updateReviewStatus: ClusterUpdateReviewStatus
+  primaryImageUrl: string | null
+  primarySourceId: string | null
+  primarySourceName: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -344,6 +379,9 @@ export interface DiscoveredFeedItem {
   url: string
   title?: string | null
   publishedAt?: Date | null
+  guid?: string | null
+  imageUrl?: string | null
+  description?: string | null
 }
 
 export interface ExtractedArticleContent {
@@ -416,6 +454,10 @@ export type CrawlerMetricName =
   | 'legacy_cron_noop'
   | 'unmapped_legacy_source'
   | 'cross_pipeline_duplicate'
+  | 'low_quality_excluded'
+  | 'duplicate_article_jobs_avoided'
+  | 'rss_image_agreed'
+  | 'rss_image_conflict'
 
 export interface CrawlerLogFields {
   sourceId?: string

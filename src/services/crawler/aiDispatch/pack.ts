@@ -9,17 +9,32 @@ function stripMetaDump(text: string): string {
     .trim()
 }
 
+function stripDuplicateParagraphs(body: string, seen: Set<string>): string {
+  const parts = body.split(/\n{2,}|(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ])/).map((p) => p.trim()).filter(Boolean)
+  const kept: string[] = []
+  for (const part of parts) {
+    const key = part.slice(0, 180).toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    kept.push(part)
+  }
+  return kept.join(' ')
+}
+
 export function buildEventAiPack(
   cluster: EvaluationInputCluster,
   members: MemberEvidence[],
   now = new Date()
 ): EventAiPack {
   const selected = selectEvidenceSources(members, now).map(toPackedSource)
-  const sources: PackedSource[] = selected.map((s) => ({
+  const seenParas = new Set<string>()
+  const sources: PackedSource[] = selected.map((s, idx) => ({
     ...s,
-    body: stripMetaDump(s.body),
+    body: stripDuplicateParagraphs(stripMetaDump(s.body), seenParas),
     title: stripMetaDump(s.title),
+    role: idx === 0 ? 'PRIMARY' : 'SUPPORTING',
   }))
+  const unit = { eventCount: 1 as const, futureAiJobs: 1 as const, providerRequests: 0 as const }
 
   const lines: string[] = [
     'EVENT',
@@ -30,10 +45,12 @@ export function buildEventAiPack(
     `national importance: ${cluster.nationalImportance}`,
     `global importance: ${cluster.globalImportance}`,
     `material update status: ${cluster.hasMaterialUpdate ? 'true' : 'false'}`,
+    `future AI jobs: ${unit.futureAiJobs}`,
     '',
   ]
 
   sources.forEach((source, idx) => {
+    lines.push(idx === 0 ? 'PRIMARY' : `SUPPORTING ${idx}`)
     lines.push(`SOURCE ${idx + 1}`)
     lines.push(`source name: ${source.sourceName}`)
     lines.push(`publishedAt: ${source.publishedAt ? source.publishedAt.toISOString() : 'unknown'}`)
@@ -60,6 +77,8 @@ export function buildEventAiPack(
     hasMaterialUpdate: cluster.hasMaterialUpdate,
     sources,
     packedText: lines.join('\n'),
+    futureAiJobs: 1,
+    providerRequests: 0,
   }
 }
 

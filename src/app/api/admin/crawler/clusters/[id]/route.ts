@@ -43,6 +43,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       extractionMethod: article?.extractionMethod,
       extractionConfidence: article?.extractionConfidence,
       similarityScore: m.similarityScore,
+      membershipRole: m.membershipRole,
+      isCanonical: m.isCanonical,
       url: article?.canonicalUrl || article?.originalUrl,
       preview: (article?.articleBodyText || '').slice(0, 480),
       body: article?.articleBodyText || '',

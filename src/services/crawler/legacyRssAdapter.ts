@@ -57,7 +57,8 @@ export async function forwardLegacyRssItemToCrawler(opts: {
   store: CrawlerStore
   sources: NewsSourceRecord[]
   legacySource: RssSourceDefinition
-  item: Pick<RssFeedItem, 'link' | 'title' | 'summary' | 'content' | 'publishedAt'>
+  item: Pick<RssFeedItem, 'link' | 'title' | 'summary' | 'content' | 'publishedAt'> &
+    Partial<Pick<RssFeedItem, 'imageUrl' | 'guid'>>
 }): Promise<'inserted' | 'duplicate' | 'invalid' | 'unmapped'> {
   const mapping = mapLegacySourceToNewsSource({
     legacySourceId: opts.legacySource.id,
@@ -73,10 +74,13 @@ export async function forwardLegacyRssItemToCrawler(opts: {
 
   const ingested = await ingestDiscoveredArticle(opts.store, {
     discoveryType: 'RSS',
+    discoveryLane: 'LEGACY_ADAPTER',
     sourceId: mapping.source.id,
     originalUrl: opts.item.link,
     titleHint: opts.item.title,
     publishedAtHint: opts.item.publishedAt ?? null,
+    guid: opts.item.guid ?? null,
+    discoveryPrimaryImageCandidate: opts.item.imageUrl ?? null,
     rssDescription: opts.item.summary || opts.item.content || null,
     feedMetadata: { legacySourceId: opts.legacySource.id },
     discoveredAt: new Date(),
@@ -140,7 +144,13 @@ export function applyForwardStatsToNewsroom(
 export async function forwardLegacySourceListToCrawler(opts: {
   editorId: EditorId
   legacySources: RssSourceDefinition[]
-  itemsBySourceId: Map<string, Array<Pick<RssFeedItem, 'link' | 'title' | 'summary' | 'content' | 'publishedAt'>>>
+  itemsBySourceId: Map<
+    string,
+    Array<
+      Pick<RssFeedItem, 'link' | 'title' | 'summary' | 'content' | 'publishedAt'> &
+        Partial<Pick<RssFeedItem, 'imageUrl' | 'guid'>>
+    >
+  >
   store?: CrawlerStore
 }): Promise<NewsroomRunResult> {
   const started = Date.now()

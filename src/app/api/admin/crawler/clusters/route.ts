@@ -49,6 +49,8 @@ export async function GET(request: Request) {
       editorialDecisionReason: c.editorialDecisionReason,
       editorialPriority: c.editorialPriority,
       hasMaterialUpdate: c.hasMaterialUpdate,
+      primarySourceName: c.primarySourceName,
+      primaryImageUrl: c.primaryImageUrl,
       ageHours: Number(eventAgeHours(c).toFixed(1)),
     })),
   })

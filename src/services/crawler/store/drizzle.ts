@@ -37,6 +37,7 @@ import type {
 } from './types'
 import { newCrawlerId } from './types'
 import { clusterDefaults } from '../cluster/defaults'
+import { shouldEnterClusterFunnel } from '../gate/quality'
 import type { ClusterMembershipRecord, ClusterScoreBreakdown } from '../types'
 
 function strings(value: unknown): string[] {
@@ -92,6 +93,8 @@ function mapSource(row: typeof newsSources.$inferSelect): NewsSourceRecord {
 }
 
 function mapUrl(row: typeof discoveredArticleUrls.$inferSelect): DiscoveredUrlRecord {
+  const lanes = Array.isArray(row.discoveryLanes) ? row.discoveryLanes : []
+  const lane = (row.discoveryLane as DiscoveredUrlRecord['discoveryLane']) || 'CRAWLER'
   return {
     id: row.id,
     sourceId: row.sourceId,
@@ -108,6 +111,13 @@ function mapUrl(row: typeof discoveredArticleUrls.$inferSelect): DiscoveredUrlRe
     etag: row.etag,
     lastModified: row.lastModified,
     logicalQueue: row.logicalQueue as CrawlerLogicalQueue,
+    discoveryLane: lane,
+    discoveryLanes: (lanes.length ? lanes : [lane]) as DiscoveredUrlRecord['discoveryLanes'],
+    titleHint: row.titleHint ?? null,
+    guid: row.guid ?? null,
+    discoveryPrimaryImageCandidate: row.discoveryPrimaryImageCandidate ?? null,
+    rssDescription: row.rssDescription ?? null,
+    feedMetadata: (row.feedMetadata as Record<string, unknown> | null) ?? null,
   }
 }
 
@@ -166,6 +176,11 @@ function mapRaw(row: typeof rawArticles.$inferSelect): RawArticleRecord {
     rejectionNote: row.rejectionNote ?? null,
     rejectedAt: row.rejectedAt ?? null,
     rejectedBy: row.rejectedBy ?? null,
+    qualityGateReasons: Array.isArray(row.qualityGateReasons) ? row.qualityGateReasons : null,
+    rssSnippetUsedAsBody: row.rssSnippetUsedAsBody === 1,
+    clusterRole: (row.clusterRole as RawArticleRecord['clusterRole']) || null,
+    discoveryPrimaryImageCandidate: row.discoveryPrimaryImageCandidate ?? null,
+    primaryImageConfidence: row.primaryImageConfidence ?? null,
   }
 }
 
@@ -239,6 +254,14 @@ function mapCluster(row: typeof newsClusters.$inferSelect): NewsClusterRecord {
     signatureTokens: Array.isArray(row.signatureTokens) ? row.signatureTokens : [],
     hasMaterialUpdate: row.hasMaterialUpdate === 1,
     materialUpdateReason: row.materialUpdateReason ?? null,
+    primarySelectionScore: row.primarySelectionScore ?? null,
+    primarySelectionReasons: Array.isArray(row.primarySelectionReasons) ? row.primarySelectionReasons : null,
+    publishedNewsId: row.publishedNewsId ?? null,
+    futureAiUnit: (row.futureAiUnit as NewsClusterRecord['futureAiUnit']) || 'PREPARED',
+    updateReviewStatus: (row.updateReviewStatus as NewsClusterRecord['updateReviewStatus']) || 'NONE',
+    primaryImageUrl: row.primaryImageUrl ?? null,
+    primarySourceId: row.primarySourceId ?? null,
+    primarySourceName: row.primarySourceName ?? null,
     createdAt: row.createdAt ?? fallback.createdAt,
     updatedAt: row.updatedAt ?? fallback.updatedAt,
   }
@@ -254,6 +277,8 @@ function mapMembership(row: typeof clusterMemberships.$inferSelect): ClusterMemb
     matchBand: (row.matchBand as ClusterMembershipRecord['matchBand']) || 'LOW',
     matchExplanation: (row.matchExplanation as ClusterScoreBreakdown | null) ?? null,
     isCanonical: row.isCanonical === 1,
+    membershipRole: (row.membershipRole as ClusterMembershipRecord['membershipRole']) || (row.isCanonical === 1 ? 'PRIMARY' : 'SUPPORTING'),
+    isIndependentSource: row.isIndependentSource !== 0,
     createdAt: row.createdAt,
   }
 }
@@ -389,6 +414,13 @@ export class DrizzleCrawlerStore implements CrawlerStore {
         publishedAtHint: input.publishedAtHint ?? null,
         status: 'PENDING_FETCH',
         logicalQueue: 'ARTICLE_FETCH_QUEUE',
+        discoveryLane: input.discoveryLane || 'CRAWLER',
+        discoveryLanes: input.discoveryLanes?.length ? input.discoveryLanes : [input.discoveryLane || 'CRAWLER'],
+        titleHint: input.titleHint ?? null,
+        guid: input.guid ?? null,
+        discoveryPrimaryImageCandidate: input.discoveryPrimaryImageCandidate ?? null,
+        rssDescription: input.rssDescription ?? null,
+        feedMetadata: input.feedMetadata ?? null,
       })
       return 'inserted'
     } catch {
@@ -425,6 +457,16 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (patch.etag !== undefined) values.etag = patch.etag
     if (patch.lastModified !== undefined) values.lastModified = patch.lastModified
     if (patch.logicalQueue !== undefined) values.logicalQueue = patch.logicalQueue
+    if (patch.discoveryLane !== undefined) values.discoveryLane = patch.discoveryLane
+    if (patch.discoveryLanes !== undefined) values.discoveryLanes = patch.discoveryLanes
+    if (patch.titleHint !== undefined) values.titleHint = patch.titleHint
+    if (patch.guid !== undefined) values.guid = patch.guid
+    if (patch.discoveryPrimaryImageCandidate !== undefined) {
+      values.discoveryPrimaryImageCandidate = patch.discoveryPrimaryImageCandidate
+    }
+    if (patch.rssDescription !== undefined) values.rssDescription = patch.rssDescription
+    if (patch.feedMetadata !== undefined) values.feedMetadata = patch.feedMetadata
+    if (patch.publishedAtHint !== undefined) values.publishedAtHint = patch.publishedAtHint
     await this.db().update(discoveredArticleUrls).set(values).where(eq(discoveredArticleUrls.id, id))
   }
 
@@ -496,6 +538,11 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       imageRejectedCount: input.imageRejectedCount ?? null,
       editorialStatus: input.editorialStatus ?? 'NEW',
       editorialNewsId: input.editorialNewsId ?? null,
+      qualityGateReasons: input.qualityGateReasons ?? null,
+      rssSnippetUsedAsBody: input.rssSnippetUsedAsBody ? 1 : 0,
+      clusterRole: input.clusterRole ?? null,
+      discoveryPrimaryImageCandidate: input.discoveryPrimaryImageCandidate ?? null,
+      primaryImageConfidence: input.primaryImageConfidence ?? null,
     })
     const rows = await this.db().select().from(rawArticles).where(eq(rawArticles.id, id)).limit(1)
     return mapRaw(rows[0])
@@ -635,6 +682,14 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     assign('signatureTokens', 'signatureTokens')
     assign('hasMaterialUpdate', 'hasMaterialUpdate', (v) => (v ? 1 : 0))
     assign('materialUpdateReason', 'materialUpdateReason')
+    assign('primarySelectionScore', 'primarySelectionScore')
+    assign('primarySelectionReasons', 'primarySelectionReasons')
+    assign('publishedNewsId', 'publishedNewsId')
+    assign('futureAiUnit', 'futureAiUnit')
+    assign('updateReviewStatus', 'updateReviewStatus')
+    assign('primaryImageUrl', 'primaryImageUrl')
+    assign('primarySourceId', 'primarySourceId')
+    assign('primarySourceName', 'primarySourceName')
     await this.db().update(newsClusters).set(values).where(eq(newsClusters.id, id))
   }
 
@@ -823,7 +878,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .limit(Math.max(limit * 4, 80))
     return rows
       .map(mapRaw)
-      .filter((a) => !taken.has(a.id) && !a.isExactDuplicate && a.qualityStatus !== 'FAILED')
+      .filter((a) => !taken.has(a.id) && !a.isExactDuplicate && shouldEnterClusterFunnel(a.qualityStatus))
       .slice(0, limit)
   }
 
@@ -852,6 +907,8 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     matchBand: ClusterMembershipRecord['matchBand']
     matchExplanation?: ClusterScoreBreakdown | null
     isCanonical?: boolean
+    membershipRole?: ClusterMembershipRecord['membershipRole']
+    isIndependentSource?: boolean
   }): Promise<'inserted' | 'duplicate'> {
     const existing = await this.getMembershipByArticle(input.articleId)
     if (existing) return 'duplicate'
@@ -864,8 +921,23 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       matchBand: input.matchBand,
       matchExplanation: (input.matchExplanation as Record<string, number> | null) ?? null,
       isCanonical: input.isCanonical ? 1 : 0,
+      membershipRole: input.membershipRole || (input.isCanonical ? 'PRIMARY' : 'SUPPORTING'),
+      isIndependentSource: input.isIndependentSource === false ? 0 : 1,
     })
     return 'inserted'
+  }
+
+  async updateMembership(
+    id: string,
+    patch: Partial<Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore'>>
+  ): Promise<void> {
+    const values: Record<string, unknown> = {}
+    if (patch.isCanonical !== undefined) values.isCanonical = patch.isCanonical ? 1 : 0
+    if (patch.membershipRole !== undefined) values.membershipRole = patch.membershipRole
+    if (patch.isIndependentSource !== undefined) values.isIndependentSource = patch.isIndependentSource ? 1 : 0
+    if (patch.similarityScore !== undefined) values.similarityScore = patch.similarityScore
+    if (!Object.keys(values).length) return
+    await this.db().update(clusterMemberships).set(values).where(eq(clusterMemberships.id, id))
   }
 
   async listFailedUrls(limit = 80): Promise<DiscoveredUrlRecord[]> {
@@ -912,6 +984,13 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (patch.rejectionNote !== undefined) values.rejectionNote = patch.rejectionNote
     if (patch.rejectedAt !== undefined) values.rejectedAt = patch.rejectedAt
     if (patch.rejectedBy !== undefined) values.rejectedBy = patch.rejectedBy
+    if (patch.qualityGateReasons !== undefined) values.qualityGateReasons = patch.qualityGateReasons
+    if (patch.rssSnippetUsedAsBody !== undefined) values.rssSnippetUsedAsBody = patch.rssSnippetUsedAsBody ? 1 : 0
+    if (patch.clusterRole !== undefined) values.clusterRole = patch.clusterRole
+    if (patch.discoveryPrimaryImageCandidate !== undefined) {
+      values.discoveryPrimaryImageCandidate = patch.discoveryPrimaryImageCandidate
+    }
+    if (patch.primaryImageConfidence !== undefined) values.primaryImageConfidence = patch.primaryImageConfidence
     await this.db().update(rawArticles).set(values).where(eq(rawArticles.id, id))
   }
 

@@ -66,6 +66,7 @@ export interface EditorialImageResult {
   adRejected: number
   logoRejected: number
   tinyRejected: number
+  rssImageAgreement: 'agreed' | 'conflict' | 'none'
 }
 
 const ACCEPT_ANCESTOR =
@@ -540,13 +541,37 @@ function finalize(collected: ImageCandidate[], pageUrl: string, duplicateCount: 
     adRejected: rejected.filter((c) => c.rejectionReason === 'ad_or_banner' || c.rejectionReason === 'product_ad').length,
     logoRejected: rejected.filter((c) => c.rejectionReason === 'logo_or_favicon').length,
     tinyRejected: rejected.filter((c) => c.rejectionReason === 'tiny_thumbnail' || c.rejectionReason === 'tracking_pixel').length,
+    rssImageAgreement: 'none',
   }
+}
+
+function applyRssImageAgreement(
+  result: EditorialImageResult,
+  rssCandidate: string | null,
+  pageUrl: string
+): EditorialImageResult {
+  if (!rssCandidate) return { ...result, rssImageAgreement: 'none' }
+  const normalized = normalizeImageUrl(rssCandidate, pageUrl)
+  if (!normalized) return { ...result, rssImageAgreement: 'none' }
+  const rssKey = imageVariantKey(normalized)
+  const strong = new Set(['jsonld', 'jsonld_object', 'og', 'twitter', 'article_dom'])
+  const match = result.candidates.find((c) => imageVariantKey(c.normalizedUrl) === rssKey)
+  if (match && strong.has(match.discoveryMethod)) {
+    match.imageConfidence = Math.min(0.99, (match.imageConfidence || 0.5) + 0.12)
+    match.score += 8
+    if (result.primary && result.primary.normalizedUrl === match.normalizedUrl) {
+      result.primary.imageConfidence = match.imageConfidence
+      result.primary.score = match.score
+    }
+    return { ...result, rssImageAgreement: 'agreed' }
+  }
+  return { ...result, rssImageAgreement: 'conflict' }
 }
 
 export function extractEditorialImages(
   html: string,
   pageUrl: string,
-  opts?: { adapter?: SourceImageAdapter | null }
+  opts?: { adapter?: SourceImageAdapter | null; discoveryPrimaryImageCandidate?: string | null }
 ): EditorialImageResult {
   const $ = cheerio.load(html)
   const seenVariants = new Map<string, ImageCandidate>()
@@ -779,7 +804,8 @@ export function extractEditorialImages(
     }
   })
 
-  return finalize(collected, pageUrl, stats.duplicates)
+  const result = finalize(collected, pageUrl, stats.duplicates)
+  return applyRssImageAgreement(result, opts?.discoveryPrimaryImageCandidate || null, pageUrl)
 }
 
 export function mediaFromStoredUrls(mainImageUrl: string | null, imageUrls: string[]): EditorialImageResult {

@@ -57,6 +57,8 @@ interface ArticleRow {
   editorialStatus: CrawlerEditorialStatus
   editorialNewsId: string | null
   clusterId: string | null
+  clusterArticleCount?: number | null
+  clusterUniqueSourceCount?: number | null
   articleBodyText?: string | null
   description?: string | null
   imageCandidateCount?: number | null
@@ -578,6 +580,11 @@ function CrawlerArticlesInner() {
                   <button type="button" className="text-left font-medium underline" onClick={() => setDetail(row)}>
                     {row.title || '(başlıksız)'}
                   </button>
+                  {row.clusterId && (row.clusterArticleCount || 0) >= 2 ? (
+                    <div className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
+                      AYNI OLAY {row.clusterArticleCount} haber · {row.clusterUniqueSourceCount || 1} kaynak
+                    </div>
+                  ) : null}
                 </td>
                 <td className="px-3 py-2">
                   <button type="button" className="underline" onClick={() => setParam({ source: row.sourceId }, true)}>

@@ -7,11 +7,12 @@ import { canFetchUrl } from '../http/robots'
 import { computeNextDiscoveryAt, shouldRetryStatus } from '../http/politeness'
 import { computeSourceHealthScore, nextStatusForFailures } from '../health'
 import { pickFairPending } from '../scheduler'
-import { boilerplateRatio } from '../extract/confidence'
+import { boilerplateRatio, linkDensity } from '../extract/confidence'
 import type { NewsSourceRecord } from '../types'
 import { evaluateExactDuplicate, hashesForArticle } from '../duplicate/engine'
 import { simhashOf } from '../duplicate/hash'
 import { evaluateAiCandidate } from '../gate/aiCandidate'
+import { evaluateExtractionQuality } from '../gate/quality'
 import { dispatchCrawlerArticleToNewsroom } from '../dispatch'
 import { runClusterTick } from '../cluster/worker'
 import { runMediaTick } from '../extract/mediaWorker'
@@ -274,17 +275,37 @@ export async function runCrawlerTick(opts?: {
       nearCandidates: near,
     })
 
-    const success = Boolean(extracted.title) && extracted.articleBodyText.length >= 80
-    const lowConfidence =
-      success && (extracted.extractionConfidence < 0.5 || extracted.wordCount < 120)
-    if (success && !lowConfidence) {
+    const density = linkDensity(extracted.articleBodyHtml || html, extracted.articleBodyText)
+    const boiler = boilerplateRatio(extracted.articleBodyText, extracted.title || '')
+    const images = extractEditorialImages(html, fetched.finalUrl, {
+      discoveryPrimaryImageCandidate: item.discoveryPrimaryImageCandidate,
+    })
+    const quality = evaluateExtractionQuality({
+      title: extracted.title,
+      body: extracted.articleBodyText,
+      extractionConfidence: extracted.extractionConfidence,
+      wordCount: extracted.wordCount,
+      boilerplateRatio: boiler,
+      linkDensity: density,
+      hasPrimaryImage: Boolean(images.primary && images.primary.status === 'ACCEPTED'),
+      primaryImageConfidence: images.primary?.imageConfidence ?? null,
+      sourceHealth: source.healthScore,
+      publishedAt: extracted.publishedAt || item.publishedAtHint,
+      isDuplicateUrl: Boolean(dup),
+      now,
+    })
+    const success = quality.status === 'GOOD' || quality.status === 'PARTIAL' || quality.status === 'LOW_CONFIDENCE'
+    if (quality.status === 'GOOD') {
       extractionSuccess += 1
       await store.incrementMetric('extraction_success', 1, now)
-    } else if (lowConfidence) {
+    } else if (quality.status === 'LOW_CONFIDENCE' || quality.status === 'PARTIAL') {
       await store.incrementMetric('low_confidence', 1, now)
     } else {
       await store.incrementMetric('extraction_fail', 1, now)
     }
+    if (quality.excludeFromEditorialFunnel) await store.incrementMetric('low_quality_excluded', 1, now)
+    if (images.rssImageAgreement === 'agreed') await store.incrementMetric('rss_image_agreed', 1, now)
+    if (images.rssImageAgreement === 'conflict') await store.incrementMetric('rss_image_conflict', 1, now)
 
     const raw = await store.insertRawArticle({
       sourceId: source.id,
@@ -305,7 +326,7 @@ export async function runCrawlerTick(opts?: {
       region: source.region,
       city: source.city,
       district: source.district,
-      mainImageUrl: extracted.mainImageUrl,
+      mainImageUrl: images.primary?.status === 'ACCEPTED' ? images.primary.sourceUrl : extracted.mainImageUrl,
       imageUrls: extracted.imageUrls,
       videoUrls: extracted.videoUrls,
       wordCount: extracted.wordCount,
@@ -321,13 +342,16 @@ export async function runCrawlerTick(opts?: {
       fetchedAt: now,
       isExactDuplicate: Boolean(dup),
       duplicateOfId: dup?.existingId ?? null,
-      qualityStatus: !success ? 'FAILED' : lowConfidence ? 'LOW_CONFIDENCE' : 'EXTRACTED',
-      boilerplateRatio: boilerplateRatio(extracted.articleBodyText, extracted.title || ''),
-      linkDensity: 0,
+      qualityStatus: quality.status,
+      qualityGateReasons: quality.reasons,
+      rssSnippetUsedAsBody: false,
+      discoveryPrimaryImageCandidate: item.discoveryPrimaryImageCandidate,
+      primaryImageConfidence: images.primary?.imageConfidence ?? null,
+      boilerplateRatio: boiler,
+      linkDensity: density,
     })
 
     try {
-      const images = extractEditorialImages(html, fetched.finalUrl)
       await persistArticleImages(store, raw.id, images, now)
       await recordImageMetrics(store, images, now)
     } catch {
@@ -348,10 +372,10 @@ export async function runCrawlerTick(opts?: {
       })
     } else {
       await store.updateDiscoveredUrl(item.id, {
-        status: lowConfidence ? 'LOW_CONFIDENCE' : 'EXTRACTED',
+        status: quality.status === 'LOW_CONFIDENCE' ? 'LOW_CONFIDENCE' : quality.excludeFromCluster ? 'FAILED' : 'EXTRACTED',
         canonicalUrl: canonical,
-        logicalQueue: 'CLUSTER_QUEUE',
-        failureReason: success ? null : 'thin_extraction',
+        logicalQueue: quality.excludeFromCluster ? 'FAILED_QUEUE' : 'CLUSTER_QUEUE',
+        failureReason: quality.excludeFromCluster ? quality.status : null,
         etag: fetched.etag,
         lastModified: fetched.lastModified,
       })
@@ -362,7 +386,7 @@ export async function runCrawlerTick(opts?: {
       await store.incrementMetric('ai_requests', 1, now)
     }
 
-    if (!dup && success) {
+    if (!dup && !quality.excludeFromCluster) {
       await store.updateRawArticle(raw.id, { clusterStatus: 'PENDING' })
     } else {
       await store.updateRawArticle(raw.id, { clusterStatus: 'SKIPPED' })

@@ -1,10 +1,11 @@
+import { ingestDiscoveredArticle } from '../ingestDiscoveredArticle'
 import { parseRssOrAtom } from './rss'
 import { parseSitemapXml } from './sitemap'
 import { parseListingPage } from './listing'
 import { fetchDocument, type FetchImpl } from '../http/fetchDocument'
 import { crawlerTickLimits } from '../enabled'
 import { logCrawler } from '../log'
-import { normalizeArticleUrl, urlHashFor } from '../url/normalize'
+import { normalizeArticleUrl } from '../url/normalize'
 import { shouldSkipStaleDiscovery } from '../freshness'
 import type { HostLookup } from '../url/ssrf'
 import type { CrawlerStore } from '../store/types'
@@ -99,17 +100,34 @@ export async function discoverSource(opts: {
 
   const sliced = fresh.slice(0, limits.maxDiscoverUrlsPerSource)
   let inserted = 0
+  const lane = source.discoveryMethod === 'RSS' || source.discoveryMethod === 'ATOM' ? 'RSS' as const : 'CRAWLER' as const
+  const discoveryType =
+    source.discoveryMethod === 'ATOM'
+      ? 'ATOM'
+      : source.discoveryMethod === 'LISTING'
+        ? 'LISTING'
+        : source.discoveryMethod === 'NEWS_SITEMAP' || source.discoveryMethod === 'SITEMAP'
+          ? 'SITEMAP'
+          : 'RSS'
   for (const item of sliced) {
-    const hash = urlHashFor(item.url)
-    const result = await store.insertDiscoveredUrl({
-      sourceId: source.id,
-      url: item.url,
-      normalizedUrl: item.url,
-      urlHash: hash,
-      publishedAtHint: item.publishedAt ?? null,
-    })
+    const result = await ingestDiscoveredArticle(
+      store,
+      {
+        discoveryType,
+        discoveryLane: lane,
+        sourceId: source.id,
+        originalUrl: item.url,
+        titleHint: item.title,
+        publishedAtHint: item.publishedAt ?? null,
+        guid: item.guid ?? null,
+        discoveryPrimaryImageCandidate: item.imageUrl ?? null,
+        rssDescription: item.description ?? null,
+        discoveredAt: new Date(),
+      },
+      { baseUrl: source.baseUrl }
+    )
     await store.incrementMetric('urls_discovered')
-    if (result === 'inserted') {
+    if (result.status === 'inserted') {
       inserted += 1
       await store.incrementMetric('urls_new')
     }

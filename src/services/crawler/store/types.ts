@@ -73,6 +73,13 @@ export interface InsertDiscoveredUrlInput {
   normalizedUrl: string
   urlHash: string
   publishedAtHint?: Date | null
+  discoveryLane?: import('../types').DiscoveryLane
+  discoveryLanes?: import('../types').DiscoveryLane[]
+  titleHint?: string | null
+  guid?: string | null
+  discoveryPrimaryImageCandidate?: string | null
+  rssDescription?: string | null
+  feedMetadata?: Record<string, unknown> | null
 }
 
 export interface InsertRawArticleInput extends Omit<
@@ -98,6 +105,11 @@ export interface InsertRawArticleInput extends Omit<
   | 'rejectionNote'
   | 'rejectedAt'
   | 'rejectedBy'
+  | 'qualityGateReasons'
+  | 'rssSnippetUsedAsBody'
+  | 'clusterRole'
+  | 'discoveryPrimaryImageCandidate'
+  | 'primaryImageConfidence'
 > {
   clusterId?: string | null
   aiEligibility?: RawArticleRecord['aiEligibility']
@@ -119,6 +131,11 @@ export interface InsertRawArticleInput extends Omit<
   rejectionNote?: string | null
   rejectedAt?: Date | null
   rejectedBy?: string | null
+  qualityGateReasons?: string[] | null
+  rssSnippetUsedAsBody?: boolean
+  clusterRole?: RawArticleRecord['clusterRole']
+  discoveryPrimaryImageCandidate?: string | null
+  primaryImageConfidence?: number | null
 }
 
 export type RawArticleSort = 'newest' | 'oldest' | 'published'
@@ -247,6 +264,14 @@ export interface CrawlerStore {
         | 'etag'
         | 'lastModified'
         | 'logicalQueue'
+        | 'discoveryLane'
+        | 'discoveryLanes'
+        | 'titleHint'
+        | 'guid'
+        | 'discoveryPrimaryImageCandidate'
+        | 'rssDescription'
+        | 'feedMetadata'
+        | 'publishedAtHint'
       >
     >
   ): Promise<void>
@@ -303,7 +328,13 @@ export interface CrawlerStore {
     matchBand: ClusterMatchBand
     matchExplanation?: ClusterScoreBreakdown | null
     isCanonical?: boolean
+    membershipRole?: import('../types').ClusterMembershipRole
+    isIndependentSource?: boolean
   }): Promise<'inserted' | 'duplicate'>
+  updateMembership(
+    id: string,
+    patch: Partial<Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore'>>
+  ): Promise<void>
   listFailedUrls(limit?: number): Promise<DiscoveredUrlRecord[]>
   touchCluster(id: string, representativeArticleId?: string): Promise<void>
   updateRawArticle(
@@ -331,6 +362,11 @@ export interface CrawlerStore {
         | 'rejectionNote'
         | 'rejectedAt'
         | 'rejectedBy'
+        | 'qualityGateReasons'
+        | 'rssSnippetUsedAsBody'
+        | 'clusterRole'
+        | 'discoveryPrimaryImageCandidate'
+        | 'primaryImageConfidence'
       >
     >
   ): Promise<void>

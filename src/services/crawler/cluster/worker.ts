@@ -3,9 +3,11 @@ import { clusterTopicFromTitle } from './cheap'
 import { buildEventFingerprint } from './fingerprint'
 import { namedTokensMatch } from './normalize'
 import { MATCH_HORIZON_MS, scoreClusterMatch } from './score'
-import { detectMaterialUpdate, selectCanonicalArticle } from './canonical'
+import { detectMaterialUpdate, selectPrimaryArticle } from './canonical'
 import { evaluateClusterEligibility, looksLikeNewsText } from './eligibility'
 import { isHighQualityTier, scoreEventImportance } from './importance'
+import { assignMembershipRole, futureAiUnitsForEvent, independentSourceCount } from './roles'
+import { clusterHasPublishedOutput } from '../gate/quality'
 import { dispatchCrawlerArticleToNewsroom } from '../dispatch'
 import type { CrawlerStore } from '../store/types'
 import type { NewsClusterRecord, NewsSourceRecord, RawArticleRecord } from '../types'
@@ -164,7 +166,7 @@ export async function runClusterTick(opts: {
         existingTitle: cluster.canonicalTitle,
         existingLead: cluster.normalizedTopic,
         incomingTitle: article.title,
-        incomingLead: article.description,
+        incomingLead: `${article.description || ''} ${article.articleBodyText || ''}`.slice(0, 600),
       })
       if (material.hasMaterialUpdate) {
         await opts.store.updateCluster(cluster.id, {
@@ -174,25 +176,42 @@ export async function runClusterTick(opts: {
       }
     }
 
-    await recomputeCluster(opts.store, cluster.id, now)
+    await recomputeCluster(opts.store, cluster.id, now, {
+      incomingArticleId: article.id,
+      incomingIsMaterialUpdate: highMatch
+        ? detectMaterialUpdate({
+            existingTitle: cluster.canonicalTitle,
+            existingLead: cluster.normalizedTopic,
+            incomingTitle: article.title,
+            incomingLead: `${article.description || ''} ${article.articleBodyText || ''}`.slice(0, 600),
+          }).hasMaterialUpdate
+        : false,
+    })
   }
 
   return result
 }
 
-async function recomputeCluster(store: CrawlerStore, clusterId: string, now: Date): Promise<void> {
+async function recomputeCluster(
+  store: CrawlerStore,
+  clusterId: string,
+  now: Date,
+  extra?: { incomingArticleId?: string; incomingIsMaterialUpdate?: boolean }
+): Promise<void> {
   const cluster = await store.getCluster(clusterId)
   if (!cluster) return
   const memberships = await store.listMemberships(clusterId)
-  const members: Array<{ article: RawArticleRecord; source: NewsSourceRecord | null }> = []
+  const members: Array<{ article: RawArticleRecord; source: NewsSourceRecord | null; membershipId: string }> = []
   for (const m of memberships) {
     const article = await store.getRawArticle(m.articleId)
     if (!article) continue
-    members.push({ article, source: await store.getSource(article.sourceId) })
+    members.push({ article, source: await store.getSource(article.sourceId), membershipId: m.id })
   }
   if (!members.length) return
-  const canonical = selectCanonicalArticle(members)
+  const primary = selectPrimaryArticle(members)
+  const canonical = primary?.article || members[0].article
   const uniqueSources = new Set(members.map((m) => m.article.sourceId))
+  const independent = independentSourceCount(members)
   const highQuality = members.filter((m) => m.source && isHighQualityTier(m.source.qualityTier)).length
   const exactDupes = members.filter((m) => m.article.isExactDuplicate).length
   const localCount = members.filter(
@@ -247,11 +266,11 @@ async function recomputeCluster(store: CrawlerStore, clusterId: string, now: Dat
     bestConfidence: bestConf,
     avgHealth,
     uniqueSourceCount: members.length,
-    independentSourceCount: uniqueSources.size,
+    independentSourceCount: independent,
     exactDuplicateOnly: members.length > 0 && members.every((m) => m.article.isExactDuplicate),
     staleHours: (now.getTime() - last) / 3600000,
     namedTokenCount: named.size,
-    looksLikeNews: looksLikeNewsText(canonical?.title || cluster.canonicalTitle, canonical?.articleBodyText || null),
+    looksLikeNews: looksLikeNewsText(canonical.title || cluster.canonicalTitle, canonical.articleBodyText || null),
     geographicScope: scope,
     hasLocalGeography: Boolean(
       cluster.city ||
@@ -263,9 +282,37 @@ async function recomputeCluster(store: CrawlerStore, clusterId: string, now: Dat
     watchingAgeMinutes: (now.getTime() - first) / 60000,
   })
 
+  const published = clusterHasPublishedOutput(members.map((m) => m.article))
+  const material = cluster.hasMaterialUpdate || Boolean(extra?.incomingIsMaterialUpdate)
+  let futureAiUnit = cluster.futureAiUnit
+  let updateReviewStatus = cluster.updateReviewStatus
+  let editorialDecision = cluster.editorialDecision
+  if (published.published) {
+    futureAiUnit = 'PUBLISHED_LOCKED'
+    if (material) updateReviewStatus = 'PENDING_UPDATE_REVIEW'
+    else updateReviewStatus = cluster.updateReviewStatus || 'NONE'
+    void futureAiUnitsForEvent(members.length)
+  }
+
+  for (const row of members) {
+    const role = assignMembershipRole({
+      isPrimary: row.article.id === canonical.id,
+      isExactDuplicate: row.article.isExactDuplicate,
+      qualityStatus: row.article.qualityStatus,
+      isMaterialUpdate: Boolean(extra?.incomingIsMaterialUpdate && extra.incomingArticleId === row.article.id),
+    })
+    await store.updateMembership(row.membershipId, {
+      isCanonical: row.article.id === canonical.id,
+      membershipRole: role,
+      isIndependentSource: !row.article.isExactDuplicate,
+    })
+    await store.updateRawArticle(row.article.id, { clusterRole: role })
+  }
+
+  const primarySource = members.find((m) => m.article.id === canonical.id)?.source || null
   await store.updateCluster(clusterId, {
-    representativeArticleId: canonical?.id || cluster.representativeArticleId,
-    canonicalTitle: canonical?.title || cluster.canonicalTitle,
+    representativeArticleId: canonical.id,
+    canonicalTitle: canonical.title || cluster.canonicalTitle,
     articleCount: members.length,
     sourceCount: uniqueSources.size,
     uniqueSourceCount: uniqueSources.size,
@@ -283,8 +330,17 @@ async function recomputeCluster(store: CrawlerStore, clusterId: string, now: Dat
     aiEligibilityReason: eligibility.reason,
     importanceBreakdown: importance.breakdown,
     signatureTokens: [...named].slice(0, 16),
-    language: canonical?.language || cluster.language,
-    city: cluster.city || canonical?.city || members[0]?.source?.city || null,
-    district: cluster.district || canonical?.district || members[0]?.source?.district || null,
+    language: canonical.language || cluster.language,
+    city: cluster.city || canonical.city || members[0]?.source?.city || null,
+    district: cluster.district || canonical.district || members[0]?.source?.district || null,
+    primarySelectionScore: primary?.score ?? null,
+    primarySelectionReasons: primary?.reasons ?? null,
+    publishedNewsId: published.newsId || cluster.publishedNewsId,
+    futureAiUnit,
+    updateReviewStatus,
+    editorialDecision,
+    primaryImageUrl: canonical.mainImageUrl,
+    primarySourceId: canonical.sourceId,
+    primarySourceName: primarySource?.name || null,
   })
 }

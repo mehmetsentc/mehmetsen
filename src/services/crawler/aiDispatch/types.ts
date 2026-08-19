@@ -140,6 +140,7 @@ export type PackedSource = {
   title: string
   body: string
   contentHash: string | null
+  role?: 'PRIMARY' | 'SUPPORTING'
 }
 
 export type EventAiPack = {
@@ -160,6 +161,8 @@ export type EventAiPack = {
   hasMaterialUpdate: boolean
   sources: PackedSource[]
   packedText: string
+  futureAiJobs?: 1
+  providerRequests?: 0
 }
 
 export type TokenEstimate = {

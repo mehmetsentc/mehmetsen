@@ -33,6 +33,14 @@ export function clusterDefaults(now = new Date()): Pick<
   | 'signatureTokens'
   | 'hasMaterialUpdate'
   | 'materialUpdateReason'
+  | 'primarySelectionScore'
+  | 'primarySelectionReasons'
+  | 'publishedNewsId'
+  | 'futureAiUnit'
+  | 'updateReviewStatus'
+  | 'primaryImageUrl'
+  | 'primarySourceId'
+  | 'primarySourceName'
   | 'createdAt'
   | 'updatedAt'
 > {
@@ -68,6 +76,14 @@ export function clusterDefaults(now = new Date()): Pick<
     signatureTokens: [],
     hasMaterialUpdate: false,
     materialUpdateReason: null,
+    primarySelectionScore: null,
+    primarySelectionReasons: null,
+    publishedNewsId: null,
+    futureAiUnit: 'PREPARED',
+    updateReviewStatus: 'NONE',
+    primaryImageUrl: null,
+    primarySourceId: null,
+    primarySourceName: null,
     createdAt: now,
     updatedAt: now,
   }

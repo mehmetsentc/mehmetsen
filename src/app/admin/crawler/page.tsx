@@ -23,10 +23,12 @@ interface DashboardResponse {
   activeSources?: number
   sourcesDue?: number
   urlsDiscovered?: number
+  uniqueUrls?: number
   newUrls?: number
   articlesFetched?: number
   extractionSuccess?: number
   extractionFailed?: number
+  lowQualityExcluded?: number
   duplicatesRemoved?: number
   aiRequests?: number
   aiRequestsAvoided?: number
@@ -48,6 +50,9 @@ interface DashboardResponse {
     uniqueEventCandidates: number
     aiEligibleEventJobs: number
     avoidedDuplicateEventJobs: number
+    duplicateArticleJobsAvoided?: number
+    actualAiRequests?: number
+    multiSourceClusters?: number
     aiCostUsd: number
     estimatedCostLabel?: string
   }
@@ -147,6 +152,11 @@ export default function CrawlerDashboardPage() {
               { label: 'Aktif kaynak', value: fmt(data?.activeSources) },
               { label: 'Sıradaki kaynak', value: fmt(data?.sourcesDue) },
               { label: 'Keşfedilen URL', value: fmt(data?.urlsDiscovered) },
+              { label: 'Tekil URL', value: fmt(data?.uniqueUrls ?? data?.newUrls) },
+              { label: 'Düşük kalite hariç', value: fmt(data?.lowQualityExcluded) },
+              { label: 'Çok kaynaklı olay', value: fmt(data?.funnel?.multiSourceClusters) },
+              { label: 'Önlenen mükerrer iş', value: fmt(data?.funnel?.duplicateArticleJobsAvoided ?? data?.funnel?.avoidedDuplicateEventJobs) },
+              { label: 'Gerçek AI istek', value: fmt(data?.funnel?.actualAiRequests ?? data?.aiRequests), tone: 'ok' },
               { label: 'Yeni URL', value: fmt(data?.newUrls) },
               { label: 'Çekilen haber', value: fmt(data?.articlesFetched) },
               { label: 'Başarılı çıkarım', value: fmt(data?.extractionSuccess) },

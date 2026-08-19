@@ -44,6 +44,10 @@ interface ClusterRow {
   importanceScore: number
   aiEligibility: string
   editorialDecision?: string
+  hasMaterialUpdate?: boolean
+  primarySourceName?: string | null
+  primaryImageUrl?: string | null
+  ageHours?: number
 }
 
 export default function CrawlerClustersPage() {
@@ -196,12 +200,13 @@ export default function CrawlerClustersPage() {
                 />
               </th>
               <th className="px-3 py-2">Başlık</th>
-              <th className="px-3 py-2">Durum</th>
+              <th className="px-3 py-2">Yaş</th>
               <th className="px-3 py-2">Coğrafya</th>
               <th className="px-3 py-2">Haber</th>
               <th className="px-3 py-2">Kaynak</th>
+              <th className="px-3 py-2">Primary</th>
               <th className="px-3 py-2">Önem</th>
-              <th className="px-3 py-2">Güven</th>
+              <th className="px-3 py-2">Kalite</th>
               <th className="px-3 py-2">Algoritmik</th>
               <th className="px-3 py-2">Editör</th>
               <th className="px-3 py-2" />
@@ -221,11 +226,13 @@ export default function CrawlerClustersPage() {
                   <Link href={`/admin/crawler/clusters/${c.id}`} className="underline">
                     {c.canonicalTitle || c.id}
                   </Link>
+                  {c.hasMaterialUpdate ? <div className="text-[11px] text-amber-700">Maddi güncelleme</div> : null}
                 </td>
-                <td className="px-3 py-2">{c.status}</td>
+                <td className="px-3 py-2">{c.ageHours != null ? `${c.ageHours}s` : '—'}</td>
                 <td className="px-3 py-2">{[c.countryCode, c.city].filter(Boolean).join(' / ') || '—'}</td>
                 <td className="px-3 py-2">{c.articleCount}</td>
                 <td className="px-3 py-2">{c.uniqueSourceCount}</td>
+                <td className="px-3 py-2">{c.primarySourceName || '—'}</td>
                 <td className="px-3 py-2">{c.importanceScore}</td>
                 <td className="px-3 py-2">{c.clusterConfidence?.toFixed?.(2) ?? c.clusterConfidence}</td>
                 <td className="px-3 py-2">{CRAWLER_STATUS_LABELS[c.aiEligibility] || c.aiEligibility}</td>

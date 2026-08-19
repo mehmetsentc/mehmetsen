@@ -49,8 +49,13 @@ export const EDITORIAL_PRIORITY_LABELS: Record<string, string> = {
 
 export const QUALITY_STATUS_LABELS: Record<string, string> = {
   EXTRACTED: 'Çıkarıldı',
+  GOOD: 'İyi',
   LOW_CONFIDENCE: 'Düşük güven',
+  TOO_SHORT: 'Çok kısa',
+  PARTIAL: 'Kısmi',
+  EXTRACTION_FAILED: 'Çıkarım başarısız',
   FAILED: 'Başarısız',
+  STALE: 'Eski',
 }
 
 export const CRAWLER_STATUS_LABELS: Record<string, string> = {

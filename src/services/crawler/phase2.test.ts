@@ -116,6 +116,13 @@ describe('crawler phase 2', () => {
         etag: null,
         lastModified: null,
         logicalQueue: 'ARTICLE_FETCH_QUEUE',
+        discoveryLane: 'CRAWLER',
+        discoveryLanes: ['CRAWLER'],
+        titleHint: null,
+        guid: null,
+        discoveryPrimaryImageCandidate: null,
+        rssDescription: null,
+        feedMetadata: null,
       })
     const pending = [
       mk('a1', 'A', 1),

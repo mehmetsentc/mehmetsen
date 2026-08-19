@@ -32,10 +32,12 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
     sourcesDue: await store.countDueSources(now),
     sourcesCheckedToday: metrics.sources_checked || 0,
     urlsDiscovered: metrics.urls_discovered || 0,
+    uniqueUrls: metrics.urls_new || 0,
     newUrls: metrics.urls_new || 0,
     articlesFetched: metrics.articles_fetched || 0,
     extractionSuccess,
     extractionFailed: extractionFail,
+    lowQualityExcluded: metrics.low_quality_excluded || 0,
     lowConfidence: metrics.low_confidence || 0,
     duplicatesRemoved: metrics.duplicates_removed || 0,
     aiCandidates: metrics.ai_candidates || 0,
@@ -155,7 +157,9 @@ async function clusterFunnel(store: CrawlerStore, metrics: Record<string, number
     mergeRate: raw > 0 ? Number((1 - uniqueEvents / Math.max(raw, 1)).toFixed(4)) : 0,
     aiCostUsd: 0,
     actualAiCostUsd: 0,
+    actualAiRequests: metrics.ai_requests || 0,
     estimatedCostLabel: 'COST_UNKNOWN' as const,
+    duplicateArticleJobsAvoided: avoidedDuplicateEventJobs + (metrics.cross_pipeline_duplicate || 0) + (metrics.legacy_rss_urls_duplicate || 0),
   }
 }
 
@@ -202,7 +206,7 @@ async function storeWindow(store: CrawlerStore, now: Date, ms: number) {
   )
   return {
     articlesFetched: articles.length,
-    successfulExtraction: articles.filter((a) => a.qualityStatus === 'EXTRACTED').length,
+    successfulExtraction: articles.filter((a) => a.qualityStatus === 'EXTRACTED' || a.qualityStatus === 'GOOD').length,
     lowConfidence: articles.filter((a) => a.qualityStatus === 'LOW_CONFIDENCE').length,
     duplicates: articles.filter((a) => a.isExactDuplicate).length,
   }

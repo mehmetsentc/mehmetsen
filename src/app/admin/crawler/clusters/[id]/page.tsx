@@ -87,10 +87,28 @@ export default function ClusterDetailPage() {
             Önem {String(cluster.importanceScore)} · Güven {String(cluster.clusterConfidence)} · Yaş {String(cluster.ageHours)}s · Keşif{' '}
             {String(cluster.firstSeenAt)}
             {cluster.hasMaterialUpdate ? ' · Maddi güncelleme var' : ''}
+            {cluster.primarySelectionScore != null ? ` · Primary skor ${String(cluster.primarySelectionScore)}` : ''}
           </p>
+          {Array.isArray(cluster.primarySelectionReasons) && cluster.primarySelectionReasons.length ? (
+            <p className="text-xs text-[rgb(var(--color-muted))]">
+              Primary nedenleri: {(cluster.primarySelectionReasons as string[]).join(' · ')}
+            </p>
+          ) : null}
           <p>
             {String(data?.sourceDiversity || cluster.sourceDiversity)} · {String(cluster.aiStatus || '—')}
           </p>
+          <h3 className="font-semibold">PRIMARY</h3>
+          <ul className="list-disc pl-5">
+            {members.filter((m) => m.membershipRole === 'PRIMARY' || m.isCanonical).map((m, i) => (
+              <li key={`p-${i}`}>{String(m.source)} — {String(m.title)}</li>
+            ))}
+          </ul>
+          <h3 className="font-semibold">SUPPORTING</h3>
+          <ul className="list-disc pl-5">
+            {members.filter((m) => m.membershipRole !== 'PRIMARY' && !m.isCanonical).map((m, i) => (
+              <li key={`s-${i}`}>{String(m.source)} — {String(m.membershipRole || 'SUPPORTING')} — {String(m.title)}</li>
+            ))}
+          </ul>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 text-white" disabled={busy} onClick={() => setApproveOpen(true)}>
               AI İçin Onayla
@@ -121,6 +139,7 @@ export default function ClusterDetailPage() {
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr>
+                <th className="px-2 py-1">Rol</th>
                 <th className="px-2 py-1">Kaynak</th>
                 <th className="px-2 py-1">Sağlık</th>
                 <th className="px-2 py-1">Başlık</th>
@@ -134,6 +153,7 @@ export default function ClusterDetailPage() {
                 const media = m.media as { mediaCount?: number; primaryUrl?: string | null } | undefined
                 return (
                   <tr key={i} className="border-t border-[rgb(var(--color-border))]">
+                    <td className="px-2 py-1">{String(m.membershipRole || (m.isCanonical ? 'PRIMARY' : 'SUPPORTING'))}</td>
                     <td className="px-2 py-1">
                       {String(m.source)} · {String(m.sourceStatus || '')}
                     </td>

@@ -43,6 +43,21 @@ function itemLink($item: cheerio.Cheerio<any>, baseUrl?: string): string | null 
   return null
 }
 
+function rssItemImage($item: cheerio.Cheerio<any>): string | null {
+  const enclosure = $item.find('enclosure').first()
+  const enclosureUrl = enclosure.attr('url')
+  const enclosureType = enclosure.attr('type') || ''
+  if (enclosureUrl && (!enclosureType || enclosureType.startsWith('image/'))) {
+    return decodeXmlText(enclosureUrl)
+  }
+  const media = $item.find('media\\:content, content').first().attr('url')
+  if (media) return decodeXmlText(media)
+  const thumb = $item.find('media\\:thumbnail, thumbnail').first().attr('url')
+  if (thumb) return decodeXmlText(thumb)
+  const img = $item.find('image url').first().text() || $item.find('image').first().attr('url') || $item.find('image').first().text()
+  return decodeXmlText(img) || null
+}
+
 export function parseRssFeed(xml: string, baseUrl?: string): DiscoveredFeedItem[] {
   const $ = cheerio.load(xml, { xml: true })
   const items: DiscoveredFeedItem[] = []
@@ -54,6 +69,9 @@ export function parseRssFeed(xml: string, baseUrl?: string): DiscoveredFeedItem[
       url,
       title: firstText($item, ['title']) || null,
       publishedAt: parseDate(firstText($item, ['pubDate', 'published', 'dc\\:date'])),
+      guid: decodeXmlText($item.find('guid').first().text()) || null,
+      imageUrl: rssItemImage($item),
+      description: firstText($item, ['description', 'content\\:encoded', 'summary']) || null,
     })
   })
   return items
@@ -70,6 +88,9 @@ export function parseAtomFeed(xml: string, baseUrl?: string): DiscoveredFeedItem
       url,
       title: firstText($item, ['title']) || null,
       publishedAt: parseDate(firstText($item, ['published', 'updated'])),
+      guid: decodeXmlText($item.find('id').first().text()) || null,
+      imageUrl: rssItemImage($item),
+      description: firstText($item, ['summary', 'content']) || null,
     })
   })
   return items

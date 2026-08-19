@@ -41,7 +41,17 @@ function listQueryFromUrl(url: URL): RawArticleListQuery {
     country: url.searchParams.get('country'),
     city: url.searchParams.get('city'),
     status: url.searchParams.get('status'),
-    qualityStatus: quality === 'EXTRACTED' || quality === 'LOW_CONFIDENCE' || quality === 'FAILED' ? quality : null,
+    qualityStatus:
+      quality === 'EXTRACTED' ||
+      quality === 'GOOD' ||
+      quality === 'LOW_CONFIDENCE' ||
+      quality === 'FAILED' ||
+      quality === 'TOO_SHORT' ||
+      quality === 'PARTIAL' ||
+      quality === 'EXTRACTION_FAILED' ||
+      quality === 'STALE'
+        ? quality
+        : null,
     dateFrom: parseDate(url.searchParams.get('dateFrom')),
     dateTo: parseDate(url.searchParams.get('dateTo')),
     search: url.searchParams.get('search'),
@@ -86,12 +96,26 @@ export async function GET(request: Request) {
     })
   }
   const result = await store.listRawArticlesPage(listQueryFromUrl(url))
+  const clusterIds = [...new Set(result.articles.map((a) => a.clusterId).filter((id): id is string => Boolean(id)))]
+  const clusterById = new Map<string, { articleCount: number; uniqueSourceCount: number }>()
+  for (const id of clusterIds) {
+    const cluster = await store.getCluster(id)
+    if (cluster) clusterById.set(id, { articleCount: cluster.articleCount, uniqueSourceCount: cluster.uniqueSourceCount })
+  }
+  function withEvent(article: RawArticleRecord & { sourceName?: string }) {
+    const event = article.clusterId ? clusterById.get(article.clusterId) : null
+    return {
+      ...serializeArticle(article),
+      clusterArticleCount: event?.articleCount ?? null,
+      clusterUniqueSourceCount: event?.uniqueSourceCount ?? null,
+    }
+  }
   return NextResponse.json({
     ...result,
-    articles: result.articles.map(serializeArticle),
+    articles: result.articles.map(withEvent),
     groups: result.groups?.map((g) => ({
       ...g,
-      articles: g.articles.map(serializeArticle),
+      articles: g.articles.map(withEvent),
     })),
   })
 }

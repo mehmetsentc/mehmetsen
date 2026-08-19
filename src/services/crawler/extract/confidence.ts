@@ -38,6 +38,15 @@ export function computeExtractionConfidence(signals: ExtractionQualitySignals): 
   return Math.max(0.05, Math.min(0.99, Number(score.toFixed(3))))
 }
 
+export function linkDensity(html: string, text: string): number {
+  const bodyLen = text.replace(/\s+/g, ' ').trim().length
+  if (!bodyLen) return 0
+  const linkText = (html.match(/<a\b[^>]*>([\s\S]*?)<\/a>/gi) || [])
+    .map((chunk) => chunk.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
+    .join(' ').length
+  return Number(Math.min(1, linkText / bodyLen).toFixed(3))
+}
+
 export function boilerplateRatio(body: string, title: string): number {
   const lower = body.toLowerCase()
   const markers = ['cookie', 'subscribe', 'newsletter', 'related news', 'read more', 'advertisement', 'reklam']

@@ -11,6 +11,7 @@ import type {
   NewsSourceRecord,
   RawArticleRecord,
 } from '../types'
+import { shouldEnterClusterFunnel } from '../gate/quality'
 import type {
   CrawlerStore,
   InsertClusterInput,
@@ -144,6 +145,13 @@ export class MemoryCrawlerStore implements CrawlerStore {
       etag: null,
       lastModified: null,
       logicalQueue: 'ARTICLE_FETCH_QUEUE',
+      discoveryLane: input.discoveryLane || 'CRAWLER',
+      discoveryLanes: input.discoveryLanes?.length ? input.discoveryLanes : [input.discoveryLane || 'CRAWLER'],
+      titleHint: input.titleHint ?? null,
+      guid: input.guid ?? null,
+      discoveryPrimaryImageCandidate: input.discoveryPrimaryImageCandidate ?? null,
+      rssDescription: input.rssDescription ?? null,
+      feedMetadata: input.feedMetadata ?? null,
     }
     this.urls.set(row.id, row)
     this.urlsByHash.set(input.urlHash, row.id)
@@ -200,6 +208,11 @@ export class MemoryCrawlerStore implements CrawlerStore {
       rejectionNote: input.rejectionNote ?? null,
       rejectedAt: input.rejectedAt ?? null,
       rejectedBy: input.rejectedBy ?? null,
+      qualityGateReasons: input.qualityGateReasons ?? null,
+      rssSnippetUsedAsBody: Boolean(input.rssSnippetUsedAsBody),
+      clusterRole: input.clusterRole ?? null,
+      discoveryPrimaryImageCandidate: input.discoveryPrimaryImageCandidate ?? null,
+      primaryImageConfidence: input.primaryImageConfidence ?? null,
     }
     this.articles.set(row.id, row)
     return row
@@ -355,7 +368,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
   async listPendingClusterArticles(limit: number): Promise<RawArticleRecord[]> {
     const taken = new Set([...this.memberships.values()].map((m) => m.articleId))
     return [...this.articles.values()]
-      .filter((a) => !taken.has(a.id) && !a.isExactDuplicate && a.qualityStatus !== 'FAILED')
+      .filter((a) => !taken.has(a.id) && !a.isExactDuplicate && shouldEnterClusterFunnel(a.qualityStatus))
       .sort((a, b) => (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0))
       .slice(0, limit)
   }
@@ -376,6 +389,8 @@ export class MemoryCrawlerStore implements CrawlerStore {
     matchBand: ClusterMembershipRecord['matchBand']
     matchExplanation?: ClusterScoreBreakdown | null
     isCanonical?: boolean
+    membershipRole?: ClusterMembershipRecord['membershipRole']
+    isIndependentSource?: boolean
   }): Promise<'inserted' | 'duplicate'> {
     if ([...this.memberships.values()].some((m) => m.articleId === input.articleId)) return 'duplicate'
     const row: ClusterMembershipRecord = {
@@ -387,10 +402,21 @@ export class MemoryCrawlerStore implements CrawlerStore {
       matchBand: input.matchBand,
       matchExplanation: input.matchExplanation ?? null,
       isCanonical: Boolean(input.isCanonical),
+      membershipRole: input.membershipRole || (input.isCanonical ? 'PRIMARY' : 'SUPPORTING'),
+      isIndependentSource: input.isIndependentSource !== false,
       createdAt: new Date(),
     }
     this.memberships.set(row.id, row)
     return 'inserted'
+  }
+
+  async updateMembership(
+    id: string,
+    patch: Partial<Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore'>>
+  ): Promise<void> {
+    const row = this.memberships.get(id)
+    if (!row) return
+    Object.assign(row, patch)
   }
 
   async listFailedUrls(limit = 80): Promise<DiscoveredUrlRecord[]> {
