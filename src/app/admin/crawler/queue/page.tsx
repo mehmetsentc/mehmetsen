@@ -58,14 +58,14 @@ interface Row {
   aiStatus?: string | null
 }
 
-const TABS: Array<{ tab: string; label: string }> = [
-  { tab: 'all', label: 'Tümü' },
-  { tab: 'watching', label: 'İzlenen' },
-  { tab: 'eligible', label: 'Uygun' },
-  { tab: 'high', label: 'Yüksek Öncelik' },
-  { tab: 'approved', label: 'AI İçin Onaylananlar' },
-  { tab: 'rejected', label: 'Reddedildi' },
-  { tab: 'archived', label: 'Arşivlenenler' },
+const TABS: Array<{ tab: string; label: string; key: string }> = [
+  { tab: 'all', label: 'Tümü', key: 'all' },
+  { tab: 'watching', label: 'İzlenen', key: 'watching' },
+  { tab: 'eligible', label: 'Uygun', key: 'eligible' },
+  { tab: 'high', label: 'Yüksek Öncelik', key: 'high' },
+  { tab: 'approved', label: 'AI İçin Onaylananlar', key: 'approved' },
+  { tab: 'rejected', label: 'Reddedilenler', key: 'rejected' },
+  { tab: 'archived', label: 'Arşivlenenler', key: 'archived' },
 ]
 
 export default function PreAiQueuePage() {
@@ -91,6 +91,7 @@ export default function PreAiQueuePage() {
   const [totalPages, setTotalPages] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [approvedForAi, setApprovedForAi] = useState(0)
+  const [tabs, setTabs] = useState<Record<string, number>>({})
   const [dispatchEnabled, setDispatchEnabled] = useState(false)
   const [busy, setBusy] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -104,6 +105,8 @@ export default function PreAiQueuePage() {
         tab,
         country,
         city,
+        district,
+        sourceId,
         eligibility,
         decision,
         priority,
@@ -115,7 +118,7 @@ export default function PreAiQueuePage() {
         dateFrom,
         dateTo,
       }),
-    [tab, country, city, eligibility, decision, priority, minSources, minArticles, minImportance, minConfidence, maxAgeHours, dateFrom, dateTo]
+    [tab, country, city, district, sourceId, eligibility, decision, priority, minSources, minArticles, minImportance, minConfidence, maxAgeHours, dateFrom, dateTo]
   )
   useEffect(() => {
     setSelection((prev) => reconcileSelection(prev, filterKey))
@@ -125,6 +128,8 @@ export default function PreAiQueuePage() {
     const q = new URLSearchParams({ tab, page: String(page), pageSize: String(pageSize) })
     if (country) q.set('country', country)
     if (city) q.set('city', city)
+    if (district) q.set('district', district)
+    if (sourceId) q.set('sourceId', sourceId)
     if (eligibility) q.set('eligibility', eligibility)
     if (decision) q.set('editorialDecision', decision)
     if (priority) q.set('editorialPriority', priority)
@@ -142,8 +147,9 @@ export default function PreAiQueuePage() {
     setTotal(Number(body.total || 0))
     setTotalPages(Number(body.totalPages || 1))
     setApprovedForAi(Number(body.approvedForAi || 0))
+    setTabs((body.tabs || {}) as Record<string, number>)
     setDispatchEnabled(Boolean(body.dispatchEnabled))
-  }, [tab, country, city, eligibility, decision, priority, minSources, minArticles, minImportance, minConfidence, maxAgeHours, dateFrom, dateTo, page, pageSize])
+  }, [tab, country, city, district, sourceId, eligibility, decision, priority, minSources, minArticles, minImportance, minConfidence, maxAgeHours, dateFrom, dateTo, page, pageSize])
 
   useEffect(() => {
     void load().catch((err) => setError(err instanceof Error ? err.message : 'Yüklenemedi'))
@@ -174,6 +180,8 @@ export default function PreAiQueuePage() {
             tab,
             country: country || null,
             city: city || null,
+            district: district || null,
+            sourceId: sourceId || null,
             eligibility: eligibility || null,
             editorialDecision: decision || null,
             editorialPriority: priority || null,
@@ -223,7 +231,7 @@ export default function PreAiQueuePage() {
       <p className="mb-3 text-sm">
         AI için onaylanan: <strong>{approvedForAi}</strong>
         <span className="ml-3 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
-          AI DISPATCH KAPALI
+          AI DISPATCH {dispatchEnabled ? 'AÇIK' : 'KAPALI'}
         </span>
       </p>
       <div className="mb-3 flex flex-wrap gap-2 text-sm">
@@ -237,7 +245,7 @@ export default function PreAiQueuePage() {
             }}
             className={`rounded-lg px-3 py-1 ${tab === chip.tab ? 'bg-[rgb(var(--color-brand))] text-white' : 'bg-[rgb(var(--color-surface))]'}`}
           >
-            {chip.label}
+            {chip.label} ({(tabs[chip.key] ?? 0).toLocaleString('tr-TR')})
           </button>
         ))}
       </div>
@@ -251,6 +259,8 @@ export default function PreAiQueuePage() {
       >
         <input className="rounded border px-2 py-1" placeholder="Ülke" value={country} onChange={(e) => setCountry(e.target.value)} />
         <input className="rounded border px-2 py-1" placeholder="Şehir" value={city} onChange={(e) => setCity(e.target.value)} />
+        <input className="rounded border px-2 py-1" placeholder="İlçe" value={district} onChange={(e) => setDistrict(e.target.value)} />
+        <input className="rounded border px-2 py-1" placeholder="Kaynak id" value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
         <select className="rounded border px-2 py-1" value={eligibility} onChange={(e) => setEligibility(e.target.value)}>
           <option value="">Algoritmik uygunluk</option>
           <option value="WATCHING">İzlenen</option>
@@ -374,7 +384,12 @@ export default function PreAiQueuePage() {
               ) : (
                 <td className="px-2 py-1">{CRAWLER_STATUS_LABELS[r.aiEligibility] || r.aiEligibility}</td>
               )}
-              <td className="px-2 py-1">{Math.round(r.ageHours)}s</td>
+              <td className="px-2 py-1">
+                {Math.round(r.ageHours)}s
+                {staleWarning(r.ageHours, staleHrs) ? (
+                  <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-900">ESKİ HABER</span>
+                ) : null}
+              </td>
               {approvedTab ? (
                 <>
                   <td className="px-2 py-1">{r.approvedBy || '—'}</td>

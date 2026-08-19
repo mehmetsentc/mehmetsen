@@ -86,6 +86,7 @@ export default function ClusterDetailPage() {
           <p>
             Önem {String(cluster.importanceScore)} · Güven {String(cluster.clusterConfidence)} · Yaş {String(cluster.ageHours)}s · Keşif{' '}
             {String(cluster.firstSeenAt)}
+            {cluster.hasMaterialUpdate ? ' · Maddi güncelleme var' : ''}
           </p>
           <p>
             {String(data?.sourceDiversity || cluster.sourceDiversity)} · {String(cluster.aiStatus || '—')}
@@ -113,7 +114,7 @@ export default function ClusterDetailPage() {
           <ul className="list-disc pl-5">
             {groups.map((g) => (
               <li key={String(g.sourceId)}>
-                {String(g.source)} — {String(g.articleCount)} haber
+                {String(g.source)} — {String(g.articleCount)} haber · kalite {String((g.rows as Array<{ qualityTier?: string }>)?.[0]?.qualityTier || '—')}
               </li>
             ))}
           </ul>
@@ -143,7 +144,11 @@ export default function ClusterDetailPage() {
                       <button type="button" className="underline" onClick={() => setOpen(open === i ? null : i)}>
                         {String(m.title)}
                       </button>
-                      {open === i ? <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">{String(m.preview || '')}</p> : null}
+                      {open === i ? (
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-[rgb(var(--color-muted))]">
+                          {String(m.body || m.preview || '')}
+                        </p>
+                      ) : null}
                       <div className="text-xs text-[rgb(var(--color-muted))]">{String(m.url || '')}</div>
                       <div className="text-xs">{m.publishedAt ? new Date(String(m.publishedAt)).toLocaleString('tr-TR') : '—'}</div>
                     </td>
@@ -151,7 +156,19 @@ export default function ClusterDetailPage() {
                       {String(m.wordCount)} / {String(m.charCount)}
                     </td>
                     <td className="px-2 py-1">{String(m.extractionMethod || '—')}</td>
-                    <td className="px-2 py-1">{media?.primaryUrl ? media.primaryUrl : `${media?.mediaCount || 0} aday`}</td>
+                    <td className="px-2 py-1">
+                      {(m.images as Array<{ url?: string; discoveryMethod?: string; isPrimary?: boolean }> | undefined)?.length
+                        ? (m.images as Array<{ url: string; discoveryMethod?: string; isPrimary?: boolean }>).map((img) => (
+                            <div key={img.url} className="mb-1">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={img.url} alt="" className="h-12 w-16 rounded object-cover" />
+                              <div className="text-[10px]">
+                                {img.isPrimary ? 'birincil' : 'aday'} · {img.discoveryMethod || '—'}
+                              </div>
+                            </div>
+                          ))
+                        : `${media?.mediaCount || 0} aday`}
+                    </td>
                   </tr>
                 )
               })}

@@ -42,12 +42,17 @@ function fmtPct(value: number | null): string {
 export default function CrawlerSourcesPage() {
   const [sources, setSources] = useState<SourceRow[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [testResult, setTestResult] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('')
+  const [country, setCountry] = useState('')
+  const [scope, setScope] = useState('')
+  const [tier, setTier] = useState('')
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     domain: '',
@@ -64,7 +69,13 @@ export default function CrawlerSourcesPage() {
   const load = useCallback(async () => {
     setError(null)
     try {
-      const res = await fetch(`/api/admin/crawler/sources?page=${page}&pageSize=${pageSize}`, { headers: await authHeaders() })
+      const q = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+      if (search) q.set('search', search)
+      if (status) q.set('status', status)
+      if (country) q.set('country', country)
+      if (scope) q.set('scope', scope)
+      if (tier) q.set('tier', tier)
+      const res = await fetch(`/api/admin/crawler/sources?${q}`, { headers: await authHeaders() })
       const body = (await res.json()) as { sources?: SourceRow[]; error?: string; total?: number; totalPages?: number }
       if (!res.ok) throw new Error(body.error || 'Yüklenemedi')
       setSources(body.sources || [])
@@ -73,7 +84,7 @@ export default function CrawlerSourcesPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Yüklenemedi')
     }
-  }, [page, pageSize])
+  }, [page, pageSize, search, status, country, scope, tier])
 
   useEffect(() => {
     void load()
@@ -173,6 +184,30 @@ export default function CrawlerSourcesPage() {
     <AdminOsPageShell title="Crawler Kaynakları" subtitle="Kaynak kaydı. Yeni kaynaklar duraklatılmış başlar.">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
+
+      <form
+        className="mb-3 flex flex-wrap gap-2 text-sm"
+        onSubmit={(e) => {
+          e.preventDefault()
+          setPage(1)
+          void load()
+        }}
+      >
+        <input className="rounded border px-2 py-1" placeholder="Ara" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <select className="rounded border px-2 py-1" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">Durum</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="PAUSED">PAUSED</option>
+          <option value="DEGRADED">DEGRADED</option>
+          <option value="DISABLED">DISABLED</option>
+        </select>
+        <input className="rounded border px-2 py-1" placeholder="Ülke" value={country} onChange={(e) => setCountry(e.target.value)} />
+        <input className="rounded border px-2 py-1" placeholder="Kapsam" value={scope} onChange={(e) => setScope(e.target.value)} />
+        <input className="rounded border px-2 py-1" placeholder="Tier" value={tier} onChange={(e) => setTier(e.target.value)} />
+        <button type="submit" className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 text-white">
+          Filtrele
+        </button>
+      </form>
 
       <form onSubmit={createSource} className="grid gap-3 rounded-2xl border border-[rgb(var(--color-border))] p-4 md:grid-cols-3">
         <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Ad" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />

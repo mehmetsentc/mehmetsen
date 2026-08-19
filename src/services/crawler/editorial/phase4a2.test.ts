@@ -290,8 +290,8 @@ describe('phase 4A.2 editorial control plane', () => {
   })
 
   it('W X Y evidence helpers and source diversity', () => {
-    expect(sourceDiversityLabel(3, 1)).toBe('3 haber / 1 kaynak')
-    expect(sourceDiversityLabel(3, 3)).toBe('3 kaynak')
+    expect(sourceDiversityLabel(3, 1)).toBe('3 haber / 1 bağımsız kaynak')
+    expect(sourceDiversityLabel(3, 3)).toBe('3 haber / 3 bağımsız kaynak')
   })
 
   it('Z audit records actor entity prev/new priority selection mode', async () => {

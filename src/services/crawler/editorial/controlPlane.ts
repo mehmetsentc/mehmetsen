@@ -94,10 +94,7 @@ export function approvedAiStatus(opts: {
 }
 
 export function sourceDiversityLabel(articleCount: number, uniqueSourceCount: number): string {
-  if (articleCount > uniqueSourceCount && uniqueSourceCount > 0) {
-    return `${articleCount} haber / ${uniqueSourceCount} kaynak`
-  }
-  return `${uniqueSourceCount} kaynak`
+  return `${articleCount} haber / ${uniqueSourceCount} bağımsız kaynak`
 }
 
 export function isWatchingQueueCluster(cluster: Pick<NewsClusterRecord, 'aiEligibility' | 'editorialDecision'>): boolean {

@@ -245,6 +245,7 @@ export const newsClusters = pgTable(
     index('news_clusters_eligibility_idx').on(t.aiEligibility),
     index('news_clusters_editorial_decision_idx').on(t.editorialDecision),
     index('news_clusters_editorial_priority_idx').on(t.editorialPriority),
+    index('news_clusters_first_seen_idx').on(t.firstSeenAt),
     index('news_clusters_language_idx').on(t.language),
   ]
 )
