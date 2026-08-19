@@ -640,4 +640,10 @@ export const AI_USAGE_EVENT_SELECT_FIELDS = [
   'gateDecision',
   'publishScore',
   'categoryConfidence',
+  'stage1FailFastTriggered',
+  'stage1FailFastReason',
+  'stage1OutputWordCount',
+  'stage1OutputCharCount',
+  'downstreamAiSuppressed',
+  'estimatedRequestsAvoided',
 ] as const

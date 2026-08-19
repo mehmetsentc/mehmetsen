@@ -38,6 +38,12 @@ export type AiUsageCostAuditFields = {
   gateDecision?: string
   publishScore?: number
   categoryConfidence?: number
+  stage1FailFastTriggered?: boolean
+  stage1FailFastReason?: string
+  stage1OutputWordCount?: number
+  stage1OutputCharCount?: number
+  downstreamAiSuppressed?: boolean
+  estimatedRequestsAvoided?: number
 }
 
 export type AiUsageTelemetryMeta = {

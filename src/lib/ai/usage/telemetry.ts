@@ -136,6 +136,24 @@ function buildEventDoc(input: RecordAiRequestUsageInput): Record<string, unknown
       typeof input.categoryConfidence === 'number' && Number.isFinite(input.categoryConfidence)
         ? input.categoryConfidence
         : undefined,
+    stage1FailFastTriggered: input.stage1FailFastTriggered === true ? true : undefined,
+    stage1FailFastReason: (() => {
+      const raw = input.stage1FailFastReason
+      return raw === 'body_too_short' || raw === 'incomplete_text' ? raw : undefined
+    })(),
+    stage1OutputWordCount:
+      typeof input.stage1OutputWordCount === 'number' && Number.isFinite(input.stage1OutputWordCount)
+        ? Math.max(0, Math.round(input.stage1OutputWordCount))
+        : undefined,
+    stage1OutputCharCount:
+      typeof input.stage1OutputCharCount === 'number' && Number.isFinite(input.stage1OutputCharCount)
+        ? Math.max(0, Math.round(input.stage1OutputCharCount))
+        : undefined,
+    downstreamAiSuppressed: input.downstreamAiSuppressed === true ? true : undefined,
+    estimatedRequestsAvoided:
+      typeof input.estimatedRequestsAvoided === 'number' && Number.isFinite(input.estimatedRequestsAvoided)
+        ? Math.max(0, Math.min(20, Math.round(input.estimatedRequestsAvoided)))
+        : undefined,
   }
 
   return compact(doc as unknown as Record<string, unknown>)

@@ -94,9 +94,11 @@ import {
 import { rememberReusableStage3 } from '@/lib/ai/stage3QualityRetryReuse'
 import { hashStage1WriterInput } from '@/services/newsroom/editors/stage1_contentWriter'
 import {
+  evaluateArticleCompleteness,
   qualityDiscardReason,
   qualityDiscardSkipReason,
 } from '@/services/newsroom/pipelineQualityDiscard'
+import { decideStage1FailFast, recordStage1FailFastTelemetry } from '@/services/newsroom/stage1FailFast'
 import { routeAiEditor, authorFieldsFromEditor, aiEditorForcesDraft } from '@/lib/ai/editorial/editorRouter'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
@@ -1020,6 +1022,31 @@ export async function processNewsroomArticle(
     // AiRewriteResult uyumluluğu için tip cast
     const rewritten: AiRewriteResult & { gateDecision?: string; gateReasons?: string[]; publishScore?: number } = rewrittenRaw
 
+    const failFast = decideStage1FailFast({
+      skipAiRewrite: workingInput.skipAiRewrite,
+      article: {
+        title: rewritten.title,
+        spot: (rewritten as AiRewriteResult).spot,
+        summary: rewritten.summary,
+        description: rewritten.description,
+      },
+      stage3AlreadySuppressed:
+        'stage3Suppressed' in rewrittenRaw && Boolean(rewrittenRaw.stage3Suppressed),
+    })
+    if (failFast.skip) {
+      recordStage1FailFastTelemetry({
+        reason: failFast.reason,
+        completeness: failFast.completeness,
+        downstreamAiSuppressed: true,
+        estimatedRequestsAvoided: failFast.estimatedRequestsAvoided,
+        operation: 'downstream_skip',
+      })
+      console.warn(
+        `[pipeline] Stage1 fail-fast (${failFast.skipReason}, words=${failFast.completeness.wordCount}): ${workingInput.sourceUrl?.slice(0, 80)}`
+      )
+      return { outcome: 'skipped', skipReason: failFast.skipReason }
+    }
+
     const outputChars = (rewritten.description || '').trim().length
     if (!workingInput.skipAiRewrite && outputChars < QUALITY_MIN_CHARS) {
       console.warn(
@@ -1620,16 +1647,17 @@ export async function processNewsroomArticle(
       )
     }
 
-    const incompleteText =
-      titleLooksIncomplete(rewritten.title || '') ||
-      contentHasIncompleteSegments(rewritten.description || '') ||
-      contentHasIncompleteSegments((rewritten as AiRewriteResult).spot || '') ||
-      contentHasIncompleteSegments(rewritten.summary || '')
-
-    const bodyTooShort = isNewsBodyTooShort(rewritten.description || '')
+    const completeness = evaluateArticleCompleteness({
+      title: rewritten.title,
+      spot: (rewritten as AiRewriteResult).spot,
+      summary: rewritten.summary,
+      description: rewritten.description,
+    })
+    const incompleteText = completeness.incompleteText
+    const bodyTooShort = completeness.bodyTooShort
     if (bodyTooShort) {
       console.warn(
-        `[pipeline] short body (${countPlainWords(rewritten.description)} < ${MIN_NEWS_BODY_WORDS}): ${workingInput.sourceUrl?.slice(0, 80)}`
+        `[pipeline] short body (${completeness.wordCount} < ${MIN_NEWS_BODY_WORDS}): ${workingInput.sourceUrl?.slice(0, 80)}`
       )
     }
 

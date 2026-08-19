@@ -28,6 +28,14 @@ import {
   recordStage3Reuse,
   shouldReuseStage3OnQualityRetry,
 } from '@/lib/ai/stage3QualityRetryReuse'
+import {
+  evaluateArticleCompleteness,
+  type CompletenessDiscardReason,
+} from '@/services/newsroom/pipelineQualityDiscard'
+import {
+  isStage1FailFastEnabled,
+  recordStage1FailFastTelemetry,
+} from '@/services/newsroom/stage1FailFast'
 
 export interface MultiStageInput {
   sourceLabel: string
@@ -66,6 +74,9 @@ export interface MultiStageResult extends AiRewriteResult {
   promptVersions?: Record<string, number>
   /** Pre-gateKeep Stage3 result. Heuristic fallback is not reused. */
   stage3Classification?: CategoryResult
+  stage1FailFastTriggered?: boolean
+  stage1FailFastReason?: 'body_too_short' | 'incomplete_text'
+  stage3Suppressed?: boolean
 }
 
 export async function runMultiStageEditor(input: MultiStageInput): Promise<MultiStageResult> {
@@ -99,13 +110,38 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     written,
   })
 
+  const completeness = evaluateArticleCompleteness({
+    title: written.title,
+    spot: written.spot,
+    summary: written.summary,
+    description: written.content,
+  })
+  const suppressStage3 =
+    isStage1FailFastEnabled() &&
+    (completeness.reason === 'body_too_short' || completeness.reason === 'incomplete_text')
+
   // ── Stage 3: Category Editor ─────────────────────────────────────────────────
   // quality_retry reuses the first successful DeepSeek classification.
   // Clone before gateKeep — gateKeep may mutate categoryId / isBreaking.
   let category: CategoryResult
   let stage3Classification: CategoryResult
+  let stage3Suppressed = false
   const previous = input.previousStage3
-  if (
+  if (suppressStage3) {
+    stage3Suppressed = true
+    category = failFastStage3Placeholder(input.forcedCategoryId)
+    stage3Classification = cloneStage3Classification(category)
+    recordStage1FailFastTelemetry({
+      reason: completeness.reason as CompletenessDiscardReason,
+      completeness,
+      downstreamAiSuppressed: true,
+      estimatedRequestsAvoided: 1,
+      operation: 'stage3_suppressed',
+    })
+    console.warn(
+      `[multiStage] Stage1 fail-fast — Stage3 skipped (${completeness.reason}, words=${completeness.wordCount})`
+    )
+  } else if (
     shouldReuseStage3OnQualityRetry({
       generationReason: input.generationReason,
       previousStage3: previous,
@@ -196,5 +232,22 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     publishScore: gate.publishScore,
     aiEditorId: input.aiEditorId,
     stage3Classification,
+    stage1FailFastTriggered: suppressStage3,
+    stage1FailFastReason: suppressStage3 ? completeness.reason ?? undefined : undefined,
+    stage3Suppressed,
+  }
+}
+
+function failFastStage3Placeholder(forcedCategoryId?: string): CategoryResult {
+  return {
+    categoryId: forcedCategoryId || 'gundem',
+    isBreaking: false,
+    confidence: 50,
+    city: null,
+    district: null,
+    country: 'Türkiye',
+    tags: [],
+    reason: 'stage1_fail_fast_stage3_skipped',
+    source: 'heuristic',
   }
 }
