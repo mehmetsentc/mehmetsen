@@ -88,6 +88,10 @@ export type CrawlerAiLedgerRow = {
   estimatedCostUsd: number | null
   actualCostUsd: number | null
   status: string
+  /** Phase 4D — e.g. controlled_auto_draft */
+  mode?: string | null
+  reason?: string | null
+  failureCode?: string | null
 }
 
 export type CrawlerAiBudgetWindow = {

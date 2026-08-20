@@ -490,41 +490,10 @@ export async function runControlledAutoDraftTick(opts: {
 
     if (draftResult.paidCallExecuted) result.providerCalls += 1
 
-    // Circuit breaker on auth/balance/rate/5xx
-    if (draftResult.statusCode != null) {
-      const circuit = await opts.aiStore.getCircuit(cfg.provider)
-      const next = applyProviderStatus(circuit, draftResult.statusCode, now)
-      await opts.aiStore.saveCircuit(next)
-    }
-
-    const settledHour = settleReservation(hourSnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
-    const settledDay = settleReservation(daySnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
-    const settledMonth = monthSnap
-      ? settleReservation(monthSnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
-      : null
-    hourSnap = settledHour
-    daySnap = settledDay
-    if (settledMonth) monthSnap = settledMonth
-    await opts.aiStore.saveBudgetWindow(hourSnap)
-    await opts.aiStore.saveBudgetWindow(daySnap)
-    if (settledMonth) await opts.aiStore.saveBudgetWindow(settledMonth)
-
-    await opts.aiStore.insertLedger({
-      provider: cfg.provider,
-      model: draftResult.model,
-      lane: 'crawler_automatic',
-      jobId: job.id,
-      clusterId: cluster.id,
-      requestType: 'controlled_auto_draft',
-      inputTokens: draftResult.actualInputTokens,
-      outputTokens: draftResult.actualOutputTokens,
-      estimatedCostUsd: costUsd,
-      actualCostUsd: draftResult.actualCostUsd,
-      status: draftResult.ok ? 'SUCCESS' : 'FAILED',
-    })
-
-    if (draftResult.ok && draftResult.draft && draftResult.draftId) {
-      // AI_DRAFT linkage on job + cluster fingerprint — never publish
+    // Finalize job BEFORE budget/ledger side-effects so a tick timeout cannot leave
+    // PROCESSING after a paid SUCCESS (Phase 4D.2 production incident).
+    const draftOk = Boolean(draftResult.ok && draftResult.draft && draftResult.draftId)
+    if (draftOk) {
       await opts.aiStore.updateJob(job.id, {
         status: 'COMPLETED',
         actualInputTokens: draftResult.actualInputTokens,
@@ -557,6 +526,42 @@ export async function runControlledAutoDraftTick(opts: {
       })
       bump(result.reasons, draftResult.failureReason || 'FAILED')
     }
+
+    // Circuit breaker on auth/balance/rate/5xx
+    if (draftResult.statusCode != null) {
+      const circuit = await opts.aiStore.getCircuit(cfg.provider)
+      const next = applyProviderStatus(circuit, draftResult.statusCode, now)
+      await opts.aiStore.saveCircuit(next)
+    }
+
+    const settledHour = settleReservation(hourSnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
+    const settledDay = settleReservation(daySnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
+    const settledMonth = monthSnap
+      ? settleReservation(monthSnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
+      : null
+    hourSnap = settledHour
+    daySnap = settledDay
+    if (settledMonth) monthSnap = settledMonth
+    await opts.aiStore.saveBudgetWindow(hourSnap)
+    await opts.aiStore.saveBudgetWindow(daySnap)
+    if (settledMonth) await opts.aiStore.saveBudgetWindow(settledMonth)
+
+    await opts.aiStore.insertLedger({
+      provider: cfg.provider,
+      model: draftResult.model,
+      lane: 'crawler_automatic',
+      jobId: job.id,
+      clusterId: cluster.id,
+      requestType: 'controlled_auto_draft',
+      inputTokens: draftResult.actualInputTokens,
+      outputTokens: draftResult.actualOutputTokens,
+      estimatedCostUsd: costUsd,
+      actualCostUsd: draftResult.actualCostUsd,
+      status: draftResult.ok ? 'SUCCESS' : 'FAILED',
+      mode: 'controlled_auto_draft',
+      reason: draftOk ? 'ok' : draftResult.failureReason || 'failed',
+      failureCode: draftOk ? null : draftResult.blockedReason || draftResult.failureReason,
+    })
 
     // Explicit: never publish from this path
     void eventDraftPublicationAllowed()

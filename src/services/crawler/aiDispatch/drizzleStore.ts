@@ -352,6 +352,9 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
       estimatedCostUsd: row.estimatedCostUsd,
       actualCostUsd: row.actualCostUsd,
       status: row.status,
+      mode: row.mode ?? null,
+      reason: row.reason ?? null,
+      failureCode: row.failureCode ?? null,
     })
   }
 
@@ -382,6 +385,9 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
       estimatedCostUsd: r.estimatedCostUsd,
       actualCostUsd: r.actualCostUsd,
       status: r.status,
+      mode: r.mode ?? null,
+      reason: r.reason ?? null,
+      failureCode: r.failureCode ?? null,
     }))
   }
 
