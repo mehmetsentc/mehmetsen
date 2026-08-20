@@ -761,6 +761,33 @@ describe('Phase 4C.2 — source-aware body + repair + efficiency', () => {
     expect(user.indexOf('"body"')).toBeLessThan(user.indexOf('"title"'))
   })
 
+  it('4C.4 rich prompt: hard min 300, target 400–550, no short-article bias', () => {
+    const pack = buildCanaryEvidencePack(cluster(), richPackMembers())
+    const metrics = computeSourceContentMetrics(pack)
+    expect(metrics.richness).toBe('rich')
+    expect(metrics.bodyRequiredMinWords).toBe(300)
+    expect(metrics.bodyPromptTargetMinWords).toBe(400)
+    expect(metrics.bodyPromptTargetMaxWords).toBe(550)
+    const system = buildCanarySystemPrompt(pack)
+    expect(system).toMatch(/Haber İçeriği.*en az 300/i)
+    expect(system).toMatch(/400–550|400-550/)
+    expect(system).toMatch(/kısa MAKALE demek değildir|Kısa paragraflar ≠ kısa haber/i)
+    expect(system).not.toMatch(/^- Kısa mobil paragraflar/m)
+    const user = buildCanaryUserPrompt(pack)
+    expect(user).toMatch(/TEK BAŞINA en az 300/)
+    expect(user).toMatch(/400–550|400-550/)
+    expect(user).toMatch(/dahil değil/)
+  })
+
+  it('4C.4 hard validator stays 300–900 for rich; never lowered to 177/200', () => {
+    const pack = buildCanaryEvidencePack(cluster(), richPackMembers())
+    expect(evaluateBodyAgainstSources(richBody(177), pack).code).toBe('BODY_TOO_SHORT')
+    expect(evaluateBodyAgainstSources(richBody(200), pack).code).toBe('BODY_TOO_SHORT')
+    expect(evaluateBodyAgainstSources(richBody(299), pack).code).toBe('BODY_TOO_SHORT')
+    expect(evaluateBodyAgainstSources(richBody(300), pack).ok).toBe(true)
+    expect(evaluateBodyAgainstSources(richBody(901), pack).code).toBe('BODY_TOO_LONG')
+  })
+
   it('global AI flags stay false', () => {
     expect(isCrawlerAiDispatchEnabled()).toBe(false)
     expect(isLegacyDirectAiEnabled()).toBe(false)

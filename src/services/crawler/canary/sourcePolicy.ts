@@ -5,6 +5,8 @@
 
 import {
   CANARY_BODY_ABSOLUTE_MIN_WORDS,
+  CANARY_BODY_PROMPT_TARGET_MAX_WORDS,
+  CANARY_BODY_PROMPT_TARGET_MIN_WORDS,
   CANARY_BODY_TARGET_MAX_WORDS,
   CANARY_BODY_TARGET_MIN_WORDS,
   CANARY_BODY_THIN_MIN_WORDS,
@@ -24,6 +26,9 @@ export type SourceContentMetrics = {
   /** Soft target min when writing; null if insufficient. */
   bodyTargetMinWords: number | null
   bodyTargetMaxWords: number
+  /** Prompt aim band for rich packs (does not replace hard 300–900). */
+  bodyPromptTargetMinWords: number | null
+  bodyPromptTargetMaxWords: number | null
   /** Hard validation min for body length given sources. */
   bodyRequiredMinWords: number | null
   /** When true, validation should fail with INSUFFICIENT_SOURCE_MATERIAL. */
@@ -72,6 +77,8 @@ export function computeSourceContentMetrics(
       richness,
       bodyTargetMinWords: null,
       bodyTargetMaxWords,
+      bodyPromptTargetMinWords: null,
+      bodyPromptTargetMaxWords: null,
       bodyRequiredMinWords: null,
       insufficient: true,
     }
@@ -86,6 +93,8 @@ export function computeSourceContentMetrics(
       richness,
       bodyTargetMinWords: CANARY_BODY_TARGET_MIN_WORDS,
       bodyTargetMaxWords,
+      bodyPromptTargetMinWords: CANARY_BODY_PROMPT_TARGET_MIN_WORDS,
+      bodyPromptTargetMaxWords: CANARY_BODY_PROMPT_TARGET_MAX_WORDS,
       bodyRequiredMinWords: CANARY_BODY_TARGET_MIN_WORDS,
       insufficient: false,
     }
@@ -104,6 +113,8 @@ export function computeSourceContentMetrics(
       richness,
       bodyTargetMinWords: required,
       bodyTargetMaxWords,
+      bodyPromptTargetMinWords: required,
+      bodyPromptTargetMaxWords: Math.min(bodyTargetMaxWords, Math.max(required + 150, 400)),
       bodyRequiredMinWords: required,
       insufficient: false,
     }
@@ -122,6 +133,8 @@ export function computeSourceContentMetrics(
     richness,
     bodyTargetMinWords: thinRequired,
     bodyTargetMaxWords: Math.min(bodyTargetMaxWords, Math.max(thinRequired + 100, usableSourceWords)),
+    bodyPromptTargetMinWords: thinRequired,
+    bodyPromptTargetMaxWords: Math.min(bodyTargetMaxWords, Math.max(thinRequired + 100, usableSourceWords)),
     bodyRequiredMinWords: thinRequired,
     insufficient: false,
   }

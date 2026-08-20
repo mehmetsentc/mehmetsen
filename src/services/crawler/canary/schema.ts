@@ -17,9 +17,16 @@ export const CANARY_CATEGORY_IDS = new Set(DEFAULT_CATEGORIES.map((c) => c.id))
 /** Absolute floor — below this always fails (broken/truncated), never invent to pad. */
 export const CANARY_BODY_ABSOLUTE_MIN_WORDS = 80
 
-/** Publishable-length target when sources are rich enough. */
+/** Hard validation floor/ceiling when sources are rich enough. Never lower for canary pass. */
 export const CANARY_BODY_TARGET_MIN_WORDS = 300
 export const CANARY_BODY_TARGET_MAX_WORDS = 900
+
+/**
+ * Prompt soft target for rich packs (Phase 4C.4).
+ * Hard min stays 300; hard max stays 900. Aim mid-band so models do not undershoot ~177.
+ */
+export const CANARY_BODY_PROMPT_TARGET_MIN_WORDS = 400
+export const CANARY_BODY_PROMPT_TARGET_MAX_WORDS = 550
 
 /** Thin-source accurate short article band (aligned with site min, not forced 300). */
 export const CANARY_BODY_THIN_MIN_WORDS = Math.min(MIN_NEWS_BODY_WORDS, 150)
