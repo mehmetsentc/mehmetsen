@@ -29,6 +29,14 @@ export {
 } from './pipeline'
 
 export {
+  getAutoDraftEligibleAfter,
+  getAcceptanceCohortIds,
+  isEventEligibleForAutoDraft,
+  acceptanceHardCaps,
+  jobLeaseTimeoutMs,
+} from './activation'
+
+export {
   buildCostCmsPayload,
   costCmsUnavailablePayload,
   aggregateLedgerRows,

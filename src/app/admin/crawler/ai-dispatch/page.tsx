@@ -43,6 +43,10 @@ interface Payload {
   automaticAi?: string
   dispatchStatus?: string
   dispatchMode?: string
+  aiModeLabelTr?: string
+  providerStatusLabelTr?: string
+  providerReady?: boolean
+  providerReason?: string | null
   gateStatus?: string
   modeNotes?: string[]
   dryRun?: string
@@ -157,10 +161,16 @@ export default function AiDispatchPage() {
         </p>
       ) : null}
       <div className="mb-4 rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-center">
-        <div className="text-xs uppercase tracking-wide text-amber-800">DISPATCH MODE</div>
-        <div className="text-3xl font-black text-amber-900">{data?.dispatchMode || 'OFF'}</div>
+        <div className="text-xs uppercase tracking-wide text-amber-800">AI MODU</div>
+        <div className="text-3xl font-black text-amber-900">
+          {data?.aiModeLabelTr || data?.dispatchMode || 'KAPALI'}
+        </div>
         <div className="mt-1 text-sm text-amber-800">
-          Gate: {data?.gateStatus || 'CLOSED'} · Kill switch: {data?.dispatchStatus || data?.automaticAi || 'KAPALI'}
+          Gate: {data?.gateStatus || 'CLOSED'} · Dispatch: {data?.dispatchStatus || data?.automaticAi || 'KAPALI'}
+        </div>
+        <div className="mt-2 text-sm font-semibold text-amber-950">
+          Provider: {data?.providerStatusLabelTr || 'KAPALI'}
+          {data?.providerReason ? ` · ${data.providerReason}` : ''}
         </div>
       </div>
       {data?.alert ? (

@@ -1,6 +1,14 @@
 import { getDeepSeekModel } from '@/lib/ai/deepseekClient'
 import { isCrawlerAiDispatchDryRun, isCrawlerAiDispatchEnabled } from '../dispatch'
 import { getCrawlerAiMode } from '../aiMode'
+import { getCrawlerAiProviderReadiness } from './providerReadiness'
+
+export {
+  getCrawlerAiProviderReadiness,
+  isCrawlerAiProviderEnabled,
+  type CrawlerAiProviderReadiness,
+  type ProviderNotReadyReason,
+} from './providerReadiness'
 
 function numEnvFirst(names: string[], fallback: number): number {
   for (const name of names) {
@@ -21,11 +29,11 @@ function clamp(n: number, min: number, max: number): number {
 }
 
 /**
- * Phase 4A/4D never wires a live provider by default.
- * Paid DeepSeek is not called unless tests inject an adapter.
+ * Phase 4D.1 — true only when kill switch + credential + model + prices + writer + validator.
+ * Default false (kill switch off). Key alone ≠ spend permission.
  */
 export function isCrawlerAiProviderWired(): boolean {
-  return false
+  return getCrawlerAiProviderReadiness().ready
 }
 
 export function crawlerAiDispatchConfig() {

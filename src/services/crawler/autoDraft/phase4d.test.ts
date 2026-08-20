@@ -311,11 +311,12 @@ describe('Phase 4D pipeline tick (mode OFF → $0)', () => {
     expect(tick.published).toBe(0)
   })
 
-  it('CONTROLLED_AUTO_DRAFT + dispatch still unwired → no paid call', async () => {
+  it('CONTROLLED_AUTO_DRAFT + dispatch + provider unwired → no jobs, no paid call', async () => {
     pricingOn()
     process.env.CRAWLER_AI_MODE = 'CONTROLLED_AUTO_DRAFT'
     process.env.CRAWLER_AI_DISPATCH_ENABLED = 'true'
     process.env.AI_MAX_COST_PER_EVENT_USD = '1'
+    process.env.CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER = '2020-01-01T00:00:00.000Z'
     const crawler = new MemoryCrawlerStore()
     const ai = new MemoryAiDispatchStore()
     const now = new Date()
@@ -327,8 +328,10 @@ describe('Phase 4D pipeline tick (mode OFF → $0)', () => {
       now,
       limit: 5,
     })
+    expect(tick.jobsCreated).toBe(0)
     expect(tick.providerCalls).toBe(0)
     expect(tick.published).toBe(0)
+    expect(tick.providerBlocked).toBeGreaterThan(0)
   })
 })
 

@@ -95,9 +95,35 @@ export function aggregateLedgerRows(
 
 export function buildCostCmsPayload(rows: CrawlerAiLedgerRow[], now = new Date()) {
   const windows = aggregateWindows(now).map((w) => aggregateLedgerRows(rows, w.since, w.label))
+  const byLane = (requestType: string | null, lane?: string) => {
+    const filtered = rows.filter((r) => {
+      if (requestType && r.requestType !== requestType) return false
+      if (lane && r.lane !== lane) return false
+      return true
+    })
+    const success = filtered.filter((r) => /success|completed|ok/i.test(r.status))
+    const failure = filtered.filter((r) => /fail|error|blocked|cancel/i.test(r.status))
+    const cost = filtered.reduce((s, r) => s + (r.actualCostUsd || 0), 0)
+    const inTok = filtered.reduce((s, r) => s + (r.inputTokens || 0), 0)
+    const outTok = filtered.reduce((s, r) => s + (r.outputTokens || 0), 0)
+    return {
+      requests: filtered.length,
+      success: success.length,
+      failure: failure.length,
+      inputTokens: inTok,
+      outputTokens: outTok,
+      costUsd: cost,
+      avgSuccessfulDraftCostUsd: success.length > 0 ? cost / success.length : null,
+    }
+  }
   return {
     windows,
     unavailable: false as const,
+    lanes: {
+      manualCanary: byLane('generation', 'manual_canary'),
+      controlledAutoDraft: byLane('controlled_auto_draft'),
+      manualRetry: byLane('manual_retry'),
+    },
   }
 }
 

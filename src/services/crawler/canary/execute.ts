@@ -1,11 +1,4 @@
-import { getDeepSeekModel } from '@/lib/ai/deepseekClient'
-import { estimateUsageCost, getDeepSeekPricing } from '@/lib/ai/usage/pricing'
 import { buildCanaryPreflight } from './preflight'
-import { buildCanarySystemPrompt, buildCanaryUserPrompt } from './prompt'
-import { validateCanaryDraft, repairDraftDeterministically, extractJsonObject } from './validate'
-import { canaryRetryDecision } from './retryPolicy'
-import { shouldAttemptPaidSchemaRepair } from './repairPolicy'
-import { buildDeterministicFactFlags } from './factFlags'
 import { assertCanarySafetyFlags, canaryConfig } from './flags'
 import { MemoryCanaryStore, newCanaryId, type CanaryStore } from './store'
 import { recordCanaryAttempt } from './measurement'
@@ -16,7 +9,6 @@ import type {
   CanaryMemberInput,
   CanaryPreflight,
   CanaryProvider,
-  CanaryProviderResult,
 } from './types'
 import {
   APPROVED_FOR_REAL_CANARY_EXECUTION,
@@ -339,307 +331,169 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
     }
   }
 
-  // Execute DeepSeek-only path (tests inject mock provider)
+  // Execute DeepSeek-only path via shared Phase 4D.1 writer (tests inject mock provider)
   job.state = 'RUNNING'
   job.startedAt = new Date()
   job.updatedAt = job.startedAt
   await store.upsertJob(job)
 
-  const system = buildCanarySystemPrompt(pack)
-  const user = buildCanaryUserPrompt(pack)
-  const model = getDeepSeekModel(cfg.model)
-  let requestCount = 0
-  let lastResult: CanaryProviderResult | null = null
-  let retried = false
-  let paidRepairUsed = false
-  let totalInputTokens = 0
-  let totalOutputTokens = 0
+  const { executeEventDraft } = await import('../eventDraft/executeEventDraft')
+  const draftResult = await executeEventDraft({
+    pack,
+    provider: input.provider!,
+    lane: 'manual_canary',
+    jobId: job.id,
+    estimatedCostUsd: preflight.estimatedCostUsd,
+    allowPaidSchemaRepair: true,
+  })
 
-  const callOnce = async (requestType: 'generation' | 'schema_repair' = 'generation') => {
-    requestCount += 1
-    const result = await input.provider!.chat({ system, user, model, pack })
-    totalInputTokens += result.inputTokens ?? 0
-    totalOutputTokens += result.outputTokens ?? 0
-    if (requestType === 'schema_repair') paidRepairUsed = true
-    return result
-  }
+  job.requestCount = draftResult.requestCount
+  job.actualInputTokens = draftResult.actualInputTokens
+  job.actualOutputTokens = draftResult.actualOutputTokens
+  job.actualCostUsd = draftResult.actualCostUsd
+  job.validation = draftResult.validation
+  job.draft = draftResult.draft
+  job.factFlags = draftResult.factFlags
+  job.completedAt = new Date()
+  job.updatedAt = job.completedAt
 
-  try {
-    lastResult = await callOnce('generation')
-    if (lastResult.provider && lastResult.provider !== 'deepseek') {
-      job.state = 'FAILED'
-      job.blockedReason = 'PROVIDER_NOT_DEEPSEEK'
-      job.failureReason = 'non_deepseek_provider'
-      job.requestCount = requestCount
-      job.completedAt = new Date()
-      await store.upsertJob(job)
-      return {
-        preflight: { ...preflight, state: 'FAILED', ready: false },
-        job,
-        paidCallExecuted: true,
-        providersInvoked: ['deepseek'],
-        otherProvidersInvoked: [],
-        autoPublished: false,
-        idempotentReuse: false,
-        messageTr: 'Yalnızca DeepSeek izinli.',
-      }
-    }
-
-    const retry = canaryRetryDecision(lastResult.statusCode, { alreadyRetried: false })
-    if (!lastResult.text && retry.retry && !retried) {
-      retried = true
-      lastResult = await callOnce('generation')
-    }
-
-    if (lastResult.statusCode === 401 || lastResult.statusCode === 402) {
-      job.state = 'FAILED'
-      job.blockedReason = lastResult.statusCode === 401 ? 'AUTH_401' : 'INSUFFICIENT_BALANCE_402'
-      job.failureReason = retry.adminWarningTr || String(lastResult.statusCode)
-      job.requestCount = requestCount
-      job.completedAt = new Date()
-      job.actualInputTokens = totalInputTokens || lastResult.inputTokens || null
-      job.actualOutputTokens = totalOutputTokens || lastResult.outputTokens || null
-      await store.upsertJob(job)
-      await store.appendLedger({
-        id: newCanaryId('ldg'),
-        timestamp: new Date(),
-        provider: 'deepseek',
-        model,
-        lane: CANARY_COST_LANE,
-        jobId: job.id,
-        clusterId: job.clusterId,
-        requestType: 'generation',
-        inputTokens: lastResult.inputTokens ?? null,
-        outputTokens: lastResult.outputTokens ?? null,
-        estimatedCostUsd: preflight.estimatedCostUsd,
-        actualCostUsd: null,
-        status: 'FAILED',
-      })
-      recordCanaryAttempt({
-        providerRequests: requestCount,
-        successful: false,
-        repairRequests: paidRepairUsed ? 1 : 0,
-        actualCostUsd: null,
-      })
-      return {
-        preflight: {
-          ...preflight,
-          state: 'FAILED',
-          ready: false,
-          blockedReason: job.blockedReason as CanaryBlockReason,
-        },
-        job,
-        paidCallExecuted: true,
-        providersInvoked: ['deepseek'],
-        otherProvidersInvoked: [],
-        autoPublished: false,
-        idempotentReuse: false,
-        messageTr: retry.adminWarningTr || 'Sağlayıcı hatası',
-      }
-    }
-
-    if (!lastResult.text) {
-      job.state = 'FAILED'
-      job.failureReason = lastResult.errorCode || 'empty_response'
-      job.requestCount = requestCount
-      job.completedAt = new Date()
-      await store.upsertJob(job)
-      recordCanaryAttempt({
-        providerRequests: requestCount,
-        successful: false,
-        repairRequests: paidRepairUsed ? 1 : 0,
-        actualCostUsd: null,
-      })
-      return {
-        preflight: { ...preflight, state: 'FAILED', ready: false },
-        job,
-        paidCallExecuted: true,
-        providersInvoked: ['deepseek'],
-        otherProvidersInvoked: [],
-        autoPublished: false,
-        idempotentReuse: false,
-        messageTr: 'Boş sağlayıcı yanıtı.',
-      }
-    }
-
-    let validation = validateCanaryDraft(lastResult.text, {
-      allowRepair: true,
-      pack,
-      truncated: lastResult.truncated === true,
-    })
-
-    const parsed = extractJsonObject(lastResult.text)
-    const repairDecision = shouldAttemptPaidSchemaRepair({
-      validationOk: validation.ok,
-      issueCodes: validation.issues.map((i) => i.code),
-      jsonParseOk: parsed.ok,
-      alreadyRepaired: paidRepairUsed,
-      requestCount,
-      maxRequests: cfg.maxRequestsWithRepair,
-    })
-
-    // One structural AI repair only — NEVER for BODY_TOO_SHORT / insufficient / cost-auth
-    if (repairDecision.repair) {
-      const repairResult = await callOnce('schema_repair')
-      if (repairResult.text) {
-        lastResult = repairResult
-        validation = validateCanaryDraft(repairResult.text, {
-          allowRepair: true,
-          pack,
-          truncated: repairResult.truncated === true,
-        })
-      }
-    }
-
-    const pricing = getDeepSeekPricing(model)
-    const actualCost =
-      totalInputTokens > 0 || totalOutputTokens > 0
-        ? estimateUsageCost(
-            {
-              inputTokens: totalInputTokens,
-              outputTokens: totalOutputTokens,
-              totalTokens: totalInputTokens + totalOutputTokens,
-            },
-            pricing
-          ).estimatedTotalCostUsd ?? null
-        : lastResult.inputTokens != null && lastResult.outputTokens != null
-          ? estimateUsageCost(
-              {
-                inputTokens: lastResult.inputTokens,
-                outputTokens: lastResult.outputTokens,
-                totalTokens: lastResult.inputTokens + lastResult.outputTokens,
-              },
-              pricing
-            ).estimatedTotalCostUsd ?? null
-          : null
-
-    job.requestCount = requestCount
-    job.actualInputTokens = totalInputTokens || lastResult.inputTokens || null
-    job.actualOutputTokens = totalOutputTokens || lastResult.outputTokens || null
-    job.actualCostUsd = actualCost
-    job.validation = validation
-    job.draft = validation.draft
-    job.completedAt = new Date()
-    job.updatedAt = job.completedAt
-
-    if (!validation.ok || !validation.draft) {
-      const primaryCode = validation.issues.find((i) => i.severity === 'error')?.code
-      job.state = 'FAILED'
-      job.failureReason =
-        primaryCode === 'OUTPUT_TRUNCATED'
-          ? 'output_truncated'
-          : primaryCode === 'INSUFFICIENT_SOURCE_MATERIAL'
-            ? 'insufficient_source_material'
-            : primaryCode === 'BODY_TOO_SHORT' || primaryCode === 'BODY_ABSOLUTE_TOO_SHORT'
-              ? primaryCode.toLowerCase()
-              : 'schema_validation_failed'
-      await store.upsertJob(job)
-      await store.appendLedger({
-        id: newCanaryId('ldg'),
-        timestamp: new Date(),
-        provider: 'deepseek',
-        model,
-        lane: CANARY_COST_LANE,
-        jobId: job.id,
-        clusterId: job.clusterId,
-        requestType: paidRepairUsed ? 'schema_repair' : 'generation',
-        inputTokens: job.actualInputTokens,
-        outputTokens: job.actualOutputTokens,
-        estimatedCostUsd: preflight.estimatedCostUsd,
-        actualCostUsd: actualCost,
-        status: 'FAILED',
-      })
-      recordCanaryAttempt({
-        providerRequests: requestCount,
-        successful: false,
-        repairRequests: paidRepairUsed ? 1 : 0,
-        actualCostUsd: actualCost,
-      })
-      return {
-        preflight: { ...preflight, state: 'FAILED', ready: false },
-        job,
-        paidCallExecuted: true,
-        providersInvoked: ['deepseek'],
-        otherProvidersInvoked: [],
-        autoPublished: false,
-        idempotentReuse: false,
-        messageTr:
-          primaryCode === 'INSUFFICIENT_SOURCE_MATERIAL'
-            ? 'Kaynak materyali yetersiz — ücretli retry yok.'
-            : primaryCode === 'OUTPUT_TRUNCATED'
-              ? 'Çıktı kesildi (truncation) — uzunluk repair yok.'
-              : 'Şema doğrulaması başarısız (ücretli semantic repair yok).',
-      }
-    }
-
-    // Prefer deterministic repair already done; ensure final shape
-    const repaired = repairDraftDeterministically(validation.draft)
-    job.draft = repaired.draft
-    job.factFlags = buildDeterministicFactFlags(repaired.draft, pack)
-    job.state = 'SUCCEEDED'
-    const draftId = `draft_canary_${job.clusterId}`
-    job.editorialDraftId = draftId
-    job.autoPublish = false
-    job.outputTarget = CANARY_OUTPUT_TARGET
-    job.draftStatus = CANARY_DRAFT_STATUS
-    await store.setDraftId(job.clusterId, draftId)
+  if (draftResult.blockedReason === 'PROVIDER_NOT_DEEPSEEK') {
+    job.state = 'FAILED'
+    job.blockedReason = 'PROVIDER_NOT_DEEPSEEK'
+    job.failureReason = draftResult.failureReason
     await store.upsertJob(job)
-    await store.appendLedger({
-      id: newCanaryId('ldg'),
-      timestamp: new Date(),
-      provider: 'deepseek',
-      model,
-      lane: CANARY_COST_LANE,
-      jobId: job.id,
-      clusterId: job.clusterId,
-      requestType: 'generation',
-      inputTokens: job.actualInputTokens,
-      outputTokens: job.actualOutputTokens,
-      estimatedCostUsd: preflight.estimatedCostUsd,
-      actualCostUsd: actualCost,
-      status: 'SUCCEEDED',
-    })
-    recordCanaryAttempt({
-      providerRequests: requestCount,
-      successful: true,
-      repairRequests: paidRepairUsed ? 1 : 0,
-      actualCostUsd: actualCost,
-    })
-
     return {
-      preflight: { ...preflight, state: 'SUCCEEDED', ready: false },
+      preflight: { ...preflight, state: 'FAILED', ready: false },
       job,
       paidCallExecuted: true,
       providersInvoked: ['deepseek'],
       otherProvidersInvoked: [],
       autoPublished: false,
       idempotentReuse: false,
-      messageTr: 'AI taslağı hazır (AI_DRAFT). Otomatik yayın KAPALI. Editöryal onay ayrıdır.',
+      messageTr: draftResult.messageTr,
     }
-  } catch (err) {
-    // Never leave stuck RUNNING
+  }
+
+  if (draftResult.blockedReason === 'AUTH_401' || draftResult.blockedReason === 'INSUFFICIENT_BALANCE_402') {
     job.state = 'FAILED'
-    job.failureReason = err instanceof Error ? err.message : 'provider_error'
-    job.requestCount = requestCount
-    job.completedAt = new Date()
-    job.updatedAt = job.completedAt
+    job.blockedReason = draftResult.blockedReason as CanaryBlockReason
+    job.failureReason = draftResult.failureReason
     await store.upsertJob(job)
-    recordCanaryAttempt({
-      providerRequests: requestCount,
-      successful: false,
-      repairRequests: paidRepairUsed ? 1 : 0,
+    await store.appendLedger({
+      id: newCanaryId('ldg'),
+      timestamp: new Date(),
+      provider: 'deepseek',
+      model: draftResult.model,
+      lane: CANARY_COST_LANE,
+      jobId: job.id,
+      clusterId: job.clusterId,
+      requestType: 'generation',
+      inputTokens: draftResult.actualInputTokens,
+      outputTokens: draftResult.actualOutputTokens,
+      estimatedCostUsd: preflight.estimatedCostUsd,
       actualCostUsd: null,
+      status: 'FAILED',
+    })
+    recordCanaryAttempt({
+      providerRequests: draftResult.requestCount,
+      successful: false,
+      repairRequests: draftResult.repairUsed ? 1 : 0,
+      actualCostUsd: null,
+    })
+    return {
+      preflight: {
+        ...preflight,
+        state: 'FAILED',
+        ready: false,
+        blockedReason: job.blockedReason as CanaryBlockReason,
+      },
+      job,
+      paidCallExecuted: true,
+      providersInvoked: ['deepseek'],
+      otherProvidersInvoked: [],
+      autoPublished: false,
+      idempotentReuse: false,
+      messageTr: draftResult.messageTr,
+    }
+  }
+
+  if (!draftResult.ok || !draftResult.draft) {
+    job.state = 'FAILED'
+    job.failureReason = draftResult.failureReason
+    await store.upsertJob(job)
+    if (draftResult.paidCallExecuted && draftResult.draft === null && draftResult.validation) {
+      await store.appendLedger({
+        id: newCanaryId('ldg'),
+        timestamp: new Date(),
+        provider: 'deepseek',
+        model: draftResult.model,
+        lane: CANARY_COST_LANE,
+        jobId: job.id,
+        clusterId: job.clusterId,
+        requestType: draftResult.repairUsed ? 'schema_repair' : 'generation',
+        inputTokens: job.actualInputTokens,
+        outputTokens: job.actualOutputTokens,
+        estimatedCostUsd: preflight.estimatedCostUsd,
+        actualCostUsd: draftResult.actualCostUsd,
+        status: 'FAILED',
+      })
+    }
+    recordCanaryAttempt({
+      providerRequests: draftResult.requestCount,
+      successful: false,
+      repairRequests: draftResult.repairUsed ? 1 : 0,
+      actualCostUsd: draftResult.actualCostUsd,
     })
     return {
       preflight: { ...preflight, state: 'FAILED', ready: false },
       job,
-      paidCallExecuted: requestCount > 0,
-      providersInvoked: requestCount > 0 ? ['deepseek'] : [],
+      paidCallExecuted: draftResult.paidCallExecuted,
+      providersInvoked: draftResult.providersInvoked,
       otherProvidersInvoked: [],
       autoPublished: false,
       idempotentReuse: false,
-      messageTr: 'Canary başarısız; crawler etkilenmez.',
+      messageTr: draftResult.messageTr,
     }
+  }
+
+  job.state = 'SUCCEEDED'
+  job.editorialDraftId = draftResult.draftId
+  job.autoPublish = false
+  job.outputTarget = CANARY_OUTPUT_TARGET
+  job.draftStatus = CANARY_DRAFT_STATUS
+  if (draftResult.draftId) await store.setDraftId(job.clusterId, draftResult.draftId)
+  await store.upsertJob(job)
+  await store.appendLedger({
+    id: newCanaryId('ldg'),
+    timestamp: new Date(),
+    provider: 'deepseek',
+    model: draftResult.model,
+    lane: CANARY_COST_LANE,
+    jobId: job.id,
+    clusterId: job.clusterId,
+    requestType: 'generation',
+    inputTokens: job.actualInputTokens,
+    outputTokens: job.actualOutputTokens,
+    estimatedCostUsd: preflight.estimatedCostUsd,
+    actualCostUsd: draftResult.actualCostUsd,
+    status: 'SUCCEEDED',
+  })
+  recordCanaryAttempt({
+    providerRequests: draftResult.requestCount,
+    successful: true,
+    repairRequests: draftResult.repairUsed ? 1 : 0,
+    actualCostUsd: draftResult.actualCostUsd,
+  })
+
+  return {
+    preflight: { ...preflight, state: 'SUCCEEDED', ready: false },
+    job,
+    paidCallExecuted: true,
+    providersInvoked: ['deepseek'],
+    otherProvidersInvoked: [],
+    autoPublished: false,
+    idempotentReuse: false,
+    messageTr: draftResult.messageTr,
   }
 }
 

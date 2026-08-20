@@ -86,6 +86,7 @@ export const CRAWLER_STATUS_LABELS: Record<string, string> = {
   COST_BLOCKED: 'Maliyet engeli',
   MANUAL_ONLY: 'Yalnızca manuel',
   UPDATE_AVAILABLE: 'Güncelleme mevcut',
+  PROVIDER_BLOCKED: 'Provider engeli',
 }
 
 export const FAILURE_REASON_TR: Record<CrawlerFailureClass, string> = {

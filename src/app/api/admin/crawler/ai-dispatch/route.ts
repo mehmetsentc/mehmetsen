@@ -6,7 +6,7 @@ import {
   isCrawlerAiDispatchEnabled,
   crawlerAiDispatchDryRunStatus,
 } from '@/services/crawler/dispatch'
-import { crawlerAiDispatchConfig } from '@/services/crawler/aiDispatch/flags'
+import { crawlerAiDispatchConfig, getCrawlerAiProviderReadiness } from '@/services/crawler/aiDispatch/flags'
 import { periodKeys } from '@/services/crawler/aiDispatch/budget'
 import { emptyCircuit } from '@/services/crawler/aiDispatch/circuit'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
@@ -28,6 +28,7 @@ export async function GET(request: Request) {
   const cfg = crawlerAiDispatchConfig()
   const limits = autoDraftBudgetLimits()
   const modeStatus = crawlerAiModeStatus()
+  const providerReadiness = getCrawlerAiProviderReadiness()
   const now = new Date()
   const keys = periodKeys(now)
   const dispatchEnabled = isCrawlerAiDispatchEnabled()
@@ -38,10 +39,25 @@ export async function GET(request: Request) {
     estimatedOutputTokens: 200,
     estimatedTotalTokens: 1000,
   })
+  const modeLabelTr =
+    modeStatus.mode === 'CONTROLLED_AUTO_DRAFT'
+      ? 'KONTROLLÜ OTOMATİK TASLAK'
+      : modeStatus.mode === 'FULL_AUTO_DRAFT'
+        ? 'TAM OTOMATİK TASLAK'
+        : modeStatus.mode === 'MANUAL_CANARY'
+          ? 'MANUEL CANARY'
+          : 'KAPALI'
   const payload = {
     automaticAi: dispatchEnabled ? 'AÇIK' : 'KAPALI',
     dispatchStatus: dispatchEnabled ? 'AÇIK' : 'KAPALI',
     dispatchMode: modeStatus.mode,
+    aiModeLabelTr: modeLabelTr,
+    providerStatusLabelTr: providerReadiness.statusLabelTr,
+    providerReady: providerReadiness.ready,
+    providerReason: providerReadiness.reason,
+    providerNotes: providerReadiness.notesTr,
+    providerCredentialPresent: providerReadiness.credentialPresent,
+    providerModel: providerReadiness.model,
     gateStatus: modeStatus.autoDraftEnabled ? 'AUTO_DRAFT_ARMED' : 'CLOSED',
     modeNotes: modeStatus.notesTr,
     autoPublish: false as const,

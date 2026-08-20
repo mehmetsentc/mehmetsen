@@ -1,23 +1,21 @@
 /**
- * Phase 4D controlled automatic draft pipeline (Stage 1 local).
- * Creates AI_DRAFT jobs only when mode+gates pass. Never auto-publishes.
- * Provider remains unwired by default — $0 spend in Stage 1.
+ * Phase 4D.1 controlled automatic draft pipeline.
+ * Creates AI_DRAFT jobs only when mode+gates+providerReady+cutoff pass.
+ * Reuses Phase 4C.4 executeEventDraft — never auto-publishes.
  */
 
 import { newCrawlerId } from '../store/types'
 import type { AiDispatchStore } from '../aiDispatch/store'
 import type { CrawlerStore } from '../store/types'
 import type { NewsClusterRecord } from '../types'
-import { evaluateDispatchCandidate, type EvaluationResult } from '../aiDispatch/evaluate'
-import { crawlerAiDispatchConfig } from '../aiDispatch/flags'
+import { crawlerAiDispatchConfig, isCrawlerAiProviderWired, getCrawlerAiProviderReadiness } from '../aiDispatch/flags'
 import {
   EDITORIAL_OUTPUT_TARGET,
   type CrawlerAiJobRecord,
-  type CrawlerAiProvider,
   type MemberEvidence,
 } from '../aiDispatch/types'
-import { emptyWindow, periodKeys, tryReserveBudget } from '../aiDispatch/budget'
-import { unwiredCrawlerAiProvider } from '../aiDispatch/tick'
+import { emptyWindow, periodKeys, settleReservation, tryReserveBudget } from '../aiDispatch/budget'
+import { applyProviderStatus } from '../aiDispatch/circuit'
 import { isControlledAutoDraftEnabled, getCrawlerAiMode } from '../aiMode'
 import {
   canCreateAutoDraftJob,
@@ -30,6 +28,18 @@ import {
   fingerprintFromMembers,
   type RevisionMember,
 } from './revision'
+import {
+  acceptanceHardCaps,
+  getAutoDraftEligibleAfter,
+  isEventEligibleForAutoDraft,
+  jobLeaseTimeoutMs,
+} from './activation'
+import { buildCanaryEvidencePack } from '../canary/pack'
+import { estimateCanaryCostUsd } from '../canary/preflight'
+import { canaryConfig } from '../canary/flags'
+import { createDeepSeekCanaryProvider } from '../canary/provider'
+import { executeEventDraft, eventDraftPublicationAllowed } from '../eventDraft/executeEventDraft'
+import type { CanaryClusterInput, CanaryMemberInput, CanaryProvider } from '../canary/types'
 
 export type ControlledAutoDraftTickResult = {
   mode: string
@@ -37,33 +47,19 @@ export type ControlledAutoDraftTickResult = {
   jobsCreated: number
   blocked: number
   updateAvailable: number
+  providerBlocked: number
+  backlogExcluded: number
   providerCalls: number
   draftsPersisted: number
   published: 0
+  leaseRecovered: number
   reasons: Record<string, number>
+  providerReady: boolean
+  providerReason: string | null
 }
 
-function clusterToEval(cluster: NewsClusterRecord) {
-  return {
-    id: cluster.id,
-    eventKey: cluster.eventKey,
-    canonicalTitle: cluster.canonicalTitle,
-    normalizedTopic: cluster.normalizedTopic,
-    countryCode: cluster.countryCode,
-    region: cluster.region,
-    city: cluster.city,
-    district: cluster.district,
-    aiEligibility: cluster.aiEligibility,
-    importanceScore: cluster.importanceScore,
-    localImportance: cluster.localImportance,
-    nationalImportance: cluster.nationalImportance,
-    globalImportance: cluster.globalImportance,
-    uniqueSourceCount: cluster.uniqueSourceCount,
-    freshnessScore: cluster.freshnessScore,
-    hasMaterialUpdate: cluster.hasMaterialUpdate,
-    geographicScopeHint: cluster.city || cluster.district ? 'CITY' : cluster.countryCode ? 'NATIONAL' : 'GLOBAL',
-    editorialDecision: cluster.editorialDecision,
-  }
+function bump(reasons: Record<string, number>, key: string) {
+  reasons[key] = (reasons[key] || 0) + 1
 }
 
 async function membersFor(crawlerStore: CrawlerStore, clusterId: string): Promise<MemberEvidence[]> {
@@ -107,57 +103,130 @@ function toRevisionMembers(members: MemberEvidence[]): RevisionMember[] {
   }))
 }
 
-function bump(reasons: Record<string, number>, key: string) {
-  reasons[key] = (reasons[key] || 0) + 1
+function toCanaryCluster(cluster: NewsClusterRecord): CanaryClusterInput {
+  return {
+    id: cluster.id,
+    eventKey: cluster.eventKey,
+    canonicalTitle: cluster.canonicalTitle,
+    normalizedTopic: cluster.normalizedTopic,
+    countryCode: cluster.countryCode,
+    region: cluster.region,
+    city: cluster.city,
+    district: cluster.district,
+    editorialDecision: cluster.editorialDecision,
+    aiEligibility: cluster.aiEligibility,
+    uniqueSourceCount: cluster.uniqueSourceCount,
+    importanceScore: cluster.importanceScore,
+    publishedNewsId: cluster.publishedNewsId,
+    firstSeenAt: cluster.firstSeenAt,
+    lastSeenAt: cluster.lastSeenAt,
+    hasMaterialUpdate: cluster.hasMaterialUpdate,
+  }
 }
 
-function jobFromEval(
-  evalResult: EvaluationResult,
+function toCanaryMembers(members: MemberEvidence[]): CanaryMemberInput[] {
+  return members.map((m) => ({
+    articleId: m.articleId,
+    sourceId: m.sourceId,
+    sourceName: m.sourceName,
+    qualityTier: m.qualityTier,
+    healthScore: m.healthScore,
+    extractionConfidence: m.extractionConfidence,
+    publishedAt: m.publishedAt,
+    fetchedAt: m.fetchedAt,
+    title: m.title,
+    body: m.body,
+    description: m.description,
+    contentHash: m.contentHash,
+    wordCount: m.wordCount,
+    isExactDuplicate: m.isExactDuplicate,
+    editorialStatus: m.editorialStatus,
+    editorialNewsId: m.editorialNewsId,
+    sourceStatus: m.sourceStatus,
+  }))
+}
+
+function jobStub(
+  cluster: NewsClusterRecord,
   gate: AutoDraftGateResult,
-  status: CrawlerAiJobRecord['status']
+  status: CrawlerAiJobRecord['status'],
+  opts: {
+    estimatedInputTokens: number | null
+    estimatedOutputTokens: number | null
+    estimatedCostUsd: number | null
+    fingerprint: string
+  }
 ): CrawlerAiJobRecord {
   const now = new Date()
   const cfg = crawlerAiDispatchConfig()
   return {
     id: newCrawlerId('aij'),
-    clusterId: evalResult.clusterId,
-    eventKey: evalResult.eventKey,
+    clusterId: cluster.id,
+    eventKey: cluster.eventKey,
     status,
     dispatchType: 'INITIAL',
-    priority: evalResult.priority,
+    priority: cluster.importanceScore || 0,
     eligibilityStatus: gate.status,
-    estimatedInputTokens: evalResult.estimatedInputTokens,
-    estimatedOutputTokens: evalResult.estimatedOutputTokens,
-    estimatedTotalTokens: evalResult.estimatedTotalTokens,
-    estimatedCostUsd: evalResult.estimatedPipelineCostUsd ?? evalResult.estimatedCostUsd,
+    estimatedInputTokens: opts.estimatedInputTokens,
+    estimatedOutputTokens: opts.estimatedOutputTokens,
+    estimatedTotalTokens:
+      opts.estimatedInputTokens != null && opts.estimatedOutputTokens != null
+        ? opts.estimatedInputTokens + opts.estimatedOutputTokens
+        : null,
+    estimatedCostUsd: opts.estimatedCostUsd,
     actualInputTokens: null,
     actualOutputTokens: null,
     actualCostUsd: null,
-    model: evalResult.model,
-    provider: evalResult.provider,
+    model: cfg.model,
+    provider: cfg.provider,
     attemptCount: 0,
     maxAttempts: cfg.maxAttempts,
-    reservedAt: status === 'RESERVED' ? now : null,
-    startedAt: null,
+    reservedAt: status === 'RESERVED' || status === 'PROCESSING' ? now : null,
+    startedAt: status === 'PROCESSING' ? now : null,
     completedAt: null,
-    blockedReason: evalResult.blockedReason,
+    blockedReason: null,
     failureReason: null,
     editorialNewsId: null,
     outputTarget: EDITORIAL_OUTPUT_TARGET,
-    selectedSourceCount: evalResult.selectedSourceCount,
+    selectedSourceCount: cluster.uniqueSourceCount,
     createdAt: now,
     updatedAt: now,
   }
 }
 
+async function recoverStaleJobs(
+  aiStore: AiDispatchStore,
+  now: Date,
+  reasons: Record<string, number>
+): Promise<number> {
+  const leaseMs = jobLeaseTimeoutMs()
+  const active = await aiStore.listJobs({ limit: 50 })
+  let recovered = 0
+  for (const job of active) {
+    if (!['PENDING', 'RESERVED', 'PROCESSING'].includes(job.status)) continue
+    const anchor = job.startedAt || job.reservedAt || job.updatedAt || job.createdAt
+    if (now.getTime() - anchor.getTime() < leaseMs) continue
+    await aiStore.updateJob(job.id, {
+      status: 'FAILED',
+      failureReason: 'lease_timeout',
+      completedAt: now,
+      blockedReason: 'PROVIDER_CIRCUIT_OPEN',
+    })
+    bump(reasons, 'LEASE_RECOVERED')
+    recovered += 1
+  }
+  return recovered
+}
+
 /**
  * Evaluate APPROVED_FOR_AI clusters for controlled auto-draft.
- * Default mode OFF → evaluates shadow only, creates zero jobs, zero provider calls.
+ * Default mode OFF / provider OFF → zero jobs, zero provider calls.
  */
 export async function runControlledAutoDraftTick(opts: {
   crawlerStore: CrawlerStore
   aiStore: AiDispatchStore
-  provider?: CrawlerAiProvider
+  /** Injected mock for tests — production uses DeepSeek canary provider when wired. */
+  canaryProvider?: CanaryProvider
   now?: Date
   limit?: number
 }): Promise<ControlledAutoDraftTickResult> {
@@ -166,18 +235,28 @@ export async function runControlledAutoDraftTick(opts: {
   const autoEnabled = isControlledAutoDraftEnabled()
   const limits = autoDraftBudgetLimits()
   const cfg = crawlerAiDispatchConfig()
-  const provider = opts.provider ?? unwiredCrawlerAiProvider
+  const readiness = getCrawlerAiProviderReadiness()
+  const providerReady = readiness.ready
+  const caps = acceptanceHardCaps()
+
   const result: ControlledAutoDraftTickResult = {
     mode,
     evaluated: 0,
     jobsCreated: 0,
     blocked: 0,
     updateAvailable: 0,
+    providerBlocked: 0,
+    backlogExcluded: 0,
     providerCalls: 0,
     draftsPersisted: 0,
     published: 0,
+    leaseRecovered: 0,
     reasons: {},
+    providerReady,
+    providerReason: readiness.reason,
   }
+
+  result.leaseRecovered = await recoverStaleJobs(opts.aiStore, now, result.reasons)
 
   const keys = periodKeys(now)
   let hourSnap = await opts.aiStore.getBudgetWindow('crawler_automatic', 'hour', keys.hour)
@@ -185,10 +264,32 @@ export async function runControlledAutoDraftTick(opts: {
   let monthSnap = await opts.aiStore.getBudgetWindow('crawler_automatic', 'month', keys.month)
   if (!monthSnap?.periodKey) monthSnap = emptyWindow('crawler_automatic', 'month', keys.month)
 
+  // Acceptance absolute caps from ledger (lane automatic + requestType controlled)
+  const recentLedger = await opts.aiStore.listLedger({
+    lane: 'crawler_automatic',
+    since: new Date(now.getTime() - 7 * 86_400_000),
+  })
+  const acceptanceSpent = recentLedger.filter(
+    (r) => r.requestType === 'controlled_auto_draft' && /success|fail|completed/i.test(r.status)
+  )
+  if (acceptanceSpent.length >= caps.maxRequests) {
+    bump(result.reasons, 'ACCEPTANCE_REQUEST_CAP')
+    return result
+  }
+
   const candidates = await listApprovedCandidates(opts.crawlerStore, opts.limit ?? cfg.maxEventsPerTick)
   let concurrent = await opts.aiStore.countActiveJobs()
 
   for (const cluster of candidates) {
+    if (result.jobsCreated >= caps.maxEvents) {
+      bump(result.reasons, 'ACCEPTANCE_EVENT_CAP')
+      break
+    }
+    if (result.providerCalls >= caps.maxRequests) {
+      bump(result.reasons, 'ACCEPTANCE_REQUEST_CAP')
+      break
+    }
+
     result.evaluated += 1
     const members = await membersFor(opts.crawlerStore, cluster.id)
     const existing = await opts.aiStore.getInitialJob(cluster.id)
@@ -230,24 +331,12 @@ export async function runControlledAutoDraftTick(opts: {
       ? (now.getTime() - cluster.latestArticleAt.getTime()) / 3_600_000
       : 999
 
-    const probeEval = evaluateDispatchCandidate(
-      {
-        cluster: clusterToEval(cluster),
-        members,
-        existingInitialJob: existing,
-        circuitOpen: false,
-        now,
-        executeMaterialUpdate: false,
-      },
-      { hour: hourSnap, day: daySnap },
-      concurrent
-    )
-
-    const costUsd = probeEval.reservationUsd
-    const costUnknown =
-      probeEval.technicalBlockReason === 'COST_UNKNOWN' ||
-      costUsd == null ||
-      probeEval.estimatedCostUsd == null
+    const pack = buildCanaryEvidencePack(toCanaryCluster(cluster), toCanaryMembers(members))
+    const tokenIn = pack.metrics.packedTokensEstimate
+    const tokenOut = canaryConfig().estimatedOutputTokens
+    const costProbe = estimateCanaryCostUsd(tokenIn, tokenOut)
+    const costUsd = costProbe.estimatedCostUsd
+    const costUnknown = !costProbe.known || costUsd == null
     const overCeiling = !costUnknown && (costUsd ?? 0) > limits.maxCostPerEventUsd + 1e-12
 
     const gate = evaluateAutoDraftGate({
@@ -272,10 +361,37 @@ export async function runControlledAutoDraftTick(opts: {
       contentFingerprintChanged: Boolean(draftedFp && draftedFp !== fp),
     })
 
+    // Provider not ready: eligibility visible, NO executable PENDING jobs
+    if (autoEnabled && !providerReady) {
+      await opts.crawlerStore.updateCluster(cluster.id, {
+        contentFingerprint: fp,
+        autoDraftStatus: gate.readyForJob ? 'PROVIDER_BLOCKED' : gate.status,
+      })
+      result.providerBlocked += 1
+      result.blocked += 1
+      bump(result.reasons, readiness.reason || 'PROVIDER_BLOCKED')
+      continue
+    }
+
     await opts.crawlerStore.updateCluster(cluster.id, {
       contentFingerprint: fp,
       autoDraftStatus: gate.status,
     })
+
+    // Backlog / activation cutoff
+    const activation = isEventEligibleForAutoDraft({
+      clusterId: cluster.id,
+      decidedAt: cluster.editorialDecidedAt || cluster.updatedAt || cluster.createdAt,
+    })
+    if (autoEnabled && !activation.ok) {
+      result.backlogExcluded += 1
+      result.blocked += 1
+      bump(result.reasons, activation.reason.toUpperCase())
+      await opts.crawlerStore.updateCluster(cluster.id, {
+        autoDraftStatus: gate.readyForJob ? 'AI_READY' : gate.status,
+      })
+      continue
+    }
 
     const reserve =
       !costUnknown && costUsd != null
@@ -320,7 +436,13 @@ export async function runControlledAutoDraftTick(opts: {
       continue
     }
 
-    const job = jobFromEval(probeEval, gate, 'PENDING')
+    // Exactly-once: insert RESERVED first (DB unique active) before any paid call
+    const job = jobStub(cluster, gate, 'RESERVED', {
+      estimatedInputTokens: tokenIn,
+      estimatedOutputTokens: tokenOut,
+      estimatedCostUsd: costUsd,
+      fingerprint: fp,
+    })
     const inserted = await opts.aiStore.insertJob(job)
     if (inserted === 'duplicate') {
       result.blocked += 1
@@ -337,29 +459,112 @@ export async function runControlledAutoDraftTick(opts: {
     await opts.aiStore.saveBudgetWindow(daySnap)
     if (reserve.month) await opts.aiStore.saveBudgetWindow(reserve.month)
 
-    // Stage 1 / default: provider unwired — no paid call. Never publish.
-    if (autoEnabled && cfg.providerWired) {
-      const pack = probeEval.pack
-      if (pack) {
-        const chat = await provider.chat({ pack, job })
-        if (chat.called) result.providerCalls += 1
-        await opts.aiStore.insertLedger({
-          provider: cfg.provider,
-          model: cfg.model,
-          lane: 'crawler_automatic',
-          jobId: job.id,
-          clusterId: cluster.id,
-          requestType: 'controlled_auto_draft',
-          inputTokens: chat.inputTokens ?? null,
-          outputTokens: chat.outputTokens ?? null,
-          estimatedCostUsd: job.estimatedCostUsd,
-          actualCostUsd: null,
-          status: chat.called ? 'SUCCESS' : 'BLOCKED',
-        })
-      }
-    } else {
-      bump(result.reasons, autoEnabled ? 'PROVIDER_UNWIRED' : 'MODE_SHADOW')
+    // Only execute when auto + provider wired (double-check)
+    if (!(autoEnabled && isCrawlerAiProviderWired())) {
+      await opts.aiStore.updateJob(job.id, {
+        status: 'CANCELLED',
+        failureReason: 'provider_unwired_after_reserve',
+        completedAt: now,
+      })
+      bump(result.reasons, 'PROVIDER_UNWIRED')
+      continue
     }
+
+    await opts.aiStore.updateJob(job.id, {
+      status: 'PROCESSING',
+      startedAt: now,
+      attemptCount: 1,
+    })
+
+    const provider = opts.canaryProvider ?? createDeepSeekCanaryProvider()
+    const draftResult = await executeEventDraft({
+      pack,
+      provider,
+      lane: 'controlled_auto_draft',
+      eventRevision: fp,
+      jobId: job.id,
+      estimatedCostUsd: costUsd,
+      allowPaidSchemaRepair: false,
+      maxRequests: 1,
+    })
+
+    if (draftResult.paidCallExecuted) result.providerCalls += 1
+
+    // Circuit breaker on auth/balance/rate/5xx
+    if (draftResult.statusCode != null) {
+      const circuit = await opts.aiStore.getCircuit(cfg.provider)
+      const next = applyProviderStatus(circuit, draftResult.statusCode, now)
+      await opts.aiStore.saveCircuit(next)
+    }
+
+    const settledHour = settleReservation(hourSnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
+    const settledDay = settleReservation(daySnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
+    const settledMonth = monthSnap
+      ? settleReservation(monthSnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
+      : null
+    hourSnap = settledHour
+    daySnap = settledDay
+    if (settledMonth) monthSnap = settledMonth
+    await opts.aiStore.saveBudgetWindow(hourSnap)
+    await opts.aiStore.saveBudgetWindow(daySnap)
+    if (settledMonth) await opts.aiStore.saveBudgetWindow(settledMonth)
+
+    await opts.aiStore.insertLedger({
+      provider: cfg.provider,
+      model: draftResult.model,
+      lane: 'crawler_automatic',
+      jobId: job.id,
+      clusterId: cluster.id,
+      requestType: 'controlled_auto_draft',
+      inputTokens: draftResult.actualInputTokens,
+      outputTokens: draftResult.actualOutputTokens,
+      estimatedCostUsd: costUsd,
+      actualCostUsd: draftResult.actualCostUsd,
+      status: draftResult.ok ? 'SUCCESS' : 'FAILED',
+    })
+
+    if (draftResult.ok && draftResult.draft && draftResult.draftId) {
+      // AI_DRAFT linkage on job + cluster fingerprint — never publish
+      await opts.aiStore.updateJob(job.id, {
+        status: 'COMPLETED',
+        actualInputTokens: draftResult.actualInputTokens,
+        actualOutputTokens: draftResult.actualOutputTokens,
+        actualCostUsd: draftResult.actualCostUsd,
+        editorialNewsId: draftResult.draftId,
+        completedAt: new Date(),
+        failureReason: null,
+      })
+      await opts.crawlerStore.updateCluster(cluster.id, {
+        draftedContentFingerprint: fp,
+        contentFingerprint: fp,
+        autoDraftStatus: 'ALREADY_DRAFTED',
+        hasMaterialUpdate: false,
+      })
+      result.draftsPersisted += 1
+      bump(result.reasons, 'SUCCEEDED')
+    } else {
+      const costBlocked =
+        draftResult.blockedReason === 'COST_UNKNOWN' ||
+        draftResult.failureReason === 'cost_blocked'
+      await opts.aiStore.updateJob(job.id, {
+        status: costBlocked ? 'BLOCKED' : 'FAILED',
+        actualInputTokens: draftResult.actualInputTokens,
+        actualOutputTokens: draftResult.actualOutputTokens,
+        actualCostUsd: draftResult.actualCostUsd,
+        completedAt: new Date(),
+        failureReason: draftResult.failureReason,
+        blockedReason: draftResult.blockedReason || (costBlocked ? 'COST_UNKNOWN' : null),
+      })
+      bump(result.reasons, draftResult.failureReason || 'FAILED')
+    }
+
+    // Explicit: never publish from this path
+    void eventDraftPublicationAllowed()
+  }
+
+  // Cutoff presence note for ops
+  if (autoEnabled && !getAutoDraftEligibleAfter()) {
+    bump(result.reasons, 'CUTOFF_UNSET_NOTE')
   }
 
   return result

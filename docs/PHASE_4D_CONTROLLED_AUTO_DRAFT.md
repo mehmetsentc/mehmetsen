@@ -50,7 +50,15 @@ Additive: `0014_phase4d_controlled_auto_draft.sql`
 ## Safety invariants
 
 - `LEGACY_DIRECT_AI_ENABLED=false`
-- `CRAWLER_AI_DISPATCH_ENABLED=false` (Stage 1)
-- Provider unwired by default (`isCrawlerAiProviderWired() === false`)
-- BODY_TOO_SHORT → no automatic paid repair (4C.4)
+- `CRAWLER_AI_DISPATCH_ENABLED=false` (default)
+- `CRAWLER_AI_PROVIDER_ENABLED=false` (default kill switch — mode ≠ permission)
+- Provider readiness via `getCrawlerAiProviderReadiness()` — not a permanent hard-false stub
+- Historical backlog protected by `CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER` / cohort IDs
+- Shared writer: `executeEventDraft` (Phase 4C.4 prompts) for canary + auto-draft
+- BODY_TOO_SHORT → no automatic paid repair (4C.4 / 4D.1)
 - Drawer: production UI manual verification still required
+
+## Phase 4D.1
+
+Provider wiring + controlled acceptance. Permanent enablement is a separate phase.
+When providerReady=false, auto-draft marks `PROVIDER_BLOCKED` and creates **zero** PENDING jobs.

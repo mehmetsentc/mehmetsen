@@ -312,6 +312,7 @@ export type AutoDraftStatus =
   | 'COST_BLOCKED'
   | 'MANUAL_ONLY'
   | 'UPDATE_AVAILABLE'
+  | 'PROVIDER_BLOCKED'
 export type ClusterMatchBand = 'HIGH' | 'BORDERLINE' | 'LOW'
 
 export interface ClusterScoreBreakdown {
