@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useId, useRef } from 'react'
+import { X } from 'lucide-react'
 import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
 
 interface MediaRow {
@@ -56,89 +58,154 @@ export function RawArticleDrawer({
   onClose: () => void
   onManual: () => void
 }) {
+  const titleId = useId()
+  const panelRef = useRef<HTMLElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
   const accepted = media.filter((m) => m.status !== 'REJECTED')
   const primary = accepted.find((m) => m.isPrimary) || accepted[0]
   const extras = accepted.filter((m) => m !== primary)
   const sourceUrl = article.canonicalUrl || article.originalUrl
   const published = article.editorialStatus === 'PUBLISHED'
 
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeBtnRef.current?.focus()
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" role="dialog" aria-modal="true" aria-label="Ham haber detayı">
-      <button type="button" className="h-full flex-1 cursor-default" aria-label="Kapat" onClick={onClose} />
-      <aside className="h-full w-full max-w-xl overflow-y-auto bg-[rgb(var(--color-card))] p-5 shadow-2xl">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold">{article.title || '(başlıksız)'}</h2>
-          <button type="button" className="text-sm underline" onClick={onClose}>
-            Kapat
+    <div className="fixed inset-0 z-50" role="presentation">
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default bg-black/40"
+        aria-label="Kapat"
+        onClick={onClose}
+      />
+      <aside
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="absolute inset-y-0 right-0 flex h-full w-full max-w-xl flex-col bg-[rgb(var(--color-card))] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[rgb(var(--color-border))] p-4">
+          <h2 id={titleId} className="min-w-0 flex-1 text-lg font-semibold leading-snug">
+            {article.title || '(başlıksız)'}
+          </h2>
+          <button
+            ref={closeBtnRef}
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
+            aria-label="Kapat"
+            title="Kapat"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" aria-hidden />
+            <span className="sr-only">Kapat</span>
           </button>
         </div>
-        {primary?.sourceUrl || article.mainImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={primary?.sourceUrl || article.mainImageUrl || ''} alt="" className="mb-3 max-h-56 w-full rounded object-cover" />
-        ) : null}
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-          <dt className="text-[rgb(var(--color-muted))]">Kaynak</dt>
-          <dd>{article.sourceName}</dd>
-          <dt className="text-[rgb(var(--color-muted))]">Kaynak URL</dt>
-          <dd className="truncate">
-            <a className="underline" href={sourceUrl} target="_blank" rel="noreferrer">
-              {sourceUrl}
-            </a>
-          </dd>
-          <dt className="text-[rgb(var(--color-muted))]">Yayın tarihi</dt>
-          <dd>{fmtDate(article.publishedAt)}</dd>
-          <dt className="text-[rgb(var(--color-muted))]">Scrape zamanı</dt>
-          <dd>{fmtDate(article.fetchedAt)}</dd>
-          <dt className="text-[rgb(var(--color-muted))]">Coğrafya</dt>
-          <dd>{[article.countryCode, article.city, article.district].filter(Boolean).join(' / ') || '—'}</dd>
-          <dt className="text-[rgb(var(--color-muted))]">Kelime</dt>
-          <dd>{article.wordCount ?? '—'}</dd>
-          <dt className="text-[rgb(var(--color-muted))]">Güven</dt>
-          <dd>{article.extractionConfidence != null ? `${Math.round(article.extractionConfidence * 100)}%` : '—'}</dd>
-          <dt className="text-[rgb(var(--color-muted))]">Extraction</dt>
-          <dd>{crawlerStatusLabel(article)} {article.extractionMethod ? `· ${article.extractionMethod}` : ''}</dd>
-          <dt className="text-[rgb(var(--color-muted))]">Editoryal</dt>
-          <dd>{EDITORIAL_STATUS_LABELS[article.editorialStatus as keyof typeof EDITORIAL_STATUS_LABELS] || article.editorialStatus}</dd>
-          <dt className="text-[rgb(var(--color-muted))]">Provenance</dt>
-          <dd>
-            {primary?.imageSource || article.primaryImageMethod || '—'}
-            {primary?.imageConfidence != null ? ` · ${Math.round(primary.imageConfidence * 100)}%` : ''}
-          </dd>
-        </dl>
-        {extras.length ? (
-          <div className="mt-3">
-            <p className="mb-1 text-xs font-semibold uppercase text-[rgb(var(--color-muted))]">Ek görseller</p>
-            <div className="flex flex-wrap gap-2">
-              {extras.map((m) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={m.sourceUrl} src={m.sourceUrl} alt={m.altText || ''} className="h-16 w-20 rounded object-cover" />
-              ))}
-            </div>
-          </div>
-        ) : null}
-        <p className="mt-3 text-sm">{article.description}</p>
-        <p className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-sm text-[rgb(var(--color-muted))]">
-          {(article.articleBodyText || '').slice(0, 4000)}
-          {(article.articleBodyText || '').length > 4000 ? '…' : ''}
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3 text-sm">
-          {published && article.editorialNewsId ? (
-            <a className="underline" href={`/admin/news/${article.editorialNewsId}/edit`}>
-              Haberi Aç
-            </a>
-          ) : (
-            <button type="button" className="underline" disabled={busy} onClick={onManual}>
-              {busy ? 'Açılıyor…' : 'Manuel Düzenle'}
-            </button>
-          )}
-          <a className="underline" href={sourceUrl} target="_blank" rel="noreferrer">
-            Kaynağı Aç
-          </a>
-          {article.clusterId ? (
-            <a className="underline" href={`/admin/crawler/clusters/${article.clusterId}`}>
-              Olay Kümesini Gör
-            </a>
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {primary?.sourceUrl || article.mainImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={primary?.sourceUrl || article.mainImageUrl || ''}
+              alt=""
+              className="mb-3 max-h-56 w-full rounded object-cover"
+            />
           ) : null}
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+            <dt className="text-[rgb(var(--color-muted))]">Kaynak</dt>
+            <dd>{article.sourceName}</dd>
+            <dt className="text-[rgb(var(--color-muted))]">Kaynak URL</dt>
+            <dd className="truncate">
+              <a className="underline" href={sourceUrl} target="_blank" rel="noreferrer">
+                {sourceUrl}
+              </a>
+            </dd>
+            <dt className="text-[rgb(var(--color-muted))]">Yayın tarihi</dt>
+            <dd>{fmtDate(article.publishedAt)}</dd>
+            <dt className="text-[rgb(var(--color-muted))]">Scrape zamanı</dt>
+            <dd>{fmtDate(article.fetchedAt)}</dd>
+            <dt className="text-[rgb(var(--color-muted))]">Coğrafya</dt>
+            <dd>{[article.countryCode, article.city, article.district].filter(Boolean).join(' / ') || '—'}</dd>
+            <dt className="text-[rgb(var(--color-muted))]">Kelime</dt>
+            <dd>{article.wordCount ?? '—'}</dd>
+            <dt className="text-[rgb(var(--color-muted))]">Güven</dt>
+            <dd>
+              {article.extractionConfidence != null
+                ? `${Math.round(article.extractionConfidence * 100)}%`
+                : '—'}
+            </dd>
+            <dt className="text-[rgb(var(--color-muted))]">Extraction</dt>
+            <dd>
+              {crawlerStatusLabel(article)} {article.extractionMethod ? `· ${article.extractionMethod}` : ''}
+            </dd>
+            <dt className="text-[rgb(var(--color-muted))]">Editoryal</dt>
+            <dd>
+              {EDITORIAL_STATUS_LABELS[article.editorialStatus as keyof typeof EDITORIAL_STATUS_LABELS] ||
+                article.editorialStatus}
+            </dd>
+            <dt className="text-[rgb(var(--color-muted))]">Provenance</dt>
+            <dd>
+              {primary?.imageSource || article.primaryImageMethod || '—'}
+              {primary?.imageConfidence != null ? ` · ${Math.round(primary.imageConfidence * 100)}%` : ''}
+            </dd>
+          </dl>
+          {extras.length ? (
+            <div className="mt-3">
+              <p className="mb-1 text-xs font-semibold uppercase text-[rgb(var(--color-muted))]">Ek görseller</p>
+              <div className="flex flex-wrap gap-2">
+                {extras.map((m) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={m.sourceUrl}
+                    src={m.sourceUrl}
+                    alt={m.altText || ''}
+                    className="h-16 w-20 rounded object-cover"
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <p className="mt-3 text-sm">{article.description}</p>
+          <p className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-sm text-[rgb(var(--color-muted))]">
+            {(article.articleBodyText || '').slice(0, 4000)}
+            {(article.articleBodyText || '').length > 4000 ? '…' : ''}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            {published && article.editorialNewsId ? (
+              <a className="underline" href={`/admin/news/${article.editorialNewsId}/edit`}>
+                Haberi Aç
+              </a>
+            ) : (
+              <button type="button" className="underline" disabled={busy} onClick={onManual}>
+                {busy ? 'Açılıyor…' : 'Manuel Düzenle'}
+              </button>
+            )}
+            <a className="underline" href={sourceUrl} target="_blank" rel="noreferrer">
+              Kaynağı Aç
+            </a>
+            {article.clusterId ? (
+              <a className="underline" href={`/admin/crawler/clusters/${article.clusterId}`}>
+                Olay Kümesini Gör
+              </a>
+            ) : null}
+          </div>
         </div>
       </aside>
     </div>

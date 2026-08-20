@@ -201,6 +201,12 @@ function CrawlerArticlesInner() {
     [router, searchParams]
   )
 
+  const closeDetail = useCallback(() => {
+    setDetail(null)
+    setDetailMedia([])
+    setMediaSummary(null)
+  }, [])
+
   const load = useCallback(async () => {
     setError(null)
     const result = await loadAdminJson<ListResponse>(`/api/admin/crawler/articles?${queryString}`, {
@@ -736,10 +742,7 @@ function CrawlerArticlesInner() {
           article={detail}
           media={detailMedia}
           busy={busyId === detail.id}
-          onClose={() => {
-            setDetail(null)
-            setDetailMedia([])
-          }}
+          onClose={closeDetail}
           onManual={() => void openManual(detail.id)}
         />
       ) : null}

@@ -433,6 +433,97 @@ describe('Phase 4C — measurement scaffolding', () => {
   })
 })
 
+describe('Phase 4C.1 — authorized event + cost ledger', () => {
+  it('exact event id is authorized; wrong event is not', async () => {
+    const { isAuthorizedPaidCanaryEvent, PHASE_4C1_AUTHORIZED_EVENT_ID } = await import('./authorizedEvent')
+    expect(PHASE_4C1_AUTHORIZED_EVENT_ID).toBe('cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c')
+    expect(isAuthorizedPaidCanaryEvent(PHASE_4C1_AUTHORIZED_EVENT_ID)).toBe(true)
+    expect(isAuthorizedPaidCanaryEvent('cl_other')).toBe(false)
+  })
+
+  it('NaN/invalid pricing rates fail closed as COST_UNKNOWN', () => {
+    vi.stubEnv('DEEPSEEK_INPUT_COST_PER_1M', 'NaN')
+    vi.stubEnv('DEEPSEEK_OUTPUT_COST_PER_1M', '0.28')
+    expect(probeCanaryPricing().known).toBe(false)
+    vi.stubEnv('DEEPSEEK_INPUT_COST_PER_1M', '-1')
+    expect(probeCanaryPricing().known).toBe(false)
+  })
+
+  it('actual cost ledger recorded on success; request cap respected', async () => {
+    pricingOn()
+    vi.stubEnv('CANARY_PAID_EXECUTION_ENABLED', 'true')
+    const store = new MemoryCanaryStore()
+    let calls = 0
+    const provider: CanaryProvider = {
+      chat: async () => {
+        calls += 1
+        return {
+          called: true,
+          statusCode: 200,
+          text: buildMockValidDraftJson(),
+          inputTokens: 500,
+          outputTokens: 400,
+          provider: 'deepseek',
+          model: 'deepseek-v4-flash',
+        }
+      },
+    }
+    const result = await runCanaryStage({
+      cluster: cluster(),
+      members: [member({ articleId: 'a1', sourceId: 's1' })],
+      store,
+      executePaid: true,
+      confirmation: APPROVED_FOR_REAL_CANARY_EXECUTION,
+      provider,
+      now: new Date('2026-08-19T14:00:00Z'),
+    })
+    expect(result.paidCallExecuted).toBe(true)
+    expect(result.job?.state).toBe('SUCCEEDED')
+    expect(result.job?.actualCostUsd).not.toBeNull()
+    expect(result.job?.requestCount).toBeGreaterThanOrEqual(1)
+    expect(result.job?.requestCount).toBeLessThanOrEqual(2)
+    expect(calls).toBeLessThanOrEqual(2)
+    const ledger = await store.listLedger({ lane: 'manual_canary', clusterId: cluster().id })
+    expect(ledger.some((r) => r.status === 'SUCCEEDED' && r.actualCostUsd != null)).toBe(true)
+    expect(result.job?.draftStatus).toBe('AI_DRAFT')
+    expect(result.autoPublished).toBe(false)
+  })
+
+  it('missing confirmation blocks paid path', async () => {
+    pricingOn()
+    vi.stubEnv('CANARY_PAID_EXECUTION_ENABLED', 'true')
+    const provider: CanaryProvider = {
+      chat: async () => {
+        throw new Error('should not call')
+      },
+    }
+    const result = await runCanaryStage({
+      cluster: cluster(),
+      members: [member({ articleId: 'a1', sourceId: 's1' })],
+      executePaid: true,
+      confirmation: null,
+      provider,
+      now: new Date('2026-08-19T14:00:00Z'),
+    })
+    expect(result.paidCallExecuted).toBe(false)
+    expect(result.job?.blockedReason).toBe('MISSING_CONFIRMATION')
+  })
+
+  it('drawer source contracts: X/ESC/backdrop/scroll lock/actions', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const src = readFileSync(resolve(__dirname, '../../../components/admin/crawler/RawArticleDrawer.tsx'), 'utf8')
+    expect(src).toContain("key === 'Escape'")
+    expect(src).toContain("document.body.style.overflow = 'hidden'")
+    expect(src).toContain("aria-label=\"Kapat\"")
+    expect(src).toContain('<X ')
+    expect(src).toContain('Manuel Düzenle')
+    expect(src).toContain('Kaynağı Aç')
+    expect(src).toContain('Olay Kümesini Gör')
+    expect(src).toContain('e.stopPropagation()')
+  })
+})
+
 describe('Phase 4C — source select helpers', () => {
   it('selectCanarySources keeps primary preference', () => {
     const picked = selectCanarySources([

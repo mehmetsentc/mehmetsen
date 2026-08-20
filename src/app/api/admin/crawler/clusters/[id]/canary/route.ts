@@ -3,8 +3,11 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { runCanaryStage } from '@/services/crawler/canary/execute'
-import { MemoryCanaryStore } from '@/services/crawler/canary/store'
+import { DrizzleCanaryStore } from '@/services/crawler/canary/drizzleStore'
+import { createDeepSeekCanaryProvider } from '@/services/crawler/canary/provider'
+import { isAuthorizedPaidCanaryEvent } from '@/services/crawler/canary/authorizedEvent'
 import type { CanaryClusterInput, CanaryMemberInput } from '@/services/crawler/canary/types'
+import { APPROVED_FOR_REAL_CANARY_EXECUTION } from '@/services/crawler/canary/types'
 import { isCrawlerAiDispatchEnabled } from '@/services/crawler/dispatch'
 import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 import {
@@ -13,6 +16,7 @@ import {
   recommendAutomationLimits,
 } from '@/services/crawler/canary/measurement'
 import { probeCanaryPricing } from '@/services/crawler/canary/preflight'
+import { canaryConfig } from '@/services/crawler/canary/flags'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -75,9 +79,34 @@ async function loadEvent(id: string): Promise<{
   }
 }
 
+function serializeJob(job: NonNullable<Awaited<ReturnType<typeof runCanaryStage>>['job']>) {
+  return {
+    id: job.id,
+    state: job.state,
+    blockedReason: job.blockedReason,
+    failureReason: job.failureReason,
+    estimatedCostUsd: job.estimatedCostUsd,
+    actualCostUsd: job.actualCostUsd,
+    actualInputTokens: job.actualInputTokens,
+    actualOutputTokens: job.actualOutputTokens,
+    requestCount: job.requestCount,
+    model: job.model,
+    provider: job.provider,
+    lane: job.lane,
+    outputTarget: job.outputTarget,
+    draftStatus: job.draftStatus,
+    editorialDraftId: job.editorialDraftId,
+    autoPublish: false,
+    draft: job.draft,
+    validation: job.validation
+      ? { ok: job.validation.ok, issues: job.validation.issues }
+      : null,
+    factFlags: job.factFlags,
+  }
+}
+
 /**
- * Stage 1: preflight only. Never executes paid DeepSeek.
- * POST body may include confirmation for future Stage 2 — still no spend here.
+ * Preflight (and read back existing canary job). Never spends on GET.
  */
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await verifyCmsToken(request, 'news:read')
@@ -87,11 +116,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const loaded = await loadEvent(id)
   if (!loaded) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const memory = new MemoryCanaryStore()
   const result = await runCanaryStage({
     cluster: loaded.cluster,
     members: loaded.members,
-    store: memory,
+    store: new DrizzleCanaryStore(),
     executePaid: false,
   })
 
@@ -102,23 +130,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       : null
 
   return NextResponse.json({
-    stage: 'phase4c_stage1_preflight',
+    stage: 'phase4c_canary',
     paidCallExecuted: false,
     autoPublish: false,
     autoPublishLabelTr: 'KAPALI',
     crawlerAiDispatchEnabled: isCrawlerAiDispatchEnabled(),
     legacyDirectAiEnabled: isLegacyDirectAiEnabled(),
+    canaryPaidExecutionEnabled: canaryConfig().paidExecutionEnabled,
+    authorizedEvent: isAuthorizedPaidCanaryEvent(id),
     preflight: result.preflight,
-    job: result.job
-      ? {
-          id: result.job.id,
-          state: result.job.state,
-          blockedReason: result.job.blockedReason,
-          estimatedCostUsd: result.job.estimatedCostUsd,
-          lane: result.job.lane,
-          outputTarget: result.job.outputTarget,
-        }
-      : null,
+    job: result.job ? serializeJob(result.job) : null,
     messageTr: result.messageTr,
     projections: {
       ladder: projectCostLadder(costPerReq),
@@ -126,10 +147,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       automationRecommendation: recommendAutomationLimits(costPerReq),
     },
     confirmationNoteTr:
-      'APPROVED_FOR_AI ücretli canary yetkisi vermez. Ücretli çağrı için ayrı Stage 2 onayı ve APPROVED_FOR_REAL_CANARY_EXECUTION gerekir.',
+      'APPROVED_FOR_AI ücretli canary yetkisi vermez. Ücretli çağrı için APPROVED_FOR_REAL_CANARY_EXECUTION + yetkili event + CANARY_PAID_EXECUTION_ENABLED gerekir.',
   })
 }
 
+/**
+ * Phase 4C.1: paid path only for the single authorized event when all gates pass.
+ * Never enables CRAWLER_AI_DISPATCH_ENABLED. Never auto-publishes.
+ */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await verifyCmsToken(request, 'news:edit')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -139,30 +164,53 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const loaded = await loadEvent(id)
   if (!loaded) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Stage 1 hard stop: never honor executePaid from CMS yet
+  const confirmation = typeof body.confirmation === 'string' ? body.confirmation : null
+  const wantPaid = body.executePaid === true
+  const authorizedEvent = isAuthorizedPaidCanaryEvent(id)
+  const confirmationOk = confirmation === APPROVED_FOR_REAL_CANARY_EXECUTION
+  const paidEnabled = canaryConfig().paidExecutionEnabled
+
+  // Fail-closed: wrong event / missing confirmation / flag off → preflight only
+  const executePaid = wantPaid && authorizedEvent && confirmationOk && paidEnabled
+
+  if (wantPaid && !authorizedEvent) {
+    return NextResponse.json(
+      {
+        stage: 'phase4c_canary',
+        paidCallExecuted: false,
+        executePaidHonored: false,
+        autoPublish: false,
+        blockedReason: 'EVENT_NOT_AUTHORIZED',
+        messageTr: 'Ücretli canary yalnızca yetkili tek olay için izinli.',
+        crawlerAiDispatchEnabled: isCrawlerAiDispatchEnabled(),
+        legacyDirectAiEnabled: isLegacyDirectAiEnabled(),
+      },
+      { status: 403 }
+    )
+  }
+
   const result = await runCanaryStage({
     cluster: loaded.cluster,
     members: loaded.members,
-    store: new MemoryCanaryStore(),
-    executePaid: false,
-    confirmation: typeof body.confirmation === 'string' ? body.confirmation : null,
+    store: new DrizzleCanaryStore(),
+    executePaid,
+    confirmation,
+    provider: executePaid ? createDeepSeekCanaryProvider() : undefined,
   })
 
   return NextResponse.json({
-    stage: 'phase4c_stage1_preflight',
-    paidCallExecuted: false,
-    executePaidHonored: false,
+    stage: 'phase4c_canary',
+    paidCallExecuted: result.paidCallExecuted,
+    executePaidHonored: executePaid,
     autoPublish: false,
+    autoPublishLabelTr: 'KAPALI',
+    crawlerAiDispatchEnabled: isCrawlerAiDispatchEnabled(),
+    legacyDirectAiEnabled: isLegacyDirectAiEnabled(),
+    canaryPaidExecutionEnabled: paidEnabled,
+    authorizedEvent,
     preflight: result.preflight,
-    job: result.job
-      ? {
-          id: result.job.id,
-          state: result.job.state,
-          blockedReason: result.job.blockedReason,
-          lane: result.job.lane,
-        }
-      : null,
-    messageTr:
-      'Stage 1: CANARY yalnızca preflight. Ücretli DeepSeek çağrısı sonraki aşamada, açık onay sonrası.',
+    job: result.job ? serializeJob(result.job) : null,
+    idempotentReuse: result.idempotentReuse,
+    messageTr: result.messageTr,
   })
 }
