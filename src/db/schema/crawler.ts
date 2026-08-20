@@ -250,6 +250,9 @@ export const newsClusters = pgTable(
     primaryImageUrl: text('primary_image_url'),
     primarySourceId: varchar('primary_source_id', { length: 64 }),
     primarySourceName: varchar('primary_source_name', { length: 200 }),
+    contentFingerprint: varchar('content_fingerprint', { length: 64 }),
+    draftedContentFingerprint: varchar('drafted_content_fingerprint', { length: 64 }),
+    autoDraftStatus: varchar('auto_draft_status', { length: 32 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -264,6 +267,7 @@ export const newsClusters = pgTable(
     index('news_clusters_language_idx').on(t.language),
     index('news_clusters_decision_last_seen_idx').on(t.editorialDecision, t.lastSeenAt),
     index('news_clusters_eligibility_last_seen_idx').on(t.aiEligibility, t.lastSeenAt),
+    index('news_clusters_auto_draft_status_idx').on(t.autoDraftStatus),
   ]
 )
 
@@ -494,6 +498,10 @@ export const crawlerAiJobs = pgTable(
     index('crawler_ai_jobs_created_idx').on(t.createdAt),
     index('crawler_ai_jobs_priority_idx').on(t.priority),
     uniqueIndex('crawler_ai_jobs_cluster_initial_uidx').on(t.clusterId).where(sql`${t.dispatchType} = 'INITIAL'`),
+    // Phase 4D: one active equivalent job per event (DB-level idempotency)
+    uniqueIndex('crawler_ai_jobs_cluster_active_uidx')
+      .on(t.clusterId)
+      .where(sql`${t.status} in ('PENDING','RESERVED','PROCESSING')`),
   ]
 )
 
@@ -513,12 +521,18 @@ export const crawlerAiCostLedger = pgTable(
     estimatedCostUsd: real('estimated_cost_usd'),
     actualCostUsd: real('actual_cost_usd'),
     status: varchar('status', { length: 24 }).notNull(),
+    /** Phase 4D: controlled_auto_draft | manual_canary | manual_retry */
+    reason: varchar('reason', { length: 40 }),
+    /** Phase 4D mode snapshot */
+    mode: varchar('mode', { length: 32 }),
+    failureCode: varchar('failure_code', { length: 64 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     index('crawler_ai_cost_ledger_lane_ts_idx').on(t.lane, t.timestamp),
     index('crawler_ai_cost_ledger_job_idx').on(t.jobId),
     index('crawler_ai_cost_ledger_cluster_idx').on(t.clusterId),
+    index('crawler_ai_cost_ledger_status_ts_idx').on(t.status, t.timestamp),
   ]
 )
 

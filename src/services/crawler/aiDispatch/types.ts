@@ -29,12 +29,15 @@ export const AI_BLOCK_REASONS = [
   'EVENT_COST_LIMIT_EXCEEDED',
   'HOURLY_BUDGET_EXCEEDED',
   'DAILY_BUDGET_EXCEEDED',
+  'MONTHLY_BUDGET_EXCEEDED',
   'HOURLY_REQUEST_LIMIT',
   'DAILY_REQUEST_LIMIT',
   'CONCURRENCY_LIMIT',
   'PROVIDER_CIRCUIT_OPEN',
   'MATERIAL_UPDATE_NOT_EXECUTED',
   'EDITORIALLY_REJECTED',
+  'MODE_OFF',
+  'UPDATE_AVAILABLE',
 ] as const
 export type AiBlockReason = (typeof AI_BLOCK_REASONS)[number]
 
@@ -90,7 +93,7 @@ export type CrawlerAiLedgerRow = {
 export type CrawlerAiBudgetWindow = {
   id: string
   lane: AiCostLane
-  periodType: 'hour' | 'day'
+  periodType: 'hour' | 'day' | 'month'
   periodKey: string
   reservedUsd: number
   spentUsd: number

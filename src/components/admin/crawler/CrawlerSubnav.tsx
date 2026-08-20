@@ -11,7 +11,9 @@ const TABS = [
   { href: '/admin/crawler/raw-articles', label: 'Ham Haberler' },
   { href: '/admin/crawler/clusters', label: 'Olay Kümeleri' },
   { href: '/admin/crawler/queue', label: 'Ön-AI Kuyruk' },
+  { href: '/admin/crawler/ai-drafts', label: 'AI Taslakları' },
   { href: '/admin/crawler/ai-dispatch', label: 'AI Dispatch' },
+  { href: '/admin/crawler/ai-cost', label: 'AI Maliyet' },
   { href: '/admin/crawler/failures', label: 'Hatalar' },
   { href: '/admin/crawler/health', label: 'Crawler Sağlığı' },
 ]

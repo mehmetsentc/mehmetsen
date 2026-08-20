@@ -262,6 +262,9 @@ function mapCluster(row: typeof newsClusters.$inferSelect): NewsClusterRecord {
     primaryImageUrl: row.primaryImageUrl ?? null,
     primarySourceId: row.primarySourceId ?? null,
     primarySourceName: row.primarySourceName ?? null,
+    contentFingerprint: row.contentFingerprint ?? null,
+    draftedContentFingerprint: row.draftedContentFingerprint ?? null,
+    autoDraftStatus: row.autoDraftStatus ?? null,
     createdAt: row.createdAt ?? fallback.createdAt,
     updatedAt: row.updatedAt ?? fallback.updatedAt,
   }
@@ -690,6 +693,9 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     assign('primaryImageUrl', 'primaryImageUrl')
     assign('primarySourceId', 'primarySourceId')
     assign('primarySourceName', 'primarySourceName')
+    assign('contentFingerprint', 'contentFingerprint')
+    assign('draftedContentFingerprint', 'draftedContentFingerprint')
+    assign('autoDraftStatus', 'autoDraftStatus')
     await this.db().update(newsClusters).set(values).where(eq(newsClusters.id, id))
   }
 

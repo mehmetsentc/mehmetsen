@@ -25,35 +25,62 @@ interface Row {
   dispatchType: string
 }
 
+interface JobRow {
+  clusterId: string
+  eventKey: string | null
+  status: string
+  provider: string | null
+  model: string | null
+  estimatedCostUsd: number | null
+  actualCostUsd: number | null
+  createdAt: string | Date
+  startedAt: string | Date | null
+  completedAt: string | Date | null
+  failure: string | null
+}
+
 interface Payload {
   automaticAi?: string
   dispatchStatus?: string
+  dispatchMode?: string
+  gateStatus?: string
+  modeNotes?: string[]
   dryRun?: string
   observationMode?: string
-  actualAiRequests?: number
-  actualAiCostUsd?: number
+  actualAiRequests?: number | null
+  actualAiCostUsd?: number | null
   estimatedCostLabel?: string
   pricingState?: string
   pricingReason?: string | null
-  runningJobs?: number
-  approvedBacklog?: number
-  aiWaiting?: number
+  runningJobs?: number | null
+  approvedBacklog?: number | null
+  aiWaiting?: number | null
+  costBlocked?: number
   circuit?: { state: string; reason: string | null }
   today?: { budget: number; reserved: number; spent: number; remaining: number; requests: number; requestLimit: number }
   hour?: { budget: number; reserved: number; spent: number; remaining: number; requests: number; requestLimit: number }
+  month?: { budget: number; reserved: number; spent: number; remaining: number; requests: number }
   counts?: { eligible: number; ready: number; blocked: number; watching: number; processed: number }
   ready?: Row[]
   blocked?: Row[]
   watching?: Row[]
   completed?: Row[]
   failed?: Row[]
+  jobs?: JobRow[]
   alert?: string | null
+  dataUnavailable?: boolean
   error?: string
 }
 
 function money(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '—'
   return `$${n.toFixed(4)}`
+}
+
+function nz(n: number | null | undefined, unavailable: boolean): string {
+  if (unavailable) return '—'
+  if (n == null) return '—'
+  return String(n)
 }
 
 function Table({ rows }: { rows: Row[] }) {
@@ -115,35 +142,49 @@ export default function AiDispatchPage() {
     void load().catch((err) => setError(err instanceof Error ? err.message : 'Yüklenemedi'))
   }, [load])
 
+  const unavailable = Boolean(data?.dataUnavailable)
+
   return (
     <AdminOsPageShell
       title="CRAWLER AI DISPATCH"
-      subtitle="Otomatik DeepSeek kapalı. Gölge kuyruk: ne gönderilirdi. Gövde metni listelenmez."
+      subtitle="Phase 4D: modlar hazır, varsayılan OFF. Otomatik yayın yok. Gövde metni listelenmez."
     >
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {unavailable ? (
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Veri kaynağına ulaşılamıyor — sayaçlar sıfır gibi gösterilmez.
+        </p>
+      ) : null}
       <div className="mb-4 rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-center">
-        <div className="text-xs uppercase tracking-wide text-amber-800">CRAWLER AI DISPATCH</div>
-        <div className="text-3xl font-black text-amber-900">{data?.dispatchStatus || data?.automaticAi || 'KAPALI'}</div>
+        <div className="text-xs uppercase tracking-wide text-amber-800">DISPATCH MODE</div>
+        <div className="text-3xl font-black text-amber-900">{data?.dispatchMode || 'OFF'}</div>
+        <div className="mt-1 text-sm text-amber-800">
+          Gate: {data?.gateStatus || 'CLOSED'} · Kill switch: {data?.dispatchStatus || data?.automaticAi || 'KAPALI'}
+        </div>
       </div>
       {data?.alert ? (
         <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{data.alert}</p>
       ) : null}
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Onaylanan backlog: <strong>{data?.approvedBacklog ?? 0}</strong>
+          Onaylanan backlog: <strong>{nz(data?.approvedBacklog, unavailable)}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          AI bekleyen: <strong>{data?.aiWaiting ?? 0}</strong>
+          AI bekleyen: <strong>{nz(data?.aiWaiting, unavailable)}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Çalışan job: <strong>{data?.runningJobs ?? 0}</strong>
+          Çalışan job: <strong>{nz(data?.runningJobs, unavailable)}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Bugünkü crawler AI isteği: <strong>{data?.actualAiRequests ?? 0}</strong>
+          Cost blocked: <strong>{nz(data?.costBlocked, unavailable)}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
-          Gerçekleşen maliyet: <strong>${(data?.actualAiCostUsd ?? 0).toFixed(4)}</strong>
+          Bugünkü crawler AI isteği: <strong>{nz(data?.actualAiRequests, unavailable)}</strong>
+        </div>
+        <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
+          Gerçekleşen maliyet:{' '}
+          <strong>{unavailable || data?.actualAiCostUsd == null ? '—' : money(data.actualAiCostUsd)}</strong>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
           Tahmini maliyet:{' '}
@@ -160,18 +201,70 @@ export default function AiDispatchPage() {
           Circuit breaker: <strong>{data?.circuit?.state ?? '—'}</strong>
         </div>
       </div>
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 text-sm">
+      <div className="mb-6 grid gap-3 sm:grid-cols-3 text-sm">
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
           <div className="font-medium">Bugün</div>
-          <div>Bütçe {money(data?.today?.budget)} · Rezerve {money(data?.today?.reserved)} · Harcanan {money(data?.today?.spent)} · Kalan {money(data?.today?.remaining)}</div>
-          <div>İstek {data?.today?.requests ?? 0} / {data?.today?.requestLimit ?? 0}</div>
+          <div>
+            Bütçe {money(data?.today?.budget)} · Rezerve {money(data?.today?.reserved)} · Harcanan{' '}
+            {money(data?.today?.spent)} · Kalan {money(data?.today?.remaining)}
+          </div>
+          <div>
+            İstek {data?.today?.requests ?? 0} / {data?.today?.requestLimit ?? 0}
+          </div>
         </div>
         <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
           <div className="font-medium">Bu saat</div>
-          <div>Bütçe {money(data?.hour?.budget)} · Rezerve {money(data?.hour?.reserved)} · Harcanan {money(data?.hour?.spent)} · Kalan {money(data?.hour?.remaining)}</div>
-          <div>İstek {data?.hour?.requests ?? 0} / {data?.hour?.requestLimit ?? 0}</div>
+          <div>
+            Bütçe {money(data?.hour?.budget)} · Rezerve {money(data?.hour?.reserved)} · Harcanan{' '}
+            {money(data?.hour?.spent)} · Kalan {money(data?.hour?.remaining)}
+          </div>
+          <div>
+            İstek {data?.hour?.requests ?? 0} / {data?.hour?.requestLimit ?? 0}
+          </div>
+        </div>
+        <div className="rounded-lg bg-[rgb(var(--color-surface))] p-3">
+          <div className="font-medium">Bu ay</div>
+          <div>
+            Bütçe {money(data?.month?.budget)} · Rezerve {money(data?.month?.reserved)} · Harcanan{' '}
+            {money(data?.month?.spent)} · Kalan {money(data?.month?.remaining)}
+          </div>
         </div>
       </div>
+      <h2 className="mb-2 text-base font-semibold">Jobs</h2>
+      {(data?.jobs || []).length === 0 ? (
+        <p className="mb-6 text-sm text-[rgb(var(--color-muted))]">Job yok.</p>
+      ) : (
+        <table className="mb-6 min-w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th className="px-2 py-1">Olay</th>
+              <th className="px-2 py-1">Durum</th>
+              <th className="px-2 py-1">Provider</th>
+              <th className="px-2 py-1">Model</th>
+              <th className="px-2 py-1">Tahmini</th>
+              <th className="px-2 py-1">Gerçek</th>
+              <th className="px-2 py-1">Hata</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(data?.jobs || []).map((j) => (
+              <tr key={`${j.clusterId}-${j.status}-${String(j.createdAt)}`} className="border-t border-[rgb(var(--color-border))]">
+                <td className="px-2 py-1">
+                  <Link className="underline" href={`/admin/crawler/clusters/${j.clusterId}`}>
+                    {j.eventKey || j.clusterId}
+                  </Link>
+                </td>
+                <td className="px-2 py-1">{j.status}</td>
+                <td className="px-2 py-1">{j.provider || '—'}</td>
+                <td className="px-2 py-1">{j.model || '—'}</td>
+                <td className="px-2 py-1">{money(j.estimatedCostUsd)}</td>
+                <td className="px-2 py-1">{money(j.actualCostUsd)}</td>
+                <td className="px-2 py-1">{j.failure || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <h2 className="mb-2 text-base font-semibold">Hazır</h2>
       <Table rows={data?.ready || []} />
       <h2 className="mb-2 text-base font-semibold">Engelli</h2>

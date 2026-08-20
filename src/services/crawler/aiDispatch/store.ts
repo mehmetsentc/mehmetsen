@@ -19,7 +19,7 @@ export interface AiDispatchStore {
   countActiveJobs(): Promise<number>
   upsertShadow(row: CrawlerAiShadowRow): Promise<void>
   listShadow(opts?: { limit?: number }): Promise<CrawlerAiShadowRow[]>
-  getBudgetWindow(lane: AiCostLane, periodType: 'hour' | 'day', periodKey: string): Promise<CrawlerAiBudgetWindow>
+  getBudgetWindow(lane: AiCostLane, periodType: 'hour' | 'day' | 'month', periodKey: string): Promise<CrawlerAiBudgetWindow>
   saveBudgetWindow(row: CrawlerAiBudgetWindow): Promise<void>
   /**
    * Atomic compare-and-set. Returns false if the window changed under us.
@@ -67,6 +67,12 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
 
   async insertJob(job: CrawlerAiJobRecord): Promise<'inserted' | 'duplicate'> {
     return this.withLock(() => {
+      const active = [...this.jobs.values()].some(
+        (j) =>
+          j.clusterId === job.clusterId &&
+          ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
+      )
+      if (active) return 'duplicate'
       if (job.dispatchType === 'INITIAL') {
         const exists = [...this.jobs.values()].some(
           (j) => j.clusterId === job.clusterId && j.dispatchType === 'INITIAL'
@@ -112,7 +118,7 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
 
   async getBudgetWindow(
     lane: AiCostLane,
-    periodType: 'hour' | 'day',
+    periodType: 'hour' | 'day' | 'month',
     periodKey: string
   ): Promise<CrawlerAiBudgetWindow> {
     const key = this.windowKey(lane, periodType, periodKey)

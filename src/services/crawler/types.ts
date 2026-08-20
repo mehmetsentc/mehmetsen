@@ -206,7 +206,7 @@ export interface NewsSourceRecord {
 export type ClusterMembershipRole = 'PRIMARY' | 'SUPPORTING' | 'DUPLICATE' | 'LOW_QUALITY' | 'MATERIAL_UPDATE'
 export type DiscoveryLane = 'RSS' | 'CRAWLER' | 'LEGACY_ADAPTER' | 'MANUAL'
 export type ClusterFutureAiUnit = 'PREPARED' | 'PUBLISHED_LOCKED' | 'BLOCKED'
-export type ClusterUpdateReviewStatus = 'NONE' | 'PENDING_UPDATE_REVIEW'
+export type ClusterUpdateReviewStatus = 'NONE' | 'PENDING_UPDATE_REVIEW' | 'UPDATE_AVAILABLE'
 
 export interface DiscoveredUrlRecord {
   id: string
@@ -295,7 +295,23 @@ export interface RawArticleRecord {
 }
 
 export type ClusterEventStatus = 'OPEN' | 'BORDERLINE' | 'CLOSED'
+/** Algorithmic cluster eligibility (worker). Phase 4D gate is separate (autoDraft/eligibility). */
 export type ClusterAiEligibility = 'REJECTED' | 'WATCHING' | 'ELIGIBLE' | 'HIGH_PRIORITY'
+
+/** Phase 4D unpaid gate statuses (runtime / auto_draft_status column). */
+export type AutoDraftStatus =
+  | 'AI_READY'
+  | 'WAITING_FOR_MORE_SOURCES'
+  | 'LOW_QUALITY'
+  | 'TOO_THIN'
+  | 'DUPLICATE'
+  | 'STALE'
+  | 'EDITOR_REJECTED'
+  | 'ALREADY_DRAFTED'
+  | 'ALREADY_PUBLISHED'
+  | 'COST_BLOCKED'
+  | 'MANUAL_ONLY'
+  | 'UPDATE_AVAILABLE'
 export type ClusterMatchBand = 'HIGH' | 'BORDERLINE' | 'LOW'
 
 export interface ClusterScoreBreakdown {
@@ -371,6 +387,12 @@ export interface NewsClusterRecord {
   primaryImageUrl: string | null
   primarySourceId: string | null
   primarySourceName: string | null
+  /** Phase 4D — current event content fingerprint. */
+  contentFingerprint?: string | null
+  /** Phase 4D — fingerprint at last AI_DRAFT. */
+  draftedContentFingerprint?: string | null
+  /** Phase 4D unpaid gate status (optional persisted). */
+  autoDraftStatus?: AutoDraftStatus | string | null
   createdAt: Date
   updatedAt: Date
 }

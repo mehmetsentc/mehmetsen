@@ -35,6 +35,9 @@ export interface EventDeskRow {
   editorialDecisionLabel: string
   aiEligibility: string
   aiEligibilityLabel: string
+  autoDraftStatus?: string | null
+  autoDraftStatusLabel?: string | null
+  estimatedAiCostUsd?: number | null
   hasMaterialUpdate: boolean
   sourceDiversity: string
   futureAiJobs: 1
@@ -85,6 +88,11 @@ export function toEventDeskRow(cluster: NewsClusterRecord, now = new Date()): Ev
     editorialDecisionLabel: EDITORIAL_DECISION_LABELS[decision as keyof typeof EDITORIAL_DECISION_LABELS] || cmsLabel(decision),
     aiEligibility: eligibility,
     aiEligibilityLabel: CRAWLER_STATUS_LABELS[eligibility] || cmsLabel(eligibility),
+    autoDraftStatus: cluster.autoDraftStatus ?? null,
+    autoDraftStatusLabel: cluster.autoDraftStatus
+      ? CRAWLER_STATUS_LABELS[cluster.autoDraftStatus] || cmsLabel(cluster.autoDraftStatus)
+      : null,
+    estimatedAiCostUsd: null,
     hasMaterialUpdate: Boolean(cluster.hasMaterialUpdate),
     sourceDiversity: sourceDiversityLabel(cluster.articleCount, independent),
     futureAiJobs: 1,

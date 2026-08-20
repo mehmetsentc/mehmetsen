@@ -467,12 +467,22 @@ export async function runCrawlerTick(opts?: {
     const { DrizzleAiDispatchStore, canUseDrizzleAiDispatchStore } = await import(
       '../aiDispatch/drizzleStore'
     )
+    const dispatchStore = canUseDrizzleAiDispatchStore() ? new DrizzleAiDispatchStore() : undefined
     const dispatchTick = await runAiDispatchSafetyTick({
       crawlerStore: store,
-      dispatchStore: canUseDrizzleAiDispatchStore() ? new DrizzleAiDispatchStore() : undefined,
+      dispatchStore,
       now,
     })
     providerCalls = dispatchTick.providerCalls
+
+    // Phase 4D controlled auto-draft — gated OFF by default; crawler continues regardless.
+    const { runControlledAutoDraftTick } = await import('../autoDraft/pipeline')
+    const { MemoryAiDispatchStore } = await import('../aiDispatch/store')
+    await runControlledAutoDraftTick({
+      crawlerStore: store,
+      aiStore: dispatchStore ?? new MemoryAiDispatchStore(),
+      now,
+    })
   } catch (err) {
     logCrawler(
       { stage: 'ai_dispatch_tick', errorCode: 'ai_dispatch_tick_uncaught' },

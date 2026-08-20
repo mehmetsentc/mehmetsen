@@ -224,7 +224,7 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
 
   async getBudgetWindow(
     lane: AiCostLane,
-    periodType: 'hour' | 'day',
+    periodType: 'hour' | 'day' | 'month',
     periodKey: string
   ): Promise<CrawlerAiBudgetWindow> {
     const rows = await this.db()

@@ -74,6 +74,18 @@ export const CRAWLER_STATUS_LABELS: Record<string, string> = {
   OPEN: 'Açık',
   BORDERLINE: 'Sınırda',
   CLOSED: 'Kapalı',
+  AI_READY: 'HAZIR',
+  WAITING_FOR_MORE_SOURCES: 'Kaynak bekleniyor',
+  LOW_QUALITY: 'Düşük kalite',
+  TOO_THIN: 'Çok ince',
+  DUPLICATE: 'Mükerrer',
+  STALE: 'Eski',
+  EDITOR_REJECTED: 'Editör reddi',
+  ALREADY_DRAFTED: 'Taslak var',
+  ALREADY_PUBLISHED: 'Yayınlandı',
+  COST_BLOCKED: 'Maliyet engeli',
+  MANUAL_ONLY: 'Yalnızca manuel',
+  UPDATE_AVAILABLE: 'Güncelleme mevcut',
 }
 
 export const FAILURE_REASON_TR: Record<CrawlerFailureClass, string> = {
