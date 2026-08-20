@@ -1,6 +1,6 @@
-# Phase 4C — DeepSeek Single-Event Canary (Stage 1)
+# Phase 4C — DeepSeek Single-Event Canary (Stage 2 preflight)
 
-**Status:** Stage 1 local controls only. No production deploy. No paid DeepSeek call. No automatic dispatch.
+**Status:** Stage 2 — production controls + migration + single-event preflight. Paid DeepSeek call still requires explicit per-event approval. No automatic dispatch.
 
 ## Unit of AI
 
@@ -45,8 +45,8 @@ Cluster detail → **Preflight Göster** (`GET /api/admin/crawler/clusters/:id/c
 
 ## Migration
 
-Additive: `0013_phase4c_canary_runs.sql` — **do not apply to production in Stage 1**.
+Additive: `0013_phase4c_canary_runs.sql` — applied in Stage 2 production acceptance (no DROP/TRUNCATE).
 
-## Stage 2 (future prompt)
+## Stage 2
 
 Deploy → migrate → select ONE event → show preflight → **STOP for user approval** before paid call.
