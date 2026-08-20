@@ -15,6 +15,7 @@ import {
 } from '@/services/newsroomOs/feedWeightLabels'
 import { DEFAULT_FEED_ALGORITHM_WEIGHTS, type FeedAlgorithmWeights, type RuleProposal } from '@/types/newsroomOs'
 import toast from 'react-hot-toast'
+import { loadAdminJson } from '@/lib/adminApiError'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -28,19 +29,20 @@ export default function FeedAlgorithmPage() {
   const weights = draft ?? config?.weights ?? DEFAULT_FEED_ALGORITHM_WEIGHTS
   const sums = sumFeedWeights(weights)
 
+  const [loadError, setLoadError] = useState<string | null>(null)
   const load = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/proposals?kind=algorithm_weight', {
-        headers: await authHeaders(),
-      })
-      if (!res.ok) return
-      const body = (await res.json()) as { config: FeedAlgorithmWeights; proposals: RuleProposal[] }
-      setConfig(body.config)
-      setProposals(body.proposals)
-      setDraft(body.config.weights)
-    } catch {
-      /* ignore */
+    const result = await loadAdminJson<{ config: FeedAlgorithmWeights; proposals: RuleProposal[] }>(
+      '/api/admin/proposals?kind=algorithm_weight',
+      { headers: await authHeaders() }
+    )
+    if (!result.ok) {
+      setLoadError(result.error)
+      return
     }
+    setLoadError(null)
+    setConfig(result.data.config)
+    setProposals(result.data.proposals)
+    setDraft(result.data.config.weights)
   }, [])
 
   useEffect(() => {
@@ -111,6 +113,7 @@ export default function FeedAlgorithmPage() {
       title="Feed & Algoritma"
       subtitle="Öneriler asla otomatik uygulanmaz. Akış: öner → incele → onayla → sürüm → geri al."
     >
+      {loadError ? <p className="mb-3 text-sm text-red-600" role="alert">{loadError}</p> : null}
       <AdminOsMetricGrid
         items={[
           { label: 'Sürüm', value: String(config?.version ?? 1) },

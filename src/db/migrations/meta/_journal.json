@@ -85,6 +85,13 @@
       "when": 1787188000000,
       "tag": "0011_phase4a5_protected_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787192000000,
+      "tag": "0012_phase4b_event_desk_indexes",
+      "breakpoints": true
     }
   ]
 }

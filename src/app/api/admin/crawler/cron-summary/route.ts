@@ -3,7 +3,15 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { isGlobalCrawlerEnabled } from '@/services/crawler/enabled'
-import { buildCrawlerCronSummaries, historyWindow } from '@/services/crawler/ops/cronSummary'
+import { isCrawlerAiDispatchEnabled } from '@/services/crawler/dispatch'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
+import {
+  buildCrawlerCronSummaries,
+  CRON_LANE_EXPLAIN,
+  CRON_LANE_ORDER,
+  historyWindow,
+} from '@/services/crawler/ops/cronSummary'
+import { databaseUnavailableResponse } from '@/lib/adminApiError'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,12 +24,17 @@ export async function GET(request: Request) {
   }
 
   if (!hasDatabaseUrl()) {
-    return NextResponse.json({
-      postgres: false,
-      crawlerEnabled: isGlobalCrawlerEnabled(),
-      jobs: [],
-      history: { last24h: 0, last7d: 0 },
-    })
+    return NextResponse.json(
+      {
+        ...databaseUnavailableResponse({
+          postgres: false,
+          crawlerEnabled: isGlobalCrawlerEnabled(),
+          jobs: null,
+          history: null,
+        }),
+      },
+      { status: 503 }
+    )
   }
 
   const store = new DrizzleCrawlerStore()
@@ -39,6 +52,8 @@ export async function GET(request: Request) {
     metrics,
     lastDiscoveryAt: lastDiscovery,
     lastExtractionAt: lastDiscovery,
+    aiDispatchEnabled: isCrawlerAiDispatchEnabled(),
+    legacyAiEnabled: isLegacyDirectAiEnabled(),
   })
 
   const url = new URL(request.url)
@@ -53,6 +68,9 @@ export async function GET(request: Request) {
   return NextResponse.json({
     postgres: true,
     crawlerEnabled: isGlobalCrawlerEnabled(),
+    aiDispatchEnabled: isCrawlerAiDispatchEnabled(),
+    legacyAiEnabled: isLegacyDirectAiEnabled(),
+    lanes: CRON_LANE_ORDER.map((lane) => ({ lane, explanation: CRON_LANE_EXPLAIN[lane] })),
     jobs,
     history,
     windowDays: window,

@@ -96,7 +96,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const result = await runClusterBulk({
     store,
     actor: { uid: auth.uid, role: auth.role, email: auth.email },
-    op: op as 'approve_for_ai' | 'watch' | 'reject' | 'archive' | 'restore',
+    op: op as 'approve_for_ai' | 'watch' | 'review' | 'reject' | 'archive' | 'restore',
     ids: [id],
     reason: typeof body.reason === 'string' ? body.reason : null,
     note: typeof body.note === 'string' ? body.note : null,

@@ -7,6 +7,7 @@ import { CrawlerPager } from '@/components/admin/crawler/CrawlerPager'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import { CRAWLER_STATUS_LABELS } from '@/services/crawler/editorial/labels'
+import { loadAdminJson } from '@/lib/adminApiError'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -69,22 +70,25 @@ export default function CrawlerSourcesPage() {
 
   const load = useCallback(async () => {
     setError(null)
-    try {
-      const q = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
-      if (search) q.set('search', search)
-      if (status) q.set('status', status)
-      if (country) q.set('country', country)
-      if (scope) q.set('scope', scope)
-      if (tier) q.set('tier', tier)
-      const res = await fetch(`/api/admin/crawler/sources?${q}`, { headers: await authHeaders() })
-      const body = (await res.json()) as { sources?: SourceRow[]; error?: string; total?: number; totalPages?: number }
-      if (!res.ok) throw new Error(body.error || 'Yüklenemedi')
-      setSources(body.sources || [])
-      setTotal(Number(body.total || (body.sources || []).length))
-      setTotalPages(Number(body.totalPages || 1))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Yüklenemedi')
+    const q = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+    if (search) q.set('search', search)
+    if (status) q.set('status', status)
+    if (country) q.set('country', country)
+    if (scope) q.set('scope', scope)
+    if (tier) q.set('tier', tier)
+    const result = await loadAdminJson<{ sources?: SourceRow[] | null; total?: number | null; totalPages?: number }>(
+      `/api/admin/crawler/sources?${q}`,
+      { headers: await authHeaders() }
+    )
+    if (!result.ok) {
+      setError(result.error)
+      setSources([])
+      setTotal(-1)
+      return
     }
+    setSources(result.data.sources || [])
+    setTotal(Number(result.data.total ?? (result.data.sources || []).length))
+    setTotalPages(Number(result.data.totalPages || 1))
   }, [page, pageSize, search, status, country, scope, tier])
 
   useEffect(() => {
@@ -182,7 +186,7 @@ export default function CrawlerSourcesPage() {
   }
 
   return (
-    <AdminOsPageShell title="Crawler Kaynakları" subtitle="Kaynak kaydı. Yeni kaynaklar duraklatılmış başlar.">
+    <AdminOsPageShell title="Crawler Kaynakları" subtitle="Arama / filtre / sayfalama. Duraklatıldı ≠ bozuk. Yeni kaynak güvenli varsayılanlarla başlar.">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
 

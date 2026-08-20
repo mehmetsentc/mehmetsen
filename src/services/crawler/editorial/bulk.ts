@@ -32,7 +32,7 @@ export const BULK_ID_CAP = BULK_EVENT_CAP
 export const FILTER_MATCH_CAP = 10_000
 
 export type ArticleBulkOp = 'review' | 'ai_candidate' | 'reject' | 'archive' | 'delete'
-export type ClusterBulkOp = 'approve_for_ai' | 'watch' | 'reject' | 'archive' | 'restore'
+export type ClusterBulkOp = 'approve_for_ai' | 'watch' | 'review' | 'reject' | 'archive' | 'restore'
 
 export interface BulkResult {
   requested: number
@@ -303,9 +303,9 @@ export async function runArticleBulk(opts: {
 function clusterAlready(decision: ClusterEditorialDecision, op: ClusterBulkOp): boolean {
   if (op === 'approve_for_ai') return decision === 'APPROVED_FOR_AI'
   if (op === 'watch') return decision === 'WATCHING'
+  if (op === 'review' || op === 'restore') return decision === 'NONE'
   if (op === 'reject') return decision === 'REJECTED'
   if (op === 'archive') return decision === 'ARCHIVED'
-  if (op === 'restore') return decision === 'NONE'
   return false
 }
 
@@ -313,7 +313,7 @@ function decisionFor(op: ClusterBulkOp): ClusterEditorialDecision {
   if (op === 'approve_for_ai') return 'APPROVED_FOR_AI'
   if (op === 'watch') return 'WATCHING'
   if (op === 'reject') return 'REJECTED'
-  if (op === 'restore') return 'NONE'
+  if (op === 'review' || op === 'restore') return 'NONE'
   return 'ARCHIVED'
 }
 
@@ -336,7 +336,7 @@ export async function runClusterBulk(opts: {
       ? 'approve_for_ai'
       : opts.op === 'watch'
         ? 'watch'
-        : opts.op === 'restore'
+        : opts.op === 'restore' || opts.op === 'review'
           ? 'restore'
           : opts.op
   const authz = authorizeCrawlerBulk(opts.actor.role, action)
@@ -388,11 +388,12 @@ export async function runClusterBulk(opts: {
       const algorithmicEligibility = cluster.aiEligibility
       const importanceScore = cluster.importanceScore
       const previousState = cluster.editorialDecision
+      const clearsDecision = opts.op === 'restore' || opts.op === 'review'
       const patch: Partial<NewsClusterRecord> = {
         editorialDecision: decision,
         editorialDecisionReason:
-          opts.op === 'reject' ? parseRejectionReason(opts.reason) : opts.op === 'restore' ? null : cluster.editorialDecisionReason,
-        editorialDecisionNote: opts.op === 'restore' ? null : opts.note?.trim() || null,
+          opts.op === 'reject' ? parseRejectionReason(opts.reason) : clearsDecision ? null : cluster.editorialDecisionReason,
+        editorialDecisionNote: clearsDecision ? (opts.op === 'review' ? opts.note?.trim() || 'İncelemeye alındı' : null) : opts.note?.trim() || null,
         editorialDecidedAt: now,
         editorialDecidedBy: opts.actor.uid,
         aiEligibility: algorithmicEligibility,
@@ -402,7 +403,7 @@ export async function runClusterBulk(opts: {
         patch.editorialPriority = priority
         patch.approvalSource = approvalSource
       }
-      if (opts.op === 'restore') {
+      if (clearsDecision) {
         patch.editorialPriority = 'NORMAL'
         patch.approvalSource = null
       }

@@ -3,10 +3,14 @@
  */
 export const CMS_STATUS_LABELS: Record<string, string> = {
   draft: 'Taslak',
+  DRAFT: 'Taslak',
   active: 'Aktif',
+  ACTIVE: 'Aktif',
   archived: 'Arşiv',
+  ARCHIVED: 'Arşiv',
   preview: 'Önizleme',
   published: 'Yayında',
+  PUBLISHED: 'Yayında',
   APPROVED: 'Onaylandı',
   APPROVED_FOR_AI: 'AI için onaylandı',
   WATCHING: 'İzleniyor',
@@ -19,7 +23,9 @@ export const CMS_STATUS_LABELS: Record<string, string> = {
   NORMAL: 'Normal',
   LOW: 'Düşük',
   algorithmic: 'Algoritmik',
+  ALGORITHMIC: 'Algoritmik',
   manual: 'Manuel',
+  MANUAL: 'Manuel',
   category_rail: 'Kategori bandı',
   PROPOSED: 'Önerildi',
   TESTING: 'Testte',
@@ -33,11 +39,36 @@ export const CMS_STATUS_LABELS: Record<string, string> = {
   skipped: 'Atlandı',
   pending: 'Bekliyor',
   disabled: 'Devre Dışı',
+  idle: 'Boşta',
   schedule: 'Zamanlanmış',
   manual_trigger: 'Manuel',
+  PAUSED: 'Duraklatıldı',
+  DEGRADED: 'Zayıf',
+  DISABLED: 'Kapalı',
+  IN_REVIEW: 'İncelemede',
+  AI_CANDIDATE: 'AI Adayı',
+  NEW: 'Yeni',
+  EDITING: 'Düzenleniyor',
+  DELETED: 'Silindi',
+  SKIPPED: 'Atlandı',
+  PRIMARY: 'Birincil',
+  SUPPORTING: 'Destekleyici',
+  DUPLICATE: 'Mükerrer',
+  LOW_QUALITY: 'Düşük kalite',
+  MATERIAL_UPDATE: 'Maddi güncelleme',
+  TIER_A: 'A Kademe',
+  TIER_B: 'B Kademe',
+  TIER_C: 'C Kademe',
+  RSS: 'RSS',
+  SITEMAP: 'Sitemap',
+  HTML: 'HTML',
+  HTTP: 'HTTP',
+  ROLLBACK: 'Geri alındı',
+  ROLLBACK_AVAILABLE: 'Geri alınabilir',
+  COST_UNKNOWN: 'Maliyet bilinmiyor',
 }
 
 export function cmsLabel(value: string | null | undefined, fallback?: string): string {
   if (!value) return fallback || '—'
-  return CMS_STATUS_LABELS[value] || fallback || value
+  return CMS_STATUS_LABELS[value] || CMS_STATUS_LABELS[value.toLowerCase()] || fallback || value
 }

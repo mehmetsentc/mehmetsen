@@ -1,5 +1,5 @@
 import { hammingHex64 } from '../duplicate/hash'
-import { jaccard, localeLower, namedTokensMatch, WEAK_EVENT_TOKENS } from './normalize'
+import { jaccard, localeLower, namedTokensMatch, NON_PLACE_TOKENS, WEAK_EVENT_TOKENS } from './normalize'
 import { namedTokenOverlapScore, strongNamedTokens, tokenOverlapScore, type EventFingerprint } from './fingerprint'
 
 export interface ClusterMatchBreakdown {
@@ -72,6 +72,51 @@ function numericScore(a: string[], b: string[]): { score: number; mismatch: bool
   return { score, mismatch: false }
 }
 
+/**
+ * Precision guard: distinct district/place tokens in titles (e.g. Soma vs Akhisar)
+ * under the same city + shared weak keyword must not merge.
+ * Does not treat verbs/fillers (çıktı, alanda, …) as places.
+ */
+export function conflictingExclusivePlaces(a: EventFingerprint, b: EventFingerprint): boolean {
+  const sameCity = Boolean(a.city && b.city && a.city === b.city)
+  if (!sameCity) return false
+  const strongA = strongNamedTokens(a.namedTokens)
+  const strongB = strongNamedTokens(b.namedTokens)
+  if (!strongA.length || !strongB.length) return false
+  const matches = (t: string, o: string) =>
+    namedTokensMatch(t, o) || (t.length >= 5 && o.startsWith(t.slice(0, 5)))
+  const onlyA = strongA.filter((t) => !strongB.some((o) => matches(t, o)))
+  const onlyB = strongB.filter((t) => !strongA.some((o) => matches(t, o)))
+  if (!onlyA.length || !onlyB.length) return false
+  const cityTok = a.city!
+  const placeLike = (fp: EventFingerprint, token: string) => {
+    if (token.length < 4) return false
+    if (namedTokensMatch(token, cityTok) || token === cityTok) return false
+    if (WEAK_EVENT_TOKENS.has(token) || NON_PLACE_TOKENS.has(token)) return false
+    return fp.titleTokens.some(
+      (t) => namedTokensMatch(t, token) || t === token || (t.length >= 5 && token.startsWith(t.slice(0, 5)))
+    )
+  }
+  const exclusivePlaceA = onlyA.filter((t) => placeLike(a, t))
+  const exclusivePlaceB = onlyB.filter((t) => placeLike(b, t))
+  return exclusivePlaceA.length >= 1 && exclusivePlaceB.length >= 1
+}
+
+/** Shared signal is only weak event keywords — never enough alone. */
+export function weakKeywordOnlyOverlap(a: EventFingerprint, b: EventFingerprint): boolean {
+  const strongOverlap = strongNamedTokens(a.namedTokens).filter((t) =>
+    b.namedTokens.some((o) => namedTokensMatch(t, o) || (t.length >= 5 && o.startsWith(t.slice(0, 5))))
+  )
+  if (strongOverlap.length > 0) return false
+  const poolA = [...a.namedTokens, ...a.titleTokens]
+  const poolB = [...b.namedTokens, ...b.titleTokens]
+  return [...WEAK_EVENT_TOKENS].some((w) => {
+    const inA = poolA.some((t) => t === w || t.startsWith(w) || (t.length >= 5 && w.startsWith(t)))
+    const inB = poolB.some((t) => t === w || t.startsWith(w) || (t.length >= 5 && w.startsWith(t)))
+    return inA && inB
+  })
+}
+
 export function scoreClusterMatch(
   article: EventFingerprint,
   cluster: ClusterMatchTarget,
@@ -119,9 +164,12 @@ export function scoreClusterMatch(
   })
   let blocked: string | null = null
   if (geo.mismatch) blocked = 'geography_mismatch'
+  else if (conflictingExclusivePlaces(article, cluster.fingerprint)) blocked = 'place_entity_conflict'
   else if (numeric.mismatch) blocked = 'numeric_mismatch'
   else if (time < 0.2) blocked = 'time_separated'
-  else if (strongOverlap.length === 0 && titleSimilarity < 0.72) blocked = 'weak_entity_overlap'
+  else if (weakKeywordOnlyOverlap(article, cluster.fingerprint) && titleSimilarity < 0.85) {
+    blocked = 'weak_keyword_only'
+  } else if (strongOverlap.length === 0 && titleSimilarity < 0.72) blocked = 'weak_entity_overlap'
 
   let band: MatchBand = 'LOW'
   const highOk =
@@ -130,10 +178,15 @@ export function scoreClusterMatch(
     (titleSimilarity >= 0.45 || tokenOverlap >= 0.5) &&
     (entityOverlap >= 0.35 || (geo.score >= 0.85 && tokenOverlap >= 0.4))
   if (highOk) band = 'HIGH'
-  else if (!blocked && article.eventKey && article.eventKey === cluster.fingerprint.eventKey && time >= 0.5 && titleSimilarity >= 0.28) {
-    band = 'HIGH'
-  }
   else if (
+    !blocked &&
+    article.eventKey &&
+    article.eventKey === cluster.fingerprint.eventKey &&
+    time >= 0.5 &&
+    titleSimilarity >= 0.28
+  ) {
+    band = 'HIGH'
+  } else if (
     !blocked &&
     strongOverlap.length >= 1 &&
     (weakShared ||
@@ -142,11 +195,9 @@ export function scoreClusterMatch(
     time >= 0.5
   ) {
     band = 'HIGH'
-  }
-  else if (!blocked && strongOverlap.length >= 1 && titleSimilarity >= 0.42 && entityOverlap >= 0.35) {
+  } else if (!blocked && strongOverlap.length >= 1 && titleSimilarity >= 0.42 && entityOverlap >= 0.35) {
     band = 'HIGH'
-  }
-  else if (!blocked && final >= BORDERLINE_MATCH) band = 'BORDERLINE'
+  } else if (!blocked && final >= BORDERLINE_MATCH) band = 'BORDERLINE'
 
   return {
     titleSimilarity: round4(titleSimilarity),

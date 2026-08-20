@@ -259,6 +259,7 @@ export default function AnalyticsPage() {
             (<code className="text-[11px]">/api/analytics/track</code> → cost-pause).
             Yeni mimari Neon buffer → saatlik/günlük aggregate; CMS yalnız aggregate okur.
             Production ingest kapalı (<code className="text-[11px]">ANALYTICS_NEON_INGEST_ENABLED=false</code>).
+            Maliyet modeli: 10K/100K/1M sayfa görüntüleme için Neon buffer yazma tahmini; fiyat yoksa COST_UNKNOWN (asla $0 varsayılmaz).
             Haber başına{' '}
             <code className="text-[11px]">viewsCount</code> ise hafif sayaç ile güncellenir
             (<code className="text-[11px]">/api/news/view</code>, oturum başına en fazla 1 yazma) —

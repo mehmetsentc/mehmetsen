@@ -8,7 +8,7 @@ import { parseClusterListQuery } from '@/services/crawler/editorial/query'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const OPS: ClusterBulkOp[] = ['approve_for_ai', 'watch', 'reject', 'archive', 'restore']
+const OPS: ClusterBulkOp[] = ['approve_for_ai', 'watch', 'review', 'reject', 'archive', 'restore']
 
 function clusterFilterFromBody(body: Record<string, unknown>) {
   const filter = (body.filter as Record<string, unknown>) || body

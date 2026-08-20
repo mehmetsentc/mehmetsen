@@ -92,8 +92,16 @@ export function buildEventFingerprint(input: {
   const named = namedTokensFrom(title, language)
   const numbers = extractNumbers(`${title} ${lead}`)
   const keyParts = [...named.filter((t) => !WEAK_EVENT_TOKENS.has(t)).slice(0, 6)].sort()
+  // Empty strong-key sets must NOT collide across unrelated weak-keyword stories
+  // (e.g. two different "yangın" headlines in different cities).
+  const keyMaterial =
+    keyParts.length > 0
+      ? keyParts.join('+')
+      : [...titleTokens.filter((t) => !WEAK_EVENT_TOKENS.has(t)).slice(0, 8), input.city || '', input.district || '']
+          .filter(Boolean)
+          .join('+') || `uniq:${titleTokens.slice(0, 6).join('+')}`
   const eventKey = createHash('sha256')
-    .update(`${language}|${input.countryCode || ''}|${keyParts.join('+')}`)
+    .update(`${language}|${input.countryCode || ''}|${keyMaterial}`)
     .digest('hex')
     .slice(0, 24)
 

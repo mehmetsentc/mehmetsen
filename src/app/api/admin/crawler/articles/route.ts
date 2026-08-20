@@ -14,6 +14,7 @@ import { rawArticleDisplay } from '@/services/crawler/editorial/prefill'
 import { summarizeArticleMedia } from '@/services/crawler/editorial/mediaSummary'
 import type { CrawlerQualityStatus, RawArticleRecord } from '@/services/crawler/types'
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
+import { databaseUnavailableResponse } from '@/lib/adminApiError'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'news:read')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!hasDatabaseUrl()) {
-    return NextResponse.json({ error: 'DATABASE_URL missing', articles: [] }, { status: 503 })
+    return NextResponse.json(databaseUnavailableResponse({ articles: null, total: null }), { status: 503 })
   }
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
@@ -123,7 +124,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const auth = await verifyCmsToken(request, 'news:edit')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing' }, { status: 503 })
+  if (!hasDatabaseUrl()) return NextResponse.json(databaseUnavailableResponse(), { status: 503 })
   const body = (await request.json().catch(() => ({}))) as {
     id?: string
     editorialStatus?: string

@@ -4,7 +4,8 @@ import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { dispatchCrawlerArticleToNewsroom } from '@/services/crawler/dispatch'
 import { parseClusterListQuery } from '@/services/crawler/editorial/query'
-import { eventAgeHours, sourceDiversityLabel } from '@/services/crawler/editorial/controlPlane'
+import { toEventDeskRow } from '@/services/crawler/editorial/eventDesk'
+import { databaseUnavailableResponse } from '@/lib/adminApiError'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'news:read')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!hasDatabaseUrl()) {
-    return NextResponse.json({ error: 'DATABASE_URL missing', clusters: [] }, { status: 503 })
+    return NextResponse.json(databaseUnavailableResponse({ clusters: null, total: null }), { status: 503 })
   }
   const url = new URL(request.url)
   const hours = url.searchParams.get('hours')
@@ -30,28 +31,42 @@ export async function GET(request: Request) {
     page: page.page,
     pageSize: page.pageSize,
     totalPages: page.totalPages,
-    clusters: page.clusters.map((c) => ({
-      id: c.id,
-      canonicalTitle: c.canonicalTitle || c.normalizedTopic,
-      status: c.eventStatus,
-      countryCode: c.countryCode,
-      city: c.city,
-      firstSeenAt: c.firstSeenAt,
-      lastSeenAt: c.lastSeenAt,
-      articleCount: c.articleCount,
-      uniqueSourceCount: c.uniqueSourceCount,
-      sourceDiversity: sourceDiversityLabel(c.articleCount, c.uniqueSourceCount),
-      clusterConfidence: c.clusterConfidence,
-      importanceScore: c.importanceScore,
-      aiEligibility: c.aiEligibility,
-      aiEligibilityReason: c.aiEligibilityReason,
-      editorialDecision: c.editorialDecision,
-      editorialDecisionReason: c.editorialDecisionReason,
-      editorialPriority: c.editorialPriority,
-      hasMaterialUpdate: c.hasMaterialUpdate,
-      primarySourceName: c.primarySourceName,
-      primaryImageUrl: c.primaryImageUrl,
-      ageHours: Number(eventAgeHours(c).toFixed(1)),
-    })),
+    clusters: page.clusters.map((c) => {
+      const desk = toEventDeskRow(c)
+      return {
+        id: desk.id,
+        canonicalTitle: desk.title,
+        status: desk.status,
+        statusLabel: desk.statusLabel,
+        countryCode: c.countryCode,
+        city: c.city,
+        location: desk.location,
+        category: desk.category,
+        firstSeenAt: desk.firstSeenAt,
+        lastSeenAt: desk.lastSeenAt,
+        lastUpdateAt: desk.lastUpdateAt,
+        articleCount: desk.articleCount,
+        uniqueSourceCount: desk.independentSourceCount,
+        independentSourceCount: desk.independentSourceCount,
+        sourceDiversity: desk.sourceDiversity,
+        clusterConfidence: desk.confidence,
+        importanceScore: desk.quality,
+        aiEligibility: desk.aiEligibility,
+        aiEligibilityLabel: desk.aiEligibilityLabel,
+        aiEligibilityReason: c.aiEligibilityReason,
+        editorialDecision: desk.editorialDecision,
+        editorialDecisionLabel: desk.editorialDecisionLabel,
+        editorialDecisionReason: c.editorialDecisionReason,
+        editorialPriority: desk.priority,
+        editorialPriorityLabel: desk.priorityLabel,
+        hasMaterialUpdate: desk.hasMaterialUpdate,
+        primarySourceName: desk.primarySourceName,
+        primaryArticleId: desk.primaryArticleId,
+        primaryImageUrl: desk.bestMediaUrl,
+        supportingSourceCount: desk.supportingSourceCount,
+        ageHours: desk.ageHours,
+        futureAiJobs: desk.futureAiJobs,
+      }
+    }),
   })
 }

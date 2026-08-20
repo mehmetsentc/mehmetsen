@@ -24,6 +24,8 @@ import {
 } from '@/services/crawler/editorial/selection'
 import type { BulkResult } from '@/services/crawler/editorial/bulk'
 import type { CrawlerRejectionReason } from '@/services/crawler/types'
+import { loadAdminJson } from '@/lib/adminApiError'
+import { sameEventBadgeLabel } from '@/services/crawler/editorial/eventDesk'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -34,20 +36,31 @@ interface ClusterRow {
   id: string
   canonicalTitle: string | null
   status: string
+  statusLabel?: string
   countryCode: string | null
   city: string | null
+  location?: string
+  category?: string | null
   firstSeenAt: string
   lastSeenAt: string
+  lastUpdateAt?: string
   articleCount: number
   uniqueSourceCount: number
+  independentSourceCount?: number
+  supportingSourceCount?: number
   clusterConfidence: number
   importanceScore: number
   aiEligibility: string
+  aiEligibilityLabel?: string
   editorialDecision?: string
+  editorialDecisionLabel?: string
+  editorialPriority?: string
+  editorialPriorityLabel?: string
   hasMaterialUpdate?: boolean
   primarySourceName?: string | null
   primaryImageUrl?: string | null
   ageHours?: number
+  futureAiJobs?: 1
 }
 
 export default function CrawlerClustersPage() {
@@ -84,16 +97,26 @@ export default function CrawlerClustersPage() {
     if (eligibility) q.set('eligibility', eligibility)
     if (decision) q.set('editorialDecision', decision)
     if (minSources) q.set('minSources', minSources)
-    const res = await fetch(`/api/admin/crawler/clusters?${q}`, { headers: await authHeaders() })
-    const body = await res.json()
-    if (!res.ok) throw new Error(body.error || 'Yüklenemedi')
-    setRows((body.clusters || []) as ClusterRow[])
-    setTotal(Number(body.total || 0))
-    setTotalPages(Number(body.totalPages || 1))
+    const result = await loadAdminJson<{
+      clusters?: ClusterRow[]
+      total?: number | null
+      totalPages?: number
+      error?: string
+    }>(`/api/admin/crawler/clusters?${q}`, { headers: await authHeaders() })
+    if (!result.ok) {
+      setError(result.error)
+      // Do not fake empty success — leave previous rows or clear without claiming 0.
+      setRows([])
+      setTotal(-1)
+      return
+    }
+    setRows((result.data.clusters || []) as ClusterRow[])
+    setTotal(Number(result.data.total ?? 0))
+    setTotalPages(Number(result.data.totalPages || 1))
   }, [hours, country, city, eligibility, decision, minSources, page, pageSize])
 
   useEffect(() => {
-    void load().catch((err) => setError(err instanceof Error ? err.message : 'Yüklenemedi'))
+    void load()
   }, [load])
 
   const visibleIds = rows.map((r) => r.id)
@@ -117,10 +140,12 @@ export default function CrawlerClustersPage() {
       const body = (await res.json()) as BulkResult & { error?: string }
       if (!res.ok) throw new Error(body.error || 'İşlem başarısız')
       const labels: Record<string, string> = {
-        approve_for_ai: `${body.affected} küme AI adayı yapıldı. Dispatch KAPALI.`,
-        watch: `${body.affected} küme izlemeye alındı.`,
-        reject: `${body.affected} küme reddedildi.`,
-        archive: `${body.affected} küme arşivlendi.`,
+        review: `${body.affected} olay incelemeye alındı.`,
+        approve_for_ai: `${body.affected} olay AI için onaylandı. Dispatch KAPALI.`,
+        watch: `${body.affected} olay izlemeye alındı.`,
+        reject: `${body.affected} olay reddedildi.`,
+        archive: `${body.affected} olay arşivlendi.`,
+        restore: `${body.affected} olay geri yüklendi.`,
       }
       notifyCrawlerBulk(body, labels[op] || 'İşlem tamam')
       setSelection(clearSelection(filterKey))
@@ -134,7 +159,7 @@ export default function CrawlerClustersPage() {
   }
 
   return (
-    <AdminOsPageShell title="Olay Kümeleri" subtitle="Belirleyici kümeler. AI yok. Editör kararı algoritmik eligibiliteden ayrıdır.">
+    <AdminOsPageShell title="Olay Kümeleri" subtitle="Event-first haber odası. Editör OLAY ile çalışır. AI dispatch kapalı. Yanlış birleştirme kaçırmaktan kötüdür.">
       <CrawlerSubnav />
       <div className="mb-3 flex flex-wrap gap-2 text-sm">
         <select value={hours} onChange={(e) => setHours(e.target.value)} className="rounded border px-2 py-1">
@@ -161,15 +186,18 @@ export default function CrawlerClustersPage() {
         </select>
         <input value={minSources} onChange={(e) => setMinSources(e.target.value)} placeholder="min sources" className="w-28 rounded border px-2 py-1" />
       </div>
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="mb-2 text-sm text-red-600" role="alert">{error}{total < 0 ? " · Kayıt sayısı bilinmiyor (0 değil)." : ""}</p> : null}
       <BulkToolbar
         count={count}
         matchingHint={selection.mode === 'page' && rows.length ? `Tüm ${rows.length} sonucu seç` : null}
         onSelectMatching={() => setSelection(selectAllMatching(filterKey, rows.length))}
         onClear={() => setSelection(clearSelection(filterKey))}
       >
+        <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" disabled={busy} onClick={() => void runBulk('review')}>
+          İncelemeye Al
+        </button>
         <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" disabled={busy} onClick={() => void runBulk('approve_for_ai')}>
-          AI Adayı Yap
+          AI İçin Onayla
         </button>
         <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" disabled={busy} onClick={() => void runBulk('watch')}>
           İzlemeye Al
@@ -199,14 +227,14 @@ export default function CrawlerClustersPage() {
                   }
                 />
               </th>
-              <th className="px-3 py-2">Başlık</th>
+              <th className="px-3 py-2">Olay</th>
               <th className="px-3 py-2">Yaş</th>
-              <th className="px-3 py-2">Coğrafya</th>
-              <th className="px-3 py-2">Haber</th>
-              <th className="px-3 py-2">Kaynak</th>
+              <th className="px-3 py-2">Konum</th>
+              <th className="px-3 py-2">Kategori</th>
+              <th className="px-3 py-2">Haber / Kaynak</th>
               <th className="px-3 py-2">Primary</th>
-              <th className="px-3 py-2">Önem</th>
-              <th className="px-3 py-2">Kalite</th>
+              <th className="px-3 py-2">Öncelik</th>
+              <th className="px-3 py-2">Güven</th>
               <th className="px-3 py-2">Algoritmik</th>
               <th className="px-3 py-2">Editör</th>
               <th className="px-3 py-2" />
@@ -226,25 +254,41 @@ export default function CrawlerClustersPage() {
                   <Link href={`/admin/crawler/clusters/${c.id}`} className="underline">
                     {c.canonicalTitle || c.id}
                   </Link>
+                  {c.primaryImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.primaryImageUrl} alt="" className="mt-1 h-10 w-14 rounded object-cover" />
+                  ) : null}
                   {c.hasMaterialUpdate ? <div className="text-[11px] text-amber-700">Maddi güncelleme</div> : null}
+                  {(c.articleCount || 0) >= 2 ? (
+                    <div className="mt-1 text-[10px] font-semibold text-[rgb(var(--color-muted))]">
+                      {sameEventBadgeLabel(c.articleCount, c.independentSourceCount || c.uniqueSourceCount)}
+                    </div>
+                  ) : null}
                 </td>
                 <td className="px-3 py-2">{c.ageHours != null ? `${c.ageHours}s` : '—'}</td>
-                <td className="px-3 py-2">{[c.countryCode, c.city].filter(Boolean).join(' / ') || '—'}</td>
-                <td className="px-3 py-2">{c.articleCount}</td>
-                <td className="px-3 py-2">{c.uniqueSourceCount}</td>
-                <td className="px-3 py-2">{c.primarySourceName || '—'}</td>
-                <td className="px-3 py-2">{c.importanceScore}</td>
-                <td className="px-3 py-2">{c.clusterConfidence?.toFixed?.(2) ?? c.clusterConfidence}</td>
-                <td className="px-3 py-2">{CRAWLER_STATUS_LABELS[c.aiEligibility] || c.aiEligibility}</td>
+                <td className="px-3 py-2">{c.location || [c.countryCode, c.city].filter(Boolean).join(' / ') || '—'}</td>
+                <td className="px-3 py-2">{c.category || '—'}</td>
                 <td className="px-3 py-2">
-                  {EDITORIAL_DECISION_LABELS[c.editorialDecision as keyof typeof EDITORIAL_DECISION_LABELS] ||
+                  {c.articleCount} / {c.independentSourceCount || c.uniqueSourceCount}
+                  {c.supportingSourceCount ? (
+                    <div className="text-[10px] text-[rgb(var(--color-muted))]">+{c.supportingSourceCount} destek</div>
+                  ) : null}
+                </td>
+                <td className="px-3 py-2">{c.primarySourceName || '—'}</td>
+                <td className="px-3 py-2">{c.editorialPriorityLabel || c.editorialPriority || 'Normal'}</td>
+                <td className="px-3 py-2">{c.clusterConfidence?.toFixed?.(2) ?? c.clusterConfidence}</td>
+                <td className="px-3 py-2">{c.aiEligibilityLabel || CRAWLER_STATUS_LABELS[c.aiEligibility] || c.aiEligibility}</td>
+                <td className="px-3 py-2">
+                  {c.editorialDecisionLabel ||
+                    EDITORIAL_DECISION_LABELS[c.editorialDecision as keyof typeof EDITORIAL_DECISION_LABELS] ||
                     c.editorialDecision ||
                     '—'}
                 </td>
                 <td className="px-3 py-2">
                   <RowOverflowMenu
                     items={[
-                      { label: 'AI Adayı Yap', onClick: () => void runBulk('approve_for_ai', { ids: [c.id] }) },
+                      { label: 'İncelemeye Al', onClick: () => void runBulk('review', { ids: [c.id] }) },
+                      { label: 'AI İçin Onayla', onClick: () => void runBulk('approve_for_ai', { ids: [c.id] }) },
                       { label: 'İzlemeye Al', onClick: () => void runBulk('watch', { ids: [c.id] }) },
                       {
                         label: 'Reddet',
@@ -254,6 +298,7 @@ export default function CrawlerClustersPage() {
                         },
                       },
                       { label: 'Arşivle', onClick: () => void runBulk('archive', { ids: [c.id] }) },
+                      { label: 'Geri Yükle', onClick: () => void runBulk('restore', { ids: [c.id] }) },
                     ]}
                   />
                 </td>
@@ -265,7 +310,7 @@ export default function CrawlerClustersPage() {
       <CrawlerPager
         page={page}
         totalPages={totalPages}
-        total={total}
+        total={total < 0 ? 0 : total}
         pageSize={pageSize}
         onPage={setPage}
         onPageSize={(n) => {

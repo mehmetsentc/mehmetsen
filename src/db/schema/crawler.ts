@@ -262,6 +262,8 @@ export const newsClusters = pgTable(
     index('news_clusters_editorial_priority_idx').on(t.editorialPriority),
     index('news_clusters_first_seen_idx').on(t.firstSeenAt),
     index('news_clusters_language_idx').on(t.language),
+    index('news_clusters_decision_last_seen_idx').on(t.editorialDecision, t.lastSeenAt),
+    index('news_clusters_eligibility_last_seen_idx').on(t.aiEligibility, t.lastSeenAt),
   ]
 )
 
@@ -354,6 +356,7 @@ export const rawArticles = pgTable(
     index('raw_articles_fetched_at_idx').on(t.fetchedAt),
     index('raw_articles_source_fetched_idx').on(t.sourceId, t.fetchedAt),
     index('raw_articles_editorial_idx').on(t.editorialStatus),
+    index('raw_articles_editorial_fetched_idx').on(t.editorialStatus, t.fetchedAt),
   ]
 )
 

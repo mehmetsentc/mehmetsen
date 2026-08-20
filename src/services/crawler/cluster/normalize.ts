@@ -20,6 +20,17 @@ export const WEAK_EVENT_TOKENS = new Set([
   'yangın', 'yangin', 'deprem', 'erdogan', 'erdoğan', 'trump', 'istanbul',
   'türkiye', 'turkiye', 'ankara', 'izmir', 'haber', 'fire', 'earthquake',
   'president', 'bakan', 'başkan', 'baskan', 'açıklama', 'aciklama',
+  // Shared keywords alone must never force a merge (precision > recall).
+  'galatasaray', 'fenerbahce', 'fenerbahçe', 'besiktas', 'beşiktaş',
+  'kaza', 'trafik', 'patlama', 'sel', 'fırtına', 'firtina',
+])
+
+/** Verbs/fillers that look like named tokens but are not places. */
+export const NON_PLACE_TOKENS = new Set([
+  'cikti', 'çıktı', 'alanda', 'alan', 'suruyor', 'sürüyor', 'basladi', 'başladı',
+  'mudahale', 'müdahale', 'ekipler', 'ekip', 'genis', 'geniş', 'kontrol',
+  'altina', 'altında', 'oldu', 'etti', 'dedi', 'haberi', 'transfer', 'mac', 'maç',
+  'ozeti', 'özeti', 'orman', 'ormanlik', 'ormanlık', 'makilik',
 ])
 
 export function localeLower(text: string, language?: string | null): string {

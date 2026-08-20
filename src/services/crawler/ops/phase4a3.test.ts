@@ -167,7 +167,9 @@ describe('phase 4A.3 cron summary', () => {
       lastExtractionAt: NOW,
     })
     expect(jobs.length).toBeGreaterThan(0)
-    expect(jobs.every((j) => j.lane === 'crawler')).toBe(true)
+    expect(jobs.some((j) => j.lane === 'CRAWLER')).toBe(true)
+    expect(jobs.some((j) => j.lane === 'RSS RADAR')).toBe(true)
+    expect(jobs.some((j) => j.lane === 'AI DISPATCH')).toBe(true)
     expect(cronStatusTr('success')).toBe('Başarılı')
     expect(cronStatusTr('failed')).toBe('Başarısız')
     expect(cronStatusTr('running')).toBe('Çalışıyor')

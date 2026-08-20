@@ -1,3 +1,4 @@
+import { databaseUnavailableResponse } from '@/lib/adminApiError'
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'news:read')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing', clusters: [] }, { status: 503 })
+  if (!hasDatabaseUrl()) return NextResponse.json(databaseUnavailableResponse({ clusters: null, total: null }), { status: 503 })
   const url = new URL(request.url)
   const query = parseClusterListQuery(url)
   const store = new DrizzleCrawlerStore()

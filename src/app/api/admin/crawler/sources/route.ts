@@ -1,3 +1,4 @@
+import { databaseUnavailableResponse } from '@/lib/adminApiError'
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic'
 function dbOrError() {
   if (!hasDatabaseUrl()) {
     return NextResponse.json(
-      { error: 'DATABASE_URL missing', enabled: isNewsCrawlerEnabled(), postgres: false },
+      { ...databaseUnavailableResponse({ enabled: isNewsCrawlerEnabled(), postgres: false, sources: null }), },
       { status: 503 }
     )
   }

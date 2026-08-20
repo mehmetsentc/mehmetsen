@@ -27,6 +27,8 @@ import {
 } from '@/services/crawler/editorial/selection'
 import type { BulkResult } from '@/services/crawler/editorial/bulk'
 import type { CrawlerEditorialStatus, CrawlerRejectionReason } from '@/services/crawler/types'
+import { loadAdminJson } from '@/lib/adminApiError'
+import { sameEventBadgeLabel } from '@/services/crawler/editorial/eventDesk'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -201,14 +203,15 @@ function CrawlerArticlesInner() {
 
   const load = useCallback(async () => {
     setError(null)
-    try {
-      const res = await fetch(`/api/admin/crawler/articles?${queryString}`, { headers: await authHeaders() })
-      const body = (await res.json()) as ListResponse
-      if (!res.ok) throw new Error(body.error || 'Yüklenemedi')
-      setData(body)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Yüklenemedi')
+    const result = await loadAdminJson<ListResponse>(`/api/admin/crawler/articles?${queryString}`, {
+      headers: await authHeaders(),
+    })
+    if (!result.ok) {
+      setError(result.error)
+      setData(null)
+      return
     }
+    setData(result.data)
   }, [queryString])
 
   useEffect(() => {
@@ -581,9 +584,13 @@ function CrawlerArticlesInner() {
                     {row.title || '(başlıksız)'}
                   </button>
                   {row.clusterId && (row.clusterArticleCount || 0) >= 2 ? (
-                    <div className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
-                      AYNI OLAY {row.clusterArticleCount} haber · {row.clusterUniqueSourceCount || 1} kaynak
-                    </div>
+                    <a
+                      href={`/admin/crawler/clusters/${row.clusterId}`}
+                      className="mt-1 inline-block text-[11px] font-semibold text-amber-800 underline dark:text-amber-200"
+                      title="Olay kümesini aç"
+                    >
+                      {sameEventBadgeLabel(row.clusterArticleCount || 0, row.clusterUniqueSourceCount || 1)}
+                    </a>
                   ) : null}
                 </td>
                 <td className="px-3 py-2">

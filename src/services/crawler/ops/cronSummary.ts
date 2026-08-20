@@ -1,8 +1,8 @@
 import { cmsLabel } from '@/services/cms/uiLabels'
 
-export type CronLane = 'crawler' | 'legacy'
+export type CronLane = 'CRAWLER' | 'RSS RADAR' | 'LEGACY' | 'AI DISPATCH'
 
-export type CronJobStatusTr = 'Çalışıyor' | 'Başarılı' | 'Başarısız' | 'Bekliyor' | 'Devre Dışı'
+export type CronJobStatusTr = 'Çalışıyor' | 'Başarılı' | 'Başarısız' | 'Bekliyor' | 'Devre Dışı' | 'Boşta'
 
 export type CronFlowLane = 'RSS DISCOVERY' | 'CRAWLER DISCOVERY' | 'FULL EXTRACTION' | 'CLUSTERING'
 
@@ -20,6 +20,7 @@ export interface CronJobSummary {
   failed: number
   nextRunHint: string
   trigger: string
+  idleNote?: string
   urlsDiscovered?: number
   urlsNew?: number
   urlsDuplicate?: number
@@ -30,27 +31,44 @@ export interface CronJobSummary {
   extractionFailed?: number
 }
 
+export const CRON_LANE_ORDER: CronLane[] = ['CRAWLER', 'RSS RADAR', 'LEGACY', 'AI DISPATCH']
+
+export const CRON_LANE_EXPLAIN: Record<CronLane, string> = {
+  CRAWLER: 'Keşif → tam sayfa çekim → çıkarım → kümeleme. Boşta olmak bozuk demek değildir.',
+  'RSS RADAR': 'RSS yalnızca radar: URL inbox’a yazar; tam sayfa crawler kazanır. Aynı URL tek fetch.',
+  LEGACY: 'Eski haber kuyruğu / legacy cron. AI kapalıyken drain atlanır — bu beklenen durumdur.',
+  'AI DISPATCH': 'Event-first AI hazırlığı. Provider bağlı değil; CRAWLER_AI_DISPATCH_ENABLED=false.',
+}
+
 export const CRAWLER_CRON_CATALOG: Array<
-  Pick<CronJobSummary, 'name' | 'lane' | 'flowLane' | 'nextRunHint' | 'trigger'> & { metricKeys?: string[] }
+  Pick<CronJobSummary, 'name' | 'lane' | 'flowLane' | 'nextRunHint' | 'trigger' | 'idleNote'> & { metricKeys?: string[] }
 > = [
   {
     name: 'Crawler tick',
-    lane: 'crawler',
-    nextRunHint: 'Her 2–5 dk (GLOBAL_CRAWLER)',
+    lane: 'CRAWLER',
+    nextRunHint: 'Her ~1 dk (GLOBAL_CRAWLER)',
     trigger: 'schedule',
+    idleNote: 'Tick çalışıyor ama iş yoksa Boşta = sağlıklı.',
     metricKeys: ['sources_checked', 'articles_fetched', 'extraction_success', 'extraction_fail'],
   },
   {
-    name: 'RSS DISCOVERY',
-    lane: 'crawler',
+    name: 'RSS RADAR',
+    lane: 'RSS RADAR',
     flowLane: 'RSS DISCOVERY',
     nextRunHint: 'Legacy cron + adapter',
     trigger: 'schedule',
-    metricKeys: ['legacy_rss_urls_discovered', 'legacy_rss_urls_new', 'legacy_rss_urls_duplicate', 'legacy_rss_forwarded_to_crawler', 'unmapped_legacy_source'],
+    idleNote: 'Radar sessizliği = kaynakta yeni URL yok; crawler bozulmuş sayılmaz.',
+    metricKeys: [
+      'legacy_rss_urls_discovered',
+      'legacy_rss_urls_new',
+      'legacy_rss_urls_duplicate',
+      'legacy_rss_forwarded_to_crawler',
+      'unmapped_legacy_source',
+    ],
   },
   {
     name: 'CRAWLER DISCOVERY',
-    lane: 'crawler',
+    lane: 'CRAWLER',
     flowLane: 'CRAWLER DISCOVERY',
     nextRunHint: 'Tick içinde',
     trigger: 'schedule',
@@ -58,7 +76,7 @@ export const CRAWLER_CRON_CATALOG: Array<
   },
   {
     name: 'FULL EXTRACTION',
-    lane: 'crawler',
+    lane: 'CRAWLER',
     flowLane: 'FULL EXTRACTION',
     nextRunHint: 'Tick içinde',
     trigger: 'schedule',
@@ -66,7 +84,7 @@ export const CRAWLER_CRON_CATALOG: Array<
   },
   {
     name: 'CLUSTERING',
-    lane: 'crawler',
+    lane: 'CRAWLER',
     flowLane: 'CLUSTERING',
     nextRunHint: 'Tick içinde',
     trigger: 'schedule',
@@ -74,10 +92,26 @@ export const CRAWLER_CRON_CATALOG: Array<
   },
   {
     name: 'Görsel çıkarımı',
-    lane: 'crawler',
+    lane: 'CRAWLER',
     nextRunHint: 'Tick içinde',
     trigger: 'schedule',
     metricKeys: ['image_accepted', 'image_candidates_rejected', 'articles_with_primary_image'],
+  },
+  {
+    name: 'Legacy queue drain',
+    lane: 'LEGACY',
+    nextRunHint: 'LEGACY_DIRECT_AI_ENABLED=false iken atlanır',
+    trigger: 'schedule',
+    idleNote: 'AI kapalı → drain atlanır. Bu hata değildir.',
+    metricKeys: [],
+  },
+  {
+    name: 'AI Dispatch (event)',
+    lane: 'AI DISPATCH',
+    nextRunHint: 'Kapalı — provider wired değil',
+    trigger: 'manual',
+    idleNote: 'Gelecekte: insan onaylı 1 olay → en fazla 1 AI job. Canary yok.',
+    metricKeys: [],
   },
 ]
 
@@ -86,6 +120,7 @@ export function cronStatusTr(status: string | null | undefined, enabled = true):
   if (status === 'running') return 'Çalışıyor'
   if (status === 'success') return 'Başarılı'
   if (status === 'failed') return 'Başarısız'
+  if (status === 'idle') return 'Boşta'
   if (status === 'skipped' || status === 'pending') return 'Bekliyor'
   return cmsLabel(status, 'Bekliyor') === 'Bekliyor' ? 'Bekliyor' : (cmsLabel(status) as CronJobStatusTr)
 }
@@ -96,6 +131,8 @@ export function buildCrawlerCronSummaries(input: {
   lastDiscoveryAt: Date | string | null
   lastExtractionAt: Date | string | null
   fetchPending?: number
+  aiDispatchEnabled?: boolean
+  legacyAiEnabled?: boolean
 }): CronJobSummary[] {
   const lastDisc = input.lastDiscoveryAt ? new Date(input.lastDiscoveryAt).toISOString() : null
   const lastExt = input.lastExtractionAt ? new Date(input.lastExtractionAt).toISOString() : null
@@ -111,16 +148,24 @@ export function buildCrawlerCronSummaries(input: {
     const skipped = input.metrics.legacy_rss_urls_duplicate || input.metrics.cross_pipeline_duplicate || 0
     const last = job.flowLane === 'FULL EXTRACTION' || job.flowLane === 'CLUSTERING' ? lastExt : lastDisc
     const hasActivity = processed > 0
-    const status = cronStatusTr(
-      !input.enabled && job.lane === 'crawler'
-        ? 'disabled'
-        : hasActivity
-          ? failed > success && processed > 0
-            ? 'failed'
-            : 'success'
-          : 'pending',
-      input.enabled || job.flowLane === 'RSS DISCOVERY'
-    )
+
+    let enabledForJob = input.enabled || job.lane === 'RSS RADAR'
+    if (job.lane === 'AI DISPATCH') enabledForJob = Boolean(input.aiDispatchEnabled)
+    if (job.lane === 'LEGACY') enabledForJob = Boolean(input.legacyAiEnabled)
+
+    let status: CronJobStatusTr
+    if (!enabledForJob && (job.lane === 'AI DISPATCH' || job.lane === 'LEGACY')) {
+      status = 'Devre Dışı'
+    } else if (!input.enabled && job.lane === 'CRAWLER') {
+      status = 'Devre Dışı'
+    } else if (hasActivity) {
+      status = failed > success && processed > 0 ? 'Başarısız' : 'Başarılı'
+    } else if (job.lane === 'CRAWLER' || job.lane === 'RSS RADAR') {
+      status = 'Boşta'
+    } else {
+      status = cronStatusTr('pending', enabledForJob)
+    }
+
     return {
       name: job.name,
       lane: job.lane,
@@ -135,6 +180,7 @@ export function buildCrawlerCronSummaries(input: {
       failed,
       nextRunHint: job.nextRunHint,
       trigger: job.trigger === 'schedule' ? 'Zamanlanmış' : 'Manuel',
+      idleNote: job.idleNote || CRON_LANE_EXPLAIN[job.lane],
       urlsDiscovered: input.metrics.urls_discovered || input.metrics.legacy_rss_urls_discovered || 0,
       urlsNew: input.metrics.urls_new || input.metrics.legacy_rss_urls_new || 0,
       urlsDuplicate: input.metrics.legacy_rss_urls_duplicate || input.metrics.cross_pipeline_duplicate || 0,

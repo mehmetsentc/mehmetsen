@@ -16,6 +16,7 @@ import {
   staleWarning,
 } from '@/services/crawler/editorial/controlPlane'
 import type { CrawlerRejectionReason, EditorialPriority } from '@/services/crawler/types'
+import { loadAdminJson } from '@/lib/adminApiError'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -32,10 +33,17 @@ export default function ClusterDetailPage() {
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/admin/crawler/clusters/${params.id}`, { headers: await authHeaders() })
-    const body = await res.json()
-    if (!res.ok) setError(body.error || 'Yüklenemedi')
-    else setData(body)
+    const result = await loadAdminJson<Record<string, unknown>>(
+      `/api/admin/crawler/clusters/${params.id}`,
+      { headers: await authHeaders() }
+    )
+    if (!result.ok) {
+      setError(result.error)
+      setData(null)
+      return
+    }
+    setError(null)
+    setData(result.data)
   }, [params.id])
 
   useEffect(() => {
@@ -57,7 +65,7 @@ export default function ClusterDetailPage() {
       })
       const body = await res.json()
       if (!res.ok) throw new Error(body.error || 'İşlem başarısız')
-      toast.success(op === 'approve_for_ai' ? 'AI için onaylandı. Dispatch KAPALI.' : 'Güncellendi')
+      toast.success(op === 'approve_for_ai' ? 'AI için onaylandı. Dispatch KAPALI — provider çağrısı yok.' : op === 'review' ? 'İncelemeye alındı' : 'Güncellendi')
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'İşlem başarısız')
@@ -110,6 +118,9 @@ export default function ClusterDetailPage() {
             ))}
           </ul>
           <div className="flex flex-wrap gap-2">
+            <button type="button" className="rounded-lg border px-3 py-1" disabled={busy} onClick={() => void act('review')}>
+              İncelemeye Al
+            </button>
             <button type="button" className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 text-white" disabled={busy} onClick={() => setApproveOpen(true)}>
               AI İçin Onayla
             </button>
@@ -124,7 +135,7 @@ export default function ClusterDetailPage() {
             </button>
             {cluster.editorialDecision === 'REJECTED' || cluster.editorialDecision === 'ARCHIVED' ? (
               <button type="button" className="rounded-lg border px-3 py-1" disabled={busy} onClick={() => void act('restore')}>
-                Geri Al
+                Geri Yükle
               </button>
             ) : null}
           </div>
