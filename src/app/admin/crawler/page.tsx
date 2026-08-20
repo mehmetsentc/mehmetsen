@@ -15,6 +15,13 @@ function fmt(n: number | undefined): string {
   return Math.round(n).toLocaleString('tr-TR')
 }
 
+function fmtTs(v: string | null | undefined): string {
+  if (!v) return '—'
+  const d = new Date(v)
+  if (!Number.isFinite(d.getTime())) return '—'
+  return d.toLocaleString('tr-TR', { hour12: false })
+}
+
 interface DashboardResponse {
   enabled?: boolean
   aiDispatchEnabled?: boolean
@@ -123,6 +130,18 @@ interface DashboardResponse {
     multiSource?: number
     windowHours?: number
   }
+  freshness?: {
+    status?: string
+    reason?: string
+    sonHaberKesfi?: string | null
+    sonFullScrape?: string | null
+    sonKumeleme?: string | null
+    bekleyenUrl?: number
+    enEskiBekleyen?: string | null
+    son15dkYeniUrl?: number
+    son15dkFullScrape?: number
+    son15dkOlustanOlay?: number
+  }
 }
 
 export default function CrawlerDashboardPage() {
@@ -176,6 +195,27 @@ export default function CrawlerDashboardPage() {
                   { label: 'Hatalı', value: fmt(data.rebuild24h.failed) },
                   { label: 'Olay', value: fmt(data.rebuild24h.events) },
                   { label: 'Çok kaynaklı', value: fmt(data.rebuild24h.multiSource) },
+                ]}
+              />
+            </section>
+          ) : null}
+          {data?.freshness ? (
+            <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4 text-sm">
+              <h2 className="mb-2 text-sm font-semibold">Tazelik / Cron Sağlığı</h2>
+              <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
+                Durum: <strong>{data.freshness.status}</strong>
+                {data.freshness.reason ? ` · ${data.freshness.reason}` : null}
+              </p>
+              <AdminOsMetricGrid
+                items={[
+                  { label: 'Son Haber Keşfi', value: fmtTs(data.freshness.sonHaberKesfi) },
+                  { label: 'Son Full Scrape', value: fmtTs(data.freshness.sonFullScrape) },
+                  { label: 'Son Kümeleme', value: fmtTs(data.freshness.sonKumeleme) },
+                  { label: 'Bekleyen URL', value: fmt(data.freshness.bekleyenUrl) },
+                  { label: 'En Eski Bekleyen', value: fmtTs(data.freshness.enEskiBekleyen) },
+                  { label: 'Son 15 dk Yeni URL', value: fmt(data.freshness.son15dkYeniUrl) },
+                  { label: 'Son 15 dk Full Scrape', value: fmt(data.freshness.son15dkFullScrape) },
+                  { label: 'Son 15 dk Oluşan Olay', value: fmt(data.freshness.son15dkOlustanOlay) },
                 ]}
               />
             </section>

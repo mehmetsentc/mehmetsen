@@ -141,7 +141,9 @@ export async function runCrawlerTick(opts?: {
     }
   }
 
-  const pendingPool = await store.listPendingFetch(Math.max(limits.maxFetchPerTick * 4, 24))
+  // Wide pool: PAUSED/DISABLED rows used to starve ACTIVE fetches when they
+  // occupied the oldest slots and were silently skipped.
+  const pendingPool = await store.listPendingFetch(Math.max(limits.maxFetchPerTick * 20, 100))
   const sourceMap = new Map<string, NewsSourceRecord>()
   for (const item of pendingPool) {
     if (!sourceMap.has(item.sourceId)) {
@@ -149,8 +151,29 @@ export async function runCrawlerTick(opts?: {
       if (src) sourceMap.set(item.sourceId, src)
     }
   }
+  const fetchable: typeof pendingPool = []
+  for (const item of pendingPool) {
+    const source = sourceMap.get(item.sourceId)
+    if (!source || source.status === 'DISABLED') {
+      await store.updateDiscoveredUrl(item.id, {
+        status: 'FAILED',
+        logicalQueue: 'FAILED_QUEUE',
+        failureReason: 'source_disabled',
+      })
+      continue
+    }
+    if (source.status === 'PAUSED') {
+      await store.updateDiscoveredUrl(item.id, {
+        status: 'FAILED',
+        logicalQueue: 'FAILED_QUEUE',
+        failureReason: 'source_paused',
+      })
+      continue
+    }
+    fetchable.push(item)
+  }
   const pending = pickFairPending({
-    pending: pendingPool,
+    pending: fetchable,
     sources: sourceMap,
     limit: limits.maxFetchPerTick,
     maxPerSource: limits.maxFetchPerSource,
@@ -159,9 +182,11 @@ export async function runCrawlerTick(opts?: {
     if (Date.now() - tickStarted > limits.maxTickRuntimeMs) break
     const source = sourceMap.get(item.sourceId) || (await store.getSource(item.sourceId))
     if (!source || source.status === 'DISABLED' || source.status === 'PAUSED') {
-      if (!source || source.status === 'DISABLED') {
-        await store.updateDiscoveredUrl(item.id, { status: 'FAILED', logicalQueue: 'FAILED_QUEUE', failureReason: 'source_disabled' })
-      }
+      await store.updateDiscoveredUrl(item.id, {
+        status: 'FAILED',
+        logicalQueue: 'FAILED_QUEUE',
+        failureReason: !source || source.status === 'DISABLED' ? 'source_disabled' : 'source_paused',
+      })
       continue
     }
 

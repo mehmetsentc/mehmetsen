@@ -6,6 +6,7 @@ import {
   isLegacyRssDiscoveryEnabled,
   resolveLegacyIngestionMode,
 } from './legacyFlags'
+import { computeFreshnessHealth } from './ops/freshnessHealth'
 
 export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Date()) {
   const metrics = await store.getTodayMetrics(now)
@@ -22,6 +23,7 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
     '6h': await storeWindow(store, now, 6 * 60 * 60 * 1000),
     '24h': await storeWindow(store, now, 24 * 60 * 60 * 1000),
   }
+  const freshness = await buildFreshnessSnapshot(store, sources, windows['15m'], now)
   return {
     enabled: isGlobalCrawlerEnabled(),
     aiDispatchEnabled: isCrawlerAiDispatchEnabled(),
@@ -64,6 +66,7 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
     primaryImageOg: metrics.primary_image_og || 0,
     primaryImageDom: metrics.primary_image_dom || 0,
     windows,
+    freshness,
     ingestionLanes: {
       crawler: isGlobalCrawlerEnabled() ? 'Aktif' : 'Kapalı',
       legacyRssDiscovery: !isLegacyRssDiscoveryEnabled()
@@ -126,6 +129,53 @@ export async function crawlerDashboardSnapshot(store: CrawlerStore, now = new Da
           : 'OFF'
       : 'OFF',
   }
+}
+
+async function buildFreshnessSnapshot(
+  store: CrawlerStore,
+  sources: Awaited<ReturnType<CrawlerStore['listSources']>>,
+  window15m: { articlesFetched: number; successfulExtraction: number },
+  now: Date
+) {
+  const pendingFetch = await store.countByStatus('PENDING_FETCH')
+  const pendingPool = await store.listPendingFetch(1)
+  const oldestPendingAt = pendingPool[0]?.discoveredAt ?? null
+  const lastDiscoveryAt = sources.reduce<Date | null>((max, s) => {
+    const v = s.lastSuccessfulDiscoveryAt
+    if (!v) return max
+    const d = v instanceof Date ? v : new Date(v)
+    return !max || d > max ? d : max
+  }, null)
+  const recent = await store.listRecentArticles(200)
+  const lastFullScrapeAt = recent[0]?.fetchedAt ?? null
+  const hourAgo = now.getTime() - 60 * 60_000
+  const sourceActivityLastHour = sources.filter((s) => {
+    const v = s.lastSuccessfulDiscoveryAt
+    if (!v) return false
+    const d = v instanceof Date ? v : new Date(v)
+    return d.getTime() >= hourAgo
+  }).length
+  const fifteenAgo = now.getTime() - 15 * 60_000
+  const newUrlsLast15m = (await store.listPendingFetch(200)).filter(
+    (u) => u.discoveredAt.getTime() >= fifteenAgo
+  ).length
+  // Clusters: approximate via recent articles that already have clusterId
+  const clusteredRecent = recent.filter((a) => a.clusterId && a.fetchedAt && a.fetchedAt.getTime() >= fifteenAgo)
+  const lastClusterAt =
+    recent.find((a) => a.clusterId)?.fetchedAt ?? lastFullScrapeAt
+
+  return computeFreshnessHealth({
+    now,
+    lastDiscoveryAt,
+    lastFullScrapeAt,
+    lastClusterAt,
+    pendingFetch,
+    oldestPendingAt,
+    newUrlsLast15m,
+    fullScrapesLast15m: window15m.articlesFetched,
+    eventsLast15m: clusteredRecent.length,
+    sourceActivityLastHour,
+  })
 }
 
 async function clusterFunnel(store: CrawlerStore, metrics: Record<string, number>) {

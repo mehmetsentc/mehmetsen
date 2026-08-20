@@ -112,9 +112,16 @@ export async function refreshRebuildProgress(store?: CrawlerStore): Promise<Craw
     const failed = [...store.urls.values()].filter((u) => String(u.status).startsWith('FAILED')).length
     const events = store.clusters.size
     const multiSource = [...store.clusters.values()].filter((c) => (c.uniqueSourceCount || 0) >= 2).length
-    let rebuildStatus = ops.rebuildStatus
-    if (ops.rebuildStatus === 'REDISCOVERING' && (pending > 0 || store.urls.size > 0)) rebuildStatus = 'PROCESSING'
-    return writeCrawlerOpsState(
+  let rebuildStatus = ops.rebuildStatus
+  if (ops.rebuildStatus === 'REDISCOVERING' && (pending > 0 || store.urls.size > 0)) rebuildStatus = 'PROCESSING'
+  if (
+    (ops.rebuildStatus === 'PROCESSING' || ops.rebuildStatus === 'REDISCOVERING') &&
+    pending === 0 &&
+    extracted > 0
+  ) {
+    rebuildStatus = 'COMPLETED'
+  }
+  return writeCrawlerOpsState(
       {
         discovered: store.urls.size,
         pending,
@@ -123,6 +130,7 @@ export async function refreshRebuildProgress(store?: CrawlerStore): Promise<Craw
         events,
         multiSource,
         rebuildStatus,
+        rebuildFinishedAt: rebuildStatus === 'COMPLETED' ? new Date() : ops.rebuildFinishedAt,
       },
       store
     )
@@ -151,6 +159,13 @@ export async function refreshRebuildProgress(store?: CrawlerStore): Promise<Craw
   const multiSource = clusterCounts?.multiSource ?? 0
   let rebuildStatus = ops.rebuildStatus
   if (ops.rebuildStatus === 'REDISCOVERING' && (pending > 0 || discovered > 0)) rebuildStatus = 'PROCESSING'
+  if (
+    (ops.rebuildStatus === 'PROCESSING' || ops.rebuildStatus === 'REDISCOVERING') &&
+    pending === 0 &&
+    extracted > 0
+  ) {
+    rebuildStatus = 'COMPLETED'
+  }
   return writeCrawlerOpsState({
     discovered,
     pending,
@@ -159,5 +174,6 @@ export async function refreshRebuildProgress(store?: CrawlerStore): Promise<Craw
     events,
     multiSource,
     rebuildStatus,
+    rebuildFinishedAt: rebuildStatus === 'COMPLETED' ? new Date() : ops.rebuildFinishedAt,
   })
 }
