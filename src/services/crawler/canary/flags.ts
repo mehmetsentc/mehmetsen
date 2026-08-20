@@ -16,11 +16,19 @@ function clamp(n: number, min: number, max: number): number {
 /** Hard ceiling for single-event canary — BLOCK if estimated cost exceeds. */
 export const CANARY_MAX_COST_USD = 0.05
 
+/** Provider max_tokens for full NaHaber JSON (body 300–900 + meta fields). */
+export const CANARY_DEFAULT_MAX_OUTPUT_TOKENS = 3200
+
 /**
  * Canary never enables automatic dispatch or legacy AI.
  * Paid path requires explicit APPROVED_FOR_REAL_CANARY_EXECUTION + provider adapter.
  */
 export function canaryConfig() {
+  const maxOutputTokens = clamp(
+    Math.round(numEnv('CANARY_MAX_OUTPUT_TOKENS', CANARY_DEFAULT_MAX_OUTPUT_TOKENS)),
+    800,
+    8_000
+  )
   return {
     provider: 'deepseek' as const,
     model: getDeepSeekModel(),
@@ -31,7 +39,13 @@ export function canaryConfig() {
     maxRequestsWithRepair: 2 as const,
     maxCostUsdPerEvent: Math.min(CANARY_MAX_COST_USD, Math.max(0, numEnv('CANARY_MAX_COST_USD_PER_EVENT', CANARY_MAX_COST_USD))),
     maxInputTokens: clamp(Math.round(numEnv('CANARY_MAX_INPUT_TOKENS', 6000)), 500, 16_000),
-    estimatedOutputTokens: clamp(Math.round(numEnv('CANARY_ESTIMATED_OUTPUT_TOKENS', 1600)), 200, 4_000),
+    /** Preflight uses this for cost ceiling; must cover max_output. */
+    estimatedOutputTokens: clamp(
+      Math.round(numEnv('CANARY_ESTIMATED_OUTPUT_TOKENS', maxOutputTokens)),
+      200,
+      8_000
+    ),
+    maxOutputTokens,
     staleHours: clamp(Math.round(numEnv('CANARY_STALE_HOURS', 72)), 6, 168),
     /** Stage 1 default: paid DeepSeek disabled even with confirmation. */
     paidExecutionEnabled: process.env.CANARY_PAID_EXECUTION_ENABLED?.trim().toLowerCase() === 'true',

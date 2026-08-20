@@ -21,7 +21,15 @@ import {
   estimateBalanceRunway,
   recommendAutomationLimits,
   scaffoldQualityMetrics,
+  computeEfficiencyFromTotals,
+  resetCanaryEfficiencyCounters,
+  getCanaryEfficiencySnapshot,
 } from './measurement'
+import { computeSourceContentMetrics, evaluateBodyAgainstSources } from './sourcePolicy'
+import { shouldAttemptPaidSchemaRepair } from './repairPolicy'
+import { repairRawJsonTextLocally } from './validate'
+import { wordCount, CANARY_BODY_TARGET_MIN_WORDS } from './schema'
+import { canaryConfig } from './flags'
 import { APPROVED_FOR_REAL_CANARY_EXECUTION, type CanaryClusterInput, type CanaryMemberInput, type CanaryProvider } from './types'
 import { isCrawlerAiDispatchEnabled } from '../dispatch'
 import { isLegacyDirectAiEnabled } from '../legacyFlags'
@@ -273,7 +281,7 @@ describe('Phase 4C — idempotency + execution controls', () => {
     }
     const first = await runCanaryStage({
       cluster: cluster(),
-      members: [member({ articleId: 'a1', sourceId: 's1' })],
+      members: richPackMembers(),
       store,
       executePaid: true,
       confirmation: APPROVED_FOR_REAL_CANARY_EXECUTION,
@@ -298,7 +306,7 @@ describe('Phase 4C — idempotency + execution controls', () => {
     }
     const second = await runCanaryStage({
       cluster: cluster(),
-      members: [member({ articleId: 'a1', sourceId: 's1' })],
+      members: richPackMembers(),
       store,
       executePaid: true,
       confirmation: APPROVED_FOR_REAL_CANARY_EXECUTION,
@@ -350,7 +358,7 @@ describe('Phase 4C — idempotency + execution controls', () => {
     }
     const result = await runCanaryStage({
       cluster: cluster(),
-      members: [member({ articleId: 'a1', sourceId: 's1' })],
+      members: richPackMembers(),
       executePaid: true,
       confirmation: APPROVED_FOR_REAL_CANARY_EXECUTION,
       provider,
@@ -470,7 +478,7 @@ describe('Phase 4C.1 — authorized event + cost ledger', () => {
     }
     const result = await runCanaryStage({
       cluster: cluster(),
-      members: [member({ articleId: 'a1', sourceId: 's1' })],
+      members: richPackMembers(),
       store,
       executePaid: true,
       confirmation: APPROVED_FOR_REAL_CANARY_EXECUTION,
@@ -531,5 +539,229 @@ describe('Phase 4C — source select helpers', () => {
       member({ articleId: 'a2', sourceId: 's2', qualityTier: 'TIER_B' }),
     ])
     expect(picked[0]?.sourceId).toBe('s1')
+  })
+})
+
+function richBody(n: number): string {
+  return Array.from({ length: n }, (_, i) => `kelime${i + 1}`).join(' ')
+}
+
+function richPackMembers() {
+  // Distinct paragraphs so source-once dedup does not collapse usable words below rich threshold.
+  const longA =
+    'Ordu Ulubey Yeni Sayaca Mahallesi bentonit madenciliği ÇED süreci mahkeme iptali. ' +
+    Array.from({ length: 280 }, (_, i) => `evrenselOlgu${i}`).join(' ')
+  const longB =
+    'Cumhuriyet haberi: Yeni Sayaca halkı ve SAYÇEV platformu itiraz dilekçesi verdi. ' +
+    Array.from({ length: 200 }, (_, i) => `cumhuriyetOlgu${i}`).join(' ')
+  return [
+    member({ articleId: 'a1', sourceId: 's1', sourceName: 'Evrensel', body: longA, wordCount: 300 }),
+    member({ articleId: 'a2', sourceId: 's2', sourceName: 'Cumhuriyet', body: longB, wordCount: 220 }),
+  ]
+}
+
+describe('Phase 4C.2 — source-aware body + repair + efficiency', () => {
+  it('A rich sources → full body validates at 300+', () => {
+    const pack = buildCanaryEvidencePack(cluster(), richPackMembers())
+    const metrics = computeSourceContentMetrics(pack)
+    expect(metrics.richness).toBe('rich')
+    expect(metrics.usableSourceWords).toBeGreaterThanOrEqual(400)
+    const draft = JSON.parse(buildMockValidDraftJson({ body: richBody(320) }))
+    const v = validateCanaryDraft(draft, { allowRepair: true, pack })
+    expect(v.ok).toBe(true)
+    expect(wordCount(v.draft!.body)).toBeGreaterThanOrEqual(CANARY_BODY_TARGET_MIN_WORDS)
+  })
+
+  it('B thin sources → short accurate ok; no forced hallucinate min 300', () => {
+    const thinBody =
+      'Belediye parkta çiçek dikimi yaptı. Çalışma sabah başladı ve öğleden sonra bitti. Vatandaşlar bilgilendirildi. ' +
+      Array.from({ length: 100 }, (_, i) => `thinOlgu${i}`).join(' ')
+    const pack = buildCanaryEvidencePack(cluster(), [
+      member({ articleId: 'a1', sourceId: 's1', body: thinBody, wordCount: 120 }),
+    ])
+    const metrics = computeSourceContentMetrics(pack)
+    expect(['thin', 'medium']).toContain(metrics.richness)
+    const shortOk = richBody(Math.max(metrics.bodyRequiredMinWords || 80, 120))
+    const v = validateCanaryDraft(JSON.parse(buildMockValidDraftJson({ body: shortOk })), {
+      allowRepair: true,
+      pack,
+    })
+    expect(v.ok).toBe(true)
+    const insuffPack = buildCanaryEvidencePack(cluster(), [
+      member({ articleId: 'a9', sourceId: 's9', body: 'Kısa metin.', wordCount: 2, description: null }),
+    ])
+    // Below usable threshold → insufficient or empty sources
+    if (insuffPack.sources.length === 0) {
+      expect(insuffPack.sources.length).toBe(0)
+    } else {
+      const insuff = evaluateBodyAgainstSources('çok kısa metin burada değil yeterli', insuffPack)
+      expect(['INSUFFICIENT_SOURCE_MATERIAL', 'BODY_ABSOLUTE_TOO_SHORT', 'BODY_TOO_SHORT']).toContain(
+        insuff.code
+      )
+    }
+  })
+
+  it('C malformed JSON → local fence/trailing-comma repair', () => {
+    const raw = '```json\n{"title":"x",}\n```'
+    const local = repairRawJsonTextLocally(raw)
+    expect(local.repaired).toBe(true)
+    const parsed = extractJsonObject(local.text)
+    expect(parsed.ok).toBe(true)
+  })
+
+  it('D structural NOT_JSON eligible for paid repair; E BODY_TOO_SHORT is not', () => {
+    const structural = shouldAttemptPaidSchemaRepair({
+      validationOk: false,
+      issueCodes: ['NOT_JSON'],
+      jsonParseOk: false,
+      alreadyRepaired: false,
+      requestCount: 1,
+      maxRequests: 2,
+    })
+    expect(structural.repair).toBe(true)
+
+    const bodyShort = shouldAttemptPaidSchemaRepair({
+      validationOk: false,
+      issueCodes: ['BODY_TOO_SHORT'],
+      jsonParseOk: true,
+      alreadyRepaired: false,
+      requestCount: 1,
+      maxRequests: 2,
+    })
+    expect(bodyShort.repair).toBe(false)
+    expect(bodyShort.reason).toContain('semantic')
+  })
+
+  it('E BODY_TOO_SHORT on rich pack does NOT trigger paid repair call', async () => {
+    pricingOn()
+    vi.stubEnv('CANARY_PAID_EXECUTION_ENABLED', 'true')
+    let calls = 0
+    const shortDraft = buildMockValidDraftJson({ body: richBody(174) })
+    const provider: CanaryProvider = {
+      chat: async () => {
+        calls += 1
+        return {
+          called: true,
+          statusCode: 200,
+          text: shortDraft,
+          inputTokens: 500,
+          outputTokens: 400,
+          provider: 'deepseek',
+          model: 'deepseek-v4-flash',
+          finishReason: 'stop',
+        }
+      },
+    }
+    const result = await runCanaryStage({
+      cluster: cluster(),
+      members: richPackMembers(),
+      store: new MemoryCanaryStore(),
+      executePaid: true,
+      confirmation: APPROVED_FOR_REAL_CANARY_EXECUTION,
+      provider,
+      now: new Date('2026-08-19T14:00:00Z'),
+    })
+    expect(result.job?.state).toBe('FAILED')
+    expect(result.job?.failureReason).toMatch(/body_too_short/i)
+    expect(calls).toBe(1)
+    expect(result.job?.requestCount).toBe(1)
+  })
+
+  it('F truncated finish_reason → OUTPUT_TRUNCATED distinct from BODY_TOO_SHORT', () => {
+    const pack = buildCanaryEvidencePack(cluster(), richPackMembers())
+    const v = validateCanaryDraft(buildMockValidDraftJson({ body: richBody(50) }), {
+      allowRepair: true,
+      pack,
+      truncated: true,
+    })
+    expect(v.issues.some((i) => i.code === 'OUTPUT_TRUNCATED')).toBe(true)
+    expect(v.ok).toBe(false)
+  })
+
+  it('G missing facts — deterministic repair does not invent body sentences', () => {
+    const draft = JSON.parse(buildMockValidDraftJson({ body: richBody(320) })) as ReturnType<
+      typeof repairDraftDeterministically
+    >['draft']
+    const before = draft.body
+    const r = repairDraftDeterministically(draft)
+    expect(r.draft.body).toBe(before.replace(/\s+/g, ' ').trim())
+  })
+
+  it('H estimated cost >$0.05 blocks; I COST_UNKNOWN blocks — 0 provider calls', async () => {
+    vi.stubEnv('DEEPSEEK_INPUT_COST_PER_1M', '100')
+    vi.stubEnv('DEEPSEEK_OUTPUT_COST_PER_1M', '200')
+    vi.stubEnv('CANARY_ESTIMATED_OUTPUT_TOKENS', '4000')
+    vi.stubEnv('CANARY_PAID_EXECUTION_ENABLED', 'true')
+    let calls = 0
+    const provider: CanaryProvider = {
+      chat: async () => {
+        calls += 1
+        throw new Error('should not call')
+      },
+    }
+    const blocked = await runCanaryStage({
+      cluster: cluster(),
+      members: richPackMembers(),
+      executePaid: true,
+      confirmation: APPROVED_FOR_REAL_CANARY_EXECUTION,
+      provider,
+      now: new Date('2026-08-19T14:00:00Z'),
+    })
+    expect(blocked.preflight.blockedReason).toBe('EVENT_COST_LIMIT_EXCEEDED')
+    expect(calls).toBe(0)
+
+    resetEnv()
+    // COST_UNKNOWN
+    delete process.env.DEEPSEEK_INPUT_COST_PER_1M
+    delete process.env.DEEPSEEK_OUTPUT_COST_PER_1M
+    vi.stubEnv('CANARY_PAID_EXECUTION_ENABLED', 'true')
+    const unknown = await runCanaryStage({
+      cluster: cluster(),
+      members: richPackMembers(),
+      executePaid: true,
+      confirmation: APPROVED_FOR_REAL_CANARY_EXECUTION,
+      provider,
+      now: new Date('2026-08-19T14:00:00Z'),
+    })
+    expect(unknown.preflight.blockedReason).toBe('COST_UNKNOWN')
+    expect(calls).toBe(0)
+  })
+
+  it('efficiency metrics: safe zero-division; COST_UNKNOWN not fake $0', () => {
+    resetCanaryEfficiencyCounters()
+    const empty = getCanaryEfficiencySnapshot()
+    expect(empty.requestsPerSuccessfulDraft).toBeNull()
+    expect(empty.costPerSuccessfulDraft).toBeNull()
+    expect(empty.costUnknown).toBe(true)
+
+    const snap = computeEfficiencyFromTotals({
+      providerRequests: 3,
+      successfulDrafts: 2,
+      failedDrafts: 1,
+      repairRequests: 1,
+      knownCostUsdSum: 0.006,
+      knownCostSamples: 2,
+    })
+    expect(snap.requestsPerSuccessfulDraft).toBe(1.5)
+    expect(snap.costPerSuccessfulDraft).toBeCloseTo(0.003)
+    expect(snap.repairRate).toBeCloseTo(1 / 3)
+    expect(snap.costUnknown).toBe(false)
+  })
+
+  it('output token budget default raised; prompt mentions evidence-only', () => {
+    expect(canaryConfig().maxOutputTokens).toBeGreaterThanOrEqual(3200)
+    expect(canaryConfig().estimatedOutputTokens).toBeGreaterThanOrEqual(3200)
+    const pack = buildCanaryEvidencePack(cluster(), richPackMembers())
+    const system = buildCanarySystemPrompt(pack)
+    expect(system).toMatch(/doldurma|EKLEME|padding|uydurma|Uydurma/i)
+    expect(system).toMatch(/ZENGİN|300|ORTA/)
+    const user = buildCanaryUserPrompt(pack)
+    expect(user.indexOf('"body"')).toBeLessThan(user.indexOf('"title"'))
+  })
+
+  it('global AI flags stay false', () => {
+    expect(isCrawlerAiDispatchEnabled()).toBe(false)
+    expect(isLegacyDirectAiEnabled()).toBe(false)
+    expect(assertCanarySafetyFlags().ok).toBe(true)
   })
 })

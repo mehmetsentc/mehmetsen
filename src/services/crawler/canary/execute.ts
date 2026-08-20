@@ -4,9 +4,11 @@ import { buildCanaryPreflight } from './preflight'
 import { buildCanarySystemPrompt, buildCanaryUserPrompt } from './prompt'
 import { validateCanaryDraft, repairDraftDeterministically, extractJsonObject } from './validate'
 import { canaryRetryDecision } from './retryPolicy'
+import { shouldAttemptPaidSchemaRepair } from './repairPolicy'
 import { buildDeterministicFactFlags } from './factFlags'
 import { assertCanarySafetyFlags, canaryConfig } from './flags'
 import { MemoryCanaryStore, newCanaryId, type CanaryStore } from './store'
+import { recordCanaryAttempt } from './measurement'
 import type {
   CanaryBlockReason,
   CanaryClusterInput,
@@ -343,20 +345,27 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
   job.updatedAt = job.startedAt
   await store.upsertJob(job)
 
-  const system = buildCanarySystemPrompt()
+  const system = buildCanarySystemPrompt(pack)
   const user = buildCanaryUserPrompt(pack)
   const model = getDeepSeekModel(cfg.model)
   let requestCount = 0
   let lastResult: CanaryProviderResult | null = null
   let retried = false
+  let paidRepairUsed = false
+  let totalInputTokens = 0
+  let totalOutputTokens = 0
 
-  const callOnce = async () => {
+  const callOnce = async (requestType: 'generation' | 'schema_repair' = 'generation') => {
     requestCount += 1
-    return input.provider!.chat({ system, user, model, pack })
+    const result = await input.provider!.chat({ system, user, model, pack })
+    totalInputTokens += result.inputTokens ?? 0
+    totalOutputTokens += result.outputTokens ?? 0
+    if (requestType === 'schema_repair') paidRepairUsed = true
+    return result
   }
 
   try {
-    lastResult = await callOnce()
+    lastResult = await callOnce('generation')
     if (lastResult.provider && lastResult.provider !== 'deepseek') {
       job.state = 'FAILED'
       job.blockedReason = 'PROVIDER_NOT_DEEPSEEK'
@@ -379,7 +388,7 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
     const retry = canaryRetryDecision(lastResult.statusCode, { alreadyRetried: false })
     if (!lastResult.text && retry.retry && !retried) {
       retried = true
-      lastResult = await callOnce()
+      lastResult = await callOnce('generation')
     }
 
     if (lastResult.statusCode === 401 || lastResult.statusCode === 402) {
@@ -388,8 +397,8 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
       job.failureReason = retry.adminWarningTr || String(lastResult.statusCode)
       job.requestCount = requestCount
       job.completedAt = new Date()
-      job.actualInputTokens = lastResult.inputTokens ?? null
-      job.actualOutputTokens = lastResult.outputTokens ?? null
+      job.actualInputTokens = totalInputTokens || lastResult.inputTokens || null
+      job.actualOutputTokens = totalOutputTokens || lastResult.outputTokens || null
       await store.upsertJob(job)
       await store.appendLedger({
         id: newCanaryId('ldg'),
@@ -405,6 +414,12 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
         estimatedCostUsd: preflight.estimatedCostUsd,
         actualCostUsd: null,
         status: 'FAILED',
+      })
+      recordCanaryAttempt({
+        providerRequests: requestCount,
+        successful: false,
+        repairRequests: paidRepairUsed ? 1 : 0,
+        actualCostUsd: null,
       })
       return {
         preflight: {
@@ -429,6 +444,12 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
       job.requestCount = requestCount
       job.completedAt = new Date()
       await store.upsertJob(job)
+      recordCanaryAttempt({
+        providerRequests: requestCount,
+        successful: false,
+        repairRequests: paidRepairUsed ? 1 : 0,
+        actualCostUsd: null,
+      })
       return {
         preflight: { ...preflight, state: 'FAILED', ready: false },
         job,
@@ -441,36 +462,60 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
       }
     }
 
-    let validation = validateCanaryDraft(lastResult.text, { allowRepair: true })
-    // One structural AI repair retry only if still invalid after deterministic repair
-    if (!validation.ok && requestCount < cfg.maxRequestsWithRepair) {
-      const parsed = extractJsonObject(lastResult.text)
-      if (parsed.ok) {
-        // Deterministic already applied inside validate; if still bad, one repair call
-        const repairResult = await callOnce()
-        if (repairResult.text) {
-          lastResult = repairResult
-          validation = validateCanaryDraft(repairResult.text, { allowRepair: true })
-        }
+    let validation = validateCanaryDraft(lastResult.text, {
+      allowRepair: true,
+      pack,
+      truncated: lastResult.truncated === true,
+    })
+
+    const parsed = extractJsonObject(lastResult.text)
+    const repairDecision = shouldAttemptPaidSchemaRepair({
+      validationOk: validation.ok,
+      issueCodes: validation.issues.map((i) => i.code),
+      jsonParseOk: parsed.ok,
+      alreadyRepaired: paidRepairUsed,
+      requestCount,
+      maxRequests: cfg.maxRequestsWithRepair,
+    })
+
+    // One structural AI repair only — NEVER for BODY_TOO_SHORT / insufficient / cost-auth
+    if (repairDecision.repair) {
+      const repairResult = await callOnce('schema_repair')
+      if (repairResult.text) {
+        lastResult = repairResult
+        validation = validateCanaryDraft(repairResult.text, {
+          allowRepair: true,
+          pack,
+          truncated: repairResult.truncated === true,
+        })
       }
     }
 
     const pricing = getDeepSeekPricing(model)
     const actualCost =
-      lastResult.inputTokens != null && lastResult.outputTokens != null
+      totalInputTokens > 0 || totalOutputTokens > 0
         ? estimateUsageCost(
             {
-              inputTokens: lastResult.inputTokens,
-              outputTokens: lastResult.outputTokens,
-              totalTokens: lastResult.inputTokens + lastResult.outputTokens,
+              inputTokens: totalInputTokens,
+              outputTokens: totalOutputTokens,
+              totalTokens: totalInputTokens + totalOutputTokens,
             },
             pricing
           ).estimatedTotalCostUsd ?? null
-        : null
+        : lastResult.inputTokens != null && lastResult.outputTokens != null
+          ? estimateUsageCost(
+              {
+                inputTokens: lastResult.inputTokens,
+                outputTokens: lastResult.outputTokens,
+                totalTokens: lastResult.inputTokens + lastResult.outputTokens,
+              },
+              pricing
+            ).estimatedTotalCostUsd ?? null
+          : null
 
     job.requestCount = requestCount
-    job.actualInputTokens = lastResult.inputTokens ?? null
-    job.actualOutputTokens = lastResult.outputTokens ?? null
+    job.actualInputTokens = totalInputTokens || lastResult.inputTokens || null
+    job.actualOutputTokens = totalOutputTokens || lastResult.outputTokens || null
     job.actualCostUsd = actualCost
     job.validation = validation
     job.draft = validation.draft
@@ -478,8 +523,16 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
     job.updatedAt = job.completedAt
 
     if (!validation.ok || !validation.draft) {
+      const primaryCode = validation.issues.find((i) => i.severity === 'error')?.code
       job.state = 'FAILED'
-      job.failureReason = 'schema_validation_failed'
+      job.failureReason =
+        primaryCode === 'OUTPUT_TRUNCATED'
+          ? 'output_truncated'
+          : primaryCode === 'INSUFFICIENT_SOURCE_MATERIAL'
+            ? 'insufficient_source_material'
+            : primaryCode === 'BODY_TOO_SHORT' || primaryCode === 'BODY_ABSOLUTE_TOO_SHORT'
+              ? primaryCode.toLowerCase()
+              : 'schema_validation_failed'
       await store.upsertJob(job)
       await store.appendLedger({
         id: newCanaryId('ldg'),
@@ -489,12 +542,18 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
         lane: CANARY_COST_LANE,
         jobId: job.id,
         clusterId: job.clusterId,
-        requestType: 'generation',
-        inputTokens: lastResult.inputTokens ?? null,
-        outputTokens: lastResult.outputTokens ?? null,
+        requestType: paidRepairUsed ? 'schema_repair' : 'generation',
+        inputTokens: job.actualInputTokens,
+        outputTokens: job.actualOutputTokens,
         estimatedCostUsd: preflight.estimatedCostUsd,
         actualCostUsd: actualCost,
         status: 'FAILED',
+      })
+      recordCanaryAttempt({
+        providerRequests: requestCount,
+        successful: false,
+        repairRequests: paidRepairUsed ? 1 : 0,
+        actualCostUsd: actualCost,
       })
       return {
         preflight: { ...preflight, state: 'FAILED', ready: false },
@@ -504,7 +563,12 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
         otherProvidersInvoked: [],
         autoPublished: false,
         idempotentReuse: false,
-        messageTr: 'Şema doğrulaması başarısız.',
+        messageTr:
+          primaryCode === 'INSUFFICIENT_SOURCE_MATERIAL'
+            ? 'Kaynak materyali yetersiz — ücretli retry yok.'
+            : primaryCode === 'OUTPUT_TRUNCATED'
+              ? 'Çıktı kesildi (truncation) — uzunluk repair yok.'
+              : 'Şema doğrulaması başarısız (ücretli semantic repair yok).',
       }
     }
 
@@ -529,11 +593,17 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
       jobId: job.id,
       clusterId: job.clusterId,
       requestType: 'generation',
-      inputTokens: lastResult.inputTokens ?? null,
-      outputTokens: lastResult.outputTokens ?? null,
+      inputTokens: job.actualInputTokens,
+      outputTokens: job.actualOutputTokens,
       estimatedCostUsd: preflight.estimatedCostUsd,
       actualCostUsd: actualCost,
       status: 'SUCCEEDED',
+    })
+    recordCanaryAttempt({
+      providerRequests: requestCount,
+      successful: true,
+      repairRequests: paidRepairUsed ? 1 : 0,
+      actualCostUsd: actualCost,
     })
 
     return {
@@ -554,6 +624,12 @@ export async function runCanaryStage(input: RunCanaryInput): Promise<RunCanaryRe
     job.completedAt = new Date()
     job.updatedAt = job.completedAt
     await store.upsertJob(job)
+    recordCanaryAttempt({
+      providerRequests: requestCount,
+      successful: false,
+      repairRequests: paidRepairUsed ? 1 : 0,
+      actualCostUsd: null,
+    })
     return {
       preflight: { ...preflight, state: 'FAILED', ready: false },
       job,

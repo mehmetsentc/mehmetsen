@@ -7,7 +7,13 @@ import {
   slugifyTr,
   wordCount,
 } from './schema'
-import type { CanaryDraftFields, CanaryValidationIssue, CanaryValidationResult } from './types'
+import { evaluateBodyAgainstSources } from './sourcePolicy'
+import type {
+  CanaryDraftFields,
+  CanaryEvidencePack,
+  CanaryValidationIssue,
+  CanaryValidationResult,
+} from './types'
 import { CANARY_REQUIRED_FIELDS } from './types'
 
 function clip(s: string, max: number): string {
@@ -54,6 +60,27 @@ export function extractJsonObject(raw: string): { ok: true; value: unknown } | {
   }
 }
 
+/**
+ * Local deterministic repair of raw model text before JSON parse.
+ * NEVER invents sentences/facts or expands body — only fences/whitespace/trailing commas.
+ */
+export function repairRawJsonTextLocally(raw: string): { text: string; repaired: boolean } {
+  let text = raw.trim()
+  let repaired = false
+  const fence = text.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i)
+  if (fence?.[1]) {
+    text = fence[1].trim()
+    repaired = true
+  }
+  // Trailing commas before } or ]
+  const noTrailing = text.replace(/,\s*([}\]])/g, '$1')
+  if (noTrailing !== text) {
+    text = noTrailing
+    repaired = true
+  }
+  return { text, repaired }
+}
+
 export function coerceDraft(raw: unknown): CanaryDraftFields {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
   const draft = emptyDraft()
@@ -80,6 +107,7 @@ export function coerceDraft(raw: unknown): CanaryDraftFields {
 /**
  * Deterministic formatting repair — preferred over a second AI call.
  * Does not invent facts; only normalizes shape/lengths/slug/filename.
+ * NEVER writes new sentences or expands body.
  */
 export function repairDraftDeterministically(input: CanaryDraftFields): {
   draft: CanaryDraftFields
@@ -95,6 +123,20 @@ export function repairDraftDeterministically(input: CanaryDraftFields): {
     }
   }
 
+  // Whitespace normalize on strings (no content invention)
+  for (const key of Object.keys(d) as Array<keyof CanaryDraftFields>) {
+    const v = d[key]
+    if (typeof v === 'string') {
+      const n = v.replace(/\s+/g, ' ').trim()
+      if (n !== v) {
+        ;(d as Record<string, unknown>)[key] = n
+        repaired = true
+      }
+    }
+  }
+  d.tags = d.tags.map((t) => t.trim()).filter(Boolean)
+  d.seoKeywords = d.seoKeywords.map((t) => t.trim()).filter(Boolean)
+
   ensure(!d.slug || !isValidSlug(d.slug), () => {
     d.slug = slugifyTr(d.title || d.slug || 'haber') || 'haber-taslagi'
   })
@@ -107,7 +149,7 @@ export function repairDraftDeterministically(input: CanaryDraftFields): {
   })
 
   ensure(d.tags.length === 0, () => {
-    d.tags = ['yerel', 'canakkale'].slice(0, CANARY_FIELD_LIMITS.tags.max)
+    d.tags = ['yerel', 'haber'].slice(0, CANARY_FIELD_LIMITS.tags.max)
   })
   if (d.tags.length > CANARY_FIELD_LIMITS.tags.max) {
     d.tags = d.tags.slice(0, CANARY_FIELD_LIMITS.tags.max)
@@ -177,26 +219,48 @@ export function repairDraftDeterministically(input: CanaryDraftFields): {
   return { draft: d, repaired }
 }
 
-export function validateCanaryDraft(raw: unknown, opts?: { allowRepair?: boolean }): CanaryValidationResult {
+export type ValidateCanaryDraftOpts = {
+  allowRepair?: boolean
+  /** When provided, body length uses source-aware policy. */
+  pack?: Pick<CanaryEvidencePack, 'sources'> | null
+  /** Provider said output was truncated. */
+  truncated?: boolean
+}
+
+export function validateCanaryDraft(raw: unknown, opts?: ValidateCanaryDraftOpts): CanaryValidationResult {
   const allowRepair = opts?.allowRepair !== false
   const issues: CanaryValidationIssue[] = []
 
-  const parsed = typeof raw === 'string' ? extractJsonObject(raw) : { ok: true as const, value: raw }
-  if (!parsed.ok) {
-    return {
-      ok: false,
-      issues: [{ field: '_root', code: 'NOT_JSON', messageTr: 'Çıktı geçerli JSON değil.', severity: 'error' }],
-      repaired: false,
-      draft: null,
+  let input: unknown = raw
+  if (typeof raw === 'string') {
+    const local = repairRawJsonTextLocally(raw)
+    const parsed = extractJsonObject(local.text)
+    if (!parsed.ok) {
+      return {
+        ok: false,
+        issues: [{ field: '_root', code: 'NOT_JSON', messageTr: 'Çıktı geçerli JSON değil.', severity: 'error' }],
+        repaired: local.repaired,
+        draft: null,
+      }
     }
+    input = parsed.value
   }
 
-  let draft = coerceDraft(parsed.value)
+  let draft = coerceDraft(input)
   let repaired = false
   if (allowRepair) {
     const r = repairDraftDeterministically(draft)
     draft = r.draft
     repaired = r.repaired
+  }
+
+  if (opts?.truncated) {
+    issues.push({
+      field: 'body',
+      code: 'OUTPUT_TRUNCATED',
+      messageTr: 'Model çıktısı kesildi (finish_reason=length) — BODY_TOO_SHORT ile karıştırma; ücretli uzunluk repair yok.',
+      severity: 'error',
+    })
   }
 
   for (const field of CANARY_REQUIRED_FIELDS) {
@@ -211,22 +275,38 @@ export function validateCanaryDraft(raw: unknown, opts?: { allowRepair?: boolean
     }
   }
 
-  if (draft.body && wordCount(draft.body) < CANARY_FIELD_LIMITS.body.min) {
-    issues.push({
-      field: 'body',
-      code: 'BODY_TOO_SHORT',
-      messageTr: `Gövde en az ${CANARY_FIELD_LIMITS.body.min} kelime olmalı (materyal yetmiyorsa kısaltma; uydurma yasak).`,
-      severity: 'error',
-    })
+  if (draft.body) {
+    if (opts?.pack) {
+      const bodyEval = evaluateBodyAgainstSources(draft.body, opts.pack)
+      if (!bodyEval.ok) {
+        issues.push({
+          field: 'body',
+          code: bodyEval.code,
+          messageTr: bodyEval.messageTr,
+          severity: 'error',
+        })
+      }
+    } else {
+      // Fallback without pack: absolute floor + target max only (no blind 300)
+      if (wordCount(draft.body) < CANARY_FIELD_LIMITS.body.absoluteMin) {
+        issues.push({
+          field: 'body',
+          code: 'BODY_ABSOLUTE_TOO_SHORT',
+          messageTr: `Gövde en az ${CANARY_FIELD_LIMITS.body.absoluteMin} kelime olmalı.`,
+          severity: 'error',
+        })
+      }
+      if (wordCount(draft.body) > CANARY_FIELD_LIMITS.body.max) {
+        issues.push({
+          field: 'body',
+          code: 'BODY_TOO_LONG',
+          messageTr: `Gövde en fazla ${CANARY_FIELD_LIMITS.body.max} kelime olmalı.`,
+          severity: 'error',
+        })
+      }
+    }
   }
-  if (draft.body && wordCount(draft.body) > CANARY_FIELD_LIMITS.body.max) {
-    issues.push({
-      field: 'body',
-      code: 'BODY_TOO_LONG',
-      messageTr: `Gövde en fazla ${CANARY_FIELD_LIMITS.body.max} kelime olmalı.`,
-      severity: 'error',
-    })
-  }
+
   if (draft.slug && !isValidSlug(draft.slug)) {
     issues.push({ field: 'slug', code: 'INVALID_SLUG', messageTr: 'Slug geçersiz.', severity: 'error' })
   }
@@ -279,6 +359,6 @@ export function validateCanaryDraft(raw: unknown, opts?: { allowRepair?: boolean
     ok: errors.length === 0,
     issues,
     repaired,
-    draft: errors.length === 0 ? draft : draft,
+    draft,
   }
 }

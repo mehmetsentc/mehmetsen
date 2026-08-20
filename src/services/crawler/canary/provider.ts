@@ -10,6 +10,7 @@ import {
   getDeepSeekModel,
 } from '@/lib/ai/deepseekClient'
 import { parseDeepSeekUsage } from '@/lib/ai/usage/parseUsage'
+import { canaryConfig } from './flags'
 import type { CanaryProvider, CanaryProviderResult } from './types'
 
 export function createDeepSeekCanaryProvider(): CanaryProvider {
@@ -17,6 +18,7 @@ export function createDeepSeekCanaryProvider(): CanaryProvider {
     async chat(input): Promise<CanaryProviderResult> {
       const model = getDeepSeekModel(input.model)
       const apiKey = getDeepSeekApiKey()
+      const maxTokens = canaryConfig().maxOutputTokens
       if (!apiKey) {
         return {
           called: false,
@@ -42,7 +44,7 @@ export function createDeepSeekCanaryProvider(): CanaryProvider {
               { role: 'user', content: input.user },
             ],
             temperature: 0.2,
-            max_tokens: 2048,
+            max_tokens: maxTokens,
             response_format: { type: 'json_object' },
             thinking: { type: 'disabled' },
           }),
@@ -60,7 +62,10 @@ export function createDeepSeekCanaryProvider(): CanaryProvider {
 
       const rawText = await res.text().catch(() => '')
       let body: {
-        choices?: Array<{ message?: { content?: string | null; reasoning_content?: string | null } }>
+        choices?: Array<{
+          finish_reason?: string | null
+          message?: { content?: string | null; reasoning_content?: string | null }
+        }>
         usage?: unknown
         error?: { message?: string }
       } = {}
@@ -83,7 +88,10 @@ export function createDeepSeekCanaryProvider(): CanaryProvider {
         }
       }
 
-      const message = body.choices?.[0]?.message
+      const choice = body.choices?.[0]
+      const message = choice?.message
+      const finishReason = choice?.finish_reason ?? null
+      const truncated = finishReason === 'length'
       let text = message?.content?.trim() || ''
       if (!text && message?.reasoning_content) {
         const reasoning = message.reasoning_content.trim()
@@ -98,6 +106,8 @@ export function createDeepSeekCanaryProvider(): CanaryProvider {
         errorCode: text ? undefined : 'empty_content',
         inputTokens: usage?.inputTokens,
         outputTokens: usage?.outputTokens,
+        finishReason,
+        truncated,
         provider: 'deepseek',
         model,
       }

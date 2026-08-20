@@ -74,6 +74,11 @@ export type CanaryPackMetrics = {
   packedChars: number
   packedTokensEstimate: number
   sourceOnce: true
+  /** Phase 4C.2 — usable content metrics (deterministic). */
+  usableSourceWords?: number
+  independentSourceCount?: number
+  uniqueFactDensity?: number
+  sourceRichness?: 'rich' | 'medium' | 'thin' | 'insufficient'
 }
 
 export type CanaryEvidencePack = {
@@ -184,6 +189,7 @@ export type CanaryPreflight = {
     initialRequests: 1
     maxWithRepair: 2
   }
+  maxOutputTokens?: number
   globalFlags: {
     crawlerAiDispatchEnabled: false | boolean
     legacyDirectAiEnabled: false | boolean
@@ -237,6 +243,9 @@ export type CanaryProviderResult = {
   inputTokens?: number
   outputTokens?: number
   text?: string
+  /** OpenAI-compatible finish_reason: stop | length | content_filter | ... */
+  finishReason?: string | null
+  truncated?: boolean
   provider: 'deepseek'
   model: string
 }

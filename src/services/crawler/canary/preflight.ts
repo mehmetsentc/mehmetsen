@@ -48,7 +48,7 @@ export function estimateCanaryPromptTokens(pack: CanaryEvidencePack): {
   estimatedTotalTokens: number
 } {
   const cfg = canaryConfig()
-  const system = buildCanarySystemPrompt()
+  const system = buildCanarySystemPrompt(pack)
   const user = buildCanaryUserPrompt(pack)
   const estimatedInputTokens = estimateTokensFromChars(system.length + user.length)
   const estimatedOutputTokens = cfg.estimatedOutputTokens
@@ -125,6 +125,10 @@ export function buildCanaryPreflight(input: BuildPreflightInput): {
       packedChars: 0,
       packedTokensEstimate: 0,
       sourceOnce: true,
+      usableSourceWords: 0,
+      independentSourceCount: 0,
+      uniqueFactDensity: 0,
+      sourceRichness: 'insufficient',
     },
     selection,
     confirmationRequired: APPROVED_FOR_REAL_CANARY_EXECUTION,
@@ -135,6 +139,7 @@ export function buildCanaryPreflight(input: BuildPreflightInput): {
       initialRequests: 1,
       maxWithRepair: 2,
     },
+    maxOutputTokens: cfg.maxOutputTokens,
     globalFlags: {
       crawlerAiDispatchEnabled: safety.crawlerAiDispatchEnabled,
       legacyDirectAiEnabled: safety.legacyDirectAiEnabled,

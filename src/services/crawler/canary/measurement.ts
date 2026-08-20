@@ -1,6 +1,7 @@
 /**
  * Phase 4C measurement scaffolding — no paid call.
  * Old multi-stage ~5 DeepSeek requests/event vs canary 1 (max 2 with repair).
+ * Phase 4C.2: track $/successful AI_DRAFT, not just $/request.
  */
 
 export const OLD_TYPICAL_REQUESTS_PER_EVENT = 5
@@ -122,4 +123,103 @@ export function recommendAutomationLimits(costPerEventUsd: number | null): {
     concurrency: 1,
     noteTr: 'Öneri yalnızca. CRAWLER_AI_DISPATCH_ENABLED=false kalsın.',
   }
+}
+
+/** Phase 4C.2 efficiency counters — process-local; never invent $0. */
+export type CanaryEfficiencyCounters = {
+  providerRequests: number
+  successfulDrafts: number
+  failedDrafts: number
+  repairRequests: number
+  /** Sum of known actual costs only; null entries skipped (COST_UNKNOWN semantics). */
+  knownCostUsdSum: number
+  knownCostSamples: number
+}
+
+const efficiency: CanaryEfficiencyCounters = {
+  providerRequests: 0,
+  successfulDrafts: 0,
+  failedDrafts: 0,
+  repairRequests: 0,
+  knownCostUsdSum: 0,
+  knownCostSamples: 0,
+}
+
+export function resetCanaryEfficiencyCounters(): void {
+  efficiency.providerRequests = 0
+  efficiency.successfulDrafts = 0
+  efficiency.failedDrafts = 0
+  efficiency.repairRequests = 0
+  efficiency.knownCostUsdSum = 0
+  efficiency.knownCostSamples = 0
+}
+
+export function recordCanaryAttempt(input: {
+  providerRequests: number
+  successful: boolean
+  repairRequests?: number
+  actualCostUsd?: number | null
+}): void {
+  efficiency.providerRequests += Math.max(0, input.providerRequests)
+  efficiency.repairRequests += Math.max(0, input.repairRequests ?? 0)
+  if (input.successful) efficiency.successfulDrafts += 1
+  else efficiency.failedDrafts += 1
+  if (input.actualCostUsd != null && Number.isFinite(input.actualCostUsd)) {
+    efficiency.knownCostUsdSum += input.actualCostUsd
+    efficiency.knownCostSamples += 1
+  }
+}
+
+export type CanaryEfficiencySnapshot = CanaryEfficiencyCounters & {
+  requestsPerSuccessfulDraft: number | null
+  costPerSuccessfulDraft: number | null
+  repairRate: number | null
+  firstPassSuccessRate: number | null
+  /** True when cost metrics are unknown (no samples) — never fake $0. */
+  costUnknown: boolean
+}
+
+export function getCanaryEfficiencySnapshot(
+  counters: CanaryEfficiencyCounters = efficiency
+): CanaryEfficiencySnapshot {
+  const attempts = counters.successfulDrafts + counters.failedDrafts
+  const requestsPerSuccessfulDraft =
+    counters.successfulDrafts > 0 ? counters.providerRequests / counters.successfulDrafts : null
+  const costPerSuccessfulDraft =
+    counters.successfulDrafts > 0 && counters.knownCostSamples > 0
+      ? counters.knownCostUsdSum / counters.successfulDrafts
+      : null
+  const repairRate = attempts > 0 ? counters.repairRequests / attempts : null
+  const firstPassSuccessRate =
+    attempts > 0
+      ? Math.max(0, counters.successfulDrafts - Math.min(counters.repairRequests, counters.successfulDrafts)) /
+        attempts
+      : null
+
+  return {
+    ...counters,
+    requestsPerSuccessfulDraft,
+    costPerSuccessfulDraft,
+    repairRate,
+    firstPassSuccessRate,
+    costUnknown: counters.knownCostSamples === 0,
+  }
+}
+
+export function computeEfficiencyFromTotals(input: {
+  providerRequests: number
+  successfulDrafts: number
+  failedDrafts: number
+  repairRequests: number
+  knownCostUsdSum?: number | null
+  knownCostSamples?: number
+}): CanaryEfficiencySnapshot {
+  return getCanaryEfficiencySnapshot({
+    providerRequests: input.providerRequests,
+    successfulDrafts: input.successfulDrafts,
+    failedDrafts: input.failedDrafts,
+    repairRequests: input.repairRequests,
+    knownCostUsdSum: input.knownCostUsdSum ?? 0,
+    knownCostSamples: input.knownCostSamples ?? (input.knownCostUsdSum != null ? 1 : 0),
+  })
 }

@@ -8,6 +8,7 @@ import type {
   CanaryPackedSource,
 } from './types'
 import { canaryConfig } from './flags'
+import { computeSourceContentMetrics } from './sourcePolicy'
 
 const EVIDENCE_OPEN = '<<<UNTRUSTED_CRAWLER_EVIDENCE>>>'
 const EVIDENCE_CLOSE = '<<<END_UNTRUSTED_CRAWLER_EVIDENCE>>>'
@@ -211,6 +212,7 @@ export function buildCanaryEvidencePack(
     EVIDENCE_CLOSE,
   ].join('\n')
 
+  const contentMetrics = computeSourceContentMetrics({ sources })
   const metrics: CanaryPackMetrics = {
     sourceCount: sources.length,
     primaryPresent: sources.some((s) => s.role === 'PRIMARY'),
@@ -222,6 +224,10 @@ export function buildCanaryEvidencePack(
     packedChars: evidenceBlock.length,
     packedTokensEstimate: estimateTokensFromChars(evidenceBlock.length),
     sourceOnce: true,
+    usableSourceWords: contentMetrics.usableSourceWords,
+    independentSourceCount: contentMetrics.independentSourceCount,
+    uniqueFactDensity: contentMetrics.uniqueFactDensity,
+    sourceRichness: contentMetrics.richness,
   }
 
   return {
