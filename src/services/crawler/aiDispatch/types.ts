@@ -12,7 +12,7 @@ export type AiDispatchStatus = (typeof AI_DISPATCH_STATUSES)[number]
 export const AI_DISPATCH_TYPES = ['INITIAL', 'MATERIAL_UPDATE', 'MANUAL'] as const
 export type AiDispatchType = (typeof AI_DISPATCH_TYPES)[number]
 
-export const AI_COST_LANES = ['crawler_automatic', 'legacy_automatic', 'manual_editor'] as const
+export const AI_COST_LANES = ['crawler_automatic', 'legacy_automatic', 'manual_editor', 'manual_canary'] as const
 export type AiCostLane = (typeof AI_COST_LANES)[number]
 
 export const AI_BLOCK_REASONS = [

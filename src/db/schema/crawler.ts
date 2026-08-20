@@ -658,3 +658,44 @@ export const crawlerOpsState = pgTable('crawler_ops_state', {
   multiSource: integer('multi_source').default(0).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
+
+/** Phase 4C — single-event DeepSeek canary runs (manual lane; not crawler_automatic). */
+export const crawlerAiCanaryRuns = pgTable(
+  'crawler_ai_canary_runs',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    clusterId: varchar('cluster_id', { length: 64 }).notNull(),
+    eventKey: varchar('event_key', { length: 80 }),
+    state: varchar('state', { length: 24 }).default('PREFLIGHT').notNull(),
+    provider: varchar('provider', { length: 40 }).default('deepseek').notNull(),
+    model: varchar('model', { length: 80 }),
+    requestCount: integer('request_count').default(0).notNull(),
+    maxRequests: integer('max_requests').default(2).notNull(),
+    estimatedInputTokens: integer('estimated_input_tokens'),
+    estimatedOutputTokens: integer('estimated_output_tokens'),
+    estimatedCostUsd: real('estimated_cost_usd'),
+    actualInputTokens: integer('actual_input_tokens'),
+    actualOutputTokens: integer('actual_output_tokens'),
+    actualCostUsd: real('actual_cost_usd'),
+    blockedReason: varchar('blocked_reason', { length: 64 }),
+    failureReason: text('failure_reason'),
+    editorialDraftId: varchar('editorial_draft_id', { length: 64 }),
+    outputTarget: varchar('output_target', { length: 32 }).default('EDITORIAL_DRAFT').notNull(),
+    draftStatus: varchar('draft_status', { length: 24 }).default('AI_DRAFT').notNull(),
+    autoPublish: smallint('auto_publish').default(0).notNull(),
+    lane: varchar('lane', { length: 32 }).default('manual_canary').notNull(),
+    packSnapshot: jsonb('pack_snapshot').$type<Record<string, unknown>>(),
+    draftSnapshot: jsonb('draft_snapshot').$type<Record<string, unknown>>(),
+    validationSnapshot: jsonb('validation_snapshot').$type<Record<string, unknown>>(),
+    factFlags: jsonb('fact_flags').$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('crawler_ai_canary_runs_cluster_uidx').on(t.clusterId),
+    index('crawler_ai_canary_runs_state_idx').on(t.state),
+    index('crawler_ai_canary_runs_created_idx').on(t.createdAt),
+  ]
+)

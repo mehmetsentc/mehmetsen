@@ -92,6 +92,13 @@
       "when": 1787192000000,
       "tag": "0012_phase4b_event_desk_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787200000000,
+      "tag": "0013_phase4c_canary_runs",
+      "breakpoints": true
     }
   ]
 }

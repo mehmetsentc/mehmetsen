@@ -31,6 +31,8 @@ export default function ClusterDetailPage() {
   const [approveOpen, setApproveOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [canary, setCanary] = useState<Record<string, unknown> | null>(null)
+  const [canaryBusy, setCanaryBusy] = useState(false)
 
   const load = useCallback(async () => {
     const result = await loadAdminJson<Record<string, unknown>>(
@@ -46,6 +48,24 @@ export default function ClusterDetailPage() {
     setData(result.data)
   }, [params.id])
 
+  const loadCanary = useCallback(async () => {
+    setCanaryBusy(true)
+    try {
+      const result = await loadAdminJson<Record<string, unknown>>(
+        `/api/admin/crawler/clusters/${params.id}/canary`,
+        { headers: await authHeaders() }
+      )
+      if (!result.ok) {
+        toast.error(result.error)
+        setCanary(null)
+        return
+      }
+      setCanary(result.data)
+    } finally {
+      setCanaryBusy(false)
+    }
+  }, [params.id])
+
   useEffect(() => {
     void load()
   }, [load])
@@ -54,6 +74,10 @@ export default function ClusterDetailPage() {
   const members = (data?.members as Array<Record<string, unknown>>) || []
   const groups = (data?.sourceGroups as Array<Record<string, unknown>>) || []
   const ageHours = Number(cluster?.ageHours || 0)
+  const preflight = canary?.preflight as Record<string, unknown> | undefined
+  const packMetrics = preflight?.packMetrics as Record<string, unknown> | undefined
+  const sources = (preflight?.sources as Array<Record<string, unknown>>) || []
+
 
   async function act(op: string, extra?: Record<string, unknown>) {
     setBusy(true)
@@ -147,6 +171,60 @@ export default function ClusterDetailPage() {
               </li>
             ))}
           </ul>
+
+          <section className="mt-4 space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+            <h3 className="font-semibold">DeepSeek Canary Preflight (Stage 1)</h3>
+            <p className="text-xs text-[rgb(var(--color-muted))]">
+              APPROVED_FOR_AI ücretli çağrı yetkisi vermez. Otomatik yayın KAPALI. Toplu AI butonu yok.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="rounded-lg border px-3 py-1"
+                disabled={canaryBusy}
+                onClick={() => void loadCanary()}
+              >
+                {canaryBusy ? 'Hesaplanıyor…' : 'Preflight Göster'}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border px-3 py-1 opacity-60"
+                disabled
+                title="Stage 2’de açık onay sonrası"
+              >
+                CANARY&apos;Yİ ÇALIŞTIR (kilitli)
+              </button>
+            </div>
+            {preflight ? (
+              <div className="space-y-1 text-xs">
+                <p>
+                  Durum: {String(preflight.state)}
+                  {preflight.blockedReason ? ` · Engelleme: ${String(preflight.blockedReason)}` : ''}
+                </p>
+                <p>
+                  Model: {String(preflight.provider)}/{String(preflight.model)} · Tahmini token:{' '}
+                  {String(preflight.estimatedTotalTokens)} · Max maliyet: ${String(preflight.maxCostUsdPerEvent)} · Tahmini:{' '}
+                  {preflight.estimatedCostUsd == null ? 'COST_UNKNOWN' : `$${String(preflight.estimatedCostUsd)}`}
+                </p>
+                <p>
+                  Otomatik yayın: {String(preflight.autoPublishLabelTr || 'KAPALI')} · Kaynak sayısı:{' '}
+                  {String(packMetrics?.sourceCount ?? sources.length)}
+                  {packMetrics?.rssSnippetExcludedCount
+                    ? ` · RSS snippet hariç: ${String(packMetrics.rssSnippetExcludedCount)}`
+                    : ''}
+                </p>
+                <ul className="list-disc pl-5">
+                  {sources.map((s, i) => (
+                    <li key={i}>
+                      {String(s.role)} — {String(s.sourceName)} — {String(s.title)}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[rgb(var(--color-muted))]">{String(canary?.messageTr || '')}</p>
+              </div>
+            ) : null}
+          </section>
+
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr>

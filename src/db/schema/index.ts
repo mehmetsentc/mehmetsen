@@ -35,6 +35,7 @@ export {
   crawlerEditorialAudit,
   crawlerJobRuns,
   crawlerOpsState,
+  crawlerAiCanaryRuns,
   crawlerSourceTypeEnum,
   crawlerSourceStatusEnum,
   crawlerDiscoveryMethodEnum,
