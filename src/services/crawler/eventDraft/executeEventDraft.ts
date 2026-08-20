@@ -264,7 +264,10 @@ export async function executeEventDraft(
     }
 
     const repaired = repairDraftDeterministically(validation.draft)
-    const draftId = `draft_${input.lane}_${input.pack.clusterId}`
+    const laneShort =
+      input.lane === 'controlled_auto_draft' ? 'cad' : input.lane === 'manual_retry' ? 'mr' : 'mc'
+    // Keep under crawler_ai_jobs.editorial_news_id varchar width (was 64; widened to 128 in 4D.3).
+    const draftId = `d_${laneShort}_${input.pack.clusterId}`
     const factFlags = buildDeterministicFactFlags(repaired.draft, input.pack)
 
     return {

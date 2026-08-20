@@ -362,7 +362,7 @@ export async function runDedicatedAiWorkerTick(opts: {
   const tPersist = Date.now()
   const draftOk = Boolean(draftResult.ok && draftResult.draft && draftResult.draftId)
 
-  // Atomic-ish finalization: draft snapshot + COMPLETED + ledger with same executionId
+  // Atomic-ish finalization: draft snapshot FIRST, then COMPLETED + cluster link
   try {
     if (draftOk && draftResult.draft) {
       const draftSnapshot = {
@@ -401,12 +401,8 @@ export async function runDedicatedAiWorkerTick(opts: {
         createdAt: new Date().toISOString(),
       }
 
+      // Persist durable draft payload before status flip (crash-safe)
       await opts.aiStore.updateJob(job.id, {
-        status: 'COMPLETED',
-        actualInputTokens: draftResult.actualInputTokens,
-        actualOutputTokens: draftResult.actualOutputTokens,
-        actualCostUsd: draftResult.actualCostUsd,
-        editorialNewsId: draftResult.draftId,
         draftSnapshot,
         validationSnapshot: draftResult.validation
           ? ({
@@ -414,6 +410,15 @@ export async function runDedicatedAiWorkerTick(opts: {
               issues: draftResult.validation.issues,
             } as Record<string, unknown>)
           : null,
+        actualInputTokens: draftResult.actualInputTokens,
+        actualOutputTokens: draftResult.actualOutputTokens,
+        actualCostUsd: draftResult.actualCostUsd,
+        editorialNewsId: draftResult.draftId,
+        lastHeartbeatAt: new Date(),
+      })
+
+      await opts.aiStore.updateJob(job.id, {
+        status: 'COMPLETED',
         completedAt: new Date(),
         failureReason: null,
         failureCode: null,
@@ -466,30 +471,66 @@ export async function runDedicatedAiWorkerTick(opts: {
       bump(result.reasons, primaryCode)
     }
   } catch (finalizeErr) {
-    // Provider may have succeeded — never auto re-pay
+    // If draft snapshot already landed, keep it — mark finalize-failed without wiping payload
+    const existing = (await opts.aiStore.listJobs({ limit: 50 })).find((j) => j.id === job.id)
+    const keptDraft = existing?.draftSnapshot || null
     await opts.aiStore.updateJob(job.id, {
-      status: 'FAILED',
+      status: keptDraft ? 'COMPLETED' : 'FAILED',
       failureCode: draftResult.paidCallExecuted
-        ? 'PROVIDER_SUCCEEDED_FINALIZE_FAILED'
+        ? keptDraft
+          ? null
+          : 'PROVIDER_SUCCEEDED_FINALIZE_FAILED'
         : 'EXECUTION_RESULT_UNCERTAIN',
       failureReason:
-        finalizeErr instanceof Error ? finalizeErr.message : 'finalize_error',
+        finalizeErr instanceof Error ? finalizeErr.message.slice(0, 500) : 'finalize_error',
       actualInputTokens: draftResult.actualInputTokens,
       actualOutputTokens: draftResult.actualOutputTokens,
       actualCostUsd: draftResult.actualCostUsd,
+      editorialNewsId: keptDraft
+        ? ((keptDraft as { draftId?: string }).draftId ?? draftResult.draftId)
+        : draftResult.draftId,
       completedAt: new Date(),
       leaseOwner: null,
       leaseExpiresAt: null,
     })
-    bump(
-      result.reasons,
-      draftResult.paidCallExecuted
-        ? 'PROVIDER_SUCCEEDED_FINALIZE_FAILED'
-        : 'EXECUTION_RESULT_UNCERTAIN'
-    )
-    result.failed = 1
+    if (keptDraft) {
+      result.completed = 1
+      result.draftsPersisted = 1
+      result.draftId = (keptDraft as { draftId?: string }).draftId ?? draftResult.draftId
+      bump(result.reasons, 'SUCCEEDED_AFTER_PARTIAL_FINALIZE')
+    } else {
+      bump(
+        result.reasons,
+        draftResult.paidCallExecuted
+          ? 'PROVIDER_SUCCEEDED_FINALIZE_FAILED'
+          : 'EXECUTION_RESULT_UNCERTAIN'
+      )
+      result.failed = 1
+    }
     result.timingsMs.persist = Date.now() - tPersist
     result.timingsMs.total = Date.now() - t0
+    // Still attempt ledger for billing evidence
+    try {
+      await opts.aiStore.insertLedger({
+        id: executionId,
+        provider: cfg.provider,
+        model: draftResult.model,
+        lane: 'crawler_automatic',
+        jobId: job.id,
+        clusterId: cluster.id,
+        requestType: 'controlled_auto_draft',
+        inputTokens: draftResult.actualInputTokens,
+        outputTokens: draftResult.actualOutputTokens,
+        estimatedCostUsd: job.estimatedCostUsd,
+        actualCostUsd: draftResult.actualCostUsd,
+        status: keptDraft || draftOk ? 'SUCCESS' : 'FAILED',
+        mode: 'controlled_auto_draft',
+        reason: keptDraft ? 'partial_finalize_recovered' : 'finalize_failed',
+        failureCode: keptDraft ? null : 'PROVIDER_SUCCEEDED_FINALIZE_FAILED',
+      })
+    } catch {
+      /* ledger may already exist */
+    }
     return result
   }
 

@@ -333,7 +333,7 @@ describe('Phase 4D.3 dedicated worker lease + lifecycle', () => {
     expect(result.providerCalls).toBe(1)
     expect(result.completed).toBe(1)
     expect(result.draftsPersisted).toBe(1)
-    expect(result.draftId).toMatch(/^draft_controlled_auto_draft_/)
+    expect(result.draftId).toMatch(/^d_cad_/)
     expect(result.published).toBe(0)
 
     const jobs = await ai.listJobs({ status: 'COMPLETED' })

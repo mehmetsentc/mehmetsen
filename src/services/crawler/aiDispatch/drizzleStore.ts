@@ -121,9 +121,24 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
   }
 
   async updateJob(id: string, patch: Partial<CrawlerAiJobRecord>): Promise<void> {
+    const {
+      draftSnapshot,
+      validationSnapshot,
+      ...rest
+    } = patch
+    const values: Record<string, unknown> = { ...rest, updatedAt: new Date() }
+    // neon-http: pass jsonb as serialized JSON string via cast for reliability
+    if (draftSnapshot !== undefined) {
+      values.draftSnapshot =
+        draftSnapshot === null ? null : sql`${JSON.stringify(draftSnapshot)}::jsonb`
+    }
+    if (validationSnapshot !== undefined) {
+      values.validationSnapshot =
+        validationSnapshot === null ? null : sql`${JSON.stringify(validationSnapshot)}::jsonb`
+    }
     await this.db()
       .update(crawlerAiJobs)
-      .set({ ...patch, updatedAt: new Date() })
+      .set(values as never)
       .where(eq(crawlerAiJobs.id, id))
   }
 

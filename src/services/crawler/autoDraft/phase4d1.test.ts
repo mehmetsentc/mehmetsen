@@ -307,7 +307,7 @@ describe('Phase 4D.1 shared executeEventDraft + publication firewall', () => {
       if (worker.draftsPersisted > 0) {
         expect(worker.providerCalls).toBe(1)
         const jobs = await ai.listJobs({ status: 'COMPLETED' })
-        expect(jobs[0]?.editorialNewsId).toMatch(/^draft_controlled_auto_draft_/)
+        expect(jobs[0]?.editorialNewsId).toMatch(/^d_cad_/)
         expect(jobs[0]?.draftSnapshot).toBeTruthy()
       }
     }

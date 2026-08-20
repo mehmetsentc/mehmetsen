@@ -488,7 +488,7 @@ export const crawlerAiJobs = pgTable(
     failureReason: text('failure_reason'),
     /** Phase 4D.3 explicit failure code (e.g. BODY_TOO_SHORT, PROVIDER_SUCCEEDED_FINALIZE_FAILED). */
     failureCode: varchar('failure_code', { length: 64 }),
-    editorialNewsId: varchar('editorial_news_id', { length: 64 }),
+    editorialNewsId: varchar('editorial_news_id', { length: 128 }),
     outputTarget: varchar('output_target', { length: 32 }).default('EDITORIAL_DRAFT').notNull(),
     selectedSourceCount: integer('selected_source_count').default(0).notNull(),
     /** Phase 4D.3 dedicated worker lease */
