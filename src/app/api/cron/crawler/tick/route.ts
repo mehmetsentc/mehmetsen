@@ -5,8 +5,8 @@ import { runCrawlerTick } from '@/services/crawler/workers/tick'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-/** Phase 4D.2: allow discover/extract/cluster + one DeepSeek auto-draft within one tick. */
-export const maxDuration = 300
+/** Crawler-only: discover/extract/cluster/enqueue. Paid AI is /api/cron/crawler-ai-worker. */
+export const maxDuration = 60
 
 async function handle(request: Request) {
   if (!(await isNewsroomAuthorized(request))) {

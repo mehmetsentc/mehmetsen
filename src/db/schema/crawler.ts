@@ -486,9 +486,21 @@ export const crawlerAiJobs = pgTable(
     completedAt: timestamp('completed_at', { withTimezone: true }),
     blockedReason: varchar('blocked_reason', { length: 64 }),
     failureReason: text('failure_reason'),
+    /** Phase 4D.3 explicit failure code (e.g. BODY_TOO_SHORT, PROVIDER_SUCCEEDED_FINALIZE_FAILED). */
+    failureCode: varchar('failure_code', { length: 64 }),
     editorialNewsId: varchar('editorial_news_id', { length: 64 }),
     outputTarget: varchar('output_target', { length: 32 }).default('EDITORIAL_DRAFT').notNull(),
     selectedSourceCount: integer('selected_source_count').default(0).notNull(),
+    /** Phase 4D.3 dedicated worker lease */
+    leaseOwner: varchar('lease_owner', { length: 80 }),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
+    /** Durable paid-execution id minted before DeepSeek call */
+    executionId: varchar('execution_id', { length: 80 }),
+    eventRevision: varchar('event_revision', { length: 64 }),
+    /** Canonical AI_DRAFT payload (headline/body/seo…) — one store with the job row */
+    draftSnapshot: jsonb('draft_snapshot'),
+    validationSnapshot: jsonb('validation_snapshot'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -497,11 +509,18 @@ export const crawlerAiJobs = pgTable(
     index('crawler_ai_jobs_cluster_idx').on(t.clusterId),
     index('crawler_ai_jobs_created_idx').on(t.createdAt),
     index('crawler_ai_jobs_priority_idx').on(t.priority),
+    index('crawler_ai_jobs_claim_queue_idx').on(t.status, t.priority, t.createdAt),
+    index('crawler_ai_jobs_lease_expires_idx')
+      .on(t.leaseExpiresAt)
+      .where(sql`${t.status} = 'PROCESSING'`),
     uniqueIndex('crawler_ai_jobs_cluster_initial_uidx').on(t.clusterId).where(sql`${t.dispatchType} = 'INITIAL'`),
     // Phase 4D: one active equivalent job per event (DB-level idempotency)
     uniqueIndex('crawler_ai_jobs_cluster_active_uidx')
       .on(t.clusterId)
       .where(sql`${t.status} in ('PENDING','RESERVED','PROCESSING')`),
+    uniqueIndex('crawler_ai_jobs_execution_uidx')
+      .on(t.executionId)
+      .where(sql`${t.executionId} is not null`),
   ]
 )
 

@@ -17,6 +17,14 @@ export interface AiDispatchStore {
   updateJob(id: string, patch: Partial<CrawlerAiJobRecord>): Promise<void>
   listJobs(opts?: { status?: string; limit?: number }): Promise<CrawlerAiJobRecord[]>
   countActiveJobs(): Promise<number>
+  /** Phase 4D.3 — atomic claim of ONE job with lease. Optional for memory tests. */
+  claimNextJob?(input: {
+    workerId: string
+    leaseExpiresAt: Date
+    now: Date
+  }): Promise<CrawlerAiJobRecord | null>
+  /** Phase 4D.3 — PROCESSING jobs with expired leases (for recovery). */
+  listClaimableJobs?(opts?: { limit?: number; now?: Date }): Promise<CrawlerAiJobRecord[]>
   upsertShadow(row: CrawlerAiShadowRow): Promise<void>
   listShadow(opts?: { limit?: number }): Promise<CrawlerAiShadowRow[]>
   getBudgetWindow(lane: AiCostLane, periodType: 'hour' | 'day' | 'month', periodKey: string): Promise<CrawlerAiBudgetWindow>
@@ -100,6 +108,52 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
     return [...this.jobs.values()].filter((j) =>
       ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
     ).length
+  }
+
+  async claimNextJob(input: {
+    workerId: string
+    leaseExpiresAt: Date
+    now: Date
+  }): Promise<CrawlerAiJobRecord | null> {
+    return this.withLock(() => {
+      const candidates = [...this.jobs.values()]
+        .filter((j) => {
+          if (j.status === 'PENDING' || j.status === 'RESERVED') return true
+          if (
+            j.status === 'PROCESSING' &&
+            (!j.leaseExpiresAt || j.leaseExpiresAt.getTime() <= input.now.getTime()) &&
+            !j.executionId
+          ) {
+            return true
+          }
+          return false
+        })
+        .sort((a, b) => (b.priority || 0) - (a.priority || 0) || a.createdAt.getTime() - b.createdAt.getTime())
+
+      const job = candidates[0]
+      if (!job) return null
+      Object.assign(job, {
+        status: 'PROCESSING' as const,
+        leaseOwner: input.workerId,
+        leaseExpiresAt: input.leaseExpiresAt,
+        lastHeartbeatAt: input.now,
+        startedAt: input.now,
+        attemptCount: (job.attemptCount || 0) + 1,
+        updatedAt: input.now,
+      })
+      return { ...job }
+    })
+  }
+
+  async listClaimableJobs(opts?: { limit?: number; now?: Date }): Promise<CrawlerAiJobRecord[]> {
+    const now = opts?.now ?? new Date()
+    return [...this.jobs.values()]
+      .filter(
+        (j) =>
+          j.status === 'PROCESSING' &&
+          (!j.leaseExpiresAt || j.leaseExpiresAt.getTime() <= now.getTime())
+      )
+      .slice(0, opts?.limit ?? 20)
   }
 
   async upsertShadow(row: CrawlerAiShadowRow): Promise<void> {

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, sql } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
   crawlerAiBudgetWindows,
@@ -38,9 +38,17 @@ function mapJob(row: typeof crawlerAiJobs.$inferSelect): CrawlerAiJobRecord {
     completedAt: row.completedAt,
     blockedReason: row.blockedReason,
     failureReason: row.failureReason,
+    failureCode: row.failureCode,
     editorialNewsId: row.editorialNewsId,
     outputTarget: EDITORIAL_OUTPUT_TARGET,
     selectedSourceCount: row.selectedSourceCount,
+    leaseOwner: row.leaseOwner,
+    leaseExpiresAt: row.leaseExpiresAt,
+    lastHeartbeatAt: row.lastHeartbeatAt,
+    executionId: row.executionId,
+    eventRevision: row.eventRevision,
+    draftSnapshot: (row.draftSnapshot as Record<string, unknown> | null) ?? null,
+    validationSnapshot: (row.validationSnapshot as Record<string, unknown> | null) ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -90,9 +98,17 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
         completedAt: job.completedAt,
         blockedReason: job.blockedReason,
         failureReason: job.failureReason,
+        failureCode: job.failureCode ?? null,
         editorialNewsId: job.editorialNewsId,
         outputTarget: job.outputTarget,
         selectedSourceCount: job.selectedSourceCount,
+        leaseOwner: job.leaseOwner ?? null,
+        leaseExpiresAt: job.leaseExpiresAt ?? null,
+        lastHeartbeatAt: job.lastHeartbeatAt ?? null,
+        executionId: job.executionId ?? null,
+        eventRevision: job.eventRevision ?? null,
+        draftSnapshot: job.draftSnapshot ?? null,
+        validationSnapshot: job.validationSnapshot ?? null,
         createdAt: job.createdAt,
         updatedAt: job.updatedAt,
       })
@@ -133,6 +149,82 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
       .from(crawlerAiJobs)
       .where(sql`${crawlerAiJobs.status} in ('PENDING','RESERVED','PROCESSING')`)
     return Number(rows[0]?.n || 0)
+  }
+
+  /**
+   * Atomic claim via conditional UPDATE … RETURNING.
+   * Uses indexed status lookup — no full cluster scan.
+   */
+  async claimNextJob(input: {
+    workerId: string
+    leaseExpiresAt: Date
+    now: Date
+  }): Promise<CrawlerAiJobRecord | null> {
+    const db = this.db()
+    const sel = await db
+      .select({ id: crawlerAiJobs.id })
+      .from(crawlerAiJobs)
+      .where(
+        sql`(
+          ${crawlerAiJobs.status} in ('PENDING','RESERVED')
+          OR (
+            ${crawlerAiJobs.status} = 'PROCESSING'
+            AND (${crawlerAiJobs.leaseExpiresAt} is null OR ${crawlerAiJobs.leaseExpiresAt} <= ${input.now})
+            AND ${crawlerAiJobs.executionId} is null
+          )
+        )`
+      )
+      .orderBy(desc(crawlerAiJobs.priority), asc(crawlerAiJobs.createdAt))
+      .limit(1)
+    if (!sel[0]?.id) return null
+    return this.tryClaimId(sel[0].id, input)
+  }
+
+  private async tryClaimId(
+    id: string,
+    input: { workerId: string; leaseExpiresAt: Date; now: Date }
+  ): Promise<CrawlerAiJobRecord | null> {
+    const updated = await this.db()
+      .update(crawlerAiJobs)
+      .set({
+        status: 'PROCESSING',
+        leaseOwner: input.workerId,
+        leaseExpiresAt: input.leaseExpiresAt,
+        lastHeartbeatAt: input.now,
+        startedAt: input.now,
+        attemptCount: sql`${crawlerAiJobs.attemptCount} + 1`,
+        updatedAt: input.now,
+      })
+      .where(
+        and(
+          eq(crawlerAiJobs.id, id),
+          sql`(
+            ${crawlerAiJobs.status} in ('PENDING','RESERVED')
+            OR (
+              ${crawlerAiJobs.status} = 'PROCESSING'
+              AND (${crawlerAiJobs.leaseExpiresAt} is null OR ${crawlerAiJobs.leaseExpiresAt} <= ${input.now})
+              AND ${crawlerAiJobs.executionId} is null
+            )
+          )`
+        )
+      )
+      .returning()
+    return updated[0] ? mapJob(updated[0]) : null
+  }
+
+  async listClaimableJobs(opts?: { limit?: number; now?: Date }): Promise<CrawlerAiJobRecord[]> {
+    const now = opts?.now ?? new Date()
+    const rows = await this.db()
+      .select()
+      .from(crawlerAiJobs)
+      .where(
+        and(
+          eq(crawlerAiJobs.status, 'PROCESSING'),
+          sql`(${crawlerAiJobs.leaseExpiresAt} is null OR ${crawlerAiJobs.leaseExpiresAt} <= ${now})`
+        )
+      )
+      .limit(opts?.limit ?? 20)
+    return rows.map(mapJob)
   }
 
   async upsertShadow(row: CrawlerAiShadowRow): Promise<void> {

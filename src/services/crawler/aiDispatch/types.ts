@@ -67,9 +67,19 @@ export type CrawlerAiJobRecord = {
   completedAt: Date | null
   blockedReason: AiBlockReason | string | null
   failureReason: string | null
+  /** Phase 4D.3 — e.g. BODY_TOO_SHORT, PROVIDER_SUCCEEDED_FINALIZE_FAILED */
+  failureCode?: string | null
   editorialNewsId: string | null
   outputTarget: typeof EDITORIAL_OUTPUT_TARGET
   selectedSourceCount: number
+  /** Phase 4D.3 dedicated worker lease */
+  leaseOwner?: string | null
+  leaseExpiresAt?: Date | null
+  lastHeartbeatAt?: Date | null
+  executionId?: string | null
+  eventRevision?: string | null
+  draftSnapshot?: Record<string, unknown> | null
+  validationSnapshot?: Record<string, unknown> | null
   createdAt: Date
   updatedAt: Date
 }

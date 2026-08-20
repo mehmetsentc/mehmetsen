@@ -108,7 +108,13 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
     return { status: 'COST_BLOCKED', reason: 'cost_preflight_blocked', readyForJob: false }
   }
 
-  const strongSingle =
+  /**
+   * STRONG_SINGLE_SOURCE (Phase 4D.3 formalized).
+   * Does NOT require fake city/geography. Paths:
+   *  A) Local / breaking / high-importance single (legacy strongSingle)
+   *  B) High-quality trusted single: words≥150, conf≥0.75, health≥70, stale≤36h, importance≥40
+   */
+  const strongSingleLocal =
     input.bestWordCount >= 120 &&
     input.bestConfidence >= 0.7 &&
     input.avgHealth >= 60 &&
@@ -116,6 +122,15 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
     (input.hasLocalGeography ||
       input.crawlPriority === 'BREAKING' ||
       input.importanceScore >= 70)
+
+  const strongSingleQuality =
+    input.bestWordCount >= 150 &&
+    input.bestConfidence >= 0.75 &&
+    input.avgHealth >= 70 &&
+    input.staleHours <= 36 &&
+    input.importanceScore >= 40
+
+  const strongSingle = strongSingleLocal || strongSingleQuality
 
   const waiting =
     input.clusterAiEligibility === 'WATCHING' ||
@@ -146,9 +161,11 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
     reason:
       input.independentSourceCount >= 2
         ? 'multi_source_ready'
-        : strongSingle
-          ? 'strong_single_source'
-          : 'eligible_quality',
+        : strongSingleQuality && !strongSingleLocal
+          ? 'STRONG_SINGLE_SOURCE'
+          : strongSingle
+            ? 'strong_single_source'
+            : 'eligible_quality',
     readyForJob: true,
   }
 }

@@ -25,8 +25,25 @@ export {
 export {
   runControlledAutoDraftTick,
   autoDraftPublicationAllowed,
+  recoverStaleLeases,
   type ControlledAutoDraftTickResult,
 } from './pipeline'
+
+export {
+  runDedicatedAiWorkerTick,
+  workerMayClaimNewJobs,
+  type AiWorkerTickResult,
+} from './worker'
+
+export {
+  blocksAutomaticRepay,
+  isUncertainFailureCode,
+  newWorkerId,
+  newExecutionId,
+  leaseExpiresAt,
+  isLeaseExpired,
+  UNCERTAIN_FAILURE_CODES,
+} from './lease'
 
 export {
   getAutoDraftEligibleAfter,

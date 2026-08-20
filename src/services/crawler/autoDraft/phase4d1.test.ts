@@ -288,16 +288,28 @@ describe('Phase 4D.1 shared executeEventDraft + publication firewall', () => {
       aiStore: ai,
       now,
       limit: 1,
-      canaryProvider: mockProvider(draftJson),
     })
-
-    // May fail validation on length depending on pack richness — still no publish
+    // Phase 4D.3: crawler only enqueues — zero provider calls
     expect(tick.published).toBe(0)
-    expect(tick.providerCalls).toBeLessThanOrEqual(1)
-    if (tick.draftsPersisted > 0) {
-      expect(tick.providerCalls).toBe(1)
-      const jobs = await ai.listJobs({ status: 'COMPLETED' })
-      expect(jobs[0]?.editorialNewsId).toMatch(/^draft_controlled_auto_draft_/)
+    expect(tick.providerCalls).toBe(0)
+    expect(tick.jobsCreated).toBeGreaterThanOrEqual(0)
+
+    if (tick.jobsCreated > 0) {
+      const { runDedicatedAiWorkerTick } = await import('./worker')
+      const worker = await runDedicatedAiWorkerTick({
+        crawlerStore: crawler,
+        aiStore: ai,
+        now,
+        canaryProvider: mockProvider(draftJson),
+      })
+      expect(worker.published).toBe(0)
+      expect(worker.providerCalls).toBeLessThanOrEqual(1)
+      if (worker.draftsPersisted > 0) {
+        expect(worker.providerCalls).toBe(1)
+        const jobs = await ai.listJobs({ status: 'COMPLETED' })
+        expect(jobs[0]?.editorialNewsId).toMatch(/^draft_controlled_auto_draft_/)
+        expect(jobs[0]?.draftSnapshot).toBeTruthy()
+      }
     }
   })
 
@@ -380,7 +392,6 @@ describe('Phase 4D.1 historical backlog not drained', () => {
       aiStore: ai,
       now,
       limit: 5,
-      canaryProvider: mockProvider('{}'),
     })
     expect(tick.jobsCreated).toBe(0)
     expect(tick.providerCalls).toBe(0)

@@ -1,21 +1,20 @@
 /**
- * Phase 4D.1 controlled automatic draft pipeline.
- * Creates AI_DRAFT jobs only when mode+gates+providerReady+cutoff pass.
- * Reuses Phase 4C.4 executeEventDraft — never auto-publishes.
+ * Phase 4D.3 — enqueue-only controlled auto-draft tick.
+ * Crawler evaluates eligibility and creates PENDING/RESERVED jobs.
+ * Paid DeepSeek execution happens only in the dedicated AI worker.
  */
 
 import { newCrawlerId } from '../store/types'
 import type { AiDispatchStore } from '../aiDispatch/store'
 import type { CrawlerStore } from '../store/types'
 import type { NewsClusterRecord } from '../types'
-import { crawlerAiDispatchConfig, isCrawlerAiProviderWired, getCrawlerAiProviderReadiness } from '../aiDispatch/flags'
+import { crawlerAiDispatchConfig, getCrawlerAiProviderReadiness } from '../aiDispatch/flags'
 import {
   EDITORIAL_OUTPUT_TARGET,
   type CrawlerAiJobRecord,
   type MemberEvidence,
 } from '../aiDispatch/types'
-import { emptyWindow, periodKeys, settleReservation, tryReserveBudget } from '../aiDispatch/budget'
-import { applyProviderStatus } from '../aiDispatch/circuit'
+import { emptyWindow, periodKeys, tryReserveBudget } from '../aiDispatch/budget'
 import { isControlledAutoDraftEnabled, getCrawlerAiMode } from '../aiMode'
 import {
   canCreateAutoDraftJob,
@@ -32,14 +31,12 @@ import {
   acceptanceHardCaps,
   getAutoDraftEligibleAfter,
   isEventEligibleForAutoDraft,
-  jobLeaseTimeoutMs,
 } from './activation'
 import { buildCanaryEvidencePack } from '../canary/pack'
 import { estimateCanaryCostUsd } from '../canary/preflight'
 import { canaryConfig } from '../canary/flags'
-import { createDeepSeekCanaryProvider } from '../canary/provider'
-import { executeEventDraft, eventDraftPublicationAllowed } from '../eventDraft/executeEventDraft'
-import type { CanaryClusterInput, CanaryMemberInput, CanaryProvider } from '../canary/types'
+import { blocksAutomaticRepay } from './lease'
+import type { CanaryClusterInput, CanaryMemberInput } from '../canary/types'
 
 export type ControlledAutoDraftTickResult = {
   mode: string
@@ -49,8 +46,9 @@ export type ControlledAutoDraftTickResult = {
   updateAvailable: number
   providerBlocked: number
   backlogExcluded: number
-  providerCalls: number
-  draftsPersisted: number
+  /** Always 0 — crawler never calls provider (Phase 4D.3). */
+  providerCalls: 0
+  draftsPersisted: 0
   published: 0
   leaseRecovered: number
   reasons: Record<string, number>
@@ -181,52 +179,111 @@ function jobStub(
     provider: cfg.provider,
     attemptCount: 0,
     maxAttempts: cfg.maxAttempts,
-    reservedAt: status === 'RESERVED' || status === 'PROCESSING' ? now : null,
-    startedAt: status === 'PROCESSING' ? now : null,
+    reservedAt: status === 'RESERVED' || status === 'PENDING' ? now : null,
+    startedAt: null,
     completedAt: null,
     blockedReason: null,
     failureReason: null,
+    failureCode: null,
     editorialNewsId: null,
     outputTarget: EDITORIAL_OUTPUT_TARGET,
     selectedSourceCount: cluster.uniqueSourceCount,
+    leaseOwner: null,
+    leaseExpiresAt: null,
+    lastHeartbeatAt: null,
+    executionId: null,
+    eventRevision: opts.fingerprint,
+    draftSnapshot: null,
+    validationSnapshot: null,
     createdAt: now,
     updatedAt: now,
   }
 }
 
-async function recoverStaleJobs(
+/**
+ * Recover stale PROCESSING leases that have no successful ledger evidence.
+ * Never auto-repays. Ledger SUCCESS → PROVIDER_SUCCEEDED_FINALIZE_FAILED.
+ */
+export async function recoverStaleLeases(
   aiStore: AiDispatchStore,
   now: Date,
   reasons: Record<string, number>
 ): Promise<number> {
-  const leaseMs = jobLeaseTimeoutMs()
-  const active = await aiStore.listJobs({ limit: 50 })
-  let recovered = 0
-  for (const job of active) {
-    if (!['PENDING', 'RESERVED', 'PROCESSING'].includes(job.status)) continue
-    const anchor = job.startedAt || job.reservedAt || job.updatedAt || job.createdAt
-    if (now.getTime() - anchor.getTime() < leaseMs) continue
-    await aiStore.updateJob(job.id, {
-      status: 'FAILED',
-      failureReason: 'lease_timeout',
-      completedAt: now,
-      blockedReason: 'PROVIDER_CIRCUIT_OPEN',
+  const claimable = await aiStore.listClaimableJobs?.({ limit: 20, now })
+  // Fallback: list PROCESSING and check lease expiry in memory stores without claim API
+  const processing =
+    claimable ??
+    (await aiStore.listJobs({ status: 'PROCESSING', limit: 50 })).filter((j) => {
+      const exp = j.leaseExpiresAt || j.startedAt || j.updatedAt
+      return !exp || now.getTime() - exp.getTime() > 0
     })
-    bump(reasons, 'LEASE_RECOVERED')
+
+  let recovered = 0
+  for (const job of processing) {
+    if (job.status !== 'PROCESSING') continue
+    const exp = job.leaseExpiresAt
+    if (exp && exp.getTime() > now.getTime()) continue
+
+    const ledger = await aiStore.listLedger({ lane: 'crawler_automatic' })
+    const successForJob = ledger.some(
+      (r) =>
+        r.jobId === job.id &&
+        /success|succeeded/i.test(r.status) &&
+        r.requestType === 'controlled_auto_draft'
+    )
+
+    if (blocksAutomaticRepay({ hasSuccessfulLedger: successForJob, failureCode: job.failureCode })) {
+      await aiStore.updateJob(job.id, {
+        status: 'FAILED',
+        failureCode: 'PROVIDER_SUCCEEDED_FINALIZE_FAILED',
+        failureReason: 'stale_lease_with_ledger_success_no_auto_repay',
+        completedAt: now,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+      })
+      bump(reasons, 'PROVIDER_SUCCEEDED_FINALIZE_FAILED')
+      recovered += 1
+      continue
+    }
+
+    // No ledger success — mark uncertain if executionId was minted (call may have started)
+    if (job.executionId) {
+      await aiStore.updateJob(job.id, {
+        status: 'FAILED',
+        failureCode: 'EXECUTION_RESULT_UNCERTAIN',
+        failureReason: 'stale_lease_execution_started_no_finalize',
+        completedAt: now,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+      })
+      bump(reasons, 'EXECUTION_RESULT_UNCERTAIN')
+      recovered += 1
+      continue
+    }
+
+    // Never started paid call — return to PENDING for reclaim
+    await aiStore.updateJob(job.id, {
+      status: 'PENDING',
+      failureReason: null,
+      failureCode: null,
+      startedAt: null,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      attemptCount: job.attemptCount,
+    })
+    bump(reasons, 'LEASE_RECOVERED_TO_PENDING')
     recovered += 1
   }
   return recovered
 }
 
 /**
- * Evaluate APPROVED_FOR_AI clusters for controlled auto-draft.
+ * Evaluate APPROVED_FOR_AI clusters and enqueue jobs only.
  * Default mode OFF / provider OFF → zero jobs, zero provider calls.
  */
 export async function runControlledAutoDraftTick(opts: {
   crawlerStore: CrawlerStore
   aiStore: AiDispatchStore
-  /** Injected mock for tests — production uses DeepSeek canary provider when wired. */
-  canaryProvider?: CanaryProvider
   now?: Date
   limit?: number
 }): Promise<ControlledAutoDraftTickResult> {
@@ -256,7 +313,13 @@ export async function runControlledAutoDraftTick(opts: {
     providerReason: readiness.reason,
   }
 
-  result.leaseRecovered = await recoverStaleJobs(opts.aiStore, now, result.reasons)
+  // Lease recovery is cheap and safe when AI OFF (no provider calls)
+  result.leaseRecovered = await recoverStaleLeases(opts.aiStore, now, result.reasons)
+
+  if (!autoEnabled) {
+    bump(result.reasons, 'MODE_OR_DISPATCH_OFF')
+    return result
+  }
 
   const keys = periodKeys(now)
   let hourSnap = await opts.aiStore.getBudgetWindow('crawler_automatic', 'hour', keys.hour)
@@ -264,7 +327,6 @@ export async function runControlledAutoDraftTick(opts: {
   let monthSnap = await opts.aiStore.getBudgetWindow('crawler_automatic', 'month', keys.month)
   if (!monthSnap?.periodKey) monthSnap = emptyWindow('crawler_automatic', 'month', keys.month)
 
-  // Acceptance absolute caps from ledger (lane automatic + requestType controlled)
   const recentLedger = await opts.aiStore.listLedger({
     lane: 'crawler_automatic',
     since: new Date(now.getTime() - 7 * 86_400_000),
@@ -285,10 +347,6 @@ export async function runControlledAutoDraftTick(opts: {
       bump(result.reasons, 'ACCEPTANCE_EVENT_CAP')
       break
     }
-    if (result.providerCalls >= caps.maxRequests) {
-      bump(result.reasons, 'ACCEPTANCE_REQUEST_CAP')
-      break
-    }
 
     result.evaluated += 1
     const members = await membersFor(opts.crawlerStore, cluster.id)
@@ -297,6 +355,22 @@ export async function runControlledAutoDraftTick(opts: {
       !!existing && ['PENDING', 'RESERVED', 'PROCESSING'].includes(existing.status)
     const hasCompleted =
       !!existing && (existing.status === 'COMPLETED' || Boolean(existing.editorialNewsId))
+
+    // Never auto-requeue uncertain / ledger-success finalize failures
+    if (
+      existing &&
+      blocksAutomaticRepay({
+        failureCode: existing.failureCode,
+        failureReason: existing.failureReason,
+        hasSuccessfulLedger: recentLedger.some(
+          (r) => r.jobId === existing.id && /success|succeeded/i.test(r.status)
+        ),
+      })
+    ) {
+      result.blocked += 1
+      bump(result.reasons, existing.failureCode || 'NO_AUTO_REPAY')
+      continue
+    }
 
     const fp = fingerprintFromMembers(cluster.id, cluster.eventKey, toRevisionMembers(members))
     const draftedFp = cluster.draftedContentFingerprint ?? null
@@ -361,7 +435,6 @@ export async function runControlledAutoDraftTick(opts: {
       contentFingerprintChanged: Boolean(draftedFp && draftedFp !== fp),
     })
 
-    // Provider not ready: eligibility visible, NO executable PENDING jobs
     if (autoEnabled && !providerReady) {
       await opts.crawlerStore.updateCluster(cluster.id, {
         contentFingerprint: fp,
@@ -378,7 +451,6 @@ export async function runControlledAutoDraftTick(opts: {
       autoDraftStatus: gate.status,
     })
 
-    // Backlog / activation cutoff
     const activation = isEventEligibleForAutoDraft({
       clusterId: cluster.id,
       decidedAt: cluster.editorialDecidedAt || cluster.updatedAt || cluster.createdAt,
@@ -436,8 +508,9 @@ export async function runControlledAutoDraftTick(opts: {
       continue
     }
 
-    // Exactly-once: insert RESERVED first (DB unique active) before any paid call
-    const job = jobStub(cluster, gate, 'RESERVED', {
+    // Enqueue as PENDING — worker claims into PROCESSING with lease.
+    // Budget reserved at enqueue; worker settles after paid execution.
+    const job = jobStub(cluster, gate, 'PENDING', {
       estimatedInputTokens: tokenIn,
       estimatedOutputTokens: tokenOut,
       estimatedCostUsd: costUsd,
@@ -458,116 +531,9 @@ export async function runControlledAutoDraftTick(opts: {
     await opts.aiStore.saveBudgetWindow(hourSnap)
     await opts.aiStore.saveBudgetWindow(daySnap)
     if (reserve.month) await opts.aiStore.saveBudgetWindow(reserve.month)
-
-    // Only execute when auto + provider wired (double-check)
-    if (!(autoEnabled && isCrawlerAiProviderWired())) {
-      await opts.aiStore.updateJob(job.id, {
-        status: 'CANCELLED',
-        failureReason: 'provider_unwired_after_reserve',
-        completedAt: now,
-      })
-      bump(result.reasons, 'PROVIDER_UNWIRED')
-      continue
-    }
-
-    await opts.aiStore.updateJob(job.id, {
-      status: 'PROCESSING',
-      startedAt: now,
-      attemptCount: 1,
-    })
-
-    const provider = opts.canaryProvider ?? createDeepSeekCanaryProvider()
-    const draftResult = await executeEventDraft({
-      pack,
-      provider,
-      lane: 'controlled_auto_draft',
-      eventRevision: fp,
-      jobId: job.id,
-      estimatedCostUsd: costUsd,
-      allowPaidSchemaRepair: false,
-      maxRequests: 1,
-    })
-
-    if (draftResult.paidCallExecuted) result.providerCalls += 1
-
-    // Finalize job BEFORE budget/ledger side-effects so a tick timeout cannot leave
-    // PROCESSING after a paid SUCCESS (Phase 4D.2 production incident).
-    const draftOk = Boolean(draftResult.ok && draftResult.draft && draftResult.draftId)
-    if (draftOk) {
-      await opts.aiStore.updateJob(job.id, {
-        status: 'COMPLETED',
-        actualInputTokens: draftResult.actualInputTokens,
-        actualOutputTokens: draftResult.actualOutputTokens,
-        actualCostUsd: draftResult.actualCostUsd,
-        editorialNewsId: draftResult.draftId,
-        completedAt: new Date(),
-        failureReason: null,
-      })
-      await opts.crawlerStore.updateCluster(cluster.id, {
-        draftedContentFingerprint: fp,
-        contentFingerprint: fp,
-        autoDraftStatus: 'ALREADY_DRAFTED',
-        hasMaterialUpdate: false,
-      })
-      result.draftsPersisted += 1
-      bump(result.reasons, 'SUCCEEDED')
-    } else {
-      const costBlocked =
-        draftResult.blockedReason === 'COST_UNKNOWN' ||
-        draftResult.failureReason === 'cost_blocked'
-      await opts.aiStore.updateJob(job.id, {
-        status: costBlocked ? 'BLOCKED' : 'FAILED',
-        actualInputTokens: draftResult.actualInputTokens,
-        actualOutputTokens: draftResult.actualOutputTokens,
-        actualCostUsd: draftResult.actualCostUsd,
-        completedAt: new Date(),
-        failureReason: draftResult.failureReason,
-        blockedReason: draftResult.blockedReason || (costBlocked ? 'COST_UNKNOWN' : null),
-      })
-      bump(result.reasons, draftResult.failureReason || 'FAILED')
-    }
-
-    // Circuit breaker on auth/balance/rate/5xx
-    if (draftResult.statusCode != null) {
-      const circuit = await opts.aiStore.getCircuit(cfg.provider)
-      const next = applyProviderStatus(circuit, draftResult.statusCode, now)
-      await opts.aiStore.saveCircuit(next)
-    }
-
-    const settledHour = settleReservation(hourSnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
-    const settledDay = settleReservation(daySnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
-    const settledMonth = monthSnap
-      ? settleReservation(monthSnap, costUsd ?? 0, draftResult.actualCostUsd ?? 0)
-      : null
-    hourSnap = settledHour
-    daySnap = settledDay
-    if (settledMonth) monthSnap = settledMonth
-    await opts.aiStore.saveBudgetWindow(hourSnap)
-    await opts.aiStore.saveBudgetWindow(daySnap)
-    if (settledMonth) await opts.aiStore.saveBudgetWindow(settledMonth)
-
-    await opts.aiStore.insertLedger({
-      provider: cfg.provider,
-      model: draftResult.model,
-      lane: 'crawler_automatic',
-      jobId: job.id,
-      clusterId: cluster.id,
-      requestType: 'controlled_auto_draft',
-      inputTokens: draftResult.actualInputTokens,
-      outputTokens: draftResult.actualOutputTokens,
-      estimatedCostUsd: costUsd,
-      actualCostUsd: draftResult.actualCostUsd,
-      status: draftResult.ok ? 'SUCCESS' : 'FAILED',
-      mode: 'controlled_auto_draft',
-      reason: draftOk ? 'ok' : draftResult.failureReason || 'failed',
-      failureCode: draftOk ? null : draftResult.blockedReason || draftResult.failureReason,
-    })
-
-    // Explicit: never publish from this path
-    void eventDraftPublicationAllowed()
+    bump(result.reasons, 'ENQUEUED')
   }
 
-  // Cutoff presence note for ops
   if (autoEnabled && !getAutoDraftEligibleAfter()) {
     bump(result.reasons, 'CUTOFF_UNSET_NOTE')
   }
