@@ -201,10 +201,17 @@ function CrawlerArticlesInner() {
     [router, searchParams]
   )
 
-  const closeDetail = useCallback(() => {
+  /** Canonical close — selected=null, media cleared. No URL mutation / no AI. */
+  const closeDrawer = useCallback(() => {
     setDetail(null)
     setDetailMedia([])
     setMediaSummary(null)
+  }, [])
+
+  const openDrawer = useCallback((row: ArticleRow) => {
+    setDetailMedia([])
+    setMediaSummary(null)
+    setDetail(row)
   }, [])
 
   const load = useCallback(async () => {
@@ -249,21 +256,41 @@ function CrawlerArticlesInner() {
     setSelection((prev) => reconcileSelection(prev, filterKey))
   }, [filterKey])
 
+  // Detail fetch keyed by article id only — abort on close/switch so stale
+  // responses cannot reopen the drawer after closeDrawer().
+  const detailId = detail?.id ?? null
   useEffect(() => {
-    if (!detail) {
+    if (!detailId) {
       setMediaSummary(null)
       return
     }
+    const ac = new AbortController()
     void (async () => {
-      const res = await fetch(`/api/admin/crawler/articles?id=${encodeURIComponent(detail.id)}`, {
-        headers: await authHeaders(),
-      })
-      const body = await res.json()
-      if (body.article) setDetail({ ...detail, ...body.article })
-      if (body.mediaSummary) setMediaSummary(body.mediaSummary)
-      if (Array.isArray(body.media)) setDetailMedia(body.media)
+      try {
+        const res = await fetch(`/api/admin/crawler/articles?id=${encodeURIComponent(detailId)}`, {
+          headers: await authHeaders(),
+          signal: ac.signal,
+        })
+        if (ac.signal.aborted) return
+        const body = await res.json()
+        if (ac.signal.aborted) return
+        if (body.article) {
+          setDetail((prev) => {
+            if (!prev || prev.id !== detailId) return prev
+            return { ...prev, ...body.article }
+          })
+        }
+        if (body.mediaSummary) setMediaSummary(body.mediaSummary)
+        if (Array.isArray(body.media)) setDetailMedia(body.media)
+      } catch (err) {
+        if (ac.signal.aborted) return
+        if (err instanceof DOMException && err.name === 'AbortError') return
+      }
     })()
-  }, [detail])
+    return () => {
+      ac.abort()
+    }
+  }, [detailId])
 
   function activeFilter() {
     return {
@@ -460,7 +487,7 @@ function CrawlerArticlesInner() {
     const published = row.editorialStatus === 'PUBLISHED'
     return (
       <div className="flex flex-wrap gap-2 text-xs">
-        <button type="button" className="underline" onClick={() => void setDetail(row)}>
+        <button type="button" className="underline" onClick={() => openDrawer(row)}>
           Görüntüle
         </button>
         {published ? (
@@ -586,7 +613,7 @@ function CrawlerArticlesInner() {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <button type="button" className="text-left font-medium underline" onClick={() => setDetail(row)}>
+                  <button type="button" className="text-left font-medium underline" onClick={() => openDrawer(row)}>
                     {row.title || '(başlıksız)'}
                   </button>
                   {row.clusterId && (row.clusterArticleCount || 0) >= 2 ? (
@@ -742,7 +769,7 @@ function CrawlerArticlesInner() {
           article={detail}
           media={detailMedia}
           busy={busyId === detail.id}
-          onClose={closeDetail}
+          onClose={closeDrawer}
           onManual={() => void openManual(detail.id)}
         />
       ) : null}

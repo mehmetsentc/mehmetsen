@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useId, useRef } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
 
@@ -45,6 +46,11 @@ function fmtDate(value: string | Date | null): string {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('tr-TR')
 }
 
+/**
+ * Ham Haberler detail drawer.
+ * Single close path via `onClose` — parent owns selectedArticle=null.
+ * Portaled to document.body so admin shell overflow/z-index cannot trap clicks.
+ */
 export function RawArticleDrawer({
   article,
   media,
@@ -61,6 +67,15 @@ export function RawArticleDrawer({
   const titleId = useId()
   const panelRef = useRef<HTMLElement>(null)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
+  const onCloseRef = useRef(onClose)
+  const [mounted, setMounted] = useState(false)
+
+  onCloseRef.current = onClose
+
+  const closeDrawer = useCallback(() => {
+    onCloseRef.current()
+  }, [])
+
   const accepted = media.filter((m) => m.status !== 'REJECTED')
   const primary = accepted.find((m) => m.isPrimary) || accepted[0]
   const extras = accepted.filter((m) => m !== primary)
@@ -68,58 +83,79 @@ export function RawArticleDrawer({
   const published = article.editorialStatus === 'PUBLISHED'
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
     const prevOverflow = document.body.style.overflow
+    const prevPaddingRight = document.body.style.paddingRight
+    const scrollbarGap = window.innerWidth - document.documentElement.clientWidth
     document.body.style.overflow = 'hidden'
+    if (scrollbarGap > 0) {
+      document.body.style.paddingRight = `${scrollbarGap}px`
+    }
     closeBtnRef.current?.focus()
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
-        onClose()
+        closeDrawer()
       }
     }
-    window.addEventListener('keydown', onKey)
+    // Capture phase so nested handlers cannot swallow ESC
+    window.addEventListener('keydown', onKey, true)
     return () => {
       document.body.style.overflow = prevOverflow
-      window.removeEventListener('keydown', onKey)
+      document.body.style.paddingRight = prevPaddingRight
+      window.removeEventListener('keydown', onKey, true)
     }
-  }, [onClose])
+  }, [closeDrawer, article.id])
 
-  return (
-    <div className="fixed inset-0 z-50" role="presentation">
+  if (!mounted || typeof document === 'undefined') return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-modal isolate" role="presentation" data-raw-article-drawer="open">
+      {/* Backdrop — only this layer closes on outside click */}
       <button
         type="button"
         className="absolute inset-0 cursor-default bg-black/40"
         aria-label="Kapat"
-        onClick={onClose}
+        data-drawer-backdrop="true"
+        onClick={closeDrawer}
       />
       <aside
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        data-drawer-panel="true"
         className="absolute inset-y-0 right-0 flex h-full w-full max-w-xl flex-col bg-[rgb(var(--color-card))] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[rgb(var(--color-border))] p-4">
+        <div className="relative z-10 flex shrink-0 items-start justify-between gap-3 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
           <h2 id={titleId} className="min-w-0 flex-1 text-lg font-semibold leading-snug">
             {article.title || '(başlıksız)'}
           </h2>
           <button
             ref={closeBtnRef}
             type="button"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
+            className="relative z-20 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
             aria-label="Kapat"
             title="Kapat"
-            onClick={onClose}
+            data-drawer-close="true"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              closeDrawer()
+            }}
           >
             <X className="h-5 w-5" aria-hidden />
             <span className="sr-only">Kapat</span>
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5" data-drawer-content="true">
           {primary?.sourceUrl || article.mainImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -208,6 +244,7 @@ export function RawArticleDrawer({
           </div>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body
   )
 }

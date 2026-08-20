@@ -517,7 +517,7 @@ describe('Phase 4C.1 — authorized event + cost ledger', () => {
     expect(result.job?.blockedReason).toBe('MISSING_CONFIRMATION')
   })
 
-  it('drawer source contracts: X/ESC/backdrop/scroll lock/actions', async () => {
+  it('drawer source contracts: X/ESC/backdrop/scroll lock/actions/portal', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const src = readFileSync(resolve(__dirname, '../../../components/admin/crawler/RawArticleDrawer.tsx'), 'utf8')
@@ -529,6 +529,8 @@ describe('Phase 4C.1 — authorized event + cost ledger', () => {
     expect(src).toContain('Kaynağı Aç')
     expect(src).toContain('Olay Kümesini Gör')
     expect(src).toContain('e.stopPropagation()')
+    expect(src).toContain('createPortal')
+    expect(src).toContain('closeDrawer()')
   })
 })
 
