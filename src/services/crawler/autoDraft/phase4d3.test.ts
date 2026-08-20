@@ -244,6 +244,28 @@ describe('Phase 4D.3 STRONG_SINGLE_SOURCE without fake city', () => {
     expect(gate.status).toBe('AI_READY')
     expect(gate.reason).toBe('STRONG_SINGLE_SOURCE')
   })
+
+  it('WATCHING + STRONG_SINGLE_SOURCE → AI_READY (no force ELIGIBLE hack)', () => {
+    const gate = evaluateAutoDraftGate({
+      clusterAiEligibility: 'WATCHING',
+      editorialDecision: 'APPROVED_FOR_AI',
+      publishedNewsId: null,
+      hasActiveAiJob: false,
+      hasCompletedDraft: false,
+      hasMaterialUpdate: false,
+      bestWordCount: 251,
+      independentSourceCount: 1,
+      uniqueSourceCount: 1,
+      staleHours: 1,
+      exactDuplicateOnly: false,
+      avgHealth: 92,
+      bestConfidence: 0.92,
+      hasLocalGeography: false,
+      importanceScore: 51,
+    })
+    expect(gate.status).toBe('AI_READY')
+    expect(gate.reason).toBe('STRONG_SINGLE_SOURCE')
+  })
 })
 
 describe('Phase 4D.3 dedicated worker lease + lifecycle', () => {

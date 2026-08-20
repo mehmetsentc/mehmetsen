@@ -113,6 +113,8 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
    * Does NOT require fake city/geography. Paths:
    *  A) Local / breaking / high-importance single (legacy strongSingle)
    *  B) High-quality trusted single: words≥150, conf≥0.75, health≥70, stale≤36h, importance≥40
+   * When strongSingle holds, algorithmic WATCHING does not block AI_READY
+   * (removes the 4D.2 need to force ELIGIBLE / fake city).
    */
   const strongSingleLocal =
     input.bestWordCount >= 120 &&
@@ -133,7 +135,7 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
   const strongSingle = strongSingleLocal || strongSingleQuality
 
   const waiting =
-    input.clusterAiEligibility === 'WATCHING' ||
+    (input.clusterAiEligibility === 'WATCHING' && !strongSingle) ||
     (input.independentSourceCount < 2 && !strongSingle)
 
   if (waiting) {
@@ -147,6 +149,7 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
   if (
     input.clusterAiEligibility !== 'ELIGIBLE' &&
     input.clusterAiEligibility !== 'HIGH_PRIORITY' &&
+    input.clusterAiEligibility !== 'WATCHING' &&
     !strongSingle
   ) {
     return {
