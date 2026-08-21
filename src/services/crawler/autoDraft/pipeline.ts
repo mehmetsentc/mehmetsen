@@ -332,9 +332,18 @@ export async function runControlledAutoDraftTick(opts: {
     lane: 'crawler_automatic',
     since: new Date(now.getTime() - 7 * 86_400_000),
   })
-  const acceptanceSpent = recentLedger.filter(
-    (r) => r.requestType === 'controlled_auto_draft' && /success|fail|completed/i.test(r.status)
-  )
+  /**
+   * Phase 4E — acceptance caps apply to the current activation window only.
+   * When CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER is set, do not let prior-phase
+   * controlled_auto_draft ledger rows exhaust this window's maxRequests.
+   */
+  const acceptanceCutoff = getAutoDraftEligibleAfter()
+  const acceptanceSpent = recentLedger.filter((r) => {
+    if (r.requestType !== 'controlled_auto_draft') return false
+    if (!/success|fail|completed/i.test(r.status)) return false
+    if (acceptanceCutoff && r.timestamp.getTime() < acceptanceCutoff.getTime()) return false
+    return true
+  })
   if (acceptanceSpent.length >= caps.maxRequests) {
     bump(result.reasons, 'ACCEPTANCE_REQUEST_CAP')
     return result
