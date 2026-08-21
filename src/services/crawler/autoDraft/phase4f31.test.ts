@@ -60,7 +60,7 @@ const NOW = new Date('2026-08-21T12:00:00.000Z')
 const RICH =
   'Manisa merkezde makilik alanda yangın çıktı. Ekipler havadan ve karadan müdahale ediyor. ' +
   'Vatandaşlar bölgeden uzaklaştırıldı. Rüzgar etkisiyle alevler yayıldı. Yetkililer soğutma çalışması başlattı. '.repeat(
-    12
+    40
   )
 
 function armControlled(opts?: {
@@ -397,6 +397,7 @@ describe('Phase 4F.3.1 DB-global concurrency (no shared mutex)', () => {
     process.env.AI_MAX_DAILY_COST_USD = '0.05'
     process.env.AI_MAX_MONTHLY_COST_USD = '5'
     process.env.CRAWLER_AI_MAX_CONCURRENT_JOBS = '2'
+    process.env.CRAWLER_AI_ACCEPTANCE_MAX_SPEND_USD = '1'
     const shared = createSharedAiDispatchState()
     const a = new MemoryAiDispatchStore({ shared, useMemoryLock: false })
     const b = new MemoryAiDispatchStore({ shared, useMemoryLock: false })
@@ -411,6 +412,7 @@ describe('Phase 4F.3.1 DB-global concurrency (no shared mutex)', () => {
 
   it('two events race final hourly slot → one winner', async () => {
     armControlled({ concurrent: '4', perHour: '1', perTick: '2' })
+    process.env.CRAWLER_AI_ACCEPTANCE_MAX_SPEND_USD = '1'
     const shared = createSharedAiDispatchState()
     const crawler = new MemoryCrawlerStore()
     const a = new MemoryAiDispatchStore({ shared, useMemoryLock: false })
@@ -426,6 +428,7 @@ describe('Phase 4F.3.1 DB-global concurrency (no shared mutex)', () => {
 
   it('two events race final daily slot → one winner', async () => {
     armControlled({ concurrent: '4', perHour: '10', perDay: '1', perTick: '2' })
+    process.env.CRAWLER_AI_ACCEPTANCE_MAX_SPEND_USD = '1'
     const shared = createSharedAiDispatchState()
     const crawler = new MemoryCrawlerStore()
     const a = new MemoryAiDispatchStore({ shared, useMemoryLock: false })
@@ -446,6 +449,7 @@ describe('Phase 4F.3.1 DB-global concurrency (no shared mutex)', () => {
     process.env.AI_MAX_DAILY_COST_USD = '0.005'
     process.env.AI_MAX_MONTHLY_COST_USD = '5'
     process.env.CRAWLER_AI_MAX_CONCURRENT_JOBS = '4'
+    process.env.CRAWLER_AI_ACCEPTANCE_MAX_SPEND_USD = '1'
     const shared = createSharedAiDispatchState()
     const a = new MemoryAiDispatchStore({ shared, useMemoryLock: false })
     const b = new MemoryAiDispatchStore({ shared, useMemoryLock: false })
@@ -460,6 +464,7 @@ describe('Phase 4F.3.1 DB-global concurrency (no shared mutex)', () => {
 
   it('same event race → one INITIAL job', async () => {
     armControlled({ concurrent: '4', perHour: '6', perTick: '1' })
+    process.env.CRAWLER_AI_ACCEPTANCE_MAX_SPEND_USD = '1'
     const shared = createSharedAiDispatchState()
     const crawler = new MemoryCrawlerStore()
     const a = new MemoryAiDispatchStore({ shared, useMemoryLock: false })

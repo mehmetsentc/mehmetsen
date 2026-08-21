@@ -36,8 +36,9 @@ export function getAcceptanceCohortIds(): Set<string> {
 }
 
 /**
- * Absolute acceptance caps (Phase 4D.1).
+ * Absolute acceptance caps (Phase 4D.1 / 4F.4).
  * Env overrides optional; defaults match acceptance: 2 events / 2 requests.
+ * Spend ceiling: unset/0 = disabled; set CRAWLER_AI_ACCEPTANCE_MAX_SPEND_USD for pilot.
  */
 export function acceptanceHardCaps() {
   const maxEvents = Math.max(
@@ -48,7 +49,10 @@ export function acceptanceHardCaps() {
     0,
     Math.round(Number(process.env.CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS?.trim() || '2') || 2)
   )
-  return { maxEvents, maxRequests }
+  const rawSpend = process.env.CRAWLER_AI_ACCEPTANCE_MAX_SPEND_USD?.trim()
+  const parsed = rawSpend != null && rawSpend !== '' ? Number(rawSpend) : 0
+  const maxSpendUsd = Math.max(0, Number.isFinite(parsed) ? parsed : 0)
+  return { maxEvents, maxRequests, maxSpendUsd }
 }
 
 /**

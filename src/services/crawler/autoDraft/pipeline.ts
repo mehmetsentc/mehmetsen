@@ -418,8 +418,16 @@ export async function runControlledAutoDraftTick(opts: {
     if (cutoff && r.timestamp.getTime() < cutoff.getTime()) return false
     return true
   })
-  const acceptanceCapped = autoEnabled && acceptanceSpent.length >= caps.maxRequests
-  if (acceptanceCapped) bump(skipReasons, 'ACCEPTANCE_REQUEST_CAP')
+  const acceptanceSpendUsd = acceptanceSpent.reduce(
+    (s, r) => s + (typeof r.actualCostUsd === 'number' ? r.actualCostUsd : 0),
+    0
+  )
+  const acceptanceRequestCapped = autoEnabled && acceptanceSpent.length >= caps.maxRequests
+  const acceptanceSpendCapped =
+    autoEnabled && caps.maxSpendUsd > 0 && acceptanceSpendUsd >= caps.maxSpendUsd - 1e-12
+  const acceptanceCapped = acceptanceRequestCapped || acceptanceSpendCapped
+  if (acceptanceRequestCapped) bump(skipReasons, 'ACCEPTANCE_REQUEST_CAP')
+  if (acceptanceSpendCapped) bump(skipReasons, 'ACCEPTANCE_SPEND_CAP')
 
   const candidates = await listAutoDraftCandidates(opts.crawlerStore, enqueueLimit, now)
 
@@ -800,6 +808,14 @@ export async function runControlledAutoDraftTick(opts: {
       continue
     }
 
+    // Phase 4F.4 — paid path only Tier A/B (shadowDispatchAllowed). Tier C/D never spend.
+    if (!tier.shadowDispatchAllowed) {
+      result.blocked += 1
+      result.jobsSkipped += 1
+      bump(skipReasons, `ECONOMIC_TIER_${tier.tier}_BLOCKED`)
+      continue
+    }
+
     if (costUnknown || costUsd == null || overCeiling) {
       result.blocked += 1
       result.jobsSkipped += 1
@@ -917,6 +933,10 @@ async function listAutoDraftCandidates(
   })
   const ranked = [...filtered]
     .sort((a, b) => {
+      // Phase 4F.4 quality priority: multi-source (Tier A proxy) before single-source.
+      const multiA = (a.uniqueSourceCount || 0) >= 2 ? 0 : 1
+      const multiB = (b.uniqueSourceCount || 0) >= 2 ? 0 : 1
+      if (multiA !== multiB) return multiA - multiB
       const staleA = a.latestArticleAt
         ? (now.getTime() - a.latestArticleAt.getTime()) / 3_600_000
         : 999

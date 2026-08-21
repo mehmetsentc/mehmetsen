@@ -50,7 +50,7 @@ const NOW = new Date('2026-08-21T12:00:00.000Z')
 const RICH =
   'Manisa merkezde makilik alanda yangın çıktı. Ekipler havadan ve karadan müdahale ediyor. ' +
   'Vatandaşlar bölgeden uzaklaştırıldı. Rüzgar etkisiyle alevler yayıldı. Yetkililer soğutma çalışması başlattı. '.repeat(
-    12
+    40
   )
 
 function armControlled(opts?: { concurrent?: string; perHour?: string; perTick?: string }) {

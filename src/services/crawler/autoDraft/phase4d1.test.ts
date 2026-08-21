@@ -198,7 +198,7 @@ describe('Phase 4D.1 activation cutoff', () => {
   })
 
   it('acceptance caps default 2/2', () => {
-    expect(acceptanceHardCaps()).toEqual({ maxEvents: 2, maxRequests: 2 })
+    expect(acceptanceHardCaps()).toMatchObject({ maxEvents: 2, maxRequests: 2, maxSpendUsd: 0 })
   })
 })
 
