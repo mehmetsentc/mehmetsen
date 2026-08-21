@@ -97,13 +97,13 @@ describe('Phase 4D modes + flags', () => {
 describe('Phase 4D eligibility gate (unpaid)', () => {
   it('AI_READY for multi-source eligible event', () => {
     const g = baseGate()
-    expect(g.status).toBe('AI_READY')
+    expect(g.status).toBe('AUTO_DRAFT_ELIGIBLE')
     expect(g.readyForJob).toBe(true)
   })
 
   it('strong single local source can be AI_READY (no hard min=2)', () => {
     const g = baseGate({ independentSourceCount: 1, uniqueSourceCount: 1, hasLocalGeography: true })
-    expect(g.status).toBe('AI_READY')
+    expect(g.status).toBe('AUTO_DRAFT_ELIGIBLE')
   })
 
   it('weak single source waits', () => {
@@ -215,7 +215,7 @@ describe('Phase 4D budgets', () => {
     const lim = autoDraftBudgetLimits()
     expect(lim.maxCostPerEventUsd).toBe(0.01)
     expect(lim.maxDraftsPerHour).toBe(2)
-    expect(lim.maxDraftsPerDay).toBe(10)
+    expect(lim.maxDraftsPerDay).toBe(6)
     expect(lim.maxDailyCostUsd).toBe(0.05)
     expect(lim.maxMonthlyCostUsd).toBe(5)
     expect(lim.maxConcurrentJobs).toBe(1)

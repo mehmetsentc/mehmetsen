@@ -265,6 +265,11 @@ function mapCluster(row: typeof newsClusters.$inferSelect): NewsClusterRecord {
     contentFingerprint: row.contentFingerprint ?? null,
     draftedContentFingerprint: row.draftedContentFingerprint ?? null,
     autoDraftStatus: row.autoDraftStatus ?? null,
+    machineDraftEligibility: row.machineDraftEligibility ?? null,
+    machineDraftEligibilityReason: row.machineDraftEligibilityReason ?? null,
+    machineDraftEligibilityAt: row.machineDraftEligibilityAt ?? null,
+    machineDraftEligibilityMeta:
+      (row.machineDraftEligibilityMeta as Record<string, unknown> | null) ?? null,
     createdAt: row.createdAt ?? fallback.createdAt,
     updatedAt: row.updatedAt ?? fallback.updatedAt,
   }
@@ -696,6 +701,10 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     assign('contentFingerprint', 'contentFingerprint')
     assign('draftedContentFingerprint', 'draftedContentFingerprint')
     assign('autoDraftStatus', 'autoDraftStatus')
+    assign('machineDraftEligibility', 'machineDraftEligibility')
+    assign('machineDraftEligibilityReason', 'machineDraftEligibilityReason')
+    assign('machineDraftEligibilityAt', 'machineDraftEligibilityAt')
+    assign('machineDraftEligibilityMeta', 'machineDraftEligibilityMeta')
     await this.db().update(newsClusters).set(values).where(eq(newsClusters.id, id))
   }
 

@@ -22,8 +22,10 @@ import {
 import { emptyWindow, periodKeys, tryReserveBudget } from '../aiDispatch/budget'
 import { isControlledAutoDraftEnabled, getCrawlerAiMode } from '../aiMode'
 import {
+  buildMachineEligibilityMeta,
   canCreateAutoDraftJob,
   evaluateAutoDraftGate,
+  toMachineDraftEligibility,
   type AutoDraftGateResult,
 } from './eligibility'
 import { autoDraftBudgetLimits } from './budgetLimits'
@@ -303,8 +305,9 @@ export async function recoverStaleLeases(
 }
 
 /**
- * Evaluate APPROVED_FOR_AI clusters and enqueue jobs only.
- * MODE OFF → zero jobs. Provider OFF → enqueue still allowed; worker stays inert.
+ * Phase 4F.1 Design A — classify machine eligibility + optionally enqueue.
+ * MODE OFF → classify only (0 jobs). Never writes APPROVED_FOR_AI.
+ * Provider OFF → enqueue still allowed when mode ON; worker stays inert.
  */
 export async function runControlledAutoDraftTick(opts: {
   crawlerStore: CrawlerStore
@@ -360,10 +363,9 @@ export async function runControlledAutoDraftTick(opts: {
     if (mode === 'OFF') bump(skipReasons, 'MODE_OFF')
     else if (mode === 'MANUAL_CANARY') bump(skipReasons, 'MANUAL_CANARY_NO_AUTO')
     else bump(skipReasons, 'DISPATCH_OFF')
-    return result
   }
 
-  if (!providerReady) {
+  if (autoEnabled && !providerReady) {
     // Intentional Phase 4E.1: enqueue may proceed; worker will not claim/spend.
     bump(skipReasons, 'PROVIDER_DEFERRED_NOTE')
   }
@@ -389,27 +391,30 @@ export async function runControlledAutoDraftTick(opts: {
     if (cutoff && r.timestamp.getTime() < cutoff.getTime()) return false
     return true
   })
-  if (acceptanceSpent.length >= caps.maxRequests) {
+  const acceptanceCapped = autoEnabled && acceptanceSpent.length >= caps.maxRequests
+  if (acceptanceCapped) {
     bump(skipReasons, 'ACCEPTANCE_REQUEST_CAP')
-    return result
   }
 
-  // Wide ranked pool — enqueueLimit applied AFTER cutoff/gate skips (Phase 4E.1 P0 fix).
-  const candidates = await listApprovedCandidates(opts.crawlerStore, enqueueLimit, now)
+  // Wide ranked pool — Design A: NONE + APPROVED_FOR_AI (human never required for auto).
+  const candidates = await listAutoDraftCandidates(opts.crawlerStore, enqueueLimit, now)
   let concurrent = await opts.aiStore.countActiveJobs()
 
   for (const cluster of candidates) {
-    if (result.jobsCreated >= enqueueLimit) {
-      bump(skipReasons, 'ENQUEUE_LIMIT_REACHED')
-      break
-    }
-    if (result.jobsCreated >= caps.maxEvents) {
-      bump(skipReasons, 'ACCEPTANCE_EVENT_CAP')
-      break
+    // Always classify; only stop enqueue loop when caps hit (still classify remaining? skip for cost).
+    if (autoEnabled && !acceptanceCapped) {
+      if (result.jobsCreated >= enqueueLimit) {
+        bump(skipReasons, 'ENQUEUE_LIMIT_REACHED')
+        // Continue classifying without enqueue
+      }
     }
 
     result.evaluated += 1
     result.candidatesScanned += 1
+
+    // Never mutate human editorial decision — snapshot for audit only.
+    const humanDecisionBefore = cluster.editorialDecision
+
     const members = await membersFor(opts.crawlerStore, cluster.id)
     const existing = await opts.aiStore.getInitialJob(cluster.id)
     const hasActive =
@@ -451,6 +456,13 @@ export async function runControlledAutoDraftTick(opts: {
         materialUpdateReason: revision.reason,
         contentFingerprint: fp,
         autoDraftStatus: 'UPDATE_AVAILABLE',
+        machineDraftEligibility: 'UPDATE_AVAILABLE',
+        machineDraftEligibilityReason: revision.reason,
+        machineDraftEligibilityAt: now,
+        machineDraftEligibilityMeta: {
+          editorialDecision: humanDecisionBefore,
+          gateReason: 'material_update_after_draft',
+        },
       })
       result.blocked += 1
       result.jobsSkipped += 1
@@ -476,7 +488,7 @@ export async function runControlledAutoDraftTick(opts: {
     const costUnknown = !costProbe.known || costUsd == null
     const overCeiling = !costUnknown && (costUsd ?? 0) > limits.maxCostPerEventUsd + 1e-12
 
-    const gate = evaluateAutoDraftGate({
+    const gateInput = {
       clusterAiEligibility: cluster.aiEligibility,
       clusterAiEligibilityReason: cluster.aiEligibilityReason,
       editorialDecision: cluster.editorialDecision,
@@ -496,23 +508,57 @@ export async function runControlledAutoDraftTick(opts: {
       importanceScore: cluster.importanceScore,
       costBlocked: costUnknown || overCeiling,
       contentFingerprintChanged: Boolean(draftedFp && draftedFp !== fp),
-    })
+    }
+    const gate = evaluateAutoDraftGate(gateInput)
 
     if (gate.readyForJob) result.aiReady += 1
     if (gate.status === 'ALREADY_PUBLISHED') result.publishedBlocked += 1
     if (gate.status === 'ALREADY_DRAFTED') result.existingDraftBlocked += 1
     if (gate.status === 'DUPLICATE') result.duplicateBlocked += 1
 
-    await opts.crawlerStore.updateCluster(cluster.id, {
+    const machineStatus = toMachineDraftEligibility(gate)
+    const machineMeta = buildMachineEligibilityMeta({
+      gate,
+      gateInput,
+      cutoffIso: cutoff ? cutoff.toISOString() : null,
       contentFingerprint: fp,
-      autoDraftStatus: gate.status,
     })
 
+    // Persist machine eligibility ONLY — never touch editorialDecision / APPROVED_FOR_AI.
+    await opts.crawlerStore.updateCluster(cluster.id, {
+      contentFingerprint: fp,
+      autoDraftStatus: gate.readyForJob ? 'AUTO_DRAFT_ELIGIBLE' : gate.status,
+      machineDraftEligibility: machineStatus,
+      machineDraftEligibilityReason: gate.reason,
+      machineDraftEligibilityAt: now,
+      machineDraftEligibilityMeta: machineMeta,
+    })
+
+    // Invariant: human decision unchanged
+    const after = await opts.crawlerStore.getCluster(cluster.id)
+    if (after && after.editorialDecision !== humanDecisionBefore) {
+      bump(skipReasons, 'HUMAN_DECISION_MUTATION_BLOCKED')
+      // Restore human decision if somehow mutated (should never happen)
+      await opts.crawlerStore.updateCluster(cluster.id, {
+        editorialDecision: humanDecisionBefore as NewsClusterRecord['editorialDecision'],
+      })
+    }
+
+    const eventAt = cluster.createdAt || cluster.firstSeenAt || cluster.editorialDecidedAt
     const activation = isEventEligibleForAutoDraft({
       clusterId: cluster.id,
-      decidedAt: cluster.editorialDecidedAt || cluster.updatedAt || cluster.createdAt,
+      eventAt,
+      decidedAt: eventAt,
     })
-    if (autoEnabled && !activation.ok) {
+
+    // Classify-only when mode OFF / dispatch OFF / acceptance capped
+    if (!autoEnabled || acceptanceCapped) {
+      result.jobsSkipped += 1
+      if (!autoEnabled) bump(skipReasons, 'CLASSIFIED_NO_ENQUEUE')
+      continue
+    }
+
+    if (!activation.ok) {
       const code =
         activation.reason === 'before_cutoff'
           ? 'BEFORE_ACTIVATION_CUTOFF'
@@ -524,10 +570,12 @@ export async function runControlledAutoDraftTick(opts: {
       result.blocked += 1
       result.jobsSkipped += 1
       bump(skipReasons, code)
-      // Keep AI_READY visible when gate passed — firewall is activation, not quality.
-      await opts.crawlerStore.updateCluster(cluster.id, {
-        autoDraftStatus: gate.readyForJob ? 'AI_READY' : gate.status,
-      })
+      continue
+    }
+
+    if (result.jobsCreated >= enqueueLimit || result.jobsCreated >= caps.maxEvents) {
+      result.jobsSkipped += 1
+      bump(skipReasons, result.jobsCreated >= caps.maxEvents ? 'ACCEPTANCE_EVENT_CAP' : 'ENQUEUE_LIMIT_REACHED')
       continue
     }
 
@@ -579,7 +627,6 @@ export async function runControlledAutoDraftTick(opts: {
       result.jobsSkipped += 1
       result.budgetBlocked += 1
       const reason = String(reserve.reason)
-      // Normalize hourly/daily limit codes for observability
       const code =
         reason === 'HOURLY_REQUEST_LIMIT'
           ? 'HOURLY_LIMIT'
@@ -595,7 +642,6 @@ export async function runControlledAutoDraftTick(opts: {
     }
 
     // Enqueue as PENDING — worker claims into PROCESSING with lease.
-    // Budget reserved at enqueue; worker settles after paid execution (if provider ON).
     const job = jobStub(cluster, gate, 'PENDING', {
       estimatedInputTokens: tokenIn,
       estimatedOutputTokens: tokenOut,
@@ -630,56 +676,60 @@ export async function runControlledAutoDraftTick(opts: {
 }
 
 /**
- * Ranked APPROVED_FOR_AI scan pool.
- * Returns more rows than enqueueLimit so BEFORE_CUTOFF / drafted skips
- * do not starve a single fresh eligible event when maxEventsPerTick=1.
+ * Design A ranked scan pool: unpublished events not human-REJECTED/ARCHIVED.
+ * Includes editorialDecision=NONE (machine path) and APPROVED_FOR_AI (manual path).
+ * Wider than enqueueLimit so BEFORE_CUTOFF skips cannot starve fresh events.
  */
-async function listApprovedCandidates(
+async function listAutoDraftCandidates(
   store: CrawlerStore,
   enqueueLimit: number,
   now = new Date()
 ): Promise<NewsClusterRecord[]> {
   const scanLimit = Math.max(enqueueLimit * 20, 80)
-  const pool = await store.listClusters({
-    editorialDecision: 'APPROVED_FOR_AI',
-    limit: scanLimit,
+  const pool = await store.listClusters({ limit: scanLimit * 2 })
+  const filtered = pool.filter((c) => {
+    if (c.editorialDecision === 'REJECTED' || c.editorialDecision === 'ARCHIVED') return false
+    return true
   })
-  return [...pool].sort((a, b) => {
-    const staleA = a.latestArticleAt
-      ? (now.getTime() - a.latestArticleAt.getTime()) / 3_600_000
-      : 999
-    const staleB = b.latestArticleAt
-      ? (now.getTime() - b.latestArticleAt.getTime()) / 3_600_000
-      : 999
-    return compareEditorialAutoDraftRank(
-      {
-        editorialPriority: a.editorialPriority,
-        independentSourceCount: a.uniqueSourceCount,
-        importanceScore: a.importanceScore,
-        staleHours: staleA,
-        avgHealth: 70,
-        bestWordCount: 300,
-        bestConfidence: a.clusterConfidence ?? 0.7,
-        city: a.city,
-        district: a.district,
-        region: a.region,
-        countryCode: a.countryCode,
-      },
-      {
-        editorialPriority: b.editorialPriority,
-        independentSourceCount: b.uniqueSourceCount,
-        importanceScore: b.importanceScore,
-        staleHours: staleB,
-        avgHealth: 70,
-        bestWordCount: 300,
-        bestConfidence: b.clusterConfidence ?? 0.7,
-        city: b.city,
-        district: b.district,
-        region: b.region,
-        countryCode: b.countryCode,
-      }
-    )
-  })
+  const ranked = [...filtered]
+    .sort((a, b) => {
+      const staleA = a.latestArticleAt
+        ? (now.getTime() - a.latestArticleAt.getTime()) / 3_600_000
+        : 999
+      const staleB = b.latestArticleAt
+        ? (now.getTime() - b.latestArticleAt.getTime()) / 3_600_000
+        : 999
+      return compareEditorialAutoDraftRank(
+        {
+          editorialPriority: a.editorialPriority,
+          independentSourceCount: a.uniqueSourceCount,
+          importanceScore: a.importanceScore,
+          staleHours: staleA,
+          avgHealth: 70,
+          bestWordCount: 300,
+          bestConfidence: a.clusterConfidence ?? 0.7,
+          city: a.city,
+          district: a.district,
+          region: a.region,
+          countryCode: a.countryCode,
+        },
+        {
+          editorialPriority: b.editorialPriority,
+          independentSourceCount: b.uniqueSourceCount,
+          importanceScore: b.importanceScore,
+          staleHours: staleB,
+          avgHealth: 70,
+          bestWordCount: 300,
+          bestConfidence: b.clusterConfidence ?? 0.7,
+          city: b.city,
+          district: b.district,
+          region: b.region,
+          countryCode: b.countryCode,
+        }
+      )
+    })
+    .slice(0, scanLimit)
+  return ranked
 }
 
 /** Explicit: publication is never performed by this pipeline. */

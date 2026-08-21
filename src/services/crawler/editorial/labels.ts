@@ -47,6 +47,23 @@ export const EDITORIAL_PRIORITY_LABELS: Record<string, string> = {
   BREAKING: 'Son Dakika',
 }
 
+export const MACHINE_DRAFT_ELIGIBILITY_LABELS: Record<string, string> = {
+  AUTO_DRAFT_ELIGIBLE: 'Otomatik seçim — AI uygun',
+  WAITING_FOR_MORE_SOURCES: 'Otomatik seçim — kaynak bekleniyor',
+  LOW_QUALITY: 'Otomatik seçim — düşük kalite',
+  TOO_THIN: 'Otomatik seçim — çok ince',
+  DUPLICATE: 'Otomatik seçim — mükerrer',
+  STALE: 'Otomatik seçim — eski',
+  EDITOR_REJECTED: 'Otomatik seçim — editör engeli',
+  ALREADY_DRAFTED: 'Otomatik seçim — taslak var',
+  ALREADY_PUBLISHED: 'Otomatik seçim — yayınlandı',
+  COST_BLOCKED: 'Otomatik seçim — maliyet engeli',
+  MANUAL_ONLY: 'Otomatik seçim — yalnızca manuel',
+  UPDATE_AVAILABLE: 'Otomatik seçim — güncelleme var',
+  PROVIDER_BLOCKED: 'Otomatik seçim — provider engeli',
+  BLOCKED: 'Otomatik seçim — engelli',
+}
+
 export const QUALITY_STATUS_LABELS: Record<string, string> = {
   EXTRACTED: 'Çıkarıldı',
   GOOD: 'İyi',
@@ -75,6 +92,7 @@ export const CRAWLER_STATUS_LABELS: Record<string, string> = {
   BORDERLINE: 'Sınırda',
   CLOSED: 'Kapalı',
   AI_READY: 'HAZIR',
+  AUTO_DRAFT_ELIGIBLE: 'Otomatik AI uygun',
   WAITING_FOR_MORE_SOURCES: 'Kaynak bekleniyor',
   LOW_QUALITY: 'Düşük kalite',
   TOO_THIN: 'Çok ince',
@@ -87,6 +105,7 @@ export const CRAWLER_STATUS_LABELS: Record<string, string> = {
   MANUAL_ONLY: 'Yalnızca manuel',
   UPDATE_AVAILABLE: 'Güncelleme mevcut',
   PROVIDER_BLOCKED: 'Provider engeli',
+  BLOCKED: 'Engelli',
 }
 
 export const FAILURE_REASON_TR: Record<CrawlerFailureClass, string> = {

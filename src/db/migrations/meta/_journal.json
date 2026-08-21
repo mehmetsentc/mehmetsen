@@ -120,6 +120,13 @@
       "when": 1787218000000,
       "tag": "0016_phase4d3_widen_editorial_news_id",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787319000000,
+      "tag": "0017_phase4f1_machine_eligibility",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,8 @@
 /**
- * Phase 4D.1 — activation cutoff + acceptance cohort.
- * Historical APPROVED_FOR_AI before T must not auto-run when mode is enabled.
+ * Phase 4D.1 / 4F.1 — activation cutoff + acceptance cohort.
+ * Historical events before T must not auto-run when mode is enabled.
+ * Cutoff is required for the AUTOMATIC path; unset → refuse (CUTOFF_UNSET).
+ * Manual canary / manual approve paths bypass at their own call sites.
  */
 
 export type ActivationGateResult =
@@ -8,7 +10,7 @@ export type ActivationGateResult =
   | { ok: false; reason: 'before_cutoff' | 'cutoff_unset' | 'not_in_cohort' }
 
 /**
- * ISO timestamp: only events approved/decided at-or-after this may auto-dispatch.
+ * ISO timestamp: only events created at-or-after this may auto-dispatch.
  * Env: CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER
  */
 export function getAutoDraftEligibleAfter(): Date | null {
@@ -50,19 +52,24 @@ export function acceptanceHardCaps() {
 }
 
 /**
- * Decide whether automatic paid execution is allowed for this event.
- * Manual canary / manual retry bypass this gate at their own call sites.
+ * Decide whether AUTOMATIC paid enqueue is allowed for this event.
+ * Design A uses event creation time (not human editorialDecidedAt).
  *
  * Requires either:
  * - clusterId in CRAWLER_AI_ACCEPTANCE_COHORT_IDS, or
- * - editorial decidedAt >= CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER
+ * - eventAt >= CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER
  *
  * If cutoff unset and not in cohort → refuse (protects historical backlog).
  */
 export function isEventEligibleForAutoDraft(input: {
   clusterId: string
-  /** Prefer editorialDecidedAt; fall back to updatedAt / createdAt */
-  decidedAt: Date | null
+  /**
+   * Event birth timestamp for Design A automatic path.
+   * Prefer createdAt / firstSeenAt — do NOT require editorialDecidedAt.
+   */
+  eventAt?: Date | null
+  /** Prefer eventAt; decidedAt kept for older call sites. */
+  decidedAt?: Date | null
 }): ActivationGateResult {
   const cohort = getAcceptanceCohortIds()
   if (cohort.has(input.clusterId)) {
@@ -74,8 +81,8 @@ export function isEventEligibleForAutoDraft(input: {
     return { ok: false, reason: 'cutoff_unset' }
   }
 
-  const decided = input.decidedAt
-  if (!decided || decided.getTime() < cutoff.getTime()) {
+  const at = input.eventAt ?? input.decidedAt ?? null
+  if (!at || at.getTime() < cutoff.getTime()) {
     return { ok: false, reason: 'before_cutoff' }
   }
   return { ok: true, reason: 'after_cutoff' }

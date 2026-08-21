@@ -8,7 +8,7 @@ import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
 import { ApproveForAiModal } from '@/components/admin/crawler/ApproveForAiModal'
 import { RejectReasonModal } from '@/components/admin/crawler/RejectReasonModal'
 import { auth } from '@/lib/firebase/auth'
-import { EDITORIAL_DECISION_LABELS, EDITORIAL_PRIORITY_LABELS, CRAWLER_STATUS_LABELS } from '@/services/crawler/editorial/labels'
+import { EDITORIAL_DECISION_LABELS, EDITORIAL_PRIORITY_LABELS, CRAWLER_STATUS_LABELS, MACHINE_DRAFT_ELIGIBILITY_LABELS } from '@/services/crawler/editorial/labels'
 import {
   crawlerEditorialStaleHours,
   requiresStaleSecondConfirm,
@@ -120,9 +120,23 @@ export default function ClusterDetailPage() {
             </p>
           ) : null}
           <p>
-            Algoritmik: {CRAWLER_STATUS_LABELS[String(cluster.aiEligibility)] || String(cluster.aiEligibility)} · Editör:{' '}
+            Algoritmik: {CRAWLER_STATUS_LABELS[String(cluster.aiEligibility)] || String(cluster.aiEligibility)} ·{' '}
+            <span className="font-medium">Editoryal karar:</span>{' '}
             {EDITORIAL_DECISION_LABELS[cluster.editorialDecision as keyof typeof EDITORIAL_DECISION_LABELS] || '—'} · Öncelik:{' '}
             {EDITORIAL_PRIORITY_LABELS[String(cluster.editorialPriority || 'NORMAL')]}
+          </p>
+          <p className="text-sm">
+            <span className="font-medium">AI uygunluğu / Otomatik seçim:</span>{' '}
+            {String(
+              cluster.machineDraftEligibilityLabel ||
+                MACHINE_DRAFT_ELIGIBILITY_LABELS[String(cluster.machineDraftEligibility || '')] ||
+                CRAWLER_STATUS_LABELS[String(cluster.autoDraftStatus || '')] ||
+                'Henüz sınıflandırılmadı'
+            )}
+            {cluster.machineDraftEligibilityReason ? ` · ${String(cluster.machineDraftEligibilityReason)}` : ''}
+          </p>
+          <p className="text-xs text-[rgb(var(--color-muted))]">
+            Otomatik seçim editör onayı değildir. APPROVED_FOR_AI yalnızca insan kararıdır.
           </p>
           <p>
             Önem {String(cluster.importanceScore)} · Güven {String(cluster.clusterConfidence)} · Yaş {String(cluster.ageHours)}s · Keşif{' '}

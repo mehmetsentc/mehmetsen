@@ -21,12 +21,12 @@ function clamp(n: number, min: number, max: number): number {
 }
 
 /**
- * Phase 4E controlled rollout hard defaults (server-side).
- * Per-event $0.01 · 2/hour · 10/day · $0.05/day · $5/month.
+ * Phase 4E / 4F.1 controlled rollout hard defaults (server-side).
+ * Per-event $0.01 · 2/hour · 6/day · $0.05/day · $5/month.
  */
 export function autoDraftBudgetLimits() {
   return {
-    /** Hard per-event ceiling — Phase 4E default $0.01 */
+    /** Hard per-event ceiling — Phase 4E/4F default $0.01 */
     maxCostPerEventUsd: Math.max(
       0,
       numEnv('AI_MAX_COST_PER_EVENT_USD', 'CRAWLER_AI_MAX_COST_USD_PER_EVENT', 0.01)
@@ -37,7 +37,7 @@ export function autoDraftBudgetLimits() {
       10_000
     ),
     maxDraftsPerDay: clamp(
-      Math.round(numEnv('AI_MAX_DRAFTS_PER_DAY', 'CRAWLER_AI_MAX_REQUESTS_PER_DAY', 10)),
+      Math.round(numEnv('AI_MAX_DRAFTS_PER_DAY', 'CRAWLER_AI_MAX_REQUESTS_PER_DAY', 6)),
       0,
       50_000
     ),

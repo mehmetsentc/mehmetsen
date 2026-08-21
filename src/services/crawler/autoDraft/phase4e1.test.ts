@@ -149,6 +149,10 @@ async function seedEvent(
     publishedNewsId: opts.publishedNewsId ?? null,
     latestArticleAt: opts.decidedAt,
     lastSeenAt: opts.decidedAt,
+    firstSeenAt: opts.decidedAt,
+    createdAt: opts.decidedAt,
+    updatedAt: opts.decidedAt,
+    city: opts.city ?? 'Manisa',
   })
   return { cluster, sources, articles }
 }

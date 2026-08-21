@@ -197,7 +197,7 @@ describe('Phase 4E eligibility + STRONG_SINGLE_SOURCE', () => {
   })
 
   it('multi-source preferred; strong single qualifies; low health rejected', () => {
-    expect(baseGate().status).toBe('AI_READY')
+    expect(baseGate().status).toBe('AUTO_DRAFT_ELIGIBLE')
     expect(baseGate().reason).toBe('multi_source_ready')
     const strongInput = {
       clusterAiEligibility: 'WATCHING',
@@ -218,7 +218,7 @@ describe('Phase 4E eligibility + STRONG_SINGLE_SOURCE', () => {
       exactDuplicateOnly: false,
     }
     const strong = evaluateAutoDraftGate(strongInput)
-    expect(strong.status).toBe('AI_READY')
+    expect(strong.status).toBe('AUTO_DRAFT_ELIGIBLE')
     expect(strong.reason).toBe('STRONG_SINGLE_SOURCE')
     expect(evaluateStrongSingleSource(strongInput).path).toBe('high_quality_trusted')
 
@@ -401,7 +401,7 @@ describe('Phase 4E cost limits', () => {
     const lim = autoDraftBudgetLimits()
     expect(lim.maxCostPerEventUsd).toBe(0.01)
     expect(lim.maxDraftsPerHour).toBe(2)
-    expect(lim.maxDraftsPerDay).toBe(10)
+    expect(lim.maxDraftsPerDay).toBe(6)
     expect(lim.maxDailyCostUsd).toBe(0.05)
     expect(lim.maxMonthlyCostUsd).toBe(5)
     expect(lim.maxConcurrentJobs).toBe(1)

@@ -6,7 +6,7 @@
 
 import type { NewsClusterRecord } from '../types'
 import { eventAgeHours, sourceDiversityLabel } from './controlPlane'
-import { EDITORIAL_DECISION_LABELS, EDITORIAL_PRIORITY_LABELS, CRAWLER_STATUS_LABELS } from './labels'
+import { EDITORIAL_DECISION_LABELS, EDITORIAL_PRIORITY_LABELS, CRAWLER_STATUS_LABELS, MACHINE_DRAFT_ELIGIBILITY_LABELS } from './labels'
 import { cmsLabel } from '@/services/cms/uiLabels'
 
 export interface EventDeskRow {
@@ -33,6 +33,10 @@ export interface EventDeskRow {
   lastUpdateAt: string | Date
   editorialDecision: string
   editorialDecisionLabel: string
+  /** Phase 4F.1 — machine automatic selection (never shown as editor approval). */
+  machineDraftEligibility?: string | null
+  machineDraftEligibilityLabel?: string | null
+  machineDraftEligibilityReason?: string | null
   aiEligibility: string
   aiEligibilityLabel: string
   autoDraftStatus?: string | null
@@ -86,6 +90,13 @@ export function toEventDeskRow(cluster: NewsClusterRecord, now = new Date()): Ev
     lastUpdateAt: cluster.latestArticleAt || cluster.lastSeenAt || cluster.updatedAt,
     editorialDecision: decision,
     editorialDecisionLabel: EDITORIAL_DECISION_LABELS[decision as keyof typeof EDITORIAL_DECISION_LABELS] || cmsLabel(decision),
+    machineDraftEligibility: cluster.machineDraftEligibility ?? null,
+    machineDraftEligibilityLabel: cluster.machineDraftEligibility
+      ? MACHINE_DRAFT_ELIGIBILITY_LABELS[cluster.machineDraftEligibility] ||
+        CRAWLER_STATUS_LABELS[cluster.machineDraftEligibility] ||
+        cmsLabel(cluster.machineDraftEligibility)
+      : null,
+    machineDraftEligibilityReason: cluster.machineDraftEligibilityReason ?? null,
     aiEligibility: eligibility,
     aiEligibilityLabel: CRAWLER_STATUS_LABELS[eligibility] || cmsLabel(eligibility),
     autoDraftStatus: cluster.autoDraftStatus ?? null,

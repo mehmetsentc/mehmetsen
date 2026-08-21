@@ -1,10 +1,23 @@
 /**
- * Phase 4D/4E deterministic AI eligibility gate (unpaid).
+ * Phase 4D/4E/4F.1 deterministic AI eligibility gate (unpaid).
  * Unit of work = EVENT. Does not call any LLM.
+ *
+ * Design A (Phase 4F.1):
+ * - Machine eligibility is SEPARATE from human editorialDecision.
+ * - Machine NEVER writes APPROVED_FOR_AI (human-only).
+ * - Automatic path: AI_READY / AUTO_DRAFT_ELIGIBLE + mode + cutoff + budget → job.
+ * - Manual path: human APPROVED_FOR_AI / AI Taslağı still valid entry.
+ *
+ * WATCHING rule:
+ * - Weak single-source WATCHING → WAITING_FOR_MORE_SOURCES (no spend).
+ * - Multi-source (ind≥2) that passes quality → AUTO_DRAFT_ELIGIBLE.
+ * - Strong-single thresholds → AUTO_DRAFT_ELIGIBLE.
+ * Do not turn every WATCHING row into spend.
  */
 
 export const AUTO_DRAFT_GATE_STATUSES = [
   'AI_READY',
+  'AUTO_DRAFT_ELIGIBLE',
   'WAITING_FOR_MORE_SOURCES',
   'LOW_QUALITY',
   'TOO_THIN',
@@ -20,7 +33,7 @@ export const AUTO_DRAFT_GATE_STATUSES = [
 
 export type AutoDraftGateStatus = (typeof AUTO_DRAFT_GATE_STATUSES)[number]
 
-/** Formal STRONG_SINGLE_SOURCE thresholds (Phase 4D.3 / 4E). No fake city/importance. */
+/** Formal STRONG_SINGLE_SOURCE thresholds (Phase 4D.3 / 4E / 4F.1). Do not lower. */
 export const STRONG_SINGLE_SOURCE_THRESHOLDS = {
   localOrBreaking: {
     bestWordCountMin: 120,
@@ -70,9 +83,44 @@ export type AutoDraftGateInput = {
 export type AutoDraftGateResult = {
   status: AutoDraftGateStatus
   reason: string
-  /** True only when status is AI_READY — still needs mode+budget+idempotency+dispatch. */
+  /** True only when status is AI_READY / AUTO_DRAFT_ELIGIBLE — still needs mode+budget+idempotency+dispatch. */
   readyForJob: boolean
   strongSinglePath?: 'local_or_breaking' | 'high_quality_trusted' | null
+}
+
+/** Persisted machine eligibility (Design A). Never equals human APPROVED_FOR_AI. */
+export type MachineDraftEligibilityStatus =
+  | 'AUTO_DRAFT_ELIGIBLE'
+  | 'WAITING_FOR_MORE_SOURCES'
+  | 'LOW_QUALITY'
+  | 'TOO_THIN'
+  | 'DUPLICATE'
+  | 'STALE'
+  | 'EDITOR_REJECTED'
+  | 'ALREADY_DRAFTED'
+  | 'ALREADY_PUBLISHED'
+  | 'COST_BLOCKED'
+  | 'MANUAL_ONLY'
+  | 'UPDATE_AVAILABLE'
+  | 'PROVIDER_BLOCKED'
+  | 'BLOCKED'
+
+export type MachineEligibilityAuditMeta = {
+  independentSourceCount: number
+  uniqueSourceCount: number
+  bestWordCount: number
+  bestConfidence: number
+  avgHealth: number
+  importanceScore: number
+  staleHours: number
+  gateStatus: string
+  gateReason: string
+  strongSinglePath: string | null
+  cutoffIso: string | null
+  contentFingerprint: string | null
+  /** Human editorial decision at classification time — never mutated by machine. */
+  editorialDecision: string | null
+  clusterAiEligibility: string
 }
 
 export type EligibilityScoreBreakdown = {
@@ -127,7 +175,9 @@ export function evaluateStrongSingleSource(input: AutoDraftGateInput): {
 
 /**
  * Multi-source preferred but NOT hard-coded min=2 globally.
- * Strong local/breaking single source may be AI_READY.
+ * Strong local/breaking / high-quality trusted single source may be AI_READY.
+ *
+ * WATCHING: weak single stays waiting; multi-source or strong-single may promote.
  */
 export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateResult {
   if (input.publishedNewsId) {
@@ -180,15 +230,16 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
 
   const strong = evaluateStrongSingleSource(input)
   const strongSingle = strong.ok
+  const multiSourceReady = input.independentSourceCount >= 2
 
-  const waiting =
-    (input.clusterAiEligibility === 'WATCHING' && !strongSingle) ||
-    (input.independentSourceCount < 2 && !strongSingle)
-
-  if (waiting) {
+  // Weak single (incl. WATCHING without strong-single) → wait; do not spend.
+  if (!multiSourceReady && !strongSingle) {
     return {
       status: 'WAITING_FOR_MORE_SOURCES',
-      reason: 'single_source_waiting',
+      reason:
+        input.clusterAiEligibility === 'WATCHING'
+          ? 'watching_weak_single'
+          : 'single_source_waiting',
       readyForJob: false,
       strongSinglePath: null,
     }
@@ -198,7 +249,8 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
     input.clusterAiEligibility !== 'ELIGIBLE' &&
     input.clusterAiEligibility !== 'HIGH_PRIORITY' &&
     input.clusterAiEligibility !== 'WATCHING' &&
-    !strongSingle
+    !strongSingle &&
+    !multiSourceReady
   ) {
     return {
       status: 'WAITING_FOR_MORE_SOURCES',
@@ -208,24 +260,75 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
     }
   }
 
+  const reason = multiSourceReady
+    ? 'multi_source_ready'
+    : strong.path === 'high_quality_trusted'
+      ? 'STRONG_SINGLE_SOURCE'
+      : strongSingle
+        ? 'strong_single_source'
+        : 'eligible_quality'
+
   return {
-    status: 'AI_READY',
-    reason:
-      input.independentSourceCount >= 2
-        ? 'multi_source_ready'
-        : strong.path === 'high_quality_trusted'
-          ? 'STRONG_SINGLE_SOURCE'
-          : strongSingle
-            ? 'strong_single_source'
-            : 'eligible_quality',
+    status: 'AUTO_DRAFT_ELIGIBLE',
+    reason,
     readyForJob: true,
-    strongSinglePath: input.independentSourceCount >= 2 ? null : strong.path,
+    strongSinglePath: multiSourceReady ? null : strong.path,
+  }
+}
+
+/** Map gate status → persisted machine eligibility (never APPROVED_FOR_AI). */
+export function toMachineDraftEligibility(
+  gate: AutoDraftGateResult
+): MachineDraftEligibilityStatus {
+  if (gate.readyForJob || gate.status === 'AI_READY' || gate.status === 'AUTO_DRAFT_ELIGIBLE') {
+    return 'AUTO_DRAFT_ELIGIBLE'
+  }
+  if (gate.status === 'WAITING_FOR_MORE_SOURCES') return 'WAITING_FOR_MORE_SOURCES'
+  if (
+    gate.status === 'LOW_QUALITY' ||
+    gate.status === 'TOO_THIN' ||
+    gate.status === 'DUPLICATE' ||
+    gate.status === 'STALE' ||
+    gate.status === 'EDITOR_REJECTED' ||
+    gate.status === 'ALREADY_DRAFTED' ||
+    gate.status === 'ALREADY_PUBLISHED' ||
+    gate.status === 'COST_BLOCKED' ||
+    gate.status === 'MANUAL_ONLY' ||
+    gate.status === 'UPDATE_AVAILABLE'
+  ) {
+    return gate.status
+  }
+  return 'BLOCKED'
+}
+
+export function buildMachineEligibilityMeta(input: {
+  gate: AutoDraftGateResult
+  gateInput: AutoDraftGateInput
+  cutoffIso: string | null
+  contentFingerprint: string | null
+}): MachineEligibilityAuditMeta {
+  return {
+    independentSourceCount: input.gateInput.independentSourceCount,
+    uniqueSourceCount: input.gateInput.uniqueSourceCount,
+    bestWordCount: input.gateInput.bestWordCount,
+    bestConfidence: input.gateInput.bestConfidence,
+    avgHealth: input.gateInput.avgHealth,
+    importanceScore: input.gateInput.importanceScore,
+    staleHours: Number(input.gateInput.staleHours.toFixed(2)),
+    gateStatus: input.gate.status,
+    gateReason: input.gate.reason,
+    strongSinglePath: input.gate.strongSinglePath ?? null,
+    cutoffIso: input.cutoffIso,
+    contentFingerprint: input.contentFingerprint,
+    editorialDecision: input.gateInput.editorialDecision,
+    clusterAiEligibility: input.gateInput.clusterAiEligibility,
   }
 }
 
 /**
- * APPROVED_FOR_AI alone never authorizes spend.
- * Job creation requires AI_READY + mode + budget + idempotency + dispatch.
+ * Design A — automatic job creation.
+ * Does NOT require APPROVED_FOR_AI. Human REJECTED/ARCHIVED already fail the gate.
+ * APPROVED_FOR_AI alone never authorizes spend without mode+budget+AI_READY.
  */
 export function canCreateAutoDraftJob(input: {
   gate: AutoDraftGateResult
@@ -237,13 +340,35 @@ export function canCreateAutoDraftJob(input: {
   if (!input.autoDraftModeEnabled) {
     return { ok: false, reason: 'MODE_OR_DISPATCH_OFF' }
   }
-  if (input.editorialDecision !== 'APPROVED_FOR_AI') {
-    return { ok: false, reason: 'NOT_APPROVED_FOR_AI' }
+  if (input.editorialDecision === 'REJECTED' || input.editorialDecision === 'ARCHIVED') {
+    return { ok: false, reason: 'EDITOR_REJECTED' }
   }
-  if (!input.gate.readyForJob || input.gate.status !== 'AI_READY') {
+  if (!input.gate.readyForJob) {
+    return { ok: false, reason: input.gate.status }
+  }
+  if (input.gate.status !== 'AI_READY' && input.gate.status !== 'AUTO_DRAFT_ELIGIBLE') {
     return { ok: false, reason: input.gate.status }
   }
   if (!input.budgetOk) return { ok: false, reason: 'BUDGET_BLOCKED' }
   if (!input.idempotencyOk) return { ok: false, reason: 'IDEMPOTENCY_BLOCKED' }
   return { ok: true, reason: 'ok' }
+}
+
+/** Manual path still valid: human approved + gate ready (same worker). */
+export function canCreateManualApprovedJob(input: {
+  gate: AutoDraftGateResult
+  editorialDecision: string | null
+  autoDraftModeEnabled: boolean
+  budgetOk: boolean
+  idempotencyOk: boolean
+}): { ok: boolean; reason: string } {
+  if (input.editorialDecision !== 'APPROVED_FOR_AI') {
+    return { ok: false, reason: 'NOT_APPROVED_FOR_AI' }
+  }
+  return canCreateAutoDraftJob(input)
+}
+
+/** Publication is never automatic. */
+export function autoDraftMayPublish(): false {
+  return false
 }

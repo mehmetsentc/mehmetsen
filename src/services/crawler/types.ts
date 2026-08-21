@@ -301,6 +301,7 @@ export type ClusterAiEligibility = 'REJECTED' | 'WATCHING' | 'ELIGIBLE' | 'HIGH_
 /** Phase 4D unpaid gate statuses (runtime / auto_draft_status column). */
 export type AutoDraftStatus =
   | 'AI_READY'
+  | 'AUTO_DRAFT_ELIGIBLE'
   | 'WAITING_FOR_MORE_SOURCES'
   | 'LOW_QUALITY'
   | 'TOO_THIN'
@@ -313,6 +314,26 @@ export type AutoDraftStatus =
   | 'MANUAL_ONLY'
   | 'UPDATE_AVAILABLE'
   | 'PROVIDER_BLOCKED'
+
+/**
+ * Phase 4F.1 — machine auto-draft eligibility (Design A).
+ * Distinct from human editorialDecision / APPROVED_FOR_AI.
+ */
+export type MachineDraftEligibility =
+  | 'AUTO_DRAFT_ELIGIBLE'
+  | 'WAITING_FOR_MORE_SOURCES'
+  | 'LOW_QUALITY'
+  | 'TOO_THIN'
+  | 'DUPLICATE'
+  | 'STALE'
+  | 'EDITOR_REJECTED'
+  | 'ALREADY_DRAFTED'
+  | 'ALREADY_PUBLISHED'
+  | 'COST_BLOCKED'
+  | 'MANUAL_ONLY'
+  | 'UPDATE_AVAILABLE'
+  | 'PROVIDER_BLOCKED'
+  | 'BLOCKED'
 export type ClusterMatchBand = 'HIGH' | 'BORDERLINE' | 'LOW'
 
 export interface ClusterScoreBreakdown {
@@ -394,6 +415,11 @@ export interface NewsClusterRecord {
   draftedContentFingerprint?: string | null
   /** Phase 4D unpaid gate status (optional persisted). */
   autoDraftStatus?: AutoDraftStatus | string | null
+  /** Phase 4F.1 machine eligibility — never writes APPROVED_FOR_AI. */
+  machineDraftEligibility?: MachineDraftEligibility | string | null
+  machineDraftEligibilityReason?: string | null
+  machineDraftEligibilityAt?: Date | null
+  machineDraftEligibilityMeta?: Record<string, unknown> | null
   createdAt: Date
   updatedAt: Date
 }

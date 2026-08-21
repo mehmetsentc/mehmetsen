@@ -5,10 +5,16 @@ export {
   evaluateStrongSingleSource,
   scoreAutoDraftEligibility,
   canCreateAutoDraftJob,
+  canCreateManualApprovedJob,
+  toMachineDraftEligibility,
+  buildMachineEligibilityMeta,
+  autoDraftMayPublish,
   type AutoDraftGateStatus,
   type AutoDraftGateInput,
   type AutoDraftGateResult,
   type EligibilityScoreBreakdown,
+  type MachineDraftEligibilityStatus,
+  type MachineEligibilityAuditMeta,
 } from './eligibility'
 
 export {

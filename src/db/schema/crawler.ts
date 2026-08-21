@@ -253,6 +253,11 @@ export const newsClusters = pgTable(
     contentFingerprint: varchar('content_fingerprint', { length: 64 }),
     draftedContentFingerprint: varchar('drafted_content_fingerprint', { length: 64 }),
     autoDraftStatus: varchar('auto_draft_status', { length: 32 }),
+    /** Phase 4F.1 — machine-only eligibility; never impersonates editorial_decision. */
+    machineDraftEligibility: varchar('machine_draft_eligibility', { length: 32 }),
+    machineDraftEligibilityReason: text('machine_draft_eligibility_reason'),
+    machineDraftEligibilityAt: timestamp('machine_draft_eligibility_at', { withTimezone: true }),
+    machineDraftEligibilityMeta: jsonb('machine_draft_eligibility_meta').$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -268,6 +273,7 @@ export const newsClusters = pgTable(
     index('news_clusters_decision_last_seen_idx').on(t.editorialDecision, t.lastSeenAt),
     index('news_clusters_eligibility_last_seen_idx').on(t.aiEligibility, t.lastSeenAt),
     index('news_clusters_auto_draft_status_idx').on(t.autoDraftStatus),
+    index('news_clusters_machine_draft_eligibility_idx').on(t.machineDraftEligibility),
   ]
 )
 

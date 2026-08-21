@@ -241,7 +241,7 @@ describe('Phase 4D.3 STRONG_SINGLE_SOURCE without fake city', () => {
       hasLocalGeography: false,
       importanceScore: 43,
     })
-    expect(gate.status).toBe('AI_READY')
+    expect(gate.status).toBe('AUTO_DRAFT_ELIGIBLE')
     expect(gate.reason).toBe('STRONG_SINGLE_SOURCE')
   })
 
@@ -263,7 +263,7 @@ describe('Phase 4D.3 STRONG_SINGLE_SOURCE without fake city', () => {
       hasLocalGeography: false,
       importanceScore: 51,
     })
-    expect(gate.status).toBe('AI_READY')
+    expect(gate.status).toBe('AUTO_DRAFT_ELIGIBLE')
     expect(gate.reason).toBe('STRONG_SINGLE_SOURCE')
   })
 })

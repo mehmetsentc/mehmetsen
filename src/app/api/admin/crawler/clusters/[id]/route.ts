@@ -10,6 +10,7 @@ import {
   groupMembersBySource,
   sourceDiversityLabel,
 } from '@/services/crawler/editorial/controlPlane'
+import { MACHINE_DRAFT_ELIGIBILITY_LABELS, CRAWLER_STATUS_LABELS } from '@/services/crawler/editorial/labels'
 import { summarizeArticleMedia, editorialDisplayImages } from '@/services/crawler/editorial/mediaSummary'
 
 export const runtime = 'nodejs'
@@ -78,6 +79,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       sourceDiversity: sourceDiversityLabel(cluster.articleCount, cluster.uniqueSourceCount),
       aiStatus:
         cluster.editorialDecision === 'APPROVED_FOR_AI' ? approvedAiStatus({ dispatchEnabled }) : null,
+      /** Phase 4F.1 — machine automatic selection; never equals editor approval. */
+      machineDraftEligibilityLabel: cluster.machineDraftEligibility
+        ? MACHINE_DRAFT_ELIGIBILITY_LABELS[cluster.machineDraftEligibility] ||
+          CRAWLER_STATUS_LABELS[cluster.machineDraftEligibility] ||
+          cluster.machineDraftEligibility
+        : null,
+      humanEditorialOnly: true,
     },
     members,
     sourceGroups: grouped,
