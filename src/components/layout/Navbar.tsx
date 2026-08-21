@@ -54,7 +54,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           useFixedChrome ? 'is-fixed' : 'relative',
           'bg-[rgb(var(--header-brand-bg))] text-white',
           // Cover status-bar region except on article pages (ArticleStickyHeader owns that).
-          !isArticle && 'pt-[env(safe-area-inset-top,0px)]'
+          // --mobile-sat falls back to env(safe-area-inset-top); Capacitor iOS bumps min 47px.
+          !isArticle && 'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
       >
         <header
@@ -126,7 +127,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               chromeHeight > 0
                 ? chromeHeight
                 : // SSR / first paint fallback — feed chrome is tallest.
-                  'calc(env(safe-area-inset-top, 0px) + 72px + 48px)',
+                  'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 72px + 48px)',
           }}
         />
       ) : null}

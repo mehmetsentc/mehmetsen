@@ -291,13 +291,30 @@
    * Status-bar shield: viewport-fixed, NOT a child of sticky chrome.
    * Covers env(safe-area-inset-top) with opaque brand paint so feed images
    * cannot appear under the clock / battery during iOS rubber-band.
+   *
+   * Web/Safari: env() alone is enough (bug does not reproduce there).
+   * Capacitor iOS: never trust a 0 inset — Dynamic Island ~59px, notch ~47px.
+   * (Binary must also ship contentInset:never + native cover; see AppViewController.)
    */
+  :root {
+    --mobile-sat: env(safe-area-inset-top, 0px);
+  }
+
+  html[data-native-shell='ios'] {
+    --mobile-sat: max(env(safe-area-inset-top, 0px), 47px);
+  }
+
+  html[data-native-shell='android'] {
+    --mobile-sat: max(env(safe-area-inset-top, 0px), 24px);
+  }
+
   .mobile-safe-area-shield {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: max(env(safe-area-inset-top, 0px), 0px);
+    height: var(--mobile-sat);
+    min-height: var(--mobile-sat);
     background-color: rgb(var(--header-brand-bg));
     pointer-events: none;
     z-index: 160;
@@ -309,6 +326,19 @@
     .mobile-safe-area-shield {
       display: none;
     }
+  }
+
+  /* Capacitor: clip document overscroll so feed layers cannot paint past chrome. */
+  html[data-native-shell='ios'],
+  html[data-native-shell='ios'] body {
+    overscroll-behavior-y: none;
+    overflow-x: clip;
+  }
+
+  html[data-native-shell='ios'] .content-stage,
+  html[data-native-shell='ios'] .content-main {
+    overflow-x: clip;
+    -webkit-overflow-scrolling: touch;
   }
 
   /*

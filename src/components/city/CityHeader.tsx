@@ -26,7 +26,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
         className={cn(
           'mobile-top-chrome is-fixed z-[100]',
           'bg-[rgb(var(--header-brand-bg))] text-white',
-          'pt-[env(safe-area-inset-top,0px)]'
+          'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
       >
         <div className="flex h-14 items-center gap-1.5 px-3">
@@ -77,7 +77,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
           height:
             chromeHeight > 0
               ? chromeHeight
-              : 'calc(env(safe-area-inset-top, 0px) + 3.5rem)',
+              : 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem)',
         }}
       />
     </>

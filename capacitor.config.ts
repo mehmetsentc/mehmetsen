@@ -10,8 +10,12 @@ const config: CapacitorConfig = {
     cleartext: false,
   },
   ios: {
-    contentInset: 'automatic',
-    backgroundColor: '#0a0a0a',
+    // NEVER use 'automatic': it insets WKWebView scroll content under the
+    // status bar while leaving a compositor gap where feed images paint
+    // during scroll (App Store–only; Safari/web is fine). Match Safari:
+    // full-bleed WebView + CSS env(safe-area-inset-*).
+    contentInset: 'never',
+    backgroundColor: '#11192B',
     scrollEnabled: true,
     // limitsNavigationsToAppBoundDomains kaldırıldı — remote URL modunda
     // WKAppBoundDomains kısıtlaması Firebase/API çağrılarını engelleyebilir

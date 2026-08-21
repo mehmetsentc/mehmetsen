@@ -7,6 +7,7 @@ import { LanguageProvider } from '@/store/languageContext'
 import { ThemeProvider } from '@/store/themeContext'
 import { ThemeScript } from '@/components/theme/ThemeScript'
 import { PlatformScript } from '@/components/layout/PlatformScript'
+import { NativeShellMark } from '@/components/layout/NativeShellMark'
 import { AnalyticsTracker } from '@/components/layout/AnalyticsTracker'
 import { DeferredThirdParty } from '@/components/layout/DeferredThirdParty'
 import './globals.css'
@@ -31,6 +32,7 @@ import { OneSignalProvider } from '@/components/OneSignalProvider'
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt'
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
 import { ConsentStrip } from '@/components/consent/ConsentStrip'
+import { NotificationsSoftPrompt } from '@/components/notifications/NotificationsSoftPrompt'
 
 const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -285,6 +287,7 @@ gtag('consent','default',{
         />
         <ThemeScript />
         <PlatformScript />
+        <NativeShellMark />
         <OneSignalProvider />
         <ThemeProvider>
           <LanguageProvider>
@@ -292,6 +295,8 @@ gtag('consent','default',{
               {children}
               {/* Single cookie/KVKK consent UI (replaces CookieConsentBanner strip) */}
               <ConsentStrip />
+              {/* Mobile soft prompt for push (after consent; OneSignal autoPrompt off) */}
+              <NotificationsSoftPrompt />
               {/* PWA: early SW register → Chromium beforeinstallprompt */}
               <ServiceWorkerRegister />
               {/* F5: PWA "Ana ekrana ekle" prompt */}

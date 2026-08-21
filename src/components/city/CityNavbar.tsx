@@ -39,9 +39,9 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
         className={cn(
           'mobile-top-chrome is-fixed z-[100]',
           'bg-[rgb(var(--header-brand-bg))] text-white',
-          'pt-[env(safe-area-inset-top,0px)]'
+          'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
-        style={{ height: 'calc(72px + env(safe-area-inset-top, 0px))' }}
+        style={{ height: 'calc(72px + var(--mobile-sat, env(safe-area-inset-top, 0px)))' }}
       >
         <div className="newspaper-layout-inner flex h-[72px] items-center gap-0.5 px-1 sm:gap-1 sm:px-0">
           <button
@@ -98,7 +98,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
           height:
             chromeHeight > 0
               ? chromeHeight
-              : 'calc(72px + env(safe-area-inset-top, 0px))',
+              : 'calc(72px + var(--mobile-sat, env(safe-area-inset-top, 0px)))',
         }}
       />
     </>
