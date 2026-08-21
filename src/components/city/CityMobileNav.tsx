@@ -20,13 +20,10 @@ function CityMobileNavInner() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))] lg:hidden"
+      className="mobile-bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-[105] flex justify-center px-[var(--mobile-nav-inset-x)] pb-[calc(var(--safe-bottom,0px)+var(--mobile-nav-float-gap))] lg:hidden"
       aria-label="Şehir menü"
     >
-      <div
-        className="flex items-end pb-[var(--safe-bottom)]"
-        style={{ height: 'calc(3.5rem + var(--safe-bottom, 0px))' }}
-      >
+      <div className="mobile-bottom-nav-pill pointer-events-auto">
         {items.map((item) => {
           const Icon = item.icon
           const active = isCitySectionActive(pathname, item.href)
@@ -36,24 +33,19 @@ function CityMobileNavInner() {
               href={item.href}
               prefetch
               aria-label={item.label}
-              className={cn(
-                'flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors',
-                active
-                  ? 'text-[rgb(var(--color-nav-active))]'
-                  : 'text-[rgb(var(--color-nav-inactive))]'
-              )}
+              aria-current={active ? 'page' : undefined}
+              className="flex flex-1 items-center justify-center touch-manipulation"
             >
-              <Icon
-                className="h-[22px] w-[22px]"
-                strokeWidth={active ? 2.25 : 1.75}
-              />
               <span
                 className={cn(
-                  'text-[10px] leading-none',
-                  active ? 'font-bold' : 'font-semibold'
+                  'relative flex h-11 w-11 items-center justify-center rounded-[14px] transition-colors duration-150',
+                  active ? 'bg-white/20 text-white' : 'text-white/90'
                 )}
               >
-                {item.shortLabel ?? item.label}
+                <Icon
+                  className="h-[22px] w-[22px]"
+                  strokeWidth={active ? 2.35 : 1.85}
+                />
               </span>
             </Link>
           )

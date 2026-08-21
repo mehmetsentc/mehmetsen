@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Search, Plus, Trophy, MapPin } from 'lucide-react'
@@ -30,13 +30,41 @@ function isNavActive(pathname: string, href: string): boolean {
   return pathname.startsWith(href)
 }
 
+function NavSlotChrome({
+  active,
+  badge,
+  children,
+}: {
+  active: boolean
+  badge?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <span
+      className={cn(
+        'relative flex h-11 w-11 items-center justify-center rounded-[14px] transition-colors duration-150',
+        active ? 'bg-white/20 text-white' : 'text-white/90'
+      )}
+    >
+      {children}
+      {badge}
+    </span>
+  )
+}
+
 interface MobileNavLinkProps {
   item: MobileNavItem
   active: boolean
   pathname: string
+  badge?: ReactNode
 }
 
-const MobileNavLink = memo(function MobileNavLink({ item, active, pathname }: MobileNavLinkProps) {
+const MobileNavLink = memo(function MobileNavLink({
+  item,
+  active,
+  pathname,
+  badge,
+}: MobileNavLinkProps) {
   const { icon: Icon, label, href } = item
 
   const handleClick = useCallback(() => {
@@ -48,16 +76,13 @@ const MobileNavLink = memo(function MobileNavLink({ item, active, pathname }: Mo
       href={href}
       prefetch
       aria-label={label}
+      aria-current={active ? 'page' : undefined}
       onClick={handleClick}
-      className={cn(
-        'flex flex-1 flex-col items-center justify-center gap-1 py-2 touch-manipulation transition-colors',
-        active ? 'text-[rgb(var(--color-nav-active))]' : 'text-[rgb(var(--color-nav-inactive))]'
-      )}
+      className="flex flex-1 items-center justify-center touch-manipulation"
     >
-      <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.25 : 1.75} />
-      <span className={cn('text-[10px] leading-none', active ? 'font-bold' : 'font-semibold')}>
-        {label}
-      </span>
+      <NavSlotChrome active={active} badge={badge}>
+        <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.35 : 1.85} />
+      </NavSlotChrome>
     </Link>
   )
 })
@@ -68,15 +93,15 @@ function MobileNavInner() {
 
   const leftItems = useMemo<MobileNavItem[]>(
     () => [
-      { icon: Home,   label: 'Ana Sayfa', href: ROUTES.FEED },
-      { icon: Search, label: 'Ara',       href: ROUTES.SEARCH },
+      { icon: Home, label: 'Ana Sayfa', href: ROUTES.FEED },
+      { icon: Search, label: 'Ara', href: ROUTES.SEARCH },
     ],
     []
   )
 
   const rightItems = useMemo<MobileNavItem[]>(
     () => [
-      { icon: Trophy, label: 'Spor',  href: ROUTES.SPOR },
+      { icon: Trophy, label: 'Spor', href: ROUTES.SPOR },
       { icon: MapPin, label: 'Yerel', href: ROUTES.LOCAL },
     ],
     []
@@ -85,14 +110,10 @@ function MobileNavInner() {
   return (
     <>
       <nav
-        className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))] lg:hidden"
+        className="mobile-bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-[105] flex justify-center px-[var(--mobile-nav-inset-x)] pb-[calc(var(--safe-bottom,0px)+var(--mobile-nav-float-gap))] lg:hidden"
         aria-label="Ana menü"
       >
-        <div
-          className="flex items-end pb-[var(--safe-bottom)]"
-          style={{ height: 'calc(3.5rem + var(--safe-bottom, 0px))' }}
-        >
-          {/* Sol: Ana Sayfa + Ara */}
+        <div className="mobile-bottom-nav-pill pointer-events-auto">
           {leftItems.map((item) => (
             <MobileNavLink
               key={item.href}
@@ -102,19 +123,17 @@ function MobileNavInner() {
             />
           ))}
 
-          {/* Ortada: Haber Ekle FAB */}
-          <div className="flex flex-1 flex-col items-center justify-center">
-            <button
-              type="button"
-              aria-label="Haber Ekle"
-              onClick={() => setSubmitOpen(true)}
-              className="flex h-12 w-12 -translate-y-2 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-white shadow-lg touch-manipulation transition-transform active:scale-95"
-            >
-              <Plus className="h-6 w-6" strokeWidth={2.5} />
-            </button>
-          </div>
+          <button
+            type="button"
+            aria-label="Haber Ekle"
+            onClick={() => setSubmitOpen(true)}
+            className="flex flex-1 items-center justify-center touch-manipulation"
+          >
+            <NavSlotChrome active={false}>
+              <Plus className="h-[22px] w-[22px]" strokeWidth={2.25} />
+            </NavSlotChrome>
+          </button>
 
-          {/* Sağ: Spor + Yerel */}
           {rightItems.map((item) => (
             <MobileNavLink
               key={item.href}

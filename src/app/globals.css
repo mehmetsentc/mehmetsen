@@ -75,6 +75,13 @@
     --reels-viewport-h: calc(100dvh - 9rem);
     --reels-video-w: min(100%, calc(var(--reels-viewport-h) * 9 / 16));
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    /* Floating mobile bottom-nav pill (clearance + chrome sizing) */
+    --mobile-nav-pill-h: 3.5rem;
+    --mobile-nav-float-gap: 0.625rem;
+    --mobile-nav-inset-x: 1rem;
+    --mobile-nav-clearance: calc(
+      var(--mobile-nav-pill-h) + var(--mobile-nav-float-gap) + var(--safe-bottom, 0px) + 0.75rem
+    );
   }
 
   @media (min-width: 768px) {
@@ -281,6 +288,30 @@
     isolation: isolate;
     overscroll-behavior: none;
     touch-action: manipulation;
+  }
+
+  /* Dark floating capsule — matches Instagram-style dock chrome */
+  .mobile-bottom-nav-pill {
+    display: flex;
+    width: 100%;
+    max-width: 26rem;
+    height: var(--mobile-nav-pill-h);
+    align-items: center;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    background: rgb(22 22 24 / 0.92);
+    box-shadow:
+      0 10px 28px rgb(0 0 0 / 0.32),
+      0 2px 8px rgb(0 0 0 / 0.18);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    padding-inline: 0.35rem;
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .mobile-bottom-nav-pill {
+      background: rgb(22 22 24 / 0.97);
+    }
   }
 
   html[data-platform='mobile'] .app-shell-mobile {
@@ -3357,12 +3388,12 @@ video.reels-video {
   animation: marquee 18s linear infinite;
 }
 
-/* Clear the fixed bottom nav on mobile + tablet. Keyed on data-platform (set
-   pre-hydration by PlatformScript) instead of the .app-shell-mobile class, so
-   the spacing is correct on first paint and doesn't wait for hydration. */
+/* Clear the floating bottom-nav pill on mobile + tablet. Keyed on data-platform
+   (set pre-hydration by PlatformScript) instead of the .app-shell-mobile class,
+   so the spacing is correct on first paint and doesn't wait for hydration. */
 html[data-platform='mobile'] .content-main,
 html[data-platform='tablet'] .content-main {
-  padding-bottom: calc(3.5rem + var(--safe-bottom, 0px) + 0.5rem);
+  padding-bottom: var(--mobile-nav-clearance);
 }
 
 /* FeaturedSlider progress bar animation */

@@ -257,7 +257,10 @@ export function ArticleReaderTools({
             'fixed right-4 z-[110] flex items-center gap-2 transition-opacity duration-200',
             nearBottom && !open ? 'opacity-0' : 'opacity-100'
           )}
-          style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+          style={{
+            bottom:
+              'calc(var(--mobile-nav-pill-h, 3.5rem) + var(--mobile-nav-float-gap, 0.625rem) + env(safe-area-inset-bottom, 0px) + 0.75rem)',
+          }}
           aria-hidden={nearBottom && !open}
         >
           {/* Dinle FAB — panel kapalıyken göster */}
