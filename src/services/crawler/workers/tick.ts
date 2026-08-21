@@ -42,6 +42,24 @@ export interface CrawlerTickResult {
   articlesClustered?: number
   clustersCreated?: number
   mediaChecked?: number
+  /** Phase 4E.1 — structured auto-draft enqueue telemetry (no secrets/bodies). */
+  autoDraft?: {
+    mode: string
+    cutoff: string | null
+    candidatesScanned: number
+    aiReady: number
+    jobsCreated: number
+    jobsSkipped: number
+    skipReasons: Record<string, number>
+    historicalBlocked: number
+    duplicateBlocked: number
+    publishedBlocked: number
+    existingDraftBlocked: number
+    budgetBlocked: number
+    providerReady: boolean
+    providerReason: string | null
+    enqueueLimit: number
+  }
 }
 
 export async function runCrawlerTick(opts?: {
@@ -462,6 +480,7 @@ export async function runCrawlerTick(opts?: {
   const media = await runMediaTick({ store, now, startedAt: tickStarted, fetchImpl, lookup })
 
   let providerCalls = 0
+  let autoDraftTelemetry: CrawlerTickResult['autoDraft']
   try {
     const { runAiDispatchSafetyTick } = await import('../aiDispatch/tick')
     const { DrizzleAiDispatchStore, canUseDrizzleAiDispatchStore } = await import(
@@ -475,14 +494,31 @@ export async function runCrawlerTick(opts?: {
     })
     providerCalls = dispatchTick.providerCalls
 
-    // Phase 4D controlled auto-draft — gated OFF by default; crawler continues regardless.
+    // Phase 4D/4E.1 controlled auto-draft — gated OFF by default; crawler continues regardless.
     const { runControlledAutoDraftTick } = await import('../autoDraft/pipeline')
     const { MemoryAiDispatchStore } = await import('../aiDispatch/store')
-    await runControlledAutoDraftTick({
+    const autoDraftTick = await runControlledAutoDraftTick({
       crawlerStore: store,
       aiStore: dispatchStore ?? new MemoryAiDispatchStore(),
       now,
     })
+    autoDraftTelemetry = {
+      mode: autoDraftTick.mode,
+      cutoff: autoDraftTick.cutoffIso,
+      candidatesScanned: autoDraftTick.candidatesScanned,
+      aiReady: autoDraftTick.aiReady,
+      jobsCreated: autoDraftTick.jobsCreated,
+      jobsSkipped: autoDraftTick.jobsSkipped,
+      skipReasons: autoDraftTick.skipReasons,
+      historicalBlocked: autoDraftTick.historicalBlocked,
+      duplicateBlocked: autoDraftTick.duplicateBlocked,
+      publishedBlocked: autoDraftTick.publishedBlocked,
+      existingDraftBlocked: autoDraftTick.existingDraftBlocked,
+      budgetBlocked: autoDraftTick.budgetBlocked,
+      providerReady: autoDraftTick.providerReady,
+      providerReason: autoDraftTick.providerReason,
+      enqueueLimit: autoDraftTick.enqueueLimit,
+    }
   } catch (err) {
     logCrawler(
       { stage: 'ai_dispatch_tick', errorCode: 'ai_dispatch_tick_uncaught' },
@@ -490,7 +526,7 @@ export async function runCrawlerTick(opts?: {
     )
   }
 
-  const result = {
+  const result: CrawlerTickResult = {
     enabled: true,
     sourcesChecked: sources.length,
     urlsInserted,
@@ -503,6 +539,7 @@ export async function runCrawlerTick(opts?: {
     articlesClustered: clustered.articlesClustered,
     clustersCreated: clustered.clustersCreated,
     mediaChecked: media.articlesChecked,
+    ...(autoDraftTelemetry ? { autoDraft: autoDraftTelemetry } : {}),
   }
 
   if (ops.rebuildStatus === 'REDISCOVERING' || ops.rebuildStatus === 'PROCESSING' || ops.rebuildStatus === 'CLEANING') {

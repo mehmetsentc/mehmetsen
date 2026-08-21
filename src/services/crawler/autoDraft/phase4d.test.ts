@@ -255,6 +255,8 @@ describe('Phase 4D pipeline tick (mode OFF → $0)', () => {
       countryCode: 'TR',
       language: 'tr',
       discoveryMethod: 'RSS',
+      healthScore: 85,
+      qualityTier: 'TIER_A',
     } as never)
     const article = await crawler.insertRawArticle({
       sourceId: source.id,
@@ -279,6 +281,7 @@ describe('Phase 4D pipeline tick (mode OFF → $0)', () => {
     })
     await crawler.updateCluster(cluster.id, {
       editorialDecision: 'APPROVED_FOR_AI',
+      editorialDecidedAt: now,
       aiEligibility: 'ELIGIBLE',
       uniqueSourceCount: 2,
       articleCount: 2,
@@ -316,7 +319,7 @@ describe('Phase 4D pipeline tick (mode OFF → $0)', () => {
     expect(tick.published).toBe(0)
   })
 
-  it('CONTROLLED_AUTO_DRAFT + dispatch + provider unwired → no jobs, no paid call', async () => {
+  it('CONTROLLED_AUTO_DRAFT + dispatch + provider OFF → enqueue allowed, zero paid calls', async () => {
     pricingOn()
     process.env.CRAWLER_AI_MODE = 'CONTROLLED_AUTO_DRAFT'
     process.env.CRAWLER_AI_DISPATCH_ENABLED = 'true'
@@ -333,10 +336,11 @@ describe('Phase 4D pipeline tick (mode OFF → $0)', () => {
       now,
       limit: 5,
     })
-    expect(tick.jobsCreated).toBe(0)
+    expect(tick.jobsCreated).toBe(1)
     expect(tick.providerCalls).toBe(0)
     expect(tick.published).toBe(0)
-    expect(tick.providerBlocked).toBeGreaterThan(0)
+    expect(tick.providerReady).toBe(false)
+    expect(tick.providerBlocked).toBe(0)
   })
 })
 

@@ -1,7 +1,12 @@
 /**
- * Phase 4D.3 — enqueue-only controlled auto-draft tick.
- * Crawler evaluates eligibility and creates PENDING/RESERVED jobs.
+ * Phase 4D.3 / 4E.1 — enqueue-only controlled auto-draft tick.
+ * Crawler evaluates eligibility and creates PENDING jobs.
  * Paid DeepSeek execution happens only in the dedicated AI worker.
+ *
+ * Phase 4E.1: provider readiness is NOT required to enqueue.
+ * Worker refuses claim/spend when provider OFF (avoids paid calls).
+ * Candidate scan pool is wider than maxEventsPerTick so historical
+ * BEFORE_CUTOFF rows cannot starve fresh eligible events.
  */
 
 import { newCrawlerId } from '../store/types'
@@ -41,20 +46,39 @@ import type { CanaryClusterInput, CanaryMemberInput } from '../canary/types'
 
 export type ControlledAutoDraftTickResult = {
   mode: string
+  /** Alias of evaluated — APPROVED candidates scanned this tick. */
+  candidatesScanned: number
   evaluated: number
+  /** Gate status AI_READY (may still skip for cutoff/budget/idempotency). */
+  aiReady: number
   jobsCreated: number
+  jobsSkipped: number
   blocked: number
   updateAvailable: number
+  /**
+   * Legacy counter — Phase 4E.1 no longer blocks enqueue on provider OFF.
+   * Remains 0 unless a future hard provider firewall is re-enabled.
+   */
   providerBlocked: number
   backlogExcluded: number
-  /** Always 0 — crawler never calls provider (Phase 4D.3). */
+  historicalBlocked: number
+  duplicateBlocked: number
+  publishedBlocked: number
+  existingDraftBlocked: number
+  budgetBlocked: number
+  /** Always 0 — crawler never calls provider (Phase 4D.3 / 4E.1). */
   providerCalls: 0
   draftsPersisted: 0
   published: 0
   leaseRecovered: number
+  /** Explicit skip / outcome codes → counts. */
+  skipReasons: Record<string, number>
+  /** @deprecated alias of skipReasons */
   reasons: Record<string, number>
   providerReady: boolean
   providerReason: string | null
+  cutoffIso: string | null
+  enqueueLimit: number
 }
 
 function bump(reasons: Record<string, number>, key: string) {
@@ -280,12 +304,13 @@ export async function recoverStaleLeases(
 
 /**
  * Evaluate APPROVED_FOR_AI clusters and enqueue jobs only.
- * Default mode OFF / provider OFF → zero jobs, zero provider calls.
+ * MODE OFF → zero jobs. Provider OFF → enqueue still allowed; worker stays inert.
  */
 export async function runControlledAutoDraftTick(opts: {
   crawlerStore: CrawlerStore
   aiStore: AiDispatchStore
   now?: Date
+  /** Max jobs to create this tick (default CRAWLER_AI_MAX_EVENTS_PER_TICK). */
   limit?: number
 }): Promise<ControlledAutoDraftTickResult> {
   const now = opts.now ?? new Date()
@@ -296,30 +321,51 @@ export async function runControlledAutoDraftTick(opts: {
   const readiness = getCrawlerAiProviderReadiness()
   const providerReady = readiness.ready
   const caps = acceptanceHardCaps()
+  const enqueueLimit = opts.limit ?? cfg.maxEventsPerTick
+  const cutoff = getAutoDraftEligibleAfter()
 
+  const skipReasons: Record<string, number> = {}
   const result: ControlledAutoDraftTickResult = {
     mode,
+    candidatesScanned: 0,
     evaluated: 0,
+    aiReady: 0,
     jobsCreated: 0,
+    jobsSkipped: 0,
     blocked: 0,
     updateAvailable: 0,
     providerBlocked: 0,
     backlogExcluded: 0,
+    historicalBlocked: 0,
+    duplicateBlocked: 0,
+    publishedBlocked: 0,
+    existingDraftBlocked: 0,
+    budgetBlocked: 0,
     providerCalls: 0,
     draftsPersisted: 0,
     published: 0,
     leaseRecovered: 0,
-    reasons: {},
+    skipReasons,
+    reasons: skipReasons,
     providerReady,
     providerReason: readiness.reason,
+    cutoffIso: cutoff ? cutoff.toISOString() : null,
+    enqueueLimit,
   }
 
   // Lease recovery is cheap and safe when AI OFF (no provider calls)
-  result.leaseRecovered = await recoverStaleLeases(opts.aiStore, now, result.reasons)
+  result.leaseRecovered = await recoverStaleLeases(opts.aiStore, now, skipReasons)
 
   if (!autoEnabled) {
-    bump(result.reasons, 'MODE_OR_DISPATCH_OFF')
+    if (mode === 'OFF') bump(skipReasons, 'MODE_OFF')
+    else if (mode === 'MANUAL_CANARY') bump(skipReasons, 'MANUAL_CANARY_NO_AUTO')
+    else bump(skipReasons, 'DISPATCH_OFF')
     return result
+  }
+
+  if (!providerReady) {
+    // Intentional Phase 4E.1: enqueue may proceed; worker will not claim/spend.
+    bump(skipReasons, 'PROVIDER_DEFERRED_NOTE')
   }
 
   const keys = periodKeys(now)
@@ -337,32 +383,33 @@ export async function runControlledAutoDraftTick(opts: {
    * When CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER is set, do not let prior-phase
    * controlled_auto_draft ledger rows exhaust this window's maxRequests.
    */
-  const acceptanceCutoff = getAutoDraftEligibleAfter()
   const acceptanceSpent = recentLedger.filter((r) => {
     if (r.requestType !== 'controlled_auto_draft') return false
     if (!/success|fail|completed/i.test(r.status)) return false
-    if (acceptanceCutoff && r.timestamp.getTime() < acceptanceCutoff.getTime()) return false
+    if (cutoff && r.timestamp.getTime() < cutoff.getTime()) return false
     return true
   })
   if (acceptanceSpent.length >= caps.maxRequests) {
-    bump(result.reasons, 'ACCEPTANCE_REQUEST_CAP')
+    bump(skipReasons, 'ACCEPTANCE_REQUEST_CAP')
     return result
   }
 
-  const candidates = await listApprovedCandidates(
-    opts.crawlerStore,
-    opts.limit ?? cfg.maxEventsPerTick,
-    now
-  )
+  // Wide ranked pool — enqueueLimit applied AFTER cutoff/gate skips (Phase 4E.1 P0 fix).
+  const candidates = await listApprovedCandidates(opts.crawlerStore, enqueueLimit, now)
   let concurrent = await opts.aiStore.countActiveJobs()
 
   for (const cluster of candidates) {
+    if (result.jobsCreated >= enqueueLimit) {
+      bump(skipReasons, 'ENQUEUE_LIMIT_REACHED')
+      break
+    }
     if (result.jobsCreated >= caps.maxEvents) {
-      bump(result.reasons, 'ACCEPTANCE_EVENT_CAP')
+      bump(skipReasons, 'ACCEPTANCE_EVENT_CAP')
       break
     }
 
     result.evaluated += 1
+    result.candidatesScanned += 1
     const members = await membersFor(opts.crawlerStore, cluster.id)
     const existing = await opts.aiStore.getInitialJob(cluster.id)
     const hasActive =
@@ -382,7 +429,8 @@ export async function runControlledAutoDraftTick(opts: {
       })
     ) {
       result.blocked += 1
-      bump(result.reasons, existing.failureCode || 'NO_AUTO_REPAY')
+      result.jobsSkipped += 1
+      bump(skipReasons, existing.failureCode || 'NO_AUTO_REPAY')
       continue
     }
 
@@ -396,7 +444,7 @@ export async function runControlledAutoDraftTick(opts: {
     })
     if (revision.action === 'mark_update_available') {
       result.updateAvailable += 1
-      bump(result.reasons, 'UPDATE_AVAILABLE')
+      bump(skipReasons, 'UPDATE_AVAILABLE')
       await opts.crawlerStore.updateCluster(cluster.id, {
         hasMaterialUpdate: true,
         updateReviewStatus: 'UPDATE_AVAILABLE',
@@ -405,6 +453,7 @@ export async function runControlledAutoDraftTick(opts: {
         autoDraftStatus: 'UPDATE_AVAILABLE',
       })
       result.blocked += 1
+      result.jobsSkipped += 1
       continue
     }
 
@@ -449,16 +498,10 @@ export async function runControlledAutoDraftTick(opts: {
       contentFingerprintChanged: Boolean(draftedFp && draftedFp !== fp),
     })
 
-    if (autoEnabled && !providerReady) {
-      await opts.crawlerStore.updateCluster(cluster.id, {
-        contentFingerprint: fp,
-        autoDraftStatus: gate.readyForJob ? 'PROVIDER_BLOCKED' : gate.status,
-      })
-      result.providerBlocked += 1
-      result.blocked += 1
-      bump(result.reasons, readiness.reason || 'PROVIDER_BLOCKED')
-      continue
-    }
+    if (gate.readyForJob) result.aiReady += 1
+    if (gate.status === 'ALREADY_PUBLISHED') result.publishedBlocked += 1
+    if (gate.status === 'ALREADY_DRAFTED') result.existingDraftBlocked += 1
+    if (gate.status === 'DUPLICATE') result.duplicateBlocked += 1
 
     await opts.crawlerStore.updateCluster(cluster.id, {
       contentFingerprint: fp,
@@ -470,9 +513,18 @@ export async function runControlledAutoDraftTick(opts: {
       decidedAt: cluster.editorialDecidedAt || cluster.updatedAt || cluster.createdAt,
     })
     if (autoEnabled && !activation.ok) {
+      const code =
+        activation.reason === 'before_cutoff'
+          ? 'BEFORE_ACTIVATION_CUTOFF'
+          : activation.reason === 'cutoff_unset'
+            ? 'CUTOFF_UNSET'
+            : activation.reason.toUpperCase()
       result.backlogExcluded += 1
+      result.historicalBlocked += 1
       result.blocked += 1
-      bump(result.reasons, activation.reason.toUpperCase())
+      result.jobsSkipped += 1
+      bump(skipReasons, code)
+      // Keep AI_READY visible when gate passed — firewall is activation, not quality.
       await opts.crawlerStore.updateCluster(cluster.id, {
         autoDraftStatus: gate.readyForJob ? 'AI_READY' : gate.status,
       })
@@ -512,18 +564,38 @@ export async function runControlledAutoDraftTick(opts: {
 
     if (!create.ok) {
       result.blocked += 1
-      bump(result.reasons, create.reason)
+      result.jobsSkipped += 1
+      const reason = create.reason
+      if (reason === 'BUDGET_BLOCKED' || reason === 'COST_BLOCKED') result.budgetBlocked += 1
+      if (reason === 'IDEMPOTENCY_BLOCKED' || reason === 'ALREADY_DRAFTED') {
+        result.existingDraftBlocked += 1
+      }
+      bump(skipReasons, reason)
       continue
     }
 
     if (!reserve.ok) {
       result.blocked += 1
-      bump(result.reasons, String(reserve.reason))
+      result.jobsSkipped += 1
+      result.budgetBlocked += 1
+      const reason = String(reserve.reason)
+      // Normalize hourly/daily limit codes for observability
+      const code =
+        reason === 'HOURLY_REQUEST_LIMIT'
+          ? 'HOURLY_LIMIT'
+          : reason === 'DAILY_REQUEST_LIMIT'
+            ? 'DAILY_LIMIT'
+            : reason === 'DAILY_BUDGET_EXCEEDED'
+              ? 'DAILY_COST_LIMIT'
+              : reason === 'MONTHLY_BUDGET_EXCEEDED'
+                ? 'MONTHLY_COST_LIMIT'
+                : reason
+      bump(skipReasons, code)
       continue
     }
 
     // Enqueue as PENDING — worker claims into PROCESSING with lease.
-    // Budget reserved at enqueue; worker settles after paid execution.
+    // Budget reserved at enqueue; worker settles after paid execution (if provider ON).
     const job = jobStub(cluster, gate, 'PENDING', {
       estimatedInputTokens: tokenIn,
       estimatedOutputTokens: tokenOut,
@@ -533,7 +605,9 @@ export async function runControlledAutoDraftTick(opts: {
     const inserted = await opts.aiStore.insertJob(job)
     if (inserted === 'duplicate') {
       result.blocked += 1
-      bump(result.reasons, 'IDEMPOTENCY_DUPLICATE')
+      result.jobsSkipped += 1
+      result.duplicateBlocked += 1
+      bump(skipReasons, 'IDEMPOTENCY_DUPLICATE')
       continue
     }
 
@@ -545,27 +619,32 @@ export async function runControlledAutoDraftTick(opts: {
     await opts.aiStore.saveBudgetWindow(hourSnap)
     await opts.aiStore.saveBudgetWindow(daySnap)
     if (reserve.month) await opts.aiStore.saveBudgetWindow(reserve.month)
-    bump(result.reasons, 'ENQUEUED')
+    bump(skipReasons, 'ENQUEUED')
   }
 
-  if (autoEnabled && !getAutoDraftEligibleAfter()) {
-    bump(result.reasons, 'CUTOFF_UNSET_NOTE')
+  if (autoEnabled && !cutoff) {
+    bump(skipReasons, 'CUTOFF_UNSET_NOTE')
   }
 
   return result
 }
 
+/**
+ * Ranked APPROVED_FOR_AI scan pool.
+ * Returns more rows than enqueueLimit so BEFORE_CUTOFF / drafted skips
+ * do not starve a single fresh eligible event when maxEventsPerTick=1.
+ */
 async function listApprovedCandidates(
   store: CrawlerStore,
-  limit: number,
+  enqueueLimit: number,
   now = new Date()
 ): Promise<NewsClusterRecord[]> {
-  // Fetch a wider pool then rank — spend under tight Phase 4E caps goes to best events first.
+  const scanLimit = Math.max(enqueueLimit * 20, 80)
   const pool = await store.listClusters({
     editorialDecision: 'APPROVED_FOR_AI',
-    limit: Math.max(limit * 5, 40),
+    limit: scanLimit,
   })
-  const ranked = [...pool].sort((a, b) => {
+  return [...pool].sort((a, b) => {
     const staleA = a.latestArticleAt
       ? (now.getTime() - a.latestArticleAt.getTime()) / 3_600_000
       : 999
@@ -601,7 +680,6 @@ async function listApprovedCandidates(
       }
     )
   })
-  return ranked.slice(0, limit)
 }
 
 /** Explicit: publication is never performed by this pipeline. */

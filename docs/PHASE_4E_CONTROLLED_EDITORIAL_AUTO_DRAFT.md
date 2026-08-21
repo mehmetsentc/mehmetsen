@@ -12,7 +12,7 @@
 |------|----------|
 | `OFF` (default) | No automatic jobs |
 | `MANUAL_CANARY` | Manual canary only |
-| `CONTROLLED_AUTO_DRAFT` | Auto draft when gates + dispatch + provider + budget pass |
+| `CONTROLLED_AUTO_DRAFT` | Auto **enqueue** when gates + dispatch + cutoff + budget pass. Provider OFF still allows PENDING jobs; paid spend only in AI worker when provider ready. |
 | `FULL_AUTO_DRAFT` | Parsed for future; **not enabled** in this phase |
 
 ## Hard cost defaults (server-side)
@@ -50,6 +50,21 @@ No fake city/importance boosts. Çanakkale is a **ranking** boost only.
 ## Migration
 
 No new migration required for Phase 4E local stage (builds on 0014–0016). Additive only if schema changes become necessary later.
+
+## Phase 4E.1 — enqueue path hardening
+
+**P0 root cause (4E production gap):** `listApprovedCandidates` sliced the ranked pool to `CRAWLER_AI_MAX_EVENTS_PER_TICK` (default **1**) *before* activation cutoff filtering. Production cron therefore evaluated only the top-ranked historical `APPROVED_FOR_AI` cluster → `BEFORE_ACTIVATION_CUTOFF` → **0 jobs**. Local acceptance used `limit: 5`, scanned past historical rows, and enqueued Event1.
+
+**Fix:** scan a wide ranked pool; apply `maxEventsPerTick` only to successful enqueues after cutoff/gates.
+
+**Enqueue vs paid:** CONTROLLED + dispatch may create PENDING jobs when provider is OFF. Dedicated AI worker refuses claim/spend until provider ready. Crawler never calls DeepSeek.
+
+```bash
+npx vitest run src/services/crawler/autoDraft/phase4e1.test.ts
+npx vitest run src/services/crawler/autoDraft/phase4e.test.ts
+npx tsc --noEmit
+npm run build
+```
 
 ## Local verification
 

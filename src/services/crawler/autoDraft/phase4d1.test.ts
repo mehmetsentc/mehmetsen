@@ -200,8 +200,8 @@ describe('Phase 4D.1 activation cutoff', () => {
   })
 })
 
-describe('Phase 4D.1 no dead PENDING when provider blocked', () => {
-  it('CONTROLLED_AUTO_DRAFT + dispatch + provider OFF → 0 jobs, PROVIDER_BLOCKED', async () => {
+describe('Phase 4D.1 enqueue vs provider (Phase 4E.1: enqueue allowed when provider OFF)', () => {
+  it('CONTROLLED_AUTO_DRAFT + dispatch + provider OFF → PENDING job; worker will not claim', async () => {
     pricingOn()
     process.env.CRAWLER_AI_MODE = 'CONTROLLED_AUTO_DRAFT'
     process.env.CRAWLER_AI_DISPATCH_ENABLED = 'true'
@@ -219,13 +219,15 @@ describe('Phase 4D.1 no dead PENDING when provider blocked', () => {
       now,
       limit: 5,
     })
-    expect(tick.jobsCreated).toBe(0)
+    expect(tick.jobsCreated).toBe(1)
     expect(tick.providerCalls).toBe(0)
-    expect(tick.providerBlocked).toBeGreaterThan(0)
+    expect(tick.providerBlocked).toBe(0)
+    expect(tick.providerReady).toBe(false)
     expect(tick.published).toBe(0)
-    const updated = await crawler.getCluster(cluster.id)
-    expect(updated?.autoDraftStatus).toBe('PROVIDER_BLOCKED')
-    expect(await ai.countActiveJobs()).toBe(0)
+    expect(tick.skipReasons.PROVIDER_DEFERRED_NOTE).toBe(1)
+    const job = await ai.getInitialJob(cluster.id)
+    expect(job?.status).toBe('PENDING')
+    expect(await ai.countActiveJobs()).toBe(1)
   })
 })
 
