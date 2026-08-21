@@ -626,7 +626,7 @@ export const crawlerAiDispatchShadow = pgTable(
   ]
 )
 
-/** Phase 4F.3 — append-only shadow economics decisions (never paid). */
+/** Phase 4F.3 — append-only shadow evaluation telemetry (never paid). */
 export const crawlerAiShadowDecisions = pgTable(
   'crawler_ai_shadow_decisions',
   {
@@ -649,6 +649,11 @@ export const crawlerAiShadowDecisions = pgTable(
     usableSourceWords: integer('usable_source_words'),
     editorialDecisionSnapshot: varchar('editorial_decision_snapshot', { length: 40 }),
     meta: jsonb('meta').$type<Record<string, unknown>>(),
+    /** Phase 4F.3.1 — content fingerprint / revision identity. */
+    contentFingerprint: varchar('content_fingerprint', { length: 64 }),
+    prespendGateVersion: varchar('prespend_gate_version', { length: 24 }),
+    revisionKind: varchar('revision_kind', { length: 24 }),
+    economicDecisionId: varchar('economic_decision_id', { length: 64 }),
   },
   (t) => [
     index('crawler_ai_shadow_decisions_cluster_idx').on(t.clusterId),
@@ -656,6 +661,54 @@ export const crawlerAiShadowDecisions = pgTable(
     index('crawler_ai_shadow_decisions_outcome_idx').on(t.prespendOutcome),
     index('crawler_ai_shadow_decisions_action_idx').on(t.action),
     index('crawler_ai_shadow_decisions_tier_idx').on(t.economicTier),
+    index('crawler_ai_shadow_decisions_fp_idx').on(t.clusterId, t.contentFingerprint),
+    index('crawler_ai_shadow_decisions_gate_idx').on(t.prespendGateVersion),
+    index('crawler_ai_shadow_decisions_econ_id_idx').on(t.economicDecisionId),
+  ]
+)
+
+/**
+ * Phase 4F.3.1 — one canonical economic decision per cluster+fingerprint+gate version.
+ * Unique index is the authority; evaluations point here via economic_decision_id.
+ */
+export const crawlerAiShadowEconomicDecisions = pgTable(
+  'crawler_ai_shadow_economic_decisions',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    clusterId: varchar('cluster_id', { length: 64 }).notNull(),
+    contentFingerprint: varchar('content_fingerprint', { length: 64 }).notNull(),
+    prespendGateVersion: varchar('prespend_gate_version', { length: 24 }).notNull(),
+    revisionKind: varchar('revision_kind', { length: 24 }).notNull(),
+    eventKey: varchar('event_key', { length: 80 }),
+    canonicalTitle: text('canonical_title'),
+    firstEvaluatedAt: timestamp('first_evaluated_at', { withTimezone: true }).defaultNow().notNull(),
+    lastEvaluatedAt: timestamp('last_evaluated_at', { withTimezone: true }).defaultNow().notNull(),
+    evaluationCount: integer('evaluation_count').default(1).notNull(),
+    machineEligibility: varchar('machine_eligibility', { length: 48 }),
+    prespendOutcome: varchar('prespend_outcome', { length: 64 }).notNull(),
+    economicTier: varchar('economic_tier', { length: 8 }),
+    action: varchar('action', { length: 24 }).notNull(),
+    blockReason: varchar('block_reason', { length: 64 }),
+    estimatedInputTokens: integer('estimated_input_tokens'),
+    estimatedOutputTokens: integer('estimated_output_tokens'),
+    estimatedCostUsd: real('estimated_cost_usd'),
+    costKnown: smallint('cost_known').default(0).notNull(),
+    rankScore: real('rank_score'),
+    independentSourceCount: integer('independent_source_count'),
+    usableSourceWords: integer('usable_source_words'),
+    editorialDecisionSnapshot: varchar('editorial_decision_snapshot', { length: 40 }),
+    meta: jsonb('meta').$type<Record<string, unknown>>(),
+  },
+  (t) => [
+    uniqueIndex('crawler_ai_shadow_economic_unique_idx').on(
+      t.clusterId,
+      t.contentFingerprint,
+      t.prespendGateVersion
+    ),
+    index('crawler_ai_shadow_economic_cluster_idx').on(t.clusterId),
+    index('crawler_ai_shadow_economic_action_idx').on(t.action),
+    index('crawler_ai_shadow_economic_tier_idx').on(t.economicTier),
+    index('crawler_ai_shadow_economic_eval_idx').on(t.firstEvaluatedAt),
   ]
 )
 

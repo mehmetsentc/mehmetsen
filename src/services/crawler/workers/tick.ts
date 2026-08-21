@@ -144,7 +144,13 @@ export async function runCrawlerTick(opts?: {
         averageResponseMs: blend(source.averageResponseMs, duration),
         articlesDiscovered: source.articlesDiscovered + result.inserted,
         status: nextStatus,
-        lastPauseReason: auto.reason,
+        // Preserve pause reason when staying PAUSED; only set when auto-pause/degrade fires.
+        lastPauseReason:
+          auto.reason != null
+            ? auto.reason
+            : nextStatus === 'PAUSED' || nextStatus === 'DEGRADED'
+              ? source.lastPauseReason
+              : null,
         healthScore: health,
       })
       if (failures >= limits.degradeAfterFailures) await store.incrementMetric('failed_sources', 1, now)

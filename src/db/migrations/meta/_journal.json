@@ -127,6 +127,20 @@
       "when": 1787319000000,
       "tag": "0017_phase4f1_machine_eligibility",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787400000000,
+      "tag": "0018_phase4f3_shadow_prespend",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787405000000,
+      "tag": "0019_phase4f31_shadow_unique_economics",
+      "breakpoints": true
     }
   ]
 }

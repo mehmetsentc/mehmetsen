@@ -102,7 +102,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
       qualityTier: input.qualityTier ?? 'UNTESTED',
       healthScore: input.healthScore ?? 50,
       freshnessHours: input.freshnessHours ?? 48,
-      lastPauseReason: null,
+      lastPauseReason: input.lastPauseReason ?? null,
       registryKey: input.registryKey ?? null,
       createdAt: now,
       updatedAt: now,

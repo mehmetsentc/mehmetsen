@@ -8,6 +8,7 @@ import { paginateSlice, parseSourceListQuery, matchesSourceQuery } from '@/servi
 import { PHASE0_SEED_SOURCES } from '@/services/crawler/seedSources'
 import { TURKEY_SOURCE_REGISTRY, turkeyRegistryToInsert } from '@/services/crawler/turkeyRegistry'
 import type { CrawlerSourceStatus, CrawlerQualityTier } from '@/services/crawler/types'
+import { requirePauseReason } from '@/services/crawler/autoDraft/sourcePauseAudit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
       requiresJavascript: Boolean(body.requiresJavascript),
       qualityTier: (body.qualityTier as CrawlerQualityTier) || 'UNTESTED',
       status: 'PAUSED',
+      lastPauseReason: 'manual_approve_paused',
     })
     return NextResponse.json({ source, approved: true })
   }
@@ -128,6 +130,7 @@ export async function POST(request: Request) {
       typeof body?.crawlIntervalSeconds === 'number' ? body.crawlIntervalSeconds : 300,
     articleFetchMode: (body?.articleFetchMode as never) || 'HTTP',
     status: 'PAUSED',
+    lastPauseReason: 'manual_create_paused',
   })
   return NextResponse.json({ source })
 }
@@ -138,7 +141,12 @@ export async function PATCH(request: Request) {
   const missing = dbOrError()
   if (missing) return missing
 
-  const body = (await request.json().catch(() => null)) as { id?: string; status?: CrawlerSourceStatus } | null
+  const body = (await request.json().catch(() => null)) as {
+    id?: string
+    status?: CrawlerSourceStatus
+    pauseReason?: string
+    lastPauseReason?: string
+  } | null
   if (!body?.id || !body.status) {
     return NextResponse.json({ error: 'id and status required' }, { status: 400 })
   }
@@ -148,6 +156,30 @@ export async function PATCH(request: Request) {
   const store = new DrizzleCrawlerStore()
   const existing = await store.getSource(body.id)
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  await store.updateSource(body.id, { status: body.status })
-  return NextResponse.json({ ok: true, id: body.id, status: body.status })
+
+  const patch: { status: CrawlerSourceStatus; lastPauseReason?: string | null } = {
+    status: body.status,
+  }
+  if (body.status === 'PAUSED' || body.status === 'DEGRADED') {
+    try {
+      patch.lastPauseReason = requirePauseReason(
+        body.pauseReason || body.lastPauseReason || (body.status === existing.status ? existing.lastPauseReason : null)
+      )
+    } catch {
+      return NextResponse.json(
+        { error: 'pauseReason required when pausing or degrading a source' },
+        { status: 400 }
+      )
+    }
+  } else if (body.status === 'ACTIVE') {
+    patch.lastPauseReason = null
+  }
+
+  await store.updateSource(body.id, patch)
+  return NextResponse.json({
+    ok: true,
+    id: body.id,
+    status: body.status,
+    lastPauseReason: patch.lastPauseReason ?? existing.lastPauseReason,
+  })
 }

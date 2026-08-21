@@ -6,6 +6,7 @@ import type {
   CrawlerAiJobRecord,
   CrawlerAiLedgerRow,
   CrawlerAiShadowDecisionRow,
+  CrawlerAiShadowEconomicDecisionRow,
   CrawlerAiShadowRow,
 } from './types'
 import { EDITORIAL_OUTPUT_TARGET } from './types'
@@ -36,13 +37,27 @@ export interface AiDispatchStore {
   listClaimableJobs?(opts?: { limit?: number; now?: Date }): Promise<CrawlerAiJobRecord[]>
   upsertShadow(row: CrawlerAiShadowRow): Promise<void>
   listShadow(opts?: { limit?: number }): Promise<CrawlerAiShadowRow[]>
-  /** Phase 4F.3 — append-only shadow economics (optional on older stores). */
+  /** Phase 4F.3 — append-only shadow evaluation telemetry (optional on older stores). */
   insertShadowDecision?(row: CrawlerAiShadowDecisionRow): Promise<void>
   listShadowDecisions?(opts?: { limit?: number; since?: Date }): Promise<CrawlerAiShadowDecisionRow[]>
+  /**
+   * Phase 4F.3.1 — try insert unique economic decision.
+   * Returns { inserted:true, row } on first fingerprint/gate, or { inserted:false, row } on duplicate.
+   */
+  tryInsertShadowEconomicDecision?(
+    row: CrawlerAiShadowEconomicDecisionRow
+  ): Promise<{ inserted: boolean; row: CrawlerAiShadowEconomicDecisionRow }>
+  listShadowEconomicDecisions?(opts?: {
+    limit?: number
+    since?: Date
+  }): Promise<CrawlerAiShadowEconomicDecisionRow[]>
+  /** True if cluster already has any economic decision (any fingerprint/gate). */
+  hasShadowEconomicDecisionForCluster?(clusterId: string): Promise<boolean>
   getBudgetWindow(lane: AiCostLane, periodType: 'hour' | 'day' | 'month', periodKey: string): Promise<CrawlerAiBudgetWindow>
   saveBudgetWindow(row: CrawlerAiBudgetWindow): Promise<void>
   /**
    * Atomic compare-and-set. Returns false if the window changed under us.
+   * Correctness must not require an in-process mutex when two stores share DB state.
    */
   compareAndReserve(input: {
     lane: AiCostLane
@@ -57,16 +72,60 @@ export interface AiDispatchStore {
   saveCircuit(state: CrawlerAiCircuitState): Promise<void>
 }
 
+export type SharedAiDispatchState = {
+  jobs: Map<string, CrawlerAiJobRecord>
+  shadow: Map<string, CrawlerAiShadowRow>
+  shadowDecisions: CrawlerAiShadowDecisionRow[]
+  shadowEconomicDecisions: Map<string, CrawlerAiShadowEconomicDecisionRow>
+  windows: Map<string, CrawlerAiBudgetWindow>
+  ledger: CrawlerAiLedgerRow[]
+  circuits: Map<string, CrawlerAiCircuitState>
+}
+
+export function createSharedAiDispatchState(): SharedAiDispatchState {
+  return {
+    jobs: new Map(),
+    shadow: new Map(),
+    shadowDecisions: [],
+    shadowEconomicDecisions: new Map(),
+    windows: new Map(),
+    ledger: [],
+    circuits: new Map(),
+  }
+}
+
+/**
+ * In-memory AI dispatch store.
+ * Phase 4F.3.1: two instances may share SharedAiDispatchState (simulating Neon).
+ * Budget CAS + concurrency insert use synchronous check-and-set on shared maps —
+ * an in-process mutex is optional and NOT required for correctness across instances.
+ */
 export class MemoryAiDispatchStore implements AiDispatchStore {
-  jobs = new Map<string, CrawlerAiJobRecord>()
-  shadow = new Map<string, CrawlerAiShadowRow>()
-  shadowDecisions: CrawlerAiShadowDecisionRow[] = []
-  windows = new Map<string, CrawlerAiBudgetWindow>()
-  ledger: CrawlerAiLedgerRow[] = []
-  circuits = new Map<string, CrawlerAiCircuitState>()
+  jobs: Map<string, CrawlerAiJobRecord>
+  shadow: Map<string, CrawlerAiShadowRow>
+  shadowDecisions: CrawlerAiShadowDecisionRow[]
+  shadowEconomicDecisions: Map<string, CrawlerAiShadowEconomicDecisionRow>
+  windows: Map<string, CrawlerAiBudgetWindow>
+  ledger: CrawlerAiLedgerRow[]
+  circuits: Map<string, CrawlerAiCircuitState>
+  /** Optional optimization only — correctness does not depend on this across shared state. */
+  private useMemoryLock: boolean
   private lock: Promise<void> = Promise.resolve()
 
+  constructor(opts?: { shared?: SharedAiDispatchState; useMemoryLock?: boolean }) {
+    const shared = opts?.shared ?? createSharedAiDispatchState()
+    this.jobs = shared.jobs
+    this.shadow = shared.shadow
+    this.shadowDecisions = shared.shadowDecisions
+    this.shadowEconomicDecisions = shared.shadowEconomicDecisions
+    this.windows = shared.windows
+    this.ledger = shared.ledger
+    this.circuits = shared.circuits
+    this.useMemoryLock = opts?.useMemoryLock ?? false
+  }
+
   private async withLock<T>(fn: () => T | Promise<T>): Promise<T> {
+    if (!this.useMemoryLock) return fn()
     const prev = this.lock
     let release: () => void = () => undefined
     this.lock = new Promise((resolve) => {
@@ -80,55 +139,58 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
     }
   }
 
+  private econKey(clusterId: string, fp: string, gate: string) {
+    return `${clusterId}|${fp}|${gate}`
+  }
+
   async getInitialJob(clusterId: string): Promise<CrawlerAiJobRecord | null> {
     return (
       [...this.jobs.values()].find((j) => j.clusterId === clusterId && j.dispatchType === 'INITIAL') ?? null
     )
   }
 
-  async insertJob(job: CrawlerAiJobRecord): Promise<'inserted' | 'duplicate'> {
-    return this.withLock(() => {
-      const active = [...this.jobs.values()].some(
-        (j) =>
-          j.clusterId === job.clusterId &&
-          ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
+  /** Sync uniqueness check — DB unique index analogue; no shared mutex required. */
+  private insertJobSync(job: CrawlerAiJobRecord): 'inserted' | 'duplicate' {
+    const active = [...this.jobs.values()].some(
+      (j) =>
+        j.clusterId === job.clusterId &&
+        ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
+    )
+    if (active) return 'duplicate'
+    if (job.dispatchType === 'INITIAL') {
+      const exists = [...this.jobs.values()].some(
+        (j) => j.clusterId === job.clusterId && j.dispatchType === 'INITIAL'
       )
-      if (active) return 'duplicate'
-      if (job.dispatchType === 'INITIAL') {
-        const exists = [...this.jobs.values()].some(
-          (j) => j.clusterId === job.clusterId && j.dispatchType === 'INITIAL'
-        )
-        if (exists) return 'duplicate'
-      }
-      this.jobs.set(job.id, { ...job, outputTarget: EDITORIAL_OUTPUT_TARGET })
-      return 'inserted'
-    })
+      if (exists) return 'duplicate'
+    }
+    this.jobs.set(job.id, { ...job, outputTarget: EDITORIAL_OUTPUT_TARGET })
+    return 'inserted'
+  }
+
+  async insertJob(job: CrawlerAiJobRecord): Promise<'inserted' | 'duplicate'> {
+    return this.withLock(() => this.insertJobSync(job))
+  }
+
+  /**
+   * Sync concurrency gate on shared jobs map (Neon CTE insert analogue).
+   * Two independent stores sharing state → exactly one winner at maxConcurrent.
+   */
+  private insertJobWithConcurrencyCapSync(
+    job: CrawlerAiJobRecord,
+    maxConcurrent: number
+  ): 'inserted' | 'duplicate' | 'concurrency_limit' {
+    const activeCount = [...this.jobs.values()].filter((j) =>
+      ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
+    ).length
+    if (activeCount >= maxConcurrent) return 'concurrency_limit'
+    return this.insertJobSync(job) === 'inserted' ? 'inserted' : 'duplicate'
   }
 
   async insertJobWithConcurrencyCap(
     job: CrawlerAiJobRecord,
     maxConcurrent: number
   ): Promise<'inserted' | 'duplicate' | 'concurrency_limit'> {
-    return this.withLock(() => {
-      const activeCount = [...this.jobs.values()].filter((j) =>
-        ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
-      ).length
-      if (activeCount >= maxConcurrent) return 'concurrency_limit'
-      const active = [...this.jobs.values()].some(
-        (j) =>
-          j.clusterId === job.clusterId &&
-          ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
-      )
-      if (active) return 'duplicate'
-      if (job.dispatchType === 'INITIAL') {
-        const exists = [...this.jobs.values()].some(
-          (j) => j.clusterId === job.clusterId && j.dispatchType === 'INITIAL'
-        )
-        if (exists) return 'duplicate'
-      }
-      this.jobs.set(job.id, { ...job, outputTarget: EDITORIAL_OUTPUT_TARGET })
-      return 'inserted'
-    })
+    return this.withLock(() => this.insertJobWithConcurrencyCapSync(job, maxConcurrent))
   }
 
   async updateJob(id: string, patch: Partial<CrawlerAiJobRecord>): Promise<void> {
@@ -219,6 +281,35 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
       .slice(0, opts?.limit ?? 500)
   }
 
+  async tryInsertShadowEconomicDecision(
+    row: CrawlerAiShadowEconomicDecisionRow
+  ): Promise<{ inserted: boolean; row: CrawlerAiShadowEconomicDecisionRow }> {
+    const key = this.econKey(row.clusterId, row.contentFingerprint, row.prespendGateVersion)
+    const existing = this.shadowEconomicDecisions.get(key)
+    if (existing) {
+      existing.lastEvaluatedAt = row.lastEvaluatedAt
+      existing.evaluationCount += 1
+      return { inserted: false, row: { ...existing } }
+    }
+    const stored = { ...row }
+    this.shadowEconomicDecisions.set(key, stored)
+    return { inserted: true, row: { ...stored } }
+  }
+
+  async listShadowEconomicDecisions(opts?: {
+    limit?: number
+    since?: Date
+  }): Promise<CrawlerAiShadowEconomicDecisionRow[]> {
+    return [...this.shadowEconomicDecisions.values()]
+      .filter((r) => !opts?.since || r.firstEvaluatedAt >= opts.since)
+      .sort((a, b) => b.firstEvaluatedAt.getTime() - a.firstEvaluatedAt.getTime())
+      .slice(0, opts?.limit ?? 500)
+  }
+
+  async hasShadowEconomicDecisionForCluster(clusterId: string): Promise<boolean> {
+    return [...this.shadowEconomicDecisions.values()].some((r) => r.clusterId === clusterId)
+  }
+
   private windowKey(lane: AiCostLane, periodType: string, periodKey: string) {
     return `${lane}:${periodType}:${periodKey}`
   }
@@ -240,6 +331,32 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
     this.windows.set(this.windowKey(row.lane, row.periodType, row.periodKey), { ...row })
   }
 
+  /**
+   * Synchronous CAS on shared windows — mirrors Neon UPDATE ... WHERE reserved/count match.
+   * Does not require in-process mutex when two instances share the same maps.
+   */
+  private compareAndReserveSync(input: {
+    lane: AiCostLane
+    hour: CrawlerAiBudgetWindow
+    day: CrawlerAiBudgetWindow
+    nextHour: CrawlerAiBudgetWindow
+    nextDay: CrawlerAiBudgetWindow
+  }): boolean {
+    const hourKey = this.windowKey(input.lane, 'hour', input.hour.periodKey)
+    const dayKey = this.windowKey(input.lane, 'day', input.day.periodKey)
+    const hour = this.windows.get(hourKey) ?? input.hour
+    const day = this.windows.get(dayKey) ?? input.day
+    if (hour.reservedUsd !== input.hour.reservedUsd || hour.requestCount !== input.hour.requestCount) {
+      return false
+    }
+    if (day.reservedUsd !== input.day.reservedUsd || day.requestCount !== input.day.requestCount) {
+      return false
+    }
+    this.windows.set(hourKey, { ...input.nextHour })
+    this.windows.set(dayKey, { ...input.nextDay })
+    return true
+  }
+
   async compareAndReserve(input: {
     lane: AiCostLane
     hour: CrawlerAiBudgetWindow
@@ -247,21 +364,7 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
     nextHour: CrawlerAiBudgetWindow
     nextDay: CrawlerAiBudgetWindow
   }): Promise<boolean> {
-    return this.withLock(() => {
-      const hourKey = this.windowKey(input.lane, 'hour', input.hour.periodKey)
-      const dayKey = this.windowKey(input.lane, 'day', input.day.periodKey)
-      const hour = this.windows.get(hourKey) ?? input.hour
-      const day = this.windows.get(dayKey) ?? input.day
-      if (hour.reservedUsd !== input.hour.reservedUsd || hour.requestCount !== input.hour.requestCount) {
-        return false
-      }
-      if (day.reservedUsd !== input.day.reservedUsd || day.requestCount !== input.day.requestCount) {
-        return false
-      }
-      this.windows.set(hourKey, { ...input.nextHour })
-      this.windows.set(dayKey, { ...input.nextDay })
-      return true
-    })
+    return this.withLock(() => this.compareAndReserveSync(input))
   }
 
   async insertLedger(

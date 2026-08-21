@@ -51,6 +51,8 @@ export interface InsertSourceInput {
   healthScore?: number
   freshnessHours?: number
   registryKey?: string | null
+  /** Phase 4F.3.1 — required when creating as PAUSED for future auditability. */
+  lastPauseReason?: string | null
 }
 
 export interface InsertClusterInput {

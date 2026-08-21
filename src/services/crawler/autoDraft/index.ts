@@ -124,6 +124,16 @@ export {
 } from './shadowEconomics'
 
 export {
+  PRESPEND_GATE_VERSION_4F31,
+  classifyShadowRevisionKind,
+  aggregateUniqueEconomicMetrics,
+  compareRawVsUniqueEconomics,
+  economicDecisionKey,
+  type UniqueEconomicMetrics,
+  type ShadowRevisionKind,
+} from './shadowUniqueEconomics'
+
+export {
   atomicReserveAutoDraftBudget,
   releaseAutoDraftReservation,
 } from './concurrency'

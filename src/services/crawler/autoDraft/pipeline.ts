@@ -63,6 +63,10 @@ import {
   buildShadowDecision,
   shadowDecisionToDispatchShadow,
 } from './shadowEconomics'
+import {
+  PRESPEND_GATE_VERSION_4F31,
+  classifyShadowRevisionKind,
+} from './shadowUniqueEconomics'
 
 export type ControlledAutoDraftTickResult = {
   mode: string
@@ -665,11 +669,14 @@ export async function runControlledAutoDraftTick(opts: {
       independentSourceCount: independent,
       usableSourceWords: effectiveUsableWords,
       editorialDecisionSnapshot: humanDecisionBefore,
+      contentFingerprint: fp,
+      prespendGateVersion: PRESPEND_GATE_VERSION_4F31,
       meta: {
         economicTierReason: tier.reason,
         dedup,
         strongSinglePath: gate.strongSinglePath ?? null,
         richness: effectiveRichness,
+        prespendGateVersion: PRESPEND_GATE_VERSION_4F31,
       },
       now,
     })
@@ -679,6 +686,49 @@ export async function runControlledAutoDraftTick(opts: {
     // Persist shadow economics only in SHADOW_AUTO_DRAFT (never paid; never mutates human decision).
     if (shadowEnabled) {
       await opts.aiStore.upsertShadow(shadowDecisionToDispatchShadow(shadowDecision))
+      let economicDecisionId: string | null = null
+      let revisionKind = shadowDecision.revisionKind
+      if (opts.aiStore.tryInsertShadowEconomicDecision) {
+        const hadCluster = opts.aiStore.hasShadowEconomicDecisionForCluster
+          ? await opts.aiStore.hasShadowEconomicDecisionForCluster(cluster.id)
+          : false
+        const econId = newCrawlerId('she')
+        const tryEcon = await opts.aiStore.tryInsertShadowEconomicDecision({
+          id: econId,
+          clusterId: shadowDecision.clusterId,
+          contentFingerprint: fp,
+          prespendGateVersion: PRESPEND_GATE_VERSION_4F31,
+          revisionKind: hadCluster ? 'MATERIAL_UPDATE' : 'NEW_EVENT',
+          eventKey: shadowDecision.eventKey,
+          canonicalTitle: shadowDecision.canonicalTitle,
+          firstEvaluatedAt: shadowDecision.evaluatedAt,
+          lastEvaluatedAt: shadowDecision.evaluatedAt,
+          evaluationCount: 1,
+          machineEligibility: shadowDecision.machineEligibility,
+          prespendOutcome: shadowDecision.prespendOutcome,
+          economicTier: shadowDecision.economicTier,
+          action: shadowDecision.action,
+          blockReason: shadowDecision.blockReason,
+          estimatedInputTokens: shadowDecision.estimatedInputTokens,
+          estimatedOutputTokens: shadowDecision.estimatedOutputTokens,
+          estimatedCostUsd: shadowDecision.estimatedCostUsd,
+          costKnown: shadowDecision.costKnown,
+          rankScore: shadowDecision.rankScore,
+          independentSourceCount: shadowDecision.independentSourceCount,
+          usableSourceWords: shadowDecision.usableSourceWords,
+          editorialDecisionSnapshot: shadowDecision.editorialDecisionSnapshot,
+          meta: shadowDecision.meta ?? null,
+        })
+        economicDecisionId = tryEcon.row.id
+        revisionKind = classifyShadowRevisionKind({
+          clusterHadAnyPriorDecision: hadCluster,
+          sameFingerprintAndGateExists: !tryEcon.inserted,
+        })
+        // If inserted as MATERIAL but cluster had no prior (race), keep inserted revisionKind from row
+        if (tryEcon.inserted) {
+          revisionKind = tryEcon.row.revisionKind as typeof revisionKind
+        }
+      }
       if (opts.aiStore.insertShadowDecision) {
         await opts.aiStore.insertShadowDecision({
           id: newCrawlerId('shd'),
@@ -699,7 +749,15 @@ export async function runControlledAutoDraftTick(opts: {
           independentSourceCount: shadowDecision.independentSourceCount,
           usableSourceWords: shadowDecision.usableSourceWords,
           editorialDecisionSnapshot: shadowDecision.editorialDecisionSnapshot,
-          meta: shadowDecision.meta ?? null,
+          meta: {
+            ...(shadowDecision.meta ?? {}),
+            revisionKind,
+            contentFingerprint: fp,
+          },
+          contentFingerprint: fp,
+          prespendGateVersion: PRESPEND_GATE_VERSION_4F31,
+          revisionKind,
+          economicDecisionId,
         })
       }
     }

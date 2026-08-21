@@ -149,13 +149,45 @@ export type CrawlerAiShadowRow = {
   evaluatedAt: Date
 }
 
-/** Phase 4F.3 append-only shadow economics row. */
+/** Phase 4F.3 / 4F.3.1 append-only shadow evaluation telemetry row. */
 export type CrawlerAiShadowDecisionRow = {
   id: string
   clusterId: string
   eventKey: string | null
   canonicalTitle: string | null
   evaluatedAt: Date
+  machineEligibility: string | null
+  prespendOutcome: string
+  economicTier: string | null
+  action: string
+  blockReason: string | null
+  estimatedInputTokens: number | null
+  estimatedOutputTokens: number | null
+  estimatedCostUsd: number | null
+  costKnown: boolean
+  rankScore: number | null
+  independentSourceCount: number | null
+  usableSourceWords: number | null
+  editorialDecisionSnapshot: string | null
+  meta: Record<string, unknown> | null
+  contentFingerprint?: string | null
+  prespendGateVersion?: string | null
+  revisionKind?: string | null
+  economicDecisionId?: string | null
+}
+
+/** Phase 4F.3.1 — one canonical economic decision per cluster+fingerprint+gate. */
+export type CrawlerAiShadowEconomicDecisionRow = {
+  id: string
+  clusterId: string
+  contentFingerprint: string
+  prespendGateVersion: string
+  revisionKind: string
+  eventKey: string | null
+  canonicalTitle: string | null
+  firstEvaluatedAt: Date
+  lastEvaluatedAt: Date
+  evaluationCount: number
   machineEligibility: string | null
   prespendOutcome: string
   economicTier: string | null

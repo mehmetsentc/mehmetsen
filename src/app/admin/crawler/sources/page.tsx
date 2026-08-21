@@ -99,14 +99,18 @@ export default function CrawlerSourcesPage() {
     setBusyId(id)
     try {
       const next = status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE'
+      const body: { id: string; status: string; pauseReason?: string } = { id, status: next }
+      if (next === 'PAUSED') {
+        body.pauseReason = 'manual_cms_pause'
+      }
       const res = await fetch('/api/admin/crawler/sources', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-        body: JSON.stringify({ id, status: next }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const body = (await res.json()) as { error?: string }
-        throw new Error(body.error || 'Güncellenemedi')
+        const bodyErr = (await res.json()) as { error?: string }
+        throw new Error(bodyErr.error || 'Güncellenemedi')
       }
       await load()
     } catch (err) {

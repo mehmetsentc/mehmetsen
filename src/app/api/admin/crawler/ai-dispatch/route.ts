@@ -17,6 +17,7 @@ import {
   buildCostCmsPayload,
   costCmsUnavailablePayload,
 } from '@/services/crawler/autoDraft/costAggregates'
+import { aggregateUniqueEconomicMetrics } from '@/services/crawler/autoDraft/shadowUniqueEconomics'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -130,9 +131,16 @@ export async function GET(request: Request) {
       | {
           available: true
           evaluated: number
+          uniqueEventRevisions: number
           wouldDispatch: number
           wouldBlock: number
+          uniqueWouldDispatch: number
+          uniqueWouldBlock: number
+          estimatedSpendUsd: number | null
+          estimatedPreventedUsd: number | null
           byPrespend: Record<string, number>
+          byTier: Record<string, number>
+          helpTr: string
         }
       | { available: false; displayTr: 'Veri alınamadı' }
       | null,
@@ -168,31 +176,76 @@ export async function GET(request: Request) {
     let shadowEconomics: {
       available: true
       evaluated: number
+      uniqueEventRevisions: number
       wouldDispatch: number
       wouldBlock: number
+      uniqueWouldDispatch: number
+      uniqueWouldBlock: number
+      estimatedSpendUsd: number | null
+      estimatedPreventedUsd: number | null
       byPrespend: Record<string, number>
+      byTier: Record<string, number>
+      helpTr: string
     } | { available: false; displayTr: 'Veri alınamadı' } = {
       available: false,
       displayTr: 'Veri alınamadı',
     }
     try {
-      const decisions = store.listShadowDecisions
-        ? await store.listShadowDecisions({ limit: 200, since: new Date(now.getTime() - 24 * 86_400_000) })
+      const since = new Date(now.getTime() - 24 * 86_400_000)
+      const evaluations = store.listShadowDecisions
+        ? await store.listShadowDecisions({ limit: 2000, since })
+        : []
+      const economic = store.listShadowEconomicDecisions
+        ? await store.listShadowEconomicDecisions({ limit: 2000, since })
         : []
       const byPrespend: Record<string, number> = {}
       let wouldDispatch = 0
       let wouldBlock = 0
-      for (const d of decisions) {
+      for (const d of evaluations) {
         byPrespend[d.prespendOutcome] = (byPrespend[d.prespendOutcome] || 0) + 1
         if (d.action === 'WOULD_DISPATCH') wouldDispatch += 1
         else wouldBlock += 1
       }
+      const uniqueRows =
+        economic.length > 0
+          ? economic.map((e) => ({
+              clusterId: e.clusterId,
+              contentFingerprint: e.contentFingerprint,
+              prespendGateVersion: e.prespendGateVersion,
+              action: e.action,
+              blockReason: e.blockReason,
+              economicTier: e.economicTier,
+              estimatedCostUsd: e.estimatedCostUsd,
+              costKnown: e.costKnown,
+              prespendOutcome: e.prespendOutcome,
+            }))
+          : evaluations.map((d) => ({
+              clusterId: d.clusterId,
+              contentFingerprint: d.contentFingerprint ?? null,
+              prespendGateVersion: d.prespendGateVersion ?? null,
+              action: d.action,
+              blockReason: d.blockReason,
+              economicTier: d.economicTier,
+              estimatedCostUsd: d.estimatedCostUsd,
+              costKnown: d.costKnown,
+              prespendOutcome: d.prespendOutcome,
+            }))
+      const unique = aggregateUniqueEconomicMetrics(uniqueRows, {
+        legacyClusterOnly: economic.length === 0,
+      })
       shadowEconomics = {
         available: true,
-        evaluated: decisions.length,
+        evaluated: evaluations.length,
+        uniqueEventRevisions: unique.uniqueEventRevisions,
         wouldDispatch,
         wouldBlock,
+        uniqueWouldDispatch: unique.uniqueWouldDispatch,
+        uniqueWouldBlock: unique.uniqueWouldBlock,
+        estimatedSpendUsd: unique.estimatedSpendAfterGateUsd,
+        estimatedPreventedUsd: unique.estimatedSpendPreventedUsd,
         byPrespend,
+        byTier: unique.byTier,
+        helpTr: 'Gölge değerlendirmeleri gerçek AI çağrısı değildir.',
       }
     } catch {
       shadowEconomics = { available: false, displayTr: 'Veri alınamadı' }

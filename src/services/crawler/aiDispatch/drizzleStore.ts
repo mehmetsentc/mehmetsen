@@ -7,6 +7,7 @@ import {
   crawlerAiDispatchShadow,
   crawlerAiJobs,
   crawlerAiShadowDecisions,
+  crawlerAiShadowEconomicDecisions,
 } from '@/db/schema/crawler'
 import { newCrawlerId } from '../store/types'
 import { emptyCircuit } from './circuit'
@@ -19,6 +20,7 @@ import {
   type CrawlerAiJobRecord,
   type CrawlerAiLedgerRow,
   type CrawlerAiShadowDecisionRow,
+  type CrawlerAiShadowEconomicDecisionRow,
   type CrawlerAiShadowRow,
 } from './types'
 import type { AiDispatchStore } from './store'
@@ -131,9 +133,9 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
   }
 
   /**
-   * Phase 4F.3 — insert then enforce max concurrent active jobs (neon-http safe).
-   * If over cap, demote this job to BLOCKED (not active) and return concurrency_limit.
-   * Earliest created_at wins when two ticks race.
+   * Phase 4F.3.1 — DB-authoritative concurrency (no JS mutex).
+   * Insert then demote losers via status=BLOCKED so final active count ≤ maxConcurrent.
+   * Earliest created_at wins. Neon serverless-safe (no multi-statement txn required).
    */
   async insertJobWithConcurrencyCap(
     job: CrawlerAiJobRecord,
@@ -396,6 +398,10 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
       usableSourceWords: row.usableSourceWords,
       editorialDecisionSnapshot: row.editorialDecisionSnapshot,
       meta: row.meta,
+      contentFingerprint: row.contentFingerprint ?? null,
+      prespendGateVersion: row.prespendGateVersion ?? null,
+      revisionKind: row.revisionKind ?? null,
+      economicDecisionId: row.economicDecisionId ?? null,
     })
   }
 
@@ -435,7 +441,150 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
       usableSourceWords: r.usableSourceWords,
       editorialDecisionSnapshot: r.editorialDecisionSnapshot,
       meta: (r.meta as Record<string, unknown> | null) ?? null,
+      contentFingerprint: r.contentFingerprint ?? null,
+      prespendGateVersion: r.prespendGateVersion ?? null,
+      revisionKind: r.revisionKind ?? null,
+      economicDecisionId: r.economicDecisionId ?? null,
     }))
+  }
+
+  async tryInsertShadowEconomicDecision(
+    row: CrawlerAiShadowEconomicDecisionRow
+  ): Promise<{ inserted: boolean; row: CrawlerAiShadowEconomicDecisionRow }> {
+    try {
+      await this.db().insert(crawlerAiShadowEconomicDecisions).values({
+        id: row.id,
+        clusterId: row.clusterId,
+        contentFingerprint: row.contentFingerprint,
+        prespendGateVersion: row.prespendGateVersion,
+        revisionKind: row.revisionKind,
+        eventKey: row.eventKey,
+        canonicalTitle: row.canonicalTitle,
+        firstEvaluatedAt: row.firstEvaluatedAt,
+        lastEvaluatedAt: row.lastEvaluatedAt,
+        evaluationCount: row.evaluationCount,
+        machineEligibility: row.machineEligibility,
+        prespendOutcome: row.prespendOutcome,
+        economicTier: row.economicTier,
+        action: row.action,
+        blockReason: row.blockReason,
+        estimatedInputTokens: row.estimatedInputTokens,
+        estimatedOutputTokens: row.estimatedOutputTokens,
+        estimatedCostUsd: row.estimatedCostUsd,
+        costKnown: row.costKnown ? 1 : 0,
+        rankScore: row.rankScore,
+        independentSourceCount: row.independentSourceCount,
+        usableSourceWords: row.usableSourceWords,
+        editorialDecisionSnapshot: row.editorialDecisionSnapshot,
+        meta: row.meta,
+      })
+      return { inserted: true, row }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!/unique|duplicate/i.test(msg)) throw err
+      const existing = await this.db()
+        .select()
+        .from(crawlerAiShadowEconomicDecisions)
+        .where(
+          and(
+            eq(crawlerAiShadowEconomicDecisions.clusterId, row.clusterId),
+            eq(crawlerAiShadowEconomicDecisions.contentFingerprint, row.contentFingerprint),
+            eq(crawlerAiShadowEconomicDecisions.prespendGateVersion, row.prespendGateVersion)
+          )
+        )
+        .limit(1)
+      const cur = existing[0]
+      if (!cur) throw err
+      await this.db()
+        .update(crawlerAiShadowEconomicDecisions)
+        .set({
+          lastEvaluatedAt: row.lastEvaluatedAt,
+          evaluationCount: (cur.evaluationCount || 1) + 1,
+        })
+        .where(eq(crawlerAiShadowEconomicDecisions.id, cur.id))
+      return {
+        inserted: false,
+        row: {
+          id: cur.id,
+          clusterId: cur.clusterId,
+          contentFingerprint: cur.contentFingerprint,
+          prespendGateVersion: cur.prespendGateVersion,
+          revisionKind: cur.revisionKind,
+          eventKey: cur.eventKey,
+          canonicalTitle: cur.canonicalTitle,
+          firstEvaluatedAt: cur.firstEvaluatedAt,
+          lastEvaluatedAt: row.lastEvaluatedAt,
+          evaluationCount: (cur.evaluationCount || 1) + 1,
+          machineEligibility: cur.machineEligibility,
+          prespendOutcome: cur.prespendOutcome,
+          economicTier: cur.economicTier,
+          action: cur.action,
+          blockReason: cur.blockReason,
+          estimatedInputTokens: cur.estimatedInputTokens,
+          estimatedOutputTokens: cur.estimatedOutputTokens,
+          estimatedCostUsd: cur.estimatedCostUsd,
+          costKnown: cur.costKnown === 1,
+          rankScore: cur.rankScore,
+          independentSourceCount: cur.independentSourceCount,
+          usableSourceWords: cur.usableSourceWords,
+          editorialDecisionSnapshot: cur.editorialDecisionSnapshot,
+          meta: (cur.meta as Record<string, unknown> | null) ?? null,
+        },
+      }
+    }
+  }
+
+  async listShadowEconomicDecisions(opts?: {
+    limit?: number
+    since?: Date
+  }): Promise<CrawlerAiShadowEconomicDecisionRow[]> {
+    const rows = opts?.since
+      ? await this.db()
+          .select()
+          .from(crawlerAiShadowEconomicDecisions)
+          .where(gte(crawlerAiShadowEconomicDecisions.firstEvaluatedAt, opts.since))
+          .orderBy(desc(crawlerAiShadowEconomicDecisions.firstEvaluatedAt))
+          .limit(opts?.limit ?? 500)
+      : await this.db()
+          .select()
+          .from(crawlerAiShadowEconomicDecisions)
+          .orderBy(desc(crawlerAiShadowEconomicDecisions.firstEvaluatedAt))
+          .limit(opts?.limit ?? 500)
+    return rows.map((r) => ({
+      id: r.id,
+      clusterId: r.clusterId,
+      contentFingerprint: r.contentFingerprint,
+      prespendGateVersion: r.prespendGateVersion,
+      revisionKind: r.revisionKind,
+      eventKey: r.eventKey,
+      canonicalTitle: r.canonicalTitle,
+      firstEvaluatedAt: r.firstEvaluatedAt,
+      lastEvaluatedAt: r.lastEvaluatedAt,
+      evaluationCount: r.evaluationCount,
+      machineEligibility: r.machineEligibility,
+      prespendOutcome: r.prespendOutcome,
+      economicTier: r.economicTier,
+      action: r.action,
+      blockReason: r.blockReason,
+      estimatedInputTokens: r.estimatedInputTokens,
+      estimatedOutputTokens: r.estimatedOutputTokens,
+      estimatedCostUsd: r.estimatedCostUsd,
+      costKnown: r.costKnown === 1,
+      rankScore: r.rankScore,
+      independentSourceCount: r.independentSourceCount,
+      usableSourceWords: r.usableSourceWords,
+      editorialDecisionSnapshot: r.editorialDecisionSnapshot,
+      meta: (r.meta as Record<string, unknown> | null) ?? null,
+    }))
+  }
+
+  async hasShadowEconomicDecisionForCluster(clusterId: string): Promise<boolean> {
+    const rows = await this.db()
+      .select({ id: crawlerAiShadowEconomicDecisions.id })
+      .from(crawlerAiShadowEconomicDecisions)
+      .where(eq(crawlerAiShadowEconomicDecisions.clusterId, clusterId))
+      .limit(1)
+    return Boolean(rows[0])
   }
 
   async getBudgetWindow(

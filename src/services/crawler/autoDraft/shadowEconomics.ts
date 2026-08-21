@@ -1,11 +1,18 @@
 /**
- * Phase 4F.3 — SHADOW_AUTO_DRAFT economics (never paid).
+ * Phase 4F.3 / 4F.3.1 — SHADOW_AUTO_DRAFT economics (never paid).
  * Eligibility + pre-spend + rank + token/cost estimate → WOULD_DISPATCH / WOULD_BLOCK.
  * Never creates executable jobs, never calls provider, never mutates human editorial_decision.
+ *
+ * 4F.3.1: evaluations are operational telemetry; unique economics live in
+ * shadowUniqueEconomics (cluster + fingerprint + gate version).
  */
 
 import type { PrespendOutcome } from './preSpendGate'
 import type { EconomicTier } from './economicTiers'
+import {
+  PRESPEND_GATE_VERSION_4F31,
+  type ShadowRevisionKind,
+} from './shadowUniqueEconomics'
 
 export type ShadowDecisionAction = 'WOULD_DISPATCH' | 'WOULD_BLOCK'
 
@@ -28,6 +35,9 @@ export type ShadowAutoDraftDecision = {
   usableSourceWords: number
   /** Human decision snapshot — never written back. */
   editorialDecisionSnapshot: string | null
+  contentFingerprint: string
+  prespendGateVersion: string
+  revisionKind: ShadowRevisionKind
   meta?: Record<string, unknown>
 }
 
@@ -60,6 +70,9 @@ export function buildShadowDecision(input: {
   independentSourceCount: number
   usableSourceWords: number
   editorialDecisionSnapshot: string | null
+  contentFingerprint: string
+  prespendGateVersion?: string
+  revisionKind?: ShadowRevisionKind
   meta?: Record<string, unknown>
   now?: Date
 }): ShadowAutoDraftDecision {
@@ -90,6 +103,9 @@ export function buildShadowDecision(input: {
     independentSourceCount: input.independentSourceCount,
     usableSourceWords: input.usableSourceWords,
     editorialDecisionSnapshot: input.editorialDecisionSnapshot,
+    contentFingerprint: input.contentFingerprint,
+    prespendGateVersion: input.prespendGateVersion ?? PRESPEND_GATE_VERSION_4F31,
+    revisionKind: input.revisionKind ?? 'NEW_EVENT',
     meta: input.meta,
   }
 }
@@ -117,7 +133,6 @@ export function aggregateShadowFunnel(decisions: ShadowAutoDraftDecision[]): Sha
       wouldBlock += 1
       if (d.estimatedCostUsd != null && d.costKnown) estimatedPreventedUsd += d.estimatedCostUsd
       else if (d.prespendOutcome !== 'COST_UNKNOWN') {
-        // blocked without estimate still counts as prevent unknown
         preventedKnown = preventedKnown && d.estimatedCostUsd != null
       }
     }

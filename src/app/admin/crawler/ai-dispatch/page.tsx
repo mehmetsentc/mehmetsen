@@ -74,6 +74,23 @@ interface Payload {
   alert?: string | null
   dataUnavailable?: boolean
   error?: string
+  shadowEconomics?:
+    | {
+        available: true
+        evaluated: number
+        uniqueEventRevisions: number
+        wouldDispatch: number
+        wouldBlock: number
+        uniqueWouldDispatch: number
+        uniqueWouldBlock: number
+        estimatedSpendUsd: number | null
+        estimatedPreventedUsd: number | null
+        byPrespend: Record<string, number>
+        byTier: Record<string, number>
+        helpTr: string
+      }
+    | { available: false; displayTr: 'Veri alınamadı' }
+    | null
 }
 
 function money(n: number | null | undefined): string {
@@ -157,7 +174,7 @@ export default function AiDispatchPage() {
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       {unavailable ? (
         <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Veri kaynağına ulaşılamıyor — sayaçlar sıfır gibi gösterilmez.
+          Veri alınamadı — sayaçlar sıfır gibi gösterilmez.
         </p>
       ) : null}
       <div className="mb-4 rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-center">
@@ -173,6 +190,59 @@ export default function AiDispatchPage() {
           {data?.providerReason ? ` · ${data.providerReason}` : ''}
         </div>
       </div>
+      {data?.shadowEconomics ? (
+        <div className="mb-4 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">
+          <div className="mb-2 flex flex-wrap items-baseline gap-2">
+            <h2 className="text-base font-semibold">Gölge ekonomi</h2>
+            <span
+              className="text-xs text-[rgb(var(--color-muted))]"
+              title="Gölge değerlendirmeleri gerçek AI çağrısı değildir."
+            >
+              (Gölge değerlendirmeleri gerçek AI çağrısı değildir.)
+            </span>
+          </div>
+          {!data.shadowEconomics.available ? (
+            <p className="text-sm text-amber-800">
+              {'displayTr' in data.shadowEconomics ? data.shadowEconomics.displayTr : 'Veri alınamadı'}
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+              <div>
+                Gölge değerlendirmeleri:{' '}
+                <strong>{nz(data.shadowEconomics.evaluated, unavailable)}</strong>
+              </div>
+              <div>
+                Benzersiz olay/revizyon:{' '}
+                <strong>{nz(data.shadowEconomics.uniqueEventRevisions, unavailable)}</strong>
+              </div>
+              <div>
+                AI&apos;ya giderdi:{' '}
+                <strong>{nz(data.shadowEconomics.uniqueWouldDispatch, unavailable)}</strong>
+              </div>
+              <div>
+                Engellendi:{' '}
+                <strong>{nz(data.shadowEconomics.uniqueWouldBlock, unavailable)}</strong>
+              </div>
+              <div>
+                Tahmini AI maliyeti:{' '}
+                <strong>
+                  {unavailable || data.shadowEconomics.estimatedSpendUsd == null
+                    ? '—'
+                    : money(data.shadowEconomics.estimatedSpendUsd)}
+                </strong>
+              </div>
+              <div>
+                Tahmini engellenen maliyet:{' '}
+                <strong>
+                  {unavailable || data.shadowEconomics.estimatedPreventedUsd == null
+                    ? '—'
+                    : money(data.shadowEconomics.estimatedPreventedUsd)}
+                </strong>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
       {data?.alert ? (
         <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{data.alert}</p>
       ) : null}

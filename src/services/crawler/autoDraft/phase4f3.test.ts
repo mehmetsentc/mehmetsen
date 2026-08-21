@@ -332,6 +332,7 @@ describe('Phase 4F.3 economic tiers + shadow', () => {
       independentSourceCount: 2,
       usableSourceWords: 400,
       editorialDecisionSnapshot: 'NONE',
+      contentFingerprint: 'fp1',
     })
     const d2 = buildShadowDecision({
       clusterId: 'c2',
@@ -351,6 +352,7 @@ describe('Phase 4F.3 economic tiers + shadow', () => {
       independentSourceCount: 1,
       usableSourceWords: 40,
       editorialDecisionSnapshot: 'NONE',
+      contentFingerprint: 'fp2',
     })
     expect(d1.action).toBe('WOULD_DISPATCH')
     expect(d2.action).toBe('WOULD_BLOCK')

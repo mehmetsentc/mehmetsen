@@ -2,6 +2,10 @@
  * Phase 4F.3 — DB-backed atomic budget reservation for auto-draft enqueue.
  * Fixes overlapping-tick races that over-reserved request/USD counters.
  * Job uniqueness remains on crawler_ai_jobs unique indexes.
+ *
+ * Phase 4F.3.1: correctness is Neon/DB CAS (compareAndReserve) + DB job uniqueness /
+ * concurrency demotion. In-process memory locks are optional optimizations only and
+ * must not be required across serverless instances.
  */
 
 import type { AiDispatchStore } from '../aiDispatch/store'
