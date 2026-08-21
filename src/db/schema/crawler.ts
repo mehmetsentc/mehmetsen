@@ -626,6 +626,39 @@ export const crawlerAiDispatchShadow = pgTable(
   ]
 )
 
+/** Phase 4F.3 — append-only shadow economics decisions (never paid). */
+export const crawlerAiShadowDecisions = pgTable(
+  'crawler_ai_shadow_decisions',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    clusterId: varchar('cluster_id', { length: 64 }).notNull(),
+    eventKey: varchar('event_key', { length: 80 }),
+    canonicalTitle: text('canonical_title'),
+    evaluatedAt: timestamp('evaluated_at', { withTimezone: true }).defaultNow().notNull(),
+    machineEligibility: varchar('machine_eligibility', { length: 48 }),
+    prespendOutcome: varchar('prespend_outcome', { length: 64 }).notNull(),
+    economicTier: varchar('economic_tier', { length: 8 }),
+    action: varchar('action', { length: 24 }).notNull(),
+    blockReason: varchar('block_reason', { length: 64 }),
+    estimatedInputTokens: integer('estimated_input_tokens'),
+    estimatedOutputTokens: integer('estimated_output_tokens'),
+    estimatedCostUsd: real('estimated_cost_usd'),
+    costKnown: smallint('cost_known').default(0).notNull(),
+    rankScore: real('rank_score'),
+    independentSourceCount: integer('independent_source_count'),
+    usableSourceWords: integer('usable_source_words'),
+    editorialDecisionSnapshot: varchar('editorial_decision_snapshot', { length: 40 }),
+    meta: jsonb('meta').$type<Record<string, unknown>>(),
+  },
+  (t) => [
+    index('crawler_ai_shadow_decisions_cluster_idx').on(t.clusterId),
+    index('crawler_ai_shadow_decisions_eval_idx').on(t.evaluatedAt),
+    index('crawler_ai_shadow_decisions_outcome_idx').on(t.prespendOutcome),
+    index('crawler_ai_shadow_decisions_action_idx').on(t.action),
+    index('crawler_ai_shadow_decisions_tier_idx').on(t.economicTier),
+  ]
+)
+
 /** Phase 4A.1 — human editorial bulk/triage audit (additive). */
 export const crawlerEditorialAudit = pgTable(
   'crawler_editorial_audit',

@@ -99,7 +99,9 @@ async function seedApprovedEvent(
     aiEligibility: 'ELIGIBLE',
     uniqueSourceCount: 2,
     articleCount: 2,
-    latestArticleAt: now,
+    latestArticleAt: opts?.decidedAt ?? now,
+    firstSeenAt: opts?.decidedAt ?? now,
+    createdAt: opts?.decidedAt ?? now,
     localImportance: 80,
     importanceScore: 75,
   })

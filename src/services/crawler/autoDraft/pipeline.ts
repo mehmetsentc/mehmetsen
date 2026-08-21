@@ -19,8 +19,12 @@ import {
   type CrawlerAiJobRecord,
   type MemberEvidence,
 } from '../aiDispatch/types'
-import { emptyWindow, periodKeys, tryReserveBudget } from '../aiDispatch/budget'
-import { isControlledAutoDraftEnabled, getCrawlerAiMode } from '../aiMode'
+import { emptyWindow, periodKeys } from '../aiDispatch/budget'
+import {
+  getCrawlerAiMode,
+  isControlledAutoDraftEnabled,
+  isShadowAutoDraftEnabled,
+} from '../aiMode'
 import {
   buildMachineEligibilityMeta,
   canCreateAutoDraftJob,
@@ -39,12 +43,26 @@ import {
   getAutoDraftEligibleAfter,
   isEventEligibleForAutoDraft,
 } from './activation'
-import { compareEditorialAutoDraftRank } from './editorialRank'
+import { compareEditorialAutoDraftRank, scoreEditorialAutoDraftRank } from './editorialRank'
 import { buildCanaryEvidencePack } from '../canary/pack'
 import { estimateCanaryCostUsd } from '../canary/preflight'
 import { canaryConfig } from '../canary/flags'
+import { computeSourceContentMetrics } from '../canary/sourcePolicy'
 import { blocksAutomaticRepay } from './lease'
 import type { CanaryClusterInput, CanaryMemberInput } from '../canary/types'
+import {
+  atomicReserveAutoDraftBudget,
+  releaseAutoDraftReservation,
+} from './concurrency'
+import {
+  estimateBoilerplateRatio,
+  evaluatePrespendGate,
+} from './preSpendGate'
+import { classifyEconomicTier, dedupEconomicsMetrics } from './economicTiers'
+import {
+  buildShadowDecision,
+  shadowDecisionToDispatchShadow,
+} from './shadowEconomics'
 
 export type ControlledAutoDraftTickResult = {
   mode: string
@@ -68,6 +86,12 @@ export type ControlledAutoDraftTickResult = {
   publishedBlocked: number
   existingDraftBlocked: number
   budgetBlocked: number
+  /** Phase 4F.3 pre-spend rejects (event retained). */
+  prespendRejected: number
+  /** Phase 4F.3 shadow WOULD_DISPATCH count this tick. */
+  shadowWouldDispatch: number
+  /** Phase 4F.3 shadow WOULD_BLOCK count this tick. */
+  shadowWouldBlock: number
   /** Always 0 — crawler never calls provider (Phase 4D.3 / 4E.1). */
   providerCalls: 0
   draftsPersisted: 0
@@ -305,9 +329,10 @@ export async function recoverStaleLeases(
 }
 
 /**
- * Phase 4F.1 Design A — classify machine eligibility + optionally enqueue.
+ * Phase 4F.1/4F.3 Design A — classify machine eligibility + optionally enqueue.
  * MODE OFF → classify only (0 jobs). Never writes APPROVED_FOR_AI.
- * Provider OFF → enqueue still allowed when mode ON; worker stays inert.
+ * SHADOW_AUTO_DRAFT → classify + pre-spend + economics; 0 jobs; 0 provider.
+ * Provider OFF → enqueue still allowed when CONTROLLED mode ON; worker stays inert.
  */
 export async function runControlledAutoDraftTick(opts: {
   crawlerStore: CrawlerStore
@@ -319,6 +344,7 @@ export async function runControlledAutoDraftTick(opts: {
   const now = opts.now ?? new Date()
   const mode = getCrawlerAiMode()
   const autoEnabled = isControlledAutoDraftEnabled()
+  const shadowEnabled = isShadowAutoDraftEnabled()
   const limits = autoDraftBudgetLimits()
   const cfg = crawlerAiDispatchConfig()
   const readiness = getCrawlerAiProviderReadiness()
@@ -344,6 +370,9 @@ export async function runControlledAutoDraftTick(opts: {
     publishedBlocked: 0,
     existingDraftBlocked: 0,
     budgetBlocked: 0,
+    prespendRejected: 0,
+    shadowWouldDispatch: 0,
+    shadowWouldBlock: 0,
     providerCalls: 0,
     draftsPersisted: 0,
     published: 0,
@@ -356,23 +385,22 @@ export async function runControlledAutoDraftTick(opts: {
     enqueueLimit,
   }
 
-  // Lease recovery is cheap and safe when AI OFF (no provider calls)
   result.leaseRecovered = await recoverStaleLeases(opts.aiStore, now, skipReasons)
 
-  if (!autoEnabled) {
+  if (!autoEnabled && !shadowEnabled) {
     if (mode === 'OFF') bump(skipReasons, 'MODE_OFF')
     else if (mode === 'MANUAL_CANARY') bump(skipReasons, 'MANUAL_CANARY_NO_AUTO')
     else bump(skipReasons, 'DISPATCH_OFF')
   }
+  if (shadowEnabled) bump(skipReasons, 'SHADOW_AUTO_DRAFT_ACTIVE')
 
   if (autoEnabled && !providerReady) {
-    // Intentional Phase 4E.1: enqueue may proceed; worker will not claim/spend.
     bump(skipReasons, 'PROVIDER_DEFERRED_NOTE')
   }
 
   const keys = periodKeys(now)
-  let hourSnap = await opts.aiStore.getBudgetWindow('crawler_automatic', 'hour', keys.hour)
-  let daySnap = await opts.aiStore.getBudgetWindow('crawler_automatic', 'day', keys.day)
+  await opts.aiStore.getBudgetWindow('crawler_automatic', 'hour', keys.hour)
+  await opts.aiStore.getBudgetWindow('crawler_automatic', 'day', keys.day)
   let monthSnap = await opts.aiStore.getBudgetWindow('crawler_automatic', 'month', keys.month)
   if (!monthSnap?.periodKey) monthSnap = emptyWindow('crawler_automatic', 'month', keys.month)
 
@@ -380,11 +408,6 @@ export async function runControlledAutoDraftTick(opts: {
     lane: 'crawler_automatic',
     since: new Date(now.getTime() - 7 * 86_400_000),
   })
-  /**
-   * Phase 4E — acceptance caps apply to the current activation window only.
-   * When CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER is set, do not let prior-phase
-   * controlled_auto_draft ledger rows exhaust this window's maxRequests.
-   */
   const acceptanceSpent = recentLedger.filter((r) => {
     if (r.requestType !== 'controlled_auto_draft') return false
     if (!/success|fail|completed/i.test(r.status)) return false
@@ -392,27 +415,17 @@ export async function runControlledAutoDraftTick(opts: {
     return true
   })
   const acceptanceCapped = autoEnabled && acceptanceSpent.length >= caps.maxRequests
-  if (acceptanceCapped) {
-    bump(skipReasons, 'ACCEPTANCE_REQUEST_CAP')
-  }
+  if (acceptanceCapped) bump(skipReasons, 'ACCEPTANCE_REQUEST_CAP')
 
-  // Wide ranked pool — Design A: NONE + APPROVED_FOR_AI (human never required for auto).
   const candidates = await listAutoDraftCandidates(opts.crawlerStore, enqueueLimit, now)
-  let concurrent = await opts.aiStore.countActiveJobs()
 
   for (const cluster of candidates) {
-    // Always classify; only stop enqueue loop when caps hit (still classify remaining? skip for cost).
-    if (autoEnabled && !acceptanceCapped) {
-      if (result.jobsCreated >= enqueueLimit) {
-        bump(skipReasons, 'ENQUEUE_LIMIT_REACHED')
-        // Continue classifying without enqueue
-      }
+    if (autoEnabled && !acceptanceCapped && result.jobsCreated >= enqueueLimit) {
+      bump(skipReasons, 'ENQUEUE_LIMIT_REACHED')
     }
 
     result.evaluated += 1
     result.candidatesScanned += 1
-
-    // Never mutate human editorial decision — snapshot for audit only.
     const humanDecisionBefore = cluster.editorialDecision
 
     const members = await membersFor(opts.crawlerStore, cluster.id)
@@ -422,7 +435,6 @@ export async function runControlledAutoDraftTick(opts: {
     const hasCompleted =
       !!existing && (existing.status === 'COMPLETED' || Boolean(existing.editorialNewsId))
 
-    // Never auto-requeue uncertain / ledger-success finalize failures
     if (
       existing &&
       blocksAutomaticRepay({
@@ -481,12 +493,23 @@ export async function runControlledAutoDraftTick(opts: {
       : 999
 
     const pack = buildCanaryEvidencePack(toCanaryCluster(cluster), toCanaryMembers(members))
+    const contentMetrics = computeSourceContentMetrics(pack)
     const tokenIn = pack.metrics.packedTokensEstimate
     const tokenOut = canaryConfig().estimatedOutputTokens
     const costProbe = estimateCanaryCostUsd(tokenIn, tokenOut)
     const costUsd = costProbe.estimatedCostUsd
     const costUnknown = !costProbe.known || costUsd == null
     const overCeiling = !costUnknown && (costUsd ?? 0) > limits.maxCostPerEventUsd + 1e-12
+    const combinedBody = pack.sources.map((s) => s.body || '').join('\n')
+    const boilerplateRatio = estimateBoilerplateRatio(combinedBody)
+    const memberBodiesEmpty = members.every((m) => !(m.body || '').trim() && !(m.description || '').trim())
+    const packBodiesEmpty =
+      pack.sources.length > 0 && pack.sources.every((s) => !(s.body || '').trim())
+    const malformedExtraction =
+      members.length === 0 ||
+      (bestWord === 0 && contentMetrics.usableSourceWords === 0) ||
+      memberBodiesEmpty ||
+      packBodiesEmpty
 
     const gateInput = {
       clusterAiEligibility: cluster.aiEligibility,
@@ -524,7 +547,6 @@ export async function runControlledAutoDraftTick(opts: {
       contentFingerprint: fp,
     })
 
-    // Persist machine eligibility ONLY — never touch editorialDecision / APPROVED_FOR_AI.
     await opts.crawlerStore.updateCluster(cluster.id, {
       contentFingerprint: fp,
       autoDraftStatus: gate.readyForJob ? 'AUTO_DRAFT_ELIGIBLE' : gate.status,
@@ -534,11 +556,9 @@ export async function runControlledAutoDraftTick(opts: {
       machineDraftEligibilityMeta: machineMeta,
     })
 
-    // Invariant: human decision unchanged
     const after = await opts.crawlerStore.getCluster(cluster.id)
     if (after && after.editorialDecision !== humanDecisionBefore) {
       bump(skipReasons, 'HUMAN_DECISION_MUTATION_BLOCKED')
-      // Restore human decision if somehow mutated (should never happen)
       await opts.crawlerStore.updateCluster(cluster.id, {
         editorialDecision: humanDecisionBefore as NewsClusterRecord['editorialDecision'],
       })
@@ -550,11 +570,144 @@ export async function runControlledAutoDraftTick(opts: {
       eventAt,
       decidedAt: eventAt,
     })
+    const historicalBlocked = !activation.ok
 
-    // Classify-only when mode OFF / dispatch OFF / acceptance capped
-    if (!autoEnabled || acceptanceCapped) {
+    const prespend = evaluatePrespendGate({
+      gate,
+      bestWordCount: bestWord,
+      bestConfidence: bestConf,
+      avgHealth,
+      staleHours,
+      independentSourceCount: independent,
+      usableSourceWords: contentMetrics.usableSourceWords,
+      richness: contentMetrics.richness,
+      boilerplateRatio,
+      malformedExtraction,
+      costUnknown,
+      budgetBlocked: overCeiling,
+      historicalBlocked,
+      hasActiveAiJob: hasActive,
+      hasCompletedDraft: hasCompleted,
+      publishedNewsId: cluster.publishedNewsId,
+      exactDuplicateOnly: gateInput.exactDuplicateOnly,
+    })
+    if (prespend.rejected) {
+      result.prespendRejected += 1
+      bump(skipReasons, `PRESPEND_${prespend.outcome}`)
+      // Legacy skip codes for Phase 4E/4F.1 observability compatibility
+      bump(skipReasons, prespend.outcome)
+    }
+
+    const effectiveUsableWords = Math.max(bestWord, contentMetrics.usableSourceWords)
+    const effectiveRichness =
+      contentMetrics.usableSourceWords >= 80
+        ? contentMetrics.richness
+        : effectiveUsableWords >= 300
+          ? 'rich'
+          : effectiveUsableWords >= 150
+            ? 'medium'
+            : effectiveUsableWords >= 80
+              ? 'thin'
+              : 'insufficient'
+
+    const tier = classifyEconomicTier({
+      richness: effectiveRichness,
+      independentSourceCount: independent,
+      usableSourceWords: effectiveUsableWords,
+      bestConfidence: bestConf,
+      avgHealth,
+      importanceScore: cluster.importanceScore,
+      strongSinglePath: gate.strongSinglePath ?? null,
+      prespendOutcome: prespend.outcome,
+    })
+    const rank = scoreEditorialAutoDraftRank({
+      city: cluster.city,
+      district: cluster.district,
+      region: cluster.region,
+      importanceScore: cluster.importanceScore,
+      independentSourceCount: independent,
+      staleHours,
+      avgHealth,
+      bestWordCount: bestWord,
+      bestConfidence: bestConf,
+      countryCode: cluster.countryCode,
+    })
+    const dedup = dedupEconomicsMetrics({
+      memberSourceCount: members.length,
+      independentSourceCount: independent,
+      packedSourceCount: pack.sources.length,
+      usableSourceWords: contentMetrics.usableSourceWords,
+      packedUsableWords: pack.sources.reduce(
+        (s, x) => s + (x.body || '').split(/\s+/).filter(Boolean).length,
+        0
+      ),
+    })
+
+    const shadowDecision = buildShadowDecision({
+      clusterId: cluster.id,
+      eventKey: cluster.eventKey,
+      canonicalTitle: cluster.canonicalTitle,
+      machineEligibility: machineStatus,
+      prespendOutcome: prespend.outcome,
+      readyToSpend: prespend.readyToSpend,
+      tier: tier.tier,
+      shadowDispatchAllowed: tier.shadowDispatchAllowed,
+      blockReason: prespend.rejected
+        ? prespend.outcome
+        : tier.shadowDispatchAllowed
+          ? null
+          : tier.reason,
+      estimatedInputTokens: tokenIn,
+      estimatedOutputTokens: tokenOut,
+      estimatedCostUsd: costUsd,
+      costKnown: !costUnknown,
+      rankScore: rank.score,
+      independentSourceCount: independent,
+      usableSourceWords: effectiveUsableWords,
+      editorialDecisionSnapshot: humanDecisionBefore,
+      meta: {
+        economicTierReason: tier.reason,
+        dedup,
+        strongSinglePath: gate.strongSinglePath ?? null,
+        richness: effectiveRichness,
+      },
+      now,
+    })
+    if (shadowDecision.action === 'WOULD_DISPATCH') result.shadowWouldDispatch += 1
+    else result.shadowWouldBlock += 1
+
+    // Persist shadow economics only in SHADOW_AUTO_DRAFT (never paid; never mutates human decision).
+    if (shadowEnabled) {
+      await opts.aiStore.upsertShadow(shadowDecisionToDispatchShadow(shadowDecision))
+      if (opts.aiStore.insertShadowDecision) {
+        await opts.aiStore.insertShadowDecision({
+          id: newCrawlerId('shd'),
+          clusterId: shadowDecision.clusterId,
+          eventKey: shadowDecision.eventKey,
+          canonicalTitle: shadowDecision.canonicalTitle,
+          evaluatedAt: shadowDecision.evaluatedAt,
+          machineEligibility: shadowDecision.machineEligibility,
+          prespendOutcome: shadowDecision.prespendOutcome,
+          economicTier: shadowDecision.economicTier,
+          action: shadowDecision.action,
+          blockReason: shadowDecision.blockReason,
+          estimatedInputTokens: shadowDecision.estimatedInputTokens,
+          estimatedOutputTokens: shadowDecision.estimatedOutputTokens,
+          estimatedCostUsd: shadowDecision.estimatedCostUsd,
+          costKnown: shadowDecision.costKnown,
+          rankScore: shadowDecision.rankScore,
+          independentSourceCount: shadowDecision.independentSourceCount,
+          usableSourceWords: shadowDecision.usableSourceWords,
+          editorialDecisionSnapshot: shadowDecision.editorialDecisionSnapshot,
+          meta: shadowDecision.meta ?? null,
+        })
+      }
+    }
+
+    if (!autoEnabled || acceptanceCapped || shadowEnabled) {
       result.jobsSkipped += 1
-      if (!autoEnabled) bump(skipReasons, 'CLASSIFIED_NO_ENQUEUE')
+      if (shadowEnabled) bump(skipReasons, 'SHADOW_NO_ENQUEUE')
+      else if (!autoEnabled) bump(skipReasons, 'CLASSIFIED_NO_ENQUEUE')
       continue
     }
 
@@ -575,42 +728,71 @@ export async function runControlledAutoDraftTick(opts: {
 
     if (result.jobsCreated >= enqueueLimit || result.jobsCreated >= caps.maxEvents) {
       result.jobsSkipped += 1
-      bump(skipReasons, result.jobsCreated >= caps.maxEvents ? 'ACCEPTANCE_EVENT_CAP' : 'ENQUEUE_LIMIT_REACHED')
+      bump(
+        skipReasons,
+        result.jobsCreated >= caps.maxEvents ? 'ACCEPTANCE_EVENT_CAP' : 'ENQUEUE_LIMIT_REACHED'
+      )
       continue
     }
 
-    const reserve =
-      !costUnknown && costUsd != null
-        ? tryReserveBudget({
-            hour: hourSnap,
-            day: daySnap,
-            month: monthSnap,
-            costUsd,
-            concurrentJobs: concurrent,
-            maxRequestsPerHour: limits.maxDraftsPerHour,
-            maxRequestsPerDay: limits.maxDraftsPerDay,
-            hourlyBudgetUsd: limits.maxHourlyCostUsd,
-            dailyBudgetUsd: limits.maxDailyCostUsd,
-            monthlyBudgetUsd: limits.maxMonthlyCostUsd,
-          })
-        : {
-            ok: false as const,
-            reason: (costUnknown ? 'COST_UNKNOWN' : 'EVENT_COST_LIMIT_EXCEEDED') as
-              | 'COST_UNKNOWN'
-              | 'EVENT_COST_LIMIT_EXCEEDED',
-          }
+    if (!prespend.readyToSpend) {
+      result.blocked += 1
+      result.jobsSkipped += 1
+      bump(skipReasons, 'PRESPEND_BLOCKED_ENQUEUE')
+      continue
+    }
 
-    const budgetOk = reserve.ok === true && !costUnknown && !overCeiling
+    if (costUnknown || costUsd == null || overCeiling) {
+      result.blocked += 1
+      result.jobsSkipped += 1
+      result.budgetBlocked += 1
+      bump(skipReasons, costUnknown ? 'COST_UNKNOWN' : 'EVENT_COST_LIMIT_EXCEEDED')
+      continue
+    }
+
+    const reserved = await atomicReserveAutoDraftBudget({
+      aiStore: opts.aiStore,
+      costUsd,
+      limits,
+      now,
+    })
+    if (!reserved.ok) {
+      result.blocked += 1
+      result.jobsSkipped += 1
+      result.budgetBlocked += 1
+      const reason = reserved.reason
+      const code =
+        reason === 'HOURLY_REQUEST_LIMIT'
+          ? 'HOURLY_LIMIT'
+          : reason === 'DAILY_REQUEST_LIMIT'
+            ? 'DAILY_LIMIT'
+            : reason === 'DAILY_BUDGET_EXCEEDED'
+              ? 'DAILY_COST_LIMIT'
+              : reason === 'MONTHLY_BUDGET_EXCEEDED'
+                ? 'MONTHLY_COST_LIMIT'
+                : reason === 'CONCURRENCY_LIMIT'
+                  ? 'CONCURRENCY_LIMIT'
+                  : reason
+      bump(skipReasons, code)
+      continue
+    }
 
     const create = canCreateAutoDraftJob({
       gate,
       editorialDecision: cluster.editorialDecision,
       autoDraftModeEnabled: autoEnabled,
-      budgetOk,
+      budgetOk: true,
       idempotencyOk: !hasActive && !existing,
     })
 
     if (!create.ok) {
+      await releaseAutoDraftReservation({
+        aiStore: opts.aiStore,
+        hour: reserved.hour,
+        day: reserved.day,
+        month: reserved.month,
+        costUsd: reserved.costUsd,
+      })
       result.blocked += 1
       result.jobsSkipped += 1
       const reason = create.reason
@@ -622,56 +804,40 @@ export async function runControlledAutoDraftTick(opts: {
       continue
     }
 
-    if (!reserve.ok) {
-      result.blocked += 1
-      result.jobsSkipped += 1
-      result.budgetBlocked += 1
-      const reason = String(reserve.reason)
-      const code =
-        reason === 'HOURLY_REQUEST_LIMIT'
-          ? 'HOURLY_LIMIT'
-          : reason === 'DAILY_REQUEST_LIMIT'
-            ? 'DAILY_LIMIT'
-            : reason === 'DAILY_BUDGET_EXCEEDED'
-              ? 'DAILY_COST_LIMIT'
-              : reason === 'MONTHLY_BUDGET_EXCEEDED'
-                ? 'MONTHLY_COST_LIMIT'
-                : reason
-      bump(skipReasons, code)
-      continue
-    }
-
-    // Enqueue as PENDING — worker claims into PROCESSING with lease.
     const job = jobStub(cluster, gate, 'PENDING', {
       estimatedInputTokens: tokenIn,
       estimatedOutputTokens: tokenOut,
       estimatedCostUsd: costUsd,
       fingerprint: fp,
     })
-    const inserted = await opts.aiStore.insertJob(job)
-    if (inserted === 'duplicate') {
+    const inserted = opts.aiStore.insertJobWithConcurrencyCap
+      ? await opts.aiStore.insertJobWithConcurrencyCap(job, cfg.maxConcurrentJobs)
+      : await opts.aiStore.insertJob(job)
+    if (inserted === 'duplicate' || inserted === 'concurrency_limit') {
+      await releaseAutoDraftReservation({
+        aiStore: opts.aiStore,
+        hour: reserved.hour,
+        day: reserved.day,
+        month: reserved.month,
+        costUsd: reserved.costUsd,
+      })
       result.blocked += 1
       result.jobsSkipped += 1
-      result.duplicateBlocked += 1
-      bump(skipReasons, 'IDEMPOTENCY_DUPLICATE')
+      if (inserted === 'concurrency_limit') {
+        result.budgetBlocked += 1
+        bump(skipReasons, 'CONCURRENCY_LIMIT')
+      } else {
+        result.duplicateBlocked += 1
+        bump(skipReasons, 'IDEMPOTENCY_DUPLICATE')
+      }
       continue
     }
 
     result.jobsCreated += 1
-    concurrent += 1
-    hourSnap = reserve.hour
-    daySnap = reserve.day
-    if (reserve.month) monthSnap = reserve.month
-    await opts.aiStore.saveBudgetWindow(hourSnap)
-    await opts.aiStore.saveBudgetWindow(daySnap)
-    if (reserve.month) await opts.aiStore.saveBudgetWindow(reserve.month)
     bump(skipReasons, 'ENQUEUED')
   }
 
-  if (autoEnabled && !cutoff) {
-    bump(skipReasons, 'CUTOFF_UNSET_NOTE')
-  }
-
+  if (autoEnabled && !cutoff) bump(skipReasons, 'CUTOFF_UNSET_NOTE')
   return result
 }
 

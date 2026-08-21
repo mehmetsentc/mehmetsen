@@ -149,6 +149,29 @@ export type CrawlerAiShadowRow = {
   evaluatedAt: Date
 }
 
+/** Phase 4F.3 append-only shadow economics row. */
+export type CrawlerAiShadowDecisionRow = {
+  id: string
+  clusterId: string
+  eventKey: string | null
+  canonicalTitle: string | null
+  evaluatedAt: Date
+  machineEligibility: string | null
+  prespendOutcome: string
+  economicTier: string | null
+  action: string
+  blockReason: string | null
+  estimatedInputTokens: number | null
+  estimatedOutputTokens: number | null
+  estimatedCostUsd: number | null
+  costKnown: boolean
+  rankScore: number | null
+  independentSourceCount: number | null
+  usableSourceWords: number | null
+  editorialDecisionSnapshot: string | null
+  meta: Record<string, unknown> | null
+}
+
 export type PackedSource = {
   articleId: string
   sourceId: string

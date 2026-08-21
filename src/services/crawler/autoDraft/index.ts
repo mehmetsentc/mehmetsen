@@ -97,3 +97,33 @@ export {
   aggregateLedgerRows,
   type CostAggregateWindow,
 } from './costAggregates'
+
+export {
+  evaluatePrespendGate,
+  estimateBoilerplateRatio,
+  PRESPEND_OUTCOMES,
+  PRESPEND_OUTCOME_LABELS_TR,
+  type PrespendOutcome,
+  type PrespendGateResult,
+} from './preSpendGate'
+
+export {
+  classifyEconomicTier,
+  dedupEconomicsMetrics,
+  ECONOMIC_TIERS,
+  ECONOMIC_TIER_LABELS_TR,
+  type EconomicTier,
+} from './economicTiers'
+
+export {
+  buildShadowDecision,
+  aggregateShadowFunnel,
+  shadowDecisionToDispatchShadow,
+  type ShadowAutoDraftDecision,
+  type ShadowFunnelStats,
+} from './shadowEconomics'
+
+export {
+  atomicReserveAutoDraftBudget,
+  releaseAutoDraftReservation,
+} from './concurrency'

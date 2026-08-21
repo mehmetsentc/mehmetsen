@@ -5,6 +5,7 @@ import type {
   CrawlerAiCircuitState,
   CrawlerAiJobRecord,
   CrawlerAiLedgerRow,
+  CrawlerAiShadowDecisionRow,
   CrawlerAiShadowRow,
 } from './types'
 import { EDITORIAL_OUTPUT_TARGET } from './types'
@@ -14,6 +15,14 @@ import { emptyWindow, periodKeys } from './budget'
 export interface AiDispatchStore {
   getInitialJob(clusterId: string): Promise<CrawlerAiJobRecord | null>
   insertJob(job: CrawlerAiJobRecord): Promise<'inserted' | 'duplicate'>
+  /**
+   * Phase 4F.3 — insert only if active jobs &lt; maxConcurrent (same lock / txn as insert).
+   * Prevents overlapping ticks from exceeding maxConcurrentJobs=1.
+   */
+  insertJobWithConcurrencyCap?(
+    job: CrawlerAiJobRecord,
+    maxConcurrent: number
+  ): Promise<'inserted' | 'duplicate' | 'concurrency_limit'>
   updateJob(id: string, patch: Partial<CrawlerAiJobRecord>): Promise<void>
   listJobs(opts?: { status?: string; limit?: number }): Promise<CrawlerAiJobRecord[]>
   countActiveJobs(): Promise<number>
@@ -27,6 +36,9 @@ export interface AiDispatchStore {
   listClaimableJobs?(opts?: { limit?: number; now?: Date }): Promise<CrawlerAiJobRecord[]>
   upsertShadow(row: CrawlerAiShadowRow): Promise<void>
   listShadow(opts?: { limit?: number }): Promise<CrawlerAiShadowRow[]>
+  /** Phase 4F.3 — append-only shadow economics (optional on older stores). */
+  insertShadowDecision?(row: CrawlerAiShadowDecisionRow): Promise<void>
+  listShadowDecisions?(opts?: { limit?: number; since?: Date }): Promise<CrawlerAiShadowDecisionRow[]>
   getBudgetWindow(lane: AiCostLane, periodType: 'hour' | 'day' | 'month', periodKey: string): Promise<CrawlerAiBudgetWindow>
   saveBudgetWindow(row: CrawlerAiBudgetWindow): Promise<void>
   /**
@@ -48,6 +60,7 @@ export interface AiDispatchStore {
 export class MemoryAiDispatchStore implements AiDispatchStore {
   jobs = new Map<string, CrawlerAiJobRecord>()
   shadow = new Map<string, CrawlerAiShadowRow>()
+  shadowDecisions: CrawlerAiShadowDecisionRow[] = []
   windows = new Map<string, CrawlerAiBudgetWindow>()
   ledger: CrawlerAiLedgerRow[] = []
   circuits = new Map<string, CrawlerAiCircuitState>()
@@ -75,6 +88,32 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
 
   async insertJob(job: CrawlerAiJobRecord): Promise<'inserted' | 'duplicate'> {
     return this.withLock(() => {
+      const active = [...this.jobs.values()].some(
+        (j) =>
+          j.clusterId === job.clusterId &&
+          ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
+      )
+      if (active) return 'duplicate'
+      if (job.dispatchType === 'INITIAL') {
+        const exists = [...this.jobs.values()].some(
+          (j) => j.clusterId === job.clusterId && j.dispatchType === 'INITIAL'
+        )
+        if (exists) return 'duplicate'
+      }
+      this.jobs.set(job.id, { ...job, outputTarget: EDITORIAL_OUTPUT_TARGET })
+      return 'inserted'
+    })
+  }
+
+  async insertJobWithConcurrencyCap(
+    job: CrawlerAiJobRecord,
+    maxConcurrent: number
+  ): Promise<'inserted' | 'duplicate' | 'concurrency_limit'> {
+    return this.withLock(() => {
+      const activeCount = [...this.jobs.values()].filter((j) =>
+        ['PENDING', 'RESERVED', 'PROCESSING'].includes(j.status)
+      ).length
+      if (activeCount >= maxConcurrent) return 'concurrency_limit'
       const active = [...this.jobs.values()].some(
         (j) =>
           j.clusterId === job.clusterId &&
@@ -164,6 +203,20 @@ export class MemoryAiDispatchStore implements AiDispatchStore {
     return [...this.shadow.values()]
       .sort((a, b) => b.evaluatedAt.getTime() - a.evaluatedAt.getTime())
       .slice(0, opts?.limit ?? 200)
+  }
+
+  async insertShadowDecision(row: CrawlerAiShadowDecisionRow): Promise<void> {
+    this.shadowDecisions.push({ ...row })
+  }
+
+  async listShadowDecisions(opts?: {
+    limit?: number
+    since?: Date
+  }): Promise<CrawlerAiShadowDecisionRow[]> {
+    return this.shadowDecisions
+      .filter((r) => !opts?.since || r.evaluatedAt >= opts.since)
+      .sort((a, b) => b.evaluatedAt.getTime() - a.evaluatedAt.getTime())
+      .slice(0, opts?.limit ?? 500)
   }
 
   private windowKey(lane: AiCostLane, periodType: string, periodKey: string) {

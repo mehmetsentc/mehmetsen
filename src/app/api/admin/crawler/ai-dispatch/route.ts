@@ -44,9 +44,11 @@ export async function GET(request: Request) {
       ? 'KONTROLLÜ OTOMATİK TASLAK'
       : modeStatus.mode === 'FULL_AUTO_DRAFT'
         ? 'TAM OTOMATİK TASLAK'
-        : modeStatus.mode === 'MANUAL_CANARY'
-          ? 'MANUEL CANARY'
-          : 'KAPALI'
+        : modeStatus.mode === 'SHADOW_AUTO_DRAFT'
+          ? 'GÖLGE OTOMATİK TASLAK'
+          : modeStatus.mode === 'MANUAL_CANARY'
+            ? 'MANUEL CANARY'
+            : 'KAPALI'
   const payload = {
     automaticAi: dispatchEnabled ? 'AÇIK' : 'KAPALI',
     dispatchStatus: dispatchEnabled ? 'AÇIK' : 'KAPALI',
@@ -124,6 +126,16 @@ export async function GET(request: Request) {
       | ReturnType<typeof buildCostCmsPayload>
       | ReturnType<typeof costCmsUnavailablePayload>
       | null,
+    shadowEconomics: null as
+      | {
+          available: true
+          evaluated: number
+          wouldDispatch: number
+          wouldBlock: number
+          byPrespend: Record<string, number>
+        }
+      | { available: false; displayTr: 'Veri alınamadı' }
+      | null,
     alert: null as string | null,
     dataUnavailable: false,
   }
@@ -152,6 +164,39 @@ export async function GET(request: Request) {
     const ledger = await store.listLedger({
       since: new Date(now.getTime() - 30 * 86_400_000),
     })
+
+    let shadowEconomics: {
+      available: true
+      evaluated: number
+      wouldDispatch: number
+      wouldBlock: number
+      byPrespend: Record<string, number>
+    } | { available: false; displayTr: 'Veri alınamadı' } = {
+      available: false,
+      displayTr: 'Veri alınamadı',
+    }
+    try {
+      const decisions = store.listShadowDecisions
+        ? await store.listShadowDecisions({ limit: 200, since: new Date(now.getTime() - 24 * 86_400_000) })
+        : []
+      const byPrespend: Record<string, number> = {}
+      let wouldDispatch = 0
+      let wouldBlock = 0
+      for (const d of decisions) {
+        byPrespend[d.prespendOutcome] = (byPrespend[d.prespendOutcome] || 0) + 1
+        if (d.action === 'WOULD_DISPATCH') wouldDispatch += 1
+        else wouldBlock += 1
+      }
+      shadowEconomics = {
+        available: true,
+        evaluated: decisions.length,
+        wouldDispatch,
+        wouldBlock,
+        byPrespend,
+      }
+    } catch {
+      shadowEconomics = { available: false, displayTr: 'Veri alınamadı' }
+    }
 
     const mapShadow = (row: (typeof shadow)[number]) => ({
       clusterId: row.clusterId,
@@ -266,6 +311,7 @@ export async function GET(request: Request) {
     payload.approvedBacklog = funnel.approvedForAi
     payload.aiWaiting = funnel.approvedForAi
     payload.costAggregates = buildCostCmsPayload(ledger, now)
+    payload.shadowEconomics = shadowEconomics
     if (circuit.state === 'OPEN' && circuit.reason === 'insufficient_balance') {
       payload.alert =
         'DeepSeek bakiyesi yetersiz (HTTP 402). Otomatik AI durdu; crawler devam ediyor.'

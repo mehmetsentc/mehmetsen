@@ -6,11 +6,21 @@ import {
   crawlerAiCostLedger,
   crawlerAiDispatchShadow,
   crawlerAiJobs,
+  crawlerAiShadowDecisions,
 } from '@/db/schema/crawler'
 import { newCrawlerId } from '../store/types'
 import { emptyCircuit } from './circuit'
 import { emptyWindow } from './budget'
-import { EDITORIAL_OUTPUT_TARGET, type AiCostLane, type CrawlerAiBudgetWindow, type CrawlerAiCircuitState, type CrawlerAiJobRecord, type CrawlerAiLedgerRow, type CrawlerAiShadowRow } from './types'
+import {
+  EDITORIAL_OUTPUT_TARGET,
+  type AiCostLane,
+  type CrawlerAiBudgetWindow,
+  type CrawlerAiCircuitState,
+  type CrawlerAiJobRecord,
+  type CrawlerAiLedgerRow,
+  type CrawlerAiShadowDecisionRow,
+  type CrawlerAiShadowRow,
+} from './types'
 import type { AiDispatchStore } from './store'
 
 function mapJob(row: typeof crawlerAiJobs.$inferSelect): CrawlerAiJobRecord {
@@ -118,6 +128,42 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
       if (/unique|duplicate/i.test(msg)) return 'duplicate'
       throw err
     }
+  }
+
+  /**
+   * Phase 4F.3 — insert then enforce max concurrent active jobs (neon-http safe).
+   * If over cap, demote this job to BLOCKED (not active) and return concurrency_limit.
+   * Earliest created_at wins when two ticks race.
+   */
+  async insertJobWithConcurrencyCap(
+    job: CrawlerAiJobRecord,
+    maxConcurrent: number
+  ): Promise<'inserted' | 'duplicate' | 'concurrency_limit'> {
+    const inserted = await this.insertJob(job)
+    if (inserted !== 'inserted') return inserted
+
+    const active = await this.db()
+      .select({
+        id: crawlerAiJobs.id,
+        createdAt: crawlerAiJobs.createdAt,
+      })
+      .from(crawlerAiJobs)
+      .where(sql`${crawlerAiJobs.status} IN ('PENDING','RESERVED','PROCESSING')`)
+      .orderBy(asc(crawlerAiJobs.createdAt))
+
+    if (active.length <= maxConcurrent) return 'inserted'
+
+    const keep = new Set(active.slice(0, maxConcurrent).map((r) => r.id))
+    if (keep.has(job.id)) return 'inserted'
+
+    await this.updateJob(job.id, {
+      status: 'BLOCKED',
+      blockedReason: 'CONCURRENCY_LIMIT',
+      failureCode: 'CONCURRENCY_LIMIT',
+      failureReason: 'concurrent_enqueue_cap',
+      completedAt: new Date(),
+    })
+    return 'concurrency_limit'
   }
 
   async updateJob(id: string, patch: Partial<CrawlerAiJobRecord>): Promise<void> {
@@ -326,6 +372,69 @@ export class DrizzleAiDispatchStore implements AiDispatchStore {
       geographicScope: r.geographicScope,
       isLocalProtected: r.isLocalProtected === 1,
       evaluatedAt: r.evaluatedAt,
+    }))
+  }
+
+  async insertShadowDecision(row: CrawlerAiShadowDecisionRow): Promise<void> {
+    await this.db().insert(crawlerAiShadowDecisions).values({
+      id: row.id,
+      clusterId: row.clusterId,
+      eventKey: row.eventKey,
+      canonicalTitle: row.canonicalTitle,
+      evaluatedAt: row.evaluatedAt,
+      machineEligibility: row.machineEligibility,
+      prespendOutcome: row.prespendOutcome,
+      economicTier: row.economicTier,
+      action: row.action,
+      blockReason: row.blockReason,
+      estimatedInputTokens: row.estimatedInputTokens,
+      estimatedOutputTokens: row.estimatedOutputTokens,
+      estimatedCostUsd: row.estimatedCostUsd,
+      costKnown: row.costKnown ? 1 : 0,
+      rankScore: row.rankScore,
+      independentSourceCount: row.independentSourceCount,
+      usableSourceWords: row.usableSourceWords,
+      editorialDecisionSnapshot: row.editorialDecisionSnapshot,
+      meta: row.meta,
+    })
+  }
+
+  async listShadowDecisions(opts?: {
+    limit?: number
+    since?: Date
+  }): Promise<CrawlerAiShadowDecisionRow[]> {
+    const rows = opts?.since
+      ? await this.db()
+          .select()
+          .from(crawlerAiShadowDecisions)
+          .where(gte(crawlerAiShadowDecisions.evaluatedAt, opts.since))
+          .orderBy(desc(crawlerAiShadowDecisions.evaluatedAt))
+          .limit(opts?.limit ?? 500)
+      : await this.db()
+          .select()
+          .from(crawlerAiShadowDecisions)
+          .orderBy(desc(crawlerAiShadowDecisions.evaluatedAt))
+          .limit(opts?.limit ?? 500)
+    return rows.map((r) => ({
+      id: r.id,
+      clusterId: r.clusterId,
+      eventKey: r.eventKey,
+      canonicalTitle: r.canonicalTitle,
+      evaluatedAt: r.evaluatedAt,
+      machineEligibility: r.machineEligibility,
+      prespendOutcome: r.prespendOutcome,
+      economicTier: r.economicTier,
+      action: r.action,
+      blockReason: r.blockReason,
+      estimatedInputTokens: r.estimatedInputTokens,
+      estimatedOutputTokens: r.estimatedOutputTokens,
+      estimatedCostUsd: r.estimatedCostUsd,
+      costKnown: r.costKnown === 1,
+      rankScore: r.rankScore,
+      independentSourceCount: r.independentSourceCount,
+      usableSourceWords: r.usableSourceWords,
+      editorialDecisionSnapshot: r.editorialDecisionSnapshot,
+      meta: (r.meta as Record<string, unknown> | null) ?? null,
     }))
   }
 
