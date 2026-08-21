@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Download, Check, Smartphone, Share } from 'lucide-react'
+import { isNativeApp, isPwaStandaloneDisplay } from '@/lib/platform'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -27,14 +28,17 @@ export function InstallNowButton() {
   const [showHint, setShowHint] = useState(false)
 
   useEffect(() => {
+    // Already in App Store / Play Capacitor shell — treat as installed
+    if (isNativeApp()) {
+      setState('installed')
+      return
+    }
+
     const ua = navigator.userAgent.toLowerCase()
     const isIOSDevice =
       /iphone|ipad|ipod/.test(ua) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
     const isAndroid = /android/.test(ua)
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true
 
     const detected: Platform = isIOSDevice ? 'ios' : isAndroid ? 'android' : 'desktop'
     setPlatform(detected)
@@ -45,7 +49,7 @@ export function InstallNowButton() {
       else setIOSBrowser('safari')
     }
 
-    if (standalone) {
+    if (isPwaStandaloneDisplay()) {
       setState('installed')
       return
     }

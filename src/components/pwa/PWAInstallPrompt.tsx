@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Download, Share, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { isNativeApp, isPwaStandaloneDisplay } from '@/lib/platform'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -34,15 +35,6 @@ function isCityHost(): boolean {
 function isPwaPromptPath(pathname: string): boolean {
   if (isCityHost()) return pathname === '/'
   return pathname === '/' || pathname === '/feed'
-}
-
-function isStandaloneDisplay(): boolean {
-  if (typeof window === 'undefined') return false
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
 }
 
 function isDismissed(): boolean {
@@ -131,7 +123,12 @@ export function PWAInstallPrompt() {
   const isPwaHome = isPwaPromptPath(pathname)
 
   useEffect(() => {
-    setInstalled(isStandaloneDisplay())
+    // App Store / Play shell: never show “Ana ekrana ekle” toast
+    if (isNativeApp()) {
+      setInstalled(true)
+      return
+    }
+    setInstalled(isPwaStandaloneDisplay())
     const { isIOS: ios, iosBrowser: browser } = detectIOSBrowser()
     setIsIOS(ios)
     setIOSBrowser(browser)
@@ -141,6 +138,7 @@ export function PWAInstallPrompt() {
   useEffect(() => {
     if (!isPwaHome) { setVisible(false); return }
     if (installed) return
+    if (isNativeApp()) return
     if (hasDismissedRef.current) return
 
     const onPrompt = (e: Event) => {

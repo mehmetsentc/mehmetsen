@@ -9,14 +9,14 @@
  */
 importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js')
 
-const CACHE_VERSION = 'nahaber-v5'
+// Bump when fetch/cache policy changes so clients drop stale HTML shells.
+const CACHE_VERSION = 'nahaber-v6'
 const STATIC_CACHE = [
   '/offline',
   '/favicon.ico',
   '/brand/icon-192.png',
   '/brand/icon-512.png',
   '/apple-touch-icon.png',
-  '/uygulama',
   '/manifest.webmanifest',
 ]
 
@@ -110,8 +110,10 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((res) => {
-        // Cache successful static-ish responses
-        if (res.status === 200) {
+        // Never put HTML navigations into Cache Storage — Capacitor remote
+        // WebView and Safari must always get a fresh document shell after
+        // deploy. Only cache non-HTML assets for offline fallback.
+        if (res.status === 200 && !isNavigation) {
           const clone = res.clone()
           caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone))
         }

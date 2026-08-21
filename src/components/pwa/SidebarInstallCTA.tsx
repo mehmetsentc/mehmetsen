@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Download } from 'lucide-react'
+import { shouldShowWebInstallCta } from '@/lib/platform'
 
 interface SidebarInstallCTAProps {
   onNavigate?: () => void
@@ -11,21 +12,19 @@ interface SidebarInstallCTAProps {
 /**
  * Sidebar'da "Uygulamayı yükle" mini banner.
  *
- * Sadece şu durumlarda görünür:
- *  - PWA standalone değilse (zaten yüklü değil)
+ * Sadece web / tarayıcıda görünür:
+ *  - Native App Store / Play Store shell'de asla (Capacitor / Cordova)
+ *  - PWA standalone değilse (zaten ana ekrana ekli değil)
  *  - 14 günlük dismiss cooldown geçerli değilse
  *
- * Tıklanınca /uygulama sayfasına gider. Sidebar zaten "use client" olduğu
- * için ek hidrasyon maliyeti yok.
+ * Tıklanınca /uygulama sayfasına gider.
  */
 export function SidebarInstallCTA({ onNavigate }: SidebarInstallCTAProps) {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-    if (standalone) return
+    // App Store / Play Capacitor: never show “Yükle / Ana ekrana ekle”
+    if (!shouldShowWebInstallCta()) return
 
     try {
       const dismissedAt = localStorage.getItem('nahaber:sidebar-install-dismissed-at')

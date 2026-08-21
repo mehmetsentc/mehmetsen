@@ -146,6 +146,27 @@ const nextConfig: NextConfig = {
           { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
         ],
       },
+      // HTML document shell: short CDN TTL so Capacitor remote WebView
+      // (server.url → https://www.nahaber.com) picks up UI after deploy.
+      // Hashed /_next/static assets remain immutable (above).
+      {
+        source: '/feed',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, s-maxage=60, stale-while-revalidate=120, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, s-maxage=60, stale-while-revalidate=120, must-revalidate',
+          },
+        ],
+      },
       {
         source: '/manifest.webmanifest',
         headers: [

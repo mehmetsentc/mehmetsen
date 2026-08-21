@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { isNativeApp } from '@/lib/platform'
 
 const SW_PATH = '/sw.js'
 
@@ -8,11 +9,16 @@ const SW_PATH = '/sw.js'
  * Eagerly register the site service worker so Chromium can fire
  * `beforeinstallprompt` (manifest alone is not enough).
  *
+ * Skipped inside Capacitor / Cordova native shells — the App Store app
+ * loads https://www.nahaber.com remotely and must not accumulate a PWA
+ * SW cache that could delay UI updates after deploy.
+ *
  * Safe no-op when SW unsupported (SSR, old browsers, private modes).
  */
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (isNativeApp()) return
     if (!('serviceWorker' in navigator)) return
 
     // Already controlling this origin — nothing to do
