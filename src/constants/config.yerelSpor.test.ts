@@ -67,9 +67,21 @@ describe('yerel spor alt kategorileri', () => {
     expect(home[0]).toBe('spor')
     expect(home).toContain('futbol')
     expect(home).toContain('basketbol')
+    expect(home).not.toContain('yerel-spor')
     expect(getCategoryFamily('spor')).toEqual(
       expect.arrayContaining(['yerel-spor', 'yerel-futbol', 'yerel-basketbol'])
     )
+  })
+
+  it('city spor family includes yerel mirrors dropped by homepage truncation', () => {
+    const city = getCategoryFamily('spor')
+    const home = getHomeFeedCategoryFamily('spor')
+    expect(city).toContain('yerel-spor')
+    expect(city).toContain('yerel-futbol')
+    expect(city).toContain('yerel-yuzme')
+    expect(city.length).toBeGreaterThan(home.length)
+    // Homepage truncation is why city feeds must use getCategoryFamily, not home.
+    expect(home).not.toContain('yerel-spor')
   })
 
   it('includes yerel sport branches in spor category family for presence', () => {

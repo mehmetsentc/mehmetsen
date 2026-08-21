@@ -19,7 +19,7 @@ import {
   type HomeFeedInitialData,
 } from '@/types/newsItem'
 import { getThemedCategorySectionIds } from '@/constants/categorySections'
-import { getCategoryFamily, getHomeFeedCategoryFamily, getNationalCategoryForYerelSubcategory } from '@/constants/config'
+import { getCategoryFamily, getNationalCategoryForYerelSubcategory } from '@/constants/config'
 import { pickTrendFeed, pickTrending, rankFeedHotAware } from '@/lib/feedRanking'
 import { isCityFeaturedPin, isLocalScopedNews, pickCityFeaturedCarouselItems } from '@/lib/featuredScope'
 import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
@@ -265,38 +265,65 @@ export async function getCityNews(
   return getCityNewsCached(citySlug.trim().toLowerCase(), limit)
 }
 
+/** Firestore `in` max; chunk full city category families (spor + yerel-spor mirrors). */
+const FIRESTORE_IN_LIMIT = 10
+
+function chunkIds(ids: string[], size = FIRESTORE_IN_LIMIT): string[][] {
+  if (ids.length === 0) return []
+  const chunks: string[][] = []
+  for (let i = 0; i < ids.length; i += size) {
+    chunks.push(ids.slice(i, i + size))
+  }
+  return chunks
+}
+
+function newsItemPublishedMs(item: NewsItem): number {
+  return Date.parse(item.publishedAt ?? item.createdAt ?? '') || 0
+}
+
+/**
+ * City category pages must use the uncapped family (getCategoryFamily), not
+ * getHomeFeedCategoryFamily. The homepage helper truncates to 10 national ids
+ * and drops yerel mirrors (yerel-spor, yerel-futbol, …) — which is intentional
+ * for nahaber.com dual-route rails, but hides CMS “Yerel · Spor” city stories.
+ */
 const getCityNewsByCategoryCached = unstable_cache(
   async (citySlug: string, categoryId: string, limitCount: number) => {
     try {
       const db = getAdminFirestore()
-      const family = getHomeFeedCategoryFamily(categoryId)
+      const family = getCategoryFamily(categoryId)
+      const byId = new Map<string, NewsItem>()
 
-      let q = db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .where('citySlug', '==', citySlug)
+      await Promise.all(
+        chunkIds(family.length > 0 ? family : [categoryId]).map(async (chunk) => {
+          let q = db
+            .collection(NEWS_COLLECTION)
+            .where('status', '==', 'published')
+            .where('citySlug', '==', citySlug)
 
-      q = family.length > 1
-        ? q.where('categoryId', 'in', family)
-        : q.where('categoryId', '==', categoryId)
+          q =
+            chunk.length > 1
+              ? q.where('categoryId', 'in', chunk)
+              : q.where('categoryId', '==', chunk[0])
 
-      const snap = await q
-        .orderBy('publishedAt', 'desc')
-        .limit(limitCount)
-        .get()
+          const snap = await q.orderBy('publishedAt', 'desc').limit(limitCount).get()
+          for (const doc of snap.docs) {
+            if (byId.has(doc.id)) continue
+            const item = docToNewsItem(doc.id, doc.data() as NewsDocument)
+            if (item) byId.set(doc.id, item)
+          }
+        })
+      )
 
-      const items: NewsItem[] = []
-      for (const doc of snap.docs) {
-        const item = docToNewsItem(doc.id, doc.data() as NewsDocument)
-        if (item) items.push(item)
-      }
-      return items
+      return [...byId.values()]
+        .sort((a, b) => newsItemPublishedMs(b) - newsItemPublishedMs(a))
+        .slice(0, limitCount)
     } catch (error) {
       console.warn('[cityNewsService] getCityNewsByCategory failed:', error)
       return []
     }
   },
-  ['city-news-category-v1'],
+  ['city-news-category-v2'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -478,7 +505,8 @@ export async function deriveCityCategoriesFromPool(pool: NewsItem[]): Promise<Ci
   const idSet = new Set<string>()
 
   for (const categoryId of CITY_DYNAMIC_NAV_CHIP_IDS) {
-    const family = new Set(getHomeFeedCategoryFamily(categoryId))
+    // Uncapped family — same as city category feeds (yerel-spor must light Spor).
+    const family = new Set(getCategoryFamily(categoryId))
     if (pool.some((item) => item.category && family.has(item.category))) {
       idSet.add(categoryId)
     }
@@ -598,7 +626,7 @@ function bucketCityCategoryRails(
 ): Partial<Record<HomeCategorySlug, NewsItem[]>> {
   const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
   for (const category of categories) {
-    const family = new Set(getHomeFeedCategoryFamily(category))
+    const family = new Set(getCategoryFamily(category))
     const limit = category === 'gundem' ? HOME_CATEGORY_RAIL_GUNDEM_FETCH : perCategory
     const items = pool.filter((item) => item.category && family.has(item.category)).slice(0, limit)
     if (items.length > 0) rails[category as HomeCategorySlug] = items
@@ -614,7 +642,7 @@ function bucketCitySectionRails(
 ): Partial<Record<HomeCategorySlug, NewsItem[]>> {
   const rails: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
   for (const sectionId of sectionIds) {
-    const family = new Set(getHomeFeedCategoryFamily(sectionId))
+    const family = new Set(getCategoryFamily(sectionId))
     const items = pool.filter((item) => item.category && family.has(item.category)).slice(0, perCategory)
     if (items.length > 0) {
       rails[sectionId as HomeCategorySlug] = items
@@ -626,7 +654,7 @@ function bucketCitySectionRails(
 function deriveSporRailSectionIds(pool: NewsItem[]): string[] {
   const sectionIds = getThemedCategorySectionIds('spor')
   const withContent = sectionIds.filter((id) => {
-    const family = new Set(getHomeFeedCategoryFamily(id))
+    const family = new Set(getCategoryFamily(id))
     return pool.some((item) => item.category && family.has(item.category))
   })
   return withContent.length > 0 ? withContent : ['spor']
@@ -740,7 +768,7 @@ const EMPTY_HOME_FEED: HomeFeedInitialData = {
 
 function deriveRailCategoriesFromPool(pool: NewsItem[]): HomeCategorySlug[] {
   return HOME_CATEGORY_RAILS.filter((category) => {
-    const family = new Set(getHomeFeedCategoryFamily(category))
+    const family = new Set(getCategoryFamily(category))
     return pool.some((item) => item.category && family.has(item.category))
   })
 }
@@ -834,7 +862,7 @@ const getCitySporFeedCached = unstable_cache(
     const railSectionIds = deriveSporRailSectionIds(pool)
     return buildCityFeedFromPool(pool, citySlug, railSectionIds, bucketCitySectionRails)
   },
-  ['city-spor-feed-v3'],
+  ['city-spor-feed-v4'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -848,13 +876,13 @@ const getCityCategoryFeedCached = unstable_cache(
     const pool = await getCityNewsByCategory(citySlug, categoryId, 60)
     return buildCityFeedFromPool(pool, citySlug, [categoryId])
   },
-  ['city-category-feed-v2'],
+  ['city-category-feed-v3'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
 /**
  * Ana Feed layout payload for a city category pill
- * (siyaset family includes yerel-siyaset via getHomeFeedCategoryFamily).
+ * (siyaset family includes yerel-siyaset via uncapped getCategoryFamily).
  */
 export async function getCityCategoryFeedInitialData(
   citySlug: string,
