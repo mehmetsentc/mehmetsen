@@ -15,11 +15,11 @@ export function PullToRefresh({ children, ...opts }: PullToRefreshProps) {
   const opacity = Math.min(1, pullY / 40)
 
   return (
-    <div className="relative">
-      {/* Pull indicator */}
+    <div className="relative z-0">
+      {/* Pull indicator — keep below fixed chrome (z-[100]) / status shield (z-160) */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-50 flex justify-center transition-all duration-150"
+        className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center transition-all duration-150"
         style={{
           transform: `translateY(${indicatorVisible ? Math.min(pullY, 56) - 44 : -44}px)`,
           opacity: indicatorVisible ? (refreshing ? 1 : opacity) : 0,

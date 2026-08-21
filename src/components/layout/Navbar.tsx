@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Ref } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Search, Menu, User } from 'lucide-react'
@@ -10,6 +10,7 @@ import { ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
 import { BackNavButton } from '@/components/layout/BackNavButton'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
+import { useChromeOffset } from '@/hooks/useChromeOffset'
 import { cn } from '@/lib/utils'
 
 interface NavbarProps {
@@ -31,6 +32,9 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   // Article pages get a dedicated compact sticky header (ArticleStickyHeader).
   // Keep this site header in normal flow there so we don't stack two top bars.
   const isArticle = pathname.startsWith('/haber/')
+  // Fixed chrome does not rubber-band with WKWebView overscroll (sticky does).
+  const useFixedChrome = !isArticle
+  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(useFixedChrome)
 
   useEffect(() => {
     setHydrated(true)
@@ -42,74 +46,90 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       : ROUTES.LOGIN
 
   return (
-    <div
-      className={cn(
-        'mobile-top-chrome z-50 lg:hidden',
-        isArticle ? 'relative' : 'sticky top-0',
-        'bg-[rgb(var(--header-brand-bg))] text-white',
-        // Cover status-bar region except on article pages (ArticleStickyHeader owns that).
-        !isArticle && 'pt-[env(safe-area-inset-top,0px)]'
-      )}
-    >
-      <header
+    <>
+      <div
+        ref={chromeRef as Ref<HTMLDivElement>}
         className={cn(
+          'mobile-top-chrome z-[100] lg:hidden',
+          useFixedChrome ? 'is-fixed' : 'relative',
           'bg-[rgb(var(--header-brand-bg))] text-white',
-          isFeed ? 'h-[72px]' : 'h-14'
+          // Cover status-bar region except on article pages (ArticleStickyHeader owns that).
+          !isArticle && 'pt-[env(safe-area-inset-top,0px)]'
         )}
       >
-        <div
+        <header
           className={cn(
-            'flex h-full items-center',
-            isFeed ? 'gap-1 px-4' : 'gap-1.5 px-2 sm:px-3'
+            'bg-[rgb(var(--header-brand-bg))] text-white',
+            isFeed ? 'h-[72px]' : 'h-14'
           )}
         >
-          {showBack ? (
-            <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
-          ) : null}
-          <button
-            type="button"
-            onClick={onMenuClick}
-            className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
-            aria-label="Menü"
+          <div
+            className={cn(
+              'flex h-full items-center',
+              isFeed ? 'gap-1 px-4' : 'gap-1.5 px-2 sm:px-3'
+            )}
           >
-            <Menu className="h-6 w-6" strokeWidth={2} />
-          </button>
-
-          {/* Logo — Theme D: Na beyaz + Haber brand kırmızı (kömür bar) */}
-          <Link href={ROUTES.FEED} className="min-w-0 flex-1 px-1" aria-label="NaHaber">
-            <BrandWordmark
-              variant="onBrand"
-              size={isFeed ? 'md' : 'sm'}
-              className={cn('font-black', !isFeed && 'text-[1.45rem]')}
-            />
-          </Link>
-
-          <div className="flex shrink-0 items-center">
+            {showBack ? (
+              <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
+            ) : null}
             <button
               type="button"
-              onClick={() => router.push(ROUTES.SEARCH)}
-              className="flex h-11 w-11 items-center justify-center text-white touch-manipulation"
-              aria-label="Ara"
+              onClick={onMenuClick}
+              className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+              aria-label="Menü"
             >
-              <Search className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
+              <Menu className="h-6 w-6" strokeWidth={2} />
             </button>
-            <NotificationBell
-              variant="onBrand"
-              iconClassName={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')}
-            />
-            <Link
-              href={profileHref}
-              className="flex h-11 w-11 items-center justify-center text-white touch-manipulation"
-              aria-label="Profil"
-            >
-              <User className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
-            </Link>
-          </div>
-        </div>
-      </header>
 
-      {/* Embedded in chrome so category bar shares one sticky stack (no dual-sticky gap). */}
-      <CategoryNav embedded />
-    </div>
+            {/* Logo — Theme D: Na beyaz + Haber brand kırmızı (kömür bar) */}
+            <Link href={ROUTES.FEED} className="min-w-0 flex-1 px-1" aria-label="NaHaber">
+              <BrandWordmark
+                variant="onBrand"
+                size={isFeed ? 'md' : 'sm'}
+                className={cn('font-black', !isFeed && 'text-[1.45rem]')}
+              />
+            </Link>
+
+            <div className="flex shrink-0 items-center">
+              <button
+                type="button"
+                onClick={() => router.push(ROUTES.SEARCH)}
+                className="flex h-11 w-11 items-center justify-center text-white touch-manipulation"
+                aria-label="Ara"
+              >
+                <Search className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
+              </button>
+              <NotificationBell
+                variant="onBrand"
+                iconClassName={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')}
+              />
+              <Link
+                href={profileHref}
+                className="flex h-11 w-11 items-center justify-center text-white touch-manipulation"
+                aria-label="Profil"
+              >
+                <User className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        {/* Embedded in chrome so category bar shares one fixed stack (no dual-sticky gap). */}
+        <CategoryNav embedded />
+      </div>
+      {useFixedChrome ? (
+        <div
+          className="lg:hidden shrink-0"
+          aria-hidden
+          style={{
+            height:
+              chromeHeight > 0
+                ? chromeHeight
+                : // SSR / first paint fallback — feed chrome is tallest.
+                  'calc(env(safe-area-inset-top, 0px) + 72px + 48px)',
+          }}
+        />
+      ) : null}
+    </>
   )
 }

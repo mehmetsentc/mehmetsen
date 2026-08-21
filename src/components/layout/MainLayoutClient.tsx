@@ -7,6 +7,7 @@ import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Navbar } from '@/components/layout/Navbar'
 import { MobileNav } from '@/components/layout/MobileNav'
+import { MobileSafeAreaShield } from '@/components/layout/MobileSafeAreaShield'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
 import { PageStateEffects } from '@/components/layout/PageStateEffects'
@@ -86,6 +87,8 @@ const LayoutShell = memo(function LayoutShell({
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]" data-platform={platform}>
+      {/* Outside sticky/fixed chrome so WKWebView cannot paint feed into status bar. */}
+      {!isReels ? <MobileSafeAreaShield /> : null}
       <Sidebar
         mobileOpen={drawerOpen}
         desktopOpen={desktopSidebarOpen}

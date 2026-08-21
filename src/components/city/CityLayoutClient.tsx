@@ -13,6 +13,7 @@ import { UiEffects } from '@/components/layout/UiEffects'
 import { CityCategoryProvider } from '@/store/cityCategoryContext'
 import { useUiStore } from '@/store/uiStore'
 import { usePlatformLayout } from '@/hooks/usePlatformLayout'
+import { MobileSafeAreaShield } from '@/components/layout/MobileSafeAreaShield'
 import { CityNavbar } from './CityNavbar'
 import { CitySectionNav } from './CitySectionNav'
 import { CityMobileNav } from './CityMobileNav'
@@ -78,6 +79,7 @@ const CityShell = memo(function CityShell({
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]">
+      <MobileSafeAreaShield />
       <CitySidebar
         cityName={displayName}
         provinceSlug={provinceSlug}

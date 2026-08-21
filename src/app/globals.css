@@ -244,14 +244,38 @@
 
   /*
    * Unified mobile top chrome (Navbar + CategoryNav).
-   * ::before extends the solid brand paint above the sticky stack so iOS
-   * rubber-banding cannot reveal feed images / brand art in the status-bar gap.
-   * isolation keeps transformed carousel layers from compositing above chrome.
+   * WKWebView promotes feed images into compositor layers that can paint
+   * above sticky siblings during rubber-band. Prefer position:fixed chrome
+   * (.is-fixed) + an independent .mobile-safe-area-shield sibling.
+   * Chrome z-100; content-stage / pull-to-refresh z-0; shield z-160
+   * (below sidebar/modals at 200+). Floating pill bottom nav stays z-105.
    */
   .mobile-top-chrome {
     isolation: isolate;
+    z-index: 100;
+    background-color: rgb(var(--header-brand-bg));
+    /* Own compositor layer so feed GPU layers cannot pierce the brand bar. */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
+  .mobile-top-chrome.is-fixed {
+    /* Desktop keeps normal sticky; mobile overrides below. */
+    position: sticky;
+    top: 0;
+  }
+
+  @media (max-width: 1023px) {
+    .mobile-top-chrome.is-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+    }
+  }
+
+  /* Solid paint above the chrome band when overscroll pulls content up. */
+  .mobile-top-chrome.is-fixed::before,
   .mobile-top-chrome.sticky::before {
     content: '';
     position: absolute;
@@ -263,9 +287,12 @@
     pointer-events: none;
   }
 
-  /* Fixed status-bar paint that does not bounce with sticky chrome. */
-  html[data-platform='mobile'] .mobile-top-chrome.sticky::after {
-    content: '';
+  /*
+   * Status-bar shield: viewport-fixed, NOT a child of sticky chrome.
+   * Covers env(safe-area-inset-top) with opaque brand paint so feed images
+   * cannot appear under the clock / battery during iOS rubber-band.
+   */
+  .mobile-safe-area-shield {
     position: fixed;
     top: 0;
     left: 0;
@@ -273,7 +300,29 @@
     height: max(env(safe-area-inset-top, 0px), 0px);
     background-color: rgb(var(--header-brand-bg));
     pointer-events: none;
-    z-index: 60;
+    z-index: 160;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-safe-area-shield {
+      display: none;
+    }
+  }
+
+  /*
+   * Trap scroll content under chrome. isolation + z-0 so transformed cards
+   * / content-visibility layers cannot escape above the fixed header.
+   */
+  html[data-platform='mobile'] .app-shell > .relative,
+  html[data-platform='tablet'] .app-shell > .relative,
+  html[data-platform='mobile'] .content-stage,
+  html[data-platform='tablet'] .content-stage {
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+    overflow-x: clip;
   }
 
   /* Prefer horizontal pan on category chips; contain vertical overscroll chain. */
