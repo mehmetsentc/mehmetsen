@@ -32,7 +32,6 @@ import { OneSignalProvider } from '@/components/OneSignalProvider'
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt'
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
 import { ConsentStrip } from '@/components/consent/ConsentStrip'
-import { NotificationsSoftPrompt } from '@/components/notifications/NotificationsSoftPrompt'
 
 const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -295,8 +294,6 @@ gtag('consent','default',{
               {children}
               {/* Single cookie/KVKK consent UI (replaces CookieConsentBanner strip) */}
               <ConsentStrip />
-              {/* Mobile soft prompt for push (after consent; OneSignal autoPrompt off) */}
-              <NotificationsSoftPrompt />
               {/* PWA: early SW register → Chromium beforeinstallprompt */}
               <ServiceWorkerRegister />
               {/* F5: PWA "Ana ekrana ekle" prompt */}
