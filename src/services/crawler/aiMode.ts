@@ -1,7 +1,9 @@
 /**
  * Phase 4D staged AI modes.
- * Default OFF — Stage 1 never activates CONTROLLED_AUTO_DRAFT in production.
- * No AUTO_PUBLISH mode exists in Phase 4D.
+ * Default OFF — Stage 1 / Phase 4E never activates CONTROLLED_AUTO_DRAFT in production without acceptance.
+ * Phase 4E operating modes for rollout: OFF | MANUAL_CANARY | CONTROLLED_AUTO_DRAFT.
+ * FULL_AUTO_DRAFT remains parseable for future phases but is not enabled in 4E acceptance.
+ * No AUTO_PUBLISH mode exists.
  */
 
 import { isCrawlerAiDispatchEnabled } from './dispatch'

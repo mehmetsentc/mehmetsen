@@ -1,5 +1,5 @@
 /**
- * Phase 4D deterministic AI eligibility gate (unpaid).
+ * Phase 4D/4E deterministic AI eligibility gate (unpaid).
  * Unit of work = EVENT. Does not call any LLM.
  */
 
@@ -19,6 +19,25 @@ export const AUTO_DRAFT_GATE_STATUSES = [
 ] as const
 
 export type AutoDraftGateStatus = (typeof AUTO_DRAFT_GATE_STATUSES)[number]
+
+/** Formal STRONG_SINGLE_SOURCE thresholds (Phase 4D.3 / 4E). No fake city/importance. */
+export const STRONG_SINGLE_SOURCE_THRESHOLDS = {
+  localOrBreaking: {
+    bestWordCountMin: 120,
+    bestConfidenceMin: 0.7,
+    avgHealthMin: 60,
+    staleHoursMax: 48,
+    /** Need local geo OR BREAKING crawl OR importance ≥ this */
+    importanceMinWhenNoLocalOrBreaking: 70,
+  },
+  highQualityTrusted: {
+    bestWordCountMin: 150,
+    bestConfidenceMin: 0.75,
+    avgHealthMin: 70,
+    staleHoursMax: 36,
+    importanceMin: 40,
+  },
+} as const
 
 export type AutoDraftGateInput = {
   /** Cluster algorithmic eligibility (4A/4B): REJECTED|WATCHING|ELIGIBLE|HIGH_PRIORITY */
@@ -53,6 +72,57 @@ export type AutoDraftGateResult = {
   reason: string
   /** True only when status is AI_READY — still needs mode+budget+idempotency+dispatch. */
   readyForJob: boolean
+  strongSinglePath?: 'local_or_breaking' | 'high_quality_trusted' | null
+}
+
+export type EligibilityScoreBreakdown = {
+  freshness: number
+  sourceHealth: number
+  confidence: number
+  usableWords: number
+  importance: number
+  multiSource: number
+  total: number
+}
+
+/** Soft score for observability/ranking — gate status remains authoritative. */
+export function scoreAutoDraftEligibility(input: AutoDraftGateInput): EligibilityScoreBreakdown {
+  const freshness = Math.max(0, Math.min(100, 100 - input.staleHours * 6))
+  const sourceHealth = Math.max(0, Math.min(100, input.avgHealth))
+  const confidence = Math.max(0, Math.min(100, input.bestConfidence * 100))
+  const usableWords = Math.max(0, Math.min(100, input.bestWordCount / 6))
+  const importance = Math.max(0, Math.min(100, input.importanceScore))
+  const multiSource = Math.max(0, Math.min(100, input.independentSourceCount * 40))
+  const total = Number(
+    ((freshness + sourceHealth + confidence + usableWords + importance + multiSource) / 6).toFixed(2)
+  )
+  return { freshness, sourceHealth, confidence, usableWords, importance, multiSource, total }
+}
+
+export function evaluateStrongSingleSource(input: AutoDraftGateInput): {
+  ok: boolean
+  path: 'local_or_breaking' | 'high_quality_trusted' | null
+} {
+  const t = STRONG_SINGLE_SOURCE_THRESHOLDS
+  const strongSingleLocal =
+    input.bestWordCount >= t.localOrBreaking.bestWordCountMin &&
+    input.bestConfidence >= t.localOrBreaking.bestConfidenceMin &&
+    input.avgHealth >= t.localOrBreaking.avgHealthMin &&
+    input.staleHours <= t.localOrBreaking.staleHoursMax &&
+    (input.hasLocalGeography ||
+      input.crawlPriority === 'BREAKING' ||
+      input.importanceScore >= t.localOrBreaking.importanceMinWhenNoLocalOrBreaking)
+
+  const strongSingleQuality =
+    input.bestWordCount >= t.highQualityTrusted.bestWordCountMin &&
+    input.bestConfidence >= t.highQualityTrusted.bestConfidenceMin &&
+    input.avgHealth >= t.highQualityTrusted.avgHealthMin &&
+    input.staleHours <= t.highQualityTrusted.staleHoursMax &&
+    input.importanceScore >= t.highQualityTrusted.importanceMin
+
+  if (strongSingleLocal) return { ok: true, path: 'local_or_breaking' }
+  if (strongSingleQuality) return { ok: true, path: 'high_quality_trusted' }
+  return { ok: false, path: null }
 }
 
 /**
@@ -108,31 +178,8 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
     return { status: 'COST_BLOCKED', reason: 'cost_preflight_blocked', readyForJob: false }
   }
 
-  /**
-   * STRONG_SINGLE_SOURCE (Phase 4D.3 formalized).
-   * Does NOT require fake city/geography. Paths:
-   *  A) Local / breaking / high-importance single (legacy strongSingle)
-   *  B) High-quality trusted single: words≥150, conf≥0.75, health≥70, stale≤36h, importance≥40
-   * When strongSingle holds, algorithmic WATCHING does not block AI_READY
-   * (removes the 4D.2 need to force ELIGIBLE / fake city).
-   */
-  const strongSingleLocal =
-    input.bestWordCount >= 120 &&
-    input.bestConfidence >= 0.7 &&
-    input.avgHealth >= 60 &&
-    input.staleHours <= 48 &&
-    (input.hasLocalGeography ||
-      input.crawlPriority === 'BREAKING' ||
-      input.importanceScore >= 70)
-
-  const strongSingleQuality =
-    input.bestWordCount >= 150 &&
-    input.bestConfidence >= 0.75 &&
-    input.avgHealth >= 70 &&
-    input.staleHours <= 36 &&
-    input.importanceScore >= 40
-
-  const strongSingle = strongSingleLocal || strongSingleQuality
+  const strong = evaluateStrongSingleSource(input)
+  const strongSingle = strong.ok
 
   const waiting =
     (input.clusterAiEligibility === 'WATCHING' && !strongSingle) ||
@@ -143,6 +190,7 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
       status: 'WAITING_FOR_MORE_SOURCES',
       reason: 'single_source_waiting',
       readyForJob: false,
+      strongSinglePath: null,
     }
   }
 
@@ -156,6 +204,7 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
       status: 'WAITING_FOR_MORE_SOURCES',
       reason: 'not_yet_eligible',
       readyForJob: false,
+      strongSinglePath: null,
     }
   }
 
@@ -164,12 +213,13 @@ export function evaluateAutoDraftGate(input: AutoDraftGateInput): AutoDraftGateR
     reason:
       input.independentSourceCount >= 2
         ? 'multi_source_ready'
-        : strongSingleQuality && !strongSingleLocal
+        : strong.path === 'high_quality_trusted'
           ? 'STRONG_SINGLE_SOURCE'
           : strongSingle
             ? 'strong_single_source'
             : 'eligible_quality',
     readyForJob: true,
+    strongSinglePath: input.independentSourceCount >= 2 ? null : strong.path,
   }
 }
 

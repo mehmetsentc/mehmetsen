@@ -41,19 +41,20 @@ export function crawlerAiDispatchConfig() {
     maxSourcesPerEvent: clamp(Math.round(numEnv('MAX_AI_SOURCES_PER_EVENT', 3)), 1, 5),
     maxInputTokensPerEvent: clamp(Math.round(numEnv('CRAWLER_AI_MAX_INPUT_TOKENS_PER_EVENT', 8000)), 20, 32_000),
     estimatedOutputTokens: clamp(Math.round(numEnv('CRAWLER_AI_ESTIMATED_OUTPUT_TOKENS', 1800)), 200, 8_000),
+    /** Phase 4E defaults: $0.05/day · $5/month · 2/hour · 10/day (auto-draft path uses autoDraftBudgetLimits). */
     dailyBudgetUsd: Math.max(
       0,
-      numEnvFirst(['AI_MAX_DAILY_COST_USD', 'CRAWLER_AI_DAILY_BUDGET_USD'], 0.5)
+      numEnvFirst(['AI_MAX_DAILY_COST_USD', 'CRAWLER_AI_DAILY_BUDGET_USD'], 0.05)
     ),
     hourlyBudgetUsd: Math.max(0, numEnv('CRAWLER_AI_HOURLY_BUDGET_USD', 0.05)),
-    monthlyBudgetUsd: Math.max(0, numEnvFirst(['AI_MAX_MONTHLY_COST_USD'], 15)),
+    monthlyBudgetUsd: Math.max(0, numEnvFirst(['AI_MAX_MONTHLY_COST_USD'], 5)),
     maxRequestsPerHour: clamp(
-      Math.round(numEnvFirst(['AI_MAX_DRAFTS_PER_HOUR', 'CRAWLER_AI_MAX_REQUESTS_PER_HOUR'], 4)),
+      Math.round(numEnvFirst(['AI_MAX_DRAFTS_PER_HOUR', 'CRAWLER_AI_MAX_REQUESTS_PER_HOUR'], 2)),
       0,
       10_000
     ),
     maxRequestsPerDay: clamp(
-      Math.round(numEnvFirst(['AI_MAX_DRAFTS_PER_DAY', 'CRAWLER_AI_MAX_REQUESTS_PER_DAY'], 20)),
+      Math.round(numEnvFirst(['AI_MAX_DRAFTS_PER_DAY', 'CRAWLER_AI_MAX_REQUESTS_PER_DAY'], 10)),
       0,
       50_000
     ),

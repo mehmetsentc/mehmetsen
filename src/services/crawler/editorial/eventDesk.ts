@@ -106,6 +106,34 @@ export function sameEventBadgeLabel(articleCount: number, sourceCount: number): 
   return `AYNI OLAY · ${n} HABER · ${m} KAYNAK`
 }
 
+/** Phase 4E — multi-source event headline for admin desk. */
+export function multiSourceEventSummary(input: {
+  title: string
+  articleCount: number
+  independentSourceCount: number
+  primarySourceName?: string | null
+  supportingSourceNames?: string[]
+}): {
+  headline: string
+  countsTr: string
+  primaryTr: string
+  supportingTr: string
+} {
+  const supporting = (input.supportingSourceNames || []).filter(Boolean)
+  return {
+    headline: input.title,
+    countsTr: `${input.articleCount} haber / ${input.independentSourceCount} bağımsız kaynak`,
+    primaryTr: input.primarySourceName ? `PRIMARY: ${input.primarySourceName}` : 'PRIMARY: —',
+    supportingTr: supporting.length ? `SUPPORTING: ${supporting.join(', ')}` : 'SUPPORTING: —',
+  }
+}
+
+/** GÜNCELLEME VAR banner when material update after draft/publish. */
+export function updateAvailableBannerTr(hasMaterialUpdate: boolean, status?: string | null): string | null {
+  if (status === 'UPDATE_AVAILABLE' || hasMaterialUpdate) return 'GÜNCELLEME VAR'
+  return null
+}
+
 export const EVENT_EDITORIAL_ACTIONS = [
   { op: 'review', label: 'İncelemeye Al' },
   { op: 'watch', label: 'İzlemeye Al' },

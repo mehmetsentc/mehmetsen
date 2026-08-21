@@ -107,9 +107,18 @@ export default function ClusterDetailPage() {
       {cluster ? (
         <div className="space-y-3 text-sm">
           <h2 className="text-lg font-semibold">{String(cluster.canonicalTitle || cluster.normalizedTopic)}</h2>
+          <p className="text-xs text-[rgb(var(--color-muted))]">
+            {String(cluster.articleCount || members.length || 1)} haber /{' '}
+            {String(cluster.uniqueSourceCount || groups.length || 1)} bağımsız kaynak — karar OLAY düzeyinde
+          </p>
           <p>
             Coğrafya: {[cluster.countryCode, cluster.region, cluster.city, cluster.district].filter(Boolean).join(' / ') || '—'}
           </p>
+          {cluster.hasMaterialUpdate || cluster.updateReviewStatus === 'UPDATE_AVAILABLE' ? (
+            <p className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+              GÜNCELLEME VAR — otomatik ikinci AI harcaması yok; editör karar verir.
+            </p>
+          ) : null}
           <p>
             Algoritmik: {CRAWLER_STATUS_LABELS[String(cluster.aiEligibility)] || String(cluster.aiEligibility)} · Editör:{' '}
             {EDITORIAL_DECISION_LABELS[cluster.editorialDecision as keyof typeof EDITORIAL_DECISION_LABELS] || '—'} · Öncelik:{' '}

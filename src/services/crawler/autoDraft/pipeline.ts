@@ -32,6 +32,7 @@ import {
   getAutoDraftEligibleAfter,
   isEventEligibleForAutoDraft,
 } from './activation'
+import { compareEditorialAutoDraftRank } from './editorialRank'
 import { buildCanaryEvidencePack } from '../canary/pack'
 import { estimateCanaryCostUsd } from '../canary/preflight'
 import { canaryConfig } from '../canary/flags'
@@ -339,7 +340,11 @@ export async function runControlledAutoDraftTick(opts: {
     return result
   }
 
-  const candidates = await listApprovedCandidates(opts.crawlerStore, opts.limit ?? cfg.maxEventsPerTick)
+  const candidates = await listApprovedCandidates(
+    opts.crawlerStore,
+    opts.limit ?? cfg.maxEventsPerTick,
+    now
+  )
   let concurrent = await opts.aiStore.countActiveJobs()
 
   for (const cluster of candidates) {
@@ -543,12 +548,51 @@ export async function runControlledAutoDraftTick(opts: {
 
 async function listApprovedCandidates(
   store: CrawlerStore,
-  limit: number
+  limit: number,
+  now = new Date()
 ): Promise<NewsClusterRecord[]> {
-  return store.listClusters({
+  // Fetch a wider pool then rank — spend under tight Phase 4E caps goes to best events first.
+  const pool = await store.listClusters({
     editorialDecision: 'APPROVED_FOR_AI',
-    limit,
+    limit: Math.max(limit * 5, 40),
   })
+  const ranked = [...pool].sort((a, b) => {
+    const staleA = a.latestArticleAt
+      ? (now.getTime() - a.latestArticleAt.getTime()) / 3_600_000
+      : 999
+    const staleB = b.latestArticleAt
+      ? (now.getTime() - b.latestArticleAt.getTime()) / 3_600_000
+      : 999
+    return compareEditorialAutoDraftRank(
+      {
+        editorialPriority: a.editorialPriority,
+        independentSourceCount: a.uniqueSourceCount,
+        importanceScore: a.importanceScore,
+        staleHours: staleA,
+        avgHealth: 70,
+        bestWordCount: 300,
+        bestConfidence: a.clusterConfidence ?? 0.7,
+        city: a.city,
+        district: a.district,
+        region: a.region,
+        countryCode: a.countryCode,
+      },
+      {
+        editorialPriority: b.editorialPriority,
+        independentSourceCount: b.uniqueSourceCount,
+        importanceScore: b.importanceScore,
+        staleHours: staleB,
+        avgHealth: 70,
+        bestWordCount: 300,
+        bestConfidence: b.clusterConfidence ?? 0.7,
+        city: b.city,
+        district: b.district,
+        region: b.region,
+        countryCode: b.countryCode,
+      }
+    )
+  })
+  return ranked.slice(0, limit)
 }
 
 /** Explicit: publication is never performed by this pipeline. */

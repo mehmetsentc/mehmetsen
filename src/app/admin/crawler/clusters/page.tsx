@@ -258,7 +258,7 @@ export default function CrawlerClustersPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.primaryImageUrl} alt="" className="mt-1 h-10 w-14 rounded object-cover" />
                   ) : null}
-                  {c.hasMaterialUpdate ? <div className="text-[11px] text-amber-700">Maddi güncelleme</div> : null}
+                  {c.hasMaterialUpdate ? <div className="text-[11px] font-semibold text-amber-700">GÜNCELLEME VAR</div> : null}
                   {(c.articleCount || 0) >= 2 ? (
                     <div className="mt-1 text-[10px] font-semibold text-[rgb(var(--color-muted))]">
                       {sameEventBadgeLabel(c.articleCount, c.independentSourceCount || c.uniqueSourceCount)}

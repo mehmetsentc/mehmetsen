@@ -127,11 +127,12 @@ export function buildCostCmsPayload(rows: CrawlerAiLedgerRow[], now = new Date()
   }
 }
 
-export function costCmsUnavailablePayload(message = 'Veri kaynağına ulaşılamıyor') {
+export function costCmsUnavailablePayload(message = 'Veri alınamadı') {
   return {
     windows: null,
     unavailable: true as const,
     error: message,
+    messageTr: 'Veri alınamadı' as const,
     lastSuccessAt: null as string | null,
   }
 }

@@ -211,25 +211,30 @@ describe('Phase 4D revision / idempotency', () => {
 })
 
 describe('Phase 4D budgets', () => {
-  it('AI_MAX_* defaults include $0.01 per event and monthly', () => {
+  it('AI_MAX_* Phase 4E defaults: $0.01/event · 2/h · 10/day · $0.05/day · $5/mo', () => {
     const lim = autoDraftBudgetLimits()
     expect(lim.maxCostPerEventUsd).toBe(0.01)
-    expect(lim.maxMonthlyCostUsd).toBe(15)
+    expect(lim.maxDraftsPerHour).toBe(2)
+    expect(lim.maxDraftsPerDay).toBe(10)
+    expect(lim.maxDailyCostUsd).toBe(0.05)
+    expect(lim.maxMonthlyCostUsd).toBe(5)
+    expect(lim.maxConcurrentJobs).toBe(1)
+    expect(lim.maxJobsPerInvocation).toBe(1)
   })
 
   it('COST_UNKNOWN / ceiling / hourly / daily / monthly block', () => {
-    expect(checkMonthlyBudget({ reservedUsd: 10, spentUsd: 5, nextCostUsd: 1, maxMonthlyCostUsd: 15 }).ok).toBe(
+    expect(checkMonthlyBudget({ reservedUsd: 4, spentUsd: 1, nextCostUsd: 0.1, maxMonthlyCostUsd: 5 }).ok).toBe(
       false
     )
     const hour = emptyWindow('crawler_automatic', 'hour', '2026-08-20T12')
     const day = emptyWindow('crawler_automatic', 'day', '2026-08-20')
-    hour.requestCount = 4
+    hour.requestCount = 2
     const blocked = tryReserveBudget({
       hour,
       day,
       costUsd: 0.001,
       concurrentJobs: 0,
-      maxRequestsPerHour: 4,
+      maxRequestsPerHour: 2,
     })
     expect(blocked.ok).toBe(false)
     if (!blocked.ok) expect(blocked.reason).toBe('HOURLY_REQUEST_LIMIT')

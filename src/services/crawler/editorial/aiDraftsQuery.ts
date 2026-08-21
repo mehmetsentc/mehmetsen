@@ -9,6 +9,7 @@ import {
   type AiDraftQualityAssessment,
   type DraftQualityCode,
 } from './aiDraftQuality'
+import { aiJobFailureReasonTr } from '../autoDraft/aiFailureLabels'
 import type { CrawlerAiJobRecord } from '../aiDispatch/types'
 
 export const AI_DRAFT_PAGE_SIZES = [25, 50, 100] as const
@@ -54,6 +55,7 @@ export type AiDraftListItem = {
   completedAt: string | Date | null
   failureCode: string | null
   failureReason: string | null
+  failureReasonTr: string
 }
 
 export type AiDraftDetail = AiDraftListItem & {
@@ -177,6 +179,11 @@ export function mapJobToListItem(job: CrawlerAiJobRecord): AiDraftListItem {
     completedAt: job.completedAt,
     failureCode: job.failureCode || null,
     failureReason: job.failureReason || null,
+    failureReasonTr: aiJobFailureReasonTr({
+      failureCode: job.failureCode,
+      failureReason: job.failureReason,
+      status: job.status,
+    }),
   }
 }
 

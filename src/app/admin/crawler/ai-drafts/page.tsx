@@ -35,6 +35,7 @@ type ListItem = {
   completedAt: string | Date | null
   failureCode: string | null
   failureReason: string | null
+  failureReasonTr?: string
 }
 
 type Detail = ListItem & {
@@ -374,7 +375,10 @@ function AiDraftsPageInner() {
                         </>
                       ) : (
                         <span className="text-xs text-[rgb(var(--color-muted))]">
-                          {j.failureCode || j.failureReason || '—'}
+                          {j.failureReasonTr || j.failureCode || j.failureReason || '—'}
+                          {j.failureCode ? (
+                            <span className="ml-1 text-[10px] text-[rgb(var(--color-muted))]">({j.failureCode})</span>
+                          ) : null}
                         </span>
                       )}
                     </div>

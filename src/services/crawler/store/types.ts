@@ -169,6 +169,12 @@ export interface RawArticleListQuery {
   hasImage?: boolean | null
   editorialStatus?: CrawlerEditorialStatus | null
   view?: 'all' | 'bySource'
+  /**
+   * Phase 4E — default true on active Ham Haber queue.
+   * Hide SUPPORTING/DUPLICATE/LOW_QUALITY cluster members so editors decide at EVENT level.
+   * Evidence remains on Olay Detayı. Pass false / includeSupporting=1 to show all.
+   */
+  eventPrimaryOnly?: boolean | null
 }
 
 export interface RawArticleListRow extends RawArticleRecord {

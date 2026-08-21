@@ -139,6 +139,7 @@ export function matchesRawArticleQuery(article: RawArticleRecord, query: RawArti
   if (query.status === 'duplicate' && !article.isExactDuplicate) return false
   if (query.status === 'extracted' && (article.isExactDuplicate || article.qualityStatus === 'FAILED')) return false
   if (query.status === 'failed' && article.qualityStatus !== 'FAILED') return false
+  if (shouldHideSupportingFromPrimaryQueue(article, query)) return false
   const when = article.publishedAt || article.fetchedAt
   if (query.dateFrom && when && when < query.dateFrom) return false
   if (query.dateTo && when && when > query.dateTo) return false
@@ -148,6 +149,23 @@ export function matchesRawArticleQuery(article: RawArticleRecord, query: RawArti
     if (!title.includes(q)) return false
   }
   return true
+}
+
+/** Phase 4E — supporting evidence stays in cluster detail, not primary Ham Haber clutter. */
+export function shouldHideSupportingFromPrimaryQueue(
+  article: RawArticleRecord,
+  query: Pick<RawArticleListQuery, 'eventPrimaryOnly' | 'queue' | 'status'>
+): boolean {
+  const primaryOnly =
+    query.eventPrimaryOnly !== false &&
+    (query.queue || 'active') === 'active' &&
+    query.status !== 'duplicate'
+  if (!primaryOnly) return false
+  if (!article.clusterId) return false
+  const role = article.clusterRole
+  if (role === 'SUPPORTING' || role === 'DUPLICATE' || role === 'LOW_QUALITY') return true
+  if (article.isExactDuplicate && role !== 'PRIMARY' && role !== 'MATERIAL_UPDATE') return true
+  return false
 }
 
 function timestamp(value: Date | null | undefined): number {

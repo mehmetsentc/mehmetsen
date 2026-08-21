@@ -1,11 +1,43 @@
 export {
   AUTO_DRAFT_GATE_STATUSES,
+  STRONG_SINGLE_SOURCE_THRESHOLDS,
   evaluateAutoDraftGate,
+  evaluateStrongSingleSource,
+  scoreAutoDraftEligibility,
   canCreateAutoDraftJob,
   type AutoDraftGateStatus,
   type AutoDraftGateInput,
   type AutoDraftGateResult,
+  type EligibilityScoreBreakdown,
 } from './eligibility'
+
+export {
+  scoreEditorialAutoDraftRank,
+  compareEditorialAutoDraftRank,
+  isCanakkaleLocal,
+  CANAKKALE_RANK_BOOST,
+  type EditorialRankInput,
+  type EditorialRankResult,
+} from './editorialRank'
+
+export { aiJobFailureReasonTr, AI_JOB_FAILURE_REASON_TR } from './aiFailureLabels'
+
+export {
+  buildOpsCounters,
+  formatMetricNumber,
+  metricOk,
+  metricUnavailable,
+  type ControlledAutoDraftOpsCounters,
+  type MetricValue,
+} from './observability'
+
+export { summarizeSourceHealth, type SourceHealthSummary } from './sourceHealth'
+
+export {
+  auditCronSchedules,
+  phase4eFreshnessExpectations,
+  type ScheduleAuditRow,
+} from './scheduleAudit'
 
 export {
   buildEventContentFingerprint,

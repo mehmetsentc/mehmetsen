@@ -1241,6 +1241,18 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       parts.push(sql`${rawArticles.qualityStatus} <> 'FAILED'`)
     }
     if (query.status === 'failed') parts.push(eq(rawArticles.qualityStatus, 'FAILED'))
+    const primaryOnly =
+      query.eventPrimaryOnly !== false &&
+      (query.queue || 'active') === 'active' &&
+      query.status !== 'duplicate'
+    if (primaryOnly) {
+      // Hide supporting/duplicate clutter; evidence lives on Olay Detayı.
+      parts.push(sql`(
+        ${rawArticles.clusterId} is null
+        or ${rawArticles.clusterRole} is null
+        or ${rawArticles.clusterRole} in ('PRIMARY', 'MATERIAL_UPDATE')
+      )`)
+    }
     if (query.dateFrom) parts.push(sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) >= ${query.dateFrom}`)
     if (query.dateTo) parts.push(sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) <= ${query.dateTo}`)
     if (query.search?.trim()) {
