@@ -16,6 +16,7 @@ import { isCrawlerAiProviderEnabled } from '../aiDispatch/providerReadiness'
 import { buildCanaryEvidencePack } from '../canary/pack'
 import { createDeepSeekCanaryProvider } from '../canary/provider'
 import { executeEventDraft, eventDraftPublicationAllowed } from '../eventDraft/executeEventDraft'
+import { assessAiDraftQuality } from '../editorial/aiDraftQuality'
 import type { CanaryClusterInput, CanaryMemberInput, CanaryProvider } from '../canary/types'
 import {
   blocksAutomaticRepay,
@@ -80,6 +81,8 @@ async function membersFor(crawlerStore: CrawlerStore, clusterId: string): Promis
       editorialStatus: article.editorialStatus,
       editorialNewsId: article.editorialNewsId,
       sourceStatus: source?.status || 'ACTIVE',
+      originalUrl: article.originalUrl,
+      canonicalUrl: article.canonicalUrl,
     })
   }
   return out
@@ -125,6 +128,8 @@ function toCanaryMembers(members: MemberEvidence[]): CanaryMemberInput[] {
     editorialStatus: m.editorialStatus,
     editorialNewsId: m.editorialNewsId,
     sourceStatus: m.sourceStatus,
+    originalUrl: m.originalUrl ?? null,
+    canonicalUrl: m.canonicalUrl ?? null,
   }))
 }
 
@@ -386,12 +391,42 @@ export async function runDedicatedAiWorkerTick(opts: {
         jobId: job.id,
         executionId,
         eventRevision: fingerprint,
-        sourceEvidence: pack.sources.map((s) => ({
-          articleId: s.articleId,
-          sourceId: s.sourceId,
-          sourceName: s.sourceName,
-          role: s.role,
-        })),
+        sourceEvidence: pack.sources.map((s) => {
+          const member = members.find((m) => m.articleId === s.articleId)
+          const words = (s.body || '').trim().split(/\s+/).filter(Boolean).length
+          return {
+            articleId: s.articleId,
+            sourceId: s.sourceId,
+            sourceName: s.sourceName,
+            role: s.role,
+            title: s.title || member?.title || null,
+            url: member?.canonicalUrl || member?.originalUrl || null,
+            wordCount: words || member?.wordCount || null,
+            extractionConfidence: member?.extractionConfidence ?? null,
+            healthScore: member?.healthScore ?? null,
+          }
+        }),
+        packMetrics: {
+          usableSourceWords: pack.metrics.usableSourceWords ?? null,
+          independentSourceCount: pack.metrics.independentSourceCount ?? null,
+          richness: pack.metrics.sourceRichness ?? null,
+          sourceCount: pack.sources.length,
+        },
+        socialTitle: draftResult.draft.socialTitle,
+        socialDescription: draftResult.draft.socialDescription,
+        pushTitle: draftResult.draft.pushTitle,
+        pushText: draftResult.draft.pushText,
+        seoKeywords: draftResult.draft.seoKeywords,
+        quality: assessAiDraftQuality({
+          body: draftResult.draft.body,
+          usableSourceWords: pack.metrics.usableSourceWords ?? null,
+          richness: pack.metrics.sourceRichness ?? null,
+          sources: pack.sources.map((s) => ({
+            body: s.body,
+            sourceId: s.sourceId,
+            wordCount: (s.body || '').trim().split(/\s+/).filter(Boolean).length,
+          })),
+        }),
         cost: {
           estimatedCostUsd: job.estimatedCostUsd,
           actualCostUsd: draftResult.actualCostUsd,

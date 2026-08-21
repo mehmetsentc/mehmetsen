@@ -279,6 +279,8 @@ export type CanaryMemberInput = {
   editorialNewsId?: string | null
   sourceStatus?: string
   hasMedia?: boolean
+  originalUrl?: string | null
+  canonicalUrl?: string | null
 }
 
 export type CanaryClusterInput = {

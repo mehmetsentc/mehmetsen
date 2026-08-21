@@ -250,6 +250,9 @@ export type MemberEvidence = {
   editorialStatus: string
   editorialNewsId: string | null
   sourceStatus: string
+  /** Phase 4D.4 — persisted for draft evidence UI (no re-crawl). */
+  originalUrl?: string | null
+  canonicalUrl?: string | null
 }
 
 export type EvaluateContext = {

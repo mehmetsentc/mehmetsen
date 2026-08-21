@@ -55,10 +55,19 @@ export function computeSourceContentMetrics(
   const combined = sources.map((s) => s.body || '').join(' ')
   const uniqueFactDensity = Math.round(uniqueTokenRatio(combined) * 1000) / 1000
 
+  /**
+   * Phase 4D.4 — material-first richness (not “model wrote short ⇒ thin”).
+   * Enough usable source words for a grounded 300+ story ⇒ hard min 300,
+   * even with a single strong source (4C.4 previously required 2 sources for rich).
+   */
   let richness: SourceRichness
   if (usableSourceWords < 80 || sourceCount === 0) {
     richness = 'insufficient'
-  } else if (usableSourceWords >= 400 && independentSourceCount >= 2) {
+  } else if (
+    usableSourceWords >= CANARY_BODY_TARGET_MIN_WORDS ||
+    (usableSourceWords >= 400 && independentSourceCount >= 2)
+  ) {
+    // ≥300 usable = enough material for a full grounded article → rich hard gate
     richness = 'rich'
   } else if (usableSourceWords >= 220 || (usableSourceWords >= 150 && independentSourceCount >= 2)) {
     richness = 'medium'
@@ -101,9 +110,11 @@ export function computeSourceContentMetrics(
   }
 
   if (richness === 'medium') {
+    // Floor at site news min (220), not thin band (150) — avoid undershoot passes
+    const mediumFloor = Math.max(CANARY_BODY_THIN_MIN_WORDS, 220)
     const required = Math.min(
       CANARY_BODY_TARGET_MIN_WORDS,
-      Math.max(CANARY_BODY_THIN_MIN_WORDS, Math.floor(usableSourceWords * 0.55))
+      Math.max(mediumFloor, Math.floor(usableSourceWords * 0.7))
     )
     return {
       usableSourceWords,
