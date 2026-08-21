@@ -201,6 +201,41 @@ function normalizeTrAscii(text: string): string {
 }
 
 /**
+ * Kısa / günlük dil ile çakışan ilçeler — yalnızca güçlü yer belirtisi ile kabul.
+ * Örn: Göle ↔ "gol"; Orta / Olur günlük kelime.
+ */
+const AMBIGUOUS_SHORT_DISTRICT_SLUGS = new Set([
+  'gole', // gol / goller
+  'orta',
+  'olur',
+  'tire',
+  'kale',
+  'han',
+  'mut',
+  'sur',
+  'tut',
+  'ula',
+  'of',
+  'bor',
+  'cal',
+  'can',
+  'cat',
+  'cay',
+  'kas',
+])
+
+/** İlçe için güçlü yer kanıtı: "Göle'de", "Göle ilçesi" vb. (çıplak token yetmez). */
+function hasStrongDistrictEvidence(normalized: string, token: string): boolean {
+  const t = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const locative = new RegExp(
+    `(?<![a-z0-9])${t}(?:['']?(?:da|de|ta|te|dan|den|tan|ten|nin|nun|in|un)|\\s+ilce\\w*)(?![a-z0-9])|` +
+      `ilce\\w*\\s+${t}(?![a-z0-9])`,
+    'i'
+  )
+  return locative.test(normalized)
+}
+
+/**
  * Metinden ilçe slug çıkar (uzun isim öncelikli).
  * `normalized` ASCII-Türkçe normalize edilmiş olmalı veya ham metin olabilir.
  */
@@ -212,6 +247,15 @@ export function extractDistrictSlugFromText(text: string): string | null {
   for (const [slug, name] of entries) {
     const nameNorm = normalizeTrAscii(name)
     if (nameNorm.length < 4 && slug.length < 4) continue
+    if (AMBIGUOUS_SHORT_DISTRICT_SLUGS.has(slug)) {
+      if (
+        hasStrongDistrictEvidence(normalized, nameNorm) ||
+        hasStrongDistrictEvidence(normalized, slug)
+      ) {
+        return slug
+      }
+      continue
+    }
     const nameRe = new RegExp(`(?<![a-z0-9])${nameNorm.replace(/\s+/g, '\\s*')}(?![a-z0-9])`)
     const slugRe = new RegExp(`(?<![a-z0-9])${slug}(?![a-z0-9])`)
     if (nameRe.test(normalized) || slugRe.test(normalized)) {

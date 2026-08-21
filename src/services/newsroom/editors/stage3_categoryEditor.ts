@@ -12,7 +12,10 @@
  */
 
 import type { WrittenArticle } from './stage1_contentWriter'
-import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import {
+  applyAstrologyCategoryOverride,
+  applyMasterChefCategoryOverride,
+} from '@/lib/categoryOverrides'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import { inputCharLimit, optionalOutputTokenLimit } from '@/lib/ai/usage/tokenBudget'
 import {
@@ -165,6 +168,10 @@ KONUM KURALLARI (ZORUNLU):
 - categoryId = yerel-haber → city: Türk ili; district: ilçe adı varsa doldur (Gemlik, Çine…)
 - Türkiye içi diğer kategoriler → country: "Türkiye"; city yalnızca olay o ile bağlıysa
 - Kaynak gazete şehrini city olarak yazma — olayın geçtiği yeri yaz
+- KONUM UYDURMA YASAK: Kaynakta açıkça geçmeyen il/ilçe/ülke YAZMA — emin değilsen null bırak
+- "gol" kelimesi Ardahan/Göle DEĞİLDİR; Süper Lig / Galatasaray haberine rastgele il verme
+- MasterChef Türkiye / TV yarışması → magazin (veya gastronomi); categoryId=dunya ve country=Çin ASLA
+- "için" (edat) Çin ülkesi DEĞİLDİR
 
 ALTIN KURAL son-dakika için: "Bu haber Türkiye genelini veya uluslararası düzeni doğrudan etkiliyor mu?" → Hayır → son-dakika DEĞİL.
 
@@ -505,8 +512,14 @@ async function callDeepSeekOnce(opts: {
 }
 
 function finishStage3Result(input: CategoryInput, deepseekResult: CategoryResult): CategoryResult {
-  const categoryId = applyAstrologyCategoryOverride(
+  let categoryId = applyMasterChefCategoryOverride(
     deepseekResult.categoryId,
+    input.title,
+    input.content,
+    deepseekResult.tags
+  )
+  categoryId = applyAstrologyCategoryOverride(
+    categoryId,
     input.title,
     input.content,
     deepseekResult.tags
@@ -517,7 +530,7 @@ function finishStage3Result(input: CategoryInput, deepseekResult: CategoryResult
     : {
         ...stamped,
         categoryId,
-        reason: `${deepseekResult.reason} [override→astroloji]`.trim(),
+        reason: `${deepseekResult.reason} [override→${categoryId}]`.trim(),
       }
 }
 
@@ -541,6 +554,7 @@ function heuristicCategory(input: CategoryInput): CategoryResult {
   else if (/nükleer yarış|silah yarışı|uzay yarışı|nükleer program|nükleer tehdit|nükleer silah/.test(title)) categoryId = 'dunya'
   else if (/rusya|ukrayna|gazze|abd.*savaş|almanya.*açıkladı|ortadoğu|israil|iran|nato|bm karar/.test(title)) categoryId = 'dunya'
 
+  categoryId = applyMasterChefCategoryOverride(categoryId, input.title, input.content)
   categoryId = applyAstrologyCategoryOverride(categoryId, input.title, input.content)
 
   const isBreaking = categoryId === 'son-dakika'

@@ -294,30 +294,34 @@ export function resolveCountryFromText(text: string): WorldCountry | null {
     .replace(/ö/g, 'o')
     .replace(/ç/g, 'c')
 
-  // Alias kelimeleri (İngilizce / yaygın)
+  // Alias kelimeleri — ASCII + lookbehind (JS `\b` Türkçe harflerde kırılır:
+  // "için" → `\bçin\b` eşleşir ve Çin sanılır). Yalnızca ascii metinde tara.
+  const asciiWord = (alts: string) =>
+    new RegExp(`(?<![a-z0-9])(?:${alts})(?![a-z0-9])`, 'i')
   const TEXT_ALIASES: Array<[RegExp, string]> = [
-    [/\b(japonya|japan|japon|nippon|tokyo|osaka|kumamoto|hiroshima)\b/i, 'japonya'],
-    [/\b(abd|amerika|usa|u\.s\.a|washington|new york|california)\b/i, 'abd'],
-    [/\b(ingiltere|birleşik krallık|birlesik krallik|uk|london|britain|england)\b/i, 'birleşik krallık'],
-    [/\b(almanya|germany|berlin|munich|münih)\b/i, 'almanya'],
-    [/\b(fransa|france|paris)\b/i, 'fransa'],
-    [/\b(rusya|russia|moscow|moskova)\b/i, 'rusya'],
-    [/\b(cin|çin|china|pekin|beijing)\b/i, 'çin'],
-    [/\b(israil|israel|tel aviv|gazze|gaza)\b/i, 'israil'],
-    [/\b(filistin|palestine|ramallah)\b/i, 'filistin'],
-    [/\b(ukrayna|ukraine|kiev|kyiv)\b/i, 'ukrayna'],
-    [/\b(suriye|syria|damascus|şam)\b/i, 'suriye'],
-    [/\b(irak|iraq|bağdat|baghdad)\b/i, 'irak'],
-    [/\b(iran|iranlı|tehran|tahran)\b/i, 'iran'],
-    [/\b(yunanistan|greece|atina|athens)\b/i, 'yunanistan'],
-    [/\b(italya|italy|roma|rome|milan)\b/i, 'italya'],
-    [/\b(ispanya|spain|madrid|barcelona)\b/i, 'ispanya'],
-    [/\b(misir|mısır|egypt|kahire|cairo)\b/i, 'mısır'],
-    [/\b(kktc|kuzey kıbrıs|lefkoşa)\b/i, 'kibris'], // may not exist — fallback handled
+    [asciiWord('japonya|japan|japon|nippon|tokyo|osaka|kumamoto|hiroshima'), 'japonya'],
+    [asciiWord('abd|amerika|usa|u\\.s\\.a|washington|new york|california'), 'abd'],
+    [asciiWord('ingiltere|birlesik krallik|uk|london|britain|england'), 'birleşik krallık'],
+    [asciiWord('almanya|germany|berlin|munich|munih'), 'almanya'],
+    [asciiWord('fransa|france|paris'), 'fransa'],
+    [asciiWord('rusya|russia|moscow|moskova'), 'rusya'],
+    // "cin" yalnız başına; "icin" (için) ASLA eşleşmesin
+    [asciiWord('cin|china|pekin|beijing'), 'çin'],
+    [asciiWord('israil|israel|tel aviv|gazze|gaza'), 'israil'],
+    [asciiWord('filistin|palestine|ramallah'), 'filistin'],
+    [asciiWord('ukrayna|ukraine|kiev|kyiv'), 'ukrayna'],
+    [asciiWord('suriye|syria|damascus|sam'), 'suriye'],
+    [asciiWord('irak|iraq|bagdat|baghdad'), 'irak'],
+    [asciiWord('iran|iranli|tehran|tahran'), 'iran'],
+    [asciiWord('yunanistan|greece|atina|athens'), 'yunanistan'],
+    [asciiWord('italya|italy|roma|rome|milan'), 'italya'],
+    [asciiWord('ispanya|spain|madrid|barcelona'), 'ispanya'],
+    [asciiWord('misir|egypt|kahire|cairo'), 'mısır'],
+    [asciiWord('kktc|kuzey kibris|lefkosa'), 'kibris'],
   ]
 
   for (const [re, nameKey] of TEXT_ALIASES) {
-    if (re.test(lower) || re.test(ascii)) {
+    if (re.test(ascii)) {
       const hit = findCountryByName(nameKey) || findCountryBySlug(nameKey)
       if (hit) return hit
     }

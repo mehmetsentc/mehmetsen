@@ -122,7 +122,9 @@ async function processArchiveItem(
       rewritten,
     })
 
-    const geo = geoEngine.enrich(rewritten, [])
+    const geo = geoEngine.enrich(rewritten, [], {
+      evidenceText: `${item.title}\n${item.summary}\n${item.content}`,
+    })
     const resolvedCategoryRaw = categoryEngine.resolve(rewritten.categoryId, 'local')
     const classification = categoryEngine.validate({
       aiCategoryId: resolvedCategoryRaw,

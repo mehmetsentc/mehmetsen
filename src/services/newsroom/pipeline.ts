@@ -42,7 +42,10 @@ import { categoryEngine } from '@/services/newsroom/categoryEngine'
 import { classifyArticleCategory, classifyYerelSubcategory, classifyKibrisSubcategory } from '@/services/newsroom/aiCategoryClassifier'
 import { isSkipRedundantClassifierEnabled } from '@/lib/ai/router/flags'
 import { shouldSkipRedundantCategoryClassifier } from '@/lib/ai/router/stage3Skip'
-import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import {
+  applyAstrologyCategoryOverride,
+  applyMasterChefCategoryOverride,
+} from '@/lib/categoryOverrides'
 import {
   isYerelCategoryTree,
   resolveYerelSubcategoryForLocalNews,
@@ -1191,11 +1194,26 @@ export async function processNewsroomArticle(
       }
     }
 
+    const tagsForOverride = (rewritten as AiRewriteResult).tags ?? []
+    const bodyForOverride = rewritten.description ?? rewritten.summary ?? ''
+    const masterChefFixed = applyMasterChefCategoryOverride(
+      classification.categoryId,
+      rewritten.title,
+      bodyForOverride,
+      tagsForOverride
+    )
+    if (masterChefFixed !== classification.categoryId) {
+      console.log(
+        `[newsroom/category] masterchef override: ${classification.categoryId} → ${masterChefFixed}`
+      )
+      classification.categoryId = masterChefFixed
+      classification.overrides.push('masterchef-tv → magazin')
+    }
     const astrologyFixed = applyAstrologyCategoryOverride(
       classification.categoryId,
       rewritten.title,
-      rewritten.description ?? rewritten.summary ?? '',
-      (rewritten as AiRewriteResult).tags ?? []
+      bodyForOverride,
+      tagsForOverride
     )
     if (astrologyFixed !== classification.categoryId) {
       console.log(
@@ -1208,6 +1226,13 @@ export async function processNewsroomArticle(
     // Geo: final kategori bilindikten sonra (dunya → ülke, yerel → ilçe)
     const geo = geoEngine.enrich(rewritten, workingInput.extraTags ?? [], {
       categoryId: classification.categoryId,
+      evidenceText: [
+        workingInput.originalTitle,
+        workingInput.originalSummary,
+        workingInput.originalContent,
+      ]
+        .filter(Boolean)
+        .join('\n'),
     })
 
     let city = geo.city

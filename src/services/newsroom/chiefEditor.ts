@@ -16,7 +16,10 @@ import {
   getYerelSubcategoryIdsForPrompt,
   getKibrisSubcategoryIdsForPrompt,
 } from '@/constants/config'
-import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import {
+  applyAstrologyCategoryOverride,
+  applyMasterChefCategoryOverride,
+} from '@/lib/categoryOverrides'
 import { deepseekChatCompletion, getDeepSeekApiKey, getDeepSeekModel } from '@/lib/ai/deepseekClient'
 import { inputCharLimit, outputTokenLimit } from '@/lib/ai/usage/tokenBudget'
 import {
@@ -181,11 +184,14 @@ ${buildCategoryPromptBlock()}
 function normalizeCategory(raw: string, title: string, body: string, tags: string[]): string {
   const id = raw.trim().toLowerCase().replace(/\s+/g, '-')
   if (VALID_CATEGORY_IDS.has(id)) {
-    return applyAstrologyCategoryOverride(id, title, body, tags)
+    let resolved = applyMasterChefCategoryOverride(id, title, body, tags)
+    resolved = applyAstrologyCategoryOverride(resolved, title, body, tags)
+    return resolved
   }
   // Super Lig fallback heuristic
   const text = `${title} ${body}`.toLocaleLowerCase('tr-TR')
   if (/süper lig|super lig|trendyol süper|1\. lig|tff 1\. lig/.test(text)) return 'futbol'
+  if (/masterchef/i.test(text)) return 'magazin'
   return 'gundem'
 }
 

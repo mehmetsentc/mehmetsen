@@ -396,6 +396,11 @@ const MAGAZIN_KEYWORDS = [
   'nişanlandı',
   'boşandı',
   'hamile kaldı',
+  'masterchef',
+  'master chef',
+  'dokunulmazlık',
+  'eleme aday',
+  'yarışmacı',
 ] as const
 
 const BILIM_KEYWORDS = [
@@ -979,18 +984,29 @@ export function validateCategoryClassification(
     categoryConfidence = Math.max(categoryConfidence, 83)
   }
 
-  // ── Magazin override: TV/celeb/dizi news classified as gundem by AI
+  // ── Magazin override: TV/celeb/dizi/MasterChef news classified as gundem/dunya by AI
   if (
     magazin &&
     !sports &&
     !nationalScope &&
     !siyaset &&
     !ekonomi &&
-    (categoryId === 'gundem' || categoryId === 'teknoloji')
+    (categoryId === 'gundem' || categoryId === 'teknoloji' || categoryId === 'dunya')
   ) {
     overrides.push(`magazin-keywords → magazin (was ${categoryId})`)
     categoryId = 'magazin'
     categoryConfidence = Math.max(categoryConfidence, 82)
+  }
+
+  // ── Gastronomi: MasterChef TV yarışması magazin'de kalsın (dünya'ya düşmesin)
+  // Tarif/restoran haberleri gastronomi'ye gider; eleme/dokunulmazlık → magazin.
+  const masterChefTv =
+    /\bmaster\s*chef\b|\bmasterchef\b/i.test(text) &&
+    /dokunulmazl|eleme\s+aday|yar[ıi][şs]mac|k[ıi]rm[ıi]z[ıi]\s+tak[ıi]m/i.test(text)
+  if (masterChefTv && (categoryId === 'dunya' || categoryId === 'gastronomi' || categoryId === 'gundem')) {
+    overrides.push(`masterchef-tv → magazin (was ${categoryId})`)
+    categoryId = 'magazin'
+    categoryConfidence = Math.max(categoryConfidence, 90)
   }
 
   // ── Yerel-haber override: belediye/municipal keywords + single city → yerel-haber
@@ -1049,8 +1065,10 @@ export function validateCategoryClassification(
   }
 
   // ── Gastronomi override: yemek/restoran/mutfak haberleri kültür'e gitmesin ──
+  // MasterChef TV eleme/dokunulmazlık → magazin kalsın (tarif değil).
   if (
     gastronomi &&
+    !masterChefTv &&
     !sports &&
     !nationalScope &&
     !siyaset &&

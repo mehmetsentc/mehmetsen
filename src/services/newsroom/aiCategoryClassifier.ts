@@ -13,7 +13,7 @@
  * - Kaynak adı bazlı zorunlu kategori atamasının içeriği ezmesi
  */
 
-import { applyAstrologyCategoryOverride } from '@/lib/categoryOverrides'
+import { applyAstrologyCategoryOverride, applyMasterChefCategoryOverride } from '@/lib/categoryOverrides'
 import { completeClassifierJson } from '@/lib/ai/classifierLlm'
 import {
   getYerelSubcategories,
@@ -189,13 +189,14 @@ JSON formatında yanıt ver:
         const categoryId = parsed.categoryId?.trim() as NewsCategory
         const confidence = Number(parsed.confidence ?? 0)
         if (!CATEGORIES.includes(categoryId) || confidence < 75) return null
-        const resolvedId = applyAstrologyCategoryOverride(categoryId, title, content) as NewsCategory
+        const overridden = applyMasterChefCategoryOverride(categoryId, title, content)
+        const resolvedId = applyAstrologyCategoryOverride(overridden, title, content) as NewsCategory
         return {
           categoryId: resolvedId,
           confidence,
           reason:
             resolvedId !== categoryId
-              ? `${parsed.reason ?? ''} [override→astroloji]`.trim()
+              ? `${parsed.reason ?? ''} [override→${resolvedId}]`.trim()
               : parsed.reason ?? '',
         }
       } catch {
