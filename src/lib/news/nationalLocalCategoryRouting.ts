@@ -4,6 +4,11 @@ import {
   mapNationalCategoryToYerelSubcategory,
   shouldLocalizeCategory,
 } from '@/constants/config'
+import {
+  demoteNeverLocalVertical,
+  isNeverLocalNationalCategory,
+  isNeverLocalYerelCategory,
+} from '@/lib/news/neverLocalVerticals'
 
 export interface NationalLocalDualRouting {
   nationalCategoryId: string
@@ -152,8 +157,14 @@ export function resolveCategoryForLocalVsNationalScope(
   body: string,
   citySlug?: string | null,
 ): string {
-  const cat = categoryId?.trim().toLowerCase() ?? ''
+  const demoted = demoteNeverLocalVertical(categoryId)
+  let cat = demoted.categoryId || categoryId?.trim().toLowerCase() || ''
   if (!cat || !citySlug?.trim()) return cat
+
+  // Never-local verticals stay national (otomobil, gastronomi, teknoloji, …)
+  if (isNeverLocalNationalCategory(cat) || isNeverLocalYerelCategory(categoryId)) {
+    return demoteNeverLocalVertical(cat).categoryId || cat
+  }
 
   // Gastronomi stays national — dish/city name in a recipe must not become yerel-gastronomi.
   if (cat === 'gastronomi' || cat === 'yemek' || cat === 'tarif' || cat === 'food') {
@@ -210,7 +221,7 @@ export function normalizePublishedLocalCategory(
   tags: string[] = [],
   opts?: { title?: string; body?: string },
 ): { categoryId: string; tags: string[] } {
-  let cat = categoryId.trim()
+  let cat = demoteNeverLocalVertical(categoryId.trim()).categoryId || categoryId.trim()
 
   if (opts?.title && citySlug) {
     cat = resolveCategoryForLocalVsNationalScope(

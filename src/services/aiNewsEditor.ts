@@ -263,29 +263,29 @@ ADIM 3 — YEREL mi ULUSAL mi? (KONU ŞEHRİ EZMESİN — önce bunu çöz)
   - Kıbrıs seçenekleri: ${getKibrisSubcategoryIdsForPrompt()}
   - Genel kibris-haberleri yerine mümkünse kibris-siyaset / kibris-spor / kibris-asayis vb. seç
   - Konu emlak/konut/kira (tek şehir) → yerel-emlak (emlak-konut DEĞİL)
-  - Konu sağlık etkinliği/hastane (tek şehir) → yerel-saglik (saglik DEĞİL)
   - Konu çevre/göl/atık (tek şehir) → yerel-cevre-iklim (cevre-iklim DEĞİL)
   - Belediye kararı / valilik → yerel-siyaset
   - Trafik kazası / suç / operasyon → yerel-asayis
   - Yerel spor kulübü → branşa göre yerel-futbol / …; belirsizse yerel-spor
   - Okul / üniversite → yerel-egitim
-  - Yöresel yemek → yerel-gastronomi
-  - Kent mobilyası / mahalle yaşam → yerel-yasam veya yerel-gundem
   - Belediye duyurusu / ilan → yerel-duyuru
+  - ASLA yerel-otomobil / yerel-teknoloji / yerel-saglik / yerel-yasam / yerel-gastronomi / yerel-magazin:
+    bunlar ULUSAL dikeylerdir (otomobil, teknoloji, saglik, yasam, gastronomi, magazin). TR il UYDURMA.
 
   YEREL ÖRNEKLER:
     "Van'da konut satışları Temmuz'da azaldı"     → yerel-emlak
     "Van Gölü'nde atık toplama seferberliği"      → yerel-cevre-iklim
-    "Yalova'da Sağlıklı Hayat Saatleri"           → yerel-saglik
-    "Çiftlikköy'de kent mobilyaları üretimi"      → yerel-yasam
-    "Çayıralan'da yöresel lezzetler"              → yerel-gastronomi
     "Konya'da trafik kazası: 2 yaralı"            → yerel-asayis
     "Trabzon Belediyesi park yapıyor"              → yerel-siyaset
     "Çanakkale Belediyesi su kesintisi duyurusu"  → yerel-duyuru
+    "Bingöl'ün Genç ilçesinde boğulma"            → yerel-asayis + city=Bingöl district=Genç
 
   ULUSAL BİRİNCİL (şehir yalnızca konum — ADIM 4 uzman kategoriye geç):
     "Türkiye genelinde konut satışları arttı"     → emlak-konut
     "Sağlık Bakanlığı aşı takvimini açıkladı"     → saglik
+    "Honda modelleri üretimden kalktı"            → otomobil (city=null)
+    "OpenAI / Apple / ChatGPT"                    → teknoloji (city=null; Çankırı/Orta YASAK)
+    "Kadıköy'de restoran açıldı"                  → gastronomi (city=İstanbul yalnızca kanıtlıysa)
     "TCMB faiz kararını açıkladı"                 → finans-piyasa / ekonomi
     "İstanbul'da 6.5 büyüklüğünde deprem"         → son-dakika
   • Yerel birincil DEĞİLSE → ADIM 4'e geç.
@@ -368,7 +368,10 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
   * city alanı için KAYNAK GAZETENİN şehrini ASLA kullanma. Haberin KONUSUNUN geçtiği Türk şehrini yaz.
   * Bursa Gazetesi → İngiltere haberi: city=null, country="İngiltere", category="dunya"
   * Antalya Ekspres → Gazze haberi: city=null, country="Filistin", category="dunya"
-  * Hürriyet → Ankara kararı: city="Ankara", country="Türkiye"
+  * Hürriyet → Ankara'da bakanlık kararı (metinde Ankara kanıtlı): city="Ankara", country="Türkiye"
+  * AA dateline "ANKARA (AA)" olay yeri DEĞİLDİR — metindeki gerçek il/ilçeyi kullan veya city=null
+  * OpenAI/Apple/Honda/sektör → city=null (Çankırı/Orta, Kırıkkale/Keskin UYDURMA)
+  * "Bingöl'ün Genç ilçesinde" → city="Bingöl", district="Genç" (Ankara değil)
   * Olay yurt dışında geçiyorsa: city=null, country=olayın geçtiği ülke adı (Türkçe), category="dunya"
 - TAGS KURALI: tags dizisine KAYNAK GAZETENİN ŞEHRİNİ ekleme. Sadece haberin konusuyla ilgili etiketler ekle. "Bursa Gazetesi"nden İngiltere haberi geliyorsa tags'e "bursa" ekleme.
 - KAYNAK AJANS/GAZETE ADI YASAK: İçerikte "Anka Ajansı", "AA", "DHA", "İHA", "Bursa Gazetesi" gibi kaynak ajans veya gazete adı ASLA yazma. Haber NaHaber editörü tarafından yazılıyormuş gibi kaleme al. Alıntı gerektiğinde yalnızca birincil kaynağı (kişi/kurum) referans göster.

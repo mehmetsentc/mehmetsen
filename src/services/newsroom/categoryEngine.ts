@@ -3,6 +3,7 @@
  * and post-validates with keyword heuristics.
  */
 import { DEFAULT_CATEGORIES, isKibrisCategoryTree } from '@/constants/config'
+import { demoteNeverLocalVertical } from '@/lib/news/neverLocalVerticals'
 import type { NewsroomEditorType } from '@/services/newsroom/types'
 
 const CATEGORY_ALIASES: Record<string, string> = {
@@ -1190,6 +1191,24 @@ export function validateCategoryClassification(
   if (isBreaking && (categoryId === 'magazin' || categoryId === 'kultur' || categoryId === 'gastronomi')) {
     overrides.push(`isBreaking cleared for ${categoryId}`)
     isBreaking = false
+  }
+
+  // ── Never-local verticals: yerel-otomobil / yerel-teknoloji / … → national ──
+  {
+    const demoted = demoteNeverLocalVertical(categoryId)
+    if (demoted.demoted && demoted.categoryId) {
+      overrides.push(demoted.reason || `never-local → ${demoted.categoryId}`)
+      categoryId = demoted.categoryId
+      categoryConfidence = Math.max(categoryConfidence, 90)
+    } else if (
+      (categoryId === 'yerel-haber' || categoryId.startsWith('yerel-')) &&
+      otomobil &&
+      !hasYerelKeywords(text)
+    ) {
+      overrides.push(`yerel+otomobil-keywords → otomobil (was ${categoryId})`)
+      categoryId = 'otomobil'
+      categoryConfidence = Math.max(categoryConfidence, 90)
+    }
   }
 
   if (isBreaking && categoryId !== 'son-dakika') {

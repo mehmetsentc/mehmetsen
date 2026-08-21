@@ -206,7 +206,7 @@ function normalizeTrAscii(text: string): string {
  */
 const AMBIGUOUS_SHORT_DISTRICT_SLUGS = new Set([
   'gole', // gol / goller
-  'orta', // "orta saha" ≠ Çankırı/Orta
+  'orta', // "ortada" / "orta saha" ≠ Çankırı/Orta
   'olur',
   'tire',
   'kale',
@@ -222,6 +222,9 @@ const AMBIGUOUS_SHORT_DISTRICT_SLUGS = new Set([
   'cat',
   'cay',
   'kas',
+  // Everyday adjectives / given names ≠ districts without "ilçe" + province cue
+  'genc', // "genç kardeş" ≠ Bingöl/Genç
+  'keskin', // "keskin rekabet" ≠ Kırıkkale/Keskin
   // Given names that are also district names — never bare match ("Fatih Yaşlı" ≠ Fatih/İstanbul)
   'fatih',
   'osman',
@@ -238,13 +241,64 @@ const AMBIGUOUS_SHORT_DISTRICT_SLUGS = new Set([
   'ada',
 ])
 
+/**
+ * Districts where da/de locative alone is unsafe (common adverbs/adjectives).
+ * Require explicit "ilçe" (or province+ilçe pair) — "ortada" ≠ Orta ilçesi.
+ */
+const ILCE_REQUIRED_DISTRICT_SLUGS = new Set([
+  'orta',
+  'genc',
+  'keskin',
+  'olur',
+  'tire',
+  'can',
+  'cay',
+  'kas',
+  'han',
+  'mut',
+  'sur',
+  'tut',
+  'ula',
+  'of',
+  'bor',
+  'cal',
+  'cat',
+])
+
+const APOSTROPHE_CLASS = `[''\u2019\u2018\u00B4]`
+
 /** İlçe için güçlü yer kanıtı: "Göle'de", "Göle ilçesi" vb. (çıplak token yetmez). */
-function hasStrongDistrictEvidence(normalized: string, token: string): boolean {
+function hasStrongDistrictEvidence(
+  normalized: string,
+  token: string,
+  slug?: string,
+): boolean {
   const t = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const locative = new RegExp(
-    `(?<![a-z0-9])${t}(?:['']?(?:da|de|ta|te|dan|den|tan|ten|nin|nun|in|un)|\\s+ilce\\w*)(?![a-z0-9])|` +
+  const ilceOnly = new RegExp(
+    `(?<![a-z0-9])${t}\\s+ilce\\w*(?![a-z0-9])|` +
       `ilce\\w*\\s+${t}(?![a-z0-9])`,
-    'i'
+    'i',
+  )
+  if (ilceOnly.test(normalized)) return true
+
+  // "ortada" / "ortadan" = adverb — never treat as Çankırı/Orta
+  if (slug && ILCE_REQUIRED_DISTRICT_SLUGS.has(slug)) {
+    const province = DISTRICT_TO_PROVINCE_SLUG[slug]
+    if (province) {
+      const pair = new RegExp(
+        `(?<![a-z0-9])${province}${APOSTROPHE_CLASS}?(?:nin|nun|in|un)\\s+${t}\\s+ilce\\w*|` +
+          `(?<![a-z0-9])${province}.{0,48}${t}\\s+ilce\\w*|` +
+          `(?<![a-z0-9])${t}\\s+ilce\\w*.{0,48}${province}`,
+        'i',
+      )
+      if (pair.test(normalized)) return true
+    }
+    return false
+  }
+
+  const locative = new RegExp(
+    `(?<![a-z0-9])${t}(?:${APOSTROPHE_CLASS}?(?:da|de|ta|te|dan|den|tan|ten|nin|nun|in|un)|\\s+ilce\\w*)(?![a-z0-9])`,
+    'i',
   )
   return locative.test(normalized)
 }
@@ -263,8 +317,8 @@ export function extractDistrictSlugFromText(text: string): string | null {
     if (nameNorm.length < 4 && slug.length < 4) continue
     if (AMBIGUOUS_SHORT_DISTRICT_SLUGS.has(slug)) {
       if (
-        hasStrongDistrictEvidence(normalized, nameNorm) ||
-        hasStrongDistrictEvidence(normalized, slug)
+        hasStrongDistrictEvidence(normalized, nameNorm, slug) ||
+        hasStrongDistrictEvidence(normalized, slug, slug)
       ) {
         return slug
       }
@@ -274,6 +328,42 @@ export function extractDistrictSlugFromText(text: string): string | null {
     const slugRe = new RegExp(`(?<![a-z0-9])${slug}(?![a-z0-9])`)
     if (nameRe.test(normalized) || slugRe.test(normalized)) {
       return slug
+    }
+  }
+  return null
+}
+
+/**
+ * "Bingöl'ün Genç ilçesinde" / "İstanbul'un Kadıköy ilçesinde" → province + district.
+ * Prefer this over AA dateline capitals or weak single tokens.
+ */
+export function extractProvinceDistrictPairFromText(
+  text: string,
+): { provinceSlug: string; districtSlug: string } | null {
+  const normalized = normalizeTrAscii(text)
+  const provinceByNorm = new Map<string, string>()
+  for (const p of TURKISH_PROVINCES) {
+    provinceByNorm.set(normalizeTrAscii(p.name).replace(/\s+/g, ''), p.slug)
+    provinceByNorm.set(normalizeTrAscii(p.slug).replace(/-/g, ''), p.slug)
+  }
+
+  const re = new RegExp(
+    `(?<![a-z0-9])([a-z]{3,})(?:${APOSTROPHE_CLASS}?(?:nin|nun|in|un))\\s+([a-z]{3,})\\s+ilce\\w*`,
+    'gi',
+  )
+  let m: RegExpExecArray | null
+  while ((m = re.exec(normalized)) !== null) {
+    const provToken = m[1].replace(/\s+/g, '')
+    const distToken = m[2].replace(/\s+/g, '')
+    const provinceSlug = provinceByNorm.get(provToken)
+    if (!provinceSlug) continue
+
+    for (const [slug, name] of Object.entries(DISTRICT_DISPLAY_NAMES)) {
+      if (DISTRICT_TO_PROVINCE_SLUG[slug] !== provinceSlug) continue
+      const nameNorm = normalizeTrAscii(name).replace(/\s+/g, '')
+      if (slug === distToken || nameNorm === distToken) {
+        return { provinceSlug, districtSlug: slug }
+      }
     }
   }
   return null

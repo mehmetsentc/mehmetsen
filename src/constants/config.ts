@@ -549,8 +549,24 @@ const NON_LOCALIZABLE_CATEGORIES = new Set([
   'son-dakika',
   'trend',
   'influencer',
-  // Recipes / national food desk — never geo-owned via city-in-title remap
+  // Lifestyle / tech / industry — never geo-owned as yerel-*
   'gastronomi',
+  'otomobil',
+  'saglik',
+  'yasam',
+  'teknoloji',
+  'magazin',
+  'moda',
+  'astroloji',
+  'anne-cocuk',
+  'dekorasyon',
+  'iliskiler',
+  'oyun-espor',
+  'bilim',
+  'sinema',
+  'tiyatro',
+  'konser',
+  'festival',
 ])
 
 const YEREL_CATEGORY_IDS = new Set([YEREL_HABER_CATEGORY_ID, 'yerel'])

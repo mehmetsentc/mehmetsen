@@ -71,7 +71,34 @@ describe('resolveCategoryForLocalVsNationalScope', () => {
         '',
         'yalova',
       ),
-    ).toBe('yerel-saglik')
+    ).toBe('saglik')
+  })
+
+  it('never remaps otomobil/teknoloji → yerel-*', () => {
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'otomobil',
+        'Honda Prelude ve NSX üretimden kalktı',
+        'Otomotiv sektöründe stratejik hatalar',
+        'kirikkale',
+      ),
+    ).toBe('otomobil')
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'yerel-otomobil',
+        'Honda modelleri',
+        '',
+        'kirikkale',
+      ),
+    ).toBe('otomobil')
+    expect(
+      resolveCategoryForLocalVsNationalScope(
+        'teknoloji',
+        'OpenAI Apple Messages',
+        'ortada gizlilik tartışması',
+        'cankiri',
+      ),
+    ).toBe('teknoloji')
   })
 
   it('keeps national category when not local-primary', () => {
@@ -118,12 +145,8 @@ describe('resolveNationalLocalDualRouting', () => {
     expect(resolveNationalLocalDualRouting('yerel-magazin', 'istanbul')).toBeNull()
   })
 
-  it('keeps national magazin with citySlug and adds yerel-magazin tag', () => {
-    const routing = resolveNationalLocalDualRouting('magazin', 'istanbul')
-    expect(routing).toEqual({
-      nationalCategoryId: 'magazin',
-      yerelTag: 'yerel-magazin',
-    })
+  it('keeps national magazin with citySlug without yerel-magazin tag (never-local)', () => {
+    expect(resolveNationalLocalDualRouting('magazin', 'istanbul')).toBeNull()
   })
 
   it('keeps yerel-gundem as yerel-only (no national dual map)', () => {
@@ -192,9 +215,9 @@ describe('mergeNationalLocalTags', () => {
 })
 
 describe('normalizePublishedLocalCategory', () => {
-  it('keeps yerel-magazin for manual publish', () => {
+  it('demotes yerel-magazin to national magazin on publish', () => {
     expect(normalizePublishedLocalCategory('yerel-magazin', 'istanbul', [])).toEqual({
-      categoryId: 'yerel-magazin',
+      categoryId: 'magazin',
       tags: [],
     })
   })

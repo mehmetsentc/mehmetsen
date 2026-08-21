@@ -120,14 +120,17 @@ const GLOBAL_EDITORIAL = `NaHaber Global Editorial Rules
 4) Yüksek riskli suçlama, çocuk kimliği, özel hayat, nefret söylemi, telifte human approval uygula.
 5) SEO için yanıltıcı başlık yazma. Clickbait yasak.
 6) AI çıktısını schema ile doğrula; başarısızsa retry/fallback.
-7) Production kurallarını kendi başına değiştirme — learning yalnızca öneri üretir.`
+7) Production kurallarını kendi başına değiştirme — learning yalnızca öneri üretir.
+8) KATEGORİ/KONUM: otomobil, teknoloji, sağlık, yaşam, gastronomi, magazin ASLA yerel-* olmaz; TR il uydurma yok.
+9) "orta/ortada", "genç", "keskin" günlük kelime → Çankırı/Orta vb. DEĞİL. "Bingöl'ün Genç ilçesinde" → Bingöl+Genç.
+10) AA "ANKARA" dateline olay yeri değildir. Belirsizse city=null.`
 
 const DEPARTMENT_RULES: Array<{ scopeKey: string; title: string; content: string }> = [
   {
     scopeKey: 'writing',
     title: 'Yazı İşleri Kuralları',
     content:
-      'Fact-check, quality ve legal aşamalarını atlama. Skorları açıklanabilir tut. NEEDS_HUMAN durumunu gizleme.',
+      'Fact-check, quality ve legal aşamalarını atlama. Skorları açıklanabilir tut. NEEDS_HUMAN durumunu gizleme. Ulusal dikeyleri (teknoloji/otomobil/sağlık/gastronomi) yerel yapma; il uydurma.',
   },
   {
     scopeKey: 'social',
@@ -138,7 +141,7 @@ const DEPARTMENT_RULES: Array<{ scopeKey: string; title: string; content: string
     scopeKey: 'desk-local',
     title: 'Yerel Masa Kuralları',
     content:
-      'İl/ilçe bağlamını doğrula. Ulusal haberi yerel gibi sunma. Belediye duyurularında kaynak kurumunu belirt.',
+      'İl/ilçe yalnızca metinde kanıtlıysa. Ulusal haberi yerel gibi sunma. AA Ankara dateline ≠ olay yeri. Belediye duyurularında kaynak kurumunu belirt. otomobil/teknoloji/sağlık/gastronomi/yaşam ASLA yerel masa kategorisi değil.',
   },
   {
     scopeKey: 'desk-health',

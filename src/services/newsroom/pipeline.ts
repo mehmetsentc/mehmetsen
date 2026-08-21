@@ -10,7 +10,7 @@
  */
 import type { Firestore } from 'firebase-admin/firestore'
 import { cityCategoryId, slugifyCity, type PostLocation } from '@/lib/location'
-import { getCityCategoryName, normalizeCitySlug } from '@/constants/cities'
+import { getCityCategoryName, normalizeCitySlug, extractProvinceDistrictPairFromText, DISTRICT_DISPLAY_NAMES } from '@/constants/cities'
 import { Collections } from '@/lib/firebase/admin'
 import { aiNewsEditor, type AiRewriteResult } from '@/services/aiNewsEditor'
 import { geminiEditArticle, isGeminiConfigured } from '@/lib/ai/gemini'
@@ -74,8 +74,9 @@ import {
   recordStoryInLibrary,
 } from '@/services/newsroom/dedupe/storyLibraryService'
 import { factChecker } from '@/services/newsroom/factChecker'
-import { geoEngine } from '@/services/newsroom/geoEngine'
+import { geoEngine, extractCityFromText, hasExplicitPlaceEvidence } from '@/services/newsroom/geoEngine'
 import { resolveCountryFromText } from '@/constants/countries'
+import { shouldStripSuggestedCityForCategory } from '@/lib/news/neverLocalVerticals'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
 import { runWithAiUsageContext, getAiUsageContext } from '@/lib/ai/usage/context'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
@@ -1277,10 +1278,45 @@ export async function processNewsroomArticle(
           countrySlug = retry.slug
         }
       }
-    } else if (workingInput.forcedCitySlug?.trim() && finalCategoryIsLocal && !geo.city) {
-      // Geo engine içerikten şehir bulamadı → kaynak şehrini fallback olarak kullan
-      citySlug = normalizeCitySlug(workingInput.forcedCitySlug)
-      city = workingInput.forcedCity?.trim() || getCityCategoryName(citySlug)
+    } else if (
+      workingInput.forcedCitySlug?.trim() &&
+      finalCategoryIsLocal &&
+      !geo.city
+    ) {
+      // Geo found no city — source forcedCity is fallback only.
+      // Never paste Ankara/dateline; never attach city on never-local verticals.
+      const forcedSlug = normalizeCitySlug(workingInput.forcedCitySlug)
+      const evidenceBlob = [
+        workingInput.originalTitle,
+        workingInput.originalSummary,
+        workingInput.originalContent,
+        rewritten.title,
+        rewritten.description,
+      ]
+        .filter(Boolean)
+        .join('\n')
+      const pair = extractProvinceDistrictPairFromText(evidenceBlob)
+      const textCity = extractCityFromText(evidenceBlob)
+      if (shouldStripSuggestedCityForCategory(classification.categoryId)) {
+        // tech/otomobil/sağlık/… — leave city empty
+      } else if (pair) {
+        citySlug = pair.provinceSlug
+        city = getCityCategoryName(pair.provinceSlug)
+        district = DISTRICT_DISPLAY_NAMES[pair.districtSlug] || null
+        districtSlug = pair.districtSlug
+      } else if (textCity) {
+        city = textCity
+        citySlug = normalizeCitySlug(slugifyCity(textCity))
+      } else if (forcedSlug === 'ankara') {
+        // Capital never without explicit place evidence in the story
+        if (hasExplicitPlaceEvidence(evidenceBlob, 'ankara')) {
+          citySlug = forcedSlug
+          city = workingInput.forcedCity?.trim() || getCityCategoryName(citySlug)
+        }
+      } else {
+        citySlug = forcedSlug
+        city = workingInput.forcedCity?.trim() || getCityCategoryName(citySlug)
+      }
     }
     // else: geo engine'in içerikten bulduğu şehri koru (geo.city)
 

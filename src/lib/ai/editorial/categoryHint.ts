@@ -7,10 +7,15 @@ import { extractCityFromText } from '@/services/newsroom/geoEngine'
 import {
   DISTRICT_TO_PROVINCE_SLUG,
   extractDistrictSlugFromText,
+  extractProvinceDistrictPairFromText,
   normalizeCitySlug,
 } from '@/constants/cities'
 import { resolveCountryFromText } from '@/constants/countries'
 import { slugifyCity } from '@/lib/location'
+import {
+  isNeverLocalNationalCategory,
+  shouldStripSuggestedCityForCategory,
+} from '@/lib/news/neverLocalVerticals'
 
 export interface CategoryHint {
   categoryId: string
@@ -175,13 +180,18 @@ export function hintCategoryFromText(raw: string): CategoryHint | null {
   if (text.length < 12) return null
   const normalized = normalizeTr(text)
 
-  const districtSlug = extractDistrictSlug(normalized)
-  const cityName = extractCityFromText(text)
-  const citySlug = cityName
-    ? normalizeCitySlug(slugifyCity(cityName))
-    : districtSlug
-      ? DISTRICT_TO_PROVINCE_SLUG[districtSlug]
-      : undefined
+  const pair = extractProvinceDistrictPairFromText(text)
+  const districtSlug = pair?.districtSlug ?? extractDistrictSlug(normalized)
+  const cityName = pair
+    ? null
+    : extractCityFromText(text)
+  const citySlug = pair
+    ? pair.provinceSlug
+    : cityName
+      ? normalizeCitySlug(slugifyCity(cityName))
+      : districtSlug
+        ? DISTRICT_TO_PROVINCE_SLUG[districtSlug]
+        : undefined
   const countryHit = resolveCountryFromText(text)
   const countrySlug = countryHit && countryHit.name !== 'Türkiye' ? countryHit.slug : undefined
   // Yurt dışı güçlü sinyal: ülke bulundu + Türk şehri yok → dünya
@@ -239,12 +249,16 @@ export function hintCategoryFromText(raw: string): CategoryHint | null {
 
   for (const rule of RULES) {
     if (rule.patterns.some((p) => p.test(normalized))) {
+      const attachCity =
+        !shouldStripSuggestedCityForCategory(rule.categoryId) &&
+        !isNeverLocalNationalCategory(rule.categoryId)
       return {
         categoryId: rule.categoryId,
         confidence: rule.confidence,
         reason: rule.reason,
-        citySlug: citySlug || undefined,
-        districtSlug: districtSlug || undefined,
+        // Tech/otomobil/sağlık/… — never attach weak TR city from "orta"/"genç"
+        citySlug: attachCity ? citySlug || undefined : undefined,
+        districtSlug: attachCity ? districtSlug || undefined : undefined,
         countrySlug:
           rule.categoryId === 'dunya' ? countrySlug || undefined : undefined,
       }

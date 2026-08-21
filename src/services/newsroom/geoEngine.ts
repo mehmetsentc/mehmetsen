@@ -7,6 +7,7 @@ import {
   DISTRICT_DISPLAY_NAMES,
   DISTRICT_TO_PROVINCE_SLUG,
   extractDistrictSlugFromText,
+  extractProvinceDistrictPairFromText,
   normalizeCitySlug,
 } from '@/constants/cities'
 import {
@@ -17,6 +18,11 @@ import {
 } from '@/constants/countries'
 import { ALL_TURKISH_PRO_FOOTBALL_CLUBS } from '@/constants/turkishFootballClubs'
 import { detectNationalFootballClub } from '@/lib/news/nationalFootballRouting'
+import {
+  isNeverLocalVertical,
+  shouldClearCityForNeverLocalVertical,
+} from '@/lib/news/neverLocalVerticals'
+import { isYerelCategoryTree } from '@/constants/config'
 import type { AiRewriteResult } from '@/services/aiNewsEditor'
 
 export interface GeoEnrichment {
@@ -112,7 +118,18 @@ function normalizeTr(text: string): string {
 /**
  * Explicit place evidence: "Ardahan'da", "Ardahan ili", bare province not inside *spor.
  * Given-name districts (Fatih) need locative — "Fatih Yaşlı" is a person, not a place.
+ * Apostrophes: ASCII + curly (‘ ’ ´) so "Bingöl'ün" matches.
  */
+const APOSTROPHE_CLASS = `[''\u2019\u2018\u00B4]`
+
+/** AA / agency dateline — weak capital evidence, must lose to real event place. */
+function stripAgencyDatelines(text: string): string {
+  return text.replace(
+    /\b(?:ankara|istanbul|izmir|london|new york|washington)\s*(?:\(\s*aa\s*\)|\(\s*reuters\s*\)|\(\s*ap\s*\)|\(\s*afp\s*\))?[\s:—-]+/gi,
+    ' ',
+  )
+}
+
 export function hasExplicitPlaceEvidence(text: string, placeSlug: string): boolean {
   if (!placeSlug) return false
   const lower = normalizeTr(text)
@@ -120,7 +137,7 @@ export function hasExplicitPlaceEvidence(text: string, placeSlug: string): boole
   if (!slug) return false
 
   const locative = new RegExp(
-    `(?<![a-z0-9])${slug}(?:['']?(?:da|de|ta|te|dan|den|tan|ten|nin|nun|in|un|a|e)|\\s+ili|\\s+ilcesi|\\s+ilce)(?![a-z0-9])`
+    `(?<![a-z0-9])${slug}(?:${APOSTROPHE_CLASS}?(?:da|de|ta|te|dan|den|tan|ten|nin|nun|in|un|a|e)|\\s+ili|\\s+ilcesi|\\s+ilce)(?![a-z0-9])`
   )
   if (locative.test(lower)) return true
 
@@ -129,6 +146,8 @@ export function hasExplicitPlaceEvidence(text: string, placeSlug: string): boole
     slug === 'fatih' ||
     slug === 'orta' ||
     slug === 'gole' ||
+    slug === 'genc' ||
+    slug === 'keskin' ||
     slug === 'osman' ||
     slug === 'mustafa' ||
     slug === 'kemal' ||
@@ -150,18 +169,38 @@ export function hasExplicitPlaceEvidence(text: string, placeSlug: string): boole
   return bare.test(lower)
 }
 
+/**
+ * Prefer strongest place evidence (not first province in alphabet).
+ * Locative / "X ili" beats bare token; agency dateline capitals are demoted.
+ */
 export function extractCityFromText(text: string): string | null {
-  const lower = normalizeTr(text)
+  const pair = extractProvinceDistrictPairFromText(text)
+  if (pair) return CITY_DISPLAY.get(pair.provinceSlug) ?? pair.provinceSlug
+
+  const cleaned = stripAgencyDatelines(text)
+  const lower = normalizeTr(cleaned)
 
   const isNationalScope = NATIONAL_SCOPE_KEYWORDS.some((kw) => lower.includes(kw))
   if (isNationalScope) return null
 
+  type Hit = { slug: string; score: number }
+  const hits: Hit[] = []
   for (const [slug] of TURKISH_PROVINCES_ALL) {
     if (AMBIGUOUS_CITY_SLUGS.has(slug)) continue
-    if (!hasExplicitPlaceEvidence(text, slug)) continue
-    return CITY_DISPLAY.get(slug) ?? slug
+    if (!hasExplicitPlaceEvidence(cleaned, slug)) continue
+    const locative = new RegExp(
+      `(?<![a-z0-9])${slug}(?:${APOSTROPHE_CLASS}?(?:da|de|ta|te|dan|den|tan|ten|nin|nun|in|un)|\\s+ili|\\s+ilce)`,
+    )
+    const score = locative.test(normalizeTr(cleaned)) ? 3 : 1
+    // Demote capitals when only bare/dateline-weak
+    const capitalPenalty =
+      (slug === 'ankara' || slug === 'istanbul') && score === 1 ? -2 : 0
+    hits.push({ slug, score: score + capitalPenalty })
   }
-  return null
+  if (hits.length === 0) return null
+  hits.sort((a, b) => b.score - a.score)
+  if (hits[0].score <= 0) return null
+  return CITY_DISPLAY.get(hits[0].slug) ?? hits[0].slug
 }
 
 function normalizeDisplayCity(raw: string): string {
@@ -305,8 +344,16 @@ export function enrichGeo(
   // Tags are noisy (gol, club names) — never extract geography from tags alone
   const rewrittenHay =
     `${rewritten.title} ${rewritten.description || ''} ${rewritten.summary || ''}`.trim()
-  const evidenceHay = (opts?.evidenceText || rewrittenHay).trim() || rewrittenHay
+  // Prefer union of original evidence + rewrite so Bingöl in body is not lost
+  // when AI/source left a wrong capital, and rewrite still has the place.
+  const evidenceHay = [opts?.evidenceText, rewrittenHay]
+    .filter((s) => Boolean(s && String(s).trim()))
+    .join('\n')
+    .trim() || rewrittenHay
   const categoryId = opts?.categoryId || rewritten.categoryId || ''
+
+  // Strongest signal: "Bingöl'ün Genç ilçesinde"
+  const provinceDistrictPair = extractProvinceDistrictPairFromText(evidenceHay)
 
   // Ülke: olay yeri (Suriye/İdlib) + yabancı futbol ligi; için≠Çin zaten resolveCountryFromText'te.
   const isSportsCategory =
@@ -358,8 +405,14 @@ export function enrichGeo(
       isAbroad = true
     }
   } else {
+    // Explicit İl'ün İlçe ilçesi always wins over AI / dateline capital
+    if (provinceDistrictPair) {
+      city = CITY_DISPLAY.get(provinceDistrictPair.provinceSlug) ?? provinceDistrictPair.provinceSlug
+      district = DISTRICT_DISPLAY_NAMES[provinceDistrictPair.districtSlug] || district
+    }
+
     // AI city only if known province AND evidenced in source (not tags)
-    if (city) {
+    if (city && !provinceDistrictPair) {
       city = normalizeDisplayCity(city)
       if (!isKnownProvince(city)) {
         city = null
@@ -370,6 +423,13 @@ export function enrichGeo(
           city = null
           district = null
         }
+      }
+    } else if (city && provinceDistrictPair) {
+      city = normalizeDisplayCity(city)
+      const slug = normalizeCitySlug(slugifyCity(city))
+      if (slug !== provinceDistrictPair.provinceSlug) {
+        city = CITY_DISPLAY.get(provinceDistrictPair.provinceSlug) ?? provinceDistrictPair.provinceSlug
+        district = DISTRICT_DISPLAY_NAMES[provinceDistrictPair.districtSlug] || null
       }
     }
 
@@ -400,27 +460,55 @@ export function enrichGeo(
         district = null
       }
     }
+
+    // Never-local verticals (teknoloji, otomobil, …): clear invented TR city
+    if (
+      shouldClearCityForNeverLocalVertical(categoryId, {
+        keepCityIfEvidenced: true,
+        hasExplicitPlaceEvidence: Boolean(
+          city &&
+            hasExplicitPlaceEvidence(
+              evidenceHay,
+              normalizeCitySlug(slugifyCity(city)),
+            ),
+        ),
+      })
+    ) {
+      // Industry/brand/global tech without local civic evidence → no city
+      if (
+        !provinceDistrictPair &&
+        !(city && hasExplicitPlaceEvidence(evidenceHay, normalizeCitySlug(slugifyCity(city))))
+      ) {
+        city = null
+        district = null
+      }
+    }
   }
 
-  const citySlug = city ? normalizeCitySlug(slugifyCity(city)) : ''
+  let citySlug = city ? normalizeCitySlug(slugifyCity(city)) : ''
 
   let districtSlug = ''
   if (!isAbroad) {
-    const fromTextDistrict = extractDistrictSlugFromText(evidenceHay)
-    if (fromTextDistrict) {
+    if (provinceDistrictPair) {
+      city = CITY_DISPLAY.get(provinceDistrictPair.provinceSlug) ?? provinceDistrictPair.provinceSlug
+      citySlug = provinceDistrictPair.provinceSlug
+      district = DISTRICT_DISPLAY_NAMES[provinceDistrictPair.districtSlug] || district
+      districtSlug = provinceDistrictPair.districtSlug
+    }
+
+    const fromTextDistrict = districtSlug
+      ? districtSlug
+      : extractDistrictSlugFromText(evidenceHay)
+    if (fromTextDistrict && !districtSlug) {
       const province = DISTRICT_TO_PROVINCE_SLUG[fromTextDistrict]
       if (province) {
-        if (!citySlug) {
+        // District→province always overrides contradictory AI/dateline city
+        if (!citySlug || citySlug !== province) {
           city = CITY_DISPLAY.get(province) ?? province
+          citySlug = province
         }
-        const nextCitySlug = city ? normalizeCitySlug(slugifyCity(city)) : ''
-        if (!citySlug || nextCitySlug === province || !citySlug) {
-          if (!citySlug || citySlug === province) {
-            district = DISTRICT_DISPLAY_NAMES[fromTextDistrict] || district
-            districtSlug = fromTextDistrict
-            if (!city) city = CITY_DISPLAY.get(province) ?? province
-          }
-        }
+        district = DISTRICT_DISPLAY_NAMES[fromTextDistrict] || district
+        districtSlug = fromTextDistrict
       }
     }
 
@@ -433,11 +521,49 @@ export function enrichGeo(
         )
         district = resolved.district
         districtSlug = resolved.districtSlug
+        if (districtSlug) {
+          const province = DISTRICT_TO_PROVINCE_SLUG[districtSlug]
+          if (province && (!citySlug || citySlug !== province)) {
+            city = CITY_DISPLAY.get(province) ?? province
+            citySlug = province
+          }
+        }
       } else {
         district = null
       }
     } else if (!districtSlug) {
       district = null
+    }
+
+    // Yerel category with clear province in text must not keep a contradictory city
+    if (isYerelCategoryTree(categoryId) || categoryId === 'yerel-haber') {
+      const fromTextCity = extractCityFromText(evidenceHay)
+      if (fromTextCity) {
+        const textSlug = normalizeCitySlug(slugifyCity(fromTextCity))
+        const curSlug = city ? normalizeCitySlug(slugifyCity(city)) : ''
+        if (textSlug && curSlug && textSlug !== curSlug) {
+          city = fromTextCity
+          citySlug = textSlug
+          if (districtSlug && DISTRICT_TO_PROVINCE_SLUG[districtSlug] !== textSlug) {
+            district = null
+            districtSlug = ''
+          }
+        } else if (textSlug && !curSlug) {
+          city = fromTextCity
+          citySlug = textSlug
+        }
+      }
+    }
+
+    // Never invent capital for never-local verticals without evidence
+    if (isNeverLocalVertical(categoryId) && city) {
+      const slug = normalizeCitySlug(slugifyCity(city))
+      if (!hasExplicitPlaceEvidence(evidenceHay, slug) && !provinceDistrictPair) {
+        city = null
+        citySlug = ''
+        district = null
+        districtSlug = ''
+      }
     }
   }
 

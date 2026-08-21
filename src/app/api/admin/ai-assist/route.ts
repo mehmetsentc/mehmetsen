@@ -16,6 +16,10 @@ import type { AiPromptType } from '@/types/aiEditor'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { resolveCountryFromText } from '@/constants/countries'
 import { deriveSeoKeywords, extractSeoKeywordsFromAiPayload } from '@/lib/seoKeywords'
+import {
+  demoteNeverLocalVertical,
+  shouldStripSuggestedCityForCategory,
+} from '@/lib/news/neverLocalVerticals'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -127,6 +131,13 @@ Kurallar:
   * İlk satır doğrudan ## ile başlayan ilk bölüm olsun (giriş/spot paragrafı content'te olmasın)
 - Ham metindeki spesifik iddiaları (alıntı, sayı, tarih) olduğu gibi koru; genel bağlam ve arka plan bilgisini zenginleştirerek ekle.
 - CANLI ARAŞTIRMA NOTLARI varsa bu notlardaki bilgileri öncelikli olarak kullan ve içeriğe entegre et.
+- KATEGORİ / KONUM (KESİN):
+  * teknoloji, otomobil, sağlık, yaşam, gastronomi, magazin, bilim → ULUSAL kategori; ASLA yerel-haber / yerel-teknoloji / yerel-otomobil.
+  * Apple, OpenAI, Honda, sektör/TV haberlerinde TR il/ilçe UYDURMA.
+  * "orta/ortada", "genç", "keskin" günlük kelime → Çankırı/Orta, Bingöl/Genç, Kırıkkale/Keskin DEĞİL.
+  * Yerel Haber yalnızca belediye/ilçe olayı + metinde kanıtlı il ("Bingöl'ün Genç ilçesinde").
+  * AA dateline "ANKARA" olay yeri değildir.
+- categoryId alanını en uygun kategoriyle doldur (geçerli listeden).
 - Çelişkili veya tek kaynağa dayanan iddiaları kesin bilgi gibi sunma.
 - Araştırma notundaki ham URL'leri haber gövdesine yapıştırma; gerektiğinde kaynağı kurum adıyla belirt.
 - GÖRSEL YASAĞI: Görsel analizindeki caption veya alt metni haber gövdesinde H2/H3 başlık, paragraf veya alıntı olarak ASLA yazma; bu veriler yalnızca imageOrder sıralaması içindir.
@@ -530,7 +541,7 @@ export async function POST(request: Request) {
         CATEGORY_IDS.has(personaMeta.suggestedCategoryId)
           ? personaMeta.suggestedCategoryId
           : null
-      const categoryId = applyAstrologyCategoryOverride(
+      const categoryIdRaw = applyAstrologyCategoryOverride(
         CATEGORY_IDS.has(categoryCandidate)
           ? categoryCandidate
           : routedCategory || 'gundem',
@@ -538,6 +549,8 @@ export async function POST(request: Request) {
         content,
         tags
       )
+      const demotedCat = demoteNeverLocalVertical(categoryIdRaw)
+      const categoryId = demotedCat.categoryId || categoryIdRaw
       let seoKeywords = Array.isArray(parsed.seoKeywords)
         ? parsed.seoKeywords.map(String).map((word) => word.trim().toLowerCase()).filter(Boolean).slice(0, 15)
         : []
@@ -573,6 +586,8 @@ export async function POST(request: Request) {
         categoryId === 'dunya' || isKibrisCategoryTree(categoryId)
           ? resolveCountryFromText(`${title}\n${spot}\n${content}\n${tags.join(' ')}`)
           : null
+      const stripCity =
+        categoryId === 'dunya' || shouldStripSuggestedCityForCategory(categoryId)
       return NextResponse.json({
         success: true,
         mode,
@@ -601,10 +616,8 @@ export async function POST(request: Request) {
         routeConfidence: personaMeta?.routeConfidence ?? null,
         routeReason: personaMeta?.routeReason ?? null,
         secondaryEditorSlug: personaMeta?.secondaryEditorSlug ?? null,
-        suggestedCitySlug:
-          categoryId === 'dunya' ? null : personaMeta?.suggestedCitySlug ?? null,
-        suggestedDistrictSlug:
-          categoryId === 'dunya' ? null : personaMeta?.suggestedDistrictSlug ?? null,
+        suggestedCitySlug: stripCity ? null : personaMeta?.suggestedCitySlug ?? null,
+        suggestedDistrictSlug: stripCity ? null : personaMeta?.suggestedDistrictSlug ?? null,
         suggestedCountrySlug:
           personaMeta?.suggestedCountrySlug ?? countryFromText?.slug ?? null,
         articleFormat,

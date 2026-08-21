@@ -455,8 +455,10 @@ export const CATEGORY_RULES: CategoryRule[] = [
     ],
     exclude: [
       'Trafik kazası → yerel-haber (yerel ise)',
+      'Marka/sektör/model haberi ASLA yerel-otomobil olmaz → otomobil',
     ],
     canBeBreaking: false,
+    notes: 'Honda/TOGG/elektrikli araç ulusal otomobil. TR il uydurma yasak.',
   },
 
   {
@@ -472,9 +474,10 @@ export const CATEGORY_RULES: CategoryRule[] = [
       'Türkiye genelini etkileyen olay → gundem',
       'Yurt dışı olay → dunya (kaynak gazete yerel olsa bile)',
       '3+ ili kapsayan haber → gundem',
+      'otomobil/teknoloji/sağlık/yaşam/gastronomi/magazin dikeyleri → ulusal kategori',
     ],
     canBeBreaking: false,
-    notes: 'KESINLIKLE son-dakika olamaz. Yerel yangın/kaza/operasyon ne kadar dramatik olursa olsun.',
+    notes: 'KESINLIKLE son-dakika olamaz. Yerel yangın/kaza/operasyon ne kadar dramatik olursa olsun. AA Ankara dateline olay yeri değildir.',
   },
 ]
 

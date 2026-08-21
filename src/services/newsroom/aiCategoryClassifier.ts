@@ -150,9 +150,10 @@ TEMEL KURALLAR (hepsini uygula):
 1. KAYNAK ADINI VE KAYNAK GAZETENİN ŞEHRİNİ GÖRMEZDEN GEL — "Bursa Gazetesi", "Milliyet Magazin", "Sabah Spor" gibi kaynak isimleri kategoriye etki ETMEMELİ. Haberin GERÇEK coğrafyası ve içeriği her şeyi belirler.
 2. YURT DIŞI HABER ALTIN KURALI — Olay İngiltere, ABD, Almanya, Fransa, Gazze, Ukrayna veya Türkiye DIŞINDA herhangi bir yerde geçiyorsa → KESİNLİKLE "dunya". Kaynak gazete Bursa'dan çıksa bile, haber İngiltere'deki bir olaysa → "dunya". Asla "yerel-haber" değil.
 3. YEREL vs ULUSAL (konu şehri EZMESİN):
-   - Başlıkta tek şehir ("Van'da", "Yalova'da") + yerel kapsam → "yerel-haber" (pipeline yerel-emlak/yerel-saglik/yerel-cevre-iklim'e map eder). ASLA doğrudan emlak-konut/saglik/cevre-iklim seçme.
-   - "Van'da konut satışları" → yerel-haber (emlak-konut DEĞİL). "Van Gölü atık toplama" → yerel-haber. "Yalova sağlık etkinliği" → yerel-haber.
-   - Türkiye geneli / bakanlık / TCMB / çok şehir / ulusal politika → ulusal kategori; şehir yalnızca konumsa city olarak kalabilir.
+   - Başlıkta tek şehir ("Van'da") + belediye/kaza/ilçe olayı → "yerel-haber".
+   - otomobil / teknoloji / sağlık / yaşam / gastronomi / magazin → ULUSAL (ASLA yerel-*). Honda/Apple/OpenAI → city yok.
+   - "orta/ortada", "genç", "keskin" ≠ Çankırı/Orta, Bingöl/Genç, Kırıkkale/Keskin (ilçe+il şart).
+   - Türkiye geneli / bakanlık / TCMB / çok şehir → ulusal kategori.
 4. yerel-haber → SADECE olayın geçtiği yer Türkiye'deki tek bir il/ilçe ise. "Bursa Gazetesi İngiltere'deki haberi yazdı" → dunya.
 5. Siyasi/meclis/seçim/hükümet içeriği → mutlaka "siyaset" (kaynak spor gazetesi bile olsa)
 6. Ekonomi/borsa/döviz/şirket haberi → mutlaka "ekonomi" — AMA tek şehir istatistiği/yerel işletme ise → yerel-haber
@@ -162,8 +163,8 @@ TEMEL KURALLAR (hepsini uygula):
    - Futbol, Süper Lig, Şampiyonlar Ligi, FIFA, UEFA, top/gol/penaltı → "futbol" (ASLA "basketbol" veya "voleybol" değil)
    - Kulüp adı (Fenerbahçe, Galatasaray, Beşiktaş) branşı belirlemez — metnin SPOR BRANŞINA bak
    - "Fenerbahçe Beko şampiyon" → basketbol. "Fenerbahçe 3-1 Galatasaray" → futbol.
-8. Yemek/restoran/şef/tarif haberi → "gastronomi" — tek ilçe yöresel lezzet → yerel-haber
-9. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil"
+8. Yemek/restoran/şef/tarif haberi → "gastronomi" (ASLA yerel-gastronomi; city yalnızca kanıtlıysa)
+9. Araba/otomobil/araç/TOGG/elektrikli araç → "otomobil" (ASLA yerel-otomobil)
 10. Sinema filmi/vizyona girenler → "sinema", tiyatro oyunu → "tiyatro", konser haberi → "konser"
 11. Magazin = SADECE ünlülerin kişisel hayatı, ilişkisi, skandalı, dedikodu
 12. ASTROLOJİ / BURÇ — KESİN:
