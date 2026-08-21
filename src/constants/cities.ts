@@ -206,7 +206,7 @@ function normalizeTrAscii(text: string): string {
  */
 const AMBIGUOUS_SHORT_DISTRICT_SLUGS = new Set([
   'gole', // gol / goller
-  'orta',
+  'orta', // "orta saha" ≠ Çankırı/Orta
   'olur',
   'tire',
   'kale',
@@ -222,6 +222,20 @@ const AMBIGUOUS_SHORT_DISTRICT_SLUGS = new Set([
   'cat',
   'cay',
   'kas',
+  // Given names that are also district names — never bare match ("Fatih Yaşlı" ≠ Fatih/İstanbul)
+  'fatih',
+  'osman',
+  'mustafa',
+  'kemal',
+  'mehmet',
+  'ahmet',
+  'ali',
+  'hasan',
+  'huseyin',
+  'yunus',
+  'emre',
+  'ece',
+  'ada',
 ])
 
 /** İlçe için güçlü yer kanıtı: "Göle'de", "Göle ilçesi" vb. (çıplak token yetmez). */

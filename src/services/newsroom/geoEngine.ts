@@ -11,6 +11,7 @@ import {
 } from '@/constants/cities'
 import {
   findCountryByName,
+  findCountryBySlug,
   resolveCountryFromText,
   resolveCountrySlug,
 } from '@/constants/countries'
@@ -110,21 +111,40 @@ function normalizeTr(text: string): string {
 
 /**
  * Explicit place evidence: "Ardahan'da", "Ardahan ili", bare province not inside *spor.
+ * Given-name districts (Fatih) need locative — "Fatih Yaşlı" is a person, not a place.
  */
 export function hasExplicitPlaceEvidence(text: string, placeSlug: string): boolean {
   if (!placeSlug) return false
   const lower = normalizeTr(text)
   const slug = normalizeTr(placeSlug).replace(/\s+/g, '')
   if (!slug) return false
-  // Reject club-compound: erzurumspor must not count as Erzurum place
-  const clubCompound = new RegExp(`(?<![a-z0-9])${slug}(?:spor|fk|sk)(?![a-z0-9])`)
-  if (clubCompound.test(lower)) {
-    // Still allow real place if locative also present elsewhere
-  }
+
   const locative = new RegExp(
     `(?<![a-z0-9])${slug}(?:['']?(?:da|de|ta|te|dan|den|tan|ten|nin|nun|in|un|a|e)|\\s+ili|\\s+ilcesi|\\s+ilce)(?![a-z0-9])`
   )
   if (locative.test(lower)) return true
+
+  // Given-name / ambiguous short tokens: never accept bare match
+  if (
+    slug === 'fatih' ||
+    slug === 'orta' ||
+    slug === 'gole' ||
+    slug === 'osman' ||
+    slug === 'mustafa' ||
+    slug === 'kemal' ||
+    slug === 'mehmet' ||
+    slug === 'ahmet' ||
+    slug === 'ali' ||
+    slug === 'hasan' ||
+    slug === 'huseyin' ||
+    slug === 'yunus' ||
+    slug === 'emre' ||
+    slug === 'ece' ||
+    slug === 'ada'
+  ) {
+    return false
+  }
+
   // Bare province/district word, not prefix of *spor/fk
   const bare = new RegExp(`(?<![a-z0-9])${slug}(?!(?:spor|fk|sk)[a-z0-9]*)(?![a-z0-9])`)
   return bare.test(lower)
@@ -205,10 +225,72 @@ function looksLikeDomesticTurkeyContent(text: string): boolean {
   const lower = normalizeTr(text)
   return (
     /\bmasterchef\b/.test(lower) ||
-    /\bturkiye\b/.test(lower) ||
     /\bsuper lig\b/.test(lower) ||
     /\bsuperlig\b/.test(lower) ||
     detectNationalFootballClub(text) != null
+  )
+}
+
+/**
+ * Yabancı lig / kulüp → ülke. TR kulübü varken yalnızca lig sinyalinden ülke çıkar.
+ */
+export function detectForeignFootballCountry(
+  text: string
+): ReturnType<typeof findCountryBySlug> | null {
+  const lower = normalizeTr(text)
+  const hasTrClub = detectNationalFootballClub(text) != null
+
+  if (/\bserie\s*a\b/.test(lower) || /\bcizme\b/.test(lower)) {
+    return findCountryBySlug('italya') ?? null
+  }
+  if (/\bpremier\s*league\b/.test(lower)) {
+    return findCountryBySlug('birlesik-krallik') ?? findCountryByName('Birleşik Krallık') ?? null
+  }
+  if (/\bla\s*liga\b/.test(lower)) return findCountryBySlug('ispanya') ?? null
+  if (/\bbundesliga\b/.test(lower)) return findCountryBySlug('almanya') ?? null
+  if (/\bligue\s*1\b/.test(lower)) return findCountryBySlug('fransa') ?? null
+
+  if (hasTrClub) return null
+
+  if (
+    /\b(?:inter(?:\s+milan)?|juventus|napoli|atalanta|fiorentina|ac\s*milan|as\s*roma|lazio)\b/.test(
+      lower
+    )
+  ) {
+    return findCountryBySlug('italya') ?? null
+  }
+  if (
+    /\b(?:liverpool|manchester\s+united|manchester\s+city|arsenal|chelsea|tottenham)\b/.test(lower)
+  ) {
+    return findCountryBySlug('birlesik-krallik') ?? findCountryByName('Birleşik Krallık') ?? null
+  }
+  return null
+}
+
+/**
+ * Olay ülkesi: İsrail saldırısı + Suriye/İdlib → Suriye (olay yeri).
+ * Generic resolveCountryFromText often returns the actor (İsrail) first.
+ */
+export function resolveEventCountryFromText(text: string) {
+  const lower = normalizeTr(text)
+  if (/\bsuriye\b|\bsyria\b|\bidlib\b|\bidlip\b|\bhalep\b|\baleppo\b/.test(lower)) {
+    return findCountryBySlug('suriye') ?? resolveCountryFromText(text)
+  }
+  const foreignFootball = detectForeignFootballCountry(text)
+  if (foreignFootball) return foreignFootball
+  return resolveCountryFromText(text)
+}
+
+/** AI-proposed district only if extractDistrictSlugFromText agrees (strong for ambiguous). */
+function aiDistrictIsEvidenced(evidence: string, districtRaw: string): boolean {
+  const fromText = extractDistrictSlugFromText(evidence)
+  if (!fromText) return false
+  const want = normalizeTr(districtRaw).replace(/\s+/g, '-')
+  const wantCompact = want.replace(/-/g, '')
+  return (
+    fromText === want ||
+    fromText === wantCompact ||
+    normalizeTr(DISTRICT_DISPLAY_NAMES[fromText] || '') === normalizeTr(districtRaw)
   )
 }
 
@@ -226,12 +308,25 @@ export function enrichGeo(
   const evidenceHay = (opts?.evidenceText || rewrittenHay).trim() || rewrittenHay
   const categoryId = opts?.categoryId || rewritten.categoryId || ''
 
-  // Ülke: yalnızca kaynak metinde kanıt varsa yabancı ülke kabul et (için≠Çin).
-  const fromTextCountry = resolveCountryFromText(evidenceHay)
+  // Ülke: olay yeri (Suriye/İdlib) + yabancı futbol ligi; için≠Çin zaten resolveCountryFromText'te.
+  const isSportsCategory =
+    SPORTS_CATEGORY_IDS.has(categoryId) || categoryId === 'futbol' || categoryId === 'spor'
+  const eventCountry = resolveEventCountryFromText(evidenceHay)
+  const foreignFootballCountry = detectForeignFootballCountry(evidenceHay)
+  const fromTextCountry = eventCountry
   const fromAiCountry =
     country && country !== 'Türkiye' ? findCountryByName(country) : null
 
-  if (fromAiCountry) {
+  if (foreignFootballCountry && (isSportsCategory || !categoryId)) {
+    country = foreignFootballCountry.name
+  } else if (
+    fromTextCountry &&
+    fromTextCountry.name !== 'Türkiye' &&
+    !looksLikeDomesticTurkeyContent(evidenceHay)
+  ) {
+    // Foreign event location (Suriye, Serie A, …) — promote even when AI left Türkiye
+    country = fromTextCountry.name
+  } else if (fromAiCountry) {
     if (fromTextCountry && fromTextCountry.slug === fromAiCountry.slug) {
       country = fromAiCountry.name
     } else {
@@ -247,16 +342,21 @@ export function enrichGeo(
   if (
     country !== 'Türkiye' &&
     looksLikeDomesticTurkeyContent(evidenceHay) &&
-    !fromTextCountry
+    !fromTextCountry &&
+    !foreignFootballCountry
   ) {
     country = 'Türkiye'
   }
 
   let isAbroad = Boolean(country && country !== 'Türkiye')
 
-  if (isAbroad) {
+  if (isAbroad || foreignFootballCountry) {
     city = null
     district = null
+    if (foreignFootballCountry) {
+      country = foreignFootballCountry.name
+      isAbroad = true
+    }
   } else {
     // AI city only if known province AND evidenced in source (not tags)
     if (city) {
@@ -324,11 +424,9 @@ export function enrichGeo(
       }
     }
 
-    // AI district: only if evidenced
+    // AI district: only via extractDistrictSlugFromText (blocks Fatih/Orta/Göle bare tokens)
     if (!districtSlug && district) {
-      const dNorm = normalizeTr(district)
-      if (hasExplicitPlaceEvidence(evidenceHay, dNorm.replace(/\s+/g, '-')) ||
-          hasExplicitPlaceEvidence(evidenceHay, dNorm.replace(/\s+/g, ''))) {
+      if (aiDistrictIsEvidenced(evidenceHay, district)) {
         const resolved = resolveDistrictDisplay(
           district,
           city ? normalizeCitySlug(slugifyCity(city)) : citySlug

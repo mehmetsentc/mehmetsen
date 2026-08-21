@@ -135,3 +135,75 @@ describe('geoEngine MasterChef / country', () => {
     expect(geo.city).toBeNull()
   })
 })
+
+describe('geoEngine foreign football / Inter', () => {
+  it('Inter / Curtis Jones / Serie A → İtalya, not Çankırı/Orta', () => {
+    const evidence =
+      "İtalya Serie A ekibi Inter, Liverpool'dan 25 yaşındaki orta saha Curtis Jones'u 30+5 milyon Euro'ya transfer etti. Çizme temsilcisi kadrosunu güçlendirdi."
+    expect(extractDistrictSlugFromText(evidence)).toBeNull()
+    expect(extractDistrictSlugFromText('orta saha oyuncusu')).toBeNull()
+    const geo = enrichGeo(
+      baseRewrite({
+        title: "Inter, Curtis Jones'u kadrosuna kattı",
+        description: evidence,
+        tags: ['inter', 'curtis jones', 'liverpool', 'serie a'],
+        categoryId: 'futbol',
+        city: 'Çankırı',
+        district: 'Orta',
+        country: 'Türkiye',
+      }),
+      [],
+      { categoryId: 'futbol', evidenceText: evidence }
+    )
+    expect(geo.country).toBe('İtalya')
+    expect(geo.city).toBeNull()
+    expect(geo.district).toBeNull()
+    expect(geo.citySlug).toBe('')
+    expect(geo.districtSlug).toBe('')
+  })
+})
+
+describe('geoEngine person name ≠ district (Fatih)', () => {
+  it('Fatih Yaşlı + Suriye/İdlib → Suriye, not İstanbul/Fatih', () => {
+    const evidence =
+      "Siyaset bilimci Fatih Yaşlı, İsrail ordusunun 18 Ağustos'ta Suriye'nin İdlib ilinin doğusundaki Ebu Zuhur Askeri Havaalanı'na düzenlediği saldırıyı değerlendirdi. Türkiye'nin Suriye'deki nüfuzunu yorumladı."
+    expect(extractDistrictSlugFromText(evidence)).toBeNull()
+    expect(hasExplicitPlaceEvidence(evidence, 'fatih')).toBe(false)
+    const geo = enrichGeo(
+      baseRewrite({
+        title: "Fatih Yaşlı İsrail'in Ebu Zuhur saldırısını değerlendirdi",
+        description: evidence,
+        tags: ['fatih yaşlı', 'israil', 'suriye', 'idlib'],
+        categoryId: 'gundem',
+        city: 'İstanbul',
+        district: 'Fatih',
+        country: 'Türkiye',
+      }),
+      [],
+      { categoryId: 'gundem', evidenceText: evidence }
+    )
+    expect(geo.country).toBe('Suriye')
+    expect(geo.city).toBeNull()
+    expect(geo.district).toBeNull()
+    expect(geo.citySlug).toBe('')
+    expect(geo.districtSlug).toBe('')
+  })
+
+  it('explicit Fatih ilçesi still resolves to İstanbul/Fatih', () => {
+    const evidence = "İstanbul'un Fatih ilçesinde restorasyon çalışması başladı"
+    expect(extractDistrictSlugFromText(evidence)).toBe('fatih')
+    const geo = enrichGeo(
+      baseRewrite({
+        title: "Fatih'te restorasyon",
+        description: evidence,
+        categoryId: 'yerel-haber',
+        city: null,
+        district: null,
+      }),
+      [],
+      { categoryId: 'yerel-haber', evidenceText: evidence }
+    )
+    expect(geo.citySlug).toBe('istanbul')
+    expect(geo.districtSlug).toBe('fatih')
+  })
+})
