@@ -22,7 +22,7 @@ export function CitySectionNav() {
       className="z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]"
       aria-label="Şehir bölümleri"
     >
-      <div className="newspaper-layout-inner flex gap-1 overflow-x-auto py-2 scrollbar-hide">
+      <div className="newspaper-layout-inner category-nav-scroller flex gap-1 overflow-x-auto py-2 scrollbar-hide">
         {items.map((item) => {
           const Icon = item.icon
           const active = isCitySectionActive(pathname, item.href)

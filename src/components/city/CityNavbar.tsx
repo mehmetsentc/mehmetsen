@@ -33,7 +33,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
   return (
     <header
       className={cn(
-        'sticky top-0 z-40',
+        'mobile-top-chrome sticky top-0 z-50',
         'bg-[rgb(var(--header-brand-bg))] text-white',
         'pt-[env(safe-area-inset-top,0px)]'
       )}

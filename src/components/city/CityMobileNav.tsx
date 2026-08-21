@@ -20,7 +20,7 @@ function CityMobileNavInner() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))]/95 backdrop-blur-xl lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))] lg:hidden"
       aria-label="Şehir menü"
     >
       <div

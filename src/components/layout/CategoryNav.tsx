@@ -8,10 +8,6 @@ import { cn } from '@/lib/utils'
 
 const NAV_CATEGORIES = getSwipeableFeedDestinations()
 
-/** Must match Navbar feed height (`h-[72px]` + safe-area). */
-const FEED_NAV_TOP = 'top-[calc(72px+env(safe-area-inset-top,0px))]'
-const DEFAULT_NAV_TOP = 'top-14'
-
 export interface CategoryNavItem {
   id: string
   label: string
@@ -25,11 +21,35 @@ interface CategoryNavProps {
   onCategorySelect?: (categoryId: string | null) => void
   /** Currently active category id for controlled mode. */
   activeCategoryId?: string | null
+  /**
+   * When true, sits inside Navbar's sticky chrome (no own sticky/top).
+   * Prevents dual-sticky desync / overscroll gaps on iOS.
+   */
+  embedded?: boolean
 }
 
-export function CategoryNav({ categories, onCategorySelect, activeCategoryId }: CategoryNavProps = {}) {
+export function CategoryNav({
+  categories,
+  onCategorySelect,
+  activeCategoryId,
+  embedded = false,
+}: CategoryNavProps = {}) {
   const pathname = usePathname()
   const isFeed = pathname === '/' || pathname === ROUTES.FEED
+
+  const shellClass = cn(
+    'bg-[rgb(var(--header-navy-bg))] lg:hidden',
+    embedded
+      ? 'relative z-auto'
+      : 'sticky top-0 z-30 pt-[env(safe-area-inset-top,0px)]'
+  )
+
+  const scrollerClass = cn(
+    'category-nav-scroller flex overflow-x-auto overscroll-x-contain scrollbar-hide',
+    isFeed
+      ? 'min-h-[48px] snap-x snap-mandatory scroll-px-4 gap-5 px-4'
+      : 'gap-0 scroll-px-3'
+  )
 
   // When operating in national mode (no categories override)
   if (!categories) {
@@ -46,30 +66,17 @@ export function CategoryNav({ categories, onCategorySelect, activeCategoryId }: 
     if (hide) return null
 
     return (
-      <nav
-        className={cn(
-          'sticky z-30 bg-[rgb(var(--header-navy-bg))] lg:hidden',
-          isFeed ? FEED_NAV_TOP : DEFAULT_NAV_TOP
-        )}
-        aria-label="Kategoriler"
-      >
-        <div
-          className={cn(
-            'flex overflow-x-auto scrollbar-hide',
-            isFeed
-              ? 'min-h-[48px] snap-x snap-mandatory scroll-px-4 gap-5 px-4'
-              : 'gap-0 scroll-px-3'
-          )}
-          data-no-category-swipe
-        >
+      <nav className={shellClass} aria-label="Kategoriler">
+        <div className={scrollerClass} data-no-category-swipe>
           {NAV_CATEGORIES.map((cat) => {
             const isActive = activeKey === cat.id
             return (
               <Link
                 key={cat.href}
                 href={cat.href}
+                prefetch
                 className={cn(
-                  'relative flex shrink-0 items-center transition-colors',
+                  'relative flex shrink-0 items-center touch-manipulation transition-colors',
                   isFeed
                     ? 'min-h-[48px] snap-start px-0.5 text-[15px] font-semibold'
                     : 'min-h-11 px-3.5 text-sm font-semibold',
@@ -97,15 +104,11 @@ export function CategoryNav({ categories, onCategorySelect, activeCategoryId }: 
 
   // City mode: render dynamic categories with onCategorySelect callback
   return (
-    <nav
-      className={cn(
-        'sticky z-30 bg-[rgb(var(--header-navy-bg))] lg:hidden',
-        FEED_NAV_TOP
-      )}
-      aria-label="Kategoriler"
-    >
+    <nav className={shellClass} aria-label="Kategoriler">
       <div
-        className="flex min-h-[48px] snap-x snap-mandatory scroll-px-4 gap-5 overflow-x-auto px-4 scrollbar-hide"
+        className={cn(
+          'category-nav-scroller flex min-h-[48px] snap-x snap-mandatory scroll-px-4 gap-5 overflow-x-auto overscroll-x-contain px-4 scrollbar-hide'
+        )}
         data-no-category-swipe
       >
         {categories.map((cat) => {
@@ -116,7 +119,7 @@ export function CategoryNav({ categories, onCategorySelect, activeCategoryId }: 
               type="button"
               onClick={() => onCategorySelect?.(cat.id === '__all' ? null : cat.id)}
               className={cn(
-                'relative flex min-h-[48px] shrink-0 snap-start items-center px-0.5 text-[15px] font-semibold transition-colors',
+                'relative flex min-h-[48px] shrink-0 snap-start items-center px-0.5 text-[15px] font-semibold touch-manipulation transition-colors',
                 isActive
                   ? 'text-white'
                   : 'text-white/75 hover:text-white'

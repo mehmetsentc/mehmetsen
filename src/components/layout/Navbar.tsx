@@ -42,20 +42,25 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       : ROUTES.LOGIN
 
   return (
-    <>
+    <div
+      className={cn(
+        'mobile-top-chrome z-50 lg:hidden',
+        isArticle ? 'relative' : 'sticky top-0',
+        'bg-[rgb(var(--header-brand-bg))] text-white',
+        // Cover status-bar region except on article pages (ArticleStickyHeader owns that).
+        !isArticle && 'pt-[env(safe-area-inset-top,0px)]'
+      )}
+    >
       <header
         className={cn(
-          'z-40 lg:hidden',
-          isArticle ? 'relative' : 'sticky top-0',
           'bg-[rgb(var(--header-brand-bg))] text-white',
-          isFeed && 'pt-[env(safe-area-inset-top,0px)]'
+          isFeed ? 'h-[72px]' : 'h-14'
         )}
-        style={isFeed ? { height: 'calc(72px + env(safe-area-inset-top, 0px))' } : undefined}
       >
         <div
           className={cn(
-            'flex items-center',
-            isFeed ? 'h-[72px] gap-1 px-4' : 'h-14 gap-1.5 px-2 sm:px-3'
+            'flex h-full items-center',
+            isFeed ? 'gap-1 px-4' : 'gap-1.5 px-2 sm:px-3'
           )}
         >
           {showBack ? (
@@ -83,7 +88,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             <button
               type="button"
               onClick={() => router.push(ROUTES.SEARCH)}
-              className="flex h-11 w-11 items-center justify-center text-white"
+              className="flex h-11 w-11 items-center justify-center text-white touch-manipulation"
               aria-label="Ara"
             >
               <Search className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
@@ -94,7 +99,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             />
             <Link
               href={profileHref}
-              className="flex h-11 w-11 items-center justify-center text-white"
+              className="flex h-11 w-11 items-center justify-center text-white touch-manipulation"
               aria-label="Profil"
             >
               <User className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
@@ -103,7 +108,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         </div>
       </header>
 
-      <CategoryNav />
-    </>
+      {/* Embedded in chrome so category bar shares one sticky stack (no dual-sticky gap). */}
+      <CategoryNav embedded />
+    </div>
   )
 }

@@ -205,6 +205,20 @@
     color: rgb(var(--color-body));
   }
 
+  /*
+   * iOS Safari rubber-band: keep overscroll from chaining through chrome.
+   * contain (not none) so pull-to-refresh / nested scroll still work.
+   */
+  html[data-platform='mobile'],
+  html[data-platform='tablet'] {
+    overscroll-behavior-y: contain;
+  }
+
+  html[data-platform='mobile'] body,
+  html[data-platform='tablet'] body {
+    overscroll-behavior-y: contain;
+  }
+
   /* Headings default to primary (stronger than body) */
   h1, h2, h3, h4, h5, h6 {
     color: rgb(var(--color-text));
@@ -219,6 +233,54 @@
   .app-shell {
     @apply min-h-screen w-full pb-0;
     transition: padding-left 300ms ease-in-out;
+  }
+
+  /*
+   * Unified mobile top chrome (Navbar + CategoryNav).
+   * ::before extends the solid brand paint above the sticky stack so iOS
+   * rubber-banding cannot reveal feed images / brand art in the status-bar gap.
+   * isolation keeps transformed carousel layers from compositing above chrome.
+   */
+  .mobile-top-chrome {
+    isolation: isolate;
+  }
+
+  .mobile-top-chrome.sticky::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 100vmax;
+    background-color: rgb(var(--header-brand-bg));
+    pointer-events: none;
+  }
+
+  /* Fixed status-bar paint that does not bounce with sticky chrome. */
+  html[data-platform='mobile'] .mobile-top-chrome.sticky::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: max(env(safe-area-inset-top, 0px), 0px);
+    background-color: rgb(var(--header-brand-bg));
+    pointer-events: none;
+    z-index: 60;
+  }
+
+  /* Prefer horizontal pan on category chips; contain vertical overscroll chain. */
+  .category-nav-scroller {
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-bottom-nav {
+    isolation: isolate;
+    overscroll-behavior: none;
+    touch-action: manipulation;
   }
 
   html[data-platform='mobile'] .app-shell-mobile {

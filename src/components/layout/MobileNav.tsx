@@ -50,7 +50,7 @@ const MobileNavLink = memo(function MobileNavLink({ item, active, pathname }: Mo
       aria-label={label}
       onClick={handleClick}
       className={cn(
-        'flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors',
+        'flex flex-1 flex-col items-center justify-center gap-1 py-2 touch-manipulation transition-colors',
         active ? 'text-[rgb(var(--color-nav-active))]' : 'text-[rgb(var(--color-nav-inactive))]'
       )}
     >
@@ -85,7 +85,7 @@ function MobileNavInner() {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))]/95 backdrop-blur-xl lg:hidden"
+        className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[105] border-t border-[rgb(var(--color-nav-bar-border))] bg-[rgb(var(--color-nav-bar))] lg:hidden"
         aria-label="Ana menü"
       >
         <div
@@ -108,7 +108,7 @@ function MobileNavInner() {
               type="button"
               aria-label="Haber Ekle"
               onClick={() => setSubmitOpen(true)}
-              className="flex h-12 w-12 -translate-y-2 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-white shadow-lg transition-transform active:scale-95"
+              className="flex h-12 w-12 -translate-y-2 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-white shadow-lg touch-manipulation transition-transform active:scale-95"
             >
               <Plus className="h-6 w-6" strokeWidth={2.5} />
             </button>
