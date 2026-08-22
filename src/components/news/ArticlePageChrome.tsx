@@ -9,13 +9,15 @@ interface ArticlePageChromeProps {
 }
 
 /**
- * BBC-style article chrome — fixed progress bar + sticky site header (mobile)
+ * BBC-style article chrome — fixed progress bar + dedicated mobile header.
  */
 export function ArticlePageChrome({ post }: ArticlePageChromeProps) {
   return (
     <>
       <ArticleScrollProgress />
       <ArticleStickyHeader post={post} />
+      {/* Reserve space under fixed mobile header (safe-area aware). */}
+      <div className="article-mobile-header-spacer lg:hidden" aria-hidden />
     </>
   )
 }

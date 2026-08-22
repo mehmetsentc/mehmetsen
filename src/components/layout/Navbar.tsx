@@ -45,6 +45,9 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       ? ROUTES.PROFILE(user.username || user.uid)
       : ROUTES.LOGIN
 
+  // Article pages use ArticleStickyHeader on mobile — skip duplicate site chrome.
+  if (isArticle) return null
+
   return (
     <>
       <div

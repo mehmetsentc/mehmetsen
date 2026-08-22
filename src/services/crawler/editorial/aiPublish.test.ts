@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { MemoryCrawlerStore } from '../store/memory'
 import {
   AI_PUBLISH_BATCH_CAP,
@@ -7,6 +7,24 @@ import {
   publishRawArticlesWithAi,
 } from './aiPublish'
 import type { InsertRawArticleInput } from '../store/types'
+
+vi.mock('@/lib/firebase/admin', () => ({
+  getAdminFirestore: () => ({
+    collection: () => ({
+      doc: () => ({
+        get: async () => ({
+          exists: true,
+          id: 'news_mock',
+          data: () => ({ status: 'published', slug: 'mock-slug' }),
+        }),
+      }),
+    }),
+  }),
+}))
+
+vi.mock('./newsLink', () => ({
+  syncCrawlerEditorial: vi.fn(async () => {}),
+}))
 
 const NOW = new Date('2026-08-19T12:00:00Z')
 
@@ -99,5 +117,62 @@ describe('publishRawArticlesWithAi batch', () => {
 
   it('exposes batch cap constant', () => {
     expect(AI_PUBLISH_BATCH_CAP).toBe(25)
+  })
+
+  it('attempts every selected article and passes skipStoryLibraryDedupe', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store)
+    const articles = await Promise.all(
+      Array.from({ length: 8 }, (_, i) => seedArticle(store, source, `bulk-haber-${i + 1}`))
+    )
+    const ids = articles.map((a) => a.id)
+    const attempted: Array<{ id: string; skipDedupe?: boolean }> = []
+    const processArticle = async (
+      _db: unknown,
+      input: { rssGuid?: string },
+      options?: { skipStoryLibraryDedupe?: boolean }
+    ) => {
+      attempted.push({ id: String(input.rssGuid), skipDedupe: options?.skipStoryLibraryDedupe })
+      return { outcome: 'published' as const, newsId: `news_${input.rssGuid}` }
+    }
+
+    const result = await publishRawArticlesWithAi({
+      store,
+      ids,
+      processArticle: processArticle as never,
+    })
+
+    expect(attempted).toHaveLength(8)
+    expect(new Set(attempted.map((a) => a.id))).toEqual(new Set(ids))
+    expect(attempted.every((a) => a.skipDedupe === true)).toBe(true)
+    expect(result.requested).toBe(8)
+    expect(result.published).toBe(8)
+    expect(result.failed).toBe(0)
+    expect(result.results).toHaveLength(8)
+  })
+
+  it('continues batch after a per-item failure', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store)
+    const articles = await Promise.all(
+      Array.from({ length: 3 }, (_, i) => seedArticle(store, source, `fail-haber-${i + 1}`))
+    )
+    const ids = articles.map((a) => a.id)
+    let call = 0
+    const processArticle = async () => {
+      call += 1
+      if (call === 2) return { outcome: 'failed' as const }
+      return { outcome: 'published' as const, newsId: `news_${call}` }
+    }
+
+    const result = await publishRawArticlesWithAi({
+      store,
+      ids,
+      processArticle: processArticle as never,
+    })
+
+    expect(result.results).toHaveLength(3)
+    expect(result.published).toBe(2)
+    expect(result.failed).toBe(1)
   })
 })

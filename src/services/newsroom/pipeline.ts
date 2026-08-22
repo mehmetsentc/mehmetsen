@@ -485,6 +485,8 @@ export interface PipelineOptions {
    * Fingerprint skip atlanır; yayınlanırsa draft silinir, yine draft kalırsa güncellenir.
    */
   reprocessDraftId?: string
+  /** Editor bulk publish — kullanıcı seçtiği ham haberler için story-library dedupe atlanır. */
+  skipStoryLibraryDedupe?: boolean
 }
 
 export interface PipelineResult {
@@ -582,7 +584,7 @@ export async function processNewsroomArticle(
     }
   }
 
-  if (options.changeType !== 'updated' && !options.reprocessDraftId) {
+  if (options.changeType !== 'updated' && !options.reprocessDraftId && !options.skipStoryLibraryDedupe) {
     const libraryBody = [input.originalSummary, input.originalContent]
       .filter(Boolean)
       .join(' ')

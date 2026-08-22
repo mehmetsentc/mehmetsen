@@ -12,6 +12,9 @@ export function CitySectionNav() {
   const pathname = usePathname()
   const { categories, hasSpor } = useCityCategoryFilter()
   const tenant = useCityTenant()
+
+  if (pathname.startsWith('/haber/')) return null
+
   const items = buildCityHeaderNavItems(categories, {
     hasSpor,
     citySlug: tenant?.provinceSlug,

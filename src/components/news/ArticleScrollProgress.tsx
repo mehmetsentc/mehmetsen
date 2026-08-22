@@ -41,7 +41,7 @@ export function ArticleScrollProgress() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]"
+      className="pointer-events-none fixed inset-x-0 z-[60] h-[3px] article-scroll-progress"
       aria-hidden
     >
       <div

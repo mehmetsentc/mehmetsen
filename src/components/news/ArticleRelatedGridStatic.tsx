@@ -14,8 +14,8 @@ export function ArticleRelatedGridStatic({ posts }: ArticleRelatedGridStaticProp
   if (posts.length === 0) return null
 
   return (
-    <section className="mt-10 border-t border-[rgb(var(--color-border))] pt-8" aria-label="İlgili haberler">
-      <h2 className="mb-5 border-t-4 border-[rgb(var(--color-text))] pt-4 text-xl font-bold text-[rgb(var(--color-text))]">
+    <section className="mt-8 border-t border-[rgb(var(--color-border))] pt-6 sm:mt-10 sm:pt-8" aria-label="İlgili haberler">
+      <h2 className="mb-4 text-lg font-bold text-[rgb(var(--color-text))] sm:mb-5 sm:border-t-4 sm:border-[rgb(var(--color-text))] sm:pt-4 sm:text-xl">
         İlgili Haberler
       </h2>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

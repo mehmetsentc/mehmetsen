@@ -9,7 +9,9 @@ import { BulkToolbar } from '@/components/admin/crawler/BulkToolbar'
 import { CrawlerConfirmModal } from '@/components/admin/crawler/CrawlerConfirmModal'
 import { RejectReasonModal } from '@/components/admin/crawler/RejectReasonModal'
 import { RowOverflowMenu } from '@/components/admin/crawler/RowOverflowMenu'
+import { notifyAiPublishResult } from '@/components/admin/crawler/notifyAiPublish'
 import { notifyCrawlerBulk } from '@/components/admin/crawler/notifyBulk'
+import type { AiPublishBatchResult } from '@/services/crawler/editorial/aiPublish'
 import { auth } from '@/lib/firebase/auth'
 import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
 import { numberedPages, nextSortState, RAW_ARTICLE_PAGE_SIZES } from '@/services/crawler/editorial/query'
@@ -332,30 +334,17 @@ function CrawlerArticlesInner() {
           filter: activeFilter(),
         }),
       })
-      const body = (await res.json()) as {
-        error?: string
-        published?: number
-        drafted?: number
-        skipped?: number
-        failed?: number
-        requested?: number
-      }
+      const body = (await res.json()) as AiPublishBatchResult & { error?: string }
       if (!res.ok) throw new Error(body.error || 'AI yayın başarısız')
-      notifyCrawlerBulk(
-        {
-          requested: body.requested || count,
-          affected: body.published || 0,
-          skipped: body.skipped || 0,
-          failed: body.failed || 0,
-          skippedReasons: [],
-          tombstoned: 0,
-          hardDeleted: 0,
-          dispatchAttempted: false,
-          aiRequests: body.published || 0,
-          dispatchEnabled: false,
-        },
-        `AI için onayla: ${body.published || 0} yayında, ${body.drafted || 0} taslak, ${body.skipped || 0} atlandı, ${body.failed || 0} hata`
-      )
+      notifyAiPublishResult({
+        requested: body.requested ?? count,
+        published: body.published ?? 0,
+        drafted: body.drafted ?? 0,
+        skipped: body.skipped ?? 0,
+        failed: body.failed ?? 0,
+        results: body.results ?? [],
+        crawlerDispatchEnabled: false,
+      })
       setSelection(clearSelection(filterKey))
       await load()
     } catch (err) {

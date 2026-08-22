@@ -30,8 +30,9 @@ export function AiPublishConfirmModal({
     >
       <div className="space-y-3 text-sm">
         <p>
-          <strong>{count}</strong> ham haber seçildi. Haberler hemen AI ile yazılıp yayına alınacak; inceleme
-          sekmesinde sadece kategori düzeltebilirsiniz.
+          <strong>{count}</strong> ham haber seçildi. Haberler AI ile yazılıp işlenecek; çoğu doğrudan yayına alınır
+          ve <strong>İnceleme</strong> sekmesinde görünür (kategori kontrolü). Düşük güvenli olanlar{' '}
+          <strong>Onay Bekliyor</strong> taslağı olarak kalır.
         </p>
         <p>
           Bu işlem Ön-AI kuyruğunu veya &quot;AI Adayı&quot; durumunu kullanmaz; newsroom pipeline doğrudan çalışır.

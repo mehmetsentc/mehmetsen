@@ -84,6 +84,7 @@ const LayoutShell = memo(function LayoutShell({
   const setMobileDrawerOpen = useUiStore((s) => s.setMobileDrawerOpen)
   const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
   const setDesktopSidebarOpen = useUiStore((s) => s.setDesktopSidebarOpen)
+  const suppressFooterNewsletter = pathname.startsWith('/haber/')
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]" data-platform={platform}>
@@ -134,7 +135,9 @@ const LayoutShell = memo(function LayoutShell({
             >
               <DesktopGlobalScrollHeader />
               {children}
-              {variant === 'newspaper' && <SiteFooter />}
+              {variant === 'newspaper' && (
+                <SiteFooter suppressNewsletter={suppressFooterNewsletter} />
+              )}
             </main>
           </div>
         </PullToRefresh>

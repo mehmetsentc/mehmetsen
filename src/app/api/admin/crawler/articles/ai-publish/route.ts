@@ -14,6 +14,7 @@ import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/sto
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 function parseDate(value: unknown): Date | null {
   if (typeof value !== 'string' || !value) return null

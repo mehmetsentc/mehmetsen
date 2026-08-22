@@ -111,14 +111,25 @@ export async function publishRawArticleWithAi(opts: {
       opts.processArticle ??
       (await import('@/services/newsroom/pipeline')).processNewsroomArticle
 
-    const result = await processArticle(db, input)
+    const result = await processArticle(db, input, { skipStoryLibraryDedupe: true })
 
     if (result.outcome === 'skipped') {
-      return { rawArticleId: opts.rawArticleId, outcome: 'skipped', newsId: result.newsId, error: 'Atlandı (mükerrer veya filtre)' }
+      const detail = result.skipReason?.trim()
+      return {
+        rawArticleId: opts.rawArticleId,
+        outcome: 'skipped',
+        newsId: result.newsId,
+        error: detail ? `Atlandı: ${detail}` : 'Atlandı (mükerrer veya filtre)',
+      }
     }
 
-    if (!result.newsId) {
-      return { rawArticleId: opts.rawArticleId, outcome: 'error', error: 'Haber oluşturulamadı' }
+    if (result.outcome === 'failed' || !result.newsId) {
+      const detail = result.skipReason?.trim()
+      return {
+        rawArticleId: opts.rawArticleId,
+        outcome: 'error',
+        error: detail || 'Haber oluşturulamadı',
+      }
     }
 
     const news = await loadPublishedNews(result.newsId)

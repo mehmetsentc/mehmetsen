@@ -62,6 +62,8 @@ const CityShell = memo(function CityShell({
   provinceSlug: string
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const suppressFooterNewsletter = pathname.startsWith('/haber/')
   const { isDesktop } = usePlatformLayout()
   const drawerOpen = useUiStore((s) => s.mobileDrawerOpen)
   const setMobileDrawerOpen = useUiStore((s) => s.setMobileDrawerOpen)
@@ -106,7 +108,11 @@ const CityShell = memo(function CityShell({
             {children}
           </main>
           <div className="content-main content-main-newspaper desktop-newspaper pb-6">
-            <CityFooter cityName={displayName} provinceSlug={provinceSlug} />
+            <CityFooter
+              cityName={displayName}
+              provinceSlug={provinceSlug}
+              suppressNewsletter={suppressFooterNewsletter}
+            />
           </div>
         </div>
       </PullToRefresh>

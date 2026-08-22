@@ -88,7 +88,12 @@ function FooterColumn({ title, links }: { title: string; links: readonly FooterL
   )
 }
 
-export function DesktopHomeFooter() {
+interface DesktopHomeFooterProps {
+  /** Haber detayında gövde içi bülten varken footer aboneliğini gizle. */
+  suppressNewsletter?: boolean
+}
+
+export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFooterProps) {
   const year = new Date().getFullYear()
   const siteUrl = getSiteUrl()
 
@@ -127,9 +132,11 @@ export function DesktopHomeFooter() {
           ))}
         </div>
 
-        <div className="border-t border-[rgb(var(--color-border))] pt-5">
-          <NewsletterSignup source="desktop-home" variant="compact" />
-        </div>
+        {!suppressNewsletter ? (
+          <div className="border-t border-[rgb(var(--color-border))] pt-5">
+            <NewsletterSignup source="desktop-home" variant="compact" />
+          </div>
+        ) : null}
 
         {/* Sosyal medya */}
         <div className="flex items-center gap-4 border-t border-[rgb(var(--color-border))] pt-4">
@@ -210,9 +217,11 @@ export function DesktopHomeFooter() {
         </div>
       </div>
 
-      <div className="mb-8 max-w-lg">
-        <NewsletterSignup source="desktop-home" variant="compact" />
-      </div>
+      {!suppressNewsletter ? (
+        <div className="mb-8 max-w-lg">
+          <NewsletterSignup source="desktop-home" variant="compact" />
+        </div>
+      ) : null}
 
       <div className="mb-6 flex flex-wrap gap-3">
         {SOCIAL.map((s) => (

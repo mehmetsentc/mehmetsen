@@ -157,7 +157,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
 
   return (
     <NewsArticlePage id="news-article-static" articleId={post.id}>
-      <nav aria-label="Breadcrumb" className="news-article-breadcrumb mb-4 text-sm text-[rgb(var(--color-muted))]">
+      <nav aria-label="Breadcrumb" className="news-article-breadcrumb mb-3 hidden text-sm text-[rgb(var(--color-muted))] sm:mb-4 sm:block">
         <ol className="flex flex-wrap items-center gap-1">
           <li>
             <Link href={ROUTES.FEED} className="hover:text-[rgb(var(--color-text))]">
@@ -313,7 +313,7 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
 
           <ArticleAuthorBox post={post} />
 
-          <NewsletterSignup source="article" variant="inline" />
+          <NewsletterSignup source="article" variant="inline" className="mt-6 sm:mt-8" />
 
           <ArticleRelatedGridStatic posts={relatedPosts} />
 
@@ -337,8 +337,8 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
           )}
 
           {(hasTags || hasCity) && (
-            <section aria-label="Etiketler" className="mt-6">
-              <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+            <section aria-label="Etiketler" className="mt-5 sm:mt-6">
+              <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
                 Etiketler
               </h2>
               <div className="flex flex-wrap items-center gap-2">

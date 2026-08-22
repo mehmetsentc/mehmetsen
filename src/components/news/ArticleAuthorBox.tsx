@@ -48,7 +48,7 @@ export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
 
   return (
     <aside
-      className="my-8 flex items-start gap-4 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-5"
+      className="my-6 flex items-start gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 sm:my-8 sm:gap-4 sm:p-5"
       aria-label="Yazar bilgisi"
     >
       {href ? (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type Ref } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Search, Menu, User } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { CityBrandLockup } from '@/components/city/CityBrandLockup'
@@ -19,6 +19,7 @@ interface CityNavbarProps {
 
 export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, loading } = useAuth()
   const [hydrated, setHydrated] = useState(false)
   const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
@@ -31,6 +32,9 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
     hydrated && !loading && user
       ? ROUTES.PROFILE(user.username || user.uid)
       : ROUTES.LOGIN
+
+  // Article pages use ArticleStickyHeader on mobile.
+  if (pathname.startsWith('/haber/')) return null
 
   return (
     <>

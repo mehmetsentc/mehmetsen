@@ -145,9 +145,11 @@ function ColHeader({ title }: { title: string }) {
 interface CityFooterProps {
   cityName: string
   provinceSlug: string
+  /** Haber detayında gövde içi bülten varken footer aboneliğini gizle. */
+  suppressNewsletter?: boolean
 }
 
-export function CityFooter({ cityName, provinceSlug }: CityFooterProps) {
+export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false }: CityFooterProps) {
   const { categories } = useCityCategoryFilter()
   const { news, life, culture } = groupCategories(categories)
   const year = new Date().getFullYear()
@@ -217,9 +219,11 @@ export function CityFooter({ cityName, provinceSlug }: CityFooterProps) {
           ))}
         </div>
 
-        <div className="border-t border-[rgb(var(--color-border))] pt-5">
-          <NewsletterSignup source="city-footer" variant="compact" />
-        </div>
+        {!suppressNewsletter ? (
+          <div className="border-t border-[rgb(var(--color-border))] pt-5">
+            <NewsletterSignup source="city-footer" variant="compact" />
+          </div>
+        ) : null}
 
         {/* Yasal */}
         <div className="flex flex-wrap gap-x-3 gap-y-2">
@@ -340,9 +344,11 @@ export function CityFooter({ cityName, provinceSlug }: CityFooterProps) {
           </div>
         </div>
 
-        <div className="mb-8 max-w-md">
-          <NewsletterSignup source="city-footer" variant="compact" />
-        </div>
+        {!suppressNewsletter ? (
+          <div className="mb-8 max-w-md">
+            <NewsletterSignup source="city-footer" variant="compact" />
+          </div>
+        ) : null}
 
         {/* Sosyal medya */}
         <div className="mb-6 flex flex-wrap gap-4">

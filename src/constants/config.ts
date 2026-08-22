@@ -1028,9 +1028,6 @@ export function getSwipeableFeedDestinations(): SwipeDestination[] {
 
   for (const cat of getTopNavCategories()) {
     destinations.push(cat)
-    if (cat.id === 'spor') {
-      destinations.push({ id: 'skor', label: 'Skor', href: ROUTES.SKOR })
-    }
     if (cat.id === 'oyun-espor') {
       destinations.push({ id: 'oyunlar', label: 'Oyunlar', href: ROUTES.GAMES })
     }
@@ -1045,7 +1042,8 @@ export function resolveSwipeCategoryKey(pathname: string): string | null {
   if (pathname === ROUTES.FEED) return 'feed'
   if (pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)) return 'yerel'
   if (pathname === ROUTES.GAMES || pathname.startsWith(`${ROUTES.GAMES}/`)) return 'oyunlar'
-  if (pathname === ROUTES.SKOR || pathname.startsWith(`${ROUTES.SKOR}/`)) return 'skor'
+  // /skor redirects to Spor — treat as spor for swipe continuity
+  if (pathname === ROUTES.SKOR || pathname.startsWith(`${ROUTES.SKOR}/`)) return 'spor'
 
   const match = pathname.match(/^\/kategori\/([^/]+)/)
   if (!match) return null
