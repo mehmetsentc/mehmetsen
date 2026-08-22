@@ -20,6 +20,7 @@ import {
   turkeyDayBounds,
 } from '@/lib/turkeyCalendar'
 import type { Post } from '@/types/post'
+import { tagLookupVariants } from '@/lib/tags'
 import type { FeedSliderItem } from '@/types/feedSlider'
 import {
   HOME_CATEGORY_RAILS,
@@ -992,21 +993,11 @@ export async function getSuggestedPostsServer(
   return ranked.filter((post) => post.id !== excludeId).slice(0, limitCount)
 }
 
-function tagVariants(raw: string): string[] {
-  const term = raw.trim()
-  if (!term) return []
-  const lower = term.toLocaleLowerCase('tr-TR')
-  const variants = new Set<string>([lower, term])
-  if (lower.length > 0) {
-    variants.add(lower.charAt(0).toLocaleUpperCase('tr-TR') + lower.slice(1))
-  }
-  return [...variants]
-}
 
 /** Published posts matching a tag slug (indexable /etiket/[slug] pages). Cached 10 min per tag. */
 const getPostsByTagCached = unstable_cache(
   async (rawTag: string, limitCount: number): Promise<Post[]> => {
-    const variants = tagVariants(rawTag)
+    const variants = tagLookupVariants(rawTag)
     if (variants.length === 0) return []
 
     try {

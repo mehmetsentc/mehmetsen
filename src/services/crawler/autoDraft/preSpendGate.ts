@@ -8,6 +8,7 @@
 
 import type { AutoDraftGateResult } from './eligibility'
 import type { SourceRichness } from '../canary/sourcePolicy'
+import { evaluateLowEditorialValue } from './lowEditorialValue'
 
 export const PRESPEND_OUTCOMES = [
   'PRESPEND_READY',
@@ -30,6 +31,7 @@ export const PRESPEND_OUTCOMES = [
   'COST_UNKNOWN',
   'PROVIDER_DEFERRED',
   'GATE_NOT_READY',
+  'LOW_EDITORIAL_VALUE',
 ] as const
 
 export type PrespendOutcome = (typeof PRESPEND_OUTCOMES)[number]
@@ -55,6 +57,7 @@ export const PRESPEND_OUTCOME_LABELS_TR: Record<PrespendOutcome, string> = {
   COST_UNKNOWN: 'Maliyet bilinmiyor',
   PROVIDER_DEFERRED: 'Sağlayıcı ertelendi',
   GATE_NOT_READY: 'Kapı henüz hazır değil',
+  LOW_EDITORIAL_VALUE: 'Düşük editoryal değer',
 }
 
 export type PrespendGateInput = {
@@ -77,6 +80,14 @@ export type PrespendGateInput = {
   hasCompletedDraft: boolean
   publishedNewsId?: string | null
   exactDuplicateOnly: boolean
+  /** Phase 4F.4.2 — deterministic editorial value (no LLM). */
+  canonicalTitle?: string | null
+  normalizedTopic?: string | null
+  bodySnippet?: string | null
+  city?: string | null
+  importanceScore?: number | null
+  editorialPriority?: string | null
+  crawlPriority?: string | null
 }
 
 export type PrespendGateResult = {
@@ -165,6 +176,19 @@ export function evaluatePrespendGate(input: PrespendGateInput): PrespendGateResu
   }
   if (!input.gate.readyForJob) {
     return fail('GATE_NOT_READY', input.gate.reason || input.gate.status)
+  }
+
+  const editorial = evaluateLowEditorialValue({
+    title: input.canonicalTitle,
+    normalizedTopic: input.normalizedTopic,
+    bodySnippet: input.bodySnippet,
+    city: input.city,
+    importanceScore: input.importanceScore,
+    editorialPriority: input.editorialPriority,
+    crawlPriority: input.crawlPriority,
+  })
+  if (editorial.lowEditorialValue) {
+    return fail('LOW_EDITORIAL_VALUE', editorial.reason)
   }
 
   return {

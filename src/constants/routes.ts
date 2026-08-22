@@ -1,3 +1,5 @@
+import { tagToSlug } from '@/lib/tags'
+
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
@@ -17,7 +19,7 @@ export const ROUTES = {
   SEARCH: '/search',
   /** Türkçe arama alias'ı — /search'e yönlendirilir */
   SEARCH_TR: '/ara',
-  TAG: (slug: string) => `/etiket/${encodeURIComponent(slug)}`,
+  TAG: (slug: string) => `/etiket/${encodeURIComponent(tagToSlug(slug))}`,
   AUTHOR: (username: string) => `/yazar/${encodeURIComponent(username)}`,
   MOST_READ: '/cok-okunanlar',
   LIVE: (slug: string) => `/canli/${encodeURIComponent(slug)}`,

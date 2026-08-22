@@ -18,6 +18,7 @@ import {
   costCmsUnavailablePayload,
 } from '@/services/crawler/autoDraft/costAggregates'
 import { aggregateUniqueEconomicMetrics } from '@/services/crawler/autoDraft/shadowUniqueEconomics'
+import { summarizeSourceHealth } from '@/services/crawler/autoDraft/sourceHealth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -136,14 +137,21 @@ export async function GET(request: Request) {
           wouldBlock: number
           uniqueWouldDispatch: number
           uniqueWouldBlock: number
+          lowEditorialValue: number
           estimatedSpendUsd: number | null
           estimatedPreventedUsd: number | null
+          estimatedRequestsPrevented: number | null
           byPrespend: Record<string, number>
           byTier: Record<string, number>
           helpTr: string
         }
       | { available: false; displayTr: 'Veri alınamadı' }
       | null,
+    sourceHealth: null as
+      | ReturnType<typeof summarizeSourceHealth>
+      | { displayTr: 'Veri alınamadı' }
+      | null,
+    multiSourceRatio: null as number | null,
     alert: null as string | null,
     dataUnavailable: false,
   }
@@ -181,8 +189,10 @@ export async function GET(request: Request) {
       wouldBlock: number
       uniqueWouldDispatch: number
       uniqueWouldBlock: number
+      lowEditorialValue: number
       estimatedSpendUsd: number | null
       estimatedPreventedUsd: number | null
+      estimatedRequestsPrevented: number | null
       byPrespend: Record<string, number>
       byTier: Record<string, number>
       helpTr: string
@@ -241,14 +251,30 @@ export async function GET(request: Request) {
         wouldBlock,
         uniqueWouldDispatch: unique.uniqueWouldDispatch,
         uniqueWouldBlock: unique.uniqueWouldBlock,
+        lowEditorialValue: unique.byPrespend.LOW_EDITORIAL_VALUE || 0,
         estimatedSpendUsd: unique.estimatedSpendAfterGateUsd,
         estimatedPreventedUsd: unique.estimatedSpendPreventedUsd,
-        byPrespend,
+        estimatedRequestsPrevented: unique.estimatedRequestsPrevented,
+        byPrespend: unique.byPrespend,
         byTier: unique.byTier,
         helpTr: 'Gölge değerlendirmeleri gerçek AI çağrısı değildir.',
       }
     } catch {
       shadowEconomics = { available: false, displayTr: 'Veri alınamadı' }
+    }
+
+    let sourceHealthSummary: ReturnType<typeof summarizeSourceHealth> | { displayTr: 'Veri alınamadı' } = {
+      displayTr: 'Veri alınamadı',
+    }
+    let multiSourceRatio: number | null = null
+    try {
+      const sources = await crawler.listSources()
+      sourceHealthSummary = summarizeSourceHealth(sources)
+      if (funnel.total > 0) {
+        multiSourceRatio = Math.round((funnel.multiSource / funnel.total) * 1000) / 10
+      }
+    } catch {
+      sourceHealthSummary = { displayTr: 'Veri alınamadı' }
     }
 
     const mapShadow = (row: (typeof shadow)[number]) => ({
@@ -365,6 +391,8 @@ export async function GET(request: Request) {
     payload.aiWaiting = funnel.approvedForAi
     payload.costAggregates = buildCostCmsPayload(ledger, now)
     payload.shadowEconomics = shadowEconomics
+    payload.sourceHealth = sourceHealthSummary
+    payload.multiSourceRatio = multiSourceRatio
     if (circuit.state === 'OPEN' && circuit.reason === 'insufficient_balance') {
       payload.alert =
         'DeepSeek bakiyesi yetersiz (HTTP 402). Otomatik AI durdu; crawler devam ediyor.'

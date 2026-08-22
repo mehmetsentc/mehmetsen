@@ -5,6 +5,9 @@
  */
 
 export const PRESPEND_GATE_VERSION_4F31 = '4F3.1' as const
+/** Phase 4F.4.2 — adds LOW_EDITORIAL_VALUE deterministic gate. */
+export const PRESPEND_GATE_VERSION_4F42 = '4F4.2' as const
+export const PRESPEND_GATE_VERSION_CURRENT = PRESPEND_GATE_VERSION_4F42
 
 export const SHADOW_REVISION_KINDS = ['NEW_EVENT', 'MATERIAL_UPDATE', 'DUPLICATE_EVAL'] as const
 export type ShadowRevisionKind = (typeof SHADOW_REVISION_KINDS)[number]

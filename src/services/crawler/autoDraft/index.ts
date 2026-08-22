@@ -125,6 +125,8 @@ export {
 
 export {
   PRESPEND_GATE_VERSION_4F31,
+  PRESPEND_GATE_VERSION_4F42,
+  PRESPEND_GATE_VERSION_CURRENT,
   classifyShadowRevisionKind,
   aggregateUniqueEconomicMetrics,
   compareRawVsUniqueEconomics,
@@ -132,6 +134,19 @@ export {
   type UniqueEconomicMetrics,
   type ShadowRevisionKind,
 } from './shadowUniqueEconomics'
+
+export {
+  classifyEditorialContentClass,
+  evaluateLowEditorialValue,
+  EDITORIAL_CONTENT_CLASSES,
+  type EditorialContentClass,
+} from './lowEditorialValue'
+
+export {
+  getDraftBodyWordCount,
+  formatDraftBodyWordCount,
+  type DraftSnapshotLike,
+} from './draftBodyWords'
 
 export {
   atomicReserveAutoDraftBudget,

@@ -21,6 +21,7 @@ import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
 import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
 import { demoteExcessFeaturedPins } from '@/lib/featuredPins'
 import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
+import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -264,8 +265,7 @@ function revalidateNewsPaths(
       revalidatePath(`/haber/${body.slug.trim()}`)
     }
     for (const tag of [...(prevData?.tags as string[] | undefined) ?? [], ...(body.tags ?? [])]) {
-      const normalized = tag?.trim().toLocaleLowerCase('tr-TR')
-      if (normalized) revalidatePath(`/etiket/${encodeURIComponent(normalized)}`)
+      if (tag?.trim()) revalidatePath(ROUTES.TAG(tag))
     }
   } catch {
     /* best-effort */

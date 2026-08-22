@@ -83,14 +83,28 @@ interface Payload {
         wouldBlock: number
         uniqueWouldDispatch: number
         uniqueWouldBlock: number
+        lowEditorialValue: number
         estimatedSpendUsd: number | null
         estimatedPreventedUsd: number | null
+        estimatedRequestsPrevented: number | null
         byPrespend: Record<string, number>
         byTier: Record<string, number>
         helpTr: string
       }
     | { available: false; displayTr: 'Veri alınamadı' }
     | null
+  sourceHealth?:
+    | {
+        total: number
+        ACTIVE: number
+        PAUSED: number
+        DEGRADED: number
+        DISABLED: number
+        topPauseReasons: Array<{ reason: string; count: number }>
+      }
+    | { displayTr: 'Veri alınamadı' }
+    | null
+  multiSourceRatio?: number | null
 }
 
 function money(n: number | null | undefined): string {
@@ -224,6 +238,33 @@ export default function AiDispatchPage() {
                 <strong>{nz(data.shadowEconomics.uniqueWouldBlock, unavailable)}</strong>
               </div>
               <div>
+                Düşük editoryal değer:{' '}
+                <strong>
+                  {nz(
+                    data.shadowEconomics.available
+                      ? data.shadowEconomics.lowEditorialValue
+                      : null,
+                    unavailable
+                  )}
+                </strong>
+              </div>
+              <div>
+                Tier A:{' '}
+                <strong>{nz(data.shadowEconomics.byTier?.A, unavailable)}</strong>
+              </div>
+              <div>
+                Tier B:{' '}
+                <strong>{nz(data.shadowEconomics.byTier?.B, unavailable)}</strong>
+              </div>
+              <div>
+                Tier C:{' '}
+                <strong>{nz(data.shadowEconomics.byTier?.C, unavailable)}</strong>
+              </div>
+              <div>
+                Tier D:{' '}
+                <strong>{nz(data.shadowEconomics.byTier?.D, unavailable)}</strong>
+              </div>
+              <div>
                 Tahmini AI maliyeti:{' '}
                 <strong>
                   {unavailable || data.shadowEconomics.estimatedSpendUsd == null
@@ -237,6 +278,43 @@ export default function AiDispatchPage() {
                   {unavailable || data.shadowEconomics.estimatedPreventedUsd == null
                     ? '—'
                     : money(data.shadowEconomics.estimatedPreventedUsd)}
+                </strong>
+              </div>
+              <div>
+                Tahmini engellenen istek:{' '}
+                <strong>
+                  {nz(
+                    data.shadowEconomics.available
+                      ? data.shadowEconomics.estimatedRequestsPrevented
+                      : null,
+                    unavailable
+                  )}
+                </strong>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+      {data?.sourceHealth ? (
+        <div className="mb-4 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">
+          <h2 className="mb-2 text-base font-semibold">Kaynak sağlığı</h2>
+          {'displayTr' in data.sourceHealth ? (
+            <p className="text-sm text-amber-800">{data.sourceHealth.displayTr}</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+              <div>
+                ACTIVE: <strong>{nz(data.sourceHealth.ACTIVE, unavailable)}</strong>
+              </div>
+              <div>
+                PAUSED: <strong>{nz(data.sourceHealth.PAUSED, unavailable)}</strong>
+              </div>
+              <div>
+                DEGRADED: <strong>{nz(data.sourceHealth.DEGRADED, unavailable)}</strong>
+              </div>
+              <div>
+                Çok kaynaklı oran:{' '}
+                <strong>
+                  {data.multiSourceRatio == null ? 'Veri alınamadı' : `${data.multiSourceRatio}%`}
                 </strong>
               </div>
             </div>

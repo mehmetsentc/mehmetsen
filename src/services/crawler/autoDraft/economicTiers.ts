@@ -52,6 +52,7 @@ export function classifyEconomicTier(input: EconomicTierInput): EconomicTierResu
     'ALREADY_PUBLISHED',
     'EDITOR_REJECTED',
     'COST_UNKNOWN',
+    'LOW_EDITORIAL_VALUE',
   ])
 
   if (hardReject.has(input.prespendOutcome) || input.richness === 'insufficient') {

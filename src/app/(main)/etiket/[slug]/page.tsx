@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
-import { formatTagLabel } from '@/lib/tags'
+import { formatTagLabel, isValidTagSlug, parseTagSlug } from '@/lib/tags'
 import { getPostsByTag } from '@/services/newsService.server'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
@@ -14,16 +14,8 @@ interface Props {
   params: Promise<{ slug: string }>
 }
 
-function decodeTagSlug(raw: string): string {
-  try {
-    return decodeURIComponent(raw).trim().toLocaleLowerCase('tr-TR')
-  } catch {
-    return raw.trim().toLocaleLowerCase('tr-TR')
-  }
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const tag = decodeTagSlug((await params).slug)
+  const tag = parseTagSlug((await params).slug)
   if (!tag) return { title: 'Etiket bulunamadı', robots: { index: false, follow: false } }
 
   const siteUrl = getSiteUrl()
@@ -60,8 +52,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TagPage({ params }: Props) {
-  const tag = decodeTagSlug((await params).slug)
-  if (!tag || !/^[\p{L}\p{N}_-]+$/u.test(tag)) notFound()
+  const tag = parseTagSlug((await params).slug)
+  if (!isValidTagSlug(tag)) notFound()
 
   const posts = await getPostsByTag(tag, 40)
   if (posts.length === 0) notFound()

@@ -64,7 +64,7 @@ import {
   shadowDecisionToDispatchShadow,
 } from './shadowEconomics'
 import {
-  PRESPEND_GATE_VERSION_4F31,
+  PRESPEND_GATE_VERSION_CURRENT,
   classifyShadowRevisionKind,
 } from './shadowUniqueEconomics'
 
@@ -602,6 +602,12 @@ export async function runControlledAutoDraftTick(opts: {
       hasCompletedDraft: hasCompleted,
       publishedNewsId: cluster.publishedNewsId,
       exactDuplicateOnly: gateInput.exactDuplicateOnly,
+      canonicalTitle: cluster.canonicalTitle,
+      normalizedTopic: cluster.normalizedTopic,
+      bodySnippet: combinedBody.slice(0, 4000),
+      city: cluster.city,
+      importanceScore: cluster.importanceScore,
+      editorialPriority: cluster.editorialPriority,
     })
     if (prespend.rejected) {
       result.prespendRejected += 1
@@ -678,13 +684,13 @@ export async function runControlledAutoDraftTick(opts: {
       usableSourceWords: effectiveUsableWords,
       editorialDecisionSnapshot: humanDecisionBefore,
       contentFingerprint: fp,
-      prespendGateVersion: PRESPEND_GATE_VERSION_4F31,
+      prespendGateVersion: PRESPEND_GATE_VERSION_CURRENT,
       meta: {
         economicTierReason: tier.reason,
         dedup,
         strongSinglePath: gate.strongSinglePath ?? null,
         richness: effectiveRichness,
-        prespendGateVersion: PRESPEND_GATE_VERSION_4F31,
+        prespendGateVersion: PRESPEND_GATE_VERSION_CURRENT,
       },
       now,
     })
@@ -705,7 +711,7 @@ export async function runControlledAutoDraftTick(opts: {
           id: econId,
           clusterId: shadowDecision.clusterId,
           contentFingerprint: fp,
-          prespendGateVersion: PRESPEND_GATE_VERSION_4F31,
+          prespendGateVersion: PRESPEND_GATE_VERSION_CURRENT,
           revisionKind: hadCluster ? 'MATERIAL_UPDATE' : 'NEW_EVENT',
           eventKey: shadowDecision.eventKey,
           canonicalTitle: shadowDecision.canonicalTitle,
@@ -763,7 +769,7 @@ export async function runControlledAutoDraftTick(opts: {
             contentFingerprint: fp,
           },
           contentFingerprint: fp,
-          prespendGateVersion: PRESPEND_GATE_VERSION_4F31,
+          prespendGateVersion: PRESPEND_GATE_VERSION_CURRENT,
           revisionKind,
           economicDecisionId,
         })

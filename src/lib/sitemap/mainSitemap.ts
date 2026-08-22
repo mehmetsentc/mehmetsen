@@ -3,6 +3,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import { tagToSlug } from '@/lib/tags'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 
@@ -66,7 +67,7 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
     for (const doc of latestForSeo.docs) {
       const data = doc.data() as { tags?: string[] }
       for (const tag of data.tags ?? []) {
-        const normalized = tag?.trim().toLocaleLowerCase('tr-TR')
+        const normalized = tagToSlug(tag ?? '')
         if (normalized) tagSlugs.add(normalized)
         if (tagSlugs.size >= 100) break
       }

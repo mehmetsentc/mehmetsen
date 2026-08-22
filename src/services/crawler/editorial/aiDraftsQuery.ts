@@ -2,7 +2,7 @@
  * Phase 4D.4 — AI Taslakları list/detail query helpers (cost-safe, snapshot-first).
  */
 
-import { wordCount } from '../canary/schema'
+import { getDraftBodyWordCount } from '../autoDraft/draftBodyWords'
 import {
   assessAiDraftQuality,
   formatAiCostUsd,
@@ -138,7 +138,7 @@ export function isFailedAiJob(job: CrawlerAiJobRecord): boolean {
 export function mapJobToListItem(job: CrawlerAiJobRecord): AiDraftListItem {
   const snap = asRecord(job.draftSnapshot)
   const body = asString(snap?.body) || ''
-  const words = body ? wordCount(body) : asNumber(snap?.wordCount)
+  const words = getDraftBodyWordCount(snap)
   const evidence = sourceEvidenceFromSnapshot(snap)
   const packMetrics = asRecord(snap?.packMetrics)
   const quality =
