@@ -43,7 +43,7 @@ export interface BulkResult {
   tombstoned: number
   hardDeleted: number
   dispatchAttempted: false
-  aiRequests: 0
+  aiRequests: number
   dispatchEnabled: boolean
 }
 

@@ -142,7 +142,7 @@ export interface InsertRawArticleInput extends Omit<
 
 export type RawArticleSort = 'newest' | 'oldest' | 'published'
 
-export type RawArticleQueueTab = 'active' | 'published' | 'rejected' | 'archived' | 'all'
+export type RawArticleQueueTab = 'active' | 'published' | 'review' | 'rejected' | 'archived' | 'all'
 export type RawArticleSortColumn =
   | 'fetchedAt'
   | 'publishedAt'
@@ -206,6 +206,7 @@ export interface RawArticleInboxSummary {
 export interface RawArticleQueueCounts {
   active: number
   published: number
+  review: number
   rejected: number
   archived: number
 }

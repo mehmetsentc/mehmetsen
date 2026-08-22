@@ -12,6 +12,12 @@ import {
 } from '@/services/crawler/editorial/query'
 import { rawArticleDisplay } from '@/services/crawler/editorial/prefill'
 import { summarizeArticleMedia } from '@/services/crawler/editorial/mediaSummary'
+import {
+  countCrawlerReviewQueue,
+  enrichArticlesWithReviewMeta,
+  filterReviewQueueArticles,
+} from '@/services/crawler/editorial/reviewMeta'
+import { queueCountsFromStatuses } from '@/services/crawler/editorial/query'
 import type { CrawlerQualityStatus, RawArticleRecord } from '@/services/crawler/types'
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
 import { databaseUnavailableResponse } from '@/lib/adminApiError'
@@ -100,8 +106,31 @@ export async function GET(request: Request) {
       mediaSummary: summarizeArticleMedia(media),
     })
   }
-  const result = await store.listRawArticlesPage(listQueryFromUrl(url))
-  const clusterIds = [...new Set(result.articles.map((a) => a.clusterId).filter((id): id is string => Boolean(id)))]
+  const listQuery = listQueryFromUrl(url)
+  const result = await store.listRawArticlesPage(listQuery)
+  const reviewCount = await countCrawlerReviewQueue().catch(() => 0)
+  const queueCounts = {
+    ...(result.queueCounts || queueCountsFromStatuses(await store.countEditorialStatuses(), reviewCount)),
+    review: reviewCount,
+  }
+
+  let articles = result.articles
+  let total = result.total
+  let page = result.page
+  let totalPages = result.totalPages
+
+  if (listQuery.queue === 'review') {
+    const enriched = await enrichArticlesWithReviewMeta(articles)
+    const filtered = filterReviewQueueArticles(enriched)
+    total = filtered.length
+    totalPages = Math.max(1, Math.ceil(total / (result.pageSize || 25)) || 1)
+    page = Math.min(page, totalPages)
+    const start = (page - 1) * (result.pageSize || 25)
+    articles = filtered.slice(start, start + (result.pageSize || 25))
+  } else {
+    articles = await enrichArticlesWithReviewMeta(articles)
+  }
+  const clusterIds = [...new Set(articles.map((a) => a.clusterId).filter((id): id is string => Boolean(id)))]
   const clusterById = new Map<string, { articleCount: number; uniqueSourceCount: number }>()
   for (const id of clusterIds) {
     const cluster = await store.getCluster(id)
@@ -117,7 +146,11 @@ export async function GET(request: Request) {
   }
   return NextResponse.json({
     ...result,
-    articles: result.articles.map(withEvent),
+    articles: articles.map(withEvent),
+    total,
+    page,
+    totalPages,
+    queueCounts,
     groups: result.groups?.map((g) => ({
       ...g,
       articles: g.articles.map(withEvent),

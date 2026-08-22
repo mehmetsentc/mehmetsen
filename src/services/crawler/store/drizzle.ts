@@ -1237,7 +1237,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (query.editorialStatus) parts.push(eq(rawArticles.editorialStatus, query.editorialStatus))
     else {
       const queue = query.queue || 'active'
-      if (queue === 'published') parts.push(eq(rawArticles.editorialStatus, 'PUBLISHED'))
+      if (queue === 'published' || queue === 'review') parts.push(eq(rawArticles.editorialStatus, 'PUBLISHED'))
       else if (queue === 'rejected') parts.push(eq(rawArticles.editorialStatus, 'REJECTED'))
       else if (queue === 'archived') parts.push(eq(rawArticles.editorialStatus, 'ARCHIVED'))
       else if (queue === 'all') parts.push(sql`${rawArticles.editorialStatus} <> 'DELETED'`)

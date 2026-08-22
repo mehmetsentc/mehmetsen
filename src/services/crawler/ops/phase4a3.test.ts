@@ -273,6 +273,6 @@ describe('queueCounts helper', () => {
   it('sums active statuses from DB COUNT-shaped maps', () => {
     expect(
       queueCountsFromStatuses({ NEW: 3, IN_REVIEW: 1, PUBLISHED: 9, REJECTED: 2, ARCHIVED: 4 })
-    ).toEqual({ active: 4, published: 9, rejected: 2, archived: 4 })
+    ).toEqual({ active: 4, published: 9, review: 0, rejected: 2, archived: 4 })
   })
 })

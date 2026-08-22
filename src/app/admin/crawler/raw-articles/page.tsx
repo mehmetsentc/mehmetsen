@@ -14,6 +14,10 @@ import { auth } from '@/lib/firebase/auth'
 import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
 import { numberedPages, nextSortState, RAW_ARTICLE_PAGE_SIZES } from '@/services/crawler/editorial/query'
 import { RawArticleDrawer } from '@/components/admin/crawler/RawArticleDrawer'
+import { SourceChips } from '@/components/admin/crawler/SourceChips'
+import { AiPublishConfirmModal } from '@/components/admin/crawler/AiPublishConfirmModal'
+import { ReviewClassificationDrawer } from '@/components/admin/crawler/ReviewClassificationDrawer'
+import type { RawArticleReviewMeta } from '@/services/crawler/editorial/reviewMeta'
 import {
   clearSelection,
   pageSelectionHint,
@@ -65,6 +69,7 @@ interface ArticleRow {
   description?: string | null
   imageCandidateCount?: number | null
   imageRejectedCount?: number | null
+  reviewMeta?: RawArticleReviewMeta | null
 }
 
 interface ListResponse {
@@ -88,7 +93,7 @@ interface ListResponse {
     duplicates: number
   }
   sources?: Array<{ sourceId: string; sourceName: string; articleCount: number }>
-  queueCounts?: { active: number; published: number; rejected: number; archived: number }
+  queueCounts?: { active: number; published: number; review: number; rejected: number; archived: number }
   error?: string
 }
 
@@ -178,8 +183,10 @@ function CrawlerArticlesInner() {
   const [busyBulk, setBusyBulk] = useState(false)
   const [selection, setSelection] = useState<BulkSelectionState>(clearSelection(''))
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmAiPublish, setConfirmAiPublish] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [confirmMatch, setConfirmMatch] = useState(false)
+  const [reviewTarget, setReviewTarget] = useState<ArticleRow | null>(null)
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams(searchParams.toString())
@@ -310,6 +317,53 @@ function CrawlerArticlesInner() {
     }
   }
 
+  async function runAiPublish() {
+    if (busyBulk) return
+    setBusyBulk(true)
+    try {
+      const res = await fetch('/api/admin/crawler/articles/ai-publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({
+          matchFilter: selection.mode === 'matching',
+          ids: selection.mode === 'matching' ? [] : selection.ids,
+          filter: activeFilter(),
+        }),
+      })
+      const body = (await res.json()) as {
+        error?: string
+        published?: number
+        drafted?: number
+        skipped?: number
+        failed?: number
+        requested?: number
+      }
+      if (!res.ok) throw new Error(body.error || 'AI yayın başarısız')
+      notifyCrawlerBulk(
+        {
+          requested: body.requested || count,
+          affected: body.published || 0,
+          skipped: body.skipped || 0,
+          failed: body.failed || 0,
+          skippedReasons: [],
+          tombstoned: 0,
+          hardDeleted: 0,
+          dispatchAttempted: false,
+          aiRequests: body.published || 0,
+          dispatchEnabled: false,
+        },
+        `AI yayın: ${body.published || 0} yayında, ${body.drafted || 0} taslak, ${body.skipped || 0} atlandı, ${body.failed || 0} hata`
+      )
+      setSelection(clearSelection(filterKey))
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'AI yayın başarısız')
+    } finally {
+      setBusyBulk(false)
+      setConfirmAiPublish(false)
+    }
+  }
+
   async function runBulk(
     op: string,
     extra?: { reason?: CrawlerRejectionReason; note?: string; ids?: string[] }
@@ -376,9 +430,8 @@ function CrawlerArticlesInner() {
   const totalPages = data?.totalPages || 1
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1
   const end = Math.min(page * pageSize, total)
-  const view = searchParams.get('view') === 'bySource' ? 'bySource' : 'all'
   const rows = data?.articles || []
-  const visibleIds = view === 'bySource' ? (data?.groups || []).flatMap((g) => g.articles.map((a) => a.id)) : rows.map((r) => r.id)
+  const visibleIds = rows.map((r) => r.id)
   const count = selectedCount(selection, pageSize)
   const hint = pageSelectionHint(selection, pageSize)
   const queue = searchParams.get('queue') || 'active'
@@ -421,14 +474,6 @@ function CrawlerArticlesInner() {
       }}
     >
       <input name="search" defaultValue={searchParams.get('search') || ''} placeholder="Başlıkta ara" className="rounded border px-2 py-1" />
-      <select name="source" defaultValue={searchParams.get('source') || ''} className="rounded border px-2 py-1">
-        <option value="">Kaynak</option>
-        {(data?.sources || []).map((s) => (
-          <option key={s.sourceId} value={s.sourceId}>
-            {s.sourceName} ({s.articleCount})
-          </option>
-        ))}
-      </select>
       <input name="country" defaultValue={searchParams.get('country') || ''} placeholder="Ülke" className="w-16 rounded border px-2 py-1" />
       <input name="city" defaultValue={searchParams.get('city') || ''} placeholder="Şehir" className="w-28 rounded border px-2 py-1" />
       <select name="status" defaultValue={searchParams.get('status') || ''} className="rounded border px-2 py-1">
@@ -485,11 +530,17 @@ function CrawlerArticlesInner() {
 
   function renderActions(row: ArticleRow) {
     const published = row.editorialStatus === 'PUBLISHED'
+    const needsReview = row.reviewMeta?.needsReview === true
     return (
       <div className="flex flex-wrap gap-2 text-xs">
         <button type="button" className="underline" onClick={() => openDrawer(row)}>
           Görüntüle
         </button>
+        {published && needsReview && row.editorialNewsId ? (
+          <button type="button" className="font-semibold text-violet-700 underline dark:text-violet-300" onClick={() => setReviewTarget(row)}>
+            Sınıflandır
+          </button>
+        ) : null}
         {published ? (
           <>
             <span className="text-emerald-600">Yayında</span>
@@ -642,7 +693,14 @@ function CrawlerArticlesInner() {
                   {row.extractionConfidence != null ? `${Math.round(row.extractionConfidence * 100)}%` : '—'}
                 </td>
                 <td className="px-3 py-2">{crawlerStatusLabel(row)}</td>
-                <td className="px-3 py-2">{EDITORIAL_STATUS_LABELS[row.editorialStatus] || row.editorialStatus}</td>
+                <td className="px-3 py-2">
+                  {EDITORIAL_STATUS_LABELS[row.editorialStatus] || row.editorialStatus}
+                  {row.reviewMeta?.needsReview ? (
+                    <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                      İnceleme
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2">{renderActions(row)}</td>
               </tr>
             ))}
@@ -660,7 +718,7 @@ function CrawlerArticlesInner() {
   }
 
   return (
-    <AdminOsPageShell title="Ham Haberler" subtitle="Crawler çıkarımı. AI yok. Ham kayıt değiştirilmez.">
+    <AdminOsPageShell title="Ham Haberler" subtitle="Crawler çıkarımı. Toplu AI yayın editör onayıyla newsroom pipeline üzerinden.">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       <AdminOsMetricGrid
@@ -677,6 +735,7 @@ function CrawlerArticlesInner() {
         {(
           [
             ['active', 'Aktif kuyruk', data?.queueCounts?.active],
+            ['review', 'İnceleme', data?.queueCounts?.review],
             ['published', 'Yayınlananlar', data?.queueCounts?.published],
             ['rejected', 'Reddedilenler', data?.queueCounts?.rejected],
             ['archived', 'Arşivlenenler', data?.queueCounts?.archived],
@@ -692,30 +751,11 @@ function CrawlerArticlesInner() {
           </button>
         ))}
       </div>
-      <div className="mb-3 flex gap-2 text-sm">
-        <button type="button" className={view === 'all' ? 'font-semibold underline' : ''} onClick={() => setParam({ view: null }, true)}>
-          Tüm Haberler
-        </button>
-        <button
-          type="button"
-          className={view === 'bySource' ? 'font-semibold underline' : ''}
-          onClick={() => setParam({ view: 'bySource' }, true)}
-        >
-          Kaynağa Göre
-        </button>
-      </div>
-      <div className="mb-2 flex flex-wrap gap-2 text-xs">
-        {(data?.sources || []).slice(0, 8).map((s) => (
-          <button
-            key={s.sourceId}
-            type="button"
-            className="rounded-full bg-[rgb(var(--color-surface))] px-3 py-1"
-            onClick={() => setParam({ source: s.sourceId, view: null }, true)}
-          >
-            {s.sourceName} ({s.articleCount})
-          </button>
-        ))}
-      </div>
+      <SourceChips
+        sources={data?.sources || []}
+        activeSourceId={searchParams.get('source')}
+        onSelect={(sourceId) => setParam({ source: sourceId }, true)}
+      />
       {filterBar}
       <BulkToolbar
         count={count}
@@ -726,6 +766,14 @@ function CrawlerArticlesInner() {
         onSelectMatching={() => setConfirmMatch(true)}
         onClear={() => setSelection(clearSelection(filterKey))}
       >
+        <button
+          type="button"
+          className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 text-white disabled:opacity-40"
+          disabled={queue !== 'active'}
+          onClick={() => setConfirmAiPublish(true)}
+        >
+          AI Yaz ve Yayınla
+        </button>
         <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => void runBulk('review')}>
           İncelemeye Al
         </button>
@@ -748,19 +796,7 @@ function CrawlerArticlesInner() {
         </div>
         <Pager page={page} totalPages={totalPages} onPage={(p) => setParam({ page: String(p) })} />
       </div>
-      {view === 'bySource'
-        ? (data?.groups || []).map((g) => (
-            <details key={g.sourceId} open className="mb-4">
-              <summary className="mb-2 cursor-pointer font-semibold">
-                <button type="button" className="underline" onClick={() => setParam({ source: g.sourceId, view: null }, true)}>
-                  {g.sourceName}
-                </button>{' '}
-                <span className="text-[rgb(var(--color-muted))]">({g.articleCount})</span>
-              </summary>
-              {renderTable(g.articles)}
-            </details>
-          ))
-        : renderTable(rows)}
+      {renderTable(rows)}
       <div className="mt-3 flex justify-end">
         <Pager page={page} totalPages={totalPages} onPage={(p) => setParam({ page: String(p) })} />
       </div>
@@ -780,6 +816,24 @@ function CrawlerArticlesInner() {
         onClose={() => setRejectOpen(false)}
         onConfirm={(reason, note) => void runBulk('reject', { reason, note })}
       />
+      <AiPublishConfirmModal
+        open={confirmAiPublish}
+        count={count}
+        busy={busyBulk}
+        onClose={() => setConfirmAiPublish(false)}
+        onConfirm={() => void runAiPublish()}
+      />
+      {reviewTarget && reviewTarget.editorialNewsId ? (
+        <ReviewClassificationDrawer
+          open
+          rawArticleId={reviewTarget.id}
+          newsId={reviewTarget.editorialNewsId}
+          title={reviewTarget.reviewMeta?.newsTitle || reviewTarget.title || '(başlıksız)'}
+          reviewMeta={reviewTarget.reviewMeta ?? null}
+          onClose={() => setReviewTarget(null)}
+          onSaved={() => void load()}
+        />
+      ) : null}
       <CrawlerConfirmModal
         open={confirmDelete}
         title="Ham haberleri sil"

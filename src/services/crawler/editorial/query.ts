@@ -20,7 +20,7 @@ export const ACTIVE_EDITORIAL_STATUSES: CrawlerEditorialStatus[] = [
   'SKIPPED',
 ]
 
-export type RawArticleQueueTab = 'active' | 'published' | 'rejected' | 'archived' | 'all'
+export type RawArticleQueueTab = 'active' | 'published' | 'review' | 'rejected' | 'archived' | 'all'
 
 export type RawArticleSortColumn =
   | 'fetchedAt'
@@ -34,7 +34,7 @@ export type RawArticleSortColumn =
 export type SortOrder = 'asc' | 'desc'
 
 export function parseQueueTab(value: string | null): RawArticleQueueTab {
-  if (value === 'published' || value === 'rejected' || value === 'archived' || value === 'all') return value
+  if (value === 'published' || value === 'review' || value === 'rejected' || value === 'archived' || value === 'all') return value
   return 'active'
 }
 
@@ -57,11 +57,15 @@ export function parseSortOrder(value: string | null): SortOrder {
   return value === 'asc' ? 'asc' : 'desc'
 }
 
-export function queueCountsFromStatuses(counts: Record<string, number>): RawArticleQueueCounts {
+export function queueCountsFromStatuses(
+  counts: Record<string, number>,
+  reviewCount = 0
+): RawArticleQueueCounts {
   const active = ACTIVE_EDITORIAL_STATUSES.reduce((sum, key) => sum + (counts[key] || 0), 0)
   return {
     active,
     published: counts.PUBLISHED || 0,
+    review: reviewCount,
     rejected: counts.REJECTED || 0,
     archived: counts.ARCHIVED || 0,
   }
@@ -128,6 +132,7 @@ export function matchesRawArticleQuery(article: RawArticleRecord, query: RawArti
   if (!query.editorialStatus) {
     const queue = query.queue || 'active'
     if (queue === 'published' && article.editorialStatus !== 'PUBLISHED') return false
+    else if (queue === 'review' && article.editorialStatus !== 'PUBLISHED') return false
     else if (queue === 'rejected' && article.editorialStatus !== 'REJECTED') return false
     else if (queue === 'archived' && article.editorialStatus !== 'ARCHIVED') return false
     else if (queue === 'all' && article.editorialStatus === 'DELETED') return false
