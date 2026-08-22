@@ -1,8 +1,10 @@
+import { PORTAL_LEGACY_ALIASES, portalLegacyIdToRegistryKey } from './localCityRegistry'
 import { hostnameOf } from './url/normalize'
 import { TURKEY_SOURCE_REGISTRY } from './turkeyRegistry'
 import type { NewsSourceRecord } from './types'
 
 const EXPLICIT_ALIASES: Record<string, string> = {
+  ...PORTAL_LEGACY_ALIASES,
   gazeteduvar: 'duvar',
   'independent-tr': 'indyturk',
   'euronews-tr': 'euronews',
@@ -18,13 +20,16 @@ const EXPLICIT_ALIASES: Record<string, string> = {
 const REGISTRY_KEYS = TURKEY_SOURCE_REGISTRY.map((e) => e.key).sort((a, b) => b.length - a.length)
 
 export function canonicalLegacyRegistryKey(legacySourceId: string): string {
-  const id = legacySourceId.trim().toLowerCase()
-  if (!id) return id
-  if (EXPLICIT_ALIASES[id]) return EXPLICIT_ALIASES[id]
+  const raw = legacySourceId.trim().toLowerCase()
+  if (!raw) return raw
+  if (EXPLICIT_ALIASES[raw]) return EXPLICIT_ALIASES[raw]
+  const portalKey = portalLegacyIdToRegistryKey(raw)
+  if (EXPLICIT_ALIASES[portalKey]) return EXPLICIT_ALIASES[portalKey]
   for (const key of REGISTRY_KEYS) {
-    if (id === key || id.startsWith(`${key}-`)) return key
+    if (portalKey === key || portalKey.startsWith(`${key}-`)) return key
+    if (raw === key || raw.startsWith(`${key}-`)) return key
   }
-  return id
+  return portalKey
 }
 
 function hostVariants(host: string): string[] {

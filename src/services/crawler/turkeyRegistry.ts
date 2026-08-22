@@ -1,6 +1,7 @@
 import type { CrawlerSourceCategory, CrawlPriorityBand, GeographicScope } from './types'
 import { crawlIntervalForPriority, numericPriorityForBand } from './enabled'
 import type { InsertSourceInput } from './store/types'
+import { buildLocalCityRegistry } from './localCityRegistry'
 
 export interface TurkeyRegistryEntry {
   key: string
@@ -17,7 +18,7 @@ export interface TurkeyRegistryEntry {
   crawlPriority: CrawlPriorityBand
 }
 
-export const TURKEY_SOURCE_REGISTRY: TurkeyRegistryEntry[] = [
+export const NATIONAL_SOURCE_REGISTRY: TurkeyRegistryEntry[] = [
   { key: 'aa', name: 'Anadolu Ajansı', domain: 'aa.com.tr', baseUrl: 'https://www.aa.com.tr', rssUrls: ['https://www.aa.com.tr/tr/rss/default?cat=guncel'], category: 'AGENCY', scope: 'NATIONAL', crawlPriority: 'BREAKING' },
   { key: 'iha', name: 'İHA', domain: 'iha.com.tr', baseUrl: 'https://www.iha.com.tr', rssUrls: ['https://www.iha.com.tr/rss/guncel'], category: 'AGENCY', scope: 'NATIONAL', crawlPriority: 'HIGH' },
   { key: 'dha', name: 'DHA', domain: 'dha.com.tr', baseUrl: 'https://www.dha.com.tr', rssUrls: ['https://www.dha.com.tr/rss'], category: 'AGENCY', scope: 'NATIONAL', crawlPriority: 'HIGH' },
@@ -74,6 +75,16 @@ export const TURKEY_SOURCE_REGISTRY: TurkeyRegistryEntry[] = [
   { key: 'biga', name: 'Biga Haber', domain: 'bigahaber.com', baseUrl: 'https://www.bigahaber.com', rssUrls: ['https://www.bigahaber.com/rss'], category: 'LOCAL', scope: 'DISTRICT', city: 'Çanakkale', district: 'Biga', region: 'Marmara', crawlPriority: 'LOW' },
   { key: 'anadolujet', name: 'Ankara Büyükşehir', domain: 'ankara.bel.tr', baseUrl: 'https://www.ankara.bel.tr', rssUrls: ['https://www.ankara.bel.tr/rss'], category: 'PUBLIC', scope: 'CITY', city: 'Ankara', region: 'İç Anadolu', crawlPriority: 'LOW' },
   { key: 'ibb', name: 'İBB Haber', domain: 'ibb.istanbul', baseUrl: 'https://www.ibb.istanbul', rssUrls: ['https://www.ibb.istanbul/rss'], category: 'PUBLIC', scope: 'CITY', city: 'İstanbul', region: 'Marmara', crawlPriority: 'LOW' },
+]
+
+const nationalDomains = new Set(NATIONAL_SOURCE_REGISTRY.map((e) => e.domain.toLowerCase()))
+
+/** Curated local portals from LOCAL_PORTAL_FEEDS (excludes domains already in national registry). */
+export const LOCAL_CITY_SOURCE_REGISTRY: TurkeyRegistryEntry[] = buildLocalCityRegistry(nationalDomains)
+
+export const TURKEY_SOURCE_REGISTRY: TurkeyRegistryEntry[] = [
+  ...NATIONAL_SOURCE_REGISTRY,
+  ...LOCAL_CITY_SOURCE_REGISTRY,
 ]
 
 export function turkeyRegistryToInsert(entry: TurkeyRegistryEntry): InsertSourceInput {
