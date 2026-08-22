@@ -21,8 +21,8 @@ export function AiPublishConfirmModal({
   return (
     <CrawlerConfirmModal
       open={open}
-      title="AI ile yaz ve yayınla"
-      confirmLabel="AI Yayınla"
+      title="AI için onayla"
+      confirmLabel="AI için onayla"
       busy={busy}
       onClose={onClose}
       onConfirm={() => ack && onConfirm()}
@@ -30,19 +30,12 @@ export function AiPublishConfirmModal({
     >
       <div className="space-y-3 text-sm">
         <p>
-          <strong>{count}</strong> ham haber seçildi. Onay sonrası newsroom AI pipeline doğrudan çalışır ve uygun
-          haberler yayına alınır.
+          <strong>{count}</strong> ham haber seçildi. Haberler hemen AI ile yazılıp yayına alınacak; inceleme
+          sekmesinde sadece kategori düzeltebilirsiniz.
         </p>
         <p>
-          Bu editör onaylı yol <strong>crawler otomatik dispatch kullanmaz</strong> ve Ön-AI kuyruğunu atlar.
+          Bu işlem Ön-AI kuyruğunu veya &quot;AI Adayı&quot; durumunu kullanmaz; newsroom pipeline doğrudan çalışır.
         </p>
-        <p>Bu işlem:</p>
-        <ul className="list-disc pl-5">
-          <li>Ön-AI kuyruğunu atlar</li>
-          <li>AI ile yazım + chief editor değerlendirmesi yapar</li>
-          <li>Güvenilir yayınlar canlıya gider (İnceleme sekmesine düşer)</li>
-          <li>Token maliyeti oluşur</li>
-        </ul>
         <label className="flex items-start gap-2">
           <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
           <span>AI maliyetini ve doğrudan yayını onaylıyorum.</span>

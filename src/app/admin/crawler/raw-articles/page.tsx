@@ -32,6 +32,7 @@ import {
 import type { BulkResult } from '@/services/crawler/editorial/bulk'
 import type { CrawlerEditorialStatus, CrawlerRejectionReason } from '@/services/crawler/types'
 import { loadAdminJson } from '@/lib/adminApiError'
+import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { sameEventBadgeLabel } from '@/services/crawler/editorial/eventDesk'
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -159,6 +160,7 @@ export default function CrawlerArticlesPage() {
 function CrawlerArticlesInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { can } = useCmsAuth()
   const [data, setData] = useState<ListResponse | null>(null)
   const [detail, setDetail] = useState<ArticleRow | null>(null)
   const [detailMedia, setDetailMedia] = useState<
@@ -352,7 +354,7 @@ function CrawlerArticlesInner() {
           aiRequests: body.published || 0,
           dispatchEnabled: false,
         },
-        `AI yayın: ${body.published || 0} yayında, ${body.drafted || 0} taslak, ${body.skipped || 0} atlandı, ${body.failed || 0} hata`
+        `AI için onayla: ${body.published || 0} yayında, ${body.drafted || 0} taslak, ${body.skipped || 0} atlandı, ${body.failed || 0} hata`
       )
       setSelection(clearSelection(filterKey))
       await load()
@@ -435,6 +437,7 @@ function CrawlerArticlesInner() {
   const count = selectedCount(selection, pageSize)
   const hint = pageSelectionHint(selection, pageSize)
   const queue = searchParams.get('queue') || 'active'
+  const canAiPublish = can('news:publish')
   const sortCol = searchParams.get('sort')
   const sortOrder = searchParams.get('order')
 
@@ -718,7 +721,7 @@ function CrawlerArticlesInner() {
   }
 
   return (
-    <AdminOsPageShell title="Ham Haberler" subtitle="Crawler çıkarımı. Toplu AI yayın editör onayıyla newsroom pipeline üzerinden.">
+    <AdminOsPageShell title="Ham Haberler" subtitle="Crawler çıkarımı. Aktif kuyrukta seçili haberleri AI için onaylayıp doğrudan yayına alın.">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       <AdminOsMetricGrid
@@ -766,14 +769,15 @@ function CrawlerArticlesInner() {
         onSelectMatching={() => setConfirmMatch(true)}
         onClear={() => setSelection(clearSelection(filterKey))}
       >
-        <button
-          type="button"
-          className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 text-white disabled:opacity-40"
-          disabled={queue !== 'active'}
-          onClick={() => setConfirmAiPublish(true)}
-        >
-          AI Yaz ve Yayınla
-        </button>
+        {canAiPublish && queue === 'active' ? (
+          <button
+            type="button"
+            className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 text-white"
+            onClick={() => setConfirmAiPublish(true)}
+          >
+            AI için onayla
+          </button>
+        ) : null}
         <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => void runBulk('review')}>
           İncelemeye Al
         </button>
