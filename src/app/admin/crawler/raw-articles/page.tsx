@@ -160,7 +160,7 @@ export default function CrawlerArticlesPage() {
 function CrawlerArticlesInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { can } = useCmsAuth()
+  const { can, isSuperAdmin, loading: authLoading } = useCmsAuth()
   const [data, setData] = useState<ListResponse | null>(null)
   const [detail, setDetail] = useState<ArticleRow | null>(null)
   const [detailMedia, setDetailMedia] = useState<
@@ -437,7 +437,13 @@ function CrawlerArticlesInner() {
   const count = selectedCount(selection, pageSize)
   const hint = pageSelectionHint(selection, pageSize)
   const queue = searchParams.get('queue') || 'active'
-  const canAiPublish = can('news:publish')
+  const canAiPublish = can('news:publish') || isSuperAdmin
+  const aiPublishDisabled = authLoading || !canAiPublish
+  const aiPublishHint = authLoading
+    ? 'Yetki yükleniyor…'
+    : !canAiPublish
+      ? 'Yayın yetkisi (news:publish) gerekli'
+      : 'Seçili haberleri AI ile doğrudan yayına al'
   const sortCol = searchParams.get('sort')
   const sortOrder = searchParams.get('order')
 
@@ -760,6 +766,12 @@ function CrawlerArticlesInner() {
         onSelect={(sourceId) => setParam({ source: sourceId }, true)}
       />
       {filterBar}
+      {count > 0 && queue === 'active' ? (
+        <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
+          Yayın için: <strong className="text-[rgb(var(--color-fg))]">AI için onayla</strong> — İncelemeye Al ve AI Adayı yalnızca
+          editoryal durumu değiştirir, yayınlamaz.
+        </p>
+      ) : null}
       <BulkToolbar
         count={count}
         pageHint={hint}
@@ -769,11 +781,16 @@ function CrawlerArticlesInner() {
         onSelectMatching={() => setConfirmMatch(true)}
         onClear={() => setSelection(clearSelection(filterKey))}
       >
-        {canAiPublish && queue === 'active' ? (
+        {queue === 'active' ? (
           <button
             type="button"
-            className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 text-white"
-            onClick={() => setConfirmAiPublish(true)}
+            className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={aiPublishDisabled}
+            title={aiPublishHint}
+            onClick={() => {
+              if (aiPublishDisabled) return
+              setConfirmAiPublish(true)
+            }}
           >
             AI için onayla
           </button>

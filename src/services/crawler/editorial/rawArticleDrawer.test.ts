@@ -69,4 +69,11 @@ describe('raw-articles page closeDrawer race fix', () => {
     expect(pageSrc).toContain('onClick={() => openDrawer(row)}')
     expect(pageSrc).not.toMatch(/Görüntüle[\s\S]{0,80}setDetail\(row\)/)
   })
+
+  it('shows AI için onayla on active queue regardless of permission gate', () => {
+    expect(pageSrc).toContain('AI için onayla')
+    expect(pageSrc).toContain('queue === \'active\'')
+    expect(pageSrc).not.toMatch(/\{canAiPublish && queue === 'active'/)
+    expect(pageSrc).toContain('Yayın için:')
+  })
 })
