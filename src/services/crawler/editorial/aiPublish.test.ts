@@ -7,6 +7,7 @@ import {
   isRawArticleAiPublishEligible,
   publishRawArticlesWithAi,
 } from './aiPublish'
+import { AI_PUBLISH_TIMEOUT_SKIP_TR } from './aiPublishEligibility'
 import type { InsertRawArticleInput } from '../store/types'
 
 vi.mock('@/lib/firebase/admin', () => ({
@@ -175,6 +176,40 @@ describe('publishRawArticlesWithAi batch', () => {
     expect(result.results).toHaveLength(3)
     expect(result.published).toBe(2)
     expect(result.failed).toBe(1)
+  })
+
+  it('stops before wall-clock budget and marks remaining as skipped', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store)
+    const articles = await Promise.all(
+      Array.from({ length: 4 }, (_, i) => seedArticle(store, source, `budget-haber-${i + 1}`))
+    )
+    const ids = articles.map((a) => a.id)
+
+    let now = 1_000_000
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+    let call = 0
+    const processArticle = async () => {
+      call += 1
+      now += 60 // exceed 50ms budget before the next loop check
+      return { outcome: 'published' as const, newsId: `news_${call}` }
+    }
+
+    try {
+      const result = await publishRawArticlesWithAi({
+        store,
+        ids,
+        processArticle: processArticle as never,
+        budgetMs: 50,
+      })
+
+      expect(result.results).toHaveLength(4)
+      expect(result.published).toBe(1)
+      expect(result.skipped).toBe(3)
+      expect(result.results.filter((r) => r.error === AI_PUBLISH_TIMEOUT_SKIP_TR)).toHaveLength(3)
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 

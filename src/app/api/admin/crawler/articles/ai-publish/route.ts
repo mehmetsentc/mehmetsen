@@ -49,43 +49,59 @@ function filterFrom(body: Record<string, unknown>): RawArticleListQuery {
 /**
  * Editor-initiated bulk AI publish from Ham Haberler.
  * Uses newsroom pipeline directly — NOT Ön-AI queue, NOT crawler auto-dispatch.
+ * Always returns JSON — never rely on Next/Vercel HTML/plain-text error pages.
  */
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'news:publish')
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const auth = await verifyCmsToken(request, 'news:publish')
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const authz = authorizeEditorAiPublish(auth.role)
-  if (!authz.ok) return NextResponse.json({ error: authz.error }, { status: 403 })
+    const authz = authorizeEditorAiPublish(auth.role)
+    if (!authz.ok) return NextResponse.json({ error: authz.error }, { status: 403 })
 
-  if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing' }, { status: 503 })
+    if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing' }, { status: 503 })
 
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
-  const store = new DrizzleCrawlerStore()
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    const store = new DrizzleCrawlerStore()
 
-  let ids: string[] = []
-  let requested = 0
-  if (body.matchFilter === true) {
-    const listed = await store.listRawArticleIds(filterFrom((body.filter as Record<string, unknown>) || body), FILTER_MATCH_CAP)
-    if (listed.total > BULK_ID_CAP) {
-      return NextResponse.json({ error: `En fazla ${BULK_ID_CAP} kayıt seçilebilir` }, { status: 400 })
+    let ids: string[] = []
+    let requested = 0
+    if (body.matchFilter === true) {
+      const listed = await store.listRawArticleIds(
+        filterFrom((body.filter as Record<string, unknown>) || body),
+        FILTER_MATCH_CAP
+      )
+      if (listed.total > BULK_ID_CAP) {
+        return NextResponse.json({ error: `En fazla ${BULK_ID_CAP} kayıt seçilebilir` }, { status: 400 })
+      }
+      ids = listed.ids
+      requested = listed.total
+    } else {
+      ids = [
+        ...new Set(
+          (Array.isArray(body.ids) ? body.ids.map(String) : [])
+            .map((id) => id.trim())
+            .filter(Boolean)
+        ),
+      ]
+      requested = ids.length
+      if (ids.length > BULK_ID_CAP) {
+        return NextResponse.json({ error: `En fazla ${BULK_ID_CAP} kayıt seçilebilir` }, { status: 400 })
+      }
     }
-    ids = listed.ids
-    requested = listed.total
-  } else {
-    ids = [...new Set((Array.isArray(body.ids) ? body.ids.map(String) : []).map((id) => id.trim()).filter(Boolean))]
-    requested = ids.length
-    if (ids.length > BULK_ID_CAP) {
-      return NextResponse.json({ error: `En fazla ${BULK_ID_CAP} kayıt seçilebilir` }, { status: 400 })
+
+    if (ids.length > AI_PUBLISH_BATCH_CAP) {
+      return NextResponse.json(
+        { error: `Tek seferde en fazla ${AI_PUBLISH_BATCH_CAP} haber AI ile yayınlanabilir` },
+        { status: 400 }
+      )
     }
-  }
 
-  if (ids.length > AI_PUBLISH_BATCH_CAP) {
-    return NextResponse.json(
-      { error: `Tek seferde en fazla ${AI_PUBLISH_BATCH_CAP} haber AI ile yayınlanabilir` },
-      { status: 400 }
-    )
+    const result = await publishRawArticlesWithAi({ store, ids })
+    return NextResponse.json({ ...result, requested })
+  } catch (err) {
+    console.error('[ai-publish]', err)
+    const message = err instanceof Error ? err.message : 'AI yayın başarısız'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  const result = await publishRawArticlesWithAi({ store, ids })
-  return NextResponse.json({ ...result, requested })
 }

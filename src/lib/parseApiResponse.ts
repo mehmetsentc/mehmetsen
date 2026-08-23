@@ -19,6 +19,13 @@ export async function parseApiResponse<T = Record<string, unknown>>(
     return JSON.parse(trimmed) as T
   } catch {
     const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 180)
+    if (/an error occurred/i.test(snippet)) {
+      throw new Error(
+        res.status === 504 || /timeout/i.test(snippet)
+          ? `Sunucu zaman aşımı (HTTP ${res.status || 504}). Daha az haber seçip yeniden deneyin.`
+          : `Sunucu hatası (HTTP ${res.status || 500}). Yanıt JSON değil — işlem yarıda kesilmiş olabilir.`
+      )
+    }
     throw new Error(
       res.ok
         ? `Geçersiz API yanıtı: ${snippet}`

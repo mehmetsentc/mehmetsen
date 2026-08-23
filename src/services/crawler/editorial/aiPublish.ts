@@ -9,9 +9,22 @@ import type { NewsroomArticleInput } from '@/services/newsroom/types'
 import type { CmsRole } from '@/types/cms'
 import { hasPermission } from '@/types/cms'
 
-export { isRawArticleAiPublishEligible } from './aiPublishEligibility'
+export {
+  isRawArticleAiPublishEligible,
+  AI_PUBLISH_TIMEOUT_SKIP_TR,
+} from './aiPublishEligibility'
+import { AI_PUBLISH_TIMEOUT_SKIP_TR } from './aiPublishEligibility'
 
 export const AI_PUBLISH_BATCH_CAP = 25
+
+/**
+ * Leave headroom under Vercel `maxDuration` (300s). Without this, bulk AI
+ * publish is killed mid-flight and the platform returns plain text
+ * "An error occurred..." — which breaks `res.json()` on the CMS client.
+ */
+export const AI_PUBLISH_WALL_CLOCK_BUDGET_MS = Number(
+  process.env.AI_PUBLISH_BUDGET_MS ?? 250_000
+)
 
 export type AiPublishOutcome = 'published' | 'draft' | 'updated' | 'skipped' | 'error' | 'already_published' | 'locked'
 
@@ -83,30 +96,30 @@ export async function publishRawArticleWithAi(opts: {
   rawArticleId: string
   processArticle?: typeof import('@/services/newsroom/pipeline').processNewsroomArticle
 }): Promise<AiPublishItemResult> {
-  const article = await opts.store.getRawArticle(opts.rawArticleId)
-  if (!article) return { rawArticleId: opts.rawArticleId, outcome: 'error', error: 'Ham haber bulunamadı' }
+  try {
+    const article = await opts.store.getRawArticle(opts.rawArticleId)
+    if (!article) return { rawArticleId: opts.rawArticleId, outcome: 'error', error: 'Ham haber bulunamadı' }
 
-  if (article.editorialStatus === 'PUBLISHED') {
-    const existing = article.editorialNewsId ? await loadPublishedNews(article.editorialNewsId) : null
-    if (existing?.status === 'published') {
-      return {
-        rawArticleId: opts.rawArticleId,
-        outcome: 'already_published',
-        newsId: existing.id,
-        editPath: `/admin/news/${existing.id}/edit`,
-        publicPath: existing.slug ? `/haber/${existing.slug}` : undefined,
+    if (article.editorialStatus === 'PUBLISHED') {
+      const existing = article.editorialNewsId ? await loadPublishedNews(article.editorialNewsId) : null
+      if (existing?.status === 'published') {
+        return {
+          rawArticleId: opts.rawArticleId,
+          outcome: 'already_published',
+          newsId: existing.id,
+          editPath: `/admin/news/${existing.id}/edit`,
+          publicPath: existing.slug ? `/haber/${existing.slug}` : undefined,
+        }
       }
     }
-  }
 
-  if (article.editorialStatus === 'DELETED') {
-    return { rawArticleId: opts.rawArticleId, outcome: 'locked', error: 'Silinmiş kayıt' }
-  }
+    if (article.editorialStatus === 'DELETED') {
+      return { rawArticleId: opts.rawArticleId, outcome: 'locked', error: 'Silinmiş kayıt' }
+    }
 
-  const source = await opts.store.getSource(article.sourceId)
-  const input = buildNewsroomInputFromRaw(article, source)
+    const source = await opts.store.getSource(article.sourceId)
+    const input = buildNewsroomInputFromRaw(article, source)
 
-  try {
     const { getAdminFirestore } = await import('@/lib/firebase/admin')
     const db = getAdminFirestore()
     const processArticle =
@@ -176,9 +189,13 @@ export async function publishRawArticlesWithAi(opts: {
   store: CrawlerStore
   ids: string[]
   processArticle?: typeof import('@/services/newsroom/pipeline').processNewsroomArticle
+  /** Override wall-clock budget (ms). Tests / local tuning. */
+  budgetMs?: number
 }): Promise<AiPublishBatchResult> {
   const unique = [...new Set(opts.ids.map((id) => id.trim()).filter(Boolean))]
   const batch = unique.slice(0, AI_PUBLISH_BATCH_CAP)
+  const budgetMs = opts.budgetMs ?? AI_PUBLISH_WALL_CLOCK_BUDGET_MS
+  const startedAt = Date.now()
   const result: AiPublishBatchResult = {
     requested: unique.length,
     published: 0,
@@ -189,7 +206,24 @@ export async function publishRawArticlesWithAi(opts: {
     crawlerDispatchEnabled: isCrawlerAiDispatchEnabled(),
   }
 
-  for (const rawArticleId of batch) {
+  for (let i = 0; i < batch.length; i++) {
+    if (i > 0 && Date.now() - startedAt > budgetMs) {
+      const remaining = batch.slice(i)
+      console.warn(
+        `[aiPublish] wall-clock budget (${budgetMs / 1000}s) aşıldı — ${remaining.length} haber atlandı`
+      )
+      for (const rawArticleId of remaining) {
+        result.results.push({
+          rawArticleId,
+          outcome: 'skipped',
+          error: AI_PUBLISH_TIMEOUT_SKIP_TR,
+        })
+        result.skipped += 1
+      }
+      break
+    }
+
+    const rawArticleId = batch[i]!
     const item = await publishRawArticleWithAi({
       store: opts.store,
       rawArticleId,

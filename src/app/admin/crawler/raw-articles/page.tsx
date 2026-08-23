@@ -35,6 +35,7 @@ import {
 import type { BulkResult } from '@/services/crawler/editorial/bulk'
 import type { CrawlerEditorialStatus, CrawlerRejectionReason } from '@/services/crawler/types'
 import { loadAdminJson } from '@/lib/adminApiError'
+import { parseApiResponse } from '@/lib/parseApiResponse'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { sameEventBadgeLabel } from '@/services/crawler/editorial/eventDesk'
 
@@ -348,7 +349,7 @@ function CrawlerArticlesInner() {
           filter: activeFilter(),
         }),
       })
-      const body = (await res.json()) as AiPublishBatchResult & { error?: string }
+      const body = await parseApiResponse<AiPublishBatchResult & { error?: string }>(res)
       if (!res.ok) throw new Error(body.error || 'AI yayın başarısız')
       notifyAiPublishResult({
         requested: body.requested ?? (singleId ? 1 : count),
