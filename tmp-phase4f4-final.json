@@ -1,0 +1,258 @@
+{
+  "mode": "costs",
+  "at": "2026-08-21T17:11:52.596Z",
+  "T4F4": "2026-08-21T15:24:39.000Z",
+  "HIST_PROTECT": [
+    "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+    "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "cl_f82807da-0345-4057-a870-9735d4e6e667",
+    "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+    "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+    "cl_713c7834-a506-4c50-8d45-32109c988edd",
+    "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+    "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe"
+  ],
+  "machine_eligible": {
+    "c": 215
+  },
+  "approved_for_ai": {
+    "c": 10
+  },
+  "jobs_by": [
+    {
+      "status": "COMPLETED",
+      "c": 5
+    },
+    {
+      "status": "FAILED",
+      "c": 4
+    }
+  ],
+  "active_jobs": {
+    "c": 0
+  },
+  "uncertain_jobs": {
+    "c": 0
+  },
+  "drafts": {
+    "c": 5
+  },
+  "ledger_all": {
+    "cost": 0.03646235913038254,
+    "n": 10
+  },
+  "ledger_today": {
+    "cost": 0.01930588111281395,
+    "n": 5
+  },
+  "ledger_month": {
+    "cost": 0.03646235913038254,
+    "n": 14
+  },
+  "ledger_after_T4F4": {
+    "cost": 0.005619239993393421,
+    "n": 2
+  },
+  "jobs_after_T4F4": [
+    {
+      "id": "aij_586f9150-c052-4b1f-b00c-4345138eb5b3",
+      "cluster_id": "cl_4c9e1fe1-424d-49fa-a8de-ade72730c791",
+      "status": "COMPLETED",
+      "eligibility_status": "AUTO_DRAFT_ELIGIBLE",
+      "estimated_cost_usd": 0.00450164,
+      "actual_cost_usd": 0.00265496,
+      "failure_code": null,
+      "failure_reason": null,
+      "created_at": "2026-08-21T15:31:25.470Z",
+      "completed_at": "2026-08-21T15:32:18.211Z",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "actual_input_tokens": 1882,
+      "actual_output_tokens": 1384,
+      "execution_id": "exec_aij_586f9150-c052-4b1f-b00c-4345138eb5b3_mt33y5k4",
+      "editorial_news_id": "d_cad_cl_4c9e1fe1-424d-49fa-a8de-ade72730c791",
+      "has_draft_snapshot": true
+    },
+    {
+      "id": "aij_732f5712-cbf3-48cf-ae46-80e6683d2ce3",
+      "cluster_id": "cl_411c9d93-968d-49f8-9485-14185ccc32ba",
+      "status": "COMPLETED",
+      "eligibility_status": "AUTO_DRAFT_ELIGIBLE",
+      "estimated_cost_usd": 0.00455576,
+      "actual_cost_usd": 0.00296428,
+      "failure_code": null,
+      "failure_reason": null,
+      "created_at": "2026-08-21T15:32:27.075Z",
+      "completed_at": "2026-08-21T15:33:18.777Z",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "actual_input_tokens": 2048,
+      "actual_output_tokens": 1563,
+      "execution_id": "exec_aij_732f5712-cbf3-48cf-ae46-80e6683d2ce3_mt33zfhp",
+      "editorial_news_id": "d_cad_cl_411c9d93-968d-49f8-9485-14185ccc32ba",
+      "has_draft_snapshot": true
+    }
+  ],
+  "crawler_freshness": {
+    "latest_discovery": "2026-08-21T17:11:25.406Z",
+    "latest_extract": "2026-08-21T17:11:42.461Z",
+    "latest_cluster": "2026-08-21T17:11:27.003Z",
+    "latest_cluster_update": "2026-08-21T17:11:50.903Z"
+  },
+  "budget_windows": [
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T17",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T17:00:17.116Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T16",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T16:01:36.052Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "month",
+      "period_key": "2026-08",
+      "request_count": 8,
+      "reserved_usd": 0.008114039897918701,
+      "spent_usd": 0.02376220002770424,
+      "updated_at": "2026-08-21T15:33:18.846Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "day",
+      "period_key": "2026-08-21",
+      "request_count": 5,
+      "reserved_usd": 0,
+      "spent_usd": 0.0193058792501688,
+      "updated_at": "2026-08-21T15:33:18.841Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T15",
+      "request_count": 2,
+      "reserved_usd": 0,
+      "spent_usd": 0.005619239993393421,
+      "updated_at": "2026-08-21T15:33:18.833Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T14",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T14:03:08.619Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T13",
+      "request_count": 1,
+      "reserved_usd": 0,
+      "spent_usd": 0.008997559547424316,
+      "updated_at": "2026-08-21T13:33:54.541Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T12",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T12:00:24.549Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T11",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T11:00:18.685Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T10",
+      "request_count": 1,
+      "reserved_usd": 0.004436519928276539,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T10:44:33.749Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T09",
+      "request_count": 1,
+      "reserved_usd": 0,
+      "spent_usd": 0.00468908017501235,
+      "updated_at": "2026-08-21T09:52:22.344Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T08",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T08:02:08.996Z"
+    }
+  ],
+  "hist_jobs_after": [],
+  "auto_pubs_after": {
+    "c": 0
+  },
+  "uniqueEconomic": {
+    "c": 170,
+    "wd": 107,
+    "wb": 63
+  },
+  "uniqueMetrics": {
+    "rawEvaluations": 170,
+    "distinctClusters": 167,
+    "uniqueEventRevisions": 170,
+    "uniqueWouldDispatch": 107,
+    "uniqueWouldBlock": 63,
+    "byTier": {
+      "C": 6,
+      "D": 55,
+      "B": 108,
+      "A": 1
+    },
+    "byBlockReason": {
+      "tier_c_borderline": 1,
+      "HISTORICAL_BLOCKED": 7,
+      "ALREADY_PUBLISHED": 8,
+      "WAITING_FOR_MORE_SOURCES": 30,
+      "TOO_THIN": 17
+    },
+    "byPrespend": {
+      "PRESPEND_READY": 108,
+      "HISTORICAL_BLOCKED": 7,
+      "ALREADY_PUBLISHED": 8,
+      "WAITING_FOR_MORE_SOURCES": 30,
+      "TOO_THIN": 17
+    },
+    "estimatedRequestsAfterGate": 107,
+    "estimatedRequestsBeforeGate": 170,
+    "estimatedRequestsPrevented": 63,
+    "requestPreventionPct": 37.1,
+    "estimatedSpendAfterGateUsd": 0.4963596,
+    "estimatedSpendBeforeGateUsd": 0.77698412,
+    "estimatedSpendPreventedUsd": 0.28062452,
+    "spendPreventionPct": 36.1,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  }
+}

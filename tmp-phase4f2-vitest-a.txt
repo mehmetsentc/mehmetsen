@@ -1,0 +1,14 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/autoDraft/phase4f.policy.test.ts (3 tests) 3ms
+ ✓ src/services/crawler/autoDraft/phase4e1.test.ts (11 tests) 23ms
+ ✓ src/services/crawler/autoDraft/phase4f1.test.ts (30 tests) 28ms
+ ✓ src/services/crawler/autoDraft/phase4d3.test.ts (12 tests) 28ms
+ ✓ src/services/crawler/autoDraft/phase4e.test.ts (23 tests) 24ms
+
+ Test Files  5 passed (5)
+      Tests  79 passed (79)
+   Start at  16:21:20
+   Duration  985ms (transform 715ms, setup 0ms, collect 2.07s, tests 105ms, environment 1ms, prepare 519ms)
+

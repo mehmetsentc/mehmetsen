@@ -1,0 +1,138 @@
+{
+  "health": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-20T22:46:38.011Z",
+    "version": "7fd1680",
+    "env": "production",
+    "region": "fra1"
+  },
+  "clusterId": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+  "cost0": 0.014165359549224377,
+  "cost1": 0.014165359549224377,
+  "phaseSpend": 0,
+  "finalJob": {
+    "id": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+    "status": "FAILED",
+    "draftId": null,
+    "executionId": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp",
+    "hasDraftSnapshot": false,
+    "draftTitle": null,
+    "actualCost": 0.00299112,
+    "input": 1920,
+    "output": 1626,
+    "model": "deepseek-v4-flash",
+    "failureCode": "PROVIDER_SUCCEEDED_FINALIZE_FAILED"
+  },
+  "publishedNewsId": null,
+  "histJobs": [],
+  "timeline": [
+    {
+      "step": "pre",
+      "at": "2026-08-20T22:46:18.933Z",
+      "cost": 0.014165359549224377
+    },
+    {
+      "step": "crawler_tick_enqueue",
+      "status": 200,
+      "body": {
+        "enabled": true,
+        "sourcesChecked": 0,
+        "urlsInserted": 0,
+        "articlesFetched": 0,
+        "extractionSuccess": 0,
+        "duplicates": 0,
+        "aiCandidates": 0,
+        "aiAvoided": 0,
+        "aiRequests": 0,
+        "articlesClustered": 0,
+        "clustersCreated": 0,
+        "mediaChecked": 8
+      },
+      "at": "2026-08-20T22:46:23.946Z",
+      "jobsCreated": {
+        "enabled": true,
+        "sourcesChecked": 0,
+        "urlsInserted": 0,
+        "articlesFetched": 0,
+        "extractionSuccess": 0,
+        "duplicates": 0,
+        "aiCandidates": 0,
+        "aiAvoided": 0,
+        "aiRequests": 0,
+        "articlesClustered": 0,
+        "clustersCreated": 0,
+        "mediaChecked": 8
+      }
+    },
+    {
+      "step": "jobs_after_tick",
+      "jobs": [
+        {
+          "id": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+          "status": "PENDING",
+          "lease_owner": null,
+          "execution_id": null,
+          "editorial_news_id": null,
+          "failure_code": null,
+          "created_at": "2026-08-20T22:46:24.020Z",
+          "updated_at": "2026-08-20T22:46:24.020Z"
+        }
+      ]
+    },
+    {
+      "step": "worker",
+      "status": 200,
+      "body": {
+        "mode": "CONTROLLED_AUTO_DRAFT",
+        "claimed": 1,
+        "skipped": 0,
+        "providerCalls": 1,
+        "draftsPersisted": 0,
+        "completed": 0,
+        "failed": 1,
+        "published": 0,
+        "reasons": {
+          "PROVIDER_SUCCEEDED_FINALIZE_FAILED": 1
+        },
+        "jobId": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+        "clusterId": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+        "draftId": null,
+        "executionId": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp",
+        "leaseOwner": "aiw_mt240rve_xrgoyldb",
+        "timingsMs": {
+          "claim": 29,
+          "pack": 35,
+          "provider": 12080,
+          "persist": 22,
+          "total": 12194
+        },
+        "providerReady": true,
+        "leaseRecovered": 0,
+        "recoverReasons": {}
+      },
+      "at": "2026-08-20T22:46:36.872Z"
+    },
+    {
+      "step": "watch_0",
+      "at": "2026-08-20T22:46:37.356Z",
+      "jobs": [
+        {
+          "id": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+          "status": "FAILED",
+          "lease_owner": null,
+          "execution_id": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp",
+          "editorial_news_id": null,
+          "failure_code": "PROVIDER_SUCCEEDED_FINALIZE_FAILED",
+          "failure_reason": "Failed query: update \"crawler_ai_jobs\" set \"status\" = $1, \"actual_input_tokens\" = $2, \"actual_output_tokens\" = $3, \"actual_cost_usd\" = $4, \"completed_at\" = $5, \"failure_reason\" = $6, \"failure_code\" = $7, \"editorial_news_id\" = $8, \"lease_owner\" = $9, \"lease_expires_at\" = $10, \"last_heartbeat_at\" = $11, \"draft_snapshot\" = $12, \"validation_snapshot\" = $13, \"updated_at\" = $14 where \"crawler_ai_jobs\".\"id\" = $15\nparams: COMPLETED,1920,1626,0.0029911200000000003,2026-08-20T22:46:36.966Z,,,draft_controlled_auto_draft_cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4,,,2026-08-20T22:46:36.966Z,{\"draftId\":\"draft_controlled_auto_draft_cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4\",\"status\":\"AI_DRAFT\",\"title\":\"Paraşütle uçaktan atılan 76 kunduz bölgenin kaderini değiştirdi\",\"spot\":\"1948'de Idaho'da ulaşılması zor bir bölgeye paraşütle bırakılan 76 kunduzdan 75'i hayatta kaldı. Yıllar sonra bile etkileri süren bu yöntem, sulak alanların oluşmasına ve kuraklıkla mücadeleye katkı sağladı.\",\"body\":\"1948 yılında ABD'nin Idaho eyaletinde gerçekleştirilen sıra dışı bir operasyon, bölgenin ekosistemini bugün bile etkilemeye devam ediyor. Idaho Balık ve Av Departmanı, ulaşılması güç Chamberlain Basin bölgesine kunduzları taşımak için paraşütle uçaktan atma yöntemini kullandı. Dağlık ve yoğun ormanlarla kaplı bölgeye karayoluyla ulaşımın zor olması, at ve katırlarla yapılan taşımaların da hayvanları yorması üzerine havadan taşıma kararı alındı. Departman çalışanı Elmo Heter, kunduzların zarar görmeden yere ulaşabilmesi için açılabilir özel ahşap kutular hazırladı. İkinci Dünya Savaşı'ndan kalan paraşütler bu kutulara bağlandı. Kutular yere ulaştığında açılıyor ve kunduzlar dışarı çıkabiliyordu. Sistem önce ağırlıklarla, ardından Geronimo adı verilen bir kunduzla test edildi. Testlerin başarılı olmasının ardından Ağustos 1948'de operasyon başladı. Toplam 76 kunduz paraşütle doğaya bırakıldı ve bunlardan 75'i hayatta kaldı. Yeni bölgelerine ulaşan kunduzlar kısa süre içinde koloniler oluşturmaya ve akarsular üzerinde barajlar yapmaya başladı. Bu barajlar suyun akışını yavaşlatarak çevrede yeni göletlerin ve sulak alanların oluşmasını sağladı. Zamanla bu alanlar balıklar, kuşlar ve diğer yaban hayvanları için de yaşam alanına dönüştü. Kunduzların oluşturduğu barajlar aynı zamanda suyun hızla akıp gitmesini önleyerek toprağın daha uzun süre nemli kalmasına yardımcı oluyor. Su çevredeki araziye yayıldığı için bitki örtüsü de kurak dönemlerde daha uzun süre canlı kalabiliyor. Aradan yıllar geçmesine rağmen bu yöntemin olumlu etkileri devam ediyor. Kunduzların oluşturduğu sulak alanlar suyun arazide tutulmasına, yer altı sularının beslenmesine ve kuraklığa karşı daha dayanıklı bölgelerin oluşmasına katkı sağlıyor. Daha nemli kalan bitki örtüsü ise orman yangınlarının hızla yayılmasına karşı doğal bir tampon görevi görebiliyor. Kunduzların ekosistem üzerindeki bu etkisi nedeniyle benzer yöntemler bugün ABD'nin farklı bölgelerindeki sulak alan restorasyon çalışmalarında da kullanılıyor.\",\"summary\":\"Idaho Balık ve Av Departmanı, 1948'de Chamberlain Basin'e ulaşım zorluğu nedeniyle kunduzları paraşütle uçaktan attı. Özel kutular ve savaştan kalma paraşütlerle yapılan operasyonda 76 kunduzdan 75'i hayatta kaldı. Kunduzların kurduğu barajlar, sulak alanlar oluşturarak ekosistemi zenginleştirdi ve kuraklığa karşı doğal bir tampon görevi gördü. Bu yöntem bugün ABD'de sulak alan restorasyonunda kul\",\"seoTitle\":\"Paraşütle Uçaktan Atılan 76 Kunduz Bölgenin Kaderini Değiştirdi\",\"seoDescription\":\"1948'de Idaho'da gerçekleştirilen sıra dışı operasyonla paraşütle bırakılan 76 kunduz, bölgenin ekosistemini nasıl değiştirdi? İşte detaylar.\",\"category\":\"yerel-haber\",\"tags\":[\"kunduz\",\"paraşüt\",\"Idaho\",\"ekosistem\",\"sulak alan\",\"1948\"],\"slug\":\"parasutle-ucaktan-atilan-76-kunduz-bolgenin-kaderini-degistirdi\",\"imageAlt\":\"Paraşütle uçaktan atılan kunduzların bulunduğu özel kutular\",\"imageFilename\":\"parasutle-kunduz.jpg\",\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"lane\":\"controlled_auto_draft\",\"eventId\":\"cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4\",\"jobId\":\"aij_ce713b7a-c100-455b-a53b-bda4688c4073\",\"executionId\":\"exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp\",\"eventRevision\":\"1359c1b63a9817246e0cfbdfb85e05313b2d22a6\",\"sourceEvidence\":[{\"articleId\":\"raw_a672a78f-f607-4007-a18a-49863e276169\",\"sourceId\":\"src_8f784e8d-bd18-4642-bce9-7139318fa40b\",\"sourceName\":\"Sözcü\",\"role\":\"PRIMARY\"}],\"cost\":{\"estimatedCostUsd\":0.00451616,\"actualCostUsd\":0.0029911200000000003,\"inputTokens\":1920,\"outputTokens\":1626},\"createdAt\":\"2026-08-20T22:46:36.966Z\"},{\"ok\":true,\"issues\":[]},2026-08-20T22:46:36.966Z,aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+          "actual_cost_usd": 0.00299112,
+          "has_draft": false,
+          "created_at": "2026-08-20T22:46:24.020Z",
+          "updated_at": "2026-08-20T22:46:36.975Z",
+          "completed_at": "2026-08-20T22:46:36.975Z"
+        }
+      ],
+      "ledger": []
+    }
+  ]
+}

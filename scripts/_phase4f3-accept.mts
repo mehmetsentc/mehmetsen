@@ -144,7 +144,7 @@ async function main() {
       await sql`
       SELECT
         (SELECT max(created_at) FROM raw_articles) AS latest_discovery,
-        (SELECT max(extracted_at) FROM raw_articles WHERE extracted_at IS NOT NULL) AS latest_extract,
+        (SELECT max(updated_at) FROM raw_articles WHERE word_count > 0) AS latest_extract,
         (SELECT max(created_at) FROM news_clusters) AS latest_cluster,
         (SELECT max(updated_at) FROM news_clusters) AS latest_cluster_update`
     )[0]

@@ -1,0 +1,13 @@
+BEFORE_COLS []
+EXEC -- Phase 4F.1 — Design A machine auto-draft eligibility (additive only) -- HUMAN editorial_decision 
+EXEC ALTER TABLE "news_clusters" ADD COLUMN IF NOT EXISTS "machine_draft_eligibility_reason" text;
+EXEC ALTER TABLE "news_clusters" ADD COLUMN IF NOT EXISTS "machine_draft_eligibility_at" timestamp with
+EXEC ALTER TABLE "news_clusters" ADD COLUMN IF NOT EXISTS "machine_draft_eligibility_meta" jsonb;
+EXEC CREATE INDEX IF NOT EXISTS "news_clusters_machine_draft_eligibility_idx" ON "news_clusters" USING 
+AFTER_COLS [
+  { column_name: 'machine_draft_eligibility' },
+  { column_name: 'machine_draft_eligibility_at' },
+  { column_name: 'machine_draft_eligibility_meta' },
+  { column_name: 'machine_draft_eligibility_reason' }
+]
+WROTE tmp-phase4f1-migration.json

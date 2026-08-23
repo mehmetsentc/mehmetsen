@@ -1,0 +1,347 @@
+{
+  "news_clusters_all_columns": [
+    "id",
+    "representative_article_id",
+    "normalized_topic",
+    "country_code",
+    "city",
+    "category",
+    "article_count",
+    "first_seen_at",
+    "last_seen_at",
+    "created_at",
+    "updated_at",
+    "event_key",
+    "canonical_title",
+    "language",
+    "region",
+    "district",
+    "category_hint",
+    "event_status",
+    "latest_article_at",
+    "source_count",
+    "unique_source_count",
+    "high_quality_source_count",
+    "source_diversity_score",
+    "importance_score",
+    "global_importance",
+    "national_importance",
+    "local_importance",
+    "freshness_score",
+    "cluster_confidence",
+    "ai_eligibility",
+    "ai_eligibility_reason",
+    "importance_breakdown",
+    "signature_tokens",
+    "has_material_update",
+    "material_update_reason",
+    "editorial_decision",
+    "editorial_decision_reason",
+    "editorial_decision_note",
+    "editorial_decided_at",
+    "editorial_decided_by",
+    "editorial_priority",
+    "approval_source",
+    "primary_selection_score",
+    "primary_selection_reasons",
+    "published_news_id",
+    "future_ai_unit",
+    "update_review_status",
+    "primary_image_url",
+    "primary_source_id",
+    "primary_source_name",
+    "content_fingerprint",
+    "drafted_content_fingerprint",
+    "auto_draft_status"
+  ],
+  "news_clusters_decision_cols": [
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "column_name": "canonical_title",
+      "data_type": "text"
+    },
+    {
+      "column_name": "source_count",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "ai_eligibility",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "editorial_decision",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "editorial_decision_reason",
+      "data_type": "text"
+    },
+    {
+      "column_name": "editorial_decision_note",
+      "data_type": "text"
+    },
+    {
+      "column_name": "editorial_decided_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "column_name": "editorial_decided_by",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "editorial_priority",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "published_news_id",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "primary_source_name",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "auto_draft_status",
+      "data_type": "character varying"
+    }
+  ],
+  "column_checks": {
+    "editorial_decided_at": true,
+    "decided_at": false,
+    "updated_at": true,
+    "created_at": true,
+    "title": false,
+    "headline": false,
+    "canonical_title": true
+  },
+  "approved_for_ai_clusters": [
+    {
+      "id": "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+      "title": "Günlük Burç Yorumları: 21 Ağustos Cuma Koç Burcu Yorumu",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "editorial_decided_at": "2026-08-20T13:00:11.649Z",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": "WAITING_FOR_MORE_SOURCES",
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-20T12:53:20.981Z",
+      "updated_at": "2026-08-20T20:45:21.946Z"
+    },
+    {
+      "id": "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+      "title": "Çanakkale’de termometreler 35 dereceyi görecek",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "editorial_decided_at": "2026-08-19T21:57:12.388Z",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-19T14:10:44.749Z",
+      "updated_at": "2026-08-19T21:57:12.404Z"
+    },
+    {
+      "id": "cl_713c7834-a506-4c50-8d45-32109c988edd",
+      "title": "ÇOMÜ TALAY Takımı TEKNOFEST Mavi Vatan finaline hazır",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "editorial_decided_at": "2026-08-19T21:41:56.513Z",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-19T14:58:45.707Z",
+      "updated_at": "2026-08-19T21:41:56.529Z"
+    },
+    {
+      "id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "title": "Uçuş Planı filminin konusu ne? Uçuş Planı filminin oyuncuları kim?",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "editorial_decided_at": "2026-08-19T20:51:33.775Z",
+      "ai_eligibility": "ELIGIBLE",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-19T15:00:41.433Z",
+      "updated_at": "2026-08-19T20:51:33.782Z"
+    }
+  ],
+  "ai_jobs_columns": [
+    {
+      "column_name": "cluster_id"
+    },
+    {
+      "column_name": "created_at"
+    },
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "status"
+    }
+  ],
+  "ai_jobs": [],
+  "ai_jobs_count": 0,
+  "ledger_all_columns": [
+    "actual_cost_usd",
+    "cluster_id",
+    "created_at",
+    "estimated_cost_usd",
+    "failure_code",
+    "id",
+    "input_tokens",
+    "job_id",
+    "lane",
+    "mode",
+    "model",
+    "output_tokens",
+    "provider",
+    "reason",
+    "request_type",
+    "status",
+    "timestamp"
+  ],
+  "ledger_last_20": [
+    {
+      "id": "ldg_mt1ld0in_innjjx",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "SUCCEEDED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.0037752,
+      "estimated_cost_usd": 0.00506,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "created_at": "2026-08-20T14:04:03.167Z"
+    },
+    {
+      "id": "ldg_mt1lcngs_ja70z8",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00506,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "created_at": "2026-08-20T14:03:46.252Z"
+    },
+    {
+      "id": "ldg_mt1kgh5k_2chdna",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "FAILED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.0029744,
+      "estimated_cost_usd": 0.0049808,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "created_at": "2026-08-20T13:38:45.080Z"
+    },
+    {
+      "id": "ldg_mt1kg9gz_i4iw6v",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.0049808,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "created_at": "2026-08-20T13:38:35.123Z"
+    },
+    {
+      "id": "ldg_mt1jev13_y254sw",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "FAILED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.00295944,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "created_at": "2026-08-20T13:09:30.135Z"
+    },
+    {
+      "id": "ldg_mt1jefh5_ar5l5u",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "created_at": "2026-08-20T13:09:09.977Z"
+    },
+    {
+      "id": "ldg_mt1jdm1s_g98xbm",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "created_at": "2026-08-20T13:08:31.840Z"
+    }
+  ],
+  "cumulative_actual_cost_usd": 0.009709039703011513,
+  "raw_ai_draft_count": 0,
+  "raw_ai_draft_latest_5": [],
+  "published": {
+    "raw_editorial_status_PUBLISHED": 192,
+    "clusters_with_published_news_id": 7
+  },
+  "timestamps": [
+    {
+      "latest_discovery": "2026-08-20T20:40:38.042Z",
+      "latest_extraction": "2026-08-20T20:40:15.546Z",
+      "latest_cluster_update": "2026-08-20T20:45:21.946Z",
+      "latest_cluster_create": "2026-08-20T20:40:34.658Z"
+    }
+  ],
+  "news_sources_by_status": [
+    {
+      "status": "PAUSED",
+      "c": 46
+    },
+    {
+      "status": "ACTIVE",
+      "c": 14
+    },
+    {
+      "status": "DEGRADED",
+      "c": 1
+    }
+  ],
+  "news_sources_health_score": [
+    {
+      "min": 39,
+      "avg": 59.40983606557377,
+      "max": 96,
+      "null_count": 0,
+      "total": 61
+    }
+  ]
+}

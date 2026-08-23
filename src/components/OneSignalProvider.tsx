@@ -43,16 +43,14 @@ export function OneSignalProvider() {
           serviceWorkerPath: '/sw.js',
           serviceWorkerParam: { scope: '/' },
           notifyButton: { enable: false },
+          // Soft prompt UX lives in NotificationsSoftPrompt (mobile).
+          // Keep OneSignal slidedown off to avoid double prompts.
           promptOptions: {
             slidedown: {
               prompts: [
                 {
                   type: 'push',
-                  autoPrompt: true,
-                  delay: {
-                    pageViews: 2,
-                    timeDelay: 20,
-                  },
+                  autoPrompt: false,
                   text: {
                     actionMessage: 'Son dakika haberleri için bildirim almak ister misiniz?',
                     acceptButton: 'Evet, bildir',

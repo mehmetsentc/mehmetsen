@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
 
+  // Client-visible deploy stamp for soft-prompt / update detection.
+  env: {
+    NEXT_PUBLIC_APP_VERSION:
+      process.env.NEXT_PUBLIC_APP_VERSION ||
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
+      process.env.npm_package_version ||
+      '0.1.0',
+  },
+
   // F2.5 — react-hot-toast'u kendi sonner-shim'imize yönlendir.
   // Tüm legacy `import toast from 'react-hot-toast'` çağrıları artık NaHaber
   // design-token'lı sonner UI'sından beslenir. Dosyalara dokunulmadı.

@@ -1,0 +1,79 @@
+{
+  "at": "2026-08-21T14:47:33.583Z",
+  "rawRows": 2370,
+  "distinctClusters": 106,
+  "economicTableRows": 0,
+  "oldRepeatedEstimate": {
+    "rawEvaluations": 2370,
+    "distinctClusters": 106,
+    "uniqueEventRevisions": 2370,
+    "uniqueWouldDispatch": 1283,
+    "uniqueWouldBlock": 1087,
+    "byTier": {
+      "A": 60,
+      "D": 703,
+      "C": 103,
+      "B": 1504
+    },
+    "byBlockReason": {
+      "HISTORICAL_BLOCKED": 547,
+      "ALREADY_PUBLISHED": 128,
+      "WAITING_FOR_MORE_SOURCES": 281,
+      "TOO_THIN": 131
+    },
+    "byPrespend": {
+      "HISTORICAL_BLOCKED": 547,
+      "ALREADY_PUBLISHED": 128,
+      "WAITING_FOR_MORE_SOURCES": 281,
+      "PRESPEND_READY": 1283,
+      "TOO_THIN": 131
+    },
+    "estimatedRequestsAfterGate": 1283,
+    "estimatedRequestsBeforeGate": 2370,
+    "estimatedRequestsPrevented": 1087,
+    "requestPreventionPct": 45.9,
+    "estimatedSpendAfterGateUsd": 5.90631932,
+    "estimatedSpendBeforeGateUsd": 10.8158578,
+    "estimatedSpendPreventedUsd": 4.90953848,
+    "spendPreventionPct": 45.4,
+    "costUnknownCount": 0,
+    "noteTr": "Eski tekrarlı değerlendirme tahmini (her tick ayrı sayılır)."
+  },
+  "newUniqueEstimate": {
+    "rawEvaluations": 2370,
+    "distinctClusters": 106,
+    "uniqueEventRevisions": 106,
+    "uniqueWouldDispatch": 58,
+    "uniqueWouldBlock": 48,
+    "byTier": {
+      "A": 2,
+      "D": 29,
+      "C": 4,
+      "B": 71
+    },
+    "byBlockReason": {
+      "HISTORICAL_BLOCKED": 26,
+      "ALREADY_PUBLISHED": 3,
+      "WAITING_FOR_MORE_SOURCES": 13,
+      "TOO_THIN": 6
+    },
+    "byPrespend": {
+      "HISTORICAL_BLOCKED": 26,
+      "ALREADY_PUBLISHED": 3,
+      "WAITING_FOR_MORE_SOURCES": 13,
+      "PRESPEND_READY": 58,
+      "TOO_THIN": 6
+    },
+    "estimatedRequestsAfterGate": 58,
+    "estimatedRequestsBeforeGate": 106,
+    "estimatedRequestsPrevented": 48,
+    "requestPreventionPct": 45.3,
+    "estimatedSpendAfterGateUsd": 0.26791028,
+    "estimatedSpendBeforeGateUsd": 0.48416764,
+    "estimatedSpendPreventedUsd": 0.21625736,
+    "spendPreventionPct": 44.7,
+    "costUnknownCount": 0,
+    "noteTr": "4F.3 geçmiş satırlarda fingerprint yok; benzersiz karar ≈ ilk değerlendirme / cluster."
+  },
+  "note": "OLD ~$2.16 is only \"savings\" if NEW unique estimatedSpendPreventedUsd supports a similar magnitude."
+}

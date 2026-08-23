@@ -1,0 +1,300 @@
+{
+  "at": "2026-08-21T09:24:11.336Z",
+  "stage": "baseline",
+  "counts": [
+    {
+      "raw_articles": 2366,
+      "news_clusters": 2075,
+      "discovered_urls": 4164,
+      "news_sources": 61,
+      "raw_published": 340,
+      "clusters_published": 10,
+      "approved_for_ai": 7,
+      "ai_jobs_total": 3,
+      "ai_jobs_active": 0,
+      "ai_jobs_completed": 1,
+      "ai_jobs_failed": 2,
+      "ledger_sum_actual": 0.017156479880213737
+    }
+  ],
+  "sources_by_status": [
+    {
+      "status": "PAUSED",
+      "c": 47
+    },
+    {
+      "status": "ACTIVE",
+      "c": 14
+    }
+  ],
+  "pause_reasons": [
+    {
+      "reason": "bilinmiyor",
+      "c": 45
+    },
+    {
+      "reason": "auto_pause_failures_6",
+      "c": 2
+    }
+  ],
+  "approved_ids": [
+    {
+      "id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "editorial_decided_at": "2026-08-20T22:41:51.868Z",
+      "updated_at": "2026-08-20T22:50:32.017Z",
+      "created_at": "2026-08-20T22:02:54.900Z",
+      "auto_draft_status": "ALREADY_DRAFTED",
+      "ai_eligibility": "WATCHING",
+      "unique_source_count": 1,
+      "importance_score": 51,
+      "city": null,
+      "canonical_title": "Paraşütle uçaktan atılan 76 kunduz bölgenin kaderini değiştirdi"
+    },
+    {
+      "id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+      "editorial_decided_at": "2026-08-20T21:37:53.656Z",
+      "updated_at": "2026-08-20T22:28:54.129Z",
+      "created_at": "2026-08-20T21:15:27.408Z",
+      "auto_draft_status": "WAITING_FOR_MORE_SOURCES",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 1,
+      "importance_score": 43,
+      "city": null,
+      "canonical_title": "What does Prince Harry's return mean for his fractured relationship with Prince William?"
+    },
+    {
+      "id": "cl_f82807da-0345-4057-a870-9735d4e6e667",
+      "editorial_decided_at": "2026-08-20T21:18:57.644Z",
+      "updated_at": "2026-08-20T22:25:51.249Z",
+      "created_at": "2026-08-20T21:14:29.243Z",
+      "auto_draft_status": "AI_READY",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 1,
+      "importance_score": 49,
+      "city": null,
+      "canonical_title": "Cumhurbaşkanı Yardımcısı Yılmaz'dan 'yastık altı' vurgusu: 'Keşke bunlar daha fazla sisteme girse'"
+    },
+    {
+      "id": "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+      "editorial_decided_at": "2026-08-20T13:00:11.649Z",
+      "updated_at": "2026-08-20T21:18:54.905Z",
+      "created_at": "2026-08-20T12:53:20.981Z",
+      "auto_draft_status": "WAITING_FOR_MORE_SOURCES",
+      "ai_eligibility": "WATCHING",
+      "unique_source_count": 1,
+      "importance_score": 65,
+      "city": null,
+      "canonical_title": "Günlük Burç Yorumları: 21 Ağustos Cuma Koç Burcu Yorumu"
+    },
+    {
+      "id": "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+      "editorial_decided_at": "2026-08-19T21:57:12.388Z",
+      "updated_at": "2026-08-19T21:57:12.404Z",
+      "created_at": "2026-08-19T14:10:44.749Z",
+      "auto_draft_status": null,
+      "ai_eligibility": "WATCHING",
+      "unique_source_count": 1,
+      "importance_score": 45,
+      "city": "Çanakkale",
+      "canonical_title": "Çanakkale’de termometreler 35 dereceyi görecek"
+    },
+    {
+      "id": "cl_713c7834-a506-4c50-8d45-32109c988edd",
+      "editorial_decided_at": "2026-08-19T21:41:56.513Z",
+      "updated_at": "2026-08-19T21:41:56.529Z",
+      "created_at": "2026-08-19T14:58:45.707Z",
+      "auto_draft_status": null,
+      "ai_eligibility": "WATCHING",
+      "unique_source_count": 1,
+      "importance_score": 44,
+      "city": "Çanakkale",
+      "canonical_title": "ÇOMÜ TALAY Takımı TEKNOFEST Mavi Vatan finaline hazır"
+    },
+    {
+      "id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "editorial_decided_at": "2026-08-19T20:51:33.775Z",
+      "updated_at": "2026-08-19T20:51:33.782Z",
+      "created_at": "2026-08-19T15:00:41.433Z",
+      "auto_draft_status": null,
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 1,
+      "importance_score": 58,
+      "city": null,
+      "canonical_title": "Uçuş Planı filminin konusu ne? Uçuş Planı filminin oyuncuları kim?"
+    }
+  ],
+  "timestamps": [
+    {
+      "latest_discovery": "2026-08-21T09:20:51.105Z",
+      "latest_extraction": "2026-08-21T09:17:07.456Z",
+      "latest_cluster_update": "2026-08-21T09:17:16.062Z",
+      "latest_cluster_create": "2026-08-21T09:17:15.969Z",
+      "latest_ledger": "2026-08-20T22:50:32.177Z",
+      "latest_job": "2026-08-20T22:46:24.020Z"
+    }
+  ],
+  "freshness_windows": [
+    {
+      "disc_30m": 150,
+      "disc_2h": 487,
+      "ext_30m": 49,
+      "ext_2h": 202,
+      "cl_30m": 43,
+      "cl_2h": 175,
+      "multi_24h": 38,
+      "ai_ready_status": 1
+    }
+  ],
+  "latency_sample": [
+    {
+      "avg_disc_to_ext_sec": "81.4689369379844961",
+      "p50_disc_to_ext_sec": 59.059026,
+      "n": 129
+    }
+  ],
+  "jobs_by_status": [
+    {
+      "status": "COMPLETED",
+      "c": 1
+    },
+    {
+      "status": "FAILED",
+      "c": 2
+    }
+  ],
+  "today_metrics": [
+    {
+      "urls_today": 1030,
+      "extracted_today": 522,
+      "events_today": 464,
+      "jobs_today": 0,
+      "drafts_today": 0,
+      "failures_today": 0,
+      "cost_today": 0,
+      "cost_month": 0.017156479880213737
+    }
+  ],
+  "multi_source_examples": [
+    {
+      "id": "cl_1469b2bb-1ffd-4656-b57c-8f78cbde36e1",
+      "canonical_title": "Son dakika... 'Ankara Deklarasyonu' çağrısı yaptı! Devlet Bahçeli'den 'İsrail' tepkisi: 'Türkiye'nin sabrını sınamaktan vazgeçsin'",
+      "unique_source_count": 2,
+      "article_count": 2,
+      "primary_source_name": "Cumhuriyet",
+      "city": null,
+      "importance_score": 59,
+      "cluster_confidence": 0.92,
+      "ai_eligibility": "ELIGIBLE",
+      "editorial_decision": "NONE",
+      "created_at": "2026-08-21T09:14:13.886Z"
+    },
+    {
+      "id": "cl_7dbbcc3e-3fba-45e2-a2a8-585b33a6d17b",
+      "canonical_title": "İçişleri Bakanlığı duyurdu... 20 ilde uyuşturucu operasyonu: 60 şüpheli yakalandı",
+      "unique_source_count": 3,
+      "article_count": 3,
+      "primary_source_name": "Cumhuriyet",
+      "city": null,
+      "importance_score": 63,
+      "cluster_confidence": 0.92,
+      "ai_eligibility": "ELIGIBLE",
+      "editorial_decision": "NONE",
+      "created_at": "2026-08-21T08:22:41.487Z"
+    },
+    {
+      "id": "cl_68393c2b-158a-4cad-9c63-c8461f2141c4",
+      "canonical_title": "Son dakika... CHP'den istifa etti: Eskişehir Büyükşehir Belediye Başkanı Ayşe Ünlüce YENİ Parti'ye katıldı",
+      "unique_source_count": 4,
+      "article_count": 4,
+      "primary_source_name": "Cumhuriyet",
+      "city": null,
+      "importance_score": 66,
+      "cluster_confidence": 0.885,
+      "ai_eligibility": "ELIGIBLE",
+      "editorial_decision": "NONE",
+      "created_at": "2026-08-21T08:06:47.136Z"
+    },
+    {
+      "id": "cl_17be2919-9a5b-453c-81e3-70f8c7ded6e4",
+      "canonical_title": "Bergüzar Korel ve Kenan İmirzalıoğlu da var. İşte yıllar sonra aynı projede buluşan ünlüler",
+      "unique_source_count": 2,
+      "article_count": 2,
+      "primary_source_name": "NTV",
+      "city": null,
+      "importance_score": 59,
+      "cluster_confidence": 0.92,
+      "ai_eligibility": "ELIGIBLE",
+      "editorial_decision": "NONE",
+      "created_at": "2026-08-21T07:32:47.718Z"
+    },
+    {
+      "id": "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe",
+      "canonical_title": "İzmir'de Forza ve Yalı taraftar gruplarına operasyon",
+      "unique_source_count": 2,
+      "article_count": 2,
+      "primary_source_name": "Evrensel",
+      "city": null,
+      "importance_score": 59,
+      "cluster_confidence": 0.85,
+      "ai_eligibility": "ELIGIBLE",
+      "editorial_decision": "NONE",
+      "created_at": "2026-08-21T07:03:42.270Z"
+    },
+    {
+      "id": "cl_b1f16795-f526-4644-aec4-84402f6af6e7",
+      "canonical_title": "Taraftar gruplarına operasyon",
+      "unique_source_count": 2,
+      "article_count": 2,
+      "primary_source_name": "Odatv",
+      "city": null,
+      "importance_score": 59,
+      "cluster_confidence": 0.92,
+      "ai_eligibility": "ELIGIBLE",
+      "editorial_decision": "NONE",
+      "created_at": "2026-08-21T06:56:50.161Z"
+    },
+    {
+      "id": "cl_1d492533-443f-4708-af7f-ddc36bfa24cc",
+      "canonical_title": "Japonya’da beş kişiyi öldüren kundakçı idam edildi",
+      "unique_source_count": 2,
+      "article_count": 2,
+      "primary_source_name": "Odatv",
+      "city": null,
+      "importance_score": 59,
+      "cluster_confidence": 0.85,
+      "ai_eligibility": "ELIGIBLE",
+      "editorial_decision": "NONE",
+      "created_at": "2026-08-21T06:31:46.697Z"
+    },
+    {
+      "id": "cl_af2a1902-40ad-48a1-9b19-f0b79e727450",
+      "canonical_title": "Arnavutluk’a tatile giden Türk vatandaşı, cinayet soruşturmasında tutuklandı: Şüpheli aracın bagajından çıktı",
+      "unique_source_count": 2,
+      "article_count": 2,
+      "primary_source_name": "Cumhuriyet",
+      "city": null,
+      "importance_score": 59,
+      "cluster_confidence": 0.92,
+      "ai_eligibility": "ELIGIBLE",
+      "editorial_decision": "NONE",
+      "created_at": "2026-08-21T05:22:53.717Z"
+    }
+  ],
+  "schema_phase4e": [
+    {
+      "column_name": "auto_draft_status"
+    },
+    {
+      "column_name": "content_fingerprint"
+    },
+    {
+      "column_name": "drafted_content_fingerprint"
+    },
+    {
+      "column_name": "has_material_update"
+    },
+    {
+      "column_name": "update_review_status"
+    }
+  ]
+}

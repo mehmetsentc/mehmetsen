@@ -1,0 +1,251 @@
+{
+  "at": "2026-08-22T11:20:18.054Z",
+  "testedSources": 15,
+  "tests": [
+    {
+      "id": "src_c85a0a6b-d484-4797-a03d-f7cf4117b2f3",
+      "registry_key": "odatv",
+      "name": "Odatv",
+      "domain": "odatv.com",
+      "sampleCount": 3,
+      "successRatio": 1,
+      "avgUsableWords": 184,
+      "avgConfidence": 0.92,
+      "avgBoilerplate": 0,
+      "homepageOnly": false,
+      "samples": [
+        {
+          "url": "https://www.odatv.com/guncel/rumen-komedyen-victor-patrascandan-deniz-goktasa-destek-120159623",
+          "dbWords": 146,
+          "liveWords": 146,
+          "confidence": 0.92,
+          "boilerplate": 0,
+          "ok": true
+        },
+        {
+          "url": "https://www.odatv.com/spor/galatasaray-erzurum-deplasmaninda-rahat-kazandi-120159622",
+          "dbWords": 149,
+          "liveWords": 149,
+          "confidence": 0.92,
+          "boilerplate": 0,
+          "ok": true
+        },
+        {
+          "url": "https://www.odatv.com/guncel/ankarada-eglence-mekanlarina-operasyon-120159621",
+          "dbWords": 257,
+          "liveWords": 257,
+          "confidence": 0.92,
+          "boilerplate": 0,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "src_506a0e4d-aa6e-48bf-90a4-76728143e71c",
+      "registry_key": "evrensel",
+      "name": "Evrensel",
+      "domain": "evrensel.net",
+      "sampleCount": 3,
+      "successRatio": 1,
+      "avgUsableWords": 441,
+      "avgConfidence": 0.78,
+      "avgBoilerplate": 0.125,
+      "homepageOnly": false,
+      "samples": [
+        {
+          "url": "https://www.evrensel.net/haber/5997298/cayirhanda-maden-kazasina-yeni-partili-emirden-tepki-is-cinayetleri-kader-degildir",
+          "dbWords": 246,
+          "liveWords": 246,
+          "confidence": 0.78,
+          "boilerplate": 0.125,
+          "ok": true
+        },
+        {
+          "url": "https://www.evrensel.net/haber/5997297/cayirhan-komur-madeni-iscileri-anlatiyor-gocuk-olacagini-biliyorduk",
+          "dbWords": 543,
+          "liveWords": 543,
+          "confidence": 0.78,
+          "boilerplate": 0.125,
+          "ok": true
+        },
+        {
+          "url": "https://www.evrensel.net/haber/5997297/cayirhan-komur-madeni-iscileri-anlatiyor-gocuk-olacagini-biliyorduk-ozellestirilmese-girmezdik",
+          "dbWords": 533,
+          "liveWords": 533,
+          "confidence": 0.78,
+          "boilerplate": 0.125,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "src_f39a39be-8724-4e0e-9ff9-b0ebf355a3d8",
+      "registry_key": "ahaber",
+      "name": "A Haber",
+      "domain": "ahaber.com.tr",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_df73a64f-80d5-4eff-89eb-f8a3494eeaec",
+      "registry_key": "bianet",
+      "name": "Bianet",
+      "domain": "bianet.org",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_68248665-be52-4bce-ab2d-5d58c788068d",
+      "registry_key": null,
+      "name": "Deutsche Welle RSS",
+      "domain": "dw.com",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_9ffe7435-bc54-455f-ab87-ff12f085ac03",
+      "registry_key": "diken",
+      "name": "Diken",
+      "domain": "diken.com.tr",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_5938ff26-15b2-48a2-8055-f3c71f29a10e",
+      "registry_key": "dunya",
+      "name": "Dünya",
+      "domain": "dunya.com",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_1c89715b-4cef-4a41-9914-37c8614bf7b7",
+      "registry_key": "ensonhaber",
+      "name": "Ensonhaber",
+      "domain": "ensonhaber.com",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_82cddeca-e8f2-4963-bb38-600485b2f4f3",
+      "registry_key": "fotomac",
+      "name": "Fotomaç",
+      "domain": "fotomac.com.tr",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_fa05afbd-4572-4a02-a9da-ee4706161d07",
+      "registry_key": "duvar",
+      "name": "Gazete Duvar",
+      "domain": "gazeteduvar.com.tr",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": true,
+      "samples": []
+    },
+    {
+      "id": "src_70c9d869-8bff-465e-8f5b-bcb74e610bbb",
+      "registry_key": "indyturk",
+      "name": "Independent Türkçe",
+      "domain": "indyturk.com",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_1dccb1a8-e46a-4b4c-9c06-bc74b31e8a2e",
+      "registry_key": null,
+      "name": "Le Monde RSS",
+      "domain": "lemonde.fr",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_cb5ae1bf-f22b-478c-8fb0-d719220b7ef6",
+      "registry_key": "sabah",
+      "name": "Sabah",
+      "domain": "sabah.com.tr",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": true,
+      "samples": []
+    },
+    {
+      "id": "src_c4186a9b-ab70-40d4-b62b-65bbed1863ad",
+      "registry_key": null,
+      "name": "TRT Haber RSS",
+      "domain": "trthaber.com",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    },
+    {
+      "id": "src_33950dfe-4371-4ad7-ab54-b00f6ee04179",
+      "registry_key": "canakkaleicinde",
+      "name": "Çanakkale İçinde",
+      "domain": "canakkaleicinde.com",
+      "sampleCount": 0,
+      "successRatio": 0,
+      "avgUsableWords": 0,
+      "avgConfidence": 0,
+      "avgBoilerplate": null,
+      "homepageOnly": false,
+      "samples": []
+    }
+  ]
+}

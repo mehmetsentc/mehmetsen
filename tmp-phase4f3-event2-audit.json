@@ -1,0 +1,92 @@
+{
+  "mode": "event2-audit",
+  "at": "2026-08-21T14:17:50.563Z",
+  "T4F3": "2026-08-21T14:17:50.562Z",
+  "HIST_PROTECT": [
+    "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+    "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "cl_f82807da-0345-4057-a870-9735d4e6e667",
+    "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+    "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+    "cl_713c7834-a506-4c50-8d45-32109c988edd",
+    "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+    "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe"
+  ],
+  "cluster": [
+    {
+      "id": "cl_326b706c-f8ff-4326-9d81-835957f2b5bb",
+      "canonical_title": "İnekleri artık otlatmıyorlar: Bu sistemle inek başına günde 43 litreye kadar süt alıyorlar",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "AUTO_DRAFT_ELIGIBLE",
+      "machine_draft_eligibility_reason": "STRONG_SINGLE_SOURCE",
+      "machine_draft_eligibility_meta": {
+        "avgHealth": 96,
+        "cutoffIso": "2026-08-21T13:25:01.000Z",
+        "gateReason": "STRONG_SINGLE_SOURCE",
+        "gateStatus": "AUTO_DRAFT_ELIGIBLE",
+        "staleHours": 0.83,
+        "bestWordCount": 1184,
+        "bestConfidence": 0.92,
+        "importanceScore": 51,
+        "strongSinglePath": "high_quality_trusted",
+        "editorialDecision": "NONE",
+        "uniqueSourceCount": 1,
+        "contentFingerprint": "35233f99f04426a11110d7d6b55491bc1b6a945f",
+        "clusterAiEligibility": "WATCHING",
+        "independentSourceCount": 1
+      },
+      "ai_eligibility": "WATCHING",
+      "unique_source_count": 1,
+      "importance_score": 51,
+      "content_fingerprint": "35233f99f04426a11110d7d6b55491bc1b6a945f"
+    }
+  ],
+  "job": [
+    {
+      "id": "aij_9425fc11-3105-4fe2-b08c-398ef4339725",
+      "status": "FAILED",
+      "failure_code": "SCHEMA_VALIDATION_FAILED",
+      "failure_reason": "schema_validation_failed",
+      "estimated_cost_usd": 0.00533456,
+      "actual_cost_usd": 0.00646624,
+      "actual_input_tokens": 5096,
+      "actual_output_tokens": 3200,
+      "execution_id": "exec_aij_9425fc11-3105-4fe2-b08c-398ef4339725_mt2zppxp",
+      "has_draft": false,
+      "validation_snapshot": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "NOT_JSON",
+            "field": "_root",
+            "severity": "error",
+            "messageTr": "Çıktı geçerli JSON değil."
+          }
+        ]
+      }
+    }
+  ],
+  "members": [
+    {
+      "membership_role": "PRIMARY",
+      "is_canonical": 1,
+      "is_independent_source": 1,
+      "title": "İnekleri artık otlatmıyorlar: Bu sistemle inek başına günde 43 litreye kadar süt alıyorlar",
+      "word_count": 1184,
+      "extraction_confidence": 0.92,
+      "source_name": "Sözcü",
+      "health_score": 96,
+      "quality_tier": "TIER_A"
+    }
+  ],
+  "schema_audit": {
+    "preventability": "B",
+    "class": "PARSE_SHAPE",
+    "codes": [
+      "NOT_JSON"
+    ],
+    "safeNormalize": true,
+    "wouldPrespendHaveBlocked": false,
+    "note": "Safe deterministic JSON fence/strip normalize only — no fabricate."
+  }
+}

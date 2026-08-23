@@ -1,0 +1,76 @@
+{
+  "mode": "shadow-funnel",
+  "at": "2026-08-21T14:28:53.305Z",
+  "T4F3": "2026-08-21T14:19:54.000Z",
+  "HIST_PROTECT": [
+    "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+    "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "cl_f82807da-0345-4057-a870-9735d4e6e667",
+    "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+    "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+    "cl_713c7834-a506-4c50-8d45-32109c988edd",
+    "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+    "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe"
+  ],
+  "by_outcome": [
+    {
+      "prespend_outcome": "PRESPEND_READY",
+      "c": 470
+    },
+    {
+      "prespend_outcome": "HISTORICAL_BLOCKED",
+      "c": 292
+    },
+    {
+      "prespend_outcome": "WAITING_FOR_MORE_SOURCES",
+      "c": 108
+    },
+    {
+      "prespend_outcome": "TOO_THIN",
+      "c": 42
+    },
+    {
+      "prespend_outcome": "ALREADY_PUBLISHED",
+      "c": 36
+    }
+  ],
+  "by_tier": [
+    {
+      "economic_tier": "A",
+      "c": 24
+    },
+    {
+      "economic_tier": "B",
+      "c": 606
+    },
+    {
+      "economic_tier": "C",
+      "c": 48
+    },
+    {
+      "economic_tier": "D",
+      "c": 270
+    }
+  ],
+  "by_action": [
+    {
+      "action": "WOULD_BLOCK",
+      "c": 478
+    },
+    {
+      "action": "WOULD_DISPATCH",
+      "c": 470
+    }
+  ],
+  "cost_est": {
+    "n": 948,
+    "would_dispatch": 470,
+    "would_block": 478,
+    "would_spend_usd": 2.169680595397949,
+    "prevented_usd": 2.162762403488159,
+    "cost_unknown": 0
+  },
+  "distinct_clusters": {
+    "c": 84
+  }
+}

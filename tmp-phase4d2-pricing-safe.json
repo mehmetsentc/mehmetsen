@@ -1,0 +1,99 @@
+{
+  "source": "vercel env pull/env run --environment=production",
+  "STOP": true,
+  "stop_reason": "Production DEEPSEEK_*_COST_PER_1M (and related sensitive keys) pull as empty strings (Vercel sensitive type). Cannot verify live 0.44/1.32 from production env.",
+  "credentialPresent": "UNKNOWN_VIA_PULL_EMPTY",
+  "credentialPresent_note": "Keys exist in project (API list YES) but vercel env pull/decrypt returns empty for type=sensitive. Local .env.local credentialPresent=YES (not production).",
+  "credentialPresent_local_only": "YES",
+  "production_values_pulled": {
+    "DEEPSEEK_INPUT_COST_PER_1M": "",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": "",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": "",
+    "DEEPSEEK_NEWS_MODEL": "",
+    "DEEPSEEK_MODEL": null,
+    "CRAWLER_AI_DISPATCH_ENABLED": "",
+    "CRAWLER_AI_PROVIDER_ENABLED": null,
+    "CRAWLER_AI_MODE": null,
+    "LEGACY_DIRECT_AI_ENABLED": "",
+    "CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER": null,
+    "AI_MAX_COST_PER_EVENT_USD": null,
+    "AI_MAX_DRAFTS_PER_HOUR": null,
+    "AI_MAX_DRAFTS_PER_DAY": null,
+    "AI_MAX_DAILY_COST_USD": null
+  },
+  "local_env_safe_overlay_for_comparison_only": {
+    "DEEPSEEK_INPUT_COST_PER_1M": null,
+    "DEEPSEEK_OUTPUT_COST_PER_1M": null,
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": null,
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": null,
+    "DEEPSEEK_NEWS_MODEL": "deepseek-v4-flash",
+    "DEEPSEEK_MODEL": null,
+    "CRAWLER_AI_DISPATCH_ENABLED": null,
+    "CRAWLER_AI_PROVIDER_ENABLED": null,
+    "CRAWLER_AI_MODE": null,
+    "LEGACY_DIRECT_AI_ENABLED": null,
+    "CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER": null,
+    "AI_MAX_COST_PER_EVENT_USD": null,
+    "AI_MAX_DRAFTS_PER_HOUR": null,
+    "AI_MAX_DRAFTS_PER_DAY": null,
+    "AI_MAX_DAILY_COST_USD": null
+  },
+  "key_presence_from_api_list": {
+    "DEEPSEEK_INPUT_COST_PER_1M": "YES",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "YES",
+    "DEEPSEEK_NEWS_MODEL": "YES",
+    "CRAWLER_AI_DISPATCH_ENABLED": "YES",
+    "CRAWLER_AI_PROVIDER_ENABLED": "NO",
+    "CRAWLER_AI_MODE": "NO",
+    "LEGACY_DIRECT_AI_ENABLED": "YES"
+  },
+  "values": {
+    "DEEPSEEK_INPUT_COST_PER_1M": "",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": "",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": "",
+    "DEEPSEEK_NEWS_MODEL": "",
+    "DEEPSEEK_MODEL": null,
+    "CRAWLER_AI_DISPATCH_ENABLED": "",
+    "CRAWLER_AI_PROVIDER_ENABLED": null,
+    "CRAWLER_AI_MODE": null,
+    "LEGACY_DIRECT_AI_ENABLED": "",
+    "CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER": null,
+    "AI_MAX_COST_PER_EVENT_USD": null,
+    "AI_MAX_DRAFTS_PER_HOUR": null,
+    "AI_MAX_DRAFTS_PER_DAY": null,
+    "AI_MAX_DAILY_COST_USD": null
+  },
+  "app_contract": {
+    "source": "src/lib/ai/usage/pricing.ts",
+    "units": "USD per 1,000,000 tokens",
+    "formula": "(tokens / 1_000_000) * DEEPSEEK_*_COST_PER_1M",
+    "confirmed": true,
+    "detail": "usdFromTokens(tokens, perMillion) returns (tokens / 1_000_000) * perMillion"
+  },
+  "pricing_ok": false,
+  "pricing_status": "missing_or_empty",
+  "expected_phase4c": {
+    "DEEPSEEK_INPUT_COST_PER_1M": 0.44,
+    "DEEPSEEK_OUTPUT_COST_PER_1M": 1.32
+  },
+  "ledger_reverse_check": [
+    {
+      "id": "ldg_mt1ld0in_innjjx",
+      "model": "deepseek-v4-flash",
+      "actual_cost_usd": 0.0037752,
+      "input_tokens": 3048,
+      "output_tokens": 1844,
+      "expected_at_0_44_1_32": 0.0037752,
+      "matches_within_1e_6": true
+    }
+  ],
+  "ledger_note": "Historical SUCCEEDED row exact-matches 0.44/1.32 math, but that does NOT prove current production env rates.",
+  "methods_tried": [
+    "vercel env pull --environment=production (sensitive keys EMPTY)",
+    "vercel API decrypt=true (value null for sensitive)",
+    "vercel env pull --id=deployment (failed: READY expected INITIALIZING)",
+    "vercel env run -e production (cost keys EMPTY; NEWS_MODEL may be .env.local overlay)"
+  ]
+}

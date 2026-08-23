@@ -1,0 +1,15 @@
+Vercel CLI 54.15.1 (Node.js 22.22.3)
+Fetching deployments in shenteam1
+> Production deployments for shenteam1/nahaber [301ms]
+
+  Age     Project               Deployment                                         Status       Environment     Duration     Username        
+  10h     shenteam1/nahaber     https://nahaber-fby61pwi4-shenteam1.vercel.app     ● Ready      Production      3m           mehmetsentc     
+  11h     shenteam1/nahaber     https://nahaber-ojyzzlcsw-shenteam1.vercel.app     ● Ready      Production      2m           mehmetsentc     
+  12h     shenteam1/nahaber     https://nahaber-7dnypf91v-shenteam1.vercel.app     ● Ready      Production      3m           mehmetsentc     
+  12h     shenteam1/nahaber     https://nahaber-158qpaaf2-shenteam1.vercel.app     ● Ready      Production      3m           mehmetsentc     
+  12h     shenteam1/nahaber     https://nahaber-d651b5vl9-shenteam1.vercel.app     ● Error      Production      1m           mehmetsentc     
+  12h     shenteam1/nahaber     https://nahaber-7yf23bvef-shenteam1.vercel.app     ● Ready      Production      3m           mehmetsentc     
+  12h     shenteam1/nahaber     https://nahaber-bz6uukxrj-shenteam1.vercel.app     ● Ready      Production      3m           mehmetsentc     
+  12h     shenteam1/nahaber     https://nahaber-atdl7yape-shenteam1.vercel.app     ● Ready      Production      3m           mehmetsentc     
+  13h     shenteam1/nahaber     https://nahaber-7lxjmumgq-shenteam1.vercel.app     ● Ready      Production      3m           mehmetsentc     
+  13h     shenteam1/nahaber     https://nahaber-kr1b6956o-shenteam1.vercel.app     ● Ready      Production      3m           mehmetsentc     

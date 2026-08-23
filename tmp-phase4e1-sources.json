@@ -1,0 +1,13 @@
+{
+  "total": 61,
+  "rows": [
+    {
+      "status": "ACTIVE",
+      "c": 14
+    },
+    {
+      "status": "PAUSED",
+      "c": 47
+    }
+  ]
+}

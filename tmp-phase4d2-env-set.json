@@ -1,0 +1,391 @@
+{
+  "projectId": "prj_JuTvdlhsTlDEo5ZbgV3i5KMgTVCY",
+  "teamId": "team_l9fJWKsf8Je8FR5MMx87ES1Q",
+  "targets": [
+    "production",
+    "preview"
+  ],
+  "method": "vercel env add --force --no-sensitive --value",
+  "writes": [
+    {
+      "env": "production",
+      "key": "DEEPSEEK_INPUT_COST_PER_1M",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        DEEPSEEK_INPUT_COST_PER_1M   Project         shenteam1/nahaber   Environment"
+    },
+    {
+      "env": "production",
+      "key": "DEEPSEEK_OUTPUT_COST_PER_1M",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        DEEPSEEK_OUTPUT_COST_PER_1M   Project         shenteam1/nahaber   Environmen"
+    },
+    {
+      "env": "production",
+      "key": "DEEPSEEK_CACHE_HIT_COST_PER_1M",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Production "
+    },
+    {
+      "env": "production",
+      "key": "DEEPSEEK_CACHE_MISS_COST_PER_1M",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Production "
+    },
+    {
+      "env": "production",
+      "key": "DEEPSEEK_NEWS_MODEL",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        DEEPSEEK_NEWS_MODEL   Project         shenteam1/nahaber   Environments    Pr"
+    },
+    {
+      "env": "production",
+      "key": "AI_MAX_COST_PER_EVENT_USD",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_COST_PER_EVENT_USD   Project         shenteam1/nahaber   Environments"
+    },
+    {
+      "env": "production",
+      "key": "AI_MAX_DRAFTS_PER_HOUR",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_DRAFTS_PER_HOUR   Project         shenteam1/nahaber   Environments   "
+    },
+    {
+      "env": "production",
+      "key": "AI_MAX_DRAFTS_PER_DAY",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_DRAFTS_PER_DAY   Project         shenteam1/nahaber   Environments    "
+    },
+    {
+      "env": "production",
+      "key": "AI_MAX_DAILY_COST_USD",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_DAILY_COST_USD   Project         shenteam1/nahaber   Environments    "
+    },
+    {
+      "env": "production",
+      "key": "AI_MAX_MONTHLY_COST_USD",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_MONTHLY_COST_USD   Project         shenteam1/nahaber   Environments  "
+    },
+    {
+      "env": "production",
+      "key": "CRAWLER_AI_MAX_CONCURRENT_JOBS",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Production "
+    },
+    {
+      "env": "production",
+      "key": "CRAWLER_AI_MAX_EVENTS_PER_TICK",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Production "
+    },
+    {
+      "env": "production",
+      "key": "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Production "
+    },
+    {
+      "env": "production",
+      "key": "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Production "
+    },
+    {
+      "env": "production",
+      "key": "CRAWLER_AI_HOURLY_BUDGET_USD",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        CRAWLER_AI_HOURLY_BUDGET_USD   Project         shenteam1/nahaber   Environme"
+    },
+    {
+      "env": "production",
+      "key": "CRAWLER_AI_PROVIDER_ENABLED",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        CRAWLER_AI_PROVIDER_ENABLED   Project         shenteam1/nahaber   Environmen"
+    },
+    {
+      "env": "production",
+      "key": "CRAWLER_AI_MODE",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        CRAWLER_AI_MODE   Project         shenteam1/nahaber   Environments    Produc"
+    },
+    {
+      "env": "production",
+      "key": "CRAWLER_AI_DISPATCH_ENABLED",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        CRAWLER_AI_DISPATCH_ENABLED   Project         shenteam1/nahaber   Environmen"
+    },
+    {
+      "env": "production",
+      "key": "LEGACY_DIRECT_AI_ENABLED",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        LEGACY_DIRECT_AI_ENABLED   Project         shenteam1/nahaber   Environments "
+    },
+    {
+      "env": "preview",
+      "key": "DEEPSEEK_INPUT_COST_PER_1M",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        DEEPSEEK_INPUT_COST_PER_1M   Project         shenteam1/nahaber   Environment"
+    },
+    {
+      "env": "preview",
+      "key": "DEEPSEEK_OUTPUT_COST_PER_1M",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        DEEPSEEK_OUTPUT_COST_PER_1M   Project         shenteam1/nahaber   Environmen"
+    },
+    {
+      "env": "preview",
+      "key": "DEEPSEEK_CACHE_HIT_COST_PER_1M",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Preview   T"
+    },
+    {
+      "env": "preview",
+      "key": "DEEPSEEK_CACHE_MISS_COST_PER_1M",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Preview   T"
+    },
+    {
+      "env": "preview",
+      "key": "DEEPSEEK_NEWS_MODEL",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        DEEPSEEK_NEWS_MODEL   Project         shenteam1/nahaber   Environments    Pr"
+    },
+    {
+      "env": "preview",
+      "key": "AI_MAX_COST_PER_EVENT_USD",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_COST_PER_EVENT_USD   Project         shenteam1/nahaber   Environments"
+    },
+    {
+      "env": "preview",
+      "key": "AI_MAX_DRAFTS_PER_HOUR",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_DRAFTS_PER_HOUR   Project         shenteam1/nahaber   Environments   "
+    },
+    {
+      "env": "preview",
+      "key": "AI_MAX_DRAFTS_PER_DAY",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_DRAFTS_PER_DAY   Project         shenteam1/nahaber   Environments    "
+    },
+    {
+      "env": "preview",
+      "key": "AI_MAX_DAILY_COST_USD",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_DAILY_COST_USD   Project         shenteam1/nahaber   Environments    "
+    },
+    {
+      "env": "preview",
+      "key": "AI_MAX_MONTHLY_COST_USD",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        AI_MAX_MONTHLY_COST_USD   Project         shenteam1/nahaber   Environments  "
+    },
+    {
+      "env": "preview",
+      "key": "CRAWLER_AI_MAX_CONCURRENT_JOBS",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Preview   T"
+    },
+    {
+      "env": "preview",
+      "key": "CRAWLER_AI_MAX_EVENTS_PER_TICK",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Preview   T"
+    },
+    {
+      "env": "preview",
+      "key": "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Preview   T"
+    },
+    {
+      "env": "preview",
+      "key": "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        ***MASK***   Project         shenteam1/nahaber   Environments    Preview   T"
+    },
+    {
+      "env": "preview",
+      "key": "CRAWLER_AI_HOURLY_BUDGET_USD",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        CRAWLER_AI_HOURLY_BUDGET_USD   Project         shenteam1/nahaber   Environme"
+    },
+    {
+      "env": "preview",
+      "key": "CRAWLER_AI_PROVIDER_ENABLED",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        CRAWLER_AI_PROVIDER_ENABLED   Project         shenteam1/nahaber   Environmen"
+    },
+    {
+      "env": "preview",
+      "key": "CRAWLER_AI_MODE",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        CRAWLER_AI_MODE   Project         shenteam1/nahaber   Environments    Previe"
+    },
+    {
+      "env": "preview",
+      "key": "CRAWLER_AI_DISPATCH_ENABLED",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        CRAWLER_AI_DISPATCH_ENABLED   Project         shenteam1/nahaber   Environmen"
+    },
+    {
+      "env": "preview",
+      "key": "LEGACY_DIRECT_AI_ENABLED",
+      "cli_success": true,
+      "msg_short": "Vercel CLI 54.15.1 (Node.js 22.22.3) Retrieving project\u2026 Retrieving project\u2026 Saving\u2026  \u2713 Overrode        LEGACY_DIRECT_AI_ENABLED   Project         shenteam1/nahaber   Environments "
+    }
+  ],
+  "write_summary": {
+    "total": 38,
+    "cli_success": 38,
+    "cli_fail": 0
+  },
+  "presence_production": {
+    "DEEPSEEK_INPUT_COST_PER_1M": "YES",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "YES",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": "YES",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": "YES",
+    "DEEPSEEK_NEWS_MODEL": "YES",
+    "AI_MAX_COST_PER_EVENT_USD": "YES",
+    "AI_MAX_DRAFTS_PER_HOUR": "YES",
+    "AI_MAX_DRAFTS_PER_DAY": "YES",
+    "AI_MAX_DAILY_COST_USD": "YES",
+    "AI_MAX_MONTHLY_COST_USD": "YES",
+    "CRAWLER_AI_MAX_CONCURRENT_JOBS": "YES",
+    "CRAWLER_AI_MAX_EVENTS_PER_TICK": "YES",
+    "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS": "YES",
+    "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS": "YES",
+    "CRAWLER_AI_HOURLY_BUDGET_USD": "YES",
+    "CRAWLER_AI_PROVIDER_ENABLED": "YES",
+    "CRAWLER_AI_MODE": "YES",
+    "CRAWLER_AI_DISPATCH_ENABLED": "YES",
+    "LEGACY_DIRECT_AI_ENABLED": "YES"
+  },
+  "production_list_matching": [
+    "AI_MAX_COST_PER_EVENT_USD",
+    "AI_MAX_DAILY_COST_USD",
+    "AI_MAX_DRAFTS_PER_DAY",
+    "AI_MAX_DRAFTS_PER_HOUR",
+    "AI_MAX_MONTHLY_COST_USD",
+    "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS",
+    "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS",
+    "CRAWLER_AI_DISPATCH_ENABLED",
+    "CRAWLER_AI_HOURLY_BUDGET_USD",
+    "CRAWLER_AI_MAX_CONCURRENT_JOBS",
+    "CRAWLER_AI_MAX_EVENTS_PER_TICK",
+    "CRAWLER_AI_MODE",
+    "CRAWLER_AI_PROVIDER_ENABLED",
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M",
+    "DEEPSEEK_INPUT_COST_PER_1M",
+    "DEEPSEEK_NEWS_MODEL",
+    "DEEPSEEK_OUTPUT_COST_PER_1M",
+    "LEGACY_DIRECT_AI_ENABLED",
+    "LEGACY_RSS_DISCOVERY_ENABLED",
+    "LEGACY_RSS_SKIP_CRAWLER_OWNED"
+  ],
+  "preview_list_matching": [
+    "AI_MAX_COST_PER_EVENT_USD",
+    "AI_MAX_DAILY_COST_USD",
+    "AI_MAX_DRAFTS_PER_DAY",
+    "AI_MAX_DRAFTS_PER_HOUR",
+    "AI_MAX_MONTHLY_COST_USD",
+    "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS",
+    "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS",
+    "CRAWLER_AI_DISPATCH_ENABLED",
+    "CRAWLER_AI_HOURLY_BUDGET_USD",
+    "CRAWLER_AI_MAX_CONCURRENT_JOBS",
+    "CRAWLER_AI_MAX_EVENTS_PER_TICK",
+    "CRAWLER_AI_MODE",
+    "CRAWLER_AI_PROVIDER_ENABLED",
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M",
+    "DEEPSEEK_INPUT_COST_PER_1M",
+    "DEEPSEEK_NEWS_MODEL",
+    "DEEPSEEK_OUTPUT_COST_PER_1M",
+    "LEGACY_DIRECT_AI_ENABLED"
+  ],
+  "readback_production": {
+    "DEEPSEEK_INPUT_COST_PER_1M": "0.44",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "1.32",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": "0.014",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": "0.44",
+    "DEEPSEEK_NEWS_MODEL": "deepseek-v4-flash",
+    "AI_MAX_COST_PER_EVENT_USD": "0.01",
+    "AI_MAX_DRAFTS_PER_HOUR": "2",
+    "AI_MAX_DRAFTS_PER_DAY": "5",
+    "AI_MAX_DAILY_COST_USD": "0.05",
+    "AI_MAX_MONTHLY_COST_USD": "15",
+    "CRAWLER_AI_MAX_CONCURRENT_JOBS": "1",
+    "CRAWLER_AI_MAX_EVENTS_PER_TICK": "1",
+    "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS": "2",
+    "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS": "2",
+    "CRAWLER_AI_HOURLY_BUDGET_USD": "0.05",
+    "CRAWLER_AI_PROVIDER_ENABLED": "false",
+    "CRAWLER_AI_MODE": "OFF",
+    "CRAWLER_AI_DISPATCH_ENABLED": "false",
+    "LEGACY_DIRECT_AI_ENABLED": "false"
+  },
+  "readback_match_expected": {
+    "DEEPSEEK_INPUT_COST_PER_1M": true,
+    "DEEPSEEK_OUTPUT_COST_PER_1M": true,
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": true,
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": true,
+    "DEEPSEEK_NEWS_MODEL": true,
+    "AI_MAX_COST_PER_EVENT_USD": true,
+    "AI_MAX_DRAFTS_PER_HOUR": true,
+    "AI_MAX_DRAFTS_PER_DAY": true,
+    "AI_MAX_DAILY_COST_USD": true,
+    "AI_MAX_MONTHLY_COST_USD": true,
+    "CRAWLER_AI_MAX_CONCURRENT_JOBS": true,
+    "CRAWLER_AI_MAX_EVENTS_PER_TICK": true,
+    "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS": true,
+    "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS": true,
+    "CRAWLER_AI_HOURLY_BUDGET_USD": true,
+    "CRAWLER_AI_PROVIDER_ENABLED": true,
+    "CRAWLER_AI_MODE": true,
+    "CRAWLER_AI_DISPATCH_ENABLED": true,
+    "LEGACY_DIRECT_AI_ENABLED": true
+  },
+  "pricing_readback_ok": true,
+  "expected": {
+    "DEEPSEEK_INPUT_COST_PER_1M": "0.44",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "1.32",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": "0.014",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": "0.44",
+    "DEEPSEEK_NEWS_MODEL": "deepseek-v4-flash",
+    "AI_MAX_COST_PER_EVENT_USD": "0.01",
+    "AI_MAX_DRAFTS_PER_HOUR": "2",
+    "AI_MAX_DRAFTS_PER_DAY": "5",
+    "AI_MAX_DAILY_COST_USD": "0.05",
+    "AI_MAX_MONTHLY_COST_USD": "15",
+    "CRAWLER_AI_MAX_CONCURRENT_JOBS": "1",
+    "CRAWLER_AI_MAX_EVENTS_PER_TICK": "1",
+    "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS": "2",
+    "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS": "2",
+    "CRAWLER_AI_HOURLY_BUDGET_USD": "0.05",
+    "CRAWLER_AI_PROVIDER_ENABLED": "false",
+    "CRAWLER_AI_MODE": "OFF",
+    "CRAWLER_AI_DISPATCH_ENABLED": "false",
+    "LEGACY_DIRECT_AI_ENABLED": "false"
+  },
+  "ai_still_off": {
+    "CRAWLER_AI_PROVIDER_ENABLED": "false",
+    "CRAWLER_AI_MODE": "OFF",
+    "CRAWLER_AI_DISPATCH_ENABLED": "false",
+    "LEGACY_DIRECT_AI_ENABLED": "false"
+  },
+  "redeploy_needed": true,
+  "redeploy_note": "Env-only changes require a new production deployment to apply to serverless functions. Do NOT deploy yet per instructions.",
+  "live_sha_before": "09118d3",
+  "deploy_slot": {
+    "command": "npm run deploy:allowed",
+    "exit_inferred": "see output",
+    "output": "\n> nahaber@0.1.0 deploy:allowed\n> node scripts/allow-deploy.mjs\n\n[deploy:allowed] 2026-08-20 Istanbul \u2014 16/2 (git-log (Europe/Istanbul day))\n\u274c Deploy blocked: already 16 production deploys today (max 2).\n   Wait until tomorrow, or: FORCE_DEPLOY=1 / commit with [force-deploy]",
+    "force_deploy_needed_for_env": true,
+    "note": "Env changed without code deploy; running functions still on SHA 09118d3 until redeploy. Slot status in output."
+  }
+}

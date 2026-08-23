@@ -1,0 +1,166 @@
+NAHABER GLOBAL CRAWLER
+PHASE 4F.4.1 — EMERGENCY SHUTDOWN + FINAL ACCEPTANCE CLOSURE
+Generated: 2026-08-22T10:29:54.833Z
+
+1. BASELINE / PRIOR ACCEPTANCE
+- Pre-shutdown production SHA (health): 74b81b9 (verified at shutdown start)
+- T4F41 acceptance window: 2026-08-22T00:06:46.000Z
+- Prior acceptance: 3/3 COMPLETED Tier-B AI_DRAFTs; phase spend $0.01333508 (<= $0.015 cap)
+- Pre-shutdown live mode was CONTROLLED_AUTO_DRAFT (acceptance complete; cap held further enqueue)
+
+2. P0 — HARD SHUTDOWN (PRODUCTION ENV)
+- CRAWLER_AI_MODE=SHADOW_AUTO_DRAFT (production)
+- CRAWLER_AI_PROVIDER_ENABLED=false
+- CRAWLER_AI_DISPATCH_ENABLED=false
+- LEGACY_DIRECT_AI_ENABLED=false
+- CRAWLER_AI_AUTO_PUBLISH=false
+- AUTO_PUBLISH=false
+- NEWSROOM_AUTO_PUBLISH_ENABLED=false
+- NOT changed: acceptance caps, daily/monthly limits, pricing, CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER, jobs, ledger, drafts
+- Evidence: tmp-phase4f41-shutdown-env.jsonl (all exit 0); shutdown_at 2026-08-22T10:23:19.000Z
+
+3. P0.1 — DEPLOY
+- Mechanism: ancestry-safe `vercel redeploy` of current prod deployment (no git reset)
+- Source deployment: https://nahaber-fby61pwi4-shenteam1.vercel.app (dpl_33jBaKeu3M65TEdUGxn8S1gtzwHG)
+- New deployment: https://nahaber-rnhan8x6h-shenteam1.vercel.app → aliased https://www.nahaber.com
+- Final production SHA (health): 74b81b9 (code lineage preserved at 74b81b9)
+- Evidence: tmp-phase4f41-shutdown-redeploy.log
+
+4. P0.2 — RUNTIME CONFIG READBACK
+- MODE=SHADOW_AUTO_DRAFT (tick.autoDraft.mode + worker.mode)
+- PROVIDER=false (providerReady=false, providerReason=PROVIDER_DISABLED)
+- DISPATCH=false (worker reasons MODE_OR_DISPATCH_OFF)
+- LEGACY=false (env set; dispatch/provider off ⇒ no paid legacy path armed)
+- AUTO_PUBLISH=false (CRAWLER_AI_AUTO_PUBLISH + NEWSROOM_AUTO_PUBLISH_ENABLED set false; worker published=0)
+- Caps readback unchanged: ACCEPTANCE 3/3; AI_MAX_DRAFTS_PER_DAY=5; AI_MAX_DAILY_COST_USD=0.038; cutoff 2026-08-22T00:06:46.000Z
+- Evidence: tmp-phase4f41-env-readback.json, tmp-phase4f41-shutdown-tick.json, tmp-phase4f41-shutdown-worker.json
+
+5. P1 — CRAWLER TICK (POST-SHUTDOWN)
+- Invoked: POST /api/cron/crawler/tick (manual, authorized)
+- mode=SHADOW_AUTO_DRAFT; jobsCreated=0; providerCalls=0; aiRequests=0
+- Discovery continuity: sourcesChecked=1; skipReasons include SHADOW_AUTO_DRAFT_ACTIVE + SHADOW_NO_ENQUEUE
+- Extraction/cluster timestamps advanced post-shutdown (see section 13)
+- Evidence: tmp-phase4f41-shutdown-tick-summary.txt
+
+6. P2 — WORKER (POST-SHUTDOWN)
+- Invoked: POST /api/cron/crawler-ai-worker
+- mode=SHADOW_AUTO_DRAFT; claimed=0; providerCalls=0; draftsPersisted=0; published=0
+- reasons: MODE_OR_DISPATCH_OFF
+- Evidence: tmp-phase4f41-shutdown-worker-summary.txt
+
+7. P3 — LATE-SPEND FIREWALL
+- Ledger snapshot before/after shutdown + tick + worker window
+- delta ledger rows: 0; delta cost: $0
+- After shutdownAt 2026-08-22T10:23:19.000Z: late ledger rows=0; late paid rows=0; late spend=$0
+- Verdict: PASS (not BLOCKED)
+
+8. P4 — JOB STATE
+- PENDING=0; RESERVED=0; PROCESSING=0; uncertain=0
+- jobs_created_after_shutdown: 0
+- Preserved acceptance COMPLETED jobs (3):
+  • cl_c9fe982f… → 1 job, 1 ledger ($0.00447084), draft_snapshot yes
+  • cl_2fce0471… → 1 job, 1 ledger ($0.00385352), draft_snapshot yes
+  • cl_0133da15… → 1 job, 1 ledger ($0.00501072), draft_snapshot yes
+- No duplicate paid jobs; no new jobs after T4F41 beyond the 3 acceptance jobs
+
+9. P5 — DRAFT INTEGRITY
+- All 3 clusters: published_news_id=null; editorial_decision=NONE; AI_DRAFT via draft_snapshot + editorial_news_id (d_cad_*)
+- body_words audit query returned 0 (accept script SQL path)
+- Root cause: **C — observability/query path bug** — bodyWordCount/body_word_count not top-level keys; actual words live at draft_snapshot.quality.bodyWords (e.g. 483) with non-empty body text (len 3729). Drafts durable; no local fix required for shutdown.
+
+10. P6 — ACCOUNTING (UTC 2026-08-22)
+- Daily budget window: request_count=3; spent_usd≈$0.01333508; reserved_usd=0
+- Ledger today: n=3; cost=$0.01333508
+- After T4F41: n=3; cost=$0.01333508 (matches acceptance closure)
+- DeepSeek requests in window: 3; other AI paid crawler requests: 0
+- Historical paid jobs after T4F41 on protected clusters: 0
+- Monotonic; no deploy reset observed
+
+11. P7 — TIER A
+- TIER_A_NOT_OBSERVED (same as acceptance window — all three events Tier B single-source Karar)
+- Not a blocker for shutdown closure
+
+12. P8 — SHADOW CONTINUITY
+- Shadow evaluations advancing: uniqueEconomic c=459 wd=298 wb=161
+- Tick: SHADOW_NO_ENQUEUE; jobsCreated=0; providerRequests=0
+- Post-shutdown actual provider cost: $0
+
+13. P9 — HEALTH
+- /api/health: status=ok; version=74b81b9; env=production; region=fra1; time=2026-08-22T10:27:39.101Z
+- Freshness: latest_discovery=2026-08-22T10:27:37.331Z; latest_extract=2026-08-22T10:28:28.832Z; latest_cluster=2026-08-22T10:27:39.242Z
+
+14. HISTORICAL / ACTIVATION FIREWALL
+- hist_jobs_after T4F41: []
+- auto_pubs_after T4F41: 0
+- Cutoff unchanged at T4F41
+
+15. PUBLICATION FIREWALL
+- automatic publications: 0
+- All acceptance outputs remain unpublished (published_news_id null)
+
+16. IDEMPOTENCY / NO AUTO-REPAY SPEND
+- Each acceptance event exactly 1 paid ledger row + 1 COMPLETED job
+- Post-shutdown tick skips enqueue; no NO_AUTO_REPAY re-spend observed in shutdown window
+
+17. CONCURRENCY / ACTIVE PAID JOBS
+- maxConcurrentJobs=1 held during acceptance; post-shutdown active=0
+
+18. UNIQUE ECONOMICS (CUMULATIVE SHADOW TABLE)
+- estimatedRequestsAfterGate=298; prevented=161
+- Shadow economics independent of paid path (now hard-off)
+
+19. LOCAL QUALITY (UNCHANGED FROM ACCEPTANCE GATE)
+- vitest/tsc/build passed pre-acceptance (see tmp-phase4f41-vitest*.txt, build.txt)
+- No new code deploy in shutdown (env-only redeploy)
+
+20. BUGS / LIMITATIONS
+- Tier A still not observed (by design — not manufactured)
+- body_words SQL helper misleading (section 9); drafts OK
+- None blocking shutdown
+
+21. P10 — NO NEXT PHASE
+- STOP — NO PHASE 4F.5
+- No paid canary; no manual enqueue; no additional acceptance events
+
+22. READINESS COLOR
+- GREEN_FOR_NEXT_ACCEPTANCE_ONLY (paid path hard-shut; shadow operational)
+
+23. FINAL VERDICT
+PHASE 4F.4.1 PRODUCTION VERIFIED — CLEAN DAILY ACCOUNTING PASSED, 3/3 DURABLE TIER-B AI_DRAFTS CREATED, NO HISTORICAL OR DUPLICATE SPEND, NO AUTOMATIC PUBLICATION, PAID PATH HARD-SHUT DOWN, RETURNED TO SHADOW
+GREEN_FOR_NEXT_ACCEPTANCE_ONLY
+
+Finish fields:
+Starting production SHA: 74b81b9
+Final production SHA: 74b81b9
+T4F41: 2026-08-22T00:06:46.000Z
+Shutdown applied at (UTC): 2026-08-22T10:23:19.000Z
+DeepSeek requests: 3
+Other AI requests: 0
+Successful drafts: 3
+Failed drafts: 0
+Tier A drafts: 0
+Tier B drafts: 3
+Actual AI cost: $0.01333508
+Average cost / attempt: $0.00444503
+Average cost / successful draft: $0.00444503
+Daily attempts before (acceptance open): 0
+Daily attempts after (acceptance): 3
+Daily successes before: 0
+Daily successes after: 3
+Daily cost before: $0
+Daily cost after: $0.01333508
+Historical paid jobs (post-T4F41): 0
+Duplicate paid jobs: 0
+Automatic publications: 0
+Active jobs: 0
+Uncertain jobs: 0
+Late provider requests (post-shutdown): 0
+Late spend (post-shutdown): $0
+Final AI mode: SHADOW_AUTO_DRAFT
+Provider: false
+Dispatch: false
+Legacy: false
+Auto publish: false
+Crawler health: ok (74b81b9)
+
+STOP — NO PHASE 4F.5

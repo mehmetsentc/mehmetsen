@@ -1,0 +1,1 @@
+{"mode":"CONTROLLED_AUTO_DRAFT","claimed":0,"skipped":1,"providerCalls":0,"draftsPersisted":0,"completed":0,"failed":0,"published":0,"reasons":{"NO_CLAIMABLE_JOB":1},"jobId":null,"clusterId":null,"draftId":null,"executionId":null,"leaseOwner":null,"timingsMs":{"claim":17,"pack":0,"provider":0,"persist":0,"total":27},"providerReady":true,"leaseRecovered":0,"recoverReasons":{}}

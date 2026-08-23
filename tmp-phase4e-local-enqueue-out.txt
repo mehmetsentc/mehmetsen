@@ -1,0 +1,28 @@
+{
+  "pre": {
+    "mode": "CONTROLLED_AUTO_DRAFT",
+    "autoEnabled": true,
+    "providerReady": true,
+    "providerReason": null,
+    "credentialPresent": true
+  },
+  "result": {
+    "mode": "CONTROLLED_AUTO_DRAFT",
+    "evaluated": 5,
+    "jobsCreated": 1,
+    "blocked": 4,
+    "updateAvailable": 0,
+    "providerBlocked": 0,
+    "backlogExcluded": 4,
+    "providerCalls": 0,
+    "draftsPersisted": 0,
+    "published": 0,
+    "leaseRecovered": 0,
+    "reasons": {
+      "BEFORE_CUTOFF": 4,
+      "ENQUEUED": 1
+    },
+    "providerReady": true,
+    "providerReason": null
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "mode": "baseline",
+  "at": "2026-08-21T13:14:05.467Z",
+  "jobs_active": {
+    "c": 0
+  },
+  "jobs_by": [
+    {
+      "status": "COMPLETED",
+      "c": 2
+    },
+    {
+      "status": "FAILED",
+      "c": 3
+    }
+  ],
+  "ledger": {
+    "cost": 0.021845560520887375,
+    "n": 6
+  },
+  "approved_for_ai": {
+    "c": 9
+  },
+  "machine_eligible": {
+    "c": 0
+  },
+  "machine_none_decision": {
+    "c": 0
+  },
+  "fresh_multi": [
+    {
+      "id": "cl_68393c2b-158a-4cad-9c63-c8461f2141c4",
+      "canonical_title": "Son dakika... CHP'den istifa etti: Eskişehir Büyükşehir Belediye Başkanı Ayşe Ünlüce YENİ Parti'ye katıldı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "machine_draft_eligibility": null,
+      "machine_draft_eligibility_reason": null,
+      "unique_source_count": 4,
+      "importance_score": 66,
+      "cluster_confidence": 0.885,
+      "city": null,
+      "primary_source_name": "Cumhuriyet",
+      "created_at": "2026-08-21T08:06:47.136Z",
+      "published_news_id": null,
+      "max_words": 275,
+      "avg_conf": 0.885000005364418,
+      "avg_health": 92.75
+    },
+    {
+      "id": "cl_7dbbcc3e-3fba-45e2-a2a8-585b33a6d17b",
+      "canonical_title": "İçişleri Bakanlığı duyurdu... 20 ilde uyuşturucu operasyonu: 60 şüpheli yakalandı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "machine_draft_eligibility": null,
+      "machine_draft_eligibility_reason": null,
+      "unique_source_count": 3,
+      "importance_score": 63,
+      "cluster_confidence": 0.92,
+      "city": null,
+      "primary_source_name": "Cumhuriyet",
+      "created_at": "2026-08-21T08:22:41.487Z",
+      "published_news_id": null,
+      "max_words": 214,
+      "avg_conf": 0.9200000166893005,
+      "avg_health": 93
+    },
+    {
+      "id": "cl_5f26b291-bb72-4a58-b9f8-936e3724a9df",
+      "canonical_title": "CHP'den istifa etti: Menteşe Belediye Başkanı Gonca Köksal Aras, YENİ Parti’ye katıldı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "machine_draft_eligibility": null,
+      "machine_draft_eligibility_reason": null,
+      "unique_source_count": 2,
+      "importance_score": 60,
+      "cluster_confidence": 0.8267,
+      "city": null,
+      "primary_source_name": "Cumhuriyet",
+      "created_at": "2026-08-21T09:57:58.928Z",
+      "published_news_id": null,
+      "max_words": 631,
+      "avg_conf": 0.8266666531562805,
+      "avg_health": 94
+    },
+    {
+      "id": "cl_a38347cb-5842-4b74-ba61-e3278b5a2207",
+      "canonical_title": "Ankara'daki fuhuş operasyonunda yeni gelişme: 12 şüpheli tutuklandı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "machine_draft_eligibility": null,
+      "machine_draft_eligibility_reason": null,
+      "unique_source_count": 2,
+      "importance_score": 57,
+      "cluster_confidence": 0.85,
+      "city": null,
+      "primary_source_name": "Cumhuriyet",
+      "created_at": "2026-08-21T02:39:45.632Z",
+      "published_news_id": null,
+      "max_words": 429,
+      "avg_conf": 0.8499999940395355,
+      "avg_health": 93.5
+    },
+    {
+      "id": "cl_fdbc2119-79a4-4559-976f-04d4c68e7837",
+      "canonical_title": "God of War Dizisinin Yeni Kratos'u Belli Oldu",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "machine_draft_eligibility": null,
+      "machine_draft_eligibility_reason": null,
+      "unique_source_count": 2,
+      "importance_score": 59,
+      "cluster_confidence": 0.85,
+      "city": null,
+      "primary_source_name": "Webtekno",
+      "created_at": "2026-08-21T12:37:27.275Z",
+      "published_news_id": null,
+      "max_words": 354,
+      "avg_conf": 0.8499999940395355,
+      "avg_health": 92
+    },
+    {
+      "id": "cl_1d492533-443f-4708-af7f-ddc36bfa24cc",
+      "canonical_title": "Japonya’da beş kişiyi öldüren kundakçı idam edildi",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "machine_draft_eligibility": null,
+      "machine
+WROTE tmp-phase4f1-baseline.json

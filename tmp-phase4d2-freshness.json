@@ -1,0 +1,608 @@
+{
+  "auto_draft_status": [
+    {
+      "auto_draft_status": null,
+      "c": 1563
+    },
+    {
+      "auto_draft_status": "WAITING_FOR_MORE_SOURCES",
+      "c": 1
+    }
+  ],
+  "ai_ready_approved": [
+    {
+      "id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "title": "Uçuş Planı filminin konusu ne? Uçuş Planı filminin oyuncuları kim?",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "editorial_decided_at": "2026-08-19T20:51:33.775Z",
+      "ai_eligibility": "ELIGIBLE",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-19T15:00:41.433Z",
+      "updated_at": "2026-08-19T20:51:33.782Z"
+    }
+  ],
+  "cluster_cl_7ec4422d": [
+    {
+      "id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "title": "Uçuş Planı filminin konusu ne? Uçuş Planı filminin oyuncuları kim?",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "editorial_decided_at": "2026-08-19T20:51:33.775Z",
+      "ai_eligibility": "ELIGIBLE",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-19T15:00:41.433Z",
+      "updated_at": "2026-08-19T20:51:33.782Z"
+    }
+  ],
+  "cluster_cl_7ec4422d_word_counts": [
+    {
+      "raw_id": "raw_89bf740e-fb9e-4dd6-8bae-1258083802f6",
+      "cluster_id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "word_count": 80,
+      "editorial_status": "PUBLISHED",
+      "title": "Aşk İşaretleri filminin konusu ne? Aşk İşaretleri filminin oyuncuları kim?",
+      "created_at": "2026-08-19T17:02:04.463Z"
+    },
+    {
+      "raw_id": "raw_37027551-4e52-4c9d-b88c-1baf0c7f4975",
+      "cluster_id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "word_count": 122,
+      "editorial_status": "PUBLISHED",
+      "title": "Chien de la casse filminin konusu ne? Chien de la casse filminin oyuncuları kim?",
+      "created_at": "2026-08-19T16:32:33.977Z"
+    },
+    {
+      "raw_id": "raw_a4d331d1-69e3-4388-bd22-042321c12f2a",
+      "cluster_id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "word_count": 157,
+      "editorial_status": "PUBLISHED",
+      "title": "Uçuş Planı filminin konusu ne? Uçuş Planı filminin oyuncuları kim?",
+      "created_at": "2026-08-19T16:25:54.648Z"
+    },
+    {
+      "raw_id": "raw_2daed940-1497-40a9-a135-775f85759bfc",
+      "cluster_id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "word_count": 153,
+      "editorial_status": "DELETED",
+      "title": "Güneş filminin konusu ne? Güneş filminin oyuncuları kim?",
+      "created_at": "2026-08-19T15:00:40.448Z"
+    }
+  ],
+  "ai_ready_with_word_stats": [
+    {
+      "id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "title": "Uçuş Planı filminin konusu ne? Uçuş Planı filminin oyuncuları kim?",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "ai_eligibility": "ELIGIBLE",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "raw_count": 4,
+      "sum_word_count": 512,
+      "max_word_count": 157
+    }
+  ],
+  "recent_clusters_2h": [
+    {
+      "id": "cl_65451ce4-39ab-47ba-9621-a3d20b3db65c",
+      "title": "Jailed Pakistan ex-PM Imran Khan taken to hospital for treatment",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:48:20.339Z"
+    },
+    {
+      "id": "cl_619afd98-1288-4582-b9f8-0e5468013461",
+      "title": "Osmaniye’de dere yatağına yuvarlanan otomobilde 1 kişi hayatını kaybetti - Haberler Habertürk",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:40:34.658Z"
+    },
+    {
+      "id": "cl_f3c30b11-2168-4b5c-ac03-4c94da167214",
+      "title": "Australia news live: PM says he shouldn’t have gone on Bush Deep podcast; home sales to overseas buyers plunge",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:40:33.985Z"
+    },
+    {
+      "id": "cl_fe993f12-30f9-41f2-bd11-0eacbf9696dd",
+      "title": "Trump administration faces questions over top aide Natalie Harp’s security clearance",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:40:33.292Z"
+    },
+    {
+      "id": "cl_e8a3a158-ca28-4389-b08a-4f1a7c90d154",
+      "title": "İkinci Dünya Savaşı&#039;nın en başarısız beş savaş uçağı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:40:32.536Z"
+    },
+    {
+      "id": "cl_5038c659-3a83-48ad-8a64-f1b8af627653",
+      "title": "Balçığa saplanan leyleği böyle kurtardı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:40:31.868Z"
+    },
+    {
+      "id": "cl_30ef4817-6cea-4451-80c3-06d643db54ab",
+      "title": "Spider-Man olmadan çekildi, gişede tutunamadı: Şimdi Disney+’a geliyor",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:40:31.166Z"
+    },
+    {
+      "id": "cl_c7b6a3db-8626-48e6-8bab-e0d306036906",
+      "title": "Bozayı Meriç&#039;in köylerini geziyor",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "REJECTED",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:40:30.487Z"
+    },
+    {
+      "id": "cl_843932d7-61e5-4478-a149-afaac2fe1bd7",
+      "title": "Aleksey Batrakov'dan imza sonrası ilk açıklama: 'Şampiyonlar Ligi'nde oynamak hayaldi'",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:39:19.429Z"
+    },
+    {
+      "id": "cl_7ce73c83-1bc8-4025-b4df-8adcdf3814be",
+      "title": "Birbirlerine sarılmış halde bulunmuşlardı: 38 milyon yıllık sır çözüldü",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:37:19.337Z"
+    },
+    {
+      "id": "cl_1cfb750c-ce8e-453e-8ff4-c77b5fc51f4d",
+      "title": "Nigeria boat capsize leaves dozens dead and several missing",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:33:21.316Z"
+    },
+    {
+      "id": "cl_7cc3a458-962a-4650-aa27-53dac61dde70",
+      "title": "Woman charged with planning IS-inspired attack on New York state capitol building",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:27:21.084Z"
+    },
+    {
+      "id": "cl_a5d7b06b-3164-4b8a-b4a9-aaa008e6aabe",
+      "title": "Controversial California oil pipeline can continue to operate, judge rules",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:27:20.222Z"
+    },
+    {
+      "id": "cl_5d7b6d09-649e-4a7d-a8e7-b009f9e06392",
+      "title": "Denizde 3 ceset bulunmuştu: Kimlikleri belli oldu, kardeş oldukları ortaya çıktı!",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:24:22.299Z"
+    },
+    {
+      "id": "cl_64fb717b-770b-47b1-8e00-7d6d44fbce23",
+      "title": "YENİ Parti Berlin Birliği için çağrı heyeti görevlendirildi",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:24:21.521Z"
+    },
+    {
+      "id": "cl_7ef92af4-4023-4f5b-9a94-928ad67daf2b",
+      "title": "Biriyle göz göze gelmemek için telefona yapışanlar: Göz temasından kaçan 3 burç",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:10:20.820Z"
+    },
+    {
+      "id": "cl_2ad8c664-8b06-43ef-831c-a0bb514d532b",
+      "title": "Baba ve oğlu bir anda toprak altında kaldı: Su kuyusuna hortum bağlıyorlardı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:09:20.281Z"
+    },
+    {
+      "id": "cl_5ca6c99b-5dfe-4df6-91da-ce32b737d359",
+      "title": "İBB davasının engelli sanığının haysiyet dersi",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:05:20.402Z"
+    },
+    {
+      "id": "cl_697a1d12-d19a-48be-b53a-590eb7721c8d",
+      "title": "YÖK Başkanı Özvar: Türkiye’nin stratejik alanlardaki iddiasını nitelikli insan kaynağıyla güçlendireceğiz - Haberler Habertürk",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:02:35.293Z"
+    },
+    {
+      "id": "cl_79c3e5ce-d93b-4df4-a6c8-f237ca62bef8",
+      "title": "Beşiktaş kaleyi kapattı! 6 maç 0 gol... - Beşiktaş Haberler - Habertürk Spor",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:01:58.063Z"
+    },
+    {
+      "id": "cl_ddaaa9f1-96ee-426c-b3a7-33534c44cbb9",
+      "title": "Galatasaray'dan Ismaila Sarr hamlesi - Galatasary Haberleri - Habertürk",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:01:57.300Z"
+    },
+    {
+      "id": "cl_5e5f9d09-650c-4c0d-adf7-2fb0e9eb6765",
+      "title": "Amir Murillo: Daha fazla gol atabilirdik - Son Dakika Beşiktaş Haberleri - Habertürk Spor",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:01:34.251Z"
+    },
+    {
+      "id": "cl_3ee15a9b-5fd3-4da5-a633-6f824b71d6b1",
+      "title": "Son dakika: Galatasaray Batrakov'un maliyetini açıkladı! - Son Dakika Galatasaray Haberleri - Habertürk",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:01:33.433Z"
+    },
+    {
+      "id": "cl_2f917788-178e-4703-88a8-331bb34684ab",
+      "title": "Kahreden olay… 8 aylık hamile eşini öldürüp intihara kalkıştı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:01:32.595Z"
+    },
+    {
+      "id": "cl_c41ca6d2-c3fa-441a-b282-959eed19b054",
+      "title": "Türkiye ve Rusya arasında 'Ukrayna'ya silah transferi' gerilimi",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:01:31.784Z"
+    },
+    {
+      "id": "cl_98b73073-88d8-4dec-bb02-698ffbca27f0",
+      "title": "Lindsay Clancy murder trial draws some 300 US supporters, many of them women: ‘nobody takes us seriously’",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T20:01:30.997Z"
+    },
+    {
+      "id": "cl_54e509c4-116c-477d-a25b-28f0fa6552ba",
+      "title": "Fatih Tekke mağlubiyetin ardından konuştu! İşimiz zorlaştı, imkansız değil",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:57:20.608Z"
+    },
+    {
+      "id": "cl_fc3f612f-743b-4dd4-a972-12782d4c852b",
+      "title": "Fatih Tekke'den hakem tepkisi: 'İnanılmaz kötü yönetti'",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:56:17.681Z"
+    },
+    {
+      "id": "cl_cc33f02d-524c-40c9-93ec-0116c5848253",
+      "title": "Arif Ahmet Denizolgun’un naaşı yeniden defnedildi. Hazırlanacak rapor bekleniyor",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:55:25.214Z"
+    },
+    {
+      "id": "cl_b9665c1f-47bd-4346-b488-d088b17c4173",
+      "title": "Leandro Trossard oyuna devam edememişti: Vincenzo Italiano'dan sakatlık açıklaması!",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:55:23.962Z"
+    },
+    {
+      "id": "cl_f7402a43-5534-4734-a4eb-baa019cfe016",
+      "title": "Italiano'nun hırsı dikkat çekti: Daha iyi olmalıyız, bu yetmez",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:53:39.350Z"
+    },
+    {
+      "id": "cl_cf6f96af-14a0-4a78-b821-0851eb1a6d62",
+      "title": "NATO'dan İran'a sert uyarı: Gerekeni yaparız",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:53:38.597Z"
+    },
+    {
+      "id": "cl_9d337b71-d8c0-4a7f-b40d-69981e3c2f25",
+      "title": "Finlandiya'da çocuklarını IŞİD kontrolündeki bölgeye götüren anneye dava açıldı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:53:37.072Z"
+    },
+    {
+      "id": "cl_f3b9b81b-ed7f-4e06-b49e-f47fffc5aa40",
+      "title": "Piranaların atası dev Megapiranha: Beyaz köpekbalığı kadar güçlüydü",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:53:36.368Z"
+    },
+    {
+      "id": "cl_3355a53b-d84a-4595-b568-28dfde05395e",
+      "title": "Soner Yalçın&#039;ın İBB davası savunmasının tam metni",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:53:35.648Z"
+    },
+    {
+      "id": "cl_73de1c0f-0139-4394-98e0-920fbc5e09ab",
+      "title": "Windows 11&#039;in yeni ayarı kamerayı ve mikrofonu uygulamalara kapatacak",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:53:34.953Z"
+    },
+    {
+      "id": "cl_74806b76-65d1-4a13-9207-0b35a7ec220d",
+      "title": "Terör örgütü YPG&#039;nin lideri Mazlum Abdi: Suriye&#039;ye entegrasyon tamamlandı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "auto_draft_status": null,
+      "source_count": 2,
+      "created_at": "2026-08-20T19:53:34.247Z"
+    },
+    {
+      "id": "cl_7bd627ac-438e-43fe-9174-a2882505a717",
+      "title": "Temel kazısı sırasında tesadüfen bulundu: İşçiler hemen polisi çağırdı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:50:18.101Z"
+    },
+    {
+      "id": "cl_4117f1e9-b64b-4a1c-a817-825ec69521a7",
+      "title": "Galatasaray, Aleksey Batrakov transferini resmen açıkladı: Maliyeti belli oldu!",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:40:20.997Z"
+    },
+    {
+      "id": "cl_1cbae514-71d0-4388-b6c8-4891e0c0bf5b",
+      "title": "Yalova'da erkek dehşeti! 8 aylık hamile eşini katletti, kendini de vurdu",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:40:20.277Z"
+    },
+    {
+      "id": "cl_f36b8eeb-2cbf-4e09-b9f9-84d0b0535820",
+      "title": "İstanbul'da tur kapısı aralandı: Beşiktaş 3 - 0 Kauno Zalgiris",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:36:20.200Z"
+    },
+    {
+      "id": "cl_b7c8339e-6984-4097-9941-85ea89b579c0",
+      "title": "8 kez uzaklaştırmaya rağmen bıçaklandı: Adana'da kadınlar Ayşe Katırcı için adalet istedi",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:35:27.299Z"
+    },
+    {
+      "id": "cl_4477f094-460d-48dd-a291-068a6642cf66",
+      "title": "Bayraktar KALKAN DİHA Envantere Alındı",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:35:25.750Z"
+    },
+    {
+      "id": "cl_18041cbe-78c9-4165-9a83-644ffbdff09e",
+      "title": "Beşiktaş gol yemeyi unuttu! Nübel kaleye duvar ördü",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:34:20.551Z"
+    },
+    {
+      "id": "cl_7cbd6eb2-7107-4357-b384-e60ad2ebc6dc",
+      "title": "Beşiktaş için Avrupa Ligi kapısı aralandı: 3-0",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:33:34.427Z"
+    },
+    {
+      "id": "cl_b2ae83e3-3de3-4de1-adb0-41d970105cbc",
+      "title": "Hyeon-gyu Oh'dan Dusan Vlahovic'e övgü: 'Dünyanın en iyi santrforu'",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:33:33.732Z"
+    },
+    {
+      "id": "cl_61a54188-16f8-4788-a3d5-6f4e6920aa8b",
+      "title": "Kediler &quot;sevimli&quot; görünsün diye felakete sürükleniyor",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:33:33.013Z"
+    },
+    {
+      "id": "cl_8977f269-7178-4b66-a67f-41f58b50fcec",
+      "title": "Trabzonspor Avrupa&#039;da kayıp: Tur Ferencvaros deplasmanına kaldı: 0-1",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "auto_draft_status": null,
+      "source_count": 2,
+      "created_at": "2026-08-20T19:33:32.334Z"
+    },
+    {
+      "id": "cl_7cfd33fd-e7ac-4a67-bb24-4b49bea1b194",
+      "title": "Ankara'da korkunç olay... Doktor tren raylarına atladı: Hayatını kaybetti",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "REJECTED",
+      "auto_draft_status": null,
+      "source_count": 1,
+      "created_at": "2026-08-20T19:27:23.590Z"
+    },
+    {
+      "id": "cl_b4c6cd98-3bbd-459e-a43a-7a202da2875f",
+      "title": "Peru’da 6.7 büyüklüğünde deprem",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "ELIGIBLE",
+      "auto_draft_status": null,
+      "source_count": 2,
+      "created_at": "2026-08-20T19:27:22.944Z"
+    }
+  ],
+  "recent_clusters_2h_count": 50,
+  "ledger_token_cols": [
+    {
+      "column_name": "actual_cost_usd"
+    },
+    {
+      "column_name": "estimated_cost_usd"
+    },
+    {
+      "column_name": "input_tokens"
+    },
+    {
+      "column_name": "model"
+    },
+    {
+      "column_name": "output_tokens"
+    },
+    {
+      "column_name": "provider"
+    },
+    {
+      "column_name": "status"
+    }
+  ],
+  "ledger_succeeded_rows": [
+    {
+      "id": "ldg_mt1ld0in_innjjx",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "SUCCEEDED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.0037752,
+      "estimated_cost_usd": 0.00506,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 3048,
+      "output_tokens": 1844,
+      "created_at": "2026-08-20T14:04:03.167Z"
+    }
+  ],
+  "ledger_target_cost_row": [
+    {
+      "id": "ldg_mt1ld0in_innjjx",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "SUCCEEDED",
+      "request_type": "generation",
+      "mode": null,
+      "actual_cost_usd": 0.0037752,
+      "estimated_cost_usd": 0.00506,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 3048,
+      "output_tokens": 1844,
+      "created_at": "2026-08-20T14:04:03.167Z"
+    }
+  ],
+  "ledger_reverse_check": [
+    {
+      "id": "ldg_mt1ld0in_innjjx",
+      "model": "deepseek-v4-flash",
+      "actual_cost_usd": 0.0037752,
+      "input_tokens": 3048,
+      "output_tokens": 1844,
+      "expected_at_0_44_1_32": 0.0037752,
+      "matches_within_1e_6": true
+    }
+  ]
+}

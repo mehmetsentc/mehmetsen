@@ -1,0 +1,7 @@
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","jobsCreated":0,"aiRequests":0,"sourcesChecked":2,"articlesFetched":0,"articlesClustered":0,"clustersCreated":0}
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","jobsCreated":0,"aiRequests":0,"sourcesChecked":0,"articlesFetched":0,"articlesClustered":0,"clustersCreated":0}
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","jobsCreated":0,"aiRequests":0,"sourcesChecked":0,"articlesFetched":0,"articlesClustered":0,"clustersCreated":0}
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","jobsCreated":0,"aiRequests":0,"sourcesChecked":1,"articlesFetched":0,"articlesClustered":0,"clustersCreated":0}
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","jobsCreated":0,"aiRequests":0,"sourcesChecked":0,"articlesFetched":0,"articlesClustered":0,"clustersCreated":0}
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","jobsCreated":0,"aiRequests":0,"sourcesChecked":1,"articlesFetched":0,"articlesClustered":0,"clustersCreated":0}
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","jobsCreated":0,"aiRequests":0,"sourcesChecked":4,"articlesFetched":2,"articlesClustered":2,"clustersCreated":2}

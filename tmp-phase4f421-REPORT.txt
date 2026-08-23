@@ -1,0 +1,119 @@
+NAHABER GLOBAL CRAWLER — PHASE 4F.4.2.1 PRODUCTION DEPLOY + SHADOW ACCEPTANCE CLOSURE
+Generated: 2026-08-22T11:01:30Z (Istanbul ~14:01)
+T4F421 window start: 2026-08-22T10:57:12.000Z
+Production: https://www.nahaber.com
+
+══════════════════════════════════════════════════
+P0 — PRE-DEPLOY SAFETY
+══════════════════════════════════════════════════
+Production health: OK (tmp-phase4f421-health-pre.json)
+  version/sha: 74b81b9 (matches Starting SHA)
+  env: production, region: fra1
+Runtime tick (pre-deploy): SHADOW_AUTO_DRAFT, jobsCreated=0, providerCalls=0, aiRequests=0
+Runtime worker (pre-deploy): claimed=0, providerCalls=0, reasons MODE_OR_DISPATCH_OFF
+Active crawler_ai_jobs (PENDING/RESERVED/PROCESSING): 0
+Ledger all-time (paid rows): n=13 cost≈$0.0498
+Ledger after T4F42 local marker: n=0 cost=$0
+Ledger after T4F421: not separately keyed — no new paid rows at P0
+Paid path armed: NO (providerReason PROVIDER_DISABLED, dispatch off)
+STOP paid path: NOT TRIGGERED
+
+Evidence: tmp-phase4f421-baseline.json, tmp-phase4f421-pre-tick-run.txt, tmp-phase4f421-pre-worker-run.txt
+
+══════════════════════════════════════════════════
+P1 — LOCAL BATCH VERIFY
+══════════════════════════════════════════════════
+LOW_EDITORIAL_VALUE gate present in preSpendGate (4F4.2), deterministic lowEditorialValue.ts
+draftBodyWords helper + CMS/API observability in working tree (uncommitted)
+Local simulation (4F3.1 unique sample): tmp-phase4f421-simulate-recalc.json
+  WOULD_DISPATCH 312→297, LOW_EDITORIAL blocked=15, ~$0.071 prevented
+No auto-publish / dedup weakening in diff scope
+
+══════════════════════════════════════════════════
+P2 — QUALITY GATE
+══════════════════════════════════════════════════
+phase4f42: 11/11 PASS (tmp-phase4f421-vitest-f42.txt)
+phase4f31: 17/17 | phase4f3: 11/11 | phase4f1: 30/30
+phase4e1: 11/11 | phase4e: 23/23 (worker paths) | phase4d4: 14/14 | phase4f4: 4/4
+dedup: 4/4 | images: 21/21 (tmp-phase4f421-vitest-dedup-img.txt)
+npx tsc --noEmit: PASS (tmp-phase4f421-tsc.txt empty = no errors)
+npm run build: PASS (tmp-phase4f421-build.txt)
+
+══════════════════════════════════════════════════
+P3 — SINGLE BATCH COMMIT
+══════════════════════════════════════════════════
+NOT EXECUTED — blocked by P4 deploy slot gate (local cost policy: no [deploy] push while cap full)
+Staged-ready files (4F.4.2 scope): lowEditorialValue.ts, draftBodyWords.ts, phase4f42.test.ts,
+preSpendGate.ts, pipeline.ts, shadowUniqueEconomics.ts, economicTiers.ts, index.ts,
+ai-dispatch page/route, aiDraftsQuery.ts, scripts/_phase4f42-accept.mts (+ minor tick/accept tweaks)
+
+══════════════════════════════════════════════════
+P4 — DEPLOY
+══════════════════════════════════════════════════
+npm run deploy:allowed → EXIT 1
+  "11/2 production deploys today (max 2)"
+Verdict branch: DEPLOY_SLOT_STILL_BLOCKED
+Commit/push with [deploy]: NOT PERFORMED
+Production SHA unchanged: 74b81b9
+
+Evidence: tmp-phase4f421-deploy-blocked.json
+
+══════════════════════════════════════════════════
+P5–P8 — POST-DEPLOY VERIFICATION
+══════════════════════════════════════════════════
+NOT RUN (4F.4.2 code not on production)
+Expected post-deploy checks deferred: prespend_gate_version=4F4.2, unique shadow rows, ledger firewall
+
+══════════════════════════════════════════════════
+P9 — BODY WORD PRODUCTION PROOF
+══════════════════════════════════════════════════
+NOT RUN on production (gate/CMS fields from 4F.4.2 not deployed)
+Local audit retained: tmp-phase4f42-body-words.json (~591/400/483 on 4F.4.1 acceptance drafts)
+
+══════════════════════════════════════════════════
+P10 — LOW_EDITORIAL_VALUE PRODUCTION PROOF
+══════════════════════════════════════════════════
+NOT OBSERVABLE ON PROD — prespend_gate_version still 4F3.1 on live traffic
+Status: LOW_EDITORIAL_VALUE_NOT_OBSERVED_NATURALLY (no deploy)
+
+══════════════════════════════════════════════════
+P11–P12 — SOURCE RECOVERY
+══════════════════════════════════════════════════
+Local recovery probes complete (tmp-phase4f42-recovery-test.json): odatv, evrensel, ahaber reachable in probe
+Activation NOT APPLIED — max 3 reactivation deferred until post-deploy observe window
+
+══════════════════════════════════════════════════
+P13–P14 — UNIQUE SHADOW OBSERVATION (4F.4.2)
+══════════════════════════════════════════════════
+NOT RUN — no 4F4.2 prespend_gate_version rows on production yet
+DB baseline at P0 (4F3.1 unique funnel): revisions=484 dispatch=316 block=168
+  Tier A/B/C/D: 10/309/19/146 (vs known 470/305/165 and 10/298/19/143 — drift from new shadow evals)
+
+══════════════════════════════════════════════════
+P15–P17 — TIER A, COST PROJECTION, CMS
+══════════════════════════════════════════════════
+Local audits unchanged: tmp-phase4f42-tier-a.json, projection.json, funnel.json
+Production CMS 4F.4.2 fields: NOT LIVE until deploy
+
+══════════════════════════════════════════════════
+P18 — FINAL SAFETY
+══════════════════════════════════════════════════
+Production flags (pre-deploy tick/worker): SHADOW, provider off, dispatch off, jobs=0, providerCalls=0
+New paid ledger since T4F421: 0 (T4F42 window clean)
+Automatic publications this phase: 0
+
+══════════════════════════════════════════════════
+FINAL VERDICT
+══════════════════════════════════════════════════
+PHASE 4F.4.2 PRODUCTION BLOCKED — DEPLOY_SLOT_STILL_BLOCKED
+
+Local acceptance: CODE + TESTS + P0 SAFETY PASS; ZERO PAID AI THIS RUN
+Production still on SHA 74b81b9 without 4F.4.2 LOW_EDITORIAL_VALUE gate
+
+When slot opens:
+1. npm run deploy:allowed (must exit 0)
+2. Single commit: [deploy] feat(crawler): phase 4F.4.2 shadow quality optimization
+3. Push → wait Ready → re-run P5–P18 (tick prespend 4F4.2, observe ≥100 unique revisions, max 3 source reactivations)
+
+STOP — NO PHASE 4F.5
+DO NOT ENABLE PAID AI

@@ -1,0 +1,23 @@
+{
+  "mode": "tier-a",
+  "at": "2026-08-22T14:29:06.751Z",
+  "T4F42": "2026-08-22T10:42:59.000Z",
+  "multi_source_clusters": 109,
+  "multi_source_tier_a": 12,
+  "multi_source_blocked_before_a": 83,
+  "multi_source_block_reasons": {
+    "PRESPEND_READY": 25,
+    "ALREADY_PUBLISHED": 9,
+    "TOO_THIN": 3,
+    "WAITING_FOR_MORE_SOURCES": 9,
+    "unknown": 62,
+    "HISTORICAL_BLOCKED": 1
+  },
+  "tier_a_root_causes": {
+    "A_traffic_few_multi": false,
+    "B_clustering_conservative": 1,
+    "C_source_overlap_low": 94,
+    "D_paused_sources_impact": "see sources mode — 47 PAUSED reduces independent coverage",
+    "E_tier_a_strict": 13
+  }
+}

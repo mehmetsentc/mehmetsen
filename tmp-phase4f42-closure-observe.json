@@ -1,0 +1,50 @@
+{
+  "mode": "observe",
+  "at": "2026-08-22T14:31:17.814Z",
+  "T4F42": "2026-08-22T10:42:59.000Z",
+  "crawler_freshness": {
+    "latest_discovery": "2026-08-22T14:31:18.272Z",
+    "latest_extract": "2026-08-22T14:31:18.432Z",
+    "articles_discovered_after": 262,
+    "clusters_created_after": 213,
+    "multi_source_after": 7
+  },
+  "shadow_after": {
+    "rawEvaluations": 93,
+    "distinctClusters": 92,
+    "uniqueEventRevisions": 93,
+    "uniqueWouldDispatch": 52,
+    "uniqueWouldBlock": 41,
+    "byTier": {
+      "D": 41,
+      "A": 4,
+      "B": 48
+    },
+    "byBlockReason": {
+      "TOO_THIN": 12,
+      "WAITING_FOR_MORE_SOURCES": 18,
+      "LOW_EDITORIAL_VALUE": 8,
+      "ALREADY_PUBLISHED": 3
+    },
+    "byPrespend": {
+      "TOO_THIN": 12,
+      "WAITING_FOR_MORE_SOURCES": 18,
+      "PRESPEND_READY": 52,
+      "LOW_EDITORIAL_VALUE": 8,
+      "ALREADY_PUBLISHED": 3
+    },
+    "estimatedRequestsAfterGate": 52,
+    "estimatedRequestsBeforeGate": 93,
+    "estimatedRequestsPrevented": 41,
+    "requestPreventionPct": 44.1,
+    "estimatedSpendAfterGateUsd": 0.24037992,
+    "estimatedSpendBeforeGateUsd": 0.42323732,
+    "estimatedSpendPreventedUsd": 0.1828574,
+    "spendPreventionPct": 43.2,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  },
+  "sources_active": {
+    "c": 21
+  }
+}

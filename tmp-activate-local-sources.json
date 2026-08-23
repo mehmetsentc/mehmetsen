@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-08-22T20:55:09.067Z",
+  "before": {
+    "byStatus": [
+      {
+        "status": "ACTIVE",
+        "c": 19
+      },
+      {
+        "status": "PAUSED",
+        "c": 42
+      }
+    ],
+    "localByStatus": [
+      {
+        "status": "ACTIVE",
+        "c": 1
+      },
+      {
+        "status": "PAUSED",
+        "c": 5
+      }
+    ]
+  },
+  "seeded": [],
+  "activated": [
+    {
+      "id": "src_b0c1998b-80bd-4771-beb7-a5c042ec38fd",
+      "name": "Ankara Büyükşehir",
+      "domain": "ankara.bel.tr"
+    },
+    {
+      "id": "src_51367e16-c7d3-4c84-b0d2-8a6bcb577d97",
+      "name": "Biga Haber",
+      "domain": "bigahaber.com"
+    },
+    {
+      "id": "src_b70b9f63-e841-48e6-8b4a-ceb43603c1dc",
+      "name": "Gelibolu Haber",
+      "domain": "geliboluhaber.com",
+      "warning": "BLOCKED_EXTERNAL / SSRF risk (gelibolu)"
+    },
+    {
+      "id": "src_33950dfe-4371-4ad7-ab54-b00f6ee04179",
+      "name": "Çanakkale İçinde",
+      "domain": "canakkaleicinde.com"
+    },
+    {
+      "id": "src_8c3a9f85-48be-4244-8f5b-c0496543453d",
+      "name": "İBB Haber",
+      "domain": "ibb.istanbul"
+    }
+  ],
+  "alreadyActive": [
+    "Çanakkale Olay"
+  ],
+  "failed": [],
+  "warnings": [
+    "Gelibolu Haber (geliboluhaber.com): BLOCKED_EXTERNAL / SSRF risk (gelibolu)"
+  ],
+  "stillPausedLocal": [],
+  "after": {
+    "byStatus": [
+      {
+        "status": "ACTIVE",
+        "c": 24
+      },
+      {
+        "status": "PAUSED",
+        "c": 37
+      }
+    ],
+    "localByStatus": [
+      {
+        "status": "ACTIVE",
+        "c": 6
+      }
+    ]
+  },
+  "counts": {
+    "activated": 5,
+    "seeded": 0,
+    "alreadyActive": 1,
+    "failed": 0,
+    "stillPausedLocal": 0
+  }
+}

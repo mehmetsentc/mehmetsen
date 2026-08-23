@@ -1,0 +1,122 @@
+{
+  "health_before": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-21T09:29:57.335Z",
+    "version": "7a95649",
+    "env": "production",
+    "region": "fra1"
+  },
+  "health_after": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-21T09:30:17.950Z",
+    "version": "7a95649",
+    "env": "production",
+    "region": "fra1"
+  },
+  "ticks": [
+    {
+      "status": 200,
+      "providerCalls": null,
+      "published": null,
+      "discovered": null,
+      "extracted": null,
+      "clustered": null,
+      "keys": [
+        "enabled",
+        "sourcesChecked",
+        "urlsInserted",
+        "articlesFetched",
+        "extractionSuccess",
+        "duplicates",
+        "aiCandidates",
+        "aiAvoided",
+        "aiRequests",
+        "articlesClustered",
+        "clustersCreated",
+        "mediaChecked"
+      ],
+      "mode": null,
+      "err": null
+    },
+    {
+      "status": 200,
+      "providerCalls": null,
+      "published": null,
+      "discovered": null,
+      "extracted": null,
+      "clustered": null,
+      "keys": [
+        "enabled",
+        "sourcesChecked",
+        "urlsInserted",
+        "articlesFetched",
+        "extractionSuccess",
+        "duplicates",
+        "aiCandidates",
+        "aiAvoided",
+        "aiRequests",
+        "articlesClustered",
+        "clustersCreated",
+        "mediaChecked"
+      ],
+      "mode": null,
+      "err": null
+    },
+    {
+      "status": 200,
+      "providerCalls": null,
+      "published": null,
+      "discovered": null,
+      "extracted": null,
+      "clustered": null,
+      "keys": [
+        "enabled",
+        "sourcesChecked",
+        "urlsInserted",
+        "articlesFetched",
+        "extractionSuccess",
+        "duplicates",
+        "aiCandidates",
+        "aiAvoided",
+        "aiRequests",
+        "articlesClustered",
+        "clustersCreated",
+        "mediaChecked"
+      ],
+      "mode": null,
+      "err": null
+    }
+  ],
+  "worker": {
+    "status": 200,
+    "claimed": 0,
+    "providerCalls": 0,
+    "published": 0,
+    "mode": "OFF",
+    "reasons": {
+      "MODE_OR_DISPATCH_OFF": 1
+    },
+    "keys": [
+      "mode",
+      "claimed",
+      "skipped",
+      "providerCalls",
+      "draftsPersisted",
+      "completed",
+      "failed",
+      "published",
+      "reasons",
+      "jobId",
+      "clusterId",
+      "draftId",
+      "executionId",
+      "leaseOwner",
+      "timingsMs",
+      "providerReady",
+      "leaseRecovered",
+      "recoverReasons"
+    ]
+  }
+}

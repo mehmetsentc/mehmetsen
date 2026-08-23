@@ -1,0 +1,3839 @@
+{
+  "timestamp": "2026-08-22T21:07:17.725Z",
+  "registry": {
+    "nationalCount": 56,
+    "localCityRegistryCount": 341,
+    "totalRegistryCount": 397
+  },
+  "before": {
+    "totalSources": 61,
+    "localSources": 4
+  },
+  "seeded": [
+    {
+      "key": "adana-5ocak",
+      "name": "5 Ocak Gazetesi",
+      "city": "Adana",
+      "id": "src_f7a0ebd6-e16f-4fe9-8e18-92d5b737db88"
+    },
+    {
+      "key": "adana-haber-merkezi",
+      "name": "Adana Haber Merkezi",
+      "city": "Adana",
+      "id": "src_f205e911-4813-4d2d-8851-b4e500cb598b"
+    },
+    {
+      "key": "adiyaman-haber",
+      "name": "Adıyaman Haber",
+      "city": "Adıyaman",
+      "id": "src_be597478-4855-44fd-bf1c-e62515534ab2"
+    },
+    {
+      "key": "agri-04haber",
+      "name": "Ağrı 04 Haber",
+      "city": "Ağrı",
+      "id": "src_5c966f03-ff42-495c-b4a5-7dedf08f2a7f"
+    },
+    {
+      "key": "afyon-gazete",
+      "name": "Afyon Gazete",
+      "city": "Afyonkarahisar",
+      "id": "src_0a29741f-5d8e-498a-b7df-fcdedde521e8"
+    },
+    {
+      "key": "amasya-objektif",
+      "name": "Objektif Amasya",
+      "city": "Amasya",
+      "id": "src_2d32a950-49de-4cdb-8e01-852a39c1e22a"
+    },
+    {
+      "key": "haber-ankara",
+      "name": "Haber Ankara",
+      "city": "Ankara",
+      "id": "src_c73b3e5d-fd32-41be-9322-f067264507b6"
+    },
+    {
+      "key": "antalya-ekspres",
+      "name": "Antalya Ekspres",
+      "city": "Antalya",
+      "id": "src_4a0a8327-150b-4f4e-9d5a-3644660db2eb"
+    },
+    {
+      "key": "artvin-haber",
+      "name": "Artvin Haber",
+      "city": "Artvin",
+      "id": "src_046e597b-5e62-4d3e-90bb-5a9308a1be29"
+    },
+    {
+      "key": "aydin-haber",
+      "name": "Aydın Haber",
+      "city": "Aydın",
+      "id": "src_fe3299ed-c3e2-4ddf-8c23-c4dc6d2f94a1"
+    },
+    {
+      "key": "balikesirim-net",
+      "name": "Balıkesirim.net",
+      "city": "Balıkesir",
+      "id": "src_58a8546b-8b67-4026-851b-cb94ba98ce41"
+    },
+    {
+      "key": "balikesir-ege-gundem",
+      "name": "Ege Gündem",
+      "city": "Balıkesir",
+      "id": "src_1684757e-0352-41e7-b134-587fc7c356a2"
+    },
+    {
+      "key": "bartin-pusula",
+      "name": "Bartın Pusula Gazetesi",
+      "city": "Bartın",
+      "id": "src_f34b1802-ddbf-478a-98fc-27f52aac4250"
+    },
+    {
+      "key": "batman-haber",
+      "name": "Batman Haber",
+      "city": "Batman",
+      "id": "src_407af9dd-b388-4b04-bf54-99723ef7d563"
+    },
+    {
+      "key": "bayburt-gundem",
+      "name": "Bayburt Gündem",
+      "city": "Bayburt",
+      "id": "src_02b7ca87-a309-4d1b-9bad-0cfbacb89430"
+    },
+    {
+      "key": "bayburt-postasi",
+      "name": "Bayburt Postası",
+      "city": "Bayburt",
+      "id": "src_e3908569-775a-4c7e-b609-682a44ff4fc1"
+    },
+    {
+      "key": "bilecik-olay",
+      "name": "Bilecik Olay",
+      "city": "Bilecik",
+      "id": "src_7d39b8e9-797e-4786-8dab-5b21b47951f4"
+    },
+    {
+      "key": "bingol-kenthaber",
+      "name": "Bingöl Kent Haber",
+      "city": "Bingöl",
+      "id": "src_332525b7-4751-4da2-8062-fd669f198a2c"
+    },
+    {
+      "key": "bitlis-dogruhaber",
+      "name": "Bitlis Doğru Haber",
+      "city": "Bitlis",
+      "id": "src_c941d262-de7d-4462-ae07-9b3b48c01d9d"
+    },
+    {
+      "key": "bitlis-haber13",
+      "name": "Bitlis Haber 13",
+      "city": "Bitlis",
+      "id": "src_2e610178-f866-451b-bede-dc994cd22ba9"
+    },
+    {
+      "key": "bolu-haber",
+      "name": "Bolu Haber",
+      "city": "Bolu",
+      "id": "src_cf97f5d9-c154-40e4-a9a9-ac4d2e7ea1ea"
+    },
+    {
+      "key": "burdur-gazete",
+      "name": "Burdur Gazetesi",
+      "city": "Burdur",
+      "id": "src_aeebe328-1201-4d2f-bbc6-88db025e4c04"
+    },
+    {
+      "key": "burdur-yenigun",
+      "name": "Burdur Yenigün",
+      "city": "Burdur",
+      "id": "src_ee33ac50-37c5-4190-9e6b-ac2a6b621b2a"
+    },
+    {
+      "key": "bursa-haber",
+      "name": "Bursa Haber",
+      "city": "Bursa",
+      "id": "src_3e278611-d8de-41bb-8be8-4b616e715f8a"
+    },
+    {
+      "key": "canakkale-haber",
+      "name": "Çanakkale Haber",
+      "city": "Çanakkale",
+      "id": "src_5d9ba72d-357d-4c0c-b9a7-7113b0484e4a"
+    },
+    {
+      "key": "canakkale-kaleninsesi",
+      "name": "Kalenin Sesi",
+      "city": "Çanakkale",
+      "id": "src_73d20ea4-42ad-4ea7-bb40-88b2ad87a76b"
+    },
+    {
+      "key": "canakkale-gundem",
+      "name": "Çanakkale Gündem",
+      "city": "Çanakkale",
+      "id": "src_0580c57a-50e7-4b1e-b43d-26910aa91308"
+    },
+    {
+      "key": "canakkale-aynalipazar",
+      "name": "Çanakkale Aynalı Pazar",
+      "city": "Çanakkale",
+      "id": "src_e8c077cb-1f3c-41ee-be7f-cefeb8575d5a"
+    },
+    {
+      "key": "canakkale-kalem",
+      "name": "Çanakkale Kalem",
+      "city": "Çanakkale",
+      "id": "src_2c96e403-ffa3-4f09-a631-89f74dafa956"
+    },
+    {
+      "key": "biga-insesi",
+      "name": "Biga'nın Sesi",
+      "city": "Çanakkale",
+      "id": "src_10804429-11ca-4ccb-a656-67aea1d50de5"
+    },
+    {
+      "key": "medya-lokum",
+      "name": "Medya Lokum (Biga)",
+      "city": "Çanakkale",
+      "id": "src_6f33d3c4-5dea-4300-ac2e-dd9cc27ecf22"
+    },
+    {
+      "key": "can-insesi",
+      "name": "Çan'ın Sesi",
+      "city": "Çanakkale",
+      "id": "src_c13bedbf-0c88-463c-af3a-2ba3399ae222"
+    },
+    {
+      "key": "gelibolu-gaste",
+      "name": "Gelibolu Gaşte",
+      "city": "Çanakkale",
+      "id": "src_56aa69a4-1363-4a00-8bc7-c931e0c5b62a"
+    },
+    {
+      "key": "bozcaada-haber",
+      "name": "Bozcaada Haber",
+      "city": "Çanakkale",
+      "id": "src_8da11528-224e-4085-b22d-667d25373555"
+    },
+    {
+      "key": "canakkale-kanal17",
+      "name": "Kanal 17 (Çanakkale)",
+      "city": "Çanakkale",
+      "id": "src_01e0e1a4-383f-424d-aef0-629f3034156d"
+    },
+    {
+      "key": "corum-haber",
+      "name": "Çorum Haber",
+      "city": "Çorum",
+      "id": "src_e91a2243-bd69-4fad-bc14-58d5453d1371"
+    },
+    {
+      "key": "cankiri-postasi",
+      "name": "Çankırı Postası",
+      "city": "Çankırı",
+      "id": "src_515dd04f-e30a-44bf-83c4-a0f683699416"
+    },
+    {
+      "key": "denizli-gazetesehir",
+      "name": "Gazete Şehir Denizli",
+      "city": "Denizli",
+      "id": "src_676783fe-0bc1-4756-be22-8be668e84240"
+    },
+    {
+      "key": "diyarbakir-haber",
+      "name": "Diyarbakır Haber",
+      "city": "Diyarbakır",
+      "id": "src_d38df435-4b89-4bea-862f-abf2995e6579"
+    },
+    {
+      "key": "duzce-haber",
+      "name": "Düzce Haber",
+      "city": "Düzce",
+      "id": "src_7aaed0f1-0f65-4dc6-854d-99633e326674"
+    },
+    {
+      "key": "edirne-haber",
+      "name": "Edirne Haber",
+      "city": "Edirne",
+      "id": "src_cdae8e38-824a-41ee-b8ae-4065f37b978a"
+    },
+    {
+      "key": "elazig-haber",
+      "name": "Elazığ Son Söz",
+      "city": "Elazığ",
+      "id": "src_ce060fb4-935b-48da-8a0c-568836fd2819"
+    },
+    {
+      "key": "erzincan-haber",
+      "name": "Erzincan Haber",
+      "city": "Erzincan",
+      "id": "src_6b68bbe3-c513-4b3f-b20c-e45c3ff43601"
+    },
+    {
+      "key": "erzurum-haber",
+      "name": "Erzurum Haber",
+      "city": "Erzurum",
+      "id": "src_236d9931-f37a-4159-a79e-02abe85d03d5"
+    },
+    {
+      "key": "eskisehir-net",
+      "name": "Eskişehir.net",
+      "city": "Eskişehir",
+      "id": "src_3459e39e-dd63-432d-bb5f-b7df6627d1d9"
+    },
+    {
+      "key": "gaziantep-baba",
+      "name": "Baba Haber Gaziantep",
+      "city": "Gaziantep",
+      "id": "src_de4bdc4b-5a7a-408a-8b70-12a5b96d2769"
+    },
+    {
+      "key": "gaziantep27-net",
+      "name": "Gaziantep 27",
+      "city": "Gaziantep",
+      "id": "src_652b6de2-6e70-4f0d-866d-3108161e4357"
+    },
+    {
+      "key": "giresun-oncu",
+      "name": "Giresun Öncü",
+      "city": "Giresun",
+      "id": "src_b9cad19c-553b-40ac-a179-43993fb90d1f"
+    },
+    {
+      "key": "giresun-yeni",
+      "name": "Yeni Giresun",
+      "city": "Giresun",
+      "id": "src_a87deca7-78f7-4d6e-888b-1433bf1b0289"
+    },
+    {
+      "key": "gumushane-koza",
+      "name": "Gümüş Koza",
+      "city": "Gümüşhane",
+      "id": "src_c67223f7-3b80-41a2-a23e-f937e4890385"
+    },
+    {
+      "key": "gumushane-haber29",
+      "name": "Haber 29 Gümüşhane",
+      "city": "Gümüşhane",
+      "id": "src_2412b406-bfd1-4a64-b6e9-2b0fa6c76a76"
+    },
+    {
+      "key": "hakkari-ajans30",
+      "name": "Ajans 30 Hakkari",
+      "city": "Hakkari",
+      "id": "src_a6afbdc9-b7fa-410f-9928-7fd28e8f5c35"
+    },
+    {
+      "key": "hakkari-haber",
+      "name": "Hakkari Haber",
+      "city": "Hakkari",
+      "id": "src_e02ab693-bc57-4a43-a20d-b2e051e26a8a"
+    },
+    {
+      "key": "hatay-haber",
+      "name": "Hatay Haber",
+      "city": "Hatay",
+      "id": "src_3e955f84-bff9-4994-bd6b-4ceb9945bdcb"
+    },
+    {
+      "key": "isparta-demokrat32",
+      "name": "Demokrat 32",
+      "city": "Isparta",
+      "id": "src_1c9c2e60-5aa9-4214-bea2-a845a191fd08"
+    },
+    {
+      "key": "isparta-haber32",
+      "name": "Haber 32 Isparta",
+      "city": "Isparta",
+      "id": "src_6d6254dc-0cc3-445f-b8df-5d47ef0bf494"
+    },
+    {
+      "key": "istanbul-gazetesi",
+      "name": "İstanbul Gazetesi",
+      "city": "İstanbul",
+      "id": "src_9f8953e8-1e83-40b9-80e9-b82f072a79d3"
+    },
+    {
+      "key": "izmir-haberleri",
+      "name": "İzmir Haberleri",
+      "city": "İzmir",
+      "id": "src_8e77e363-533a-41b6-9cdf-4c2b346431ce"
+    },
+    {
+      "key": "kahramanmaras-haber",
+      "name": "Kahramanmaraş Haber",
+      "city": "Kahramanmaraş",
+      "id": "src_b5892240-90b4-4499-b209-c0e68ab8b69e"
+    },
+    {
+      "key": "karabuk-derinhaber",
+      "name": "Karabük Derin Haber",
+      "city": "Karabük",
+      "id": "src_daf64f2a-921c-4406-af7e-29a4164b9d18"
+    },
+    {
+      "key": "karabuk-nethaber",
+      "name": "Karabük Net Haber",
+      "city": "Karabük",
+      "id": "src_ff529458-8469-428b-a082-c1eec7fe1f28"
+    },
+    {
+      "key": "karaman-24",
+      "name": "Karaman 24",
+      "city": "Karaman",
+      "id": "src_978e398e-ba5b-4586-b298-7b9e63d77418"
+    },
+    {
+      "key": "karaman-haber",
+      "name": "Karaman Haber",
+      "city": "Karaman",
+      "id": "src_6f5adeed-a15a-4e6d-89b1-c2b9d0e84f2d"
+    },
+    {
+      "key": "kastamonu-haber",
+      "name": "Kastamonu Haber",
+      "city": "Kastamonu",
+      "id": "src_0fb474af-aad7-4b78-a08b-6a8a8a0fe26a"
+    },
+    {
+      "key": "kayseri-gunaydin",
+      "name": "Kayseri Günaydın",
+      "city": "Kayseri",
+      "id": "src_35e70ecf-b6c4-47c7-8db5-30eab9bfc22a"
+    },
+    {
+      "key": "kayseri-kayserim",
+      "name": "Kayserim.net",
+      "city": "Kayseri",
+      "id": "src_f870feba-4358-48a6-9346-25324f0fb894"
+    },
+    {
+      "key": "kirikkale-kalehaber",
+      "name": "Kale Haber Kırıkkale",
+      "city": "Kırıkkale",
+      "id": "src_62bbf392-3471-4c5a-999c-79daa0579770"
+    },
+    {
+      "key": "kirikkale-manset",
+      "name": "Manşet Gazetesi Kırıkkale",
+      "city": "Kırıkkale",
+      "id": "src_c034dc67-1551-42b3-a344-ec26f1d7edf2"
+    },
+    {
+      "key": "kirklareli-alternatif",
+      "name": "Alternatif Gazetesi Kırklareli",
+      "city": "Kırklareli",
+      "id": "src_ba493409-be2b-46be-8b06-fd17d8287129"
+    },
+    {
+      "key": "kirklareli-trakya",
+      "name": "Trakya Gazetesi Kırklareli",
+      "city": "Kırklareli",
+      "id": "src_a6dda707-6b5d-4b40-89f7-7339a5ec3f5f"
+    },
+    {
+      "key": "kirsehir-cigdem",
+      "name": "Kırşehir Çiğdem",
+      "city": "Kırşehir",
+      "id": "src_2ee08f80-b7c8-4e2c-9f0a-216bdabf5a14"
+    },
+    {
+      "key": "kirsehir-memleket",
+      "name": "Kırşehir Memleket",
+      "city": "Kırşehir",
+      "id": "src_9960e826-1370-4b42-99a9-4226a276e167"
+    },
+    {
+      "key": "kocaeli-bizimgazete",
+      "name": "Bizim Gazete Kocaeli",
+      "city": "Kocaeli",
+      "id": "src_a8fbeae2-a914-466d-9ee7-565f9d4e8eb2"
+    },
+    {
+      "key": "kocaeli-bugun",
+      "name": "Bugün Kocaeli",
+      "city": "Kocaeli",
+      "id": "src_fb656cd1-84b9-4cf7-b039-a1d9ab7e40b3"
+    },
+    {
+      "key": "konya-anadolu-bugun",
+      "name": "Anadoluda Bugün Konya",
+      "city": "Konya",
+      "id": "src_5e4ed62d-4323-462e-a5fc-34346001a6d2"
+    },
+    {
+      "key": "konya-eregli",
+      "name": "Ereğli Haberleri Konya",
+      "city": "Konya",
+      "id": "src_a93d7caf-bc7a-4c6d-9f78-991cb2748fb1"
+    },
+    {
+      "key": "kutahya-dumlupinar",
+      "name": "Dumlupınar Gazetesi Kütahya",
+      "city": "Kütahya",
+      "id": "src_bd141392-0b60-4d24-b6c2-61ae338980df"
+    },
+    {
+      "key": "kutahya-ekspres",
+      "name": "Kütahya Ekspres",
+      "city": "Kütahya",
+      "id": "src_a861b353-37a1-4b16-9a20-162a4b007084"
+    },
+    {
+      "key": "malatya-haber",
+      "name": "Malatya Haber",
+      "city": "Malatya",
+      "id": "src_68336c1f-0fc4-40bb-91c8-3fee640c2d93"
+    },
+    {
+      "key": "manisa-haber",
+      "name": "Manisa Haber",
+      "city": "Manisa",
+      "id": "src_f9e31ce1-7436-4f19-b861-bf4a1fb7929c"
+    },
+    {
+      "key": "mardin-haber",
+      "name": "Mardin Haber",
+      "city": "Mardin",
+      "id": "src_68fc6bc5-9ba7-478c-8866-a6a86c301871"
+    },
+    {
+      "key": "haber-mersin",
+      "name": "Haber Mersin",
+      "city": "Mersin",
+      "id": "src_3e2a48eb-56c9-40c7-be0d-82bb0469b7fc"
+    },
+    {
+      "key": "mugla-haber",
+      "name": "Muğla Haber",
+      "city": "Muğla",
+      "id": "src_9549ed01-0c83-492b-813f-16cfe99de91f"
+    },
+    {
+      "key": "nevsehir-haber",
+      "name": "Nevşehir Haber",
+      "city": "Nevşehir",
+      "id": "src_fe190421-dd88-4e93-8ca7-13557d44ff63"
+    },
+    {
+      "key": "nigde-borhaber",
+      "name": "Bor Haber Niğde",
+      "city": "Niğde",
+      "id": "src_d422368c-9319-45ce-b2f3-b0d46f456214"
+    },
+    {
+      "key": "nigde-haber",
+      "name": "Niğde Haber",
+      "city": "Niğde",
+      "id": "src_cb835b48-a641-466e-970e-56b65590c453"
+    },
+    {
+      "key": "ordu-haber",
+      "name": "Ordu Haber",
+      "city": "Ordu",
+      "id": "src_e96fc233-0f99-4843-a304-dbbd63d569d3"
+    },
+    {
+      "key": "osmaniye-hasret",
+      "name": "Hasret Gazetesi Osmaniye",
+      "city": "Osmaniye",
+      "id": "src_acfd3f93-18d9-440c-95bb-1b4901b15bb4"
+    },
+    {
+      "key": "osmaniye-sabir",
+      "name": "Sabır Gazetesi Osmaniye",
+      "city": "Osmaniye",
+      "id": "src_eb8fd625-9718-4216-a298-94ad583c5bc8"
+    },
+    {
+      "key": "rize-haber",
+      "name": "Rize Haber",
+      "city": "Rize",
+      "id": "src_cf74b954-8317-4d0d-a607-6d359c5a9c11"
+    },
+    {
+      "key": "sakarya-haber",
+      "name": "Sakarya Haber",
+      "city": "Sakarya",
+      "id": "src_9f9f33b7-bb67-4acb-8196-5a005cca3a37"
+    },
+    {
+      "key": "samsun-haber",
+      "name": "Samsun Haber",
+      "city": "Samsun",
+      "id": "src_d09da970-f6ab-4aff-88e9-ba409e6a709e"
+    },
+    {
+      "key": "siirt-medya",
+      "name": "Medya Siirt",
+      "city": "Siirt",
+      "id": "src_3a62b723-d4cb-4993-bc80-30dcb2f2e70c"
+    },
+    {
+      "key": "siirt-manset",
+      "name": "Siirt Manşet",
+      "city": "Siirt",
+      "id": "src_5ecf8df6-455b-4c0b-a1d1-1cd279ef3f43"
+    },
+    {
+      "key": "sanliurfa-haber",
+      "name": "Şanlıurfa Gazetesi",
+      "city": "Şanlıurfa",
+      "id": "src_f44c18c5-ac75-48f5-9e2d-54b329fcf702"
+    },
+    {
+      "key": "sirnak-ajans",
+      "name": "Şırnak Ajans",
+      "city": "Şırnak",
+      "id": "src_4fd20aa6-0500-49ca-9af8-20f6a1a5c1ad"
+    },
+    {
+      "key": "sinop-haber",
+      "name": "Sinop Haber",
+      "city": "Sinop",
+      "id": "src_63c8c764-0cee-4f9d-8dbd-8260fa9654f8"
+    },
+    {
+      "key": "sivas-haber",
+      "name": "Sivas Haber",
+      "city": "Sivas",
+      "id": "src_f1505015-8107-4ca8-8357-1e7e966b0fb8"
+    },
+    {
+      "key": "tekirdag-haber",
+      "name": "Tekirdağ Haber",
+      "city": "Tekirdağ",
+      "id": "src_7f6ee262-ce3b-493d-be54-e03969519e5d"
+    },
+    {
+      "key": "tokat-haber",
+      "name": "Tokat Haber",
+      "city": "Tokat",
+      "id": "src_9956fae8-b3ee-40f1-9da8-5a4cb3bc4d51"
+    },
+    {
+      "key": "trabzon-61saat",
+      "name": "61 Saat Trabzon",
+      "city": "Trabzon",
+      "id": "src_a7ee5e60-e50a-442d-804e-dc6a486ab654"
+    },
+    {
+      "key": "trabzon-gunebakis",
+      "name": "Güne Bakış Trabzon",
+      "city": "Trabzon",
+      "id": "src_7731de35-94ff-4c07-b9f0-28b1ebbf7758"
+    },
+    {
+      "key": "tunceli-emek",
+      "name": "Tunceli Emek",
+      "city": "Tunceli",
+      "id": "src_4d97a868-0ca5-4b26-b2be-34d3d774eda2"
+    },
+    {
+      "key": "tunceli-postasi",
+      "name": "Tunceli Postası",
+      "city": "Tunceli",
+      "id": "src_ad3cd4c6-f7d4-41c7-81ff-39f588a805d6"
+    },
+    {
+      "key": "usak-egedeyenigun",
+      "name": "Egede Yenigün Uşak",
+      "city": "Uşak",
+      "id": "src_569f9f4a-07c8-4b46-9e17-e28bffa8fd96"
+    },
+    {
+      "key": "usak-haberajansi",
+      "name": "Uşak Haber Ajansı",
+      "city": "Uşak",
+      "id": "src_fc07a4f0-2224-49fe-9f1c-b868f4cd4dbe"
+    },
+    {
+      "key": "van-sehri",
+      "name": "Şehri Van Gazetesi",
+      "city": "Van",
+      "id": "src_6ba57997-e4f3-40c1-9117-9e28eea2e5e0"
+    },
+    {
+      "key": "van-havadis",
+      "name": "Van Havadis",
+      "city": "Van",
+      "id": "src_41a3008b-0962-4045-925e-d9f12b2c80b7"
+    },
+    {
+      "key": "yalova-gazetesi",
+      "name": "Yalova Gazetesi",
+      "city": "Yalova",
+      "id": "src_baeb7a4f-1c4b-4d2e-afa8-cf5f311e8cda"
+    },
+    {
+      "key": "yalova-manset",
+      "name": "Manşet Yalova",
+      "city": "Yalova",
+      "id": "src_dc0e1de1-198a-4bd8-82af-ef5fa31dd0c0"
+    },
+    {
+      "key": "yozgat-haber",
+      "name": "Yozgat Haber",
+      "city": "Yozgat",
+      "id": "src_3ddf44ab-47ea-4ca6-8557-4c73cab8f865"
+    },
+    {
+      "key": "zonguldak-haber",
+      "name": "Zonguldak Haber",
+      "city": "Zonguldak",
+      "id": "src_ef78f2d6-5db9-46d4-a0d7-182d2a4003b5"
+    },
+    {
+      "key": "adana-cukurovapress",
+      "name": "Çukurova Press",
+      "city": "Adana",
+      "id": "src_03958089-9f77-45f2-a901-8c82c2c05eff"
+    },
+    {
+      "key": "adiyaman-isik",
+      "name": "Işık Gazetesi Adıyaman",
+      "city": "Adıyaman",
+      "id": "src_3ba5979e-6043-42ec-bff4-38b22d11b2aa"
+    },
+    {
+      "key": "adiyaman-yeniyol",
+      "name": "Yeni Yol Adıyaman",
+      "city": "Adıyaman",
+      "id": "src_3a945e7e-7db4-40a3-99bb-afc1d08bd5e7"
+    },
+    {
+      "key": "afyon-odak",
+      "name": "Odak Gazetesi Afyon",
+      "city": "Afyonkarahisar",
+      "id": "src_d10cb21d-a4aa-44da-a000-e28f94f55406"
+    },
+    {
+      "key": "afyon-kocatepe",
+      "name": "Kocatepe Gazetesi Afyon",
+      "city": "Afyonkarahisar",
+      "id": "src_cf3d2082-5b55-4238-89f2-2d9e2eb09782"
+    },
+    {
+      "key": "agri-hurses",
+      "name": "Ağrı Hürses",
+      "city": "Ağrı",
+      "id": "src_096adb8e-1ae1-4f91-b145-e0c001ba0b08"
+    },
+    {
+      "key": "agri-dogruhaber",
+      "name": "Ağrı Doğru Haber",
+      "city": "Ağrı",
+      "id": "src_9ad19eb3-923c-4f00-8404-03cdbe9cbcca"
+    },
+    {
+      "key": "aksaray-yenigun",
+      "name": "Yenigün Aksaray",
+      "city": "Aksaray",
+      "id": "src_a44c792c-d841-4cdf-943f-5694cfe72296"
+    },
+    {
+      "key": "aksaray-yeniaksaray",
+      "name": "Yeni Aksaray",
+      "city": "Aksaray",
+      "id": "src_593c36c7-7a3e-4fe7-b072-01480df1a857"
+    },
+    {
+      "key": "aksaray-68haber",
+      "name": "Aksaray 68 Haber",
+      "city": "Aksaray",
+      "id": "src_a51cc07d-5db9-43ac-819b-26d5f8ba5154"
+    },
+    {
+      "key": "aksaray-egemen",
+      "name": "Aksaray Egemen",
+      "city": "Aksaray",
+      "id": "src_7fc84794-28a2-44a9-bb89-49ba3be1dbd2"
+    },
+    {
+      "key": "amasya-postasi",
+      "name": "Amasya Postası",
+      "city": "Amasya",
+      "id": "src_8d6a246e-2ee0-4f9e-b762-5a82b4aa2700"
+    },
+    {
+      "key": "ankara-baskent",
+      "name": "Başkent Gazete",
+      "city": "Ankara",
+      "id": "src_ad1ecee3-f5e6-44dd-9cf3-b7dcde735599"
+    },
+    {
+      "key": "ankara-gazetesi",
+      "name": "Ankara Gazetesi",
+      "city": "Ankara",
+      "id": "src_0d4e97a8-326c-43b1-9911-4416d40d8fb4"
+    },
+    {
+      "key": "ankara-sonsoz",
+      "name": "Son Söz Ankara",
+      "city": "Ankara",
+      "id": "src_058c2d98-6aac-4549-85b1-edd8a9950c16"
+    },
+    {
+      "key": "antalya-korfez",
+      "name": "Antalya Körfez",
+      "city": "Antalya",
+      "id": "src_1f123544-296a-4501-af00-15e9a86ec4b7"
+    },
+    {
+      "key": "antalya-akdenizgercek",
+      "name": "Akdeniz Gerçek",
+      "city": "Antalya",
+      "id": "src_e523b608-e610-4eed-abc5-670184e3ace3"
+    },
+    {
+      "key": "antalya-akdenizmanset",
+      "name": "Akdeniz Manşet",
+      "city": "Antalya",
+      "id": "src_d6b18e4d-0652-4909-bd18-222b140881b9"
+    },
+    {
+      "key": "antalya-bugun",
+      "name": "Antalya Bugün",
+      "city": "Antalya",
+      "id": "src_a859ac11-9c6c-45a5-85ca-c04ee7777e0d"
+    },
+    {
+      "key": "antalya-yenialanya",
+      "name": "Yeni Alanya",
+      "city": "Antalya",
+      "id": "src_45e94210-1637-4598-8190-da24f04b28a6"
+    },
+    {
+      "key": "antalya-manavgat",
+      "name": "Manavgat Gerçek",
+      "city": "Antalya",
+      "id": "src_95cd5867-4a07-4753-b5a6-566cd67af1ed"
+    },
+    {
+      "key": "ardahan-haber",
+      "name": "Ardahan Haber",
+      "city": "Ardahan",
+      "id": "src_08db3ef7-5460-409a-a83d-d092d9a2a537"
+    },
+    {
+      "key": "ardahan-kuzeyanadolu",
+      "name": "Kuzey Anadolu Gazetesi",
+      "city": "Ardahan",
+      "id": "src_d7e2a516-5877-4701-90db-9cf3f651f32e"
+    },
+    {
+      "key": "ardahan-gazetesi",
+      "name": "Ardahan Gazetesi",
+      "city": "Ardahan",
+      "id": "src_21a5664e-2abf-488f-b0cb-5e5f2edd00d0"
+    },
+    {
+      "key": "ardahan-haberi",
+      "name": "Ardahan Haberi",
+      "city": "Ardahan",
+      "id": "src_ddb152be-a389-45ba-8394-6c61855709e4"
+    },
+    {
+      "key": "artvin-gundem",
+      "name": "Gündem Artvin",
+      "city": "Artvin",
+      "id": "src_19310bb3-e353-4906-8107-c1048cd31987"
+    },
+    {
+      "key": "artvin-coruhpostasi",
+      "name": "Çoruh Postası",
+      "city": "Artvin",
+      "id": "src_54dfbb06-d846-43cd-afef-0ec954106300"
+    },
+    {
+      "key": "aydin-denge",
+      "name": "Aydın Denge",
+      "city": "Aydın",
+      "id": "src_c1917532-f1a8-42e9-94e4-b953dc585f64"
+    },
+    {
+      "key": "aydin-ses",
+      "name": "Ses Gazetesi Aydın",
+      "city": "Aydın",
+      "id": "src_cc974356-510a-41e9-a291-e83d2a23f60e"
+    },
+    {
+      "key": "aydin-hedef",
+      "name": "Aydın Hedef",
+      "city": "Aydın",
+      "id": "src_3afbd1f3-be22-4318-84e6-08bbff29ea76"
+    },
+    {
+      "key": "aydin-manset",
+      "name": "Manşet Aydın",
+      "city": "Aydın",
+      "id": "src_7524781c-f6bc-44be-abf6-91ac14f3b078"
+    },
+    {
+      "key": "aydin-nazilli",
+      "name": "Nazilli Adalet",
+      "city": "Aydın",
+      "id": "src_65fb6faa-5ae0-473d-9456-9ad539be5bdf"
+    },
+    {
+      "key": "aydin-kusadasi",
+      "name": "Ajans Kuşadası",
+      "city": "Aydın",
+      "id": "src_8b98249a-1d4a-459b-aedb-a99ad2d6f2e6"
+    },
+    {
+      "key": "balikesir-haberci",
+      "name": "Haberci Gazetesi Balıkesir",
+      "city": "Balıkesir",
+      "id": "src_bef0456e-84bb-4157-87a7-dd1d11a66e25"
+    },
+    {
+      "key": "balikesir-posta",
+      "name": "Balıkesir Posta",
+      "city": "Balıkesir",
+      "id": "src_c5e8b437-a1c2-4ff0-96d4-71e6635720a2"
+    },
+    {
+      "key": "balikesir-24saat",
+      "name": "Balıkesir 24 Saat",
+      "city": "Balıkesir",
+      "id": "src_e170ccf4-161a-414f-883b-f8652a6429d7"
+    },
+    {
+      "key": "bartin-olay",
+      "name": "Bartın Olay",
+      "city": "Bartın",
+      "id": "src_a15aad50-9622-40a0-99d3-a27bff11764a"
+    },
+    {
+      "key": "bartin-halkgazetesi",
+      "name": "Bartın Halk Gazetesi",
+      "city": "Bartın",
+      "id": "src_ba71dbd3-ec92-4e93-b3e9-50b859928254"
+    },
+    {
+      "key": "batman-cagdas",
+      "name": "Batman Çağdaş",
+      "city": "Batman",
+      "id": "src_23acafab-6315-4be9-adde-83e3cc87459d"
+    },
+    {
+      "key": "bayburt-web",
+      "name": "Bayburt Web",
+      "city": "Bayburt",
+      "id": "src_56025395-24d8-4946-a3d9-78d0cd8aa47d"
+    },
+    {
+      "key": "bilecik-yarin11",
+      "name": "Yarın 11 Bilecik",
+      "city": "Bilecik",
+      "id": "src_0d3ee3c8-1757-435c-bec9-1adae19f045d"
+    },
+    {
+      "key": "bilecik-haber228",
+      "name": "Haber 228 Bilecik",
+      "city": "Bilecik",
+      "id": "src_eb78de30-c15f-4426-9b23-9baf61e26c6f"
+    },
+    {
+      "key": "bingol-online",
+      "name": "Bingöl Online",
+      "city": "Bingöl",
+      "id": "src_262b5d34-0f02-4b4a-a21c-9839e0816d0b"
+    },
+    {
+      "key": "bingol-nethaber",
+      "name": "Bingöl Net Haber",
+      "city": "Bingöl",
+      "id": "src_98c98417-e867-446a-9f60-f6ae7c62fbf2"
+    },
+    {
+      "key": "bitlis-tatvan",
+      "name": "Tatvan Sesi",
+      "city": "Bitlis",
+      "id": "src_c0620bcd-3baa-4453-b9ac-98820d42164e"
+    },
+    {
+      "key": "bitlis-postasi",
+      "name": "Bitlis Postası",
+      "city": "Bitlis",
+      "id": "src_7797abd9-6436-4b36-9da8-5559be13fcbf"
+    },
+    {
+      "key": "bolu-koroglu",
+      "name": "Köroğlu Gazetesi",
+      "city": "Bolu",
+      "id": "src_668764fe-61cd-4754-aca4-ceaa839be094"
+    },
+    {
+      "key": "bolu-gundem",
+      "name": "Bolu Gündem",
+      "city": "Bolu",
+      "id": "src_d6b21219-6b43-4a0f-9175-b83ddf8ed13f"
+    },
+    {
+      "key": "bolu-gazetesi",
+      "name": "Bolu Gazetesi",
+      "city": "Bolu",
+      "id": "src_01120b5d-c47f-4b59-95bd-e7054fecb042"
+    },
+    {
+      "key": "bolu-hakimiyet",
+      "name": "Bolu Hakimiyet",
+      "city": "Bolu",
+      "id": "src_00bdeb0e-b069-4011-b08c-e9795d38e623"
+    },
+    {
+      "key": "burdur-bomba15",
+      "name": "Bomba 15 Burdur",
+      "city": "Burdur",
+      "id": "src_68ef2454-5606-4243-adfa-c1aaac81af29"
+    },
+    {
+      "key": "burdur-cagdas",
+      "name": "Çağdaş Burdur",
+      "city": "Burdur",
+      "id": "src_6a700b4f-42dd-4a07-b330-5d12d0afa5c5"
+    },
+    {
+      "key": "bursa-olay",
+      "name": "Bursa Olay",
+      "city": "Bursa",
+      "id": "src_59ff9abf-aa11-458a-b19a-faf9a79d79fc"
+    },
+    {
+      "key": "bursa-hakimiyet",
+      "name": "Bursa Hakimiyet",
+      "city": "Bursa",
+      "id": "src_730d79cd-4848-4956-ba99-dc5285180675"
+    },
+    {
+      "key": "bursa-saat",
+      "name": "Bursa Saati",
+      "city": "Bursa",
+      "id": "src_d2c2c67b-bf26-45ee-b1ad-e35558c38a7a"
+    },
+    {
+      "key": "bursa-gundem",
+      "name": "Gündem Bursa",
+      "city": "Bursa",
+      "id": "src_509f63e5-2d24-4570-b93f-538aa174d51d"
+    },
+    {
+      "key": "cankiri-haberci18",
+      "name": "Haberci 18 Çankırı",
+      "city": "Çankırı",
+      "id": "src_3c34afd0-5dec-49c2-8bd0-8c0806165ccb"
+    },
+    {
+      "key": "cankiri-olay18",
+      "name": "Olay 18 Çankırı",
+      "city": "Çankırı",
+      "id": "src_d6b2924c-2f2f-4465-b06e-b2a3b0e87dcf"
+    },
+    {
+      "key": "corum-hakimiyet",
+      "name": "Çorum Hakimiyet",
+      "city": "Çorum",
+      "id": "src_fea99f55-7b4c-4839-925f-f5e5bd1a13e9"
+    },
+    {
+      "key": "denizli-yeniolay",
+      "name": "Denizli Yeni Olay",
+      "city": "Denizli",
+      "id": "src_9861cdf9-0fdb-46c8-a7db-7db3e9b864fc"
+    },
+    {
+      "key": "denizli-24haber",
+      "name": "Denizli 24 Haber",
+      "city": "Denizli",
+      "id": "src_33dda431-2f1b-4079-b506-53a27b158d39"
+    },
+    {
+      "key": "denizli-haber",
+      "name": "Denizli Haber",
+      "city": "Denizli",
+      "id": "src_a082bccc-1ee8-490c-ac4d-82c579617149"
+    },
+    {
+      "key": "denizli-ekspres",
+      "name": "Denizli Ekspres",
+      "city": "Denizli",
+      "id": "src_287ba96e-0315-45f9-bde7-76d3c00db782"
+    },
+    {
+      "key": "diyarbakir-guneydogu",
+      "name": "Güneydoğu Ekspres",
+      "city": "Diyarbakır",
+      "id": "src_3a4a07d7-7adc-4467-bf22-016315b1aa82"
+    },
+    {
+      "key": "diyarbakir-tigris",
+      "name": "Tigris Haber",
+      "city": "Diyarbakır",
+      "id": "src_7a0642c8-cdca-45e0-ba70-7d9363c83224"
+    },
+    {
+      "key": "diyarbakir-yenigun",
+      "name": "Diyarbakır Yenigün",
+      "city": "Diyarbakır",
+      "id": "src_b658dc9f-29a7-4bbe-8ea7-eca234e5a553"
+    },
+    {
+      "key": "duzce-ninsesi",
+      "name": "Düzce'nin Sesi",
+      "city": "Düzce",
+      "id": "src_71d46f0c-3350-4b02-b86a-e11f45c763a8"
+    },
+    {
+      "key": "duzce-postasi",
+      "name": "Düzce Postası",
+      "city": "Düzce",
+      "id": "src_0221c36d-e8d8-4630-a24e-e12a61381c71"
+    },
+    {
+      "key": "edirne-hudut",
+      "name": "Hudut Gazetesi Edirne",
+      "city": "Edirne",
+      "id": "src_0fcd258a-29dc-453f-8756-3d0442fa5bab"
+    },
+    {
+      "key": "edirne-vatandas",
+      "name": "Vatandaş Gazetesi Edirne",
+      "city": "Edirne",
+      "id": "src_1942955f-dad3-45fb-9a02-585c5f2cd8fa"
+    },
+    {
+      "key": "edirne-gazetesi",
+      "name": "Edirne Gazetesi",
+      "city": "Edirne",
+      "id": "src_236aa6e2-70cc-45b2-af2b-781164bc3ad2"
+    },
+    {
+      "key": "edirne-yenigun",
+      "name": "Edirne Yenigün",
+      "city": "Edirne",
+      "id": "src_bca27448-4192-4707-9c99-82eaa99bda37"
+    },
+    {
+      "key": "elazig-gunisigi",
+      "name": "Günışığı Gazetesi Elazığ",
+      "city": "Elazığ",
+      "id": "src_c8b5c8aa-d0bf-4e01-8411-46b185db995e"
+    },
+    {
+      "key": "elazig-hakimiyet",
+      "name": "Elazığ Hakimiyet",
+      "city": "Elazığ",
+      "id": "src_17ee8ddf-5e68-428a-a5d2-13db290db2a9"
+    },
+    {
+      "key": "erzincan-net",
+      "name": "Erzincan.net",
+      "city": "Erzincan",
+      "id": "src_7ffb551f-a8bd-4037-9f84-2d5fd3280d35"
+    },
+    {
+      "key": "erzincan-dogu",
+      "name": "Doğu Gazetesi Erzincan",
+      "city": "Erzincan",
+      "id": "src_a671b73a-14d5-474a-a6a1-09cba3e33735"
+    },
+    {
+      "key": "erzincan-insesi",
+      "name": "Erzincan'ın Sesi",
+      "city": "Erzincan",
+      "id": "src_874ba952-8ca3-43dd-8122-6793d04e636d"
+    },
+    {
+      "key": "erzurum-pusula",
+      "name": "Erzurum Pusula Gazetesi",
+      "city": "Erzurum",
+      "id": "src_5f889dad-1cab-4ce4-9495-7780261312ae"
+    },
+    {
+      "key": "erzurum-palandoken",
+      "name": "Palandöken Gazetesi",
+      "city": "Erzurum",
+      "id": "src_140d9f53-7e74-45d9-8404-a1981aae1c22"
+    },
+    {
+      "key": "eskisehir-ekspres",
+      "name": "Eskişehir Ekspres",
+      "city": "Eskişehir",
+      "id": "src_7f7e9c2c-3285-4d27-8841-a85bdfc83509"
+    },
+    {
+      "key": "eskisehir-yenigun",
+      "name": "Eskişehir Yenigün",
+      "city": "Eskişehir",
+      "id": "src_3f0ec915-d076-48c3-a87a-7be6f6137882"
+    },
+    {
+      "key": "eskisehir-sehir",
+      "name": "Şehir Gazetesi Eskişehir",
+      "city": "Eskişehir",
+      "id": "src_23790b4c-9f32-4055-8830-9feb0421d999"
+    },
+    {
+      "key": "gaziantep-olusum",
+      "name": "Gaziantep Oluşum",
+      "city": "Gaziantep",
+      "id": "src_83074e40-7b32-418f-903a-64d116fc5bcb"
+    },
+    {
+      "key": "gaziantep-telgraf",
+      "name": "Telgraf Gaziantep",
+      "city": "Gaziantep",
+      "id": "src_6107b97a-3343-4058-a4d5-21452d4074e5"
+    },
+    {
+      "key": "gaziantep-ekspres",
+      "name": "Gazete Ekspres Gaziantep",
+      "city": "Gaziantep",
+      "id": "src_83664ff5-6455-4288-9b34-36799aa62cbf"
+    },
+    {
+      "key": "giresun-yesil",
+      "name": "Yeşil Giresun",
+      "city": "Giresun",
+      "id": "src_2b631fa8-3987-48a9-939e-4d2e79988a34"
+    },
+    {
+      "key": "giresun-ileri",
+      "name": "Giresun İleri",
+      "city": "Giresun",
+      "id": "src_17e8fa1d-bc59-4862-a76d-4ff17a70cc82"
+    },
+    {
+      "key": "giresun-gazete",
+      "name": "Giresun Gazete",
+      "city": "Giresun",
+      "id": "src_bc02cc7b-06dc-462b-8062-4784db54cab1"
+    },
+    {
+      "key": "gumushane-olay",
+      "name": "Gümüşhane Olay",
+      "city": "Gümüşhane",
+      "id": "src_89ca55eb-ed4b-4d4b-b96c-cae470a21637"
+    },
+    {
+      "key": "gumushane-com",
+      "name": "Gümüşhane.com",
+      "city": "Gümüşhane",
+      "id": "src_e1ae3f96-0965-4720-8da4-b499251760fb"
+    },
+    {
+      "key": "hakkari-ilsesi",
+      "name": "Hakkari İl Sesi Gazetesi",
+      "city": "Hakkari",
+      "id": "src_61abd7d0-9edf-4f13-b94e-922c5c9373d2"
+    },
+    {
+      "key": "hakkari-yuksekovahaber",
+      "name": "Yüksekova Haber",
+      "city": "Hakkari",
+      "id": "src_6da595a6-b31c-4fec-ba60-92626f90b6a6"
+    },
+    {
+      "key": "hakkari-yuksekovagundem",
+      "name": "Yüksekova Gündem",
+      "city": "Hakkari",
+      "id": "src_9dadb132-7922-42c2-a8aa-2696601e350c"
+    },
+    {
+      "key": "hatay-antakya",
+      "name": "Antakya Gazetesi",
+      "city": "Hatay",
+      "id": "src_64ff5e2f-a0bc-4861-9775-f711af049649"
+    },
+    {
+      "key": "hatay-ekspres",
+      "name": "Hatay Ekspres",
+      "city": "Hatay",
+      "id": "src_db56c94d-8395-4610-a6ef-7a411ff19223"
+    },
+    {
+      "key": "hatay-sondakika",
+      "name": "Son Dakika Hatay",
+      "city": "Hatay",
+      "id": "src_d0f0dea0-17c9-43ee-8c4e-89259778d6c9"
+    },
+    {
+      "key": "igdir-yesil",
+      "name": "Yeşil Iğdır",
+      "city": "Iğdır",
+      "id": "src_34cafc0e-4f5f-4c5a-82a9-43b2c27355bc"
+    },
+    {
+      "key": "igdir-dogus",
+      "name": "Iğdır Doğuş Gazetesi",
+      "city": "Iğdır",
+      "id": "src_2e565f44-d849-405e-8b3a-e842f30c1d44"
+    },
+    {
+      "key": "igdir-guven",
+      "name": "Güven Gazetesi Iğdır",
+      "city": "Iğdır",
+      "id": "src_517c814d-67fc-4342-9d05-b86617633eaa"
+    },
+    {
+      "key": "igdir-aras",
+      "name": "Aras Gazetesi Iğdır",
+      "city": "Iğdır",
+      "id": "src_45a59d63-0451-430f-8113-527e4116c77a"
+    },
+    {
+      "key": "isparta-bomba32",
+      "name": "Bomba 32 Isparta",
+      "city": "Isparta",
+      "id": "src_21975ba6-5f14-460b-896b-c8fa8ac18a30"
+    },
+    {
+      "key": "isparta-manset",
+      "name": "Isparta Manşet",
+      "city": "Isparta",
+      "id": "src_4f1a06e4-5eaa-441e-9e8a-3251bc9a720d"
+    },
+    {
+      "key": "isparta-gazete32",
+      "name": "Gazete 32 Isparta",
+      "city": "Isparta",
+      "id": "src_9a679f07-c981-4d99-8443-9c7bfd375ba1"
+    },
+    {
+      "key": "istanbul-istiklal",
+      "name": "İstiklal Gazetesi",
+      "city": "İstanbul",
+      "id": "src_5878f136-de78-48d6-ba93-0dfda53f3204"
+    },
+    {
+      "key": "istanbul-sariyer",
+      "name": "Sarıyer Gazetesi",
+      "city": "İstanbul",
+      "id": "src_f9e6185c-f3a7-4fb2-9753-8ebe23ec6f68"
+    },
+    {
+      "key": "istanbul-beyoglu",
+      "name": "Beyoğlu Gündem",
+      "city": "İstanbul",
+      "id": "src_9271465f-16ee-452c-a30b-6a3d8bbfe1a5"
+    },
+    {
+      "key": "istanbul-kadikoy",
+      "name": "Kadıköy Telgraf",
+      "city": "İstanbul",
+      "id": "src_9a5596a1-e1a2-4760-9eee-2e6236dd7e7f"
+    },
+    {
+      "key": "istanbul-kadikoyhaber",
+      "name": "Gazete Kadıköy",
+      "city": "İstanbul",
+      "id": "src_5f2a5dba-1605-4d33-897e-878918188925"
+    },
+    {
+      "key": "istanbul-kartal",
+      "name": "Kartal Gazetesi",
+      "city": "İstanbul",
+      "id": "src_982b84c4-99ad-41e2-b166-d4a423a0e142"
+    },
+    {
+      "key": "istanbul-uskudar",
+      "name": "Üsküdar Gündem",
+      "city": "İstanbul",
+      "id": "src_7cc006df-ed80-41db-ad6d-6a49ca233058"
+    },
+    {
+      "key": "istanbul-umraniye",
+      "name": "Ümraniye Gündemi",
+      "city": "İstanbul",
+      "id": "src_af85b39a-5258-4627-8ef5-b784e737533a"
+    },
+    {
+      "key": "istanbul-bakirkoy",
+      "name": "Bakırköy Haber",
+      "city": "İstanbul",
+      "id": "src_7d13860f-7b68-4e14-9da9-1109279a269f"
+    },
+    {
+      "key": "istanbul-sisli",
+      "name": "Şişli Gündem",
+      "city": "İstanbul",
+      "id": "src_d1119e43-2b2a-45c6-918a-d1624fae7892"
+    },
+    {
+      "key": "izmir-izgazete",
+      "name": "İz Gazete İzmir",
+      "city": "İzmir",
+      "id": "src_d8c4fc8e-90e0-46b5-9d78-931bed9409cb"
+    },
+    {
+      "key": "izmir-egedesonsoz",
+      "name": "Egede Son Söz",
+      "city": "İzmir",
+      "id": "src_0f4cc24b-abb4-438a-8015-178193fc3527"
+    },
+    {
+      "key": "izmir-gazetemizmir",
+      "name": "Gazete İzmir",
+      "city": "İzmir",
+      "id": "src_2e5975e2-6f80-486c-8f46-4da96087751b"
+    },
+    {
+      "key": "izmir-yeniasir",
+      "name": "Yeni Asır",
+      "city": "İzmir",
+      "id": "src_71237ad0-e4aa-4f9b-a01b-49e826f712a9"
+    },
+    {
+      "key": "izmir-egeolay",
+      "name": "Ege Olay",
+      "city": "İzmir",
+      "id": "src_845b372f-1fa4-47f1-9d75-c55cd3be769a"
+    },
+    {
+      "key": "kahramanmaras-manset",
+      "name": "Maraş Manşet",
+      "city": "Kahramanmaraş",
+      "id": "src_5936b6d9-d527-4fe7-8043-0f4b139247d8"
+    },
+    {
+      "key": "kahramanmaras-haber46",
+      "name": "Haber 46 Maraş",
+      "city": "Kahramanmaraş",
+      "id": "src_e2068081-3ed5-4017-a072-061e6fcdbb85"
+    },
+    {
+      "key": "karabuk-postasi",
+      "name": "Karabük Postası",
+      "city": "Karabük",
+      "id": "src_1c650a38-7d68-4e40-817c-90186503fa7b"
+    },
+    {
+      "key": "karaman-uyanis",
+      "name": "Karamanda Uyanış",
+      "city": "Karaman",
+      "id": "src_89af30ab-0b2c-4f23-99dd-b8832d8e8ede"
+    },
+    {
+      "key": "karaman-gundem",
+      "name": "Karaman Gündem",
+      "city": "Karaman",
+      "id": "src_3014ffcf-65a4-4e7d-bda0-3c5b20508daf"
+    },
+    {
+      "key": "kars-manset",
+      "name": "Kars Manşet",
+      "city": "Kars",
+      "id": "src_26affd1d-3035-4a65-9c6e-92b5f646db6e"
+    },
+    {
+      "key": "kars-gazetekars",
+      "name": "Gazete Kars",
+      "city": "Kars",
+      "id": "src_874842ef-f034-4fc3-b109-f26447373eb5"
+    },
+    {
+      "key": "kars-hakimiyet",
+      "name": "Kars Hakimiyet",
+      "city": "Kars",
+      "id": "src_6461572e-8178-4529-91d7-97c795310f88"
+    },
+    {
+      "key": "kars-pusula",
+      "name": "Kars Pusula",
+      "city": "Kars",
+      "id": "src_7f9dac5a-7ce2-4292-9443-1e387ec92d0b"
+    },
+    {
+      "key": "kars-olay",
+      "name": "Kars Olay",
+      "city": "Kars",
+      "id": "src_0c317d6f-9c62-4b95-b0f2-bffab5b92aa9"
+    },
+    {
+      "key": "kastamonu-aciksoz",
+      "name": "Açık Söz Kastamonu",
+      "city": "Kastamonu",
+      "id": "src_51d01619-c55f-4983-935d-5618d0cdc411"
+    },
+    {
+      "key": "kastamonu-gundem",
+      "name": "Kastamonu Gündem Gazetesi",
+      "city": "Kastamonu",
+      "id": "src_142e2644-fbbd-4ef4-9568-4d1f94af130d"
+    },
+    {
+      "key": "kastamonu-istiklal",
+      "name": "Kastamonu İstiklal",
+      "city": "Kastamonu",
+      "id": "src_69ea3217-01ee-4356-8ea6-fb26188426a0"
+    },
+    {
+      "key": "kayseri-anadoluhaber",
+      "name": "Kayseri Anadolu Haber",
+      "city": "Kayseri",
+      "id": "src_48429f63-300b-413a-bd12-8e13f92ac0e0"
+    },
+    {
+      "key": "kayseri-gundem",
+      "name": "Kayseri Gündem",
+      "city": "Kayseri",
+      "id": "src_aaad2c56-80a3-43f2-b245-16975498eeda"
+    },
+    {
+      "key": "kayseri-olay",
+      "name": "Kayseri Olay",
+      "city": "Kayseri",
+      "id": "src_2254f03e-901a-484c-a233-f42444fb2bac"
+    },
+    {
+      "key": "kilis-kenthaber",
+      "name": "Kilis Kent Haber",
+      "city": "Kilis",
+      "id": "src_1a351a53-3165-4ccb-8718-e5388d657f4f"
+    },
+    {
+      "key": "kilis-hududeli",
+      "name": "Hududeli Kilis",
+      "city": "Kilis",
+      "id": "src_ca7915d6-4709-4615-b175-908d7f54aaf4"
+    },
+    {
+      "key": "kilis-havadis",
+      "name": "Kilis Havadis",
+      "city": "Kilis",
+      "id": "src_00245d63-7470-4dbc-bb91-9ebe182dd07e"
+    },
+    {
+      "key": "kirikkale-ilgazetesi",
+      "name": "İl Gazetesi Kırıkkale",
+      "city": "Kırıkkale",
+      "id": "src_8e62a332-f53c-4f7a-95cd-5dbc2acc9d93"
+    },
+    {
+      "key": "kirikkale-yenigun",
+      "name": "Yenigün Gazetesi Kırıkkale",
+      "city": "Kırıkkale",
+      "id": "src_1d760093-b95f-482a-ba04-0c9e7f541dd4"
+    },
+    {
+      "key": "kirikkale-haber71",
+      "name": "Haber 71 Kırıkkale",
+      "city": "Kırıkkale",
+      "id": "src_70c9e91b-87ee-45e4-ace1-e4d403fede5e"
+    },
+    {
+      "key": "kirklareli-yesilyurt",
+      "name": "Yeşilyurt Gazete",
+      "city": "Kırklareli",
+      "id": "src_da265c4d-3644-4f96-b311-079fbe3fb02c"
+    },
+    {
+      "key": "kirklareli-gazetesi",
+      "name": "Kırklareli Gazetesi",
+      "city": "Kırklareli",
+      "id": "src_7714cb80-f24c-4bfd-b2f9-f824179262bc"
+    },
+    {
+      "key": "kirsehir-haberturk",
+      "name": "Kırşehir Haber Türk",
+      "city": "Kırşehir",
+      "id": "src_1beed597-c05b-4c14-bf77-40b88383a3da"
+    },
+    {
+      "key": "kocaeli-gazetesi",
+      "name": "Kocaeli Gazetesi",
+      "city": "Kocaeli",
+      "id": "src_8cce6da3-340a-4df9-803a-c625e3186b70"
+    },
+    {
+      "key": "kocaeli-ses",
+      "name": "Ses Kocaeli",
+      "city": "Kocaeli",
+      "id": "src_3c732315-4ab0-4fd5-92cc-ef1cebe85b2b"
+    },
+    {
+      "key": "kocaeli-meydan",
+      "name": "Kocaeli Meydan",
+      "city": "Kocaeli",
+      "id": "src_331f5188-d0b6-4ab8-907a-0577759acb08"
+    },
+    {
+      "key": "konya-merhaba",
+      "name": "Merhaba Haber Konya",
+      "city": "Konya",
+      "id": "src_ba0f8714-4a71-4cb4-bc57-ac1b317c0eef"
+    },
+    {
+      "key": "konya-yenikonya",
+      "name": "Yeni Konya",
+      "city": "Konya",
+      "id": "src_968a9c4d-0873-4c9c-ae03-f2afe1876e6a"
+    },
+    {
+      "key": "konya-postasi",
+      "name": "Konya Postası",
+      "city": "Konya",
+      "id": "src_20184d8e-d8bc-416b-8ff0-7cf5e3904cc9"
+    },
+    {
+      "key": "kutahya-ninsesi",
+      "name": "Kütahya'nın Sesi",
+      "city": "Kütahya",
+      "id": "src_501beef1-222b-4fb6-8a64-20fe6500188e"
+    },
+    {
+      "key": "kutahya-zafer",
+      "name": "Kütahya Zafer Gazetesi",
+      "city": "Kütahya",
+      "id": "src_87d9330a-b4cb-45e3-96a7-ab496d1945f6"
+    },
+    {
+      "key": "malatya-soz",
+      "name": "Malatya Söz",
+      "city": "Malatya",
+      "id": "src_a20f3cd3-77af-4843-8bdf-3a279ddf904d"
+    },
+    {
+      "key": "malatya-busabah",
+      "name": "Bu Sabah Malatya",
+      "city": "Malatya",
+      "id": "src_9741e466-120d-47a0-b445-208dde433279"
+    },
+    {
+      "key": "malatya-sonsoz",
+      "name": "Malatya Son Söz",
+      "city": "Malatya",
+      "id": "src_c2b8b14c-f77b-4dd1-8ec1-ac91e6edb743"
+    },
+    {
+      "key": "malatya-guncel",
+      "name": "Malatya Güncel",
+      "city": "Malatya",
+      "id": "src_f2ed56bd-7777-499a-bdf9-c7f4dc98e7c6"
+    },
+    {
+      "key": "manisa-gundem",
+      "name": "Manisa'da Gündem",
+      "city": "Manisa",
+      "id": "src_cfa2d35e-81af-4daf-997a-b06c3f267f89"
+    },
+    {
+      "key": "manisa-haberleri",
+      "name": "Manisa Haberleri",
+      "city": "Manisa",
+      "id": "src_d7e11eaa-c2a7-4d17-b7bd-490fc9124eb9"
+    },
+    {
+      "key": "manisa-45haber",
+      "name": "45 Haber Manisa",
+      "city": "Manisa",
+      "id": "src_3f980552-b879-4c2f-8355-89b8e4d0077f"
+    },
+    {
+      "key": "mardin-haberportali",
+      "name": "Mardin Haber Portalı",
+      "city": "Mardin",
+      "id": "src_dac0c8e2-c211-4027-8a6d-c342a80c55a8"
+    },
+    {
+      "key": "mardin-time",
+      "name": "Mardin Time",
+      "city": "Mardin",
+      "id": "src_2aa0921f-d5a0-4b81-b558-85af6b5e4e88"
+    },
+    {
+      "key": "mersin-guney",
+      "name": "Güney Gazetesi Mersin",
+      "city": "Mersin",
+      "id": "src_9338df52-95b6-4df3-b059-411038efde3f"
+    },
+    {
+      "key": "mersin-haberci",
+      "name": "Mersin Haberci",
+      "city": "Mersin",
+      "id": "src_55ee0d2b-94a0-4e69-8c02-4c8931f13d64"
+    },
+    {
+      "key": "mersin-hakimiyet",
+      "name": "Mersin Hakimiyet",
+      "city": "Mersin",
+      "id": "src_71aaed03-0a0c-4765-b73e-8873358f8643"
+    },
+    {
+      "key": "mugla-hamle",
+      "name": "Hamle Gazetesi Muğla",
+      "city": "Muğla",
+      "id": "src_1bdab8d6-ad38-4404-9d7e-61c0ed02f1dd"
+    },
+    {
+      "key": "mugla-gazetesi",
+      "name": "Muğla Gazetesi",
+      "city": "Muğla",
+      "id": "src_3250b61b-e727-4cb0-aff0-ed04c45eb7fa"
+    },
+    {
+      "key": "mugla-yenigun",
+      "name": "Muğla Yenigün",
+      "city": "Muğla",
+      "id": "src_a26e8401-7285-4b05-9430-06c2cc2d8394"
+    },
+    {
+      "key": "mugla-bodrum",
+      "name": "Bodrum Gündem",
+      "city": "Muğla",
+      "id": "src_7d886a6f-6146-4831-bdff-770112cafd33"
+    },
+    {
+      "key": "mugla-fethiye",
+      "name": "Gerçek Fethiye",
+      "city": "Muğla",
+      "id": "src_49199f4e-f0f4-4748-9ae2-17ca3826ac68"
+    },
+    {
+      "key": "mugla-marmaris",
+      "name": "Marmaris Manşet",
+      "city": "Muğla",
+      "id": "src_6701376a-6af1-4758-959f-77121bef53be"
+    },
+    {
+      "key": "mus-haber49",
+      "name": "Haber 49 Muş",
+      "city": "Muş",
+      "id": "src_259110e6-09fc-48d8-9e8d-15eefe044a37"
+    },
+    {
+      "key": "mus-alparslan",
+      "name": "Alparslan Diyarı",
+      "city": "Muş",
+      "id": "src_5fdd5d7f-fb44-4589-86e8-7a08e4acb1ed"
+    },
+    {
+      "key": "mus-kenthaber",
+      "name": "Muş Kent Haber",
+      "city": "Muş",
+      "id": "src_cab71acc-e3e1-4abf-b1bf-68bb7bcbd29e"
+    },
+    {
+      "key": "nevsehir-kenthaber",
+      "name": "Nevşehir Kent Haber",
+      "city": "Nevşehir",
+      "id": "src_bd648816-6bb9-4779-b7d4-f7f991a3adc8"
+    },
+    {
+      "key": "nevsehir-kapadokya",
+      "name": "Kapadokya Haber",
+      "city": "Nevşehir",
+      "id": "src_fbd39082-df2d-4989-81fb-0637eb8380e1"
+    },
+    {
+      "key": "nigde-gunaydin",
+      "name": "Niğde Günaydın",
+      "city": "Niğde",
+      "id": "src_4012b864-d020-4936-919e-07b96cfdebc9"
+    },
+    {
+      "key": "ordu-olay",
+      "name": "Ordu Olay",
+      "city": "Ordu",
+      "id": "src_4598d010-15b0-49f1-b4e8-befc6d7ba760"
+    },
+    {
+      "key": "ordu-manset",
+      "name": "Ordu Manşet",
+      "city": "Ordu",
+      "id": "src_059e3a55-f966-4d96-8972-bcab8634a6bc"
+    },
+    {
+      "key": "osmaniye-basak",
+      "name": "Başak Gazetesi Osmaniye",
+      "city": "Osmaniye",
+      "id": "src_c3dc59a1-18e3-4350-b48c-80b75cf361c6"
+    },
+    {
+      "key": "osmaniye-akdeniz",
+      "name": "Akdeniz Gazetesi Osmaniye",
+      "city": "Osmaniye",
+      "id": "src_bf607859-c27e-45b9-9b47-964e373b8ff4"
+    },
+    {
+      "key": "rize-olay53",
+      "name": "Olay 53 Rize",
+      "city": "Rize",
+      "id": "src_9bcc95c4-c10f-4b76-882c-3425b67f9f93"
+    },
+    {
+      "key": "rize-ninsesi",
+      "name": "Rize'nin Sesi",
+      "city": "Rize",
+      "id": "src_866e089b-6d17-41ff-8e42-ce93d25e5b78"
+    },
+    {
+      "key": "rize-gazete53",
+      "name": "Gazete 53 Rize",
+      "city": "Rize",
+      "id": "src_f4fd0852-c5dd-406a-83fa-2028f4c98df2"
+    },
+    {
+      "key": "sakarya-yenihaber",
+      "name": "Sakarya Yeni Haber",
+      "city": "Sakarya",
+      "id": "src_3e7da076-7284-48bf-8b9a-bcd09d923922"
+    },
+    {
+      "key": "sakarya-yenigun",
+      "name": "Sakarya Yenigün",
+      "city": "Sakarya",
+      "id": "src_0f38f800-ecce-44b7-8bbd-b41729f130ed"
+    },
+    {
+      "key": "sakarya-halk54",
+      "name": "Halk 54 Sakarya",
+      "city": "Sakarya",
+      "id": "src_a0a05584-ef28-4e7e-b818-ff994d0659d1"
+    },
+    {
+      "key": "samsun-gazetesi",
+      "name": "Samsun Gazetesi",
+      "city": "Samsun",
+      "id": "src_0198c80f-6f9e-4454-92b7-4a5e107a7bad"
+    },
+    {
+      "key": "samsun-kenthaber",
+      "name": "Samsun Kent Haber",
+      "city": "Samsun",
+      "id": "src_1d06a326-d9a8-4036-a63f-39f3457c887e"
+    },
+    {
+      "key": "samsun-kizilirmak",
+      "name": "Kızılırmak Gazetesi Samsun",
+      "city": "Samsun",
+      "id": "src_af77ce55-a1a9-4be6-a25d-3841598f6c98"
+    },
+    {
+      "key": "siirt-artisiirt",
+      "name": "Artı Siirt",
+      "city": "Siirt",
+      "id": "src_142df79f-f830-4c37-ba8f-8a2326f0d579"
+    },
+    {
+      "key": "siirt-yenisiirt",
+      "name": "Yeni Siirt",
+      "city": "Siirt",
+      "id": "src_3d58c98a-78ef-473e-8135-d8918b674d9d"
+    },
+    {
+      "key": "siirt-sonsoz",
+      "name": "Siirt'te Son Söz",
+      "city": "Siirt",
+      "id": "src_baf74ae8-0f11-4dae-86d6-c16182848e5a"
+    },
+    {
+      "key": "sinop-vitrin",
+      "name": "Vitrin Haber Sinop",
+      "city": "Sinop",
+      "id": "src_b947ee04-8b1c-4f85-baff-9acd65c3308e"
+    },
+    {
+      "key": "sinop-haber57",
+      "name": "Haber 57 Sinop",
+      "city": "Sinop",
+      "id": "src_202ddd02-57db-4d32-9ca9-475c21574c47"
+    },
+    {
+      "key": "sivas-buyuk",
+      "name": "Büyük Sivas",
+      "city": "Sivas",
+      "id": "src_228c3cf1-5adb-46bc-91f5-e0fa1dc98599"
+    },
+    {
+      "key": "sivas-irade",
+      "name": "Sivas İrade",
+      "city": "Sivas",
+      "id": "src_374a5ffa-aa31-4946-9bf1-251a12f3f20f"
+    },
+    {
+      "key": "sivas-memleket",
+      "name": "Sivas Memleket",
+      "city": "Sivas",
+      "id": "src_aee194d4-ea6b-4c8a-bd8c-2e2f996149c1"
+    },
+    {
+      "key": "sanliurfa-natik",
+      "name": "Urfa Natik",
+      "city": "Şanlıurfa",
+      "id": "src_3cc69161-2316-4005-84a1-ddd0f95f046a"
+    },
+    {
+      "key": "sanliurfa-ajans",
+      "name": "Ajans Urfa",
+      "city": "Şanlıurfa",
+      "id": "src_732d00a9-cb35-4707-9a5f-e868f39200d3"
+    },
+    {
+      "key": "sanliurfa-olay",
+      "name": "Şanlıurfa Olay",
+      "city": "Şanlıurfa",
+      "id": "src_2bec4345-1c4c-4167-b67d-2579faf34299"
+    },
+    {
+      "key": "sanliurfa-pusula",
+      "name": "Urfa Pusula",
+      "city": "Şanlıurfa",
+      "id": "src_ae5ac627-10d3-4eb3-9e86-01d128765690"
+    },
+    {
+      "key": "sirnak-haber73",
+      "name": "Şırnak Haber 73",
+      "city": "Şırnak",
+      "id": "src_43055631-e96c-4a65-848a-098746c48792"
+    },
+    {
+      "key": "sirnak-sirnakhaber",
+      "name": "Şırnak Haber",
+      "city": "Şırnak",
+      "id": "src_e3a0f5cb-2a06-4f93-8798-689567781efc"
+    },
+    {
+      "key": "tekirdag-habertrak",
+      "name": "Haber Trak Tekirdağ",
+      "city": "Tekirdağ",
+      "id": "src_3959c4b5-b8a4-4000-9af9-7e31181ecc8d"
+    },
+    {
+      "key": "tekirdag-yenihaber",
+      "name": "Tekirdağ Yeni Haber",
+      "city": "Tekirdağ",
+      "id": "src_b598d04a-bdd5-4988-92c3-702fe2067155"
+    },
+    {
+      "key": "tekirdag-trakyaflash",
+      "name": "Trakya Flash Haber",
+      "city": "Tekirdağ",
+      "id": "src_3ae0c540-288d-477b-ac5c-1b9c58278718"
+    },
+    {
+      "key": "tokat-comtr",
+      "name": "Tokat Haber (comtr)",
+      "city": "Tokat",
+      "id": "src_fbdd2981-f3af-46c8-97c9-e92caed7bccc"
+    },
+    {
+      "key": "tokat-hursoz",
+      "name": "Hür Söz Tokat",
+      "city": "Tokat",
+      "id": "src_6fa8bba3-9b13-4e26-8ff3-7424362b8064"
+    },
+    {
+      "key": "tokat-olay",
+      "name": "Tokat Olay",
+      "city": "Tokat",
+      "id": "src_65cc68a3-59e7-4258-9ecf-3dc7f0cfa0a3"
+    },
+    {
+      "key": "trabzon-taka",
+      "name": "Taka Gazete Trabzon",
+      "city": "Trabzon",
+      "id": "src_8662258e-7627-422a-9eda-596aa38afcde"
+    },
+    {
+      "key": "trabzon-haber61",
+      "name": "Haber 61 Trabzon",
+      "city": "Trabzon",
+      "id": "src_5b3225d5-ffb9-4344-b299-35e358842caa"
+    },
+    {
+      "key": "trabzon-kuzeyekspres",
+      "name": "Kuzey Ekspres",
+      "city": "Trabzon",
+      "id": "src_d08c848d-10b1-4d5e-a43a-20537251b459"
+    },
+    {
+      "key": "tunceli-dersim",
+      "name": "Dersim Ekspres",
+      "city": "Tunceli",
+      "id": "src_242db662-eaac-4b62-a00f-c133b1148c5e"
+    },
+    {
+      "key": "tunceli-gundem",
+      "name": "Tunceli Gündem",
+      "city": "Tunceli",
+      "id": "src_3d1d9941-1c3b-477b-bce5-1f5fbd8ac638"
+    },
+    {
+      "key": "usak-habergazetesi",
+      "name": "Uşak Haber Gazetesi",
+      "city": "Uşak",
+      "id": "src_4f31e9a2-45bd-4ad3-a6ec-f6a4920c19b7"
+    },
+    {
+      "key": "usak-olay",
+      "name": "Uşak Olay",
+      "city": "Uşak",
+      "id": "src_5f5b8efc-dcfc-4506-8da7-485ccbfdc6cf"
+    },
+    {
+      "key": "usak-gundem",
+      "name": "Uşak Gündem",
+      "city": "Uşak",
+      "id": "src_a7309433-a1f9-4f22-876e-0f6a89514dda"
+    },
+    {
+      "key": "van-bolgegazetesi",
+      "name": "Bölge Gazetesi Van",
+      "city": "Van",
+      "id": "src_af20645c-8bfc-40d6-9032-4629bbf9c2c5"
+    },
+    {
+      "key": "van-sesi",
+      "name": "Van Sesi Gazetesi",
+      "city": "Van",
+      "id": "src_5f222534-84f0-4f90-b3b3-9c99152db8de"
+    },
+    {
+      "key": "van-wanhaber",
+      "name": "Wan Haber",
+      "city": "Van",
+      "id": "src_80c8a07e-5e99-4652-a18f-19ee603bf376"
+    },
+    {
+      "key": "yalova-haberci",
+      "name": "Haberci Yalova",
+      "city": "Yalova",
+      "id": "src_22a97f59-589a-43bb-86ef-f2e601d03188"
+    },
+    {
+      "key": "yalova-hayat",
+      "name": "Yalova Hayat",
+      "city": "Yalova",
+      "id": "src_a29d91e7-44a6-4e5a-a258-993a85cd1ecd"
+    },
+    {
+      "key": "yalova-pusula",
+      "name": "Yalova Pusula",
+      "city": "Yalova",
+      "id": "src_f61a029a-f70c-402a-8836-302f02799835"
+    },
+    {
+      "key": "yozgat-gazetesi",
+      "name": "Yozgat Gazetesi",
+      "city": "Yozgat",
+      "id": "src_db9aea56-d82f-4e1a-9456-c2c7761c734b"
+    },
+    {
+      "key": "yozgat-ileri",
+      "name": "İleri Gazetesi Yozgat",
+      "city": "Yozgat",
+      "id": "src_723c9de3-f883-4b7d-ad82-f846feeb6fb6"
+    },
+    {
+      "key": "yozgat-merhaba",
+      "name": "Merhaba Yozgat",
+      "city": "Yozgat",
+      "id": "src_f0fde889-94d1-4922-844a-79cc3d19de74"
+    },
+    {
+      "key": "zonguldak-gundem67",
+      "name": "Gündem 67 Zonguldak",
+      "city": "Zonguldak",
+      "id": "src_e456e98a-4b1f-41bc-9336-138dd61b5d2d"
+    },
+    {
+      "key": "zonguldak-halkinsesi",
+      "name": "Halkın Sesi Zonguldak",
+      "city": "Zonguldak",
+      "id": "src_26715c73-38d8-48a2-9766-797a6e657354"
+    },
+    {
+      "key": "zonguldak-imza",
+      "name": "İmza Gazetesi Zonguldak",
+      "city": "Zonguldak",
+      "id": "src_abd91c24-bdab-4a93-b750-f5b4a1462f53"
+    }
+  ],
+  "skipped": [
+    {
+      "key": "bogaz-gazetesi",
+      "reason": "domain_exists"
+    }
+  ],
+  "activated": [
+    {
+      "id": "src_3f980552-b879-4c2f-8355-89b8e4d0077f",
+      "name": "45 Haber Manisa",
+      "domain": "45haber.com"
+    },
+    {
+      "id": "src_f7a0ebd6-e16f-4fe9-8e18-92d5b737db88",
+      "name": "5 Ocak Gazetesi",
+      "domain": "5ocakgazetesi.com"
+    },
+    {
+      "id": "src_a7ee5e60-e50a-442d-804e-dc6a486ab654",
+      "name": "61 Saat Trabzon",
+      "domain": "61saat.com"
+    },
+    {
+      "id": "src_f205e911-4813-4d2d-8851-b4e500cb598b",
+      "name": "Adana Haber Merkezi",
+      "domain": "adanahabermerkezi.com"
+    },
+    {
+      "id": "src_be597478-4855-44fd-bf1c-e62515534ab2",
+      "name": "Adıyaman Haber",
+      "domain": "adiyamanhaber.com"
+    },
+    {
+      "id": "src_0a29741f-5d8e-498a-b7df-fcdedde521e8",
+      "name": "Afyon Gazete",
+      "domain": "afyongazete.com"
+    },
+    {
+      "id": "src_a6afbdc9-b7fa-410f-9928-7fd28e8f5c35",
+      "name": "Ajans 30 Hakkari",
+      "domain": "ajans30.com"
+    },
+    {
+      "id": "src_8b98249a-1d4a-459b-aedb-a99ad2d6f2e6",
+      "name": "Ajans Kuşadası",
+      "domain": "ajanskusadasi.com"
+    },
+    {
+      "id": "src_732d00a9-cb35-4707-9a5f-e868f39200d3",
+      "name": "Ajans Urfa",
+      "domain": "ajansurfa.com"
+    },
+    {
+      "id": "src_bf607859-c27e-45b9-9b47-964e373b8ff4",
+      "name": "Akdeniz Gazetesi Osmaniye",
+      "domain": "akdenizgazetesi.com"
+    },
+    {
+      "id": "src_e523b608-e610-4eed-abc5-670184e3ace3",
+      "name": "Akdeniz Gerçek",
+      "domain": "akdenizgercek.com.tr"
+    },
+    {
+      "id": "src_d6b18e4d-0652-4909-bd18-222b140881b9",
+      "name": "Akdeniz Manşet",
+      "domain": "akdenizmanset.com.tr"
+    },
+    {
+      "id": "src_a51cc07d-5db9-43ac-819b-26d5f8ba5154",
+      "name": "Aksaray 68 Haber",
+      "domain": "aksaray68haber.com.tr"
+    },
+    {
+      "id": "src_7fc84794-28a2-44a9-bb89-49ba3be1dbd2",
+      "name": "Aksaray Egemen",
+      "domain": "aksarayegemen.com.tr"
+    },
+    {
+      "id": "src_5fdd5d7f-fb44-4589-86e8-7a08e4acb1ed",
+      "name": "Alparslan Diyarı",
+      "domain": "alparslandiyari.com"
+    },
+    {
+      "id": "src_ba493409-be2b-46be-8b06-fd17d8287129",
+      "name": "Alternatif Gazetesi Kırklareli",
+      "domain": "alternatifgazetesi.com"
+    },
+    {
+      "id": "src_8d6a246e-2ee0-4f9e-b762-5a82b4aa2700",
+      "name": "Amasya Postası",
+      "domain": "amasyapostasi.com"
+    },
+    {
+      "id": "src_5e4ed62d-4323-462e-a5fc-34346001a6d2",
+      "name": "Anadoluda Bugün Konya",
+      "domain": "anadoludabugun.com.tr"
+    },
+    {
+      "id": "src_0d4e97a8-326c-43b1-9911-4416d40d8fb4",
+      "name": "Ankara Gazetesi",
+      "domain": "ankaragazetesi.com"
+    },
+    {
+      "id": "src_64ff5e2f-a0bc-4861-9775-f711af049649",
+      "name": "Antakya Gazetesi",
+      "domain": "antakyagazetesi.com"
+    },
+    {
+      "id": "src_a859ac11-9c6c-45a5-85ca-c04ee7777e0d",
+      "name": "Antalya Bugün",
+      "domain": "antalyabugun.com.tr"
+    },
+    {
+      "id": "src_4a0a8327-150b-4f4e-9d5a-3644660db2eb",
+      "name": "Antalya Ekspres",
+      "domain": "antalyaekspres.com.tr"
+    },
+    {
+      "id": "src_1f123544-296a-4501-af00-15e9a86ec4b7",
+      "name": "Antalya Körfez",
+      "domain": "antalyakorfez.com"
+    },
+    {
+      "id": "src_45a59d63-0451-430f-8113-527e4116c77a",
+      "name": "Aras Gazetesi Iğdır",
+      "domain": "arasgazetesi.com.tr"
+    },
+    {
+      "id": "src_21a5664e-2abf-488f-b0cb-5e5f2edd00d0",
+      "name": "Ardahan Gazetesi",
+      "domain": "ardahangazetesi.tr"
+    },
+    {
+      "id": "src_08db3ef7-5460-409a-a83d-d092d9a2a537",
+      "name": "Ardahan Haber",
+      "domain": "ardahanhaber.com.tr"
+    },
+    {
+      "id": "src_ddb152be-a389-45ba-8394-6c61855709e4",
+      "name": "Ardahan Haberi",
+      "domain": "ardahanhaberi.com"
+    },
+    {
+      "id": "src_046e597b-5e62-4d3e-90bb-5a9308a1be29",
+      "name": "Artvin Haber",
+      "domain": "artvinhaber.com"
+    },
+    {
+      "id": "src_142df79f-f830-4c37-ba8f-8a2326f0d579",
+      "name": "Artı Siirt",
+      "domain": "artisiirt.com"
+    },
+    {
+      "id": "src_c1917532-f1a8-42e9-94e4-b953dc585f64",
+      "name": "Aydın Denge",
+      "domain": "aydindenge.com.tr"
+    },
+    {
+      "id": "src_fe3299ed-c3e2-4ddf-8c23-c4dc6d2f94a1",
+      "name": "Aydın Haber",
+      "domain": "aydinhaber.com.tr"
+    },
+    {
+      "id": "src_3afbd1f3-be22-4318-84e6-08bbff29ea76",
+      "name": "Aydın Hedef",
+      "domain": "aydinhedef.com.tr"
+    },
+    {
+      "id": "src_51d01619-c55f-4983-935d-5618d0cdc411",
+      "name": "Açık Söz Kastamonu",
+      "domain": "aciksoz.com.tr"
+    },
+    {
+      "id": "src_5c966f03-ff42-495c-b4a5-7dedf08f2a7f",
+      "name": "Ağrı 04 Haber",
+      "domain": "agri04haber.com"
+    },
+    {
+      "id": "src_9ad19eb3-923c-4f00-8404-03cdbe9cbcca",
+      "name": "Ağrı Doğru Haber",
+      "domain": "agridogruhaber.com"
+    },
+    {
+      "id": "src_096adb8e-1ae1-4f91-b145-e0c001ba0b08",
+      "name": "Ağrı Hürses",
+      "domain": "agrihurses.net"
+    },
+    {
+      "id": "src_de4bdc4b-5a7a-408a-8b70-12a5b96d2769",
+      "name": "Baba Haber Gaziantep",
+      "domain": "babahaber.com"
+    },
+    {
+      "id": "src_7d13860f-7b68-4e14-9da9-1109279a269f",
+      "name": "Bakırköy Haber",
+      "domain": "bakirkoydenhaber.com"
+    },
+    {
+      "id": "src_e170ccf4-161a-414f-883b-f8652a6429d7",
+      "name": "Balıkesir 24 Saat",
+      "domain": "balikesir24saat.com"
+    },
+    {
+      "id": "src_c5e8b437-a1c2-4ff0-96d4-71e6635720a2",
+      "name": "Balıkesir Posta",
+      "domain": "balikesirposta.com.tr"
+    },
+    {
+      "id": "src_58a8546b-8b67-4026-851b-cb94ba98ce41",
+      "name": "Balıkesirim.net",
+      "domain": "balikesirim.net"
+    },
+    {
+      "id": "src_ba71dbd3-ec92-4e93-b3e9-50b859928254",
+      "name": "Bartın Halk Gazetesi",
+      "domain": "bartinhalkgazetesi.com.tr"
+    },
+    {
+      "id": "src_a15aad50-9622-40a0-99d3-a27bff11764a",
+      "name": "Bartın Olay",
+      "domain": "bartinolay.com"
+    },
+    {
+      "id": "src_f34b1802-ddbf-478a-98fc-27f52aac4250",
+      "name": "Bartın Pusula Gazetesi",
+      "domain": "pusulagazetesi.com.tr"
+    },
+    {
+      "id": "src_407af9dd-b388-4b04-bf54-99723ef7d563",
+      "name": "Batman Haber",
+      "domain": "batmanhaber.net"
+    },
+    {
+      "id": "src_23acafab-6315-4be9-adde-83e3cc87459d",
+      "name": "Batman Çağdaş",
+      "domain": "batmancagdas.com"
+    },
+    {
+      "id": "src_02b7ca87-a309-4d1b-9bad-0cfbacb89430",
+      "name": "Bayburt Gündem",
+      "domain": "bayburtgundem.com"
+    },
+    {
+      "id": "src_e3908569-775a-4c7e-b609-682a44ff4fc1",
+      "name": "Bayburt Postası",
+      "domain": "bayburtpostasi.com.tr"
+    },
+    {
+      "id": "src_56025395-24d8-4946-a3d9-78d0cd8aa47d",
+      "name": "Bayburt Web",
+      "domain": "bayburt.web.tr"
+    },
+    {
+      "id": "src_c3dc59a1-18e3-4350-b48c-80b75cf361c6",
+      "name": "Başak Gazetesi Osmaniye",
+      "domain": "basakgazetesi.com"
+    },
+    {
+      "id": "src_ad1ecee3-f5e6-44dd-9cf3-b7dcde735599",
+      "name": "Başkent Gazete",
+      "domain": "baskentgazete.com.tr"
+    },
+    {
+      "id": "src_9271465f-16ee-452c-a30b-6a3d8bbfe1a5",
+      "name": "Beyoğlu Gündem",
+      "domain": "beyoglugundem.com"
+    },
+    {
+      "id": "src_10804429-11ca-4ccb-a656-67aea1d50de5",
+      "name": "Biga'nın Sesi",
+      "domain": "biganinsesi.com"
+    },
+    {
+      "id": "src_7d39b8e9-797e-4786-8dab-5b21b47951f4",
+      "name": "Bilecik Olay",
+      "domain": "bilecikolay.com"
+    },
+    {
+      "id": "src_332525b7-4751-4da2-8062-fd669f198a2c",
+      "name": "Bingöl Kent Haber",
+      "domain": "bingolkenthaber.com"
+    },
+    {
+      "id": "src_98c98417-e867-446a-9f60-f6ae7c62fbf2",
+      "name": "Bingöl Net Haber",
+      "domain": "bingolnethaber.com"
+    },
+    {
+      "id": "src_262b5d34-0f02-4b4a-a21c-9839e0816d0b",
+      "name": "Bingöl Online",
+      "domain": "bingolonline.com"
+    },
+    {
+      "id": "src_c941d262-de7d-4462-ae07-9b3b48c01d9d",
+      "name": "Bitlis Doğru Haber",
+      "domain": "bitlisdogruhaber.com"
+    },
+    {
+      "id": "src_2e610178-f866-451b-bede-dc994cd22ba9",
+      "name": "Bitlis Haber 13",
+      "domain": "bitlishaber13.net"
+    },
+    {
+      "id": "src_7797abd9-6436-4b36-9da8-5559be13fcbf",
+      "name": "Bitlis Postası",
+      "domain": "bitlispostasi.com"
+    },
+    {
+      "id": "src_a8fbeae2-a914-466d-9ee7-565f9d4e8eb2",
+      "name": "Bizim Gazete Kocaeli",
+      "domain": "bizimgazete.com.tr"
+    },
+    {
+      "id": "src_7d886a6f-6146-4831-bdff-770112cafd33",
+      "name": "Bodrum Gündem",
+      "domain": "bodrumgundem.com"
+    },
+    {
+      "id": "src_01120b5d-c47f-4b59-95bd-e7054fecb042",
+      "name": "Bolu Gazetesi",
+      "domain": "bolugazetesi.com.tr"
+    },
+    {
+      "id": "src_d6b21219-6b43-4a0f-9175-b83ddf8ed13f",
+      "name": "Bolu Gündem",
+      "domain": "bolugundem.com"
+    },
+    {
+      "id": "src_cf97f5d9-c154-40e4-a9a9-ac4d2e7ea1ea",
+      "name": "Bolu Haber",
+      "domain": "boluhaber.com"
+    },
+    {
+      "id": "src_00bdeb0e-b069-4011-b08c-e9795d38e623",
+      "name": "Bolu Hakimiyet",
+      "domain": "boluhakimiyet.com"
+    },
+    {
+      "id": "src_68ef2454-5606-4243-adfa-c1aaac81af29",
+      "name": "Bomba 15 Burdur",
+      "domain": "bomba15.com"
+    },
+    {
+      "id": "src_21975ba6-5f14-460b-896b-c8fa8ac18a30",
+      "name": "Bomba 32 Isparta",
+      "domain": "bomba32.com"
+    },
+    {
+      "id": "src_d422368c-9319-45ce-b2f3-b0d46f456214",
+      "name": "Bor Haber Niğde",
+      "domain": "borhaber.net"
+    },
+    {
+      "id": "src_8da11528-224e-4085-b22d-667d25373555",
+      "name": "Bozcaada Haber",
+      "domain": "bozcaadahaber.net"
+    },
+    {
+      "id": "src_9741e466-120d-47a0-b445-208dde433279",
+      "name": "Bu Sabah Malatya",
+      "domain": "busabahmalatya.com"
+    },
+    {
+      "id": "src_fb656cd1-84b9-4cf7-b039-a1d9ab7e40b3",
+      "name": "Bugün Kocaeli",
+      "domain": "bugunkocaeli.com.tr"
+    },
+    {
+      "id": "src_aeebe328-1201-4d2f-bbc6-88db025e4c04",
+      "name": "Burdur Gazetesi",
+      "domain": "burdurgazetesi.com"
+    },
+    {
+      "id": "src_ee33ac50-37c5-4190-9e6b-ac2a6b621b2a",
+      "name": "Burdur Yenigün",
+      "domain": "burduryenigun.com"
+    },
+    {
+      "id": "src_3e278611-d8de-41bb-8be8-4b616e715f8a",
+      "name": "Bursa Haber",
+      "domain": "bursahaber.com"
+    },
+    {
+      "id": "src_730d79cd-4848-4956-ba99-dc5285180675",
+      "name": "Bursa Hakimiyet",
+      "domain": "bursahakimiyet.com.tr"
+    },
+    {
+      "id": "src_59ff9abf-aa11-458a-b19a-faf9a79d79fc",
+      "name": "Bursa Olay",
+      "domain": "olay.com.tr"
+    },
+    {
+      "id": "src_d2c2c67b-bf26-45ee-b1ad-e35558c38a7a",
+      "name": "Bursa Saati",
+      "domain": "bursasaati.com.tr"
+    },
+    {
+      "id": "src_af20645c-8bfc-40d6-9032-4629bbf9c2c5",
+      "name": "Bölge Gazetesi Van",
+      "domain": "bolgegazetesivan.com"
+    },
+    {
+      "id": "src_228c3cf1-5adb-46bc-91f5-e0fa1dc98599",
+      "name": "Büyük Sivas",
+      "domain": "buyuksivas.com"
+    },
+    {
+      "id": "src_1c9c2e60-5aa9-4214-bea2-a845a191fd08",
+      "name": "Demokrat 32",
+      "domain": "demokrat32.com"
+    },
+    {
+      "id": "src_33dda431-2f1b-4079-b506-53a27b158d39",
+      "name": "Denizli 24 Haber",
+      "domain": "denizli24haber.com"
+    },
+    {
+      "id": "src_287ba96e-0315-45f9-bde7-76d3c00db782",
+      "name": "Denizli Ekspres",
+      "domain": "denizliekspres.com.tr"
+    },
+    {
+      "id": "src_a082bccc-1ee8-490c-ac4d-82c579617149",
+      "name": "Denizli Haber",
+      "domain": "denizlihaber.com"
+    },
+    {
+      "id": "src_9861cdf9-0fdb-46c8-a7db-7db3e9b864fc",
+      "name": "Denizli Yeni Olay",
+      "domain": "denizliyeniolay.com"
+    },
+    {
+      "id": "src_242db662-eaac-4b62-a00f-c133b1148c5e",
+      "name": "Dersim Ekspres",
+      "domain": "dersimekspres.com"
+    },
+    {
+      "id": "src_d38df435-4b89-4bea-862f-abf2995e6579",
+      "name": "Diyarbakır Haber",
+      "domain": "diyarbakirhaber.net"
+    },
+    {
+      "id": "src_b658dc9f-29a7-4bbe-8ea7-eca234e5a553",
+      "name": "Diyarbakır Yenigün",
+      "domain": "diyarbakiryenigun.com"
+    },
+    {
+      "id": "src_a671b73a-14d5-474a-a6a1-09cba3e33735",
+      "name": "Doğu Gazetesi Erzincan",
+      "domain": "dogugazetesi.com"
+    },
+    {
+      "id": "src_bd141392-0b60-4d24-b6c2-61ae338980df",
+      "name": "Dumlupınar Gazetesi Kütahya",
+      "domain": "dumlupinargazetesi.com"
+    },
+    {
+      "id": "src_7aaed0f1-0f65-4dc6-854d-99633e326674",
+      "name": "Düzce Haber",
+      "domain": "duzcehaber.com"
+    },
+    {
+      "id": "src_0221c36d-e8d8-4630-a24e-e12a61381c71",
+      "name": "Düzce Postası",
+      "domain": "duzcepostasi.com"
+    },
+    {
+      "id": "src_71d46f0c-3350-4b02-b86a-e11f45c763a8",
+      "name": "Düzce'nin Sesi",
+      "domain": "duzceninsesi.com.tr"
+    },
+    {
+      "id": "src_236aa6e2-70cc-45b2-af2b-781164bc3ad2",
+      "name": "Edirne Gazetesi",
+      "domain": "edirnegazetesi.com.tr"
+    },
+    {
+      "id": "src_cdae8e38-824a-41ee-b8ae-4065f37b978a",
+      "name": "Edirne Haber",
+      "domain": "edirnehaber.net"
+    },
+    {
+      "id": "src_bca27448-4192-4707-9c99-82eaa99bda37",
+      "name": "Edirne Yenigün",
+      "domain": "edirneyenigun.com"
+    },
+    {
+      "id": "src_1684757e-0352-41e7-b134-587fc7c356a2",
+      "name": "Ege Gündem",
+      "domain": "egegundem.com.tr"
+    },
+    {
+      "id": "src_845b372f-1fa4-47f1-9d75-c55cd3be769a",
+      "name": "Ege Olay",
+      "domain": "egeolay.com"
+    },
+    {
+      "id": "src_0f4cc24b-abb4-438a-8015-178193fc3527",
+      "name": "Egede Son Söz",
+      "domain": "egedesonsoz.com"
+    },
+    {
+      "id": "src_569f9f4a-07c8-4b46-9e17-e28bffa8fd96",
+      "name": "Egede Yenigün Uşak",
+      "domain": "egedeyenigun.com"
+    },
+    {
+      "id": "src_17ee8ddf-5e68-428a-a5d2-13db290db2a9",
+      "name": "Elazığ Hakimiyet",
+      "domain": "elazighakimiyethaber.com"
+    },
+    {
+      "id": "src_ce060fb4-935b-48da-8a0c-568836fd2819",
+      "name": "Elazığ Son Söz",
+      "domain": "elazigsonsoz.com"
+    },
+    {
+      "id": "src_a93d7caf-bc7a-4c6d-9f78-991cb2748fb1",
+      "name": "Ereğli Haberleri Konya",
+      "domain": "ereglihaberleri.com"
+    },
+    {
+      "id": "src_6b68bbe3-c513-4b3f-b20c-e45c3ff43601",
+      "name": "Erzincan Haber",
+      "domain": "erzincanhaber.com"
+    },
+    {
+      "id": "src_874ba952-8ca3-43dd-8122-6793d04e636d",
+      "name": "Erzincan'ın Sesi",
+      "domain": "erzincaninsesi.com"
+    },
+    {
+      "id": "src_7ffb551f-a8bd-4037-9f84-2d5fd3280d35",
+      "name": "Erzincan.net",
+      "domain": "erzincannet.com"
+    },
+    {
+      "id": "src_236d9931-f37a-4159-a79e-02abe85d03d5",
+      "name": "Erzurum Haber",
+      "domain": "erzurumhaber.com.tr"
+    },
+    {
+      "id": "src_5f889dad-1cab-4ce4-9495-7780261312ae",
+      "name": "Erzurum Pusula Gazetesi",
+      "domain": "gazetepusula.net"
+    },
+    {
+      "id": "src_7f7e9c2c-3285-4d27-8841-a85bdfc83509",
+      "name": "Eskişehir Ekspres",
+      "domain": "eskisehirekspres.net"
+    },
+    {
+      "id": "src_3f0ec915-d076-48c3-a87a-7be6f6137882",
+      "name": "Eskişehir Yenigün",
+      "domain": "esyenigun.com"
+    },
+    {
+      "id": "src_3459e39e-dd63-432d-bb5f-b7df6627d1d9",
+      "name": "Eskişehir.net",
+      "domain": "eskisehir.net"
+    },
+    {
+      "id": "src_9a679f07-c981-4d99-8443-9c7bfd375ba1",
+      "name": "Gazete 32 Isparta",
+      "domain": "gazete32.com.tr"
+    },
+    {
+      "id": "src_f4fd0852-c5dd-406a-83fa-2028f4c98df2",
+      "name": "Gazete 53 Rize",
+      "domain": "gazete53.com"
+    },
+    {
+      "id": "src_83664ff5-6455-4288-9b34-36799aa62cbf",
+      "name": "Gazete Ekspres Gaziantep",
+      "domain": "gazeteekspres.com"
+    },
+    {
+      "id": "src_5f2a5dba-1605-4d33-897e-878918188925",
+      "name": "Gazete Kadıköy",
+      "domain": "gazetekadikoy.com.tr"
+    },
+    {
+      "id": "src_874842ef-f034-4fc3-b109-f26447373eb5",
+      "name": "Gazete Kars",
+      "domain": "gazetekars.com"
+    },
+    {
+      "id": "src_2e5975e2-6f80-486c-8f46-4da96087751b",
+      "name": "Gazete İzmir",
+      "domain": "gazetemizmir.com"
+    },
+    {
+      "id": "src_676783fe-0bc1-4756-be22-8be668e84240",
+      "name": "Gazete Şehir Denizli",
+      "domain": "gazetesehir.com"
+    },
+    {
+      "id": "src_652b6de2-6e70-4f0d-866d-3108161e4357",
+      "name": "Gaziantep 27",
+      "domain": "gaziantep27.net"
+    },
+    {
+      "id": "src_83074e40-7b32-418f-903a-64d116fc5bcb",
+      "name": "Gaziantep Oluşum",
+      "domain": "gaziantepolusum.com"
+    },
+    {
+      "id": "src_56aa69a4-1363-4a00-8bc7-c931e0c5b62a",
+      "name": "Gelibolu Gaşte",
+      "domain": "gelibolugaste.com"
+    },
+    {
+      "id": "src_b70b9f63-e841-48e6-8b4a-ceb43603c1dc",
+      "name": "Gelibolu Haber",
+      "domain": "geliboluhaber.com"
+    },
+    {
+      "id": "src_49199f4e-f0f4-4748-9ae2-17ca3826ac68",
+      "name": "Gerçek Fethiye",
+      "domain": "gercekfethiye.com"
+    },
+    {
+      "id": "src_bc02cc7b-06dc-462b-8062-4784db54cab1",
+      "name": "Giresun Gazete",
+      "domain": "giresungazete.com.tr"
+    },
+    {
+      "id": "src_b9cad19c-553b-40ac-a179-43993fb90d1f",
+      "name": "Giresun Öncü",
+      "domain": "giresunoncu.com"
+    },
+    {
+      "id": "src_17e8fa1d-bc59-4862-a76d-4ff17a70cc82",
+      "name": "Giresun İleri",
+      "domain": "giresunileri.com"
+    },
+    {
+      "id": "src_c67223f7-3b80-41a2-a23e-f937e4890385",
+      "name": "Gümüş Koza",
+      "domain": "gumuskoza.com.tr"
+    },
+    {
+      "id": "src_89ca55eb-ed4b-4d4b-b96c-cae470a21637",
+      "name": "Gümüşhane Olay",
+      "domain": "gumushaneolay.com"
+    },
+    {
+      "id": "src_e1ae3f96-0965-4720-8da4-b499251760fb",
+      "name": "Gümüşhane.com",
+      "domain": "gumushane.com"
+    },
+    {
+      "id": "src_e456e98a-4b1f-41bc-9336-138dd61b5d2d",
+      "name": "Gündem 67 Zonguldak",
+      "domain": "gundem67.com.tr"
+    },
+    {
+      "id": "src_19310bb3-e353-4906-8107-c1048cd31987",
+      "name": "Gündem Artvin",
+      "domain": "gundemartvin.com"
+    },
+    {
+      "id": "src_509f63e5-2d24-4570-b93f-538aa174d51d",
+      "name": "Gündem Bursa",
+      "domain": "gundembursa.com"
+    },
+    {
+      "id": "src_7731de35-94ff-4c07-b9f0-28b1ebbf7758",
+      "name": "Güne Bakış Trabzon",
+      "domain": "gunebakis.com.tr"
+    },
+    {
+      "id": "src_9338df52-95b6-4df3-b059-411038efde3f",
+      "name": "Güney Gazetesi Mersin",
+      "domain": "guneygazetesi.com"
+    },
+    {
+      "id": "src_3a4a07d7-7adc-4467-bf22-016315b1aa82",
+      "name": "Güneydoğu Ekspres",
+      "domain": "guneydoguekspres.com"
+    },
+    {
+      "id": "src_c8b5c8aa-d0bf-4e01-8411-46b185db995e",
+      "name": "Günışığı Gazetesi Elazığ",
+      "domain": "gunisigigazetesi.net"
+    },
+    {
+      "id": "src_517c814d-67fc-4342-9d05-b86617633eaa",
+      "name": "Güven Gazetesi Iğdır",
+      "domain": "guvengazetesi.com.tr"
+    },
+    {
+      "id": "src_eb78de30-c15f-4426-9b23-9baf61e26c6f",
+      "name": "Haber 228 Bilecik",
+      "domain": "haber228.com"
+    },
+    {
+      "id": "src_2412b406-bfd1-4a64-b6e9-2b0fa6c76a76",
+      "name": "Haber 29 Gümüşhane",
+      "domain": "haber29.net"
+    },
+    {
+      "id": "src_6d6254dc-0cc3-445f-b8df-5d47ef0bf494",
+      "name": "Haber 32 Isparta",
+      "domain": "haber32.com.tr"
+    },
+    {
+      "id": "src_e2068081-3ed5-4017-a072-061e6fcdbb85",
+      "name": "Haber 46 Maraş",
+      "domain": "haber46.com.tr"
+    },
+    {
+      "id": "src_259110e6-09fc-48d8-9e8d-15eefe044a37",
+      "name": "Haber 49 Muş",
+      "domain": "haber49.net"
+    },
+    {
+      "id": "src_202ddd02-57db-4d32-9ca9-475c21574c47",
+      "name": "Haber 57 Sinop",
+      "domain": "haber57.com.tr"
+    },
+    {
+      "id": "src_5b3225d5-ffb9-4344-b299-35e358842caa",
+      "name": "Haber 61 Trabzon",
+      "domain": "haber61.net"
+    },
+    {
+      "id": "src_70c9e91b-87ee-45e4-ace1-e4d403fede5e",
+      "name": "Haber 71 Kırıkkale",
+      "domain": "haber71.net"
+    },
+    {
+      "id": "src_c73b3e5d-fd32-41be-9322-f067264507b6",
+      "name": "Haber Ankara",
+      "domain": "haberankara.com"
+    },
+    {
+      "id": "src_3e2a48eb-56c9-40c7-be0d-82bb0469b7fc",
+      "name": "Haber Mersin",
+      "domain": "habermersin.com"
+    },
+    {
+      "id": "src_3959c4b5-b8a4-4000-9af9-7e31181ecc8d",
+      "name": "Haber Trak Tekirdağ",
+      "domain": "habertrak.com.tr"
+    },
+    {
+      "id": "src_3c34afd0-5dec-49c2-8bd0-8c0806165ccb",
+      "name": "Haberci 18 Çankırı",
+      "domain": "haberci18.com"
+    },
+    {
+      "id": "src_bef0456e-84bb-4157-87a7-dd1d11a66e25",
+      "name": "Haberci Gazetesi Balıkesir",
+      "domain": "habercigazetesi.net"
+    },
+    {
+      "id": "src_22a97f59-589a-43bb-86ef-f2e601d03188",
+      "name": "Haberci Yalova",
+      "domain": "haberci.com.tr"
+    },
+    {
+      "id": "src_e02ab693-bc57-4a43-a20d-b2e051e26a8a",
+      "name": "Hakkari Haber",
+      "domain": "haberhakkari.com"
+    },
+    {
+      "id": "src_61abd7d0-9edf-4f13-b94e-922c5c9373d2",
+      "name": "Hakkari İl Sesi Gazetesi",
+      "domain": "hakkariilsesigazetesi.com"
+    },
+    {
+      "id": "src_a0a05584-ef28-4e7e-b818-ff994d0659d1",
+      "name": "Halk 54 Sakarya",
+      "domain": "halk54.com"
+    },
+    {
+      "id": "src_26715c73-38d8-48a2-9766-797a6e657354",
+      "name": "Halkın Sesi Zonguldak",
+      "domain": "halkinsesi.com.tr"
+    },
+    {
+      "id": "src_1bdab8d6-ad38-4404-9d7e-61c0ed02f1dd",
+      "name": "Hamle Gazetesi Muğla",
+      "domain": "hamlegazetesi.com.tr"
+    },
+    {
+      "id": "src_acfd3f93-18d9-440c-95bb-1b4901b15bb4",
+      "name": "Hasret Gazetesi Osmaniye",
+      "domain": "hasretgazetesi.com.tr"
+    },
+    {
+      "id": "src_db56c94d-8395-4610-a6ef-7a411ff19223",
+      "name": "Hatay Ekspres",
+      "domain": "hatayekspres.com"
+    },
+    {
+      "id": "src_3e955f84-bff9-4994-bd6b-4ceb9945bdcb",
+      "name": "Hatay Haber",
+      "domain": "hatayhaber.com"
+    },
+    {
+      "id": "src_ca7915d6-4709-4615-b175-908d7f54aaf4",
+      "name": "Hududeli Kilis",
+      "domain": "hududeli.com"
+    },
+    {
+      "id": "src_0fcd258a-29dc-453f-8756-3d0442fa5bab",
+      "name": "Hudut Gazetesi Edirne",
+      "domain": "hudutgazetesi.com"
+    },
+    {
+      "id": "src_6fa8bba3-9b13-4e26-8ff3-7424362b8064",
+      "name": "Hür Söz Tokat",
+      "domain": "hursozgazetesi.com"
+    },
+    {
+      "id": "src_4f1a06e4-5eaa-441e-9e8a-3251bc9a720d",
+      "name": "Isparta Manşet",
+      "domain": "ispartamanset.com"
+    },
+    {
+      "id": "src_2e565f44-d849-405e-8b3a-e842f30c1d44",
+      "name": "Iğdır Doğuş Gazetesi",
+      "domain": "igdirdogusgazetesi.com"
+    },
+    {
+      "id": "src_3ba5979e-6043-42ec-bff4-38b22d11b2aa",
+      "name": "Işık Gazetesi Adıyaman",
+      "domain": "isikgazetesi.com"
+    },
+    {
+      "id": "src_9a5596a1-e1a2-4760-9eee-2e6236dd7e7f",
+      "name": "Kadıköy Telgraf",
+      "domain": "kadikoytelgraf.com.tr"
+    },
+    {
+      "id": "src_b5892240-90b4-4499-b209-c0e68ab8b69e",
+      "name": "Kahramanmaraş Haber",
+      "domain": "kahramanmarashaber.com"
+    },
+    {
+      "id": "src_62bbf392-3471-4c5a-999c-79daa0579770",
+      "name": "Kale Haber Kırıkkale",
+      "domain": "kalehaber.net"
+    },
+    {
+      "id": "src_73d20ea4-42ad-4ea7-bb40-88b2ad87a76b",
+      "name": "Kalenin Sesi",
+      "domain": "kaleninsesi.com"
+    },
+    {
+      "id": "src_01e0e1a4-383f-424d-aef0-629f3034156d",
+      "name": "Kanal 17 (Çanakkale)",
+      "domain": "kanal17.com.tr"
+    },
+    {
+      "id": "src_fbd39082-df2d-4989-81fb-0637eb8380e1",
+      "name": "Kapadokya Haber",
+      "domain": "kapadokyahaber.com.tr"
+    },
+    {
+      "id": "src_daf64f2a-921c-4406-af7e-29a4164b9d18",
+      "name": "Karabük Derin Haber",
+      "domain": "karabukderinhaber.com"
+    },
+    {
+      "id": "src_ff529458-8469-428b-a082-c1eec7fe1f28",
+      "name": "Karabük Net Haber",
+      "domain": "karabuknethaber.com"
+    },
+    {
+      "id": "src_1c650a38-7d68-4e40-817c-90186503fa7b",
+      "name": "Karabük Postası",
+      "domain": "karabukpostasi.com"
+    },
+    {
+      "id": "src_978e398e-ba5b-4586-b298-7b9e63d77418",
+      "name": "Karaman 24",
+      "domain": "karaman24.com"
+    },
+    {
+      "id": "src_3014ffcf-65a4-4e7d-bda0-3c5b20508daf",
+      "name": "Karaman Gündem",
+      "domain": "karamangundem.com"
+    },
+    {
+      "id": "src_6f5adeed-a15a-4e6d-89b1-c2b9d0e84f2d",
+      "name": "Karaman Haber",
+      "domain": "karamanhaber.com"
+    },
+    {
+      "id": "src_89af30ab-0b2c-4f23-99dd-b8832d8e8ede",
+      "name": "Karamanda Uyanış",
+      "domain": "karamandauyanis.com"
+    },
+    {
+      "id": "src_6461572e-8178-4529-91d7-97c795310f88",
+      "name": "Kars Hakimiyet",
+      "domain": "karshakimiyet.com"
+    },
+    {
+      "id": "src_26affd1d-3035-4a65-9c6e-92b5f646db6e",
+      "name": "Kars Manşet",
+      "domain": "karsmanset.com"
+    },
+    {
+      "id": "src_0c317d6f-9c62-4b95-b0f2-bffab5b92aa9",
+      "name": "Kars Olay",
+      "domain": "karsolay.com"
+    },
+    {
+      "id": "src_7f9dac5a-7ce2-4292-9443-1e387ec92d0b",
+      "name": "Kars Pusula",
+      "domain": "karspusula.com"
+    },
+    {
+      "id": "src_982b84c4-99ad-41e2-b166-d4a423a0e142",
+      "name": "Kartal Gazetesi",
+      "domain": "kartalgazetesi.com"
+    },
+    {
+      "id": "src_142e2644-fbbd-4ef4-9568-4d1f94af130d",
+      "name": "Kastamonu Gündem Gazetesi",
+      "domain": "kastamonugundemgazetesi.com"
+    },
+    {
+      "id": "src_0fb474af-aad7-4b78-a08b-6a8a8a0fe26a",
+      "name": "Kastamonu Haber",
+      "domain": "kastamonuhaber.com"
+    },
+    {
+      "id": "src_69ea3217-01ee-4356-8ea6-fb26188426a0",
+      "name": "Kastamonu İstiklal",
+      "domain": "kastamonuistiklal.com"
+    },
+    {
+      "id": "src_48429f63-300b-413a-bd12-8e13f92ac0e0",
+      "name": "Kayseri Anadolu Haber",
+      "domain": "kayserianadoluhaber.com.tr"
+    },
+    {
+      "id": "src_35e70ecf-b6c4-47c7-8db5-30eab9bfc22a",
+      "name": "Kayseri Günaydın",
+      "domain": "kayserigunaydin.com"
+    },
+    {
+      "id": "src_aaad2c56-80a3-43f2-b245-16975498eeda",
+      "name": "Kayseri Gündem",
+      "domain": "kayserigundem.com.tr"
+    },
+    {
+      "id": "src_2254f03e-901a-484c-a233-f42444fb2bac",
+      "name": "Kayseri Olay",
+      "domain": "kayseriolay.com"
+    },
+    {
+      "id": "src_f870feba-4358-48a6-9346-25324f0fb894",
+      "name": "Kayserim.net",
+      "domain": "kayserim.net"
+    },
+    {
+      "id": "src_00245d63-7470-4dbc-bb91-9ebe182dd07e",
+      "name": "Kilis Havadis",
+      "domain": "kilishavadis.com"
+    },
+    {
+      "id": "src_1a351a53-3165-4ccb-8718-e5388d657f4f",
+      "name": "Kilis Kent Haber",
+      "domain": "kiliskenthaber.com"
+    },
+    {
+      "id": "src_8cce6da3-340a-4df9-803a-c625e3186b70",
+      "name": "Kocaeli Gazetesi",
+      "domain": "kocaeligazetesi.com.tr"
+    },
+    {
+      "id": "src_331f5188-d0b6-4ab8-907a-0577759acb08",
+      "name": "Kocaeli Meydan",
+      "domain": "kocaelimeydan.com"
+    },
+    {
+      "id": "src_cf3d2082-5b55-4238-89f2-2d9e2eb09782",
+      "name": "Kocatepe Gazetesi Afyon",
+      "domain": "kocatepegazetesi.com"
+    },
+    {
+      "id": "src_20184d8e-d8bc-416b-8ff0-7cf5e3904cc9",
+      "name": "Konya Postası",
+      "domain": "konyapostasi.com.tr"
+    },
+    {
+      "id": "src_d7e2a516-5877-4701-90db-9cf3f651f32e",
+      "name": "Kuzey Anadolu Gazetesi",
+      "domain": "kuzeyanadolugazetesi.com"
+    },
+    {
+      "id": "src_d08c848d-10b1-4d5e-a43a-20537251b459",
+      "name": "Kuzey Ekspres",
+      "domain": "kuzeyekspres.com.tr"
+    },
+    {
+      "id": "src_668764fe-61cd-4754-aca4-ceaa839be094",
+      "name": "Köroğlu Gazetesi",
+      "domain": "koroglugazetesi.com"
+    },
+    {
+      "id": "src_a861b353-37a1-4b16-9a20-162a4b007084",
+      "name": "Kütahya Ekspres",
+      "domain": "kutahyaekspres.com"
+    },
+    {
+      "id": "src_87d9330a-b4cb-45e3-96a7-ab496d1945f6",
+      "name": "Kütahya Zafer Gazetesi",
+      "domain": "kutahyazafergazetesi.com"
+    },
+    {
+      "id": "src_501beef1-222b-4fb6-8a64-20fe6500188e",
+      "name": "Kütahya'nın Sesi",
+      "domain": "kutahyaninsesi.com"
+    },
+    {
+      "id": "src_7714cb80-f24c-4bfd-b2f9-f824179262bc",
+      "name": "Kırklareli Gazetesi",
+      "domain": "kirklareligazetesi.com.tr"
+    },
+    {
+      "id": "src_1beed597-c05b-4c14-bf77-40b88383a3da",
+      "name": "Kırşehir Haber Türk",
+      "domain": "kirsehirhaberturk.com"
+    },
+    {
+      "id": "src_9960e826-1370-4b42-99a9-4226a276e167",
+      "name": "Kırşehir Memleket",
+      "domain": "kirsehirmemleket.com.tr"
+    },
+    {
+      "id": "src_2ee08f80-b7c8-4e2c-9f0a-216bdabf5a14",
+      "name": "Kırşehir Çiğdem",
+      "domain": "kirsehircigdem.com"
+    },
+    {
+      "id": "src_af77ce55-a1a9-4be6-a25d-3841598f6c98",
+      "name": "Kızılırmak Gazetesi Samsun",
+      "domain": "kizilirmakgazetesi.com"
+    },
+    {
+      "id": "src_f2ed56bd-7777-499a-bdf9-c7f4dc98e7c6",
+      "name": "Malatya Güncel",
+      "domain": "malatyaguncel.com"
+    },
+    {
+      "id": "src_68336c1f-0fc4-40bb-91c8-3fee640c2d93",
+      "name": "Malatya Haber",
+      "domain": "malatyahaber.com.tr"
+    },
+    {
+      "id": "src_c2b8b14c-f77b-4dd1-8ec1-ac91e6edb743",
+      "name": "Malatya Son Söz",
+      "domain": "malatyasonsoz.com.tr"
+    },
+    {
+      "id": "src_a20f3cd3-77af-4843-8bdf-3a279ddf904d",
+      "name": "Malatya Söz",
+      "domain": "malatyasoz.com"
+    },
+    {
+      "id": "src_95cd5867-4a07-4753-b5a6-566cd67af1ed",
+      "name": "Manavgat Gerçek",
+      "domain": "manavgatgercek.com"
+    },
+    {
+      "id": "src_f9e31ce1-7436-4f19-b861-bf4a1fb7929c",
+      "name": "Manisa Haber",
+      "domain": "manisahaber.com"
+    },
+    {
+      "id": "src_d7e11eaa-c2a7-4d17-b7bd-490fc9124eb9",
+      "name": "Manisa Haberleri",
+      "domain": "manisahaberleri.com"
+    },
+    {
+      "id": "src_cfa2d35e-81af-4daf-997a-b06c3f267f89",
+      "name": "Manisa'da Gündem",
+      "domain": "manisadagundem.com"
+    },
+    {
+      "id": "src_7524781c-f6bc-44be-abf6-91ac14f3b078",
+      "name": "Manşet Aydın",
+      "domain": "mansetaydin.com"
+    },
+    {
+      "id": "src_c034dc67-1551-42b3-a344-ec26f1d7edf2",
+      "name": "Manşet Gazetesi Kırıkkale",
+      "domain": "mansetgazetesi.net"
+    },
+    {
+      "id": "src_dc0e1de1-198a-4bd8-82af-ef5fa31dd0c0",
+      "name": "Manşet Yalova",
+      "domain": "manset.com.tr"
+    },
+    {
+      "id": "src_5936b6d9-d527-4fe7-8043-0f4b139247d8",
+      "name": "Maraş Manşet",
+      "domain": "marasmanset.com"
+    },
+    {
+      "id": "src_68fc6bc5-9ba7-478c-8866-a6a86c301871",
+      "name": "Mardin Haber",
+      "domain": "mardinhaber.com"
+    },
+    {
+      "id": "src_dac0c8e2-c211-4027-8a6d-c342a80c55a8",
+      "name": "Mardin Haber Portalı",
+      "domain": "mardinhaberportali.com"
+    },
+    {
+      "id": "src_2aa0921f-d5a0-4b81-b558-85af6b5e4e88",
+      "name": "Mardin Time",
+      "domain": "mardintime.com"
+    },
+    {
+      "id": "src_6701376a-6af1-4758-959f-77121bef53be",
+      "name": "Marmaris Manşet",
+      "domain": "marmarismanset.com"
+    },
+    {
+      "id": "src_6f33d3c4-5dea-4300-ac2e-dd9cc27ecf22",
+      "name": "Medya Lokum (Biga)",
+      "domain": "medyalokum.com"
+    },
+    {
+      "id": "src_3a62b723-d4cb-4993-bc80-30dcb2f2e70c",
+      "name": "Medya Siirt",
+      "domain": "medyasiirt.com"
+    },
+    {
+      "id": "src_ba0f8714-4a71-4cb4-bc57-ac1b317c0eef",
+      "name": "Merhaba Haber Konya",
+      "domain": "merhabahaber.com"
+    },
+    {
+      "id": "src_f0fde889-94d1-4922-844a-79cc3d19de74",
+      "name": "Merhaba Yozgat",
+      "domain": "merhabayozgat.com"
+    },
+    {
+      "id": "src_55ee0d2b-94a0-4e69-8c02-4c8931f13d64",
+      "name": "Mersin Haberci",
+      "domain": "mersinhaberci.com"
+    },
+    {
+      "id": "src_71aaed03-0a0c-4765-b73e-8873358f8643",
+      "name": "Mersin Hakimiyet",
+      "domain": "mersinhakimiyet.com"
+    },
+    {
+      "id": "src_3250b61b-e727-4cb0-aff0-ed04c45eb7fa",
+      "name": "Muğla Gazetesi",
+      "domain": "muglagazetesi.com.tr"
+    },
+    {
+      "id": "src_9549ed01-0c83-492b-813f-16cfe99de91f",
+      "name": "Muğla Haber",
+      "domain": "muglahaber.com.tr"
+    },
+    {
+      "id": "src_a26e8401-7285-4b05-9430-06c2cc2d8394",
+      "name": "Muğla Yenigün",
+      "domain": "muglayenigun.com"
+    },
+    {
+      "id": "src_cab71acc-e3e1-4abf-b1bf-68bb7bcbd29e",
+      "name": "Muş Kent Haber",
+      "domain": "muskenthaber.com"
+    },
+    {
+      "id": "src_65fb6faa-5ae0-473d-9456-9ad539be5bdf",
+      "name": "Nazilli Adalet",
+      "domain": "nazilliadalet.com"
+    },
+    {
+      "id": "src_fe190421-dd88-4e93-8ca7-13557d44ff63",
+      "name": "Nevşehir Haber",
+      "domain": "nevsehirhaber.net"
+    },
+    {
+      "id": "src_bd648816-6bb9-4779-b7d4-f7f991a3adc8",
+      "name": "Nevşehir Kent Haber",
+      "domain": "nevsehirkenthaber.com"
+    },
+    {
+      "id": "src_4012b864-d020-4936-919e-07b96cfdebc9",
+      "name": "Niğde Günaydın",
+      "domain": "nigdegunaydin.com"
+    },
+    {
+      "id": "src_cb835b48-a641-466e-970e-56b65590c453",
+      "name": "Niğde Haber",
+      "domain": "nigdehaber.com.tr"
+    },
+    {
+      "id": "src_2d32a950-49de-4cdb-8e01-852a39c1e22a",
+      "name": "Objektif Amasya",
+      "domain": "objektifamasya.com"
+    },
+    {
+      "id": "src_d10cb21d-a4aa-44da-a000-e28f94f55406",
+      "name": "Odak Gazetesi Afyon",
+      "domain": "odakgazetesi.com"
+    },
+    {
+      "id": "src_d6b2924c-2f2f-4465-b06e-b2a3b0e87dcf",
+      "name": "Olay 18 Çankırı",
+      "domain": "olay18.com"
+    },
+    {
+      "id": "src_9bcc95c4-c10f-4b76-882c-3425b67f9f93",
+      "name": "Olay 53 Rize",
+      "domain": "olay53.com"
+    },
+    {
+      "id": "src_e96fc233-0f99-4843-a304-dbbd63d569d3",
+      "name": "Ordu Haber",
+      "domain": "orduhaber.net"
+    },
+    {
+      "id": "src_059e3a55-f966-4d96-8972-bcab8634a6bc",
+      "name": "Ordu Manşet",
+      "domain": "ordumanset.net"
+    },
+    {
+      "id": "src_4598d010-15b0-49f1-b4e8-befc6d7ba760",
+      "name": "Ordu Olay",
+      "domain": "orduolay.com"
+    },
+    {
+      "id": "src_140d9f53-7e74-45d9-8404-a1981aae1c22",
+      "name": "Palandöken Gazetesi",
+      "domain": "palandokengazetesi.net"
+    },
+    {
+      "id": "src_cf74b954-8317-4d0d-a607-6d359c5a9c11",
+      "name": "Rize Haber",
+      "domain": "rizehaber.com.tr"
+    },
+    {
+      "id": "src_866e089b-6d17-41ff-8e42-ce93d25e5b78",
+      "name": "Rize'nin Sesi",
+      "domain": "rizeninsesi.net"
+    },
+    {
+      "id": "src_eb8fd625-9718-4216-a298-94ad583c5bc8",
+      "name": "Sabır Gazetesi Osmaniye",
+      "domain": "sabirgazetesi.com"
+    },
+    {
+      "id": "src_9f9f33b7-bb67-4acb-8196-5a005cca3a37",
+      "name": "Sakarya Haber",
+      "domain": "sakaryahaber.com"
+    },
+    {
+      "id": "src_3e7da076-7284-48bf-8b9a-bcd09d923922",
+      "name": "Sakarya Yeni Haber",
+      "domain": "sakaryayenihaber.com"
+    },
+    {
+      "id": "src_0f38f800-ecce-44b7-8bbd-b41729f130ed",
+      "name": "Sakarya Yenigün",
+      "domain": "sakaryayenigun.com.tr"
+    },
+    {
+      "id": "src_0198c80f-6f9e-4454-92b7-4a5e107a7bad",
+      "name": "Samsun Gazetesi",
+      "domain": "samsungazetesi.com"
+    },
+    {
+      "id": "src_d09da970-f6ab-4aff-88e9-ba409e6a709e",
+      "name": "Samsun Haber",
+      "domain": "samsunhaber.com"
+    },
+    {
+      "id": "src_1d06a326-d9a8-4036-a63f-39f3457c887e",
+      "name": "Samsun Kent Haber",
+      "domain": "samsunkenthaber.com.tr"
+    },
+    {
+      "id": "src_f9e6185c-f3a7-4fb2-9753-8ebe23ec6f68",
+      "name": "Sarıyer Gazetesi",
+      "domain": "sariyergazetesi.com"
+    },
+    {
+      "id": "src_cc974356-510a-41e9-a291-e83d2a23f60e",
+      "name": "Ses Gazetesi Aydın",
+      "domain": "sesgazetesi.com.tr"
+    },
+    {
+      "id": "src_3c732315-4ab0-4fd5-92cc-ef1cebe85b2b",
+      "name": "Ses Kocaeli",
+      "domain": "seskocaeli.com"
+    },
+    {
+      "id": "src_5ecf8df6-455b-4c0b-a1d1-1cd279ef3f43",
+      "name": "Siirt Manşet",
+      "domain": "siirtmanset.com"
+    },
+    {
+      "id": "src_baf74ae8-0f11-4dae-86d6-c16182848e5a",
+      "name": "Siirt'te Son Söz",
+      "domain": "siirttesonsoz.com"
+    },
+    {
+      "id": "src_63c8c764-0cee-4f9d-8dbd-8260fa9654f8",
+      "name": "Sinop Haber",
+      "domain": "sinophaber.com.tr"
+    },
+    {
+      "id": "src_f1505015-8107-4ca8-8357-1e7e966b0fb8",
+      "name": "Sivas Haber",
+      "domain": "sivashaber.com.tr"
+    },
+    {
+      "id": "src_aee194d4-ea6b-4c8a-bd8c-2e2f996149c1",
+      "name": "Sivas Memleket",
+      "domain": "sivasmemleket.com.tr"
+    },
+    {
+      "id": "src_374a5ffa-aa31-4946-9bf1-251a12f3f20f",
+      "name": "Sivas İrade",
+      "domain": "sivasirade.com"
+    },
+    {
+      "id": "src_d0f0dea0-17c9-43ee-8c4e-89259778d6c9",
+      "name": "Son Dakika Hatay",
+      "domain": "sondakikahatay.com"
+    },
+    {
+      "id": "src_058c2d98-6aac-4549-85b1-edd8a9950c16",
+      "name": "Son Söz Ankara",
+      "domain": "sonsoz.com.tr"
+    },
+    {
+      "id": "src_8662258e-7627-422a-9eda-596aa38afcde",
+      "name": "Taka Gazete Trabzon",
+      "domain": "takagazete.com.tr"
+    },
+    {
+      "id": "src_c0620bcd-3baa-4453-b9ac-98820d42164e",
+      "name": "Tatvan Sesi",
+      "domain": "tatvansesi.com.tr"
+    },
+    {
+      "id": "src_7f6ee262-ce3b-493d-be54-e03969519e5d",
+      "name": "Tekirdağ Haber",
+      "domain": "tekirdaghaber.com"
+    },
+    {
+      "id": "src_b598d04a-bdd5-4988-92c3-702fe2067155",
+      "name": "Tekirdağ Yeni Haber",
+      "domain": "tekirdagyenihaber.com"
+    },
+    {
+      "id": "src_6107b97a-3343-4058-a4d5-21452d4074e5",
+      "name": "Telgraf Gaziantep",
+      "domain": "telgraf.net"
+    },
+    {
+      "id": "src_7a0642c8-cdca-45e0-ba70-7d9363c83224",
+      "name": "Tigris Haber",
+      "domain": "tigrishaber.com"
+    },
+    {
+      "id": "src_9956fae8-b3ee-40f1-9da8-5a4cb3bc4d51",
+      "name": "Tokat Haber",
+      "domain": "tokathaber.com"
+    },
+    {
+      "id": "src_fbdd2981-f3af-46c8-97c9-e92caed7bccc",
+      "name": "Tokat Haber (comtr)",
+      "domain": "tokathaber.com.tr"
+    },
+    {
+      "id": "src_65cc68a3-59e7-4258-9ecf-3dc7f0cfa0a3",
+      "name": "Tokat Olay",
+      "domain": "tokatolay.com"
+    },
+    {
+      "id": "src_3ae0c540-288d-477b-ac5c-1b9c58278718",
+      "name": "Trakya Flash Haber",
+      "domain": "trakyaflashaber.com"
+    },
+    {
+      "id": "src_a6dda707-6b5d-4b40-89f7-7339a5ec3f5f",
+      "name": "Trakya Gazetesi Kırklareli",
+      "domain": "trakyagazetesi.com.tr"
+    },
+    {
+      "id": "src_4d97a868-0ca5-4b26-b2be-34d3d774eda2",
+      "name": "Tunceli Emek",
+      "domain": "tunceliemek.com.tr"
+    },
+    {
+      "id": "src_3d1d9941-1c3b-477b-bce5-1f5fbd8ac638",
+      "name": "Tunceli Gündem",
+      "domain": "tunceligundem.com"
+    },
+    {
+      "id": "src_ad3cd4c6-f7d4-41c7-81ff-39f588a805d6",
+      "name": "Tunceli Postası",
+      "domain": "tuncelipostasi.com"
+    },
+    {
+      "id": "src_3cc69161-2316-4005-84a1-ddd0f95f046a",
+      "name": "Urfa Natik",
+      "domain": "urfanatik.com"
+    },
+    {
+      "id": "src_ae5ac627-10d3-4eb3-9e86-01d128765690",
+      "name": "Urfa Pusula",
+      "domain": "urfapusula.com"
+    },
+    {
+      "id": "src_a7309433-a1f9-4f22-876e-0f6a89514dda",
+      "name": "Uşak Gündem",
+      "domain": "usakgundem.com"
+    },
+    {
+      "id": "src_fc07a4f0-2224-49fe-9f1c-b868f4cd4dbe",
+      "name": "Uşak Haber Ajansı",
+      "domain": "usakhaberajansi.com"
+    },
+    {
+      "id": "src_4f31e9a2-45bd-4ad3-a6ec-f6a4920c19b7",
+      "name": "Uşak Haber Gazetesi",
+      "domain": "usakhabergazetesi.com.tr"
+    },
+    {
+      "id": "src_5f5b8efc-dcfc-4506-8da7-485ccbfdc6cf",
+      "name": "Uşak Olay",
+      "domain": "usakolay.com"
+    },
+    {
+      "id": "src_41a3008b-0962-4045-925e-d9f12b2c80b7",
+      "name": "Van Havadis",
+      "domain": "vanhavadis.com"
+    },
+    {
+      "id": "src_5f222534-84f0-4f90-b3b3-9c99152db8de",
+      "name": "Van Sesi Gazetesi",
+      "domain": "vansesigazetesi.com"
+    },
+    {
+      "id": "src_1942955f-dad3-45fb-9a02-585c5f2cd8fa",
+      "name": "Vatandaş Gazetesi Edirne",
+      "domain": "vatandasgazetesi.com.tr"
+    },
+    {
+      "id": "src_b947ee04-8b1c-4f85-baff-9acd65c3308e",
+      "name": "Vitrin Haber Sinop",
+      "domain": "vitrinhaber.com"
+    },
+    {
+      "id": "src_80c8a07e-5e99-4652-a18f-19ee603bf376",
+      "name": "Wan Haber",
+      "domain": "wanhaber.com"
+    },
+    {
+      "id": "src_baeb7a4f-1c4b-4d2e-afa8-cf5f311e8cda",
+      "name": "Yalova Gazetesi",
+      "domain": "yalovagazetesi.com"
+    },
+    {
+      "id": "src_a29d91e7-44a6-4e5a-a258-993a85cd1ecd",
+      "name": "Yalova Hayat",
+      "domain": "yalovahayat.com"
+    },
+    {
+      "id": "src_f61a029a-f70c-402a-8836-302f02799835",
+      "name": "Yalova Pusula",
+      "domain": "yalovapusula.com"
+    },
+    {
+      "id": "src_0d3ee3c8-1757-435c-bec9-1adae19f045d",
+      "name": "Yarın 11 Bilecik",
+      "domain": "yarin11.com"
+    },
+    {
+      "id": "src_593c36c7-7a3e-4fe7-b072-01480df1a857",
+      "name": "Yeni Aksaray",
+      "domain": "yeniaksaray.com.tr"
+    },
+    {
+      "id": "src_45e94210-1637-4598-8190-da24f04b28a6",
+      "name": "Yeni Alanya",
+      "domain": "yenialanya.com"
+    },
+    {
+      "id": "src_71237ad0-e4aa-4f9b-a01b-49e826f712a9",
+      "name": "Yeni Asır",
+      "domain": "yeniasir.com.tr"
+    },
+    {
+      "id": "src_a87deca7-78f7-4d6e-888b-1433bf1b0289",
+      "name": "Yeni Giresun",
+      "domain": "yenigiresun.net"
+    },
+    {
+      "id": "src_968a9c4d-0873-4c9c-ae03-f2afe1876e6a",
+      "name": "Yeni Konya",
+      "domain": "yenikonya.com.tr"
+    },
+    {
+      "id": "src_3d58c98a-78ef-473e-8135-d8918b674d9d",
+      "name": "Yeni Siirt",
+      "domain": "yenisiirt.com"
+    },
+    {
+      "id": "src_3a945e7e-7db4-40a3-99bb-afc1d08bd5e7",
+      "name": "Yeni Yol Adıyaman",
+      "domain": "yeniyolgazetesi.com"
+    },
+    {
+      "id": "src_a44c792c-d841-4cdf-943f-5694cfe72296",
+      "name": "Yenigün Aksaray",
+      "domain": "yenigungazete.com"
+    },
+    {
+      "id": "src_1d760093-b95f-482a-ba04-0c9e7f541dd4",
+      "name": "Yenigün Gazetesi Kırıkkale",
+      "domain": "yenigungazetesi.com.tr"
+    },
+    {
+      "id": "src_2b631fa8-3987-48a9-939e-4d2e79988a34",
+      "name": "Yeşil Giresun",
+      "domain": "yesilgiresun.com.tr"
+    },
+    {
+      "id": "src_34cafc0e-4f5f-4c5a-82a9-43b2c27355bc",
+      "name": "Yeşil Iğdır",
+      "domain": "yesiligdir.com"
+    },
+    {
+      "id": "src_da265c4d-3644-4f96-b311-079fbe3fb02c",
+      "name": "Yeşilyurt Gazete",
+      "domain": "yesilyurtgazete.com"
+    },
+    {
+      "id": "src_db9aea56-d82f-4e1a-9456-c2c7761c734b",
+      "name": "Yozgat Gazetesi",
+      "domain": "yozgatgazetesi.com"
+    },
+    {
+      "id": "src_3ddf44ab-47ea-4ca6-8557-4c73cab8f865",
+      "name": "Yozgat Haber",
+      "domain": "yozgathaber.com"
+    },
+    {
+      "id": "src_9dadb132-7922-42c2-a8aa-2696601e350c",
+      "name": "Yüksekova Gündem",
+      "domain": "yuksekovagundem.org"
+    },
+    {
+      "id": "src_6da595a6-b31c-4fec-ba60-92626f90b6a6",
+      "name": "Yüksekova Haber",
+      "domain": "yuksekovahaber.com.tr"
+    },
+    {
+      "id": "src_ef78f2d6-5db9-46d4-a0d7-182d2a4003b5",
+      "name": "Zonguldak Haber",
+      "domain": "zonguldakhaber.com"
+    },
+    {
+      "id": "src_c13bedbf-0c88-463c-af3a-2ba3399ae222",
+      "name": "Çan'ın Sesi",
+      "domain": "caninsesi.com.tr"
+    },
+    {
+      "id": "src_e8c077cb-1f3c-41ee-be7f-cefeb8575d5a",
+      "name": "Çanakkale Aynalı Pazar",
+      "domain": "canakkaleaynalipazar.com"
+    },
+    {
+      "id": "src_0580c57a-50e7-4b1e-b43d-26910aa91308",
+      "name": "Çanakkale Gündem",
+      "domain": "canakkalegundem.net"
+    },
+    {
+      "id": "src_5d9ba72d-357d-4c0c-b9a7-7113b0484e4a",
+      "name": "Çanakkale Haber",
+      "domain": "canakkalehaber.com"
+    },
+    {
+      "id": "src_2c96e403-ffa3-4f09-a631-89f74dafa956",
+      "name": "Çanakkale Kalem",
+      "domain": "canakkalekalem.com"
+    },
+    {
+      "id": "src_515dd04f-e30a-44bf-83c4-a0f683699416",
+      "name": "Çankırı Postası",
+      "domain": "cankiripostasi.com"
+    },
+    {
+      "id": "src_6a700b4f-42dd-4a07-b330-5d12d0afa5c5",
+      "name": "Çağdaş Burdur",
+      "domain": "cagdasburdur.com"
+    },
+    {
+      "id": "src_54dfbb06-d846-43cd-afef-0ec954106300",
+      "name": "Çoruh Postası",
+      "domain": "coruhpostasi.com"
+    },
+    {
+      "id": "src_e91a2243-bd69-4fad-bc14-58d5453d1371",
+      "name": "Çorum Haber",
+      "domain": "corumhaber.net"
+    },
+    {
+      "id": "src_fea99f55-7b4c-4839-925f-f5e5bd1a13e9",
+      "name": "Çorum Hakimiyet",
+      "domain": "corumhakimiyet.net"
+    },
+    {
+      "id": "src_03958089-9f77-45f2-a901-8c82c2c05eff",
+      "name": "Çukurova Press",
+      "domain": "cukurovapress.com"
+    },
+    {
+      "id": "src_af85b39a-5258-4627-8ef5-b784e737533a",
+      "name": "Ümraniye Gündemi",
+      "domain": "umraniyegundemi.com.tr"
+    },
+    {
+      "id": "src_7cc006df-ed80-41db-ad6d-6a49ca233058",
+      "name": "Üsküdar Gündem",
+      "domain": "uskudargundem.com"
+    },
+    {
+      "id": "src_8e62a332-f53c-4f7a-95cd-5dbc2acc9d93",
+      "name": "İl Gazetesi Kırıkkale",
+      "domain": "ilgazetesi.com.tr"
+    },
+    {
+      "id": "src_723c9de3-f883-4b7d-ad82-f846feeb6fb6",
+      "name": "İleri Gazetesi Yozgat",
+      "domain": "ilerigazetesi.com.tr"
+    },
+    {
+      "id": "src_abd91c24-bdab-4a93-b750-f5b4a1462f53",
+      "name": "İmza Gazetesi Zonguldak",
+      "domain": "imzagazetesi.com"
+    },
+    {
+      "id": "src_9f8953e8-1e83-40b9-80e9-b82f072a79d3",
+      "name": "İstanbul Gazetesi",
+      "domain": "istanbulgazetesi.com.tr"
+    },
+    {
+      "id": "src_5878f136-de78-48d6-ba93-0dfda53f3204",
+      "name": "İstiklal Gazetesi",
+      "domain": "istiklal.com.tr"
+    },
+    {
+      "id": "src_d8c4fc8e-90e0-46b5-9d78-931bed9409cb",
+      "name": "İz Gazete İzmir",
+      "domain": "izgazete.net"
+    },
+    {
+      "id": "src_8e77e363-533a-41b6-9cdf-4c2b346431ce",
+      "name": "İzmir Haberleri",
+      "domain": "izmirhaberleri.com"
+    },
+    {
+      "id": "src_f44c18c5-ac75-48f5-9e2d-54b329fcf702",
+      "name": "Şanlıurfa Gazetesi",
+      "domain": "sanliurfagazetesi.com"
+    },
+    {
+      "id": "src_2bec4345-1c4c-4167-b67d-2579faf34299",
+      "name": "Şanlıurfa Olay",
+      "domain": "sanliurfaolay.com"
+    },
+    {
+      "id": "src_23790b4c-9f32-4055-8830-9feb0421d999",
+      "name": "Şehir Gazetesi Eskişehir",
+      "domain": "sehirgazetesi.com.tr"
+    },
+    {
+      "id": "src_6ba57997-e4f3-40c1-9117-9e28eea2e5e0",
+      "name": "Şehri Van Gazetesi",
+      "domain": "sehrivangazetesi.com"
+    },
+    {
+      "id": "src_d1119e43-2b2a-45c6-918a-d1624fae7892",
+      "name": "Şişli Gündem",
+      "domain": "sisligundem.com"
+    },
+    {
+      "id": "src_4fd20aa6-0500-49ca-9af8-20f6a1a5c1ad",
+      "name": "Şırnak Ajans",
+      "domain": "sirnakajans.com"
+    },
+    {
+      "id": "src_e3a0f5cb-2a06-4f93-8798-689567781efc",
+      "name": "Şırnak Haber",
+      "domain": "sirnakhaber.com"
+    },
+    {
+      "id": "src_43055631-e96c-4a65-848a-098746c48792",
+      "name": "Şırnak Haber 73",
+      "domain": "sirnakhaber73.com"
+    }
+  ],
+  "alreadyActiveCount": 5,
+  "failed": [],
+  "antalyaSources": [
+    {
+      "name": "Akdeniz Gerçek",
+      "domain": "akdenizgercek.com.tr",
+      "status": "ACTIVE",
+      "registry_key": "antalya-akdenizgercek",
+      "geographic_scope": "CITY",
+      "city": "Antalya"
+    },
+    {
+      "name": "Akdeniz Manşet",
+      "domain": "akdenizmanset.com.tr",
+      "status": "ACTIVE",
+      "registry_key": "antalya-akdenizmanset",
+      "geographic_scope": "CITY",
+      "city": "Antalya"
+    },
+    {
+      "name": "Antalya Bugün",
+      "domain": "antalyabugun.com.tr",
+      "status": "ACTIVE",
+      "registry_key": "antalya-bugun",
+      "geographic_scope": "CITY",
+      "city": "Antalya"
+    },
+    {
+      "name": "Antalya Ekspres",
+      "domain": "antalyaekspres.com.tr",
+      "status": "ACTIVE",
+      "registry_key": "antalya-ekspres",
+      "geographic_scope": "CITY",
+      "city": "Antalya"
+    },
+    {
+      "name": "Antalya Körfez",
+      "domain": "antalyakorfez.com",
+      "status": "ACTIVE",
+      "registry_key": "antalya-korfez",
+      "geographic_scope": "CITY",
+      "city": "Antalya"
+    },
+    {
+      "name": "Manavgat Gerçek",
+      "domain": "manavgatgercek.com",
+      "status": "ACTIVE",
+      "registry_key": "antalya-manavgat",
+      "geographic_scope": "DISTRICT",
+      "city": "Antalya"
+    },
+    {
+      "name": "Yeni Alanya",
+      "domain": "yenialanya.com",
+      "status": "ACTIVE",
+      "registry_key": "antalya-yenialanya",
+      "geographic_scope": "DISTRICT",
+      "city": "Antalya"
+    }
+  ],
+  "after": {
+    "totalSources": 401,
+    "localActive": 344
+  },
+  "counts": {
+    "newRegistryEntries": 341,
+    "seededToDb": 340,
+    "skippedSeed": 1,
+    "activated": 341,
+    "alreadyActive": 5,
+    "failed": 0
+  }
+}

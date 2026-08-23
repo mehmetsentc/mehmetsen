@@ -1,0 +1,68 @@
+{
+  "at": "2026-08-21T14:17:23.518Z",
+  "before": [],
+  "after": [
+    {
+      "table_name": "crawler_ai_shadow_decisions"
+    }
+  ],
+  "cols": [
+    {
+      "column_name": "action"
+    },
+    {
+      "column_name": "block_reason"
+    },
+    {
+      "column_name": "canonical_title"
+    },
+    {
+      "column_name": "cluster_id"
+    },
+    {
+      "column_name": "cost_known"
+    },
+    {
+      "column_name": "economic_tier"
+    },
+    {
+      "column_name": "editorial_decision_snapshot"
+    },
+    {
+      "column_name": "estimated_cost_usd"
+    },
+    {
+      "column_name": "estimated_input_tokens"
+    },
+    {
+      "column_name": "estimated_output_tokens"
+    },
+    {
+      "column_name": "evaluated_at"
+    },
+    {
+      "column_name": "event_key"
+    },
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "independent_source_count"
+    },
+    {
+      "column_name": "machine_eligibility"
+    },
+    {
+      "column_name": "meta"
+    },
+    {
+      "column_name": "prespend_outcome"
+    },
+    {
+      "column_name": "rank_score"
+    },
+    {
+      "column_name": "usable_source_words"
+    }
+  ]
+}

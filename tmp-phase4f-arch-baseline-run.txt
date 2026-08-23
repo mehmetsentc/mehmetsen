@@ -1,0 +1,142 @@
+{
+  "at": "2026-08-21T12:58:18.353Z",
+  "architecture": {
+    "design": "B",
+    "path": "fresh → eligibility/AI_READY → human APPROVED_FOR_AI → CONTROLLED_AUTO_DRAFT enqueue → worker",
+    "evidence": [
+      "canCreateAutoDraftJob requires editorialDecision === APPROVED_FOR_AI (NOT_APPROVED_FOR_AI otherwise)",
+      "listApprovedCandidates scans only editorialDecision=APPROVED_FOR_AI",
+      "evaluateAutoDraftGate may return AI_READY without APPROVED_FOR_AI; spend still blocked",
+      "no auto-approve path in codebase"
+    ],
+    "continuousAutomationWithoutHumanApproval": false,
+    "stopBeforePaidExecution": true
+  },
+  "drafts_with_snapshot": {
+    "c": 2
+  },
+  "active_jobs": {
+    "c": 0
+  },
+  "jobs_by": [
+    {
+      "status": "COMPLETED",
+      "c": 2
+    },
+    {
+      "status": "FAILED",
+      "c": 3
+    }
+  ],
+  "ledger": {
+    "cost": 0.021845560520887375,
+    "n": 6
+  },
+  "none_watching_or_eligible_6h": {
+    "c": 470
+  },
+  "approved_after_t4e1": [
+    {
+      "id": "cl_f0f2960c-2b93-42ab-ab6a-b330fbeba73b",
+      "canonical_title": "19 yaşındaki Sultan katledildi: Yalova'daki vahşette anne karnındaki bebek kurtarıldı",
+      "editorial_decided_at": "2026-08-21T10:43:52.949Z",
+      "editorial_decided_by": "phase4e1_acceptance",
+      "ai_eligibility": "WATCHING",
+      "unique_source_count": 1,
+      "auto_draft_status": "AI_READY"
+    }
+  ],
+  "fresh_multi_source_none_6h": [
+    {
+      "id": "cl_68393c2b-158a-4cad-9c63-c8461f2141c4",
+      "canonical_title": "Son dakika... CHP'den istifa etti: Eskişehir Büyükşehir Belediye Başkanı Ayşe Ünlüce YENİ Parti'ye katıldı",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 4,
+      "importance_score": 66,
+      "created_at": "2026-08-21T08:06:47.136Z",
+      "city": null,
+      "max_words": 275
+    },
+    {
+      "id": "cl_7dbbcc3e-3fba-45e2-a2a8-585b33a6d17b",
+      "canonical_title": "İçişleri Bakanlığı duyurdu... 20 ilde uyuşturucu operasyonu: 60 şüpheli yakalandı",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 3,
+      "importance_score": 63,
+      "created_at": "2026-08-21T08:22:41.487Z",
+      "city": null,
+      "max_words": 214
+    },
+    {
+      "id": "cl_5f26b291-bb72-4a58-b9f8-936e3724a9df",
+      "canonical_title": "CHP'den istifa etti: Menteşe Belediye Başkanı Gonca Köksal Aras, YENİ Parti’ye katıldı",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 2,
+      "importance_score": 60,
+      "created_at": "2026-08-21T09:57:58.928Z",
+      "city": null,
+      "max_words": 631
+    },
+    {
+      "id": "cl_fdbc2119-79a4-4559-976f-04d4c68e7837",
+      "canonical_title": "God of War Dizisinin Yeni Kratos'u Belli Oldu",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 2,
+      "importance_score": 59,
+      "created_at": "2026-08-21T12:37:27.275Z",
+      "city": null,
+      "max_words": 354
+    },
+    {
+      "id": "cl_c4252bc4-6875-4577-ad61-2cc810e4dbd6",
+      "canonical_title": "Mabel Matiz'e yurt dışı çıkış yasağı",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 2,
+      "importance_score": 59,
+      "created_at": "2026-08-21T10:17:27.987Z",
+      "city": null,
+      "max_words": 295
+    },
+    {
+      "id": "cl_0bd27933-03cb-463a-9b37-a51ddc1c46cb",
+      "canonical_title": "FC 27 Galatasaray Oyuncu Reytingleri Belli Oldu",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 2,
+      "importance_score": 64,
+      "created_at": "2026-08-21T08:02:05.469Z",
+      "city": null,
+      "max_words": 282
+    },
+    {
+      "id": "cl_17be2919-9a5b-453c-81e3-70f8c7ded6e4",
+      "canonical_title": "Bergüzar Korel ve Kenan İmirzalıoğlu da var. İşte yıllar sonra aynı projede buluşan ünlüler",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 2,
+      "importance_score": 59,
+      "created_at": "2026-08-21T07:32:47.718Z",
+      "city": null,
+      "max_words": 263
+    },
+    {
+      "id": "cl_88dffc7f-9659-460c-be2e-c669480beda4",
+      "canonical_title": "YENİ Partili Rızvanoğlu'ndan, Sinem Dedetaş ile Deniz Göktaş’a ziyaret",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 2,
+      "importance_score": 59,
+      "created_at": "2026-08-21T12:33:25.530Z",
+      "city": null,
+      "max_words": 262
+    },
+    {
+      "id": "cl_1469b2bb-1ffd-4656-b57c-8f78cbde36e1",
+      "canonical_title": "Son dakika... 'Ankara Deklarasyonu' çağrısı yaptı! Devlet Bahçeli'den 'İsrail' tepkisi: 'Türkiye'nin sabrını sınamaktan vazgeçsin'",
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 2,
+      "importance_score": 59,
+      "created_at": "2026-08-21T09:14:13.886Z",
+      "city": null,
+      "max_words": 191
+    }
+  ]
+}
+WROTE tmp-phase4f-arch-baseline.json

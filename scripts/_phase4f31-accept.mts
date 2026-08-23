@@ -83,6 +83,10 @@ async function observe() {
            count(DISTINCT cluster_id)::int AS clusters,
            count(*) FILTER (WHERE content_fingerprint IS NOT NULL)::int AS with_fp
     FROM crawler_ai_shadow_decisions`
+  const econRows = await sql`
+    SELECT cluster_id, content_fingerprint, prespend_gate_version, action, block_reason,
+           economic_tier, estimated_cost_usd, cost_known, prespend_outcome, revision_kind
+    FROM crawler_ai_shadow_economic_decisions`.catch(() => [])
   const econ = await sql`
     SELECT count(*)::int AS c,
            count(*) FILTER (WHERE action = 'WOULD_DISPATCH')::int AS wd,
@@ -93,20 +97,44 @@ async function observe() {
     FROM crawler_ai_shadow_economic_decisions`.catch(() => [
     { c: 0, wd: 0, wb: 0, new_event: 0, material: 0, clusters: 0 },
   ])
+  const uniqueMetrics = aggregateUniqueEconomicMetrics(
+    (econRows as Record<string, unknown>[]).map((r) => ({
+      clusterId: String(r.cluster_id),
+      contentFingerprint: r.content_fingerprint ? String(r.content_fingerprint) : null,
+      prespendGateVersion: r.prespend_gate_version ? String(r.prespend_gate_version) : null,
+      action: String(r.action),
+      blockReason: r.block_reason ? String(r.block_reason) : null,
+      economicTier: r.economic_tier ? String(r.economic_tier) : null,
+      estimatedCostUsd: r.estimated_cost_usd != null ? Number(r.estimated_cost_usd) : null,
+      costKnown: Number(r.cost_known) === 1,
+      prespendOutcome: String(r.prespend_outcome),
+    }))
+  )
   const jobs = await sql`
     SELECT count(*)::int AS c FROM crawler_ai_jobs
     WHERE created_at > now() - interval '24 hours'`
+  const jobsSince = await sql`
+    SELECT count(*)::int AS c FROM crawler_ai_jobs
+    WHERE created_at >= '2026-08-21T14:48:00.000Z'`
   const ledger = await sql`
     SELECT count(*)::int AS c,
            coalesce(sum(actual_cost_usd),0)::float AS spend
     FROM crawler_ai_cost_ledger
     WHERE timestamp > now() - interval '24 hours'`
+  const ledgerSince = await sql`
+    SELECT count(*)::int AS c,
+           coalesce(sum(actual_cost_usd),0)::float AS spend
+    FROM crawler_ai_cost_ledger
+    WHERE timestamp >= '2026-08-21T14:48:00.000Z'`
   const out = {
     at: new Date().toISOString(),
     evaluations: evals[0],
     uniqueEconomic: econ[0],
+    uniqueMetrics,
     jobs24h: jobs[0],
+    jobsSinceDeploy: jobsSince[0],
     ledger24h: ledger[0],
+    ledgerSinceDeploy: ledgerSince[0],
   }
   writeFileSync('tmp-phase4f31-observe.json', JSON.stringify(out, null, 2))
   console.log(JSON.stringify(out, null, 2))

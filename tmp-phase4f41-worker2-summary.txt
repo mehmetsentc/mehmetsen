@@ -1,0 +1,1 @@
+{"status":200,"mode":"CONTROLLED_AUTO_DRAFT","claimed":1,"providerCalls":1,"draftsPersisted":1,"completed":1,"failed":0,"published":0,"reasons":{"SUCCEEDED":1},"jobId":"aij_a32e9c67-fbf8-4a11-a92e-ff49fe24c2be","clusterId":"cl_2fce0471-13d6-4d55-9db2-cfaf7d482bea","draftId":"d_cad_cl_2fce0471-13d6-4d55-9db2-cfaf7d482bea"}

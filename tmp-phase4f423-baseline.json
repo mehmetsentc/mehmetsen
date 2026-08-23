@@ -1,0 +1,52 @@
+{
+  "at": "2026-08-22T11:20:18.054Z",
+  "expectedSha": "74b81b9",
+  "health": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-22T11:20:18.460Z",
+    "version": "74b81b9",
+    "env": "production",
+    "region": "fra1"
+  },
+  "shaMatch": true,
+  "tick": {
+    "status": 200,
+    "mode": "SHADOW_AUTO_DRAFT",
+    "jobsCreated": 0,
+    "providerCalls": 0,
+    "providerReason": "PROVIDER_DISABLED",
+    "sourcesChecked": 4
+  },
+  "worker": {
+    "status": 200,
+    "mode": "SHADOW_AUTO_DRAFT",
+    "claimed": 0,
+    "providerCalls": 0,
+    "reasons": {
+      "MODE_OR_DISPATCH_OFF": 1
+    }
+  },
+  "safety": {
+    "shadowMode": true,
+    "providerOff": true,
+    "dispatchOff": true,
+    "workerClaimedZero": true,
+    "paidArmed": false
+  },
+  "ledger": {
+    "all": {
+      "cost": 0.04979743808507919,
+      "n": 13
+    },
+    "today": {
+      "cost": 0.013335080817341805,
+      "n": 3
+    },
+    "afterAuditStart": {
+      "cost": 0,
+      "n": 0
+    }
+  },
+  "stopPaidPath": false
+}

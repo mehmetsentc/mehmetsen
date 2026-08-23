@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/autoDraft/phase4f42.test.ts (11 tests) 11ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  13:57:16
+   Duration  661ms (transform 267ms, setup 0ms, collect 367ms, tests 11ms, environment 0ms, prepare 63ms)
+

@@ -1,0 +1,148 @@
+{
+  "verdict": "PHASE_4F41_SHUTDOWN_VERIFIED",
+  "health": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-22T10:27:39.101Z",
+    "version": "74b81b9",
+    "env": "production",
+    "region": "fra1"
+  },
+  "tickSummary": {
+    "mode": "SHADOW_AUTO_DRAFT",
+    "cutoff": "2026-08-22T00:06:46.000Z",
+    "candidatesScanned": 80,
+    "aiReady": 52,
+    "jobsCreated": 0,
+    "jobsSkipped": 80,
+    "skipReasons": {
+      "SHADOW_AUTO_DRAFT_ACTIVE": 1,
+      "SHADOW_NO_ENQUEUE": 80,
+      "PRESPEND_TOO_THIN": 7,
+      "TOO_THIN": 7,
+      "PRESPEND_WAITING_FOR_MORE_SOURCES": 21,
+      "WAITING_FOR_MORE_SOURCES": 21
+    },
+    "historicalBlocked": 0,
+    "duplicateBlocked": 0,
+    "publishedBlocked": 0,
+    "existingDraftBlocked": 0,
+    "budgetBlocked": 0,
+    "providerReady": false,
+    "providerReason": "PROVIDER_DISABLED",
+    "enqueueLimit": 1
+  },
+  "workerSummary": {
+    "mode": "SHADOW_AUTO_DRAFT",
+    "claimed": 0,
+    "providerCalls": 0,
+    "reasons": {
+      "MODE_OR_DISPATCH_OFF": 1
+    }
+  },
+  "firewall": {
+    "shutdownAt": "2026-08-22T10:23:19.000Z",
+    "ledger_today_before": {
+      "n": 3,
+      "cost": 0.013335080817341805
+    },
+    "ledger_today_after": {
+      "n": 3,
+      "cost": 0.013335080817341805
+    },
+    "delta_ledger_rows": 0,
+    "delta_cost": 0,
+    "late_ledger_rows_after_shutdown": 0,
+    "late_paid_rows_after_shutdown": 0,
+    "late_spend_usd": 0,
+    "jobs_created_after_shutdown": 0,
+    "active_jobs": {
+      "c": 0
+    },
+    "uncertain_jobs": {
+      "c": 0
+    },
+    "jobs_by": [
+      {
+        "status": "COMPLETED",
+        "c": 8
+      },
+      {
+        "status": "FAILED",
+        "c": 4
+      }
+    ],
+    "successful_drafts_today": {
+      "c": 3
+    },
+    "auto_pubs_after": {
+      "c": 0
+    },
+    "hist_jobs_after": [],
+    "uniqueEconomic": {
+      "c": 459,
+      "wd": 298,
+      "wb": 161
+    },
+    "uniqueMetrics": {
+      "rawEvaluations": 459,
+      "distinctClusters": 440,
+      "uniqueEventRevisions": 459,
+      "uniqueWouldDispatch": 298,
+      "uniqueWouldBlock": 161,
+      "byTier": {
+        "C": 18,
+        "D": 140,
+        "A": 10,
+        "B": 291
+      },
+      "byBlockReason": {
+        "tier_c_borderline": 5,
+        "HISTORICAL_BLOCKED": 7,
+        "ALREADY_PUBLISHED": 9,
+        "WAITING_FOR_MORE_SOURCES": 98,
+        "TOO_THIN": 39,
+        "LOW_SOURCE_HEALTH": 3
+      },
+      "byPrespend": {
+        "PRESPEND_READY": 303,
+        "HISTORICAL_BLOCKED": 7,
+        "ALREADY_PUBLISHED": 9,
+        "WAITING_FOR_MORE_SOURCES": 98,
+        "TOO_THIN": 39,
+        "LOW_SOURCE_HEALTH": 3
+      },
+      "estimatedRequestsAfterGate": 298,
+      "estimatedRequestsBeforeGate": 459,
+      "estimatedRequestsPrevented": 161,
+      "requestPreventionPct": 35.1,
+      "estimatedSpendAfterGateUsd": 1.38889652,
+      "estimatedSpendBeforeGateUsd": 2.10262008,
+      "estimatedSpendPreventedUsd": 0.71372356,
+      "spendPreventionPct": 33.9,
+      "costUnknownCount": 0,
+      "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+    },
+    "crawler_freshness": {
+      "latest_discovery": "2026-08-22T10:27:37.331Z",
+      "latest_extract": "2026-08-22T10:28:28.832Z",
+      "latest_cluster": "2026-08-22T10:27:39.242Z",
+      "latest_cluster_update": "2026-08-22T10:28:38.609Z"
+    },
+    "budget_day_today": [
+      {
+        "lane": "crawler_automatic",
+        "period": "day",
+        "period_key": "2026-08-22",
+        "request_count": 3,
+        "reserved_usd": 0,
+        "spent_usd": 0.01333507988601923,
+        "updated_at": "2026-08-22T00:16:14.800Z"
+      }
+    ],
+    "ledger_after_T4F41": {
+      "cost": 0.013335080817341805,
+      "n": 3
+    }
+  }
+}

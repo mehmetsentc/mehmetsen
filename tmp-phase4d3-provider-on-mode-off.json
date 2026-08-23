@@ -1,0 +1,24 @@
+{
+  "health": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-20T22:41:35.001Z",
+    "version": "7fd1680",
+    "env": "production",
+    "region": "fra1"
+  },
+  "cost0": 0.014165359549224377,
+  "cost1": 0.014165359549224377,
+  "delta": 0,
+  "worker": {
+    "claimed": 0,
+    "providerCalls": 0,
+    "reasons": {
+      "MODE_OR_DISPATCH_OFF": 1
+    }
+  },
+  "tick": {
+    "aiRequests": 0,
+    "sourcesChecked": 1
+  }
+}

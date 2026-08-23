@@ -1,0 +1,19 @@
+{
+  "mode": "recovery-apply",
+  "at": "2026-08-22T14:30:12.410Z",
+  "T4F42": "2026-08-22T10:42:59.000Z",
+  "applied": [
+    {
+      "id": "src_c85a0a6b-d484-4797-a03d-f7cf4117b2f3",
+      "registry_key": "odatv",
+      "name": "Odatv",
+      "reason": "phase4f42_safe_recovery"
+    },
+    {
+      "id": "src_506a0e4d-aa6e-48bf-90a4-76728143e71c",
+      "registry_key": "evrensel",
+      "name": "Evrensel",
+      "reason": "phase4f42_safe_recovery"
+    }
+  ]
+}

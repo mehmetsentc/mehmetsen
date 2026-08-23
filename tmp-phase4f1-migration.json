@@ -1,0 +1,18 @@
+{
+  "at": "2026-08-21T13:13:56.400Z",
+  "before": [],
+  "after": [
+    {
+      "column_name": "machine_draft_eligibility"
+    },
+    {
+      "column_name": "machine_draft_eligibility_at"
+    },
+    {
+      "column_name": "machine_draft_eligibility_meta"
+    },
+    {
+      "column_name": "machine_draft_eligibility_reason"
+    }
+  ]
+}

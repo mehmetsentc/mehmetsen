@@ -1,0 +1,153 @@
+{
+  "mode": "baseline",
+  "at": "2026-08-22T14:28:58.968Z",
+  "T4F42": "2026-08-22T10:42:59.000Z",
+  "health": {
+    "note": "curl https://www.nahaber.com/api/health separately"
+  },
+  "active_jobs": {
+    "c": 0
+  },
+  "jobs_by": [
+    {
+      "status": "COMPLETED",
+      "c": 8
+    },
+    {
+      "status": "FAILED",
+      "c": 4
+    }
+  ],
+  "ledger_all": {
+    "cost": 0.04979743808507919,
+    "n": 13
+  },
+  "ledger_after_T4F42": {
+    "cost": 0,
+    "n": 0
+  },
+  "crawler_freshness": {
+    "latest_discovery": "2026-08-22T14:28:31.374Z",
+    "latest_extract": "2026-08-22T14:28:45.787Z",
+    "latest_cluster": "2026-08-22T14:28:33.025Z",
+    "latest_cluster_update": "2026-08-22T14:28:54.616Z"
+  },
+  "auto_pubs_after": {
+    "c": 0
+  },
+  "funnel_all_unique": {
+    "rawEvaluations": 759,
+    "distinctClusters": 645,
+    "uniqueEventRevisions": 759,
+    "uniqueWouldDispatch": 492,
+    "uniqueWouldBlock": 267,
+    "byTier": {
+      "D": 245,
+      "B": 478,
+      "A": 17,
+      "C": 19
+    },
+    "byBlockReason": {
+      "TOO_THIN": 69,
+      "WAITING_FOR_MORE_SOURCES": 154,
+      "ALREADY_PUBLISHED": 22,
+      "LOW_EDITORIAL_VALUE": 7,
+      "tier_c_borderline": 5,
+      "LOW_SOURCE_HEALTH": 3,
+      "HISTORICAL_BLOCKED": 7
+    },
+    "byPrespend": {
+      "TOO_THIN": 69,
+      "PRESPEND_READY": 497,
+      "WAITING_FOR_MORE_SOURCES": 154,
+      "ALREADY_PUBLISHED": 22,
+      "LOW_EDITORIAL_VALUE": 7,
+      "LOW_SOURCE_HEALTH": 3,
+      "HISTORICAL_BLOCKED": 7
+    },
+    "estimatedRequestsAfterGate": 492,
+    "estimatedRequestsBeforeGate": 759,
+    "estimatedRequestsPrevented": 267,
+    "requestPreventionPct": 35.2,
+    "estimatedSpendAfterGateUsd": 2.28954704,
+    "estimatedSpendBeforeGateUsd": 3.47569023,
+    "estimatedSpendPreventedUsd": 1.18614319,
+    "spendPreventionPct": 34.1,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  },
+  "funnel_4f31_unique": {
+    "rawEvaluations": 677,
+    "distinctClusters": 643,
+    "uniqueEventRevisions": 677,
+    "uniqueWouldDispatch": 445,
+    "uniqueWouldBlock": 232,
+    "byTier": {
+      "A": 14,
+      "B": 434,
+      "D": 210,
+      "C": 19
+    },
+    "byBlockReason": {
+      "TOO_THIN": 59,
+      "WAITING_FOR_MORE_SOURCES": 139,
+      "ALREADY_PUBLISHED": 19,
+      "tier_c_borderline": 5,
+      "LOW_SOURCE_HEALTH": 3,
+      "HISTORICAL_BLOCKED": 7
+    },
+    "byPrespend": {
+      "PRESPEND_READY": 450,
+      "TOO_THIN": 59,
+      "WAITING_FOR_MORE_SOURCES": 139,
+      "ALREADY_PUBLISHED": 19,
+      "LOW_SOURCE_HEALTH": 3,
+      "HISTORICAL_BLOCKED": 7
+    },
+    "estimatedRequestsAfterGate": 445,
+    "estimatedRequestsBeforeGate": 677,
+    "estimatedRequestsPrevented": 232,
+    "requestPreventionPct": 34.3,
+    "estimatedSpendAfterGateUsd": 2.07262704,
+    "estimatedSpendBeforeGateUsd": 3.10221559,
+    "estimatedSpendPreventedUsd": 1.02958855,
+    "spendPreventionPct": 33.2,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  },
+  "funnel_4f42_unique": {
+    "rawEvaluations": 82,
+    "distinctClusters": 82,
+    "uniqueEventRevisions": 82,
+    "uniqueWouldDispatch": 47,
+    "uniqueWouldBlock": 35,
+    "byTier": {
+      "D": 35,
+      "B": 44,
+      "A": 3
+    },
+    "byBlockReason": {
+      "TOO_THIN": 10,
+      "WAITING_FOR_MORE_SOURCES": 15,
+      "ALREADY_PUBLISHED": 3,
+      "LOW_EDITORIAL_VALUE": 7
+    },
+    "byPrespend": {
+      "TOO_THIN": 10,
+      "PRESPEND_READY": 47,
+      "WAITING_FOR_MORE_SOURCES": 15,
+      "ALREADY_PUBLISHED": 3,
+      "LOW_EDITORIAL_VALUE": 7
+    },
+    "estimatedRequestsAfterGate": 47,
+    "estimatedRequestsBeforeGate": 82,
+    "estimatedRequestsPrevented": 35,
+    "requestPreventionPct": 42.7,
+    "estimatedSpendAfterGateUsd": 0.21692,
+    "estimatedSpendBeforeGateUsd": 0.37347464,
+    "estimatedSpendPreventedUsd": 0.15655464,
+    "spendPreventionPct": 41.9,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  }
+}

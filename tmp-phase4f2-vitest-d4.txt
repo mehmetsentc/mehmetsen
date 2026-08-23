@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/editorial/phase4d4.test.ts (14 tests) 17ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  16:21:26
+   Duration  665ms (transform 169ms, setup 0ms, collect 224ms, tests 17ms, environment 0ms, prepare 67ms)
+

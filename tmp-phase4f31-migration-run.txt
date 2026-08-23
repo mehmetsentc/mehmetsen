@@ -1,0 +1,16 @@
+BEFORE_COLS 19 BEFORE_ECON []
+EXEC -- Phase 4F.3.1 — unique shadow economics + evaluation telemetry split (ADDITIVE ONLY). -- Historical crawler_ai_shadow_
+EXEC ALTER TABLE "crawler_ai_shadow_decisions" ADD COLUMN IF NOT EXISTS "prespend_gate_version" varchar(24);
+EXEC ALTER TABLE "crawler_ai_shadow_decisions" ADD COLUMN IF NOT EXISTS "revision_kind" varchar(24);
+EXEC ALTER TABLE "crawler_ai_shadow_decisions" ADD COLUMN IF NOT EXISTS "economic_decision_id" varchar(64);
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_decisions_fp_idx" ON "crawler_ai_shadow_decisions" USING btree ("cluster
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_decisions_gate_idx" ON "crawler_ai_shadow_decisions" USING btree ("presp
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_decisions_econ_id_idx" ON "crawler_ai_shadow_decisions" USING btree ("ec
+EXEC CREATE TABLE IF NOT EXISTS "crawler_ai_shadow_economic_decisions" ( "id" varchar(64) PRIMARY KEY NOT NULL, "cluster_
+EXEC CREATE UNIQUE INDEX IF NOT EXISTS "crawler_ai_shadow_economic_unique_idx" ON "crawler_ai_shadow_economic_decisions" 
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_economic_cluster_idx" ON "crawler_ai_shadow_economic_decisions" USING bt
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_economic_action_idx" ON "crawler_ai_shadow_economic_decisions" USING btr
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_economic_tier_idx" ON "crawler_ai_shadow_economic_decisions" USING btree
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_economic_eval_idx" ON "crawler_ai_shadow_economic_decisions" USING btree
+AFTER_COLS 23 ECON [ { table_name: 'crawler_ai_shadow_economic_decisions' } ] ECON_COLS 24
+WROTE tmp-phase4f31-migration.json

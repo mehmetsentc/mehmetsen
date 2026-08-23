@@ -1,0 +1,206 @@
+{
+  "mode": "watch",
+  "at": "2026-08-20T21:51:18.070Z",
+  "ledger_sum": 0.014165359549224377,
+  "ledger_rows": 8,
+  "jobs_total": 2,
+  "jobs_by_status": [
+    {
+      "status": "FAILED",
+      "c": 2
+    }
+  ],
+  "ai_draft_count": 0,
+  "published_count": 250,
+  "historical_jobs": [],
+  "historical_ledger": [],
+  "historical_state": [
+    {
+      "id": "cl_713c7834-a506-4c50-8d45-32109c988edd",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "auto_draft_status": null,
+      "ai_eligibility": "WATCHING",
+      "published_news_id": null,
+      "updated_at": "2026-08-19T21:41:56.529Z"
+    },
+    {
+      "id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "auto_draft_status": null,
+      "ai_eligibility": "ELIGIBLE",
+      "published_news_id": null,
+      "updated_at": "2026-08-19T20:51:33.782Z"
+    },
+    {
+      "id": "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "auto_draft_status": null,
+      "ai_eligibility": "WATCHING",
+      "published_news_id": null,
+      "updated_at": "2026-08-19T21:57:12.404Z"
+    },
+    {
+      "id": "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "auto_draft_status": "WAITING_FOR_MORE_SOURCES",
+      "ai_eligibility": "WATCHING",
+      "published_news_id": null,
+      "updated_at": "2026-08-20T21:18:54.905Z"
+    }
+  ],
+  "latest_ai_drafts": [],
+  "recent_ledger": [
+    {
+      "id": "led_33c03c8b-dd24-43fe-903f-680c9469e0a5",
+      "cluster_id": "cl_f82807da-0345-4057-a870-9735d4e6e667",
+      "status": "SUCCESS",
+      "request_type": "controlled_auto_draft",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.00445632,
+      "estimated_cost_usd": 0.00505384,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 4053,
+      "output_tokens": 2025,
+      "created_at": "2026-08-20T21:25:05.626Z"
+    },
+    {
+      "id": "ldg_mt1ld0in_innjjx",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "SUCCEEDED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.0037752,
+      "estimated_cost_usd": 0.00506,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 3048,
+      "output_tokens": 1844,
+      "created_at": "2026-08-20T14:04:03.167Z"
+    },
+    {
+      "id": "ldg_mt1lcngs_ja70z8",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00506,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1900,
+      "output_tokens": 3200,
+      "created_at": "2026-08-20T14:03:46.252Z"
+    },
+    {
+      "id": "ldg_mt1kgh5k_2chdna",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "FAILED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.0029744,
+      "estimated_cost_usd": 0.0049808,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 2746,
+      "output_tokens": 1338,
+      "created_at": "2026-08-20T13:38:45.080Z"
+    },
+    {
+      "id": "ldg_mt1kg9gz_i4iw6v",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.0049808,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1720,
+      "output_tokens": 3200,
+      "created_at": "2026-08-20T13:38:35.123Z"
+    },
+    {
+      "id": "ldg_mt1jev13_y254sw",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "FAILED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.00295944,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 2568,
+      "output_tokens": 1386,
+      "created_at": "2026-08-20T13:09:30.135Z"
+    },
+    {
+      "id": "ldg_mt1jefh5_ar5l5u",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1602,
+      "output_tokens": 1600,
+      "created_at": "2026-08-20T13:09:09.977Z"
+    },
+    {
+      "id": "ldg_mt1jdm1s_g98xbm",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1602,
+      "output_tokens": 1600,
+      "created_at": "2026-08-20T13:08:31.840Z"
+    }
+  ],
+  "recent_jobs": [
+    {
+      "id": "aij_edfca0f3-368c-44ef-84aa-23e4e6e09f43",
+      "cluster_id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+      "status": "FAILED",
+      "created_at": "2026-08-20T21:43:15.405Z",
+      "updated_at": "2026-08-20T21:46:40.467Z"
+    },
+    {
+      "id": "aij_4b3cbedd-47c3-45fa-a284-bfc99c771473",
+      "cluster_id": "cl_f82807da-0345-4057-a870-9735d4e6e667",
+      "status": "FAILED",
+      "created_at": "2026-08-20T21:24:50.112Z",
+      "updated_at": "2026-08-20T21:30:57.853Z"
+    }
+  ],
+  "timestamps": [
+    {
+      "latest_discovery": "2026-08-20T21:50:53.452Z",
+      "latest_extraction": "2026-08-20T21:50:50.428Z",
+      "latest_cluster_update": "2026-08-20T21:51:01.633Z",
+      "latest_cluster_create": "2026-08-20T21:50:57.781Z"
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "raw_articles": 1787,
+  "news_clusters": 1563,
+  "discovered_article_urls": 2976,
+  "news_sources": 61,
+  "sources_ACTIVE": 14,
+  "sources_PAUSED": 46,
+  "urls_PENDING_FETCH": 0,
+  "clusters_APPROVED_FOR_AI": 4,
+  "clusters_AI_READY": 1,
+  "clusters_AI_ELIGIBLE": 518,
+  "raw_AI_DRAFT": 0,
+  "raw_PUBLISHED": 190,
+  "clusters_with_published_news": 7,
+  "ai_jobs_total": 0,
+  "ai_jobs_active": 0,
+  "ai_jobs_failed": 0,
+  "ledger_rows": 7,
+  "ledger_sum_actual": 0.009709039703011513,
+  "multi_source_clusters": 41,
+  "audit_rows": 321,
+  "editorial_decision": [
+    {
+      "editorial_decision": "NONE",
+      "c": 1555
+    },
+    {
+      "editorial_decision": "APPROVED_FOR_AI",
+      "c": 4
+    },
+    {
+      "editorial_decision": "WATCHING",
+      "c": 4
+    }
+  ],
+  "raw_editorial_status": [
+    {
+      "editorial_status": "NEW",
+      "c": 1374
+    },
+    {
+      "editorial_status": "DELETED",
+      "c": 195
+    },
+    {
+      "editorial_status": "PUBLISHED",
+      "c": 190
+    },
+    {
+      "editorial_status": "IN_REVIEW",
+      "c": 20
+    },
+    {
+      "editorial_status": "ARCHIVED",
+      "c": 2
+    },
+    {
+      "editorial_status": "DRAFT",
+      "c": 2
+    },
+    {
+      "editorial_status": "REJECTED",
+      "c": 2
+    },
+    {
+      "editorial_status": "AI_CANDIDATE",
+      "c": 1
+    },
+    {
+      "editorial_status": "EDITING",
+      "c": 1
+    }
+  ],
+  "url_status": [
+    {
+      "status": "EXTRACTED",
+      "c": 1533
+    },
+    {
+      "status": "FAILED",
+      "c": 1285
+    },
+    {
+      "status": "DUPLICATE",
+      "c": 125
+    },
+    {
+      "status": "LOW_CONFIDENCE",
+      "c": 31
+    },
+    {
+      "status": "FAILED_404",
+      "c": 2
+    }
+  ],
+  "source_status": [
+    {
+      "status": "PAUSED",
+      "c": 46
+    },
+    {
+      "status": "ACTIVE",
+      "c": 14
+    },
+    {
+      "status": "DEGRADED",
+      "c": 1
+    }
+  ],
+  "phase4d_cols": [
+    {
+      "column_name": "auto_draft_status"
+    },
+    {
+      "column_name": "content_fingerprint"
+    },
+    {
+      "column_name": "drafted_content_fingerprint"
+    }
+  ],
+  "ledger_4d_cols": [
+    {
+      "column_name": "failure_code"
+    },
+    {
+      "column_name": "mode"
+    },
+    {
+      "column_name": "reason"
+    }
+  ],
+  "active_job_uidx": [
+    {
+      "indexname": "crawler_ai_jobs_cluster_active_uidx"
+    }
+  ],
+  "timestamps": [
+    {
+      "latest_discovery": "2026-08-20T20:40:38.042Z",
+      "latest_extraction": "2026-08-20T20:40:15.546Z",
+      "latest_cluster_update": "2026-08-20T20:43:19.537Z",
+      "latest_cluster_create": "2026-08-20T20:40:34.658Z",
+      "latest_ledger": "2026-08-20T14:04:03.167Z"
+    }
+  ],
+  "ledger_breakdown": [
+    {
+      "status": "FAILED",
+      "request_type": "generation",
+      "n": 2,
+      "cost": 0.005933839827775955
+    },
+    {
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "n": 4,
+      "cost": 0
+    },
+    {
+      "status": "SUCCEEDED",
+      "request_type": "generation",
+      "n": 1,
+      "cost": 0.003775200108066201
+    }
+  ],
+  "canary_draft_raw": []
+}

@@ -1,0 +1,1221 @@
+error TS6053: File '/Users/user/nahaber/.next/types/app/(auth)/layout.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(auth)/login/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(auth)/register/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/aydinlatma-metni/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/bulten/cikis/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/canli/[slug]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/cok-okunanlar/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/discover/layout.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/discover/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/docs/kendi-facebook-app-nasil-olusturulur/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/editoryal-ilkeler/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/etiket/[slug]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/events/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/feed/kurallar/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/feed/layout.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/feed/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/futbol-canli/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/gizlilik-politikasi/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/gizlilik/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/haber/[slug]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/hakkimizda/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/hukuk/cerez-politikasi/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/hukuk/gizlilik/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/hukuk/kullanim-kosullari/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/hukuk/kvkk/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/hukuk/layout.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/iletisim/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/influencer/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/kategori/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/kune/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/kunye/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/messages/[conversationId]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/messages/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/muzeler/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/notifications/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/oyunlar/[slug]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/oyunlar/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/post/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/post/create/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/profile/[username]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/reels/layout.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/reels/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/saved/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/search/layout.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/search/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/about/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/account/delete/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/appearance/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/help/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/layout.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/notifications/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/privacy-policy/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/privacy/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/profile/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/settings/terms/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/site-haritasi/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/skor/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/uygulama/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/weather/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/yazar/[username]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/yerel/[citySlug]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/(main)/yerel/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ads/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-agents/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-editors/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-editors/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-instructions/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-learning/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-logs/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-memory/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-models/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-org/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-performance/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-tasks/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai-usage/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai/news/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/ai/video/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/analytics/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/api-management/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/approvals/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/approvals/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/archive/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/audit-logs/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/authors/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/categories/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/ai-cost/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/ai-dispatch/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/ai-drafts/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/clusters/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/clusters/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/discover/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/failures/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/health/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/pre-ai/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/raw-articles/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/crawler/sources/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/cron/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/dashboard/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/editors/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/events/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/feed-algorithm/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/global-layout/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/inbox/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/job-classifieds/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/live-center/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/locations/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/menu/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/most-read/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/news/[id]/edit/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/news/create/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/news/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/newsletter/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/newsroom/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/page-controls/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/posts/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/quick/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/reports/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/roles/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/seo/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/settings/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/smm/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/smm/queue/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/social/gorsel/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/social/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/submissions/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/system-health/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/users/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/admin/videos/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/account/delete/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/ads/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/ads/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/agent-tasks/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/ai-assist/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/ai-editors/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/ai-editors/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/ai-usage/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/ai-video-script/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/analytics/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/backfill-breaking/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/backfill-images/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/bootstrap/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/city-ops/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/ai-dispatch/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/ai-drafts/[jobId]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/ai-drafts/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/articles/bulk/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/articles/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/cleanup/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/clusters/[id]/canary/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/clusters/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/clusters/bulk/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/clusters/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/cron-summary/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/dashboard/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/discover/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/editorial/audit/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/editorial/open/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/failures/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/health/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/queue/bulk/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/queue/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/sources/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/crawler/test/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/cron/runs/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/cron/trigger/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/editorial-review/batch/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/callback/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/connect/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/disconnect/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/messages/[id]/archive/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/messages/[id]/mark-read/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/messages/[id]/mark-unread/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/messages/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/messages/[id]/star/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/messages/[id]/to-draft/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/messages/[id]/trash/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/messages/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/send/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/gmail/status/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/instructions/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/job-classifieds/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/job-classifieds/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/media/import/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/media/scrape-video/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/migrate/backfill-published-at/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/migrate/fix-timestamps/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/migrate/post-worldcup/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/migrate/restore-events/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/migrate/worldcup/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/most-read/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news-drafts/[id]/approve/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news-drafts/[id]/reject/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news-drafts/bulk-approve/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news-queue/[id]/approve/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news-queue/[id]/reject/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news/[id]/approve/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news/ai-image-placement/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news/ai-image-seo/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/news/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsletter/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsroom-agents/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsroom-agents/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsroom/flush-pending/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsroom/process-now/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsroom/purge-queue/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsroom/queue/[id]/publish-manual/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsroom/queue/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/newsroom/requeue-skipped/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/os-ops/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/page-layouts/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/proposals/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/purge-dead-videos/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/queue/purge/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/queue/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/recategorize/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/seo-backfill/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/site-settings/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/auto-share/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/category-rules/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/diagnose/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/facebook-app/callback/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/facebook-app/oauth/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/facebook-app/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/force-reshare/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/test-facebook/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/token/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/social/update-token/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/admin/submissions/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/ads/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/ai/logs/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/ai/pipeline/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/ai/queue/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/ai/status/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/analytics/track/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/analytics/vitals/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/auth/cms-logout/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/auth/cms-sync/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/authors/[slug]/articles/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/blocks/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/boxoffice/weekly/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/city-check/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/city/news/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/contact/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/analytics-aggregate/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/analytics-cleanup/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/boxoffice-weekly/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/canakkale-nobetci-eczane/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/crawler-ai-worker/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/crawler/tick/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/editorial-review/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/football-sync/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/iskur-jobs/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/news-ingest/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/aa-content/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/afad/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/ai-columns/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/ai-pipeline/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/anka-breaking/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/anka-local/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/archive/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/basketbol/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/bilim-teknoloji/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/borsa/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/breaking/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/canakkale-bel-duyuru/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/draft-reprocess/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/entertainment/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/expire-breaking/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/finans/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/freenews/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/futbol/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/gastronomi/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/gezi/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/gundem/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/hackernews/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/health/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/influencer/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/ingest/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/kibris/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/kripto/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/local/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/magazine/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/national/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/otomobil/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/politics/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/process-queue/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/queue-purge/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/saglik-sozcu/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/seo/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/sinema/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/sozcu-breaking/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/sports/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/tech/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/technology/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/thin-content-backfill/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/trend/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/turizm/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/video-process/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/video-queue/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/voleybol/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/weather/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/world-cup/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/newsroom/world/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/on-this-day/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/paribu-canakkale/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/skor-daily/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/skor-live/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/skor-standings/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/social/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/sports/worldcup-sync/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/weather-news/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/cron/youtube-rss/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/debug/cron-errors/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/debug/feed-pool/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/eczane/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/events/aggregate/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/events/image/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/events/sync/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/feed/category-rails/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/feed/category/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/feed/home/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/feed/more/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/finance/bist/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/finance/rates/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/football/fixtures/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/football/squad/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/football/standings/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/games/scores/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/geo/detect/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/geo/ip/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/health/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/jobs/classified/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/moderate/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/museums/cities/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/museums/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/news/on-this-day/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/news/top/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/news/view/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/newsletter/subscribe/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/newsletter/unsubscribe/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/notifications/send/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/og-image/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/og/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/og/social/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/og/story/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/push/send/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/push/subscribe/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/push/unsubscribe/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/reports/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/revalidate/home/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/rss/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/search/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/share-target/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/skor/archive/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/skor/board/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/skor/standings/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/social/facebook/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/social/instagram/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/social/test/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/sports/matches/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/sports/scoreboard/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/sports/transfermarkt/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/ugc/submit/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/user/accept-terms/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/user/improve-text/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/api/weather/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/brand/splash/[device]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/breaking-news.xml/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/etkinlik/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/ilceler/[slug]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/ilceler/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/is-ilanlari/eleman-ariyorum/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/is-ilanlari/is-ariyorum/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/is-ilanlari/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/kategori/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/layout.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/nobetci-eczaneler/[district]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/nobetci-eczaneler/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/city-site/spor/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/dev/design-system/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/etkinlik/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/handle/[...path]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/ilceler/[slug]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/ilceler/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/images-sitemap.xml/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/is-ilanlari/eleman-ariyorum/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/is-ilanlari/is-ariyorum/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/is-ilanlari/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/news-sitemap.xml/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/nobetci-eczaneler/[district]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/nobetci-eczaneler/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/offline/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/onboarding/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/rss.xml/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/rss/[category]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/sitemap.xml/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/sitemap/[id]/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/spor/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/video-feed.xml/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/app/video-sitemap.xml/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'
+error TS6053: File '/Users/user/nahaber/.next/types/cache-life.d.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/user/nahaber/tsconfig.json'

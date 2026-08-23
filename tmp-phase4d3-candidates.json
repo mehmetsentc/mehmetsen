@@ -1,0 +1,103 @@
+{
+  "after": "2026-08-20T22:00:00.000Z",
+  "scored": [
+    {
+      "id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "title": "Paraşütle uçaktan atılan 76 kunduz bölgenin kaderini değiştirdi",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "city": null,
+      "importance_score": 51,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-20T22:02:54.900Z",
+      "updated_at": "2026-08-20T22:02:55.007Z",
+      "max_word_count": 251,
+      "max_conf": 0.9200000166893005,
+      "avg_health": 92,
+      "strongSingle": true,
+      "naturalLocal": false
+    },
+    {
+      "id": "cl_d3dfc835-ce5d-4c46-bec4-e6c7958a7590",
+      "title": "Jailed former Pakistani prime minister Imran Khan taken to hospital",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "city": null,
+      "importance_score": 47,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-20T22:00:55.419Z",
+      "updated_at": "2026-08-20T22:00:55.507Z",
+      "max_word_count": 307,
+      "max_conf": 0.7799999713897705,
+      "avg_health": 92,
+      "strongSingle": true,
+      "naturalLocal": false
+    },
+    {
+      "id": "cl_9b959892-87fe-4b21-ae85-fbbcc77abb13",
+      "title": "Website behind widely shared fake election polls run by 21-year-old",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "city": null,
+      "importance_score": 47,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-20T22:00:54.647Z",
+      "updated_at": "2026-08-20T22:00:54.736Z",
+      "max_word_count": 800,
+      "max_conf": 0.7799999713897705,
+      "avg_health": 92,
+      "strongSingle": true,
+      "naturalLocal": false
+    }
+  ],
+  "all": [
+    {
+      "id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "title": "Paraşütle uçaktan atılan 76 kunduz bölgenin kaderini değiştirdi",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "city": null,
+      "importance_score": 51,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-20T22:02:54.900Z",
+      "updated_at": "2026-08-20T22:02:55.007Z",
+      "max_word_count": 251,
+      "max_conf": 0.9200000166893005,
+      "avg_health": 92
+    },
+    {
+      "id": "cl_d3dfc835-ce5d-4c46-bec4-e6c7958a7590",
+      "title": "Jailed former Pakistani prime minister Imran Khan taken to hospital",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "city": null,
+      "importance_score": 47,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-20T22:00:55.419Z",
+      "updated_at": "2026-08-20T22:00:55.507Z",
+      "max_word_count": 307,
+      "max_conf": 0.7799999713897705,
+      "avg_health": 92
+    },
+    {
+      "id": "cl_9b959892-87fe-4b21-ae85-fbbcc77abb13",
+      "title": "Website behind widely shared fake election polls run by 21-year-old",
+      "editorial_decision": "NONE",
+      "ai_eligibility": "WATCHING",
+      "city": null,
+      "importance_score": 47,
+      "source_count": 1,
+      "published_news_id": null,
+      "created_at": "2026-08-20T22:00:54.647Z",
+      "updated_at": "2026-08-20T22:00:54.736Z",
+      "max_word_count": 800,
+      "max_conf": 0.7799999713897705,
+      "avg_health": 92
+    }
+  ]
+}

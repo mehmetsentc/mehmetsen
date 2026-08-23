@@ -1,0 +1,136 @@
+{
+  "mode": "baseline",
+  "at": "2026-08-22T10:57:18.651Z",
+  "T4F42": "2026-08-22T10:42:59.000Z",
+  "health": {
+    "note": "curl https://www.nahaber.com/api/health separately"
+  },
+  "active_jobs": {
+    "c": 0
+  },
+  "jobs_by": [
+    {
+      "status": "COMPLETED",
+      "c": 8
+    },
+    {
+      "status": "FAILED",
+      "c": 4
+    }
+  ],
+  "ledger_all": {
+    "cost": 0.04979743808507919,
+    "n": 13
+  },
+  "ledger_after_T4F42": {
+    "cost": 0,
+    "n": 0
+  },
+  "crawler_freshness": {
+    "latest_discovery": "2026-08-22T10:56:30.249Z",
+    "latest_extract": "2026-08-22T10:57:18.805Z",
+    "latest_cluster": "2026-08-22T10:56:32.680Z",
+    "latest_cluster_update": "2026-08-22T10:56:44.324Z"
+  },
+  "auto_pubs_after": {
+    "c": 0
+  },
+  "funnel_all_unique": {
+    "rawEvaluations": 481,
+    "distinctClusters": 462,
+    "uniqueEventRevisions": 481,
+    "uniqueWouldDispatch": 314,
+    "uniqueWouldBlock": 167,
+    "byTier": {
+      "B": 307,
+      "D": 145,
+      "C": 19,
+      "A": 10
+    },
+    "byBlockReason": {
+      "WAITING_FOR_MORE_SOURCES": 104,
+      "TOO_THIN": 39,
+      "tier_c_borderline": 5,
+      "LOW_SOURCE_HEALTH": 3,
+      "ALREADY_PUBLISHED": 9,
+      "HISTORICAL_BLOCKED": 7
+    },
+    "byPrespend": {
+      "PRESPEND_READY": 319,
+      "WAITING_FOR_MORE_SOURCES": 104,
+      "TOO_THIN": 39,
+      "LOW_SOURCE_HEALTH": 3,
+      "ALREADY_PUBLISHED": 9,
+      "HISTORICAL_BLOCKED": 7
+    },
+    "estimatedRequestsAfterGate": 314,
+    "estimatedRequestsBeforeGate": 481,
+    "estimatedRequestsPrevented": 167,
+    "requestPreventionPct": 34.7,
+    "estimatedSpendAfterGateUsd": 1.46236376,
+    "estimatedSpendBeforeGateUsd": 2.20252604,
+    "estimatedSpendPreventedUsd": 0.74016228,
+    "spendPreventionPct": 33.6,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  },
+  "funnel_4f31_unique": {
+    "rawEvaluations": 481,
+    "distinctClusters": 462,
+    "uniqueEventRevisions": 481,
+    "uniqueWouldDispatch": 314,
+    "uniqueWouldBlock": 167,
+    "byTier": {
+      "B": 307,
+      "D": 145,
+      "C": 19,
+      "A": 10
+    },
+    "byBlockReason": {
+      "WAITING_FOR_MORE_SOURCES": 104,
+      "TOO_THIN": 39,
+      "tier_c_borderline": 5,
+      "LOW_SOURCE_HEALTH": 3,
+      "ALREADY_PUBLISHED": 9,
+      "HISTORICAL_BLOCKED": 7
+    },
+    "byPrespend": {
+      "PRESPEND_READY": 319,
+      "WAITING_FOR_MORE_SOURCES": 104,
+      "TOO_THIN": 39,
+      "LOW_SOURCE_HEALTH": 3,
+      "ALREADY_PUBLISHED": 9,
+      "HISTORICAL_BLOCKED": 7
+    },
+    "estimatedRequestsAfterGate": 314,
+    "estimatedRequestsBeforeGate": 481,
+    "estimatedRequestsPrevented": 167,
+    "requestPreventionPct": 34.7,
+    "estimatedSpendAfterGateUsd": 1.46236376,
+    "estimatedSpendBeforeGateUsd": 2.20252604,
+    "estimatedSpendPreventedUsd": 0.74016228,
+    "spendPreventionPct": 33.6,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  },
+  "funnel_4f42_unique": {
+    "rawEvaluations": 0,
+    "distinctClusters": 0,
+    "uniqueEventRevisions": 0,
+    "uniqueWouldDispatch": 0,
+    "uniqueWouldBlock": 0,
+    "byTier": {},
+    "byBlockReason": {},
+    "byPrespend": {},
+    "estimatedRequestsAfterGate": 0,
+    "estimatedRequestsBeforeGate": 0,
+    "estimatedRequestsPrevented": 0,
+    "requestPreventionPct": null,
+    "estimatedSpendAfterGateUsd": 0,
+    "estimatedSpendBeforeGateUsd": 0,
+    "estimatedSpendPreventedUsd": 0,
+    "spendPreventionPct": null,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  }
+}

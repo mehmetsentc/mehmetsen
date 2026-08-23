@@ -1,0 +1,55 @@
+{
+  "mode": "body-words",
+  "at": "2026-08-22T10:47:11.900Z",
+  "T4F42": "2026-08-22T10:42:59.000Z",
+  "samples": [
+    {
+      "job_id": "aij_c303e08d-0473-46be-b966-0586ccd6c2ed",
+      "cluster_id": "cl_0133da15-5b83-4326-b496-4993da62b0e2",
+      "canonical_body_words": 591,
+      "legacy_top_level": null
+    },
+    {
+      "job_id": "aij_a32e9c67-fbf8-4a11-a92e-ff49fe24c2be",
+      "cluster_id": "cl_2fce0471-13d6-4d55-9db2-cfaf7d482bea",
+      "canonical_body_words": 400,
+      "legacy_top_level": null
+    },
+    {
+      "job_id": "aij_7c4122ec-032f-401f-976d-f628b6e98b3f",
+      "cluster_id": "cl_c9fe982f-08e4-4a1c-b3e1-56e45ff598e2",
+      "canonical_body_words": 483,
+      "legacy_top_level": null
+    },
+    {
+      "job_id": "aij_732f5712-cbf3-48cf-ae46-80e6683d2ce3",
+      "cluster_id": "cl_411c9d93-968d-49f8-9485-14185ccc32ba",
+      "canonical_body_words": 282,
+      "legacy_top_level": null
+    },
+    {
+      "job_id": "aij_586f9150-c052-4b1f-b00c-4345138eb5b3",
+      "cluster_id": "cl_4c9e1fe1-424d-49fa-a8de-ade72730c791",
+      "canonical_body_words": 243,
+      "legacy_top_level": null
+    },
+    {
+      "job_id": "aij_00152300-4314-47e5-9fb9-62f6ef37eced",
+      "cluster_id": "cl_6cbcad56-3489-4567-b548-0ec50c4ff814",
+      "canonical_body_words": 219,
+      "legacy_top_level": null
+    },
+    {
+      "job_id": "aij_30e29873-072d-45b3-9df1-2a3c9524a6de",
+      "cluster_id": "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe",
+      "canonical_body_words": 344,
+      "legacy_top_level": null
+    },
+    {
+      "job_id": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+      "cluster_id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "canonical_body_words": 258,
+      "legacy_top_level": null
+    }
+  ]
+}

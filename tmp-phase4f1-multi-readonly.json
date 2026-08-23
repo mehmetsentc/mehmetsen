@@ -1,0 +1,212 @@
+{
+  "at": "2026-08-21T13:15:46.087Z",
+  "out": [
+    {
+      "id": "cl_68393c2b-158a-4cad-9c63-c8461f2141c4",
+      "title": "Son dakika... CHP'den istifa etti: Eskişehir Büyükşehir Belediye Başkanı Ayşe Ünlüce YENİ Parti'ye katıldı",
+      "editorial_decision": "NONE",
+      "persisted_machine": null,
+      "evaluated_machine": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "multi_source_ready",
+      "readyForJob": true,
+      "ind": 4,
+      "words": 275,
+      "conf": 0.9200000166893005,
+      "health": 92.75,
+      "importance": 66,
+      "city": null,
+      "created_at": "2026-08-21T08:06:47.136Z",
+      "primary": "Cumhuriyet",
+      "members": [
+        {
+          "membership_role": "PRIMARY",
+          "source_name": "Cumhuriyet",
+          "word_count": 123,
+          "extraction_confidence": 0.92,
+          "health_score": 95
+        },
+        {
+          "membership_role": "MATERIAL_UPDATE",
+          "source_name": "Evrensel",
+          "word_count": 275,
+          "extraction_confidence": 0.78,
+          "health_score": 92
+        },
+        {
+          "membership_role": "SUPPORTING",
+          "source_name": "Habertürk",
+          "word_count": 113,
+          "extraction_confidence": 0.92,
+          "health_score": 92
+        },
+        {
+          "membership_role": "SUPPORTING",
+          "source_name": "Hürriyet",
+          "word_count": 110,
+          "extraction_confidence": 0.92,
+          "health_score": 92
+        }
+      ]
+    },
+    {
+      "id": "cl_a85e428d-ca11-428c-8b9b-bd7e3319bd77",
+      "title": "Darıca Sahili’nde 1 saat içinde 3 ceset bulundu",
+      "editorial_decision": "NONE",
+      "persisted_machine": null,
+      "evaluated_machine": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "multi_source_ready",
+      "readyForJob": true,
+      "ind": 3,
+      "words": 220,
+      "conf": 0.9200000166893005,
+      "health": 94.33333333333333,
+      "importance": 63,
+      "city": null,
+      "created_at": "2026-08-20T14:39:50.544Z",
+      "primary": "Cumhuriyet",
+      "members": [
+        {
+          "membership_role": "PRIMARY",
+          "source_name": "Cumhuriyet",
+          "word_count": 74,
+          "extraction_confidence": 0.92,
+          "health_score": 95
+        },
+        {
+          "membership_role": "MATERIAL_UPDATE",
+          "source_name": "Evrensel",
+          "word_count": 220,
+          "extraction_confidence": 0.78,
+          "health_score": 92
+        },
+        {
+          "membership_role": "SUPPORTING",
+          "source_name": "Sözcü",
+          "word_count": 67,
+          "extraction_confidence": 0.92,
+          "health_score": 96
+        }
+      ]
+    },
+    {
+      "id": "cl_7dbbcc3e-3fba-45e2-a2a8-585b33a6d17b",
+      "title": "İçişleri Bakanlığı duyurdu... 20 ilde uyuşturucu operasyonu: 60 şüpheli yakalandı",
+      "editorial_decision": "NONE",
+      "persisted_machine": null,
+      "evaluated_machine": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "multi_source_ready",
+      "readyForJob": true,
+      "ind": 3,
+      "words": 214,
+      "conf": 0.9200000166893005,
+      "health": 93,
+      "importance": 63,
+      "city": null,
+      "created_at": "2026-08-21T08:22:41.487Z",
+      "primary": "Cumhuriyet",
+      "members": [
+        {
+          "membership_role": "PRIMARY",
+          "source_name": "Cumhuriyet",
+          "word_count": 214,
+          "extraction_confidence": 0.92,
+          "health_score": 95
+        },
+        {
+          "membership_role": "MATERIAL_UPDATE",
+          "source_name": "Habertürk",
+          "word_count": 209,
+          "extraction_confidence": 0.92,
+          "health_score": 92
+        },
+        {
+          "membership_role": "SUPPORTING",
+          "source_name": "Hürriyet",
+          "word_count": 170,
+          "extraction_confidence": 0.92,
+          "health_score": 92
+        }
+      ]
+    },
+    {
+      "id": "cl_7685d29c-e816-4bbe-a113-23a4835e2308",
+      "title": "Çiğli Belediye Başkanı'nın makam aracına silahlı saldırı. Saldırgan böyle yakalandı",
+      "editorial_decision": "NONE",
+      "persisted_machine": null,
+      "evaluated_machine": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "multi_source_ready",
+      "readyForJob": true,
+      "ind": 3,
+      "words": 150,
+      "conf": 0.9200000166893005,
+      "health": 91.66666666666667,
+      "importance": 63,
+      "city": null,
+      "created_at": "2026-08-20T14:32:17.669Z",
+      "primary": "NTV",
+      "members": [
+        {
+          "membership_role": "PRIMARY",
+          "source_name": "NTV",
+          "word_count": 150,
+          "extraction_confidence": 0.92,
+          "health_score": 92
+        },
+        {
+          "membership_role": "SUPPORTING",
+          "source_name": "Hürriyet",
+          "word_count": 85,
+          "extraction_confidence": 0.92,
+          "health_score": 92
+        },
+        {
+          "membership_role": "SUPPORTING",
+          "source_name": "Odatv",
+          "word_count": 75,
+          "extraction_confidence": 0.92,
+          "health_score": 91
+        }
+      ]
+    },
+    {
+      "id": "cl_5f26b291-bb72-4a58-b9f8-936e3724a9df",
+      "title": "CHP'den istifa etti: Menteşe Belediye Başkanı Gonca Köksal Aras, YENİ Parti’ye katıldı",
+      "editorial_decision": "NONE",
+      "persisted_machine": null,
+      "evaluated_machine": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "multi_source_ready",
+      "readyForJob": true,
+      "ind": 2,
+      "words": 631,
+      "conf": 0.9200000166893005,
+      "health": 94,
+      "importance": 60,
+      "city": null,
+      "created_at": "2026-08-21T09:57:58.928Z",
+      "primary": "Cumhuriyet",
+      "members": [
+        {
+          "membership_role": "PRIMARY",
+          "source_name": "Cumhuriyet",
+          "word_count": 436,
+          "extraction_confidence": 0.92,
+          "health_score": 95
+        },
+        {
+          "membership_role": "SUPPORTING",
+          "source_name": "Cumhuriyet",
+          "word_count": 631,
+          "extraction_confidence": 0.78,
+          "health_score": 95
+        },
+        {
+          "membership_role": "SUPPORTING",
+          "source_name": "Evrensel",
+          "word_count": 448,
+          "extraction_confidence": 0.78,
+          "health_score": 92
+        }
+      ]
+    }
+  ]
+}

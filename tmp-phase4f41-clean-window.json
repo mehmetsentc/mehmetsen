@@ -1,0 +1,76 @@
+{
+  "verdict": "WAITING_FOR_CLEAN_DAILY_WINDOW",
+  "production_sha_health": "9b6769a",
+  "expected_sha_note": "cf09d14 was 4F.4 shutdown; current lineage advanced (mobile nav)",
+  "utc_now": "2026-08-21T21:48:26.671Z",
+  "utc_day_period_key": "2026-08-21",
+  "AI_MAX_DRAFTS_PER_DAY": 5,
+  "day_request_count": 5,
+  "available_slots": 0,
+  "required_slots": 3,
+  "day_spent_usd": 0.0193058792501688,
+  "AI_MAX_DAILY_COST_USD": 0.038,
+  "daily_cost_remaining_approx": 0.0186941207498312,
+  "phase_spend_ceiling": 0.015,
+  "active_jobs": 0,
+  "uncertain_jobs": 0,
+  "next_utc_reset": "2026-08-22T00:00:00.000Z",
+  "next_reset_istanbul": "2026-08-22T03:00:00+03:00",
+  "starting_state": {
+    "CRAWLER_AI_MODE": "SHADOW_AUTO_DRAFT",
+    "CRAWLER_AI_PROVIDER_ENABLED": "false",
+    "CRAWLER_AI_DISPATCH_ENABLED": "false",
+    "LEGACY_DIRECT_AI_ENABLED": "false",
+    "CRAWLER_AI_AUTO_PUBLISH": "false"
+  },
+  "ledger_today_contributors": [
+    {
+      "ts": "2026-08-21T09:52:22.367Z",
+      "job": "aij_30e29873",
+      "cluster": "cl_d1d3a875",
+      "phase_hint": "4F.2/prior",
+      "cost": 0.00468908,
+      "status": "SUCCESS"
+    },
+    {
+      "ts": "2026-08-21T13:33:46.298Z",
+      "job": "aij_00152300",
+      "cluster": "cl_6cbcad56",
+      "phase_hint": "4F.2",
+      "cost": 0.00253132,
+      "status": "SUCCESS"
+    },
+    {
+      "ts": "2026-08-21T13:33:54.562Z",
+      "job": "aij_9425fc11",
+      "cluster": "cl_326b706c",
+      "phase_hint": "4F.2",
+      "cost": 0.00646624,
+      "status": "FAILED"
+    },
+    {
+      "ts": "2026-08-21T15:32:18.309Z",
+      "job": "aij_586f9150",
+      "cluster": "cl_4c9e1fe1",
+      "phase_hint": "4F.4",
+      "cost": 0.00265496,
+      "status": "SUCCESS"
+    },
+    {
+      "ts": "2026-08-21T15:33:18.855Z",
+      "job": "aij_732f5712",
+      "cluster": "cl_411c9d93",
+      "phase_hint": "4F.4",
+      "cost": 0.00296428,
+      "status": "SUCCESS"
+    }
+  ],
+  "actions_not_taken": [
+    "NO limit raise",
+    "NO accounting reset",
+    "NO ledger/job delete",
+    "NO paid activation",
+    "NO T4F41 cutoff set",
+    "NO 4F.5"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "mode": "firewall",
+  "at": "2026-08-22T14:29:03.768Z",
+  "T4F41": "2026-08-22T00:06:46.000Z",
+  "HIST_PROTECT": [
+    "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+    "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "cl_f82807da-0345-4057-a870-9735d4e6e667",
+    "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+    "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+    "cl_713c7834-a506-4c50-8d45-32109c988edd",
+    "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+    "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe"
+  ],
+  "utcNow": "2026-08-22T14:29:03.769Z",
+  "pre_eligible_jobs": [],
+  "hist_protect_jobs": [],
+  "auto_published": []
+}

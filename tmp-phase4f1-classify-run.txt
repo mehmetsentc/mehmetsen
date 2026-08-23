@@ -1,0 +1,140 @@
+{
+  "mode": "classify",
+  "at": "2026-08-21T13:14:16.035Z",
+  "jobs_active": {
+    "c": 0
+  },
+  "jobs_by": [
+    {
+      "status": "COMPLETED",
+      "c": 2
+    },
+    {
+      "status": "FAILED",
+      "c": 3
+    }
+  ],
+  "ledger": {
+    "cost": 0.021845560520887375,
+    "n": 6
+  },
+  "approved_for_ai": {
+    "c": 9
+  },
+  "machine_eligible": {
+    "c": 0
+  },
+  "machine_none_decision": {
+    "c": 0
+  },
+  "classified": [
+    {
+      "id": "cl_a0478cee-b877-42fb-9e21-84450c00151f",
+      "title": "Denemek için ektikleri ürün köyün kaderini değiştirdi",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "STRONG_SINGLE_SOURCE",
+      "ind": 1,
+      "words": 207,
+      "conf": 0.9200000166893005,
+      "health": 96,
+      "importance": 51,
+      "city": null
+    },
+    {
+      "id": "cl_35f6f03b-2f14-4191-8913-715f0e92695f",
+      "title": "22 Ağustos Cumartesi Çin Burcu Rehberi: Doğu Astrolojisinde Birlik Ve Denge Rüzgarları",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "TOO_THIN",
+      "reason": "too_thin_body",
+      "ind": 1,
+      "words": 47,
+      "conf": 0.5799999833106995,
+      "health": 90,
+      "importance": 45,
+      "city": "Çanakkale"
+    },
+    {
+      "id": "cl_4bff117b-75b5-4561-bfa6-ac563fd9b432",
+      "title": "22 Ağustos Cumartesi Gökyüzü Rehberi: Gezegenlerin Enerjisi Yıldız Haritanıza Nasıl Yansıyacak?",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "TOO_THIN",
+      "reason": "too_thin_body",
+      "ind": 1,
+      "words": 43,
+      "conf": 0.5799999833106995,
+      "health": 90,
+      "importance": 45,
+      "city": "Çanakkale"
+    },
+    {
+      "id": "cl_8da45a34-7cb0-4c70-96d1-28e6a3fd839c",
+      "title": "Android Auto’da 3 dakika sonra ortaya çıkan sinir bozucu hata sonunda çözüldü",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "STRONG_SINGLE_SOURCE",
+      "ind": 1,
+      "words": 241,
+      "conf": 0.9200000166893005,
+      "health": 96,
+      "importance": 49,
+      "city": null
+    },
+    {
+      "id": "cl_3e0ffc34-52d9-4db6-9dab-9dc16448111c",
+      "title": "Cinsel amaçlı eğlenceler düzenleniyordu: Ankara'daki o mekan kapatıldı",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "WAITING_FOR_MORE_SOURCES",
+      "reason": "watching_weak_single",
+      "ind": 1,
+      "words": 106,
+      "conf": 0.9200000166893005,
+      "health": 92,
+      "importance": 51,
+      "city": null
+    },
+    {
+      "id": "cl_7899d959-4354-4014-bd83-37444565ffd2",
+      "title": "7 kişi tutuklanmıştı: Ankara'da operasyon düzenlenen gece kulübü kapatıldı",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "STRONG_SINGLE_SOURCE",
+      "ind": 1,
+      "words": 410,
+      "conf": 0.7799999713897705,
+      "health": 95,
+      "importance": 49,
+      "city": null
+    },
+    {
+      "id": "cl_9dbbac96-886f-4cea-a619-f55825282ac6",
+      "title": "Emekli polis havaalanında sevgilisini öldürdü",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "WAITING_FOR_MORE_SOURCES",
+      "reason": "watching_weak_single",
+      "ind": 1,
+      "words": 113,
+      "conf": 0.9200000166893005,
+      "health": 91,
+      "importance": 49,
+      "city": null
+    },
+    {
+      "id": "cl_152019db-b93e-484c-b284-348ccbf918c3",
+      "title": "Avrupa’da sivrisineklerle mücadele zorlaştı",
+      "editorial_decision": "NONE",
+      "machine_draft_eligibility": "AUTO_DRAFT_ELIGIBLE",
+      "reason": "STRONG_SINGLE_SOURCE",
+      "ind": 1,
+      "words": 384,
+      "conf": 0.9200000166893005,
+      "health": 96,
+      "importance": 49,
+      "city": null
+    },
+    {
+      "id": "cl_57e8ff67-56a0-41c0-a50b-48404940b14a",
+      "title": "Spor camiasını yıkan haber: Göztepe&#039;nin eski başkanı yaşamını yitirdi",
+      "editorial_decision": "NONE",
+      "machine_draft_e
+WROTE tmp-phase4f1-classify.json

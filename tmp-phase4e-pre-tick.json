@@ -1,0 +1,279 @@
+{
+  "mode": "observe",
+  "at": "2026-08-21T09:44:57.276Z",
+  "T4E": "2026-08-21T09:31:23.000Z",
+  "HIST": [
+    "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+    "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "cl_f82807da-0345-4057-a870-9735d4e6e667",
+    "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+    "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+    "cl_713c7834-a506-4c50-8d45-32109c988edd",
+    "cl_7ec4422d-8100-49c1-b356-67aee791b82d"
+  ],
+  "ledger": {
+    "cost": 0.017156479880213737,
+    "n": 9
+  },
+  "jobs_by": [
+    {
+      "status": "COMPLETED",
+      "c": 1
+    },
+    {
+      "status": "FAILED",
+      "c": 2
+    }
+  ],
+  "active": {
+    "c": 0
+  },
+  "recent_jobs": [
+    {
+      "id": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+      "cluster_id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "status": "COMPLETED",
+      "eligibility_status": "AI_READY",
+      "failure_code": null,
+      "failure_reason": "reconciled_from_provider_success_no_repay",
+      "actual_cost_usd": 0.00299112,
+      "estimated_cost_usd": 0.00451616,
+      "actual_input_tokens": 1920,
+      "actual_output_tokens": 1626,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "execution_id": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp",
+      "editorial_news_id": "draft_controlled_auto_draft_cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "created_at": "2026-08-20T22:46:24.020Z",
+      "completed_at": "2026-08-20T22:50:31.933Z",
+      "has_draft": true,
+      "draft_title": "Paraşütle uçaktan atılan 76 kunduz bölgenin kaderini değiştirdi",
+      "body_words": 258
+    },
+    {
+      "id": "aij_edfca0f3-368c-44ef-84aa-23e4e6e09f43",
+      "cluster_id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+      "status": "FAILED",
+      "eligibility_status": "AI_READY",
+      "failure_code": "CANCELLED_NO_PROVIDER_EVIDENCE",
+      "failure_reason": "phase4d2_event2_no_ledger_no_auto_repay",
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00449592,
+      "actual_input_tokens": null,
+      "actual_output_tokens": null,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "execution_id": null,
+      "editorial_news_id": null,
+      "created_at": "2026-08-20T21:43:15.405Z",
+      "completed_at": "2026-08-20T21:46:40.467Z",
+      "has_draft": false,
+      "draft_title": null,
+      "body_words": 0
+    },
+    {
+      "id": "aij_4b3cbedd-47c3-45fa-a284-bfc99c771473",
+      "cluster_id": "cl_f82807da-0345-4057-a870-9735d4e6e667",
+      "status": "FAILED",
+      "eligibility_status": "AI_READY",
+      "failure_code": "PROVIDER_SUCCEEDED_FINALIZE_FAILED",
+      "failure_reason": "phase4d2_event1_ledger_success_no_durable_draft_no_auto_repay",
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00505384,
+      "actual_input_tokens": null,
+      "actual_output_tokens": null,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "execution_id": null,
+      "editorial_news_id": null,
+      "created_at": "2026-08-20T21:24:50.112Z",
+      "completed_at": "2026-08-20T21:30:57.853Z",
+      "has_draft": false,
+      "draft_title": null,
+      "body_words": 0
+    }
+  ],
+  "recent_ledger": [
+    {
+      "id": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp",
+      "cluster_id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "status": "SUCCESS",
+      "request_type": "controlled_auto_draft",
+      "mode": "controlled_auto_draft",
+      "reason": "reconciled_no_repay",
+      "failure_code": null,
+      "actual_cost_usd": 0.00299112,
+      "estimated_cost_usd": 0.00451616,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1920,
+      "output_tokens": 1626,
+      "timestamp": "2026-08-20T22:50:32.177Z"
+    },
+    {
+      "id": "led_33c03c8b-dd24-43fe-903f-680c9469e0a5",
+      "cluster_id": "cl_f82807da-0345-4057-a870-9735d4e6e667",
+      "status": "SUCCESS",
+      "request_type": "controlled_auto_draft",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.00445632,
+      "estimated_cost_usd": 0.00505384,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 4053,
+      "output_tokens": 2025,
+      "timestamp": "2026-08-20T21:25:05.626Z"
+    },
+    {
+      "id": "ldg_mt1ld0in_innjjx",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "SUCCEEDED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.0037752,
+      "estimated_cost_usd": 0.00506,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 3048,
+      "output_tokens": 1844,
+      "timestamp": "2026-08-20T14:04:03.167Z"
+    },
+    {
+      "id": "ldg_mt1lcngs_ja70z8",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00506,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1900,
+      "output_tokens": 3200,
+      "timestamp": "2026-08-20T14:03:46.252Z"
+    },
+    {
+      "id": "ldg_mt1kgh5k_2chdna",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "FAILED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.0029744,
+      "estimated_cost_usd": 0.0049808,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 2746,
+      "output_tokens": 1338,
+      "timestamp": "2026-08-20T13:38:45.080Z"
+    },
+    {
+      "id": "ldg_mt1kg9gz_i4iw6v",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.0049808,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1720,
+      "output_tokens": 3200,
+      "timestamp": "2026-08-20T13:38:35.123Z"
+    },
+    {
+      "id": "ldg_mt1jev13_y254sw",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "FAILED",
+      "request_type": "generation",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": 0.00295944,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 2568,
+      "output_tokens": 1386,
+      "timestamp": "2026-08-20T13:09:30.135Z"
+    },
+    {
+      "id": "ldg_mt1jefh5_ar5l5u",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1602,
+      "output_tokens": 1600,
+      "timestamp": "2026-08-20T13:09:09.977Z"
+    },
+    {
+      "id": "ldg_mt1jdm1s_g98xbm",
+      "cluster_id": "cl_7457f2e8-d45f-44e2-a50c-dbc467a3454c",
+      "status": "PREFLIGHT",
+      "request_type": "preflight",
+      "mode": null,
+      "reason": null,
+      "failure_code": null,
+      "actual_cost_usd": null,
+      "estimated_cost_usd": 0.00281688,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "input_tokens": 1602,
+      "output_tokens": 1600,
+      "timestamp": "2026-08-20T13:08:31.840Z"
+    }
+  ],
+  "hist_jobs": [
+    {
+      "cluster_id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "c": 1
+    },
+    {
+      "cluster_id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+      "c": 1
+    },
+    {
+      "cluster_id": "cl_f82807da-0345-4057-a870-9735d4e6e667",
+      "c": 1
+    }
+  ],
+  "hist_ledger_after_T4E": [],
+  "jobs_after_T4E": [],
+  "cluster": [
+    {
+      "id": "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe",
+      "canonical_title": "İzmir'de Forza ve Yalı taraftar gruplarına operasyon",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "editorial_decided_at": "2026-08-21T09:40:45.726Z",
+      "auto_draft_status": null,
+      "ai_eligibility": "ELIGIBLE",
+      "unique_source_count": 2,
+      "importance_score": 59,
+      "cluster_confidence": 0.85,
+      "city": null,
+      "primary_source_name": "Evrensel",
+      "content_fingerprint": null,
+      "drafted_content_fingerprint": null,
+      "has_material_update": 1,
+      "update_review_status": "NONE",
+      "published_news_id": null
+    }
+  ],
+  "cluster_jobs": []
+}

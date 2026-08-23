@@ -1,0 +1,12 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/lib/ai/imageSeo.test.ts (2 tests) 3ms
+ ✓ src/services/crawler/editorial/phase4d4.test.ts (14 tests) 23ms
+ ✓ src/services/crawler/extract/images.test.ts (21 tests) 111ms
+
+ Test Files  3 passed (3)
+      Tests  37 passed (37)
+   Start at  17:43:20
+   Duration  917ms (transform 463ms, setup 0ms, collect 881ms, tests 136ms, environment 0ms, prepare 221ms)
+

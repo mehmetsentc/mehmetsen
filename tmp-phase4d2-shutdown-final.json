@@ -1,0 +1,51 @@
+{
+  "at": "2026-08-20T21:51:47.725375Z",
+  "switches": {
+    "CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER": "2026-08-20T21:06:11.116Z",
+    "CRAWLER_AI_DISPATCH_ENABLED": "false",
+    "CRAWLER_AI_MODE": "OFF",
+    "CRAWLER_AI_PROVIDER_ENABLED": "false",
+    "DEEPSEEK_INPUT_COST_PER_1M": "0.44",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "1.32",
+    "LEGACY_DIRECT_AI_ENABLED": "false"
+  },
+  "ai_off_ok": true,
+  "redeploy": {
+    "uid": "dpl_A64WN31tzRVJJXaFVGwp9C1B85o5",
+    "readyState": "READY",
+    "sha": "72b328f601b13f7db4ea344aa364d2929557dc80",
+    "url": "nahaber-56m8vnlj1-shenteam1.vercel.app"
+  },
+  "jobs_by_status": [
+    {
+      "status": "FAILED",
+      "c": 2
+    }
+  ],
+  "jobs_total": 2,
+  "late_active_jobs": false,
+  "cost_before_e2": 0.014165359549224377,
+  "cost_after": 0.014165359549224377,
+  "event2_spend": 0.0,
+  "stuck_job_force_failed": "aij_edfca0f3-368c-44ef-84aa-23e4e6e09f43",
+  "historical_jobs": [],
+  "ai_draft_count": 0,
+  "published_count": 250,
+  "timestamps": [
+    {
+      "latest_discovery": "2026-08-20T21:50:53.452Z",
+      "latest_extraction": "2026-08-20T21:50:50.428Z",
+      "latest_cluster_update": "2026-08-20T21:51:27.396Z",
+      "latest_cluster_create": "2026-08-20T21:50:57.781Z"
+    }
+  ],
+  "crawl_still_advancing": true,
+  "health": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-20T21:51:18.013Z",
+    "version": "72b328f",
+    "env": "production",
+    "region": "fra1"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "at": "2026-08-21T13:16:56.012Z",
+  "before": "NONE",
+  "after": {
+    "id": "cl_5f26b291-bb72-4a58-b9f8-936e3724a9df",
+    "editorial_decision": "NONE",
+    "machine_draft_eligibility": "AUTO_DRAFT_ELIGIBLE",
+    "machine_draft_eligibility_reason": "multi_source_ready",
+    "unique_source_count": 2,
+    "auto_draft_status": "AUTO_DRAFT_ELIGIBLE"
+  },
+  "gate": {
+    "status": "AUTO_DRAFT_ELIGIBLE",
+    "reason": "multi_source_ready",
+    "readyForJob": true,
+    "strongSinglePath": null
+  },
+  "members": [
+    {
+      "membership_role": "PRIMARY",
+      "source_name": "Cumhuriyet",
+      "word_count": 436
+    },
+    {
+      "membership_role": "SUPPORTING",
+      "source_name": "Cumhuriyet",
+      "word_count": 631
+    },
+    {
+      "membership_role": "SUPPORTING",
+      "source_name": "Evrensel",
+      "word_count": 448
+    }
+  ],
+  "jobs": {
+    "c": 0
+  },
+  "ledger": {
+    "cost": 0.021845560520887375
+  },
+  "words": 631,
+  "conf": 0.9200000166893005,
+  "health": 94,
+  "importance": 60,
+  "title": "CHP'den istifa etti: Menteşe Belediye Başkanı Gonca Köksal Aras, YENİ Parti’ye katıldı",
+  "primary": "Cumhuriyet",
+  "ind": 2
+}

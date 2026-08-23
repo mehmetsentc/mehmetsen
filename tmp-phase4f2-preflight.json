@@ -1,0 +1,24 @@
+{
+  "probe": {
+    "providerReady": false,
+    "reason": "COST_UNKNOWN",
+    "statusLabelTr": "HATALI",
+    "credentialPresent": true,
+    "model": "deepseek-v4-flash",
+    "inputPricingKnown": false,
+    "outputPricingKnown": false,
+    "writerAvailable": true,
+    "validatorAvailable": true,
+    "notesTr": [
+      "Fiyatland\u0131rma tan\u0131ms\u0131z (COST_UNKNOWN)."
+    ],
+    "paidCallDuringReadiness": false
+  },
+  "kill": {
+    "defaultKillSwitch": {
+      "ready": false,
+      "reason": "PROVIDER_DISABLED",
+      "status": "KAPALI"
+    }
+  }
+}

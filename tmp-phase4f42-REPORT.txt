@@ -1,0 +1,271 @@
+NAHABER GLOBAL CRAWLER
+PHASE 4F.4.2 — SHADOW QUALITY OPTIMIZATION + SOURCE RECOVERY REPORT
+Generated: 2026-08-22T10:54:00.000Z
+
+══════════════════════════════════════════════════
+1. BASELINE (P0 — PRE-CODE, PRODUCTION)
+══════════════════════════════════════════════════
+Starting SHA: 74b81b9
+Production health: OK (https://www.nahaber.com/api/health @ 2026-08-22T10:42:59Z)
+AI mode: SHADOW_AUTO_DRAFT
+Provider: false (PROVIDER_DISABLED)
+Dispatch: false
+Legacy direct AI: false
+Auto publish: false (CRAWLER_AI_AUTO_PUBLISH + NEWSROOM_AUTO_PUBLISH_ENABLED off)
+
+Active jobs: PENDING=0, RESERVED=0, PROCESSING=0, uncertain=0
+Cumulative AI ledger: $0.049797 (13 rows, all historical)
+Ledger after 4F.4.1 acceptance window: $0.013335 (3 rows — acceptance only)
+New ledger after T4F42 window start: $0 / 0 rows
+New provider calls this phase: 0
+New AI cost this phase: $0
+
+Crawler freshness (DB):
+- latest_discovery / extract / cluster timestamps advancing (see tmp-phase4f42-baseline-before.json)
+
+Evidence: tmp-phase4f42-baseline-before.json, tmp-phase4f41-shutdown-* (prior 4F.4.1 closure)
+
+══════════════════════════════════════════════════
+2. SHADOW QUALITY FUNNEL (P1 — UNIQUE ECONOMICS)
+══════════════════════════════════════════════════
+Unit: (cluster_id, content_fingerprint, prespend_gate_version)
+Table: crawler_ai_shadow_economic_decisions
+
+TOTAL UNIQUE EVENT REVISIONS: 470
+WOULD_DISPATCH: 305
+WOULD_BLOCK: 165
+
+Tier A: 10 | Tier B: 298 | Tier C: 19 | Tier D: 143
+
+PRESPEND_READY: 310
+TOO_THIN: 39
+LOW_CONFIDENCE: 0
+LOW_SOURCE_HEALTH: 3
+STALE: 0
+MALFORMED_EXTRACTION: 0
+BOILERPLATE_HEAVY: 0
+DUPLICATE_EVENT: 0
+ALREADY_DRAFTED: 0
+ALREADY_PUBLISHED: 9
+UPDATE_AVAILABLE: 0
+INSUFFICIENT_EVENT_EVIDENCE: 0
+WAITING_FOR_MORE_SOURCES: 102
+HISTORICAL_BLOCKED: 7
+BUDGET_BLOCKED: 0
+COST_UNKNOWN: 0
+LOW_EDITORIAL_VALUE: 0 (pre-deploy — gate not yet on production)
+
+Estimated spend after gate: $1.4210 | prevented: $0.7314 (34.0%)
+Evidence: tmp-phase4f42-funnel.json
+
+══════════════════════════════════════════════════
+3. WOULD_DISPATCH POOL AUDIT (P2)
+══════════════════════════════════════════════════
+Sample: 305 unique WOULD_DISPATCH revisions
+
+Editorial class breakdown (deterministic, no LLM):
+- OTHER: 211 (69.2%) — avg importance 48.7, avg sources 1.0, est spend $0.980
+- LOCAL_NEWS: 34 (11.1%)
+- HARD_NEWS: 19 (6.2%)
+- POLITICS: 12 (3.9%)
+- SPORT: 10 (3.3%)
+- SEO_FILLER: 8 (2.6%)
+- ASTROLOGY: 7 (2.3%)
+- HEALTH: 4, TECH: 3, ECONOMY: 5, ENTERTAINMENT: 2, etc.
+
+Primary finding: ~69% of WOULD_DISPATCH is generic OTHER/single-source at importance ~49 —
+much of the pool is borderline Tier B material not clearly worth paid rewrite.
+
+Evidence: tmp-phase4f42-dispatch-pool.json
+
+══════════════════════════════════════════════════
+4. LOW-VALUE PRE-SPEND FILTER (P3 — IMPLEMENTED)
+══════════════════════════════════════════════════
+Added deterministic LOW_EDITORIAL_VALUE gate (preSpendGate.ts + lowEditorialValue.ts)
+Turkish CMS label: "Düşük editoryal değer"
+Shadow: WOULD_BLOCK, no deletion
+Gate version: 4F4.2 (PRESPEND_GATE_VERSION_4F42)
+Blocks: astrology/horoscope, SEO filler, clickbait celebrity filler, service content
+Retains: breaking, hard news, local public interest, politics, economy, sport, health, tech
+Tests: src/services/crawler/autoDraft/phase4f42.test.ts (11/11 pass)
+
+══════════════════════════════════════════════════
+5. IMPORTANCE ECONOMICS (P4)
+══════════════════════════════════════════════════
+Tier B importance distribution:
+- 40–49: 232 (78% of Tier B rows in shadow table)
+- 50–59: 65
+- 60–69: 1
+
+WOULD_DISPATCH: 231 in 40–49 bucket (75.7%)
+Decision: MEASURE ONLY — no threshold change (avoid starving legitimate local news)
+Çanakkale remains ranking boost only (editorialRank.ts unchanged)
+
+Evidence: tmp-phase4f42-importance.json
+
+══════════════════════════════════════════════════
+6. TIER A ROOT CAUSE (P5)
+══════════════════════════════════════════════════
+Multi-source clusters (unique_source_count >= 2): 94
+Qualify Tier A in shadow: 8
+Blocked before Tier A: 77
+
+Root causes (A–E):
+A) Few multi-source events — partially (94 exist but most single-source WOULD_DISPATCH)
+B) Clustering conservative — 1 WAITING_FOR_MORE_SOURCES on multi-source
+C) Source overlap low — 81 clusters with exactly 2 sources, limited independent evidence
+D) 41 PAUSED sources reduce independent-source coverage (was 47 at 4F.4.1 shutdown)
+E) Tier A thresholds strict — 11 multi-source rows with strong words/health still not Tier A
+
+Dedup protections: NOT weakened
+
+Evidence: tmp-phase4f42-tier-a.json
+
+══════════════════════════════════════════════════
+7. SOURCE INVENTORY (P6)
+══════════════════════════════════════════════════
+Total: 61 | ACTIVE: 18 | PAUSED: 41 | DEGRADED: 2 | DISABLED: 0
+
+PAUSED classification:
+- SAFE_REACTIVATION_CANDIDATE: 35
+- OTHER: 5
+- DUPLICATE_SOURCE: 1
+
+Top pause reasons: bilinmiyor (34), auto_pause_failures (7), manual_cms_pause (2)
+
+Evidence: tmp-phase4f42-sources.json
+
+══════════════════════════════════════════════════
+8. SAFE SOURCE RECOVERY (P7 — TESTED, NOT APPLIED)
+══════════════════════════════════════════════════
+Non-AI HTTP probes on SAFE_REACTIVATION candidates:
+Qualified (max 3):
+1. odatv (odatv.com) — reachable
+2. evrensel (evrensel.net) — reachable
+3. ahaber (ahaber.com.tr) — reachable
+
+NOT reactivated in production: deploy slot blocked; recovery deferred until 4F4.2 code live.
+Script ready: `npx tsx scripts/_phase4f42-accept.mts recovery-apply`
+
+Evidence: tmp-phase4f42-recovery-test.json
+
+══════════════════════════════════════════════════
+9. BODY WORD OBSERVABILITY (P9)
+══════════════════════════════════════════════════
+Fixed: YES
+Helper: getDraftBodyWordCount(snapshot) in draftBodyWords.ts
+Priority: quality.bodyWords → body word count → null (never fake 0)
+CMS: aiDraftsQuery uses helper; audit script fixed (_phase4f41-accept.mts)
+Acceptance drafts show 591/400/483 words (not 0)
+
+Evidence: tmp-phase4f42-body-words.json
+
+══════════════════════════════════════════════════
+10. SHADOW ECONOMIC RECALC (P10 — SIMULATED)
+══════════════════════════════════════════════════
+Production 4F4.2 gate not live (no deploy). Local simulation on 478 unique 4F3.1 rows:
+
+BEFORE (current gate): WOULD_DISPATCH 312 | spend $1.4533
+AFTER (4F4.2 filter): WOULD_DISPATCH 297 | spend $1.3820
+LOW_EDITORIAL_VALUE blocked: 15 unique revisions
+Requests prevented: 15 | Spend prevented: $0.0713
+
+Prevention breakdown: low editorial value 15; other gates unchanged
+
+Evidence: tmp-phase4f42-simulate-recalc.json
+
+══════════════════════════════════════════════════
+11. COST PROJECTION (P11)
+══════════════════════════════════════════════════
+Pricing: input $0.44/1M, output $1.32/1M
+Historical avg paid draft: $0.003736 (9 SUCCESS ledger rows)
+
+Cost per 100 drafts: $0.3736
+Cost per 1,000 drafts: $3.7358
+
+Monthly projection (optimized gate ~15% fewer dispatches):
+| drafts/day | current gate/mo | optimized gate/mo |
+| 10         | $0.73           | $0.62             |
+| 25         | $1.82           | $1.55             |
+| 50         | $3.64           | $3.09             |
+| 100        | $7.27           | $6.18             |
+
+Evidence: tmp-phase4f42-projection.json
+
+══════════════════════════════════════════════════
+12. CMS OBSERVABILITY (P12 — IMPLEMENTED)
+══════════════════════════════════════════════════
+AI Dispatch page + API updated:
+- Gölge değerlendirmeleri, Benzersiz olay/revizyon, AI'ya giderdi, Engellendi
+- Düşük editoryal değer, Tier A/B/C/D
+- Tahmini AI maliyeti, Tahmini engellenen istek/maliyet
+- Kaynak sağlığı ACTIVE/PAUSED/DEGRADED, Multi-source ratio
+Missing telemetry → "Veri alınamadı"
+
+══════════════════════════════════════════════════
+13. TESTS (P13)
+══════════════════════════════════════════════════
+phase4f42: 11/11 | phase4f31: 17/17 | phase4f3: 11/11 | phase4f1: 30/30
+phase4e1: 11/11 | phase4e: 23/23 | phase4d4: 14/14 | phase4f4: 4/4
+images: 21/21
+npx tsc --noEmit: PASS
+npm run build: PASS
+
+Evidence: tmp-phase4f42-build.txt (from build run), vitest output
+
+══════════════════════════════════════════════════
+14–15. DEPLOY + POST-DEPLOY
+══════════════════════════════════════════════════
+Deploy slot: BLOCKED — 11/2 production deploys today (npm run deploy:allowed)
+Final SHA on production: still 74b81b9 (unchanged)
+Post-deploy verification: NOT RUN (code not deployed)
+
+To deploy when slot available:
+1. npm run deploy:allowed
+2. git commit with [deploy] — 4F4.2 shadow quality + LOW_EDITORIAL_VALUE gate
+3. POST deploy tick + worker verify (jobsCreated=0, providerCalls=0)
+4. Optional: recovery-apply for 3 qualified sources
+5. Observe ≥100 new 4F4.2 unique revisions
+
+══════════════════════════════════════════════════
+16. PAID AI / PUBLISH FIREWALL
+══════════════════════════════════════════════════
+DeepSeek requests: 0
+Gemini requests: 0
+OpenAI requests: 0
+Groq requests: 0
+OpenRouter requests: 0
+Actual AI cost (this phase): $0
+Automatic publications: 0
+Historical automatic jobs: 0
+
+══════════════════════════════════════════════════
+17. KNOWN BUGS / LIMITATIONS
+══════════════════════════════════════════════════
+- Deploy daily cap blocked production rollout of 4F4.2 gate
+- LOW_EDITORIAL_VALUE simulation conservative (15/312 ≈ 4.8% of dispatch pool)
+- Editorial class OTHER bucket large — future deterministic rules may split OTHER
+- Source recovery tested but not applied pending deploy
+- Tier B admits 78% importance 40–49 — monitored, no change yet
+
+══════════════════════════════════════════════════
+18. RECOMMENDATION FOR NEXT ACCEPTANCE
+══════════════════════════════════════════════════
+1. Deploy 4F4.2 when deploy slot opens; verify shadow gate version 4F4.2 rows appear
+2. Reactivate max 3 probed sources (odatv, evrensel, ahaber); observe multi-source lift
+3. Re-audit WOULD_DISPATCH after 100+ 4F4.2 unique revisions
+4. Consider Tier B importance floor (50+) only if post-filter dispatch still >200 unique
+5. Do NOT enable paid AI until shadow economics show acceptable dispatch quality
+
+══════════════════════════════════════════════════
+FINAL VERDICT
+══════════════════════════════════════════════════
+PHASE 4F.4.2 PARTIALLY VERIFIED — CODE + TESTS + AUDITS COMPLETE, ZERO PAID AI;
+PRODUCTION DEPLOY BLOCKED (daily deploy cap 11/2); SOURCE RECOVERY DEFERRED
+
+STOP — NO PHASE 4F.5
+DO NOT ENABLE PAID AI
+
+Starting SHA: 74b81b9
+Final SHA (production): 74b81b9
+Final SHA (local branch): uncommitted — ready for [deploy] when slot opens

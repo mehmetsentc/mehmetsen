@@ -1,0 +1,60 @@
+{
+  "projectId": "prj_JuTvdlhsTlDEo5ZbgV3i5KMgTVCY",
+  "teamId": "team_l9fJWKsf8Je8FR5MMx87ES1Q",
+  "matching_key_names": [
+    "CRAWLER_AI_DISPATCH_ENABLED",
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M",
+    "DEEPSEEK_INPUT_COST_PER_1M",
+    "DEEPSEEK_NEWS_MODEL",
+    "DEEPSEEK_OUTPUT_COST_PER_1M",
+    "GEMINI_API_KEY",
+    "GEMINI_FAST_MODEL",
+    "GEMINI_MODEL",
+    "LEGACY_DIRECT_AI_ENABLED",
+    "LEGACY_RSS_DISCOVERY_ENABLED",
+    "LEGACY_RSS_SKIP_CRAWLER_OWNED"
+  ],
+  "presence": {
+    "DEEPSEEK_API_KEY": "YES",
+    "DEEPSEEK_NEWS_MODEL": "YES",
+    "DEEPSEEK_MODEL": "NO",
+    "DEEPSEEK_INPUT_COST_PER_1M": "YES",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "YES",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": "YES",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": "YES",
+    "CRAWLER_AI_PROVIDER_ENABLED": "NO",
+    "CRAWLER_AI_MODE": "NO",
+    "CRAWLER_AI_DISPATCH_ENABLED": "YES",
+    "CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER": "NO",
+    "CRAWLER_AI_ACCEPTANCE_COHORT_IDS": "NO",
+    "CRAWLER_AI_ACCEPTANCE_MAX_EVENTS": "NO",
+    "CRAWLER_AI_ACCEPTANCE_MAX_REQUESTS": "NO",
+    "AI_MAX_COST_PER_EVENT_USD": "NO",
+    "AI_MAX_DRAFTS_PER_HOUR": "NO",
+    "AI_MAX_DRAFTS_PER_DAY": "NO",
+    "AI_MAX_DAILY_COST_USD": "NO",
+    "AI_MAX_MONTHLY_COST_USD": "NO",
+    "CRAWLER_AI_MAX_CONCURRENT_JOBS": "NO",
+    "CRAWLER_AI_MAX_EVENTS_PER_TICK": "NO",
+    "LEGACY_DIRECT_AI_ENABLED": "YES"
+  },
+  "pricing_values": {
+    "DEEPSEEK_INPUT_COST_PER_1M": null,
+    "DEEPSEEK_OUTPUT_COST_PER_1M": null,
+    "DEEPSEEK_NEWS_MODEL": null,
+    "DEEPSEEK_MODEL": null
+  },
+  "deployment": {
+    "uid": "dpl_HoTJfCXV7Yv8MNXGktuAxNezNWcr",
+    "readyState": "READY",
+    "state": "READY",
+    "sha": "09118d3d5773a865e3bf80c113cd64fa028b2433",
+    "createdAt": 1787247050009,
+    "url": "nahaber-31y5lkoy6-shenteam1.vercel.app"
+  },
+  "errors": [],
+  "pricing_note": "Keys present as type=sensitive on production; Vercel decrypt API returned decrypted flag but value null/empty (list endpoint also showed empty string). Could not retrieve numeric prices via API with CLI token.",
+  "token_present": "YES"
+}

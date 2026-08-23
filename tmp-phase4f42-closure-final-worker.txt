@@ -1,0 +1,1 @@
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","claimed":0,"providerCalls":0,"draftsPersisted":0,"completed":0,"failed":0,"published":0,"reasons":{"MODE_OR_DISPATCH_OFF":1},"jobId":null,"clusterId":null,"draftId":null}

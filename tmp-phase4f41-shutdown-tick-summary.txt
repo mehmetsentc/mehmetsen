@@ -1,0 +1,1 @@
+{"status":200,"mode":"SHADOW_AUTO_DRAFT","jobsCreated":0,"providerCalls":0,"aiRequests":0,"sourcesChecked":1,"articlesFetched":0,"articlesClustered":0,"clustersCreated":0,"skipReasons":{"SHADOW_AUTO_DRAFT_ACTIVE":1,"SHADOW_NO_ENQUEUE":80,"PRESPEND_TOO_THIN":7,"TOO_THIN":7,"PRESPEND_WAITING_FOR_MORE_SOURCES":21,"WAITING_FOR_MORE_SOURCES":21}}

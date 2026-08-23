@@ -1,0 +1,218 @@
+{
+  "mode": "costs",
+  "at": "2026-08-21T15:11:14.120Z",
+  "T4F4": "2026-08-21T15:11:14.119Z",
+  "HIST_PROTECT": [
+    "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+    "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "cl_f82807da-0345-4057-a870-9735d4e6e667",
+    "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+    "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+    "cl_713c7834-a506-4c50-8d45-32109c988edd",
+    "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+    "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe"
+  ],
+  "machine_eligible": {
+    "c": 157
+  },
+  "approved_for_ai": {
+    "c": 10
+  },
+  "jobs_by": [
+    {
+      "status": "COMPLETED",
+      "c": 3
+    },
+    {
+      "status": "FAILED",
+      "c": 4
+    }
+  ],
+  "active_jobs": {
+    "c": 0
+  },
+  "uncertain_jobs": {
+    "c": 0
+  },
+  "drafts": {
+    "c": 3
+  },
+  "ledger_all": {
+    "cost": 0.03084312006831169,
+    "n": 8
+  },
+  "ledger_today": {
+    "cost": 0.013686640188097954,
+    "n": 3
+  },
+  "ledger_month": {
+    "cost": 0.03084312006831169,
+    "n": 12
+  },
+  "ledger_after_T4F4": {
+    "cost": 0,
+    "n": 0
+  },
+  "jobs_after_T4F4": [],
+  "crawler_freshness": {
+    "latest_discovery": "2026-08-21T15:10:49.257Z",
+    "latest_extract": "2026-08-21T15:11:11.268Z",
+    "latest_cluster": "2026-08-21T15:10:50.071Z",
+    "latest_cluster_update": "2026-08-21T15:11:00.352Z"
+  },
+  "budget_windows": [
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T15",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T15:01:37.891Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T14",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T14:03:08.619Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "month",
+      "period_key": "2026-08",
+      "request_count": 6,
+      "reserved_usd": 0.008114039897918701,
+      "spent_usd": 0.018142959102988243,
+      "updated_at": "2026-08-21T13:33:54.555Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "day",
+      "period_key": "2026-08-21",
+      "request_count": 3,
+      "reserved_usd": 0,
+      "spent_usd": 0.013686640188097954,
+      "updated_at": "2026-08-21T13:33:54.549Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T13",
+      "request_count": 1,
+      "reserved_usd": 0,
+      "spent_usd": 0.008997559547424316,
+      "updated_at": "2026-08-21T13:33:54.541Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T12",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T12:00:24.549Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T11",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T11:00:18.685Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T10",
+      "request_count": 1,
+      "reserved_usd": 0.004436519928276539,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T10:44:33.749Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T09",
+      "request_count": 1,
+      "reserved_usd": 0,
+      "spent_usd": 0.00468908017501235,
+      "updated_at": "2026-08-21T09:52:22.344Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T08",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T08:02:08.996Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T07",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T07:03:44.256Z"
+    },
+    {
+      "lane": "crawler_automatic",
+      "period": "hour",
+      "period_key": "2026-08-21T06",
+      "request_count": 0,
+      "reserved_usd": 0,
+      "spent_usd": 0,
+      "updated_at": "2026-08-21T06:01:39.503Z"
+    }
+  ],
+  "hist_jobs_after": [],
+  "auto_pubs_after": {
+    "c": 0
+  },
+  "uniqueEconomic": {
+    "c": 94,
+    "wd": 59,
+    "wb": 35
+  },
+  "uniqueMetrics": {
+    "rawEvaluations": 94,
+    "distinctClusters": 94,
+    "uniqueEventRevisions": 94,
+    "uniqueWouldDispatch": 59,
+    "uniqueWouldBlock": 35,
+    "byTier": {
+      "C": 3,
+      "D": 30,
+      "B": 60,
+      "A": 1
+    },
+    "byBlockReason": {
+      "HISTORICAL_BLOCKED": 7,
+      "ALREADY_PUBLISHED": 6,
+      "WAITING_FOR_MORE_SOURCES": 12,
+      "TOO_THIN": 10
+    },
+    "byPrespend": {
+      "HISTORICAL_BLOCKED": 7,
+      "ALREADY_PUBLISHED": 6,
+      "WAITING_FOR_MORE_SOURCES": 12,
+      "PRESPEND_READY": 59,
+      "TOO_THIN": 10
+    },
+    "estimatedRequestsAfterGate": 59,
+    "estimatedRequestsBeforeGate": 94,
+    "estimatedRequestsPrevented": 35,
+    "requestPreventionPct": 37.2,
+    "estimatedSpendAfterGateUsd": 0.2727208,
+    "estimatedSpendBeforeGateUsd": 0.42934408,
+    "estimatedSpendPreventedUsd": 0.15662328,
+    "spendPreventionPct": 36.5,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  }
+}

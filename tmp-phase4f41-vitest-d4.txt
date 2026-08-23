@@ -1,0 +1,12 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/duplicate/duplicate.test.ts (4 tests) 5ms
+ ✓ src/services/crawler/editorial/phase4d4.test.ts (14 tests) 19ms
+ ✓ src/services/crawler/extract/images.test.ts (21 tests) 119ms
+
+ Test Files  3 passed (3)
+      Tests  39 passed (39)
+   Start at  03:02:18
+   Duration  819ms (transform 346ms, setup 0ms, collect 602ms, tests 142ms, environment 0ms, prepare 200ms)
+

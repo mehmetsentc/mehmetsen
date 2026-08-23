@@ -1,0 +1,15 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/editorial/rawArticleDrawer.test.ts (9 tests) 6ms
+ ✓ src/services/crawler/editorial/bulk.test.ts (16 tests) 30ms
+ ✓ src/services/crawler/editorial/phase4a2.test.ts (21 tests) 32ms
+ ✓ src/services/crawler/editorial/phase4d4.test.ts (14 tests) 27ms
+ ✓ src/services/crawler/editorial/controlPlane.test.ts (23 tests) 53ms
+ ✓ src/services/crawler/editorial/editorial.test.ts (2 tests) 10ms
+
+ Test Files  6 passed (6)
+      Tests  85 passed (85)
+   Start at  17:43:15
+   Duration  1.05s (transform 904ms, setup 0ms, collect 2.30s, tests 158ms, environment 1ms, prepare 663ms)
+

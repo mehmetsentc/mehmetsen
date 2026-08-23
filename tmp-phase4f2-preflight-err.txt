@@ -1,0 +1,8 @@
+file:///Users/user/nahaber/[eval1]:9
+const r = getCrawlerAiProviderReadiness()
+          ^
+
+TypeError: getCrawlerAiProviderReadiness is not a function
+    at file:///Users/user/nahaber/[eval1]:9:11
+
+Node.js v22.22.3

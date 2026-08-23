@@ -1,0 +1,11 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/duplicate/duplicate.test.ts (4 tests) 5ms
+ ✓ src/services/crawler/extract/images.test.ts (21 tests) 137ms
+
+ Test Files  2 passed (2)
+      Tests  25 passed (25)
+   Start at  13:58:01
+   Duration  970ms (transform 221ms, setup 0ms, collect 435ms, tests 142ms, environment 0ms, prepare 168ms)
+

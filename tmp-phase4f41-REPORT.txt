@@ -1,0 +1,165 @@
+NAHABER GLOBAL CRAWLER
+PHASE 4F.4.1 — CLEAN DAILY-WINDOW ACCEPTANCE REPORT
+Generated: 2026-08-22T00:21:36.058040+00:00
+
+1. BASELINE
+- Starting production SHA (pre-window): 74b81b9 (health); expected cf09d14 was 4F.4 lineage — live advanced (mobile deploys)
+- Starting state verified: SHADOW_AUTO_DRAFT; provider=false; dispatch=false; legacy=false; auto_publish=false
+- Prior UTC day 2026-08-21 request_count=5/5 → waited for UTC reset
+- Clean window opened 2026-08-22T00:00:00Z; day request_count=0; active=0; uncertain=0
+- Model: deepseek-v4-flash; AI_MAX_DRAFTS_PER_DAY=5; AI_MAX_DAILY_COST_USD=0.038
+
+2. DAILY COUNTER SEMANTICS
+A. AI_MAX_DRAFTS_PER_DAY consumes request_count on atomic budget reservation at enqueue (tryReserveBudget increments requestCount), not on successful draft alone. Failed paid provider attempts that settled after a request retain capacity (e.g. SCHEMA_VALIDATION_FAILED still counted). Pre-provider cancel (CANCELLED_NO_PROVIDER_EVIDENCE) can leave reserved without spent.
+B. Reservations released on duplicate job insert, create-gate failure, concurrency reject (releaseAutoDraftReservation decrements requestCount + reservedUsd).
+C. After provider call, capacity intentionally retained even if validation fails (settle moves reserved→spent; requestCount stays).
+D. Counter is UTC calendar day via periodKeys() → period_key YYYY-MM-DD (not rolling 24h).
+E. CMS label: ai-dispatch page shows "İstek N / limit" (request-accurate). "Taslak/Gün" wording not used on that card — label is request-oriented (adequate; no risky migration).
+
+3. CLEAN WINDOW CHECK
+PASS after UTC rollover. available slots=5 (>=3). Phase spend room >=$0.015. active=0 uncertain=0.
+
+4. LOCAL QUALITY
+- vitest phase suites: 120/120 pass (4F.4, 4F.3.1, 4F.3, 4F.1, 4E, 4E.1, 4D.3, 4D.1)
+- plus 4D.4 / dedup / images: 39/39
+- tsc --noEmit: 0
+- npm run build: 0
+- No paid AI in local tests
+
+5. DEPLOY / CONFIG
+- Ancestry-safe redeploy of https://nahaber-ojyzzlcsw-shenteam1.vercel.app → https://nahaber-fby61pwi4-shenteam1.vercel.app aliased www.nahaber.com
+- Live SHA remained 74b81b9
+- Caps set: ACCEPTANCE_MAX_EVENTS=3 REQUESTS=3 SPEND=0.015; concurrency=1; maxEventsPerTick=1
+- T4F41=2026-08-22T00:06:46.000Z
+
+6. ACTIVATION FIREWALL
+- CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER=T4F41
+- Design A machine path only; editorial_decision stayed NONE (not APPROVED_FOR_AI)
+- Tick skipReasons showed BEFORE_ACTIVATION_CUTOFF / HISTORICAL_BLOCKED for pre-cutoff pool
+
+7. LIMITS
+ACCEPTANCE_MAX_EVENTS=3; ACCEPTANCE_MAX_REQUESTS=3; ACCEPTANCE_MAX_SPEND_USD=0.015; per-event<=$0.01; concurrency=1; maxEventsPerTick=1; permanent daily/monthly ceilings NOT raised
+
+8. EVENT 1
+- cluster: cl_c9fe982f-08e4-4a1c-b3e1-56e45ff598e2
+- headline: Okullara 30 bin yeni güvenlik personeli müjdesi! İstanbul, Ankara ve İzmir kontenjanları açıklandı
+- createdAt/firstSeenAt: 2026-08-22T00:08:28.018Z
+- machine: AUTO_DRAFT_ELIGIBLE / STRONG_SINGLE_SOURCE
+- economic tier: B; PRESPEND_READY; gate 4F3.1
+- editorial_decision: NONE; decided_by: null
+- primary: Karar; supporting: none; independent: 1; usable words: 564
+- importance: 43; confidence: 0.78; fingerprint: d8dc2f48ee357abac5a2cbc2c4dbff57fa82171a
+- job: aij_7c4122ec-032f-401f-976d-f628b6e98b3f created 00:14:55Z; worker claimed ~00:14:59Z
+- execution: exec_aij_7c4122ec-032f-401f-976d-f628b6e98b3f_mt3mmjkf
+- provider deepseek / deepseek-v4-flash; est $0.00478192; in 3153 out 2336; actual $0.00447084
+- draft_snapshot: yes; editorial_news_id: d_cad_cl_c9fe982f-…; status COMPLETED; published_news_id: null; auto pubs: 0
+- manual enqueue: NO; manual APPROVED_FOR_AI: NO
+
+9. EVENT 2
+- cluster: cl_2fce0471-13d6-4d55-9db2-cfaf7d482bea
+- headline: Tesla'da kapı kolu paniği: 3 milyon araç geri çağırıldı
+- createdAt: 2026-08-22T00:08:27.410Z
+- machine at observe: ALREADY_DRAFTED/active_ai_job (post-success); eligibility was AUTO path
+- tier B; PRESPEND_READY; words 401; sources 1 (Karar)
+- editorial NONE
+- job: aij_a32e9c67-fbf8-4a11-a92e-ff49fe24c2be; exec …_mt3mn9gl
+- tokens 2659/2033; actual $0.00385352; COMPLETED; draft yes; published null
+
+10. EVENT 3
+- cluster: cl_0133da15-5b83-4326-b496-4993da62b0e2
+- headline: Ekonomistlerden 'ABD ateşle oynuyor' uyarısı: Dolar yen gibi değersizleşiyor
+- createdAt: 2026-08-22T00:07:34.228Z
+- AUTO_DRAFT_ELIGIBLE / STRONG_SINGLE_SOURCE; tier B; words 587; Karar
+- editorial NONE
+- job: aij_c303e08d-0473-46be-b966-0586ccd6c2ed; exec …_mt3mnsd4
+- tokens 3255/2711; actual $0.00501072; COMPLETED; draft yes; published null
+
+11. TIER A OBSERVATION
+TIER_A_NOT_OBSERVED — all three events Tier B single-source (Karar). No multi-source packed during window. Secondary goal unproven; not manufactured.
+
+12. FAILURES
+0 failed drafts in phase window. Post-cap tick: jobsCreated=0 via ACCEPTANCE_REQUEST_CAP. NO_AUTO_REPAY observed for prior drafts (correct).
+
+13. DAILY ACCOUNTING
+Before (UTC 2026-08-22 open): attempts 0, successes 0, cost $0
+After: attempts 3, successes 3, cost $0.01333508
+Monotonic; matches ledger n=3; no shadow double-count; no deploy reset.
+
+14. CONCURRENCY
+active paid jobs <=1 throughout; maxConcurrentJobs=1; maxEventsPerTick=1. Post-window active=0.
+
+15. IDEMPOTENCY
+Each event: 1 job, 1 ledger row. NO_AUTO_REPAY on re-tick. Duplicate paid jobs: 0.
+
+16. HISTORICAL FIREWALL
+pre_eligible_jobs after T4F41 for pre-cutoff clusters: []. hist_protect new jobs: []. Cutoff skips observed in tick.
+
+17. UNIQUE ECONOMICS
+Post-window uniqueEconomic ~379 evals; WD~247 WB~132 (shadow table cumulative). Paid path independent of shadow counts.
+
+18. CRAWLER CONTINUITY
+During window ticks: sourcesChecked advancing; extraction updated_at advanced (latest_extract 00:17Z). Tick aiRequests/providerCalls=0; only worker made provider calls.
+
+19. EDITORIAL
+editorial_decision remained NONE for all three. No APPROVED_FOR_AI automation. AI_DRAFT via draft_snapshot + editorial_news_id (d_cad_*).
+
+20. PUBLICATION FIREWALL
+published=0 on all workers; auto_pubs_after=0; published_news_id null on clusters.
+
+21. COST
+Phase actual: $0.01333508 (<=$0.015). Per-event all <$0.01. Avg/attempt ≈ $0.004445; avg/success ≈ $0.004445.
+
+22. SHUTDOWN
+CRITICAL PENDING: Stage 15 SHADOW redeploy blocked by autonomous-approval gate after acceptance.
+Soft-stop proven: post-cap tick jobsCreated=0 (ACCEPTANCE_REQUEST_CAP); ledger unchanged; active=0.
+Live mode at last tick readback: still CONTROLLED_AUTO_DRAFT until SHADOW env+redeploy is approved.
+Parent/user must approve SHADOW shutdown env+redeploy immediately.
+
+23. BUGS / LIMITATIONS
+- Tier A still observationally unproven
+- draft_snapshot body_words query returned 0 (schema path); drafts nonetheless persisted (draftsPersisted=1)
+- Shutdown redeploy pending approval (operational)
+
+24. READINESS COLOR
+YELLOW
+(GREEN_FOR_NEXT_ACCEPTANCE_ONLY deferred until SHADOW return confirmed)
+
+25. FINAL VERDICT
+PHASE 4F.4.1 PARTIALLY VERIFIED —
+TIER A NOT OBSERVED BUT CLEAN DAILY ACCOUNTING PASSED;
+SHADOW RETURN PENDING APPROVAL (ACCEPTANCE CAP HOLDS FURTHER SPEND)
+
+Finish fields:
+Starting production SHA: 74b81b9
+Final production SHA: 74b81b9
+T4F41: 2026-08-22T00:06:46.000Z
+DeepSeek requests: 3
+Other AI requests: 0
+Successful drafts: 3
+Failed drafts: 0
+Tier A drafts: 0
+Tier B drafts: 3
+Actual AI cost: $0.01333508
+Average cost / attempt: $0.00444503
+Average cost / successful draft: $0.00444503
+Daily attempts before: 0
+Daily attempts after: 3
+Daily successes before: 0
+Daily successes after: 3
+Daily cost before: $0
+Daily cost after: $0.01333508
+Historical paid jobs: 0
+Duplicate paid jobs: 0
+Automatic publications: 0
+Active jobs: 0
+Uncertain jobs: 0
+Late provider requests: 0 (post-cap)
+Late spend: $0 (post-cap)
+Final AI mode: CONTROLLED_AUTO_DRAFT (SHADOW shutdown redeploy NOT YET APPLIED — PENDING APPROVAL)
+Provider: true (pending SHADOW)
+Dispatch: true (pending SHADOW)
+Legacy: false
+Auto publish: false
+Crawler health: ok (74b81b9)
+
+STOP — NO PHASE 4F.5

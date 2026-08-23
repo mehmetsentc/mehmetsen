@@ -1,0 +1,43 @@
+{
+  "at": "2026-08-22T11:20:18.054Z",
+  "parserCandidates": [
+    {
+      "registry_key": "bloomberght",
+      "domain": "bloomberght.com",
+      "reason": "Feed reachable but article extraction failed — likely listing/RSS URL pattern or site-specific HTML",
+      "localFixSuggested": "Site-specific extractor or RSS link normalization — defer until activation approved"
+    },
+    {
+      "registry_key": "duvar",
+      "domain": "gazeteduvar.com.tr",
+      "reason": "Feed reachable but article extraction failed — likely listing/RSS URL pattern or site-specific HTML",
+      "localFixSuggested": "Site-specific extractor or RSS link normalization — defer until activation approved"
+    },
+    {
+      "registry_key": "sabah",
+      "domain": "sabah.com.tr",
+      "reason": "Feed reachable but article extraction failed — likely listing/RSS URL pattern or site-specific HTML",
+      "localFixSuggested": "Site-specific extractor or RSS link normalization — defer until activation approved"
+    },
+    {
+      "registry_key": "star",
+      "domain": "star.com.tr",
+      "reason": "Feed reachable but article extraction failed — likely listing/RSS URL pattern or site-specific HTML",
+      "localFixSuggested": "Site-specific extractor or RSS link normalization — defer until activation approved"
+    },
+    {
+      "registry_key": "webrazzi",
+      "domain": "webrazzi.com",
+      "reason": "Feed reachable but article extraction failed — likely listing/RSS URL pattern or site-specific HTML",
+      "localFixSuggested": "Site-specific extractor or RSS link normalization — defer until activation approved"
+    },
+    {
+      "registry_key": "yenisafak",
+      "domain": "yenisafak.com",
+      "reason": "Feed reachable but article extraction failed — likely listing/RSS URL pattern or site-specific HTML",
+      "localFixSuggested": "Site-specific extractor or RSS link normalization — defer until activation approved"
+    }
+  ],
+  "localFixesApplied": [],
+  "note": "NO local code changes applied in 4F.4.2.3 audit"
+}

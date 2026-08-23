@@ -1,0 +1,39 @@
+{
+  "at": "2026-08-21T15:09:52.273Z",
+  "note": "Free preflight — no provider network call.",
+  "pricing": {
+    "expectedInput": 0.44,
+    "expectedOutput": 1.32,
+    "pricingOk": false
+  },
+  "model": "deepseek-v4-flash",
+  "credentialPresent": true,
+  "writerAvailable": true,
+  "validatorAvailable": true,
+  "costUnknown": true,
+  "prespendGateVersion": "4F3.1",
+  "acceptanceCaps": {
+    "maxEvents": 2,
+    "maxRequests": 2,
+    "maxSpendUsd": 0
+  },
+  "budgetLimits": {
+    "maxCostPerEventUsd": 0.01,
+    "maxDraftsPerHour": 2,
+    "maxDraftsPerDay": 6,
+    "maxDailyCostUsd": 0.05,
+    "maxMonthlyCostUsd": 5,
+    "maxHourlyCostUsd": 0.05,
+    "maxConcurrentJobs": 1,
+    "maxJobsPerInvocation": 1
+  },
+  "noRepayProbe": true,
+  "autoPublishAllowed": false,
+  "providerKillSwitch": false,
+  "statusLabelTr": "KAPALI",
+  "notesTr": [
+    "CRAWLER_AI_PROVIDER_ENABLED kapalı (varsayılan).",
+    "Fiyatlandırma tanımsız (COST_UNKNOWN)."
+  ]
+}
+PREFLIGHT_STOP

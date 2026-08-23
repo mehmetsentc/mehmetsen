@@ -1,0 +1,68 @@
+{
+  "at": "2026-08-22T11:20:18.054Z",
+  "districts": [
+    "Merkez",
+    "Biga",
+    "Çan",
+    "Yenice",
+    "Bayramiç",
+    "Ezine",
+    "Ayvacık",
+    "Lapseki",
+    "Gelibolu",
+    "Eceabat",
+    "Gökçeada",
+    "Bozcaada"
+  ],
+  "gaps": [
+    {
+      "district": "Merkez",
+      "gap": "PARTIAL_COVERAGE active=canakkaleolay paused=canakkaleicinde"
+    },
+    {
+      "district": "Biga",
+      "gap": "NO_ACTIVE_SOURCE (1 PAUSED/DEGRADED: biga)"
+    },
+    {
+      "district": "Çan",
+      "gap": "PARTIAL_COVERAGE active=canakkaleolay paused=canakkaleicinde"
+    },
+    {
+      "district": "Yenice",
+      "gap": "NO_SOURCE_REGISTERED"
+    },
+    {
+      "district": "Bayramiç",
+      "gap": "NO_SOURCE_REGISTERED"
+    },
+    {
+      "district": "Ezine",
+      "gap": "NO_SOURCE_REGISTERED"
+    },
+    {
+      "district": "Ayvacık",
+      "gap": "NO_SOURCE_REGISTERED"
+    },
+    {
+      "district": "Lapseki",
+      "gap": "NO_SOURCE_REGISTERED"
+    },
+    {
+      "district": "Gelibolu",
+      "gap": "NO_ACTIVE_SOURCE (1 PAUSED/DEGRADED: gelibolu)"
+    },
+    {
+      "district": "Eceabat",
+      "gap": "NO_SOURCE_REGISTERED"
+    },
+    {
+      "district": "Gökçeada",
+      "gap": "NO_SOURCE_REGISTERED"
+    },
+    {
+      "district": "Bozcaada",
+      "gap": "NO_SOURCE_REGISTERED"
+    }
+  ],
+  "gapCount": 12
+}

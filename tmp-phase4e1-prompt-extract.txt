@@ -1,0 +1,913 @@
+<timestamp>Friday, Aug 21, 2026, 1:02 PM (UTC+3)</timestamp>
+<user_query>
+NAHABER GLOBAL CRAWLER
+PHASE 4E.1 — PRODUCTION ENQUEUE PATH HARDENING
+
+CURRENT PRODUCTION SHA:
+0d41570
+
+CURRENT STATE:
+
+PHASE 4E PRODUCTION PARTIALLY VERIFIED —
+CONTROLLED ROLLOUT REQUIRES ADDITIONAL HARDENING,
+AI OFF
+
+IMPORTANT:
+
+Phase 4E successfully proved:
+
+EVENT
+→ AI job
+→ dedicated worker
+→ DeepSeek
+→ validation
+→ durable AI_DRAFT
+
+using one real production event.
+
+Successful proof:
+
+Event:
+cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe
+
+Job:
+aij_30e29873-072d-45b3-9df1-2a3c9524a6de
+
+Sources:
+Evrensel PRIMARY
+NTV SUPPORTING
+
+Independent sources:
+2
+
+Usable words:
+761
+
+Generated body:
+344 words
+
+Actual AI cost:
+$0.00468908
+
+Job:
+COMPLETED
+
+Draft:
+durable
+
+Published:
+NO
+
+Historical backlog:
+protected
+
+AI returned:
+OFF
+
+However one P0 production gap remains:
+
+PRODUCTION /api/cron/crawler/tick DID NOT enqueue Event1.
+
+The same enqueue/pipeline logic executed against production Neon
+did create the correct job.
+
+Therefore production automatic:
+
+AI_READY
+→ PENDING crawler_ai_job
+
+is NOT yet proven.
+
+==========================================================
+MISSION
+==========================================================
+
+Find and fix the exact reason production crawler cron does not
+automatically enqueue eligible fresh events.
+
+The final required production architecture is:
+
+DISCOVERY
+→ FULL EXTRACTION
+→ EVENT CLUSTER
+→ ELIGIBILITY
+→ AI_READY
+→ CRAWLER ENQUEUE
+→ PENDING JOB
+→ DEDICATED AI WORKER
+→ AI_DRAFT
+
+NO manual/local enqueue may be required.
+
+THIS PHASE IS ABOUT ENQUEUE ONLY.
+
+Do NOT start Phase 4F.
+
+==========================================================
+SAFETY
+==========================================================
+
+Production must begin and end with:
+
+CRAWLER_AI_MODE=OFF
+CRAWLER_AI_PROVIDER_ENABLED=false
+LEGACY_DIRECT_AI_ENABLED=false
+AUTO_PUBLISH=false
+
+Do NOT execute paid AI during investigation.
+
+DeepSeek requests target:
+0
+
+AI cost target:
+$0
+
+Do NOT:
+
+process historical backlog
+bulk enqueue
+regenerate existing drafts
+delete jobs
+delete articles
+delete clusters
+reset crawler
+rescrape backlog
+modify published content
+auto-publish
+use fallback AI
+
+==========================================================
+P0 — ROOT CAUSE ANALYSIS
+==========================================================
+
+Trace the COMPLETE production call graph for:
+
+/api/cron/crawler/tick
+
+through:
+
+crawler tick
+cluster processing
+auto-draft eligibility
+activation/cutoff
+ranking
+budget
+mode gate
+provider gate
+enqueue
+crawler_ai_jobs INSERT
+
+Compare this with the path used during acceptance when the same
+pipeline against Neon successfully created Event1's job.
+
+Find the FIRST divergent condition.
+
+Do not patch symptoms.
+
+Report the exact root cause.
+
+Possible areas to inspect include, but are not limited to:
+
+environment snapshot differences
+
+CRAWLER_AI_MODE read timing
+
+provider flag read timing
+
+dispatch flag interaction
+
+activation cutoff
+
+candidate query
+
+eventPrimaryOnly filtering
+
+APPROVED_FOR_AI filtering
+
+AI_READY computation
+
+strong-single/multi-source eligibility
+
+ranking
+
+candidate limit
+
+hourly/daily acceptance caps
+
+historical firewall
+
+request cap
+
+budget reservation
+
+cron execution duration
+
+transaction visibility
+
+serverless env caching
+
+deployment env version
+
+crawler tick returning before enqueue stage
+
+enqueue stage disabled by legacy Phase 4A safety condition
+
+different code path between local pipeline invocation and
+/api/cron/crawler/tick
+
+==========================================================
+P0 — DO NOT REQUIRE PROVIDER FOR ENQUEUE
+==========================================================
+
+Architecture must be explicit.
+
+Crawler enqueue and paid execution are separate concerns.
+
+Expected:
+
+CONTROLLED_AUTO_DRAFT active
++
+fresh eligible event
++
+historical cutoff pass
++
+budget/cap pass
+
+→ PENDING job
+
+Dedicated worker later requires:
+
+provider enabled
+provider ready
+pricing
+credential
+
+Do NOT make crawler perform a DeepSeek call.
+
+However:
+
+if current architecture intentionally requires provider readiness
+before enqueue to avoid dead queues, document it clearly.
+
+Do not casually remove a safety gate.
+
+Determine the intended design first.
+
+==========================================================
+P0 — OFF MODE
+==========================================================
+
+When AI mode is OFF:
+
+crawler MUST NOT enqueue new AI jobs.
+
+Crawler still:
+
+discovers
+extracts
+clusters
+
+Worker remains inert.
+
+==========================================================
+P0 — CONTROLLED MODE
+==========================================================
+
+When CONTROLLED_AUTO_DRAFT is active:
+
+ONLY events after activation cutoff may enqueue.
+
+Historical backlog MUST remain protected.
+
+No historical APPROVED_FOR_AI event may suddenly enqueue.
+
+==========================================================
+P0 — JOB IDEMPOTENCY
+==========================================================
+
+Preserve:
+
+one event revision
+→ maximum one active INITIAL job.
+
+Repeated crawler ticks must not create duplicate jobs.
+
+Test:
+
+tick 1
+→ job created
+
+tick 2
+→ 0 new jobs
+
+tick 3
+→ 0 new jobs
+
+No duplicate spend.
+
+==========================================================
+P0 — EXISTING DRAFT
+==========================================================
+
+Event with completed AI draft:
+
+must return:
+
+ALREADY_DRAFTED
+
+and must not enqueue.
+
+Use the successful İzmir event as regression evidence if useful.
+
+Do NOT regenerate it.
+
+==========================================================
+P0 — PUBLISHED
+==========================================================
+
+Published event:
+
+ALREADY_PUBLISHED
+
+No enqueue.
+
+==========================================================
+P0 — UPDATE AVAILABLE
+==========================================================
+
+Supporting source arriving after completed draft:
+
+UPDATE_AVAILABLE
+
+No automatic INITIAL job.
+
+No paid request.
+
+==========================================================
+P0 — HISTORICAL FIREWALL
+==========================================================
+
+Use production historical APPROVED_FOR_AI inventory captured in 4E.
+
+They must remain protected.
+
+Test against known historical IDs.
+
+No job.
+
+No provider request.
+
+==========================================================
+P0 — FRESH EVENT TEST FIXTURE
+==========================================================
+
+For LOCAL tests create deterministic fixtures representing:
+
+A) fresh multi-source event
+
+B) fresh STRONG_SINGLE_SOURCE
+
+C) historical approved event
+
+D) published event
+
+E) existing completed draft
+
+F) UPDATE_AVAILABLE event
+
+G) low-quality event
+
+H) event before cutoff
+
+Do not use paid AI.
+
+Expected:
+
+A → enqueue
+
+B → enqueue
+
+C → block
+
+D → block
+
+E → block
+
+F → no automatic initial enqueue
+
+G → block
+
+H → block
+
+==========================================================
+PRODUCTION-SAFE OBSERVABILITY
+==========================================================
+
+Add/verify structured enqueue telemetry.
+
+Each crawler tick should report something like:
+
+autoDraft:
+{
+  mode,
+  cutoff,
+  candidatesScanned,
+  aiReady,
+  jobsCreated,
+  jobsSkipped,
+  skipReasons,
+  historicalBlocked,
+  duplicateBlocked,
+  publishedBlocked,
+  existingDraftBlocked,
+  budgetBlocked
+}
+
+No secrets.
+
+Do not log full article bodies.
+
+==========================================================
+SKIP REASONS
+==========================================================
+
+Use explicit deterministic codes.
+
+Examples:
+
+MODE_OFF
+BEFORE_ACTIVATION_CUTOFF
+NOT_APPROVED
+NOT_AI_READY
+LOW_QUALITY
+TOO_THIN
+STALE
+ALREADY_PUBLISHED
+ALREADY_DRAFTED
+UPDATE_AVAILABLE
+IDEMPOTENCY_DUPLICATE
+HOURLY_LIMIT
+DAILY_LIMIT
+DAILY_COST_LIMIT
+MONTHLY_COST_LIMIT
+PROVIDER_BLOCKED
+
+Do not collapse everything into:
+
+SKIPPED
+
+==========================================================
+ADMIN OBSERVABILITY
+==========================================================
+
+Where inexpensive, expose why an event did not enqueue.
+
+Example:
+
+AI Durumu:
+Hazır
+
+Otomatik Taslak:
+Bekliyor
+
+Neden:
+Aktivasyon tarihinden önce
+
+or:
+
+Neden:
+Günlük AI taslak limiti doldu
+
+Do not create expensive N+1 queries.
+
+==========================================================
+CRON IS SOURCE OF TRUTH
+==========================================================
+
+After this phase, no local script/manual SQL should be needed to
+move a legitimate fresh event:
+
+AI_READY
+→ PENDING
+
+Production cron must perform that transition itself.
+
+==========================================================
+LOCAL IMPLEMENTATION FIRST
+==========================================================
+
+First reproduce production discrepancy locally/test harness.
+
+Prove:
+
+same environment/state
++
+same event
++
+direct pipeline
+
+versus
+
+crawler tick
+
+Identify divergence.
+
+Then fix.
+
+Run:
+
+Phase 4E.1 tests
+Phase 4E tests
+Phase 4D.3 worker tests
+editorial tests
+full TypeScript typecheck
+production build
+
+NO real AI call.
+
+==========================================================
+PRODUCTION DEPLOY
+==========================================================
+
+After local PASS:
+
+deploy ancestry-safe from:
+
+0d41570
+
+No migration expected.
+
+If migration becomes necessary:
+
+STOP and report.
+
+Do not apply unexpected production migration.
+
+==========================================================
+PRODUCTION ACCEPTANCE — ENQUEUE ONLY
+==========================================================
+
+This is NOT another paid AI acceptance.
+
+Keep provider:
+
+OFF
+
+Use a new activation cutoff:
+
+T4E1 = current production time
+
+Temporarily enable only the minimum mode required to test scheduler
+enqueue behavior.
+
+If architecture allows:
+
+CONTROLLED_AUTO_DRAFT
+provider OFF
+
+Then wait for a naturally eligible fresh event.
+
+Preferred:
+
+fresh multi-source event.
+
+Fallback:
+
+natural STRONG_SINGLE_SOURCE.
+
+DO NOT fake:
+
+city
+importance
+health
+confidence
+source count
+
+DO NOT manually insert the job.
+
+DO NOT run local enqueue against Neon.
+
+The ONLY acceptable proof is:
+
+production /api/cron/crawler/tick
+→ creates PENDING job.
+
+==========================================================
+IMPORTANT — DO NOT LET WORKER SPEND
+==========================================================
+
+Provider remains OFF.
+
+Worker must NOT execute DeepSeek.
+
+After production cron automatically creates ONE PENDING job:
+
+capture proof.
+
+Then immediately return:
+
+CRAWLER_AI_MODE=OFF
+
+If necessary safely cancel/retain the unexecuted acceptance job using
+existing reversible job semantics.
+
+Do not delete audit evidence.
+
+Provider requests:
+0
+
+Cost:
+$0
+
+==========================================================
+PRODUCTION PROOF
+==========================================================
+
+Required evidence:
+
+fresh event ID
+
+event created timestamp
+
+activation cutoff
+
+eligibility reason
+
+primary source
+
+supporting sources
+
+source count
+
+usable words
+
+confidence
+
+health
+
+importance
+
+crawler tick timestamp
+
+candidate scanned
+
+AI_READY result
+
+job ID
+
+job created timestamp
+
+job state
+
+created_by / request_type / reason where available
+
+provider ledger rows:
+0
+
+==========================================================
+HISTORICAL PROOF
+==========================================================
+
+During the same controlled enqueue window:
+
+verify known historical APPROVED_FOR_AI events:
+
+jobs created:
+0
+
+provider requests:
+0
+
+Historical backlog count must not drain.
+
+==========================================================
+SECOND TICK IDEMPOTENCY
+==========================================================
+
+Before shutdown or using a safe worker-disabled state:
+
+allow another crawler tick.
+
+Same event must create:
+
+0 additional jobs.
+
+Report:
+
+first tick jobsCreated
+second tick jobsCreated
+
+==========================================================
+SHUTDOWN
+==========================================================
+
+Return production to:
+
+AI MODE OFF
+PROVIDER OFF
+LEGACY AI OFF
+AUTO PUBLISH OFF
+
+Verify crawler still advances.
+
+No paid provider call.
+
+==========================================================
+DO NOT FIX SOURCE COVERAGE YET
+==========================================================
+
+Production currently has:
+
+61 sources
+14 ACTIVE
+47 PAUSED
+
+This is important but separate.
+
+Do not mix source-registry recovery into 4E.1.
+
+Record it as follow-up.
+
+==========================================================
+CMS / DRAWER
+==========================================================
+
+Do not spend this phase redesigning drawer/UI.
+
+Authenticated manual verification remains a separate acceptance item.
+
+Only fix UI if a newly reproduced enqueue observability bug requires it.
+
+==========================================================
+REQUIRED REPORT
+==========================================================
+
+NAHABER GLOBAL CRAWLER
+PHASE 4E.1 — PRODUCTION ENQUEUE HARDENING REPORT
+
+BASELINE
+
+1. Starting SHA
+2. AI mode
+3. Provider
+4. Historical approved count
+5. Jobs by state
+6. Cumulative cost
+7. Crawler freshness
+
+ROOT CAUSE
+
+8. Direct pipeline path
+9. Production cron path
+10. First divergence
+11. Exact root cause
+12. Why Event1 required local enqueue in 4E
+13. Was provider involved?
+14. Was cutoff involved?
+15. Was budget involved?
+16. Was cron lifecycle involved?
+
+IMPLEMENTATION
+
+17. Files changed
+18. Enqueue architecture
+19. Mode behavior
+20. Provider behavior
+21. Historical firewall
+22. Idempotency
+23. Published protection
+24. Existing draft protection
+25. UPDATE_AVAILABLE protection
+
+OBSERVABILITY
+
+26. Tick telemetry
+27. Candidate count
+28. AI_READY count
+29. Jobs created
+30. Skip reasons
+31. Historical blocked
+32. Duplicate blocked
+33. Budget blocked
+
+LOCAL TESTS
+
+34. Fresh multi-source
+35. Fresh strong-single
+36. Historical
+37. Published
+38. Existing draft
+39. Update available
+40. Low quality
+41. Before cutoff
+42. Repeated tick
+43. DeepSeek calls
+44. AI cost
+
+QUALITY
+
+45. Phase 4E.1 tests
+46. Phase 4E regression
+47. Worker regression
+48. Editorial regression
+49. Typecheck
+50. Build
+
+DEPLOY
+
+51. Pre-deploy SHA
+52. Candidate SHA
+53. Final production SHA
+54. Ancestry
+55. Migration
+56. Health
+
+PRODUCTION ENQUEUE ACCEPTANCE
+
+57. T4E1
+58. Controlled mode enabled?
+59. Provider enabled?
+60. Fresh event ID
+61. Headline
+62. Event timestamp
+63. Eligibility reason
+64. Primary
+65. Supporting
+66. Independent sources
+67. Usable words
+68. Confidence
+69. Health
+70. Importance
+71. Crawler tick timestamp
+72. candidatesScanned
+73. AI_READY
+74. Job created automatically by production cron?
+75. Job ID
+76. Job timestamp
+77. Job state
+78. Manual/local enqueue used?
+79. Provider request?
+80. Cost?
+
+IDEMPOTENCY
+
+81. Second tick
+82. Additional job?
+83. Additional provider request?
+84. Duplicate spend?
+
+HISTORICAL FIREWALL
+
+85. Historical IDs/count before
+86. Historical IDs/count after
+87. Historical jobs
+88. Historical provider requests
+
+SHUTDOWN
+
+89. Final AI mode
+90. Final provider
+91. Legacy AI
+92. Auto publish
+93. Active acceptance job handling
+94. Provider requests this phase
+95. AI cost this phase
+96. Crawler healthy
+97. Discovery advancing
+98. Extraction advancing
+99. Clustering advancing
+
+FOLLOW-UP
+
+100. Source inventory issue
+101. CMS manual verification
+102. Remaining bugs
+103. Recommendation
+
+FINAL VERDICT MUST BE EXACTLY ONE:
+
+PHASE 4E.1 PRODUCTION VERIFIED —
+PRODUCTION CRON AUTOMATIC ENQUEUE PROVEN,
+HISTORICAL BACKLOG PROTECTED,
+ZERO PAID AI,
+AI OFF
+
+or
+
+PHASE 4E.1 PRODUCTION PARTIALLY VERIFIED —
+AUTOMATIC ENQUEUE REQUIRES ADDITIONAL HARDENING,
+AI OFF
+
+or
+
+PHASE 4E.1 PRODUCTION BLOCKED —
+ENQUEUE SAFETY INVARIANT FAILED,
+AI OFF
+
+STOP.
+
+DO NOT START PHASE 4F.
+DO NOT RUN PAID AI.
+DO NOT LEAVE CONTROLLED MODE ENABLED.
+DO NOT AUTO-PUBLISH.
+</user_query>

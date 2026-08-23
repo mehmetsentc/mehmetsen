@@ -1,0 +1,59 @@
+{
+  "tables": [
+    {
+      "table_name": "crawler_editorial_audit"
+    },
+    {
+      "table_name": "news"
+    },
+    {
+      "table_name": "news_categories"
+    },
+    {
+      "table_name": "news_clusters"
+    },
+    {
+      "table_name": "news_locations"
+    },
+    {
+      "table_name": "news_sources"
+    }
+  ],
+  "byId": [],
+  "like": [],
+  "job": [
+    {
+      "quality": {
+        "code": "QUALITY_WARNING",
+        "hardMax": 900,
+        "hardMin": 300,
+        "labelTr": "Kalite Kontrolü Gerekli",
+        "richness": "thin",
+        "bodyWords": 219,
+        "reasonsTr": [
+          "Gövde 219 kelime — normal hedef bandının (300–900) altında."
+        ],
+        "requiredMin": 150,
+        "promptTargetMax": 550,
+        "promptTargetMin": 400,
+        "usableSourceWords": 216
+      },
+      "evidence": [
+        {
+          "url": "https://www.cumhuriyet.com.tr/astroloji/icindeki-firtinalari-disariya-asla-yansitmayanlar-guclu-gorunmek-icin-acisini-icine-gomen-3-burc-2531135",
+          "role": "PRIMARY",
+          "title": "İçindeki fırtınaları dışarıya asla yansıtmayanlar: Güçlü görünmek için acısını içine gömen 3 burç",
+          "sourceId": "src_19c71d72-1664-4f37-9ab1-f90847a6f4e1",
+          "articleId": "raw_c91fc855-17e0-4433-9923-a2019d52bd1b",
+          "wordCount": 216,
+          "sourceName": "Cumhuriyet",
+          "healthScore": 96,
+          "extractionConfidence": 0.92
+        }
+      ],
+      "st": "AI_DRAFT",
+      "did": "d_cad_cl_6cbcad56-3489-4567-b548-0ec50c4ff814",
+      "lane": "controlled_auto_draft"
+    }
+  ]
+}

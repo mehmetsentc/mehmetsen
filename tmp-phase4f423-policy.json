@@ -1,0 +1,18 @@
+{
+  "at": "2026-08-22T11:20:18.054Z",
+  "policy": "nextStatusForFailures in src/services/crawler/health.ts",
+  "thresholds": [
+    {
+      "failures": 3,
+      "status": "DEGRADED",
+      "reason": "auto_degrade_failures_3"
+    },
+    {
+      "failures": 6,
+      "status": "PAUSED",
+      "reason": "auto_pause_failures_6"
+    }
+  ],
+  "finding": "Auto-pause at 6 consecutive failures, degrade at 3 — consistent with DB pause reasons (auto_pause_failures_6/7). No policy bug identified.",
+  "changeRecommended": false
+}

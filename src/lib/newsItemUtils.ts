@@ -1,4 +1,5 @@
 import { ROUTES } from '@/constants/routes'
+import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import {
   resolveDistrictDisplayLabel,
   withDistrictCategoryLabel,
@@ -209,7 +210,9 @@ export function slimNewsItemsForFeed(items: NewsItem[]): NewsItem[] {
 
 export function newsItemDetailHref(item: Pick<NewsItem, 'id' | 'slug'>): string {
   const slug = item.slug?.trim()
-  if (slug && slug !== item.id) return ROUTES.NEWS_DETAIL(slug)
+  if (slug && slug !== item.id && !isPlaceholderDraftSlug(slug)) {
+    return ROUTES.NEWS_DETAIL(slug)
+  }
   return ROUTES.NEWS_DETAIL(item.id)
 }
 

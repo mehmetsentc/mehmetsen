@@ -1,0 +1,44 @@
+{
+  "mode": "members",
+  "at": "2026-08-21T09:40:24.315Z",
+  "T4E": "2026-08-21T09:31:23.000Z",
+  "HIST": [
+    "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+    "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "cl_f82807da-0345-4057-a870-9735d4e6e667",
+    "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+    "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+    "cl_713c7834-a506-4c50-8d45-32109c988edd",
+    "cl_7ec4422d-8100-49c1-b356-67aee791b82d"
+  ],
+  "members": [
+    {
+      "membership_role": "PRIMARY",
+      "is_canonical": 1,
+      "is_independent_source": 1,
+      "article_id": "raw_0e261841-57f4-47ed-ab4f-b6ff79980065",
+      "title": "İzmir'de Forza ve Yalı taraftar gruplarına operasyon",
+      "word_count": 623,
+      "extraction_confidence": 0.78,
+      "cluster_role": "PRIMARY",
+      "source_name": "Evrensel",
+      "health_score": 92,
+      "source_status": "ACTIVE",
+      "quality_tier": "TIER_A"
+    },
+    {
+      "membership_role": "SUPPORTING",
+      "is_canonical": 0,
+      "is_independent_source": 1,
+      "article_id": "raw_42ad385a-f457-47c9-8829-dee6b6454b83",
+      "title": "İzmir'de Forza ve Yalı taraftar gruplarına operasyon: 28 gözaltı",
+      "word_count": 138,
+      "extraction_confidence": 0.92,
+      "cluster_role": "SUPPORTING",
+      "source_name": "NTV",
+      "health_score": 92,
+      "source_status": "ACTIVE",
+      "quality_tier": "TIER_A"
+    }
+  ]
+}

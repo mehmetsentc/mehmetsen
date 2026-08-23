@@ -1,0 +1,38 @@
+{
+  "updated": [
+    {
+      "id": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+      "status": "COMPLETED",
+      "editorial_news_id": "draft_controlled_auto_draft_cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "has_draft": true,
+      "actual_cost_usd": 0.00299112,
+      "execution_id": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp"
+    }
+  ],
+  "verify": [
+    {
+      "id": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+      "status": "COMPLETED",
+      "editorial_news_id": "draft_controlled_auto_draft_cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "title": "Paraşütle uçaktan atılan 76 kunduz bölgenin kaderini değiştirdi",
+      "draft_status": "AI_DRAFT",
+      "actual_cost_usd": 0.00299112,
+      "execution_id": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp"
+    }
+  ],
+  "ledger": [
+    {
+      "id": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp",
+      "status": "SUCCESS",
+      "mode": "controlled_auto_draft",
+      "request_type": "controlled_auto_draft",
+      "actual_cost_usd": 0.00299112
+    }
+  ],
+  "pub": [
+    {
+      "published_news_id": null,
+      "auto_draft_status": "ALREADY_DRAFTED"
+    }
+  ]
+}

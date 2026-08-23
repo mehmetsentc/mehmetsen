@@ -1,0 +1,38 @@
+POST https://www.nahaber.com/api/cron/crawler/tick
+Complete: {
+  "enabled": true,
+  "sourcesChecked": 0,
+  "urlsInserted": 0,
+  "articlesFetched": 0,
+  "extractionSuccess": 0,
+  "duplicates": 0,
+  "aiCandidates": 0,
+  "aiAvoided": 0,
+  "aiRequests": 0,
+  "articlesClustered": 0,
+  "clustersCreated": 0,
+  "mediaChecked": 8,
+  "autoDraft": {
+    "mode": "CONTROLLED_AUTO_DRAFT",
+    "cutoff": "2026-08-21T13:25:01.000Z",
+    "candidatesScanned": 80,
+    "aiReady": 55,
+    "jobsCreated": 1,
+    "jobsSkipped": 79,
+    "skipReasons": {
+      "BEFORE_ACTIVATION_CUTOFF": 72,
+      "ALREADY_DRAFTED": 1,
+      "ENQUEUED": 1,
+      "ENQUEUE_LIMIT_REACHED": 69
+    },
+    "historicalBlocked": 72,
+    "duplicateBlocked": 0,
+    "publishedBlocked": 3,
+    "existingDraftBlocked": 2,
+    "budgetBlocked": 0,
+    "providerReady": true,
+    "providerReason": null,
+    "enqueueLimit": 1
+  }
+}
+{}

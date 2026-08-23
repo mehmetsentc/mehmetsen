@@ -1,0 +1,16 @@
+{
+  "providerReady": false,
+  "reason": "MISSING_CREDENTIAL",
+  "statusLabelTr": "HATALI",
+  "credentialPresent": false,
+  "model": "deepseek-v4-flash",
+  "inputPricingKnown": true,
+  "outputPricingKnown": true,
+  "writerAvailable": true,
+  "validatorAvailable": true,
+  "notesTr": [
+    "DeepSeek kimlik bilgisi yok."
+  ],
+  "paidCallDuringReadiness": false
+}
+{"defaultKillSwitch":{"ready":false,"reason":"PROVIDER_DISABLED","status":"KAPALI"}}

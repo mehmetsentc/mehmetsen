@@ -1,0 +1,50 @@
+{
+  "at": "2026-08-21T08:58:36.187Z",
+  "job": [
+    {
+      "id": "aij_ce713b7a-c100-455b-a53b-bda4688c4073",
+      "status": "COMPLETED",
+      "editorial_news_id": "draft_controlled_auto_draft_cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "actual_cost_usd": 0.00299112,
+      "execution_id": "exec_aij_ce713b7a-c100-455b-a53b-bda4688c4073_mt240rxp",
+      "has_draft": true,
+      "title": "Paraşütle uçaktan atılan 76 kunduz bölgenin kaderini değiştirdi",
+      "draft_status": "AI_DRAFT",
+      "body_words": 258
+    }
+  ],
+  "cluster": [
+    {
+      "id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+      "published_news_id": null,
+      "auto_draft_status": "ALREADY_DRAFTED"
+    }
+  ],
+  "ledger": [
+    {
+      "total": 0.017156479880213737,
+      "n": 9,
+      "latest": "2026-08-20T22:50:32.177Z"
+    }
+  ],
+  "recent": [
+    {
+      "jobs_2h": 0,
+      "ledger_2h": 0,
+      "disc_30m": 89,
+      "ext_30m": 62,
+      "cl_30m": 52,
+      "active_jobs": 0
+    }
+  ],
+  "jobsBy": [
+    {
+      "status": "COMPLETED",
+      "c": 1
+    },
+    {
+      "status": "FAILED",
+      "c": 2
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "verdict": "FAIL",
+  "reason": "job_stuck_PROCESSING_no_ledger_no_draft; force-FAILED on shutdown",
+  "cluster_id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+  "cluster": {
+    "id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "title": "What does Prince Harry's return mean for his fractured relationship with Prince William?",
+    "editorial_decision": "APPROVED_FOR_AI",
+    "editorial_decided_at": "2026-08-20T21:37:53.656Z",
+    "editorial_decided_by": "phase4d2_e2",
+    "approval_source": "operator",
+    "ai_eligibility": "ELIGIBLE",
+    "auto_draft_status": "AI_READY",
+    "source_count": 1,
+    "published_news_id": null,
+    "created_at": "2026-08-20T21:15:27.408Z",
+    "updated_at": "2026-08-20T21:51:27.396Z"
+  },
+  "approved": {
+    "id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "title": "What does Prince Harry's return mean for his fractured relationship with Prince William?",
+    "editorial_decision": "APPROVED_FOR_AI",
+    "editorial_decided_at": "2026-08-20T21:37:53.656Z",
+    "editorial_decided_by": "phase4d2_e2",
+    "ai_eligibility": "ELIGIBLE",
+    "city": "London",
+    "importance_score": 75,
+    "source_count": 1,
+    "created_at": "2026-08-20T21:15:27.408Z"
+  },
+  "gate_boost": {
+    "needBoost": true,
+    "boost": [
+      {
+        "id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+        "city": "London",
+        "importance_score": 75
+      }
+    ],
+    "gate": {
+      "words": 290,
+      "conf": 0.78,
+      "health": 92,
+      "imp": 43,
+      "city": null
+    },
+    "note": "city=London + importance=75 for strongSingle (single-source ELIGIBLE)"
+  },
+  "jobs": [
+    {
+      "id": "aij_edfca0f3-368c-44ef-84aa-23e4e6e09f43",
+      "cluster_id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+      "event_key": "60483a8605a71cff126b0dc1",
+      "status": "FAILED",
+      "dispatch_type": "INITIAL",
+      "priority": 75,
+      "eligibility_status": "AI_READY",
+      "estimated_input_tokens": 618,
+      "estimated_output_tokens": 3200,
+      "estimated_total_tokens": 3818,
+      "estimated_cost_usd": 0.00449592,
+      "actual_input_tokens": null,
+      "actual_output_tokens": null,
+      "actual_cost_usd": null,
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "attempt_count": 1,
+      "max_attempts": 2,
+      "reserved_at": "2026-08-20T21:43:15.405Z",
+      "started_at": "2026-08-20T21:43:01.900Z",
+      "completed_at": "2026-08-20T21:46:40.467Z",
+      "blocked_reason": null,
+      "failure_reason": "phase4d2_e2_shutdown_stuck_processing",
+      "editorial_news_id": null,
+      "output_target": "EDITORIAL_DRAFT",
+      "selected_source_count": 1,
+      "created_at": "2026-08-20T21:43:15.405Z",
+      "updated_at": "2026-08-20T21:46:40.467Z"
+    }
+  ],
+  "ledger": [],
+  "drafts": [],
+  "job_id": "aij_edfca0f3-368c-44ef-84aa-23e4e6e09f43",
+  "draft_id": null,
+  "event_cost": 0.0,
+  "event_cost_spent": 0.0,
+  "cum_delta_from_baseline_00971": 0.004455359549224377,
+  "enable_deploy": {
+    "uid": "dpl_7g6ippsfbsTNLM7BxYnGnDWveZxA",
+    "readyState": "READY",
+    "sha": "72b328f601b13f7db4ea344aa364d2929557dc80",
+    "url": "nahaber-feipfemb1-shenteam1.vercel.app"
+  },
+  "watch_summary": {
+    "ticks": 10,
+    "success": false,
+    "abort": null,
+    "elapsed_sec": 168.4
+  },
+  "job_pre_shutdown": {
+    "id": "aij_edfca0f3-368c-44ef-84aa-23e4e6e09f43",
+    "status": "PROCESSING",
+    "editorial_news_id": null,
+    "failure_reason": null,
+    "estimated_cost_usd": 0.00449592,
+    "actual_cost_usd": null,
+    "started_at": "2026-08-20T21:43:01.900Z",
+    "completed_at": null,
+    "updated_at": "2026-08-20T21:43:15.426Z",
+    "created_at": "2026-08-20T21:43:15.405Z",
+    "attempt_count": 1,
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash"
+  },
+  "sha": "72b328f"
+}

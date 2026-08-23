@@ -1,0 +1,380 @@
+{
+  "at": "2026-08-22T11:20:18.054Z",
+  "pausedCount": 41,
+  "byReason": {
+    "MANUAL_PAUSE": 2,
+    "AUTO_FAILURE": 5,
+    "UNKNOWN_LEGACY": 34
+  },
+  "classified": [
+    {
+      "id": "src_c85a0a6b-d484-4797-a03d-f7cf4117b2f3",
+      "registry_key": "odatv",
+      "name": "Odatv",
+      "domain": "odatv.com",
+      "last_pause_reason": "manual_cms_pause",
+      "consecutive_failures": 0,
+      "pauseClass": "MANUAL_PAUSE"
+    },
+    {
+      "id": "src_506a0e4d-aa6e-48bf-90a4-76728143e71c",
+      "registry_key": "evrensel",
+      "name": "Evrensel",
+      "domain": "evrensel.net",
+      "last_pause_reason": "manual_cms_pause",
+      "consecutive_failures": 0,
+      "pauseClass": "MANUAL_PAUSE"
+    },
+    {
+      "id": "src_37c25557-e3bd-447a-9412-cf8015dc419e",
+      "registry_key": "ekonomim",
+      "name": "Ekonomim",
+      "domain": "ekonomim.com",
+      "last_pause_reason": "auto_pause_failures_6",
+      "consecutive_failures": 6,
+      "pauseClass": "AUTO_FAILURE"
+    },
+    {
+      "id": "src_f39a39be-8724-4e0e-9ff9-b0ebf355a3d8",
+      "registry_key": "ahaber",
+      "name": "A Haber",
+      "domain": "ahaber.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_37121849-a87d-4c33-b7de-e2dbf442aa76",
+      "registry_key": "aksam",
+      "name": "Akşam",
+      "domain": "aksam.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_b0c1998b-80bd-4771-beb7-a5c042ec38fd",
+      "registry_key": "anadolujet",
+      "name": "Ankara Büyükşehir",
+      "domain": "ankara.bel.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_df73a64f-80d5-4eff-89eb-f8a3494eeaec",
+      "registry_key": "bianet",
+      "name": "Bianet",
+      "domain": "bianet.org",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_de364fa7-1228-4e76-a016-433d154b7eac",
+      "registry_key": "bloomberght",
+      "name": "Bloomberg HT",
+      "domain": "bloomberght.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_68248665-be52-4bce-ab2d-5d58c788068d",
+      "registry_key": null,
+      "name": "Deutsche Welle RSS",
+      "domain": "dw.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_9ffe7435-bc54-455f-ab87-ff12f085ac03",
+      "registry_key": "diken",
+      "name": "Diken",
+      "domain": "diken.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_d76388f4-bd04-408b-800b-d24296e456dc",
+      "registry_key": "donanimhaber",
+      "name": "Donanımhaber",
+      "domain": "donanimhaber.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_5938ff26-15b2-48a2-8055-f3c71f29a10e",
+      "registry_key": "dunya",
+      "name": "Dünya",
+      "domain": "dunya.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_1c89715b-4cef-4a41-9914-37c8614bf7b7",
+      "registry_key": "ensonhaber",
+      "name": "Ensonhaber",
+      "domain": "ensonhaber.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_adbe7e6f-6e3d-477d-af4a-776de87b9500",
+      "registry_key": "fanatik",
+      "name": "Fanatik",
+      "domain": "fanatik.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_82cddeca-e8f2-4963-bb38-600485b2f4f3",
+      "registry_key": "fotomac",
+      "name": "Fotomaç",
+      "domain": "fotomac.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_fa05afbd-4572-4a02-a9da-ee4706161d07",
+      "registry_key": "duvar",
+      "name": "Gazete Duvar",
+      "domain": "gazeteduvar.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_6d87aeaa-9284-4e56-86ec-51bf0613e1a0",
+      "registry_key": "haber7",
+      "name": "Haber7",
+      "domain": "haber7.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_f58fa87c-bf59-49ed-93ca-521e3ec8da93",
+      "registry_key": "haberler",
+      "name": "Haberler.com",
+      "domain": "haberler.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_70c9d869-8bff-465e-8f5b-bcb74e610bbb",
+      "registry_key": "indyturk",
+      "name": "Independent Türkçe",
+      "domain": "indyturk.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_1dccb1a8-e46a-4b4c-9c06-bc74b31e8a2e",
+      "registry_key": null,
+      "name": "Le Monde RSS",
+      "domain": "lemonde.fr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_4ae55620-e032-48c9-9784-1cf072acf22e",
+      "registry_key": "milliyet",
+      "name": "Milliyet",
+      "domain": "milliyet.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_950ce852-9b99-4964-9415-122d5854adfc",
+      "registry_key": "mynet",
+      "name": "Mynet Haber",
+      "domain": "mynet.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_884135e9-6018-44d5-8aaf-a50ae8dccbd2",
+      "registry_key": "paraanaliz",
+      "name": "Para Analiz",
+      "domain": "paraanaliz.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_cb5ae1bf-f22b-478c-8fb0-d719220b7ef6",
+      "registry_key": "sabah",
+      "name": "Sabah",
+      "domain": "sabah.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_c8958768-ec4f-4436-81c5-94f2333d04ce",
+      "registry_key": "star",
+      "name": "Star",
+      "domain": "star.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_19afd5af-2769-45eb-9e8e-d83a415a3014",
+      "registry_key": "t24",
+      "name": "T24",
+      "domain": "t24.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_c4186a9b-ab70-40d4-b62b-65bbed1863ad",
+      "registry_key": null,
+      "name": "TRT Haber RSS",
+      "domain": "trthaber.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_9b1aaaf8-daad-4f0c-8b96-052924410444",
+      "registry_key": "takvim",
+      "name": "Takvim",
+      "domain": "takvim.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_349ae2c2-bdaf-4b92-8802-3e988a364844",
+      "registry_key": "technopat",
+      "name": "Technopat",
+      "domain": "technopat.net",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_84363cdb-5f27-4d29-8ec2-df13fb60409c",
+      "registry_key": "tele1",
+      "name": "Tele1",
+      "domain": "tele1.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_42a0e87c-4308-4014-bf1d-0c5d1b3e9a99",
+      "registry_key": "turkiye",
+      "name": "Türkiye Gazetesi",
+      "domain": "turkiyegazetesi.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_e1c727fb-087e-4a69-beaa-28eb981e48eb",
+      "registry_key": "webrazzi",
+      "name": "Webrazzi",
+      "domain": "webrazzi.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_60e00f5b-c0da-445f-9199-cb7a17af167c",
+      "registry_key": "yenisafak",
+      "name": "Yeni Şafak",
+      "domain": "yenisafak.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_a7f24699-4d29-4e7a-84c6-b4d12258a133",
+      "registry_key": null,
+      "name": "bogazgazetesi.com.tr",
+      "domain": "bogazgazetesi.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_7d27de05-91f5-4990-8ae4-9149cd5396af",
+      "registry_key": null,
+      "name": "bogazgazetesi.com.tr",
+      "domain": "bogazgazetesi.com.tr",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_33950dfe-4371-4ad7-ab54-b00f6ee04179",
+      "registry_key": "canakkaleicinde",
+      "name": "Çanakkale İçinde",
+      "domain": "canakkaleicinde.com",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_8c3a9f85-48be-4244-8f5b-c0496543453d",
+      "registry_key": "ibb",
+      "name": "İBB Haber",
+      "domain": "ibb.istanbul",
+      "last_pause_reason": null,
+      "consecutive_failures": 0,
+      "pauseClass": "UNKNOWN_LEGACY"
+    },
+    {
+      "id": "src_2f6d9d88-462a-4ab0-bf1c-d9451f994d3c",
+      "registry_key": "dha",
+      "name": "DHA",
+      "domain": "dha.com.tr",
+      "last_pause_reason": "auto_pause_failures_7",
+      "consecutive_failures": 7,
+      "pauseClass": "AUTO_FAILURE"
+    },
+    {
+      "id": "src_b70b9f63-e841-48e6-8b4a-ceb43603c1dc",
+      "registry_key": "gelibolu",
+      "name": "Gelibolu Haber",
+      "domain": "geliboluhaber.com",
+      "last_pause_reason": "auto_pause_failures_7",
+      "consecutive_failures": 7,
+      "pauseClass": "AUTO_FAILURE"
+    },
+    {
+      "id": "src_7a1e4f13-f71c-4033-882a-306cb6ed9664",
+      "registry_key": "sondakika",
+      "name": "Sondakika.com",
+      "domain": "sondakika.com",
+      "last_pause_reason": "auto_pause_failures_6",
+      "consecutive_failures": 6,
+      "pauseClass": "AUTO_FAILURE"
+    },
+    {
+      "id": "src_b55e2a73-f74b-4203-a0cc-b0a836377d15",
+      "registry_key": "iha",
+      "name": "İHA",
+      "domain": "iha.com.tr",
+      "last_pause_reason": "auto_pause_failures_6",
+      "consecutive_failures": 6,
+      "pauseClass": "AUTO_FAILURE"
+    }
+  ]
+}

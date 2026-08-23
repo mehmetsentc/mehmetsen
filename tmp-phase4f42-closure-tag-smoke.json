@@ -1,0 +1,10 @@
+{
+  "rusya": {
+    "url": "https://www.nahaber.com/etiket/rusya",
+    "status": 200
+  },
+  "ilker": {
+    "url": "https://www.nahaber.com/etiket/ilker-lazo%C4%9Flu",
+    "status": 200
+  }
+}

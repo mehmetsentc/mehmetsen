@@ -1,0 +1,472 @@
+
+> nahaber@0.1.0 build
+> next build
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/user/package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * /Users/user/nahaber/package-lock.json
+
+   ▲ Next.js 15.5.19
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · staleTimes
+     · optimizePackageImports
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings in 28.4s
+
+./node_modules/@protobufjs/inquire/index.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./node_modules/@protobufjs/inquire/index.js
+./node_modules/protobufjs/src/util/minimal.js
+./node_modules/protobufjs/src/index-minimal.js
+./node_modules/protobufjs/src/index-light.js
+./node_modules/protobufjs/src/index.js
+./node_modules/protobufjs/index.js
+./node_modules/@grpc/proto-loader/build/src/index.js
+./node_modules/@firebase/firestore/dist/index.node.mjs
+./node_modules/firebase/firestore/dist/index.mjs
+./src/app/api/blocks/route.ts
+
+   Linting and checking validity of types ...
+   Collecting page data ...
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+   Generating static pages (0/369) ...
+   Generating static pages (92/369) 
+[rss/is-kariyer] error: RangeError: Invalid time value
+    at Date1.toISOString (<anonymous>)
+    at <unknown> (.next/server/app/rss/[category]/route.js:38:1035)
+    at Array.map (<anonymous>)
+    at o (.next/server/app/rss/[category]/route.js:38:792)
+   Generating static pages (184/369) 
+   Generating static pages (276/369) 
+ ✓ Generating static pages (369/369)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                           Size  First Load JS  Revalidate  Expire
+┌ ƒ /                                              3.64 kB         467 kB
+├ ○ /_not-found                                      847 B         104 kB
+├ ○ /admin                                         13.6 kB         391 kB
+├ ○ /admin/ads                                     6.82 kB         372 kB
+├ ○ /admin/ai-agents                               2.99 kB         349 kB
+├ ○ /admin/ai-editors                              7.51 kB         363 kB
+├ ƒ /admin/ai-editors/[id]                         4.91 kB         360 kB
+├ ○ /admin/ai-instructions                         4.01 kB         359 kB
+├ ○ /admin/ai-learning                             3.85 kB         359 kB
+├ ○ /admin/ai-logs                                 2.45 kB         352 kB
+├ ○ /admin/ai-memory                               3.54 kB         359 kB
+├ ○ /admin/ai-models                                2.4 kB         348 kB
+├ ○ /admin/ai-org                                  4.52 kB         360 kB
+├ ○ /admin/ai-performance                          2.53 kB         349 kB
+├ ○ /admin/ai-tasks                                3.68 kB         359 kB
+├ ○ /admin/ai-usage                                8.77 kB         355 kB
+├ ○ /admin/ai/news                                 4.37 kB         360 kB
+├ ○ /admin/ai/video                                3.89 kB         359 kB
+├ ○ /admin/analytics                               7.07 kB         353 kB
+├ ○ /admin/api-management                           4.5 kB         360 kB
+├ ○ /admin/approvals                               7.62 kB         285 kB
+├ ƒ /admin/approvals/[id]                          10.1 kB         335 kB
+├ ○ /admin/archive                                 5.52 kB         253 kB
+├ ○ /admin/audit-logs                              2.57 kB         352 kB
+├ ○ /admin/authors                                 2.62 kB         358 kB
+├ ○ /admin/categories                              3.82 kB         116 kB
+├ ○ /admin/crawler                                 5.08 kB         351 kB
+├ ○ /admin/crawler/ai-cost                         2.78 kB         349 kB
+├ ○ /admin/crawler/ai-dispatch                     4.06 kB         350 kB
+├ ○ /admin/crawler/ai-drafts                       5.92 kB         361 kB
+├ ○ /admin/crawler/clusters                        3.59 kB         408 kB
+├ ƒ /admin/crawler/clusters/[id]                   8.63 kB         406 kB
+├ ○ /admin/crawler/discover                        3.11 kB         349 kB
+├ ○ /admin/crawler/failures                        2.37 kB         348 kB
+├ ○ /admin/crawler/health                             2 kB         351 kB
+├ ○ /admin/crawler/pre-ai                            246 B         408 kB
+├ ○ /admin/crawler/queue                             246 B         408 kB
+├ ○ /admin/crawler/raw-articles                    7.51 kB         412 kB
+├ ○ /admin/crawler/sources                         4.19 kB         353 kB
+├ ○ /admin/cron                                      18 kB         377 kB
+├ ○ /admin/dashboard                                 847 B         104 kB
+├ ○ /admin/editors                                 3.33 kB         359 kB
+├ ○ /admin/events                                  9.95 kB         293 kB
+├ ○ /admin/feed-algorithm                          5.75 kB         361 kB
+├ ○ /admin/global-layout                           2.56 kB         349 kB
+├ ○ /admin/inbox                                   8.38 kB         364 kB
+├ ○ /admin/job-classifieds                         8.21 kB         364 kB
+├ ○ /admin/live-center                              3.1 kB         353 kB
+├ ○ /admin/locations                               3.65 kB         359 kB
+├ ○ /admin/menu                                    5.55 kB         126 kB
+├ ○ /admin/most-read                               5.58 kB         352 kB
+├ ○ /admin/news                                      23 kB         436 kB
+├ ƒ /admin/news/[id]/edit                          7.75 kB         396 kB
+├ ○ /admin/news/create                             8.21 kB         265 kB
+├ ○ /admin/newsletter                              3.67 kB         359 kB
+├ ○ /admin/newsroom                                5.97 kB         361 kB
+├ ○ /admin/page-controls                           3.64 kB         359 kB
+├ ○ /admin/posts                                     847 B         104 kB
+├ ○ /admin/quick                                   5.86 kB         183 kB
+├ ○ /admin/reports                                 6.77 kB         264 kB
+├ ○ /admin/roles                                   2.46 kB         348 kB
+├ ○ /admin/seo                                     3.84 kB         359 kB
+├ ○ /admin/settings                                7.57 kB         363 kB
+├ ○ /admin/smm                                     5.59 kB         383 kB
+├ ○ /admin/smm/queue                               2.97 kB         362 kB
+├ ○ /admin/social                                    17 kB         372 kB
+├ ○ /admin/social/gorsel                           5.38 kB         231 kB
+├ ○ /admin/submissions                             3.45 kB         364 kB
+├ ○ /admin/system-health                           2.52 kB         349 kB
+├ ○ /admin/users                                    3.5 kB         359 kB
+├ ○ /admin/videos                                  2.71 kB         358 kB
+├ ƒ /api/account/delete                              847 B         104 kB
+├ ƒ /api/admin/ads                                   847 B         104 kB
+├ ƒ /api/admin/ads/[id]                              847 B         104 kB
+├ ƒ /api/admin/agent-tasks                           847 B         104 kB
+├ ƒ /api/admin/ai-assist                             847 B         104 kB
+├ ƒ /api/admin/ai-editors                            847 B         104 kB
+├ ƒ /api/admin/ai-editors/[id]                       847 B         104 kB
+├ ƒ /api/admin/ai-usage                              847 B         104 kB
+├ ƒ /api/admin/ai-video-script                       847 B         104 kB
+├ ƒ /api/admin/analytics                             847 B         104 kB
+├ ƒ /api/admin/backfill-breaking                     847 B         104 kB
+├ ƒ /api/admin/backfill-images                       847 B         104 kB
+├ ƒ /api/admin/bootstrap                             847 B         104 kB
+├ ƒ /api/admin/city-ops                              847 B         104 kB
+├ ƒ /api/admin/crawler/ai-dispatch                   847 B         104 kB
+├ ƒ /api/admin/crawler/ai-drafts                     847 B         104 kB
+├ ƒ /api/admin/crawler/ai-drafts/[jobId]             847 B         104 kB
+├ ƒ /api/admin/crawler/articles                      847 B         104 kB
+├ ƒ /api/admin/crawler/articles/bulk                 847 B         104 kB
+├ ƒ /api/admin/crawler/cleanup                       847 B         104 kB
+├ ƒ /api/admin/crawler/clusters                      847 B         104 kB
+├ ƒ /api/admin/crawler/clusters/[id]                 847 B         104 kB
+├ ƒ /api/admin/crawler/clusters/[id]/canary          847 B         104 kB
+├ ƒ /api/admin/crawler/clusters/bulk                 847 B         104 kB
+├ ƒ /api/admin/crawler/cron-summary                  847 B         104 kB
+├ ƒ /api/admin/crawler/dashboard                     847 B         104 kB
+├ ƒ /api/admin/crawler/discover                      847 B         104 kB
+├ ƒ /api/admin/crawler/editorial/audit               847 B         104 kB
+├ ƒ /api/admin/crawler/editorial/open                847 B         104 kB
+├ ƒ /api/admin/crawler/failures                      847 B         104 kB
+├ ƒ /api/admin/crawler/health                        847 B         104 kB
+├ ƒ /api/admin/crawler/queue                         847 B         104 kB
+├ ƒ /api/admin/crawler/queue/bulk                    847 B         104 kB
+├ ƒ /api/admin/crawler/sources                       847 B         104 kB
+├ ƒ /api/admin/crawler/test                          847 B         104 kB
+├ ƒ /api/admin/cron/runs                             847 B         104 kB
+├ ƒ /api/admin/cron/trigger                          847 B         104 kB
+├ ƒ /api/admin/editorial-review/batch                847 B         104 kB
+├ ƒ /api/admin/gmail/callback                        847 B         104 kB
+├ ƒ /api/admin/gmail/connect                         847 B         104 kB
+├ ƒ /api/admin/gmail/disconnect                      847 B         104 kB
+├ ƒ /api/admin/gmail/messages                        847 B         104 kB
+├ ƒ /api/admin/gmail/messages/[id]                   847 B         104 kB
+├ ƒ /api/admin/gmail/messages/[id]/archive           847 B         104 kB
+├ ƒ /api/admin/gmail/messages/[id]/mark-read         847 B         104 kB
+├ ƒ /api/admin/gmail/messages/[id]/mark-unread       847 B         104 kB
+├ ƒ /api/admin/gmail/messages/[id]/star              847 B         104 kB
+├ ƒ /api/admin/gmail/messages/[id]/to-draft          847 B         104 kB
+├ ƒ /api/admin/gmail/messages/[id]/trash             847 B         104 kB
+├ ƒ /api/admin/gmail/send                            847 B         104 kB
+├ ƒ /api/admin/gmail/status                          847 B         104 kB
+├ ƒ /api/admin/instructions                          847 B         104 kB
+├ ƒ /api/admin/job-classifieds                       847 B         104 kB
+├ ƒ /api/admin/job-classifieds/[id]                  847 B         104 kB
+├ ƒ /api/admin/media/import                          847 B         104 kB
+├ ƒ /api/admin/media/scrape-video                    847 B         104 kB
+├ ƒ /api/admin/migrate/backfill-published-at         847 B         104 kB
+├ ƒ /api/admin/migrate/fix-timestamps                847 B         104 kB
+├ ƒ /api/admin/migrate/post-worldcup                 847 B         104 kB
+├ ƒ /api/admin/migrate/restore-events                847 B         104 kB
+├ ƒ /api/admin/migrate/worldcup                      847 B         104 kB
+├ ƒ /api/admin/most-read                             847 B         104 kB
+├ ƒ /api/admin/news                                  847 B         104 kB
+├ ƒ /api/admin/news-drafts/[id]/approve              847 B         104 kB
+├ ƒ /api/admin/news-drafts/[id]/reject               847 B         104 kB
+├ ƒ /api/admin/news-drafts/bulk-approve              847 B         104 kB
+├ ƒ /api/admin/news-queue/[id]/approve               847 B         104 kB
+├ ƒ /api/admin/news-queue/[id]/reject                847 B         104 kB
+├ ƒ /api/admin/news/[id]                             847 B         104 kB
+├ ƒ /api/admin/news/[id]/approve                     847 B         104 kB
+├ ƒ /api/admin/news/ai-image-placement               847 B         104 kB
+├ ƒ /api/admin/news/ai-image-seo                     847 B         104 kB
+├ ƒ /api/admin/newsletter                            847 B         104 kB
+├ ƒ /api/admin/newsroom-agents                       847 B         104 kB
+├ ƒ /api/admin/newsroom-agents/[id]                  847 B         104 kB
+├ ƒ /api/admin/newsroom/flush-pending                847 B         104 kB
+├ ƒ /api/admin/newsroom/process-now                  847 B         104 kB
+├ ƒ /api/admin/newsroom/purge-queue                  847 B         104 kB
+├ ƒ /api/admin/newsroom/queue/[id]                   847 B         104 kB
+├ ƒ /api/admin/newsroom/queue/[id]/publish-manual    847 B         104 kB
+├ ƒ /api/admin/newsroom/requeue-skipped              847 B         104 kB
+├ ƒ /api/admin/os-ops                                847 B         104 kB
+├ ƒ /api/admin/page-layouts                          847 B         104 kB
+├ ƒ /api/admin/proposals                             847 B         104 kB
+├ ƒ /api/admin/purge-dead-videos                     847 B         104 kB
+├ ƒ /api/admin/queue                                 847 B         104 kB
+├ ƒ /api/admin/queue/purge                           847 B         104 kB
+├ ƒ /api/admin/recategorize                          847 B         104 kB
+├ ƒ /api/admin/seo-backfill                          847 B         104 kB
+├ ƒ /api/admin/site-settings                         847 B         104 kB
+├ ƒ /api/admin/social/auto-share                     847 B         104 kB
+├ ƒ /api/admin/social/category-rules                 847 B         104 kB
+├ ƒ /api/admin/social/diagnose                       847 B         104 kB
+├ ƒ /api/admin/social/facebook-app                   847 B         104 kB
+├ ƒ /api/admin/social/facebook-app/callback          847 B         104 kB
+├ ƒ /api/admin/social/facebook-app/oauth             847 B         104 kB
+├ ƒ /api/admin/social/force-reshare                  847 B         104 kB
+├ ƒ /api/admin/social/test-facebook                  847 B         104 kB
+├ ƒ /api/admin/social/token                          847 B         104 kB
+├ ƒ /api/admin/social/update-token                   847 B         104 kB
+├ ƒ /api/admin/submissions                           847 B         104 kB
+├ ƒ /api/ads                                         847 B         104 kB
+├ ƒ /api/ai/logs                                     847 B         104 kB
+├ ƒ /api/ai/pipeline                                 847 B         104 kB
+├ ƒ /api/ai/queue                                    847 B         104 kB
+├ ƒ /api/ai/status                                   847 B         104 kB
+├ ƒ /api/analytics/track                             847 B         104 kB
+├ ƒ /api/analytics/vitals                            847 B         104 kB
+├ ƒ /api/auth/cms-logout                             847 B         104 kB
+├ ƒ /api/auth/cms-sync                               847 B         104 kB
+├ ƒ /api/authors/[slug]/articles                     847 B         104 kB
+├ ƒ /api/blocks                                      847 B         104 kB
+├ ƒ /api/boxoffice/weekly                            847 B         104 kB
+├ ƒ /api/city-check                                  847 B         104 kB
+├ ƒ /api/city/news                                   847 B         104 kB
+├ ƒ /api/contact                                     847 B         104 kB
+├ ƒ /api/cron/analytics-aggregate                    847 B         104 kB
+├ ƒ /api/cron/analytics-cleanup                      847 B         104 kB
+├ ƒ /api/cron/boxoffice-weekly                       847 B         104 kB
+├ ƒ /api/cron/canakkale-nobetci-eczane               847 B         104 kB
+├ ƒ /api/cron/crawler-ai-worker                      847 B         104 kB
+├ ƒ /api/cron/crawler/tick                           847 B         104 kB
+├ ƒ /api/cron/editorial-review                       847 B         104 kB
+├ ƒ /api/cron/football-sync                          847 B         104 kB
+├ ƒ /api/cron/iskur-jobs                             847 B         104 kB
+├ ƒ /api/cron/news-ingest                            847 B         104 kB
+├ ƒ /api/cron/newsroom/aa-content                    847 B         104 kB
+├ ƒ /api/cron/newsroom/afad                          847 B         104 kB
+├ ƒ /api/cron/newsroom/ai-columns                    847 B         104 kB
+├ ƒ /api/cron/newsroom/ai-pipeline                   847 B         104 kB
+├ ƒ /api/cron/newsroom/anka-breaking                 847 B         104 kB
+├ ƒ /api/cron/newsroom/anka-local                    847 B         104 kB
+├ ƒ /api/cron/newsroom/archive                       847 B         104 kB
+├ ƒ /api/cron/newsroom/basketbol                     847 B         104 kB
+├ ƒ /api/cron/newsroom/bilim-teknoloji               847 B         104 kB
+├ ƒ /api/cron/newsroom/borsa                         847 B         104 kB
+├ ƒ /api/cron/newsroom/breaking                      847 B         104 kB
+├ ƒ /api/cron/newsroom/canakkale-bel-duyuru          847 B         104 kB
+├ ƒ /api/cron/newsroom/draft-reprocess               847 B         104 kB
+├ ƒ /api/cron/newsroom/entertainment                 847 B         104 kB
+├ ƒ /api/cron/newsroom/expire-breaking               847 B         104 kB
+├ ƒ /api/cron/newsroom/finans                        847 B         104 kB
+├ ƒ /api/cron/newsroom/freenews                      847 B         104 kB
+├ ƒ /api/cron/newsroom/futbol                        847 B         104 kB
+├ ƒ /api/cron/newsroom/gastronomi                    847 B         104 kB
+├ ƒ /api/cron/newsroom/gezi                          847 B         104 kB
+├ ƒ /api/cron/newsroom/gundem                        847 B         104 kB
+├ ƒ /api/cron/newsroom/hackernews                    847 B         104 kB
+├ ƒ /api/cron/newsroom/health                        847 B         104 kB
+├ ƒ /api/cron/newsroom/influencer                    847 B         104 kB
+├ ƒ /api/cron/newsroom/ingest                        847 B         104 kB
+├ ƒ /api/cron/newsroom/kibris                        847 B         104 kB
+├ ƒ /api/cron/newsroom/kripto                        847 B         104 kB
+├ ƒ /api/cron/newsroom/local                         847 B         104 kB
+├ ƒ /api/cron/newsroom/magazine                      847 B         104 kB
+├ ƒ /api/cron/newsroom/national                      847 B         104 kB
+├ ƒ /api/cron/newsroom/otomobil                      847 B         104 kB
+├ ƒ /api/cron/newsroom/politics                      847 B         104 kB
+├ ƒ /api/cron/newsroom/process-queue                 847 B         104 kB
+├ ƒ /api/cron/newsroom/queue-purge                   847 B         104 kB
+├ ƒ /api/cron/newsroom/saglik-sozcu                  847 B         104 kB
+├ ƒ /api/cron/newsroom/seo                           847 B         104 kB
+├ ƒ /api/cron/newsroom/sinema                        847 B         104 kB
+├ ƒ /api/cron/newsroom/sozcu-breaking                847 B         104 kB
+├ ƒ /api/cron/newsroom/sports                        847 B         104 kB
+├ ƒ /api/cron/newsroom/tech                          847 B         104 kB
+├ ƒ /api/cron/newsroom/technology                    847 B         104 kB
+├ ƒ /api/cron/newsroom/thin-content-backfill         847 B         104 kB
+├ ƒ /api/cron/newsroom/trend                         847 B         104 kB
+├ ƒ /api/cron/newsroom/turizm                        847 B         104 kB
+├ ƒ /api/cron/newsroom/video-process                 847 B         104 kB
+├ ƒ /api/cron/newsroom/video-queue                   847 B         104 kB
+├ ƒ /api/cron/newsroom/voleybol                      847 B         104 kB
+├ ƒ /api/cron/newsroom/weather                       847 B         104 kB
+├ ƒ /api/cron/newsroom/world                         847 B         104 kB
+├ ƒ /api/cron/newsroom/world-cup                     847 B         104 kB
+├ ƒ /api/cron/on-this-day                            847 B         104 kB
+├ ƒ /api/cron/paribu-canakkale                       847 B         104 kB
+├ ƒ /api/cron/skor-daily                             847 B         104 kB
+├ ƒ /api/cron/skor-live                              847 B         104 kB
+├ ƒ /api/cron/skor-standings                         847 B         104 kB
+├ ƒ /api/cron/social                                 847 B         104 kB
+├ ƒ /api/cron/sports/worldcup-sync                   847 B         104 kB
+├ ƒ /api/cron/weather-news                           847 B         104 kB
+├ ƒ /api/cron/youtube-rss                            847 B         104 kB
+├ ƒ /api/debug/cron-errors                           847 B         104 kB
+├ ƒ /api/debug/feed-pool                             847 B         104 kB
+├ ƒ /api/eczane                                      847 B         104 kB
+├ ƒ /api/events/aggregate                            847 B         104 kB
+├ ƒ /api/events/image                                847 B         104 kB
+├ ƒ /api/events/sync                                 847 B         104 kB
+├ ƒ /api/feed/category                               847 B         104 kB
+├ ƒ /api/feed/category-rails                         847 B         104 kB
+├ ƒ /api/feed/home                                   847 B         104 kB
+├ ƒ /api/feed/more                                   847 B         104 kB
+├ ƒ /api/finance/bist                                847 B         104 kB
+├ ƒ /api/finance/rates                               847 B         104 kB
+├ ƒ /api/football/fixtures                           847 B         104 kB
+├ ƒ /api/football/squad                              847 B         104 kB
+├ ƒ /api/football/standings                          847 B         104 kB
+├ ƒ /api/games/scores                                847 B         104 kB
+├ ƒ /api/geo/detect                                  847 B         104 kB
+├ ƒ /api/geo/ip                                      847 B         104 kB
+├ ƒ /api/health                                      847 B         104 kB
+├ ƒ /api/jobs/classified                             847 B         104 kB
+├ ƒ /api/moderate                                    847 B         104 kB
+├ ƒ /api/museums                                     847 B         104 kB
+├ ○ /api/museums/cities                              847 B         104 kB          1d      1y
+├ ƒ /api/news/on-this-day                            847 B         104 kB
+├ ƒ /api/news/top                                    847 B         104 kB
+├ ƒ /api/news/view                                   847 B         104 kB
+├ ƒ /api/newsletter/subscribe                        847 B         104 kB
+├ ƒ /api/newsletter/unsubscribe                      847 B         104 kB
+├ ƒ /api/notifications/send                          847 B         104 kB
+├ ƒ /api/og                                          847 B         104 kB
+├ ƒ /api/og-image                                    847 B         104 kB
+├ ƒ /api/og/social/[id]                              847 B         104 kB
+├ ƒ /api/og/story/[id]                               847 B         104 kB
+├ ƒ /api/push/send                                   847 B         104 kB
+├ ƒ /api/push/subscribe                              847 B         104 kB
+├ ƒ /api/push/unsubscribe                            847 B         104 kB
+├ ƒ /api/reports                                     847 B         104 kB
+├ ƒ /api/revalidate/home                             847 B         104 kB
+├ ƒ /api/rss                                         847 B         104 kB
+├ ƒ /api/search                                      847 B         104 kB
+├ ƒ /api/share-target                                847 B         104 kB
+├ ƒ /api/skor/archive                                847 B         104 kB
+├ ƒ /api/skor/board                                  847 B         104 kB
+├ ƒ /api/skor/standings                              847 B         104 kB
+├ ƒ /api/social/facebook                             847 B         104 kB
+├ ƒ /api/social/instagram                            847 B         104 kB
+├ ƒ /api/social/test                                 847 B         104 kB
+├ ƒ /api/sports/matches                              847 B         104 kB
+├ ƒ /api/sports/scoreboard                           847 B         104 kB
+├ ƒ /api/sports/transfermarkt                        847 B         104 kB
+├ ƒ /api/ugc/submit                                  847 B         104 kB
+├ ƒ /api/user/accept-terms                           847 B         104 kB
+├ ƒ /api/user/improve-text                           847 B         104 kB
+├ ƒ /api/weather                                     847 B         104 kB
+├ ƒ /aydinlatma-metni                                205 B         107 kB
+├ ƒ /brand/splash/[device]                           847 B         104 kB
+├ ○ /breaking-news.xml                               847 B         104 kB         10m      1y
+├ ƒ /bulten/cikis                                  2.36 kB         118 kB
+├ ƒ /canli/[slug]                                  4.41 kB         155 kB
+├ ƒ /city-site                                       203 B         388 kB
+├ ƒ /city-site/etkinlik                            1.18 kB         322 kB
+├ ƒ /city-site/ilceler                               491 B         141 kB
+├ ƒ /city-site/ilceler/[slug]                        203 B         388 kB
+├ ƒ /city-site/is-ilanlari                         2.59 kB         191 kB
+├ ƒ /city-site/is-ilanlari/eleman-ariyorum         2.24 kB         146 kB
+├ ƒ /city-site/is-ilanlari/is-ariyorum             2.24 kB         146 kB
+├ ƒ /city-site/kategori/[id]                         203 B         388 kB
+├ ƒ /city-site/nobetci-eczaneler                   2.47 kB         143 kB
+├ ƒ /city-site/nobetci-eczaneler/[district]        2.47 kB         143 kB
+├ ƒ /city-site/spor                                  202 B         388 kB
+├ ƒ /cok-okunanlar                                  1.4 kB         120 kB
+├ ƒ /dev/design-system                               12 kB         171 kB
+├ ƒ /discover                                      8.46 kB         163 kB
+├ ƒ /docs/kendi-facebook-app-nasil-olusturulur       205 B         107 kB
+├ ƒ /editoryal-ilkeler                               847 B         104 kB
+├ ƒ /etiket/[slug]                                  1.4 kB         120 kB
+├ ƒ /etkinlik                                        302 B         438 kB
+├ ƒ /events                                        9.61 kB         288 kB
+├ ƒ /feed                                          9.24 kB         387 kB
+├ ƒ /feed/kurallar                                   205 B         107 kB
+├ ƒ /futbol-canli                                  3.47 kB         106 kB
+├ ƒ /gizlilik                                        847 B         104 kB
+├ ƒ /gizlilik-politikasi                             847 B         104 kB
+├ ƒ /haber/[slug]                                    20 kB         413 kB
+├ ƒ /hakkimizda                                      205 B         107 kB
+├ ƒ /handle/[...path]                                847 B         104 kB
+├ ƒ /hukuk/cerez-politikasi                          205 B         107 kB
+├ ƒ /hukuk/gizlilik                                  847 B         104 kB
+├ ƒ /hukuk/kullanim-kosullari                        205 B         107 kB
+├ ƒ /hukuk/kvkk                                      847 B         104 kB
+├ ƒ /ilceler                                       2.12 kB         378 kB
+├ ƒ /ilceler/[slug]                                3.64 kB         467 kB
+├ ƒ /iletisim                                      5.24 kB         118 kB
+├ ○ /images-sitemap.xml                              847 B         104 kB          6h      1y
+├ ƒ /influencer                                    8.65 kB         133 kB
+├ ƒ /is-ilanlari                                   2.13 kB         426 kB
+├ ƒ /is-ilanlari/eleman-ariyorum                   2.12 kB         381 kB
+├ ƒ /is-ilanlari/is-ariyorum                       2.12 kB         381 kB
+├ ● /kategori/[id]                                 18.7 kB         405 kB
+├ ƒ /kune                                            847 B         104 kB
+├ ƒ /kunye                                           205 B         107 kB
+├ ○ /login                                         4.86 kB         163 kB
+├ ƒ /messages                                        847 B         104 kB
+├ ƒ /messages/[conversationId]                     2.46 kB         267 kB
+├ ƒ /muzeler                                       2.84 kB         106 kB
+├ ƒ /news-sitemap.xml                                847 B         104 kB
+├ ƒ /nobetci-eczaneler                             2.12 kB         378 kB
+├ ƒ /nobetci-eczaneler/[district]                  2.12 kB         378 kB
+├ ƒ /notifications                                 9.39 kB         252 kB
+├ ○ /offline                                       1.09 kB         107 kB
+├ ○ /onboarding                                    11.3 kB         321 kB
+├ ƒ /oyunlar                                       4.91 kB         111 kB
+├ ƒ /oyunlar/[slug]                                32.2 kB         197 kB
+├ ƒ /post/[id]                                     10.6 kB         373 kB
+├ ƒ /post/create                                   15.2 kB         390 kB
+├ ƒ /profile/[username]                            19.3 kB         420 kB
+├ ƒ /reels                                         1.42 kB         104 kB
+├ ○ /register                                      5.04 kB         163 kB
+├ ƒ /robots.txt                                      847 B         104 kB
+├ ○ /rss.xml                                         847 B         104 kB         30m      1y
+├ ● /rss/[category]                                  847 B         104 kB          1h      1y
+├   ├ /rss/trend                                                                   1h      1y
+├   ├ /rss/gundem                                                                  1h      1y
+├   ├ /rss/yerel-haber                                                             1h      1y
+├   └ [+131 more paths]
+├ ƒ /saved                                          8.5 kB         298 kB
+├ ƒ /search                                        11.1 kB         165 kB
+├ ƒ /settings                                      7.06 kB         147 kB
+├ ƒ /settings/about                                4.25 kB         129 kB
+├ ƒ /settings/account/delete                       5.13 kB         172 kB
+├ ƒ /settings/appearance                           3.76 kB         122 kB
+├ ƒ /settings/help                                 4.08 kB         117 kB
+├ ƒ /settings/notifications                        5.79 kB         179 kB
+├ ƒ /settings/privacy                              6.13 kB         129 kB
+├ ƒ /settings/privacy-policy                       2.87 kB         109 kB
+├ ƒ /settings/profile                              10.2 kB         294 kB
+├ ƒ /settings/terms                                2.87 kB         109 kB
+├ ƒ /site-haritasi                                   205 B         107 kB
+├ ƒ /sitemap.xml                                     847 B         104 kB
+├ ● /sitemap/[id]                                    847 B         104 kB          2d      1y
+├   └ /sitemap/0.xml                                                               2d      1y
+├ ƒ /skor                                          5.03 kB         115 kB
+├ ƒ /spor                                          3.64 kB         467 kB
+├ ƒ /uygulama                                      2.62 kB         109 kB
+├ ○ /video-feed.xml                                  847 B         104 kB         30m      1y
+├ ○ /video-sitemap.xml                               847 B         104 kB         30m      1y
+├ ƒ /weather                                       9.36 kB         119 kB
+├ ƒ /yazar/[username]                              4.81 kB         304 kB
+├ ƒ /yerel                                           194 B         342 kB
+└ ● /yerel/[citySlug]                                194 B         342 kB
+    ├ /yerel/adana
+    ├ /yerel/adiyaman
+    ├ /yerel/afyonkarahisar
+    └ [+78 more paths]
++ First Load JS shared by all                       103 kB
+  ├ chunks/31255-01488a45936a6bb4.js                 46 kB
+  ├ chunks/4bd1b696-bad92808725a934a.js            54.2 kB
+  └ other shared chunks (total)                    2.78 kB
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+

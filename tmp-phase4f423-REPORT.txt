@@ -1,0 +1,127 @@
+NAHABER GLOBAL CRAWLER
+PHASE 4F.4.2.3 — SOURCE RECOVERY DEEP AUDIT REPORT
+Generated: 2026-08-22T11:20:18.054Z
+
+══════════════════════════════════════════════════
+P0 — SAFETY BASELINE
+══════════════════════════════════════════════════
+Starting SHA: 74b81b9
+Ending SHA: 74b81b9 (MATCH)
+Health: ok @ 2026-08-22T11:20:18.460Z
+AI mode: SHADOW_AUTO_DRAFT
+Provider: 0 calls (PROVIDER_DISABLED)
+Tick jobsCreated: 0
+Worker claimed: 0
+Ledger cumulative: $0.04979743808507919
+Ledger after audit start: $0
+Paid path armed: NO
+Evidence: tmp-phase4f423-baseline.json
+
+══════════════════════════════════════════════════
+P1 — FULL SOURCE INVENTORY
+══════════════════════════════════════════════════
+Total: 61
+ACTIVE: 18
+PAUSED: 41
+DEGRADED: 2
+DISABLED: 0
+Evidence: tmp-phase4f423-inventory.json
+
+══════════════════════════════════════════════════
+P2 — PAUSE REASON CLASSIFICATION
+══════════════════════════════════════════════════
+- MANUAL_PAUSE: 2
+- AUTO_FAILURE: 5
+- UNKNOWN_LEGACY: 34
+Evidence: tmp-phase4f423-classify.json
+
+══════════════════════════════════════════════════
+P3-P4 — HTTP + EXTRACTION PROBES (PAUSED)
+══════════════════════════════════════════════════
+Probed: 41 PAUSED sources
+Evidence: tmp-phase4f423-probes.json
+
+══════════════════════════════════════════════════
+P5 — RECENT ARTICLE TEST
+══════════════════════════════════════════════════
+Recoverable sources tested: 15
+Evidence: tmp-phase4f423-articles.json
+
+══════════════════════════════════════════════════
+P7-P8 — DUPLICATE + MULTI-SOURCE GAP
+══════════════════════════════════════════════════
+Tier A shadow rows: 11
+Gap: Few Tier A events driven by single-source WOULD_DISPATCH dominance + 41 PAUSED sources limiting independent confirmation
+Evidence: tmp-phase4f423-cluster.json
+
+══════════════════════════════════════════════════
+P9 — ÇANAKKALE COVERAGE GAPS
+══════════════════════════════════════════════════
+- Merkez: PARTIAL_COVERAGE active=canakkaleolay paused=canakkaleicinde
+- Biga: NO_ACTIVE_SOURCE (1 PAUSED/DEGRADED: biga)
+- Çan: PARTIAL_COVERAGE active=canakkaleolay paused=canakkaleicinde
+- Yenice: NO_SOURCE_REGISTERED
+- Bayramiç: NO_SOURCE_REGISTERED
+- Ezine: NO_SOURCE_REGISTERED
+- Ayvacık: NO_SOURCE_REGISTERED
+- Lapseki: NO_SOURCE_REGISTERED
+- Gelibolu: NO_ACTIVE_SOURCE (1 PAUSED/DEGRADED: gelibolu)
+- Eceabat: NO_SOURCE_REGISTERED
+- Gökçeada: NO_SOURCE_REGISTERED
+- Bozcaada: NO_SOURCE_REGISTERED
+Evidence: tmp-phase4f423-canakkale.json
+
+══════════════════════════════════════════════════
+P10-P12 — RECOVERY SCORES + TOP 10 + SAFEST THREE
+══════════════════════════════════════════════════
+TOP 10:
+1. evrensel (Evrensel) score=97 tier=RECOVER_NOW extraction=EXTRACTION_HEALTHY
+2. odatv (Odatv) score=89 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_PARTIAL
+3. bianet (Bianet) score=67 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_HEALTHY
+4. diken (Diken) score=67 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_HEALTHY
+5. dunya (Dünya) score=67 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_HEALTHY
+6. canakkaleicinde (Çanakkale İçinde) score=67 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_HEALTHY
+7. fotomac (Fotomaç) score=62 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_HEALTHY
+8. ahaber (A Haber) score=59 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_HEALTHY
+9. dw.com (Deutsche Welle RSS) score=59 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_HEALTHY
+10. ensonhaber (Ensonhaber) score=59 tier=RECOVER_AFTER_FIX extraction=EXTRACTION_HEALTHY
+
+SAFEST THREE (DO NOT ACTIVATE):
+1. evrensel score=97 tier=RECOVER_NOW
+2. odatv score=89 tier=RECOVER_AFTER_FIX
+3. bianet score=67 tier=RECOVER_AFTER_FIX
+
+RE-EVAL odatv / evrensel / ahaber:
+- odatv: score=89 tier=RECOVER_AFTER_FIX pause=manual_cms_pause
+- evrensel: score=97 tier=RECOVER_NOW pause=manual_cms_pause
+- ahaber: score=59 tier=RECOVER_AFTER_FIX pause=null
+Evidence: tmp-phase4f423-scores.json
+
+══════════════════════════════════════════════════
+P13 — PARSER FIXES (LOCAL ONLY)
+══════════════════════════════════════════════════
+Candidates: 6
+Fixes applied: 0
+Evidence: tmp-phase4f423-parser.json
+
+══════════════════════════════════════════════════
+P14 — SOURCE HEALTH POLICY
+══════════════════════════════════════════════════
+Auto-pause at 6 consecutive failures, degrade at 3 — consistent with DB pause reasons (auto_pause_failures_6/7). No policy bug identified.
+Change recommended: false
+Evidence: tmp-phase4f423-policy.json
+
+══════════════════════════════════════════════════
+P15-P16 — COST & FINAL SAFETY
+══════════════════════════════════════════════════
+New AI cost this audit: $0
+Production source changes: NONE
+Source activations: NONE
+Deploy: NONE
+
+══════════════════════════════════════════════════
+VERDICT
+══════════════════════════════════════════════════
+PHASE 4F.4.2.3 SOURCE RECOVERY AUDIT VERIFIED — RECOVERY PLAN READY, PRODUCTION UNCHANGED, ZERO PAID AI
+
+STOP — WAIT FOR DEPLOY SLOT. NO PHASE 4F.5.

@@ -1,0 +1,57 @@
+{
+  "mode": "cluster",
+  "at": "2026-08-21T12:23:21.188Z",
+  "T4E1": "2026-08-21T10:20:19.000Z",
+  "HIST": [
+    "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4",
+    "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d",
+    "cl_f82807da-0345-4057-a870-9735d4e6e667",
+    "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799",
+    "cl_6b54e643-329f-406b-bf34-ad45aa9d3632",
+    "cl_713c7834-a506-4c50-8d45-32109c988edd",
+    "cl_7ec4422d-8100-49c1-b356-67aee791b82d",
+    "cl_d1d3a875-1b20-47e7-9657-b0d27d363ebe"
+  ],
+  "cluster": [
+    {
+      "id": "cl_f0f2960c-2b93-42ab-ab6a-b330fbeba73b",
+      "canonical_title": "19 yaşındaki Sultan katledildi: Yalova'daki vahşette anne karnındaki bebek kurtarıldı",
+      "editorial_decision": "APPROVED_FOR_AI",
+      "editorial_decided_at": "2026-08-21T10:43:52.949Z",
+      "auto_draft_status": "AI_READY",
+      "ai_eligibility": "WATCHING",
+      "unique_source_count": 1,
+      "importance_score": 51,
+      "cluster_confidence": 0.92,
+      "city": null,
+      "primary_source_name": "Hürriyet",
+      "published_news_id": null,
+      "has_material_update": 0,
+      "update_review_status": "NONE"
+    }
+  ],
+  "members": [
+    {
+      "membership_role": "PRIMARY",
+      "is_canonical": 1,
+      "is_independent_source": 1,
+      "word_count": 155,
+      "extraction_confidence": 0.92,
+      "title": "19 yaşındaki Sultan katledildi: Yalova'daki vahşette anne karnındaki bebek kurtarıldı",
+      "source_name": "Hürriyet",
+      "health_score": 92
+    }
+  ],
+  "jobs": [
+    {
+      "id": "aij_129a7a90-958a-4990-a32f-de63febf513b",
+      "status": "FAILED",
+      "eligibility_status": "AI_READY",
+      "estimated_cost_usd": 0.00443652,
+      "actual_cost_usd": null,
+      "failure_code": "CANCELLED_NO_PROVIDER_EVIDENCE",
+      "created_at": "2026-08-21T10:44:33.742Z",
+      "completed_at": "2026-08-21T12:23:11.036Z"
+    }
+  ]
+}

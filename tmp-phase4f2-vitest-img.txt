@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/extract/images.test.ts (21 tests) 91ms
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  16:21:32
+   Duration  823ms (transform 122ms, setup 0ms, collect 264ms, tests 91ms, environment 0ms, prepare 67ms)
+

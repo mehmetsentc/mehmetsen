@@ -1,0 +1,57 @@
+{
+  "at": "2026-08-21T14:46:58.079Z",
+  "byStatus": [
+    {
+      "status": "ACTIVE",
+      "c": 14
+    },
+    {
+      "status": "PAUSED",
+      "c": 47
+    }
+  ],
+  "pauseReasons": [
+    {
+      "stored": "null",
+      "derived": "UNKNOWN_LEGACY",
+      "count": 45
+    },
+    {
+      "stored": "auto_pause_failures_6",
+      "derived": "auto_pause_failures_6",
+      "count": 2
+    }
+  ],
+  "sample": [
+    {
+      "id": "src_a7f24699-4d29-4e7a-84c6-b4d12258a133",
+      "name": "bogazgazetesi.com.tr",
+      "status": "PAUSED",
+      "last_pause_reason": null
+    },
+    {
+      "id": "src_68248665-be52-4bce-ab2d-5d58c788068d",
+      "name": "Deutsche Welle RSS",
+      "status": "PAUSED",
+      "last_pause_reason": null
+    },
+    {
+      "id": "src_1dccb1a8-e46a-4b4c-9c06-bc74b31e8a2e",
+      "name": "Le Monde RSS",
+      "status": "PAUSED",
+      "last_pause_reason": null
+    },
+    {
+      "id": "src_c4186a9b-ab70-40d4-b62b-65bbed1863ad",
+      "name": "TRT Haber RSS",
+      "status": "PAUSED",
+      "last_pause_reason": null
+    },
+    {
+      "id": "src_b55e2a73-f74b-4203-a0cc-b0a836377d15",
+      "name": "İHA",
+      "status": "PAUSED",
+      "last_pause_reason": null
+    }
+  ]
+}

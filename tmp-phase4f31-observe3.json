@@ -1,0 +1,25 @@
+{
+  "at": "2026-08-21T14:55:41.860Z",
+  "evaluations": {
+    "c": 3555,
+    "wd": 2011,
+    "wb": 1544,
+    "clusters": 115,
+    "with_fp": 790
+  },
+  "uniqueEconomic": {
+    "c": 81,
+    "wd": 50,
+    "wb": 31,
+    "new_event": 81,
+    "material": 0,
+    "clusters": 81
+  },
+  "jobs24h": {
+    "c": 7
+  },
+  "ledger24h": {
+    "c": 5,
+    "spend": 0.02113408036530018
+  }
+}

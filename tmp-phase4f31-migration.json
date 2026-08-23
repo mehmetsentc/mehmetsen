@@ -1,0 +1,229 @@
+{
+  "at": "2026-08-21T14:47:31.996Z",
+  "beforeCols": [
+    {
+      "column_name": "action"
+    },
+    {
+      "column_name": "block_reason"
+    },
+    {
+      "column_name": "canonical_title"
+    },
+    {
+      "column_name": "cluster_id"
+    },
+    {
+      "column_name": "content_fingerprint"
+    },
+    {
+      "column_name": "cost_known"
+    },
+    {
+      "column_name": "economic_decision_id"
+    },
+    {
+      "column_name": "economic_tier"
+    },
+    {
+      "column_name": "editorial_decision_snapshot"
+    },
+    {
+      "column_name": "estimated_cost_usd"
+    },
+    {
+      "column_name": "estimated_input_tokens"
+    },
+    {
+      "column_name": "estimated_output_tokens"
+    },
+    {
+      "column_name": "evaluated_at"
+    },
+    {
+      "column_name": "event_key"
+    },
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "independent_source_count"
+    },
+    {
+      "column_name": "machine_eligibility"
+    },
+    {
+      "column_name": "meta"
+    },
+    {
+      "column_name": "prespend_gate_version"
+    },
+    {
+      "column_name": "prespend_outcome"
+    },
+    {
+      "column_name": "rank_score"
+    },
+    {
+      "column_name": "revision_kind"
+    },
+    {
+      "column_name": "usable_source_words"
+    }
+  ],
+  "afterCols": [
+    {
+      "column_name": "action"
+    },
+    {
+      "column_name": "block_reason"
+    },
+    {
+      "column_name": "canonical_title"
+    },
+    {
+      "column_name": "cluster_id"
+    },
+    {
+      "column_name": "content_fingerprint"
+    },
+    {
+      "column_name": "cost_known"
+    },
+    {
+      "column_name": "economic_decision_id"
+    },
+    {
+      "column_name": "economic_tier"
+    },
+    {
+      "column_name": "editorial_decision_snapshot"
+    },
+    {
+      "column_name": "estimated_cost_usd"
+    },
+    {
+      "column_name": "estimated_input_tokens"
+    },
+    {
+      "column_name": "estimated_output_tokens"
+    },
+    {
+      "column_name": "evaluated_at"
+    },
+    {
+      "column_name": "event_key"
+    },
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "independent_source_count"
+    },
+    {
+      "column_name": "machine_eligibility"
+    },
+    {
+      "column_name": "meta"
+    },
+    {
+      "column_name": "prespend_gate_version"
+    },
+    {
+      "column_name": "prespend_outcome"
+    },
+    {
+      "column_name": "rank_score"
+    },
+    {
+      "column_name": "revision_kind"
+    },
+    {
+      "column_name": "usable_source_words"
+    }
+  ],
+  "beforeEcon": [
+    {
+      "table_name": "crawler_ai_shadow_economic_decisions"
+    }
+  ],
+  "afterEcon": [
+    {
+      "table_name": "crawler_ai_shadow_economic_decisions"
+    }
+  ],
+  "econCols": [
+    {
+      "column_name": "action"
+    },
+    {
+      "column_name": "block_reason"
+    },
+    {
+      "column_name": "canonical_title"
+    },
+    {
+      "column_name": "cluster_id"
+    },
+    {
+      "column_name": "content_fingerprint"
+    },
+    {
+      "column_name": "cost_known"
+    },
+    {
+      "column_name": "economic_tier"
+    },
+    {
+      "column_name": "editorial_decision_snapshot"
+    },
+    {
+      "column_name": "estimated_cost_usd"
+    },
+    {
+      "column_name": "estimated_input_tokens"
+    },
+    {
+      "column_name": "estimated_output_tokens"
+    },
+    {
+      "column_name": "evaluation_count"
+    },
+    {
+      "column_name": "event_key"
+    },
+    {
+      "column_name": "first_evaluated_at"
+    },
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "independent_source_count"
+    },
+    {
+      "column_name": "last_evaluated_at"
+    },
+    {
+      "column_name": "machine_eligibility"
+    },
+    {
+      "column_name": "meta"
+    },
+    {
+      "column_name": "prespend_gate_version"
+    },
+    {
+      "column_name": "prespend_outcome"
+    },
+    {
+      "column_name": "rank_score"
+    },
+    {
+      "column_name": "revision_kind"
+    },
+    {
+      "column_name": "usable_source_words"
+    }
+  ]
+}

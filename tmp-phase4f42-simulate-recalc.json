@@ -1,0 +1,18 @@
+{
+  "mode": "simulate-recalc",
+  "at": "2026-08-22T10:53:49.936Z",
+  "T4F42": "2026-08-22T10:42:59.000Z",
+  "simulated_recalc": {
+    "sampleSize": 478,
+    "wouldDispatchBefore": 312,
+    "wouldBlockBefore": 166,
+    "wouldDispatchAfter": 297,
+    "wouldBlockAfter": 181,
+    "lowEditorialBlocked": 15,
+    "requestsPrevented": 15,
+    "spendBeforeUsd": 1.453259,
+    "spendAfterUsd": 1.382003,
+    "spendPreventedUsd": 0.071256,
+    "note": "Local simulation on 4F3.1 unique rows — production 4F4.2 gate requires deploy."
+  }
+}

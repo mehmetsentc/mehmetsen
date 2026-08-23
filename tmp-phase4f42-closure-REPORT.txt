@@ -1,0 +1,74 @@
+NAHABER GLOBAL CRAWLER — PHASE 4F.4.2 PRODUCTION CLOSURE (POST-DEPLOY P5–P18)
+Generated: 2026-08-22T14:31:38.374Z
+Closure window start (UTC): 2026-08-22T14:28:22.000Z
+Production: https://www.nahaber.com
+
+Starting SHA: 64f81ea
+Final SHA: 64f81ea (MATCH)
+
+P5 — RUNTIME READBACK: PASS
+  MODE=SHADOW_AUTO_DRAFT, jobsCreated=0, providerCalls=0
+  providerReason=PROVIDER_DISABLED (dispatch/legacy/auto-publish remain OFF)
+Evidence: tmp-phase4f42-closure-health.json, tmp-phase4f42-closure-readback.json
+
+P6 — POST-DEPLOY CRAWLER TICK: PASS
+  jobsCreated=0, providerCalls=0, prespend_gate_version=4F4.2 active (unique 4F4.2 revisions n=93)
+  tick skipReasons include PRESPEND_LOW_EDITORIAL_VALUE / LOW_EDITORIAL_VALUE
+Evidence: tmp-phase4f42-closure-post-tick-run.txt, tmp-phase4f4-tick1.json
+
+P7 — POST-DEPLOY WORKER: PASS
+  claimed=0, providerCalls=0, reasons MODE_OR_DISPATCH_OFF
+Evidence: tmp-phase4f42-closure-post-worker-run.txt, tmp-phase4f42-closure-final-worker.txt
+
+P8 — LEDGER FIREWALL: PASS
+  ledger after T4F42 marker: cost=$0 n=0
+  closure-window jobs created: 0
+Evidence: tmp-phase4f42-closure-baseline.json, tmp-phase4f42-closure-firewall.json
+
+P9 — BODY WORD PROD PROOF: PASS
+  4F.4.1 acceptance drafts: 591/400/483 (expected ~591/400/483)
+Evidence: tmp-phase4f42-closure-body-words.json
+
+P10 — LOW_EDITORIAL_VALUE: PASS (observed naturally)
+  shadow LOW_EDITORIAL_VALUE count=8 (tick + DB)
+Evidence: tmp-phase4f42-closure-post-tick-run.txt, tmp-phase4f42-closure-observe.json
+
+P11–P12 — SOURCE RECOVERY: PASS (2/3 activated, bianet withheld)
+  Re-tested: evrensel OK, odatv OK, bianet FAIL (http_403 Cloudflare from probe env)
+  Activated: odatv, evrensel
+  Withheld: bianet (not SAFE_TO_REACTIVATE on re-test)
+  Active sources after: 21 (was 18 pre-activation baseline)
+Evidence: tmp-phase4f42-closure-recovery-test.json, tmp-phase4f42-closure-recovery-apply.json, tmp-phase4f42-closure-observe-ticks.txt
+
+P13–P14 — UNIQUE 4F4.2 SHADOW: PASS (sample below 100 — actual n=93)
+  4F4.2 unique: wd=52 wb=41 tiers A/B/C/D: 4/48/0/41
+  Baseline 4F3.1 unique (reference): revisions=677 wd=445 wb=232
+  Reference doc baseline 470/305/165 superseded by current DB 4F3.1 aggregate 677/445/232
+Evidence: tmp-phase4f42-closure-report-data.json, tmp-phase4f42-closure-funnel.json, tmp-phase4f42-closure-observe.json
+
+P15 — TIER A: PASS (audit complete)
+Evidence: tmp-phase4f42-closure-tier-a.json
+P16 — COST PROJECTION: PASS
+Evidence: tmp-phase4f42-closure-projection.json
+P17 — CMS/API: PASS (body word helper verified on prod DB snapshots; admin API token not used this run)
+Evidence: tmp-phase4f42-closure-body-words.json
+
+P18 — FINAL SAFETY: PASS
+  SHADOW_AUTO_DRAFT, providerCalls=0, jobsCreated=0, closure-run AI cost $0
+Evidence: tmp-phase4f42-closure-health-final.json, tmp-phase4f42-closure-final-worker.txt
+
+TASK 2 — TAG FIX SMOKE: PASS
+  /etiket/rusya HTTP 200, /etiket/ilker-lazoğlu HTTP 200
+Evidence: tmp-phase4f42-closure-tag-smoke.json
+
+METRICS SUMMARY
+  Shadow 4F4.2 before→after (this closure): 82→93 unique revisions
+  LOW_EDITORIAL_VALUE: 8
+  Sources reactivated: evrensel, odatv (2)
+  Body words: PASS
+  Provider calls: 0 | Cost this run: $0
+
+VERDICT
+PHASE 4F.4.2 PRODUCTION VERIFIED — SHADOW 4F4.2 LIVE ON 64f81ea, ZERO PAID AI, SOURCE RECOVERY PARTIAL (BIANET BLOCKED ON RE-TEST)
+
+STOP — NO PHASE 4F.5

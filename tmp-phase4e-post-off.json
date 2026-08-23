@@ -1,0 +1,86 @@
+{
+  "at": "2026-08-21T09:31:05.189Z",
+  "timestamps": {
+    "latest_discovery": "2026-08-21T09:30:35.948Z",
+    "latest_extraction": "2026-08-21T09:29:58.339Z",
+    "latest_cluster_create": "2026-08-21T09:26:18.609Z"
+  },
+  "ledger": {
+    "c": 0.017156479880213737,
+    "n": 9
+  },
+  "jobs_active": {
+    "c": 0
+  },
+  "jobs_total": {
+    "c": 3
+  },
+  "published_clusters": {
+    "c": 10
+  },
+  "freshness": {
+    "disc_15m": 37,
+    "ext_15m": 14,
+    "cl_15m": 10
+  },
+  "latency": {
+    "avg_sec": 81.10947113740458,
+    "p50": 58.55058
+  },
+  "extract_to_cluster": {
+    "avg_sec": 8.827852417302799,
+    "p50": 7.704,
+    "n": 393
+  },
+  "ham_supporting": {
+    "supporting_in_active_statuses": 12,
+    "primaryish_active": 411
+  },
+  "multi_example": [
+    {
+      "id": "cl_1469b2bb-1ffd-4656-b57c-8f78cbde36e1",
+      "canonical_title": "Son dakika... 'Ankara Deklarasyonu' çağrısı yaptı! Devlet Bahçeli'den 'İsrail' tepkisi: 'Türkiye'nin sabrını sınamaktan vazgeçsin'",
+      "unique_source_count": 2,
+      "primary_source_name": "Cumhuriyet",
+      "article_count": 2
+    },
+    {
+      "id": "cl_7dbbcc3e-3fba-45e2-a2a8-585b33a6d17b",
+      "canonical_title": "İçişleri Bakanlığı duyurdu... 20 ilde uyuşturucu operasyonu: 60 şüpheli yakalandı",
+      "unique_source_count": 3,
+      "primary_source_name": "Cumhuriyet",
+      "article_count": 3
+    },
+    {
+      "id": "cl_68393c2b-158a-4cad-9c63-c8461f2141c4",
+      "canonical_title": "Son dakika... CHP'den istifa etti: Eskişehir Büyükşehir Belediye Başkanı Ayşe Ünlüce YENİ Parti'ye katıldı",
+      "unique_source_count": 4,
+      "primary_source_name": "Cumhuriyet",
+      "article_count": 4
+    }
+  ],
+  "soma_akhisar_check": [],
+  "approved_ids": [
+    {
+      "id": "cl_6b54e643-329f-406b-bf34-ad45aa9d3632"
+    },
+    {
+      "id": "cl_713c7834-a506-4c50-8d45-32109c988edd"
+    },
+    {
+      "id": "cl_7ca7b0c4-8234-4e0f-bc98-f77582c48799"
+    },
+    {
+      "id": "cl_7ec4422d-8100-49c1-b356-67aee791b82d"
+    },
+    {
+      "id": "cl_b93c6db6-427a-46d8-81d3-0a27b83e73d4"
+    },
+    {
+      "id": "cl_c4d49acf-5625-41b2-bfd0-1f9dd8627a9d"
+    },
+    {
+      "id": "cl_f82807da-0345-4057-a870-9735d4e6e667"
+    }
+  ]
+}

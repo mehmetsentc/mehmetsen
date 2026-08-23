@@ -34,7 +34,7 @@ async function main() {
   }
   const path =
     kind === 'worker'
-      ? 'https://www.nahaber.com/api/cron/crawler/ai-worker'
+      ? 'https://www.nahaber.com/api/cron/crawler-ai-worker'
       : 'https://www.nahaber.com/api/cron/crawler/tick'
   for (let i = 1; i <= n; i++) {
     const res = await fetch(path, {

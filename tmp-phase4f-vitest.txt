@@ -1,0 +1,27 @@
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/editorial/phase4d4.test.ts (14 tests) 33ms
+ ✓ src/services/crawler/phase4b.test.ts (12 tests) 35ms
+ ✓ src/services/crawler/autoDraft/phase4e1.test.ts (11 tests) 43ms
+ ✓ src/services/crawler/autoDraft/phase4e.test.ts (23 tests) 38ms
+ ✓ src/services/crawler/autoDraft/phase4d3.test.ts (12 tests) 48ms
+ ✓ src/services/crawler/ops/phase4a3.test.ts (9 tests) 11ms
+
+ Test Files  6 passed (6)
+      Tests  81 passed (81)
+   Start at  15:53:43
+   Duration  1.57s (transform 1.26s, setup 0ms, collect 3.66s, tests 208ms, environment 1ms, prepare 839ms)
+
+
+ RUN  v3.2.4 /Users/user/nahaber
+
+ ✓ src/services/crawler/autoDraft/phase4d.test.ts (24 tests) 31ms
+ ✓ src/services/crawler/autoDraft/phase4d1.test.ts (12 tests) 69ms
+ ✓ src/services/crawler/phase4a4.test.ts (28 tests) 206ms
+
+ Test Files  3 passed (3)
+      Tests  64 passed (64)
+   Start at  15:53:53
+   Duration  1.35s (transform 703ms, setup 0ms, collect 1.92s, tests 306ms, environment 0ms, prepare 192ms)
+

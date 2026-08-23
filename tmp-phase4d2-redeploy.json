@@ -1,0 +1,39 @@
+{
+  "method": "vercel redeploy dpl_HoTJfCXV7Yv8MNXGktuAxNezNWcr --target production",
+  "source_deployment": "dpl_HoTJfCXV7Yv8MNXGktuAxNezNWcr",
+  "deployment_id": "dpl_GJ2dsivTEwY24JZbmGpQUh2Kh8vw",
+  "url": "nahaber-abji73bc5-shenteam1.vercel.app",
+  "readyState": "READY",
+  "sha": "09118d3d5773a865e3bf80c113cd64fa028b2433",
+  "sha_short": "09118d3",
+  "createdAt": 1787259659835,
+  "readyAt": 1787259875426,
+  "duration_ms": 215591,
+  "duration_sec": 215.6,
+  "poll_duration_sec": 56.9,
+  "health": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-20T21:04:57.757Z",
+    "version": "09118d3",
+    "env": "production",
+    "region": "fra1"
+  },
+  "health_version_ok": true,
+  "env_verify": {
+    "CRAWLER_AI_DISPATCH_ENABLED": "false",
+    "CRAWLER_AI_MODE": "OFF",
+    "CRAWLER_AI_PROVIDER_ENABLED": "false",
+    "DEEPSEEK_CACHE_HIT_COST_PER_1M": "0.014",
+    "DEEPSEEK_CACHE_MISS_COST_PER_1M": "0.44",
+    "DEEPSEEK_INPUT_COST_PER_1M": "0.44",
+    "DEEPSEEK_NEWS_MODEL": "deepseek-v4-flash",
+    "DEEPSEEK_OUTPUT_COST_PER_1M": "1.32",
+    "LEGACY_DIRECT_AI_ENABLED": "false"
+  },
+  "pricing_ok": true,
+  "ai_off_ok": true,
+  "no_git_commit": true,
+  "CONTROLLED_AUTO_DRAFT_enabled": false,
+  "cutoff_set": false
+}

@@ -1,0 +1,13 @@
+{
+  "at": "2026-08-22T11:01:30.000Z",
+  "T4F421": "2026-08-22T10:57:12.000Z",
+  "command": "npm run deploy:allowed",
+  "exitCode": 1,
+  "reason": "DEPLOY_SLOT_STILL_BLOCKED",
+  "detail": "2026-08-22 Istanbul — 11/2 production deploys today (max 2)",
+  "productionShaBefore": "74b81b9",
+  "productionShaAfter": "74b81b9",
+  "p3CommitExecuted": false,
+  "p4PushExecuted": false,
+  "note": "Local [deploy] batch withheld until slot opens per allow-deploy.mjs"
+}

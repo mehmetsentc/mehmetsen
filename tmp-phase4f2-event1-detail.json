@@ -1,0 +1,63 @@
+{
+  "job": {
+    "id": "aij_00152300-4314-47e5-9fb9-62f6ef37eced",
+    "status": "COMPLETED",
+    "eligibility_status": "AUTO_DRAFT_ELIGIBLE",
+    "actual_cost_usd": 0.00253132,
+    "actual_input_tokens": 1808,
+    "actual_output_tokens": 1315,
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "execution_id": "exec_aij_00152300-4314-47e5-9fb9-62f6ef37eced_mt2zpqi1",
+    "editorial_news_id": "d_cad_cl_6cbcad56-3489-4567-b548-0ec50c4ff814",
+    "created_at": "2026-08-21T13:33:34.689Z",
+    "started_at": "2026-08-21T13:33:37.452Z",
+    "completed_at": "2026-08-21T13:33:46.211Z",
+    "lease_owner": null
+  },
+  "snap_keys": [
+    "body",
+    "cost",
+    "lane",
+    "slug",
+    "spot",
+    "tags",
+    "jobId",
+    "model",
+    "title",
+    "status",
+    "draftId",
+    "eventId",
+    "quality",
+    "summary",
+    "category",
+    "imageAlt",
+    "provider",
+    "pushText",
+    "seoTitle",
+    "createdAt",
+    "pushTitle",
+    "executionId",
+    "packMetrics",
+    "seoKeywords",
+    "socialTitle",
+    "eventRevision",
+    "imageFilename",
+    "seoDescription",
+    "sourceEvidence",
+    "socialDescription"
+  ],
+  "headline": "İçindeki fırtınaları dışarıya asla yansıtmayanlar: Güçlü görünmek için acısını içine gömen 3 burç",
+  "bodyWordCount": 219,
+  "statusInSnap": "AI_DRAFT",
+  "validation": {
+    "ok": true
+  },
+  "news": [],
+  "newsLike": [],
+  "editorial_decision_check": {
+    "editorial_decision": "NONE",
+    "machine_draft_eligibility": "AUTO_DRAFT_ELIGIBLE",
+    "published_news_id": null
+  }
+}

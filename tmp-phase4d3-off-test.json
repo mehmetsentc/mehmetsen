@@ -1,0 +1,36 @@
+{
+  "health": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-08-20T22:29:40.870Z",
+    "version": "ec746ce",
+    "env": "production",
+    "region": "fra1"
+  },
+  "costBefore": 0.014165359549224377,
+  "costAfter": 0.014165359549224377,
+  "delta": 0,
+  "worker1": {
+    "status": 200,
+    "claimed": 0,
+    "providerCalls": 0,
+    "reasons": {
+      "MODE_OR_DISPATCH_OFF": 1
+    },
+    "skipped": 1
+  },
+  "worker2": {
+    "status": 200,
+    "claimed": 0,
+    "providerCalls": 0,
+    "reasons": {
+      "MODE_OR_DISPATCH_OFF": 1
+    }
+  },
+  "tick1": {
+    "status": 200,
+    "enabled": true,
+    "aiRequests": 0,
+    "sourcesChecked": 1
+  }
+}

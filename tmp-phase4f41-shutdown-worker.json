@@ -1,0 +1,1 @@
+{"mode":"SHADOW_AUTO_DRAFT","claimed":0,"skipped":1,"providerCalls":0,"draftsPersisted":0,"completed":0,"failed":0,"published":0,"reasons":{"MODE_OR_DISPATCH_OFF":1},"jobId":null,"clusterId":null,"draftId":null,"executionId":null,"leaseOwner":null,"timingsMs":{"claim":0,"pack":0,"provider":0,"persist":0,"total":3},"providerReady":false,"leaseRecovered":0,"recoverReasons":{}}

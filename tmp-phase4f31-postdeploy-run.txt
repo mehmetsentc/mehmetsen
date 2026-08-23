@@ -1,0 +1,123 @@
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Error: Transform failed with 6 errors:
+/eval.ts:5:13: ERROR: Top-level await is currently not supported with the "cjs" output format
+/eval.ts:8:11: ERROR: Top-level await is currently not supported with the "cjs" output format
+/eval.ts:9:13: ERROR: Top-level await is currently not supported with the "cjs" output format
+/eval.ts:10:11: ERROR: Top-level await is currently not supported with the "cjs" output format
+/eval.ts:11:12: ERROR: Top-level await is currently not supported with the "cjs" output format
+...
+    at failureErrorWithLog (/Users/user/nahaber/node_modules/esbuild/lib/main.js:1748:15)
+    at /Users/user/nahaber/node_modules/esbuild/lib/main.js:1017:50
+    at responseCallbacks.<computed> (/Users/user/nahaber/node_modules/esbuild/lib/main.js:884:9)
+    at handleIncomingPacket (/Users/user/nahaber/node_modules/esbuild/lib/main.js:939:12)
+    at Socket.readFromStdout (/Users/user/nahaber/node_modules/esbuild/lib/main.js:862:7)
+    at Socket.emit (node:events:519:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  errors: [
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 13,
+        file: '/eval.ts',
+        length: 5,
+        line: 5,
+        lineText: 'const {neon}=await import("@neondatabase/serverless");',
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 11,
+        file: '/eval.ts',
+        length: 5,
+        line: 8,
+        lineText: 'const jobs=await sql`SELECT count(*)::int AS c, coalesce(max(created_at)::text,\\"\\") AS last FROM crawler_ai_jobs WHERE created_at >= ${since}`;',
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 13,
+        file: '/eval.ts',
+        length: 5,
+        line: 9,
+        lineText: 'const ledger=await sql`SELECT count(*)::int AS c, coalesce(sum(actual_cost_usd),0)::float AS spend FROM crawler_ai_cost_ledger WHERE timestamp >= ${since}`;',
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 11,
+        file: '/eval.ts',
+        length: 5,
+        line: 10,
+        lineText: "const econ=await sql`SELECT count(*)::int AS c, count(*) FILTER (WHERE action='WOULD_DISPATCH')::int AS wd, count(*) FILTER (WHERE action='WOULD_BLOCK')::int AS wb, count(DISTINCT cluster_id)::int AS clusters FROM crawler_ai_shadow_economic_decisions`;",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 12,
+        file: '/eval.ts',
+        length: 5,
+        line: 11,
+        lineText: 'const evals=await sql`SELECT count(*)::int AS c, count(*) FILTER (WHERE content_fingerprint IS NOT NULL)::int AS with_fp, count(DISTINCT cluster_id)::int AS clusters FROM crawler_ai_shadow_decisions`;',
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 12,
+        file: '/eval.ts',
+        length: 5,
+        line: 12,
+        lineText: 'const tiers=await sql`SELECT economic_tier, count(*)::int AS c FROM crawler_ai_shadow_economic_decisions GROUP BY 1 ORDER BY 1`;',
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    }
+  ],
+  warnings: []
+}
+
+Node.js v22.22.3

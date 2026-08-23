@@ -1,0 +1,7 @@
+{"key":"CRAWLER_AI_MODE","env":"production","ok":0}
+{"key":"CRAWLER_AI_PROVIDER_ENABLED","env":"production","ok":0}
+{"key":"CRAWLER_AI_DISPATCH_ENABLED","env":"production","ok":0}
+{"key":"LEGACY_DIRECT_AI_ENABLED","env":"production","ok":0}
+{"key":"CRAWLER_AI_AUTO_PUBLISH","env":"production","ok":0}
+{"key":"AUTO_PUBLISH","env":"production","ok":0}
+{"key":"NEWSROOM_AUTO_PUBLISH_ENABLED","env":"production","ok":0}

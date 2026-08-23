@@ -1,0 +1,65 @@
+{
+  "mode": "projection",
+  "at": "2026-08-22T14:29:08.085Z",
+  "T4F42": "2026-08-22T10:42:59.000Z",
+  "pricing": {
+    "inputPerM": 0.44,
+    "outputPerM": 1.32,
+    "avgPaidDraftUsd": 0.0037357955653634337,
+    "paidSamples": 9
+  },
+  "projection_current_gate": [
+    {
+      "draftsPerDay": 10,
+      "dispatchPerDay": 6.6,
+      "dailyCostUsd": 0.024556,
+      "monthlyCostUsd": 0.7367
+    },
+    {
+      "draftsPerDay": 25,
+      "dispatchPerDay": 16.4,
+      "dailyCostUsd": 0.06139,
+      "monthlyCostUsd": 1.8417
+    },
+    {
+      "draftsPerDay": 50,
+      "dispatchPerDay": 32.9,
+      "dailyCostUsd": 0.122779,
+      "monthlyCostUsd": 3.6834
+    },
+    {
+      "draftsPerDay": 100,
+      "dispatchPerDay": 65.7,
+      "dailyCostUsd": 0.245558,
+      "monthlyCostUsd": 7.3667
+    }
+  ],
+  "projection_optimized_gate": [
+    {
+      "draftsPerDay": 10,
+      "dispatchPerDay": 5.7,
+      "dailyCostUsd": 0.021412,
+      "monthlyCostUsd": 0.6424
+    },
+    {
+      "draftsPerDay": 25,
+      "dispatchPerDay": 14.3,
+      "dailyCostUsd": 0.053531,
+      "monthlyCostUsd": 1.6059
+    },
+    {
+      "draftsPerDay": 50,
+      "dispatchPerDay": 28.7,
+      "dailyCostUsd": 0.107062,
+      "monthlyCostUsd": 3.2119
+    },
+    {
+      "draftsPerDay": 100,
+      "dispatchPerDay": 57.3,
+      "dailyCostUsd": 0.214125,
+      "monthlyCostUsd": 6.4237
+    }
+  ],
+  "cost_per_100_drafts": 0.37358,
+  "cost_per_1000_drafts": 3.7358
+}

@@ -1,0 +1,10 @@
+BEFORE_TABLE []
+EXEC -- Phase 4F.3 — additive shadow auto-draft decision log (never paid). -- PRESPEND_REJECTED / WOULD_BLOCK does not delete
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_decisions_cluster_idx" ON "crawler_ai_shadow_decisions" USING btree ("cl
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_decisions_eval_idx" ON "crawler_ai_shadow_decisions" USING btree ("evalu
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_decisions_outcome_idx" ON "crawler_ai_shadow_decisions" USING btree ("pr
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_decisions_action_idx" ON "crawler_ai_shadow_decisions" USING btree ("act
+EXEC CREATE INDEX IF NOT EXISTS "crawler_ai_shadow_decisions_tier_idx" ON "crawler_ai_shadow_decisions" USING btree ("econo
+AFTER [ { table_name: 'crawler_ai_shadow_decisions' } ]
+COLS 19
+WROTE tmp-phase4f3-migration.json

@@ -1,0 +1,68 @@
+{
+  "at": "2026-08-21T14:56:14.772Z",
+  "evaluations": {
+    "c": 3634,
+    "wd": 2059,
+    "wb": 1575,
+    "clusters": 115,
+    "with_fp": 869
+  },
+  "uniqueEconomic": {
+    "c": 81,
+    "wd": 50,
+    "wb": 31,
+    "new_event": 81,
+    "material": 0,
+    "clusters": 81
+  },
+  "uniqueMetrics": {
+    "rawEvaluations": 81,
+    "distinctClusters": 81,
+    "uniqueEventRevisions": 81,
+    "uniqueWouldDispatch": 50,
+    "uniqueWouldBlock": 31,
+    "byTier": {
+      "D": 26,
+      "C": 3,
+      "B": 51,
+      "A": 1
+    },
+    "byBlockReason": {
+      "HISTORICAL_BLOCKED": 7,
+      "ALREADY_PUBLISHED": 6,
+      "WAITING_FOR_MORE_SOURCES": 11,
+      "TOO_THIN": 7
+    },
+    "byPrespend": {
+      "HISTORICAL_BLOCKED": 7,
+      "ALREADY_PUBLISHED": 6,
+      "WAITING_FOR_MORE_SOURCES": 11,
+      "PRESPEND_READY": 50,
+      "TOO_THIN": 7
+    },
+    "estimatedRequestsAfterGate": 50,
+    "estimatedRequestsBeforeGate": 81,
+    "estimatedRequestsPrevented": 31,
+    "requestPreventionPct": 38.3,
+    "estimatedSpendAfterGateUsd": 0.22943184,
+    "estimatedSpendBeforeGateUsd": 0.368566,
+    "estimatedSpendPreventedUsd": 0.13913416,
+    "spendPreventionPct": 37.8,
+    "costUnknownCount": 0,
+    "noteTr": "Benzersiz ekonomi: cluster_id + content_fingerprint + prespend_gate_version."
+  },
+  "jobs24h": {
+    "c": 7
+  },
+  "jobsSinceDeploy": {
+    "c": 0
+  },
+  "ledger24h": {
+    "c": 5,
+    "spend": 0.02113408036530018
+  },
+  "ledgerSinceDeploy": {
+    "c": 0,
+    "spend": 0
+  }
+}
