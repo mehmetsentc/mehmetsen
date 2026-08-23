@@ -47,12 +47,17 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error('[api/skor/standings]', err)
     const detail = sanitizeFootballError(err)
+    const error = detail.includes('FOOTBALL_API_KEY')
+      ? 'missing_api_key'
+      : /account is suspended|invalid api key|request limit/i.test(detail)
+        ? 'account_error'
+        : 'error'
     return NextResponse.json({
       leagueId,
       season,
       rows: [],
       updatedAt: Date.now(),
-      error: detail.includes('FOOTBALL_API_KEY') ? 'missing_api_key' : 'error',
+      error,
       detail,
       provider: getFootballProvider(),
     })
