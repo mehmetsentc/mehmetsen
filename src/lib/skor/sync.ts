@@ -124,24 +124,22 @@ async function fetchEspnDays(
   const daySet = new Set(days)
   const includeUndated = opts?.includeUndated !== false
   const includeRange = opts?.includeRange !== false
-  // Many single-day ESPN calls time out on Vercel — only hit per-day for tiny windows
-  const usePerDay = compact.length > 0 && compact.length <= 3
+  // Prefer a short per-day window (today ±1). Long ranges often 403 on cloud IPs.
+  const perDay = compact.slice(0, 3)
 
   const tasks: Promise<MatchResult[]>[] = []
   for (const league of leagues) {
-    if (usePerDay) {
-      for (const d of compact) tasks.push(fetchEspnLeague(league, d))
-    }
+    for (const d of perDay) tasks.push(fetchEspnLeague(league, d))
     if (includeRange && compact.length >= 2) {
       const from = compact[0]!
-      const to = compact[compact.length - 1]!
+      const to = compact[Math.min(compact.length - 1, 6)]!
       tasks.push(fetchEspnLeague(league, `${from}-${to}`))
     }
-    // ESPN often only exposes the next kickoff via undated scoreboard
     if (includeUndated) tasks.push(fetchEspnLeague(league))
   }
 
-  const batches = await Promise.all(tasks)
+  const settled = await Promise.allSettled(tasks)
+  const batches = settled.map((r) => (r.status === 'fulfilled' ? r.value : []))
   const minDay = days.length ? days.reduce((a, b) => (a < b ? a : b)) : ''
   return batches
     .flat()
@@ -231,12 +229,16 @@ export async function syncSkorDaily(): Promise<Record<string, unknown>> {
       }
     }
     let espnFutbol: SportsMatchDoc[] = []
-    // Free plan often blocks current season → empty day board; fill gaps via ESPN.
+    // Free/suspended API-Football → empty board; ESPN gap-fill (best-effort).
     if (footballDayDocs.length === 0) {
-      espnFutbol = await fetchEspnDays('futbol', [
-        ...dayList,
-        ...rangeYmd(today, programEnd),
-      ])
+      try {
+        espnFutbol = await fetchEspnDays('futbol', dayList)
+        if (espnFutbol.length === 0) {
+          espnFutbol = await fetchEspnDays('futbol', [...dayList, ...rangeYmd(today, programEnd)])
+        }
+      } catch (err) {
+        console.warn('[skor-daily] ESPN futbol fallback failed', err)
+      }
     }
     counts.futbol = await persistMatchDocs(dedupeMatches([...footballDayDocs, ...espnFutbol]))
 

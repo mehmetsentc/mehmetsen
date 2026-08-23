@@ -1,14 +1,51 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 
-/** Canonical: FOOTBALL_API_KEY. Aliases accepted if Pro key was stored under another name. */
+/**
+ * Canonical: FOOTBALL_API_KEY (dashboard.api-football.com / api-sports.io).
+ * RapidAPI keys: set FOOTBALL_PROVIDER=rapidapi (or FOOTBALL_RAPIDAPI_KEY).
+ */
 const FOOTBALL_KEY = (
   process.env.FOOTBALL_API_KEY ||
   process.env.API_FOOTBALL_KEY ||
   process.env.API_SPORTS_KEY ||
   process.env.APISPORTS_KEY ||
+  process.env.API_FOOTBALL ||
+  process.env.FOOTBALL_RAPIDAPI_KEY ||
   ''
 ).trim()
-const FOOTBALL_BASE = 'https://v3.football.api-sports.io'
+
+type FootballProvider = 'apisports' | 'rapidapi'
+
+function resolveFootballProvider(): FootballProvider {
+  const explicit = (process.env.FOOTBALL_PROVIDER || process.env.API_FOOTBALL_PROVIDER || '')
+    .trim()
+    .toLowerCase()
+  if (explicit === 'rapidapi' || explicit === 'rapid') return 'rapidapi'
+  if (explicit === 'apisports' || explicit === 'api-sports' || explicit === 'direct') {
+    return 'apisports'
+  }
+  // Key only present under RapidAPI-specific env → RapidAPI host.
+  if (process.env.FOOTBALL_RAPIDAPI_KEY?.trim() && !process.env.FOOTBALL_API_KEY?.trim()) {
+    return 'rapidapi'
+  }
+  return 'apisports'
+}
+
+const FOOTBALL_PROVIDER = resolveFootballProvider()
+const FOOTBALL_BASE =
+  FOOTBALL_PROVIDER === 'rapidapi'
+    ? 'https://api-football-v1.p.rapidapi.com/v3'
+    : 'https://v3.football.api-sports.io'
+
+function footballAuthHeaders(): Record<string, string> {
+  if (FOOTBALL_PROVIDER === 'rapidapi') {
+    return {
+      'x-rapidapi-key': FOOTBALL_KEY,
+      'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
+    }
+  }
+  return { 'x-apisports-key': FOOTBALL_KEY }
+}
 
 export const LEAGUES: Record<number, string> = {
   203: 'Süper Lig',
@@ -49,6 +86,11 @@ export function isSeasonAccessError(err: unknown): boolean {
   return /access to this season|try from \d{4} to \d{4}|plan:/i.test(msg)
 }
 
+export function isFootballAccountError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return /account is suspended|invalid api key|token.*missing|request limit/i.test(msg)
+}
+
 /** Parse Free-plan hint like "try from 2022 to 2024" → max allowed year. */
 export function parseAllowedSeasonMax(err: unknown): number | null {
   const msg = err instanceof Error ? err.message : String(err)
@@ -75,6 +117,20 @@ function seasonFallbackQueue(
 
 export function hasFootballApiKey(): boolean {
   return FOOTBALL_KEY.length > 0
+}
+
+export function getFootballProvider(): FootballProvider {
+  return FOOTBALL_PROVIDER
+}
+
+/** Sanitize upstream errors for API clients (never include the key). */
+export function sanitizeFootballError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  return msg
+    .replace(FOOTBALL_KEY, '[redacted]')
+    .replace(/x-apisports-key[:\s]+\S+/gi, 'x-apisports-key:[redacted]')
+    .replace(/x-rapidapi-key[:\s]+\S+/gi, 'x-rapidapi-key:[redacted]')
+    .slice(0, 280)
 }
 
 // Eski backward-compat export
@@ -148,11 +204,15 @@ interface ApiResponse { response: unknown[] }
 async function apiFetch<T>(path: string): Promise<T[]> {
   if (!FOOTBALL_KEY) throw new Error('FOOTBALL_API_KEY tanımlanmamış')
   const res = await fetch(`${FOOTBALL_BASE}${path}`, {
-    headers: { 'x-apisports-key': FOOTBALL_KEY },
+    headers: footballAuthHeaders(),
     signal: AbortSignal.timeout(15_000),
     next: { revalidate: 0 },
   })
-  if (!res.ok) throw new Error(`API-Football ${path} → HTTP ${res.status}`)
+  if (!res.ok) {
+    throw new Error(
+      `API-Football ${path} → HTTP ${res.status} (provider=${FOOTBALL_PROVIDER})`
+    )
+  }
   const json = (await res.json()) as ApiResponse & {
     errors?: Record<string, string> | string[]
     results?: number
@@ -164,9 +224,53 @@ async function apiFetch<T>(path: string): Promise<T[]> {
       : Object.entries(errs)
           .map(([k, v]) => `${k}: ${v}`)
           .join('; ')
-    if (msg) throw new Error(`API-Football ${path} → ${msg}`)
+    if (msg) {
+      throw new Error(
+        `API-Football ${path} → ${msg} (provider=${FOOTBALL_PROVIDER})`
+      )
+    }
   }
   return (json.response ?? []) as T[]
+}
+
+/** Account/plan probe — used by /api/football/health (no secrets). */
+export async function getFootballAccountStatus(): Promise<{
+  ok: boolean
+  provider: FootballProvider
+  hasKey: boolean
+  plan?: string | null
+  requests?: { current?: number; limit_day?: number } | null
+  error?: string
+}> {
+  if (!FOOTBALL_KEY) {
+    return { ok: false, provider: FOOTBALL_PROVIDER, hasKey: false, error: 'missing_api_key' }
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = await apiFetch<any>('/status')
+    const account = rows[0]?.account ?? rows[0] ?? null
+    const sub = rows[0]?.subscription ?? null
+    const requests = rows[0]?.requests ?? null
+    return {
+      ok: true,
+      provider: FOOTBALL_PROVIDER,
+      hasKey: true,
+      plan: sub?.plan ?? account?.plan ?? null,
+      requests: requests
+        ? {
+            current: Number(requests.current) || undefined,
+            limit_day: Number(requests.limit_day ?? requests.limitDay) || undefined,
+          }
+        : null,
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      provider: FOOTBALL_PROVIDER,
+      hasKey: true,
+      error: sanitizeFootballError(err),
+    }
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -255,6 +359,7 @@ export async function getStandingsResolved(
       return { season, standings }
     } catch (err) {
       lastErr = err
+      if (isFootballAccountError(err)) throw err
       if (isSeasonAccessError(err)) {
         console.warn(
           `[football] season blocked league=${leagueId} season=${season}: ${
@@ -312,6 +417,7 @@ export async function getTodayFixtures(leagueId = 203): Promise<Fixture[]> {
       return fixtures
     } catch (err) {
       lastErr = err
+      if (isFootballAccountError(err)) throw err
       if (isSeasonAccessError(err)) {
         const rest = seasonFallbackQueue(CURRENT_SEASON, season, err).filter(
           (s) => !tried.has(s)
@@ -361,6 +467,7 @@ export async function getUpcomingFixtures(leagueId = 203, next = 10): Promise<Fi
       return fixtures
     } catch (err) {
       lastErr = err
+      if (isFootballAccountError(err)) throw err
       if (isSeasonAccessError(err)) {
         const rest = seasonFallbackQueue(CURRENT_SEASON, season, err).filter(
           (s) => !tried.has(s)
@@ -405,6 +512,7 @@ export async function getPastFixtures(leagueId = 203, season = CURRENT_SEASON, l
       if (fixtures.length || s === footballSeasonCandidates(season).at(-1)) return fixtures
     } catch (err) {
       lastErr = err
+      if (isFootballAccountError(err)) throw err
       if (isSeasonAccessError(err)) continue
       throw err
     }

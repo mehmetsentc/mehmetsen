@@ -58,16 +58,16 @@ export type EspnLeague = {
 
 /** Futbol — Süper Lig / Avrupa / top-5 öncelikli. */
 export const SOCCER_LEAGUES: EspnLeague[] = [
-  { sportPath: 'soccer', slug: 'TUR.1', label: 'Süper Lig', priority: 1, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'UEFA.CHAMPIONS', label: 'Şampiyonlar Ligi', priority: 2, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'UEFA.EUROPA', label: 'Avrupa Ligi', priority: 3, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'UEFA.CONFERENCE', label: 'Konferans Ligi', priority: 4, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'TUR.CUP', label: 'Türkiye Kupası', priority: 5, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'ENG.1', label: 'Premier League', priority: 6, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'ESP.1', label: 'La Liga', priority: 7, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'GER.1', label: 'Bundesliga', priority: 8, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'ITA.1', label: 'Serie A', priority: 9, sport: 'futbol' },
-  { sportPath: 'soccer', slug: 'FRA.1', label: 'Ligue 1', priority: 10, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'tur.1', label: 'Süper Lig', priority: 1, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'uefa.champions', label: 'Şampiyonlar Ligi', priority: 2, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'uefa.europa', label: 'Avrupa Ligi', priority: 3, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'uefa.europa.conf', label: 'Konferans Ligi', priority: 4, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'tur.cup', label: 'Türkiye Kupası', priority: 5, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'eng.1', label: 'Premier League', priority: 6, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'esp.1', label: 'La Liga', priority: 7, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'ger.1', label: 'Bundesliga', priority: 8, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'ita.1', label: 'Serie A', priority: 9, sport: 'futbol' },
+  { sportPath: 'soccer', slug: 'fra.1', label: 'Ligue 1', priority: 10, sport: 'futbol' },
 ]
 
 /** Basketbol — yazın WNBA canlı; NBA sezon dışıysa yaklaşan maçlar. */
@@ -119,21 +119,33 @@ export async function fetchEspnLeague(
   league: EspnLeague,
   datesCompact?: string
 ): Promise<MatchResult[]> {
-  try {
-    const qs = datesCompact ? `?dates=${datesCompact}` : ''
-    const url = `https://site.api.espn.com/apis/site/v2/sports/${league.sportPath}/${league.slug}/scoreboard${qs}`
-    const res = await fetch(url, {
-      cache: 'no-store',
-      headers: { Accept: 'application/json', 'User-Agent': 'NaHaber/1.0' },
-      signal: AbortSignal.timeout(7000),
-    })
-    if (!res.ok) return []
-    const data = (await res.json()) as EspnResponse
-    if (!data.events?.length) return []
-    return data.events
-      .map((ev) => mapEspnEvent(ev, league))
-      .filter((m): m is MatchResult => m !== null)
-  } catch {
-    return []
+  const qs = datesCompact ? `?dates=${datesCompact}` : ''
+  const paths = [
+    `https://site.api.espn.com/apis/site/v2/sports/${league.sportPath}/${league.slug}/scoreboard${qs}`,
+    // CDN mirror — sometimes less aggressive on cloud IPs
+    `https://cdn.espn.com/core/${league.sportPath}/${league.slug}/scoreboard?xhr=1${datesCompact ? `&dates=${datesCompact}` : ''}`,
+  ]
+  for (const url of paths) {
+    try {
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; NaHaber/1.0)',
+        },
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!res.ok) continue
+      const data = (await res.json()) as EspnResponse & { content?: EspnResponse }
+      const events = data.events ?? data.content?.events
+      if (!events?.length) continue
+      return events
+        .map((ev) => mapEspnEvent(ev, league))
+        .filter((m): m is MatchResult => m !== null)
+    } catch {
+      continue
+    }
   }
+  return []
 }
+
