@@ -5,7 +5,9 @@ describe('formatAiPublishSkipReasonTr', () => {
   it('maps known codes to Turkish', () => {
     expect(formatAiPublishSkipReasonTr('already_published')).toBe('Bu haber zaten yayınlanmış')
     expect(formatAiPublishSkipReasonTr('ai_duplicate')).toBe('AI benzer haber olarak işaretledi')
-    expect(formatAiPublishSkipReasonTr('quality:incomplete_text')).toBe('Metin kesik veya eksik')
+    expect(formatAiPublishSkipReasonTr('quality:body_too_short')).toContain('İçerik çok kısa')
+    expect(formatAiPublishSkipReasonTr('quality:body_too_short')).toContain('kaynağı kontrol edin')
+    expect(formatAiPublishSkipReasonTr('quality:incomplete_text')).toContain('Metin kesik')
     expect(formatAiPublishSkipReasonTr('görsel yok')).toBe('Kapak görseli yok')
   })
 

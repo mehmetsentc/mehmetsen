@@ -1007,6 +1007,10 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       values.discoveryPrimaryImageCandidate = patch.discoveryPrimaryImageCandidate
     }
     if (patch.primaryImageConfidence !== undefined) values.primaryImageConfidence = patch.primaryImageConfidence
+    if (patch.articleBodyText !== undefined) values.articleBodyText = patch.articleBodyText
+    if (patch.articleBodyHtml !== undefined) values.articleBodyHtml = patch.articleBodyHtml
+    if (patch.wordCount !== undefined) values.wordCount = patch.wordCount
+    if (patch.charCount !== undefined) values.charCount = patch.charCount
     await this.db().update(rawArticles).set(values).where(eq(rawArticles.id, id))
   }
 

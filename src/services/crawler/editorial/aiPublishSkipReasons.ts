@@ -18,8 +18,10 @@ export function formatAiPublishSkipReasonTr(skipReason: string | undefined | nul
     ai_duplicate: 'AI benzer haber olarak işaretledi',
     promotional_content: 'Tanıtım / kanal paylaşımı içeriği',
     live_broadcast: 'Canlı yayın / basın toplantısı linki',
-    'quality:body_too_short': 'İçerik çok kısa',
-    'quality:incomplete_text': 'Metin kesik veya eksik',
+    'quality:body_too_short':
+      'İçerik çok kısa — kaynağı kontrol edin veya haberi yeniden çıkarın',
+    'quality:incomplete_text':
+      'Metin kesik veya eksik — kaynağı kontrol edin veya yeniden çıkarın',
     'quality:fact_check_failed': 'Doğrulama başarısız',
     gate_skip: 'Kalite kapısı atladı',
     ai_output_too_short: 'AI çıktısı çok kısa',

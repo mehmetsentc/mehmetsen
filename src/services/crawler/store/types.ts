@@ -376,6 +376,10 @@ export interface CrawlerStore {
         | 'clusterRole'
         | 'discoveryPrimaryImageCandidate'
         | 'primaryImageConfidence'
+        | 'articleBodyText'
+        | 'articleBodyHtml'
+        | 'wordCount'
+        | 'charCount'
       >
     >
   ): Promise<void>

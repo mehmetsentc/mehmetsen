@@ -4,6 +4,7 @@ import {
   AI_PUBLISH_BATCH_CAP,
   authorizeEditorAiPublish,
   buildNewsroomInputFromRaw,
+  enrichThinBodyForEditorAi,
   isRawArticleAiPublishEligible,
   publishRawArticlesWithAi,
 } from './aiPublish'
@@ -28,7 +29,15 @@ vi.mock('./newsLink', () => ({
   syncCrawlerEditorial: vi.fn(async () => {}),
 }))
 
+vi.mock('@/services/rss/articleFetcher', () => ({
+  fetchArticleEnrichment: vi.fn(async () => null),
+}))
+
 const NOW = new Date('2026-08-19T12:00:00Z')
+
+const RICH_BODY =
+  'Habertürk kaynaklı uzun haber gövdesi. Ekipler bölgede müdahale etti. ' +
+  'Yetkililer açıklama yaptı ve gelişmeleri aktardı. '.repeat(18)
 
 async function seedSource(store: MemoryCrawlerStore, name = 'AA') {
   return store.insertSource({
@@ -51,7 +60,7 @@ async function seedArticle(store: MemoryCrawlerStore, source: { id: string; doma
     urlHash: title,
     title,
     description: title,
-    articleBodyText: `${title} gövde metni yeterince uzun bir haber içeriği.`,
+    articleBodyText: opts?.articleBodyText ?? `${title} ${RICH_BODY}`,
     articleBodyHtml: `<p>${title}</p>`,
     author: null,
     publishedAt: NOW,
@@ -257,5 +266,61 @@ describe('isRawArticleAiPublishEligible', () => {
     expect(isRawArticleAiPublishEligible('IN_REVIEW')).toBe(true)
     expect(isRawArticleAiPublishEligible('PUBLISHED')).toBe(false)
     expect(isRawArticleAiPublishEligible('DELETED')).toBe(false)
+  })
+})
+
+describe('enrichThinBodyForEditorAi', () => {
+  it('re-fetches and persists body when RSS snippet is too short', async () => {
+    const { fetchArticleEnrichment } = await import('@/services/rss/articleFetcher')
+    vi.mocked(fetchArticleEnrichment).mockResolvedValueOnce({
+      imageUrl: 'https://im.haberturk.com/cover.jpg',
+      description: null,
+      bodyText: RICH_BODY + ' Ek paragraf kaynak siteden geldi.',
+      htmlBody: `<p>${RICH_BODY}</p>`,
+      author: null,
+      publishedAt: null,
+      readingTimeMinutes: 2,
+      extractionMethod: 'test',
+    })
+
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store, 'Haberturk')
+    const snippet =
+      "Muğla'nın Bodrum ilçesinde etkisini artıran sıcak hava dalgası nedeniyle hissedilen sıcaklık 45 dereceye kadar çıktı."
+    const article = await seedArticle(store, source, 'bodrum-sicak', {
+      description: snippet,
+      articleBodyText: snippet,
+      charCount: snippet.length,
+      wordCount: 20,
+    })
+    const input = buildNewsroomInputFromRaw(article, source)
+    expect(input.originalContent.length).toBeLessThan(500)
+
+    const enriched = await enrichThinBodyForEditorAi({ store, article, input })
+    expect(enriched.originalContent.length).toBeGreaterThan(500)
+    expect(enriched.originalContent).toContain('Ek paragraf')
+
+    const saved = await store.getRawArticle(article.id)
+    expect(saved?.articleBodyText).toContain('Ek paragraf')
+    expect(saved?.rssSnippetUsedAsBody).toBe(false)
+  })
+
+  it('surfaces actionable Turkish skip for quality:body_too_short', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store)
+    const article = await seedArticle(store, source, 'kisa-govde')
+    const processArticle = async () => ({
+      outcome: 'skipped' as const,
+      skipReason: 'quality:body_too_short',
+    })
+
+    const result = await publishRawArticlesWithAi({
+      store,
+      ids: [article.id],
+      processArticle: processArticle as never,
+    })
+
+    expect(result.results[0]?.error).toContain('İçerik çok kısa')
+    expect(result.results[0]?.error).toContain('kaynağı kontrol edin')
   })
 })

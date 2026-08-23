@@ -28,3 +28,22 @@ export function countPlainWords(text: string | null | undefined): number {
 export function isNewsBodyTooShort(text: string | null | undefined, min = MIN_NEWS_BODY_WORDS): boolean {
   return countPlainWords(text) < min
 }
+
+/**
+ * Kaynak gövde + özet birleşimi — aynı RSS snippet iki kez sayılmaz.
+ * Habertürk vb. feed'lerde content fallback = description olunca
+ * `content + summary` 500+ kar görünüp enrichment atlanıyordu.
+ */
+export function combinedSourceText(
+  content: string | null | undefined,
+  summary: string | null | undefined
+): string {
+  const c = (content || '').trim()
+  const s = (summary || '').trim()
+  if (!c) return s
+  if (!s) return c
+  if (c === s) return c
+  if (c.includes(s)) return c
+  if (s.includes(c)) return s
+  return `${c}\n${s}`
+}

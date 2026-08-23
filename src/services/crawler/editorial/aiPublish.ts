@@ -1,5 +1,6 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { combinedSourceText, countPlainWords } from '@/lib/contentQuality'
 import { isCrawlerAiDispatchEnabled } from '../dispatch'
 import { draftPrefillFromRaw, rawArticleDisplay } from './prefill'
 import { syncCrawlerEditorial } from './newsLink'
@@ -17,6 +18,9 @@ export {
 import { AI_PUBLISH_TIMEOUT_SKIP_TR } from './aiPublishEligibility'
 
 export { formatAiPublishSkipReasonTr } from './aiPublishSkipReasons'
+
+/** Pipeline QUALITY_MIN_CHARS ile uyumlu — bunun altı kaynak URL'den yeniden çekilir. */
+const EDITOR_ENRICH_MIN_CHARS = 500
 
 export const AI_PUBLISH_BATCH_CAP = 25
 
@@ -82,6 +86,69 @@ export function buildNewsroomInputFromRaw(
   }
 }
 
+/**
+ * Editör AI onayla: kısa RSS snippet / eksik extract varsa kaynak URL'den
+ * gövdeyi yeniden çek. Başarılıysa ham kayda da yazar (yeniden denemede hazır olsun).
+ */
+export async function enrichThinBodyForEditorAi(opts: {
+  store: CrawlerStore
+  article: RawArticleRecord
+  input: NewsroomArticleInput
+}): Promise<NewsroomArticleInput> {
+  const sourceChars = combinedSourceText(opts.input.originalContent, opts.input.originalSummary).length
+  if (sourceChars >= EDITOR_ENRICH_MIN_CHARS || !opts.input.sourceUrl?.startsWith('http')) {
+    return opts.input
+  }
+
+  try {
+    const { fetchArticleEnrichment } = await import('@/services/rss/articleFetcher')
+    const extracted = await fetchArticleEnrichment(opts.input.sourceUrl, 12_000, {
+      title: opts.input.originalTitle,
+    })
+    const body = extracted?.bodyText?.trim() || ''
+    if (!body || body.length <= (opts.input.originalContent?.length ?? 0)) {
+      return opts.input
+    }
+
+    const next: NewsroomArticleInput = {
+      ...opts.input,
+      originalContent: body,
+      ...(extracted?.htmlBody && !opts.input.htmlContent ? { htmlContent: extracted.htmlBody } : {}),
+      ...(extracted?.imageUrl && !opts.input.imageUrl ? { imageUrl: extracted.imageUrl } : {}),
+    }
+
+    await opts.store
+      .updateRawArticle(opts.article.id, {
+        articleBodyText: body,
+        articleBodyHtml: extracted?.htmlBody || opts.article.articleBodyHtml,
+        wordCount: countPlainWords(body),
+        charCount: body.length,
+        qualityStatus: 'EXTRACTED',
+        rssSnippetUsedAsBody: false,
+        ...(extracted?.imageUrl && !opts.article.mainImageUrl
+          ? { mainImageUrl: extracted.imageUrl }
+          : {}),
+      })
+      .catch((err) => {
+        console.warn(
+          `[aiPublish] enrich persist failed ${opts.article.id}:`,
+          err instanceof Error ? err.message : err
+        )
+      })
+
+    console.log(
+      `[aiPublish] editor enrich: ${opts.article.id} ${sourceChars}→${body.length} kar (${opts.input.sourceUrl?.slice(0, 80)})`
+    )
+    return next
+  } catch (err) {
+    console.warn(
+      `[aiPublish] editor enrich failed ${opts.article.id}:`,
+      err instanceof Error ? err.message : err
+    )
+    return opts.input
+  }
+}
+
 async function loadPublishedNews(newsId: string) {
   const db = getAdminFirestore()
   const snap = await db.collection(Collections.NEWS).doc(newsId).get()
@@ -121,7 +188,8 @@ export async function publishRawArticleWithAi(opts: {
     }
 
     const source = await opts.store.getSource(article.sourceId)
-    const input = buildNewsroomInputFromRaw(article, source)
+    let input = buildNewsroomInputFromRaw(article, source)
+    input = await enrichThinBodyForEditorAi({ store: opts.store, article, input })
 
     const { getAdminFirestore } = await import('@/lib/firebase/admin')
     const db = getAdminFirestore()

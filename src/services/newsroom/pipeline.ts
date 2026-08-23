@@ -83,7 +83,12 @@ import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { contentHasIncompleteSegments, titleLooksIncomplete } from '@/lib/ai/textCompleteness'
-import { isNewsBodyTooShort, countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
+import {
+  isNewsBodyTooShort,
+  countPlainWords,
+  combinedSourceText,
+  MIN_NEWS_BODY_WORDS,
+} from '@/lib/contentQuality'
 import {
   attachStage1RetryOptimizationContext,
   isOptimizedStage1RetryCohort,
@@ -641,13 +646,17 @@ export async function processNewsroomArticle(
     // Triggers when RSS content is thin (<500 chars) OR truncated mid-sentence.
     // Truncation check catches RSS feeds that clip at character limits without
     // a sentence boundary — e.g. "Aziz Yıldırım ve yönetim k".
+    // Editor AI onayla (skipStoryLibraryDedupe): thin snippet'lerde mutlaka
+    // kaynak URL'den yeniden çek — Habertürk RSS excerpt çift sayımı enrichment'i atlamasın.
     let workingInput = { ...input }
 
-    const totalRaw = (workingInput.originalContent + ' ' + workingInput.originalSummary).trim()
+    const totalRaw = combinedSourceText(workingInput.originalContent, workingInput.originalSummary)
     const contentTruncated = isTruncated(workingInput.originalContent?.trimEnd() ?? '')
+    const editorWantsEnrich =
+      Boolean(options.skipStoryLibraryDedupe) && totalRaw.length < QUALITY_MIN_CHARS * 2
     const needsExtraction =
       !workingInput.skipAiRewrite &&
-      (totalRaw.length < QUALITY_MIN_CHARS || contentTruncated)
+      (totalRaw.length < QUALITY_MIN_CHARS || contentTruncated || editorWantsEnrich)
 
     if (contentTruncated) {
       console.log(`[newsroom/pipeline] truncated RSS content detected, fetching full article: ${workingInput.sourceUrl}`)
@@ -735,7 +744,10 @@ export async function processNewsroomArticle(
     // ── QUALITY GATE ────────────────────────────────────────────────────────
     // After extraction, skip if content is still too thin or truncated.
     // We do NOT generate articles from headlines — that produces hallucinated news.
-    const totalAfterExtract = (workingInput.originalContent + ' ' + workingInput.originalSummary).trim()
+    const totalAfterExtract = combinedSourceText(
+      workingInput.originalContent,
+      workingInput.originalSummary
+    )
     const stillTruncated = isTruncated(workingInput.originalContent?.trimEnd() ?? '')
 
     if (!workingInput.skipAiRewrite) {
