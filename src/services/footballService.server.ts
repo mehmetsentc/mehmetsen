@@ -19,9 +19,59 @@ export const LEAGUES: Record<number, string> = {
 export const LEAGUE_IDS = [203, 204, 205, 552] as const
 export type LeagueId = typeof LEAGUE_IDS[number]
 
-/** API-Football season year = start year (Aug 2026 → 2026/27 → 2026). */
-export const CURRENT_SEASON = 2026
-export const PREV_SEASON    = 2025
+/** API-Football season year = start year (Aug → that calendar year). */
+function turkeyParts(ms = Date.now()): { y: number; m: number } {
+  const d = new Date(ms + 3 * 3600_000)
+  return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1 }
+}
+
+/** Prefer FOOTBALL_SEASON env; else Aug–Dec = year, Jan–Jul = year-1. */
+export function resolveCurrentSeason(nowMs = Date.now()): number {
+  const raw = Number(process.env.FOOTBALL_SEASON)
+  if (Number.isFinite(raw) && raw >= 2000 && raw <= 2100) return Math.trunc(raw)
+  const { y, m } = turkeyParts(nowMs)
+  return m >= 8 ? y : y - 1
+}
+
+export const CURRENT_SEASON = resolveCurrentSeason()
+export const PREV_SEASON = CURRENT_SEASON - 1
+
+/** Newest → older seasons to try when Free plan blocks current year. */
+export function footballSeasonCandidates(preferred = CURRENT_SEASON): number[] {
+  const start = Number.isFinite(preferred) ? preferred : CURRENT_SEASON
+  const out: number[] = []
+  for (let s = start; s >= start - 4 && s >= 2020; s -= 1) out.push(s)
+  return out
+}
+
+export function isSeasonAccessError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return /access to this season|try from \d{4} to \d{4}|plan:/i.test(msg)
+}
+
+/** Parse Free-plan hint like "try from 2022 to 2024" → max allowed year. */
+export function parseAllowedSeasonMax(err: unknown): number | null {
+  const msg = err instanceof Error ? err.message : String(err)
+  const m = msg.match(/try from\s+(\d{4})\s+to\s+(\d{4})/i)
+  if (!m) return null
+  const max = Number(m[2])
+  return Number.isFinite(max) ? max : null
+}
+
+/** Remaining candidates after a blocked season, preferring the plan's max year. */
+function seasonFallbackQueue(
+  preferred: number,
+  failedSeason: number,
+  err: unknown
+): number[] {
+  const max = parseAllowedSeasonMax(err)
+  const base = footballSeasonCandidates(preferred).filter((s) => s < failedSeason)
+  if (max == null) return base
+  const capped = base.filter((s) => s <= max)
+  const head = capped.filter((s) => s === max)
+  const rest = capped.filter((s) => s !== max)
+  return [...head, ...rest]
+}
 
 export function hasFootballApiKey(): boolean {
   return FOOTBALL_KEY.length > 0
@@ -154,22 +204,52 @@ function mapFixture(f: any): Fixture {
 }
 
 // ─── Puan Tablosu ────────────────────────────────────────────────────────────
-export async function getStandings(leagueId = 203, season = CURRENT_SEASON): Promise<Standing[]> {
-  const db  = getAdminFirestore()
+async function fetchStandingsForSeason(leagueId: number, season: number): Promise<Standing[]> {
+  const db = getAdminFirestore()
   const ref = db.collection(CACHE_COL).doc(`standings-${leagueId}-${season}`)
   const doc = await ref.get()
   if (doc.exists) {
     const d = doc.data() as { standings: Standing[]; cachedAt: number }
-    if (Date.now() - d.cachedAt < STANDINGS_TTL) return d.standings
+    // Empty cache is not authoritative (wrong season / plan miss) — refetch.
+    if (d.standings?.length && Date.now() - d.cachedAt < STANDINGS_TTL) return d.standings
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw      = await apiFetch<any>(`/standings?league=${leagueId}&season=${season}`)
-  // 3. Lig birden fazla grup içerebilir — hepsini birleştir
+  const raw = await apiFetch<any>(`/standings?league=${leagueId}&season=${season}`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allGroups: any[][] = raw[0]?.league?.standings ?? []
   const standings: Standing[] = allGroups.flat().map(mapStanding)
-  await ref.set({ standings, cachedAt: Date.now() })
+  if (standings.length) await ref.set({ standings, cachedAt: Date.now() })
   return standings
+}
+
+/** Standings for preferred season, falling back when Free plan blocks newer seasons. */
+export async function getStandingsResolved(
+  leagueId = 203,
+  preferredSeason = CURRENT_SEASON
+): Promise<{ season: number; standings: Standing[] }> {
+  const candidates = footballSeasonCandidates(preferredSeason)
+  let lastErr: unknown
+  for (const season of candidates) {
+    try {
+      const standings = await fetchStandingsForSeason(leagueId, season)
+      if (standings.length) return { season, standings }
+      // Empty table — try older season only if this looks like preseason / unavailable.
+      if (season === preferredSeason && candidates.length > 1) continue
+      return { season, standings }
+    } catch (err) {
+      lastErr = err
+      if (isSeasonAccessError(err)) continue
+      throw err
+    }
+  }
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error(`API-Football standings unavailable for league ${leagueId}`)
+}
+
+export async function getStandings(leagueId = 203, season = CURRENT_SEASON): Promise<Standing[]> {
+  const resolved = await getStandingsResolved(leagueId, season)
+  return resolved.standings
 }
 
 // ─── Bugünkü Maçlar ──────────────────────────────────────────────────────────
@@ -182,13 +262,23 @@ export async function getTodayFixtures(leagueId = 203): Promise<Fixture[]> {
     const d = doc.data() as { fixtures: Fixture[]; cachedAt: number }
     if (Date.now() - d.cachedAt < FIXTURES_TTL) return d.fixtures
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = await apiFetch<any>(
-    `/fixtures?league=${leagueId}&season=${CURRENT_SEASON}&date=${today}`
-  )
-  const fixtures = raw.map(mapFixture)
-  await ref.set({ fixtures, cachedAt: Date.now() })
-  return fixtures
+  let lastErr: unknown
+  for (const season of footballSeasonCandidates()) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = await apiFetch<any>(
+        `/fixtures?league=${leagueId}&season=${season}&date=${today}`
+      )
+      const fixtures = raw.map(mapFixture)
+      await ref.set({ fixtures, cachedAt: Date.now() })
+      return fixtures
+    } catch (err) {
+      lastErr = err
+      if (isSeasonAccessError(err)) continue
+      throw err
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('fixtures-today unavailable')
 }
 
 // ─── Yaklaşan Maçlar ─────────────────────────────────────────────────────────
@@ -203,45 +293,64 @@ export async function getUpcomingFixtures(leagueId = 203, next = 10): Promise<Fi
   }
   const today  = turkeyYmd()
   const future = turkeyYmd(Date.now() + 60 * 24 * 60 * 60 * 1000)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = await apiFetch<any>(
-    `/fixtures?league=${leagueId}&season=${CURRENT_SEASON}&from=${today}&to=${future}`
-  )
-  const fixtures = raw
-    .map(mapFixture)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .sort((a: Fixture, b: Fixture) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, next)
-  await ref.set({ fixtures, cachedAt: Date.now() })
-  return fixtures
+  let lastErr: unknown
+  for (const season of footballSeasonCandidates()) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = await apiFetch<any>(
+        `/fixtures?league=${leagueId}&season=${season}&from=${today}&to=${future}`
+      )
+      const fixtures = raw
+        .map(mapFixture)
+        .sort((a: Fixture, b: Fixture) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, next)
+      await ref.set({ fixtures, cachedAt: Date.now() })
+      return fixtures
+    } catch (err) {
+      lastErr = err
+      if (isSeasonAccessError(err)) continue
+      throw err
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('fixtures-upcoming unavailable')
 }
 
 // ─── Geçmiş Maçlar ───────────────────────────────────────────────────────────
 // Free plan: `last` parametresi yok — sezonun son ayları (Mart–Temmuz) çekilir
 export async function getPastFixtures(leagueId = 203, season = CURRENT_SEASON, last = 20): Promise<Fixture[]> {
-  const db  = getAdminFirestore()
-  const ref = db.collection(CACHE_COL).doc(`fixtures-past-${leagueId}-${season}`)
-  const doc = await ref.get()
-  if (doc.exists) {
-    const d = doc.data() as { fixtures: Fixture[]; cachedAt: number }
-    if (Date.now() - d.cachedAt < PAST_TTL) return d.fixtures.slice(0, last)
+  const db = getAdminFirestore()
+  let lastErr: unknown
+  for (const s of footballSeasonCandidates(season)) {
+    const ref = db.collection(CACHE_COL).doc(`fixtures-past-${leagueId}-${s}`)
+    const doc = await ref.get()
+    if (doc.exists) {
+      const d = doc.data() as { fixtures: Fixture[]; cachedAt: number }
+      if (d.fixtures?.length && Date.now() - d.cachedAt < PAST_TTL) {
+        return d.fixtures.slice(0, last)
+      }
+    }
+    // season=2024 → 2024-25 → bitiş Mart–Temmuz 2025
+    const endYear = s + 1
+    const from = `${endYear}-03-01`
+    const to = `${endYear}-07-31`
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = await apiFetch<any>(
+        `/fixtures?league=${leagueId}&season=${s}&from=${from}&to=${to}`
+      )
+      const fixtures = raw
+        .map(mapFixture)
+        .sort((a: Fixture, b: Fixture) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, last)
+      if (fixtures.length) await ref.set({ fixtures, cachedAt: Date.now() })
+      if (fixtures.length || s === footballSeasonCandidates(season).at(-1)) return fixtures
+    } catch (err) {
+      lastErr = err
+      if (isSeasonAccessError(err)) continue
+      throw err
+    }
   }
-  // season=2024 → 2024-25 sezonu → bitiş Mart-Temmuz 2025
-  const endYear = season + 1
-  const from = `${endYear}-03-01`
-  const to   = `${endYear}-07-31`
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = await apiFetch<any>(
-    `/fixtures?league=${leagueId}&season=${season}&from=${from}&to=${to}`
-  )
-  // En yeni maçlar önce
-  const fixtures = raw
-    .map(mapFixture)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .sort((a: Fixture, b: Fixture) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, last)
-  await ref.set({ fixtures, cachedAt: Date.now() })
-  return fixtures
+  throw lastErr instanceof Error ? lastErr : new Error('fixtures-past unavailable')
 }
 
 // ─── Canlı Maçlar ────────────────────────────────────────────────────────────

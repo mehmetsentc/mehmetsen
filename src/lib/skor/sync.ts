@@ -11,8 +11,7 @@ import {
   LEAGUES,
   getDayScoreboard,
   getLiveScoreboard,
-  getStandings,
-  hasFootballApiKey,
+  getStandingsResolved,
 } from '@/services/footballService.server'
 import {
   bumpSeasonMeta,
@@ -178,8 +177,8 @@ export async function syncSkorLive(): Promise<Record<string, unknown>> {
       footballDocs = []
     }
     footballDocs = footballDocs.filter((m) => m.status === 'live')
-    // ESPN scoreboard is often 403 from Vercel — only use as last resort without Pro key
-    if (footballDocs.length === 0 && !hasFootballApiKey()) {
+    // Free plan / empty live board — try ESPN as gap fill (may 403 on some hosts).
+    if (footballDocs.length === 0) {
       footballDocs = (await fetchEspnDays('futbol', [today, yesterday])).filter(
         (m) => m.status === 'live'
       )
@@ -232,14 +231,12 @@ export async function syncSkorDaily(): Promise<Record<string, unknown>> {
       }
     }
     let espnFutbol: SportsMatchDoc[] = []
-    if (!hasFootballApiKey() || footballDayDocs.length === 0) {
-      // Prefer licensed API-Football; ESPN only if Pro key missing or day window empty
-      if (!hasFootballApiKey()) {
-        espnFutbol = await fetchEspnDays('futbol', [
-          ...dayList,
-          ...rangeYmd(today, programEnd),
-        ])
-      }
+    // Free plan often blocks current season → empty day board; fill gaps via ESPN.
+    if (footballDayDocs.length === 0) {
+      espnFutbol = await fetchEspnDays('futbol', [
+        ...dayList,
+        ...rangeYmd(today, programEnd),
+      ])
     }
     counts.futbol = await persistMatchDocs(dedupeMatches([...footballDayDocs, ...espnFutbol]))
 
@@ -281,7 +278,10 @@ export async function syncSkorStandings(): Promise<Record<string, unknown>> {
         `Lig ${ext}`
 
       try {
-        const rows = await getStandings(leagueIdNum, CURRENT_SEASON)
+        const { season, standings: rows } = await getStandingsResolved(
+          leagueIdNum,
+          CURRENT_SEASON
+        )
         const mapped: SportsStandingRow[] = rows.map((r) => ({
           rank: r.rank,
           teamId: String(r.teamId),
@@ -297,25 +297,29 @@ export async function syncSkorStandings(): Promise<Record<string, unknown>> {
           form: r.form,
         }))
         const doc: SportsStandingsDoc = {
-          id: `${leagueId}_${CURRENT_SEASON}`,
+          id: `${leagueId}_${season}`,
           leagueId,
           leagueName: name,
-          season: CURRENT_SEASON,
+          season,
           sport: 'futbol',
           rows: mapped,
           updatedAt: Date.now(),
         }
         await upsertStandings(doc)
+        // Also mirror under preferred CURRENT_SEASON id so UI default query finds rows.
+        if (season !== CURRENT_SEASON) {
+          await upsertStandings({ ...doc, id: `${leagueId}_${CURRENT_SEASON}`, season: CURRENT_SEASON })
+        }
         await upsertSeason({
-          id: `${leagueId}_${CURRENT_SEASON}`,
+          id: `${leagueId}_${season}`,
           leagueId,
           leagueName: name,
           sport: 'futbol',
-          year: CURRENT_SEASON,
+          year: season,
           matchCount: 0,
           updatedAt: Date.now(),
         })
-        results[ext] = mapped.length
+        results[ext] = { rows: mapped.length, season }
       } catch (e) {
         results[ext] = e instanceof Error ? e.message : String(e)
       }
@@ -324,7 +328,13 @@ export async function syncSkorStandings(): Promise<Record<string, unknown>> {
     await setSyncState('skor-standings', {
       ok: true,
       counts: Object.fromEntries(
-        Object.entries(results).map(([k, v]) => [k, typeof v === 'number' ? v : 0])
+        Object.entries(results).map(([k, v]) => {
+          if (typeof v === 'number') return [k, v]
+          if (v && typeof v === 'object' && 'rows' in (v as object)) {
+            return [k, Number((v as { rows: number }).rows) || 0]
+          }
+          return [k, 0]
+        })
       ),
     })
     return { ok: true, season: CURRENT_SEASON, results }
@@ -351,8 +361,8 @@ export async function hydrateSportBoard(
           /* ignore */
         }
       }
-      // Licensed path first; ESPN only when Pro key is absent (ESPN often 403 on Vercel)
-      if (!hasFootballApiKey()) {
+      // API-Football Free may block current season — fill empty boards via ESPN.
+      if (docs.length === 0) {
         docs.push(...(await fetchEspnDays('futbol', days)))
       }
     } else if (sport === 'basketbol') {
