@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { CURRENT_SEASON, hasFootballApiKey } from '@/services/footballService.server'
+import {
+  CURRENT_SEASON,
+  hasFootballApiKey,
+  sanitizeFootballError,
+  getFootballProvider,
+} from '@/services/footballService.server'
 import { getSkorStandings } from '@/lib/skor/board'
 import { hydrateStandingsFallback } from '@/lib/skor/standingsFallback'
 
@@ -22,6 +27,7 @@ export async function GET(req: NextRequest) {
           rows: [],
           updatedAt: Date.now(),
           error: 'missing_api_key',
+          provider: getFootballProvider(),
         })
       }
       doc = await hydrateStandingsFallback(leagueId, season)
@@ -40,13 +46,15 @@ export async function GET(req: NextRequest) {
     )
   } catch (err) {
     console.error('[api/skor/standings]', err)
-    const message = err instanceof Error ? err.message : String(err)
+    const detail = sanitizeFootballError(err)
     return NextResponse.json({
       leagueId,
       season,
       rows: [],
       updatedAt: Date.now(),
-      error: message.includes('FOOTBALL_API_KEY') ? 'missing_api_key' : 'error',
+      error: detail.includes('FOOTBALL_API_KEY') ? 'missing_api_key' : 'error',
+      detail,
+      provider: getFootballProvider(),
     })
   }
 }

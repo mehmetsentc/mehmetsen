@@ -10,6 +10,7 @@ import {
 } from '@/lib/skor/store'
 import { groupBoardMatches } from '@/lib/skor/mappers'
 import { hydrateSportBoard } from '@/lib/skor/sync'
+import { hasFootballApiKey } from '@/services/footballService.server'
 import type {
   SkorBoardLeagueGroup,
   SkorBoardTab,
@@ -119,19 +120,27 @@ export async function getSkorBoard(opts: {
       matches = filterByTab(hydrated, 'today', date, yesterday)
       source = 'hydrate'
     }
-    // Offseason / sparse days: soft-fill with upcoming so the board isn't blank
+    // Offseason / sparse days: soft-fill with upcoming so the board isn't blank.
+    // Skip for football when API-Football is configured — wrong-day ESPN fill
+    // (e.g. Bayern midweek) looked like "broken skor" and skor must stay automatic
+    // via licensed API, not AI / noisy fallbacks.
     if (matches.length === 0) {
-      const to = turkeyYmd(PROGRAM_DAYS)
-      let upcoming = await queryProgramMatches(sport, today, to)
-      upcoming = filterByTab(upcoming, 'program', today, yesterday)
-      if (upcoming.length === 0) {
-        const hydrated = await hydrateSportBoard(sport, programDayList(today))
-        upcoming = filterByTab(hydrated, 'program', today, yesterday)
-        source = 'hydrate'
-      }
-      if (upcoming.length > 0) {
-        matches = upcoming
-        emptyReason = 'showing_upcoming'
+      const allowSoftFill = sport !== 'futbol' || !hasFootballApiKey()
+      if (allowSoftFill) {
+        const to = turkeyYmd(PROGRAM_DAYS)
+        let upcoming = await queryProgramMatches(sport, today, to)
+        upcoming = filterByTab(upcoming, 'program', today, yesterday)
+        if (upcoming.length === 0) {
+          const hydrated = await hydrateSportBoard(sport, programDayList(today))
+          upcoming = filterByTab(hydrated, 'program', today, yesterday)
+          source = 'hydrate'
+        }
+        if (upcoming.length > 0) {
+          matches = upcoming
+          emptyReason = 'showing_upcoming'
+        } else {
+          emptyReason = 'no_matches_today'
+        }
       } else {
         emptyReason = 'no_matches_today'
       }

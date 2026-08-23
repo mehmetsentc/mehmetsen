@@ -309,20 +309,38 @@ function mapFixture(f: any): Fixture {
 
 // ─── Puan Tablosu ────────────────────────────────────────────────────────────
 async function fetchStandingsForSeason(leagueId: number, season: number): Promise<Standing[]> {
-  const db = getAdminFirestore()
-  const ref = db.collection(CACHE_COL).doc(`standings-${leagueId}-${season}`)
-  const doc = await ref.get()
-  if (doc.exists) {
-    const d = doc.data() as { standings: Standing[]; cachedAt: number }
-    // Empty cache is not authoritative (wrong season / plan miss) — refetch.
-    if (d.standings?.length && Date.now() - d.cachedAt < STANDINGS_TTL) return d.standings
+  let ref: FirebaseFirestore.DocumentReference | null = null
+  try {
+    const db = getAdminFirestore()
+    ref = db.collection(CACHE_COL).doc(`standings-${leagueId}-${season}`)
+    const doc = await ref.get()
+    if (doc.exists) {
+      const d = doc.data() as { standings: Standing[]; cachedAt: number }
+      // Empty cache is not authoritative (wrong season / plan miss) — refetch.
+      if (d.standings?.length && Date.now() - d.cachedAt < STANDINGS_TTL) return d.standings
+    }
+  } catch (err) {
+    console.warn(
+      `[football] standings cache read failed league=${leagueId} season=${season}:`,
+      err instanceof Error ? err.message : err
+    )
   }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = await apiFetch<any>(`/standings?league=${leagueId}&season=${season}`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allGroups: any[][] = raw[0]?.league?.standings ?? []
   const standings: Standing[] = allGroups.flat().map(mapStanding)
-  if (standings.length) await ref.set({ standings, cachedAt: Date.now() })
+  if (standings.length && ref) {
+    try {
+      await ref.set({ standings, cachedAt: Date.now() })
+    } catch (err) {
+      console.warn(
+        `[football] standings cache write failed league=${leagueId} season=${season}:`,
+        err instanceof Error ? err.message : err
+      )
+    }
+  }
   return standings
 }
 
