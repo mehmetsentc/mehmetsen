@@ -23,18 +23,15 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const pathname = usePathname()
   const [hydrated, setHydrated] = useState(false)
   const isFeed = pathname === ROUTES.FEED
+  const isArticle = pathname.startsWith('/haber/')
   // Reels uses the floating GlobalBackNav (immersive). Elsewhere show inline back.
   const showBack =
     !isFeed &&
     pathname !== ROUTES.HOME &&
     pathname !== '/' &&
     pathname !== ROUTES.REELS
-  // Article pages get a dedicated compact sticky header (ArticleStickyHeader).
-  // Keep this site header in normal flow there so we don't stack two top bars.
-  const isArticle = pathname.startsWith('/haber/')
   // Fixed chrome does not rubber-band with WKWebView overscroll (sticky does).
-  const useFixedChrome = !isArticle
-  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(useFixedChrome)
+  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
 
   useEffect(() => {
     setHydrated(true)
@@ -45,20 +42,22 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       ? ROUTES.PROFILE(user.username || user.uid)
       : ROUTES.LOGIN
 
-  // Article pages use ArticleStickyHeader on mobile — skip duplicate site chrome.
-  if (isArticle) return null
+  // SSR / first-paint spacer — articles hide CategoryNav (see CategoryNav hide list).
+  const fallbackChromeHeight = isFeed
+    ? 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 72px + 48px)'
+    : isArticle
+      ? 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem)'
+      : 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem + 48px)'
 
   return (
     <>
       <div
         ref={chromeRef as Ref<HTMLDivElement>}
         className={cn(
-          'mobile-top-chrome z-[100] lg:hidden',
-          useFixedChrome ? 'is-fixed' : 'relative',
+          'mobile-top-chrome is-fixed z-[100] lg:hidden',
           'bg-[rgb(var(--header-brand-bg))] text-white',
-          // Cover status-bar region except on article pages (ArticleStickyHeader owns that).
           // --mobile-sat falls back to env(safe-area-inset-top); Capacitor iOS bumps min 47px.
-          !isArticle && 'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
+          'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
       >
         <header
@@ -121,19 +120,13 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         {/* Embedded in chrome so category bar shares one fixed stack (no dual-sticky gap). */}
         <CategoryNav embedded />
       </div>
-      {useFixedChrome ? (
-        <div
-          className="lg:hidden shrink-0"
-          aria-hidden
-          style={{
-            height:
-              chromeHeight > 0
-                ? chromeHeight
-                : // SSR / first paint fallback — feed chrome is tallest.
-                  'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 72px + 48px)',
-          }}
-        />
-      ) : null}
+      <div
+        className="lg:hidden shrink-0"
+        aria-hidden
+        style={{
+          height: chromeHeight > 0 ? chromeHeight : fallbackChromeHeight,
+        }}
+      />
     </>
   )
 }

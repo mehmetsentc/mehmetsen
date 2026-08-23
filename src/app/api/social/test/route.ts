@@ -19,10 +19,9 @@ import { publishToInstagram } from '@/lib/social/instagram'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import { FieldValue } from 'firebase-admin/firestore'
 import type { SocialPublishPayload } from '@/lib/social/types'
-import { getSiteUrl } from '@/lib/seo'
-import { ROUTES } from '@/constants/routes'
 import { fitCompleteHeadline } from '@/lib/social/feedCaption'
 import { buildSocialImagePayload } from '@/lib/social/carouselImages'
+import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/articleUrl'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,16 +35,9 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
   return undefined
 }
 
-function buildArticleUrl(id: string, data: Record<string, unknown>): string {
-  const base = getSiteUrl()
-  if (typeof data.url === 'string' && data.url.trim()) {
-    return data.url
-      .trim()
-      .replace('nahaber.vercel.app', 'www.nahaber.com')
-      .replace('https://nahaber.com', 'https://www.nahaber.com')
-  }
-  if (typeof data.slug === 'string' && data.slug.trim()) return `${base}${ROUTES.NEWS_DETAIL(data.slug.trim())}`
-  return `${base}${ROUTES.POST_DETAIL(id)}`
+function buildArticleUrl(id: string, data: Record<string, unknown>): string | null {
+  const url = buildPublicArticleUrl(id, data)
+  return url && isPublicShareArticleUrl(url) ? url : null
 }
 
 async function handleRequest(request: Request) {
@@ -116,6 +108,12 @@ async function handleRequest(request: Request) {
   const cityName    = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
   const originalImg = extractImageUrl(data)
   const articleUrl  = buildArticleUrl(docId, data)
+  if (!articleUrl) {
+    return NextResponse.json(
+      { error: 'Public article URL yok (taslak slug) — test paylaşımı engellendi', newsId: docId },
+      { status: 400 }
+    )
+  }
 
   const steps: Record<string, unknown> = {
     newsId:    docId,

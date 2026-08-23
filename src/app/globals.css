@@ -1973,7 +1973,8 @@
   .news-article-page {
     --article-measure: min(42rem, 100%);
     --article-shell-max: var(--layout-content-newspaper, 100%);
-    --article-mobile-header-h: 2.75rem;
+    /* Matches Navbar non-feed row (h-14); CategoryNav hidden on /haber/. */
+    --article-mobile-header-h: 3.5rem;
     width: 100%;
     max-width: var(--article-shell-max);
     margin-inline: auto;
@@ -2058,21 +2059,19 @@
     width: 100%;
   }
 
+  /* Legacy spacer kept for any residual references; Navbar owns article offset. */
   .article-mobile-header-spacer {
-    height: calc(
-      var(--article-mobile-header-h) + var(--mobile-sat, env(safe-area-inset-top, 0px))
-    );
+    display: none;
   }
 
   .article-scroll-progress {
     top: 0;
   }
 
+  /* Under mobile site Navbar (h-14) + safe-area; CategoryNav is hidden on /haber/. */
   @media (max-width: 1023px) {
     .article-scroll-progress {
-      top: calc(
-        var(--article-mobile-header-h) + var(--mobile-sat, env(safe-area-inset-top, 0px))
-      );
+      top: calc(3.5rem + var(--mobile-sat, env(safe-area-inset-top, 0px)));
     }
   }
 

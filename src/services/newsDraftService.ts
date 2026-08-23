@@ -4,7 +4,7 @@
  */
 import type { Firestore } from 'firebase-admin/firestore'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
-import { buildNewsSlug } from '@/lib/newsSlug'
+import { buildNewsSlug, isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { countPlainWords } from '@/lib/contentQuality'
 import type { NewsDraftDocument } from '@/types/news'
 
@@ -37,16 +37,42 @@ async function slugTaken(db: Firestore, slug: string, excludeId?: string): Promi
   return snap.docs.some((d) => d.id !== excludeId)
 }
 
-async function allocateUniqueSlug(db: Firestore, title: string, draftId: string): Promise<string> {
+export async function allocateUniqueSlug(
+  db: Firestore,
+  title: string,
+  draftId: string,
+  excludeId?: string
+): Promise<string> {
   let candidate = buildNewsSlug(title)
-  if (!(await slugTaken(db, candidate))) return candidate
+  if (!(await slugTaken(db, candidate, excludeId))) return candidate
 
   for (let i = 2; i <= 20; i++) {
     candidate = buildNewsSlug(title, String(i))
-    if (!(await slugTaken(db, candidate))) return candidate
+    if (!(await slugTaken(db, candidate, excludeId))) return candidate
   }
 
   return buildNewsSlug(title, draftId.slice(0, 8))
+}
+
+/**
+ * Ensure a published news doc has a public SEO slug (never `taslak-*`).
+ * Persists the upgrade when the current slug is a draft placeholder.
+ */
+export async function ensurePublicNewsSlug(
+  db: Firestore,
+  newsId: string,
+  title: string,
+  currentSlug?: string | null
+): Promise<string> {
+  const existing = currentSlug?.trim() || ''
+  if (existing && !isPlaceholderDraftSlug(existing)) return existing
+
+  const slug = await allocateUniqueSlug(db, title || 'haber', newsId, newsId)
+  await db.collection(Collections.NEWS).doc(newsId).update({
+    slug,
+    updatedAt: Date.now(),
+  })
+  return slug
 }
 
 /** Fields written by the newsroom pipeline (draft or auto-publish). */
@@ -290,8 +316,9 @@ export const newsDraftService = {
     const now = Date.now()
     const draftId = doc.rssFingerprint.slice(0, 12)
     let slug = options?.preferredSlug?.trim() || ''
-    if (slug && (await slugTaken(db, slug))) slug = ''
-    if (!slug) slug = await allocateUniqueSlug(db, doc.title, draftId)
+    if (slug && isPlaceholderDraftSlug(slug)) slug = ''
+    if (slug && (await slugTaken(db, slug, options?.newsId))) slug = ''
+    if (!slug) slug = await allocateUniqueSlug(db, doc.title, draftId, options?.newsId)
 
     const payload = {
       ...draftToPublishedNews(doc, slug, now),
@@ -492,7 +519,10 @@ export const newsDraftService = {
       aiAutoPublished?: boolean
     }
     const now = Date.now()
-    const slug = data.slug?.trim() || (await allocateUniqueSlug(db, data.title ?? 'haber', newsId))
+    let slug = data.slug?.trim() || ''
+    if (!slug || isPlaceholderDraftSlug(slug)) {
+      slug = await allocateUniqueSlug(db, data.title ?? 'haber', newsId, newsId)
+    }
 
     // Already live + AI İnceleme → human OK clears review flag (stays published)
     if (
@@ -505,6 +535,8 @@ export const newsDraftService = {
         reviewedAt: now,
         updatedAt: now,
         moderationNote: null,
+        // Upgrade leftover draft placeholders even on review-clear path
+        ...(isPlaceholderDraftSlug(data.slug) ? { slug } : {}),
       })
       return { newsId, slug }
     }

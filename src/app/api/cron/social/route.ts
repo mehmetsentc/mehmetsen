@@ -25,8 +25,6 @@ import { publishToInstagram, publishInstagramStory } from '@/lib/social/instagra
 import { publishToTwitter } from '@/lib/social/twitter'
 import { publishToThreads } from '@/lib/social/threads'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
-import { getSiteUrl } from '@/lib/seo'
-import { ROUTES } from '@/constants/routes'
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from '@/lib/social/feedCaption'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from '@/lib/social/socialFactualFidelity'
 
@@ -38,6 +36,9 @@ import {
 } from '@/lib/social/publishOneSocial'
 import { getCategoryRulesDoc } from '@/lib/social/categoryRulesStore'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
+import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/articleUrl'
+import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
+import { ensurePublicNewsSlug } from '@/services/newsDraftService'
 import {
   allowsAutoPost,
   allowsAutoStory,
@@ -75,17 +76,25 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
   return undefined
 }
 
-function buildArticleUrl(id: string, data: Record<string, unknown>): string {
-  const base = getSiteUrl()
-  const url = typeof data.url === 'string' ? data.url.trim() : ''
-  const slug = typeof data.slug === 'string' ? data.slug.trim() : ''
-  if (url) {
-    return url
-      .replace('nahaber.vercel.app', 'www.nahaber.com')
-      .replace('https://nahaber.com', 'https://www.nahaber.com')
+async function resolveArticleUrl(
+  id: string,
+  data: Record<string, unknown>,
+  title: string
+): Promise<string | null> {
+  let slug = typeof data.slug === 'string' ? data.slug.trim() : ''
+  if (!slug || isPlaceholderDraftSlug(slug)) {
+    try {
+      const db = getAdminFirestore()
+      slug = await ensurePublicNewsSlug(db, id, title, slug)
+      data.slug = slug
+    } catch (err) {
+      console.error(`[cron/social] slug upgrade failed ${id}:`, err)
+      return null
+    }
   }
-  if (slug) return `${base}${ROUTES.NEWS_DETAIL(slug)}`
-  return `${base}${ROUTES.POST_DETAIL(id)}`
+  const url = buildPublicArticleUrl(id, data)
+  if (!url || !isPublicShareArticleUrl(url)) return null
+  return url
 }
 
 // Çanakkale ve tüm ilçelerinin slug listesi
@@ -289,12 +298,12 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       const title   = typeof data.title === 'string' ? data.title : ''
       const spot    = typeof data.spot === 'string' ? data.spot :
                       typeof data.summary === 'string' ? data.summary : ''
-      const articleUrl = buildArticleUrl(id, data)
+      const articleUrl = await resolveArticleUrl(id, data, title)
 
       if (!articleUrl) {
-        console.warn(`[cron/social] Story articleUrl boş — atlandı: ${id}`)
+        console.warn(`[cron/social] Story articleUrl boş / taslak — atlandı: ${id}`)
         storyFailed++
-        storyItemLogs.push({ newsId: id, title, ok: false, error: 'articleUrl missing' })
+        storyItemLogs.push({ newsId: id, title, ok: false, error: 'articleUrl missing or draft slug' })
         continue
       }
 
@@ -473,7 +482,21 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const bodyText  = fullText.slice(0, 2000)   // Instagram güvenli limit
 
     const originalImageUrl = extractImageUrl(data)
-    const articleUrl       = buildArticleUrl(id, data)
+    const articleUrl       = await resolveArticleUrl(id, data, title)
+    if (!articleUrl) {
+      console.warn(`[cron/social] public article URL yok / taslak — post atlandı: ${id}`)
+      failed++
+      results.push({
+        newsId: id,
+        title,
+        facebook: { success: false, error: 'articleUrl missing or draft slug' },
+        instagram: { success: false, error: 'articleUrl missing or draft slug' },
+        twitter: { success: false, error: 'skipped' },
+        threads: { success: false, error: 'skipped' },
+        markedDone: false,
+      })
+      continue
+    }
     const cityName         = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
 
     // ── AI İçerik Üretimi — tam metin gönder, 3 paragraflı açıklama al ──

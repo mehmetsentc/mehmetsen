@@ -76,4 +76,11 @@ describe('raw-articles page closeDrawer race fix', () => {
     expect(pageSrc).not.toMatch(/\{canAiPublish && queue === 'active'/)
     expect(pageSrc).toContain('Yayın için:')
   })
+
+  it('exposes per-row AI için onayla without opening drawer', () => {
+    expect(pageSrc).toContain('isRawArticleAiPublishEligible')
+    expect(pageSrc).toContain('openAiPublishConfirm(row.id)')
+    expect(pageSrc).toContain('singleAiPublishId')
+    expect(pageSrc).toContain('max-sm:hidden')
+  })
 })

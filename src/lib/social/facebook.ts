@@ -25,8 +25,7 @@ import {
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
-import { getSiteUrl } from '@/lib/seo'
-import { ROUTES } from '@/constants/routes'
+import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/articleUrl'
 import { buildSocialImagePayload } from './carouselImages'
 import { buildOgSocialUrl } from './ogCacheVersion'
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
@@ -665,18 +664,9 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
   return undefined
 }
 
-function buildArticleUrl(id: string, data: Record<string, unknown>): string {
-  const base = getSiteUrl()
-  if (typeof data.url === 'string' && data.url.trim()) {
-    return data.url
-      .trim()
-      .replace('nahaber.vercel.app', 'www.nahaber.com')
-      .replace('https://nahaber.com', 'https://www.nahaber.com')
-  }
-  if (typeof data.slug === 'string' && data.slug.trim()) {
-    return `${base}${ROUTES.NEWS_DETAIL(data.slug.trim())}`
-  }
-  return `${base}${ROUTES.POST_DETAIL(id)}`
+function buildArticleUrl(id: string, data: Record<string, unknown>): string | null {
+  const url = buildPublicArticleUrl(id, data)
+  return url && isPublicShareArticleUrl(url) ? url : null
 }
 
 /**
@@ -731,6 +721,14 @@ export async function testFacebookPost(
   const citySlug = typeof data.citySlug === 'string' ? data.citySlug : 'canakkale'
   const coverImage = extractImageUrl(data)
   const articleUrl = buildArticleUrl(id, data)
+  if (!articleUrl) {
+    return {
+      success: false,
+      error: 'Public article URL yok (taslak slug) — Facebook testi engellendi',
+      newsId: id,
+      title,
+    }
+  }
 
   let socialContent = await generateSocialContent(title, spot, cityName)
   if (!socialContent) {

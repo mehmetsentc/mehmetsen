@@ -6,7 +6,7 @@ import type { Firestore } from 'firebase-admin/firestore'
 import { hasPermission } from '@/types/cms'
 import { sanitizeGroundingSources, type GroundingSource } from '@/lib/ai/liveResearch'
 import { Collections } from '@/lib/firebase/collections'
-import { buildNewsSlug } from '@/lib/newsSlug'
+import { buildNewsSlug, isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
@@ -128,8 +128,8 @@ export async function POST(request: Request) {
     let slug = body.slug?.trim()
       ? body.slug.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
       : ''
-    if (!slug) slug = buildNewsSlug(body.title.trim())
-    if (await slugTaken(db, slug)) {
+    if (!slug || isPlaceholderDraftSlug(slug)) slug = buildNewsSlug(body.title.trim())
+    if (await slugTaken(db, slug) || isPlaceholderDraftSlug(slug)) {
       slug = buildNewsSlug(body.title.trim(), String(now).slice(-6))
     }
 

@@ -11,6 +11,11 @@ import { hasPermission } from '@/types/cms'
 
 export const AI_PUBLISH_BATCH_CAP = 25
 
+/** Ham Haberler satır / toplu AI yayın — PUBLISHED ve DELETED hariç. */
+export function isRawArticleAiPublishEligible(status: RawArticleRecord['editorialStatus']): boolean {
+  return status !== 'PUBLISHED' && status !== 'DELETED'
+}
+
 export type AiPublishOutcome = 'published' | 'draft' | 'updated' | 'skipped' | 'error' | 'already_published' | 'locked'
 
 export interface AiPublishItemResult {

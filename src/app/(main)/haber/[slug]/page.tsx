@@ -119,7 +119,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
         />
       )}
       <ArticleCopyGuard />
-      <ArticlePageChrome post={post} />
+      <ArticlePageChrome />
       <NewsArticleStatic post={post} relatedPosts={relatedPosts} />
       <NewsArticleInteractive post={post} citySlug={citySlug} />
     </>

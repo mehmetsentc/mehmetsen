@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CrawlerConfirmModal } from '@/components/admin/crawler/CrawlerConfirmModal'
 
 export function AiPublishConfirmModal({
@@ -17,6 +17,10 @@ export function AiPublishConfirmModal({
   onConfirm: () => void
 }) {
   const [ack, setAck] = useState(false)
+
+  useEffect(() => {
+    if (!open) setAck(false)
+  }, [open])
 
   return (
     <CrawlerConfirmModal

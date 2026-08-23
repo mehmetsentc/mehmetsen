@@ -20,8 +20,6 @@ import { publishToInstagram } from '@/lib/social/instagram'
 import { publishToTwitter } from '@/lib/social/twitter'
 import { publishToThreads } from '@/lib/social/threads'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
-import { getSiteUrl } from '@/lib/seo'
-import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload } from '@/lib/social/types'
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from '@/lib/social/feedCaption'
 import {
@@ -32,6 +30,9 @@ import {
 } from '@/lib/social/publishOneSocial'
 import { buildSocialImagePayload } from '@/lib/social/carouselImages'
 import { buildOgSocialUrl } from '@/lib/social/ogCacheVersion'
+import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/articleUrl'
+import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
+import { ensurePublicNewsSlug } from '@/services/newsDraftService'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -67,13 +68,28 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
   return undefined
 }
 
-function buildArticleUrl(id: string, data: Record<string, unknown>): string {
-  const base = getSiteUrl()
-  const url  = typeof data.url  === 'string' ? data.url.trim()  : ''
-  const slug = typeof data.slug === 'string' ? data.slug.trim() : ''
-  if (url) return url.replace('nahaber.vercel.app', 'www.nahaber.com').replace('https://nahaber.com', 'https://www.nahaber.com')
-  if (slug) return `${base}${ROUTES.NEWS_DETAIL(slug)}`
-  return `${base}${ROUTES.POST_DETAIL(id)}`
+function buildArticleUrl(id: string, data: Record<string, unknown>): string | null {
+  return buildPublicArticleUrl(id, data)
+}
+
+async function resolveShareUrl(
+  id: string,
+  data: Record<string, unknown>,
+  title: string
+): Promise<string | null> {
+  let slug = typeof data.slug === 'string' ? data.slug.trim() : ''
+  if (!slug || isPlaceholderDraftSlug(slug)) {
+    try {
+      const db = getAdminFirestore()
+      slug = await ensurePublicNewsSlug(db, id, title, slug)
+      data.slug = slug
+    } catch {
+      return null
+    }
+  }
+  const url = buildArticleUrl(id, data)
+  if (!url || !isPublicShareArticleUrl(url)) return null
+  return url
 }
 
 function stripHtml(html: string): string {
@@ -322,7 +338,16 @@ export async function POST(request: Request) {
 
     const fullText = rawContent ? stripHtml(rawContent) : spot
     const bodyText = fullText.slice(0, 2000)
-    const articleUrl = buildArticleUrl(id, data)
+    const articleUrl = await resolveShareUrl(id, data, title)
+    if (!articleUrl) {
+      results.push({
+        newsId: id,
+        title,
+        facebook: { success: false, error: 'articleUrl missing or draft slug' },
+        instagram: { success: false, error: 'articleUrl missing or draft slug' },
+      })
+      continue
+    }
     const cityName = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
 
     const aiContext = bodyText.length > 100 ? bodyText : spot

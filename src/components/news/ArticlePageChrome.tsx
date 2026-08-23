@@ -1,23 +1,13 @@
 'use client'
 
 import { ArticleScrollProgress } from '@/components/news/ArticleScrollProgress'
-import { ArticleStickyHeader } from '@/components/news/ArticleStickyHeader'
-import type { Post } from '@/types/post'
-
-interface ArticlePageChromeProps {
-  post: Post
-}
 
 /**
- * BBC-style article chrome — fixed progress bar + dedicated mobile header.
+ * Article reading chrome — scroll progress only.
+ * Site Navbar (logo / menu / back) stays on mobile article pages.
+ * Compact ArticleStickyHeader was removed so the general header is not replaced
+ * and the headline is not clipped under a second fixed bar.
  */
-export function ArticlePageChrome({ post }: ArticlePageChromeProps) {
-  return (
-    <>
-      <ArticleScrollProgress />
-      <ArticleStickyHeader post={post} />
-      {/* Reserve space under fixed mobile header (safe-area aware). */}
-      <div className="article-mobile-header-spacer lg:hidden" aria-hidden />
-    </>
-  )
+export function ArticlePageChrome() {
+  return <ArticleScrollProgress />
 }

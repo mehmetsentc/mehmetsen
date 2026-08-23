@@ -16,6 +16,34 @@ export function slugifyNewsTitle(title: string): string {
   return normalized.slice(0, 80) || 'haber'
 }
 
+/**
+ * Temporary CMS draft placeholders — must never appear in public `/haber/{slug}`
+ * or social “Haberi Oku” links (e.g. `taslak-lt4fhphn`, `ai-taslak-…`, `…-taslak`).
+ */
+export function isPlaceholderDraftSlug(slug: string | null | undefined): boolean {
+  const s = (slug ?? '').trim().toLowerCase()
+  if (!s) return true
+  if (s === 'taslak' || s === 'ai-taslak') return true
+  if (s.startsWith('taslak-') || s.startsWith('ai-taslak-')) return true
+  if (s.endsWith('-taslak') || s.includes('-taslak-')) return true
+  return false
+}
+
+/** True when a full URL points at a draft placeholder path. */
+export function urlContainsDraftSlug(url: string | null | undefined): boolean {
+  const u = (url ?? '').trim().toLowerCase()
+  if (!u) return false
+  try {
+    const path = new URL(u).pathname.toLowerCase()
+    const m = path.match(/\/haber\/([^/?#]+)/)
+    if (m?.[1] && isPlaceholderDraftSlug(decodeURIComponent(m[1]))) return true
+  } catch {
+    /* relative / malformed */
+    if (/\/haber\/(?:ai-)?taslak(?:-|\/|$)/i.test(u)) return true
+  }
+  return false
+}
+
 /** Build a unique slug candidate; caller should de-dupe against Firestore. */
 export function buildNewsSlug(title: string, suffix?: string): string {
   const base = slugifyNewsTitle(title)

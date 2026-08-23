@@ -15,8 +15,6 @@ import { publishToInstagram, publishInstagramStory } from '@/lib/social/instagra
 import { publishToTwitter } from '@/lib/social/twitter'
 import { publishToThreads } from '@/lib/social/threads'
 import { generateSocialContent } from '@/lib/social/aiSocialEditor'
-import { getSiteUrl } from '@/lib/seo'
-import { ROUTES } from '@/constants/routes'
 import type { SocialPublishPayload, SocialPublishResult } from '@/lib/social/types'
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from '@/lib/social/feedCaption'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from '@/lib/social/socialFactualFidelity'
@@ -25,6 +23,12 @@ import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
 import { buildSocialImagePayload, materializeBrandedOgForPublish } from '@/lib/social/carouselImages'
 import { buildOgSocialUrl, buildOgStoryUrl } from '@/lib/social/ogCacheVersion'
+import {
+  buildPublicArticleUrl,
+  isPublicShareArticleUrl,
+} from '@/lib/social/articleUrl'
+import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
+import { ensurePublicNewsSlug } from '@/services/newsDraftService'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -164,19 +168,6 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
     if (typeof c === 'string' && c.trim().length > 10) return c.trim()
   }
   return undefined
-}
-
-function buildArticleUrl(id: string, data: Record<string, unknown>): string {
-  const base = getSiteUrl()
-  const url  = typeof data.url  === 'string' ? data.url.trim()  : ''
-  const slug = typeof data.slug === 'string' ? data.slug.trim() : ''
-  if (url) {
-    return url
-      .replace('nahaber.vercel.app', 'www.nahaber.com')
-      .replace('https://nahaber.com', 'https://www.nahaber.com')
-  }
-  if (slug) return `${base}${ROUTES.NEWS_DETAIL(slug)}`
-  return `${base}${ROUTES.POST_DETAIL(id)}`
 }
 
 function stripHtml(html: string): string {
@@ -320,6 +311,23 @@ export async function publishOneSocial(
     const title = typeof data.title === 'string' ? data.title : ''
     if (!title) return skipped(newsId, 'Haber başlığı yok')
 
+    // Draft placeholder slugs (`taslak-*`) must never appear in Haberi Oku links.
+    // Upgrade to an SEO slug before building captions / calling platform APIs.
+    const currentSlug = typeof data.slug === 'string' ? data.slug.trim() : ''
+    if (!currentSlug || isPlaceholderDraftSlug(currentSlug)) {
+      try {
+        const publicSlug = await ensurePublicNewsSlug(db, newsId, title, currentSlug)
+        data = { ...data, slug: publicSlug }
+        console.log(
+          `[publishOneSocial] draft slug upgraded ${newsId}: ${currentSlug || '(empty)'} → ${publicSlug}`
+        )
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error(`[publishOneSocial] slug upgrade failed ${newsId}:`, msg)
+        return skipped(newsId, 'Yayın SEO slug atanamadı — sosyal paylaşım ertelendi')
+      }
+    }
+
     // ── Ne yayınlanacak? ─────────────────────────────────────────────────────
     let shouldPost: boolean
     let shouldStory: boolean
@@ -431,7 +439,13 @@ export async function publishOneSocial(
     const fullText = rawContent ? stripHtml(rawContent) : spot
     const bodyText = fullText.slice(0, 2000)
 
-    const articleUrl = buildArticleUrl(newsId, data)
+    const articleUrl = buildPublicArticleUrl(newsId, data)
+    if (!articleUrl || !isPublicShareArticleUrl(articleUrl)) {
+      console.warn(
+        `[publishOneSocial] public article URL yok / taslak — paylaşım engellendi: ${newsId}`
+      )
+      return skipped(newsId, 'Herkese açık haber URL’si yok (taslak slug) — paylaşım engellendi')
+    }
     const cityName   = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
 
     // ── AI içerik üretimi (override yoksa) ───────────────────────────────────

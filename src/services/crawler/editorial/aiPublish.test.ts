@@ -4,6 +4,7 @@ import {
   AI_PUBLISH_BATCH_CAP,
   authorizeEditorAiPublish,
   buildNewsroomInputFromRaw,
+  isRawArticleAiPublishEligible,
   publishRawArticlesWithAi,
 } from './aiPublish'
 import type { InsertRawArticleInput } from '../store/types'
@@ -174,5 +175,15 @@ describe('publishRawArticlesWithAi batch', () => {
     expect(result.results).toHaveLength(3)
     expect(result.published).toBe(2)
     expect(result.failed).toBe(1)
+  })
+})
+
+describe('isRawArticleAiPublishEligible', () => {
+  it('allows active-queue statuses except PUBLISHED and DELETED', () => {
+    expect(isRawArticleAiPublishEligible('NEW')).toBe(true)
+    expect(isRawArticleAiPublishEligible('AI_CANDIDATE')).toBe(true)
+    expect(isRawArticleAiPublishEligible('IN_REVIEW')).toBe(true)
+    expect(isRawArticleAiPublishEligible('PUBLISHED')).toBe(false)
+    expect(isRawArticleAiPublishEligible('DELETED')).toBe(false)
   })
 })

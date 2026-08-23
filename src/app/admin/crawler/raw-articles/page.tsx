@@ -12,6 +12,7 @@ import { RowOverflowMenu } from '@/components/admin/crawler/RowOverflowMenu'
 import { notifyAiPublishResult } from '@/components/admin/crawler/notifyAiPublish'
 import { notifyCrawlerBulk } from '@/components/admin/crawler/notifyBulk'
 import type { AiPublishBatchResult } from '@/services/crawler/editorial/aiPublish'
+import { isRawArticleAiPublishEligible } from '@/services/crawler/editorial/aiPublish'
 import { auth } from '@/lib/firebase/auth'
 import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
 import { numberedPages, nextSortState, RAW_ARTICLE_PAGE_SIZES } from '@/services/crawler/editorial/query'
@@ -188,6 +189,7 @@ function CrawlerArticlesInner() {
   const [selection, setSelection] = useState<BulkSelectionState>(clearSelection(''))
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmAiPublish, setConfirmAiPublish] = useState(false)
+  const [singleAiPublishId, setSingleAiPublishId] = useState<string | null>(null)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [confirmMatch, setConfirmMatch] = useState(false)
   const [reviewTarget, setReviewTarget] = useState<ArticleRow | null>(null)
@@ -321,23 +323,35 @@ function CrawlerArticlesInner() {
     }
   }
 
+  function closeAiPublishConfirm() {
+    setConfirmAiPublish(false)
+    setSingleAiPublishId(null)
+  }
+
+  function openAiPublishConfirm(singleId?: string) {
+    if (aiPublishDisabled) return
+    setSingleAiPublishId(singleId ?? null)
+    setConfirmAiPublish(true)
+  }
+
   async function runAiPublish() {
     if (busyBulk) return
+    const singleId = singleAiPublishId
     setBusyBulk(true)
     try {
       const res = await fetch('/api/admin/crawler/articles/ai-publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({
-          matchFilter: selection.mode === 'matching',
-          ids: selection.mode === 'matching' ? [] : selection.ids,
+          matchFilter: !singleId && selection.mode === 'matching',
+          ids: singleId ? [singleId] : selection.mode === 'matching' ? [] : selection.ids,
           filter: activeFilter(),
         }),
       })
       const body = (await res.json()) as AiPublishBatchResult & { error?: string }
       if (!res.ok) throw new Error(body.error || 'AI yayın başarısız')
       notifyAiPublishResult({
-        requested: body.requested ?? count,
+        requested: body.requested ?? (singleId ? 1 : count),
         published: body.published ?? 0,
         drafted: body.drafted ?? 0,
         skipped: body.skipped ?? 0,
@@ -345,13 +359,13 @@ function CrawlerArticlesInner() {
         results: body.results ?? [],
         crawlerDispatchEnabled: false,
       })
-      setSelection(clearSelection(filterKey))
+      if (!singleId) setSelection(clearSelection(filterKey))
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'AI yayın başarısız')
     } finally {
       setBusyBulk(false)
-      setConfirmAiPublish(false)
+      closeAiPublishConfirm()
     }
   }
 
@@ -529,11 +543,23 @@ function CrawlerArticlesInner() {
   function renderActions(row: ArticleRow) {
     const published = row.editorialStatus === 'PUBLISHED'
     const needsReview = row.reviewMeta?.needsReview === true
+    const rowAiPublishEligible = queue === 'active' && isRawArticleAiPublishEligible(row.editorialStatus)
     return (
       <div className="flex flex-wrap gap-2 text-xs">
         <button type="button" className="underline" onClick={() => openDrawer(row)}>
           Görüntüle
         </button>
+        {rowAiPublishEligible ? (
+          <button
+            type="button"
+            className="font-semibold text-[rgb(var(--color-brand))] underline disabled:cursor-not-allowed disabled:opacity-50 max-sm:hidden"
+            disabled={aiPublishDisabled || busyBulk}
+            title={aiPublishHint}
+            onClick={() => openAiPublishConfirm(row.id)}
+          >
+            AI için onayla
+          </button>
+        ) : null}
         {published && needsReview && row.editorialNewsId ? (
           <button type="button" className="font-semibold text-violet-700 underline dark:text-violet-300" onClick={() => setReviewTarget(row)}>
             Sınıflandır
@@ -570,6 +596,16 @@ function CrawlerArticlesInner() {
         ) : null}
         <RowOverflowMenu
           items={[
+            ...(rowAiPublishEligible
+              ? [
+                  {
+                    label: 'AI için onayla',
+                    disabled: aiPublishDisabled || busyBulk,
+                    title: aiPublishHint,
+                    onClick: () => openAiPublishConfirm(row.id),
+                  },
+                ]
+              : []),
             { label: 'İncelemeye Al', onClick: () => void runBulk('review', { ids: [row.id] }) },
             { label: 'AI Adayı', onClick: () => void runBulk('ai_candidate', { ids: [row.id] }) },
             {
@@ -776,10 +812,7 @@ function CrawlerArticlesInner() {
             className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             disabled={aiPublishDisabled}
             title={aiPublishHint}
-            onClick={() => {
-              if (aiPublishDisabled) return
-              setConfirmAiPublish(true)
-            }}
+            onClick={() => openAiPublishConfirm()}
           >
             AI için onayla
           </button>
@@ -828,9 +861,9 @@ function CrawlerArticlesInner() {
       />
       <AiPublishConfirmModal
         open={confirmAiPublish}
-        count={count}
+        count={singleAiPublishId ? 1 : count}
         busy={busyBulk}
-        onClose={() => setConfirmAiPublish(false)}
+        onClose={closeAiPublishConfirm}
         onConfirm={() => void runAiPublish()}
       />
       {reviewTarget && reviewTarget.editorialNewsId ? (

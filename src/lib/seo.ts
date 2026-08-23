@@ -7,6 +7,7 @@ import { DEFAULT_CATEGORIES, getParentCategory } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
+import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i
 
@@ -76,7 +77,9 @@ export async function pingSitemaps(siteUrl: string = getSiteUrl()): Promise<void
 
 export function buildPostSharePath(post: Pick<Post, 'id'> & { slug?: string }): string {
   const slug = post.slug?.trim()
-  if (slug && slug !== post.id) return ROUTES.NEWS_DETAIL(slug)
+  if (slug && slug !== post.id && !isPlaceholderDraftSlug(slug)) {
+    return ROUTES.NEWS_DETAIL(slug)
+  }
   return ROUTES.POST_DETAIL(post.id)
 }
 

@@ -10,7 +10,7 @@
  */
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
-import { buildNewsSlug } from '@/lib/newsSlug'
+import { buildNewsSlug, isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { pingSitemaps } from '@/lib/seo'
 import { buildNewsIndexNowUrl, submitIndexNowUrls } from '@/lib/indexNow'
 import {
@@ -102,6 +102,12 @@ export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
         if (!data.slug?.trim() && data.title) {
           const slug = buildNewsSlug(String(data.title), doc.id)
           if (slug) {
+            updates.slug = slug
+            result.slugsGenerated++
+          }
+        } else if (isPlaceholderDraftSlug(data.slug) && data.title) {
+          const slug = buildNewsSlug(String(data.title), doc.id)
+          if (slug && !isPlaceholderDraftSlug(slug)) {
             updates.slug = slug
             result.slugsGenerated++
           }

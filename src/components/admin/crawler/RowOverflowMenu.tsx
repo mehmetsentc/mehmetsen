@@ -2,7 +2,11 @@
 
 import { useState } from 'react'
 
-export function RowOverflowMenu({ items }: { items: Array<{ label: string; onClick: () => void; danger?: boolean }> }) {
+export function RowOverflowMenu({
+  items,
+}: {
+  items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean; title?: string }>
+}) {
   const [open, setOpen] = useState(false)
   return (
     <div className="relative inline-block">
@@ -15,8 +19,11 @@ export function RowOverflowMenu({ items }: { items: Array<{ label: string; onCli
             <button
               key={item.label}
               type="button"
-              className={`block w-full px-3 py-1.5 text-left text-xs ${item.danger ? 'text-red-600' : ''}`}
+              title={item.title}
+              disabled={item.disabled}
+              className={`block w-full px-3 py-1.5 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50 ${item.danger ? 'text-red-600' : ''}`}
               onClick={() => {
+                if (item.disabled) return
                 setOpen(false)
                 item.onClick()
               }}

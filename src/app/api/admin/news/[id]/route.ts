@@ -22,6 +22,8 @@ import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
 import { demoteExcessFeaturedPins } from '@/lib/featuredPins'
 import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 import { ROUTES } from '@/constants/routes'
+import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
+import { allocateUniqueSlug } from '@/services/newsDraftService'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -387,6 +389,21 @@ export async function PUT(request: Request, context: RouteContext) {
             { error: 'Yerelde öne çıkan için önce il seçin' },
             { status: 400 }
           )
+        }
+      }
+
+      // Published articles must not keep CMS draft placeholders (`taslak-*`).
+      if (willBePublished) {
+        const nextSlug =
+          (typeof update.slug === 'string' && update.slug.trim()) ||
+          (typeof body.slug === 'string' && body.slug.trim()) ||
+          (typeof prevData?.slug === 'string' ? prevData.slug.trim() : '')
+        if (!nextSlug || isPlaceholderDraftSlug(nextSlug)) {
+          const title =
+            (typeof update.title === 'string' && update.title.trim()) ||
+            (typeof body.title === 'string' && body.title.trim()) ||
+            (typeof prevData?.title === 'string' ? prevData.title : 'haber')
+          update.slug = await allocateUniqueSlug(db, title, id, id)
         }
       }
 
