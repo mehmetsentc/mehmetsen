@@ -19,7 +19,7 @@ import { getActiveTenant } from '@/lib/tenantContext'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 
 // ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
-export const revalidate = 300
+export const revalidate = 60
 
 // Deduplicate: generateMetadata + page both need the post — fetch once per request
 const getCachedNews = cache((slug: string) => getNewsBySlug(slug))

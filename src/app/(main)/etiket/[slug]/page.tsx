@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: [label, `${label} haberleri`, `${label} son dakika`, siteName],
-    robots: { index: true, follow: true },
+    robots: { index: false, follow: true },
     alternates: { canonical },
     openGraph: {
       title: `${title} | ${siteName}`,

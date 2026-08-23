@@ -35,7 +35,7 @@ import { ConsentStrip } from '@/components/consent/ConsentStrip'
 
 const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-const appDescription = 'Türkiye\'nin anlık haber platformu. Son dakika haberler, spor, teknoloji, ekonomi, dünya ve yerel haberler NaHaber\'de.'
+const appDescription = 'Çanakkale ve Türkiye\'nin anlık haber platformu. Son dakika Çanakkale haberleri, spor, teknoloji, ekonomi, dünya ve yerel haberler NaHaber\'de.'
 const socialLinks = [
   process.env.NEXT_PUBLIC_X_URL?.trim() || 'https://x.com/nahabercom',
   process.env.NEXT_PUBLIC_FACEBOOK_URL?.trim() || 'https://www.facebook.com/nahabercom',
@@ -115,7 +115,7 @@ export const metadata: Metadata = {
   },
   description: appDescription,
   applicationName: appName,
-  keywords: ['son dakika haberler', 'güncel haberler', 'türkiye haberleri', 'haber', 'spor haberleri', 'ekonomi haberleri', 'dünya haberleri', 'nahaber'],
+  keywords: ['çanakkale haberleri', 'son dakika çanakkale', 'çanakkale son dakika', 'onyeditivi', 'son dakika haberler', 'güncel haberler', 'türkiye haberleri', 'haber', 'spor haberleri', 'ekonomi haberleri', 'dünya haberleri', 'nahaber'],
   authors: [{ name: appName, url: appUrl }],
   creator: appName,
   publisher: appName,
