@@ -282,6 +282,10 @@ export async function syncSkorStandings(): Promise<Record<string, unknown>> {
           leagueIdNum,
           CURRENT_SEASON
         )
+        console.info(
+          `[skor-standings] league=${ext} (${name}) season=${season} rows=${rows.length}` +
+            (season !== CURRENT_SEASON ? ` (preferred ${CURRENT_SEASON})` : '')
+        )
         const mapped: SportsStandingRow[] = rows.map((r) => ({
           rank: r.rank,
           teamId: String(r.teamId),

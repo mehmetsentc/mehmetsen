@@ -227,21 +227,50 @@ export async function getStandingsResolved(
   leagueId = 203,
   preferredSeason = CURRENT_SEASON
 ): Promise<{ season: number; standings: Standing[] }> {
-  const candidates = footballSeasonCandidates(preferredSeason)
+  let queue = footballSeasonCandidates(preferredSeason)
+  const tried = new Set<number>()
   let lastErr: unknown
-  for (const season of candidates) {
+
+  while (queue.length) {
+    const season = queue.shift()!
+    if (tried.has(season)) continue
+    tried.add(season)
     try {
       const standings = await fetchStandingsForSeason(leagueId, season)
-      if (standings.length) return { season, standings }
-      // Empty table — try older season only if this looks like preseason / unavailable.
-      if (season === preferredSeason && candidates.length > 1) continue
+      if (standings.length) {
+        console.info(
+          `[football] standings ok league=${leagueId} season=${season}` +
+            (season !== preferredSeason ? ` (fallback from ${preferredSeason})` : '')
+        )
+        return { season, standings }
+      }
+      // Empty preferred season — try older (preseason / plan miss without error body).
+      if (season === preferredSeason && queue.length) {
+        console.warn(
+          `[football] standings empty league=${leagueId} season=${season}; trying fallbacks`
+        )
+        continue
+      }
+      console.info(`[football] standings empty league=${leagueId} season=${season}`)
       return { season, standings }
     } catch (err) {
       lastErr = err
-      if (isSeasonAccessError(err)) continue
+      if (isSeasonAccessError(err)) {
+        console.warn(
+          `[football] season blocked league=${leagueId} season=${season}: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        )
+        const rest = seasonFallbackQueue(preferredSeason, season, err).filter(
+          (s) => !tried.has(s)
+        )
+        queue = [...rest, ...queue.filter((s) => !tried.has(s) && !rest.includes(s))]
+        continue
+      }
       throw err
     }
   }
+
   throw lastErr instanceof Error
     ? lastErr
     : new Error(`API-Football standings unavailable for league ${leagueId}`)
@@ -263,7 +292,12 @@ export async function getTodayFixtures(leagueId = 203): Promise<Fixture[]> {
     if (Date.now() - d.cachedAt < FIXTURES_TTL) return d.fixtures
   }
   let lastErr: unknown
-  for (const season of footballSeasonCandidates()) {
+  let queue = footballSeasonCandidates()
+  const tried = new Set<number>()
+  while (queue.length) {
+    const season = queue.shift()!
+    if (tried.has(season)) continue
+    tried.add(season)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw = await apiFetch<any>(
@@ -271,10 +305,20 @@ export async function getTodayFixtures(leagueId = 203): Promise<Fixture[]> {
       )
       const fixtures = raw.map(mapFixture)
       await ref.set({ fixtures, cachedAt: Date.now() })
+      console.info(
+        `[football] fixtures-today ok league=${leagueId} season=${season}` +
+          (season !== CURRENT_SEASON ? ` (fallback)` : '')
+      )
       return fixtures
     } catch (err) {
       lastErr = err
-      if (isSeasonAccessError(err)) continue
+      if (isSeasonAccessError(err)) {
+        const rest = seasonFallbackQueue(CURRENT_SEASON, season, err).filter(
+          (s) => !tried.has(s)
+        )
+        queue = [...rest, ...queue.filter((s) => !tried.has(s) && !rest.includes(s))]
+        continue
+      }
       throw err
     }
   }
@@ -294,7 +338,12 @@ export async function getUpcomingFixtures(leagueId = 203, next = 10): Promise<Fi
   const today  = turkeyYmd()
   const future = turkeyYmd(Date.now() + 60 * 24 * 60 * 60 * 1000)
   let lastErr: unknown
-  for (const season of footballSeasonCandidates()) {
+  let queue = footballSeasonCandidates()
+  const tried = new Set<number>()
+  while (queue.length) {
+    const season = queue.shift()!
+    if (tried.has(season)) continue
+    tried.add(season)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw = await apiFetch<any>(
@@ -305,10 +354,20 @@ export async function getUpcomingFixtures(leagueId = 203, next = 10): Promise<Fi
         .sort((a: Fixture, b: Fixture) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, next)
       await ref.set({ fixtures, cachedAt: Date.now() })
+      console.info(
+        `[football] fixtures-upcoming ok league=${leagueId} season=${season}` +
+          (season !== CURRENT_SEASON ? ` (fallback)` : '')
+      )
       return fixtures
     } catch (err) {
       lastErr = err
-      if (isSeasonAccessError(err)) continue
+      if (isSeasonAccessError(err)) {
+        const rest = seasonFallbackQueue(CURRENT_SEASON, season, err).filter(
+          (s) => !tried.has(s)
+        )
+        queue = [...rest, ...queue.filter((s) => !tried.has(s) && !rest.includes(s))]
+        continue
+      }
       throw err
     }
   }
