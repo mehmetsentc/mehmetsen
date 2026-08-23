@@ -83,7 +83,9 @@ export function footballSeasonCandidates(preferred = CURRENT_SEASON): number[] {
 
 export function isSeasonAccessError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err)
-  return /access to this season|try from \d{4} to \d{4}|plan:/i.test(msg)
+  return /access to this season|try from \d{4} to \d{4}|plan:|subscription|not available for your|Free plans?/i.test(
+    msg
+  )
 }
 
 export function isFootballAccountError(err: unknown): boolean {
@@ -309,7 +311,8 @@ function mapFixture(f: any): Fixture {
 
 // ─── Puan Tablosu ────────────────────────────────────────────────────────────
 async function fetchStandingsForSeason(leagueId: number, season: number): Promise<Standing[]> {
-  let ref: FirebaseFirestore.DocumentReference | null = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let ref: any = null
   try {
     const db = getAdminFirestore()
     ref = db.collection(CACHE_COL).doc(`standings-${leagueId}-${season}`)
@@ -324,6 +327,7 @@ async function fetchStandingsForSeason(leagueId: number, season: number): Promis
       `[football] standings cache read failed league=${leagueId} season=${season}:`,
       err instanceof Error ? err.message : err
     )
+    ref = null
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
