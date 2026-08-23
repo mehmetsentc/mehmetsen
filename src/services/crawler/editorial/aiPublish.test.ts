@@ -323,4 +323,31 @@ describe('enrichThinBodyForEditorAi', () => {
     expect(result.results[0]?.error).toContain('İçerik çok kısa')
     expect(result.results[0]?.error).toContain('kaynağı kontrol edin')
   })
+
+  it('always attempts source enrich for editor path (PARTIAL Habertürk)', async () => {
+    const { fetchArticleEnrichment } = await import('@/services/rss/articleFetcher')
+    vi.mocked(fetchArticleEnrichment).mockResolvedValueOnce({
+      imageUrl: null,
+      description: null,
+      bodyText: RICH_BODY,
+      htmlBody: `<p>${RICH_BODY}</p>`,
+      author: null,
+      publishedAt: null,
+      readingTimeMinutes: 2,
+      extractionMethod: 'test',
+    })
+
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store, 'Haberturk')
+    // Already "long enough" but PARTIAL — must still re-fetch
+    const article = await seedArticle(store, source, 'kismi-ht', {
+      qualityStatus: 'PARTIAL',
+      articleBodyText: RICH_BODY.slice(0, 600),
+      description: RICH_BODY.slice(0, 200),
+    })
+    const input = buildNewsroomInputFromRaw(article, source)
+    const enriched = await enrichThinBodyForEditorAi({ store, article, input })
+    expect(fetchArticleEnrichment).toHaveBeenCalled()
+    expect(enriched.originalContent.length).toBeGreaterThanOrEqual(input.originalContent.length)
+  })
 })

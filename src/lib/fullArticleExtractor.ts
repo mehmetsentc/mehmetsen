@@ -50,6 +50,8 @@ const REMOVE_SELECTORS = [
 // ── Content selectors to try in priority order ────────────────────────────
 const CONTENT_SELECTORS = [
   'article',
+  '.cms-container',
+  '[class*="news-wrapper"]',
   '[class*="article-body"]', '[class*="articleBody"]',
   '[class*="article-content"]', '[class*="articleContent"]',
   '[class*="news-body"]', '[class*="newsBody"]',
@@ -164,6 +166,43 @@ function extractMeta($: cheerio.CheerioAPI) {
 function extractWithCheerio(html: string, url: string): ExtractedArticle {
   const $ = cheerio.load(html)
 
+  // Prefer JSON-LD articleBody (Habertürk and many TR outlets)
+  let jsonLdBody = ''
+  $('script[type="application/ld+json"]').each((_i, el) => {
+    if (jsonLdBody.length >= 200) return
+    try {
+      const raw = $(el).html() || ''
+      const data = JSON.parse(raw) as unknown
+      const nodes = Array.isArray(data) ? data : [data]
+      for (const node of nodes) {
+        if (!node || typeof node !== 'object') continue
+        const rec = node as Record<string, unknown>
+        const type = String(rec['@type'] || '')
+        const body = typeof rec.articleBody === 'string' ? rec.articleBody.trim() : ''
+        if (body.length >= 200 && /NewsArticle|Article|ReportageNewsArticle/i.test(type)) {
+          jsonLdBody = body
+          return
+        }
+        // @graph
+        const graph = rec['@graph']
+        if (Array.isArray(graph)) {
+          for (const g of graph) {
+            if (!g || typeof g !== 'object') continue
+            const gr = g as Record<string, unknown>
+            const gBody = typeof gr.articleBody === 'string' ? gr.articleBody.trim() : ''
+            const gType = String(gr['@type'] || '')
+            if (gBody.length >= 200 && /NewsArticle|Article/i.test(gType)) {
+              jsonLdBody = gBody
+              return
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore invalid JSON-LD blocks
+    }
+  })
+
   // Remove noise globally
   $(REMOVE_SELECTORS.join(',')).remove()
 
@@ -173,14 +212,21 @@ function extractWithCheerio(html: string, url: string): ExtractedArticle {
   let contentHtml = ''
   let contentText = ''
 
-  for (const selector of CONTENT_SELECTORS) {
-    const el = $(selector).first()
-    if (el.length) {
-      const text = el.text().trim()
-      if (text.length > 200) {
-        contentHtml = cleanHtml(el.html() || '')
-        contentText = htmlToPlainText(contentHtml)
-        break
+  if (jsonLdBody.length >= 200) {
+    contentText = jsonLdBody
+    contentHtml = `<p>${jsonLdBody.replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`
+  }
+
+  if (contentText.length < 200) {
+    for (const selector of CONTENT_SELECTORS) {
+      const el = $(selector).first()
+      if (el.length) {
+        const text = el.text().trim()
+        if (text.length > 200) {
+          contentHtml = cleanHtml(el.html() || '')
+          contentText = htmlToPlainText(contentHtml)
+          break
+        }
       }
     }
   }
@@ -213,7 +259,7 @@ function extractWithCheerio(html: string, url: string): ExtractedArticle {
     publishedAt: meta.publishedAt,
     featuredImage: meta.image,
     readingTimeMinutes: estimateReadingMinutes(contentText),
-    source: meta.source,
+    source: meta.source || url,
     extractionMethod: method,
   }
 }

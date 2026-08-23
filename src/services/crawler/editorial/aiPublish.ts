@@ -19,7 +19,8 @@ import { AI_PUBLISH_TIMEOUT_SKIP_TR } from './aiPublishEligibility'
 
 export { formatAiPublishSkipReasonTr } from './aiPublishSkipReasons'
 
-/** Pipeline QUALITY_MIN_CHARS ile uyumlu — bunun altı kaynak URL'den yeniden çekilir. */
+/** Editör AI onayla — PARTIAL / kısa gövde için her zaman kaynak yeniden çekilir. */
+const EDITOR_ALWAYS_ENRICH = true
 const EDITOR_ENRICH_MIN_CHARS = 500
 
 export const AI_PUBLISH_BATCH_CAP = 25
@@ -87,7 +88,7 @@ export function buildNewsroomInputFromRaw(
 }
 
 /**
- * Editör AI onayla: kısa RSS snippet / eksik extract varsa kaynak URL'den
+ * Editör AI onayla: kısa RSS snippet / Kısmi extract varsa kaynak URL'den
  * gövdeyi yeniden çek. Başarılıysa ham kayda da yazar (yeniden denemede hazır olsun).
  */
 export async function enrichThinBodyForEditorAi(opts: {
@@ -95,25 +96,34 @@ export async function enrichThinBodyForEditorAi(opts: {
   article: RawArticleRecord
   input: NewsroomArticleInput
 }): Promise<NewsroomArticleInput> {
+  if (!opts.input.sourceUrl?.startsWith('http')) return opts.input
+
   const sourceChars = combinedSourceText(opts.input.originalContent, opts.input.originalSummary).length
-  if (sourceChars >= EDITOR_ENRICH_MIN_CHARS || !opts.input.sourceUrl?.startsWith('http')) {
-    return opts.input
-  }
+  const isPartial =
+    opts.article.qualityStatus === 'PARTIAL' ||
+    opts.article.qualityStatus === 'LOW_CONFIDENCE' ||
+    opts.article.rssSnippetUsedAsBody
+  const needsEnrich =
+    EDITOR_ALWAYS_ENRICH || isPartial || sourceChars < EDITOR_ENRICH_MIN_CHARS
+  if (!needsEnrich) return opts.input
 
   try {
     const { fetchArticleEnrichment } = await import('@/services/rss/articleFetcher')
-    const extracted = await fetchArticleEnrichment(opts.input.sourceUrl, 12_000, {
+    const extracted = await fetchArticleEnrichment(opts.input.sourceUrl, 18_000, {
       title: opts.input.originalTitle,
     })
     const body = extracted?.bodyText?.trim() || ''
-    if (!body || body.length <= (opts.input.originalContent?.length ?? 0)) {
+    const currentLen = opts.input.originalContent?.length ?? 0
+    // Kısmi/kısa kayıtta eşit uzunlukta bile JSON-LD temiz gövde tercih edilir
+    if (!body || (body.length < currentLen && !isPartial && sourceChars >= EDITOR_ENRICH_MIN_CHARS)) {
       return opts.input
     }
+    if (body.length <= 40) return opts.input
 
     const next: NewsroomArticleInput = {
       ...opts.input,
       originalContent: body,
-      ...(extracted?.htmlBody && !opts.input.htmlContent ? { htmlContent: extracted.htmlBody } : {}),
+      ...(extracted?.htmlBody ? { htmlContent: extracted.htmlBody } : {}),
       ...(extracted?.imageUrl && !opts.input.imageUrl ? { imageUrl: extracted.imageUrl } : {}),
     }
 
@@ -123,7 +133,7 @@ export async function enrichThinBodyForEditorAi(opts: {
         articleBodyHtml: extracted?.htmlBody || opts.article.articleBodyHtml,
         wordCount: countPlainWords(body),
         charCount: body.length,
-        qualityStatus: 'EXTRACTED',
+        qualityStatus: body.length >= EDITOR_ENRICH_MIN_CHARS ? 'EXTRACTED' : opts.article.qualityStatus,
         rssSnippetUsedAsBody: false,
         ...(extracted?.imageUrl && !opts.article.mainImageUrl
           ? { mainImageUrl: extracted.imageUrl }

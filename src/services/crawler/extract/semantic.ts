@@ -140,13 +140,27 @@ export interface DomainExtractRule {
   date?: string
 }
 
-export const DOMAIN_EXTRACT_RULES: Record<string, DomainExtractRule> = {}
+export const DOMAIN_EXTRACT_RULES: Record<string, DomainExtractRule> = {
+  // Habertürk: Tailwind CMS — gövde çoğunlukla JSON-LD; DOM yedekleri
+  'haberturk.com': {
+    article: '.cms-container, .news-wrapper, article',
+    title: 'h1',
+  },
+  'www.haberturk.com': {
+    article: '.cms-container, .news-wrapper, article',
+    title: 'h1',
+  },
+}
 
 export function extractWithDomainRule(
   html: string,
   hostname: string
 ): { html: string; text: string; title?: string; author?: string } | null {
-  const rule = DOMAIN_EXTRACT_RULES[hostname]
+  const host = hostname.replace(/^www\./, '').toLowerCase()
+  const rule =
+    DOMAIN_EXTRACT_RULES[hostname] ||
+    DOMAIN_EXTRACT_RULES[host] ||
+    DOMAIN_EXTRACT_RULES[`www.${host}`]
   if (!rule?.article) return null
   const $ = cheerio.load(html)
   stripBoilerplate($)

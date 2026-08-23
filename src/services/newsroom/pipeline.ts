@@ -89,6 +89,7 @@ import {
   combinedSourceText,
   MIN_NEWS_BODY_WORDS,
 } from '@/lib/contentQuality'
+import { isRssContentTruncated } from '@/lib/rssTruncation'
 import {
   attachStage1RetryOptimizationContext,
   isOptimizedStage1RetryCohort,
@@ -223,37 +224,20 @@ function isLiveBroadcastContent(title: string, content?: string, summary?: strin
 }
 
 /**
- * Detects RSS content truncated mid-sentence.
- *
- * RSS feeds routinely clip articles at 200-500 chars without a sentence
- * boundary — e.g. "Aziz Yıldırım ve yönetim k". We catch four patterns:
- *   1. Trailing ellipsis:  "…" / "..."
- *   2. Ends mid-word:      last char is a letter (Turkish or Latin)
- *   3. Ends with comma:    ","
- *   4. Ends with Turkish conjunctions hanging in air: " ve", " ile", " da", " de"
- *
- * When detected, the pipeline forces full-page extraction regardless of
- * the 500-char quality gate.
+ * @see isRssContentTruncated — RSS clip detection (short clips only).
  */
 function isTruncated(text: string): boolean {
-  if (!text || text.length < 10) return false
-  const t = text.trimEnd()
-
-  // Pattern 1 — explicit ellipsis (HTML stripped) or soft truncation marker
-  if (t.endsWith('…') || t.endsWith('...') || t.endsWith('[…]') || t.endsWith('[...]')) return true
-
-  // Pattern 2 — ends mid-word (letter without following period/space/bracket)
-  const lastChar = t[t.length - 1]
-  if (lastChar && /[a-zA-ZğüşıöçĞÜŞİÖÇ0-9]/.test(lastChar)) return true
-
-  // Pattern 3 — dangling comma or semicolon
-  if (t.endsWith(',') || t.endsWith(';')) return true
-
-  // Pattern 4 — trailing Turkish coordinating conjunctions / postpositions
-  if (/\s(ve|ile|da|de|ya|ki|ama|fakat|lakin|ancak|çünkü|zira|hem|ne|veya|ya da)$/i.test(t)) return true
-
-  return false
+  return isRssContentTruncated(text, QUALITY_MIN_CHARS)
 }
+
+/** Editör AI için onayla — kaynak kalite kapıları (kısa/kesik) gevşetilir. */
+function isEditorAiApproved(options: PipelineOptions): boolean {
+  return Boolean(options.skipStoryLibraryDedupe)
+}
+
+/** Yalnızca gerçekten boş kaynak — editör yolunda bile atlanır. */
+const EDITOR_EMPTY_BODY_CHARS = 40
+
 
 /**
  * @deprecated Bu fonksiyon artık kullanılmıyor.
@@ -646,35 +630,46 @@ export async function processNewsroomArticle(
     // Triggers when RSS content is thin (<500 chars) OR truncated mid-sentence.
     // Truncation check catches RSS feeds that clip at character limits without
     // a sentence boundary — e.g. "Aziz Yıldırım ve yönetim k".
-    // Editor AI onayla (skipStoryLibraryDedupe): thin snippet'lerde mutlaka
-    // kaynak URL'den yeniden çek — Habertürk RSS excerpt çift sayımı enrichment'i atlamasın.
+    // Editor AI onayla: her zaman kaynak URL'den yeniden çek (Kısmi/Habertürk).
     let workingInput = { ...input }
+    const editorApproved = isEditorAiApproved(options)
 
     const totalRaw = combinedSourceText(workingInput.originalContent, workingInput.originalSummary)
     const contentTruncated = isTruncated(workingInput.originalContent?.trimEnd() ?? '')
-    const editorWantsEnrich =
-      Boolean(options.skipStoryLibraryDedupe) && totalRaw.length < QUALITY_MIN_CHARS * 2
     const needsExtraction =
       !workingInput.skipAiRewrite &&
-      (totalRaw.length < QUALITY_MIN_CHARS || contentTruncated || editorWantsEnrich)
+      (editorApproved ||
+        totalRaw.length < QUALITY_MIN_CHARS ||
+        contentTruncated)
 
     if (contentTruncated) {
       console.log(`[newsroom/pipeline] truncated RSS content detected, fetching full article: ${workingInput.sourceUrl}`)
+    }
+    if (editorApproved && workingInput.sourceUrl) {
+      console.log(
+        `[newsroom/pipeline] editor AI onayla — kaynak yeniden çekiliyor: ${workingInput.sourceUrl.slice(0, 100)}`
+      )
     }
 
     if (needsExtraction && workingInput.sourceUrl) {
       try {
         const extracted = await fetchArticleEnrichment(
           workingInput.sourceUrl,
-          12_000,
+          editorApproved ? 18_000 : 12_000,
           { title: workingInput.originalTitle }
         )
         if (extracted) {
-          // Only replace content if extracted text is substantially longer/cleaner
-          if (extracted.bodyText && extracted.bodyText.length > (workingInput.originalContent?.length ?? 0)) {
+          // Prefer longer body; for editor also replace when current looks truncated/partial
+          const extractedLen = extracted.bodyText?.length ?? 0
+          const currentLen = workingInput.originalContent?.length ?? 0
+          const shouldReplaceBody =
+            Boolean(extracted.bodyText) &&
+            (extractedLen > currentLen ||
+              (editorApproved && (contentTruncated || currentLen < QUALITY_MIN_CHARS * 2)))
+          if (shouldReplaceBody && extracted.bodyText) {
             workingInput = { ...workingInput, originalContent: extracted.bodyText }
           }
-          if (extracted.htmlBody && !workingInput.htmlContent) {
+          if (extracted.htmlBody && (!workingInput.htmlContent || editorApproved)) {
             workingInput = { ...workingInput, htmlContent: extracted.htmlBody }
           }
           if (extracted.imageUrl && !workingInput.imageUrl) {
@@ -744,6 +739,7 @@ export async function processNewsroomArticle(
     // ── QUALITY GATE ────────────────────────────────────────────────────────
     // After extraction, skip if content is still too thin or truncated.
     // We do NOT generate articles from headlines — that produces hallucinated news.
+    // Editor AI onayla: kullanıcı maliyeti onayladı → yalnızca boş gövde atlanır.
     const totalAfterExtract = combinedSourceText(
       workingInput.originalContent,
       workingInput.originalSummary
@@ -751,13 +747,22 @@ export async function processNewsroomArticle(
     const stillTruncated = isTruncated(workingInput.originalContent?.trimEnd() ?? '')
 
     if (!workingInput.skipAiRewrite) {
-      if (totalAfterExtract.length < QUALITY_MIN_CHARS) {
-        console.warn(`[newsroom/pipeline] quality gate: içerik çok kısa (${totalAfterExtract.length} kar), atlandı: ${workingInput.sourceUrl}`)
-        return { outcome: 'skipped', skipReason: 'quality:body_too_short' }
-      }
-      if (stillTruncated) {
-        console.warn(`[newsroom/pipeline] quality gate: içerik hâlâ kesilmiş, atlandı: ${workingInput.sourceUrl}`)
-        return { outcome: 'skipped', skipReason: 'quality:incomplete_text' }
+      if (editorApproved) {
+        if (totalAfterExtract.length < EDITOR_EMPTY_BODY_CHARS) {
+          console.warn(
+            `[newsroom/pipeline] editor quality gate: boş gövde (${totalAfterExtract.length} kar), atlandı: ${workingInput.sourceUrl}`
+          )
+          return { outcome: 'skipped', skipReason: 'quality:body_too_short' }
+        }
+      } else {
+        if (totalAfterExtract.length < QUALITY_MIN_CHARS) {
+          console.warn(`[newsroom/pipeline] quality gate: içerik çok kısa (${totalAfterExtract.length} kar), atlandı: ${workingInput.sourceUrl}`)
+          return { outcome: 'skipped', skipReason: 'quality:body_too_short' }
+        }
+        if (stillTruncated) {
+          console.warn(`[newsroom/pipeline] quality gate: içerik hâlâ kesilmiş, atlandı: ${workingInput.sourceUrl}`)
+          return { outcome: 'skipped', skipReason: 'quality:incomplete_text' }
+        }
       }
     }
 
@@ -1055,6 +1060,8 @@ export async function processNewsroomArticle(
     const rewritten: AiRewriteResult & { gateDecision?: string; gateReasons?: string[]; publishScore?: number } = rewrittenRaw
 
     const failFast = decideStage1FailFast({
+      // Editör AI onayla: fail-fast kapalı — kısa/kesik AI çıktısı taslağa düşebilir, atlanmaz.
+      enabled: editorApproved ? false : undefined,
       skipAiRewrite: workingInput.skipAiRewrite,
       article: {
         title: rewritten.title,
@@ -1081,10 +1088,16 @@ export async function processNewsroomArticle(
 
     const outputChars = (rewritten.description || '').trim().length
     if (!workingInput.skipAiRewrite && outputChars < QUALITY_MIN_CHARS) {
-      console.warn(
-        `[newsroom/pipeline] AI çıktısı çok kısa (${outputChars} kar), atlandı: ${workingInput.sourceUrl?.slice(0, 80)}`
-      )
-      return { outcome: 'skipped', skipReason: 'ai_output_too_short' }
+      if (editorApproved && outputChars >= EDITOR_EMPTY_BODY_CHARS) {
+        console.warn(
+          `[newsroom/pipeline] editor: AI çıktısı kısa (${outputChars} kar) — devam (taslak olabilir): ${workingInput.sourceUrl?.slice(0, 80)}`
+        )
+      } else {
+        console.warn(
+          `[newsroom/pipeline] AI çıktısı çok kısa (${outputChars} kar), atlandı: ${workingInput.sourceUrl?.slice(0, 80)}`
+        )
+        return { outcome: 'skipped', skipReason: 'ai_output_too_short' }
+      }
     }
 
     const factCheck = await factChecker.check({
@@ -1808,9 +1821,10 @@ export async function processNewsroomArticle(
     }
 
     // Worthless copy → skip (delete from queue). Do not park in Onay Bekliyor.
+    // Editor AI onayla: kısa/kesik gövde atlanmaz — taslak/onay akışına bırakılır.
     const discardReason = qualityDiscardReason({
-      bodyTooShort,
-      incompleteText,
+      bodyTooShort: editorApproved ? false : bodyTooShort,
+      incompleteText: editorApproved ? false : incompleteText,
       factCheckFailedBadly,
     })
     if (discardReason) {
@@ -1824,11 +1838,14 @@ export async function processNewsroomArticle(
     // AUTO_PUBLISH / REQUIRES_APPROVAL: kalite kapısını geçerse yayın.
     // Yalnızca DRAFT_ONLY persona veya düşük güven / gate / moderasyon / chief editor → taslak.
     // NEWSROOM_AUTO_PUBLISH_ENABLED=false ise hiçbir şey otomatik yayınlanmaz.
+    // Editör AI onayla + kısa/kesik AI çıktısı → atlama yok, taslağa düşür.
+    const editorSoftQualityHold = editorApproved && (bodyTooShort || incompleteText)
     const needsDraft =
       !NEWSROOM_AUTO_PUBLISH_ENABLED ||
       chiefEditorHold ||
       gateDraft ||
       isFallbackContent ||
+      editorSoftQualityHold ||
       factCheck.confidenceScore < confidenceThreshold ||
       moderation.decision === 'review' ||
       moderation.decision !== 'approve' ||
