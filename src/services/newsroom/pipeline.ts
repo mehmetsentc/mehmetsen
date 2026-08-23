@@ -485,7 +485,10 @@ export interface PipelineOptions {
    * Fingerprint skip atlanır; yayınlanırsa draft silinir, yine draft kalırsa güncellenir.
    */
   reprocessDraftId?: string
-  /** Editor bulk publish — kullanıcı seçtiği ham haberler için story-library dedupe atlanır. */
+  /**
+   * Editor AI onayla (satır + toplu) — story-library ve chief-editor
+   * “benzer haber” dedupe atlanır. Kalite / görsel / promo kapıları durur.
+   */
   skipStoryLibraryDedupe?: boolean
 }
 
@@ -574,13 +577,20 @@ export async function processNewsroomArticle(
   if (options.changeType !== 'updated') {
     const existing = await findExistingByFingerprint(db, fingerprint)
     if (existing?.collection === 'news' && !options.existingNewsId) {
-      return { outcome: 'skipped' }
+      return { outcome: 'skipped', skipReason: 'already_published', newsId: existing.id }
     }
     if (
       existing?.collection === 'newsDrafts' &&
       existing.id !== options.reprocessDraftId
     ) {
-      return { outcome: 'skipped' }
+      // Editor AI onayla: aynı ham haberin taslağını yeniden işle (sessiz skip değil).
+      if (options.skipStoryLibraryDedupe) {
+        return processNewsroomArticle(db, input, {
+          ...options,
+          reprocessDraftId: existing.id,
+        })
+      }
+      return { outcome: 'skipped', skipReason: 'already_drafted', newsId: existing.id }
     }
   }
 
@@ -602,7 +612,11 @@ export async function processNewsroomArticle(
         `[newsroom/pipeline] duplicateLibraryHit ${libraryHit.matchMethod}` +
           ` → ${libraryHit.firstNewsId} (${libraryHit.reason})`
       )
-      return { outcome: 'skipped', newsId: libraryHit.firstNewsId }
+      return {
+        outcome: 'skipped',
+        skipReason: 'story_library_duplicate',
+        newsId: libraryHit.firstNewsId,
+      }
     }
   }
 
@@ -611,7 +625,7 @@ export async function processNewsroomArticle(
   // yayına alınmadan önce atlanır.
   if (isPromotionalContent(input.originalTitle, input.originalContent ?? '', input.originalSummary)) {
     console.log(`[newsroom/pipeline] promo content filtered: ${input.sourceUrl?.slice(0, 80)}`)
-    return { outcome: 'skipped' }
+    return { outcome: 'skipped', skipReason: 'promotional_content' }
   }
 
   // ── LIVE BROADCAST GATE ────────────────────────────────────────────────────
@@ -619,7 +633,7 @@ export async function processNewsroomArticle(
   // Başlıkta #Canlı veya canlı yayın desenleri varsa pipeline'a alınmaz.
   if (isLiveBroadcastContent(input.originalTitle, input.originalContent, input.originalSummary)) {
     console.log(`[newsroom/pipeline] live broadcast filtered: ${input.originalTitle?.slice(0, 80)}`)
-    return { outcome: 'skipped' }
+    return { outcome: 'skipped', skipReason: 'live_broadcast' }
   }
 
   try {
@@ -727,11 +741,11 @@ export async function processNewsroomArticle(
     if (!workingInput.skipAiRewrite) {
       if (totalAfterExtract.length < QUALITY_MIN_CHARS) {
         console.warn(`[newsroom/pipeline] quality gate: içerik çok kısa (${totalAfterExtract.length} kar), atlandı: ${workingInput.sourceUrl}`)
-        return { outcome: 'skipped' }
+        return { outcome: 'skipped', skipReason: 'quality:body_too_short' }
       }
       if (stillTruncated) {
         console.warn(`[newsroom/pipeline] quality gate: içerik hâlâ kesilmiş, atlandı: ${workingInput.sourceUrl}`)
-        return { outcome: 'skipped' }
+        return { outcome: 'skipped', skipReason: 'quality:incomplete_text' }
       }
     }
 
@@ -741,7 +755,7 @@ export async function processNewsroomArticle(
     // linki / basın toplantısı ifadesi içerir. Full fetch sonrası tekrar kontrol.
     if (isLiveBroadcastContent(workingInput.originalTitle, workingInput.originalContent, workingInput.originalSummary)) {
       console.log(`[newsroom/pipeline] live broadcast filtered (post-extraction): ${workingInput.originalTitle?.slice(0, 80)}`)
-      return { outcome: 'skipped' }
+      return { outcome: 'skipped', skipReason: 'live_broadcast' }
     }
 
     // ── TRANSLATION STAGE ────────────────────────────────────────────────────
@@ -768,7 +782,7 @@ export async function processNewsroomArticle(
         } else {
           // No AI key AND no translation → skip non-Turkish content
           console.warn(`[newsroom/pipeline] İngilizce içerik, çeviri yapılamadı → atlandı: ${workingInput.sourceUrl}`)
-          return { outcome: 'skipped' }
+          return { outcome: 'skipped', skipReason: 'translation_failed' }
         }
       } else {
         // AI rewrite will translate — but drop English htmlContent so Turkish text shows
@@ -781,7 +795,7 @@ export async function processNewsroomArticle(
         const geminiKey = process.env.GEMINI_API_KEY?.trim()
         if (!deepseekKey && !geminiKey) {
           console.warn(`[newsroom/pipeline] İngilizce içerik, AI key yok → atlandı: ${workingInput.sourceUrl}`)
-          return { outcome: 'skipped' }
+          return { outcome: 'skipped', skipReason: 'ai_unavailable' }
         }
       }
     }
@@ -1022,7 +1036,7 @@ export async function processNewsroomArticle(
     // Gate keeper skip kararı → haber atlanır
     if (!workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'skip') {
       console.warn(`[pipeline] gate keeper skip: ${workingInput.sourceUrl?.slice(0, 80)}`)
-      return { outcome: 'skipped' }
+      return { outcome: 'skipped', skipReason: 'gate_skip' }
     }
 
     // AiRewriteResult uyumluluğu için tip cast
@@ -1058,7 +1072,7 @@ export async function processNewsroomArticle(
       console.warn(
         `[newsroom/pipeline] AI çıktısı çok kısa (${outputChars} kar), atlandı: ${workingInput.sourceUrl?.slice(0, 80)}`
       )
-      return { outcome: 'skipped' }
+      return { outcome: 'skipped', skipReason: 'ai_output_too_short' }
     }
 
     const factCheck = await factChecker.check({
@@ -1539,7 +1553,8 @@ export async function processNewsroomArticle(
             ` — ${chiefEditorResult.categoryReason.slice(0, 80)}`,
         )
 
-        if (chiefEditorResult.isDuplicate) {
+        // Editor AI onayla: editör zaten seçti — benzer başlık yüzünden kesme.
+        if (chiefEditorResult.isDuplicate && !options.skipStoryLibraryDedupe) {
           const similar = await findSimilarPublishedArticle(
             db,
             rewritten.title,
@@ -1552,17 +1567,31 @@ export async function processNewsroomArticle(
           console.log(
             `[newsroom/chiefEditor] duplicate → tekrarlayan, yayın yok: ${workingInput.sourceUrl?.slice(0, 80)}`,
           )
-          return { outcome: 'skipped' }
+          return {
+            outcome: 'skipped',
+            skipReason: 'ai_duplicate',
+            newsId: similar?.newsId,
+          }
         }
 
-        if (chiefEditorResult.decision === 'reject') {
-          console.warn(
-            `[newsroom/chiefEditor] rejected: ${chiefEditorResult.issues.join('; ') || chiefEditorResult.categoryReason}`,
+        if (chiefEditorResult.isDuplicate && options.skipStoryLibraryDedupe) {
+          console.log(
+            `[newsroom/chiefEditor] duplicate ignored (editor AI onayla): ${workingInput.sourceUrl?.slice(0, 80)}`,
           )
-          return { outcome: 'skipped' }
         }
 
         if (
+          chiefEditorResult.decision === 'reject' &&
+          !(chiefEditorResult.isDuplicate && options.skipStoryLibraryDedupe)
+        ) {
+          const rejectDetail =
+            chiefEditorResult.issues.join('; ') || chiefEditorResult.categoryReason || 'ai_rejected'
+          console.warn(`[newsroom/chiefEditor] rejected: ${rejectDetail}`)
+          return { outcome: 'skipped', skipReason: `ai_rejected:${rejectDetail.slice(0, 120)}` }
+        }
+
+        if (
+          !(chiefEditorResult.isDuplicate && options.skipStoryLibraryDedupe) &&
           chiefEditorResult.categoryConfidence >= CHIEF_EDITOR_CONFIDENCE_THRESHOLD &&
           chiefEditorResult.categoryId !== resolvedCategory
         ) {
@@ -2067,7 +2096,7 @@ export async function processNewsroomArticle(
     // Duplikat veya İngilizce içerik skip → sessizce atla, hata değil
     if (msg.includes('AI duplikat tespit etti') || msg.includes('yayın atlandı')) {
       console.log(`[newsroom/pipeline] skipped: ${msg}`)
-      return { outcome: 'skipped' }
+      return { outcome: 'skipped', skipReason: 'ai_duplicate' }
     }
     console.error('[newsroom/pipeline] failed:', input.sourceUrl, error)
     return { outcome: 'failed' }

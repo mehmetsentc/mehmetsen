@@ -153,6 +153,43 @@ describe('publishRawArticlesWithAi batch', () => {
     expect(result.results).toHaveLength(8)
   })
 
+  it('maps empty skipReason to Turkish detail instead of vague mükerrer toast', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store)
+    const article = await seedArticle(store, source, 'skip-neden')
+    const processArticle = async () => ({ outcome: 'skipped' as const })
+
+    const result = await publishRawArticlesWithAi({
+      store,
+      ids: [article.id],
+      processArticle: processArticle as never,
+    })
+
+    expect(result.skipped).toBe(1)
+    expect(result.results[0]?.error).toContain('Atlandı:')
+    expect(result.results[0]?.error).not.toContain('mükerrer veya filtre')
+  })
+
+  it('surfaces already_published with clear Turkish message', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store)
+    const article = await seedArticle(store, source, 'zaten-yayin')
+    const processArticle = async () => ({
+      outcome: 'skipped' as const,
+      skipReason: 'already_published',
+      newsId: 'news_existing',
+    })
+
+    const result = await publishRawArticlesWithAi({
+      store,
+      ids: [article.id],
+      processArticle: processArticle as never,
+    })
+
+    expect(result.results[0]?.outcome).toBe('already_published')
+    expect(result.results[0]?.error).toContain('zaten yayınlanmış')
+  })
+
   it('continues batch after a per-item failure', async () => {
     const store = new MemoryCrawlerStore()
     const source = await seedSource(store)

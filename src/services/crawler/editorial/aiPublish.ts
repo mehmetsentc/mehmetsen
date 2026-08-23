@@ -8,12 +8,15 @@ import type { NewsSourceRecord, RawArticleRecord } from '../types'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
 import type { CmsRole } from '@/types/cms'
 import { hasPermission } from '@/types/cms'
+import { formatAiPublishSkipReasonTr } from './aiPublishSkipReasons'
 
 export {
   isRawArticleAiPublishEligible,
   AI_PUBLISH_TIMEOUT_SKIP_TR,
 } from './aiPublishEligibility'
 import { AI_PUBLISH_TIMEOUT_SKIP_TR } from './aiPublishEligibility'
+
+export { formatAiPublishSkipReasonTr } from './aiPublishSkipReasons'
 
 export const AI_PUBLISH_BATCH_CAP = 25
 
@@ -129,21 +132,52 @@ export async function publishRawArticleWithAi(opts: {
     const result = await processArticle(db, input, { skipStoryLibraryDedupe: true })
 
     if (result.outcome === 'skipped') {
-      const detail = result.skipReason?.trim()
+      const code = result.skipReason?.trim() || ''
+      const tr = formatAiPublishSkipReasonTr(code || null)
+
+      if (code === 'already_published' || code === 'already_drafted') {
+        const existing = result.newsId ? await loadPublishedNews(result.newsId) : null
+        if (code === 'already_published' && existing?.status === 'published') {
+          await syncCrawlerEditorial({
+            rawArticleId: opts.rawArticleId,
+            newsId: existing.id,
+            status: 'published',
+          }).catch(() => {})
+          return {
+            rawArticleId: opts.rawArticleId,
+            outcome: 'already_published',
+            newsId: existing.id,
+            editPath: `/admin/news/${existing.id}/edit`,
+            publicPath: existing.slug ? `/haber/${existing.slug}` : undefined,
+            error: tr,
+          }
+        }
+        if (result.newsId) {
+          return {
+            rawArticleId: opts.rawArticleId,
+            outcome: code === 'already_drafted' ? 'draft' : 'already_published',
+            newsId: result.newsId,
+            editPath: `/admin/news/${result.newsId}/edit`,
+            publicPath: existing?.slug ? `/haber/${existing.slug}` : undefined,
+            error: tr,
+          }
+        }
+      }
+
       return {
         rawArticleId: opts.rawArticleId,
         outcome: 'skipped',
         newsId: result.newsId,
-        error: detail ? `Atlandı: ${detail}` : 'Atlandı (mükerrer veya filtre)',
+        error: `Atlandı: ${tr}`,
       }
     }
 
     if (result.outcome === 'failed' || !result.newsId) {
-      const detail = result.skipReason?.trim()
+      const detail = formatAiPublishSkipReasonTr(result.skipReason)
       return {
         rawArticleId: opts.rawArticleId,
         outcome: 'error',
-        error: detail || 'Haber oluşturulamadı',
+        error: result.skipReason?.trim() ? detail : 'Haber oluşturulamadı',
       }
     }
 
