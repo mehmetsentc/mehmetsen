@@ -12,6 +12,7 @@ import {
   getDayScoreboard,
   getLiveScoreboard,
   getStandings,
+  hasFootballApiKey,
 } from '@/services/footballService.server'
 import {
   bumpSeasonMeta,
@@ -176,11 +177,12 @@ export async function syncSkorLive(): Promise<Record<string, unknown>> {
     } catch {
       footballDocs = []
     }
-    if (footballDocs.length === 0) {
-      footballDocs = await fetchEspnDays('futbol', [today, yesterday])
-      footballDocs = footballDocs.filter((m) => m.status === 'live')
-    } else {
-      footballDocs = footballDocs.filter((m) => m.status === 'live')
+    footballDocs = footballDocs.filter((m) => m.status === 'live')
+    // ESPN scoreboard is often 403 from Vercel — only use as last resort without Pro key
+    if (footballDocs.length === 0 && !hasFootballApiKey()) {
+      footballDocs = (await fetchEspnDays('futbol', [today, yesterday])).filter(
+        (m) => m.status === 'live'
+      )
     }
     counts.futbolLive = await persistMatchDocs(footballDocs)
 
@@ -229,10 +231,16 @@ export async function syncSkorDaily(): Promise<Record<string, unknown>> {
         /* ESPN fallback below */
       }
     }
-    const espnFutbol = await fetchEspnDays('futbol', [
-      ...dayList,
-      ...rangeYmd(today, programEnd),
-    ])
+    let espnFutbol: SportsMatchDoc[] = []
+    if (!hasFootballApiKey() || footballDayDocs.length === 0) {
+      // Prefer licensed API-Football; ESPN only if Pro key missing or day window empty
+      if (!hasFootballApiKey()) {
+        espnFutbol = await fetchEspnDays('futbol', [
+          ...dayList,
+          ...rangeYmd(today, programEnd),
+        ])
+      }
+    }
     counts.futbol = await persistMatchDocs(dedupeMatches([...footballDayDocs, ...espnFutbol]))
 
     const basketDays = [...dayList, ...rangeYmd(today, programEnd)]
@@ -343,7 +351,10 @@ export async function hydrateSportBoard(
           /* ignore */
         }
       }
-      docs.push(...(await fetchEspnDays('futbol', days)))
+      // Licensed path first; ESPN only when Pro key is absent (ESPN often 403 on Vercel)
+      if (!hasFootballApiKey()) {
+        docs.push(...(await fetchEspnDays('futbol', days)))
+      }
     } else if (sport === 'basketbol') {
       docs = [
         ...(await fetchEspnDays('basketbol', days)),

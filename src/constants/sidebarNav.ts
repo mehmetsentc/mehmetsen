@@ -308,6 +308,7 @@ export const SIDEBAR_EXPLORE: SidebarNavItem[] = SIDEBAR_CATEGORIES.filter(
 
 /** C — Araçlar / ürün yüzeyleri */
 export const SIDEBAR_TOOLS: SidebarNavItem[] = [
+  { id: 'skor', label: 'Skor', href: ROUTES.SKOR, icon: Trophy, accent: 'spor' },
   { id: 'etkinlikler', label: 'Etkinlikler', href: ROUTES.EVENTS, icon: CalendarDays, accent: 'yerel' },
   { id: 'teve', label: 'Teve', href: ROUTES.REELS, icon: Clapperboard, accent: 'magazin' },
   { id: 'trending', label: 'Trending', href: '/kategori/trend', icon: Flame, accent: 'gundem' },

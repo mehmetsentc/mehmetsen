@@ -1,6 +1,13 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 
-const FOOTBALL_KEY  = process.env.FOOTBALL_API_KEY?.trim()
+/** Canonical: FOOTBALL_API_KEY. Aliases accepted if Pro key was stored under another name. */
+const FOOTBALL_KEY = (
+  process.env.FOOTBALL_API_KEY ||
+  process.env.API_FOOTBALL_KEY ||
+  process.env.API_SPORTS_KEY ||
+  process.env.APISPORTS_KEY ||
+  ''
+).trim()
 const FOOTBALL_BASE = 'https://v3.football.api-sports.io'
 
 export const LEAGUES: Record<number, string> = {
@@ -12,8 +19,13 @@ export const LEAGUES: Record<number, string> = {
 export const LEAGUE_IDS = [203, 204, 205, 552] as const
 export type LeagueId = typeof LEAGUE_IDS[number]
 
-export const CURRENT_SEASON = 2025
-export const PREV_SEASON    = 2024
+/** API-Football season year = start year (Aug 2026 → 2026/27 → 2026). */
+export const CURRENT_SEASON = 2026
+export const PREV_SEASON    = 2025
+
+export function hasFootballApiKey(): boolean {
+  return FOOTBALL_KEY.length > 0
+}
 
 // Eski backward-compat export
 export const SUPER_LIG_ID = 203
@@ -91,8 +103,20 @@ async function apiFetch<T>(path: string): Promise<T[]> {
     next: { revalidate: 0 },
   })
   if (!res.ok) throw new Error(`API-Football ${path} → HTTP ${res.status}`)
-  const json: ApiResponse = await res.json()
-  return json.response as T[]
+  const json = (await res.json()) as ApiResponse & {
+    errors?: Record<string, string> | string[]
+    results?: number
+  }
+  const errs = json.errors
+  if (errs) {
+    const msg = Array.isArray(errs)
+      ? errs.join('; ')
+      : Object.entries(errs)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join('; ')
+    if (msg) throw new Error(`API-Football ${path} → ${msg}`)
+  }
+  return (json.response ?? []) as T[]
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -150,7 +174,7 @@ export async function getStandings(leagueId = 203, season = CURRENT_SEASON): Pro
 
 // ─── Bugünkü Maçlar ──────────────────────────────────────────────────────────
 export async function getTodayFixtures(leagueId = 203): Promise<Fixture[]> {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = turkeyYmd()
   const db    = getAdminFirestore()
   const ref   = db.collection(CACHE_COL).doc(`fixtures-today-${leagueId}-${today}`)
   const doc   = await ref.get()
@@ -177,8 +201,8 @@ export async function getUpcomingFixtures(leagueId = 203, next = 10): Promise<Fi
     const d = doc.data() as { fixtures: Fixture[]; cachedAt: number }
     if (Date.now() - d.cachedAt < FIXTURES_TTL) return d.fixtures.slice(0, next)
   }
-  const today  = new Date().toISOString().slice(0, 10)
-  const future = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const today  = turkeyYmd()
+  const future = turkeyYmd(Date.now() + 60 * 24 * 60 * 60 * 1000)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = await apiFetch<any>(
     `/fixtures?league=${leagueId}&season=${CURRENT_SEASON}&from=${today}&to=${future}`
