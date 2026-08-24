@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Mail } from 'lucide-react'
 import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 import { BrandLogo } from '@/components/brand/BrandLogo'
+import { AppDownloadBadges } from '@/components/layout/AppDownloadBadges'
 import { CONTACT_EMAIL, FOOTER_BOTTOM_LINKS } from '@/constants/siteLegalLinks'
 import { ROUTES } from '@/constants/routes'
 import { isDutyPharmacyCity } from '@/lib/dutyPharmacies/constants'
@@ -218,6 +219,11 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
           ))}
         </div>
 
+        {/* Mobil uygulama indirme */}
+        <div className="border-t border-[rgb(var(--color-border))] pt-4">
+          <AppDownloadBadges />
+        </div>
+
         {!suppressNewsletter ? (
           <div className="border-t border-[rgb(var(--color-border))] pt-5">
             <NewsletterSignup source="city-footer" variant="compact" />
@@ -350,7 +356,7 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
         ) : null}
 
         {/* Sosyal medya */}
-        <div className="mb-6 flex flex-wrap gap-4">
+        <div className="mb-4 flex flex-wrap gap-4">
           {SOCIAL.map((s) => (
             <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer me"
               aria-label={`NaHaber ${s.label}`}
@@ -359,6 +365,11 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
               {s.label}
             </a>
           ))}
+        </div>
+
+        {/* Mobil uygulama indirme */}
+        <div className="mb-6">
+          <AppDownloadBadges />
         </div>
 
         {/* Alt çizgi */}

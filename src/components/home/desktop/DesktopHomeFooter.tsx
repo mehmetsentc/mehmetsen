@@ -3,6 +3,7 @@ import { Mail } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { FooterAccountLinks } from '@/components/layout/FooterAccountLinks'
+import { AppDownloadBadges } from '@/components/layout/AppDownloadBadges'
 import {
   CONTACT_EMAIL,
   FOOTER_BOTTOM_LINKS,
@@ -154,6 +155,11 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
           ))}
         </div>
 
+        {/* Mobil uygulama indirme */}
+        <div className="border-t border-[rgb(var(--color-border))] pt-4">
+          <AppDownloadBadges />
+        </div>
+
         {/* Yasal linkler */}
         <div className="flex flex-wrap gap-x-3 gap-y-2">
           {MOBILE_LEGAL_LINKS.map((l) => (
@@ -223,7 +229,7 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
         </div>
       ) : null}
 
-      <div className="mb-6 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-wrap gap-3">
         {SOCIAL.map((s) => (
           <a
             key={s.label}
@@ -236,6 +242,11 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
             {s.label}
           </a>
         ))}
+      </div>
+
+      {/* Mobil uygulama indirme */}
+      <div className="mb-6">
+        <AppDownloadBadges />
       </div>
 
       <div className="border-t border-[rgb(var(--color-border))] pt-5">
