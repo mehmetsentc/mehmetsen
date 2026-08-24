@@ -13,19 +13,16 @@ export const revalidate = 86400
 // ─── City sitemap ─────────────────────────────────────────────────────────────
 
 const CITY_STATIC = [
-  { path: '/',                    priority: 1.0, freq: 'hourly'  },
-  { path: '/etkinlik',            priority: 0.8, freq: 'daily'   },
-  { path: '/spor',                priority: 0.8, freq: 'daily'   },
-  { path: '/ilceler',             priority: 0.7, freq: 'weekly'  },
-  { path: '/is-ilanlari',         priority: 0.7, freq: 'daily'   },
-  { path: '/editoryal-ilkeler',   priority: 0.3, freq: 'monthly' },
+  { path: '/',                             priority: 1.0, freq: 'hourly'  },
+  { path: '/etkinlik',                     priority: 0.8, freq: 'daily'   },
+  { path: '/spor',                         priority: 0.8, freq: 'daily'   },
+  { path: '/ilceler',                      priority: 0.7, freq: 'weekly'  },
+  { path: '/is-ilanlari',                  priority: 0.7, freq: 'daily'   },
+  { path: '/is-ilanlari/eleman-ariyorum',  priority: 0.6, freq: 'daily'   },
+  { path: '/is-ilanlari/is-ariyorum',      priority: 0.6, freq: 'daily'   },
+  { path: '/nobetci-eczaneler',            priority: 0.7, freq: 'daily'   },
+  { path: '/editoryal-ilkeler',            priority: 0.3, freq: 'monthly' },
 ]
-
-const CITY_DUTY_PHARMACY_STATIC = {
-  path: '/nobetci-eczaneler',
-  priority: 0.7,
-  freq: 'daily',
-} as const
 
 const CITY_CATEGORIES = [
   'gundem', 'siyaset', 'ekonomi', 'yasam',
@@ -40,9 +37,7 @@ function xmlUrl(loc: string, freq: string, priority: number, lastmod?: string): 
 async function buildCitySitemapXml(citySlug: string): Promise<string> {
   const base = `https://${citySlug}.nahaber.com`
 
-  const staticPaths =
-    citySlug === 'canakkale' ? [...CITY_STATIC, CITY_DUTY_PHARMACY_STATIC] : CITY_STATIC
-  const staticRows = staticPaths.map(({ path, priority, freq }) =>
+  const staticRows = CITY_STATIC.map(({ path, priority, freq }) =>
     xmlUrl(`${base}${path}`, freq, priority)
   )
 
