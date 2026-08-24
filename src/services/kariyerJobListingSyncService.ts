@@ -40,14 +40,19 @@ export function buildKariyerListingUrl(citySlug: string): string {
   return `https://www.kariyer.net/is-ilanlari/${encodeURIComponent(slug)}`
 }
 
-export function resolveKariyerSyncCities(): string[] {
+export function resolveKariyerSyncCities(cityFilter?: string | null): string[] {
   const fromEnv =
     process.env.KARIYER_SYNC_CITIES?.trim() || process.env.ISKUR_SYNC_CITIES?.trim()
   const raw = fromEnv
     ? fromEnv.split(/[,;\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)
     : DEFAULT_CITIES
   const unique = [...new Set(raw)].filter(isTurkishProvinceSlug)
-  return unique.length > 0 ? unique : DEFAULT_CITIES
+  const allowed = unique.length > 0 ? unique : DEFAULT_CITIES
+  if (!cityFilter?.trim()) return allowed
+  const slug = cityFilter.trim().toLowerCase()
+  if (!isTurkishProvinceSlug(slug)) return []
+  // Query narrows the env allowlist (does not add cities outside KARIYER/ISKUR_SYNC_CITIES).
+  return allowed.includes(slug) ? [slug] : []
 }
 
 function resolveLimit(): number {
@@ -214,9 +219,11 @@ async function markMissingInactive(
   return marked
 }
 
-export async function syncKariyerJobListings(): Promise<JobListingSyncResult> {
+export async function syncKariyerJobListings(options?: {
+  city?: string | null
+}): Promise<JobListingSyncResult> {
   const started = Date.now()
-  const cities = resolveKariyerSyncCities()
+  const cities = resolveKariyerSyncCities(options?.city)
   const config = isConfigured()
 
   if (!config.ok) {
@@ -228,6 +235,24 @@ export async function syncKariyerJobListings(): Promise<JobListingSyncResult> {
       skipped: 0,
       markedInactive: 0,
       skippedReason: config.reason,
+      failedCities: [],
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - started,
+    }
+  }
+
+  if (cities.length === 0) {
+    const reason = options?.city?.trim()
+      ? `city "${options.city.trim().toLowerCase()}" not in KARIYER/ISKUR_SYNC_CITIES`
+      : 'no cities configured'
+    console.warn(`[kariyerJobSync] skipped — ${reason}`)
+    return {
+      cities: [],
+      scraped: 0,
+      upserted: 0,
+      skipped: 0,
+      markedInactive: 0,
+      skippedReason: reason,
       failedCities: [],
       completedAt: new Date().toISOString(),
       durationMs: Date.now() - started,

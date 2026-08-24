@@ -1,6 +1,7 @@
 /**
  * Combined city job listing sync: İŞKUR + Kariyer.net.
  * Cron `/api/cron/iskur-jobs` runs both so /is-ilanlari stays populated.
+ * Optional `city` runs a single province (Vercel schedules one cron per city).
  */
 
 import { syncIskurJobListings } from '@/services/jobListingSyncService'
@@ -17,12 +18,14 @@ export interface CombinedJobListingSyncResult {
   durationMs: number
 }
 
-export async function syncAllJobListings(): Promise<CombinedJobListingSyncResult> {
+export async function syncAllJobListings(options?: {
+  city?: string | null
+}): Promise<CombinedJobListingSyncResult> {
   const started = Date.now()
 
   // Kariyer first — no İŞKUR login, usually faster path to fill the board.
-  const kariyer = await syncKariyerJobListings()
-  const iskur = await syncIskurJobListings()
+  const kariyer = await syncKariyerJobListings(options)
+  const iskur = await syncIskurJobListings(options)
 
   const failedCities = [
     ...new Set([...kariyer.failedCities, ...iskur.failedCities]),

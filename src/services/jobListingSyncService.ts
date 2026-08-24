@@ -17,6 +17,7 @@
  *   optional: ISKUR_SMTP_HOST, ISKUR_SMTP_PORT, ISKUR_EMAIL_SUBJECT_PREFIX,
  *             ISKUR_ISYERI_TURU, ISKUR_ILAN_TARIHI, ISKUR_ILAN_TURU,
  *             ISKUR_SYNC_CITIES (comma-separated slugs, default canakkale)
+ * Cron: /api/cron/iskur-jobs?city=<slug> syncs one city (Vercel: one job per city).
  *
  * Operator risk: actor requires a real İŞKUR account (TC+şifre); ToS/compliance
  * is on the operator. Product UX uses Firestore dataset items, not email.
@@ -103,13 +104,18 @@ function toIskurIlName(citySlug: string): string {
   return getCityCategoryName(citySlug).toLocaleUpperCase('tr-TR')
 }
 
-export function resolveIskurSyncCities(): string[] {
+export function resolveIskurSyncCities(cityFilter?: string | null): string[] {
   const fromEnv = process.env.ISKUR_SYNC_CITIES?.trim()
   const raw = fromEnv
     ? fromEnv.split(/[,;\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)
     : DEFAULT_CITIES
   const unique = [...new Set(raw)].filter(isTurkishProvinceSlug)
-  return unique.length > 0 ? unique : DEFAULT_CITIES
+  const allowed = unique.length > 0 ? unique : DEFAULT_CITIES
+  if (!cityFilter?.trim()) return allowed
+  const slug = cityFilter.trim().toLowerCase()
+  if (!isTurkishProvinceSlug(slug)) return []
+  // Query narrows the env allowlist (does not add cities outside ISKUR_SYNC_CITIES).
+  return allowed.includes(slug) ? [slug] : []
 }
 
 function isApifyConfigured(): { ok: true } | { ok: false; reason: string } {
@@ -433,9 +439,11 @@ async function markMissingInactive(
   return marked
 }
 
-export async function syncIskurJobListings(): Promise<JobListingSyncResult> {
+export async function syncIskurJobListings(options?: {
+  city?: string | null
+}): Promise<JobListingSyncResult> {
   const started = Date.now()
-  const cities = resolveIskurSyncCities()
+  const cities = resolveIskurSyncCities(options?.city)
   const config = isApifyConfigured()
 
   if (!config.ok) {
@@ -447,6 +455,24 @@ export async function syncIskurJobListings(): Promise<JobListingSyncResult> {
       skipped: 0,
       markedInactive: 0,
       skippedReason: config.reason,
+      failedCities: [],
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - started,
+    }
+  }
+
+  if (cities.length === 0) {
+    const reason = options?.city?.trim()
+      ? `city "${options.city.trim().toLowerCase()}" not in ISKUR_SYNC_CITIES`
+      : 'no cities configured'
+    console.warn(`[jobListingSync] skipped — ${reason}`)
+    return {
+      cities: [],
+      scraped: 0,
+      upserted: 0,
+      skipped: 0,
+      markedInactive: 0,
+      skippedReason: reason,
       failedCities: [],
       completedAt: new Date().toISOString(),
       durationMs: Date.now() - started,

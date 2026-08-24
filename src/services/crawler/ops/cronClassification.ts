@@ -53,7 +53,7 @@ export const CRON_PATH_AUDIT: CronAuditRow[] = [
   { path: '/api/cron/skor-standings', class: CRON_CLASS_B, note: 'Standings' },
   { path: '/api/cron/canakkale-nobetci-eczane', class: CRON_CLASS_B, note: 'Pharmacy on-duty data' },
   { path: '/api/cron/antalya-nobetci-eczane', class: CRON_CLASS_B, note: 'Pharmacy on-duty data' },
-  { path: '/api/cron/iskur-jobs', class: CRON_CLASS_B, note: 'İŞKUR listings' },
+  { path: '/api/cron/iskur-jobs', class: CRON_CLASS_B, note: 'İŞKUR+Kariyer listings (per-city ?city=)' },
   { path: '/api/events/sync', class: CRON_CLASS_B, note: 'Ticket/event structured sync' },
   { path: '/api/cron/paribu-canakkale', class: CRON_CLASS_B, note: 'Cinema showtimes' },
   { path: '/api/cron/boxoffice-weekly', class: CRON_CLASS_B, note: 'Box office structured data' },

@@ -65,4 +65,13 @@ describe('resolveIskurSyncCities', () => {
     expect(resolveIskurSyncCities()).toEqual(['canakkale'])
     if (prev !== undefined) process.env.ISKUR_SYNC_CITIES = prev
   })
+
+  it('narrows to a single city when filter is in allowlist', () => {
+    const prev = process.env.ISKUR_SYNC_CITIES
+    process.env.ISKUR_SYNC_CITIES = 'canakkale,antalya'
+    expect(resolveIskurSyncCities('antalya')).toEqual(['antalya'])
+    expect(resolveIskurSyncCities('istanbul')).toEqual([])
+    if (prev !== undefined) process.env.ISKUR_SYNC_CITIES = prev
+    else delete process.env.ISKUR_SYNC_CITIES
+  })
 })

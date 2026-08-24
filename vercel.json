@@ -231,8 +231,12 @@
       "schedule": "0 21 * * *"
     },
     {
-      "path": "/api/cron/iskur-jobs",
+      "path": "/api/cron/iskur-jobs?city=canakkale",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/iskur-jobs?city=antalya",
+      "schedule": "15 6 * * *"
     },
     {
       "path": "/api/cron/paribu-canakkale",
