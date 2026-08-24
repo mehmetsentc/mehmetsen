@@ -21,8 +21,21 @@ const CANAKKALE_TENANT: CityTenant = {
   domain: 'canakkale.nahaber.com',
 }
 
+const ANTALYA_TENANT: CityTenant = {
+  slug: 'antalya',
+  displayName: 'Antalya',
+  provinceSlug: 'antalya',
+  domain: 'antalya.nahaber.com',
+}
+
 const HARDCODED_TENANTS: Record<string, CityTenant> = {
   canakkale: CANAKKALE_TENANT,
+  antalya: ANTALYA_TENANT,
+}
+
+/** Edge-safe / test helper — hardcoded city tenants only (no DB). */
+export function getHardcodedTenant(slug: string): CityTenant | null {
+  return HARDCODED_TENANTS[slug] ?? null
 }
 
 const NATIONAL_HOSTS = new Set([
@@ -38,6 +51,7 @@ const NATIONAL_HOSTS = new Set([
  *
  * Examples:
  *   canakkale.nahaber.com  → "canakkale"
+ *   antalya.nahaber.com    → "antalya"
  *   canakkale.localhost    → "canakkale"
  *   www.nahaber.com        → null
  *   localhost              → null
@@ -104,7 +118,7 @@ export async function resolveTenant(slug: string): Promise<CityTenant | null> {
   const dbTenant = await resolveTenantFromDb(slug)
   if (dbTenant) return dbTenant
 
-  return HARDCODED_TENANTS[slug] ?? null
+  return getHardcodedTenant(slug)
 }
 
 /**
@@ -112,7 +126,7 @@ export async function resolveTenant(slug: string): Promise<CityTenant | null> {
  * Never import drizzle/DB on the Edge runtime (crashes the whole middleware).
  */
 function resolveTenantEdgeSafe(slug: string): CityTenant | null {
-  return HARDCODED_TENANTS[slug] ?? null
+  return getHardcodedTenant(slug)
 }
 
 /**

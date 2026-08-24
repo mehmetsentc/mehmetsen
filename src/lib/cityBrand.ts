@@ -11,6 +11,7 @@
 const CITY_LOGOS: Record<string, string> = {
   /** Official mark, white canvas removed */
   canakkale: '/brand/cities/canakkale/logo-mark-transparent-512.png',
+  antalya: '/brand/cities/antalya/logo-mark-transparent-512.png',
 }
 
 const CITY_ICONS: Record<string, { icon32: string; icon192: string; icon512: string; apple: string; favicon: string }> = {
@@ -20,6 +21,13 @@ const CITY_ICONS: Record<string, { icon32: string; icon192: string; icon512: str
     icon512: '/brand/cities/canakkale/icon-512.png',
     apple: '/brand/cities/canakkale/apple-touch-icon.png',
     favicon: '/brand/cities/canakkale/favicon.ico',
+  },
+  antalya: {
+    icon32: '/brand/cities/antalya/icon-32.png',
+    icon192: '/brand/cities/antalya/icon-192.png',
+    icon512: '/brand/cities/antalya/icon-512.png',
+    apple: '/brand/cities/antalya/apple-touch-icon.png',
+    favicon: '/brand/cities/antalya/favicon.ico',
   },
 }
 

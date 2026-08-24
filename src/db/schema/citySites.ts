@@ -4,6 +4,7 @@ import { provinces } from './provinces'
 /**
  * City sites (tenants) — each represents a city subdomain of NaHaber.
  * e.g. canakkale.nahaber.com → slug 'canakkale'
+ *      antalya.nahaber.com → slug 'antalya'
  */
 export const citySites = pgTable('city_sites', {
   id: varchar('id', { length: 50 }).primaryKey(),

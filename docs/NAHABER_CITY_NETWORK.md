@@ -3,8 +3,9 @@
 ## Overview
 
 The City Network allows NaHaber to serve city-specific experiences on subdomains
-(e.g. `canakkale.nahaber.com`) — same codebase, different content filtered by
-province. Everything is gated behind the `CITY_NETWORK_ENABLED` feature flag.
+(e.g. `canakkale.nahaber.com`, `antalya.nahaber.com`) — same codebase, different
+content filtered by province. Everything is gated behind the `CITY_NETWORK_ENABLED`
+feature flag.
 
 ## Phase Status
 
@@ -19,7 +20,7 @@ province. Everything is gated behind the `CITY_NETWORK_ENABLED` feature flag.
 | 6 | District sub-routes (`/ilceler/[slug]`) | ✅ Complete |
 | 7 | Postgres news write pipeline (dual-write) | 🔲 Pending |
 | 8 | Full R2 media migration | 🔲 Pending |
-| 9 | Additional cities | 🔲 Pending |
+| 9 | Additional cities | ✅ Antalya live (hardcoded + seed); more cities pending |
 
 ## Architecture
 
@@ -71,21 +72,22 @@ Add to `/etc/hosts`:
 
 ```
 127.0.0.1  canakkale.localhost
+127.0.0.1  antalya.localhost
 ```
 
-Then visit: `http://canakkale.localhost:3000`
+Then visit: `http://canakkale.localhost:3000` or `http://antalya.localhost:3000`
 
 > Most browsers resolve `*.localhost` without editing hosts. Try it first.
 
 ### Option 2: Query parameter fallback
 
-Visit: `http://localhost:3000/?tenant=canakkale`
+Visit: `http://localhost:3000/?tenant=canakkale` or `http://localhost:3000/?tenant=antalya`
 
 ### Required environment variables
 
 ```env
 CITY_NETWORK_ENABLED=true
-# DATABASE_URL is optional — hardcoded fallback exists for canakkale
+# DATABASE_URL is optional — hardcoded fallback exists for canakkale + antalya
 ```
 
 ---
@@ -97,6 +99,7 @@ CITY_NETWORK_ENABLED=true
 In your Vercel project dashboard → **Settings → Domains**, add:
 
 - `canakkale.nahaber.com`
+- `antalya.nahaber.com`
 
 Or for wildcard (all future city subdomains):
 
@@ -109,6 +112,7 @@ At your DNS provider (e.g. Cloudflare, Google Domains), add:
 | Type  | Name        | Target              | TTL  |
 |-------|-------------|---------------------|------|
 | CNAME | canakkale   | cname.vercel-dns.com | 300  |
+| CNAME | antalya     | cname.vercel-dns.com | 300  |
 
 For wildcard:
 
@@ -124,7 +128,7 @@ In Vercel → **Settings → Environment Variables**, set:
 |----------|-------|----------|
 | `CITY_NETWORK_ENABLED` | `true` | Yes — activates city tenant routing |
 | `POSTGRES_READS_ENABLED` | `false` | Optional — enables Postgres read path for city news |
-| `DATABASE_URL` | Neon pooled connection string | Optional (hardcoded Çanakkale fallback exists) |
+| `DATABASE_URL` | Neon pooled connection string | Optional (hardcoded Çanakkale + Antalya fallback exists) |
 | `R2_ACCOUNT_ID` | Cloudflare account ID | For media uploads (Phase 2+) |
 | `R2_ACCESS_KEY_ID` | R2 API token key | For media uploads (Phase 2+) |
 | `R2_SECRET_ACCESS_KEY` | R2 API token secret | For media uploads (Phase 2+) |
@@ -139,20 +143,24 @@ In Vercel → **Settings → Environment Variables**, set:
 Deploy normally. After deploy with `CITY_NETWORK_ENABLED=true`:
 
 1. Visit `canakkale.nahaber.com/` — should show Çanakkale city feed
-2. Visit `canakkale.nahaber.com/feed` — should show same city feed (NOT national)
-3. Visit `canakkale.nahaber.com/?debugmw=1` — should show tenant info JSON
-4. Visit `nahaber.com/` — should still show national site unchanged
+2. Visit `antalya.nahaber.com/` — should show Antalya city feed
+3. Visit `canakkale.nahaber.com/feed` — should show same city feed (NOT national)
+4. Visit `antalya.nahaber.com/?debugmw=1` — should show tenant info JSON (`slug: antalya`)
+5. Visit `nahaber.com/` — should still show national site unchanged
 
 ---
 
 ## Adding a new city
 
-1. Seed the city in Postgres (`city_sites` table with `is_active = true`).
-2. Add the domain in Vercel (or use wildcard).
-3. Add a DNS CNAME record.
-4. The hardcoded tenant fallback in `src/lib/tenant.ts` only covers `canakkale`.
-   For other cities, the `DATABASE_URL` must be set and the city must exist in
-   the `city_sites` table.
+1. Add the city to `HARDCODED_TENANTS` in `src/lib/tenant.ts` (required for Edge middleware).
+2. Seed the city in Postgres (`city_sites` table with `is_active = true`) via `src/db/seed.ts`.
+3. Register brand assets in `src/lib/cityBrand.ts` under `public/brand/cities/<slug>/`.
+4. Add the domain in Vercel (or use wildcard).
+5. Add a DNS CNAME record.
+
+Hardcoded fallbacks currently cover `canakkale` and `antalya`. Other cities need
+`DATABASE_URL` + an active `city_sites` row **and** a `HARDCODED_TENANTS` entry
+(middleware cannot use DB on Edge).
 
 ---
 

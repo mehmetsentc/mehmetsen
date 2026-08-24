@@ -1,7 +1,7 @@
 /**
  * Idempotent seed script — Phase 1 City Network foundation.
  *
- * Seeds: Türkiye, Çanakkale province + districts, canakkale city_site,
+ * Seeds: Türkiye, Çanakkale + Antalya provinces/districts/city_sites,
  * and all DEFAULT_CATEGORIES from the existing config.
  *
  * Usage:
@@ -60,6 +60,46 @@ const CITY_SITE_CANAKKALE = {
   displayName: 'Çanakkale',
   domain: 'canakkale.nahaber.com',
   provinceSlug: 'canakkale',
+  isActive: true,
+} as const
+
+const PROVINCE_ANTALYA = {
+  slug: 'antalya',
+  name: 'Antalya',
+  countryCode: 'TR',
+  lat: 36.8969,
+  lng: 30.7133,
+} as const
+
+/** Standard Antalya ilçe list (19 districts). */
+const ANTALYA_DISTRICTS = [
+  { slug: 'antalya-akseki', name: 'Akseki', provinceSlug: 'antalya' },
+  { slug: 'antalya-aksu', name: 'Aksu', provinceSlug: 'antalya' },
+  { slug: 'antalya-alanya', name: 'Alanya', provinceSlug: 'antalya' },
+  { slug: 'antalya-demre', name: 'Demre', provinceSlug: 'antalya' },
+  { slug: 'antalya-dosemealti', name: 'Döşemealtı', provinceSlug: 'antalya' },
+  { slug: 'antalya-elmali', name: 'Elmalı', provinceSlug: 'antalya' },
+  { slug: 'antalya-finike', name: 'Finike', provinceSlug: 'antalya' },
+  { slug: 'antalya-gazipasa', name: 'Gazipaşa', provinceSlug: 'antalya' },
+  { slug: 'antalya-gundogmus', name: 'Gündoğmuş', provinceSlug: 'antalya' },
+  { slug: 'antalya-ibradi', name: 'İbradı', provinceSlug: 'antalya' },
+  { slug: 'antalya-kas', name: 'Kaş', provinceSlug: 'antalya' },
+  { slug: 'antalya-kemer', name: 'Kemer', provinceSlug: 'antalya' },
+  { slug: 'antalya-kepez', name: 'Kepez', provinceSlug: 'antalya' },
+  { slug: 'antalya-konyaalti', name: 'Konyaaltı', provinceSlug: 'antalya' },
+  { slug: 'antalya-korkuteli', name: 'Korkuteli', provinceSlug: 'antalya' },
+  { slug: 'antalya-kumluca', name: 'Kumluca', provinceSlug: 'antalya' },
+  { slug: 'antalya-manavgat', name: 'Manavgat', provinceSlug: 'antalya' },
+  { slug: 'antalya-muratpasa', name: 'Muratpaşa', provinceSlug: 'antalya' },
+  { slug: 'antalya-serik', name: 'Serik', provinceSlug: 'antalya' },
+] as const
+
+const CITY_SITE_ANTALYA = {
+  id: 'antalya',
+  slug: 'antalya',
+  displayName: 'Antalya',
+  domain: 'antalya.nahaber.com',
+  provinceSlug: 'antalya',
   isActive: true,
 } as const
 
@@ -210,6 +250,9 @@ async function main() {
     console.log(`Province:    ${PROVINCE_CANAKKALE.name} (${PROVINCE_CANAKKALE.slug})`)
     console.log(`Districts:   ${CANAKKALE_DISTRICTS.length}`)
     console.log(`City site:   ${CITY_SITE_CANAKKALE.domain} (active: ${CITY_SITE_CANAKKALE.isActive})`)
+    console.log(`Province:    ${PROVINCE_ANTALYA.name} (${PROVINCE_ANTALYA.slug})`)
+    console.log(`Districts:   ${ANTALYA_DISTRICTS.length}`)
+    console.log(`City site:   ${CITY_SITE_ANTALYA.domain} (active: ${CITY_SITE_ANTALYA.isActive})`)
     console.log(`Categories:  ${SEED_CATEGORIES.length}`)
     console.log('\n✅ Dry run complete — no changes made.')
     return
@@ -227,28 +270,34 @@ async function main() {
     .onConflictDoNothing({ target: countries.code })
   console.log(`  ✓ Country: ${COUNTRY_TURKEY.nameLocal}`)
 
-  // 2. Province
-  await db
-    .insert(provinces)
-    .values(PROVINCE_CANAKKALE)
-    .onConflictDoNothing({ target: provinces.slug })
-  console.log(`  ✓ Province: ${PROVINCE_CANAKKALE.name}`)
+  // 2. Provinces
+  for (const province of [PROVINCE_CANAKKALE, PROVINCE_ANTALYA]) {
+    await db
+      .insert(provinces)
+      .values(province)
+      .onConflictDoNothing({ target: provinces.slug })
+    console.log(`  ✓ Province: ${province.name}`)
+  }
 
   // 3. Districts
-  for (const d of CANAKKALE_DISTRICTS) {
+  for (const d of [...CANAKKALE_DISTRICTS, ...ANTALYA_DISTRICTS]) {
     await db
       .insert(districts)
       .values(d)
       .onConflictDoNothing({ target: districts.slug })
   }
-  console.log(`  ✓ Districts: ${CANAKKALE_DISTRICTS.length} (${PROVINCE_CANAKKALE.name})`)
+  console.log(
+    `  ✓ Districts: ${CANAKKALE_DISTRICTS.length} (${PROVINCE_CANAKKALE.name}) + ${ANTALYA_DISTRICTS.length} (${PROVINCE_ANTALYA.name})`
+  )
 
-  // 4. City site (tenant)
-  await db
-    .insert(citySites)
-    .values(CITY_SITE_CANAKKALE)
-    .onConflictDoNothing({ target: citySites.id })
-  console.log(`  ✓ City site: ${CITY_SITE_CANAKKALE.domain}`)
+  // 4. City sites (tenants)
+  for (const site of [CITY_SITE_CANAKKALE, CITY_SITE_ANTALYA]) {
+    await db
+      .insert(citySites)
+      .values(site)
+      .onConflictDoNothing({ target: citySites.id })
+    console.log(`  ✓ City site: ${site.domain}`)
+  }
 
   // 5. Categories — parents first, then children (FK ordering)
   const parents = SEED_CATEGORIES.filter((c) => !c.parentId)
