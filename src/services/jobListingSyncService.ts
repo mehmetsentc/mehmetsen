@@ -32,7 +32,6 @@ import type {
 } from '@/types/jobListing'
 
 const ACTOR_ID = 'sevimliai~iskur-ilan-scraper-email'
-const APIFY_SYNC_URL = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items`
 const WRITE_BATCH_SIZE = 400
 const META_DOC_PATH = 'meta/jobListingSync'
 const DEFAULT_CITIES = ['canakkale']
@@ -278,24 +277,78 @@ export function normalizeApifyJobItem(
   return listing
 }
 
+/** run-sync-get-dataset-items hard-caps at 300s; Antalya exceeds that. */
+const APIFY_RUN_URL = `https://api.apify.com/v2/acts/${ACTOR_ID}/runs`
+const APIFY_POLL_MS = 8_000
+const APIFY_MAX_WAIT_MS = 720_000
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms))
+}
+
 async function fetchApifyJobsForCity(citySlug: string): Promise<unknown[]> {
   const token = process.env.APIFY_TOKEN!.trim()
-  const res = await fetch(`${APIFY_SYNC_URL}?token=${encodeURIComponent(token)}`, {
+  const q = `token=${encodeURIComponent(token)}`
+
+  const startRes = await fetch(`${APIFY_RUN_URL}?${q}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(buildActorInput(citySlug)),
-    // Apify sync can take several minutes for larger cities
-    signal: AbortSignal.timeout(280_000),
+    signal: AbortSignal.timeout(60_000),
   })
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`Apify ${res.status} for ${citySlug}: ${body.slice(0, 300)}`)
+  if (!startRes.ok) {
+    const body = await startRes.text().catch(() => '')
+    throw new Error(`Apify start ${startRes.status} for ${citySlug}: ${body.slice(0, 300)}`)
   }
 
-  const data = (await res.json()) as unknown
-  return flattenApifyDataset(data)
+  const started = (await startRes.json()) as {
+    data?: { id?: string; defaultDatasetId?: string; status?: string }
+  }
+  const runId = started.data?.id
+  let datasetId = started.data?.defaultDatasetId
+  if (!runId) {
+    throw new Error(`Apify start missing run id for ${citySlug}`)
+  }
+
+  const deadline = Date.now() + APIFY_MAX_WAIT_MS
+  let status = started.data?.status || 'RUNNING'
+
+  while (!['SUCCEEDED', 'FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) {
+    if (Date.now() > deadline) {
+      throw new Error(`Apify async poll timed out for ${citySlug} (run=${runId})`)
+    }
+    await sleep(APIFY_POLL_MS)
+    const pollRes = await fetch(
+      `https://api.apify.com/v2/actor-runs/${encodeURIComponent(runId)}?${q}`,
+      { signal: AbortSignal.timeout(30_000) }
+    )
+    if (!pollRes.ok) {
+      const body = await pollRes.text().catch(() => '')
+      throw new Error(`Apify poll ${pollRes.status} for ${citySlug}: ${body.slice(0, 200)}`)
+    }
+    const poll = (await pollRes.json()) as {
+      data?: { status?: string; defaultDatasetId?: string }
+    }
+    status = poll.data?.status || status
+    if (poll.data?.defaultDatasetId) datasetId = poll.data.defaultDatasetId
+  }
+
+  if (status !== 'SUCCEEDED' || !datasetId) {
+    throw new Error(`Apify run ${status} for ${citySlug} (run=${runId})`)
+  }
+
+  const itemsRes = await fetch(
+    `https://api.apify.com/v2/datasets/${encodeURIComponent(datasetId)}/items?${q}&clean=true`,
+    { signal: AbortSignal.timeout(120_000) }
+  )
+  if (!itemsRes.ok) {
+    const body = await itemsRes.text().catch(() => '')
+    throw new Error(`Apify dataset ${itemsRes.status} for ${citySlug}: ${body.slice(0, 300)}`)
+  }
+
+  return flattenApifyDataset(await itemsRes.json())
 }
+
 
 /**
  * Actor returns category wrappers:
