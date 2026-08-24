@@ -4,7 +4,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { tagToSlug } from '@/lib/tags'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, TEKRARLAYAN_CATEGORY_ID } from '@/constants/config'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 
 // ─── Pagination config ────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
     { url: `${base}/kune`,              changeFrequency: 'monthly', priority: 0.3 },
   ]
 
-  const categoryRoutes: MetadataRoute.Sitemap = DEFAULT_CATEGORIES.map((cat) => ({
+  const categoryRoutes: MetadataRoute.Sitemap = DEFAULT_CATEGORIES.filter((cat) => cat.id !== TEKRARLAYAN_CATEGORY_ID).map((cat) => ({
     url: `${base}${ROUTES.CATEGORY(cat.slug ?? cat.id)}`,
     changeFrequency: 'hourly' as const,
     priority: cat.parentId ? 0.75 : 0.85,

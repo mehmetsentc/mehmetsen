@@ -25,8 +25,11 @@ const CITY_STATIC = [
 ]
 
 const CITY_CATEGORIES = [
-  'gundem', 'siyaset', 'ekonomi', 'yasam',
-  'egitim', 'kultur',  'turizm',  'asayis',
+  'gundem',      'siyaset',     'ekonomi',     'yasam',
+  'egitim',      'kultur',      'turizm',      'asayis',
+  'spor',        'gastronomi',  'son-dakika',  'saglik',
+  'bilim',       'teknoloji',   'magazin',     'otomobil',
+  'meteoroloji',
 ]
 
 function xmlUrl(loc: string, freq: string, priority: number, lastmod?: string): string {

@@ -67,6 +67,7 @@ const nextConfig: NextConfig = {
       { source: '/kune', destination: '/kunye', permanent: true },
       { source: '/kategori/otomotiv', destination: '/kategori/otomobil', permanent: true },
       { source: '/kategori/etkinlikler', destination: '/events', permanent: true },
+      { source: '/burclar', destination: '/kategori/astroloji', permanent: true },
     ]
   },
 

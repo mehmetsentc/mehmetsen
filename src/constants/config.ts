@@ -170,7 +170,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'meteoroloji',   name: 'Meteoroloji',   slug: 'meteoroloji',   iconName: 'cloud-rain',  color: '#0EA5E9' },
   { id: 'turizm',        name: 'Turizm',        slug: 'turizm',        iconName: 'plane',       color: '#0284C7' },
   { id: 'gezi',          name: 'Gezi',          slug: 'gezi',          iconName: 'map',         color: '#0891B2' },
-  { id: 'asayis',        name: '3. Sayfa',      slug: 'asayis',        iconName: 'shield-alert', color: '#B45309' },
+  { id: 'asayis',        name: 'Asayiş',        slug: 'asayis',        iconName: 'shield-alert', color: '#B45309' },
 
   // ── Tarih ───────────────────────────────────────────────────────────────────
   { id: 'tarih',         name: 'Tarih',         slug: 'tarih',         iconName: 'book-open',   color: '#92400E' },
