@@ -3,8 +3,8 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import {
   DUTY_PHARMACIES_CACHE_TAG,
-  DUTY_PHARMACY_CITY_SLUG,
-  DUTY_PHARMACY_CURRENT_DOC_ID,
+  dutyPharmacyDocId,
+  isDutyPharmacyCity,
 } from '@/lib/dutyPharmacies/constants'
 import type { DutyPharmacySnapshot } from '@/types/dutyPharmacy'
 
@@ -16,11 +16,11 @@ function isSnapshot(value: unknown): value is DutyPharmacySnapshot {
 
 const getDutyPharmaciesCached = unstable_cache(
   async (citySlug: string): Promise<DutyPharmacySnapshot | null> => {
-    if (citySlug !== DUTY_PHARMACY_CITY_SLUG) return null
+    if (!isDutyPharmacyCity(citySlug)) return null
     try {
       const snap = await getAdminFirestore()
         .collection(Collections.DUTY_PHARMACIES)
-        .doc(DUTY_PHARMACY_CURRENT_DOC_ID)
+        .doc(dutyPharmacyDocId(citySlug))
         .get()
       if (!snap.exists) return null
       const data = snap.data()

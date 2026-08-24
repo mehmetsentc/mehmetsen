@@ -68,7 +68,8 @@ const JOBS = [
   { id: 'national', label: 'Ulusal RSS', desc: 'Ulusal kaynaklar', schedule: 'Her 30 dk', icon: '🇹🇷' },
   { id: 'kibris', label: 'Kıbrıs RSS', desc: 'Kıbrıs haberleri', schedule: 'Her 30 dk', icon: '🏝️' },
   { id: 'freenews', label: 'Freenews RSS', desc: 'Freenews kaynağı', schedule: 'Her 30 dk', icon: '📡' },
-  { id: 'canakkale-nobetci-eczane', label: 'Nöbetçi Eczane', desc: 'Çanakkale Eczacı Odası günlük nöbetçi eczane listesi', schedule: 'Her gün 10:00', icon: '💊' },
+  { id: 'canakkale-nobetci-eczane', label: 'Nöbetçi Eczane (Çanakkale)', desc: 'Çanakkale Eczacı Odası günlük nöbetçi eczane listesi', schedule: 'Her gün 10:00', icon: '💊' },
+  { id: 'antalya-nobetci-eczane', label: 'Nöbetçi Eczane (Antalya)', desc: 'Antalya Eczacı Odası günlük nöbetçi eczane listesi', schedule: 'Her gün 09:30', icon: '💊' },
 ]
 
 const STATUS_CONFIG = {

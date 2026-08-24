@@ -526,6 +526,7 @@ describe('Phase 4A.4 unified discovery extraction event pipeline', () => {
     expect(jobs.some((j) => j.flowLane === 'CLUSTERING')).toBe(true)
     expect(jobs.every((j) => j.status !== 'Çalışıyor')).toBe(true)
     expect(classifyCronPath('/api/cron/canakkale-nobetci-eczane')?.class).toBe(CRON_CLASS_B)
+    expect(classifyCronPath('/api/cron/antalya-nobetci-eczane')?.class).toBe(CRON_CLASS_B)
     expect(cronAuditByClass().feed_crawler_discovery.length).toBeGreaterThan(5)
   })
 

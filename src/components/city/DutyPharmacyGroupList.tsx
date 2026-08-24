@@ -44,7 +44,9 @@ export function DutyPharmacyGroupList({
             </h2>
           )}
           <ul className="grid gap-3 md:grid-cols-2">
-            {group.pharmacies.map((pharmacy) => (
+            {group.pharmacies.map((pharmacy) => {
+              const hours = formatDutyHours(pharmacy)
+              return (
               <li
                 key={`${group.districtSlug}-${pharmacy.name}-${pharmacy.phone}`}
                 className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 shadow-sm"
@@ -58,10 +60,12 @@ export function DutyPharmacyGroupList({
                     <span>{pharmacy.address}</span>
                   </p>
                 ) : null}
-                <p className="mt-2 flex items-start gap-2 text-sm text-[rgb(var(--color-text-secondary))]">
-                  <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" />
-                  <span>{formatDutyHours(pharmacy)}</span>
-                </p>
+                {hours ? (
+                  <p className="mt-2 flex items-start gap-2 text-sm text-[rgb(var(--color-text-secondary))]">
+                    <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" />
+                    <span>{hours}</span>
+                  </p>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {pharmacy.phoneHref ? (
                     <a
@@ -85,7 +89,8 @@ export function DutyPharmacyGroupList({
                   ) : null}
                 </div>
               </li>
-            ))}
+              )
+            })}
           </ul>
         </section>
       ))}

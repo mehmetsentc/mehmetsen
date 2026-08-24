@@ -18,6 +18,9 @@
     "src/app/api/cron/canakkale-nobetci-eczane/route.ts": {
       "memory": 512
     },
+    "src/app/api/cron/antalya-nobetci-eczane/route.ts": {
+      "memory": 512
+    },
     "src/app/api/cron/boxoffice-weekly/route.ts": {
       "memory": 512
     },
@@ -238,6 +241,10 @@
     {
       "path": "/api/cron/canakkale-nobetci-eczane",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/antalya-nobetci-eczane",
+      "schedule": "30 6 * * *"
     },
     {
       "path": "/api/cron/boxoffice-weekly",

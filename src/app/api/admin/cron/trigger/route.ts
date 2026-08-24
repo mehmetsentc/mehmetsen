@@ -23,6 +23,7 @@ const JOB_ROUTES: Record<string, string[]> = {
   local: ['/api/cron/newsroom/local'],
   'canakkale-bel-duyuru': ['/api/cron/newsroom/canakkale-bel-duyuru'],
   'canakkale-nobetci-eczane': ['/api/cron/canakkale-nobetci-eczane'],
+  'antalya-nobetci-eczane': ['/api/cron/antalya-nobetci-eczane'],
   national: ['/api/cron/newsroom/national'],
   'process-queue': ['/api/cron/newsroom/process-queue'],
   'process-now': ['/api/admin/newsroom/process-now'],

@@ -4,10 +4,6 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Pill, Search } from 'lucide-react'
 import {
-  CANAKKALE_EO_SOURCE_LABEL,
-  CANAKKALE_EO_SOURCE_URL,
-} from '@/lib/dutyPharmacies/constants'
-import {
   dutyPharmacyDistrictChips,
   filterDutyPharmacyGroups,
 } from '@/lib/dutyPharmacies/officialDistrict'
@@ -60,10 +56,17 @@ export function CityDutyPharmaciesClient({
   const [query, setQuery] = useState('')
 
   const groups = snapshot?.groups ?? []
-  const chips = useMemo(() => dutyPharmacyDistrictChips(groups), [groups])
+  const citySlug = snapshot?.citySlug ?? ''
+  const sourceUrl = snapshot?.sourceUrl ?? '#'
+  const sourceLabel = snapshot?.sourceLabel ?? 'İl Eczacı Odası'
+  const chips = useMemo(
+    () => (citySlug ? dutyPharmacyDistrictChips(groups, citySlug) : []),
+    [groups, citySlug]
+  )
   const districtGroups = useMemo(
-    () => filterDutyPharmacyGroups(groups, districtSlug),
-    [groups, districtSlug]
+    () =>
+      citySlug ? filterDutyPharmacyGroups(groups, districtSlug, citySlug) : groups,
+    [groups, districtSlug, citySlug]
   )
   const q = query.trim().toLocaleLowerCase('tr-TR')
 
@@ -120,12 +123,12 @@ export function CityDutyPharmaciesClient({
         <p className="text-xs text-[rgb(var(--color-muted))]">
           Kaynak:{' '}
           <a
-            href={CANAKKALE_EO_SOURCE_URL}
+            href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold text-[rgb(var(--color-brand))] underline-offset-2 hover:underline"
           >
-            {CANAKKALE_EO_SOURCE_LABEL}
+            {sourceLabel}
           </a>
           {fetchedLabel ? (
             <span className="mt-0.5 block">Son güncelleme: {fetchedLabel}</span>
@@ -179,8 +182,8 @@ export function CityDutyPharmaciesClient({
 
       {!snapshot || groups.length === 0 ? (
         <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-6 text-sm text-[rgb(var(--color-text-secondary))]">
-          Nöbetçi eczane listesi henüz çekilemedi. Kaynak her gün sabah 10.00’da
-          Çanakkale Eczacı Odası’ndan güncellenir.
+          Nöbetçi eczane listesi henüz çekilemedi. Kaynak her gün ilgili il eczacı
+          odasından güncellenir.
         </div>
       ) : visibleCount === 0 ? (
         <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-6 text-sm text-[rgb(var(--color-text-secondary))]">

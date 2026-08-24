@@ -6,7 +6,7 @@ import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { CONTACT_EMAIL, FOOTER_BOTTOM_LINKS } from '@/constants/siteLegalLinks'
 import { ROUTES } from '@/constants/routes'
-import { DUTY_PHARMACY_CITY_SLUG } from '@/lib/dutyPharmacies/constants'
+import { isDutyPharmacyCity } from '@/lib/dutyPharmacies/constants'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
 import type { CityCategory } from '@/services/cityNewsService.server'
 
@@ -153,14 +153,13 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
   const { categories } = useCityCategoryFilter()
   const { news, life, culture } = groupCategories(categories)
   const year = new Date().getFullYear()
-  const newsStatic =
-    provinceSlug === DUTY_PHARMACY_CITY_SLUG
-      ? [
-          ...NEWS_STATIC.slice(0, 3),
-          { label: 'Nöbetçi Eczaneler', href: ROUTES.CITY_DUTY_PHARMACIES },
-          ...NEWS_STATIC.slice(3),
-        ]
-      : NEWS_STATIC
+  const newsStatic = isDutyPharmacyCity(provinceSlug)
+    ? [
+        ...NEWS_STATIC.slice(0, 3),
+        { label: 'Nöbetçi Eczaneler', href: ROUTES.CITY_DUTY_PHARMACIES },
+        ...NEWS_STATIC.slice(3),
+      ]
+    : NEWS_STATIC
 
   // Dinamik kategori linkleri (şehir kategori sayfası)
   const newsLinks: SimpleLink[] = news.map((c) => ({

@@ -18,6 +18,7 @@
     "sync-events": "node scripts/sync-events.mjs",
     "sync-paribu-canakkale": "node scripts/sync-paribu-canakkale.mjs",
     "sync-canakkale-nobetci-eczane": "node scripts/sync-canakkale-nobetci-eczane.mjs",
+    "sync-antalya-nobetci-eczane": "node scripts/sync-antalya-nobetci-eczane.mjs",
     "sync-boxoffice-weekly": "node scripts/sync-boxoffice-weekly.mjs",
     "ingest-news": "node scripts/ingest-news.mjs",
     "ingest-news-batch": "node scripts/ingest-news-batch.mjs",

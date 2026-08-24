@@ -8,7 +8,7 @@ import {
   Pill,
   type LucideIcon,
 } from 'lucide-react'
-import { DUTY_PHARMACY_CITY_SLUG } from '@/lib/dutyPharmacies/constants'
+import { isDutyPharmacyCity } from '@/lib/dutyPharmacies/constants'
 import {
   CITY_ALWAYS_VISIBLE_SECTION_IDS,
   CITY_BOTTOM_NAV,
@@ -80,7 +80,7 @@ export function buildCitySectionNavItems(
           : 'brand',
   }))
 
-  if (citySlug === DUTY_PHARMACY_CITY_SLUG) {
+  if (isDutyPharmacyCity(citySlug)) {
     const jobsIdx = items.findIndex((item) => item.id === 'is-ilanlari')
     items.splice(jobsIdx >= 0 ? jobsIdx + 1 : items.length, 0, dutyPharmacyNavItem())
   }

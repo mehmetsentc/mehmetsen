@@ -2,7 +2,10 @@ import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { getCityCategoryName, getDistrictsForProvince } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
-import { DUTY_PHARMACY_CITY_SLUG } from '@/lib/dutyPharmacies/constants'
+import {
+  dutyPharmacySourceForCity,
+  isDutyPharmacyCity,
+} from '@/lib/dutyPharmacies/constants'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { CityDutyPharmaciesClient } from '@/components/city/CityDutyPharmaciesClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
@@ -18,7 +21,7 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { district: districtSlug } = await params
   const citySlug = await getCitySlugFromHeaders()
-  if (citySlug !== DUTY_PHARMACY_CITY_SLUG) {
+  if (!isDutyPharmacyCity(citySlug)) {
     return { title: 'Nöbetçi Eczaneler' }
   }
 
@@ -27,10 +30,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const cityName = getCityCategoryName(citySlug)
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const source = dutyPharmacySourceForCity(citySlug)
 
   return {
     title: `${district.name} Nöbetçi Eczaneler — ${cityName}`,
-    description: `${district.name} günlük nöbetçi eczane listesi. Adres, telefon ve nöbet saatleri. Kaynak: Çanakkale Eczacı Odası. ${siteName}`,
+    description: `${district.name} günlük nöbetçi eczane listesi. Adres, telefon ve nöbet saatleri. Kaynak: ${source?.label ?? 'İl Eczacı Odası'}. ${siteName}`,
   }
 }
 
@@ -38,7 +42,7 @@ export default async function NobetciEczanelerDistrictPage({ params }: PageProps
   const { district: districtSlug } = await params
   const citySlug = await getCitySlugFromHeaders()
 
-  if (citySlug !== DUTY_PHARMACY_CITY_SLUG) {
+  if (!isDutyPharmacyCity(citySlug)) {
     redirect(ROUTES.HOME)
   }
 

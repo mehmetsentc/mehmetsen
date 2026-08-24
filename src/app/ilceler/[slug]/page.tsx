@@ -11,7 +11,7 @@ import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 import { getCityDistrictFeedInitialData, getCityNavPresence } from '@/services/cityNewsService.server'
 import { getDutyPharmaciesServer } from '@/services/dutyPharmacyService.server'
-import { DUTY_PHARMACY_CITY_SLUG } from '@/lib/dutyPharmacies/constants'
+import { isDutyPharmacyCity } from '@/lib/dutyPharmacies/constants'
 import { filterDutyPharmacyGroups } from '@/lib/dutyPharmacies/officialDistrict'
 
 export const dynamic = 'force-dynamic'
@@ -53,12 +53,12 @@ export default async function IlcePage({ params }: PageProps) {
   const [homeFeedData, navPresence, dutySnapshot] = await Promise.all([
     getCityDistrictFeedInitialData(citySlug, slug),
     getCityNavPresence(citySlug),
-    citySlug === DUTY_PHARMACY_CITY_SLUG
+    isDutyPharmacyCity(citySlug)
       ? getDutyPharmaciesServer(citySlug)
       : Promise.resolve(null),
   ])
   const dutyPharmacyGroups = dutySnapshot
-    ? filterDutyPharmacyGroups(dutySnapshot.groups, slug)
+    ? filterDutyPharmacyGroups(dutySnapshot.groups, slug, citySlug)
     : []
 
   return (

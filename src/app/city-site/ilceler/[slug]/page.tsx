@@ -8,7 +8,7 @@ import {
 } from '@/constants/cities'
 import { getCityDistrictFeedInitialData } from '@/services/cityNewsService.server'
 import { getDutyPharmaciesServer } from '@/services/dutyPharmacyService.server'
-import { DUTY_PHARMACY_CITY_SLUG } from '@/lib/dutyPharmacies/constants'
+import { isDutyPharmacyCity } from '@/lib/dutyPharmacies/constants'
 import { filterDutyPharmacyGroups } from '@/lib/dutyPharmacies/officialDistrict'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 
@@ -47,12 +47,12 @@ export default async function CityDistrictPage({ params }: PageProps) {
   const cityName = getCityCategoryName(tenant.provinceSlug)
   const [homeFeedData, dutySnapshot] = await Promise.all([
     getCityDistrictFeedInitialData(tenant.provinceSlug, slug),
-    tenant.provinceSlug === DUTY_PHARMACY_CITY_SLUG
+    isDutyPharmacyCity(tenant.provinceSlug)
       ? getDutyPharmaciesServer(tenant.provinceSlug)
       : Promise.resolve(null),
   ])
   const dutyPharmacyGroups = dutySnapshot
-    ? filterDutyPharmacyGroups(dutySnapshot.groups, slug)
+    ? filterDutyPharmacyGroups(dutySnapshot.groups, slug, tenant.provinceSlug)
     : []
 
   return (
