@@ -10,7 +10,7 @@
  *   • Her kart CityThreadCard — başlık, özet-expand, görsel, aksiyonlar
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
 import { useCityTenant } from '@/store/cityTenantContext'
 import { CityThreadCard } from './CityThreadCard'
@@ -55,6 +55,38 @@ export function CityThreadFeed({ initialItems }: CityThreadFeedProps) {
   const [loadingMore, setLoadingMore] = useState(false)
   const touchRef = useRef<{ x: number; y: number } | null>(null)
   const swipeRef = useRef<'none' | 'h' | 'v'>('none')
+
+  // Kategori geçiş toast'ı
+  const [swipeToast, setSwipeToast] = useState<string | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Kategori id → label haritası
+  const categoryLabelMap = useMemo(() => {
+    const m = new Map<string | null, string>([[null, 'Hepsi']])
+    categories.forEach((c) => m.set(c.id, c.name))
+    return m
+  }, [categories])
+
+  function scrollChipIntoView(catId: string | null) {
+    const chipId = catId ?? '__all'
+    setTimeout(() => {
+      const chip = document.querySelector(`[data-category-chip="${chipId}"]`) as HTMLElement | null
+      if (!chip) return
+      const scroller = chip.closest('.category-nav-scroller') as HTMLElement | null
+      if (scroller) {
+        const targetLeft = chip.offsetLeft - (scroller.clientWidth - chip.offsetWidth) / 2
+        scroller.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
+      } else {
+        chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+      }
+    }, 80)
+  }
+
+  function showToast(catId: string | null) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setSwipeToast(categoryLabelMap.get(catId) ?? null)
+    toastTimer.current = setTimeout(() => setSwipeToast(null), 1_400)
+  }
 
   // Tüm kategori sırası: null (hepsi), categories[0], categories[1], ...
   const categoryOrder: (string | null)[] = [null, ...categories.map((c) => c.id)]
@@ -165,12 +197,8 @@ export function CityThreadFeed({ initialItems }: CityThreadFeedProps) {
       if (nextIdx !== currentIdx) {
         const newCat = categoryOrder[nextIdx] ?? null
         setActiveCategoryId(newCat)
-        // Aktif chip'i görünür yap
-        setTimeout(() => {
-          const chipId = newCat ?? '__all'
-          document.querySelector(`[data-category-chip="${chipId}"]`)
-            ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-        }, 60)
+        scrollChipIntoView(newCat)
+        showToast(newCat)
       }
     },
     [activeCategoryId, categoryOrder, setActiveCategoryId],
@@ -179,12 +207,19 @@ export function CityThreadFeed({ initialItems }: CityThreadFeedProps) {
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div
-      className="min-h-[60vh]"
+      className="relative min-h-[60vh]"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Kategori geçiş indikatörü (swipe sırasında göster) */}
+      {/* Kategori geçiş toast — swipe'ta ortada belirir */}
+      {swipeToast && (
+        <div className="pointer-events-none fixed inset-x-0 top-1/2 z-[60] flex -translate-y-1/2 items-center justify-center">
+          <div className="animate-in fade-in zoom-in-90 duration-150 rounded-2xl bg-black/80 px-7 py-3.5 text-[18px] font-bold tracking-tight text-white shadow-xl backdrop-blur-md">
+            {swipeToast}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <>

@@ -4,6 +4,8 @@ export type NewsItem = {
   slug: string
   title: string
   description?: string
+  /** AI/editor generated summary — shorter and more informative than description. */
+  summary?: string
   content?: string
   /** Precomputed on the server for list payloads (content is stripped). */
   readingMinutes?: number

@@ -91,7 +91,8 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
   const href = newsItemDetailHref(item)
   const categoryLabel = getCategoryLabel(item.category)
   const ago = timeAgo(item.publishedAt)
-  const summary = item.description?.trim() ?? ''
+  // summary > description tercih sırası; hiçbiri yoksa boş
+  const summary = (item.summary?.trim() || item.description?.trim()) ?? ''
   const hasVideo = Boolean(item.videoUrl)
   const thumbSrc = hasVideo
     ? (videoThumbnail(item.videoUrl!) ?? item.imageUrl)
@@ -139,9 +140,9 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
         </h3>
       </Link>
 
-      {/* ── 3. Kısa özet + devamını oku ── */}
+      {/* ── 3. Özet — tam göster, kesilmesin ── */}
       {summary && (
-        <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-[rgb(var(--color-text-secondary))]">
+        <p className="mb-3 text-sm leading-relaxed text-[rgb(var(--color-text-secondary))]">
           {summary}
         </p>
       )}

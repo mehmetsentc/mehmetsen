@@ -31,6 +31,7 @@ interface NewsDocument {
   title?: string
   slug?: string
   description?: string
+  summary?: string
   coverImageUrl?: string
   thumbnail?: string
   categoryId?: string
@@ -121,6 +122,7 @@ function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
     slug: data.slug?.trim() || id,
     title,
     description: data.description?.trim(),
+    summary: data.summary?.trim() || undefined,
     imageUrl: data.coverImageUrl?.trim() || data.thumbnail?.trim() || undefined,
     videoUrl: data.videoUrl?.trim() || undefined,
     category: data.categoryId?.trim() || data.category?.trim() || undefined,
