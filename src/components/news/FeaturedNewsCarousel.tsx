@@ -7,12 +7,15 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { LCP_IMAGE_QUALITY, LCP_IMAGE_SIZES } from '@/lib/lcpImage'
 import { cn } from '@/lib/utils'
 import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
+import { usePageStateStore } from '@/store/pageStateStore'
+import { saveArticleNav } from '@/lib/articleNavContext'
 
 export type FeaturedCarouselSlide = {
   id: string
@@ -58,7 +61,16 @@ export function FeaturedNewsCarousel({
   priority = true,
 }: FeaturedNewsCarouselProps) {
   const slides = useMemo(() => rawSlides.slice(0, limit), [rawSlides, limit])
-  const [current, setCurrent] = useState(0)
+  const pathname = usePathname()
+  const stateKey = `carousel:${pathname}`
+  const getValue = usePageStateStore((s) => s.getValue)
+  const setValue = usePageStateStore((s) => s.setValue)
+
+  // Restore saved carousel index on mount (survives back-navigation)
+  const savedIdx = getValue<number>(stateKey, 'idx') ?? 0
+  const [current, setCurrent] = useState(() =>
+    savedIdx < rawSlides.length ? savedIdx : 0
+  )
   const [transitioning, setTransitioning] = useState(false)
   const [extrasReady, setExtrasReady] = useState(false)
   const touchStartX = useRef<number | null>(null)
@@ -99,14 +111,28 @@ export function FeaturedNewsCarousel({
       if (slides.length === 0 || transitioning) return
       setExtrasReady(true)
       setTransitioning(true)
-      setCurrent((idx + slides.length) % slides.length)
+      const next = (idx + slides.length) % slides.length
+      setCurrent(next)
+      setValue(stateKey, 'idx', next)
       setTimeout(() => setTransitioning(false), reduceMotion.current ? 0 : 450)
     },
-    [slides.length, transitioning]
+    [slides.length, transitioning, stateKey, setValue]
   )
 
   const next = useCallback(() => goTo(current + 1), [current, goTo])
   const prev = useCallback(() => goTo(current - 1), [current, goTo])
+
+  // Save nav context before navigating to an article
+  const handleSlideClick = useCallback(
+    (clickedIndex: number) => {
+      saveArticleNav({
+        hrefs: slides.map((s) => s.href),
+        index: clickedIndex,
+        source: 'featured',
+      })
+    },
+    [slides]
+  )
 
   if (slides.length === 0) return null
 
@@ -195,6 +221,7 @@ export function FeaturedNewsCarousel({
           <Link
             href={item.href}
             className="featured-news-carousel__link"
+            onClick={() => handleSlideClick(current)}
           >
             <div className="featured-news-carousel__copy">
               {item.kicker ? (

@@ -1,13 +1,19 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { ArticleScrollProgress } from '@/components/news/ArticleScrollProgress'
+import { ArticleSwipeNav } from '@/components/news/ArticleSwipeNav'
 
 /**
- * Article reading chrome — scroll progress only.
+ * Article reading chrome — scroll progress + swipe-between-articles nav.
  * Site Navbar (logo / menu / back) stays on mobile article pages.
- * Compact ArticleStickyHeader was removed so the general header is not replaced
- * and the headline is not clipped under a second fixed bar.
  */
 export function ArticlePageChrome() {
-  return <ArticleScrollProgress />
+  const pathname = usePathname()
+  return (
+    <>
+      <ArticleScrollProgress />
+      <ArticleSwipeNav currentHref={pathname} />
+    </>
+  )
 }
