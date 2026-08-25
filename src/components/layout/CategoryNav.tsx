@@ -120,16 +120,13 @@ export function CategoryNav({
               data-category-chip={cat.id}
               onClick={() => onCategorySelect?.(cat.id === '__all' ? null : cat.id)}
               className={cn(
-                'relative flex min-h-[48px] shrink-0 snap-start items-center px-0.5 text-[15px] font-semibold touch-manipulation transition-colors',
+                'relative flex shrink-0 snap-start items-center touch-manipulation transition-all duration-200',
                 isActive
-                  ? 'text-white'
-                  : 'text-white/75 hover:text-white'
+                  ? 'my-1.5 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-bold text-[rgb(var(--header-navy-bg,15,23,42))] shadow-sm'
+                  : 'min-h-[48px] px-0.5 text-[15px] font-semibold text-white/70 hover:text-white'
               )}
             >
               {cat.label}
-              {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[2.5px] rounded-full bg-white" />
-              )}
             </button>
           )
         })}
