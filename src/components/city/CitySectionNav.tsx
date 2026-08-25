@@ -1,50 +1,63 @@
 'use client'
 
-import Link from 'next/link'
+/**
+ * CitySectionNav — şehir sayfasının haber kategori filtre şeridi.
+ *
+ * Sadece haber kategorisi chip'leri gösterir (Hepsi + dinamik kategoriler).
+ * Sayfa navları (Etkinlik, İş, Eczane, Spor, İlçeler) alt navda (CityMobileNav) zaten var.
+ *
+ * Aktif chip: marka kırmızısı dolgu + beyaz metin (brand fill).
+ * Swipe desteği CityThreadFeed tarafından sağlanır — bu bileşen sadece render.
+ */
+
+import { useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import { buildCityHeaderNavItems } from '@/lib/citySidebarNav'
-import { isCitySectionActive } from '@/lib/cityPaths'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
-import { useCityTenant } from '@/store/cityTenantContext'
+import { isCityFeedPath } from '@/lib/cityPaths'
 import { cn } from '@/lib/utils'
 
 export function CitySectionNav() {
   const pathname = usePathname()
-  const { categories, hasSpor } = useCityCategoryFilter()
-  const tenant = useCityTenant()
+  const { categories, activeCategoryId, setActiveCategoryId } = useCityCategoryFilter()
 
-  if (pathname.startsWith('/haber/')) return null
+  // Sadece feed sayfasında göster, haber detayında gizle
+  if (!isCityFeedPath(pathname) || pathname.startsWith('/haber/')) return null
 
-  const items = buildCityHeaderNavItems(categories, {
-    hasSpor,
-    citySlug: tenant?.provinceSlug,
-  })
+  // Kategoriler yüklenmediyse boş şerit gösterme
+  if (categories.length === 0) return null
+
+  const allChips = [
+    { id: '__all' as const, label: 'Hepsi' },
+    ...categories.map((c) => ({ id: c.id, label: c.name })),
+  ]
 
   return (
     <nav
-      className="z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]"
-      aria-label="Şehir bölümleri"
+      className="sticky top-0 z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]"
+      aria-label="Kategori filtresi"
     >
-      <div className="newspaper-layout-inner category-nav-scroller flex gap-1 overflow-x-auto py-2 scrollbar-hide">
-        {items.map((item) => {
-          const Icon = item.icon
-          const active = isCitySectionActive(pathname, item.href)
+      <div className="category-nav-scroller flex min-h-[44px] items-center gap-2 overflow-x-auto overscroll-x-contain px-3 py-1.5 scrollbar-hide">
+        {allChips.map((chip) => {
+          const isActive =
+            chip.id === '__all'
+              ? activeCategoryId === null
+              : activeCategoryId === chip.id
 
           return (
-            <Link
-              key={item.id}
-              href={item.href}
-              prefetch
+            <button
+              key={chip.id}
+              type="button"
+              data-category-chip={chip.id}
+              onClick={() => setActiveCategoryId(chip.id === '__all' ? null : chip.id)}
               className={cn(
-                'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
-                active
+                'shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-200 touch-manipulation',
+                isActive
                   ? 'bg-[rgb(var(--color-brand))] text-white shadow-sm'
-                  : 'text-[rgb(var(--color-text-secondary))] hover:bg-[rgb(var(--color-surface-raised))] hover:text-[rgb(var(--color-text))]'
+                  : 'bg-[rgb(var(--color-surface-raised))] text-[rgb(var(--color-text-secondary))] hover:bg-[rgb(var(--color-border))] hover:text-[rgb(var(--color-text))]'
               )}
             >
-              <Icon className="h-4 w-4" strokeWidth={active ? 2.25 : 1.75} />
-              {item.label}
-            </Link>
+              {chip.label}
+            </button>
           )
         })}
       </div>
