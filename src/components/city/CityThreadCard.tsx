@@ -1,20 +1,21 @@
 'use client'
 
 /**
- * CityThreadCard — Twitter/Threads tarzı haber kartı (city subdomains only).
+ * CityThreadCard — Threads/Twitter tarzı şehir haber kartı (city subdomains only).
  *
- * Layout:
- *   [Avatar] Kaynak adı · Zaman önce            [⋯]
- *   Başlık
- *   Özet…  devamını oku
- *   [Görsel]
+ * Feed'de sadece:
+ *   [Avatar] Kaynak · Zaman          [⋯]
+ *   Başlık (maks 2 satır)
+ *   [Görsel 16:9 VEYA video önizleme]
  *   [Kategori chip]
- *   ♡  ↗
+ *   ♡  ↗  devamını oku →
+ *
+ * "devamını oku" doğrudan haber detay sayfasına gider — inline expand yok.
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import Link from 'next/link'
-import { Heart, MoreHorizontal, Share2 } from 'lucide-react'
+import { Heart, Play, Share2 } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -24,9 +25,7 @@ import type { NewsItem } from '@/types/newsItem'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const SUMMARY_LIMIT = 160
-
-/** Türkçe göreli süre (Threads tarzı kısa format) */
+/** Türkçe göreli süre (kısa format) */
 function timeAgo(value?: string | number | null): string {
   if (value == null) return ''
   const ms = typeof value === 'number' ? value : Date.parse(value as string)
@@ -44,11 +43,26 @@ function timeAgo(value?: string | number | null): string {
   return `${Math.floor(days / 30)} ay`
 }
 
-/** Kaynak adından renkli avatar */
+/** YouTube / embed URL'den thumbnail al */
+function videoThumbnail(url: string): string | null {
+  try {
+    const u = new URL(url)
+    // YouTube
+    const ytId =
+      u.searchParams.get('v') ??
+      (u.hostname === 'youtu.be' ? u.pathname.slice(1) : null) ??
+      (u.hostname.includes('youtube') && u.pathname.startsWith('/embed/')
+        ? u.pathname.split('/')[2]
+        : null)
+    if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+  } catch {}
+  return null
+}
+
 const AVATAR_COLORS = [
-  'bg-red-500',    'bg-blue-500',  'bg-emerald-600',
-  'bg-purple-500', 'bg-orange-500','bg-teal-500',
-  'bg-pink-500',   'bg-indigo-500',
+  'bg-red-500', 'bg-blue-500', 'bg-emerald-600',
+  'bg-purple-500', 'bg-orange-500', 'bg-teal-500',
+  'bg-pink-500', 'bg-indigo-500',
 ]
 
 function SourceAvatar({ source }: { source?: string }) {
@@ -71,7 +85,6 @@ function SourceAvatar({ source }: { source?: string }) {
 
 interface CityThreadCardProps {
   item: NewsItem
-  /** Feed listesi — haber detayında swipe nav için */
   feedItems?: NewsItem[]
   feedIndex?: number
   priority?: boolean
@@ -80,16 +93,14 @@ interface CityThreadCardProps {
 // ─── Kart ────────────────────────────────────────────────────────────────────
 
 export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThreadCardProps) {
-  const [expanded, setExpanded] = useState(false)
   const href = newsItemDetailHref(item)
-  const summary = item.description?.trim() ?? ''
-  const isLong = summary.length > SUMMARY_LIMIT
-  const displaySummary =
-    expanded || !isLong ? summary : `${summary.slice(0, SUMMARY_LIMIT).trimEnd()}…`
   const categoryLabel = getCategoryLabel(item.category)
   const ago = timeAgo(item.publishedAt)
+  const hasVideo = Boolean(item.videoUrl)
+  const thumbSrc = hasVideo
+    ? (videoThumbnail(item.videoUrl!) ?? item.imageUrl)
+    : item.imageUrl
 
-  /** Habere gitmeden önce nav context'i kaydet (swipe arası geçiş için) */
   const handleNavigate = useCallback(() => {
     if (feedItems && feedIndex !== undefined) {
       saveArticleNav({
@@ -110,110 +121,96 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
 
   return (
     <article className="border-b border-[rgb(var(--color-border))] px-4 py-4">
-      {/* ── Üst satır: avatar + kaynak + zaman + ⋯ ── */}
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <SourceAvatar source={item.source} />
-          <div className="min-w-0">
-            <span className="block truncate text-[13px] font-semibold text-[rgb(var(--color-text))]">
-              {item.source ?? 'NaHaber'}
-            </span>
-            {ago && (
-              <span className="text-xs text-[rgb(var(--color-muted))]">{ago}</span>
-            )}
-          </div>
+
+      {/* ── Üst: avatar + kaynak + zaman ── */}
+      <div className="mb-3 flex items-center gap-2.5">
+        <SourceAvatar source={item.source} />
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-semibold text-[rgb(var(--color-text))]">
+            {item.source ?? 'NaHaber'}
+          </span>
+          {ago && (
+            <span className="text-xs text-[rgb(var(--color-muted))]">{ago}</span>
+          )}
         </div>
-        <button
-          type="button"
-          aria-label="Daha fazla"
-          className="shrink-0 rounded-full p-1 text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface-raised))]"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
       </div>
 
-      {/* ── Başlık ── */}
+      {/* ── Başlık — tıklanabilir, maks 3 satır ── */}
       <Link href={href} onClick={handleNavigate} className="block">
-        <h3 className="mb-2 text-[15px] font-bold leading-snug text-[rgb(var(--color-text))]">
+        <h3 className="mb-3 line-clamp-3 text-[15px] font-bold leading-snug text-[rgb(var(--color-text))]">
           {item.title}
         </h3>
       </Link>
 
-      {/* ── Özet + devamını oku ── */}
-      {summary && (
-        <p className="mb-3 text-sm leading-relaxed text-[rgb(var(--color-text-secondary))]">
-          {displaySummary}
-          {isLong && !expanded && (
-            <button
-              type="button"
-              onClick={() => setExpanded(true)}
-              className="ml-1 font-medium text-[rgb(var(--color-brand))]"
-            >
-              devamını oku
-            </button>
-          )}
-        </p>
-      )}
-
-      {/* ── Görsel ── */}
-      {item.imageUrl && (
+      {/* ── Medya: görsel veya video önizleme ── */}
+      {thumbSrc && (
         <Link
           href={href}
           onClick={handleNavigate}
-          className="mb-3 block overflow-hidden rounded-xl"
+          className="relative mb-3 block overflow-hidden rounded-xl"
         >
-          <div className="relative aspect-[16/9] w-full">
+          <div className="relative aspect-[16/9] w-full bg-black">
             <SafeNewsImage
-              src={item.imageUrl}
+              src={thumbSrc}
               alt={item.title}
               fill
               sizes="(max-width: 640px) 100vw, 600px"
               priority={priority}
-              className="object-cover transition-transform duration-300 hover:scale-[1.01]"
+              className="object-cover opacity-90"
             />
+            {/* Video overlay — oynat ikonu */}
+            {hasVideo && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm">
+                  <Play className="h-6 w-6 fill-white text-white" />
+                </div>
+              </div>
+            )}
           </div>
         </Link>
       )}
 
-      {/* ── Kategori chip ── */}
-      {categoryLabel && (
-        <div className="mb-3">
-          <span className="inline-flex items-center rounded-full bg-[rgb(var(--color-surface-raised))] px-2.5 py-0.5 text-xs font-medium text-[rgb(var(--color-text-secondary))]">
+      {/* ── Alt: kategori chip + aksiyonlar ── */}
+      <div className="flex items-center gap-3">
+        {/* Kategori */}
+        {categoryLabel && (
+          <span className="shrink-0 rounded-full bg-[rgb(var(--color-surface-raised))] px-2.5 py-0.5 text-xs font-medium text-[rgb(var(--color-text-secondary))]">
             {categoryLabel}
           </span>
+        )}
+
+        {/* Aksiyonlar */}
+        <div className="ml-auto flex items-center gap-4 text-[rgb(var(--color-muted))]">
+          <button
+            type="button"
+            aria-label="Beğen"
+            className="flex items-center gap-1 text-sm transition-colors hover:text-red-500"
+          >
+            <Heart className="h-4 w-4" />
+            {item.likesCount ? (
+              <span className="text-xs">{item.likesCount}</span>
+            ) : null}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShare}
+            aria-label="Paylaş"
+            className="transition-colors hover:text-[rgb(var(--color-text))]"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
+
+          <Link
+            href={href}
+            onClick={handleNavigate}
+            className="text-xs font-semibold text-[rgb(var(--color-brand))] hover:underline"
+          >
+            devamını oku →
+          </Link>
         </div>
-      )}
-
-      {/* ── Aksiyonlar ── */}
-      <div className="flex items-center gap-5 text-[rgb(var(--color-muted))]">
-        <button
-          type="button"
-          aria-label="Beğen"
-          className="flex items-center gap-1.5 text-sm transition-colors hover:text-red-500"
-        >
-          <Heart className="h-4 w-4" />
-          {item.likesCount ? (
-            <span className="text-xs">{item.likesCount}</span>
-          ) : null}
-        </button>
-
-        <button
-          type="button"
-          onClick={handleShare}
-          aria-label="Paylaş"
-          className="flex items-center gap-1.5 text-sm transition-colors hover:text-[rgb(var(--color-text))]"
-        >
-          <Share2 className="h-4 w-4" />
-        </button>
-
-        <Link
-          href={href}
-          onClick={handleNavigate}
-          className="ml-auto text-xs font-semibold text-[rgb(var(--color-brand))] hover:underline"
-        >
-          Habere git →
-        </Link>
       </div>
+
     </article>
   )
 }
