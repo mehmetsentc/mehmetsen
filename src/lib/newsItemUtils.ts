@@ -178,7 +178,10 @@ export function slimNewsItemForFeed(item: NewsItem): NewsItem {
   }
 
   const description = item.description?.trim()
-  if (description) slim.description = description.slice(0, 120)
+  // 400 karakter — tam cümle kesimine izin verir, city thread feed'de kesilmez
+  if (description) slim.description = description.slice(0, 400)
+  // AI/editör özeti varsa olduğu gibi geçir
+  if (item.summary) slim.summary = item.summary
 
   if (typeof item.readingMinutes === 'number' && item.readingMinutes > 0) {
     slim.readingMinutes = item.readingMinutes

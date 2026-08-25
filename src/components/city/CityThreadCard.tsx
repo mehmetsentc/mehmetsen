@@ -11,9 +11,9 @@
  *   [Kategori chip]  ♡  ↗
  */
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
-import { Heart, Play, Share2 } from 'lucide-react'
+import { Bookmark, BookmarkCheck, Heart, MessageCircle, Play, Share2 } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -109,6 +109,9 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
     }
   }, [feedItems, feedIndex])
 
+  const [saved, setSaved] = useState(false)
+  const [liked, setLiked] = useState(false)
+
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}${href}`
     if (navigator.share) {
@@ -117,18 +120,28 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
     try { await navigator.clipboard.writeText(url) } catch {}
   }, [href, item.title])
 
+  const handleSave = useCallback(() => {
+    setSaved((v) => !v)
+    // TODO: persist to user's saved list
+  }, [])
+
+  const handleLike = useCallback(() => {
+    setLiked((v) => !v)
+    // TODO: persist like
+  }, [])
+
   return (
     <article className="border-b border-[rgb(var(--color-border))] px-4 py-4">
 
-      {/* ── 1. Üst: avatar + kaynak + zaman ── */}
+      {/* ── 1. Üst: avatar + kaynak etiketi + zaman ── */}
       <div className="mb-3 flex items-center gap-2.5">
         <SourceAvatar source={item.source} />
         <div className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-semibold text-[rgb(var(--color-text))]">
-            {item.source ?? 'NaHaber'}
+          <span className="block truncate text-[11px] font-medium text-[rgb(var(--color-muted))]">
+            Kaynak: {item.source ?? 'NaHaber'}
           </span>
           {ago && (
-            <span className="text-xs text-[rgb(var(--color-muted))]">{ago}</span>
+            <span className="text-[10px] text-[rgb(var(--color-muted))]">{ago}</span>
           )}
         </div>
       </div>
@@ -183,24 +196,45 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
         </Link>
       )}
 
-      {/* ── 5. Kategori chip + beğen/paylaş ── */}
-      <div className="flex items-center gap-3">
+      {/* ── 5. Kategori chip + aksiyonlar ── */}
+      <div className="flex items-center gap-2">
         {categoryLabel && (
-          <span className="shrink-0 rounded-full bg-[rgb(var(--color-surface-raised))] px-2.5 py-0.5 text-xs font-medium text-[rgb(var(--color-text-secondary))]">
+          <span className="shrink-0 rounded-full bg-[rgb(var(--color-surface-raised))] px-2.5 py-0.5 text-[11px] font-medium text-[rgb(var(--color-text-secondary))]">
             {categoryLabel}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-4 text-[rgb(var(--color-muted))]">
+        <div className="ml-auto flex items-center gap-3.5 text-[rgb(var(--color-muted))]">
+
+          {/* Beğen */}
           <button
             type="button"
             aria-label="Beğen"
-            className="flex items-center gap-1 transition-colors hover:text-red-500"
+            onClick={handleLike}
+            className={cn(
+              'flex items-center gap-1 transition-colors',
+              liked ? 'text-red-500' : 'hover:text-red-500'
+            )}
           >
-            <Heart className="h-4 w-4" />
-            {item.likesCount ? (
-              <span className="text-xs">{item.likesCount}</span>
-            ) : null}
+            <Heart className={cn('h-4 w-4', liked && 'fill-red-500 text-red-500')} />
+            {(item.likesCount ?? 0) + (liked ? 1 : 0) > 0 && (
+              <span className="text-[11px]">{(item.likesCount ?? 0) + (liked ? 1 : 0)}</span>
+            )}
           </button>
+
+          {/* Yorum yap */}
+          <Link
+            href={`${href}#yorumlar`}
+            onClick={handleNavigate}
+            aria-label="Yorum yap"
+            className="flex items-center gap-1 transition-colors hover:text-[rgb(var(--color-text))]"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {item.commentsCount ? (
+              <span className="text-[11px]">{item.commentsCount}</span>
+            ) : null}
+          </Link>
+
+          {/* Paylaş */}
           <button
             type="button"
             onClick={handleShare}
@@ -209,6 +243,23 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
           >
             <Share2 className="h-4 w-4" />
           </button>
+
+          {/* Kaydet */}
+          <button
+            type="button"
+            onClick={handleSave}
+            aria-label={saved ? 'Kaydedildi' : 'Kaydet'}
+            className={cn(
+              'transition-colors',
+              saved ? 'text-[rgb(var(--color-brand))]' : 'hover:text-[rgb(var(--color-text))]'
+            )}
+          >
+            {saved
+              ? <BookmarkCheck className="h-4 w-4 fill-[rgb(var(--color-brand))] text-[rgb(var(--color-brand))]" />
+              : <Bookmark className="h-4 w-4" />
+            }
+          </button>
+
         </div>
       </div>
 
