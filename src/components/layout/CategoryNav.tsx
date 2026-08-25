@@ -117,6 +117,7 @@ export function CategoryNav({
             <button
               key={cat.id}
               type="button"
+              data-category-chip={cat.id}
               onClick={() => onCategorySelect?.(cat.id === '__all' ? null : cat.id)}
               className={cn(
                 'relative flex min-h-[48px] shrink-0 snap-start items-center px-0.5 text-[15px] font-semibold touch-manipulation transition-colors',
