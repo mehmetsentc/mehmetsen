@@ -65,10 +65,11 @@ function listQueryFromUrl(url: URL): RawArticleListQuery {
     hasImage: parseHasImage(url.searchParams.get('hasImage')),
     editorialStatus: parseEditorialStatus(url.searchParams.get('editorialStatus')),
     view: url.searchParams.get('view') === 'bySource' ? 'bySource' : 'all',
+    // Default: show ALL articles (including supporting). Only hide supporting if explicitly requested.
     eventPrimaryOnly:
-      url.searchParams.get('includeSupporting') === '1' || url.searchParams.get('includeSupporting') === 'true'
-        ? false
-        : true,
+      url.searchParams.get('includeSupporting') === '0' || url.searchParams.get('includeSupporting') === 'false'
+        ? true
+        : false,
   }
 }
 
