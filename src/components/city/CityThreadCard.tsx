@@ -194,7 +194,7 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
         />
         <div className="min-w-0 flex-1">
           <span className="block text-[13px] font-semibold text-[rgb(var(--color-text))]">
-            {item.author ?? 'NaHaber'}
+            {item.authorPhotoURL ? (item.author ?? 'NaHaber') : 'NaHaber'}
           </span>
           {ago && (
             <span className="text-[11px] text-[rgb(var(--color-muted))]">{ago}</span>
