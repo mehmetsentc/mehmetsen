@@ -162,6 +162,13 @@
       "when": 1787781600000,
       "tag": "0022_phase_p2_publisher_layouts",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787785200000,
+      "tag": "0023_phase_p3_social_graph",
+      "breakpoints": true
     }
   ]
 }

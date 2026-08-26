@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useRef, Suspense } from 'rea
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { logEditorialAction } from '@/lib/editorialAuditClient'
 import {
   Search, RefreshCw, CheckCircle2, XCircle, Trash2,
   ExternalLink, Wand2, Loader2,
@@ -761,6 +762,22 @@ function SocialSharePopover({
   )
 }
 
+// ── Cluster Bilgisi (Tekrar Haber paneli için) ────────────────────────────
+interface ClusterInfo {
+  found: boolean
+  cluster?: {
+    id: string
+    canonicalTitle: string | null
+    articleCount: number
+    sourceCount: number
+    uniqueSourceCount: number
+    importanceScore: number
+    nationalImportance: number
+  }
+  titleMatches: { id: string; title: string | null; sourceName: string; publishedAt: string | null }[]
+  totalMatches: number
+}
+
 function NewsRow({
   post,
   selected,
@@ -768,6 +785,7 @@ function NewsRow({
   onApprove,
   onReject,
   onRemove,
+  onMarkDuplicate,
   onEdit,
   onCategoryChange,
   onCityChange,
@@ -782,6 +800,7 @@ function NewsRow({
   onApprove: (p: AdminNewsItem) => void
   onReject: (p: AdminNewsItem) => void
   onRemove: (id: string) => void
+  onMarkDuplicate: (p: AdminNewsItem) => void
   onEdit: (p: AdminNewsItem) => void
   onCategoryChange: (postId: string, categoryId: string) => Promise<void>
   onCityChange: (postId: string, citySlug: string, cityName: string) => Promise<void>
@@ -793,6 +812,10 @@ function NewsRow({
   const [expanded, setExpanded] = useState(false)
   const [showAi, setShowAi] = useState(false)
   const [showSeo, setShowSeo] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [clusterData, setClusterData] = useState<ClusterInfo | null>(null)
+  const [clusterLoading, setClusterLoading] = useState(false)
+  const viewStartedAtRef = useRef(Date.now())
   const [sharingMode, setSharingMode] = useState<SocialShareMode | null>(null)
   const [socialPublished, setSocialPublished] = useState(!!post.socialPublished)
   const [storyPublished, setStoryPublished] = useState(!!post.storyPublished)
@@ -1184,8 +1207,16 @@ function NewsRow({
               title="Düzenle">
               <Pencil className="h-3 w-3" />
             </button>
-            <button onClick={() => onRemove(post.id)} disabled={busy}
-              className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/20">
+            <button
+              onClick={() => { setShowDeleteConfirm(v => !v); setClusterData(null) }}
+              disabled={busy}
+              className={cn(
+                'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors',
+                showDeleteConfirm
+                  ? 'border-red-400 bg-red-600 text-white'
+                  : 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/20'
+              )}
+              title="Sil / Tekrar Haber">
               <Trash2 className="h-3 w-3" />
             </button>
           </div>
@@ -1196,6 +1227,125 @@ function NewsRow({
       {showAi && <AiToolbar post={post} onClose={() => setShowAi(false)} />}
       {/* SEO Preview */}
       {showSeo && <SeoPreview post={post} />}
+
+      {/* ── Sil / Tekrar Haber Onay Paneli ── */}
+      {showDeleteConfirm && (
+        <div className="border-t border-red-100 bg-red-50/60 px-4 py-3 dark:border-red-900/40 dark:bg-red-950/20">
+          {!clusterData ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[11px] font-semibold text-red-700 dark:text-red-300">
+                Bu haberi ne yapalım?
+              </p>
+              <button
+                onClick={() => { setShowDeleteConfirm(false); onRemove(post.id) }}
+                className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-red-700"
+              >
+                <Trash2 className="h-3 w-3" /> Sil
+              </button>
+              <button
+                onClick={async () => {
+                  setClusterLoading(true)
+                  try {
+                    const token = (await auth.currentUser?.getIdToken()) ?? ''
+                    const res = await fetch(
+                      `/api/admin/crawler/articles/cluster?title=${encodeURIComponent(post.title ?? '')}`,
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    )
+                    const data = await res.json() as ClusterInfo
+                    setClusterData(data)
+                  } catch {
+                    setClusterData({ found: false, titleMatches: [], totalMatches: 0 })
+                  } finally {
+                    setClusterLoading(false)
+                  }
+                }}
+                disabled={clusterLoading}
+                className="flex items-center gap-1 rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-[11px] font-bold text-orange-700 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-300 disabled:opacity-60"
+              >
+                {clusterLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>🔁</span>}
+                Tekrar Haber — Kaç kaynak var?
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-[11px] font-bold text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            /* Cluster Bilgi Paneli */
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-start gap-3">
+                {/* Önem skoru */}
+                <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 dark:border-orange-800 dark:bg-orange-950/30">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-orange-500">Kaynak Sayısı</p>
+                  <p className="text-xl font-black text-orange-700 dark:text-orange-300">
+                    {clusterData.cluster?.uniqueSourceCount ?? clusterData.totalMatches}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-950/30">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-blue-500">Önem Skoru</p>
+                  <p className="text-xl font-black text-blue-700 dark:text-blue-300">
+                    {clusterData.cluster?.importanceScore ?? '—'}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 dark:border-violet-800 dark:bg-violet-950/30">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-violet-500">Ulusal Önem</p>
+                  <p className="text-xl font-black text-violet-700 dark:text-violet-300">
+                    {clusterData.cluster?.nationalImportance ?? '—'}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-500">Toplam Makale</p>
+                  <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">
+                    {clusterData.cluster?.articleCount ?? clusterData.totalMatches}
+                  </p>
+                </div>
+              </div>
+
+              {/* Kaynak listesi */}
+              {clusterData.titleMatches.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {clusterData.titleMatches.slice(0, 8).map(m => (
+                    <span key={m.id} className="rounded-full bg-[rgb(var(--color-surface))] border border-[rgb(var(--color-border))] px-2 py-0.5 text-[10px] font-medium text-[rgb(var(--color-muted))]">
+                      {m.sourceName}
+                    </span>
+                  ))}
+                  {clusterData.titleMatches.length > 8 && (
+                    <span className="text-[10px] text-[rgb(var(--color-muted))]">+{clusterData.titleMatches.length - 8} daha</span>
+                  )}
+                </div>
+              )}
+
+              {clusterData.totalMatches === 0 && !clusterData.found && (
+                <p className="text-[11px] text-[rgb(var(--color-muted))]">Son 72 saatte ham makale bulunamadı — bu haber tek kaynak olabilir.</p>
+              )}
+
+              {/* Eylem butonları */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  onClick={() => { setShowDeleteConfirm(false); onMarkDuplicate(post) }}
+                  className="flex items-center gap-1 rounded-lg bg-orange-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-orange-700"
+                >
+                  🔁 Tekrar Haber Olarak İşaretle
+                </button>
+                <button
+                  onClick={() => { setShowDeleteConfirm(false); onRemove(post.id) }}
+                  className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-red-700"
+                >
+                  <Trash2 className="h-3 w-3" /> Yine de Sil
+                </button>
+                <button
+                  onClick={() => { setShowDeleteConfirm(false); setClusterData(null) }}
+                  className="rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-[11px] font-bold text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -1596,6 +1746,14 @@ function AdminNewsDesktopPage() {
       await adminNewsService.approve(post.id, post.adminSource)
       toast.success('Haber onaylandı')
       setPosts(prev => prev.filter(p => p.id !== post.id))
+      logEditorialAction({
+        action: 'approve',
+        entityId: post.id,
+        entityTitle: post.title,
+        entityType: post.adminSource === 'newsDrafts' ? 'firestore_draft' : 'firestore_news',
+        previousState: post.status,
+        newState: 'published',
+      })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Onaylama başarısız')
     } finally {
@@ -1609,14 +1767,22 @@ function AdminNewsDesktopPage() {
       await adminNewsService.reject(post.id, post.adminSource)
       toast.success('Haber reddedildi')
       setPosts(prev => prev.filter(p => p.id !== post.id))
+      logEditorialAction({
+        action: 'reject',
+        entityId: post.id,
+        entityTitle: post.title,
+        entityType: post.adminSource === 'newsDrafts' ? 'firestore_draft' : 'firestore_news',
+        previousState: post.status,
+        newState: 'draft',
+      })
     } catch { toast.error('Reddetme başarısız') }
     finally { setActionLoading(null) }
   }
 
   const handleRemove = async (id: string) => {
     setActionLoading(id)
+    const post = posts.find(p => p.id === id)
     try {
-      const post = posts.find(p => p.id === id)
       const source = post?.adminSource
       if (source === 'newsQueue') {
         await adminNewsService.remove(id, undefined, 'newsQueue')
@@ -1629,6 +1795,16 @@ function AdminNewsDesktopPage() {
         toast.success('Haber kaldırıldı')
       }
       setPosts(prev => prev.filter(p => p.id !== id))
+      if (post) {
+        logEditorialAction({
+          action: 'delete',
+          entityId: id,
+          entityTitle: post.title,
+          entityType: post.adminSource === 'newsDrafts' ? 'firestore_draft' : 'firestore_news',
+          previousState: post.status,
+          newState: 'deleted',
+        })
+      }
     } catch { toast.error('Kaldırma başarısız') }
     finally { setActionLoading(null) }
   }
@@ -1772,6 +1948,28 @@ function AdminNewsDesktopPage() {
       toast.error('Yeniden kuyruğa alma başarısız')
     } finally {
       setRequeueLoading(false)
+    }
+  }
+
+  const handleMarkDuplicate = async (post: AdminNewsItem) => {
+    setActionLoading(post.id)
+    try {
+      await adminNewsService.markAsDuplicate(post.id, post.adminSource)
+      toast.success('🔁 Tekrar haber olarak işaretlendi')
+      setPosts(prev => prev.filter(p => p.id !== post.id))
+      logEditorialAction({
+        action: 'mark_duplicate',
+        entityId: post.id,
+        entityTitle: post.title,
+        entityType: post.adminSource === 'newsDrafts' ? 'firestore_draft' : 'firestore_news',
+        previousState: post.status,
+        newState: 'archived',
+        reason: 'tekrar_haber',
+      })
+    } catch {
+      toast.error('İşaretleme başarısız')
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -2513,6 +2711,7 @@ function AdminNewsDesktopPage() {
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onRemove={handleRemove}
+                onMarkDuplicate={handleMarkDuplicate}
                 onEdit={handleEdit}
                 onCategoryChange={handleCategoryChange}
                 onCityChange={handleCityChange}

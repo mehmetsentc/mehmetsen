@@ -9,6 +9,8 @@ import { ROUTES } from '@/constants/routes'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import type { PublicPublisherRecord, PublisherArticleItem } from '@/types/publisher'
+import { FollowButton } from '@/components/social/FollowButton'
+import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import toast from 'react-hot-toast'
 
 export function PublisherProfileClient({
@@ -111,9 +113,15 @@ export function PublisherProfileClient({
                 </a>
               )}
             </div>
-            <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
-              Takipçi: <span className="font-semibold">—</span>
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {isSocialGraphEnabledClient() ? (
+                <FollowButton publisherId={publisher.id} publisherSlug={publisher.slug} />
+              ) : (
+                <p className="text-xs text-[rgb(var(--color-muted))]">
+                  Takipçi: <span className="font-semibold">—</span>
+                </p>
+              )}
+            </div>
             {publisher.description ? (
               <p className="mt-3 text-sm leading-relaxed text-[rgb(var(--color-text))]">
                 {publisher.description}

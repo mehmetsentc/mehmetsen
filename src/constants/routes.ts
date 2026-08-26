@@ -14,6 +14,7 @@ export const ROUTES = {
   NEWS_DETAIL: (slug: string) => `/haber/${slug}`,
   POST_EDIT: (id: string) => `/post/${id}/edit`,
   PROFILE: (username: string) => `/profile/${username}`,
+  USER_PROFILE: (username: string) => `/u/${encodeURIComponent(username)}`,
   SAVED: '/saved',
   BOOKMARKS: '/saved',
   SEARCH: '/search',
@@ -163,6 +164,7 @@ export const PUBLIC_ROUTES: Set<string> = new Set([
 export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
   if (pathname.startsWith('/profile/')) return true
+  if (pathname.startsWith('/u/')) return true
   if (pathname.startsWith('/kategori/')) return true
   if (pathname.startsWith('/haber/')) return true
   if (pathname.startsWith('/yerel')) return true

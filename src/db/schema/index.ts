@@ -30,6 +30,14 @@ export {
   publisherLayoutItems,
 } from './publisherLayouts'
 export {
+  userProfiles,
+  userPublisherFollows,
+  articleLikes,
+  savedArticles,
+  articleComments,
+  socialEvents,
+} from './socialGraph'
+export {
   newsSources,
   discoveredArticleUrls,
   rawArticles,

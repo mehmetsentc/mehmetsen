@@ -548,6 +548,34 @@ export const adminNewsService = {
     await adminFetch(`/api/admin/news/${id}`, 'DELETE' as never)
   },
 
+  /**
+   * Haberi "Tekrar Haber" olarak işaretler.
+   * Editör "Sil ve Tekrar Haber" butonuna tıkladığında çağrılır.
+   * Haber isDuplicate=true, categoryId='tekrarlayan', status='archived' olur.
+   */
+  async markAsDuplicate(
+    id: string,
+    source: AdminNewsSource = 'news',
+    reason = 'Editör tarafından tekrar haber olarak işaretlendi'
+  ): Promise<void> {
+    if (source === 'newsQueue') {
+      await adminFetch(`/api/admin/news-queue/${id}/reject`, 'POST', { reason })
+      return
+    }
+    if (source === 'newsDrafts') {
+      await adminFetch(`/api/admin/news-drafts/${id}/reject`, 'POST', { reason })
+      return
+    }
+    const now = Date.now()
+    await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
+      isDuplicate: true,
+      categoryId: 'tekrarlayan',
+      duplicateReason: reason,
+      status: 'archived',
+      updatedAt: now,
+    })
+  },
+
   /** Taslakları (draft) kalıcı olarak Firestore'dan siler. */
   async permanentDelete(id: string, source?: AdminNewsSource): Promise<void> {
     if (source === 'newsQueue') {

@@ -1,0 +1,65 @@
+'use client'
+
+import { LikeButton as BaseLikeButton } from '@/components/post/LikeButton'
+import { SaveButton as BaseSaveButton } from '@/components/post/SaveButton'
+import { ShareButton as BaseShareButton } from '@/components/post/ShareButton'
+import { MessageCircle } from 'lucide-react'
+import { formatCount } from '@/lib/postUtils'
+import { cn } from '@/lib/utils'
+
+interface SocialActionRailProps {
+  articleId: string
+  slug?: string
+  title: string
+  summary?: string
+  liked: boolean
+  saved: boolean
+  likeCount: number
+  commentCount: number
+  onToggleLike: () => void
+  onToggleSave: () => void
+  onCommentClick?: () => void
+  likeLoading?: boolean
+  saveLoading?: boolean
+  className?: string
+}
+
+export function SocialActionRail({
+  articleId,
+  slug,
+  title,
+  summary,
+  liked,
+  saved,
+  likeCount,
+  commentCount,
+  onToggleLike,
+  onToggleSave,
+  onCommentClick,
+  likeLoading,
+  saveLoading,
+  className,
+}: SocialActionRailProps) {
+  return (
+    <div className={cn('flex items-center justify-around gap-2 py-2', className)}>
+      <BaseLikeButton liked={liked} count={likeCount} onToggle={onToggleLike} loading={likeLoading} />
+      <button
+        type="button"
+        onClick={onCommentClick}
+        className="flex flex-col items-center gap-1.5 text-gray-500 hover:text-brand-600 dark:text-gray-400"
+        aria-label="Yorum yap"
+      >
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+          <MessageCircle className="h-6 w-6" />
+        </span>
+        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+          {formatCount(commentCount)}
+        </span>
+      </button>
+      <BaseSaveButton saved={saved} count={0} onToggle={onToggleSave} loading={saveLoading} />
+      <BaseShareButton postId={articleId} slug={slug} title={title} text={summary} />
+    </div>
+  )
+}
+
+export { BaseLikeButton as LikeButton, BaseSaveButton as SaveButton, BaseShareButton as ShareButton }

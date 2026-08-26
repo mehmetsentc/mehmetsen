@@ -13,6 +13,10 @@ import { ROUTES } from '@/constants/routes'
 import { getGoogleAuthErrorMessage } from '@/lib/googleAuthErrors'
 import { getAppleAuthErrorMessage } from '@/lib/appleAuthErrors'
 import {
+  isAppleAuthEnabledClient,
+  isEmailAuthEnabledClient,
+} from '@/lib/social/featureFlagClient'
+import {
   consumeReturnPath,
   registerHrefWithNext,
   rememberReturnPath,
@@ -110,11 +114,13 @@ export function LoginForm() {
         <div className="mb-4 flex justify-center">
           <BrandLogo size="lg" priority />
         </div>
-        <h1 className="auth-title">NaHaber&apos;e Giriş Yap</h1>
-        <p className="auth-subtitle">Haberleri takip et, paylaş ve tartış</p>
+        <h1 className="auth-title">NaHaber&apos;e Katıl</h1>
+        <p className="auth-subtitle">Google, Apple veya e-posta ile devam et</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {isEmailAuthEnabledClient() ? (
+          <>
         <div>
           <label className="mb-1 block text-sm font-medium text-[rgb(var(--color-text))]">E-posta</label>
           <input
@@ -146,13 +152,17 @@ export function LoginForm() {
         >
           {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
         </button>
+          </>
+        ) : null}
       </form>
 
+      {isEmailAuthEnabledClient() ? (
       <div className="my-4 flex items-center gap-3">
         <div className="flex-1 border-t border-[rgb(var(--color-border))]" />
         <span className="text-xs text-[rgb(var(--color-muted))]">veya</span>
         <div className="flex-1 border-t border-[rgb(var(--color-border))]" />
       </div>
+      ) : null}
 
       {!onIos && (
         <button
@@ -165,6 +175,7 @@ export function LoginForm() {
         </button>
       )}
 
+      {isAppleAuthEnabledClient() ? (
       <button
         onClick={handleApple}
         disabled={isAppleLoading}
@@ -173,6 +184,7 @@ export function LoginForm() {
         <AppleIcon />
         {isAppleLoading ? 'Yükleniyor...' : 'Apple ile devam et'}
       </button>
+      ) : null}
 
       <p className="mt-6 text-center text-sm text-[rgb(var(--color-muted))]">
         Hesabın yok mu?{' '}

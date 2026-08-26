@@ -4,6 +4,7 @@ import { memo, useEffect, Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
+import { AuthIntentRunner } from '@/components/social/AuthIntentRunner'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Navbar } from '@/components/layout/Navbar'
 import { MobileNav } from '@/components/layout/MobileNav'
@@ -193,6 +194,7 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
               <RouteEffects />
               <PageStateEffects />
               <UiEffects />
+              <AuthIntentRunner />
               {!slim ? <CategorySwipeNavigator /> : null}
               <LayoutShell
                 pathname={pathname}
