@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { hasDatabaseUrl } from '@/db'
-import { isPublisherPlatformEnabled } from '@/lib/publisher/featureFlag'
+import {
+  isPublisherPlatformEnabled,
+  isPublisherProfileComposerEnabled,
+} from '@/lib/publisher/featureFlag'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { publisherService } from '@/services/publisher/publisherService'
+import { publisherLayoutService } from '@/services/publisher/publisherLayoutService'
+import { PublisherLayoutRenderer } from '@/components/publisher/PublisherLayoutRenderer'
 import { PublisherProfileClient } from '@/components/publisher/PublisherProfileClient'
 
 export const revalidate = 300
@@ -70,6 +75,21 @@ export default async function PublisherProfilePage({ params }: Props) {
   const articlePage = fullRecord
     ? await publisherService.getPublisherArticles(fullRecord.id, 24)
     : { items: [], nextCursor: null }
+
+  const publishedLayout =
+    fullRecord && isPublisherProfileComposerEnabled()
+      ? await publisherLayoutService.getPublishedLayoutForPublic(fullRecord.id)
+      : null
+
+  if (publishedLayout) {
+    return (
+      <PublisherLayoutRenderer
+        publisher={publisher}
+        layout={publishedLayout}
+        fallbackArticles={articlePage.items}
+      />
+    )
+  }
 
   return (
     <PublisherProfileClient

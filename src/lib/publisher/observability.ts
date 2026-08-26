@@ -13,6 +13,12 @@ export type PublisherObservabilityEvent =
   | 'PUBLISHER_CLAIM_APPROVED'
   | 'PUBLISHER_CLAIM_REJECTED'
   | 'PUBLISHER_OWNER_CREATED'
+  | 'publisher_profile_updated'
+  | 'publisher_layout_draft_saved'
+  | 'publisher_layout_published'
+  | 'publisher_layout_rollback'
+  | 'publisher_layout_section_created'
+  | 'publisher_layout_section_deleted'
 
 export function publisherLog(
   event: PublisherObservabilityEvent,

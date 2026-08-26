@@ -272,6 +272,90 @@ export class PublisherRepository {
     return row ? mapPublisher(row) : null
   }
 
+  async updatePublisherProfile(
+    id: string,
+    patch: Partial<{
+      displayName: string
+      description: string | null
+      logoUrl: string | null
+      coverImageUrl: string | null
+      websiteUrl: string | null
+      city: string | null
+      district: string | null
+      countryCode: string | null
+    }>
+  ): Promise<PublisherRecord | null> {
+    const db = this.requireDb()
+    const allowed: Partial<typeof publishers.$inferInsert> = {}
+    if (patch.displayName !== undefined) allowed.displayName = patch.displayName
+    if (patch.description !== undefined) allowed.description = patch.description
+    if (patch.logoUrl !== undefined) allowed.logoUrl = patch.logoUrl
+    if (patch.coverImageUrl !== undefined) allowed.coverImageUrl = patch.coverImageUrl
+    if (patch.websiteUrl !== undefined) allowed.websiteUrl = patch.websiteUrl
+    if (patch.city !== undefined) allowed.city = patch.city
+    if (patch.district !== undefined) allowed.district = patch.district
+    if (patch.countryCode !== undefined) allowed.countryCode = patch.countryCode
+    if (!Object.keys(allowed).length) return this.findById(id)
+
+    const [row] = await db
+      .update(publishers)
+      .set({ ...allowed, updatedAt: new Date() })
+      .where(eq(publishers.id, id))
+      .returning()
+    return row ? mapPublisher(row) : null
+  }
+
+  async findActiveMember(publisherId: string, userId: string): Promise<PublisherMemberRecord | null> {
+    const db = this.requireDb()
+    const rows = await db
+      .select()
+      .from(publisherMembers)
+      .where(
+        and(
+          eq(publisherMembers.publisherId, publisherId),
+          eq(publisherMembers.userId, userId),
+          eq(publisherMembers.status, 'ACTIVE')
+        )
+      )
+      .limit(1)
+    return rows[0] ? mapMember(rows[0]) : null
+  }
+
+  async listMembersForPublisher(publisherId: string): Promise<PublisherMemberRecord[]> {
+    const db = this.requireDb()
+    const rows = await db
+      .select()
+      .from(publisherMembers)
+      .where(eq(publisherMembers.publisherId, publisherId))
+      .orderBy(desc(publisherMembers.createdAt))
+    return rows.map(mapMember)
+  }
+
+  async listPublishersForUser(userId: string): Promise<Array<PublisherRecord & { role: PublisherMemberRole }>> {
+    const db = this.requireDb()
+    const rows = await db
+      .select({ publisher: publishers, role: publisherMembers.role })
+      .from(publisherMembers)
+      .innerJoin(publishers, eq(publisherMembers.publisherId, publishers.id))
+      .where(and(eq(publisherMembers.userId, userId), eq(publisherMembers.status, 'ACTIVE')))
+      .orderBy(desc(publishers.updatedAt))
+    return rows.map((r) => ({ ...mapPublisher(r.publisher), role: r.role as PublisherMemberRole }))
+  }
+
+  async updateMemberRole(
+    publisherId: string,
+    memberId: string,
+    role: PublisherMemberRole
+  ): Promise<PublisherMemberRecord | null> {
+    const db = this.requireDb()
+    const [row] = await db
+      .update(publisherMembers)
+      .set({ role, updatedAt: new Date() })
+      .where(and(eq(publisherMembers.id, memberId), eq(publisherMembers.publisherId, publisherId)))
+      .returning()
+    return row ? mapMember(row) : null
+  }
+
   async findSourceLinkBySourceId(sourceId: string): Promise<PublisherSourceRecord | null> {
     const db = this.requireDb()
     const rows = await db

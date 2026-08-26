@@ -21,7 +21,14 @@ export type PublisherVerificationStatus =
 
 export type PublisherSourceRelationship = 'PRIMARY' | 'SYNDICATED' | 'MIRROR' | 'OTHER'
 
-export type PublisherMemberRole = 'OWNER' | 'ADMIN' | 'EDITOR' | 'VIEWER'
+export type PublisherMemberRole =
+  | 'OWNER'
+  | 'ADMIN'
+  | 'EDITOR'
+  | 'AUTHOR'
+  | 'AD_MANAGER'
+  | 'ANALYST'
+  | 'VIEWER'
 
 export type PublisherMemberStatus = 'ACTIVE' | 'INVITED' | 'REMOVED'
 

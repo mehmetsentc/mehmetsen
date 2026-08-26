@@ -3504,3 +3504,15 @@ html[data-platform='tablet'] .content-main {
   from { width: 0% }
   to   { width: 100% }
 }
+
+.publisher-studio .studio-btn {
+  @apply inline-flex items-center gap-2 rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-sm font-semibold text-[rgb(var(--color-text))] transition hover:bg-[rgb(var(--color-surface))] disabled:opacity-50;
+}
+
+.publisher-studio .studio-btn-primary {
+  @apply inline-flex items-center gap-2 rounded-lg bg-[rgb(var(--color-brand))] px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60;
+}
+
+.publisher-studio .studio-card {
+  @apply block rounded-xl border border-[rgb(var(--color-border))] px-4 py-3 text-sm font-semibold transition hover:border-[rgb(var(--color-brand))];
+}
