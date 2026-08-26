@@ -1257,7 +1257,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     }
     if (query.status === 'failed') parts.push(eq(rawArticles.qualityStatus, 'FAILED'))
     const primaryOnly =
-      query.eventPrimaryOnly !== false &&
+      query.eventPrimaryOnly === true &&
       (query.queue || 'active') === 'active' &&
       query.status !== 'duplicate'
     if (primaryOnly) {
@@ -1457,6 +1457,18 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .set({ editorialStatus: status, updatedAt: new Date() })
       .where(condition)
     // Drizzle returns rowCount on postgres driver
+    return (result as unknown as { rowCount?: number }).rowCount ?? 0
+  }
+
+  /**
+   * Reset editor AI articles stuck in AI_PROCESSING (e.g. cron timeout) back to AI_QUEUED.
+   */
+  async recoverStaleEditorAiProcessing(now: Date, staleMs: number): Promise<number> {
+    const cutoff = new Date(now.getTime() - staleMs)
+    const result = await this.db()
+      .update(rawArticles)
+      .set({ editorialStatus: 'AI_QUEUED', updatedAt: now })
+      .where(and(eq(rawArticles.editorialStatus, 'AI_PROCESSING'), lte(rawArticles.updatedAt, cutoff)))
     return (result as unknown as { rowCount?: number }).rowCount ?? 0
   }
 

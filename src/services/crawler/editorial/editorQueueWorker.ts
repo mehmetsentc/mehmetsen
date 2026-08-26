@@ -12,12 +12,17 @@ import { publishRawArticleWithAi } from './aiPublish'
 /** Process at most this many articles per cron tick. */
 const WORKER_BATCH_SIZE = 5
 
+/** Editor AI cron maxDuration is 300s; recover leases older than 2× that. */
+export const EDITOR_AI_STALE_PROCESSING_MS = 10 * 60 * 1000
+
 export interface EditorQueueWorkerResult {
   claimed: number
   published: number
   drafted: number
   skipped: number
   failed: number
+  /** AI_PROCESSING rows reset to AI_QUEUED after a stale lease. */
+  recovered: number
   durationMs: number
 }
 
@@ -26,11 +31,17 @@ export async function processEditorAiQueue(
   batchSize = WORKER_BATCH_SIZE
 ): Promise<EditorQueueWorkerResult> {
   const startedAt = Date.now()
+  const now = new Date()
+
+  const recovered = await store.recoverStaleEditorAiProcessing(now, EDITOR_AI_STALE_PROCESSING_MS)
+  if (recovered > 0) {
+    console.log(`[editorQueueWorker] recovered ${recovered} stale AI_PROCESSING → AI_QUEUED`)
+  }
 
   // 1. Fetch up to batchSize AI_QUEUED articles, oldest-first
   const queued = await store.listEditorAiQueued(batchSize)
   if (queued.length === 0) {
-    return { claimed: 0, published: 0, drafted: 0, skipped: 0, failed: 0, durationMs: 0 }
+    return { claimed: 0, published: 0, drafted: 0, skipped: 0, failed: 0, recovered, durationMs: 0 }
   }
 
   // 2. Mark them AI_PROCESSING so parallel cron invocations don't double-process
@@ -43,6 +54,7 @@ export async function processEditorAiQueue(
     drafted: 0,
     skipped: 0,
     failed: 0,
+    recovered,
     durationMs: 0,
   }
 
