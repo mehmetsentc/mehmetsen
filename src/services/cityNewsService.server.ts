@@ -59,6 +59,8 @@ interface NewsDocument {
   seoTitle?: string
   videoUrl?: string
   readingMinutes?: number
+  additionalImages?: { url?: string; caption?: string }[]
+  galleryImages?: string[]
 }
 
 /** District slug/name tag variants for Firestore array-contains (biga, Biga, #Biga, …). */
@@ -125,6 +127,22 @@ function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
     summary: data.summary?.trim() || undefined,
     imageUrl: data.coverImageUrl?.trim() || data.thumbnail?.trim() || undefined,
     videoUrl: data.videoUrl?.trim() || undefined,
+    additionalImages: (() => {
+      const imgs: { url: string; caption?: string }[] = []
+      if (Array.isArray(data.additionalImages)) {
+        for (const img of data.additionalImages) {
+          const u = img?.url?.trim()
+          if (u) imgs.push({ url: u, caption: img.caption?.trim() || undefined })
+        }
+      }
+      if (Array.isArray(data.galleryImages)) {
+        for (const u of data.galleryImages) {
+          const s = typeof u === 'string' ? u.trim() : ''
+          if (s) imgs.push({ url: s })
+        }
+      }
+      return imgs.length ? imgs : undefined
+    })(),
     category: data.categoryId?.trim() || data.category?.trim() || undefined,
     originalCategoryId: data.originalCategoryId?.trim() || undefined,
     source: data.source?.trim() || undefined,

@@ -11,6 +11,8 @@ export type NewsItem = {
   readingMinutes?: number
   imageUrl?: string
   videoUrl?: string
+  /** Ek görseller — birden fazla varsa kart içinde yatay kaydırmalı galeri gösterilir. */
+  additionalImages?: { url: string; caption?: string }[]
   category?: string
   source?: string
   author?: string

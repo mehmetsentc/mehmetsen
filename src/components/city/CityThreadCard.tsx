@@ -87,17 +87,51 @@ interface CityThreadCardProps {
 
 // ─── Kart ────────────────────────────────────────────────────────────────────
 
+// ─── Medya listesi ────────────────────────────────────────────────────────────
+
+interface MediaSlide {
+  src: string
+  isVideo: boolean
+}
+
+function buildMediaSlides(item: NewsItem): MediaSlide[] {
+  const slides: MediaSlide[] = []
+
+  // 1. Video varsa ilk slide video önizlemesi
+  if (item.videoUrl) {
+    const thumb = videoThumbnail(item.videoUrl) ?? item.imageUrl
+    if (thumb) slides.push({ src: thumb, isVideo: true })
+  }
+
+  // 2. Kapak görseli (video thumbail'dan farklıysa)
+  if (item.imageUrl && !slides.some((s) => s.src === item.imageUrl)) {
+    slides.push({ src: item.imageUrl, isVideo: false })
+  }
+
+  // 3. Ek görseller
+  if (item.additionalImages?.length) {
+    for (const img of item.additionalImages) {
+      if (img.url && !slides.some((s) => s.src === img.url)) {
+        slides.push({ src: img.url, isVideo: false })
+      }
+    }
+  }
+
+  return slides
+}
+
+// ─── Kart ────────────────────────────────────────────────────────────────────
+
 export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThreadCardProps) {
   const href = newsItemDetailHref(item)
   const categoryLabel = getCategoryLabel(item.category)
   const ago = timeAgo(item.publishedAt)
   // summary > description tercih sırası; hiçbiri yoksa boş
   const summary = (item.summary?.trim() || item.description?.trim()) ?? ''
-  const hasVideo = Boolean(item.videoUrl)
-  const thumbSrc = hasVideo
-    ? (videoThumbnail(item.videoUrl!) ?? item.imageUrl)
-    : item.imageUrl
-  const hasMedia = Boolean(thumbSrc)
+
+  const mediaSlides = buildMediaSlides(item)
+  const hasMedia = mediaSlides.length > 0
+  const isGallery = mediaSlides.length > 1
 
   const handleNavigate = useCallback(() => {
     if (feedItems && feedIndex !== undefined) {
@@ -169,31 +203,76 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
         devamını oku →
       </Link>
 
-      {/* ── 4. Görsel / Video — en altta ── */}
+      {/* ── 4. Görsel / Video / Galeri — en altta ── */}
       {hasMedia && (
-        <Link
-          href={href}
-          onClick={handleNavigate}
-          className="relative mb-3 block overflow-hidden rounded-xl"
-        >
-          <div className="relative aspect-[16/9] w-full bg-black">
-            <SafeNewsImage
-              src={thumbSrc!}
-              alt={item.title}
-              fill
-              sizes="(max-width: 640px) 100vw, 600px"
-              priority={priority}
-              className="object-cover opacity-90"
-            />
-            {hasVideo && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm">
-                  <Play className="h-6 w-6 fill-white text-white" />
-                </div>
+        <div className="relative mb-3">
+          {isGallery ? (
+            /* Birden fazla medya → yatay kaydırmalı galeri */
+            <div className="relative">
+              <div
+                className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide rounded-xl"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+              >
+                {mediaSlides.map((slide, idx) => (
+                  <Link
+                    key={idx}
+                    href={href}
+                    onClick={handleNavigate}
+                    className="relative shrink-0 overflow-hidden rounded-xl snap-center"
+                    style={{ width: 'calc(100% - 28px)' }}
+                  >
+                    <div className="relative aspect-[16/9] w-full bg-black">
+                      <SafeNewsImage
+                        src={slide.src}
+                        alt={`${item.title} — ${idx + 1}`}
+                        fill
+                        sizes="(max-width: 640px) 92vw, 560px"
+                        priority={priority && idx === 0}
+                        className="object-cover opacity-90"
+                      />
+                      {slide.isVideo && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm">
+                            <Play className="h-6 w-6 fill-white text-white" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
               </div>
-            )}
-          </div>
-        </Link>
+              {/* Sayaç badge */}
+              <span className="pointer-events-none absolute bottom-2 right-3 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+                1 / {mediaSlides.length}
+              </span>
+            </div>
+          ) : (
+            /* Tek medya → tam genişlik */
+            <Link
+              href={href}
+              onClick={handleNavigate}
+              className="block overflow-hidden rounded-xl"
+            >
+              <div className="relative aspect-[16/9] w-full bg-black">
+                <SafeNewsImage
+                  src={mediaSlides[0]!.src}
+                  alt={item.title}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 600px"
+                  priority={priority}
+                  className="object-cover opacity-90"
+                />
+                {mediaSlides[0]!.isVideo && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm">
+                      <Play className="h-6 w-6 fill-white text-white" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Link>
+          )}
+        </div>
       )}
 
       {/* ── 5. Kategori chip + aksiyonlar ── */}

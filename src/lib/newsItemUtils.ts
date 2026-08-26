@@ -188,6 +188,7 @@ export function slimNewsItemForFeed(item: NewsItem): NewsItem {
   }
   if (item.imageUrl) slim.imageUrl = item.imageUrl
   if (item.videoUrl) slim.videoUrl = item.videoUrl
+  if (item.additionalImages?.length) slim.additionalImages = item.additionalImages
   if (item.category) slim.category = item.category
   if (item.originalCategoryId) slim.originalCategoryId = item.originalCategoryId
   if (item.district) slim.district = item.district
