@@ -66,10 +66,12 @@ export function CityEventsClient({
     timeRange,
   })
 
-  const rawDisplayEvents =
-    initialEvents.length > 0 && timeRange === 'upcoming' && loading && events.length === 0
-      ? initialEvents
-      : events
+  // SSR ile gelen initialEvents'i; client yüklenirken VE timeout/hata durumunda da göster
+  const rawDisplayEvents = (() => {
+    const hasSSR = initialEvents.length > 0 && timeRange === 'upcoming'
+    if (hasSSR && (loading || error) && events.length === 0) return initialEvents
+    return events
+  })()
 
   const displayEvents = useMemo(
     () => filterEventsForQuery(rawDisplayEvents, { timeRange }),
@@ -110,7 +112,9 @@ export function CityEventsClient({
 
   const handleResetFilters = () => setFilters(DEFAULT_CITY_EVENT_FILTERS)
 
-  const showEmpty = !loading && !error && filteredEvents.length === 0
+  // SSR fallback aktifken error UI'ı gizle (soft retry yeterli)
+  const clientErrorVisible = !!error && rawDisplayEvents.length === 0
+  const showEmpty = !loading && !clientErrorVisible && filteredEvents.length === 0
   const showSkeletons = loading && displayEvents.length === 0
 
   const gridClassName = cn(
@@ -359,7 +363,7 @@ export function CityEventsClient({
                 ))}
               </div>
             )
-          ) : error ? (
+          ) : clientErrorVisible ? (
             <div className="rounded-xl border border-dashed border-[rgb(var(--color-border))] py-16 text-center">
               <p className="text-sm text-[rgb(var(--color-text-secondary))]">{error}</p>
               <button

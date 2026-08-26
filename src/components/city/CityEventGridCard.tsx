@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { CalendarDays, MapPin, PartyPopper, Ticket } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { resolveEventFilterCategory } from '@/lib/cityEventFilters'
@@ -30,7 +31,8 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
   const category = resolveEventFilterCategory(event)
 
   return (
-    <article
+    <Link
+      href={`/etkinlik/${event.id}`}
       className={cn(
         'group flex h-full flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))]',
         'bg-[rgb(var(--color-card))] shadow-sm transition-shadow hover:shadow-md'
@@ -129,7 +131,7 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
           </div>
         )}
       </div>
-    </article>
+    </Link>
   )
 }
 

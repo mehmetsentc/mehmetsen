@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { CalendarDays, MapPin, PartyPopper, Ticket } from 'lucide-react'
 import {
   formatEventDayBadge,
@@ -27,7 +28,10 @@ export function CityEventListCard({ event }: CityEventListCardProps) {
   const free = isEventFree(event)
 
   return (
-    <article className="flex gap-3 overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2.5 shadow-sm">
+    <Link
+      href={`/etkinlik/${event.id}`}
+      className="flex gap-3 overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2.5 shadow-sm hover:shadow-md transition-shadow"
+    >
       <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-surface-elevated))]">
         {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -103,7 +107,7 @@ export function CityEventListCard({ event }: CityEventListCardProps) {
           Ücretsiz
         </div>
       ) : null}
-    </article>
+    </Link>
   )
 }
 
