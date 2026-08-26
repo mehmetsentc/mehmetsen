@@ -11,6 +11,13 @@ export type SocialEventType =
   | 'article_unsaved'
   | 'comment_created'
   | 'article_shared'
+  | 'feed_request'
+  | 'feed_impression'
+  | 'feed_empty'
+  | 'feed_error'
+  | 'article_dwell'
+  | 'quick_skip'
+  | 'article_opened'
 
 export interface PublicUserProfile {
   userId: string

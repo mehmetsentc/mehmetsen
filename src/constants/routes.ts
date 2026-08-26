@@ -6,6 +6,7 @@ export const ROUTES = {
   REGISTER: '/register',
   ONBOARDING: '/onboarding',
   FEED: '/feed',
+  FEED_V2: '/feed-v2',
   EVENTS: '/events',
   REELS: '/reels',
   REELS_VIDEO: (id: string) => `/reels?v=${encodeURIComponent(id)}`,

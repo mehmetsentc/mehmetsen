@@ -37,6 +37,7 @@ export {
   articleComments,
   socialEvents,
 } from './socialGraph'
+export { userContentImpressions } from './smartFeed'
 export {
   newsSources,
   discoveredArticleUrls,

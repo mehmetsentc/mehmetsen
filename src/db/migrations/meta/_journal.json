@@ -169,6 +169,13 @@
       "when": 1787785200000,
       "tag": "0023_phase_p3_social_graph",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787788800000,
+      "tag": "0024_phase_p4_smart_feed",
+      "breakpoints": true
     }
   ]
 }
