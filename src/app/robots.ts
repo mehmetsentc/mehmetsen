@@ -35,10 +35,14 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     '/register',
     '/onboarding',
     '/post/create',
+    '/post/',
     '/saved',
     '/search',
     '/offline',
     '/dev/',
+    '/publisher-studio/',
+    '/preview/',
+    '/u/',
   ]
 
   const AI_BOTS = [
