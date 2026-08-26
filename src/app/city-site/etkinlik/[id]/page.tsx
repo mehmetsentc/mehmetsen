@@ -17,7 +17,7 @@ import type { NaEvent } from '@/types/event'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 async function fetchEvent(id: string): Promise<NaEvent | null> {
@@ -32,7 +32,8 @@ async function fetchEvent(id: string): Promise<NaEvent | null> {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const event = await fetchEvent(params.id)
+  const { id } = await params
+  const event = await fetchEvent(id)
   if (!event) return {}
   return {
     title: event.title,
@@ -41,7 +42,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CityEventDetailPage({ params }: Props) {
-  const event = await fetchEvent(params.id)
+  const { id } = await params
+  const event = await fetchEvent(id)
   if (!event) notFound()
 
   const coverImageUrl = resolveEventImageUrl(event.coverImageUrl)

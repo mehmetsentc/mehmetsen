@@ -19,6 +19,12 @@ export {
   mediaTypeEnum,
 } from './media'
 export {
+  publishers,
+  publisherSources,
+  publisherMembers,
+  publisherClaimRequests,
+} from './publishers'
+export {
   newsSources,
   discoveredArticleUrls,
   rawArticles,

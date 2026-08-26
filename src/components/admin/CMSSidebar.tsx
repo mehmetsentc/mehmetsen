@@ -119,6 +119,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/news', label: 'Tüm Haberler', icon: Newspaper, requiredPermissions: ['news:read'] },
       { href: '/admin/categories', label: 'Kategoriler', icon: Tag, requiredPermissions: ['news:read'] },
       { href: '/admin/locations', label: '81 İl', icon: Building2, requiredPermissions: ['locations:manage'], badge: 'YENİ' },
+      { href: '/admin/publishers', label: 'Publisherlar', icon: Landmark, requiredPermissions: ['system:settings'], badge: 'P1' },
       { href: '/admin/videos', label: 'Medya Kütüphanesi', icon: Video, requiredPermissions: ['video:read'] },
       { href: '/admin/submissions', label: 'Gönderiler', icon: Inbox, requiredPermissions: ['news:read'] },
       { href: '/admin/events', label: 'Etkinlikler', icon: Calendar, requiredPermissions: ['news:read'] },
