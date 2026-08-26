@@ -38,8 +38,9 @@ export function AiPublishConfirmModal({
           ve <strong>İnceleme</strong> sekmesinde görünür (kategori kontrolü). Düşük güvenli olanlar{' '}
           <strong>Onay Bekliyor</strong> taslağı olarak kalır.
         </p>
-        <p>
-          Bu işlem Ön-AI kuyruğunu veya &quot;AI Adayı&quot; durumunu kullanmaz; newsroom pipeline doğrudan çalışır.
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+          ✓ Arka planda işlenir — onaylayınca pencere kapanır, siz çalışmaya devam edebilirsiniz.
+          Haberler <strong>⏳ AI Kuyruğu</strong> sekmesinden izlenebilir.
         </p>
         <label className="flex items-start gap-2">
           <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />

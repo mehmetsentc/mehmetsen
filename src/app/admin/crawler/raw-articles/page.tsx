@@ -9,9 +9,7 @@ import { BulkToolbar } from '@/components/admin/crawler/BulkToolbar'
 import { CrawlerConfirmModal } from '@/components/admin/crawler/CrawlerConfirmModal'
 import { RejectReasonModal } from '@/components/admin/crawler/RejectReasonModal'
 import { RowOverflowMenu } from '@/components/admin/crawler/RowOverflowMenu'
-import { notifyAiPublishResult } from '@/components/admin/crawler/notifyAiPublish'
 import { notifyCrawlerBulk } from '@/components/admin/crawler/notifyBulk'
-import type { AiPublishBatchResult } from '@/services/crawler/editorial/aiPublish'
 import { isRawArticleAiPublishEligible } from '@/services/crawler/editorial/aiPublishEligibility'
 import { auth } from '@/lib/firebase/auth'
 import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
@@ -98,7 +96,7 @@ interface ListResponse {
     duplicates: number
   }
   sources?: Array<{ sourceId: string; sourceName: string; articleCount: number }>
-  queueCounts?: { active: number; published: number; review: number; rejected: number; archived: number }
+  queueCounts?: { active: number; published: number; review: number; rejected: number; archived: number; aiQueue: number }
   error?: string
 }
 
@@ -335,12 +333,12 @@ function CrawlerArticlesInner() {
     setConfirmAiPublish(true)
   }
 
-  async function runAiPublish() {
+  async function runAiEnqueue() {
     if (busyBulk) return
     const singleId = singleAiPublishId
     setBusyBulk(true)
     try {
-      const res = await fetch('/api/admin/crawler/articles/ai-publish', {
+      const res = await fetch('/api/admin/crawler/articles/ai-enqueue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({
@@ -349,21 +347,13 @@ function CrawlerArticlesInner() {
           filter: activeFilter(),
         }),
       })
-      const body = await parseApiResponse<AiPublishBatchResult & { error?: string }>(res)
-      if (!res.ok) throw new Error(body.error || 'AI yayın başarısız')
-      notifyAiPublishResult({
-        requested: body.requested ?? (singleId ? 1 : count),
-        published: body.published ?? 0,
-        drafted: body.drafted ?? 0,
-        skipped: body.skipped ?? 0,
-        failed: body.failed ?? 0,
-        results: body.results ?? [],
-        crawlerDispatchEnabled: false,
-      })
+      const body = await parseApiResponse<{ enqueued: number; skipped: number; requested: number; error?: string }>(res)
+      if (!res.ok) throw new Error(body.error || 'Kuyruğa eklenemedi')
+      toast.success(`${body.enqueued} haber AI kuyruğuna eklendi${body.skipped > 0 ? ` (${body.skipped} atlandı)` : ''}`)
       if (!singleId) setSelection(clearSelection(filterKey))
       await load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'AI yayın başarısız')
+      toast.error(err instanceof Error ? err.message : 'Kuyruğa eklenemedi')
     } finally {
       setBusyBulk(false)
       closeAiPublishConfirm()
@@ -770,6 +760,7 @@ function CrawlerArticlesInner() {
         {(
           [
             ['active', 'Aktif kuyruk', data?.queueCounts?.active],
+            ['ai_queue', '⏳ AI Kuyruğu', data?.queueCounts?.aiQueue],
             ['review', 'İnceleme', data?.queueCounts?.review],
             ['published', 'Yayınlananlar', data?.queueCounts?.published],
             ['rejected', 'Reddedilenler', data?.queueCounts?.rejected],
@@ -865,7 +856,7 @@ function CrawlerArticlesInner() {
         count={singleAiPublishId ? 1 : count}
         busy={busyBulk}
         onClose={closeAiPublishConfirm}
-        onConfirm={() => void runAiPublish()}
+        onConfirm={() => void runAiEnqueue()}
       />
       {reviewTarget && reviewTarget.editorialNewsId ? (
         <ReviewClassificationDrawer

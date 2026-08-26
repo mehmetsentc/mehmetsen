@@ -22,7 +22,7 @@ import type {
   NewsSourceRecord,
   RawArticleRecord,
 } from '../types'
-import { ACTIVE_EDITORIAL_STATUSES, clampPage, clampPageSize, queueCountsFromStatuses, type ClusterListQuery } from '../editorial/query'
+import { ACTIVE_EDITORIAL_STATUSES, AI_QUEUED_STATUSES, clampPage, clampPageSize, queueCountsFromStatuses, type ClusterListQuery } from '../editorial/query'
 import { crawlerEditorialStaleHours, emptyClusterFunnel } from '../editorial/controlPlane'
 import type {
   CrawlerStore,
@@ -1245,6 +1245,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       else if (queue === 'rejected') parts.push(eq(rawArticles.editorialStatus, 'REJECTED'))
       else if (queue === 'archived') parts.push(eq(rawArticles.editorialStatus, 'ARCHIVED'))
       else if (queue === 'all') parts.push(sql`${rawArticles.editorialStatus} <> 'DELETED'`)
+      else if (queue === 'ai_queue') parts.push(inArray(rawArticles.editorialStatus, AI_QUEUED_STATUSES))
       else parts.push(inArray(rawArticles.editorialStatus, ACTIVE_EDITORIAL_STATUSES))
     }
     if (query.hasImage === true) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') <> ''`)
@@ -1432,5 +1433,43 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .from(newsSources)
       .where(or(eq(newsSources.status, 'DEGRADED'), sql`${newsSources.consecutiveFailures} >= 3`))
     return rows[0]?.n ?? 0
+  }
+
+  /**
+   * Bulk set editorial status on a list of raw article IDs.
+   * Guards against overwriting PUBLISHED or DELETED items unless `force` is set.
+   */
+  async bulkSetEditorialStatus(
+    ids: string[],
+    status: import('../types').CrawlerEditorialStatus,
+    opts: { force?: boolean } = {}
+  ): Promise<number> {
+    if (ids.length === 0) return 0
+    const { force = false } = opts
+    const condition = force
+      ? inArray(rawArticles.id, ids)
+      : and(
+          inArray(rawArticles.id, ids),
+          sql`${rawArticles.editorialStatus} NOT IN ('PUBLISHED', 'DELETED', 'AI_QUEUED', 'AI_PROCESSING')`
+        )
+    const result = await this.db()
+      .update(rawArticles)
+      .set({ editorialStatus: status, updatedAt: new Date() })
+      .where(condition)
+    // Drizzle returns rowCount on postgres driver
+    return (result as unknown as { rowCount?: number }).rowCount ?? 0
+  }
+
+  /**
+   * Fetch raw articles queued for editor AI processing (AI_QUEUED status), oldest first.
+   */
+  async listEditorAiQueued(limit: number): Promise<RawArticleRecord[]> {
+    const rows = await this.db()
+      .select({ article: rawArticles })
+      .from(rawArticles)
+      .where(eq(rawArticles.editorialStatus, 'AI_QUEUED'))
+      .orderBy(rawArticles.updatedAt)
+      .limit(limit)
+    return rows.map((r) => mapRaw(r.article))
   }
 }

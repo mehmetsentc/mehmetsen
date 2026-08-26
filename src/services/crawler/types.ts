@@ -38,6 +38,8 @@ export type CrawlerEditorialStatus =
   | 'EDITING'
   | 'PUBLISHED'
   | 'SKIPPED'
+  | 'AI_QUEUED'
+  | 'AI_PROCESSING'
 
 export type ClusterEditorialDecision =
   | 'NONE'

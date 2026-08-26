@@ -20,7 +20,9 @@ export const ACTIVE_EDITORIAL_STATUSES: CrawlerEditorialStatus[] = [
   'SKIPPED',
 ]
 
-export type RawArticleQueueTab = 'active' | 'published' | 'review' | 'rejected' | 'archived' | 'all'
+export type RawArticleQueueTab = 'active' | 'published' | 'review' | 'rejected' | 'archived' | 'all' | 'ai_queue'
+
+export const AI_QUEUED_STATUSES: CrawlerEditorialStatus[] = ['AI_QUEUED', 'AI_PROCESSING']
 
 export type RawArticleSortColumn =
   | 'fetchedAt'
@@ -34,7 +36,7 @@ export type RawArticleSortColumn =
 export type SortOrder = 'asc' | 'desc'
 
 export function parseQueueTab(value: string | null): RawArticleQueueTab {
-  if (value === 'published' || value === 'review' || value === 'rejected' || value === 'archived' || value === 'all') return value
+  if (value === 'published' || value === 'review' || value === 'rejected' || value === 'archived' || value === 'all' || value === 'ai_queue') return value
   return 'active'
 }
 
@@ -62,12 +64,14 @@ export function queueCountsFromStatuses(
   reviewCount = 0
 ): RawArticleQueueCounts {
   const active = ACTIVE_EDITORIAL_STATUSES.reduce((sum, key) => sum + (counts[key] || 0), 0)
+  const aiQueue = AI_QUEUED_STATUSES.reduce((sum, key) => sum + (counts[key] || 0), 0)
   return {
     active,
     published: counts.PUBLISHED || 0,
     review: reviewCount,
     rejected: counts.REJECTED || 0,
     archived: counts.ARCHIVED || 0,
+    aiQueue,
   }
 }
 
@@ -108,6 +112,8 @@ const EDITORIAL_STATUSES: CrawlerEditorialStatus[] = [
   'EDITING',
   'PUBLISHED',
   'SKIPPED',
+  'AI_QUEUED',
+  'AI_PROCESSING',
 ]
 
 export function parseEditorialStatus(value: string | null): CrawlerEditorialStatus | null {

@@ -16,6 +16,8 @@ export const EDITORIAL_STATUS_LABELS: Record<CrawlerEditorialStatus, string> = {
   EDITING: 'Düzenleniyor',
   PUBLISHED: 'Yayınlandı',
   SKIPPED: 'Atlandı',
+  AI_QUEUED: 'AI Kuyruğu',
+  AI_PROCESSING: 'AI İşleniyor',
 }
 
 export const EDITORIAL_DECISION_LABELS: Record<ClusterEditorialDecision, string> = {
