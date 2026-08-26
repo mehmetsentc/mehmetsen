@@ -38,6 +38,7 @@ export {
   socialEvents,
 } from './socialGraph'
 export { userContentImpressions } from './smartFeed'
+export { userInterestScores, userPublisherAffinity, userFeedPreferences } from './feedRanking'
 export {
   newsSources,
   discoveredArticleUrls,

@@ -21,3 +21,11 @@ export function isSmartFeedVideoEnabled(): boolean {
   if (v === '0' || v === 'false' || v === 'no') return false
   return process.env.NODE_ENV !== 'production'
 }
+
+/** SMART_FEED_RANKING_V1_ENABLED — prod default false. P5 scoring pipeline. */
+export function isSmartFeedRankingV1Enabled(): boolean {
+  const v = process.env.SMART_FEED_RANKING_V1_ENABLED?.trim().toLowerCase()
+  if (v === '1' || v === 'true' || v === 'yes') return true
+  if (v === '0' || v === 'false' || v === 'no') return false
+  return false
+}

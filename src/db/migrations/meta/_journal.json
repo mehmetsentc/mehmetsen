@@ -176,6 +176,13 @@
       "when": 1787788800000,
       "tag": "0024_phase_p4_smart_feed",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787792400000,
+      "tag": "0025_phase_p5_smart_feed_ranking",
+      "breakpoints": true
     }
   ]
 }

@@ -4,15 +4,19 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { articleLikes, savedArticles } from '@/db/schema/socialGraph'
 import { FEED_PAGINATION } from '@/lib/feed/config'
+import { isSmartFeedRankingV1Enabled } from '@/lib/feed/featureFlag'
+import { FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
 import type {
   FeedCandidateRow,
   FeedItemDto,
   FeedMode,
   FeedPageDto,
   FeedSocialState,
+  ScoredFeedCandidate,
 } from '@/types/smartFeed'
-import { encodeFeedCursor } from './feedUtils'
+import { decodeFeedCursor, encodeFeedCursor } from './feedUtils'
 import { feedCandidateService } from './FeedCandidateService'
+import { feedRankingPipeline } from './FeedRankingPipeline'
 import { feedRankingV1 } from './FeedRankingV1'
 import { feedSeenService } from './FeedSeenService'
 import { feedTelemetryService } from './FeedTelemetryService'
@@ -26,6 +30,7 @@ export interface FeedRequestContext {
   citySlug?: string | null
   districtSlug?: string | null
   region?: string | null
+  refresh?: boolean
 }
 
 function clampLimit(limit?: number): number {
@@ -33,7 +38,8 @@ function clampLimit(limit?: number): number {
   return Math.min(Math.max(n, FEED_PAGINATION.minLimit), FEED_PAGINATION.maxLimit)
 }
 
-function toDto(row: FeedCandidateRow, social?: FeedSocialState | null): FeedItemDto {
+function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialState | null, debug?: boolean): FeedItemDto {
+  const scored = 'score' in row ? row : null
   return {
     id: row.articleId,
     type: 'article',
@@ -64,7 +70,8 @@ function toDto(row: FeedCandidateRow, social?: FeedSocialState | null): FeedItem
       saves: row.savesCount,
       shares: row.sharesCount,
     },
-    reason: row.source,
+    reason: scored?.reason ?? row.source,
+    scoreBreakdown: debug && scored ? scored.breakdown : undefined,
     slug: row.slug,
   }
 }
@@ -94,16 +101,26 @@ async function loadSocialState(userId: string | null, articleIds: string[]): Pro
 }
 
 export class FeedService {
-  async getFeed(ctx: FeedRequestContext): Promise<FeedPageDto> {
+  async getFeed(ctx: FeedRequestContext, opts?: { debug?: boolean }): Promise<FeedPageDto> {
     const limit = clampLimit(ctx.limit)
     const feedType = ctx.mode
+    const rankingEnabled = isSmartFeedRankingV1Enabled()
+    const cursorPayload = decodeFeedCursor(ctx.cursor)
+    const sessionToken = cursorPayload?.session ?? null
 
     if (ctx.mode === 'following' && !ctx.userId) {
       return { items: [], nextCursor: null, hasMore: false, mode: ctx.mode, emptyReason: 'auth_required' }
     }
 
     await feedTelemetryService.recordBatch(ctx.userId, ctx.sessionId, [
-      { eventType: 'feed_request', feedType: ctx.mode },
+      {
+        eventType: 'feed_request',
+        feedType: ctx.mode,
+        metadata: {
+          ranking_version: rankingEnabled ? FEED_RANKING_VERSION : 'mix_v1',
+          feedSessionId: sessionToken ? 'present' : 'new',
+        },
+      },
     ])
 
     try {
@@ -117,7 +134,6 @@ export class FeedService {
         userId: ctx.userId,
       }
 
-      // Prefetch seen sets for suppression
       const previewRows = await feedCandidateService.fetchForMode(ctx.mode, candidateOpts)
       const clusterIds = previewRows.map((r) => r.clusterId).filter((id): id is string => Boolean(id))
       const { seenArticles, seenClusters } = await feedSeenService.filterSuppressible(
@@ -131,6 +147,61 @@ export class FeedService {
         ...candidateOpts,
         excludeArticleIds: seenArticles,
         excludeClusterIds: seenClusters,
+      }
+
+      if (rankingEnabled) {
+        const pipelineResult = await feedRankingPipeline.run({
+          userId: ctx.userId,
+          mode: ctx.mode,
+          limit,
+          cursor: ctx.cursor,
+          sessionToken,
+          refresh: ctx.refresh ?? !ctx.cursor,
+          citySlug: ctx.citySlug,
+          districtSlug: ctx.districtSlug,
+          region: ctx.region,
+          seenArticles,
+          seenClusters,
+        })
+
+        const ranked = pipelineResult.ranked
+        if (!ranked.length) {
+          await feedTelemetryService.recordBatch(ctx.userId, ctx.sessionId, [
+            { eventType: 'feed_empty', feedType: ctx.mode, metadata: { ranking_version: pipelineResult.rankingVersion } },
+          ])
+          return {
+            items: [],
+            nextCursor: null,
+            hasMore: false,
+            mode: ctx.mode,
+            emptyReason: 'no_items',
+            rankingVersion: pipelineResult.rankingVersion,
+            feedSessionId: pipelineResult.session.sessionId,
+          }
+        }
+
+        const articleIds = ranked.map((r) => r.articleId)
+        const socialMap = await loadSocialState(ctx.userId, articleIds)
+        const items = ranked.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
+
+        const last = ranked[ranked.length - 1]
+        const nextCursor = pipelineResult.sessionToken
+          ? encodeFeedCursor({
+              publishedAt: last.publishedAt.toISOString(),
+              id: last.articleId,
+              session: pipelineResult.sessionToken,
+              offset: pipelineResult.session.offset,
+            })
+          : encodeFeedCursor({ publishedAt: last.publishedAt.toISOString(), id: last.articleId })
+
+        return {
+          items,
+          nextCursor,
+          hasMore: pipelineResult.session.offset < pipelineResult.session.rankedIds.length,
+          mode: ctx.mode,
+          rankingVersion: pipelineResult.rankingVersion,
+          feedSessionId: pipelineResult.session.sessionId,
+        }
       }
 
       let ranked: FeedCandidateRow[] = []
@@ -158,12 +229,12 @@ export class FeedService {
         await feedTelemetryService.recordBatch(ctx.userId, ctx.sessionId, [
           { eventType: 'feed_empty', feedType: ctx.mode },
         ])
-        return { items: [], nextCursor: null, hasMore: false, mode: ctx.mode, emptyReason: 'no_items' }
+        return { items: [], nextCursor: null, hasMore: false, mode: ctx.mode, emptyReason: 'no_items', rankingVersion: 'mix_v1' }
       }
 
       const articleIds = ranked.map((r) => r.articleId)
       const socialMap = await loadSocialState(ctx.userId, articleIds)
-      const items = ranked.map((r) => toDto(r, socialMap.get(r.articleId)))
+      const items = ranked.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
 
       const last = ranked[ranked.length - 1]
       const nextCursor = encodeFeedCursor({
@@ -176,6 +247,7 @@ export class FeedService {
         nextCursor,
         hasMore: ranked.length >= limit,
         mode: ctx.mode,
+        rankingVersion: 'mix_v1',
       }
     } catch (err) {
       await feedTelemetryService.recordBatch(ctx.userId, ctx.sessionId, [

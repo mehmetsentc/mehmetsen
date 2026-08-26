@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
 import { SocialActionRail } from '@/components/social/SocialActionRail'
+import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
 import type { FeedItemDto } from '@/types/smartFeed'
 
@@ -22,6 +23,7 @@ interface FullscreenNewsCardProps {
   onToggleSave: () => void
   onCommentClick: () => void
   onReadClick: () => void
+  onFeedback?: (type: 'hide_article' | 'less_publisher' | 'less_topic') => void
   cardRef?: (node: HTMLElement | null) => void
 }
 
@@ -37,6 +39,7 @@ export function FullscreenNewsCard({
   onToggleSave,
   onCommentClick,
   onReadClick,
+  onFeedback,
   cardRef,
 }: FullscreenNewsCardProps) {
   const videoEnabled = isSmartFeedVideoEnabledClient()
@@ -83,7 +86,7 @@ export function FullscreenNewsCard({
           <div className="flex items-center justify-between gap-3">
             <Link
               href={ROUTES.PUBLISHER(item.publisher.slug)}
-              className="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm"
             >
               {item.publisher.logoUrl ? (
                 <Image
@@ -106,9 +109,12 @@ export function FullscreenNewsCard({
               className="shrink-0"
               showCount={false}
             />
+            <FeedCardMenu item={item} onFeedback={onFeedback} />
           </div>
         ) : (
-          <div />
+          <div className="flex justify-end">
+            <FeedCardMenu item={item} onFeedback={onFeedback} />
+          </div>
         )}
 
         <div className="space-y-3">
@@ -165,7 +171,7 @@ export function FullscreenNewsCard({
           {debug ? (
             <pre className="max-h-24 overflow-auto rounded bg-black/60 p-2 text-[10px] text-green-300">
               {JSON.stringify(
-                { reason: item.reason, clusterId: item.clusterId, articleId: item.articleId },
+                { reason: item.reason, scoreBreakdown: item.scoreBreakdown, clusterId: item.clusterId, articleId: item.articleId },
                 null,
                 0
               )}

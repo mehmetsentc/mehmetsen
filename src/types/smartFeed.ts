@@ -27,6 +27,32 @@ export interface FeedSocialCounts {
   shares: number
 }
 
+export type FeedRankReason =
+  | 'FOLLOWING_FRESH'
+  | 'LOCAL_RELEVANT'
+  | 'INTEREST_MATCH'
+  | 'BREAKING_URGENT'
+  | 'EDITORIAL_PRIORITY'
+  | 'MATERIAL_UPDATE'
+  | 'DISCOVERY'
+  | 'POPULAR'
+  | 'RECENT'
+  | FeedCandidateSource
+
+export interface FeedScoreBreakdown {
+  following: number
+  freshness: number
+  interest: number
+  local: number
+  editorial: number
+  quality: number
+  engagement: number
+  discovery: number
+  materialUpdate: number
+  penalties: number
+  total: number
+}
+
 export interface FeedItemDto {
   id: string
   type: 'article'
@@ -45,7 +71,8 @@ export interface FeedItemDto {
   clusterSourceCount: number
   socialState: FeedSocialState | null
   socialCounts: FeedSocialCounts
-  reason: FeedCandidateSource
+  reason: FeedRankReason
+  scoreBreakdown?: FeedScoreBreakdown
   slug: string
 }
 
@@ -55,6 +82,8 @@ export interface FeedPageDto {
   hasMore: boolean
   mode: FeedMode
   emptyReason?: string
+  rankingVersion?: string
+  feedSessionId?: string | null
 }
 
 export type FeedTelemetryEventType =
@@ -78,6 +107,8 @@ export interface FeedTelemetryBatchItem {
 export interface FeedCursorPayload {
   publishedAt: string
   id: string
+  offset?: number
+  session?: string
 }
 
 export interface FeedCandidateRow {
@@ -87,6 +118,7 @@ export interface FeedCandidateRow {
   publisherSlug: string | null
   publisherName: string | null
   publisherLogoUrl: string | null
+  publisherVerified?: boolean
   headline: string
   summary: string | null
   category: string | null
@@ -97,11 +129,40 @@ export interface FeedCandidateRow {
   breaking: boolean
   materialUpdate: boolean
   clusterSourceCount: number
+  clusterImportance?: number
+  sourceQualityTier?: string | null
+  sourceHealthScore?: number
+  citySlug?: string | null
+  districtSlug?: string | null
   likesCount: number
   commentsCount: number
   savesCount: number
   sharesCount: number
+  viewsCount?: number
   slug: string
   source: FeedCandidateSource
   sortScore: number
+}
+
+export interface FeedUserContext {
+  userId: string | null
+  isSynthetic: boolean
+  explicitInterests: string[]
+  behavioralInterests: Map<string, number>
+  publisherAffinities: Map<string, number>
+  followedPublisherIds: Set<string>
+  negativePreferences: Array<{
+    preferenceType: string
+    targetType: string
+    targetId: string
+    modifier: number
+  }>
+  city: string | null
+  districtSlug: string | null
+}
+
+export interface ScoredFeedCandidate extends FeedCandidateRow {
+  score: number
+  reason: FeedRankReason
+  breakdown: FeedScoreBreakdown
 }

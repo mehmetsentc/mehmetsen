@@ -6,6 +6,7 @@ import {
   isSmartFeedEnabled,
   isSmartFeedTelemetryEnabled,
   isSmartFeedVideoEnabled,
+  isSmartFeedRankingV1Enabled,
 } from '@/lib/feed/featureFlag'
 import { FEED_IMPRESSION_CONFIG, FEED_MIX_V1 } from '@/lib/feed/config'
 import { dedupeByCluster, mixPersonalFeed, rankModeFeed } from '@/services/feed/FeedRankingV1'
@@ -49,6 +50,7 @@ describe('P4 feature flags default false in production', () => {
     delete process.env.SMART_FEED_ENABLED
     delete process.env.SMART_FEED_TELEMETRY_ENABLED
     delete process.env.SMART_FEED_VIDEO_ENABLED
+    delete process.env.SMART_FEED_RANKING_V1_ENABLED
   })
 
   afterEach(() => {
@@ -59,6 +61,7 @@ describe('P4 feature flags default false in production', () => {
     expect(isSmartFeedEnabled()).toBe(false)
     expect(isSmartFeedTelemetryEnabled()).toBe(false)
     expect(isSmartFeedVideoEnabled()).toBe(false)
+    expect(isSmartFeedRankingV1Enabled()).toBe(false)
   })
 })
 

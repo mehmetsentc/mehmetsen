@@ -33,10 +33,12 @@ async function fetchFeedPage(opts: {
   cursor?: string | null
   city?: string | null
   district?: string | null
+  refresh?: boolean
 }): Promise<FeedPageDto> {
   const params = new URLSearchParams()
   if (opts.mode !== 'personal') params.set('mode', opts.mode)
   if (opts.cursor) params.set('cursor', opts.cursor)
+  if (opts.refresh) params.set('refresh', '1')
   params.set('limit', String(FEED_PAGINATION.defaultLimit))
   if (opts.city) params.set('city', opts.city)
   if (opts.district) params.set('district', opts.district)
@@ -111,6 +113,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           cursor: append ? (nextCursor ?? cursor) : null,
           city: initialCitySlug,
           district: initialDistrictSlug,
+          refresh: !append,
         })
         setItems((prev) => {
           const merged = append ? [...prev, ...page.items] : page.items
@@ -272,6 +275,10 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     }
   }
 
+  const handleFeedback = useCallback((articleId: string) => {
+    setItems((prev) => prev.filter((i) => i.articleId !== articleId))
+  }, [])
+
   const onRead = (item: FeedItemDto, index: number) => {
     saveFeedRestore({ mode, articleId: item.articleId, cursor, scrollIndex: index })
     void postTelemetry({ events: [{ eventType: 'article_opened', articleId: item.articleId, feedType: mode }] })
@@ -335,6 +342,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                 onToggleSave={() => void toggleSave(item)}
                 onCommentClick={() => setCommentArticleId(item.articleId)}
                 onReadClick={() => onRead(item, index)}
+                onFeedback={() => handleFeedback(item.articleId)}
                 onImpression={() => recordImpression(item)}
               />
             )
@@ -368,6 +376,7 @@ function FeedCardWithImpression(props: {
   onToggleSave: () => void
   onCommentClick: () => void
   onReadClick: () => void
+  onFeedback?: () => void
   onImpression: () => void
 }) {
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)

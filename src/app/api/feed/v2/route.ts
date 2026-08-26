@@ -33,6 +33,8 @@ export async function GET(request: Request) {
   const districtSlug = url.searchParams.get('district')?.trim() || null
   const region = url.searchParams.get('region')?.trim() || null
   const sessionId = request.headers.get('x-feed-session')?.trim() || null
+  const refresh = url.searchParams.get('refresh') === '1' || url.searchParams.get('refresh') === 'true'
+  const debug = process.env.NODE_ENV !== 'production' && url.searchParams.get('debug') === '1'
 
   const auth = await verifyFirebaseIdToken(request)
 
@@ -50,7 +52,8 @@ export async function GET(request: Request) {
       citySlug,
       districtSlug,
       region,
-    })
+      refresh,
+    }, { debug })
     return NextResponse.json(page)
   } catch (err) {
     console.error('[api/feed/v2]', err)

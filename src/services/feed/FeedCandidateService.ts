@@ -3,7 +3,7 @@ import 'server-only'
 import { and, desc, eq, inArray, isNotNull, lt, or, sql } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { news } from '@/db/schema/news'
-import { newsClusters, rawArticles } from '@/db/schema/crawler'
+import { newsClusters, newsSources, rawArticles } from '@/db/schema/crawler'
 import { publisherSources, publishers } from '@/db/schema/publishers'
 import { userPublisherFollows } from '@/db/schema/socialGraph'
 import type { FeedCandidateRow, FeedCandidateSource, FeedCursorPayload, FeedMode } from '@/types/smartFeed'
@@ -44,6 +44,7 @@ function mapRows(
     publisherSlug: string | null
     publisherName: string | null
     publisherLogoUrl: string | null
+    publisherVerified?: boolean
     headline: string
     summary: string | null
     category: string | null
@@ -54,10 +55,16 @@ function mapRows(
     breaking: boolean
     materialUpdate: number | null
     clusterSourceCount: number
+    clusterImportance: number
+    sourceQualityTier: string | null
+    sourceHealthScore: number
+    citySlug: string | null
+    districtSlug: string | null
     likesCount: number
     commentsCount: number
     savesCount: number
     sharesCount: number
+    viewsCount: number
     slug: string
     sortScore?: number
   }>,
@@ -84,6 +91,7 @@ function mapRows(
       publisherSlug: row.publisherSlug,
       publisherName: row.publisherName,
       publisherLogoUrl: row.publisherLogoUrl,
+      publisherVerified: row.publisherVerified,
       headline: row.headline,
       summary: row.summary,
       category: row.category,
@@ -94,10 +102,16 @@ function mapRows(
       breaking: row.breaking,
       materialUpdate: row.materialUpdate === 1,
       clusterSourceCount: Math.max(1, row.clusterSourceCount),
+      clusterImportance: row.clusterImportance ?? 0,
+      sourceQualityTier: row.sourceQualityTier,
+      sourceHealthScore: row.sourceHealthScore ?? 50,
+      citySlug: row.citySlug,
+      districtSlug: row.districtSlug,
       likesCount: row.likesCount,
       commentsCount: row.commentsCount,
       savesCount: row.savesCount,
       sharesCount: row.sharesCount,
+      viewsCount: row.viewsCount ?? 0,
       slug: row.slug,
       source,
       sortScore: row.sortScore ?? row.publishedAt.getTime(),
@@ -114,6 +128,7 @@ function baseSelect() {
     publisherSlug: publishers.slug,
     publisherName: publishers.displayName,
     publisherLogoUrl: publishers.logoUrl,
+    publisherVerified: sql<boolean>`${publishers.verificationStatus} = 'VERIFIED'`,
     headline: news.title,
     summary: news.summary,
     category: news.categoryId,
@@ -124,10 +139,16 @@ function baseSelect() {
     breaking: news.isBreaking,
     materialUpdate: newsClusters.hasMaterialUpdate,
     clusterSourceCount: sql<number>`coalesce(${newsClusters.uniqueSourceCount}, ${newsClusters.sourceCount}, 1)`,
+    clusterImportance: sql<number>`coalesce(${newsClusters.importanceScore}, 0)`,
+    sourceQualityTier: newsSources.qualityTier,
+    sourceHealthScore: sql<number>`coalesce(${newsSources.healthScore}, 50)`,
+    citySlug: news.citySlug,
+    districtSlug: news.districtSlug,
     likesCount: news.likesCount,
     commentsCount: news.commentsCount,
     savesCount: news.savesCount,
     sharesCount: news.sharesCount,
+    viewsCount: news.viewsCount,
     slug: news.slug,
   }
 }
@@ -145,6 +166,7 @@ export class FeedCandidateService {
       .from(news)
       .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
       .leftJoin(rawArticles, eq(rawArticles.editorialNewsId, news.id))
+      .leftJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
       .leftJoin(publisherSources, eq(publisherSources.sourceId, rawArticles.sourceId))
       .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
       .where(where)
@@ -167,6 +189,7 @@ export class FeedCandidateService {
       .from(news)
       .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
       .leftJoin(rawArticles, eq(rawArticles.editorialNewsId, news.id))
+      .leftJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
       .leftJoin(publisherSources, eq(publisherSources.sourceId, rawArticles.sourceId))
       .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
       .where(where)
@@ -191,6 +214,7 @@ export class FeedCandidateService {
       .from(news)
       .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
       .leftJoin(rawArticles, eq(rawArticles.editorialNewsId, news.id))
+      .leftJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
       .leftJoin(publisherSources, eq(publisherSources.sourceId, rawArticles.sourceId))
       .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
       .where(where)
@@ -219,6 +243,7 @@ export class FeedCandidateService {
       .from(news)
       .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
       .leftJoin(rawArticles, eq(rawArticles.editorialNewsId, news.id))
+      .leftJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
       .leftJoin(publisherSources, eq(publisherSources.sourceId, rawArticles.sourceId))
       .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
       .where(where)
@@ -257,6 +282,7 @@ export class FeedCandidateService {
       .from(news)
       .innerJoin(rawArticles, eq(rawArticles.editorialNewsId, news.id))
       .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
+      .leftJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
       .innerJoin(publisherSources, eq(publisherSources.sourceId, rawArticles.sourceId))
       .innerJoin(publishers, eq(publishers.id, publisherSources.publisherId))
       .where(where)
@@ -264,6 +290,22 @@ export class FeedCandidateService {
       .limit(CANDIDATE_POOL)
 
     return mapRows(rows, 'FOLLOWING', opts.excludeArticleIds, opts.excludeClusterIds).slice(0, opts.limit)
+  }
+
+  async fetchByIds(articleIds: string[]): Promise<FeedCandidateRow[]> {
+    if (!articleIds.length) return []
+    const db = requireDb()
+    const rows = await db
+      .select(baseSelect())
+      .from(news)
+      .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
+      .leftJoin(rawArticles, eq(rawArticles.editorialNewsId, news.id))
+      .leftJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
+      .leftJoin(publisherSources, eq(publisherSources.sourceId, rawArticles.sourceId))
+      .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+      .where(and(eq(news.status, 'published'), inArray(news.id, articleIds)))
+
+    return mapRows(rows, 'RECENT')
   }
 
   async fetchDiscovery(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
@@ -278,6 +320,7 @@ export class FeedCandidateService {
       .from(news)
       .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
       .leftJoin(rawArticles, eq(rawArticles.editorialNewsId, news.id))
+      .leftJoin(newsSources, eq(newsSources.id, rawArticles.sourceId))
       .leftJoin(publisherSources, eq(publisherSources.sourceId, rawArticles.sourceId))
       .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
       .where(where)
