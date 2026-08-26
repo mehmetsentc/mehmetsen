@@ -172,9 +172,9 @@ export interface RawArticleListQuery {
   editorialStatus?: CrawlerEditorialStatus | null
   view?: 'all' | 'bySource'
   /**
-   * Phase 4E — default true on active Ham Haber queue.
-   * Hide SUPPORTING/DUPLICATE/LOW_QUALITY cluster members so editors decide at EVENT level.
-   * Evidence remains on Olay Detayı. Pass false / includeSupporting=1 to show all.
+   * Phase 4E — opt-in on active Ham Haber queue.
+   * When true, hide SUPPORTING/DUPLICATE/LOW_QUALITY cluster members so editors decide at EVENT level.
+   * Evidence remains on Olay Detayı. Default (undefined/false) shows all articles.
    */
   eventPrimaryOnly?: boolean | null
 }

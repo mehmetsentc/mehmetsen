@@ -168,7 +168,7 @@ export function shouldHideSupportingFromPrimaryQueue(
   query: Pick<RawArticleListQuery, 'eventPrimaryOnly' | 'queue' | 'status'>
 ): boolean {
   const primaryOnly =
-    query.eventPrimaryOnly !== false &&
+    query.eventPrimaryOnly === true &&
     (query.queue || 'active') === 'active' &&
     query.status !== 'duplicate'
   if (!primaryOnly) return false
