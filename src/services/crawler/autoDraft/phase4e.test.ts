@@ -162,7 +162,7 @@ describe('Phase 4E dedup / clustering (deterministic, unpaid)', () => {
 })
 
 describe('Phase 4E Ham Haber event-primary clutter filter', () => {
-  it('hides SUPPORTING from active queue; keeps PRIMARY', () => {
+  it('hides SUPPORTING from active queue when eventPrimaryOnly=true; keeps PRIMARY', () => {
     const supporting = {
       clusterId: 'c1',
       clusterRole: 'SUPPORTING',
@@ -186,6 +186,17 @@ describe('Phase 4E Ham Haber event-primary clutter filter', () => {
       })
     ).toBe(false)
     expect(ACTIVE_EDITORIAL_STATUSES).not.toContain('PUBLISHED')
+  })
+
+  it('shows SUPPORTING on active queue by default (eventPrimaryOnly unset)', () => {
+    const supporting = {
+      clusterId: 'c1',
+      clusterRole: 'SUPPORTING',
+      isExactDuplicate: false,
+      editorialStatus: 'NEW',
+    } as RawArticleRecord
+    expect(shouldHideSupportingFromPrimaryQueue(supporting, { queue: 'active' })).toBe(false)
+    expect(matchesRawArticleQuery(supporting, { queue: 'active' })).toBe(true)
   })
 })
 
