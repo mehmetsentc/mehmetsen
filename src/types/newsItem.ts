@@ -16,6 +16,8 @@ export type NewsItem = {
   category?: string
   source?: string
   author?: string
+  /** Profil fotoğrafı URL — kullanıcı paylaşımlarında gösterilir. */
+  authorPhotoURL?: string
   url?: string
   city?: string
   /** Province slug — local/city-tenant scoping for feeds and featured pins. */

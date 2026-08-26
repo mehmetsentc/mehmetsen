@@ -55,6 +55,8 @@ interface NewsDocument {
   localFeatured?: boolean
   localFeaturedAt?: number | { _seconds?: number }
   source?: string
+  author?: string
+  authorPhotoURL?: string
   articleFormat?: string
   seoTitle?: string
   videoUrl?: string
@@ -146,6 +148,8 @@ function docToNewsItem(id: string, data: NewsDocument): NewsItem | null {
     category: data.categoryId?.trim() || data.category?.trim() || undefined,
     originalCategoryId: data.originalCategoryId?.trim() || undefined,
     source: data.source?.trim() || undefined,
+    author: data.author?.trim() || undefined,
+    authorPhotoURL: data.authorPhotoURL?.trim() || undefined,
     city: data.city?.trim() || undefined,
     citySlug: data.citySlug?.trim().toLowerCase() || undefined,
     district: data.district?.trim() || data.location?.district?.trim() || undefined,

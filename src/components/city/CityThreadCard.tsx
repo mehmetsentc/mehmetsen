@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Bookmark, BookmarkCheck, Heart, MessageCircle, Play, Share2 } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
@@ -54,24 +55,42 @@ function videoThumbnail(url: string): string | null {
   return null
 }
 
-const AVATAR_COLORS = [
-  'bg-red-500', 'bg-blue-500', 'bg-emerald-600',
-  'bg-purple-500', 'bg-orange-500', 'bg-teal-500',
-  'bg-pink-500', 'bg-indigo-500',
-]
+// NaHaber markası için kullanılacak logo
+const NAHABER_LOGO = '/brand/nahaber-logo.png'
 
-function SourceAvatar({ source }: { source?: string }) {
-  const letter = source?.trim()?.[0]?.toUpperCase() ?? 'N'
-  const color = AVATAR_COLORS[letter.charCodeAt(0) % AVATAR_COLORS.length]
+interface AvatarProps {
+  authorPhotoURL?: string
+  authorName?: string
+}
+
+function CardAvatar({ authorPhotoURL, authorName }: AvatarProps) {
+  if (authorPhotoURL) {
+    // Kullanıcı fotoğrafı
+    return (
+      <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[rgb(var(--color-surface-raised))]">
+        <Image
+          src={authorPhotoURL}
+          alt={authorName ?? 'Kullanıcı'}
+          fill
+          sizes="36px"
+          className="object-cover"
+          unoptimized
+        />
+      </span>
+    )
+  }
+
+  // NaHaber logosu
   return (
-    <span
-      className={cn(
-        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-black text-white',
-        color,
-      )}
-      aria-hidden
-    >
-      {letter}
+    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[rgb(var(--header-brand-bg,220,38,38))]">
+      <Image
+        src={NAHABER_LOGO}
+        alt="NaHaber"
+        fill
+        sizes="36px"
+        className="object-contain p-1"
+        unoptimized
+      />
     </span>
   )
 }
@@ -167,12 +186,15 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
   return (
     <article className="border-b border-[rgb(var(--color-border))] px-4 py-4">
 
-      {/* ── 1. Üst: NaHaber avatarı + zaman ── */}
+      {/* ── 1. Üst: Avatar (logo veya kullanıcı fotoğrafı) + zaman ── */}
       <div className="mb-3 flex items-center gap-2.5">
-        <SourceAvatar source="NaHaber" />
+        <CardAvatar
+          authorPhotoURL={item.authorPhotoURL}
+          authorName={item.author}
+        />
         <div className="min-w-0 flex-1">
           <span className="block text-[13px] font-semibold text-[rgb(var(--color-text))]">
-            NaHaber
+            {item.author ?? 'NaHaber'}
           </span>
           {ago && (
             <span className="text-[11px] text-[rgb(var(--color-muted))]">{ago}</span>
