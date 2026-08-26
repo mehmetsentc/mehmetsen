@@ -133,15 +133,15 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
   return (
     <article className="border-b border-[rgb(var(--color-border))] px-4 py-4">
 
-      {/* ── 1. Üst: avatar + kaynak etiketi + zaman ── */}
+      {/* ── 1. Üst: NaHaber avatarı + zaman ── */}
       <div className="mb-3 flex items-center gap-2.5">
-        <SourceAvatar source={item.source} />
+        <SourceAvatar source="NaHaber" />
         <div className="min-w-0 flex-1">
-          <span className="block truncate text-[11px] font-medium text-[rgb(var(--color-muted))]">
-            Kaynak: {item.source ?? 'NaHaber'}
+          <span className="block text-[13px] font-semibold text-[rgb(var(--color-text))]">
+            NaHaber
           </span>
           {ago && (
-            <span className="text-[10px] text-[rgb(var(--color-muted))]">{ago}</span>
+            <span className="text-[11px] text-[rgb(var(--color-muted))]">{ago}</span>
           )}
         </div>
       </div>
