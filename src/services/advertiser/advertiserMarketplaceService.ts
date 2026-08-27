@@ -17,6 +17,7 @@ import {
   normalizeCreateCreative,
   validateRequestAgainstPricing,
 } from '@/lib/advertiser/marketplaceDomain'
+import { buildCommercialSnapshot } from '@/lib/commercial/commissionDomain'
 import { slugifyPublisherName, resolveUniquePublisherSlug } from '@/lib/publisher/slug'
 import { notificationService } from '@/services/notificationService'
 import type {
@@ -570,6 +571,21 @@ export class AdvertiserMarketplaceService {
       priceMinor,
       currency: existing.currency,
       pricingModelSnapshot: existing.pricingModelSnapshot,
+      ...(priceMinor != null
+        ? (() => {
+            const snap = buildCommercialSnapshot(priceMinor, existing.currency)
+            return {
+              grossAmountMinor: snap.grossAmountMinor,
+              platformCommissionRateBps: snap.platformCommissionRateBps,
+              platformCommissionMinor: snap.platformCommissionMinor,
+              publisherGrossMinor: snap.publisherGrossMinor,
+              publisherNetMinor: snap.publisherNetMinor,
+              taxPlaceholderMinor: snap.taxPlaceholderMinor,
+              commercialSnapshotAt: new Date(),
+              commercialFrozen: true,
+            }
+          })()
+        : {}),
     })
 
     if (created) {

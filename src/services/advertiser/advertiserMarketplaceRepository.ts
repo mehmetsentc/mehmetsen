@@ -145,6 +145,17 @@ function mapBooking(r: typeof adBookings.$inferSelect): AdBookingRecord {
     priceMinor: r.priceMinor == null ? null : Number(r.priceMinor),
     currency: r.currency,
     pricingModelSnapshot: r.pricingModelSnapshot,
+    grossAmountMinor: r.grossAmountMinor == null ? null : Number(r.grossAmountMinor),
+    platformCommissionRateBps: r.platformCommissionRateBps ?? null,
+    platformCommissionMinor:
+      r.platformCommissionMinor == null ? null : Number(r.platformCommissionMinor),
+    publisherGrossMinor: r.publisherGrossMinor == null ? null : Number(r.publisherGrossMinor),
+    publisherNetMinor: r.publisherNetMinor == null ? null : Number(r.publisherNetMinor),
+    taxPlaceholderMinor: r.taxPlaceholderMinor == null ? null : Number(r.taxPlaceholderMinor),
+    invoiceStatus: r.invoiceStatus ?? null,
+    taxProfileId: r.taxProfileId ?? null,
+    commercialSnapshotAt: r.commercialSnapshotAt ?? null,
+    commercialFrozen: Boolean(r.commercialFrozen),
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }
@@ -494,7 +505,13 @@ export class AdvertiserMarketplaceRepository {
     const db = requireDb()
     const conditions: SQL[] = [
       eq(adBookings.inventoryId, inventoryId),
-      inArray(adBookings.status, ['PENDING_PAYMENT', 'READY']),
+      inArray(adBookings.status, [
+        'PENDING_PAYMENT',
+        'PAYMENT_PROCESSING',
+        'PAID_PENDING_DELIVERY',
+        'READY',
+        'COMPLETED',
+      ]),
       lt(adBookings.startAt, end),
       gt(adBookings.endAt, start),
     ]
@@ -522,6 +539,14 @@ export class AdvertiserMarketplaceRepository {
     priceMinor: number | null
     currency: string
     pricingModelSnapshot: string
+    grossAmountMinor?: number | null
+    platformCommissionRateBps?: number | null
+    platformCommissionMinor?: number | null
+    publisherGrossMinor?: number | null
+    publisherNetMinor?: number | null
+    taxPlaceholderMinor?: number | null
+    commercialSnapshotAt?: Date | null
+    commercialFrozen?: boolean
   }): Promise<{ booking: AdBookingRecord; created: boolean }> {
     const existing = await this.findBookingByRequestId(input.bookingRequestId)
     if (existing) return { booking: existing, created: false }
@@ -546,6 +571,14 @@ export class AdvertiserMarketplaceRepository {
         priceMinor: input.priceMinor,
         currency: input.currency,
         pricingModelSnapshot: input.pricingModelSnapshot,
+        grossAmountMinor: input.grossAmountMinor ?? null,
+        platformCommissionRateBps: input.platformCommissionRateBps ?? null,
+        platformCommissionMinor: input.platformCommissionMinor ?? null,
+        publisherGrossMinor: input.publisherGrossMinor ?? null,
+        publisherNetMinor: input.publisherNetMinor ?? null,
+        taxPlaceholderMinor: input.taxPlaceholderMinor ?? null,
+        commercialSnapshotAt: input.commercialSnapshotAt ?? null,
+        commercialFrozen: input.commercialFrozen ?? false,
         createdAt: now,
         updatedAt: now,
       })
@@ -558,6 +591,51 @@ export class AdvertiserMarketplaceRepository {
       throw err
     }
     return { booking: (await this.findBookingById(id))!, created: true }
+  }
+
+  async transitionBookingStatus(
+    bookingId: string,
+    fromStatuses: BookingStatus[],
+    toStatus: BookingStatus
+  ): Promise<AdBookingRecord | null> {
+    const db = requireDb()
+    const updated = await db
+      .update(adBookings)
+      .set({ status: toStatus, updatedAt: new Date() })
+      .where(and(eq(adBookings.id, bookingId), inArray(adBookings.status, fromStatuses)))
+      .returning()
+    return updated[0] ? mapBooking(updated[0]) : null
+  }
+
+  async freezeCommercialSnapshot(
+    bookingId: string,
+    snap: {
+      grossAmountMinor: number
+      platformCommissionRateBps: number
+      platformCommissionMinor: number
+      publisherGrossMinor: number
+      publisherNetMinor: number
+      taxPlaceholderMinor: number | null
+    }
+  ): Promise<AdBookingRecord | null> {
+    const db = requireDb()
+    const updated = await db
+      .update(adBookings)
+      .set({
+        grossAmountMinor: snap.grossAmountMinor,
+        platformCommissionRateBps: snap.platformCommissionRateBps,
+        platformCommissionMinor: snap.platformCommissionMinor,
+        publisherGrossMinor: snap.publisherGrossMinor,
+        publisherNetMinor: snap.publisherNetMinor,
+        taxPlaceholderMinor: snap.taxPlaceholderMinor,
+        priceMinor: snap.grossAmountMinor,
+        commercialSnapshotAt: new Date(),
+        commercialFrozen: true,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(adBookings.id, bookingId), eq(adBookings.commercialFrozen, false)))
+      .returning()
+    return updated[0] ? mapBooking(updated[0]) : null
   }
 
   async findBookingById(id: string): Promise<AdBookingRecord | null> {

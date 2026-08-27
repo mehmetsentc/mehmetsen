@@ -24,7 +24,15 @@ export type BookingRequestStatus =
   | 'CANCELLED'
   | 'EXPIRED'
 
-export type BookingStatus = 'PENDING_PAYMENT' | 'READY' | 'CANCELLED' | 'EXPIRED'
+export type BookingStatus =
+  | 'PENDING_PAYMENT'
+  | 'PAYMENT_PROCESSING'
+  | 'PAID_PENDING_DELIVERY'
+  | 'READY'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REFUNDED'
+  | 'EXPIRED'
 
 export type CreativeType = 'IMAGE' | 'NATIVE_CARD' | 'SPONSORED_CARD'
 export type CreativeStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
@@ -151,6 +159,16 @@ export interface AdBookingRecord {
   priceMinor: number | null
   currency: string
   pricingModelSnapshot: string
+  grossAmountMinor: number | null
+  platformCommissionRateBps: number | null
+  platformCommissionMinor: number | null
+  publisherGrossMinor: number | null
+  publisherNetMinor: number | null
+  taxPlaceholderMinor: number | null
+  invoiceStatus: string | null
+  taxProfileId: string | null
+  commercialSnapshotAt: Date | null
+  commercialFrozen: boolean
   createdAt: Date
   updatedAt: Date
 }

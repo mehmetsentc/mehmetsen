@@ -251,7 +251,10 @@ export function PublisherAdsStudioClient({
             Reklamlar
           </h1>
           <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-            Satılabilir reklam alanları, gelen talepler ve rezervasyonlar. Gelir/ödeme gösterilmez.
+            Satılabilir reklam alanları, gelen talepler ve rezervasyonlar.
+          </p>
+          <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
+            Bekleyen Kazanç: — (özellik kapalı · ödeme / payout yok)
           </p>
         </div>
         {tab === 'inventory' ? (
@@ -351,7 +354,9 @@ export function PublisherAdsStudioClient({
                 className="rounded-xl border border-[rgb(var(--color-border))] p-4 text-sm"
               >
                 <div className="flex justify-between">
-                  <span className="font-semibold">{b.status}</span>
+                  <span className="font-semibold">
+                    {b.status === 'PENDING_PAYMENT' ? 'Ödeme Bekliyor' : b.status}
+                  </span>
                   <span>{formatPriceMinor(b.priceMinor, b.currency) || '—'}</span>
                 </div>
                 <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
@@ -359,7 +364,7 @@ export function PublisherAdsStudioClient({
                   {new Date(b.endAt).toLocaleString('tr-TR')} · envanter {b.inventoryId.slice(0, 12)}…
                 </p>
                 <p className="mt-1 text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                  Ödeme / gelir yok — PENDING_PAYMENT rezervasyon
+                  Bekleyen Kazanç (salt okunur · flag kapalı) — payout yok
                 </p>
               </div>
             ))

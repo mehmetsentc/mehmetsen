@@ -90,6 +90,19 @@ export default function AdvertiserRequestsPage() {
                 İptal
               </button>
             ) : null}
+            {r.status === 'APPROVED' ? (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs font-medium text-amber-800">Ödeme Bekliyor</p>
+                <button
+                  type="button"
+                  disabled
+                  title="Ödeme özelliği henüz aktif değil"
+                  className="cursor-not-allowed rounded border border-stone-300 px-2 py-1 text-xs text-stone-400"
+                >
+                  Ödemeye geç (yakında)
+                </button>
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

@@ -54,7 +54,7 @@ export function AdvertiserStudioShell({
             })}
             <div className="mt-4 border-t border-stone-200 pt-3 text-xs text-stone-400">
               <p>Faturalandırma (yakında)</p>
-              <p>Ödemeler (yakında)</p>
+              <p>Ödemeler — Ödeme Bekliyor (flag kapalı)</p>
               <p>Gelişmiş Analitik (yakında)</p>
             </div>
           </nav>
