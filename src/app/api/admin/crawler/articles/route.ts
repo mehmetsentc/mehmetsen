@@ -133,10 +133,23 @@ export async function GET(request: Request) {
   }
   const clusterIds = [...new Set(articles.map((a) => a.clusterId).filter((id): id is string => Boolean(id)))]
   const clusterById = new Map<string, { articleCount: number; uniqueSourceCount: number }>()
-  for (const id of clusterIds) {
-    const cluster = await store.getCluster(id)
-    if (cluster) clusterById.set(id, { articleCount: cluster.articleCount, uniqueSourceCount: cluster.uniqueSourceCount })
-  }
+  // Soft-fail: cluster meta is optional UI enrichment. Schema drift (e.g. missing
+  // news_clusters.seo_slug) must not 500 the entire Ham Haberler list.
+  await Promise.all(
+    clusterIds.map(async (id) => {
+      try {
+        const cluster = await store.getCluster(id)
+        if (cluster) {
+          clusterById.set(id, {
+            articleCount: cluster.articleCount,
+            uniqueSourceCount: cluster.uniqueSourceCount,
+          })
+        }
+      } catch {
+        /* ignore */
+      }
+    })
+  )
   function withEvent(article: RawArticleRecord & { sourceName?: string }) {
     const event = article.clusterId ? clusterById.get(article.clusterId) : null
     return {
