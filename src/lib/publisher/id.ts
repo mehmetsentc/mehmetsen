@@ -13,7 +13,11 @@ export function newPublisherId(
     | 'prev'
     | 'paud'
     | 'pad'
-    | 'padaud' = 'pub'
+    | 'padaud'
+    | 'pmad'
+    | 'pacr'
+    | 'paimp'
+    | 'paclk' = 'pub'
 ): string {
   return `${prefix}_${randomUUID()}`
 }

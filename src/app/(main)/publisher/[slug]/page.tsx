@@ -5,7 +5,6 @@ import {
   isPublisherPlatformEnabled,
   isPublisherProfileComposerEnabled,
   isProfileAdSlotsEnabled,
-  isPublisherAdPublicListingEnabled,
 } from '@/lib/publisher/featureFlag'
 import {
   evaluatePublisherSeo,
@@ -95,20 +94,67 @@ export default async function PublisherProfilePage({ params }: Props) {
       : null
 
   let adInventoryById: Map<string, import('@/types/publisherAdInventory').PublisherAdInventoryRecord> | undefined
-  if (
-    publishedLayout &&
-    isProfileAdSlotsEnabled() &&
-    isPublisherAdPublicListingEnabled() &&
-    fullRecord
-  ) {
+  let resolvedAdsByInventoryId:
+    | Map<string, import('@/types/publisherManagedAds').ResolvedPublisherAd>
+    | undefined
+  if (publishedLayout && isProfileAdSlotsEnabled() && fullRecord) {
     try {
       const { publisherAdInventoryService } = await import(
         '@/services/publisher/publisherAdInventoryService'
       )
-      const listed = await publisherAdInventoryService.listPublicSellable(fullRecord.id)
-      adInventoryById = new Map(listed.map((i) => [i.id, i]))
+      const {
+        isPublisherSelfManagedAdsEnabled,
+        isPublisherAdServingEnabled,
+      } = await import('@/lib/publisher/selfManagedAdFlags')
+
+      // Load all active inventory attached to layout slots (not only publicly listed)
+      const allInv = await publisherAdInventoryService.listPublicSellable(fullRecord.id)
+      // Also include NOT_FOR_SALE slots that may have self-managed ads — fetch via repo for layout items
+      const layoutInventoryIds = new Set<string>()
+      for (const resolvedSection of publishedLayout.sections) {
+        for (const item of resolvedSection.items) {
+          if (item.itemType !== 'AD_SLOT') continue
+          const id =
+            item.contentId ||
+            (typeof item.presentation?.inventoryId === 'string'
+              ? item.presentation.inventoryId
+              : null)
+          if (id) layoutInventoryIds.add(id)
+        }
+      }
+
+      const map = new Map(allInv.map((i) => [i.id, i]))
+      if (layoutInventoryIds.size > 0) {
+        const { publisherAdInventoryRepository } = await import(
+          '@/services/publisher/publisherAdInventoryRepository'
+        )
+        await Promise.all(
+          [...layoutInventoryIds].map(async (id) => {
+            if (map.has(id)) return
+            const row = await publisherAdInventoryRepository.findById(id)
+            if (row && row.publisherId === fullRecord.id && row.status === 'ACTIVE') {
+              map.set(id, row)
+            }
+          })
+        )
+      }
+      adInventoryById = map
+
+      if (isPublisherSelfManagedAdsEnabled() && isPublisherAdServingEnabled()) {
+        const { publisherManagedAdsService } = await import(
+          '@/services/publisher/publisherManagedAdsService'
+        )
+        resolvedAdsByInventoryId = new Map()
+        await Promise.all(
+          [...map.keys()].map(async (invId) => {
+            const resolved = await publisherManagedAdsService.resolveActivePublisherAd(invId)
+            if (resolved) resolvedAdsByInventoryId!.set(invId, resolved)
+          })
+        )
+      }
     } catch {
       adInventoryById = undefined
+      resolvedAdsByInventoryId = undefined
     }
   }
 
@@ -126,6 +172,7 @@ export default async function PublisherProfilePage({ params }: Props) {
           layout={publishedLayout}
           fallbackArticles={articlePage.items}
           adInventoryById={adInventoryById}
+          resolvedAdsByInventoryId={resolvedAdsByInventoryId}
         />
       </>
     )

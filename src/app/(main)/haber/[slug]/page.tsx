@@ -21,7 +21,6 @@ import { getArticleSeoContext } from '@/services/seo/articleSeoContext'
 import { hasDatabaseUrl } from '@/db'
 import {
   isArticleAdSlotsEnabled,
-  isPublisherAdPublicListingEnabled,
 } from '@/lib/publisher/adInventoryFlags'
 import { publisherService } from '@/services/publisher/publisherService'
 import { publisherAdInventoryService } from '@/services/publisher/publisherAdInventoryService'
@@ -101,21 +100,49 @@ export default async function NewsDetailPage({ params }: PageProps) {
 
   let adSlots: { before: React.ReactNode; mid: React.ReactNode; after: React.ReactNode } | null =
     null
-  if (
-    isArticleAdSlotsEnabled() &&
-    isPublisherAdPublicListingEnabled() &&
-    hasDatabaseUrl() &&
-    seoContext.publisher?.slug
-  ) {
+  let prerollAd: import('@/types/publisherManagedAds').ResolvedPublisherAd | null = null
+  if (isArticleAdSlotsEnabled() && hasDatabaseUrl() && seoContext.publisher?.slug) {
     try {
       const pub = await publisherService.getPublisherBySlug(seoContext.publisher.slug)
       if (pub) {
         const inventory = await publisherAdInventoryService.getArticlePlacements(pub.id)
         const { buildArticleAdSlotViews } = await import('@/lib/publisher/articleAdPlacements')
+        const {
+          isPublisherSelfManagedAdsEnabled,
+          isPublisherAdServingEnabled,
+          isPublisherVideoPrerollEnabled,
+        } = await import('@/lib/publisher/selfManagedAdFlags')
         const blockCount = post.bodyBlocks?.length ?? 0
+
+        let resolvedByInventoryId: Map<
+          string,
+          import('@/types/publisherManagedAds').ResolvedPublisherAd | null
+        > | undefined
+
+        if (isPublisherSelfManagedAdsEnabled() && isPublisherAdServingEnabled()) {
+          const { publisherManagedAdsService } = await import(
+            '@/services/publisher/publisherManagedAdsService'
+          )
+          resolvedByInventoryId = new Map()
+          await Promise.all(
+            inventory.map(async (inv) => {
+              const resolved = await publisherManagedAdsService.resolveActivePublisherAd(inv.id)
+              resolvedByInventoryId!.set(inv.id, resolved)
+            })
+          )
+
+          if (isPublisherVideoPrerollEnabled()) {
+            const prerollInv = inventory.find((i) => i.placementScope === 'VIDEO_PRE_ROLL')
+            if (prerollInv) {
+              prerollAd = resolvedByInventoryId.get(prerollInv.id) ?? null
+            }
+          }
+        }
+
         adSlots = buildArticleAdSlotViews(inventory, {
           publisherSlug: seoContext.publisher.slug,
           blockCount,
+          resolvedByInventoryId,
         })
       }
     } catch {
@@ -159,6 +186,22 @@ export default async function NewsDetailPage({ params }: PageProps) {
         relatedPosts={relatedPosts}
         seoContext={seoContext}
         adSlots={adSlots}
+        prerollAd={
+          prerollAd
+            ? {
+                adId: prerollAd.ad.id,
+                creativeId: prerollAd.creative.id,
+                creativeType: prerollAd.creative.creativeType,
+                mediaUrl: prerollAd.creative.mediaUrl,
+                thumbnailUrl: prerollAd.creative.thumbnailUrl,
+                headline: prerollAd.creative.headline,
+                body: prerollAd.creative.body,
+                altText: prerollAd.creative.altText,
+                advertiserName: prerollAd.ad.advertiserName,
+                clickHref: prerollAd.clickHref,
+              }
+            : null
+        }
       />
       <NewsArticleInteractive post={post} citySlug={citySlug} />
     </>

@@ -26,6 +26,7 @@ import {
   type AdSaleStatus,
   type PublisherAdInventoryRecord,
 } from '@/types/publisherAdInventory'
+import { ManagedAdsStudioPanel } from '@/components/publisher/studio/ManagedAdsStudioPanel'
 
 type SerializedItem = Omit<PublisherAdInventoryRecord, 'createdAt' | 'updatedAt' | 'archivedAt'> & {
   createdAt: string
@@ -47,7 +48,7 @@ function scopesForType(type: AdInventoryType): AdPlacementScope[] {
   return AD_PLACEMENT_SCOPES.filter((s) => {
     if (type === 'CUSTOM' || s === 'CUSTOM') return true
     if (type === 'PROFILE') return s.startsWith('PROFILE_')
-    if (type === 'ARTICLE') return s.startsWith('ARTICLE_')
+    if (type === 'ARTICLE') return s.startsWith('ARTICLE_') || s === 'VIDEO_PRE_ROLL'
     if (type === 'SECTION') return s.startsWith('SECTION_')
     if (type === 'FEED') return s.startsWith('FEED_')
     return false
@@ -61,7 +62,7 @@ export function PublisherAdsStudioClient({
   slug: string
   publisher: PublisherRecord
 }) {
-  const [tab, setTab] = useState<'inventory' | 'requests' | 'bookings'>('inventory')
+  const [tab, setTab] = useState<'inventory' | 'managed' | 'requests' | 'bookings'>('inventory')
   const [items, setItems] = useState<SerializedItem[]>([])
   const [dashboard, setDashboard] = useState<AdInventoryDashboardCounts>(EMPTY_DASH)
   const [loading, setLoading] = useState(true)
@@ -251,10 +252,10 @@ export function PublisherAdsStudioClient({
             Reklamlar
           </h1>
           <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-            Satılabilir reklam alanları, gelen talepler ve rezervasyonlar.
+            Reklam alanları ve kendi yönettiğiniz reklamlar. Ödeme / marketplace kapalı.
           </p>
           <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
-            Bekleyen Kazanç: — (özellik kapalı · ödeme / payout yok)
+            NaHaber ödeme almaz — reklam müşterinizi siz yönetirsiniz.
           </p>
         </div>
         {tab === 'inventory' ? (
@@ -264,12 +265,11 @@ export function PublisherAdsStudioClient({
         ) : null}
       </div>
 
-      <div className="mt-4 flex gap-2 border-b border-[rgb(var(--color-border))] pb-2 text-sm">
+      <div className="mt-4 flex flex-wrap gap-2 border-b border-[rgb(var(--color-border))] pb-2 text-sm">
         {(
           [
             ['inventory', 'Reklam Alanları'],
-            ['requests', 'Gelen Talepler'],
-            ['bookings', 'Rezervasyonlar'],
+            ['managed', 'Reklamlarım'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -283,7 +283,30 @@ export function PublisherAdsStudioClient({
             {label}
           </button>
         ))}
+        {/* P9 marketplace tabs — kept but visually de-emphasized; feature-off by default */}
+        {(
+          [
+            ['requests', 'Gelen Talepler'],
+            ['bookings', 'Rezervasyonlar'],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={`rounded px-3 py-1.5 opacity-50 ${
+              tab === key ? 'bg-[rgb(var(--color-fg))] text-[rgb(var(--color-bg))] opacity-100' : ''
+            }`}
+            onClick={() => setTab(key)}
+            title="Marketplace özelliği kapalı"
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      {tab === 'managed' ? (
+        <ManagedAdsStudioPanel publisherId={publisher.id} inventoryItems={items} />
+      ) : null}
 
       {tab === 'requests' ? (
         <div className="mt-6 space-y-3">

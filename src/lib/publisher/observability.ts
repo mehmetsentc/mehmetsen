@@ -44,6 +44,12 @@ export type PublisherObservabilityEvent =
   | 'publisher_ad_inventory_updated'
   | 'publisher_ad_inventory_archived'
   | 'publisher_ad_inventory_sale_toggled'
+  | 'publisher_managed_ad_created'
+  | 'publisher_managed_ad_updated'
+  | 'publisher_managed_ad_archived'
+  | 'publisher_ad_creative_created'
+  | 'publisher_ad_media_uploaded'
+  | 'publisher_ad_schedule_tick'
 
 export function publisherLog(
   event: PublisherObservabilityEvent,

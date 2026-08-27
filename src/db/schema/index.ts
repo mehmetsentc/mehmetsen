@@ -39,6 +39,12 @@ export {
   publisherAdInventoryAudit,
 } from './publisherAdInventory'
 export {
+  publisherManagedAds,
+  publisherAdCreatives,
+  publisherAdImpressions,
+  publisherAdClicks,
+} from './publisherManagedAds'
+export {
   advertisers,
   advertiserMembers,
   advertiserCampaigns,

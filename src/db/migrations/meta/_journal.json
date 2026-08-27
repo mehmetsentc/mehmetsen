@@ -232,6 +232,13 @@
       "when": 1787834100000,
       "tag": "0032_phase_p10a_commercial_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1787837700000,
+      "tag": "0033_phase_p10_self_managed_ads",
+      "breakpoints": true
     }
   ]
 }

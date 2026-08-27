@@ -7,8 +7,14 @@ import type { PublicPublisherRecord, PublisherArticleItem } from '@/types/publis
 import type { ResolvedPublisherLayout } from '@/types/publisherLayout'
 import { spanForSize } from '@/types/publisherLayout'
 import { isProfileAdSlotsEnabled, isPublisherAdPublicListingEnabled } from '@/lib/publisher/adInventoryFlags'
+import {
+  isPublisherAdServingEnabled,
+  isPublisherSelfManagedAdsEnabled,
+} from '@/lib/publisher/selfManagedAdFlags'
 import { PublisherAdSlotPlaceholder } from '@/components/publisher/PublisherAdSlotPlaceholder'
+import { PublisherAdRenderer } from '@/components/publisher/PublisherAdRenderer'
 import type { PublisherAdInventoryRecord } from '@/types/publisherAdInventory'
+import type { ResolvedPublisherAd } from '@/types/publisherManagedAds'
 
 function ArticleCard({
   article,
@@ -99,15 +105,20 @@ export function PublisherLayoutRenderer({
   layout,
   fallbackArticles,
   adInventoryById,
+  resolvedAdsByInventoryId,
 }: {
   publisher: PublicPublisherRecord
   layout: ResolvedPublisherLayout | null
   fallbackArticles: PublisherArticleItem[]
   /** Optional inventory map for AD_SLOT items (id → record). */
   adInventoryById?: Map<string, PublisherAdInventoryRecord>
+  /** Self-managed active creatives keyed by inventory id (P10). */
+  resolvedAdsByInventoryId?: Map<string, ResolvedPublisherAd>
 }) {
   const showAdSlots = isProfileAdSlotsEnabled()
   const showPublicListing = isPublisherAdPublicListingEnabled()
+  const serving =
+    isPublisherSelfManagedAdsEnabled() && isPublisherAdServingEnabled()
   const mediaKitHref = ROUTES.PUBLISHER_REKLAM(publisher.slug)
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
@@ -183,16 +194,45 @@ export function PublisherLayoutRenderer({
                           ? item.presentation.inventoryId
                           : null)
                       const inv = inventoryId ? adInventoryById?.get(inventoryId) : undefined
+                      const resolved =
+                        serving && inventoryId
+                          ? resolvedAdsByInventoryId?.get(inventoryId)
+                          : undefined
+
+                      // Priority: active self-managed creative > sellable placeholder > nothing
+                      if (resolved) {
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              gridColumn: `span ${Math.min(12, span)} / span ${Math.min(12, span)}`,
+                            }}
+                          >
+                            <PublisherAdRenderer
+                              ad={{
+                                adId: resolved.ad.id,
+                                creativeId: resolved.creative.id,
+                                creativeType: resolved.creative.creativeType,
+                                mediaUrl: resolved.creative.mediaUrl,
+                                thumbnailUrl: resolved.creative.thumbnailUrl,
+                                headline: resolved.creative.headline,
+                                body: resolved.creative.body,
+                                altText: resolved.creative.altText,
+                                advertiserName: resolved.ad.advertiserName,
+                                clickHref: resolved.clickHref,
+                              }}
+                              label="Reklam"
+                            />
+                          </div>
+                        )
+                      }
+
                       const forSale =
                         showPublicListing &&
                         inv &&
                         inv.isPubliclyListed &&
                         inv.saleStatus === 'AVAILABLE' &&
                         inv.status === 'ACTIVE'
-                      if (!forSale && !inv) {
-                        // Flag ON but no attached/listed inventory → still show neutral placeholder in studio-published layouts only when listed
-                        return null
-                      }
                       if (!forSale) return null
                       return (
                         <div

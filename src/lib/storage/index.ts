@@ -120,3 +120,18 @@ export function buildAdvertiserCreativeMediaKey(
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'image.bin'
   return `advertisers/${safeAdv}/creatives/${safeName}`
 }
+
+/**
+ * Publisher self-managed ad creative (P10).
+ * Format: publishers/{publisherId}/ads/{adId}/{filename}
+ */
+export function buildPublisherAdMediaKey(
+  publisherId: string,
+  adId: string,
+  filename: string
+): string {
+  const safePub = publisherId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'pub'
+  const safeAd = adId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'ad'
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'creative.bin'
+  return `publishers/${safePub}/ads/${safeAd}/${safeName}`
+}

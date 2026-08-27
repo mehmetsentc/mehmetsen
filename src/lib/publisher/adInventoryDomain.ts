@@ -96,7 +96,7 @@ export function defaultSemanticSize(format: AdFormat): AdSemanticSize {
 export function scopeMatchesType(type: AdInventoryType, scope: AdPlacementScope): boolean {
   if (type === 'CUSTOM' || scope === 'CUSTOM') return true
   if (type === 'PROFILE') return scope.startsWith('PROFILE_')
-  if (type === 'ARTICLE') return scope.startsWith('ARTICLE_')
+  if (type === 'ARTICLE') return scope.startsWith('ARTICLE_') || scope === 'VIDEO_PRE_ROLL'
   if (type === 'SECTION') return scope.startsWith('SECTION_')
   if (type === 'FEED') return scope.startsWith('FEED_')
   return false

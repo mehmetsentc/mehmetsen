@@ -25,23 +25,60 @@ import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/
 import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 import type { ArticleSeoContext } from '@/lib/seo/articleSeoTypes'
 import { splitBlocksForMidAd } from '@/lib/publisher/articleAdPlacements'
+import {
+  PublisherVideoPrerollPlayer,
+} from '@/components/publisher/PublisherVideoPrerollPlayer'
+import type { PublisherAdViewModel } from '@/components/publisher/PublisherAdRenderer'
+import { isPublisherVideoPrerollEnabled } from '@/lib/publisher/selfManagedAdFlags'
 
 interface NewsArticleStaticProps {
   post: Post
   relatedPosts?: Post[]
   /** Optional SEO internal-link context (publisher / event). Same contract as getArticleSeoContext. */
   seoContext?: ArticleSeoContext | null
-  /** P8 article ad placeholders — never included in JSON-LD. */
+  /** P8/P10 article ad slots — never included in JSON-LD. */
   adSlots?: { before?: ReactNode; mid?: ReactNode; after?: ReactNode } | null
+  /** P10 video pre-roll creative (null → no preroll). */
+  prerollAd?: PublisherAdViewModel | null
 }
 
-/** YouTube veya embed / MP4 hero player. */
-function VideoHero({ item, title, posterFallback }: {
+/** YouTube veya embed / MP4 hero player — optional P10 pre-roll for non-embed MP4. */
+function VideoHero({
+  item,
+  title,
+  posterFallback,
+  prerollAd,
+}: {
   item: MediaItem
   title: string
   posterFallback: string | null
+  prerollAd?: PublisherAdViewModel | null
 }) {
   const isEmbed = isEmbedPlayerUrl(item.url)
+  const prerollEnabled = isPublisherVideoPrerollEnabled()
+
+  if (!isEmbed && prerollEnabled) {
+    return (
+      <figure className="news-article-hero-block relative">
+        <PublisherVideoPrerollPlayer
+          contentUrl={item.url}
+          contentPoster={item.thumbnailUrl ?? posterFallback}
+          contentTitle={title}
+          isEmbed={false}
+          ad={prerollAd ?? null}
+          enabled={prerollEnabled}
+        />
+        {(item.caption || item.credit) && (
+          <figcaption className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2 text-xs text-[rgb(var(--color-muted))]">
+            {item.caption}
+            {item.caption && item.credit && <span className="mx-1">·</span>}
+            {item.credit && <span className="font-medium">{item.credit}</span>}
+          </figcaption>
+        )}
+      </figure>
+    )
+  }
+
   return (
     <figure className="news-article-hero-block relative">
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-black">
@@ -129,6 +166,7 @@ export function NewsArticleStatic({
   relatedPosts = [],
   seoContext = null,
   adSlots = null,
+  prerollAd = null,
 }: NewsArticleStaticProps) {
   const imageUrl = post.coverImageUrl?.trim() || null
   const categoryLabel = getCategoryLabel(post.categoryId)
@@ -246,7 +284,14 @@ export function NewsArticleStatic({
         {(() => {
           const placement = planMediaPlacement(post.mediaItems, paragraphs.length)
           if (placement.hero?.type === 'video') {
-            return <VideoHero item={placement.hero} title={post.title} posterFallback={imageUrl} />
+            return (
+              <VideoHero
+                item={placement.hero}
+                title={post.title}
+                posterFallback={imageUrl}
+                prerollAd={prerollAd}
+              />
+            )
           }
           if (placement.hero?.type === 'image') {
             return <ImageHero item={placement.hero} title={coverAlt} />
