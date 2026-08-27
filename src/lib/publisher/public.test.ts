@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { serializePublicPublisher } from '@/lib/publisher/public'
+import {
+  isInternalTestPublisher,
+  isPublisherPubliclyVisible,
+  serializePublicPublisher,
+} from '@/lib/publisher/public'
 import type { PublisherRecord } from '@/types/publisher'
 
 const basePublisher: PublisherRecord = {
@@ -45,5 +49,12 @@ describe('serializePublicPublisher', () => {
   it('marks suspended publishers as not publicly visible', () => {
     const pub = serializePublicPublisher({ ...basePublisher, status: 'SUSPENDED' })
     expect(pub.isPubliclyVisible).toBe(false)
+  })
+
+  it('excludes INTERNAL_TEST from public discovery', () => {
+    const internal = { ...basePublisher, publisherType: 'INTERNAL_TEST' as const }
+    expect(isInternalTestPublisher(internal)).toBe(true)
+    expect(isPublisherPubliclyVisible(internal)).toBe(false)
+    expect(serializePublicPublisher(internal).isPubliclyVisible).toBe(false)
   })
 })

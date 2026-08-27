@@ -7,6 +7,8 @@ export type PublisherType =
   | 'MAGAZINE'
   | 'BLOG'
   | 'OTHER'
+  /** Controlled pilot / QA only — never public discovery, sitemap, or Smart Feed. */
+  | 'INTERNAL_TEST'
 
 /** Operational profile visibility (not claim/verification workflow). */
 export type PublisherStatus = 'UNCLAIMED' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'

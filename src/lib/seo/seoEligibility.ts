@@ -20,6 +20,7 @@ export type SeoNoindexReason =
   | 'empty_publisher'
   | 'suspended_publisher'
   | 'inactive_publisher'
+  | 'internal_test_publisher'
   | 'thin_topic'
   | 'thin_category'
   | 'low_confidence_event'
@@ -56,13 +57,18 @@ export function evaluateArticleSeo(post: Pick<Post, 'status' | 'title'> | null):
 }
 
 export function evaluatePublisherSeo(
-  publisher: Pick<
+  publisher: (Pick<
     PublicPublisherRecord,
     'status' | 'isPubliclyVisible' | 'displayName'
-  > | null,
+  > & {
+    publisherType?: PublicPublisherRecord['publisherType']
+  }) | null,
   articleCount = 0
 ): SeoEligibilityResult {
   if (!publisher) return base(false, 'empty_publisher', false)
+  if (publisher.publisherType === 'INTERNAL_TEST') {
+    return base(false, 'internal_test_publisher', false)
+  }
   if (publisher.status === 'SUSPENDED') return base(false, 'suspended_publisher', false)
   if (publisher.status === 'INACTIVE') return base(false, 'inactive_publisher', false)
   if (!publisher.isPubliclyVisible) return base(false, 'empty_publisher', false)

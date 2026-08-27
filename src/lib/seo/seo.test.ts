@@ -74,6 +74,17 @@ describe('P6 publisher schema', () => {
     expect(r.indexable).toBe(false)
     expect(r.noindexReason).toBe('suspended_publisher')
   })
+
+  it('INTERNAL_TEST publisher noindex', () => {
+    const r = evaluatePublisherSeo({
+      displayName: 'NaHaber Test Yayıncısı',
+      status: 'ACTIVE',
+      isPubliclyVisible: false,
+      publisherType: 'INTERNAL_TEST',
+    })
+    expect(r.indexable).toBe(false)
+    expect(r.noindexReason).toBe('internal_test_publisher')
+  })
 })
 
 describe('P6 topic thin content', () => {

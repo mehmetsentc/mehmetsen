@@ -105,6 +105,7 @@ function buildFirestorePayload(input: {
   publishedAtMs: number
 }): Record<string, unknown> {
   const { item, publisher, newsId, slug, bodyText, html, publishedAtMs } = input
+  const internalTest = publisher.publisherType === 'INTERNAL_TEST'
   return {
     title: item.title.trim(),
     slug,
@@ -131,7 +132,10 @@ function buildFirestorePayload(input: {
     type: 'news',
     postType: 'news',
     status: 'published',
-    visibility: 'public',
+    // INTERNAL_TEST must never enter public SEO indexes.
+    visibility: internalTest ? 'private' : 'public',
+    seoNoindex: internalTest,
+    publisherType: publisher.publisherType,
     isBreaking: Boolean(item.isBreaking),
     seoTitle: item.seoTitle ?? '',
     seoDescription: item.seoDescription ?? '',

@@ -67,6 +67,15 @@ Wrong combinations are rejected via `resolveFeatureForPublisher` (`dependency_bl
 
 **DISABLED.** P10A stays dark. No checkout/payout testing on production.
 
+## P11.1 controlled pilot (INTERNAL_TEST)
+
+- Create a `publisherType=INTERNAL_TEST` publisher (e.g. `nahaber-test-yayincisi`) — never claim/verify the 5 bootstrap media sources.
+- Exclude from public discovery / sitemap / Smart Feed; force SEO noindex on profile + published pilot articles.
+- Grant pilot bundle via allowlist only (`grantPilotBundle`); globals stay false.
+- Smoke: `npx tsx scripts/_phase_p11_1-pilot-smoke.mts` (service-layer; forces `NODE_ENV=production` + flags false).
+- After smoke: AD_SERVING grant OFF + ad archived; audit/impression rows kept.
+- Rollback = disable allowlist row — never delete publisher/content/ad records.
+
 ## Success criteria (pilot)
 
 - 0 auth bypasses / 0 auth errors on CMS paths  

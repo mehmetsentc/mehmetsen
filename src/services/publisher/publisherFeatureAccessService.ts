@@ -121,11 +121,12 @@ export class PublisherFeatureAccessService {
     return record
   }
 
-  /** Grant a stage-2 pilot bundle for a verified publisher (idempotent). */
+  /** Grant a stage-2 pilot bundle for a verified publisher (idempotent). No VIDEO_PREROLL. */
   async grantPilotBundle(input: {
     publisherId: string
     actorId: string
     note?: string | null
+    includeVideoPreroll?: boolean
   }) {
     const bundle: PublisherRolloutFeatureKey[] = [
       'PLATFORM',
@@ -138,10 +139,10 @@ export class PublisherFeatureAccessService {
       'SELF_MANAGED_ADS',
       'AD_SERVING',
       'AD_ANALYTICS',
-      'VIDEO_PREROLL',
       'PROFILE_AD_SLOTS',
       'ARTICLE_AD_SLOTS',
     ]
+    if (input.includeVideoPreroll) bundle.push('VIDEO_PREROLL')
     const results = []
     for (const featureKey of bundle) {
       results.push(

@@ -6,7 +6,11 @@ import type {
   PublisherRecord,
   PublisherSourceRecord,
 } from '@/types/publisher'
-import { isPublisherPubliclyVisible, serializePublicPublisher } from '@/lib/publisher/public'
+import {
+  isInternalTestPublisher,
+  isPublisherPubliclyVisible,
+  serializePublicPublisher,
+} from '@/lib/publisher/public'
 
 export class PublisherService {
   constructor(private readonly repo: PublisherRepository = publisherRepository) {}
@@ -17,7 +21,10 @@ export class PublisherService {
 
   async getPublicPublisherBySlug(slug: string): Promise<PublicPublisherRecord | null> {
     const publisher = await this.getPublisherBySlug(slug)
-    if (!publisher || !isPublisherPubliclyVisible(publisher)) return null
+    if (!publisher) return null
+    // INTERNAL_TEST: direct URL may render (noindex) for pilot/ad smoke, but never discoverable.
+    if (!isPublisherPubliclyVisible(publisher) && !isInternalTestPublisher(publisher)) return null
+    if (publisher.status === 'SUSPENDED' || publisher.status === 'INACTIVE') return null
     return serializePublicPublisher(publisher)
   }
 

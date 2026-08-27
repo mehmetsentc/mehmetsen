@@ -67,6 +67,11 @@ export interface NewsDocument {
   sourceUrl?: string
   sourceLabel?: string
   status?: string
+  visibility?: 'public' | 'followers' | 'private'
+  seoNoindex?: boolean
+  publisherType?: string
+  publisherId?: string
+  publisherSlug?: string
   likesCount?: number
   commentCount?: number
   commentsCount?: number
@@ -438,7 +443,10 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     imageCaption,
     coverImageUrl: imageUrl,
     status: (data.status as Post['status']) ?? 'published',
-    visibility: 'public',
+    visibility:
+      data.visibility === 'followers' || data.visibility === 'private'
+        ? data.visibility
+        : 'public',
     likesCount: data.likesCount ?? 0,
     commentsCount: data.commentCount ?? data.commentsCount ?? 0,
     savesCount: data.savesCount ?? 0,
@@ -504,7 +512,17 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     duplicateReason: data.duplicateReason?.trim() || undefined,
     aiAutoPublished: data.aiAutoPublished === true,
     needsReview: data.needsReview === true,
-  }
+    // Pass-through for INTERNAL_TEST SEO noindex (P11.1)
+    ...(data.seoNoindex === true || data.publisherType === 'INTERNAL_TEST'
+      ? {
+          seoNoindex: true as const,
+          publisherType:
+            typeof data.publisherType === 'string' ? data.publisherType : 'INTERNAL_TEST',
+        }
+      : typeof data.publisherType === 'string'
+        ? { publisherType: data.publisherType }
+        : {}),
+  } as Post
 }
 
 export function mapNewsSnapshot(

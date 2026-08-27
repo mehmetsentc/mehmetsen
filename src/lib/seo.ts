@@ -405,11 +405,22 @@ export function buildPostMetadata(post: Post): Metadata {
     ...(post.tags?.length ? post.tags : []),
   ].filter(Boolean)
 
+  const postExt = post as Post & {
+    seoNoindex?: boolean
+    publisherType?: string
+  }
+  const forceNoindex =
+    postExt.seoNoindex === true ||
+    postExt.publisherType === 'INTERNAL_TEST' ||
+    post.visibility === 'private'
+
   return {
     title,
     description,
     ...(keywords.length ? { keywords: keywords.join(', ') } : {}),
-    robots: { index: true, follow: true },
+    robots: forceNoindex
+      ? { index: false, follow: false, googleBot: { index: false, follow: false } }
+      : { index: true, follow: true },
     authors: [{ name: siteName }],
     alternates: {
       canonical: url,
